@@ -1,0 +1,25 @@
+// userfunc.sngl — exercises a multi-statement user function with a local var
+// declaration, an if statement, and a return.
+
+func clamp(x int, lo int, hi int) int {
+    var result int = x
+    if x < lo {
+        result = lo
+    }
+    if x > hi {
+        result = hi
+    }
+    return result
+}
+
+component main {
+    var n int = 5
+
+    func display() => "clamped: " + string(clamp(n, 0, 10))
+
+    vbox {
+        text(value=display)
+        button(text="+3", @click { n = n + 3 })
+        button(text="-3", @click { n = n - 3 })
+    }
+}

@@ -1,0 +1,23 @@
+// component.sngl — exercises parent component instantiating a child component
+// and calling a user-defined method.
+
+component Badge(label = "", count int = 0) {
+    hbox {
+        text(value=label + ": " + string(count))
+    }
+}
+
+component main {
+    var clicks int = 0
+    var name string = "World"
+
+    func greeting() => "Hello, " + name + "!"
+    func doubled() => clicks * 2
+
+    vbox {
+        text(value=greeting)
+        Badge(label="Clicks", count=clicks)
+        Badge(label="Doubled", count=doubled)
+        button(text="Click", @click { clicks = clicks + 1 })
+    }
+}

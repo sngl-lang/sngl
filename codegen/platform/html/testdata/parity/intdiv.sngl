@@ -1,0 +1,14 @@
+// intdiv.sngl — exercises integer division in a reactive computed func.
+
+component main {
+    var a int = 10
+    var b int = 3
+
+    func quotient() => a / b
+
+    vbox {
+        text(value=string(quotient))
+        button(text="+a", @click { a = a + 1 })
+        button(text="+b", @click { b = b + 1 })
+    }
+}

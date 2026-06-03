@@ -1,0 +1,12 @@
+// elemref.sngl — exercises element-ref: value is read in an expression and
+// written inside a click handler.
+
+component main {
+    var name string = ""
+
+    vbox {
+        input(placeholder="Type here", value=name, @input(e) { name = e.value })
+        text(value="Hello, " + name + "!")
+        button(text="Clear", @click { name = "" })
+    }
+}

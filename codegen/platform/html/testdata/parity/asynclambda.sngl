@@ -1,0 +1,16 @@
+// asynclambda.sngl — exercises list .map() and .filter() with lambda expressions.
+
+component main {
+    var xs list<int> = [1, 2, 3, 4, 5]
+
+    func evens() => xs.filter(func(x int) => x % 2 == 0)
+    func doubled() => xs.map(func(x int) => x * 2)
+    func total() => xs.length()
+
+    vbox {
+        text(value="count: " + string(total))
+        text(value="evens: " + string(evens.length()))
+        text(value="first doubled: " + string(doubled[0]))
+        button(text="Add", @click { xs = xs.push(xs.length() + 1) })
+    }
+}

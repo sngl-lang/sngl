@@ -1,0 +1,13 @@
+// i18n.sngl — exercises $"..." translatable strings with ICU plural forms.
+
+component main {
+    var count int = 1
+
+    func label() => $"You have {count, plural, one{# item} other{# items}}"
+
+    vbox {
+        text(value=label)
+        button(text="Add", @click { count = count + 1 })
+        button(text="Reset", @click { count = 0 })
+    }
+}
