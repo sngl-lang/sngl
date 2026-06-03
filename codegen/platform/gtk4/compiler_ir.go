@@ -412,7 +412,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	for _, imp := range helpers.Imports() {
 		td.Imports[imp] = true
 	}
-	td.LangHelpers = helpers.Emit()
+	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
 
 	// Units (excluding the special-cased `duration`).
 	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units)

@@ -466,7 +466,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for _, imp := range helpers.Imports() {
 		td.Imports[imp] = true
 	}
-	td.LangHelpers = helpers.Emit()
+	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(ctx.Pkg.MergeStructs)
 
 	// Structs
 	for _, sd := range info.Structs {

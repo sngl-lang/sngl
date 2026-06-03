@@ -295,6 +295,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		info.goImports[imp] = ""
 	}
 	b.WriteString(helpers.Emit())
+	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
 
 	// Unit types (excluding the special-cased `duration`).
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
