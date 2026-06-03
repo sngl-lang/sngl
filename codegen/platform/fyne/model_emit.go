@@ -130,12 +130,18 @@ func (m *Model) updateToast() {
 		// Timer lifecycle methods reference time.* and fyne.Do.
 		gc.RequireImport("time")
 		gc.RequireImport("fyne.io/fyne/v2")
-		b.WriteString("// StartTimers starts all active timers.\nfunc (m *Model) StartTimers() {\n")
+		// The ticker runs unconditionally; each tick gates its body on the
+		// `enabled` var. This matches SNGL timer semantics ("nothing runs while
+		// enabled is false") and means flipping the var pauses/resumes the timer
+		// with no restart wiring — the next tick simply fires or skips.
+		b.WriteString("// StartTimers starts all timers; ticks are gated on each timer's enabled var.\nfunc (m *Model) StartTimers() {\n")
 		for _, t := range td.Timers {
-			fmt.Fprintf(b, "\tif m.%s {\n", t.ActiveVar)
-			fmt.Fprintf(b, "\t\tm.timer%dTicker = time.NewTicker(%d * time.Millisecond)\n", t.Index, t.IntervalMs)
-			fmt.Fprintf(b, "\t\tgo func() {\n\t\t\tfor range m.timer%dTicker.C {\n\t\t\t\tfyne.Do(func() {\n%s\n\t\t\t\t})\n\t\t\t}\n\t\t}()\n", t.Index, t.Body)
-			b.WriteString("\t}\n")
+			fmt.Fprintf(b, "\tm.timer%dTicker = time.NewTicker(%d * time.Millisecond)\n", t.Index, t.IntervalMs)
+			fmt.Fprintf(b, "\tgo func() {\n\t\tfor range m.timer%dTicker.C {\n\t\t\tfyne.Do(func() {\n", t.Index)
+			if t.ActiveVar != "" {
+				fmt.Fprintf(b, "\t\t\t\tif !m.%s {\n\t\t\t\t\treturn\n\t\t\t\t}\n", t.ActiveVar)
+			}
+			fmt.Fprintf(b, "%s\n\t\t\t})\n\t\t}\n\t}()\n", t.Body)
 		}
 		b.WriteString("}\n\n")
 		b.WriteString("// StopTimers stops all active timers.\nfunc (m *Model) StopTimers() {\n")

@@ -60,6 +60,9 @@ component main {
 		// Tick body's reactive widget update must use the fyne widget API,
 		// qualified with the receiver — not a raw, unqualified field write.
 		"m.__n0.SetText(",
+		// Each tick gates on the enabled var, so toggling `running` pauses or
+		// resumes the timer without any restart wiring.
+		"if !m.running {",
 	} {
 		if !strings.Contains(out, snippet) {
 			t.Errorf("generated model.go missing timer snippet %q\n--- generated ---\n%s", snippet, out)
