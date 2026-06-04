@@ -1,257 +1,255 @@
-# Purity-gated client/server routing + server-side actions
+# Front/back-end placement: import-language routing + `html.frontend`/`html.backend` + server-side actions
 
 **Date:** 2026-06-04
 **Status:** Design approved, plan pending
+**Tracks:** GitLab issue #27 (`html.frontend` / `html.backend`)
 
 ## Problem
 
 In html route mode (`--lang go`), a handler that calls a `go://` imported
-function emits a broken, dead server-side POST handler. Concretely, for:
-
-```sngl
-output { go { html } }
-import "go://example.com/route-post/api"   // api.Persist(n int) int — no //sngl:pure
-component main {
-    var count = 0
-    window #app(title="t", href="/") {
-        vbox {
-            button(text="Save", @click { count = api.Persist(count + 1) })
-            text(value="count {count}")
-        }
-    }
-}
-```
-
-the generated `server.go` contains:
+function emits broken, dead server-side code:
 
 ```go
 func handleAppAction(w http.ResponseWriter, r *http.Request) {
     switch r.FormValue("action") {
     case "action0":
         count = api.Persist((count + 1))                  // undefined: count
-        __n0.TextContent = ("count " + fmt.Sprint(count))  // undefined: __n0; fmt not imported
+        __n0.TextContent = ("count " + fmt.Sprint(count))  // undefined: __n0; fmt unimported
     }
     http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 ```
 
-Three defects, all symptoms of one gap — **server-side execution of impure
-imports is unimplemented**:
+The deeper issue: **SNGL has no model for deciding whether a piece of code runs
+on the front end (browser) or the back end (server), and no way to force
+either.** Today the html platform half-emits a server path (broken) AND ships
+the same `go://` func to the browser as WASM. There's no server-side dynamic
+rendering at all (the GET handler `w.Write`s a static string), so the server
+path is unreachable and has nowhere to render new state.
 
-1. The action body is the *raw client-side handler IR* (component `state`
-   reads + DOM-patch statements), undefined in a server free-function and
-   missing imports.
-2. The same `go://` func is **also** compiled to WASM and shipped to the
-   browser — wrong for an impure function.
-3. No `<form>` POSTs to the handler, and there is **no server-side dynamic
-   rendering at all** (the GET handler `w.Write`s a fully static string), so
-   the handler is unreachable and there is nowhere for new state to render.
+## Model (issue #27 + import-language default)
 
-## Intended model (from the language owner)
+**Placement** — every expression resolves to **frontend** (runs in the browser)
+or **backend** (runs on the server).
 
-A target-language imported function (`go://`, later `js://`, etc.):
+**Default placement is by transitive import language**, not purity:
 
-- **Pure** (`//sngl:pure` doc comment on the source function):
-  - all arguments const → evaluated at **compile time** (const-fold).
-  - otherwise → runs **client-side** (compiled to a WASM extern today).
-- **Impure** (no `//sngl:pure`): must run **server-side**.
-- A target with no server (`--lang none`, static mode) must **fail the build**
-  if an impure import is used.
-- Other server languages implement the same path later (the target language
-  must be able to import/call the target language; `go` can import `go`).
+- Code that can run in the browser — SNGL (compiles to JS), `js://` imports,
+  stdlib — defaults to **frontend**.
+- Code that transitively uses a **non-`js://`** import (`go://`, future
+  `py://`, …) defaults to **backend** — the browser can't run it natively.
 
-**The purity *detection* layer already exists and is intact:**
-`codegen/scheme/golang/importer.go` scans imported Go source for `//sngl:pure`
-and sets `fn.Purity = PurityPure`, else `PurityUnknown`. The pure-call
-compile-time interpreter (`internal/optimize/consteval.go`, `interpret.go`)
-and the "fail the build if a pure `go://` import can't be evaluated and the
-target can't call it at runtime" guard (commit efcccaba) already work. This
-spec builds the **routing + server-execution** layer on top of that.
+**Explicit overrides** (new stdlib directives, issue #27):
+
+```sngl
+// Force the expression to run client-side (e.g. compile a go:// call to a
+// front-end WASM asset instead of a server call). No effect for static builds.
+// Build fails if the logic can't run in the browser or depends on
+// server-side values.
+func html.frontend<T>(v T) => v
+
+// Force the logic server-side. A func value is generated as an HTTP route;
+// a constant expression is generated as a lazy-loaded static file (JSON).
+func html.backend<T>(v T) => v
+```
+
+Both are identities for type-checking and value semantics; they only instruct
+the html code generator where to place the wrapped code. If the requested
+placement is impossible, compilation fails.
+
+**Purity is *not* the placement heuristic.** The existing `//sngl:pure`
+detection (`codegen/scheme/golang/importer.go`) and the pure-call compile-time
+interpreter (`internal/optimize/consteval.go`) remain, used only for
+**orthogonal compile-time const-folding**: a call with all-const arguments to a
+pure import folds to a literal at build time and needs no placement at all.
 
 ## Goal
 
-Make html route mode correctly route handlers by purity and execute impure
-handlers server-side via Post/Redirect/Get (PRG) with server-side re-render,
-while keeping the html platform **language-agnostic** — all server code is
-generated by the target language behind the existing `HTTPCompiler` seam.
+1. A placement analysis: classify every expression/handler frontend|backend by
+   transitive import language, honoring `html.frontend`/`html.backend`
+   overrides, failing the build on impossible placement.
+2. Backend func/handler → an HTTP route executed server-side via
+   Post/Redirect/Get with server-side re-render and per-session state.
+3. Frontend-forced non-`js://` code → a client WASM asset.
+4. Keep the html platform **language-agnostic**: all server code is generated by
+   the target language behind the existing `HTTPCompiler` seam.
+
+This fixes the original bug: a bare `go://` handler now defaults to backend and
+emits correct server code (or the author writes `html.frontend(...)` to run it
+as WASM instead).
 
 ## Non-goals (v1)
 
-- Fine-grained server updates (htmx fragment swap). v1 is full-page PRG.
-- Preserving client-only `var` state across an impure (full-reload) action —
-  client state is ephemeral across that reload (documented).
-- Non-Go server languages — the seam is designed for them, but only `--lang go`
-  is implemented here. `--lang none` gets the build-error guard.
-- Hardening against shipping impure *code* in a WASM binary for mixed
-  pure/impure packages (see "Open hardening item").
+- `html.backend` on a **constant expression → lazy-loaded JSON file**. The
+  directive is recognized, but const→JSON asset emission is a follow-up; v1
+  `html.backend` supports **func/handler → HTTP route** only (a const-expr
+  `html.backend` is a clear "not yet implemented" build error).
+- Non-Go server languages (the seam is designed for them; only `--lang go` is
+  implemented; `--lang none` gets the no-server build error).
+- htmx-style fragment updates (v1 backend actions are full-page PRG).
+- Preserving client-only `var` state across a backend (full-reload) action.
+- WASM tree-shaking so a frontend-forced func from a mixed package doesn't ship
+  sibling code (document; may require one func per package for now).
 
 ## Architecture
 
 ```
-                          html platform (language-AGNOSTIC)
-  IR + reactive analysis ─────────────────────────────────────────┐
-   - classify each handler: client (no impure import) | server     │
-   - build per-route RenderModel: static HTML skeleton + binding    │
-     holes (each hole = IR expr / reactive if/for), incl. <form>    │
-     markup for impure handlers                                     │
-   - collect StateVars (name + IR type)                             │
-   - collect ServerActions: logical state-mutation IR (DOM/visual   │
-     patch statements excluded)                                     │
-                                                                     ▼
-                       HTTPCompiler.CompileHTTP(req)   ← existing seam, widened
+                       html platform (language-AGNOSTIC)
+  IR + reactive analysis ─────────────────────────────────────────────┐
+   1. Placement analysis: per expression/handler → frontend|backend    │
+      - default: backend iff transitively uses a non-js:// import       │
+      - html.frontend(v) / html.backend(v) override; impossible → error │
+   2. Frontend handlers/exprs → existing client path (JS; js:// inline; │
+      frontend-forced non-js:// → WASM extern)                          │
+   3. Backend handlers/exprs → build a language-agnostic per-route      │
+      model: RenderModel (static HTML skeleton + IR-expr holes, incl.   │
+      <form> markup), StateVars (name+type), ServerActions (logical     │
+      state-mutation IR, DOM/visual statements excluded)                │
+   4. Guard: backend code but target is not an HTTPCompiler → error     │
+                                                                         ▼
+                       HTTPCompiler.CompileHTTP(req)     ← existing seam, widened
                           target language (Go today)
-   - emit State struct (from StateVars)                              
-   - emit session store (per-session cookie; pluggable)             
-   - emit renderRoute(s *State) string: fills each hole by          
-     translating its IR expr via the language's *IRContext           
-   - emit GET handler: load session → renderRoute(state)            
-   - emit POST action handlers: load session → run mutation IR via  
-     *IRContext → save session → 303 redirect (PRG)                 
-   - collect imports via *IRContext (GoIRContext.Imports())          
+   - State struct (from StateVars)                                      
+   - session store (per-session cookie; pluggable; default in-memory)   
+   - renderRoute(s *State) string: fill each hole by translating its    
+     IR expr via the language's *IRContext against s                    
+   - GET handler: load session → renderRoute(state)                     
+   - POST action handler: load session → run ServerAction mutations via 
+     *IRContext → save session → 303 redirect (PRG)                     
+   - imports via *IRContext (GoIRContext.Imports())                     
 ```
 
-**Split invariant:** html owns *all* HTML (static skeleton, `<form>` markup,
-binding-hole placement). The language owns *all* server code (State, session,
-render, action logic, PRG, imports). The only things crossing the seam are
-language-agnostic: IR expressions, IR statements, state-var names+types, and
-HTML chunks.
+**Split invariant:** html owns *all* HTML (skeleton, `<form>` markup,
+binding-hole placement) and the placement decision. The language owns *all*
+server code (State, session, render, action logic, PRG, imports). Only
+language-agnostic data crosses the seam: IR expressions, IR statements,
+state-var names+types, HTML chunks.
 
-### A. Purity-gated routing (html, language-agnostic)
+### A. Placement analysis (html, language-agnostic)
 
-For each event handler in a route window, classify:
+A new pass over each route window classifies expressions and handlers:
 
-- Transitively calls **≥1 impure** imported func (`Purity != PurityPure`) →
-  **server handler**: html emits a `<form method="post" action="<route>">`
-  wrapping the trigger with a hidden `<input name="_action" value="N">`; the
-  handler's logical state mutations become a `ServerAction`.
-- Otherwise → **client handler** (today's path unchanged: pure imports
-  const-fold or run as client WASM externs; local mutations stay client JS).
+- `html.frontend(v)` / `html.backend(v)` wrappers (recognized by intrinsic ID,
+  like other stdlib directives) pin the wrapped expression's placement.
+- Otherwise default: an expression is **backend** iff it transitively references
+  a non-`js://` import (`Func.NativePkg` whose import scheme ≠ `js`); else
+  **frontend**.
+- A handler is **backend** iff its body contains a backend-placed call; else
+  **frontend** (client JS, unchanged).
+- A reactive binding that reads a backend value is evaluated **server-side**
+  during render (it lands in `renderRoute`).
+- Conflicts (`html.frontend` wrapping something that depends on a server-only
+  value; `html.backend` const-expr in v1; backend code with a non-HTTPCompiler
+  target) → build error with a clear message.
 
-`collectActions` (routes.go) gains this purity gate — today it routes *every*
-`go://` handler to a server action regardless of purity. Client WASM exposure
-is restricted to **pure** funcs; impure funcs are never exposed as client
-externs.
+The directives live in `lib/` as generic identity stdlib funcs in an `html`
+namespace, registered as intrinsics so the html platform recognizes them and
+all other targets treat them as pass-through identities.
 
-### B. Per-route RenderModel (html → language)
+### B. Frontend forcing (`html.frontend`)
 
-Replace the `HTTPRequest.RenderHTML func(idx int) string` callback (which bakes
-a static string) with a structured render model carried on `HTTPRoute`:
+A frontend-forced expression that uses a non-`js://` import compiles that
+import to a **client WASM extern** (the existing `collectWASMPackages` / extern
+bridge path), instead of a server call. Without the wrapper, such an expression
+defaults to backend, so WASM exposure becomes **opt-in** via `html.frontend`
+(today it happens unconditionally — that changes). Build fails if a
+frontend-forced expression needs a server-only value.
 
-- `Skeleton`: the static HTML with typed **holes**. A hole is one of:
-  - **text/attr binding** — carries the binding's `ir.Expr` and where it
-    interpolates.
-  - **reactive `if`/`for`** — carries the condition/iter `ir.Expr` and the
-    nested skeleton(s).
-  These are exactly what `CommonAnalysis`/the MutationModel already identify
-  for the client updaters; this exposes the same reactive info to the language.
-- `StateVars []StateVar{ Name string; Type *ir.Type }` — for the State struct.
+### C. Backend func/handler → HTTP route
 
-Holes hold IR, not rendered strings, so each language renders them via its own
-`*IRContext`. html still produces the surrounding HTML verbatim.
+(Same machinery as the prior design, now triggered by placement=backend rather
+than impurity.)
 
-### C. ServerAction (html → language)
+- The triggering element emits `<form method="post" action="<route>"><input
+  type="hidden" name="_action" value="N">…</form>` — no client JS required.
+- html builds, per route: a **RenderModel** (static skeleton + IR-expr holes for
+  text/attr bindings and reactive `if`/`for`), **StateVars** (name + IR type),
+  and **ServerActions** (the handler's logical state mutations; visual/DOM-patch
+  statements excluded).
+- The language emits (via its `*IRContext`): the `State` struct; a per-session
+  store (cookie + default in-memory map, pluggable); `renderRoute(s)` filling
+  holes by translating their IR exprs against `s`; the GET handler (load
+  session → render); the POST handler (load session → run mutations → save →
+  303 redirect). Imports from `*IRContext.Imports()`.
 
-`HTTPAction` is refined to carry the **logical** handler body — the state
-assignments and the impure call — with visual/DOM-patch statements excluded
-(html knows which statements are visual lowering artifacts vs logical
-mutations). The language never sees DOM refs. Shape:
+For the running example this yields correct Go: `State{Count int}`,
+`s.Count = api.Persist(s.Count + 1)` (a real server-side `api.Persist`, imported
+normally — not WASM), `renderRoute` interpolating `s.Count`, no DOM refs.
 
-- `Name string` (e.g. `_action` value `"0"`)
-- `Mutations []ir.Stmt` — logical state mutations only.
+### D. Widen the `HTTPCompiler` seam
 
-### D. Language server emission (Go, behind CompileHTTP)
+Replace `HTTPRequest.RenderHTML func(idx int) string` (a baked static string)
+with the structured per-route RenderModel + StateVars + refined ServerActions on
+`HTTPRoute`/`HTTPAction`. Holes carry **IR**, not rendered strings, so each
+language renders them via its own `*IRContext`. html still emits all surrounding
+HTML verbatim.
 
-`golang.CompileHTTP` emits, per route, using `GoIRContext`:
+## Data flow (the example, fixed)
 
-- **`State` struct**: one exported field per `StateVar`, typed via
-  `GoIRContext`'s IR→Go type mapping.
-- **Session store**: sets a session cookie; holds `*State` per session id in a
-  default in-memory `map[string]*State` (guarded by a mutex), behind a small
-  pluggable interface so a future backend can replace it.
-- **`renderRoute(s *State) string`**: builds the page from `Skeleton`,
-  evaluating each hole's IR expr via `GoIRContext.EvalExpr` against `s`
-  (`s.Count`, etc.), and recursing reactive `if`/`for` holes. State-var reads
-  resolve to `s.<Field>` (the `*IRContext` ident path).
-- **GET handler**: load-or-init session state → `w.Write([]byte(renderRoute(s)))`.
-- **POST action handler**: load session state → dispatch on `_action` → run the
-  `ServerAction.Mutations` via `GoIRContext.EvalStmt` against `s` (`s.Count =
-  api.Persist(s.Count + 1)`; the real server-side `api.Persist`, imported
-  normally — not WASM) → save session → `http.Redirect(w, r, route, 303)`.
-- **Imports**: collected from `GoIRContext.Imports()` (already structural),
-  plus `net/http` and the session deps.
-
-This reuses the just-completed translator unification: one `GoIRContext`
-expression/statement path for render holes, action mutations, and types.
-
-### E. `--lang none` (and other non-server targets) guard (html)
-
-Structural, language-agnostic: if the target language does **not** implement
-`HTTPCompiler` but a page contains an impure-server handler, html fails the
-build:
-`"window %q uses an impure imported function (%s) that must run server-side;
-target %q has no server — compile with a server language (e.g. --lang go)"`.
-
-## Data flow (the running example, fixed)
-
-1. Build: `api.Persist` has no `//sngl:pure` → `PurityUnknown` → impure.
-   `@click` calls it → **server handler**.
-2. html emits the page skeleton: the button wrapped in
-   `<form method="post" action="/"><input type="hidden" name="_action"
-   value="0">…</form>`, and a text hole for `"count {count}"` bound to the
-   `count` expr.
-3. `golang.CompileHTTP` emits `State{ Count int }`, a session store,
-   `renderRoute(s)` (text hole → `"count " + fmt.Sprint(s.Count)` via
-   GoIRContext), GET (render from session), and the POST handler
-   (`s.Count = api.Persist(s.Count + 1)` → save → 303).
-4. Runtime: GET renders `count 0`; submitting the form POSTs `_action=0`;
-   server runs `api.Persist`, stores `count=1`, redirects; GET re-renders
-   `count 1`. Compiles and works; no WASM ship of the impure func; no DOM refs.
+1. `api.Persist` is a `go://` import (non-`js://`) → its call defaults
+   **backend**. `@click` calls it → backend handler.
+2. html emits the page: button wrapped in `<form method=post action="/">` with
+   hidden `_action=0`; a text hole bound to the `count` expr.
+3. `golang.CompileHTTP` emits `State{Count int}`, session store, `renderRoute`
+   (text hole → `"count " + fmt.Sprint(s.Count)`), GET (render from session),
+   POST (`s.Count = api.Persist(s.Count+1)` → save → 303).
+4. Runtime: GET → `count 0`; submit form → POST `_action=0` → server runs
+   `api.Persist`, stores 1, redirects → GET → `count 1`. Compiles, works, no
+   WASM ship of the backend func, no DOM refs.
+5. To instead run it client-side: author writes `@click { count =
+   html.frontend(api.Persist(count + 1)) }` → `api` compiles to WASM, handler
+   stays client JS. Build fails if it can't.
 
 ## Error handling
 
-- `--lang none` + impure server handler → build error (E).
-- Impure pure-eval context (pure interpreter encountering an impure call) →
-  existing efcccaba "fail the build" path; unchanged.
-- Server-render encountering a reactive construct the renderer can't express →
-  clear build error naming the unsupported construct (no broken output).
-- Pages with **no** impure handlers → route mode output is **byte-identical**
-  to today (the purity gate simply doesn't fire). This is the primary
-  regression guard.
-
-## Testing
-
-- **Golden (Go server code):** parity-style golden of the generated `server.go`
-  for the running example — asserts `State` struct, `renderRoute`, GET/POST
-  handlers, correct `s.Count`/`api.Persist`/imports, and **absence** of the old
-  broken `count`/`__n0`/`fmt.Sprint`-unimported lines. The emitted Go must
-  `go build`.
-- **No-impure regression:** a route fixture with only pure/local handlers →
-  byte-identical to current output (gate doesn't fire).
-- **End-to-end (CDP):** load the GET page, submit the form, assert the
-  re-rendered page reflects incremented server state; assert per-session
-  isolation (two cookie jars → independent counters).
-- **`--lang none` + impure:** asserts the build error.
-- **Unsupported-construct:** a server-rendered reactive construct outside v1
-  coverage → asserts the clear build error.
+- Backend-placed code but target is not an `HTTPCompiler` (`--lang none`) →
+  build error: needs a server; compile with a server language.
+- `html.frontend(...)` that depends on a server-only value, or wraps logic that
+  can't run in-browser → build error.
+- `html.backend(const-expr)` in v1 → "const→file backend not yet implemented"
+  build error (directive recognized; mechanism deferred).
+- Server-render encountering a reactive construct it can't express → clear
+  build error (no broken output).
+- A page with **no backend placement** → route/static output is **byte-identical
+  to today** (the analysis simply doesn't trigger). Primary regression guard.
 
 ## Components / files (anticipated)
 
-- `codegen/codegen.go` — widen `HTTPRoute`/`HTTPAction`/`HTTPRequest`: add the
-  RenderModel (skeleton+holes), `StateVars`, refined `Mutations`; deprecate the
-  baked `RenderHTML` callback.
-- `codegen/platform/html/routes.go` — purity-gated classification; build the
-  RenderModel + ServerActions + StateVars; `<form>` skeleton emission; the
-  non-`HTTPCompiler`-target guard.
-- `codegen/platform/html/` (render-model builder) — likely a new file turning
-  the reactive analysis into the language-agnostic skeleton+holes.
+- `lib/html.sngl` (or extend an existing `html`-namespace lib file) — declare
+  `html.frontend<T>` / `html.backend<T>` identity funcs.
+- `ir`/checker/intrinsics — register the two directives as recognized intrinsics
+  carrying their generic identity semantics; pass-through for non-html targets.
+- `codegen/platform/html/` — new placement-analysis pass; RenderModel builder;
+  `<form>` skeleton emission; frontend WASM-opt-in (gate `collectWASMPackages`
+  on frontend-forced usage); the non-HTTPCompiler-target guard.
+- `codegen/codegen.go` — widen `HTTPRoute`/`HTTPAction`/`HTTPRequest` with the
+  RenderModel, `StateVars`, refined `Mutations`; retire the baked `RenderHTML`
+  callback.
 - `codegen/lang/golang/http.go` — emit State, session store, `renderRoute`,
   GET/POST handlers via `GoIRContext`.
-- `codegen/lang/golang/` — a small session-store runtime (emitted or imported
-  from `pkg/go/...`).
+- `codegen/lang/golang/` + maybe `pkg/go/...` — session-store runtime.
+
+## Testing
+
+- **Golden (Go server):** generated `server.go` for the running example —
+  `State` struct, `renderRoute`, GET/POST handlers, `s.Count`/`api.Persist`/
+  imports, **absence** of the old broken `count`/`__n0`/`fmt.Sprint` lines; the
+  emitted Go must `go build`.
+- **Placement defaults:** a `go://` call → backend (route emitted); a `js://`
+  call → frontend (client, no route); SNGL-only handler → frontend.
+- **Directives:** `html.frontend(go_call)` → WASM, no route; `html.backend(sngl_fn)`
+  → route; identity value/type semantics preserved.
+- **No-backend regression:** pure-client route fixture → byte-identical to
+  current output.
+- **End-to-end (CDP):** submit the form, assert re-rendered server state;
+  per-session isolation (two cookie jars → independent counters).
+- **Errors:** `--lang none` + backend → build error; `html.backend(const)` →
+  not-yet-implemented error; `html.frontend` on server-only value → error.
 
 ## Open hardening item (post-v1)
 
-Impure funcs are not *exposed* as client WASM externs, but if a `go://` package
-mixes pure and impure funcs, the impure func's compiled code could still land
-in the WASM binary. v1 may require pure and impure funcs in separate packages;
-true exclusion (per-func WASM tree-shaking or package splitting) is a follow-up.
+A frontend-forced func from a `go://` package that mixes other funcs may pull
+sibling code into the WASM binary. v1 may require one exported func per package;
+true per-func exclusion (tree-shaking / package splitting) is a follow-up. (Note:
+under import-language defaulting, WASM is now opt-in via `html.frontend`, so the
+exposure surface is much smaller than the previous purity-based default.)
