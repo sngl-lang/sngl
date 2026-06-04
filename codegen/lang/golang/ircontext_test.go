@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -142,6 +143,78 @@ func TestGoIRContext_MethodFields_ListRefPropRead(t *testing.T) {
 	want := "c.rows()[0].Text()"
 	if got != want {
 		t.Errorf("MethodFields list-ref prop read = %q; want %q", got, want)
+	}
+}
+
+// multiBaseUnitType builds an ir.Type for a multi-base unit named
+// "Measurement" with base suffixes px and em (matching the parity golden's
+// shape). Used to characterize GoIRContext.Binary's component-wise expansion.
+func multiBaseUnitType() *ir.Type {
+	ud := &ir.UnitDef{
+		Name: "Measurement",
+		Suffixes: []*ir.UnitSuffix{
+			{Name: "px", Factor: 1.0, BaseName: "px"},
+			{Name: "em", Factor: 1.0, BaseName: "em"},
+		},
+	}
+	return &ir.Type{Kind: ir.TypeUnit, Decl: ud}
+}
+
+// TestGoBinary_MultiBaseUnit characterizes GoIRContext.Binary's expansion of a
+// multi-base-unit struct addition: the result is a component-wise struct
+// literal `Measurement{Px: l.Px + r.Px, Em: l.Em + r.Em}`. Mirrors legacy
+// translateMultiBaseUnitBinary.
+func TestGoBinary_MultiBaseUnit(t *testing.T) {
+	gc := newMinimalIRCtx()
+	ut := multiBaseUnitType()
+	add := &ir.Binary{
+		Op:    ast.BinAdd,
+		Left:  &ir.Ident{Name: "a", Type: ut},
+		Right: &ir.Ident{Name: "b", Type: ut},
+		Type:  ut,
+	}
+	got := gc.EvalExpr(add)
+	want := "Measurement{Px: a.Px + b.Px, Em: a.Em + b.Em}"
+	if got != want {
+		t.Errorf("multi-base-unit add = %q; want %q", got, want)
+	}
+}
+
+// TestGoBinary_MultiBaseUnit_Equality verifies that == / != on two unit
+// structs emits the plain Go struct-equality form, not a component-wise
+// expansion. Mirrors legacy.
+func TestGoBinary_MultiBaseUnit_Equality(t *testing.T) {
+	gc := newMinimalIRCtx()
+	ut := multiBaseUnitType()
+	eq := &ir.Binary{
+		Op:    ast.BinEq,
+		Left:  &ir.Ident{Name: "a", Type: ut},
+		Right: &ir.Ident{Name: "b", Type: ut},
+		Type:  &ir.Type{Kind: ir.TypeBool},
+	}
+	got := gc.EvalExpr(eq)
+	want := "(a == b)"
+	if got != want {
+		t.Errorf("multi-base-unit equality = %q; want %q", got, want)
+	}
+}
+
+// TestGoBinary_MultiBaseUnit_ScalarOperand verifies scalar * unit: the scalar
+// operand is used verbatim (not field-projected) on each component. Mirrors
+// legacy (!leftIsStruct → lhs = left).
+func TestGoBinary_MultiBaseUnit_ScalarOperand(t *testing.T) {
+	gc := newMinimalIRCtx()
+	ut := multiBaseUnitType()
+	mul := &ir.Binary{
+		Op:    ast.BinMul,
+		Left:  &ir.Literal{Type: ir.TypInt, Raw: "2"},
+		Right: &ir.Ident{Name: "b", Type: ut},
+		Type:  ut,
+	}
+	got := gc.EvalExpr(mul)
+	want := "Measurement{Px: 2 * b.Px, Em: 2 * b.Em}"
+	if got != want {
+		t.Errorf("scalar * unit = %q; want %q", got, want)
 	}
 }
 

@@ -113,7 +113,48 @@ func (gc *GoIRContext) Literal(n *ir.Literal) string { return gc.evalLiteral(n) 
 func (gc *GoIRContext) Ident(n *ir.Ident) string     { return gc.evalIdent(n) }
 
 func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
+	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
+		return out
+	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
+}
+
+// goMultiBaseUnitBinary handles binary ops whose result type is a multi-base
+// unit struct (e.g. `Measurement + Measurement`, `2 * Measurement`) by
+// expanding the operation component-wise over each base field. The operand
+// strings `left`/`right` are already-rendered; `n.Left`/`n.Right` carry the IR
+// types used to decide whether each side is a unit struct (field-projected) or
+// a scalar (used verbatim). Returns ("", false) when neither operand is a
+// multi-base unit. Mirrors legacy translateMultiBaseUnitBinary byte-for-byte.
+func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
+	ud, ok := multiBaseUnitOperand(n.Left, n.Right)
+	if !ok {
+		return "", false
+	}
+	leftIsStruct := isMultiBaseUnitType(n.Left.ExprType())
+	rightIsStruct := isMultiBaseUnitType(n.Right.ExprType())
+	op := binaryOpStr(n.Op)
+
+	// Equality on two unit structs is fine via Go struct equality.
+	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+		return "(" + left + " " + op + " " + right + ")", true
+	}
+
+	bases := UnitBases(ud)
+	parts := make([]string, 0, len(bases))
+	for _, base := range bases {
+		field := ExportName(base.Name)
+		lhs := left + "." + field
+		rhs := right + "." + field
+		if !leftIsStruct {
+			lhs = left
+		}
+		if !rightIsStruct {
+			rhs = right
+		}
+		parts = append(parts, fmt.Sprintf("%s: %s %s %s", field, lhs, op, rhs))
+	}
+	return fmt.Sprintf("%s{%s}", ExportName(ud.Name), strings.Join(parts, ", ")), true
 }
 
 func (gc *GoIRContext) Unary(n *ir.Unary, operand string) string {
