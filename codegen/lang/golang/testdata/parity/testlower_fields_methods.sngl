@@ -1,0 +1,23 @@
+// Exercises the golang test-lowering legacy surface:
+//   - reading c.<field> raw (RawFieldAccess: component-typed param lowers
+//     state reads as direct unexported field access, e.g. `c.count`)
+//   - calling c.<method>() (MethodFields: a component method name lowers
+//     `c.label` as the zero-arg method call `c.label()`)
+component counter {
+    var count = 0
+
+    func label() => "n={count}"
+
+    func bump() {
+        count = count + 1
+    }
+
+    text(value=label())
+}
+
+func testFieldAndMethod(t Test, c counter) {
+    t.assert(c.count == 0)
+    c.bump()
+    t.assert(c.count == 1)
+    t.assert(c.label() == "n=1")
+}

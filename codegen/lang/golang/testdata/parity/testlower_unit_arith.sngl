@@ -1,0 +1,20 @@
+// Exercises multi-base-unit struct arithmetic in test bodies. `measurement`
+// has multiple base components (px, em, vw, vh, pct — rem converts to em), so
+// `+`/`-`/`*`/`/` and `==` lower component-wise over each base field. This is
+// the GoIRContext.Binary gap (legacy translateMultiBaseUnitBinary) the
+// unification must close; the golden pins the legacy expansion byte-for-byte.
+unit measurement { px, em, rem = 16em, vw, vh, pct }
+
+component sizes {
+    var base = 16px
+
+    text(value="sized")
+}
+
+func testMeasurementArithmetic(t Test, c sizes) {
+    t.assert(3px + 2px == 5px)
+    t.assert(16px + 2em == 2em + 16px)
+    t.assert(5px - 2px == 3px)
+    t.assert(2 * 3px == 6px)
+    t.assert(6px / 2 == 3px)
+}

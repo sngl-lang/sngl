@@ -1,0 +1,33 @@
+// ==== TestEmitNative ====
+package ui
+
+import "testing"
+
+func TestFieldAndMethod(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
+	c.bump()
+	if !((c.count == 1)) { t.Errorf("assert failed: %s", "(c.count == 1)") }
+	if !((c.label() == "n=1")) { t.Errorf("assert failed: %s", "(c.label() == \"n=1\")") }
+}
+
+
+// ==== TestEmitAgent ====
+package ui
+
+import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+
+func testFieldAndMethod(t *testagent.T) {
+	c := newTestComponent()
+	setCurrentTestModel(c)
+	_ = c
+	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
+	c.bump()
+	if !((c.count == 1)) { t.Errorf("assert failed: %s", "(c.count == 1)") }
+	if !((c.label() == "n=1")) { t.Errorf("assert failed: %s", "(c.label() == \"n=1\")") }
+}
+
+func init() {
+	testagent.RegisterTest("FieldAndMethod", testFieldAndMethod)
+}

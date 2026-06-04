@@ -1,0 +1,20 @@
+// HTTP route window with a POST action that mutates state by calling a go://
+// native func. The handler transitively calls api.Persist, so html route mode
+// (--lang go) classifies it as a server-side action and emits a POST handler
+// whose mutation body is lowered through the legacy ContextVar path.
+output { go { html } }
+
+import "go://example.com/route-post/api"
+
+component main {
+    var count = 0
+
+    window #app(title="t", href="/") {
+        vbox {
+            button(text="Save", @click {
+                count = api.Persist(count + 1)
+            })
+            text(value="count {count}")
+        }
+    }
+}
