@@ -409,3 +409,44 @@ func TestJsEmitI18nExactly(t *testing.T) {
 		t.Errorf("i18n.exactly: got %q, want string concat with \"=\"", got)
 	}
 }
+
+// A component-scoped const is materialized as a per-instance state field
+// (e.g. a regex const constructed at runtime), so reads inside component
+// code reference it as state.NAME. Package-level consts stay bare top-level
+// vars. This mirrors the html legacy path, where main-component vars
+// (consts included) are ModelFields while package consts are bare locals.
+func TestJsEvalIdent_ConstScoping(t *testing.T) {
+	pkgConst := &ir.Var{Name: "PKGC", Type: ir.TypString, IsConst: true}
+	compConst := &ir.Var{Name: "ALPHA", Type: ir.TypString, IsConst: true}
+	comp := &ir.Component{Name: "main", Vars: []*ir.Var{compConst}}
+	pkg := &ir.Package{Consts: []*ir.Var{pkgConst}, Components: []*ir.Component{comp}}
+
+	ctx := codegen.NewExprCtx(pkg)
+	jc := NewIRContext(ctx).ForComponent(comp)
+
+	if got := jc.EvalExpr(&ir.Ident{Name: "ALPHA"}); got != "state.ALPHA" {
+		t.Errorf("component const: got %q, want state.ALPHA", got)
+	}
+	if got := jc.EvalExpr(&ir.Ident{Name: "PKGC"}); got != "PKGC" {
+		t.Errorf("package const: got %q, want bare PKGC", got)
+	}
+}
+
+// Element-ref idents: synthesized refs (slot-pipeline __nN / parent vars) and
+// locals must stay bare so initial slot render references the in-scope JS var;
+// only genuine external user refs (non-synthesized, unresolved) emit a
+// querySelector. The current evalIdent keeps synthesized and local refs bare.
+func TestJsEvalIdent_ElementRefStaysBare(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+
+	// Synthesized element-ref (created __nN node): bare.
+	if got := jc.EvalExpr(&ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true}); got != "__n0" {
+		t.Errorf("synthesized element-ref: got %q, want bare __n0", got)
+	}
+	// Local element-ref (slot-render parent param): bare/renamed.
+	jcLocal := NewIRContext(ctx.WithLocal("parent"))
+	if got := jcLocal.EvalExpr(&ir.Ident{Name: "parent", IsElementRef: true}); got != "parent" {
+		t.Errorf("local element-ref: got %q, want bare parent", got)
+	}
+}

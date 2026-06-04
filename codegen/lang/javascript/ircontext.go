@@ -344,7 +344,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if name == "event" && jc.EventVar != "" {
 		return jc.EventVar
 	}
-	_, kind := jc.Ctx.Resolve(name)
+	sym, kind := jc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
 		return jc.Ctx.RenamedName(name)
@@ -353,6 +353,19 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameStateVar:
 		return "state." + name
 	case codegen.NameConst:
+		// A component-scoped const is materialized as a per-instance state
+		// field (e.g. a `regex` const needs runtime construction), so reads
+		// inside component code reference it as `state.NAME`. Package-level
+		// consts stay bare top-level vars. This mirrors the html legacy path,
+		// where main-component vars (consts included) are ModelFields while
+		// package consts are registered as LocalVars (bare).
+		if jc.Ctx.Component != nil {
+			for _, v := range jc.Ctx.Component.Vars {
+				if v == sym {
+					return "state." + name
+				}
+			}
+		}
 		return name
 	default:
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum {

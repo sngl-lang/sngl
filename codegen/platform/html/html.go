@@ -3160,7 +3160,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 
 func (g *htmlGen) exprToJS(expr ir.Expr) string {
 	if codegen.IRIsReactive(expr) {
-		return g.lang.TranslateIRExpr(expr, g.scope)
+		return g.scopedJC().EvalExpr(expr)
 	}
 	if codegen.IRIsLiteral(expr) {
 		return g.lang.TranslateIRLiteral(expr)
