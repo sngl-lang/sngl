@@ -114,23 +114,76 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 	}
 }
 
-func TestOptimizeMutation_PruneHelpers(t *testing.T) {
+// Helper/import requirements ride on each Updater (collected structurally
+// during translation), so OptimizeMutation no longer text-scans bodies. A dead
+// updater (empty deps, not initOnly) is dropped and its Requires go with it;
+// a surviving updater keeps its Requires for the platform to union.
+func TestOptimizeMutation_UpdaterRequiresSurviveDropAndDrop(t *testing.T) {
 	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
-		Analysis: &CommonAnalysis{
-			Helpers: map[string]bool{"String": true, "Unused": true},
-		},
+		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
-			{Name: "$u_0_text", Body: "$0.textContent = String(state.x)", Deps: varSet(x)},
+			// Live updater (has a dep) — kept; its String requirement survives.
+			{Name: "$u_0_text", Body: "$0.textContent = String(state.x)", Deps: varSet(x),
+				Requires: Requirement{Helpers: map[string]bool{"String": true}}},
+			// Dead updater (no deps, not initOnly) — dropped; its requirement
+			// must NOT reach any surviving updater.
+			{Name: "$u_1_text", Body: "$1.textContent = Dead()", Deps: map[*ir.Var]struct{}{},
+				Requires: Requirement{Helpers: map[string]bool{"Dead": true}}},
 		},
 	}
 	OptimizeMutation(m)
-	if !m.Analysis.Helpers["String"] {
-		t.Fatal("expected String helper to be kept")
+
+	survivors := map[string]bool{}
+	for _, u := range m.Updaters {
+		survivors[u.Name] = true
 	}
-	if m.Analysis.Helpers["Unused"] {
-		t.Fatal("expected Unused helper to be pruned")
+	if !survivors["$u_0_text"] {
+		t.Fatal("expected live updater to survive")
+	}
+	if survivors["$u_1_text"] {
+		t.Fatal("expected dead (no-dep) updater to be dropped")
+	}
+
+	// Union the surviving updaters' requirements the way a platform does.
+	helpers := map[string]bool{}
+	native := map[string]map[string]bool{}
+	for _, u := range m.Updaters {
+		u.Requires.MergeInto(helpers, native)
+	}
+	if !helpers["String"] {
+		t.Fatal("expected String (from surviving updater) in unioned helpers")
+	}
+	if helpers["Dead"] {
+		t.Fatal("expected Dead (from dropped updater) to be excluded")
+	}
+}
+
+// Merged updaters (same target + deps) must union their requirements so the
+// merged body's needs are fully represented.
+func TestOptimizeMutation_MergedUpdaterUnionsRequires(t *testing.T) {
+	x := &ir.Var{Name: "x"}
+	m := &MutationModel{
+		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		DepTracker: &DepTracker{},
+		Updaters: []Updater{
+			{Name: "$u_0_text", Body: "a", Deps: varSet(x),
+				Requires: Requirement{Helpers: map[string]bool{"String": true}}},
+			{Name: "$u_0_attr", Body: "b", Deps: varSet(x),
+				Requires: Requirement{NativeImports: map[string]map[string]bool{"js://m": {"f": true}}}},
+		},
+	}
+	OptimizeMutation(m)
+	if len(m.Updaters) != 1 {
+		t.Fatalf("expected the two same-target/dep updaters to merge into 1, got %d", len(m.Updaters))
+	}
+	got := m.Updaters[0].Requires
+	if !got.Helpers["String"] {
+		t.Error("merged updater lost the String helper requirement")
+	}
+	if got.NativeImports["js://m"] == nil || !got.NativeImports["js://m"]["f"] {
+		t.Error("merged updater lost the native import requirement")
 	}
 }
 

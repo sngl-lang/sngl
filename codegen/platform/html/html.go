@@ -551,6 +551,11 @@ type updateFunc struct {
 	body     string // JS function body
 	deps     map[string]bool
 	initOnly bool // run only on initial sync; lowering already injects mutation-side updates inline
+	// requires holds the runtime helpers / native imports this updater's body
+	// needs, collected structurally during translation. Carried through
+	// OptimizeMutation so a dropped (dead) updater contributes nothing to the
+	// final helper/import set.
+	requires codegen.Requirement
 }
 
 type eventHandler struct {
@@ -1586,7 +1591,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
-			jsVal := g.exprToJS(expr)
+			jsVal, requires := g.exprToJSReactiveCollect(expr)
 			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
@@ -1606,6 +1611,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 				body:     body,
 				deps:     deps,
 				initOnly: initOnly,
+				requires: requires,
 			})
 		}
 	}
@@ -2356,6 +2362,7 @@ func (g *htmlGen) optimizeIR() {
 			Body:     u.body,
 			Deps:     varReg.namesToVarSet(u.deps),
 			InitOnly: u.initOnly,
+			Requires: u.requires,
 		}
 	}
 	// Keep handler body strings keyed by elemID+event (IR uses ast.Node,
@@ -2385,27 +2392,25 @@ func (g *htmlGen) optimizeIR() {
 		}
 	}
 
-	// Handler/timer JS bodies are already translated (during render) but live
-	// outside the model's Updaters. Hand them to OptimizeMutation as AuxBodies
-	// so pruneHelpers does not delete a helper (e.g. String) used only here.
-	var auxBodies []string
-	for _, h := range g.handlers {
-		auxBodies = append(auxBodies, h.body)
-	}
-	for _, t := range g.timers {
-		auxBodies = append(auxBodies, t.body)
-	}
-
 	m := &codegen.MutationModel{
 		Analysis:   g.CommonAnalysis,
 		DepTracker: g.dt,
 		Updaters:   updaters,
 		Handlers:   handlers,
 		Timers:     timers,
-		AuxBodies:  auxBodies,
 	}
 
 	codegen.OptimizeMutation(m)
+
+	// Union the helper/import requirements of the SURVIVING updaters into the
+	// shared sets the prelude/helper emission reads. Handlers, timers, setters,
+	// slots, funcs and init values are always emitted, so they flag g.ctx
+	// directly during translation; only updaters are droppable, and their
+	// requirements rode through OptimizeMutation on Updater.Requires — so dead
+	// ones contribute nothing and merged ones are unioned. No text scanning.
+	for _, u := range m.Updaters {
+		u.Requires.MergeInto(g.ctx.Helpers, g.ctx.NativeImports)
+	}
 
 	// Write back optimized updaters.
 	g.initWrites = make([]updateFunc, len(m.Updaters))
@@ -2712,6 +2717,19 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 // identifiers consistently with the rest of html emission.
 func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	c := g.ctx.Clone()
+	jc := javascript.NewIRContext(c)
+	jc.EventVar = c.EventVar
+	return jc
+}
+
+// scopedJCFresh is like scopedJC but gives the context its OWN empty
+// Helpers/NativeImports maps instead of sharing g.ctx's. Use it to translate a
+// body whose helper/import needs must be captured in isolation (e.g. an updater
+// that OptimizeMutation may later drop), so they don't pollute the shared set.
+func (g *htmlGen) scopedJCFresh() *javascript.JsIRContext {
+	c := g.ctx.Clone()
+	c.Helpers = map[string]bool{}
+	c.NativeImports = map[string]map[string]bool{}
 	jc := javascript.NewIRContext(c)
 	jc.EventVar = c.EventVar
 	return jc
@@ -3053,6 +3071,20 @@ func (g *htmlGen) exprToJS(expr ir.Expr) string {
 		return g.lang.TranslateIRLiteral(expr)
 	}
 	return `""`
+}
+
+// exprToJSReactiveCollect translates a reactive expression in an ISOLATED
+// context, returning the JS plus the helpers/native-imports it requires. Used
+// for updater bodies, whose requirements must travel with the updater (so a
+// dead updater dropped by OptimizeMutation contributes nothing) rather than
+// being flagged on the shared g.ctx. Callers guarantee expr is reactive.
+func (g *htmlGen) exprToJSReactiveCollect(expr ir.Expr) (string, codegen.Requirement) {
+	jc := g.scopedJCFresh()
+	js := jc.EvalExpr(expr)
+	return js, codegen.Requirement{
+		Helpers:       jc.Ctx.Helpers,
+		NativeImports: jc.Ctx.NativeImports,
+	}
 }
 
 func (g *htmlGen) literalToJS(expr ir.Expr) string {

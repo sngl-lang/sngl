@@ -52,9 +52,12 @@ func OptimizeMutation(m *MutationModel) {
 	// analysis. A handler that writes to state has observable side effects
 	// even if no updater currently reads that field (extern code, tests,
 	// or future updaters may depend on it).
-
-	// Pass 7: Prune helpers not referenced in any generated code.
-	pruneHelpers(m)
+	//
+	// Helper/import collection is NOT done here by text-scanning bodies.
+	// Each updater carries its own Requires (collected during translation);
+	// the platform unions the Requires of the SURVIVING updaters (after the
+	// drop/dedup/merge passes above) into its helper/import set. Dead updaters
+	// therefore contribute nothing, with no string matching involved.
 }
 
 // OptimizeRender runs optimization passes on a RenderModel:
@@ -213,42 +216,14 @@ func mergeUpdaters(us []Updater) []Updater {
 			Deps:     first.Deps,
 			InitOnly: first.InitOnly,
 		}
+		// Union helper/import requirements across the merged group so the
+		// merged body's needs are fully represented.
+		for _, idx := range indices {
+			merged.Requires.union(us[idx].Requires)
+		}
 		out = append(out, merged)
 	}
 	return out
-}
-
-// pruneHelpers removes entries from Analysis.Helpers that don't appear
-// in any updater body or handler body string.
-func pruneHelpers(m *MutationModel) {
-	if len(m.Analysis.Helpers) == 0 {
-		return
-	}
-
-	// Collect all generated code bodies. Updater bodies plus any auxiliary
-	// platform bodies (handler/timer code) — a helper referenced only in a
-	// handler must not be pruned just because no updater uses it.
-	var bodies []string
-	for _, u := range m.Updaters {
-		bodies = append(bodies, u.Body)
-	}
-	bodies = append(bodies, m.AuxBodies...)
-
-	referenced := make(map[string]bool)
-	for name := range m.Analysis.Helpers {
-		for _, body := range bodies {
-			if strings.Contains(body, name) {
-				referenced[name] = true
-				break
-			}
-		}
-	}
-
-	for name := range m.Analysis.Helpers {
-		if !referenced[name] {
-			delete(m.Analysis.Helpers, name)
-		}
-	}
 }
 
 func filterUpdaters(us []Updater, keep func(Updater) bool) []Updater {

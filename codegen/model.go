@@ -15,11 +15,6 @@ type MutationModel struct {
 	Updaters   []Updater
 	Handlers   []Handler
 	Timers     []TimerHandler
-	// AuxBodies holds platform-emitted code bodies that are NOT updaters but
-	// may still reference runtime helpers — e.g. translated handler and timer
-	// bodies. pruneHelpers scans these alongside updater bodies so a helper
-	// used only in a handler (not in any updater) is not wrongly deleted.
-	AuxBodies []string
 }
 
 // RenderModel is the intermediate representation for platforms that
@@ -43,6 +38,57 @@ type Updater struct {
 	Body     string               // platform-specific code body (filled during emit)
 	Deps     map[*ir.Var]struct{} // root state var dependencies
 	InitOnly bool                 // run only on initial sync; mutation updates are emitted inline elsewhere
+	// Requires records the runtime helpers and native imports this updater's
+	// body needs, collected structurally during its translation (not by
+	// text-scanning). Because these ride on the Updater, a dead updater dropped
+	// by OptimizeMutation contributes nothing, and merged updaters union them —
+	// so the platform's final helper/import set reflects only surviving code.
+	Requires Requirement
+}
+
+// Requirement is the set of runtime helpers and native imports a generated
+// code body depends on. Unioned across merged updaters; dropped with dead ones.
+type Requirement struct {
+	Helpers       map[string]bool            // helper function names (e.g. "String")
+	NativeImports map[string]map[string]bool // module path → set of imported names
+}
+
+// MergeInto unions r's helpers and native imports into the given (non-nil)
+// maps. Used by platforms to fold a surviving updater's requirements into the
+// shared helper/import sets they render from.
+func (r Requirement) MergeInto(helpers map[string]bool, native map[string]map[string]bool) {
+	for h := range r.Helpers {
+		helpers[h] = true
+	}
+	for mod, names := range r.NativeImports {
+		if native[mod] == nil {
+			native[mod] = map[string]bool{}
+		}
+		for n := range names {
+			native[mod][n] = true
+		}
+	}
+}
+
+// union merges other into r (in place), allocating r's maps as needed.
+func (r *Requirement) union(other Requirement) {
+	for h := range other.Helpers {
+		if r.Helpers == nil {
+			r.Helpers = map[string]bool{}
+		}
+		r.Helpers[h] = true
+	}
+	for mod, names := range other.NativeImports {
+		if r.NativeImports == nil {
+			r.NativeImports = map[string]map[string]bool{}
+		}
+		if r.NativeImports[mod] == nil {
+			r.NativeImports[mod] = map[string]bool{}
+		}
+		for n := range names {
+			r.NativeImports[mod][n] = true
+		}
+	}
 }
 
 // DepVars implements Dependent for use with FindAffected.
