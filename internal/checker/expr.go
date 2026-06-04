@@ -868,6 +868,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
 							sig = t.Sig
 						}
+						// Infer generic type params from arguments (e.g. the
+						// html.frontend<T>/html.backend<T> placement directives),
+						// mirroring the bare-call path above.
+						if sig != nil && len(sig.TypeParams) > 0 {
+							sig = c.inferTypeParams(sig, call.Args)
+						}
 						args := c.checkCallArgs(call.Args, sig)
 						var resolvedFunc *ir.Func
 						if f, ok := fsym.(*ir.Func); ok {

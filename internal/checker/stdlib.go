@@ -164,6 +164,15 @@ func (c *checker) loadStdlib() *ir.Package {
 		Pkg:  c.buildI18nNamespacePkg(structDefs),
 	})
 
+	// Register "html" namespace so the placement directives html.frontend(...) /
+	// html.backend(...) (GitLab #27) resolve as free-function calls without an
+	// explicit import. The directives are declared as methods on receiver
+	// "html" in lib/html.sngl; expose them here as namespace functions.
+	c.scope.Declare(&ir.Namespace{
+		Name: "html",
+		Pkg:  c.buildHtmlNamespacePkg(),
+	})
+
 	// Register stdlib context declarations last — after the "i18n" namespace is
 	// in scope — so that default-value expressions like `i18n.defaultLocale()`
 	// resolve correctly. Stdlib contexts are declared into the stdlib scope and
@@ -253,6 +262,23 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 		pkg.Symbols.Root.Declare(v)
 	}
 
+	return pkg
+}
+
+// buildHtmlNamespacePkg constructs a synthetic ir.Package for the "html"
+// namespace, exposing the html.* placement directives (frontend/backend),
+// declared as methods on receiver "html", as free functions so calls like
+// html.frontend(v) resolve.
+func (c *checker) buildHtmlNamespacePkg() *ir.Package {
+	pkg := &ir.Package{
+		Symbols:        NewSymbolTable(),
+		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+		AddressedVars:  map[*ir.Var]bool{},
+	}
+	for _, fn := range c.symtab.Methods["html"] {
+		pkg.Funcs = append(pkg.Funcs, fn)
+		pkg.Symbols.Root.Declare(fn)
+	}
 	return pkg
 }
 
