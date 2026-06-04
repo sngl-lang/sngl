@@ -3096,21 +3096,6 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	paramStr := strings.Join(params, ", ")
 
-	funcScope := &codegen.ExprScope{
-		ModelFields:    g.scope.ModelFields,
-		ComputedFields: g.scope.ComputedFields,
-		FuncNames:      g.scope.FuncNames,
-		LocalVars:      make(map[string]bool),
-		Pkg:            g.scope.Pkg,
-		NativeImports:  g.scope.NativeImports,
-	}
-	for k := range g.scope.LocalVars {
-		funcScope.LocalVars[k] = true
-	}
-	for _, p := range fn.Params {
-		funcScope.LocalVars[p.Name] = true
-	}
-
 	// Mangle dotted names for JS: int.sqrt → int_sqrt.
 	// For desugared methods, the dotted form lives in fn.Receiver.
 	jsName := strings.ReplaceAll(fn.Name, ".", "_")
@@ -3123,10 +3108,17 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		keyword = "async function"
 	}
 
-	// Single-return expression body.
+	// Single-return expression body — preserve the one-line form for parity.
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-			body := g.lang.TranslateIRExpr(ret.Value, funcScope)
+			jc := g.scopedJC()
+			if fn.Receiver != "" {
+				jc = jc.WithLocal("this")
+			}
+			for _, p := range fn.Params {
+				jc = jc.WithLocal(p.Name)
+			}
+			body := jc.EvalExpr(ret.Value)
 			fmt.Fprintf(b, "%s %s(%s) { return %s; }\n", keyword, jsName, paramStr, body)
 			return
 		}
@@ -3135,24 +3127,22 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		return
 	}
 	fmt.Fprintf(b, "%s %s(%s) {\n", keyword, jsName, paramStr)
-	for _, stmt := range fn.Block {
-		switch s := stmt.(type) {
-		case *ir.LocalVar:
-			funcScope.LocalVars[s.Name] = true
-			val := g.lang.TranslateIRExpr(s.Init, funcScope)
-			fmt.Fprintf(b, "  let %s = %s;\n", s.Name, val)
-		case *ir.Return:
-			if s.Value != nil {
-				ret := g.lang.TranslateIRExpr(s.Value, funcScope)
-				fmt.Fprintf(b, "  return %s;\n", ret)
-			} else {
-				b.WriteString("  return;\n")
-			}
-		default:
-			stmts := g.translateHandlerStmt(stmt, funcScope)
-			for _, line := range stmts {
-				fmt.Fprintf(b, "  %s;\n", line)
-			}
+	// Bind params as locals, then route the whole body through the unified
+	// pipeline (WalkLowered + htmlTranslator + JsIRContext) so element-ref
+	// writes and intrinsic statements lower identically to handler bodies.
+	jc := g.scopedJC()
+	if fn.Receiver != "" {
+		jc = jc.WithLocal("this")
+	}
+	for _, p := range fn.Params {
+		jc = jc.WithLocal(p.Name)
+	}
+	tr := newHTMLTranslatorWithNodes(jc, g.idToNode)
+	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	for _, s := range lowered {
+		g.collectLoweredRefs(s)
+		for _, line := range jc.EvalStmt(s) {
+			fmt.Fprintf(b, "  %s;\n", line)
 		}
 	}
 	b.WriteString("}\n")
