@@ -12,7 +12,7 @@ import (
 
 // testFallbackCtx is the KtIRContext used to render call shapes and any
 // expression that lowerTestExpr's test-specific special-cases don't handle.
-// It is backed by an empty package, matching the legacy empty-ExprScope{}
+// It is backed by an empty package, matching the legacy empty-scope
 // semantics the two fallbacks here previously relied on: idents resolve to
 // themselves and no scope-specific rewriting applies. Built once and reused
 // (it carries no per-test state), mirroring golang's testIRContext pattern.

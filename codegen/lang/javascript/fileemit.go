@@ -64,7 +64,7 @@ func (fe *fileEmitter) EvalStmt(s ir.Stmt) []string {
 // RequireImport: JS imports are ES module specifiers rather than Go-
 // style package paths; resolving an alias requires knowing the call
 // site (default vs named import). Today's html platform threads native
-// imports through ExprScope.NativeImports rather than this method.
+// imports through ExprCtx.NativeImports rather than this method.
 // Returns the path unchanged as a placeholder; callers expecting a
 // real alias should populate NativeImports directly.
 func (fe *fileEmitter) RequireImport(path string) string { return path }

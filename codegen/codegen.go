@@ -19,45 +19,6 @@ import (
 // be skipped entirely (no output written, no error reported).
 var ErrSkip = errors.New("skip")
 
-// ExprScope provides context for expression translation (which names are model
-// fields vs local vars vs computeds).
-type ExprScope struct {
-	ModelFields    map[string]bool            // data fields → prefix with model accessor
-	ComputedFields map[string]bool            // computed names → call as methods
-	FuncNames      map[string]bool            // user-defined function names
-	ExternFuncs    map[string]bool            // extern func names from native imports
-	ExternVars     map[string]bool            // extern var names from native imports
-	LocalVars      map[string]bool            // for-loop vars, params → no prefix
-	Renames        map[string]string          // local var renames (original → unique name)
-	EventVar       string                     // what "event" maps to in this context
-	ContextVar     string                     // expression to supply for native context args (e.g., "r.Context()")
-	NeededHelpers  map[string]bool            // helper functions needed (e.g., "String")
-	NativeImports  map[string]map[string]bool // module path → set of imported names; populated as native calls are emitted
-	// RawFieldAccess names identifiers whose Select-field accesses bypass
-	// the usual Export-name capitalization — used by test runners that
-	// emit `_test.go` into the same Go package as the generated Model, so
-	// they can read and write unexported fields directly (`c.count` for
-	// reads, `c.count = …` for writes) instead of going through getters.
-	RawFieldAccess map[string]bool
-	// MethodFields names identifiers whose bare `recv.<field>` Select
-	// access should lower to a method call `recv.<field>()` instead
-	// of a raw field read. Used by test runners for #id refs that
-	// platform codegen surfaces as methods (e.g. gtk4's nilable
-	// conditional/loop refs).
-	MethodFields map[string]bool
-	// IdentRewrites remaps bare identifiers regardless of scope
-	// (LocalVars / ModelFields). Applied first in identifier
-	// translation. Used by the Android test path to route every
-	// component-level var through a hoisted state object
-	// (`count` → `state.count`).
-	IdentRewrites map[string]string
-	// Pkg is the IR package being translated. Used by translators that need
-	// package-level analysis results (e.g. points-to / slot-color for funcvar
-	// await inference). May be nil when the scope is constructed without a
-	// package (tests, incomplete compilation paths).
-	Pkg *ir.Package
-}
-
 // NativeAlias produces a deterministic JS identifier for a native module
 // import path. Used at both the call site (codegen/lang/javascript) and the
 // import-prelude emission (codegen/platform/html) so they agree on the name.
