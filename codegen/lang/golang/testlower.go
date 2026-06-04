@@ -18,7 +18,7 @@ import (
 // in the same file; the lowered body references `c := newTestComponent()`.
 //
 // Component-typed params (e.g. `c counter`) are marked for raw-field
-// access on the scope so reads and writes to component state lower as
+// access on the context so reads and writes to component state lower as
 // direct unexported field access (`c.count`, `c.count = 1`) — valid
 // because the lowered test lives in the same Go package as the
 // generated Model.
@@ -29,19 +29,9 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	// Tests that exercise pure literal arithmetic don't reference `c`;
 	// `_ = c` keeps the local valid under Go's unused-variable rule.
 	b.WriteString("\t_ = c\n")
-	scope := &codegen.ExprScope{
-		LocalVars:      map[string]bool{},
-		RawFieldAccess: map[string]bool{},
-		MethodFields:   methodFields,
-	}
-	for _, p := range fn.Params {
-		scope.LocalVars[p.Name] = true
-		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			scope.RawFieldAccess[p.Name] = true
-		}
-	}
+	gc := testIRContext(fn, methodFields)
 	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, scope) {
+		for _, line := range lowerTestStmt(s, gc) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
 	}
@@ -49,57 +39,115 @@ func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) str
 	return b.String()
 }
 
+// testIRContext builds a GoIRContext for rendering a test body. The
+// ExprCtx is backed by an empty package: idents in a test body are either
+// locals (params/loop vars, registered below) or — for component state —
+// reached as `c.<field>` Selects on a RawFieldAccess receiver, so no
+// package-level resolution is required and an empty Pkg keeps Resolve from
+// `m.`-prefixing bare idents (matching the legacy empty-scope behavior).
+//
+//   - Component-typed params get RawFieldAccess so `c.count` reads the
+//     unexported Model field directly.
+//   - MethodFields names the fields whose `recv.<field>` lowers to a
+//     zero-arg method call (component methods / computeds).
+//   - Each param binds as a Local.
+func testIRContext(fn *ir.Func, methodFields map[string]bool) *GoIRContext {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	ctx.RawFieldAccess = map[string]bool{}
+	ctx.MethodFields = methodFields
+	gc := NewIRContext(ctx)
+	for _, p := range fn.Params {
+		gc.Ctx.Locals[p.Name] = true
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			gc.Ctx.RawFieldAccess[p.Name] = true
+		}
+	}
+	return gc
+}
+
 // lowerTestStmt translates one statement of a SNGL test body to Go.
 // `t.assert(expr)` becomes an `if !(expr)` failure check; other Test-
 // namespace calls (setLocale, tick, test, wait, …) are stubbed as
 // comments so the lowered file still compiles while the runner's
 // support for them is incrementally filled in. Everything else falls
-// through to the generic Go mutation translator (assigns, toggles,
-// component-method calls), which lets test bodies exercise component
-// state and methods.
-func lowerTestStmt(s ir.Stmt, scope *codegen.ExprScope) []string {
+// through to the generic Go statement renderer (assigns, toggles,
+// component-method calls) on GoIRContext, which lets test bodies exercise
+// component state and methods.
+func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 	if call, ok := s.(*ir.CallStmt); ok {
-		if line, ok := lowerTestAssert(call, scope); ok {
+		if line, ok := lowerTestAssert(call, gc); ok {
 			return []string{line}
 		}
-		if line, ok := lowerEventTrigger(call, scope); ok {
+		if line, ok := lowerEventTrigger(call, gc); ok {
 			return []string{line}
 		}
 		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
-			if lines, ok := lowerTestSetContext(c, scope); ok {
+			if lines, ok := lowerTestSetContext(c, gc); ok {
 				return lines
 			}
-			if line, ok := lowerTestSnapshot(c, scope); ok {
+			if line, ok := lowerTestSnapshot(c, gc); ok {
 				return []string{line}
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
 		}
 	}
 	if ifStmt, ok := s.(*ir.If); ok {
-		return lowerTestIf(ifStmt, scope)
+		return lowerTestIf(ifStmt, gc)
 	}
 	if forStmt, ok := s.(*ir.For); ok {
-		return lowerTestFor(forStmt, scope)
+		return lowerTestFor(forStmt, gc)
 	}
-	return translateIRMutation(s, scope)
+	if line, ok := lowerTestRawFieldWrite(s, gc); ok {
+		return []string{line}
+	}
+	return gc.EvalStmt(s)
+}
+
+// lowerTestRawFieldWrite handles a test-scope write to `c.<field>` where `c`
+// is a RawFieldAccess receiver. The generic GoIRContext mutation path
+// capitalizes the field via ExportName (`c.Sel`), but in test scope the
+// lowered `_test.go` lives in the same Go package as the Model and must
+// write the unexported field directly (`c.sel`). Going through the
+// Set<Field> setter is platform-dependent (value-receiver returns Model on
+// bubbletea, pointer-receiver returns void on fyne/gtk4), so direct field
+// writes are the simplest correct lowering; tests assert on raw field state,
+// not reactively-derived view output. Event-driven reactivity is exercised
+// via the `c.<id>.@event()` form (lowerEventTrigger). Mirrors the legacy
+// translateIRMutation Assign special case byte-for-byte.
+func lowerTestRawFieldWrite(s ir.Stmt, gc *GoIRContext) (string, bool) {
+	assign, ok := s.(*ir.Assign)
+	if !ok {
+		return "", false
+	}
+	sel, ok := assign.Target.(*ir.Select)
+	if !ok {
+		return "", false
+	}
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok || !gc.rawFieldAccess(id) {
+		return "", false
+	}
+	value := gc.EvalExpr(assign.Value)
+	target := fmt.Sprintf("%s.%s", id.Name, sel.Field)
+	return target + " " + assignOpStr(assign.Op) + " " + value, true
 }
 
 // lowerTestIf emits `if <cond> { <body> } [else { <else> }]` where each
 // branch's statements recurse through lowerTestStmt so test intrinsics
 // (t.assert, event triggers, t.setContext) keep their dedicated lowering
 // inside conditionals.
-func lowerTestIf(s *ir.If, scope *codegen.ExprScope) []string {
-	cond := translateIRExpr(s.Cond, scope)
+func lowerTestIf(s *ir.If, gc *GoIRContext) []string {
+	cond := gc.EvalExpr(s.Cond)
 	out := []string{fmt.Sprintf("if %s {", cond)}
 	for _, b := range s.Body {
-		for _, line := range lowerTestStmt(b, scope) {
+		for _, line := range lowerTestStmt(b, gc) {
 			out = append(out, "\t"+line)
 		}
 	}
 	if len(s.Else) > 0 {
 		out = append(out, "} else {")
 		for _, b := range s.Else {
-			for _, line := range lowerTestStmt(b, scope) {
+			for _, line := range lowerTestStmt(b, gc) {
 				out = append(out, "\t"+line)
 			}
 		}
@@ -108,22 +156,16 @@ func lowerTestIf(s *ir.If, scope *codegen.ExprScope) []string {
 	return out
 }
 
-// lowerTestFor mirrors translateIRForGo (component-method for-loop
-// lowering) but recurses on body statements through lowerTestStmt so
-// test intrinsics inside the loop body still get their dedicated
-// lowering.
-func lowerTestFor(s *ir.For, scope *codegen.ExprScope) []string {
-	iterExpr := translateIRExpr(s.Iter, scope)
-	loopScope := *scope
-	locals := make(map[string]bool, len(scope.LocalVars)+2)
-	for k, v := range scope.LocalVars {
-		locals[k] = v
-	}
-	locals[s.Key] = true
+// lowerTestFor mirrors GoIRContext's component-method for-loop lowering
+// but recurses on body statements through lowerTestStmt so test intrinsics
+// inside the loop body still get their dedicated lowering. Loop vars bind
+// as locals on a forked context.
+func lowerTestFor(s *ir.For, gc *GoIRContext) []string {
+	iterExpr := gc.EvalExpr(s.Iter)
+	loopGC := gc.WithLocal(s.Key)
 	if s.Value != "" {
-		locals[s.Value] = true
+		loopGC = loopGC.WithLocal(s.Value)
 	}
-	loopScope.LocalVars = locals
 
 	var lines []string
 	iterType := s.Iter.ExprType()
@@ -141,7 +183,7 @@ func lowerTestFor(s *ir.For, scope *codegen.ExprScope) []string {
 		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, s.Key, iterExpr))
 	}
 	for _, stmt := range s.Body {
-		for _, l := range lowerTestStmt(stmt, &loopScope) {
+		for _, l := range lowerTestStmt(stmt, loopGC) {
 			lines = append(lines, "\t"+l)
 		}
 	}
@@ -160,7 +202,7 @@ func lowerTestFor(s *ir.For, scope *codegen.ExprScope) []string {
 // The generated statement always compiles: a blank-identifier assignment
 // prevents "declared and not used" errors when the var is referenced nowhere
 // else.
-func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) {
+func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
 		return nil, false
 	}
@@ -174,7 +216,7 @@ func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) 
 		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
 			ctxName = cr.Ref.Name
 		} else if ctxName != "" && valExpr == "" {
-			valExpr = translateIRExpr(a.Value, scope)
+			valExpr = gc.EvalExpr(a.Value)
 		}
 	}
 	if ctxName == "" {
@@ -193,7 +235,7 @@ func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) 
 	// declare a single component param (e.g. `c Counter`); for multiple,
 	// emit one assignment per matching receiver to keep behaviour explicit.
 	var receivers []string
-	for name := range scope.RawFieldAccess {
+	for name := range gc.Ctx.RawFieldAccess {
 		receivers = append(receivers, name)
 	}
 	if len(receivers) == 0 {
@@ -218,7 +260,7 @@ func lowerTestSetContext(c *ir.Call, scope *codegen.ExprScope) ([]string, bool) 
 // `<receiver>.<id><Event>()`, which platform codegen (gtk4 today)
 // surfaces as a method on *Model that fires the matching widget
 // signal / event so the test exercises the real bridge.
-func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {
+func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
 	if c == nil || c.AST == nil {
 		return "", false
@@ -243,7 +285,7 @@ func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, boo
 	methodName := innerSel.Field + ExportName(event)
 	args := make([]string, len(c.Args))
 	for i, a := range c.Args {
-		args[i] = translateIRExpr(a.Value, scope)
+		args[i] = gc.EvalExpr(a.Value)
 	}
 	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
 }
@@ -252,7 +294,7 @@ func lowerEventTrigger(call *ir.CallStmt, scope *codegen.ExprScope) (string, boo
 // `t.Snapshot(name)` invocation. The capitalized method matches the
 // runtime exposed by *testing.T-style wrappers (testagent.T.Snapshot in
 // agent mode; native mode uses a small shim — see platform code).
-func lowerTestSnapshot(c *ir.Call, scope *codegen.ExprScope) (string, bool) {
+func lowerTestSnapshot(c *ir.Call, gc *GoIRContext) (string, bool) {
 	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "snapshot" {
 		return "", false
 	}
@@ -260,11 +302,11 @@ func lowerTestSnapshot(c *ir.Call, scope *codegen.ExprScope) (string, bool) {
 	if len(c.Args) != 2 {
 		return "", false
 	}
-	nameExpr := translateIRExpr(c.Args[1].Value, scope)
+	nameExpr := gc.EvalExpr(c.Args[1].Value)
 	return fmt.Sprintf("t.Snapshot(%s)", nameExpr), true
 }
 
-func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool) {
+func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil {
 		return "", false
@@ -276,7 +318,7 @@ func lowerTestAssert(call *ir.CallStmt, scope *codegen.ExprScope) (string, bool)
 	if len(c.Args) != 2 {
 		return "", false
 	}
-	exprGo := translateIRExpr(c.Args[1].Value, scope)
+	exprGo := gc.EvalExpr(c.Args[1].Value)
 	return fmt.Sprintf("if !(%s) { t.Errorf(\"assert failed: %%s\", %q) }", exprGo, exprGo), true
 }
 
@@ -319,9 +361,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			b.WriteString("\tsetCurrentTestModel(c)\n")
 		}
 		b.WriteString("\t_ = c\n")
-		scope := scopeFor(fn, methodFields)
+		gc := testIRContext(fn, methodFields)
 		for _, s := range fn.Block {
-			for _, line := range lowerTestStmt(s, scope) {
+			for _, line := range lowerTestStmt(s, gc) {
 				fmt.Fprintf(&b, "\t%s\n", line)
 			}
 		}
@@ -348,21 +390,4 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 		return "test" + suffix, "testagent.T"
 	}
 	return "Test" + suffix, "testing.T"
-}
-
-// scopeFor mirrors LowerTestFunc's scope construction so LowerTestFile
-// shares identical state shape.
-func scopeFor(fn *ir.Func, methodFields map[string]bool) *codegen.ExprScope {
-	scope := &codegen.ExprScope{
-		LocalVars:      map[string]bool{},
-		RawFieldAccess: map[string]bool{},
-		MethodFields:   methodFields,
-	}
-	for _, p := range fn.Params {
-		scope.LocalVars[p.Name] = true
-		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			scope.RawFieldAccess[p.Name] = true
-		}
-	}
-	return scope
 }
