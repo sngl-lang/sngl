@@ -10,6 +10,8 @@ func TestFieldAndMethod(t *testing.T) {
 	c.bump()
 	if !((c.count == 1)) { t.Errorf("assert failed: %s", "(c.count == 1)") }
 	if !((c.label() == "n=1")) { t.Errorf("assert failed: %s", "(c.label() == \"n=1\")") }
+	c.count = 5
+	if !((c.count == 5)) { t.Errorf("assert failed: %s", "(c.count == 5)") }
 }
 
 
@@ -26,6 +28,8 @@ func testFieldAndMethod(t *testagent.T) {
 	c.bump()
 	if !((c.count == 1)) { t.Errorf("assert failed: %s", "(c.count == 1)") }
 	if !((c.label() == "n=1")) { t.Errorf("assert failed: %s", "(c.label() == \"n=1\")") }
+	c.count = 5
+	if !((c.count == 5)) { t.Errorf("assert failed: %s", "(c.count == 5)") }
 }
 
 func init() {
