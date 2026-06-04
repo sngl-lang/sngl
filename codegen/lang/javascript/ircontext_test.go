@@ -99,11 +99,11 @@ func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 		},
 	}
 	got := jc.EvalExpr(m)
-	if strings.Contains(got, "new Map") {
-		t.Errorf("PluralKey map must lower to plain object, got %q", got)
-	}
-	if !strings.HasPrefix(got, "{[") {
-		t.Errorf("expected plain-object form, got %q", got)
+	// i18n.one lowers to the string literal "one"; the PluralKey map lowers to
+	// a plain object with that string key. Pin the exact output for parity.
+	want := `{["one"]: "# item"}`
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
@@ -116,8 +116,10 @@ func TestJsLambda_AsyncPrefix(t *testing.T) {
 		Block:   []ir.Stmt{&ir.Return{Value: &ir.Ident{Name: "x", Synthesized: true}}},
 	}}
 	got := jc.EvalExpr(lam)
-	if !strings.HasPrefix(got, "async ") {
-		t.Errorf("expected async prefix, got %q", got)
+	// Async lambdas always use parens even for a single param (legacy parity):
+	// `async (x) => x`, never `async x => x`.
+	if got != "async (x) => x" {
+		t.Errorf("got %q, want async (x) => x", got)
 	}
 }
 

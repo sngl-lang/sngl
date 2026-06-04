@@ -623,6 +623,13 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		case ir.TypeFloat:
 			return "parseFloat(" + operand + ")"
 		case ir.TypeString:
+			// Flag the String() helper for emission, mirroring legacy
+			// translateIRConversion. The plain-call string(x) path flags it
+			// too; without this, an ir.Conversion-to-string would drop the
+			// `function String(v)` helper once emitJSFunc/exprToJS migrate.
+			if jc.Ctx != nil && jc.Ctx.Helpers != nil {
+				jc.Ctx.Helpers["String"] = true
+			}
 			return "String(" + operand + ")"
 		case ir.TypeBool:
 			return "Boolean(" + operand + ")"
