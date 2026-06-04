@@ -460,9 +460,6 @@ type htmlGen struct {
 	// Inlined component state fields (unique name → initial JS value)
 	inlinedStateInits []componentParam
 
-	// For building the scope
-	scope *codegen.ExprScope
-
 	// Page title for <title> tag in <head>
 	title string
 
@@ -588,35 +585,24 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		usesI18n:       hasI18nCalls(pkg),
 	}
 
-	g.scope = &codegen.ExprScope{
-		ModelFields:    common.ModelFields,
-		ComputedFields: common.ComputedFields,
-		FuncNames:      common.FuncNames,
-		ExternFuncs:    common.ExternFuncs,
-		ExternVars:     common.ExternVars,
-		LocalVars:      make(map[string]bool),
-		NeededHelpers:  common.Helpers,
-		Pkg:            pkg,
-	}
-	if pkg != nil {
-		for _, c := range pkg.Consts {
-			g.scope.LocalVars[c.Name] = true
-		}
-	}
-
 	g.dt = common.DepTracker()
 	g.currentComp = mainIRComponent(pkg)
 	g.ctx = codegen.NewExprCtx(pkg)
-	// Share NativeImports so writes from either path land on g.scope.
-	if g.scope.NativeImports == nil {
-		g.scope.NativeImports = map[string]map[string]bool{}
+	// Seed package consts as locals so identifier resolution treats them as
+	// in-scope names.
+	if pkg != nil {
+		for _, c := range pkg.Consts {
+			g.ctx.Locals[c.Name] = true
+		}
 	}
-	g.ctx.NativeImports = g.scope.NativeImports
-	// Share the single helper-flag map across both translation paths: the new
-	// JsIRContext path writes jc.Ctx.Helpers, the legacy path writes
-	// g.scope.NeededHelpers (== common.Helpers), and the emit check reads
-	// g.ctx.Helpers. Wiring them to the same map makes a flag from either path
-	// reach the check.
+	// Allocate the NativeImports accumulator; native calls emitted during
+	// codegen append to this shared map.
+	if g.ctx.NativeImports == nil {
+		g.ctx.NativeImports = map[string]map[string]bool{}
+	}
+	// Use the single helper-flag map from the analysis: the JsIRContext path
+	// writes jc.Ctx.Helpers and the emit check reads g.ctx.Helpers, so wiring
+	// them to the same map makes a flag from either path reach the check.
 	g.ctx.Helpers = common.Helpers
 
 	return g
@@ -628,12 +614,14 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g.maps = ctx.ExprCtx.Maps
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
+		// Capture the native-imports accumulator and helper-flag map wired up
+		// by newHTMLGen before re-binding to the component (ForComponent
+		// re-clones, replacing the wiring with ctx.ExprCtx's own maps).
+		helpers := g.ctx.Helpers
+		native := g.ctx.NativeImports
 		g.ctx = ctx.ExprCtx.ForComponent(main)
-		// Re-apply the native-imports and helper plumbing after the component
-		// re-binding (ForComponent re-clones, replacing the wiring from
-		// newHTMLGen with ctx.ExprCtx's own maps).
-		g.ctx.NativeImports = g.scope.NativeImports
-		g.ctx.Helpers = g.scope.NeededHelpers
+		g.ctx.Helpers = helpers
+		g.ctx.NativeImports = native
 	}
 	return g
 }
@@ -1009,9 +997,9 @@ func (g *htmlGen) generate() (string, error) {
 		// fn whose enclosing IIFE also declares `state`); harmless because
 		// param names are scope-local.
 		var preludeBuf strings.Builder
-		if len(g.scope.NativeImports) > 0 {
-			mods := make([]string, 0, len(g.scope.NativeImports))
-			for m := range g.scope.NativeImports {
+		if len(g.ctx.NativeImports) > 0 {
+			mods := make([]string, 0, len(g.ctx.NativeImports))
+			for m := range g.ctx.NativeImports {
 				mods = append(mods, m)
 			}
 			sort.Strings(mods)
@@ -1695,8 +1683,8 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	suffix := fmt.Sprintf("_%d", g.componentInvocations)
 
 	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, g.scope.LocalVars)
-	savedRenames := g.scope.Renames
+	maps.Copy(savedLocals, g.ctx.Locals)
+	savedRenames := g.ctx.Renames
 	renames := make(map[string]string)
 	if savedRenames != nil {
 		maps.Copy(renames, savedRenames)
@@ -1706,7 +1694,7 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	// uniquely-renamed JS constants so the inlined body references them.
 	for _, p := range comp.Props {
 		uniqueName := p.Name + suffix
-		g.scope.LocalVars[p.Name] = true
+		g.ctx.Locals[p.Name] = true
 		renames[p.Name] = uniqueName
 
 		var valueExpr ir.Expr
@@ -1736,12 +1724,12 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		if len(fn.Params) == 0 && len(fn.Block) == 1 {
 			if _, isRet := fn.Block[0].(*ir.Return); isRet {
 				uniqueName := fn.Name + suffix
-				g.scope.LocalVars[fn.Name] = true
+				g.ctx.Locals[fn.Name] = true
 				renames[fn.Name] = uniqueName
 			}
 		}
 	}
-	g.scope.Renames = renames
+	g.ctx.Renames = renames
 	for _, fn := range comp.Funcs {
 		if len(fn.Params) == 0 && len(fn.Block) == 1 {
 			if ret, isRet := fn.Block[0].(*ir.Return); isRet && ret.Value != nil {
@@ -1763,11 +1751,10 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	dataRenames := make(map[string]string)
 	for _, dv := range comp.Vars {
 		uniqueName := dv.Name + suffix
-		g.scope.ModelFields[uniqueName] = true
 		// Note: promoted/renamed names aren't backed by *ir.Var, so we
 		// don't register them in the pointer-keyed DepTracker. The
 		// rename layer (dataRenames) handles them at the boundary.
-		g.scope.LocalVars[dv.Name] = true
+		g.ctx.Locals[dv.Name] = true
 		renames[dv.Name] = "state." + uniqueName
 		dataRenames[dv.Name] = uniqueName
 		var initJS string
@@ -1787,7 +1774,7 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 			value: initJS,
 		})
 	}
-	g.scope.Renames = renames
+	g.ctx.Renames = renames
 
 	savedDataRenames := g.dataRenames
 	g.dataRenames = dataRenames
@@ -1808,8 +1795,8 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	g.irSlotChildren = savedSlot
 	g.dataRenames = savedDataRenames
 
-	g.scope.LocalVars = savedLocals
-	g.scope.Renames = savedRenames
+	g.ctx.Locals = savedLocals
+	g.ctx.Renames = savedRenames
 }
 
 // emitScript writes the <script> block content.
@@ -2002,9 +1989,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 
 	// Helper functions — only emit if used. Read from g.ctx.Helpers, the
-	// unified map (== g.scope.NeededHelpers == common.Helpers) that now also
-	// receives flags written by the new JsIRContext path (e.g. setter/slot
-	// bodies translated during emitScript).
+	// unified map (== common.Helpers) that also receives flags written by the
+	// JsIRContext path (e.g. setter/slot bodies translated during emitScript).
 	if g.ctx.Helpers["String"] {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
 	}
@@ -2721,18 +2707,13 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	})
 }
 
-// scopedJC returns a JsIRContext whose ExprCtx mirrors g.scope's locals,
-// renames, and EventVar so WalkLowered + jc.EvalStmt produces the same
-// identifier resolutions as the legacy translateHandlerStmt path.
+// scopedJC returns a JsIRContext whose ExprCtx is a clone of g.ctx, carrying
+// the live locals, renames, and EventVar so WalkLowered + jc.EvalStmt resolves
+// identifiers consistently with the rest of html emission.
 func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	c := g.ctx.Clone()
-	maps.Copy(c.Renames, g.scope.Renames)
-	for k := range g.scope.LocalVars {
-		c.Locals[k] = true
-	}
-	c.EventVar = g.scope.EventVar
 	jc := javascript.NewIRContext(c)
-	jc.EventVar = g.scope.EventVar
+	jc.EventVar = c.EventVar
 	return jc
 }
 
@@ -2894,10 +2875,10 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
-	savedEvent := g.scope.EventVar
-	g.scope.EventVar = "e.target"
-	if g.scope.Renames == nil {
-		g.scope.Renames = make(map[string]string)
+	savedEvent := g.ctx.EventVar
+	g.ctx.EventVar = "e.target"
+	if g.ctx.Renames == nil {
+		g.ctx.Renames = make(map[string]string)
 	}
 	var savedLocal []string
 	var savedRename []struct {
@@ -2909,17 +2890,17 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 		if p == nil || p.Name == "" {
 			continue
 		}
-		if !g.scope.LocalVars[p.Name] {
+		if !g.ctx.Locals[p.Name] {
 			savedLocal = append(savedLocal, p.Name)
-			g.scope.LocalVars[p.Name] = true
+			g.ctx.Locals[p.Name] = true
 		}
-		prev, had := g.scope.Renames[p.Name]
+		prev, had := g.ctx.Renames[p.Name]
 		savedRename = append(savedRename, struct {
 			name string
 			val  string
 			had  bool
 		}{p.Name, prev, had})
-		g.scope.Renames[p.Name] = "e.target"
+		g.ctx.Renames[p.Name] = "e.target"
 	}
 	lines := g.translateBlockJC(fn.Block)
 	mutated := make(map[string]bool)
@@ -2928,15 +2909,15 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 			mutated[v.Name] = true
 		}
 	}
-	g.scope.EventVar = savedEvent
+	g.ctx.EventVar = savedEvent
 	for _, n := range savedLocal {
-		delete(g.scope.LocalVars, n)
+		delete(g.ctx.Locals, n)
 	}
 	for _, r := range savedRename {
 		if r.had {
-			g.scope.Renames[r.name] = r.val
+			g.ctx.Renames[r.name] = r.val
 		} else {
-			delete(g.scope.Renames, r.name)
+			delete(g.ctx.Renames, r.name)
 		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)

@@ -17,13 +17,7 @@ func newMinimalHTMLGen(t *testing.T) *htmlGen {
 		t.Fatal("javascript lang translator not registered")
 	}
 	return &htmlGen{
-		lang: lang,
-		scope: &codegen.ExprScope{
-			ModelFields:    map[string]bool{},
-			ComputedFields: map[string]bool{},
-			FuncNames:      map[string]bool{},
-			LocalVars:      map[string]bool{},
-		},
+		lang:        lang,
 		ctx:         codegen.NewExprCtx(nil),
 		idToNode:    map[string]*ir.NodeInst{},
 		loweredRefs: map[string]bool{},
