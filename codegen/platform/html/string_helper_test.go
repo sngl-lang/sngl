@@ -32,3 +32,34 @@ component main {
 			"used only in a handler body (it must scan handler/timer bodies too)")
 	}
 }
+
+// TestStringHelperEmittedFromSetter guards the one remaining flag-on-shared-ctx
+// path with no other coverage: a derived var's @change handler becomes a setter
+// ($set_<var>), translated during emitScript AFTER optimizeIR but BEFORE the
+// helper-emit check. Here String(...) appears ONLY in that setter body — not in
+// any init value, updater, or other handler. The helper must still be emitted.
+// If a future refactor moved emitSetter after the helper check, this would catch
+// the regression (the setter's flag would arrive too late).
+func TestStringHelperEmittedFromSetter(t *testing.T) {
+	src := `
+component main {
+    var label = ""
+    var tracked = 0 @change {
+        label = string(tracked)
+    }
+    button(text="+", @click { tracked = tracked + 1 })
+    text(value=label)
+}
+`
+	out := renderComponentHTML(t, src)
+	if !strings.Contains(out, "function $set_tracked(v)") {
+		t.Fatalf("expected a setter for the @change var; got:\n%s", out)
+	}
+	if !strings.Contains(out, "String(state.tracked)") {
+		t.Fatalf("expected String(state.tracked) inside the setter; got:\n%s", out)
+	}
+	if !strings.Contains(out, "function String(v)") {
+		t.Errorf("String helper declaration missing: a helper used only in a setter " +
+			"body was dropped (emitSetter must flag before the helper-emit check)")
+	}
+}
