@@ -3,11 +3,30 @@ package kotlin
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// testFallbackCtx is the KtIRContext used to render call shapes and any
+// expression that lowerTestExpr's test-specific special-cases don't handle.
+// It is backed by an empty package, matching the legacy empty-ExprScope{}
+// semantics the two fallbacks here previously relied on: idents resolve to
+// themselves and no scope-specific rewriting applies. Built once and reused
+// (it carries no per-test state), mirroring golang's testIRContext pattern.
+var (
+	testFallbackCtxOnce sync.Once
+	testFallbackCtx     *KtIRContext
+)
+
+func testIRContext() *KtIRContext {
+	testFallbackCtxOnce.Do(func() {
+		testFallbackCtx = NewIRContext(codegen.NewExprCtx(&ir.Package{}))
+	})
+	return testFallbackCtx
+}
 
 // LowerTestFunc renders a SNGL test function as one Kotlin
 // `@Test` method body suitable for inclusion inside a
@@ -317,12 +336,12 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 		// shape lowerTestExpr's special-cases above don't already cover.
 		// Method calls like `c.formatted()` and stdlib calls inside test
 		// assertions both flow through here.
-		return translateIRExpr(e, &codegen.ExprScope{})
+		return testIRContext().EvalExpr(e)
 	}
 	// Final fallback: defer to the full IR translator. Keeps test
 	// expressions in lockstep with non-test Kotlin codegen rather than
 	// emitting a TODO placeholder that fails Kotlin compilation.
-	return translateIRExpr(e, &codegen.ExprScope{})
+	return testIRContext().EvalExpr(e)
 }
 
 // composeIDRef returns the id when e is the bare `<recv>.<id>` shape
