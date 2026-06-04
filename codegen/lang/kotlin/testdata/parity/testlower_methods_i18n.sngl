@@ -1,0 +1,21 @@
+// Exercises the kotlin test-lowering legacy surface (testlower.go's
+// translateIRExpr fallback at lines ~320/325 routes calls and i18n shapes
+// through the legacy KtIRContext-less path):
+//   - field reads on a component-typed test receiver (c.count)
+//   - zero-arg method calls (c.label() — a computed component func)
+//   - i18n $"..." strings, including a plural form, lowered to the i18n
+//     runtime call (mirrors translate_ir_test.go's i18n.tr/plural cases)
+component counter {
+    var count = 0
+
+    func label() => $"You have {count, plural, one{# item} other{# items}}"
+
+    text(value=label())
+}
+
+func testFieldMethodAndI18n(t Test, c counter) {
+    t.assert(c.count == 0)
+    t.assert(c.label() != "")
+    var msg = $"Saved at {c.count, plural, one{# entry} other{# entries}}"
+    t.assert(msg != "")
+}

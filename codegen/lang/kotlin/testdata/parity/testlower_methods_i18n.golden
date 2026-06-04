@@ -1,0 +1,55 @@
+// ==== TestEmitNative (robolectric) ====
+package us.duckfam.sngl.app
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class MainScreenTest {
+    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun testFieldMethodAndI18n() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("(c.count == 0)", (c.count == 0))
+        org.junit.Assert.assertTrue("(c.label() != \"\")", (c.label() != ""))
+        val msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
+        org.junit.Assert.assertTrue("(msg != \"\")", (msg != ""))
+    }
+
+}
+
+// ==== TestEmitAgent ====
+package us.duckfam.sngl.app
+
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import us.duckfam.git.jonathan.sngl.testagent.T
+import us.duckfam.git.jonathan.sngl.testagent.Registry
+
+lateinit var composeTestRule: ComposeContentTestRule
+
+fun testFieldMethodAndI18n(t: T) {
+    val c = newTestComponent()
+    setCurrentTestModel(c)
+    t.assertTrue((c.count == 0), "(c.count == 0)")
+    t.assertTrue((c.label() != ""), "(c.label() != \"\")")
+    val msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
+    t.assertTrue((msg != ""), "(msg != \"\")")
+}
+
+object SnglTestRegistration {
+    init {
+        Registry.register("FieldMethodAndI18n", ::testFieldMethodAndI18n)
+    }
+    fun ensure() {}
+}
