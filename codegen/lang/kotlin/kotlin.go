@@ -77,14 +77,6 @@ func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return name.Name
 }
 
-func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
-	return translateIRExpr(e, scope)
-}
-
-func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
-	return translateIRMutation(s, scope)
-}
-
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	switch n := e.(type) {
 	case *ir.Literal:
