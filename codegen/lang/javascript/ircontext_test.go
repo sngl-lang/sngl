@@ -244,3 +244,166 @@ func TestJsNamespaceCall_UserFuncDispatchAsyncAwaits(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+// --- Task 1.11: ported legacy translate_ir_test.go behaviors ---
+
+func TestJsPlainCall_AwaitsAsyncSNGLCallee(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{Func: &ir.Func{Name: "loadUser", IsAsync: true}}
+	got := jc.EvalExpr(call)
+	if got != "await loadUser()" {
+		t.Errorf("got %q, want await loadUser()", got)
+	}
+}
+
+func TestJsPlainCall_NoAwaitForSyncCallee(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{Func: &ir.Func{Name: "noop"}}
+	got := jc.EvalExpr(call)
+	if got != "noop()" {
+		t.Errorf("got %q, want noop()", got)
+	}
+}
+
+func TestJsNamespaceCall_AwaitsAsyncSNGLCallee(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     &ir.Func{Name: "fetch", Receiver: "net", IsAsync: true},
+		Receiver: &ir.Ident{Name: "net"},
+	}
+	got := jc.EvalExpr(call)
+	if got != "await net.fetch()" {
+		t.Errorf("got %q, want await net.fetch()", got)
+	}
+}
+
+func TestJsNamespaceCall_NoAwaitForSyncCallee(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     &ir.Func{Name: "get", Receiver: "store"},
+		Receiver: &ir.Ident{Name: "store"},
+	}
+	got := jc.EvalExpr(call)
+	if got != "store.get()" {
+		t.Errorf("got %q, want store.get()", got)
+	}
+}
+
+func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{asyncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorAsync},
+		},
+	}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.Locals["handler"] = true
+	jc := NewIRContext(ctx)
+	call := &ir.Call{Func: nil, Callee: jsIdentToVar(v)}
+	got := jc.EvalExpr(call)
+	if got != "await handler()" {
+		t.Errorf("got %q, want await handler()", got)
+	}
+}
+
+func TestJsCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
+	syncFn := &ir.Func{Name: "syncFn"}
+	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	pkg := &ir.Package{
+		Vars:  []*ir.Var{v},
+		Funcs: []*ir.Func{syncFn},
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{ir.SlotVarKey(v): ir.ColorSync},
+		},
+	}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.Locals["handler"] = true
+	jc := NewIRContext(ctx)
+	call := &ir.Call{Func: nil, Callee: jsIdentToVar(v)}
+	got := jc.EvalExpr(call)
+	if got != "handler()" {
+		t.Errorf("got %q, want handler()", got)
+	}
+}
+
+func TestJsCall_FuncvarParamSlot_AnyAsync_Awaits(t *testing.T) {
+	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
+	p := &ir.Param{Name: "cb"}
+	// SlotParam slot has no SlotColor entry → conservative fallback.
+	pkg := &ir.Package{
+		PointsTo: &ir.PointsToInfo{
+			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotParamKey(p): {asyncFn}},
+			SlotColor: map[ir.PointsToKey]ir.Color{},
+		},
+	}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.Locals["cb"] = true
+	jc := NewIRContext(ctx)
+	call := &ir.Call{Func: nil, Callee: &ir.Ident{Name: "cb", Sym: p}}
+	got := jc.EvalExpr(call)
+	if got != "await cb()" {
+		t.Errorf("got %q, want await cb()", got)
+	}
+}
+
+func TestJsEmitI18nTr(t *testing.T) {
+	// Mirrors the real IR from inferI18nInterp: ir.Call with no Receiver
+	// expression, Func.Receiver="i18n", routed through evalTypeMethodCall.
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func: &ir.Func{Name: "tr", Receiver: "i18n"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Raw: "Hello, {name}!", Type: ir.TypString}},
+			{Value: &ir.MapLitIR{}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	if !strings.Contains(got, "i18n.getTranslator().tr(") {
+		t.Errorf("i18n.tr: got %q, want call containing i18n.getTranslator().tr(", got)
+	}
+}
+
+func TestJsEmitI18nPlural(t *testing.T) {
+	// Namespace call: i18n.plural(count, forms).
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     &ir.Func{Name: "plural", Receiver: "i18n"},
+		Receiver: &ir.Ident{Name: "i18n"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Raw: "3", Type: ir.TypInt}},
+			{Value: &ir.MapLitIR{}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	if !strings.Contains(got, "i18n.getTranslator().plural(") {
+		t.Errorf("i18n.plural: got %q, want call containing i18n.getTranslator().plural(", got)
+	}
+}
+
+func TestJsEmitI18nExactly(t *testing.T) {
+	// Namespace call: i18n.exactly(n) → ("=" + (n)).
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     &ir.Func{Name: "exactly", Receiver: "i18n"},
+		Receiver: &ir.Ident{Name: "i18n"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Raw: "0", Type: ir.TypInt}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	if !strings.Contains(got, `"=" + `) {
+		t.Errorf("i18n.exactly: got %q, want string concat with \"=\"", got)
+	}
+}
