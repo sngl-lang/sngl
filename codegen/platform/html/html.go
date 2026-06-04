@@ -612,6 +612,12 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		g.scope.NativeImports = map[string]map[string]bool{}
 	}
 	g.ctx.NativeImports = g.scope.NativeImports
+	// Share the single helper-flag map across both translation paths: the new
+	// JsIRContext path writes jc.Ctx.Helpers, the legacy path writes
+	// g.scope.NeededHelpers (== common.Helpers), and the emit check reads
+	// g.ctx.Helpers. Wiring them to the same map makes a flag from either path
+	// reach the check.
+	g.ctx.Helpers = common.Helpers
 
 	return g
 }
@@ -623,9 +629,11 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		g.ctx = ctx.ExprCtx.ForComponent(main)
-		// Re-apply the native-imports plumbing after the component
-		// re-binding (Clone preserves it but ForComponent re-clones).
+		// Re-apply the native-imports and helper plumbing after the component
+		// re-binding (ForComponent re-clones, replacing the wiring from
+		// newHTMLGen with ctx.ExprCtx's own maps).
 		g.ctx.NativeImports = g.scope.NativeImports
+		g.ctx.Helpers = g.scope.NeededHelpers
 	}
 	return g
 }
@@ -1993,8 +2001,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	// Helper functions — only emit if used
-	if g.scope.NeededHelpers["String"] {
+	// Helper functions — only emit if used. Read from g.ctx.Helpers, the
+	// unified map (== g.scope.NeededHelpers == common.Helpers) that now also
+	// receives flags written by the new JsIRContext path (e.g. setter/slot
+	// bodies translated during emitScript).
+	if g.ctx.Helpers["String"] {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
 	}
 
