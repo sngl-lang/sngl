@@ -40,6 +40,21 @@ type ExprCtx struct {
 	// Maps mirrors Request.Maps: when true, translators emit source-map
 	// hooks (e.g. Go `//line file:lineno` directives before statements).
 	Maps bool
+	// ContextVar is the expression to supply for native context args
+	// (e.g., "r.Context()"). Mirrors ExprScope.ContextVar.
+	ContextVar string
+	// RawFieldAccess names identifiers whose Select-field accesses bypass
+	// method/getter lowering — used by test runners that emit `_test.go`
+	// into the same Go package as the generated Model so they can read and
+	// write unexported fields directly. Mirrors ExprScope.RawFieldAccess.
+	RawFieldAccess map[string]bool
+	// MethodFields names identifiers whose bare `recv.<field>` Select access
+	// should lower to a zero-arg method call `recv.<field>()` instead of a
+	// raw field read. Mirrors ExprScope.MethodFields.
+	MethodFields map[string]bool
+	// IdentRewrites remaps bare identifiers regardless of scope, applied
+	// first in identifier translation. Mirrors ExprScope.IdentRewrites.
+	IdentRewrites map[string]string
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -161,6 +176,11 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
 		NativeImports: ctx.NativeImports, // shared — accumulates across clones
 		Maps:          ctx.Maps,
+		ContextVar:    ctx.ContextVar,
+		// Deep-copy the test/http-only maps (nil-safe via maps.Clone).
+		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),
+		MethodFields:   maps.Clone(ctx.MethodFields),
+		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
 	}
 }
 
