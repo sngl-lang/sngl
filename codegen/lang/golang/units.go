@@ -57,6 +57,35 @@ func UnitBases(u *ir.UnitDef) []*ir.UnitSuffix {
 	return out
 }
 
+// multiBaseUnitOperand returns the UnitDef of whichever operand is a
+// multi-base unit (left preferred), or (nil, false) when neither is.
+// Used by GoIRContext.Binary to decide whether to expand a binary op
+// component-wise over a unit struct's base fields.
+func multiBaseUnitOperand(l, r ir.Expr) (*ir.UnitDef, bool) {
+	if ud := unitDeclOf(l.ExprType()); ud != nil && ClassifyUnit(ud) == UnitMultiBase {
+		return ud, true
+	}
+	if ud := unitDeclOf(r.ExprType()); ud != nil && ClassifyUnit(ud) == UnitMultiBase {
+		return ud, true
+	}
+	return nil, false
+}
+
+// unitDeclOf extracts the UnitDef from a unit-typed ir.Type, or nil.
+func unitDeclOf(t *ir.Type) *ir.UnitDef {
+	if t == nil || t.Kind != ir.TypeUnit {
+		return nil
+	}
+	ud, _ := t.Decl.(*ir.UnitDef)
+	return ud
+}
+
+// isMultiBaseUnitType reports whether t is a multi-base unit type.
+func isMultiBaseUnitType(t *ir.Type) bool {
+	ud := unitDeclOf(t)
+	return ud != nil && ClassifyUnit(ud) == UnitMultiBase
+}
+
 // EmitUnitTypeDecls renders Go `type` declarations for every UnitDef in
 // units, skipping the duration special-case. Output is a series of
 // top-level decls joined by blank lines.

@@ -6,7 +6,41 @@ import (
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// translateIRLiteral renders an ir.Literal as its Go source form. Used by
+// Translator.TranslateIRLiteral (the LangTranslator literal hook); the main
+// expression path uses GoIRContext.evalLiteral. Unit/temporal literals route
+// through the dedicated Lower*LiteralGo helpers.
+func translateIRLiteral(n *ir.Literal) string {
+	if n == nil {
+		return "nil"
+	}
+	if n.Suffix != "" {
+		if out, ok := LowerUnitLiteralGo(n); ok {
+			return out
+		}
+		// Non-unit literal that carries a suffix (shouldn't normally
+		// happen) — fall back to a quoted "raw+suffix" string.
+		return fmt.Sprintf("%q", n.Raw)
+	}
+	if n.Type != nil {
+		switch n.Type.Kind {
+		case ir.TypeString, ir.TypeColor:
+			return fmt.Sprintf("%q", n.Raw)
+		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			return n.Raw
+		case ir.TypeNull:
+			return "nil"
+		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+			if out, ok := LowerTimeLiteralGo(n); ok {
+				return out
+			}
+		}
+	}
+	return n.Raw
+}
 
 // ExportName capitalizes the first letter for Go exported names.
 func ExportName(s string) string {
