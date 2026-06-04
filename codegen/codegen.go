@@ -99,9 +99,11 @@ type LangTranslator interface {
 
 	GenerateIdentifier(name *ir.Ident) string
 
-	// IR-typed public API.
-	TranslateIRExpr(e ir.Expr, scope *ExprScope) string
-	TranslateIRMutation(s ir.Stmt, scope *ExprScope) []string
+	// IR-typed public API. TranslateIRExpr/TranslateIRMutation were removed
+	// from the interface once the html platform moved fully onto each
+	// language's *IRContext path; languages may still implement them as
+	// concrete (non-interface) methods for internal use (e.g. golang/http.go
+	// calls golang.Translator.TranslateIRMutation directly).
 	TranslateIRLiteral(e ir.Expr) string
 
 	TypeToNative(hint string) string

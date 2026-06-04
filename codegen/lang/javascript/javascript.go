@@ -27,16 +27,6 @@ func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return name.Name
 }
 
-// TranslateIRExpr translates an IR expression directly to its JS form.
-func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string {
-	return translateIRExpr(e, scope)
-}
-
-// TranslateIRMutation translates an IR mutation statement to JS statements.
-func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
-	return translateIRMutation(s, scope)
-}
-
 // TranslateIRLiteral translates an IR literal expression to its JS literal.
 // Handles scalar literals, list literals, and struct literals — anything
 // `codegen.IRIsLiteral` reports true for.

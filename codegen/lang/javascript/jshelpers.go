@@ -1,14 +1,42 @@
 package javascript
 
-// jshelpers.go — free helpers that are shared between the legacy translate_ir.go
-// path and the new JsIRContext path. Relocated from translate_ir.go so they can
-// be used in ircontext.go without cyclic dependency, and so they survive the
-// eventual deletion of translate_ir.go.
+// jshelpers.go — free helpers for JS codegen, shared across the JsIRContext
+// path and javascript.go. Relocated from the (now-deleted) translate_ir.go.
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// translateIRLiteral renders an ir.Literal to its JS literal text. Used by
+// Translator.TranslateIRLiteral (the only LangTranslator IR method the html
+// platform still calls — for static literal init values).
+func translateIRLiteral(n *ir.Literal) string {
+	if n == nil {
+		return "null"
+	}
+	// Unit literal (e.g. 500ms): emit as quoted string carrying the suffix.
+	if n.Suffix != "" {
+		return fmt.Sprintf("%q", n.Raw+n.Suffix)
+	}
+	if n.Type != nil {
+		switch n.Type.Kind {
+		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			return n.Raw
+		case ir.TypeNull:
+			return "null"
+		case ir.TypeString, ir.TypeColor,
+			ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
+			ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
+			ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
+			return fmt.Sprintf("%q", n.Raw)
+		}
+	}
+	return n.Raw
+}
 
 // factoryName returns the JS factory function name for a component.
 // MUST match the convention used by HTML codegen's factory emission.

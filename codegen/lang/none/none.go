@@ -25,14 +25,10 @@ func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Caps            { return lower.Caps{} }
 
-func (t *Translator) GenerateIdentifier(name *ir.Ident) string                   { return name.Name }
-func (t *Translator) TranslateIRExpr(e ir.Expr, scope *codegen.ExprScope) string { return "" }
-func (t *Translator) TranslateIRMutation(s ir.Stmt, scope *codegen.ExprScope) []string {
-	return nil
-}
-func (t *Translator) TranslateIRLiteral(e ir.Expr) string { return "" }
-func (t *Translator) TypeToNative(hint string) string     { return hint }
-func (t *Translator) ExportName(name string) string       { return name }
+func (t *Translator) GenerateIdentifier(name *ir.Ident) string { return name.Name }
+func (t *Translator) TranslateIRLiteral(e ir.Expr) string      { return "" }
+func (t *Translator) TypeToNative(hint string) string          { return hint }
+func (t *Translator) ExportName(name string) string            { return name }
 
 // NewFileEmitter returns an unimplemented stub. The none lang isn't
 // expected to be the target of source-file emission today.
