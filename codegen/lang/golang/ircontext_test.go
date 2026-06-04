@@ -56,6 +56,55 @@ func TestGoIRContext_ContextVar_DefaultBackground(t *testing.T) {
 	}
 }
 
+// TestGoIRContext_RawFieldAccess_DirectRead verifies that a Select on a
+// RawFieldAccess ident reads the unexported field directly (no ExportName)
+// — mirroring legacy translateIRExpr's Select case for test recvs.
+func TestGoIRContext_RawFieldAccess_DirectRead(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.RawFieldAccess = map[string]bool{"c": true}
+	gc := NewIRContext(ctx)
+	sel := &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "count"}
+	got := gc.EvalExpr(sel)
+	want := "c.count"
+	if got != want {
+		t.Errorf("RawFieldAccess direct read = %q; want %q", got, want)
+	}
+}
+
+// TestGoIRContext_RawFieldAccess_NestedGetter verifies the test-scope
+// property read on an id'd child node: `c.<id>.<prop>` →
+// `<id>.<inner.Field><Prop>()`. Mirrors legacy.
+func TestGoIRContext_RawFieldAccess_NestedGetter(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.RawFieldAccess = map[string]bool{"c": true}
+	gc := NewIRContext(ctx)
+	sel := &ir.Select{
+		Operand: &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "label0"},
+		Field:   "text",
+	}
+	got := gc.EvalExpr(sel)
+	want := "c.label0Text()"
+	if got != want {
+		t.Errorf("RawFieldAccess nested getter = %q; want %q", got, want)
+	}
+}
+
+// TestGoIRContext_RawFieldAccess_NonRawUnaffected verifies that a Select on
+// a non-RawFieldAccess ident still capitalizes the field via ExportName.
+func TestGoIRContext_RawFieldAccess_NonRawUnaffected(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	gc := NewIRContext(ctx)
+	sel := &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "count"}
+	got := gc.EvalExpr(sel)
+	want := "c.Count"
+	if got != want {
+		t.Errorf("non-raw Select = %q; want %q", got, want)
+	}
+}
+
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{

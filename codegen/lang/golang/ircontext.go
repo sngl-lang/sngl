@@ -138,6 +138,25 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			return "i18n." + goName
 		}
 	}
+	// Test-scope raw field reads: a Select whose operand is a
+	// RawFieldAccess ident reads the unexported field directly (no
+	// ExportName capitalization) so a generated `_test.go` in the same Go
+	// package can touch unexported Model fields. Mirrors legacy
+	// translateIRExpr's Select case.
+	if gc.rawFieldAccess(n.Operand) {
+		return operand + "." + n.Field
+	}
+	// Test-scope property read on an id'd child node:
+	// `c.<id>.<prop>` → `c.<id><Prop>()`. Platforms emit one getter method
+	// per (id, prop) reactive binding; the test runner consumes them to
+	// read widget state. The trigger is the outer Select's Operand being a
+	// Select on a RawFieldAccess Ident — i.e. `c.<id>` after testlower set
+	// RawFieldAccess for `c`.
+	if inner, ok := n.Operand.(*ir.Select); ok {
+		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) {
+			return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
+		}
+	}
 	// Field access on a `dyn` operand: Go's `any` has no fields, so a
 	// bare `.<F>` won't compile. If exactly one user struct in the
 	// package declares this field, emit a type assertion to that
@@ -616,6 +635,18 @@ func (gc *GoIRContext) evalListLambdaCallFallback(n *ir.Call, method string, arg
 			" { out[i] = (" + fnExpr + ")(item) }; return out }()"
 	}
 	return ""
+}
+
+// rawFieldAccess reports whether e is an ident flagged in
+// gc.Ctx.RawFieldAccess (nil-safe). Test runners set this for the receiver
+// ident (e.g. `c`) so its Select-field accesses bypass ExportName /
+// method-getter lowering and touch the unexported Model field directly.
+func (gc *GoIRContext) rawFieldAccess(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	return gc.Ctx != nil && gc.Ctx.RawFieldAccess != nil && gc.Ctx.RawFieldAccess[id.Name]
 }
 
 // uniqueStructWithField returns the Go type name of the sole package
