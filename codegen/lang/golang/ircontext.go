@@ -144,6 +144,12 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	// package can touch unexported Model fields. Mirrors legacy
 	// translateIRExpr's Select case.
 	if gc.rawFieldAccess(n.Operand) {
+		// A field flagged in MethodFields is surfaced by platform codegen as
+		// a zero-arg method (e.g. gtk4's nilable conditional/loop refs), so
+		// the raw read lowers to a method call.
+		if gc.methodField(n.Field) {
+			return operand + "." + n.Field + "()"
+		}
 		return operand + "." + n.Field
 	}
 	// Test-scope property read on an id'd child node:
@@ -155,6 +161,17 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	if inner, ok := n.Operand.(*ir.Select); ok {
 		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) {
 			return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
+		}
+	}
+	// Test-scope list-ref prop read: `c.<id>[idx].<prop>` →
+	// `c.<id>()[idx].<Prop>()`. Used when <id> sits inside a `for` loop;
+	// gtk4 surfaces the per-iteration widgets as a `[]*<id>Ref` returned by
+	// the `<id>()` method. Mirrors legacy.
+	if idxExpr, ok := n.Operand.(*ir.Index); ok {
+		if inner, ok := idxExpr.Operand.(*ir.Select); ok {
+			if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) && gc.methodField(inner.Field) {
+				return fmt.Sprintf("%s.%s()[%s].%s()", id.Name, inner.Field, gc.EvalExpr(idxExpr.Idx), ExportName(n.Field))
+			}
 		}
 	}
 	// Field access on a `dyn` operand: Go's `any` has no fields, so a
@@ -647,6 +664,14 @@ func (gc *GoIRContext) rawFieldAccess(e ir.Expr) bool {
 		return false
 	}
 	return gc.Ctx != nil && gc.Ctx.RawFieldAccess != nil && gc.Ctx.RawFieldAccess[id.Name]
+}
+
+// methodField reports whether a field name is flagged in
+// gc.Ctx.MethodFields (nil-safe). Such fields, when read off a
+// RawFieldAccess recv, lower to a zero-arg method call rather than a raw
+// field read.
+func (gc *GoIRContext) methodField(field string) bool {
+	return gc.Ctx != nil && gc.Ctx.MethodFields != nil && gc.Ctx.MethodFields[field]
 }
 
 // uniqueStructWithField returns the Go type name of the sole package

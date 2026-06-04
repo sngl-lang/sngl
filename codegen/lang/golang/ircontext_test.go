@@ -105,6 +105,46 @@ func TestGoIRContext_RawFieldAccess_NonRawUnaffected(t *testing.T) {
 	}
 }
 
+// TestGoIRContext_MethodFields_DirectCall verifies that a Select on a
+// RawFieldAccess ident whose field is in MethodFields lowers to a zero-arg
+// method call `c.<field>()` instead of a raw field read. Mirrors legacy.
+func TestGoIRContext_MethodFields_DirectCall(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.RawFieldAccess = map[string]bool{"c": true}
+	ctx.MethodFields = map[string]bool{"items": true}
+	gc := NewIRContext(ctx)
+	sel := &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "items"}
+	got := gc.EvalExpr(sel)
+	want := "c.items()"
+	if got != want {
+		t.Errorf("MethodFields direct call = %q; want %q", got, want)
+	}
+}
+
+// TestGoIRContext_MethodFields_ListRefPropRead verifies the test-scope
+// list-ref prop read: `c.<id>[idx].<prop>` → `c.<id>()[idx].<Prop>()` when
+// <id> is a MethodField on a RawFieldAccess recv. Mirrors legacy.
+func TestGoIRContext_MethodFields_ListRefPropRead(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.RawFieldAccess = map[string]bool{"c": true}
+	ctx.MethodFields = map[string]bool{"rows": true}
+	gc := NewIRContext(ctx)
+	sel := &ir.Select{
+		Operand: &ir.Index{
+			Operand: &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "rows"},
+			Idx:     &ir.Literal{Type: ir.TypInt, Raw: "0"},
+		},
+		Field: "text",
+	}
+	got := gc.EvalExpr(sel)
+	want := "c.rows()[0].Text()"
+	if got != want {
+		t.Errorf("MethodFields list-ref prop read = %q; want %q", got, want)
+	}
+}
+
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{
