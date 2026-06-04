@@ -1,7 +1,7 @@
 # Unify JS expression/statement translation onto JsIRContext
 
 **Date:** 2026-06-03
-**Status:** Design approved, plan pending
+**Status:** Implemented (2026-06-03)
 
 ## Problem
 
