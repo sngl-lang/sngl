@@ -2399,12 +2399,24 @@ func (g *htmlGen) optimizeIR() {
 		}
 	}
 
+	// Handler/timer JS bodies are already translated (during render) but live
+	// outside the model's Updaters. Hand them to OptimizeMutation as AuxBodies
+	// so pruneHelpers does not delete a helper (e.g. String) used only here.
+	var auxBodies []string
+	for _, h := range g.handlers {
+		auxBodies = append(auxBodies, h.body)
+	}
+	for _, t := range g.timers {
+		auxBodies = append(auxBodies, t.body)
+	}
+
 	m := &codegen.MutationModel{
 		Analysis:   g.CommonAnalysis,
 		DepTracker: g.dt,
 		Updaters:   updaters,
 		Handlers:   handlers,
 		Timers:     timers,
+		AuxBodies:  auxBodies,
 	}
 
 	codegen.OptimizeMutation(m)

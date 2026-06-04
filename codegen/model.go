@@ -15,6 +15,11 @@ type MutationModel struct {
 	Updaters   []Updater
 	Handlers   []Handler
 	Timers     []TimerHandler
+	// AuxBodies holds platform-emitted code bodies that are NOT updaters but
+	// may still reference runtime helpers — e.g. translated handler and timer
+	// bodies. pruneHelpers scans these alongside updater bodies so a helper
+	// used only in a handler (not in any updater) is not wrongly deleted.
+	AuxBodies []string
 }
 
 // RenderModel is the intermediate representation for platforms that

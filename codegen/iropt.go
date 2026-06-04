@@ -225,11 +225,14 @@ func pruneHelpers(m *MutationModel) {
 		return
 	}
 
-	// Collect all generated code bodies.
+	// Collect all generated code bodies. Updater bodies plus any auxiliary
+	// platform bodies (handler/timer code) — a helper referenced only in a
+	// handler must not be pruned just because no updater uses it.
 	var bodies []string
 	for _, u := range m.Updaters {
 		bodies = append(bodies, u.Body)
 	}
+	bodies = append(bodies, m.AuxBodies...)
 
 	referenced := make(map[string]bool)
 	for name := range m.Analysis.Helpers {
