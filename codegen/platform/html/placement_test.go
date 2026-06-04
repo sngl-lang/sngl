@@ -111,3 +111,42 @@ func TestExprPlacement(t *testing.T) {
 		}
 	})
 }
+
+func TestHandlerPlacement(t *testing.T) {
+	t.Run("handler with go call -> backend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		fn := &ir.Func{Block: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: "count"},
+				Value:  goCall("example.com/api"),
+			},
+		}}
+		if p := handlerPlacement(pkg, fn); p != Backend {
+			t.Fatalf("got %v want Backend", p)
+		}
+	})
+	t.Run("handler with only local mutation -> frontend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		fn := &ir.Func{Block: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: "count"},
+				Value:  &ir.Binary{Left: &ir.Ident{Name: "count"}, Right: &ir.Literal{}},
+			},
+		}}
+		if p := handlerPlacement(pkg, fn); p != Frontend {
+			t.Fatalf("got %v want Frontend", p)
+		}
+	})
+	t.Run("handler with html.frontend(go_call) -> frontend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		fn := &ir.Func{Block: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: "count"},
+				Value:  intrinsicCall("HtmlFrontend", goCall("example.com/api")),
+			},
+		}}
+		if p := handlerPlacement(pkg, fn); p != Frontend {
+			t.Fatalf("got %v want Frontend", p)
+		}
+	})
+}

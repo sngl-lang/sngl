@@ -100,6 +100,29 @@ func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 	return found
 }
 
+// handlerPlacement classifies an event handler / func: Backend iff any
+// expression in its body is Backend; else Frontend.
+func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
+	if fn == nil {
+		return Frontend
+	}
+	backend := false
+	walkStmts(fn.Block, func(e ir.Expr) bool {
+		// exprPlacement already considers e's whole subtree (and honors
+		// directive-wrapper pinning), so classify e and prune its children:
+		// descending further would re-inspect the inside of a directive
+		// wrapper and ignore the pin.
+		if exprPlacement(pkg, e) == Backend {
+			backend = true
+		}
+		return true // prune subtree: e was classified as a whole
+	})
+	if backend {
+		return Backend
+	}
+	return Frontend
+}
+
 // walkExpr visits e and each of its sub-expressions, calling fn on each.
 // fn returns true to prune the subtree at that node (stop descending into its
 // children) — used to honor directive-wrapper pinning and to short-circuit.
