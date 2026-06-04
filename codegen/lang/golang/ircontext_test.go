@@ -4,8 +4,57 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// TestGoIRContext_ContextVar_NativeCall verifies that a native (go://) call
+// whose imported signature has a context arg receives gc.Ctx.ContextVar as
+// its first argument — mirroring legacy translateIRNativeCall.
+func TestGoIRContext_ContextVar_NativeCall(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.ContextVar = "r.Context()"
+	gc := NewIRContext(ctx)
+	call := &ir.Call{
+		Receiver: &ir.Ident{Name: "svc"},
+		Func: &ir.Func{
+			Name:          "Fetch",
+			NativePkg:     "svc",
+			NativeName:    "svc.Fetch",
+			HasContextArg: true,
+		},
+		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "id"}}},
+	}
+	got := gc.EvalExpr(call)
+	want := `svc.Fetch(r.Context(), "id")`
+	if got != want {
+		t.Errorf("ContextVar native call = %q; want %q", got, want)
+	}
+}
+
+// TestGoIRContext_ContextVar_DefaultBackground verifies that with no
+// ContextVar set, a context-taking native call defaults to
+// context.Background() — mirroring legacy.
+func TestGoIRContext_ContextVar_DefaultBackground(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	gc := NewIRContext(ctx)
+	call := &ir.Call{
+		Receiver: &ir.Ident{Name: "svc"},
+		Func: &ir.Func{
+			Name:          "Fetch",
+			NativePkg:     "svc",
+			NativeName:    "svc.Fetch",
+			HasContextArg: true,
+		},
+	}
+	got := gc.EvalExpr(call)
+	want := "svc.Fetch(context.Background())"
+	if got != want {
+		t.Errorf("default context native call = %q; want %q", got, want)
+	}
+}
 
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()

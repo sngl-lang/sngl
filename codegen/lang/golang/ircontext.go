@@ -462,6 +462,21 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 				// the import so platforms reading gc.Imports() see it.
 				gc.RequireImport(n.Func.NativePkg)
 			}
+			// Context-taking native call: inject the context expression as the
+			// first argument. Mirrors legacy translateIRNativeCall — when the
+			// importer flagged HasContextArg, supply gc.Ctx.ContextVar (e.g.
+			// "r.Context()"), defaulting to context.Background() when unset.
+			if n.Func.HasContextArg {
+				ctxVar := ""
+				if gc.Ctx != nil {
+					ctxVar = gc.Ctx.ContextVar
+				}
+				if ctxVar == "" {
+					ctxVar = "context.Background()"
+					gc.RequireImport("context")
+				}
+				args = append([]string{ctxVar}, args...)
+			}
 			return name + "(" + strings.Join(args, ", ") + ")"
 		}
 
