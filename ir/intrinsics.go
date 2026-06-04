@@ -90,6 +90,18 @@ var Intrinsics = []IntrinsicDef{
 	// int purely to satisfy the expression-body forwarding in stdlib; the
 	// value is never used because every target lowers the call to an abort.
 	{Name: "ErrorRaise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}, Return: TypInt},
+
+	// --- html placement directives (GitLab #27) ---
+	// HtmlFrontend / HtmlBackend are identity intrinsics: they return their sole
+	// argument unchanged. Their purpose is to survive optimization as a
+	// recognizable sentinel so the html platform's placement analysis can pin
+	// the wrapped expression's front/back-end placement. Every non-html target
+	// emits them as a pass-through (just the translated argument). PurityPure so
+	// they never block folding of their argument, but the call node itself is
+	// preserved because the wrapping stdlib funcs are generic (InlinePure skips
+	// generics) and carry a non-empty Intrinsic id.
+	{Name: "HtmlFrontend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
+	{Name: "HtmlBackend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
 }
 
 // AlertIntrinsics are platform-level intrinsics for dialog/toast operations.

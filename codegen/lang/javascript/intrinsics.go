@@ -56,4 +56,11 @@ func init() {
 	// --- list (in-place mutations) ---
 	reg("ListPush", func(a []string) string { return a[0] + ".push(" + a[1] + ")" })
 	reg("ListRemove", func(a []string) string { return a[0] + ".splice(" + a[1] + ", 1)" })
+
+	// --- html placement directives (GitLab #27) ---
+	// html.frontend(v)/html.backend(v) are identity directives consumed by the
+	// html platform's placement analysis; for any non-html target they emit as
+	// just the translated argument (pass-through).
+	reg("HtmlFrontend", func(a []string) string { return a[0] })
+	reg("HtmlBackend", func(a []string) string { return a[0] })
 }

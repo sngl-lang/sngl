@@ -342,6 +342,14 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	if id := detectIntrinsicCall(fn); id != "" {
 		fn.Intrinsic = id
 		applyIntrinsicMetadata(fn, id)
+	} else if id := detectPlacementDirective(fn); id != "" {
+		// html.frontend/html.backend are identity expression-body funcs (=> v),
+		// not delegations to an intrinsic call, so detectIntrinsicCall does not
+		// match them. Assign their intrinsic id explicitly so they survive
+		// optimization as recognizable placement sentinels and emit pass-through
+		// for non-html targets.
+		fn.Intrinsic = id
+		applyIntrinsicMetadata(fn, id)
 	}
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
@@ -473,6 +481,27 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) {
 	if def.Purity != ir.PurityUnknown {
 		fn.Purity = def.Purity
 	}
+}
+
+// detectPlacementDirective recognizes the html.frontend / html.backend
+// placement directives (GitLab #27) by their receiver+name and maps them to
+// the HtmlFrontend / HtmlBackend intrinsic ids. These are identity
+// expression-body funcs (=> v) — not delegations to an intrinsic call — so
+// detectIntrinsicCall cannot match them. Assigning an intrinsic id keeps the
+// call node alive through optimization (the funcs are also generic, which
+// InlinePure already refuses to inline) and lets the html placement pass and
+// the per-language pass-through emitters recognize them by id.
+func detectPlacementDirective(fn *ir.Func) string {
+	if fn.Receiver != "html" || len(fn.Params) != 1 {
+		return ""
+	}
+	switch fn.Name {
+	case "frontend":
+		return "HtmlFrontend"
+	case "backend":
+		return "HtmlBackend"
+	}
+	return ""
 }
 
 // detectIntrinsicCall checks if a function body is a single return of a call

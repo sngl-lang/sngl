@@ -55,6 +55,24 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	}
 }
 
+func TestJsCall_HtmlPlacementDirectiveIsIdentity(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	for _, id := range []string{"HtmlFrontend", "HtmlBackend"} {
+		call := &ir.Call{
+			Func: &ir.Func{Name: id, Intrinsic: id},
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: "x"}}},
+		}
+		got := jc.EvalExpr(call)
+		if got != "x" {
+			t.Errorf("%s: got %q, want %q (pass-through identity)", id, got, "x")
+		}
+		if strings.Contains(got, "html.") || strings.Contains(got, id) {
+			t.Errorf("%s: directive leaked into output: %q", id, got)
+		}
+	}
+}
+
 func TestJsCall_RegexBuiltin(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

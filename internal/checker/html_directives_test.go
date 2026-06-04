@@ -2,6 +2,12 @@ package checker_test
 
 import (
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // TestHtmlPlacementDirectivesResolve verifies that the checker resolves
@@ -17,4 +23,56 @@ component main {
 	for _, d := range checkSrc(t, src) {
 		t.Fatalf("unexpected diag: %s", d.Msg)
 	}
+}
+
+// TestHtmlDirectiveIsPreservedIntrinsic verifies that after
+// parse→check→optimize→lower an html.frontend(...) call still exists carrying
+// Func.Intrinsic == "HtmlFrontend" — i.e. the identity directive is NOT folded
+// away by InlinePure, so the html placement analysis can still see it.
+func TestHtmlDirectiveIsPreservedIntrinsic(t *testing.T) {
+	src := `component main { var n = 0  text(value="x {html.frontend(n)}") }`
+	pkg := checkOptimizeLower(t, src)
+	if !pkgHasIntrinsicCall(pkg, "HtmlFrontend") {
+		t.Fatal("html.frontend call was erased; must survive as an intrinsic for placement analysis")
+	}
+}
+
+// checkOptimizeLower runs the full parse→check→optimize→lower pipeline that
+// codegen sees, returning the lowered package.
+func checkOptimizeLower(t *testing.T, src string) *ir.Package {
+	t.Helper()
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Msg)
+		}
+	}
+	if pkg == nil {
+		t.Fatal("nil pkg")
+	}
+	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	if err := lower.Lower(pkg, lower.Caps{}, lower.Options{}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	return pkg
+}
+
+// pkgHasIntrinsicCall reports whether any expression in the package is a call
+// to a func with the given Intrinsic id.
+func pkgHasIntrinsicCall(pkg *ir.Package, id string) bool {
+	found := false
+	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == id {
+			found = true
+			return true
+		}
+		return false
+	})
+	return found
 }

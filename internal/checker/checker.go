@@ -178,18 +178,26 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.scope = symtab.Root
 
 	// Inject all registered platform and language names as namespaces with
-	// Resolve fallback so raw element access (e.g., html.div) works.
+	// Resolve fallback so raw element access (e.g., html.div) works. If a
+	// stdlib namespace with the same name already exists (e.g. the "html"
+	// namespace declared by loadStdlib for the html.frontend/html.backend
+	// placement directives), preserve its Pkg and attach the Resolve fallback
+	// to the same namespace so named directives resolve via Pkg first and raw
+	// elements fall through to Resolve.
+	declareNS := func(name string, resolve func(string) ir.Symbol) {
+		if existing, ok := stdlibScope.LookupLocal(name); ok {
+			if ns, ok := existing.(*ir.Namespace); ok {
+				ns.Resolve = resolve
+				return
+			}
+		}
+		stdlibScope.Declare(&ir.Namespace{Name: name, Resolve: resolve})
+	}
 	for _, p := range cfg.Platforms {
-		stdlibScope.Declare(&ir.Namespace{
-			Name:    p.PlatformIdentifier(),
-			Resolve: p.Resolve,
-		})
+		declareNS(p.PlatformIdentifier(), p.Resolve)
 	}
 	for _, l := range cfg.Languages {
-		stdlibScope.Declare(&ir.Namespace{
-			Name:    l.LanguageIdentifier(),
-			Resolve: l.Resolve,
-		})
+		declareNS(l.LanguageIdentifier(), l.Resolve)
 	}
 
 	// Splice platform extension bodies into the stdlib components they target.
