@@ -20,6 +20,25 @@ func pkgWithImport(scheme, importPath string) *ir.Package {
 	}
 }
 
+// goCall builds a *ir.Call to a native func originating from the given import.
+func goCall(importPath string) *ir.Call {
+	return &ir.Call{Func: &ir.Func{NativePkg: importPath}}
+}
+
+// jsCall builds a *ir.Call to a native js:// func.
+func jsCall(importPath string) *ir.Call {
+	return &ir.Call{Func: &ir.Func{NativePkg: importPath}}
+}
+
+// intrinsicCall wraps an argument expression in a call to a func carrying the
+// given intrinsic id (e.g. "HtmlFrontend"/"HtmlBackend").
+func intrinsicCall(id string, arg ir.Expr) *ir.Call {
+	return &ir.Call{
+		Func: &ir.Func{Intrinsic: id},
+		Args: []ir.CallArg{{Value: arg}},
+	}
+}
+
 func TestFuncImportScheme(t *testing.T) {
 	t.Run("go native func", func(t *testing.T) {
 		pkg := pkgWithImport("go", "example.com/api")
@@ -46,6 +65,49 @@ func TestFuncImportScheme(t *testing.T) {
 		pkg := pkgWithImport("go", "example.com/api")
 		if s := funcImportScheme(pkg, nil); s != "" {
 			t.Fatalf("got %q want empty", s)
+		}
+	})
+}
+
+func TestExprPlacement(t *testing.T) {
+	t.Run("bare go call -> backend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		if p := exprPlacement(pkg, goCall("example.com/api")); p != Backend {
+			t.Fatalf("got %v want Backend", p)
+		}
+	})
+	t.Run("bare js call -> frontend", func(t *testing.T) {
+		pkg := pkgWithImport("js", "some-pkg")
+		if p := exprPlacement(pkg, jsCall("some-pkg")); p != Frontend {
+			t.Fatalf("got %v want Frontend", p)
+		}
+	})
+	t.Run("sngl-only expr -> frontend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		e := &ir.Binary{Left: &ir.Ident{Name: "n"}, Right: &ir.Literal{}}
+		if p := exprPlacement(pkg, e); p != Frontend {
+			t.Fatalf("got %v want Frontend", p)
+		}
+	})
+	t.Run("go call nested in expr -> backend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		e := &ir.Binary{Left: goCall("example.com/api"), Right: &ir.Literal{}}
+		if p := exprPlacement(pkg, e); p != Backend {
+			t.Fatalf("got %v want Backend", p)
+		}
+	})
+	t.Run("html.frontend(go_call) -> frontend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		e := intrinsicCall("HtmlFrontend", goCall("example.com/api"))
+		if p := exprPlacement(pkg, e); p != Frontend {
+			t.Fatalf("got %v want Frontend", p)
+		}
+	})
+	t.Run("html.backend(sngl_expr) -> backend", func(t *testing.T) {
+		pkg := pkgWithImport("go", "example.com/api")
+		e := intrinsicCall("HtmlBackend", &ir.Ident{Name: "n"})
+		if p := exprPlacement(pkg, e); p != Backend {
+			t.Fatalf("got %v want Backend", p)
 		}
 	})
 }

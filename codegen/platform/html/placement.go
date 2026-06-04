@@ -48,3 +48,170 @@ func funcImportScheme(pkg *ir.Package, fn *ir.Func) string {
 	}
 	return ""
 }
+
+// exprPlacement classifies a single expression.
+//
+//   - A call to the html.frontend intrinsic pins the expression Frontend.
+//   - A call to the html.backend intrinsic pins the expression Backend.
+//     (A directive pins its whole subtree: the default rule does not look
+//     inside it.)
+//   - Otherwise the expression is Backend iff any subexpression is a call to
+//     a native func whose import scheme is non-empty and not "js" (i.e. a
+//     non-js:// import, which cannot run in the browser by default); else
+//     Frontend.
+func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
+	if c, ok := e.(*ir.Call); ok && c.Func != nil {
+		switch c.Func.Intrinsic {
+		case htmlFrontendIntrinsic:
+			return Frontend
+		case htmlBackendIntrinsic:
+			return Backend
+		}
+	}
+	if exprIsBackendByDefault(pkg, e) {
+		return Backend
+	}
+	return Frontend
+}
+
+// exprIsBackendByDefault reports whether e (or any subexpression) calls a
+// non-js:// native func, ignoring directive wrappers (a directive pins its own
+// subtree, so we do not descend into it for the default rule).
+func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
+	found := false
+	walkExpr(e, func(x ir.Expr) bool {
+		c, ok := x.(*ir.Call)
+		if !ok {
+			return false
+		}
+		if c.Func != nil {
+			switch c.Func.Intrinsic {
+			case htmlFrontendIntrinsic, htmlBackendIntrinsic:
+				// Directive wrapper pins its subtree; skip descent.
+				return true
+			}
+			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
+				found = true
+				return true // short-circuit
+			}
+		}
+		return false
+	})
+	return found
+}
+
+// walkExpr visits e and each of its sub-expressions, calling fn on each.
+// fn returns true to prune the subtree at that node (stop descending into its
+// children) — used to honor directive-wrapper pinning and to short-circuit.
+func walkExpr(e ir.Expr, fn func(ir.Expr) bool) {
+	if e == nil {
+		return
+	}
+	if fn(e) {
+		return
+	}
+	switch x := e.(type) {
+	case *ir.Binary:
+		walkExpr(x.Left, fn)
+		walkExpr(x.Right, fn)
+	case *ir.Unary:
+		walkExpr(x.Operand, fn)
+	case *ir.Ternary:
+		walkExpr(x.Cond, fn)
+		walkExpr(x.Then, fn)
+		walkExpr(x.Else, fn)
+	case *ir.Call:
+		walkExpr(x.Receiver, fn)
+		walkExpr(x.Callee, fn)
+		for _, a := range x.Args {
+			walkExpr(a.Value, fn)
+		}
+	case *ir.Conversion:
+		walkExpr(x.Operand, fn)
+	case *ir.Select:
+		walkExpr(x.Operand, fn)
+	case *ir.Index:
+		walkExpr(x.Operand, fn)
+		walkExpr(x.Idx, fn)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			walkExpr(el, fn)
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			walkExpr(kv.Key, fn)
+			walkExpr(kv.Value, fn)
+		}
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			walkExpr(f.Value, fn)
+		}
+	case *ir.Lambda:
+		if x.Func != nil {
+			walkStmts(x.Func.Block, fn)
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			walkStmts(x.Func.Block, fn)
+		}
+	case *ir.Spread:
+		walkExpr(x.Operand, fn)
+	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		// Leaf — no sub-expressions.
+	}
+}
+
+// walkStmts visits every expression reachable from stmts via walkExpr.
+func walkStmts(stmts []ir.Stmt, fn func(ir.Expr) bool) {
+	for _, s := range stmts {
+		walkStmt(s, fn)
+	}
+}
+
+func walkStmt(s ir.Stmt, fn func(ir.Expr) bool) {
+	switch n := s.(type) {
+	case *ir.NodeInst:
+		for _, p := range n.Props {
+			walkExpr(p.Value, fn)
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil {
+				walkStmts(h.Func.Block, fn)
+			}
+		}
+		walkStmts(n.Children, fn)
+	case *ir.CallStmt:
+		if n.Call != nil {
+			walkExpr(n.Call, fn)
+		}
+	case *ir.Assign:
+		walkExpr(n.Target, fn)
+		walkExpr(n.Value, fn)
+	case *ir.Toggle:
+		walkExpr(n.Target, fn)
+	case *ir.Emit:
+		for _, a := range n.Args {
+			walkExpr(a.Value, fn)
+		}
+	case *ir.LocalVar:
+		walkExpr(n.Init, fn)
+	case *ir.Return:
+		walkExpr(n.Value, fn)
+	case *ir.If:
+		walkExpr(n.Cond, fn)
+		walkStmts(n.Body, fn)
+		walkStmts(n.Else, fn)
+	case *ir.For:
+		walkExpr(n.Iter, fn)
+		walkStmts(n.Body, fn)
+		walkStmts(n.Else, fn)
+	case *ir.SlotInst:
+		walkStmts(n.Children, fn)
+	case *ir.PlatformFilter:
+		walkStmts(n.Body, fn)
+	case *ir.ErrorBoundary:
+		walkStmts(n.Children, fn)
+	case *ir.ContextProvider:
+		walkStmts(n.Children, fn)
+	}
+}
