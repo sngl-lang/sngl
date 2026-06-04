@@ -491,6 +491,26 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		receiverName := n.Func.Receiver
 		qualName := receiverName + "." + fname
 
+		// lower.CreateComponent(comp, props) → __cf_<name>(props). Mirrors
+		// legacy translateIRNamespaceCall (translate_ir.go:390-404): the
+		// component-instance lowering emits this intrinsic with the `lower`
+		// namespace receiver, the component ident as arg[0], and the prop
+		// struct as arg[1]. Must precede every dispatch below.
+		if fname == "CreateComponent" {
+			if len(n.Args) != 2 {
+				return "/* CreateComponent: wrong arity */"
+			}
+			compIdent, ok := n.Args[0].Value.(*ir.Ident)
+			if !ok {
+				return "/* CreateComponent: arg[0] not an Ident */"
+			}
+			comp, ok := compIdent.Sym.(*ir.Component)
+			if !ok {
+				return "/* CreateComponent: arg[0].Sym not a Component */"
+			}
+			return factoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
+		}
+
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
 		// runtime entry points. After NoContext + InlinePure, i18n.*
 		// wrapper calls have been lowered to direct intl.* intrinsic
@@ -515,7 +535,24 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 			return result
 		}
-		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
+
+		// User-defined namespace-qualified function: emitted as a free
+		// function `<Receiver>_<Method>(receiver, args...)`. Mirrors legacy
+		// translate_ir.go:431-433 (scope.FuncNames path), which joins the
+		// receiver expression plus the call args. Here the equivalent is a
+		// scan of Pkg.Funcs for a matching Receiver+Name (same source the
+		// type-method path uses).
+		var call string
+		if jc.Ctx != nil && jc.Ctx.Pkg != nil && jc.userFuncMatches(receiverName, fname) {
+			jsName := strings.ReplaceAll(qualName, ".", "_")
+			call = jsName + "(" + strings.Join(allArgs, ", ") + ")"
+		} else {
+			call = receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
+		}
+		if n.Func.IsAsync {
+			call = "await " + call
+		}
+		return call
 	}
 	if receiver == "" {
 		// Codegen-only fallback: receiver resolved to nothing (e.g. an
@@ -524,6 +561,22 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		return "void 0 /* unresolved namespace call */"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// userFuncMatches reports whether Pkg.Funcs holds a user-defined function with
+// the given receiver type/namespace and name. This is the Pkg.Funcs analog of
+// the legacy scope.FuncNames lookup used by both the namespace-call and
+// type-method dispatch paths.
+func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
+	if jc.Ctx == nil || jc.Ctx.Pkg == nil {
+		return false
+	}
+	for _, f := range jc.Ctx.Pkg.Funcs {
+		if f.Receiver == receiver && f.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {

@@ -141,3 +141,106 @@ func TestJsEvalIdent_SynthesizedBareRef(t *testing.T) {
 		t.Errorf("expected bare '__n0'; got: %s", got)
 	}
 }
+
+// --- Task 1.10: CreateComponent + namespace user-func dispatch reconciliation ---
+
+// jsFuncTypeNoArgs returns a minimal func-typed ir.Type with no params/return.
+func jsFuncTypeNoArgs() *ir.Type {
+	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{}}
+}
+
+// jsIdentToVar builds an *ir.Ident whose Sym is v.
+func jsIdentToVar(v *ir.Var) *ir.Ident {
+	return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}
+}
+
+// TestJsNamespaceCall_CreateComponent mirrors the exact *ir.Call shape produced
+// by internal/lower/declarative.go lowerComponentNodeIntoStmts: the Func is the
+// CreateComponent intrinsic (Name+Intrinsic="CreateComponent", Receiver=""), the
+// Call.Receiver is the `lower` namespace ident, Args=[compIdent, propsLit].
+func TestJsNamespaceCall_CreateComponent(t *testing.T) {
+	comp := &ir.Component{Name: "Card"}
+	pkg := &ir.Package{Components: []*ir.Component{comp}}
+	ctx := codegen.NewExprCtx(pkg)
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "lower", Type: ir.TypDyn},
+		Func:     &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "Card", Sym: comp}},
+			{Value: &ir.StructLit{}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	want := factoryName(comp) + "({})"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestJsNamespaceCall_CreateComponentWithProps confirms props are evaluated and
+// passed positionally to the factory.
+func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
+	comp := &ir.Component{Name: "Badge"}
+	pkg := &ir.Package{Components: []*ir.Component{comp}}
+	ctx := codegen.NewExprCtx(pkg)
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "lower", Type: ir.TypDyn},
+		Func:     &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "Badge", Sym: comp}},
+			{Value: &ir.StructLit{Fields: []ir.FieldInit{
+				{Name: "label", Value: &ir.Literal{Type: ir.TypString, Raw: "Clicks"}},
+			}}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	want := factoryName(comp) + `({label: "Clicks"})`
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestJsNamespaceCall_UserFuncDispatch confirms a namespace-qualified user
+// function `ns.fn(x)` is emitted as `ns_fn(receiver, x)` — byte-identical to the
+// legacy scope.FuncNames path (translate_ir.go:431-433), which joins the receiver
+// expression plus the call args.
+func TestJsNamespaceCall_UserFuncDispatch(t *testing.T) {
+	userFn := &ir.Func{Name: "fn", Receiver: "ns"}
+	pkg := &ir.Package{Funcs: []*ir.Func{userFn}}
+	ctx := codegen.NewExprCtx(pkg)
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     userFn,
+		Receiver: &ir.Ident{Name: "ns"},
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: "x", Synthesized: true}},
+		},
+	}
+	got := jc.EvalExpr(call)
+	want := "ns_fn(ns, x)"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestJsNamespaceCall_UserFuncDispatchAsyncAwaits confirms the async wrapping on
+// the user-func dispatch path matches legacy (translate_ir.go:441-443).
+func TestJsNamespaceCall_UserFuncDispatchAsyncAwaits(t *testing.T) {
+	userFn := &ir.Func{Name: "load", Receiver: "ns", IsAsync: true}
+	pkg := &ir.Package{Funcs: []*ir.Func{userFn}}
+	ctx := codegen.NewExprCtx(pkg)
+	jc := NewIRContext(ctx)
+	call := &ir.Call{
+		Func:     userFn,
+		Receiver: &ir.Ident{Name: "ns"},
+	}
+	got := jc.EvalExpr(call)
+	want := "await ns_load(ns)"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
