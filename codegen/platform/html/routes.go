@@ -51,7 +51,9 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 			Title:     title,
 			Params:    extractRouteParams(path),
 			WindowIdx: i,
-			Actions:   collectActions(win, targets),
+			Actions:   collectActions(req.Pkg, win, targets),
+			Render:    buildRenderModel(req.Pkg, win, path),
+			StateVars: routeStateVars(req.Pkg),
 		})
 	}
 
@@ -234,24 +236,29 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 	return out
 }
 
-// collectActions walks a window's visual tree for event handlers whose body
-// transitively calls into the target language.
-func collectActions(win *codegen.WindowCtx, targets map[*ir.Func]bool) []codegen.HTTPAction {
+// collectActions walks a window's visual tree for event handlers placed on the
+// backend (per handlerPlacement: a transitive non-js:// import). Each such
+// handler becomes a server-state form action.
+//
+// Mutations carries the full handler block unchanged (consumed by the legacy
+// RenderHTML-based golang path). LogicalMutations carries the same body with
+// visual/DOM-patch statements removed (Phase 4 consumes this).
+func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Func]bool) []codegen.HTTPAction {
 	if len(targets) == 0 {
 		return nil
 	}
 	var actions []codegen.HTTPAction
-	visited := map[*ir.Func]bool{}
 	add := func(h *ir.EventHandler) {
 		if h == nil || h.Func == nil {
 			return
 		}
-		if !fnCallsTarget(h.Func, targets, visited) {
+		if handlerPlacement(pkg, h.Func) != Backend {
 			return
 		}
 		actions = append(actions, codegen.HTTPAction{
-			Name:      fmt.Sprintf("action%d", len(actions)),
-			Mutations: h.Func.Block,
+			Name:             fmt.Sprintf("action%d", len(actions)),
+			Mutations:        h.Func.Block,
+			LogicalMutations: logicalMutations(h.Func.Block),
 		})
 	}
 	for _, v := range win.Vars {
