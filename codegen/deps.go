@@ -283,7 +283,7 @@ func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) *i
 		}
 		// Cycle: fall through to non-binding resolution on root itself.
 	}
-	if root.Name == "this" && w.implicitThis != nil && field != "" {
+	if root.Name == ir.ReceiverParam && w.implicitThis != nil && field != "" {
 		return lookupCompVar(w.implicitThis, field)
 	}
 	if v, ok := root.Sym.(*ir.Var); ok {

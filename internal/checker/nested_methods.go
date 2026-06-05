@@ -23,7 +23,7 @@ func synthRecvTypeExpr(pos ast.Pos, name string, typeParams []string) ast.TypeEx
 // currentRecvType returns the IR type of `this` in the innermost active scope,
 // or nil if `this` is not bound (i.e. we're not inside a method body).
 func (c *checker) currentRecvType() *ir.Type {
-	sym, ok := c.scope.Lookup("this")
+	sym, ok := c.scope.Lookup(ir.ReceiverParam)
 	if !ok {
 		return nil
 	}
@@ -109,7 +109,7 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	}
 	return &ast.SelectExpr{
 		Pos:     ident.Pos,
-		Operand: &ast.IdentExpr{Pos: ident.Pos, Name: "this"},
+		Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
 		Field:   ident.Name,
 		Kind:    ast.SelectField,
 	}
@@ -199,7 +199,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		thisType := synthRecvTypeExpr(n.Pos, recvName, typeParams)
 		thisParam := ast.Param{
 			Pos:  n.Pos,
-			Name: "this",
+			Name: ir.ReceiverParam,
 			Type: thisType,
 		}
 		newParams := ast.ParamList{

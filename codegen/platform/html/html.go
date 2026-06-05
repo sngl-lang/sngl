@@ -3029,7 +3029,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for i, p := range fn.Params {
 		// Synthetic `this` receiver on desugared methods → emit as `state`
 		// so the param name matches the body's component-self translation.
-		if i == 0 && fn.Receiver != "" && p.Name == "this" {
+		if i == 0 && fn.Receiver != "" && p.Receiver {
 			params[i] = "state"
 		} else {
 			params[i] = p.Name
@@ -3054,7 +3054,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
 			if fn.Receiver != "" {
-				jc = jc.WithLocal("this")
+				jc = jc.WithLocal(ir.ReceiverParam)
 			}
 			for _, p := range fn.Params {
 				jc = jc.WithLocal(p.Name)
@@ -3073,7 +3073,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// writes and intrinsic statements lower identically to handler bodies.
 	jc := g.scopedJC()
 	if fn.Receiver != "" {
-		jc = jc.WithLocal("this")
+		jc = jc.WithLocal(ir.ReceiverParam)
 	}
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)

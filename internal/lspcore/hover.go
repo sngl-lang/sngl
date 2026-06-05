@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Hover returns markdown hover info for the word at the given 1-based position.
@@ -266,7 +267,7 @@ func formatFuncHover(f *ast.FuncDef, doc *ast.Document) string {
 	// for display we want to show the method as the user wrote it.
 	params := f.Params.Params
 	_, _, isMethod := ast.SplitMethodName(f.Name)
-	if isMethod && len(params) > 0 && params[0].Name == "this" {
+	if isMethod && len(params) > 0 && params[0].Name == ir.ReceiverParam {
 		params = params[1:]
 	}
 

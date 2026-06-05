@@ -416,7 +416,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// abstract key type parameter.
 	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
 		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.scope.Declare(&ir.Param{Name: "this", Type: thisType})
+			c.scope.Declare(&ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
 		}
 	}
 
@@ -535,7 +535,7 @@ func detectIntrinsicCall(fn *ir.Func) string {
 	//   func list<T>.push(item T) => stdlib.ListPush(this, item)
 	expected := make([]string, 0, len(fn.Params)+1)
 	if fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		expected = append(expected, "this")
+		expected = append(expected, ir.ReceiverParam)
 	}
 	for _, p := range fn.Params {
 		expected = append(expected, p.Name)

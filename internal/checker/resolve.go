@@ -535,6 +535,16 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	if isMethod {
 		fn.Receiver = typeName
 		fn.Name = methodName
+		// The receiver convention: a method's first param named `this` is the
+		// implicit receiver — whether prepended synthetically (bare component
+		// funcs) or written explicitly (`func T.m(this T)`). Mark it
+		// structurally here, the one place that owns the convention, so
+		// codegen/interp/lowering identify the receiver via Param.Receiver
+		// rather than re-matching the name (which a non-method param could
+		// coincidentally share).
+		if len(fn.Params) > 0 && fn.Params[0].Name == ir.ReceiverParam {
+			fn.Params[0].Receiver = true
+		}
 	}
 	return fn
 }

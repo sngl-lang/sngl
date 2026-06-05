@@ -52,7 +52,7 @@ component main {
 	out := string(modelSrc)
 
 	for _, snippet := range []string{
-		"func (m *Model) __renderSlot0(container *C.GtkBox)",
+		"func (m *Model) __renderSlot0(parent *C.GtkBox)",
 		"C.gtk_box_remove",
 		"m.__slot0 = nil",
 		"C.gtk_label_new",

@@ -746,7 +746,7 @@ func (env *Env) lookup(name string) (any, error) {
 	if env.Comp != nil {
 		if fn, ok := env.Funcs[env.Comp.Name+"."+name]; ok {
 			effective := len(fn.Params)
-			if effective > 0 && fn.Params[0].Name == "this" {
+			if effective > 0 && fn.Params[0].Receiver {
 				effective--
 			}
 			if effective == 0 {
@@ -1315,7 +1315,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 							if handlerEnv.Vars == nil {
 								handlerEnv.Vars = map[string]any{}
 							}
-							handlerEnv.Vars["this"] = owner
+							handlerEnv.Vars[ir.ReceiverParam] = owner
 						}
 						return handlerEnv.runEventHandler(h, call.Args, after)
 					}
@@ -1724,7 +1724,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 		// as plain `foo(args)`), shift bindings so user args land in n,
 		// not in this. `this` is expected to already be in execEnv.Vars.
 		argOffset := 0
-		if len(fn.Params) > 0 && fn.Params[0].Name == "this" && len(args) == len(fn.Params)-1 {
+		if len(fn.Params) > 0 && fn.Params[0].Receiver && len(args) == len(fn.Params)-1 {
 			argOffset = 1
 		}
 		savedVars := make(map[string]any)

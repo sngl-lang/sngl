@@ -514,9 +514,9 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		// slot body references it by that name, so renaming it here would
 		// leave those refs dangling (and gc would mis-qualify them as a
 		// Model field `m.Parent`).
-		Params:   []*ir.Param{{Name: "parent", Type: ir.NativePointerOf("GtkBox")}},
-		Return:   ir.TypVoid,
-		Block:    bodyStmts,
+		Params: []*ir.Param{{Name: "parent", Type: ir.NativePointerOf("GtkBox")}},
+		Return: ir.TypVoid,
+		Block:  bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

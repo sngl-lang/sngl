@@ -6,6 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
@@ -471,7 +472,7 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 	// `this.<member>` inside a method body: enumerate the receiver type's
 	// fields, members, and sibling methods.
-	if pkgDoc == nil && nsName == "this" {
+	if pkgDoc == nil && nsName == ir.ReceiverParam {
 		if items := thisCompletions(doc, line); items != nil {
 			return items
 		}

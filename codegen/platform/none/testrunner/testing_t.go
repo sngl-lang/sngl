@@ -352,7 +352,7 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	// Direct func by bare name (legacy closure-style).
 	if fn, ok := cv.Funcs[field]; ok {
 		effective := len(fn.Params)
-		if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
+		if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
 			effective--
 		}
 		if effective == 0 {
@@ -381,15 +381,15 @@ func (cv *componentValue) GetField(field string) (any, error) {
 		}
 		if ok {
 			effective := len(fn.Params)
-			if effective > 0 && fn.Receiver != "" && fn.Params[0].Name == "this" {
+			if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
 				effective--
 			}
 			if effective == 0 {
 				compEnv := cv.compEnv()
 				var synth []ir.Expr
-				if len(fn.Params) > 0 && fn.Params[0].Name == "this" {
-					compEnv.Vars["this"] = cv
-					synth = []ir.Expr{&ir.Ident{Name: "this"}}
+				if len(fn.Params) > 0 && fn.Params[0].Receiver {
+					compEnv.Vars[ir.ReceiverParam] = cv
+					synth = []ir.Expr{&ir.Ident{Name: ir.ReceiverParam}}
 				}
 				return compEnv.EvalUserFunc(fn, synth)
 			}
@@ -460,8 +460,8 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		evalArgs[i] = v
 	}
 	compEnv := cv.compEnv()
-	if len(fn.Params) > 0 && fn.Params[0].Name == "this" {
-		compEnv.Vars["this"] = cv
+	if len(fn.Params) > 0 && fn.Params[0].Receiver {
+		compEnv.Vars[ir.ReceiverParam] = cv
 	}
 	// Inherit the caller's call-depth counter so recursion through component
 	// methods hits the same depth limit as plain functions.

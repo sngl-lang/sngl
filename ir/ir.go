@@ -318,11 +318,23 @@ type Output struct {
 	Options  *StructLit
 }
 
+// ReceiverParam is the surface name of the implicit method receiver (SNGL's
+// `this`). The checker binds the desugared receiver under this name so that
+// `this` written in a method body resolves to it. It is NOT reserved, so code
+// must never use a name match to *identify* the synthetic receiver — test
+// Param.Receiver instead (a user may legitimately declare `func f(this int)`).
+const ReceiverParam = "this"
+
 // Param is a resolved function or component parameter.
 type Param struct {
 	Name    string
 	Type    *Type
 	Default Expr // nil if no default
+	// Receiver marks the synthetic first parameter the checker prepends when
+	// desugaring a nested method (`func Type.m()`) or a bare component func
+	// into top-level form. Codegen/interp/lowering test this flag to recognise
+	// the implicit receiver structurally, rather than matching its name.
+	Receiver bool
 }
 
 func (p *Param) SymName() string { return p.Name }

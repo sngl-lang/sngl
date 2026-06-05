@@ -63,7 +63,7 @@ func isAddressableListExpr(e ir.Expr) bool {
 		case *ir.Component:
 			return true // component self; fields on it are mutable state
 		case *ir.Param:
-			return sym.Name == "this" // implicit component receiver
+			return sym.Name == ir.ReceiverParam // implicit component receiver
 		case *ir.LoopVar:
 			return true // element of an outer &-bound loop (nested addressable)
 		}
@@ -317,7 +317,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				// calls both see a callable shape consistent with the source
 				// declaration.
 				sig := fn.FuncSig()
-				if len(sig.Params) > 0 && sig.Params[0].Name == "this" {
+				if len(sig.Params) > 0 && sig.Params[0].Receiver {
 					sig = &ir.FuncSig{
 						Params:     sig.Params[1:],
 						Return:     sig.Return,
@@ -717,7 +717,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 					if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
 						sel := &ast.SelectExpr{
 							Pos:     ident.Pos,
-							Operand: &ast.IdentExpr{Pos: ident.Pos, Name: "this"},
+							Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
 							Field:   ident.Name,
 							Kind:    ast.SelectField,
 						}
@@ -963,7 +963,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// RecvTypeParams are consumed by substitution, the receiver is the
 			// first explicit param — switch to recvParamStyle so the call-arg
 			// dispatch shifts past it.
-			if len(sig.Params) > 0 && sig.Params[0].Name == "this" {
+			if len(sig.Params) > 0 && sig.Params[0].Receiver {
 				recvParamStyle = true
 			}
 		}
@@ -1317,7 +1317,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// type-checking has long permitted via Dyn promotion.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
 			isThis := false
-			if ident, ok := x.Operand.(*ast.IdentExpr); ok && ident.Name == "this" {
+			if ident, ok := x.Operand.(*ast.IdentExpr); ok && ident.Name == ir.ReceiverParam {
 				isThis = true
 			}
 			if isThis {

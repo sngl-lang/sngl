@@ -222,7 +222,18 @@ func IsComputed(f *ir.Func) bool {
 		return false
 	}
 	n := len(f.Params)
-	if n > 0 && f.Receiver != "" && f.Params[0].Name == "this" {
+	if f.Receiver != "" {
+		// A receiver-bearing func is a component computed only when it
+		// carries the synthetic receiver param (added by registerNestedMethods
+		// for bare `func name()` decls inside a component) typed as a
+		// component. Explicit type methods like `func widget.select() bool`
+		// have a receiver but no such param — they are NOT computeds.
+		if n == 0 || !f.Params[0].Receiver {
+			return false
+		}
+		if t := f.Params[0].Type; t != nil && t.Kind != ir.TypeComponent {
+			return false
+		}
 		n--
 	}
 	return n == 0
