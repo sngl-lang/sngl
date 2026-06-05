@@ -179,14 +179,21 @@ func writeRenderBody(b *bytes.Buffer, indent, bv string, rr *codegen.RouteRender
 	}
 }
 
-// holeStringExpr renders a text/attr hole's expression coerced to a Go string.
-// String-typed expressions pass through; everything else routes through
-// fmt.Sprint (matching the client renderer's String() coercion).
+// holeStringExpr renders a text/attr hole's expression coerced to a Go string
+// and HTML-escaped. String-typed expressions pass through the string coercion;
+// everything else routes through fmt.Sprint (matching the client renderer's
+// String() coercion). The result is wrapped in html.EscapeString so state
+// echoed into a text node or a (double-quoted) attribute can't inject markup —
+// matching the client DOM path, which escapes via textContent/setAttribute.
+// html.EscapeString covers &, <, >, ' and ", so it is safe for both text and
+// double-quoted attribute contexts (the only attribute quoting the render model
+// emits).
 func holeStringExpr(h codegen.RouteHole, gc *GoIRContext) string {
 	expr := gc.EvalExpr(h.Expr)
-	if t := h.Expr.ExprType(); t != nil && IRTypeToGo(t) == "string" {
-		return expr
+	if t := h.Expr.ExprType(); t == nil || IRTypeToGo(t) != "string" {
+		gc.RequireImport("fmt")
+		expr = "fmt.Sprint(" + expr + ")"
 	}
-	gc.RequireImport("fmt")
-	return "fmt.Sprint(" + expr + ")"
+	gc.RequireImport("html")
+	return "html.EscapeString(" + expr + ")"
 }
