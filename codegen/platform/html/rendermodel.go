@@ -190,8 +190,12 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 }
 
 // htmlTagFor maps a SNGL element/component name to the HTML tag the route
-// skeleton emits. Layout primitives become <div>; text becomes <span>; an
-// already-HTML name passes through.
+// skeleton emits. Layout primitives become <div>; text becomes <span>. A
+// namespaced platform-sngl wrapper (e.g. html.input) trusts its suffix as the
+// real tag. An unrecognized BARE name (a user component or unknown element) is
+// conservatively rendered as <div> rather than emitting a bogus <name> literal
+// — chosen over a hard build error so existing component fixtures keep
+// rendering (a wrong-but-valid container, not invalid markup).
 func htmlTagFor(name string) string {
 	switch name {
 	case "vbox", "hbox", "box", "stack", "grid":
@@ -204,7 +208,7 @@ func htmlTagFor(name string) string {
 	if i := strings.IndexByte(name, '.'); i >= 0 {
 		return name[i+1:]
 	}
-	return name
+	return "div"
 }
 
 // isTextContentProp reports whether prop is rendered as the element's text
