@@ -1,8 +1,10 @@
 # Front/back-end placement: import-language routing + `html.frontend`/`html.backend` + server-side actions
 
 **Date:** 2026-06-04
-**Status:** Design approved, plan pending
+**Status:** Implemented (2026-06-04)
 **Tracks:** GitLab issue #27 (`html.frontend` / `html.backend`)
+
+> GitLab issue #27 (`html.frontend` / `html.backend`) is implemented and can be closed.
 
 ## Problem
 
