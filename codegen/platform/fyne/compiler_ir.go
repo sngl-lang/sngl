@@ -140,10 +140,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	// Computed functions
-	allFuncs := pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
@@ -328,10 +325,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// per-window Funcs (declarative lowering promotes node-attached
 	// handlers into the surrounding Window.Funcs slice when a Window
 	// statement wraps the body).
-	allFuncs := ctx.Pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 	for _, w := range wins {
 		// Skip synthetic windows: codegen.Windows() returns a synthetic
 		// WindowCtx with main.Funcs duplicated when no explicit window

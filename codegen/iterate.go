@@ -266,6 +266,32 @@ func (ctx *CodegenCtx) MainComponent() *ir.Component {
 	return nil
 }
 
+// AllFuncs returns every function codegen should emit: the package-level
+// funcs plus the main component's funcs, deduped by pointer. Nested component
+// methods are registered in BOTH pkg.Funcs and component.Funcs (the checker's
+// registerNestedMethods appends the same *ir.Func to each), so a naive
+// pkg.Funcs+main.Funcs concatenation double-emits them. All platforms must go
+// through here rather than concatenating themselves.
+func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
+	pkgFuncs := ctx.Pkg.Funcs
+	out := make([]*ir.Func, 0, len(pkgFuncs))
+	seen := make(map[*ir.Func]bool, len(pkgFuncs))
+	add := func(fns []*ir.Func) {
+		for _, f := range fns {
+			if seen[f] {
+				continue
+			}
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	add(pkgFuncs)
+	if main := ctx.MainComponent(); main != nil {
+		add(main.Funcs)
+	}
+	return out
+}
+
 // NonMainComponents returns all components except the one MainComponent
 // designates as the app root. Under test/agent mode RootComponent overrides
 // the default "main" lookup, so this filter follows the same selection to

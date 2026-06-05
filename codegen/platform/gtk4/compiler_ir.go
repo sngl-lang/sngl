@@ -252,10 +252,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	allFuncs := pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
@@ -313,10 +310,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	}
 
 	// --- Phase 2: User functions (non-computed, non-test, non-method) ---
-	allFuncs := c.ctx.Pkg.Funcs
-	if main := c.ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := c.ctx.AllFuncs()
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
