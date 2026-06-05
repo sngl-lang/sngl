@@ -25,6 +25,18 @@ func ExprToStaticValueIR(e ir.Expr) string {
 	return irLiteralStaticValue(lit)
 }
 
+// ColorExprToCSS renders a color struct-literal expression to a CSS color
+// string (`#rrggbb` or `rgba(...)`). Returns ok=false when e isn't a color
+// struct shape. Exported for non-html backends (e.g. bubbletea's lipgloss
+// color args) that lower `#rrggbb` style literals the same way.
+func ColorExprToCSS(e ir.Expr) (string, bool) {
+	sl, ok := e.(*ir.StructLit)
+	if !ok {
+		return "", false
+	}
+	return colorStructToCSS(sl)
+}
+
 // colorStructToCSS renders a `color{r,g,b,a}` struct literal — the lowered
 // form of a `#rrggbb[aa]` literal (see checker.lowerHexLiteral) — to a CSS
 // color string: `#rrggbb` when fully opaque, otherwise `rgba(r,g,b,a)`.

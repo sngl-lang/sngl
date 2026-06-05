@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -606,6 +608,17 @@ func buildIRStyleExpr(styles map[string]ir.Expr, gc *golang.GoIRContext, scaleFa
 	return strings.Join(chain, ".\n")
 }
 
+// lipglossColor renders a color style value for `lipgloss.Color(...)`. A
+// `#rrggbb` literal lowers to a Color struct, which lipgloss can't consume;
+// convert it to a quoted hex string. Anything else (a string literal or
+// dynamic expression already evaluating to a CSS color) passes through.
+func lipglossColor(expr ir.Expr, val string) string {
+	if css, ok := htmlutil.ColorExprToCSS(expr); ok {
+		return strconv.Quote(css)
+	}
+	return val
+}
+
 // scaleVal wraps a numeric value expression with pixel-to-cell scaling.
 func scaleVal(val string, scaleFactor int) string {
 	var n int
@@ -652,9 +665,9 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 	case "maxHeight":
 		return fmt.Sprintf("MaxHeight(%s)", scaleVal(val, scaleFactor))
 	case "color":
-		return fmt.Sprintf("Foreground(lipgloss.Color(%s))", val)
+		return fmt.Sprintf("Foreground(lipgloss.Color(%s))", lipglossColor(expr, val))
 	case "background":
-		return fmt.Sprintf("Background(lipgloss.Color(%s))", val)
+		return fmt.Sprintf("Background(lipgloss.Color(%s))", lipglossColor(expr, val))
 	case "fontWeight":
 		if val == `"bold"` {
 			return "Bold(true)"
@@ -675,7 +688,7 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 	case "borderWidth":
 		return "Border(lipgloss.NormalBorder())"
 	case "borderColor":
-		return fmt.Sprintf("BorderForeground(lipgloss.Color(%s))", val)
+		return fmt.Sprintf("BorderForeground(lipgloss.Color(%s))", lipglossColor(expr, val))
 	case "opacity":
 		return "Faint(true)"
 	}
