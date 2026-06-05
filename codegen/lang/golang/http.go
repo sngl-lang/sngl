@@ -126,18 +126,29 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 
 	loader := "load" + ExportName(r.Name) + "State"
 
-	// GET handler: load session → write the rendered page.
+	// GET handler: load session (locking it across the render) → write page.
 	fmt.Fprintf(b, "func %s(w http.ResponseWriter, r *http.Request) {\n", r.Name)
 	fmt.Fprintln(b, `	w.Header().Set("Content-Type", "text/html; charset=utf-8")`)
-	fmt.Fprintf(b, "\t%s := %s(snglSessionID(w, r))\n", routeStateReceiver, loader)
+	fmt.Fprintln(b, "\tid, ok := snglSessionID(w, r)")
+	fmt.Fprintln(b, "\tif !ok {")
+	fmt.Fprintln(b, "\t\treturn")
+	fmt.Fprintln(b, "\t}")
+	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
+	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
 	fmt.Fprintf(b, "\tw.Write([]byte(%s(%s)))\n", renderFn, routeStateReceiver)
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 
-	// POST handler (PRG): load session → dispatch on _action → run the
-	// action's logical mutations against s → 303 redirect.
+	// POST handler (PRG): load session (locking it across the mutation) →
+	// dispatch on _action → run the action's logical mutations against s →
+	// 303 redirect.
 	fmt.Fprintf(b, "func %sAction(w http.ResponseWriter, r *http.Request) {\n", r.Name)
-	fmt.Fprintf(b, "\t%s := %s(snglSessionID(w, r))\n", routeStateReceiver, loader)
+	fmt.Fprintln(b, "\tid, ok := snglSessionID(w, r)")
+	fmt.Fprintln(b, "\tif !ok {")
+	fmt.Fprintln(b, "\t\treturn")
+	fmt.Fprintln(b, "\t}")
+	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
+	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
 	fmt.Fprintln(b, `	switch r.FormValue("_action") {`)
 	for i, act := range r.Actions {
 		fmt.Fprintf(b, "\tcase %q:\n", fmt.Sprintf("%d", i))
