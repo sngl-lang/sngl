@@ -44,7 +44,7 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 
 IfNode = "if" CondExpr StmtBlock [ "else" StmtBlock ]
 
-ForNode = "for" IDENT [ "," IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" [ amp ] IDENT [ "," [ amp ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 

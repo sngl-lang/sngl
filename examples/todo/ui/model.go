@@ -3,17 +3,12 @@
 package ui
 
 import (
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"fmt"
 	"strings"
-
-	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 )
-
-var _ = fmt.Sprint
-var _ = strings.Join
-var _ = lipgloss.NewStyle
 
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
@@ -148,7 +143,7 @@ func (m Model) View() tea.View {
 	var contentChildren []string
 	var content_0 string
 	content_0 = lipgloss.NewStyle().
-		Bold(true).Render(fmt.Sprint((("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")))
+		Bold(true).Render(fmt.Sprint(m.status()))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Children []string

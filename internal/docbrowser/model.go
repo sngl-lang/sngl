@@ -3,18 +3,13 @@
 package docbrowser
 
 import (
-	"fmt"
-	lookup "git.duckfam.us/jonathan/sngl/docs/lookup"
-	"strings"
-
 	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"fmt"
+	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"strings"
 )
-
-var _ = fmt.Sprint
-var _ = strings.Join
-var _ = lipgloss.NewStyle
 
 func ternary[T any](cond bool, a, b T) T {
 	if cond {
@@ -202,7 +197,7 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	if !lookup.Resolve(m.path, m.ident1, m.ident2).Found && (lookup.Resolve(m.path, m.ident1, m.ident2).Error != "") {
+	if !m.entry().Found && (m.entry().Error != "") {
 		var content_1Children []string
 		var content_1_0 string
 		content_1_0 = lipgloss.NewStyle().
@@ -210,26 +205,26 @@ func (m Model) View() tea.View {
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).Error))
+			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().Error))
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
 	}
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "index" {
+	if m.entry().Kind == "index" {
 		var content_2Children []string
 		var content_2_0 string
 		content_2_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).Index.Title))
+			Bold(true).Render(fmt.Sprint(m.entry().Index.Title))
 		content_2Children = append(content_2Children, content_2_0)
 		var content_2_1 string
 		content_2_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#aaa")).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).Index.Description))
+			Foreground(lipgloss.Color("#aaa")).Render(fmt.Sprint(m.entry().Index.Description))
 		content_2Children = append(content_2Children, content_2_1)
 		var content_2_2 string
-		if lookup.Resolve(m.path, m.ident1, m.ident2).Index.IsNative && (lookup.Resolve(m.path, m.ident1, m.ident2).Index.NativeImportPath != "") {
+		if m.entry().Index.IsNative && (m.entry().Index.NativeImportPath != "") {
 			content_2_2 = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(("Import: " + lookup.Resolve(m.path, m.ident1, m.ident2).Index.NativeImportPath)))
+				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath)))
 		}
 		content_2Children = append(content_2Children, content_2_2)
 		var content_2_3 string
@@ -242,7 +237,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_4)
 		var content_2_5 string
 		var content_2_5Items []string
-		for _, c := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Components {
+		for _, c := range m.entry().Index.Components {
 			_ = c
 			var content_2_5Item string
 			content_2_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
@@ -260,7 +255,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_7)
 		var content_2_8 string
 		var content_2_8Items []string
-		for _, t := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Types {
+		for _, t := range m.entry().Index.Types {
 			_ = t
 			var content_2_8Item string
 			content_2_8Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + t.Name) + " — ") + t.Doc)))
@@ -278,7 +273,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_10)
 		var content_2_11 string
 		var content_2_11Items []string
-		for _, e := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Enums {
+		for _, e := range m.entry().Index.Enums {
 			_ = e
 			var content_2_11Item string
 			content_2_11Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc)))
@@ -296,7 +291,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_13)
 		var content_2_14 string
 		var content_2_14Items []string
-		for _, f := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Functions {
+		for _, f := range m.entry().Index.Functions {
 			_ = f
 			var content_2_14Item string
 			content_2_14Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc)))
@@ -314,7 +309,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_16)
 		var content_2_17 string
 		var content_2_17Items []string
-		for _, c := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Constants {
+		for _, c := range m.entry().Index.Constants {
 			_ = c
 			var content_2_17Item string
 			content_2_17Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
@@ -332,7 +327,7 @@ func (m Model) View() tea.View {
 		content_2Children = append(content_2Children, content_2_19)
 		var content_2_20 string
 		var content_2_20Items []string
-		for _, d := range lookup.Resolve(m.path, m.ident1, m.ident2).Index.Data {
+		for _, d := range m.entry().Index.Data {
 			_ = d
 			var content_2_20Item string
 			content_2_20Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc)))
@@ -344,14 +339,14 @@ func (m Model) View() tea.View {
 	}
 	contentChildren = append(contentChildren, content_2)
 	var content_3 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "component" {
+	if m.entry().Kind == "component" {
 		var content_3Children []string
 		var content_3_0 string
 		content_3_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).ComponentDoc.Name))
+			Bold(true).Render(fmt.Sprint(m.entry().ComponentDoc.Name))
 		content_3Children = append(content_3Children, content_3_0)
 		var content_3_1 string
-		content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).ComponentDoc.Doc))
+		content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ComponentDoc.Doc))
 		content_3Children = append(content_3Children, content_3_1)
 		var content_3_2 string
 		content_3_2 = lipgloss.NewStyle().
@@ -360,7 +355,7 @@ func (m Model) View() tea.View {
 		content_3Children = append(content_3Children, content_3_2)
 		var content_3_3 string
 		var content_3_3Items []string
-		for _, p := range lookup.Resolve(m.path, m.ident1, m.ident2).ComponentDoc.Props {
+		for _, p := range m.entry().ComponentDoc.Props {
 			_ = p
 			var content_3_3Item string
 			content_3_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc)))
@@ -375,7 +370,7 @@ func (m Model) View() tea.View {
 		content_3Children = append(content_3Children, content_3_4)
 		var content_3_5 string
 		var content_3_5Items []string
-		for _, e := range lookup.Resolve(m.path, m.ident1, m.ident2).ComponentDoc.Events {
+		for _, e := range m.entry().ComponentDoc.Events {
 			_ = e
 			var content_3_5Item string
 			content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
@@ -387,14 +382,14 @@ func (m Model) View() tea.View {
 	}
 	contentChildren = append(contentChildren, content_3)
 	var content_4 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "type" {
+	if m.entry().Kind == "type" {
 		var content_4Children []string
 		var content_4_0 string
 		content_4_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).TypeDoc.Name))
+			Bold(true).Render(fmt.Sprint(m.entry().TypeDoc.Name))
 		content_4Children = append(content_4Children, content_4_0)
 		var content_4_1 string
-		content_4_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).TypeDoc.Doc))
+		content_4_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().TypeDoc.Doc))
 		content_4Children = append(content_4Children, content_4_1)
 		var content_4_2 string
 		content_4_2 = lipgloss.NewStyle().
@@ -403,7 +398,7 @@ func (m Model) View() tea.View {
 		content_4Children = append(content_4Children, content_4_2)
 		var content_4_3 string
 		var content_4_3Items []string
-		for _, f := range lookup.Resolve(m.path, m.ident1, m.ident2).TypeDoc.Fields {
+		for _, f := range m.entry().TypeDoc.Fields {
 			_ = f
 			var content_4_3Item string
 			content_4_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + "  ") + f.Type)))
@@ -418,7 +413,7 @@ func (m Model) View() tea.View {
 		content_4Children = append(content_4Children, content_4_4)
 		var content_4_5 string
 		var content_4_5Items []string
-		for _, m := range lookup.Resolve(m.path, m.ident1, m.ident2).TypeDoc.Methods {
+		for _, m := range m.entry().TypeDoc.Methods {
 			_ = m
 			var content_4_5Item string
 			content_4_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  ." + m.Short) + "  ") + m.Doc)))
@@ -430,18 +425,18 @@ func (m Model) View() tea.View {
 	}
 	contentChildren = append(contentChildren, content_4)
 	var content_5 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "enum" {
+	if m.entry().Kind == "enum" {
 		var content_5Children []string
 		var content_5_0 string
 		content_5_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).EnumDoc.Name))
+			Bold(true).Render(fmt.Sprint(m.entry().EnumDoc.Name))
 		content_5Children = append(content_5Children, content_5_0)
 		var content_5_1 string
-		content_5_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).EnumDoc.Doc))
+		content_5_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().EnumDoc.Doc))
 		content_5Children = append(content_5Children, content_5_1)
 		var content_5_2 string
 		var content_5_2Items []string
-		for _, m := range lookup.Resolve(m.path, m.ident1, m.ident2).EnumDoc.Members {
+		for _, m := range m.entry().EnumDoc.Members {
 			_ = m
 			var content_5_2Item string
 			content_5_2Item = lipgloss.NewStyle().Render(fmt.Sprint(("  • " + m.Name)))
@@ -453,76 +448,76 @@ func (m Model) View() tea.View {
 	}
 	contentChildren = append(contentChildren, content_5)
 	var content_6 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "func" {
+	if m.entry().Kind == "func" {
 		var content_6Children []string
 		var content_6_0 string
 		content_6_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).FuncDoc.Name))
+			Bold(true).Render(fmt.Sprint(m.entry().FuncDoc.Name))
 		content_6Children = append(content_6Children, content_6_0)
 		var content_6_1 string
-		content_6_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).FuncDoc.Signature))
+		content_6_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Signature))
 		content_6Children = append(content_6Children, content_6_1)
 		var content_6_2 string
-		content_6_2 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).FuncDoc.Doc))
+		content_6_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Doc))
 		content_6Children = append(content_6Children, content_6_2)
 		content_6 = lipgloss.JoinVertical(lipgloss.Left, content_6Children...)
 	}
 	contentChildren = append(contentChildren, content_6)
 	var content_7 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "value" {
+	if m.entry().Kind == "value" {
 		var content_7Children []string
 		var content_7_0 string
 		content_7_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).ValueDoc.Name))
+			Bold(true).Render(fmt.Sprint(m.entry().ValueDoc.Name))
 		content_7Children = append(content_7Children, content_7_0)
 		var content_7_1 string
 		content_7_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).ValueDoc.Type))
+			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().ValueDoc.Type))
 		content_7Children = append(content_7Children, content_7_1)
 		var content_7_2 string
-		content_7_2 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).ValueDoc.Doc))
+		content_7_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ValueDoc.Doc))
 		content_7Children = append(content_7Children, content_7_2)
 		content_7 = lipgloss.JoinVertical(lipgloss.Left, content_7Children...)
 	}
 	contentChildren = append(contentChildren, content_7)
 	var content_8 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "prop" {
+	if m.entry().Kind == "prop" {
 		var content_8Children []string
 		var content_8_0 string
 		content_8_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((lookup.Resolve(m.path, m.ident1, m.ident2).PropDoc.ComponentName + ".") + lookup.Resolve(m.path, m.ident1, m.ident2).PropDoc.Name)))
+			Bold(true).Render(fmt.Sprint(((m.entry().PropDoc.ComponentName + ".") + m.entry().PropDoc.Name)))
 		content_8Children = append(content_8Children, content_8_0)
 		var content_8_1 string
-		content_8_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).PropDoc.Type))
+		content_8_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Type))
 		content_8Children = append(content_8Children, content_8_1)
 		var content_8_2 string
-		content_8_2 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).PropDoc.Doc))
+		content_8_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Doc))
 		content_8Children = append(content_8Children, content_8_2)
 		content_8 = lipgloss.JoinVertical(lipgloss.Left, content_8Children...)
 	}
 	contentChildren = append(contentChildren, content_8)
 	var content_9 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "field" {
+	if m.entry().Kind == "field" {
 		var content_9Children []string
 		var content_9_0 string
 		content_9_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((lookup.Resolve(m.path, m.ident1, m.ident2).FieldDoc.Type + ".") + lookup.Resolve(m.path, m.ident1, m.ident2).FieldDoc.Name)))
+			Bold(true).Render(fmt.Sprint(((m.entry().FieldDoc.Type + ".") + m.entry().FieldDoc.Name)))
 		content_9Children = append(content_9Children, content_9_0)
 		var content_9_1 string
-		content_9_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).FieldDoc.Expr))
+		content_9_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FieldDoc.Expr))
 		content_9Children = append(content_9Children, content_9_1)
 		content_9 = lipgloss.JoinVertical(lipgloss.Left, content_9Children...)
 	}
 	contentChildren = append(contentChildren, content_9)
 	var content_10 string
-	if lookup.Resolve(m.path, m.ident1, m.ident2).Kind == "member" {
+	if m.entry().Kind == "member" {
 		var content_10Children []string
 		var content_10_0 string
 		content_10_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((lookup.Resolve(m.path, m.ident1, m.ident2).MemberDoc.EnumName + ".") + lookup.Resolve(m.path, m.ident1, m.ident2).MemberDoc.Name)))
+			Bold(true).Render(fmt.Sprint(((m.entry().MemberDoc.EnumName + ".") + m.entry().MemberDoc.Name)))
 		content_10Children = append(content_10Children, content_10_0)
 		var content_10_1 string
-		content_10_1 = lipgloss.NewStyle().Render(fmt.Sprint(lookup.Resolve(m.path, m.ident1, m.ident2).MemberDoc.Doc))
+		content_10_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().MemberDoc.Doc))
 		content_10Children = append(content_10Children, content_10_1)
 		content_10 = lipgloss.JoinVertical(lipgloss.Left, content_10Children...)
 	}
