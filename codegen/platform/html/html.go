@@ -84,6 +84,12 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		codegen.SetOptionField(req.Options, "main", false)
 	}
 
+	// Validate placement directives (html.frontend/html.backend) before any
+	// mode-specific work; these guards are language- and mode-agnostic.
+	if err := checkPlacementDirectives(req.Pkg); err != nil {
+		return err
+	}
+
 	if req.Lang.LanguageIdentifier() == "none" {
 		if err := rejectDynamicHrefs(req); err != nil {
 			return err

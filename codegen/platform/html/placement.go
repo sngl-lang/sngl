@@ -1,6 +1,8 @@
 package html
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -121,6 +123,82 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 		return Backend
 	}
 	return Frontend
+}
+
+// checkPlacementDirectives validates the html.frontend/html.backend directives
+// across the whole package, returning the first build error found:
+//
+//   - html.backend(<const expr>): forcing a plain constant expression to the
+//     server means generating a lazy-loaded static file, which is not yet
+//     implemented (Task 6.2). A func value wrapped by html.backend becomes an
+//     HTTP route and is allowed.
+//   - html.frontend(<server-only value>): forcing a value client-side that is
+//     explicitly pinned server-side (it wraps an html.backend(...) subtree) is
+//     a contradiction and cannot be honored (Task 6.3).
+//
+// Note (6.3 simplification): a bare go:// call under html.frontend is allowed —
+// it compiles to WASM (Phase 5). The only "server-only value" this v1 rule
+// recognizes is one explicitly pinned with a nested html.backend directive.
+// Inferring server-only *state* (vars mutated solely by backend routes) is left
+// for a later pass.
+func checkPlacementDirectives(pkg *ir.Package) error {
+	if pkg == nil {
+		return nil
+	}
+	var err error
+	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+		c, ok := e.(*ir.Call)
+		if !ok || c.Func == nil || len(c.Args) == 0 {
+			return false
+		}
+		arg := c.Args[0].Value
+		switch c.Func.Intrinsic {
+		case htmlBackendIntrinsic:
+			// A func value → HTTP route (supported). Anything else is a
+			// constant/data expression: const→file backend, not implemented.
+			if !isFuncValue(arg) {
+				err = fmt.Errorf("html: html.backend(...) wrapping a constant expression compiles to a lazy-loaded static file, which is not yet implemented — only html.backend of a func/handler (an HTTP route) is supported")
+				return true
+			}
+		case htmlFrontendIntrinsic:
+			// A value explicitly pinned server-side (nested html.backend)
+			// cannot also be forced client-side.
+			if wrapsBackendDirective(arg) {
+				err = fmt.Errorf("html: html.frontend(...) wraps a value pinned to the server with html.backend(...) — a value cannot run both client-side and server-side; remove one of the directives")
+				return true
+			}
+		}
+		return false
+	})
+	return err
+}
+
+// wrapsBackendDirective reports whether e (or any subexpression) is an
+// html.backend(...) call — i.e. a value explicitly pinned server-side.
+func wrapsBackendDirective(e ir.Expr) bool {
+	found := false
+	walkExpr(e, func(x ir.Expr) bool {
+		if c, ok := x.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlBackendIntrinsic {
+			found = true
+			return true
+		}
+		return false
+	})
+	return found
+}
+
+// isFuncValue reports whether e denotes a function value (a lambda/closure or
+// an expression whose type is a func type) — the form html.backend turns into
+// an HTTP route.
+func isFuncValue(e ir.Expr) bool {
+	switch e.(type) {
+	case *ir.Lambda, *ir.Closure:
+		return true
+	}
+	if t := e.ExprType(); t != nil && t.Kind == ir.TypeFunc {
+		return true
+	}
+	return false
 }
 
 // nativeFuncKey identifies a native (scheme-imported) func by its originating

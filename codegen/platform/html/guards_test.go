@@ -69,3 +69,58 @@ func TestStaticBackendHandlerErrors(t *testing.T) {
 		t.Fatalf("error must name the window and mention a server, got: %v", msg)
 	}
 }
+
+// directivePkg wraps a single expression in a text binding inside main, so
+// checkPlacementDirectives sees it during the package walk.
+func directivePkg(binding ir.Expr) *ir.Package {
+	text := &ir.NodeInst{
+		Name:  "text",
+		Props: []ir.Arg{{Value: binding}},
+	}
+	return &ir.Package{
+		Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{text}}},
+	}
+}
+
+// TestBackendConstExprErrors pins Task 6.2: html.backend wrapping a constant
+// (non-func) expression is a clear not-yet-implemented error.
+func TestBackendConstExprErrors(t *testing.T) {
+	binding := intrinsicCall("HtmlBackend", &ir.Literal{Raw: "42", Type: ir.TypInt})
+	err := checkPlacementDirectives(directivePkg(binding))
+	if err == nil {
+		t.Fatal("expected error for html.backend(const), got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "not yet implemented") || !strings.Contains(msg, "html.backend") {
+		t.Fatalf("error must say html.backend const→file not yet implemented, got: %v", msg)
+	}
+}
+
+// TestFrontendOnBackendValueErrors pins Task 6.3: html.frontend wrapping a
+// value explicitly pinned server-side (nested html.backend) is a clear error.
+func TestFrontendOnBackendValueErrors(t *testing.T) {
+	inner := intrinsicCall("HtmlBackend", &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc}})
+	binding := intrinsicCall("HtmlFrontend", inner)
+	err := checkPlacementDirectives(directivePkg(binding))
+	if err == nil {
+		t.Fatal("expected error for html.frontend(html.backend(...)), got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "html.frontend") || !strings.Contains(msg, "server") {
+		t.Fatalf("error must explain client/server contradiction, got: %v", msg)
+	}
+}
+
+// TestFrontendGoCallAllowed guards the Phase 5 contract against the 6.3 rule:
+// a bare go:// call under html.frontend is the WASM opt-in and must NOT error.
+func TestFrontendGoCallAllowed(t *testing.T) {
+	pkg := pkgWithImport("go", "example.com/api")
+	pkg.Components = []*ir.Component{{Name: "main", Body: []ir.Stmt{
+		&ir.NodeInst{Name: "text", Props: []ir.Arg{{
+			Value: intrinsicCall("HtmlFrontend", goCall("example.com/api")),
+		}}},
+	}}}
+	if err := checkPlacementDirectives(pkg); err != nil {
+		t.Fatalf("html.frontend(go_call) is the WASM opt-in and must not error, got: %v", err)
+	}
+}
