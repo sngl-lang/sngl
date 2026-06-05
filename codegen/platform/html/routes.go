@@ -30,6 +30,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	ctx := codegen.NewCodegenCtx(req, "html")
 	windows := ctx.Windows()
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
+	// StateVars are package-global (not per-window), so compute once and reuse.
+	stateVars := routeStateVars(req.Pkg)
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
@@ -45,15 +47,22 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 			path = defaultRoutePath(win.Name, i)
 		}
 		title, _ := codegen.IRLiteralString(titleExpr)
+		// Single source of truth for action indexing: collectActions enumerates
+		// every backend handler in a stable order and returns both the action
+		// list (whose slice index is the POST switch case) and a map from each
+		// handler to that same index. buildRenderModel uses the map so a form's
+		// hidden _action value is guaranteed to match the switch case that runs
+		// the handler's mutations — the two no longer count independently.
+		actions, actionIdx := collectActions(req.Pkg, win, targets)
 		routes = append(routes, codegen.HTTPRoute{
 			Name:      routeHandlerName(win.Name, path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
 			WindowIdx: i,
-			Actions:   collectActions(req.Pkg, win, targets),
-			Render:    buildRenderModel(req.Pkg, win, path),
-			StateVars: routeStateVars(req.Pkg),
+			Actions:   actions,
+			Render:    buildRenderModel(req.Pkg, win, path, actionIdx),
+			StateVars: stateVars,
 		})
 	}
 
@@ -276,11 +285,20 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 // Mutations carries the full handler block unchanged (consumed by the legacy
 // RenderHTML-based golang path). LogicalMutations carries the same body with
 // visual/DOM-patch statements removed (Phase 4 consumes this).
-func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Func]bool) []codegen.HTTPAction {
+//
+// It also returns an index map keyed by each backend *ir.EventHandler to its
+// position in the returned slice. This is the SINGLE source of truth for action
+// indexing: the slice index is both the action's identity and the POST switch
+// case, and buildRenderModel consumes the same map to mint a form's hidden
+// _action value — so a form and the switch case that handles it can never
+// disagree (even with multiple backend handlers per node, or backend var
+// handlers that emit no form).
+func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Func]bool) ([]codegen.HTTPAction, map[*ir.EventHandler]int) {
 	if len(targets) == 0 {
-		return nil
+		return nil, nil
 	}
 	var actions []codegen.HTTPAction
+	idx := map[*ir.EventHandler]int{}
 	add := func(h *ir.EventHandler) {
 		if h == nil || h.Func == nil {
 			return
@@ -288,6 +306,7 @@ func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Fun
 		if handlerPlacement(pkg, h.Func) != Backend {
 			return
 		}
+		idx[h] = len(actions)
 		actions = append(actions, codegen.HTTPAction{
 			Name:             fmt.Sprintf("action%d", len(actions)),
 			Mutations:        h.Func.Block,
@@ -304,7 +323,7 @@ func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Fun
 			add(&n.Handlers[i])
 		}
 	})
-	return actions
+	return actions, idx
 }
 
 func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {

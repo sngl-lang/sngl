@@ -88,7 +88,8 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 func TestBuildRenderModel(t *testing.T) {
 	pkg, win := routeFixture()
 
-	rr := buildRenderModel(pkg, win, "/")
+	_, actionIdx := collectActions(pkg, win, buildNativeFuncMap(pkg, "go"))
+	rr := buildRenderModel(pkg, win, "/", actionIdx)
 	if rr == nil {
 		t.Fatal("buildRenderModel returned nil")
 	}
@@ -138,7 +139,7 @@ func TestRouteStateVars(t *testing.T) {
 func TestCollectActionsLogicalMutations(t *testing.T) {
 	pkg, win := routeFixture()
 	targets := buildNativeFuncMap(pkg, "go")
-	actions := collectActions(pkg, win, targets)
+	actions, _ := collectActions(pkg, win, targets)
 	if len(actions) != 1 {
 		t.Fatalf("expected 1 action, got %d", len(actions))
 	}
@@ -163,6 +164,71 @@ func TestCollectActionsLogicalMutations(t *testing.T) {
 		if isDOMPatchStmt(s) {
 			t.Fatalf("DOM-patch statement leaked into LogicalMutations")
 		}
+	}
+}
+
+// TestActionIndexSingleSourceOfTruth pins fix #1: the form's hidden _action
+// value must equal the index of the POST switch case (the action slice index)
+// that runs that handler's mutations. The regression case mixes a backend
+// var-handler (which mints an action but emits NO form) with a backend node
+// handler — under the old independent per-node counter the node form got index
+// 0 while collectActions assigned the node handler index 1, a silent desync.
+func TestActionIndexSingleSourceOfTruth(t *testing.T) {
+	const importPath = "example.com/route-post/api"
+	persist := &ir.Func{Name: "Persist", NativePkg: importPath}
+	pkg := &ir.Package{
+		Imports: []*ir.Import{{
+			Alias:  "api",
+			AST:    &ast.Import{Path: "go://" + importPath},
+			Native: &ir.NativeImport{ImportPath: importPath, Funcs: []*ir.Func{persist}},
+		}},
+	}
+	countVar := &ir.Var{Name: "count", Type: ir.TypInt, Init: &ir.Literal{Type: ir.TypInt, Raw: "0"}}
+	pkg.Vars = []*ir.Var{countVar}
+
+	backendBody := func() []ir.Stmt {
+		return []ir.Stmt{&ir.Assign{
+			Target: &ir.Ident{Name: "count", Type: ir.TypInt},
+			Op:     ast.AssignSet,
+			Value: &ir.Call{
+				Func: persist,
+				Args: []ir.CallArg{{Value: &ir.Ident{Name: "count", Type: ir.TypInt}}},
+			},
+		}}
+	}
+
+	// Backend var-handler: mints action index 0, emits no form.
+	varHandler := &ir.EventHandler{Name: "change", Func: &ir.Func{Block: backendBody()}}
+	countVar.Handlers = []*ir.EventHandler{varHandler}
+
+	// Backend node handler: must get action index 1.
+	nodeHandler := ir.EventHandler{Name: "click", Func: &ir.Func{Block: backendBody()}}
+	button := &ir.NodeInst{
+		Name:     "button",
+		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Raw: `"Save"`}}},
+		Handlers: []ir.EventHandler{nodeHandler},
+	}
+	vbox := &ir.NodeInst{Name: "vbox", Children: []ir.Stmt{button}}
+	win := &codegen.WindowCtx{Name: "app", Vars: []*ir.Var{countVar}, Body: []ir.Stmt{vbox}}
+
+	targets := buildNativeFuncMap(pkg, "go")
+	actions, actionIdx := collectActions(pkg, win, targets)
+	if len(actions) != 2 {
+		t.Fatalf("expected 2 actions (var + node handler), got %d", len(actions))
+	}
+	// The node handler must map to switch case 1, not 0.
+	if got := actionIdx[&button.Handlers[0]]; got != 1 {
+		t.Fatalf("node handler action index: want 1, got %d", got)
+	}
+
+	rr := buildRenderModel(pkg, win, "/", actionIdx)
+	joined := strings.Join(rr.Chunks, "")
+	// The single emitted form (for the node handler) must carry _action="1".
+	if !strings.Contains(joined, `name="_action" value="1"`) {
+		t.Fatalf("form _action value must equal node handler switch case 1:\n%s", joined)
+	}
+	if strings.Contains(joined, `name="_action" value="0"`) {
+		t.Fatalf("form must not carry the var-handler's index 0 (desync):\n%s", joined)
 	}
 }
 

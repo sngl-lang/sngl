@@ -30,8 +30,8 @@ type renderBuilder struct {
 	chunks  []string
 	holes   []codegen.RouteHole
 	cur     strings.Builder
-	state   map[string]bool // names of state vars (reactive bindings read these)
-	formIdx int             // next _action index for backend forms (single route v1)
+	state    map[string]bool          // names of state vars (reactive bindings read these)
+	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
 }
 
 func (rb *renderBuilder) writeRaw(s string) { rb.cur.WriteString(s) }
@@ -52,8 +52,8 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
 // path is the route URL the form posts to.
-func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string) *codegen.RouteRender {
-	rb := &renderBuilder{pkg: pkg, state: stateVarNames(pkg)}
+func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) *codegen.RouteRender {
+	rb := &renderBuilder{pkg: pkg, state: stateVarNames(pkg), actionIdx: actionIdx}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
 	}
@@ -113,10 +113,8 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 		return
 	}
 
-	backendForm := rb.nodeNeedsForm(n)
+	actionIdx, backendForm := rb.nodeActionIndex(n)
 	if backendForm {
-		actionIdx := rb.formIdx
-		rb.formIdx++
 		rb.writeRaw(fmt.Sprintf(
 			`<form method="post" action="%s"><input type="hidden" name="_action" value="%d">`,
 			path, actionIdx))
@@ -162,15 +160,20 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	}
 }
 
-// nodeNeedsForm reports whether any of the node's event handlers is placed
-// on the backend (and thus needs a server-action <form> wrapper).
-func (rb *renderBuilder) nodeNeedsForm(n *ir.NodeInst) bool {
+// nodeActionIndex reports whether the node carries a backend event handler
+// (and thus needs a server-action <form> wrapper) and, if so, the action index
+// of its FIRST backend handler. The index is read from the shared actionIdx map
+// minted by collectActions, so the form's hidden _action value is the exact
+// POST switch case that runs that handler's mutations — never an independently
+// counted value that could drift.
+func (rb *renderBuilder) nodeActionIndex(n *ir.NodeInst) (int, bool) {
 	for i := range n.Handlers {
-		if handlerPlacement(rb.pkg, n.Handlers[i].Func) == Backend {
-			return true
+		h := &n.Handlers[i]
+		if idx, ok := rb.actionIdx[h]; ok {
+			return idx, true
 		}
 	}
-	return false
+	return 0, false
 }
 
 // exprIsReactive reports whether e reads any state var (and is therefore a
