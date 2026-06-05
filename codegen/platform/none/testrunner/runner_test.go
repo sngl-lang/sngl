@@ -1,6 +1,7 @@
 package testrunner_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,6 +38,10 @@ func TestRunFixtures(t *testing.T) {
 			}
 
 			testDirs := s.PhaseErrors("test")
+
+			// Thread the on-disk source path so t.snapshot() can resolve
+			// sibling <fixture>.snapshots/<name>.sngl goldens.
+			pkg.SourcePath = filepath.Join(s.Dir, s.Filename)
 
 			results, err := testrunner.Run(pkg)
 			if err != nil {

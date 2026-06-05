@@ -72,6 +72,13 @@ type Package struct {
 	// runtime function, recorded by the flatten_struct_spread lowering pass
 	// when it rewrites an opaque (non-literal) spread. Deduped by *StructDef.
 	MergeStructs []*StructDef
+
+	// SourcePath is the absolute path of the .sngl fixture this package was
+	// built from. Set by the CLI test driver so the headless (`none`) test
+	// runner can resolve sibling `<fixture>.snapshots/<name>.sngl` goldens
+	// for t.snapshot(). Empty when the package was built from merged input or
+	// in contexts where no single source file applies.
+	SourcePath string
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.

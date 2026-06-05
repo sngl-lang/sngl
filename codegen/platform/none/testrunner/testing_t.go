@@ -3,10 +3,13 @@ package testrunner
 import (
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -180,6 +183,62 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		}
 		tv.locale = loc
 		env.Locale = loc
+		return nil, nil
+
+	case "snapshot":
+		if len(args) != 1 {
+			return nil, fmt.Errorf("t.snapshot() requires 1 argument")
+		}
+		nameVal, err := env.Eval(args[0])
+		if err != nil {
+			return nil, err
+		}
+		name, ok := nameVal.(string)
+		if !ok {
+			return nil, fmt.Errorf("t.snapshot() argument must be a string, got %T", nameVal)
+		}
+		// Locate the component instance under test.
+		var cv *componentValue
+		for _, v := range env.Vars {
+			if c, ok := v.(*componentValue); ok {
+				cv = c
+				break
+			}
+		}
+		if cv == nil {
+			return nil, fmt.Errorf("t.snapshot() requires a component parameter")
+		}
+		src, err := renderSnapshot(cv)
+		if err != nil {
+			return nil, err
+		}
+		if tv.pkg == nil || tv.pkg.SourcePath == "" {
+			return nil, fmt.Errorf("t.snapshot(): no source fixture path available for golden resolution")
+		}
+		store := &snapshot.Store{
+			Dir:    filepath.Dir(tv.pkg.SourcePath),
+			Update: os.Getenv("SNGL_UPDATE_SNAPSHOTS") == "1",
+		}
+		fixtureBase := filepath.Base(tv.pkg.SourcePath)
+		res, err := store.Assert(fixtureBase, name, "text/sngl", []byte(src))
+		if err != nil {
+			return nil, fmt.Errorf("t.snapshot(): %w", err)
+		}
+		if !res.Pass {
+			msg := fmt.Sprintf("snapshot %q mismatch", name)
+			if res.Diff != "" {
+				msg += "\n" + res.Diff
+			}
+			line := 0
+			if cs, ok2 := args[0].(interface{ ExprPos() ast.Pos }); ok2 {
+				line = cs.ExprPos().Line
+			}
+			tv.result.Failures = append(tv.result.Failures, codegen.TestFailure{
+				Line:    line,
+				Message: msg,
+				Fatal:   false,
+			})
+		}
 		return nil, nil
 
 	case "test":

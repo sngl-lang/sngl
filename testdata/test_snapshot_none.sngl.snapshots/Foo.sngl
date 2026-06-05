@@ -1,0 +1,5 @@
+vbox() {
+    text(value="Count: 3")
+    button(text="+", @click)
+    text(value="positive")
+}

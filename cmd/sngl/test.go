@@ -260,6 +260,10 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		}
 		slog.Info("check", "file", filename, "duration", time.Since(start))
 
+		// Record the source path so headless runners (e.g. `none`) can
+		// resolve sibling `<fixture>.snapshots/<name>.sngl` goldens.
+		pkg.SourcePath = absFilename
+
 		// Prefer the TestLauncher path whenever the platform/lang pair
 		// resolves a launcher (today: any go-backed platform). Otherwise
 		// fall back to the legacy runner.RunTests path (e.g. `none`).
