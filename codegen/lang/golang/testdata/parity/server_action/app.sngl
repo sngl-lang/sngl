@@ -1,0 +1,22 @@
+// Server-action fixture for Phase 4. A @click handler calls a go:// native func
+// (api.Persist), so under --lang go the html placement pass classifies the
+// handler as backend and the golang HTTPCompiler emits a real server-side POST
+// handler: per-session State, renderRoute, and PRG (303 redirect). This fixture
+// is only meaningful when driven through the full CLI generate path (which uses
+// the Go toolchain import resolver, so api.Persist resolves to a backend func).
+output { go { html } }
+
+import "go://example.com/route-post/api"
+
+component main {
+    var count = 0
+
+    window #app(title="t", href="/") {
+        vbox {
+            button(text="Save", @click {
+                count = api.Persist(count + 1)
+            })
+            text(value="count {count}")
+        }
+    }
+}
