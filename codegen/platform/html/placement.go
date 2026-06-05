@@ -123,6 +123,53 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 	return Frontend
 }
 
+// nativeFuncKey identifies a native (scheme-imported) func by its originating
+// import path and name. Used to decide WASM opt-in: a go:// func is shipped to
+// the browser only if some use of it is forced Frontend via html.frontend.
+type nativeFuncKey struct {
+	importPath string
+	name       string
+}
+
+// frontendNativeFuncs collects, across the whole package, the set of native
+// funcs that are used inside an html.frontend(...) wrapper — i.e. funcs the
+// author explicitly forced to run client-side. These are the ONLY non-js://
+// funcs eligible for WASM compilation; bare (default-backend) usage ships no
+// WASM. js:// funcs are excluded (they run as bundled JS, never WASM).
+func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
+	out := map[nativeFuncKey]bool{}
+	if pkg == nil {
+		return out
+	}
+	collect := func(sub ir.Expr) {
+		walkExpr(sub, func(x ir.Expr) bool {
+			c, ok := x.(*ir.Call)
+			if !ok || c.Func == nil {
+				return false
+			}
+			// A nested directive re-pins its own subtree; stop here and let
+			// the top-level scan reach it independently.
+			switch c.Func.Intrinsic {
+			case htmlFrontendIntrinsic, htmlBackendIntrinsic:
+				return true
+			}
+			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
+				out[nativeFuncKey{importPath: c.Func.NativePkg, name: c.Func.Name}] = true
+			}
+			return false
+		})
+	}
+	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlFrontendIntrinsic {
+			for _, a := range c.Args {
+				collect(a.Value)
+			}
+		}
+		return false // never short-circuit: scan the whole package
+	})
+	return out
+}
+
 // walkExpr visits e and each of its sub-expressions, calling fn on each.
 // fn returns true to prune the subtree at that node (stop descending into its
 // children) — used to honor directive-wrapper pinning and to short-circuit.

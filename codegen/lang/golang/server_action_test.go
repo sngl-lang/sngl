@@ -53,6 +53,12 @@ func TestServerAction(t *testing.T) {
 		t.Fatalf("generate: %v\n%s", err, combined)
 	}
 
+	// Phase 5: the api.Persist call is backend (no html.frontend wrapper), so
+	// it must NOT be compiled to a client WASM asset.
+	if wasm, _ := filepath.Glob(filepath.Join(out, "assets", "*.wasm")); len(wasm) != 0 {
+		t.Errorf("backend go:// call must not emit client WASM, found: %v", wasm)
+	}
+
 	serverPath := filepath.Join(out, "server.go")
 	srcBytes, err := os.ReadFile(serverPath)
 	if err != nil {

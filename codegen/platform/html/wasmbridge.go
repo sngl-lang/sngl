@@ -16,13 +16,19 @@ type wasmPackage struct {
 }
 
 // collectWASMPackages scans imports for scheme-based packages that expose
-// impure functions. Such functions cannot be evaluated at compile time, so
-// they are compiled to WASM and exposed to the page via window.__sngl_externs
-// for JS to call at runtime.
+// impure functions. Such functions cannot be evaluated at compile time.
+//
+// Per the placement model (GitLab #27), a non-js:// func defaults to BACKEND
+// and is NOT shipped to the browser. WASM exposure is opt-in: a func is
+// compiled to WASM and exposed via window.__sngl_externs ONLY when the author
+// forces it client-side with html.frontend(...). collectWASMPackages therefore
+// includes a func only if it appears in frontendNativeFuncs(pkg). A package
+// with no frontend-forced funcs contributes no WASM at all.
 func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmPackage {
 	if pkg == nil {
 		return nil
 	}
+	frontend := frontendNativeFuncs(pkg)
 	var out []wasmPackage
 	for _, imp := range pkg.Imports {
 		if imp == nil || imp.Native == nil || imp.AST == nil {
@@ -55,6 +61,11 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 		}
 		var funcs []codegen.WASMFunc
 		for _, f := range decls.Funcs {
+			// WASM is opt-in: only funcs forced client-side via html.frontend
+			// are compiled to WASM. Bare/backend usage ships nothing.
+			if !frontend[nativeFuncKey{importPath: decls.ImportPath, name: f.Name}] {
+				continue
+			}
 			if f.Purity == ir.PurityPure {
 				continue
 			}

@@ -1,3 +1,2 @@
-The html codegen has scope quirks — file-level consts don't propagate as component props, and for-loops only unroll at the const's declaring scope, so the search index lives at website.sngl top-level rather than inside docui.
+BatchSnapshotter should use Snapshot, so it's mutaually exclusive with Snapshotter (like go's errors.Unwrap)
 
-revisit highlighted code in the tutorial once cross-package const folding works

@@ -97,12 +97,29 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	}
 	registerFakeScheme(t, ni, uri)
 
+	// All four funcs are forced client-side via html.frontend, so they are
+	// WASM-eligible; the ref-bearing ones must still be filtered out. Wire
+	// the call funcs' NativePkg to the import path so frontendNativeFuncs
+	// recognizes them.
+	frontendUse := func(name string) ir.Stmt {
+		return &ir.CallStmt{Call: intrinsicCall("HtmlFrontend",
+			&ir.Call{Func: &ir.Func{NativePkg: "example.com/refpkg", Name: name}})}
+	}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			AST:    &ast.Import{Path: "wasmbridge-test://" + uri},
 			Path:   "wasmbridge-test://" + uri,
 			Alias:  "rp",
 			Native: ni,
+		}},
+		Components: []*ir.Component{{
+			Name: "main",
+			Body: []ir.Stmt{
+				frontendUse("Plain"),
+				frontendUse("TakesRef"),
+				frontendUse("ReturnsRef"),
+				frontendUse("TakesListOfRef"),
+			},
 		}},
 	}
 
@@ -117,4 +134,59 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	if len(names) != 1 || names[0] != "Plain" {
 		t.Errorf("ref-bearing funcs leaked through bridge: got %v, want [Plain]", names)
 	}
+}
+
+// TestFrontendWasmOptIn pins the Phase 5 contract: WASM is opt-in. A bare
+// (default-backend) non-js:// call ships NO WASM; only a call forced
+// client-side via html.frontend pulls the package into the WASM bridge.
+func TestFrontendWasmOptIn(t *testing.T) {
+	const uri = "optin-pkg"
+
+	persist := &ir.Func{
+		Name:   "Persist",
+		Params: []*ir.Param{{Name: "n", Type: ir.TypInt}},
+		Return: ir.TypInt,
+		Purity: ir.PurityUnknown,
+	}
+	ni := &ir.NativeImport{
+		ImportPath: "example.com/optin",
+		Funcs:      []*ir.Func{persist},
+	}
+	registerFakeScheme(t, ni, uri)
+
+	imp := &ir.Import{
+		AST:    &ast.Import{Path: "wasmbridge-test://" + uri},
+		Path:   "wasmbridge-test://" + uri,
+		Alias:  "op",
+		Native: ni,
+	}
+	call := func() *ir.Call {
+		return &ir.Call{Func: &ir.Func{NativePkg: "example.com/optin", Name: "Persist"},
+			Args: []ir.CallArg{{Value: &ir.Literal{}}}}
+	}
+
+	t.Run("bare backend call ships no WASM", func(t *testing.T) {
+		pkg := &ir.Package{
+			Imports: []*ir.Import{imp},
+			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+				&ir.CallStmt{Call: call()},
+			}}},
+		}
+		if got := collectWASMPackages(pkg, nil, "."); len(got) != 0 {
+			t.Fatalf("bare go:// call must ship no WASM, got %d packages", len(got))
+		}
+	})
+
+	t.Run("html.frontend call ships WASM", func(t *testing.T) {
+		pkg := &ir.Package{
+			Imports: []*ir.Import{imp},
+			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+				&ir.CallStmt{Call: intrinsicCall("HtmlFrontend", call())},
+			}}},
+		}
+		got := collectWASMPackages(pkg, nil, ".")
+		if len(got) != 1 || len(got[0].funcs) != 1 || got[0].funcs[0].Name != "Persist" {
+			t.Fatalf("html.frontend(go_call) must ship the package's WASM, got %+v", got)
+		}
+	})
 }
