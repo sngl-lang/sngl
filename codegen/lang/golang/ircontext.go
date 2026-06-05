@@ -569,6 +569,45 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 
 		qualName := receiverName + "." + fname
 
+		// lower.CreateComponent(comp, props) → m.render<Comp>(propArgs...).
+		// Recursive (non-inlinable) user components are left in place by
+		// passNoInlineComponents as this intrinsic; the Go backends emit a
+		// `render<Comp>` Model method taking the component's props positionally.
+		// The prop struct literal's fields are reordered to the component's
+		// declared prop order.
+		if fname == "CreateComponent" && len(n.Args) == 2 {
+			if compIdent, ok := n.Args[0].Value.(*ir.Ident); ok {
+				if comp, ok := compIdent.Sym.(*ir.Component); ok {
+					recv := gc.Ctx.StateReceiver
+					if recv == "" {
+						recv = "m"
+					}
+					var pargs []string
+					lit, _ := n.Args[1].Value.(*ir.StructLit)
+					for _, p := range comp.Props {
+						var val ir.Expr
+						if lit != nil {
+							for _, f := range lit.Fields {
+								if f.Name == p.Name {
+									val = f.Value
+									break
+								}
+							}
+						}
+						switch {
+						case val != nil:
+							pargs = append(pargs, gc.EvalExpr(val))
+						case p.Default != nil:
+							pargs = append(pargs, gc.EvalExpr(p.Default))
+						default:
+							pargs = append(pargs, "nil")
+						}
+					}
+					return recv + ".render" + ExportName(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
+				}
+			}
+		}
+
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale runtime
 		// entry points. After NoContext + InlinePure, i18n.* wrapper calls
 		// have been lowered to direct intl.* intrinsic calls with the locale
