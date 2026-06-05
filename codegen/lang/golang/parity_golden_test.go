@@ -20,8 +20,8 @@ import (
 	// fixture can be driven end-to-end through the same pipeline `sngl
 	// generate --platform=html --lang=go` uses. The legacy CompileHTTP
 	// path (golang/http.go) is what produces server.go's POST handler.
-	htmlplat "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
+	htmlplat "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
 // TestParityGolden pins the byte-identical output of golang's LEGACY

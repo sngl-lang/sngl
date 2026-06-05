@@ -26,11 +26,11 @@ import (
 // interleaved with holes. cur holds the chunk under construction; pushHole
 // flushes cur as a finished chunk and appends a hole.
 type renderBuilder struct {
-	pkg     *ir.Package
-	chunks  []string
-	holes   []codegen.RouteHole
-	cur     strings.Builder
-	state    map[string]bool          // names of state vars (reactive bindings read these)
+	pkg       *ir.Package
+	chunks    []string
+	holes     []codegen.RouteHole
+	cur       strings.Builder
+	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
 }
 
@@ -205,8 +205,8 @@ func htmlTagFor(name string) string {
 	case "button":
 		return "button"
 	}
-	if i := strings.IndexByte(name, '.'); i >= 0 {
-		return name[i+1:]
+	if _, after, ok := strings.Cut(name, "."); ok {
+		return after
 	}
 	return "div"
 }

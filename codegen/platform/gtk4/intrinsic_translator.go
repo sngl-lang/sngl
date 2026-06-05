@@ -24,7 +24,7 @@ type gtk4Translator struct {
 	gc           *golang.GoIRContext
 	pkg          *ir.Package // optional; used to consult GIR-resolved native metadata
 	fieldSink    func(name, cType string)
-	idCTypes     map[string]string // id ("__n0") → GTK C type ("GtkLabel")
+	idCTypes     map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped      map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
 	topLevel     []string
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)

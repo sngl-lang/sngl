@@ -158,6 +158,7 @@ class RpcTest {
 ```bash
 cd pkg/kotlin/testagent && gradle test --tests "*RpcTest*" 2>&1 | tail -10
 ```
+
 Expected: compile error (`RpcReader`, `RpcWriter` unresolved).
 
 - [ ] **Step 4: Implement Rpc.kt**
@@ -255,6 +256,7 @@ class RpcWriter(private val output: OutputStream) {
 ```bash
 cd pkg/kotlin/testagent && gradle test --tests "*RpcTest*" 2>&1 | tail -10
 ```
+
 Expected: 3 tests pass.
 
 - [ ] **Step 6: T + Registry — failing tests first**
@@ -515,6 +517,7 @@ fun snapshot(snapshotName: String) {
 ```bash
 cd pkg/kotlin/testagent && gradle test 2>&1 | tail -10
 ```
+
 Expected: all green (RpcTest 3 + TTest 4).
 
 - [ ] **Step 9: TestAgent.kt — main + startTcp**
@@ -612,6 +615,7 @@ private fun runOne(writer: RpcWriter, name: String): String {
 ```bash
 cd pkg/kotlin/testagent && gradle build 2>&1 | tail -5
 ```
+
 Expected: build succeeds.
 
 - [ ] **Step 11: Commit**
@@ -656,13 +660,13 @@ Append to `codegen/lang/kotlin/testlower.go`:
 type TestEmitMode int
 
 const (
-    // TestEmitNative produces a JUnit-style class with @Test methods,
-    // suitable for inclusion in the user's gradle test sourceset.
-    TestEmitNative TestEmitMode = iota
-    // TestEmitAgent produces a Kotlin source file that calls
-    // Registry.register for each test plus a main() that calls
-    // TestAgent.main(). Linked against pkg/kotlin/testagent at build time.
-    TestEmitAgent
+	// TestEmitNative produces a JUnit-style class with @Test methods,
+	// suitable for inclusion in the user's gradle test sourceset.
+	TestEmitNative TestEmitMode = iota
+	// TestEmitAgent produces a Kotlin source file that calls
+	// Registry.register for each test plus a main() that calls
+	// TestAgent.main(). Linked against pkg/kotlin/testagent at build time.
+	TestEmitAgent
 )
 
 // LowerTestFile produces the entire source of a generated test file.
@@ -671,52 +675,52 @@ const (
 // Native: package + import JUnit + class MainScreenTest { @Test fun testFoo() { ... } }
 // Agent:  package + import testagent + fun testFoo(t: T) { ... } + init { Registry.register(...) }
 func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
-    var b strings.Builder
-    fmt.Fprintf(&b, "package %s\n\n", pkg)
-    switch mode {
-    case TestEmitNative:
-        b.WriteString("import org.junit.Test\n")
-        b.WriteString("import org.junit.Assert.assertTrue\n\n")
-        b.WriteString("class MainScreenTest {\n")
-    case TestEmitAgent:
-        b.WriteString("import us.duckfam.sngl.testagent.T\n")
-        b.WriteString("import us.duckfam.sngl.testagent.Registry\n\n")
-    }
+	var b strings.Builder
+	fmt.Fprintf(&b, "package %s\n\n", pkg)
+	switch mode {
+	case TestEmitNative:
+		b.WriteString("import org.junit.Test\n")
+		b.WriteString("import org.junit.Assert.assertTrue\n\n")
+		b.WriteString("class MainScreenTest {\n")
+	case TestEmitAgent:
+		b.WriteString("import us.duckfam.sngl.testagent.T\n")
+		b.WriteString("import us.duckfam.sngl.testagent.Registry\n\n")
+	}
 
-    for i, fn := range fns {
-        suffix := suffixes[i]
-        if mode == TestEmitNative {
-            fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
-            b.WriteString("        val c = newTestComponent()\n")
-            for _, line := range lowerTestBody(fn, methodFields, true) {
-                fmt.Fprintf(&b, "        %s\n", line)
-            }
-            b.WriteString("    }\n\n")
-        } else {
-            fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
-            b.WriteString("    val c = newTestComponent()\n")
-            b.WriteString("    setCurrentTestModel(c)\n")
-            for _, line := range lowerTestBody(fn, methodFields, false) {
-                fmt.Fprintf(&b, "    %s\n", line)
-            }
-            b.WriteString("}\n\n")
-        }
-    }
+	for i, fn := range fns {
+		suffix := suffixes[i]
+		if mode == TestEmitNative {
+			fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
+			b.WriteString("        val c = newTestComponent()\n")
+			for _, line := range lowerTestBody(fn, methodFields, true) {
+				fmt.Fprintf(&b, "        %s\n", line)
+			}
+			b.WriteString("    }\n\n")
+		} else {
+			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
+			b.WriteString("    val c = newTestComponent()\n")
+			b.WriteString("    setCurrentTestModel(c)\n")
+			for _, line := range lowerTestBody(fn, methodFields, false) {
+				fmt.Fprintf(&b, "    %s\n", line)
+			}
+			b.WriteString("}\n\n")
+		}
+	}
 
-    switch mode {
-    case TestEmitNative:
-        b.WriteString("}\n")
-    case TestEmitAgent:
-        b.WriteString("private fun registerAll() {\n")
-        for i := range fns {
-            suffix := suffixes[i]
-            fmt.Fprintf(&b, "    Registry.register(%q, ::test%s)\n", suffix, suffix)
-        }
-        b.WriteString("}\n\n")
-        b.WriteString("val __sngl_test_init: Unit = registerAll()\n")
-    }
+	switch mode {
+	case TestEmitNative:
+		b.WriteString("}\n")
+	case TestEmitAgent:
+		b.WriteString("private fun registerAll() {\n")
+		for i := range fns {
+			suffix := suffixes[i]
+			fmt.Fprintf(&b, "    Registry.register(%q, ::test%s)\n", suffix, suffix)
+		}
+		b.WriteString("}\n\n")
+		b.WriteString("val __sngl_test_init: Unit = registerAll()\n")
+	}
 
-    return b.String()
+	return b.String()
 }
 
 // lowerTestBody returns the lowered test body lines. When isNativeJUnit is
@@ -726,31 +730,31 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 // statements lower identically since both T and JUnit share a Kotlin
 // runtime.
 func lowerTestBody(fn *ir.Func, methodFields map[string]bool, isNativeJUnit bool) []string {
-    // Existing LowerTestFunc walks fn.Block; share that machinery.
-    raw := LowerTestFunc(fn, "", methodFields)
-    // Strip the wrapper "fun testX() {\n ... \n}" produced by LowerTestFunc
-    // and yield the body lines. Simple: take lines between the first '{'
-    // and the last '}'.
-    open := strings.Index(raw, "{")
-    closeIdx := strings.LastIndex(raw, "}")
-    if open < 0 || closeIdx < 0 || closeIdx <= open {
-        return nil
-    }
-    body := raw[open+1 : closeIdx]
-    lines := strings.Split(strings.TrimSpace(body), "\n")
-    out := make([]string, 0, len(lines))
-    for _, l := range lines {
-        trimmed := strings.TrimLeft(l, " \t")
-        if isNativeJUnit {
-            // No transform yet — assertTrue is the only assertion form and
-            // it exists in both surfaces.
-            out = append(out, trimmed)
-        } else {
-            // Agent-mode: `t.assertTrue(...)` already matches.
-            out = append(out, trimmed)
-        }
-    }
-    return out
+	// Existing LowerTestFunc walks fn.Block; share that machinery.
+	raw := LowerTestFunc(fn, "", methodFields)
+	// Strip the wrapper "fun testX() {\n ... \n}" produced by LowerTestFunc
+	// and yield the body lines. Simple: take lines between the first '{'
+	// and the last '}'.
+	open := strings.Index(raw, "{")
+	closeIdx := strings.LastIndex(raw, "}")
+	if open < 0 || closeIdx < 0 || closeIdx <= open {
+		return nil
+	}
+	body := raw[open+1 : closeIdx]
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	out := make([]string, 0, len(lines))
+	for _, l := range lines {
+		trimmed := strings.TrimLeft(l, " \t")
+		if isNativeJUnit {
+			// No transform yet — assertTrue is the only assertion form and
+			// it exists in both surfaces.
+			out = append(out, trimmed)
+		} else {
+			// Agent-mode: `t.assertTrue(...)` already matches.
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 ```
 
@@ -762,7 +766,7 @@ The `lowerTestBody` parses the existing `LowerTestFunc` output and strips its wr
 
 ```go
 func TestKotlinLowerTestFile_agentModeEmitsRegisterAll(t *testing.T) {
-    src := `
+	src := `
 component box {
     var count = 0
     text(value="x")
@@ -772,27 +776,32 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-    doc, err := parser.Parse("t.sngl", []byte(src))
-    if err != nil { t.Fatal(err) }
-    pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-    var fn *ir.Func
-    for _, f := range pkg.Funcs {
-        if f.IsTest { fn = f; break }
-    }
-    out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
-    if !strings.Contains(out, "import us.duckfam.sngl.testagent.T") {
-        t.Errorf("agent mode missing T import:\n%s", out)
-    }
-    if !strings.Contains(out, "fun testFoo(t: T)") {
-        t.Errorf("agent func signature missing:\n%s", out)
-    }
-    if !strings.Contains(out, "Registry.register(\"Foo\", ::testFoo)") {
-        t.Errorf("RegisterTest call missing:\n%s", out)
-    }
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	var fn *ir.Func
+	for _, f := range pkg.Funcs {
+		if f.IsTest {
+			fn = f
+			break
+		}
+	}
+	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
+	if !strings.Contains(out, "import us.duckfam.sngl.testagent.T") {
+		t.Errorf("agent mode missing T import:\n%s", out)
+	}
+	if !strings.Contains(out, "fun testFoo(t: T)") {
+		t.Errorf("agent func signature missing:\n%s", out)
+	}
+	if !strings.Contains(out, "Registry.register(\"Foo\", ::testFoo)") {
+		t.Errorf("RegisterTest call missing:\n%s", out)
+	}
 }
 
 func TestKotlinLowerTestFile_nativeModeEmitsJUnitClass(t *testing.T) {
-    src := `
+	src := `
 component box {
     var count = 0
     text(value="x")
@@ -802,22 +811,25 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-    doc, _ := parser.Parse("t.sngl", []byte(src))
-    pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-    var fn *ir.Func
-    for _, f := range pkg.Funcs {
-        if f.IsTest { fn = f; break }
-    }
-    out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative)
-    if !strings.Contains(out, "import org.junit.Test") {
-        t.Errorf("native mode missing JUnit import:\n%s", out)
-    }
-    if !strings.Contains(out, "@Test fun testFoo()") {
-        t.Errorf("native @Test missing:\n%s", out)
-    }
-    if strings.Contains(out, "Registry.register") {
-        t.Errorf("native mode should not call Registry.register:\n%s", out)
-    }
+	doc, _ := parser.Parse("t.sngl", []byte(src))
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	var fn *ir.Func
+	for _, f := range pkg.Funcs {
+		if f.IsTest {
+			fn = f
+			break
+		}
+	}
+	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative)
+	if !strings.Contains(out, "import org.junit.Test") {
+		t.Errorf("native mode missing JUnit import:\n%s", out)
+	}
+	if !strings.Contains(out, "@Test fun testFoo()") {
+		t.Errorf("native @Test missing:\n%s", out)
+	}
+	if strings.Contains(out, "Registry.register") {
+		t.Errorf("native mode should not call Registry.register:\n%s", out)
+	}
 }
 ```
 
@@ -826,12 +838,14 @@ func testFoo(t Test, c box) {
 ```bash
 go test ./codegen/lang/kotlin/ -run TestKotlinLowerTestFile -count=1 -v
 ```
+
 Expected: both pass.
 
 ```bash
 go test ./codegen/lang/kotlin/ -count=1 2>&1 | tail -5
 go build ./...
 ```
+
 Expected: clean.
 
 - [ ] **Step 4: Commit**
@@ -881,15 +895,17 @@ In `codegen/platform/android/android.go`, find the `Config` struct (likely decla
 
 ```go
 type Config struct {
-    // ... existing fields ...
-    TestRunner string `sngl:"testRunner"`
+	// ... existing fields ...
+	TestRunner string `sngl:"testRunner"`
 }
 ```
 
 In `Config.withDefaults()`:
 
 ```go
-if cfg.TestRunner == "" { cfg.TestRunner = "robolectric" }
+if cfg.TestRunner == "" {
+	cfg.TestRunner = "robolectric"
+}
 ```
 
 - [ ] **Step 3: Confirm parse + check**
@@ -899,6 +915,7 @@ go test ./internal/checker/... -count=1 2>&1 | tail -5
 go test ./codegen/platform/android/ -count=1 2>&1 | tail -5
 go build ./...
 ```
+
 Expected: clean.
 
 - [ ] **Step 4: Manual smoke**
@@ -914,6 +931,7 @@ sngl generate --lang=kotlin --platform=android --opt testRunner=robolectric --ou
 sngl generate --lang=kotlin --platform=android --opt testRunner=device --out out2 app.sngl
 echo "both invocations exit 0"
 ```
+
 Expected: both commands succeed. (The codegen doesn't yet do anything different per testRunner — that lands in Tasks 4 and 8 — but the option must be accepted.)
 
 - [ ] **Step 5: Commit**
@@ -946,6 +964,7 @@ Emit a kotlin testagent main + Registry.register file + Robolectric snapshot cap
 ```bash
 grep -n 'func .*Generator. Generate' codegen/platform/android/android.go
 ```
+
 Read the function. Find where MainScreen.kt is emitted (search "MainScreen.kt"). The new agent-mode emission lands at the end of Generate, similar to bubbletea/fyne/gtk4.
 
 - [ ] **Step 2: Add the agent-mode emission block**
@@ -954,57 +973,57 @@ At the end of `Generate`, just before the final `return nil`:
 
 ```go
 if codegen.OptionString(req.Options, "testMode") == "agent" {
-    codegen.SetOptionField(req.Options, "main", false)
+	codegen.SetOptionField(req.Options, "main", false)
 }
 
 if codegen.OptionBool(req.Options, "test") {
-    testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
-    if len(testFns) > 0 {
-        mode := kotlin.TestEmitNative
-        if codegen.OptionString(req.Options, "testMode") == "agent" {
-            mode = kotlin.TestEmitAgent
-        }
-        pkgName := "us.duckfam.sngl.app"
-        src := kotlin.LowerTestFile(pkgName, testFns, suffixes, methodFields, mode)
-        fname := "TestAgentRunner.kt"
-        if mode == kotlin.TestEmitNative {
-            // Native mode targets test sourceset (robolectric) or
-            // androidTest sourceset (device); split per testRunner.
-            tr := codegen.OptionString(req.Options, "testRunner")
-            if tr == "device" {
-                fname = "app/src/androidTest/kotlin/us/duckfam/sngl/app/MainScreenTest.kt"
-            } else {
-                fname = "app/src/test/kotlin/us/duckfam/sngl/app/MainScreenTest.kt"
-            }
-        }
-        if err := writeAndroidSourceFile(sink, fname, req.Lang, ktOpts, src); err != nil {
-            return err
-        }
+	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+	if len(testFns) > 0 {
+		mode := kotlin.TestEmitNative
+		if codegen.OptionString(req.Options, "testMode") == "agent" {
+			mode = kotlin.TestEmitAgent
+		}
+		pkgName := "us.duckfam.sngl.app"
+		src := kotlin.LowerTestFile(pkgName, testFns, suffixes, methodFields, mode)
+		fname := "TestAgentRunner.kt"
+		if mode == kotlin.TestEmitNative {
+			// Native mode targets test sourceset (robolectric) or
+			// androidTest sourceset (device); split per testRunner.
+			tr := codegen.OptionString(req.Options, "testRunner")
+			if tr == "device" {
+				fname = "app/src/androidTest/kotlin/us/duckfam/sngl/app/MainScreenTest.kt"
+			} else {
+				fname = "app/src/test/kotlin/us/duckfam/sngl/app/MainScreenTest.kt"
+			}
+		}
+		if err := writeAndroidSourceFile(sink, fname, req.Lang, ktOpts, src); err != nil {
+			return err
+		}
 
-        if mode == kotlin.TestEmitAgent {
-            agentMain := `package us.duckfam.sngl.app
+		if mode == kotlin.TestEmitAgent {
+			agentMain := `package us.duckfam.sngl.app
 
 import us.duckfam.sngl.testagent.TestAgent
 
 fun main() { us.duckfam.sngl.testagent.main() }
 `
-            if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, []byte(agentMain)); err != nil {
-                return err
-            }
+			if err := writeAndroidSourceFile(sink, "AgentMain.kt", req.Lang, ktOpts, []byte(agentMain)); err != nil {
+				return err
+			}
 
-            tr := codegen.OptionString(req.Options, "testRunner")
-            if tr == "robolectric" || tr == "" {
-                snapshotSrc := robolectricSnapshotCaptureKotlin(pkgName)
-                if err := writeAndroidSourceFile(sink, "RobolectricSnapshot.kt", req.Lang, ktOpts, []byte(snapshotSrc)); err != nil {
-                    return err
-                }
-            }
-            // Device testRunner snapshot capture lands in Task 8.
+			tr := codegen.OptionString(req.Options, "testRunner")
+			if tr == "robolectric" || tr == "" {
+				snapshotSrc := robolectricSnapshotCaptureKotlin(pkgName)
+				if err := writeAndroidSourceFile(sink, "RobolectricSnapshot.kt", req.Lang, ktOpts, []byte(snapshotSrc)); err != nil {
+					return err
+				}
+			}
+			// Device testRunner snapshot capture lands in Task 8.
 
-            // currentTestModel accessor — codegen-specific because the
-            // Model type varies per emission. For now MainScreenState
-            // is the hoisted state from android codegen.
-            accessorSrc := `package us.duckfam.sngl.app
+			// currentTestModel accessor — codegen-specific because the
+			// Model type varies per emission. For now MainScreenState
+			// is the hoisted state from android codegen.
+			accessorSrc := `package us.duckfam.sngl.app
 
 var __sngl_currentModel: MainScreenState? = null
 
@@ -1013,11 +1032,11 @@ fun currentTestModel(): MainScreenState = __sngl_currentModel!!
 
 fun newTestComponent(): MainScreenState = MainScreenState()
 `
-            if err := writeAndroidSourceFile(sink, "TestModelAccessor.kt", req.Lang, ktOpts, []byte(accessorSrc)); err != nil {
-                return err
-            }
-        }
-    }
+			if err := writeAndroidSourceFile(sink, "TestModelAccessor.kt", req.Lang, ktOpts, []byte(accessorSrc)); err != nil {
+				return err
+			}
+		}
+	}
 }
 ```
 
@@ -1029,7 +1048,7 @@ Add helper in `codegen/platform/android/android.go` (or a new file `codegen/plat
 
 ```go
 func robolectricSnapshotCaptureKotlin(pkg string) []byte {
-    return []byte(`package ` + pkg + `
+	return []byte(`package ` + pkg + `
 
 import android.graphics.Bitmap
 import androidx.compose.ui.test.captureToImage
@@ -1070,6 +1089,7 @@ go build ./...
 go test ./codegen/platform/android/ -count=1 2>&1 | tail -5
 go test ./cmd/sngl/ -run TestScript -count=1 2>&1 | tail -5
 ```
+
 Expected: clean.
 
 - [ ] **Step 5: Smoke**
@@ -1090,6 +1110,7 @@ cat out/TestAgentRunner.kt
 cat out/AgentMain.kt
 cat out/RobolectricSnapshot.kt
 ```
+
 Expected: all four files exist, well-formed Kotlin source.
 
 - [ ] **Step 6: Commit**
@@ -1130,110 +1151,120 @@ Implement `(*Generator).LaunchTest` with the robolectric path: synthesize a grad
 package android
 
 import (
-    "bytes"
-    "context"
-    "fmt"
-    "io"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "strings"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
-    "git.duckfam.us/jonathan/sngl/codegen"
-    "git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // LaunchTest implements codegen.TestLauncher for android. Dispatches on
 // the testRunner option: robolectric → JVM build + stdio JSON-RPC;
 // device → APK + adb forward + tcp JSON-RPC.
 func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-    runner := codegen.OptionString(opts, "testRunner")
-    if runner == "" { runner = "robolectric" }
-    switch runner {
-    case "robolectric":
-        return g.launchRobolectric(ctx, dir, lang, opts)
-    case "device":
-        return g.launchDevice(ctx, dir, lang, opts)
-    default:
-        return nil, nil, fmt.Errorf("unknown testRunner %q", runner)
-    }
+	runner := codegen.OptionString(opts, "testRunner")
+	if runner == "" {
+		runner = "robolectric"
+	}
+	switch runner {
+	case "robolectric":
+		return g.launchRobolectric(ctx, dir, lang, opts)
+	case "device":
+		return g.launchDevice(ctx, dir, lang, opts)
+	default:
+		return nil, nil, fmt.Errorf("unknown testRunner %q", runner)
+	}
 }
 
 func (g *Generator) launchRobolectric(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-    if !javaFound() {
-        return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
-    }
-    if err := writeRobolectricGradleProject(dir); err != nil {
-        return nil, nil, err
-    }
-    gradle, err := exec.LookPath("gradle")
-    if err != nil {
-        if err := writeGradleWrapper(dir); err != nil {
-            return nil, nil, fmt.Errorf("no gradle and wrapper synth failed: %w", err)
-        }
-        gradle = filepath.Join(dir, "gradlew")
-    }
-    var buildOut bytes.Buffer
-    bld := exec.CommandContext(ctx, gradle, ":app:installDist", "--no-daemon")
-    bld.Dir = dir
-    bld.Stdout = &buildOut
-    bld.Stderr = &buildOut
-    if err := bld.Run(); err != nil {
-        fmt.Fprint(os.Stderr, buildOut.String())
-        return nil, nil, fmt.Errorf("gradle installDist: %w", err)
-    }
+	if !javaFound() {
+		return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
+	}
+	if err := writeRobolectricGradleProject(dir); err != nil {
+		return nil, nil, err
+	}
+	gradle, err := exec.LookPath("gradle")
+	if err != nil {
+		if err := writeGradleWrapper(dir); err != nil {
+			return nil, nil, fmt.Errorf("no gradle and wrapper synth failed: %w", err)
+		}
+		gradle = filepath.Join(dir, "gradlew")
+	}
+	var buildOut bytes.Buffer
+	bld := exec.CommandContext(ctx, gradle, ":app:installDist", "--no-daemon")
+	bld.Dir = dir
+	bld.Stdout = &buildOut
+	bld.Stderr = &buildOut
+	if err := bld.Run(); err != nil {
+		fmt.Fprint(os.Stderr, buildOut.String())
+		return nil, nil, fmt.Errorf("gradle installDist: %w", err)
+	}
 
-    binPath := filepath.Join(dir, "app", "build", "install", "app", "bin", "app")
-    cmd := exec.CommandContext(ctx, binPath)
-    cmd.Dir = dir
-    stdin, err := cmd.StdinPipe(); if err != nil { return nil, nil, err }
-    stdout, err := cmd.StdoutPipe(); if err != nil { return nil, nil, err }
-    cmd.Stderr = os.Stderr
-    if err := cmd.Start(); err != nil { return nil, nil, err }
+	binPath := filepath.Join(dir, "app", "build", "install", "app", "bin", "app")
+	cmd := exec.CommandContext(ctx, binPath)
+	cmd.Dir = dir
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return nil, nil, err
+	}
 
-    ch := &pipeChannel{in: stdout, out: stdin, cmd: cmd}
-    cleanup := func() {
-        _ = stdin.Close()
-        _ = stdout.Close()
-        _ = cmd.Process.Kill()
-        _, _ = cmd.Process.Wait()
-    }
-    return ch, cleanup, nil
+	ch := &pipeChannel{in: stdout, out: stdin, cmd: cmd}
+	cleanup := func() {
+		_ = stdin.Close()
+		_ = stdout.Close()
+		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
+	}
+	return ch, cleanup, nil
 }
 
 func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-    return nil, nil, fmt.Errorf("testRunner=device: not yet implemented")
+	return nil, nil, fmt.Errorf("testRunner=device: not yet implemented")
 }
 
 type pipeChannel struct {
-    in  io.ReadCloser
-    out io.WriteCloser
-    cmd *exec.Cmd
+	in  io.ReadCloser
+	out io.WriteCloser
+	cmd *exec.Cmd
 }
 
 func (p *pipeChannel) Read(b []byte) (int, error)  { return p.in.Read(b) }
 func (p *pipeChannel) Write(b []byte) (int, error) { return p.out.Write(b) }
 func (p *pipeChannel) Close() error {
-    _ = p.out.Close()
-    return p.in.Close()
+	_ = p.out.Close()
+	return p.in.Close()
 }
 
 func writeRobolectricGradleProject(dir string) error {
-    settings := []byte(`rootProject.name = "snglroot"
+	settings := []byte(`rootProject.name = "snglroot"
 include(":app")
 `)
-    if err := os.WriteFile(filepath.Join(dir, "settings.gradle.kts"), settings, 0o644); err != nil {
-        return err
-    }
-    rootBuild := []byte(`plugins { kotlin("jvm") version "1.9.22" apply false }
+	if err := os.WriteFile(filepath.Join(dir, "settings.gradle.kts"), settings, 0o644); err != nil {
+		return err
+	}
+	rootBuild := []byte(`plugins { kotlin("jvm") version "1.9.22" apply false }
 `)
-    if err := os.WriteFile(filepath.Join(dir, "build.gradle.kts"), rootBuild, 0o644); err != nil {
-        return err
-    }
-    if err := os.MkdirAll(filepath.Join(dir, "app"), 0o755); err != nil {
-        return err
-    }
-    appBuild := []byte(`plugins {
+	if err := os.WriteFile(filepath.Join(dir, "build.gradle.kts"), rootBuild, 0o644); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "app"), 0o755); err != nil {
+		return err
+	}
+	appBuild := []byte(`plugins {
     kotlin("jvm") version "1.9.22"
     application
 }
@@ -1253,35 +1284,43 @@ application { mainClass.set("us.duckfam.sngl.app.AgentMainKt") }
 
 kotlin { jvmToolchain(17) }
 `)
-    if err := os.WriteFile(filepath.Join(dir, "app", "build.gradle.kts"), appBuild, 0o644); err != nil {
-        return err
-    }
-    // The emitted .kt files were placed at the project root by Generate;
-    // move them into app/src/main/kotlin/us/duckfam/sngl/app/.
-    return moveEmittedKotlinIntoAppSrc(dir)
+	if err := os.WriteFile(filepath.Join(dir, "app", "build.gradle.kts"), appBuild, 0o644); err != nil {
+		return err
+	}
+	// The emitted .kt files were placed at the project root by Generate;
+	// move them into app/src/main/kotlin/us/duckfam/sngl/app/.
+	return moveEmittedKotlinIntoAppSrc(dir)
 }
 
 func moveEmittedKotlinIntoAppSrc(dir string) error {
-    dst := filepath.Join(dir, "app", "src", "main", "kotlin", "us", "duckfam", "sngl", "app")
-    if err := os.MkdirAll(dst, 0o755); err != nil { return err }
-    entries, err := os.ReadDir(dir)
-    if err != nil { return err }
-    for _, e := range entries {
-        if e.IsDir() { continue }
-        name := e.Name()
-        if !strings.HasSuffix(name, ".kt") { continue }
-        if err := os.Rename(filepath.Join(dir, name), filepath.Join(dst, name)); err != nil {
-            return err
-        }
-    }
-    return nil
+	dst := filepath.Join(dir, "app", "src", "main", "kotlin", "us", "duckfam", "sngl", "app")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, ".kt") {
+			continue
+		}
+		if err := os.Rename(filepath.Join(dir, name), filepath.Join(dst, name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func writeGradleWrapper(dir string) error {
-    // Synthesize a gradle wrapper. Easiest: shell `gradle wrapper` via a
-    // host gradle if available; if not, fail. This step is only reached
-    // when system gradle isn't on PATH AND the host doesn't have one.
-    return fmt.Errorf("gradle wrapper synth not implemented; install gradle on PATH")
+	// Synthesize a gradle wrapper. Easiest: shell `gradle wrapper` via a
+	// host gradle if available; if not, fail. This step is only reached
+	// when system gradle isn't on PATH AND the host doesn't have one.
+	return fmt.Errorf("gradle wrapper synth not implemented; install gradle on PATH")
 }
 ```
 
@@ -1451,7 +1490,7 @@ b.WriteString("    val c = newTestComponent()\n")
 b.WriteString("    setCurrentTestModel(c)\n")
 // Prefix snapshot names with the testRunner under agent mode so
 // goldens are scoped per-runner.
-b.WriteString("    val __sngl_snapshotPrefix = \"\"\n")  // Replaced at codegen time below
+b.WriteString("    val __sngl_snapshotPrefix = \"\"\n") // Replaced at codegen time below
 ```
 
 That gets clunky. Simplest: codegen emits a top-level constant in `AgentMain.kt`:
@@ -1565,9 +1604,9 @@ In `codegen/platform/android/android.go`'s Generate, inside the agent-mode block
 ```go
 tr := codegen.OptionString(req.Options, "testRunner")
 if tr == "device" {
-    // Emit a separate Kotlin file that contains the test-agent
-    // bootstrap. MainActivity.onCreate calls into it.
-    bootstrapSrc := `package us.duckfam.sngl.app
+	// Emit a separate Kotlin file that contains the test-agent
+	// bootstrap. MainActivity.onCreate calls into it.
+	bootstrapSrc := `package us.duckfam.sngl.app
 
 import android.app.Activity
 import us.duckfam.sngl.testagent.startTcp
@@ -1587,14 +1626,14 @@ object TestAgentBootstrap {
 fun Activity.findRootView(): android.view.View =
     findViewById(android.R.id.content) ?: error("no root view")
 `
-    if err := writeAndroidSourceFile(sink, "TestAgentBootstrap.kt", req.Lang, ktOpts, []byte(bootstrapSrc)); err != nil {
-        return err
-    }
+	if err := writeAndroidSourceFile(sink, "TestAgentBootstrap.kt", req.Lang, ktOpts, []byte(bootstrapSrc)); err != nil {
+		return err
+	}
 
-    deviceSnapshotSrc := deviceSnapshotCaptureKotlin(pkgName)
-    if err := writeAndroidSourceFile(sink, "DeviceSnapshot.kt", req.Lang, ktOpts, []byte(deviceSnapshotSrc)); err != nil {
-        return err
-    }
+	deviceSnapshotSrc := deviceSnapshotCaptureKotlin(pkgName)
+	if err := writeAndroidSourceFile(sink, "DeviceSnapshot.kt", req.Lang, ktOpts, []byte(deviceSnapshotSrc)); err != nil {
+		return err
+	}
 }
 ```
 
@@ -1602,7 +1641,7 @@ Add the helper:
 
 ```go
 func deviceSnapshotCaptureKotlin(pkg string) []byte {
-    return []byte(`package ` + pkg + `
+	return []byte(`package ` + pkg + `
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -1696,8 +1735,10 @@ In `codegen/platform/android/run.go`, the function is currently package-private.
 // attached. Safe to call multiple times across a test session — only
 // starts one emulator total.
 func ensureDeviceOnce() error {
-    if hasDevice() { return nil }
-    return ensureDevice()
+	if hasDevice() {
+		return nil
+	}
+	return ensureDevice()
 }
 ```
 
@@ -1709,132 +1750,147 @@ Replace the stub in `codegen/platform/android/launcher.go`:
 
 ```go
 func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-    // Preconditions: ANDROID_HOME, adb, emulator, at least one AVD.
-    if sdkRoot() == "" {
-        return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
-    }
-    if _, err := androidTool("adb"); err != nil {
-        return nil, nil, &codegen.SkipError{Reason: "adb not found in Android SDK"}
-    }
-    if _, err := androidTool("emulator"); err != nil {
-        return nil, nil, &codegen.SkipError{Reason: "emulator not found in Android SDK"}
-    }
-    if _, err := pickAVD(); err != nil {
-        return nil, nil, &codegen.SkipError{Reason: "no AVD configured"}
-    }
+	// Preconditions: ANDROID_HOME, adb, emulator, at least one AVD.
+	if sdkRoot() == "" {
+		return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
+	}
+	if _, err := androidTool("adb"); err != nil {
+		return nil, nil, &codegen.SkipError{Reason: "adb not found in Android SDK"}
+	}
+	if _, err := androidTool("emulator"); err != nil {
+		return nil, nil, &codegen.SkipError{Reason: "emulator not found in Android SDK"}
+	}
+	if _, err := pickAVD(); err != nil {
+		return nil, nil, &codegen.SkipError{Reason: "no AVD configured"}
+	}
 
-    // Synthesize the gradle Android project layout, emit the APK.
-    if err := writeDeviceGradleProject(dir); err != nil {
-        return nil, nil, err
-    }
-    if err := moveEmittedKotlinIntoAppSrcAndroid(dir); err != nil {
-        return nil, nil, err
-    }
-    if err := gradleAssembleDebug(ctx, dir); err != nil {
-        return nil, nil, err
-    }
+	// Synthesize the gradle Android project layout, emit the APK.
+	if err := writeDeviceGradleProject(dir); err != nil {
+		return nil, nil, err
+	}
+	if err := moveEmittedKotlinIntoAppSrcAndroid(dir); err != nil {
+		return nil, nil, err
+	}
+	if err := gradleAssembleDebug(ctx, dir); err != nil {
+		return nil, nil, err
+	}
 
-    apk := filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
-    if _, err := os.Stat(apk); err != nil {
-        return nil, nil, fmt.Errorf("apk not found: %w", err)
-    }
+	apk := filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+	if _, err := os.Stat(apk); err != nil {
+		return nil, nil, fmt.Errorf("apk not found: %w", err)
+	}
 
-    // Bring up emulator if no device attached.
-    if err := ensureDeviceOnce(); err != nil {
-        return nil, nil, err
-    }
+	// Bring up emulator if no device attached.
+	if err := ensureDeviceOnce(); err != nil {
+		return nil, nil, err
+	}
 
-    // Install. Pick a port. adb forward. am start. Connect.
-    pkg := "us.duckfam.sngl.app"   // must match emitted Manifest applicationId
-    if err := adbInstall(apk); err != nil {
-        return nil, nil, fmt.Errorf("adb install: %w", err)
-    }
+	// Install. Pick a port. adb forward. am start. Connect.
+	pkg := "us.duckfam.sngl.app" // must match emitted Manifest applicationId
+	if err := adbInstall(apk); err != nil {
+		return nil, nil, fmt.Errorf("adb install: %w", err)
+	}
 
-    hostPort, err := pickFreeLocalhostPort()
-    if err != nil { return nil, nil, err }
-    devicePort := hostPort   // by convention; the device-side listener uses the host port
+	hostPort, err := pickFreeLocalhostPort()
+	if err != nil {
+		return nil, nil, err
+	}
+	devicePort := hostPort // by convention; the device-side listener uses the host port
 
-    adb, _ := androidTool("adb")
-    fwd := exec.CommandContext(ctx, adb, "forward",
-        fmt.Sprintf("tcp:%d", hostPort), fmt.Sprintf("tcp:%d", devicePort))
-    if err := fwd.Run(); err != nil {
-        return nil, nil, fmt.Errorf("adb forward: %w", err)
-    }
+	adb, _ := androidTool("adb")
+	fwd := exec.CommandContext(ctx, adb, "forward",
+		fmt.Sprintf("tcp:%d", hostPort), fmt.Sprintf("tcp:%d", devicePort))
+	if err := fwd.Run(); err != nil {
+		return nil, nil, fmt.Errorf("adb forward: %w", err)
+	}
 
-    start := exec.CommandContext(ctx, adb, "shell", "am", "start",
-        "-n", pkg+"/.MainActivity",
-        "--ei", "SNGL_AGENT_PORT", fmt.Sprintf("%d", devicePort))
-    start.Stderr = os.Stderr
-    if err := start.Run(); err != nil {
-        return nil, nil, fmt.Errorf("am start: %w", err)
-    }
+	start := exec.CommandContext(ctx, adb, "shell", "am", "start",
+		"-n", pkg+"/.MainActivity",
+		"--ei", "SNGL_AGENT_PORT", fmt.Sprintf("%d", devicePort))
+	start.Stderr = os.Stderr
+	if err := start.Run(); err != nil {
+		return nil, nil, fmt.Errorf("am start: %w", err)
+	}
 
-    // Retry-loop connect to the forwarded port; the agent thread takes
-    // ~50–500ms after am start to open its ServerSocket.
-    var conn net.Conn
-    for i := 0; i < 50; i++ {
-        c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", hostPort), time.Second)
-        if err == nil { conn = c; break }
-        time.Sleep(100 * time.Millisecond)
-    }
-    if conn == nil {
-        _ = exec.CommandContext(ctx, adb, "shell", "am", "force-stop", pkg).Run()
-        _ = exec.CommandContext(ctx, adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
-        return nil, nil, fmt.Errorf("device agent did not accept connection on %d", hostPort)
-    }
+	// Retry-loop connect to the forwarded port; the agent thread takes
+	// ~50–500ms after am start to open its ServerSocket.
+	var conn net.Conn
+	for i := 0; i < 50; i++ {
+		c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", hostPort), time.Second)
+		if err == nil {
+			conn = c
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if conn == nil {
+		_ = exec.CommandContext(ctx, adb, "shell", "am", "force-stop", pkg).Run()
+		_ = exec.CommandContext(ctx, adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
+		return nil, nil, fmt.Errorf("device agent did not accept connection on %d", hostPort)
+	}
 
-    cleanup := func() {
-        _ = conn.Close()
-        _ = exec.Command(adb, "shell", "am", "force-stop", pkg).Run()
-        _ = exec.Command(adb, "uninstall", pkg).Run()
-        _ = exec.Command(adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
-    }
-    return conn, cleanup, nil
+	cleanup := func() {
+		_ = conn.Close()
+		_ = exec.Command(adb, "shell", "am", "force-stop", pkg).Run()
+		_ = exec.Command(adb, "uninstall", pkg).Run()
+		_ = exec.Command(adb, "forward", "--remove", fmt.Sprintf("tcp:%d", hostPort)).Run()
+	}
+	return conn, cleanup, nil
 }
 
 func pickFreeLocalhostPort() (int, error) {
-    l, err := net.Listen("tcp", "127.0.0.1:0")
-    if err != nil { return 0, err }
-    defer l.Close()
-    return l.Addr().(*net.TCPAddr).Port, nil
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func writeDeviceGradleProject(dir string) error {
-    // Reuse the existing android scaffold logic which writes
-    // build.gradle.kts + AndroidManifest.xml + per-module configs.
-    // The existing path through Generate already does this when
-    // Options.main=false isn't set; for the device test path we want
-    // the same scaffold to be produced into dir.
-    return nil  // delegated; codegen has already populated dir under Generate
+	// Reuse the existing android scaffold logic which writes
+	// build.gradle.kts + AndroidManifest.xml + per-module configs.
+	// The existing path through Generate already does this when
+	// Options.main=false isn't set; for the device test path we want
+	// the same scaffold to be produced into dir.
+	return nil // delegated; codegen has already populated dir under Generate
 }
 
 func moveEmittedKotlinIntoAppSrcAndroid(dir string) error {
-    dst := filepath.Join(dir, "app", "src", "main", "kotlin", "us", "duckfam", "sngl", "app")
-    if err := os.MkdirAll(dst, 0o755); err != nil { return err }
-    entries, err := os.ReadDir(dir)
-    if err != nil { return err }
-    for _, e := range entries {
-        if e.IsDir() || !strings.HasSuffix(e.Name(), ".kt") { continue }
-        if err := os.Rename(filepath.Join(dir, e.Name()), filepath.Join(dst, e.Name())); err != nil {
-            return err
-        }
-    }
-    return nil
+	dst := filepath.Join(dir, "app", "src", "main", "kotlin", "us", "duckfam", "sngl", "app")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".kt") {
+			continue
+		}
+		if err := os.Rename(filepath.Join(dir, e.Name()), filepath.Join(dst, e.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func gradleAssembleDebug(ctx context.Context, dir string) error {
-    gradle, err := exec.LookPath("gradle")
-    if err != nil { return &codegen.SkipError{Reason: "gradle not on PATH"} }
-    var buf bytes.Buffer
-    cmd := exec.CommandContext(ctx, gradle, ":app:assembleDebug", "--no-daemon")
-    cmd.Dir = dir
-    cmd.Stdout = &buf
-    cmd.Stderr = &buf
-    if err := cmd.Run(); err != nil {
-        fmt.Fprint(os.Stderr, buf.String())
-        return fmt.Errorf("gradle assembleDebug: %w", err)
-    }
-    return nil
+	gradle, err := exec.LookPath("gradle")
+	if err != nil {
+		return &codegen.SkipError{Reason: "gradle not on PATH"}
+	}
+	var buf bytes.Buffer
+	cmd := exec.CommandContext(ctx, gradle, ":app:assembleDebug", "--no-daemon")
+	cmd.Dir = dir
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	if err := cmd.Run(); err != nil {
+		fmt.Fprint(os.Stderr, buf.String())
+		return fmt.Errorf("gradle assembleDebug: %w", err)
+	}
+	return nil
 }
 ```
 

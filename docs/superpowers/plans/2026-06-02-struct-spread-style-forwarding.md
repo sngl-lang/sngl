@@ -488,10 +488,12 @@ component main {
 - [ ] **Step 2: Verify it type-checks and the spread flattens in HTML output**
 
 Run:
+
 ```bash
 go run ./cmd/sngl generate --lang none --platform html testdata/struct_spread_flatten.sngl -o /tmp/spreadfix
 grep -o 'style="[^"]*"' /tmp/spreadfix/index.html
 ```
+
 Expected: the `div` style contains `display:flex`, `gap:6px`, and `padding:12px` (the spread's fields merged in) — not just `display:flex`.
 
 - [ ] **Step 3: Run the testdata suite**
@@ -530,28 +532,28 @@ Expected: no matches; build clean.
 
 In `codegen/platform/html/html.sngl`, edit each wrapper's root element. **Precedence rule:** structural props that must be locked go *after* `...style`; structural defaults the caller may override go *before* `...style`. Apply these exact root-style literals (leave the rest of each body unchanged):
 
-| Component | Root style literal |
-|-----------|--------------------|
-| `sngl.vbox` | `style={...style, display="flex", flexDirection="column"}` |
-| `sngl.hbox` | `style={...style, display="flex", flexDirection="row"}` |
-| `sngl.stack` | `style={...style, position="relative"}` |
-| `sngl.spacer` | `style={...style, flex=1}` |
-| `sngl.scroll` | `style={...style, overflow="auto"}` |
-| `sngl.text` (span) | add `style={...style}` |
-| `sngl.button` (button) | add `style={...style}` |
-| `sngl.image` (img) | add `style={...style}` |
-| `sngl.input` (input) | add `style={...style}` |
-| `sngl.checkbox` (label) | `style={display="inline-flex", alignItems="center", gap=4, ...style}` |
-| `sngl.radio` (fieldset) | `style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}` |
-| `sngl.toggle` (label) | `style={display="inline-flex", alignItems="center", gap=8, ...style}` |
-| `sngl.select` (select) | add `style={...style}` |
-| `sngl.textarea` (textarea) | add `style={...style}` |
-| `sngl.progress` (progress) | add `style={...style}` |
-| `sngl.spinner` (outer span) | `style={display="inline-flex", alignItems="center", gap=8, ...style}` |
-| `sngl.badge` (span) | `style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}` |
-| `sngl.tabs` (outer div) | `style={...style, display="flex", flexDirection="column"}` |
-| `sngl.link` (a) | add `style={...style}` |
-| `sngl.divider` (hr) | add `style={...style}` |
+| Component                   | Root style literal                                                                           |
+|-----------------------------|----------------------------------------------------------------------------------------------|
+| `sngl.vbox`                 | `style={...style, display="flex", flexDirection="column"}`                                   |
+| `sngl.hbox`                 | `style={...style, display="flex", flexDirection="row"}`                                      |
+| `sngl.stack`                | `style={...style, position="relative"}`                                                      |
+| `sngl.spacer`               | `style={...style, flex=1}`                                                                   |
+| `sngl.scroll`               | `style={...style, overflow="auto"}`                                                          |
+| `sngl.text` (span)          | add `style={...style}`                                                                       |
+| `sngl.button` (button)      | add `style={...style}`                                                                       |
+| `sngl.image` (img)          | add `style={...style}`                                                                       |
+| `sngl.input` (input)        | add `style={...style}`                                                                       |
+| `sngl.checkbox` (label)     | `style={display="inline-flex", alignItems="center", gap=4, ...style}`                        |
+| `sngl.radio` (fieldset)     | `style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}` |
+| `sngl.toggle` (label)       | `style={display="inline-flex", alignItems="center", gap=8, ...style}`                        |
+| `sngl.select` (select)      | add `style={...style}`                                                                       |
+| `sngl.textarea` (textarea)  | add `style={...style}`                                                                       |
+| `sngl.progress` (progress)  | add `style={...style}`                                                                       |
+| `sngl.spinner` (outer span) | `style={display="inline-flex", alignItems="center", gap=8, ...style}`                        |
+| `sngl.badge` (span)         | `style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}`               |
+| `sngl.tabs` (outer div)     | `style={...style, display="flex", flexDirection="column"}`                                   |
+| `sngl.link` (a)             | add `style={...style}`                                                                       |
+| `sngl.divider` (hr)         | add `style={...style}`                                                                       |
 
 - [ ] **Step 4: Build and confirm every wrapper type-checks**
 
@@ -561,10 +563,12 @@ Expected: no error. If a wrapper errors with `unknown prop "style"` or `unknown 
 - [ ] **Step 5: Verify the reported lesson renders fully styled**
 
 Create `/tmp/lesson.sngl` with the "Building a Component Library" seed (from `docs/learn/tour.md`, the `Card`/`Stat`/`main` block), then:
+
 ```bash
 go run ./cmd/sngl generate --lang none --platform html /tmp/lesson.sngl -o /tmp/lesson
 grep -o 'style="[^"]*"' /tmp/lesson/index.html
 ```
+
 Expected: outer vbox style includes `background-color:#f0f2f5`, `gap:10px`, `padding:16px`; the card includes `background-color:#ffffff`, `border-radius:8px`; stat labels include `color:#555555`.
 
 - [ ] **Step 6: Run the html DOM tests (style-merge + color via the B path)**
@@ -1269,10 +1273,12 @@ component main {
 - [ ] **Step 2: Verify it compiles to Go via a Go platform and calls the merge fn**
 
 Run:
+
 ```bash
 go run ./cmd/sngl generate --lang go --platform bubbletea testdata/struct_spread_runtime.sngl -o /tmp/rtmerge
 grep -rn "__merge_Cfg" /tmp/rtmerge/
 ```
+
 Expected: the generated Go contains both a `func __merge_Cfg(base, ov Cfg) Cfg {` definition and a `__merge_Cfg(` call site. (`b` is a plain int field, so `base`/`b=2` merge via the `!= 0` test — `a=1` from `base`, `b=2` explicit. With the plain-int limitation, `a=1` survives because `base.a` is non-zero.)
 
 - [ ] **Step 3: Run test to verify the Go spread comment is gone**
@@ -1285,18 +1291,22 @@ Expected: `no dropped-spread comments`.
 Now that the flatten pass converts every struct-literal spread to either a flat literal or a `__merge_` call, no `FieldInit{Spread:true}` reaches struct-literal emission. Replace each backend's spread arm with a panic:
 
 - `codegen/lang/golang/translate_ir.go` — in the `*ir.StructLit` case, replace:
+
   ```go
   if f.Spread {
       parts = append(parts, "/* ..."+translateIRExpr(f.Value, scope)+" */")
   } else {
   ```
+
   with:
+
   ```go
   if f.Spread {
-      panic("golang: struct spread must be lowered by flatten_struct_spread")
+  	panic("golang: struct spread must be lowered by flatten_struct_spread")
   }
   parts = append(parts, ExportName(f.Name)+": "+translateIRExpr(f.Value, scope))
   ```
+
   (drop the now-redundant `else`). Apply the same removal to any sibling spread arm found by `grep -n "f.Spread" codegen/lang/golang/*.go` (e.g. `ircontext.go:183`).
 - `codegen/lang/kotlin/ircontext.go:92` — replace the `if f.Spread { ... }` branch with `if f.Spread { panic("kotlin: struct spread must be lowered") }`.
 - `codegen/lang/javascript/javascript.go:71` — replace the `if f.Spread { ... }` branch with `if f.Spread { panic("javascript: struct spread must be lowered") }`.
@@ -1326,6 +1336,7 @@ git commit -m "feat(codegen): drop per-backend struct-spread emitters; assert sp
 - [ ] **Step 1: Probe whether native roots accept `style`**
 
 For one wrapper per platform, temporarily add `style={...style}` to the root and build:
+
 ```bash
 # gtk4
 go run ./cmd/sngl generate --lang go --platform gtk4 testdata/component_simple.sngl -o /tmp/gtk4probe 2>&1 | head
@@ -1334,6 +1345,7 @@ go run ./cmd/sngl generate --lang go --platform fyne testdata/component_simple.s
 # android
 go run ./cmd/sngl generate --lang kotlin --platform android testdata/component_simple.sngl -o /tmp/androidprobe 2>&1 | head
 ```
+
 Record which platforms error with `unknown prop "style"`.
 
 - [ ] **Step 2: For platforms that reject `style`, add a `style Style` param to the native element**
@@ -1354,11 +1366,13 @@ Apply to the remaining wrappers in each native `.sngl` that declare a `style Sty
 - [ ] **Step 4: Build each native platform**
 
 Run:
+
 ```bash
 go run ./cmd/sngl generate --lang go --platform gtk4 testdata/component_simple.sngl -o /tmp/gtk4 2>&1 | head
 go run ./cmd/sngl generate --lang go --platform fyne testdata/component_simple.sngl -o /tmp/fyne 2>&1 | head
 go run ./cmd/sngl generate --lang kotlin --platform android testdata/component_simple.sngl -o /tmp/android 2>&1 | head
 ```
+
 Expected: no `unknown prop` errors; each generates.
 
 - [ ] **Step 5: Run native platform suites**

@@ -25,8 +25,7 @@ failures.
 - Black-box message-pipeline coverage (every state mutation going
   through `Update`/Msg). Same reason.
 - Snapshot pixel-tolerance / perceptual-diff. Today the golden-diff is
-  bytes-equal for PNGs (already supported by `codegen/testharness/
-  snapshot`). Richer diff lands when a fixture demands it.
+  bytes-equal for PNGs (already supported by `codegen/testharness/ snapshot`). Richer diff lands when a fixture demands it.
 
 ## High-level architecture
 
@@ -73,7 +72,7 @@ bytes, the mime type, and any error.
 
 ```go
 func snapshotBytes(m Model) (string, []byte, error) {
-    return "text/ansi", []byte(m.View()), nil
+	return "text/ansi", []byte(m.View()), nil
 }
 ```
 
@@ -85,17 +84,17 @@ sequences.
 
 ```go
 func snapshotBytes(m Model) (string, []byte, error) {
-    a := app.NewWithID("sngl-test-snapshot")
-    defer a.Quit()
-    win := a.NewWindow("test")
-    win.SetContent(m.buildView())  // codegen-emitted view-builder
-    win.Resize(fyne.NewSize(800, 600))
-    img := test.WindowToImage(win)
-    var buf bytes.Buffer
-    if err := png.Encode(&buf, img); err != nil {
-        return "", nil, err
-    }
-    return "image/png", buf.Bytes(), nil
+	a := app.NewWithID("sngl-test-snapshot")
+	defer a.Quit()
+	win := a.NewWindow("test")
+	win.SetContent(m.buildView()) // codegen-emitted view-builder
+	win.Resize(fyne.NewSize(800, 600))
+	img := test.WindowToImage(win)
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return "", nil, err
+	}
+	return "image/png", buf.Bytes(), nil
 }
 ```
 
@@ -165,8 +164,8 @@ Mirrors Plan 1's bubbletea and fyne cutovers:
    - When `Options.test=true && Options.testMode=="agent"`: emit
      `testagent_main.go` (via `golang.LowerTestFile(... TestEmitAgent)`)
      + `agent_main.go` (calls `testagent.Main()`) + the `snapshotBytes`
-     function specific to gtk4 + a `buildWidgets(m)` helper for the
-     activate handler.
+       function specific to gtk4 + a `buildWidgets(m)` helper for the
+       activate handler.
    - When `Options.test=true && testMode != "agent"`: emit
      `*_test.go` files for the user's project (native mode), same
      `snapshotBytes` so `--opt test=true` produces native tests with
@@ -204,27 +203,27 @@ populates the pointer during init.
 var snapshotFn func() (string, []byte, error)
 
 func RegisterSnapshot(fn func() (string, []byte, error)) {
-    snapshotFn = fn
+	snapshotFn = fn
 }
 
 func (t *T) Snapshot(name string) {
-    if snapshotFn == nil {
-        t.Errorf("snapshot %q: no capture registered for this platform", name)
-        return
-    }
-    mime, raw, err := snapshotFn()
-    if err != nil {
-        t.Errorf("snapshot %q: capture: %v", name, err)
-        return
-    }
-    res, err := t.rpc.snapshotAssert(t.name, name, mime, raw)
-    if err != nil {
-        t.Errorf("snapshot %q: rpc: %v", name, err)
-        return
-    }
-    if !res.Pass {
-        t.Errorf("snapshot %q mismatch:\n%s", name, res.Diff)
-    }
+	if snapshotFn == nil {
+		t.Errorf("snapshot %q: no capture registered for this platform", name)
+		return
+	}
+	mime, raw, err := snapshotFn()
+	if err != nil {
+		t.Errorf("snapshot %q: capture: %v", name, err)
+		return
+	}
+	res, err := t.rpc.snapshotAssert(t.name, name, mime, raw)
+	if err != nil {
+		t.Errorf("snapshot %q: rpc: %v", name, err)
+		return
+	}
+	if !res.Pass {
+		t.Errorf("snapshot %q mismatch:\n%s", name, res.Diff)
+	}
 }
 ```
 
@@ -234,10 +233,10 @@ current Model so each Snapshot call reads fresh state:
 ```go
 // agent_main.go (bubbletea)
 func main() {
-    testagent.RegisterSnapshot(func() (string, []byte, error) {
-        return snapshotBytes(currentModel())
-    })
-    testagent.Main()
+	testagent.RegisterSnapshot(func() (string, []byte, error) {
+		return snapshotBytes(currentModel())
+	})
+	testagent.Main()
 }
 ```
 

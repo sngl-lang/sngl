@@ -28,7 +28,6 @@ func TestParityGolden(t *testing.T) {
 		t.Fatal("no parity fixtures found")
 	}
 	for _, src := range srcs {
-		src := src
 		t.Run(filepath.Base(src), func(t *testing.T) {
 			got := generateHTML(t, src)
 			golden := strings.TrimSuffix(src, ".sngl") + ".golden"

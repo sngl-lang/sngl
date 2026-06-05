@@ -243,10 +243,10 @@ func TestHTMLTagForFallback(t *testing.T) {
 		"text":       "span",
 		"label":      "span",
 		"button":     "button",
-		"html.input": "input",  // platform-sngl wrapper: trust the suffix
-		"widget.svg": "svg",    // namespaced suffix passes through
-		"MyWidget":   "div",    // unknown bare component name → safe default
-		"frobnicate": "div",    // unknown bare element → safe default
+		"html.input": "input", // platform-sngl wrapper: trust the suffix
+		"widget.svg": "svg",   // namespaced suffix passes through
+		"MyWidget":   "div",   // unknown bare component name → safe default
+		"frobnicate": "div",   // unknown bare element → safe default
 	}
 	for in, want := range cases {
 		if got := htmlTagFor(in); got != want {

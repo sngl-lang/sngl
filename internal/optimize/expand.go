@@ -298,4 +298,3 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		panic(fmt.Sprintf("walkAllExprs: unhandled expr %T", x))
 	}
 }
-

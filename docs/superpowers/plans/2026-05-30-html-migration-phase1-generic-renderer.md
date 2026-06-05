@@ -412,16 +412,21 @@ Expected: all subtests PASS.
 - [ ] **Step 1: Regenerate the website and assert components render**
 
 Run:
+
 ```bash
 go install ./cmd/sngl
 rm -rf /tmp/site_phase1 && go tool sngl generate --platform html --lang none --out /tmp/site_phase1 website.sngl
 ```
+
 Expected: exit 0. Then check the playground page renders its real `<select id="examples">` with `<option>`s:
+
 ```bash
 grep -c 'id="examples"' /tmp/site_phase1/playground.html   # expect 1
 grep -c '<option' /tmp/site_phase1/playground.html          # expect >= 1
 ```
+
 And spot-check a content page still has body + CSS:
+
 ```bash
 grep -c 'component-card' /tmp/site_phase1/components/index.html   # expect > 0
 grep -c 'rel="stylesheet"' /tmp/site_phase1/components/index.html # expect 1
@@ -442,6 +447,7 @@ Expected: all pass. Address any remaining failures (cosmetic golden updates only
 ```bash
 git add -A && git commit -m "fix(html): complete data-driven bodies; website renders all components"
 ```
+
 (Skip if Tasks 3–4 already left the tree clean and passing.)
 
 ---

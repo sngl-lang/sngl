@@ -20,7 +20,7 @@ import (
 //   - testagent_main.js — output of javascript.LowerTestFile(agent),
 //     contains test funcs + Registry.register calls.
 //   - snapshot.js — registers the DOM-string capture under
-//     Snapshots.register('', ...).
+//     Snapshots.register(”, ...).
 //   - current_model.js — setCurrentTestModel/currentTestModel/
 //     newTestComponent accessors.
 //   - testagent/*.js — verbatim copies of pkg/js/testagent/*.js so the

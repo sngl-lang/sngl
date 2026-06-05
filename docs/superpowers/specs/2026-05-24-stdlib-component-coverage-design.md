@@ -58,32 +58,32 @@ Each fixture is one of:
   validates parse + check + lower by existing in `testdata/`. No
   `func test...` body required.
 
-| # | Component | Tier | Prop ↔ var | Test body sketch |
-|---|---|---|---|---|
-| 1 | image | B | `var src string` ↔ `src` | mutate src, assert |
-| 2 | scroll | B | `var x float` ↔ `scrollX` | mutate, assert |
-| 3 | spacer | A | — | declaration only |
-| 4 | checkbox | B | `var on bool` ↔ `checked` | toggle, assert |
-| 5 | radio | B | `var sel string` shared | reassign, assert |
-| 6 | textarea | B | `var text string` ↔ `value` | mutate, assert |
-| 7 | spinner | B | `var loading bool` ↔ `visible` | toggle, assert |
-| 8 | tabs | B | `var idx int` ↔ `selected` | mutate, assert |
-| 9 | link | A | — | declaration + href literal |
-| 10 | divider | A | — | declaration only |
-| 11 | modal | B | `var open bool` ↔ `open` | toggle, assert |
-| 12 | drawer | B | `var open bool` ↔ `open` | toggle, assert |
-| 13 | tooltip | B | `var msg string` ↔ `message` | mutate, assert |
-| 14 | popover | B | `var visible bool` ↔ `visible` | toggle, assert |
-| 15 | splitview | A | — | declaration only |
-| 16 | table | B | `var rows list<T>` ↔ `rows` | push, assert length |
-| 17 | tree | B | `var root dyn` ↔ `node` | reassign, assert |
-| 18a | menu | B | `var sel string` ↔ `selected` | mutate, assert |
-| 18b | menubar | A | — | declaration only |
-| 18c | toolbar | A | — | declaration only |
-| 19 | datepicker | B | `var d date` ↔ `value` | mutate, assert |
-| 20 | chip | A | — | declaration + label binding |
-| 21 | avatar | A | — | declaration + src/fallback |
-| 22 | slot | A | — | declaration: parent uses slot |
+| #   | Component  | Tier | Prop ↔ var                     | Test body sketch              |
+|-----|------------|------|--------------------------------|-------------------------------|
+| 1   | image      | B    | `var src string` ↔ `src`       | mutate src, assert            |
+| 2   | scroll     | B    | `var x float` ↔ `scrollX`      | mutate, assert                |
+| 3   | spacer     | A    | —                              | declaration only              |
+| 4   | checkbox   | B    | `var on bool` ↔ `checked`      | toggle, assert                |
+| 5   | radio      | B    | `var sel string` shared        | reassign, assert              |
+| 6   | textarea   | B    | `var text string` ↔ `value`    | mutate, assert                |
+| 7   | spinner    | B    | `var loading bool` ↔ `visible` | toggle, assert                |
+| 8   | tabs       | B    | `var idx int` ↔ `selected`     | mutate, assert                |
+| 9   | link       | A    | —                              | declaration + href literal    |
+| 10  | divider    | A    | —                              | declaration only              |
+| 11  | modal      | B    | `var open bool` ↔ `open`       | toggle, assert                |
+| 12  | drawer     | B    | `var open bool` ↔ `open`       | toggle, assert                |
+| 13  | tooltip    | B    | `var msg string` ↔ `message`   | mutate, assert                |
+| 14  | popover    | B    | `var visible bool` ↔ `visible` | toggle, assert                |
+| 15  | splitview  | A    | —                              | declaration only              |
+| 16  | table      | B    | `var rows list<T>` ↔ `rows`    | push, assert length           |
+| 17  | tree       | B    | `var root dyn` ↔ `node`        | reassign, assert              |
+| 18a | menu       | B    | `var sel string` ↔ `selected`  | mutate, assert                |
+| 18b | menubar    | A    | —                              | declaration only              |
+| 18c | toolbar    | A    | —                              | declaration only              |
+| 19  | datepicker | B    | `var d date` ↔ `value`         | mutate, assert                |
+| 20  | chip       | A    | —                              | declaration + label binding   |
+| 21  | avatar     | A    | —                              | declaration + src/fallback    |
+| 22  | slot       | A    | —                              | declaration: parent uses slot |
 
 Total: **24 fixtures** (18 B-tier + 6 A-tier; menu/menubar/toolbar
 count as three separate per the audit's path naming).
@@ -119,8 +119,8 @@ After each fixture lands:
 sngl test --platform=none testdata/component_<name>.sngl
 ```
 
-Expected for B-tier: `PASS  ok  <N> tests, 0 failures`.
-Expected for A-tier: `PASS  ok  0 tests, 0 failures` (no test bodies,
+Expected for B-tier: `PASS ok <N> tests, 0 failures`.
+Expected for A-tier: `PASS ok 0 tests, 0 failures` (no test bodies,
 the existence of the file confirms parse+check).
 
 Final sweep before closing the plan:

@@ -41,7 +41,7 @@ func LangTestagentPath(lang string) (string, error) {
 	}
 	for _, start := range candidates {
 		dir := filepath.Dir(start)
-		for i := 0; i < 12; i++ {
+		for range 12 {
 			modPath := filepath.Join(dir, "go.mod")
 			if data, err := os.ReadFile(modPath); err == nil {
 				if strings.Contains(string(data), "module git.duckfam.us/jonathan/sngl") {

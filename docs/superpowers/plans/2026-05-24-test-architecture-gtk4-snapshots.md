@@ -72,7 +72,7 @@ func TestT_SnapshotSubmitsRequest(t *testing.T) {
 	})
 	// Roundtrip needs a mock driver that responds to snapshotAssert.
 	// Use a piped RPC pair to simulate.
-	cr, dw := io.Pipe()  // driver → agent (responses)
+	cr, dw := io.Pipe()    // driver → agent (responses)
 	ar, dwOut := io.Pipe() // agent → driver (requests)
 	_ = dw
 	// Drive agent in goroutine
@@ -105,6 +105,7 @@ If the existing test file doesn't import `io`, add it. The two tests verify (a) 
 ```bash
 go test ./pkg/go/testagent/ -count=1
 ```
+
 Expected: undefined `RegisterSnapshot`, `resetSnapshot`, `Snapshot`, `rpcResponses`, `startReadLoop`.
 
 - [ ] **Step 3: Implement**
@@ -280,6 +281,7 @@ at := &T{name: "T1", w: testrpc.NewWriter(dwOut)}
 ```bash
 go test ./pkg/go/testagent/ -count=1 -v
 ```
+
 Expected: all tests pass, including the two new ones.
 
 - [ ] **Step 5: Confirm driver-side is unchanged**
@@ -287,6 +289,7 @@ Expected: all tests pass, including the two new ones.
 ```bash
 go test ./cmd/sngl/ -run TestScript -count=1 2>&1 | tail -10
 ```
+
 Expected: green. `cmd/sngl/testdriver.go`'s `handleSnapshotAssert` already does the right thing for the new agent path.
 
 - [ ] **Step 6: Commit**
@@ -350,6 +353,7 @@ The `currentTestModel()` helper must also be emitted — it returns the Model th
 ```go
 // generated in testagent_main.go (modify Plan 1's emission)
 var current Model
+
 func currentTestModel() Model { return current }
 
 func testFoo(t *testagent.T) {
@@ -434,6 +438,7 @@ Expected: PASS. If the first run fails because the script-test sandbox doesn't c
 ```bash
 go test ./cmd/sngl/ -run TestScript -count=1 2>&1 | tail -10
 ```
+
 Expected: green.
 
 - [ ] **Step 6: Commit**
@@ -566,6 +571,7 @@ Fyne's `test.NewApp` is supposed to be host-toolkit-independent. If the test fai
 ```bash
 go test ./cmd/sngl/ -run TestScript -count=1 2>&1 | tail -10
 ```
+
 Expected: green (or fyne-specific failure noted above).
 
 - [ ] **Step 5: Commit**
@@ -831,11 +837,11 @@ Also: the `currentTestModel()` helper needs to return `*Model` (pointer) for gtk
 To keep `LowerTestFile` platform-agnostic, modify it: agent-mode emits `setCurrentTestModel(c)` in the per-test prelude (instead of `current = c`). Each platform's emitted `snapshot.go` (or `testagent_main.go`) declares:
 
 ```go
-var currentModel *Model // or Model (value), depending on platform
-func setCurrentTestModel(m Model) { currentModel = &m }    // for value-Model platforms
+var currentModel *Model           // or Model (value), depending on platform
+func setCurrentTestModel(m Model) { currentModel = &m } // for value-Model platforms
 // or
-func setCurrentTestModel(m *Model) { currentModel = m }   // for pointer-Model platforms
-func currentTestModel() *Model { return currentModel }     // or returns Model directly
+func setCurrentTestModel(m *Model) { currentModel = m }    // for pointer-Model platforms
+func currentTestModel() *Model     { return currentModel } // or returns Model directly
 ```
 
 Now `LowerTestFile`'s emission is uniform (`setCurrentTestModel(c)`), and each platform implements the accessor with the right type. Bubbletea (Model value), fyne (Model pointer), gtk4 (Model pointer).

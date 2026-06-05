@@ -105,8 +105,8 @@ func snglCmd() script.Cmd {
 			origUnset := map[string]bool{}
 			scriptEnv := map[string]string{}
 			for _, kv := range s.Environ() {
-				if i := strings.IndexByte(kv, '='); i >= 0 {
-					scriptEnv[kv[:i]] = kv[i+1:]
+				if before, after, ok := strings.Cut(kv, "="); ok {
+					scriptEnv[before] = after
 				}
 			}
 			for k, v := range scriptEnv {

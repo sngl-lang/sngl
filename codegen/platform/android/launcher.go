@@ -318,7 +318,7 @@ func waitForDevicePortBound(ctx context.Context, adb string, devicePort int, tim
 		out, err := exec.CommandContext(ctx, adb, "shell",
 			"cat", "/proc/net/tcp", "/proc/net/tcp6").Output()
 		if err == nil {
-			for _, line := range strings.Split(string(out), "\n") {
+			for line := range strings.SplitSeq(string(out), "\n") {
 				// Look for ":<hex-port> ... 0A " (LISTEN state).
 				if strings.Contains(line, ":"+portHex+" ") && strings.Contains(line, " 0A ") {
 					return nil

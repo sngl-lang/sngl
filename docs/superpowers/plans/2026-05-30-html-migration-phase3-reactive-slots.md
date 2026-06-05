@@ -101,6 +101,7 @@ component main {
 	}
 }
 ```
+
 Add a small `contains(s, sub string) bool` helper (or use `strings.Contains` directly). `MustText()` returns only *visible* text, so a hidden/removed branch won't appear — that is the behavioral assertion.
 
 - [ ] **Step 2: Run — red baseline**
@@ -109,6 +110,7 @@ Run: `go test ./codegen/platform/html/ -run TestReactiveSlot -v`
 Expected: BOTH FAIL. Carousel shows both ZERO and ONE (no slots generated for the component-nested window). Top-level toggle likely shows nothing or throws (`__renderSlot0(null)`). If the browser is unavailable, both SKIP — report that.
 
 - [ ] **Step 3: Commit**
+
 ```bash
 git add codegen/platform/html/reactive_slot_browser_test.go
 git commit -m "test(html): reactive-slot browser tests (carousel + top-level toggle) — red baseline"
@@ -126,7 +128,9 @@ git commit -m "test(html): reactive-slot browser tests (carousel + top-level tog
 	case *ir.Window:
 		// handled by top-level loop in lowerReactivity
 ```
+
 with:
+
 ```go
 	case *ir.Window:
 		// Top-level windows live in pkg.Windows and are walked by the loop in
@@ -136,6 +140,7 @@ with:
 		// or reactive If/For inside such a window never get a slot collected.
 		st.collectFromStmts(n.Body)
 ```
+
 (Top-level windows are in `pkg.Windows`, not in any component body, so this only fires for component-nested windows — no double-processing.)
 
 - [ ] **Step 2: Verify collection happens.** Slots still won't render (gap 2 blocks the dep match, gap 3 blocks rendering), but build must be clean and existing tests must pass:
@@ -144,6 +149,7 @@ Run: `go build ./... && go test ./internal/lower/ ./internal/optimize/`
 Expected: clean + pass.
 
 - [ ] **Step 3: Commit**
+
 ```bash
 git add internal/lower/reactivity.go
 git commit -m "fix(lower): reactivity pass 1 recurses into component-nested windows
@@ -162,6 +168,7 @@ in pkg.Windows; pass 1 must descend into them so reactive if/for inside
 - [ ] **Step 1: Thread a symbol-rename map.** `renameIdents` currently rewrites `id.Name` but leaves `id.Sym` at the original decl, while `expandCall` adds a *clone* var to `main.Vars`. The reactivity pass collects the clones and matches by `Sym`, so the dependency is missed. Change `renameIdents`/`renameInExpr` to also repoint `Sym`:
 
 Replace `renameIdents`:
+
 ```go
 func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string) []ir.Stmt {
 	if len(renames) == 0 {
@@ -180,7 +187,9 @@ func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string) []ir.Stmt {
 	return w.stmts(stmts)
 }
 ```
+
 with (add a `symRenames map[ir.Symbol]ir.Symbol` parameter and repoint Sym):
+
 ```go
 // renameIdents rewrites Ident.Name via renames and repoints Ident.Sym via
 // symRenames. Repointing Sym is essential: after inlining, the cloned
@@ -210,7 +219,9 @@ func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string, symRenames map[
 	return w.stmts(stmts)
 }
 ```
+
 And update `renameInExpr` to take + forward `symRenames`:
+
 ```go
 func renameInExpr(e ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) ir.Expr {
 	if e == nil {
@@ -230,6 +241,7 @@ Run: `go build ./... && go test ./internal/lower/`
 Expected: clean + pass. (If a lower test for inlined reactivity doesn't exist, add one: build a pkg with `component Car{var a; if a==0{...}}` called from `main`, run `lowerInlineComponents` then `lowerReactivity`, assert `main.Funcs` contains a `__renderSlot`-prefixed func.)
 
 - [ ] **Step 4: Commit**
+
 ```bash
 git add internal/lower/inline_components.go
 git commit -m "fix(lower): inlined idents repoint Sym to the clone
@@ -251,9 +263,11 @@ After Tasks 2-3 the carousel's slots are generated, but html still: renders the 
 - [ ] **Step 1: Read the current emission.** Read in `html.go`: `nodeFromIRCallStmt`/`irCallName` (how the `__renderSlotN` CallStmt becomes a `NodeInst{Name:"__renderSlotN"}` rendered as a raw tag), `emitSynthesizedSlots` (declares `let __slotN`/`let __root = null`, routes `__renderSlotN` bodies, scans `main.Body` for init calls), and how a reactive slot's `parent` arg is currently emitted (the `parentRef` — an enclosing element id for nested slots, `__root` for top-level).
 
 - [ ] **Step 2: Emit a valid, position-preserving anchor for each slot CallStmt.** Where the `__renderSlotN` CallStmt is rendered (the raw `<__renderSlotN>` today), instead emit a real anchor element that occupies the slot's DOM position without affecting layout:
+
 ```html
 <span data-sngl-slot="N" style="display:contents"></span>
 ```
+
 (`display:contents` makes the wrapper transparent to layout; the slot's children render as if direct children of the real parent.) Render the `__renderSlotN` content INTO this anchor.
 
 - [ ] **Step 3: Bind each slot's `parent` to its anchor + emit init calls for ALL slots.** In the JS:
@@ -274,6 +288,7 @@ If the carousel slots fire but render into the wrong position (e.g. both into bo
 
 Run: `go test ./codegen/platform/html/ ./internal/lower/ ./internal/optimize/ ./cmd/sngl/`
 Expected: all pass (the 17 component DOM tests + interaction + the new reactive-slot tests). Then:
+
 ```bash
 git add codegen/platform/html/html.go
 git commit -m "feat(html): render reactive slots into real per-slot anchors
@@ -291,6 +306,7 @@ the unbound __root=null path. Reactive if/for now render and update."
 **Files:** none (verification)
 
 - [ ] **Step 1: Regenerate + inspect the carousel.**
+
 ```bash
 go install ./cmd/sngl
 rm -rf /tmp/site_p3 && go tool sngl generate --platform html --lang none --out /tmp/site_p3 website.sngl
@@ -298,6 +314,7 @@ grep -c '<__renderSlot' /tmp/site_p3/index.html          # expect 0 (no invalid 
 grep -c 'data-sngl-slot' /tmp/site_p3/index.html          # expect > 0 (anchors present)
 grep -c '__renderSlot' /tmp/site_p3/index.html            # expect > 0 (render fns + init calls)
 ```
+
 Confirm the carousel images render through slots (only the active image's `<img>` should be appended at init; the others live in the slot render functions).
 
 - [ ] **Step 2: Browser-verify the live website carousel (optional but recommended).** If a browser test over the full `website.sngl` is feasible with the existing harness, assert exactly one carousel image is visible initially and it changes after a timer tick or carousel-button click. Otherwise rely on the unit carousel test (Task 1) + the static inspection above.

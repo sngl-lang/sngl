@@ -13,12 +13,12 @@ function emits broken, dead server-side code:
 
 ```go
 func handleAppAction(w http.ResponseWriter, r *http.Request) {
-    switch r.FormValue("action") {
-    case "action0":
-        count = api.Persist((count + 1))                  // undefined: count
-        __n0.TextContent = ("count " + fmt.Sprint(count))  // undefined: __n0; fmt unimported
-    }
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+	switch r.FormValue("action") {
+	case "action0":
+		count = api.Persist((count + 1))                  // undefined: count
+		__n0.TextContent = ("count " + fmt.Sprint(count)) // undefined: __n0; fmt unimported
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 ```
 
@@ -162,8 +162,7 @@ frontend-forced expression needs a server-only value.
 (Same machinery as the prior design, now triggered by placement=backend rather
 than impurity.)
 
-- The triggering element emits `<form method="post" action="<route>"><input
-  type="hidden" name="_action" value="N">…</form>` — no client JS required.
+- The triggering element emits `<form method="post" action="<route>"><input type="hidden" name="_action" value="N">…</form>` — no client JS required.
 - html builds, per route: a **RenderModel** (static skeleton + IR-expr holes for
   text/attr bindings and reactive `if`/`for`), **StateVars** (name + IR type),
   and **ServerActions** (the handler's logical state mutations; visual/DOM-patch
@@ -198,8 +197,7 @@ HTML verbatim.
 4. Runtime: GET → `count 0`; submit form → POST `_action=0` → server runs
    `api.Persist`, stores 1, redirects → GET → `count 1`. Compiles, works, no
    WASM ship of the backend func, no DOM refs.
-5. To instead run it client-side: author writes `@click { count =
-   html.frontend(api.Persist(count + 1)) }` → `api` compiles to WASM, handler
+5. To instead run it client-side: author writes `@click { count = html.frontend(api.Persist(count + 1)) }` → `api` compiles to WASM, handler
    stays client JS. Build fails if it can't.
 
 ## Error handling

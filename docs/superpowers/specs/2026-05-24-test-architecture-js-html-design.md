@@ -21,8 +21,7 @@ bodies at codegen time and emits sequences of CDP commands) with:
 
 ## Non-goals
 
-- Native-mode emission (`sngl generate --opt test=true --platform=
-  html`). For html, the user's existing test cycle is typically E2E
+- Native-mode emission (`sngl generate --opt test=true --platform= html`). For html, the user's existing test cycle is typically E2E
   browser tests (Playwright/Cypress) or unit tests under
   Vitest/Jest/QUnit — too configuration-heavy to autogenerate
   sensibly. `sngl test --platform=html` covers SNGL's testing needs.
@@ -125,15 +124,15 @@ enum (mirroring Plan 1/3) and `LowerTestFile`:
 type TestEmitMode int
 
 const (
-    TestEmitAgent TestEmitMode = iota
-    // TestEmitNative reserved for symmetry with go/kotlin lowerers.
-    // Today html's native mode is a no-op; calling LowerTestFile with
-    // TestEmitNative returns a doc comment explaining the limitation.
-    TestEmitNative
+	TestEmitAgent TestEmitMode = iota
+	// TestEmitNative reserved for symmetry with go/kotlin lowerers.
+	// Today html's native mode is a no-op; calling LowerTestFile with
+	// TestEmitNative returns a doc comment explaining the limitation.
+	TestEmitNative
 )
 
 func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
-    methodFields map[string]bool, mode TestEmitMode) string
+	methodFields map[string]bool, mode TestEmitMode) string
 ```
 
 Agent-mode output:
@@ -152,8 +151,7 @@ async function testFoo(t) {
 Registry.register('Foo', testFoo);
 ```
 
-Body lowering reuses the existing `codegen/lang/javascript/
-translate_ir.go` machinery. Same shape as Plan 1 Task 5 for Go and
+Body lowering reuses the existing `codegen/lang/javascript/ translate_ir.go` machinery. Same shape as Plan 1 Task 5 for Go and
 Plan 3 Task 2 for Kotlin.
 
 ## html platform agent emission
@@ -181,54 +179,55 @@ Modify `codegen/platform/html/html.go`'s `Generate`. Under
 `codegen/platform/html/launcher.go`:
 
 ```go
-//go:build !js
+!js
 
+package p
 func (g *Generator) LaunchTest(ctx, dir, lang, opts) (RPCChannel, Cleanup, error) {
-    if _, found := launcher.LookPath(); !found {
-        return nil, nil, &codegen.SkipError{Reason: "Chrome/Chromium not on PATH"}
-    }
+	if _, found := launcher.LookPath(); !found {
+		return nil, nil, &codegen.SkipError{Reason: "Chrome/Chromium not on PATH"}
+	}
 
-    // Pick two free localhost ports — one for the HTTP server hosting
-    // the generated page, one for the WebSocket carrying JSON-RPC.
-    pagePort, _ := pickFreeLocalhostPort()
-    wsPort, _ := pickFreeLocalhostPort()
+	// Pick two free localhost ports — one for the HTTP server hosting
+	// the generated page, one for the WebSocket carrying JSON-RPC.
+	pagePort, _ := pickFreeLocalhostPort()
+	wsPort, _ := pickFreeLocalhostPort()
 
-    // Page server.
-    pageSrv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", pagePort)}
-    pageSrv.Handler = http.FileServer(http.Dir(dir))
-    go pageSrv.ListenAndServe()
+	// Page server.
+	pageSrv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", pagePort)}
+	pageSrv.Handler = http.FileServer(http.Dir(dir))
+	go pageSrv.ListenAndServe()
 
-    // WebSocket server. Accept a single inbound connection.
-    accepted := make(chan net.Conn, 1)
-    wsSrv := &http.Server{
-        Addr: fmt.Sprintf("127.0.0.1:%d", wsPort),
-        Handler: wsAcceptHandler(accepted),
-    }
-    go wsSrv.ListenAndServe()
+	// WebSocket server. Accept a single inbound connection.
+	accepted := make(chan net.Conn, 1)
+	wsSrv := &http.Server{
+		Addr:    fmt.Sprintf("127.0.0.1:%d", wsPort),
+		Handler: wsAcceptHandler(accepted),
+	}
+	go wsSrv.ListenAndServe()
 
-    // Launch Chromium via rod, navigate to the page with the WS port
-    // baked into the URL query.
-    pageURL := fmt.Sprintf("http://127.0.0.1:%d/index.html?sngl_port=%d",
-        pagePort, wsPort)
-    browser := rod.New().MustConnect()
-    page := browser.MustPage(pageURL)
+	// Launch Chromium via rod, navigate to the page with the WS port
+	// baked into the URL query.
+	pageURL := fmt.Sprintf("http://127.0.0.1:%d/index.html?sngl_port=%d",
+		pagePort, wsPort)
+	browser := rod.New().MustConnect()
+	page := browser.MustPage(pageURL)
 
-    // Wait for the page's agent to connect back.
-    var conn net.Conn
-    select {
-    case conn = <-accepted:
-    case <-time.After(10 * time.Second):
-        return nil, nil, fmt.Errorf("agent did not connect within 10s")
-    }
+	// Wait for the page's agent to connect back.
+	var conn net.Conn
+	select {
+	case conn = <-accepted:
+	case <-time.After(10 * time.Second):
+		return nil, nil, fmt.Errorf("agent did not connect within 10s")
+	}
 
-    cleanup := func() {
-        _ = conn.Close()
-        _ = pageSrv.Close()
-        _ = wsSrv.Close()
-        _ = page.Close()
-        _ = browser.Close()
-    }
-    return conn, cleanup, nil
+	cleanup := func() {
+		_ = conn.Close()
+		_ = pageSrv.Close()
+		_ = wsSrv.Close()
+		_ = page.Close()
+		_ = browser.Close()
+	}
+	return conn, cleanup, nil
 }
 ```
 
@@ -265,8 +264,7 @@ Goldens land at `<fixture>.snapshots/<name>.html`. The existing
 unified diff) already.
 
 `image/png` snapshots via driver-side `Page.captureScreenshot` are a
-deferred follow-up. Trivial to add: a second intrinsic `t.screenshot(
-name)` that submits an empty payload to the driver; the driver
+deferred follow-up. Trivial to add: a second intrinsic `t.screenshot( name)` that submits an empty payload to the driver; the driver
 recognises a special `mime=image/png; provider=driver` value and
 captures via rod's CDP connection. Skip until a fixture wants it.
 
@@ -275,8 +273,7 @@ captures via rod's CDP connection. Skip until a fixture wants it.
 - **Native-mode emission for html**. If users want SNGL-generated
   unit tests they can run under their existing JS test runner, add a
   `testRunner` option (`vitest`, `qunit`, `playwright`) and emit the
-  corresponding test file shape. Today: skip — `sngl test
-  --platform=html` is the supported path.
+  corresponding test file shape. Today: skip — `sngl test --platform=html` is the supported path.
 - **Driver-side `Page.captureScreenshot` for image/png snapshots**.
   Add when a fixture demands pixel-level fidelity beyond DOM-string
   comparison.

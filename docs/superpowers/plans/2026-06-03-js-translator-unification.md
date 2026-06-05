@@ -79,9 +79,11 @@ If i18n plural/PluralKey fixtures are needed, copy the shapes asserted in `codeg
 - [ ] **Step 2: Verify each fixture checks without error**
 
 Run for each file:
+
 ```bash
 go run ./cmd/sngl dump checked codegen/platform/html/testdata/parity/intdiv.sngl
 ```
+
 Expected: no diagnostics, prints the checked IR. Repeat for every fixture. Fix any that error before continuing.
 
 - [ ] **Step 3: Commit fixtures**
@@ -159,6 +161,7 @@ Note: reuse the existing `generateHTML(t, path)` helper in `codegen/platform/htm
 ```bash
 SNGL_UPDATE_GOLDEN=1 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS, writes `*.golden` files alongside fixtures.
 
 - [ ] **Step 3: Verify the harness now passes without update**
@@ -166,6 +169,7 @@ Expected: PASS, writes `*.golden` files alongside fixtures.
 ```bash
 go test ./codegen/platform/html/ -run TestParityGolden -v
 ```
+
 Expected: PASS for every fixture.
 
 - [ ] **Step 4: Commit baseline**
@@ -202,6 +206,7 @@ Cut these definitions from `translate_ir.go` and paste into a new `jshelpers.go`
 ```bash
 go build ./codegen/lang/javascript/...
 ```
+
 Expected: success (pure relocation, no behavior change).
 
 - [ ] **Step 3: Run JS + html tests**
@@ -209,6 +214,7 @@ Expected: success (pure relocation, no behavior change).
 ```bash
 go test ./codegen/lang/javascript/... ./codegen/platform/html/...
 ```
+
 Expected: PASS (including TestParityGolden).
 
 - [ ] **Step 4: Commit**
@@ -241,6 +247,7 @@ func TestJsBinary_IntDivisionTruncates(t *testing.T) {
 	}
 }
 ```
+
 Add `"git.duckfam.us/jonathan/sngl/ast"` to the test imports if not present. Confirm the int-typed literal constructor matches the codebase (`ir.TypInt` per existing tests; adjust if the canonical name differs — check `ir` package).
 
 - [ ] **Step 2: Run to verify it fails**
@@ -248,11 +255,13 @@ Add `"git.duckfam.us/jonathan/sngl/ast"` to the test imports if not present. Con
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsBinary_IntDivisionTruncates -v
 ```
+
 Expected: FAIL — got `(7 / 2)`.
 
 - [ ] **Step 3: Implement**
 
 Replace `JsIRContext.Binary`:
+
 ```go
 func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
@@ -261,6 +270,7 @@ func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
 }
 ```
+
 Ensure `ast` is imported in `ircontext.go` (it already imports `ast`).
 
 - [ ] **Step 4: Verify pass + golden + suite**
@@ -269,6 +279,7 @@ Ensure `ast` is imported in `ircontext.go` (it already imports `ast`).
 go test ./codegen/lang/javascript/ -run TestJsBinary_IntDivisionTruncates -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: both PASS.
 
 - [ ] **Step 5: Commit**
@@ -297,6 +308,7 @@ func TestJsEvalIdent_ElementRef(t *testing.T) {
 	}
 }
 ```
+
 Verify the exact legacy format string at `translate_ir.go:192` (`fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", name)` — `%q` wraps in double quotes, so the expected string is as written above). Match it exactly.
 
 - [ ] **Step 2: Run to verify it fails**
@@ -304,11 +316,13 @@ Verify the exact legacy format string at `translate_ir.go:192` (`fmt.Sprintf("do
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsEvalIdent_ElementRef -v
 ```
+
 Expected: FAIL.
 
 - [ ] **Step 3: Implement**
 
 In `evalIdent`, immediately after the `if n.Member != ""` block and before the `if n.Synthesized` block, add:
+
 ```go
 	if n.IsElementRef {
 		return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", n.Name)
@@ -321,6 +335,7 @@ In `evalIdent`, immediately after the `if n.Member != ""` block and before the `
 go test ./codegen/lang/javascript/ -run TestJsEvalIdent_ElementRef -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -339,6 +354,7 @@ git commit -m "feat(javascript): element-ref idents resolve to querySelector in 
 - [ ] **Step 1: Add a ctx-based namespace-alias helper**
 
 In `jshelpers.go`:
+
 ```go
 // nativeBundledNamespaceAliasCtx resolves a namespace alias name to the
 // esbuild-compatible JS identifier when it maps to a bundled js:// native
@@ -384,11 +400,13 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsSelect_I18nPluralKeyConst -v
 ```
+
 Expected: FAIL — got `i18n.other`.
 
 - [ ] **Step 4: Implement Select**
 
 The current `Select` receives the already-translated `operand` string, but the namespace-alias and PluralKey logic needs the raw operand node. Change `Select` to inspect `n.Operand`:
+
 ```go
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	// Predeclared i18n.PluralKey constants lower to JS string literals.
@@ -410,6 +428,7 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	return operand + "." + n.Field
 }
 ```
+
 Note: `jsI18nConstString` is already defined in `ircontext.go`. `jc.registerNativeImport` is the existing method (ircontext.go:426). `irwalk` still evaluates `operand` eagerly; that is harmless (the namespace ident path returns before using it, and for a namespace ident `operand` is unused).
 
 - [ ] **Step 5: Verify pass + golden + full suite (native namespace exercised by suite)**
@@ -418,6 +437,7 @@ Note: `jsI18nConstString` is already defined in `ircontext.go`. `jc.registerNati
 go test ./codegen/lang/javascript/ -run TestJsSelect_I18nPluralKeyConst -v
 go test ./codegen/platform/html/... ./codegen/lang/javascript/...
 ```
+
 Expected: PASS. The native-namespace branch is covered by existing js:// import tests; confirm they stay green.
 
 - [ ] **Step 6: Commit**
@@ -455,11 +475,13 @@ func TestJsCall_RegexBuiltin(t *testing.T) {
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsCall_RegexBuiltin -v
 ```
+
 Expected: FAIL — got `regex("ab+c")`.
 
 - [ ] **Step 3: Implement**
 
 In `evalCall`, add a `case "regex":` to the `switch fname` block (alongside `string`/`int`/`float`):
+
 ```go
 		case "regex":
 			if len(args) == 1 {
@@ -473,6 +495,7 @@ In `evalCall`, add a `case "regex":` to the `switch fname` block (alongside `str
 go test ./codegen/lang/javascript/ -run TestJsCall_RegexBuiltin -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -510,11 +533,13 @@ func TestJsConversion_Bool(t *testing.T) {
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsConversion_Bool -v
 ```
+
 Expected: FAIL — got `x` (bool falls through to the default `return operand`).
 
 - [ ] **Step 3: Implement**
 
 In `evalConversion`'s `switch n.Type.Kind`, add:
+
 ```go
 		case ir.TypeBool:
 			return "Boolean(" + operand + ")"
@@ -526,6 +551,7 @@ In `evalConversion`'s `switch n.Type.Kind`, add:
 go test ./codegen/lang/javascript/ -run TestJsConversion_Bool -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -566,11 +592,13 @@ func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsMapLit_PluralKeyPlainObject -v
 ```
+
 Expected: FAIL — got `new Map([...])`.
 
 - [ ] **Step 3: Implement**
 
 The irwalk `MapLit(n, keys, vals)` receives pre-translated keys/vals. Add the PluralKey branch at the top:
+
 ```go
 func (jc *JsIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	if isPluralKeyMapType(n.Type) {
@@ -591,6 +619,7 @@ func (jc *JsIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	// ... existing new Map([...]) body unchanged ...
 }
 ```
+
 Confirm the irwalk `Renderer.MapLit` signature passes `n *ir.MapLitIR` (it does — ircontext.go:70). `isPluralKeyMapType` now lives in `jshelpers.go`.
 
 - [ ] **Step 4: Verify pass + golden**
@@ -599,6 +628,7 @@ Confirm the irwalk `Renderer.MapLit` signature passes `n *ir.MapLitIR` (it does 
 go test ./codegen/lang/javascript/ -run TestJsMapLit_PluralKeyPlainObject -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -631,6 +661,7 @@ func TestJsLambda_AsyncPrefix(t *testing.T) {
 	}
 }
 ```
+
 Note: the legacy single-param sync fast path is `x => body` (no parens); the async path is `async (x) => body`. Match legacy exactly (`translate_ir.go:548-551`): async always uses parens.
 
 - [ ] **Step 2: Run to verify it fails**
@@ -638,11 +669,13 @@ Note: the legacy single-param sync fast path is `x => body` (no parens); the asy
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsLambda_AsyncPrefix -v
 ```
+
 Expected: FAIL.
 
 - [ ] **Step 3: Implement**
 
 Update `evalLambda` to mirror legacy:
+
 ```go
 func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
@@ -680,6 +713,7 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	return b.String()
 }
 ```
+
 This also fixes a latent bug: the current `evalLambda` doesn't bind params as locals (`bodyJC`). Adding `WithLocal` per param matches the legacy `subScope` behavior. Verify the golden harness still passes (no change expected for sync single-expr lambdas, which dominate the corpus).
 
 - [ ] **Step 4: Verify pass + golden + suite**
@@ -688,6 +722,7 @@ This also fixes a latent bug: the current `evalLambda` doesn't bind params as lo
 go test ./codegen/lang/javascript/ -run TestJsLambda_AsyncPrefix -v
 go test ./codegen/platform/html/... ./codegen/lang/javascript/...
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -718,6 +753,7 @@ func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 	}
 }
 ```
+
 Confirm these `ir.TypeKind` constant names exist (they appear in `translate_ir.go:168-174`). Use the same set.
 
 - [ ] **Step 2: Run to verify it fails**
@@ -725,11 +761,13 @@ Confirm these `ir.TypeKind` constant names exist (they appear in `translate_ir.g
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsLiteral_QuotedScalarTypes -v
 ```
+
 Expected: FAIL — these kinds hit the `default` branch and return `n.Raw` unquoted.
 
 - [ ] **Step 3: Implement**
 
 Extend the `evalLiteral` switch's quoted-string case to include the extra kinds (match `translate_ir.go:168-174`):
+
 ```go
 	case ir.TypeString, ir.TypeColor,
 		ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
@@ -737,6 +775,7 @@ Extend the `evalLiteral` switch's quoted-string case to include the extra kinds 
 		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
 		return fmt.Sprintf("%q", n.Raw)
 ```
+
 Preserve the existing unit-suffix handling. Cross-check ordering against `translateIRLiteral` (suffix first, then type switch) so output matches byte-for-byte.
 
 - [ ] **Step 4: Verify pass + golden**
@@ -745,6 +784,7 @@ Preserve the existing unit-suffix handling. Cross-check ordering against `transl
 go test ./codegen/lang/javascript/ -run TestJsLiteral_QuotedScalarTypes -v
 go test ./codegen/platform/html/ -run TestParityGolden
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -785,6 +825,7 @@ func TestJsNamespaceCall_CreateComponent(t *testing.T) {
 	}
 }
 ```
+
 Before writing, read `translate_ir.go:404-424` to confirm the exact `*ir.Call` shape the checker/lowering produces for `CreateComponent` (receiver presence, `Func.Receiver` value, arg order). Adjust the test construction to match real IR. If `CreateComponent` arrives with `n.Receiver == nil`, place the dispatch in `evalCall` before the `n.Receiver != nil` branch instead.
 
 - [ ] **Step 2: Run to verify it fails**
@@ -792,11 +833,13 @@ Before writing, read `translate_ir.go:404-424` to confirm the exact `*ir.Call` s
 ```bash
 go test ./codegen/lang/javascript/ -run TestJsNamespaceCall_CreateComponent -v
 ```
+
 Expected: FAIL.
 
 - [ ] **Step 3: Implement CreateComponent + reconcile dispatch**
 
 In `evalNamespaceCall`, after computing `receiver`/`args` and before the builtin dispatch, add the `CreateComponent` special case (mirror `translate_ir.go:409-424`):
+
 ```go
 	if n.Func != nil && n.Func.Name == "CreateComponent" {
 		if len(n.Args) != 2 {
@@ -813,6 +856,7 @@ In `evalNamespaceCall`, after computing `receiver`/`args` and before the builtin
 		return factoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
 	}
 ```
+
 The user-function dispatch already scans `jc.Ctx.Pkg.Funcs` (see `evalTypeMethodCall` ircontext.go:497-503). Confirm `evalNamespaceCall` performs the equivalent for namespace-qualified user funcs; if it currently only falls through to `receiver + "." + fname`, add a `Pkg.Funcs` scan producing `strings.ReplaceAll(qualName, ".", "_") + "(" + allArgs + ")"` to match legacy `translate_ir.go:451-453`. Write a second characterization test asserting a user `ns.fn(x)` call emits `ns_fn(...)` exactly as legacy does, and make it pass.
 
 - [ ] **Step 4: Verify pass + golden + full suite**
@@ -821,6 +865,7 @@ The user-function dispatch already scans `jc.Ctx.Pkg.Funcs` (see `evalTypeMethod
 go test ./codegen/lang/javascript/ -run TestJsNamespaceCall -v
 go tool verify
 ```
+
 Expected: PASS. `go tool verify` is the broad net for any dispatch divergence; if any test changes output, this is where it surfaces — investigate before proceeding.
 
 - [ ] **Step 5: Commit**
@@ -851,6 +896,7 @@ For each, construct the same IR the legacy test uses, call the `JsIRContext` equ
 ```bash
 go test ./codegen/lang/javascript/ -run 'TestJs' -v
 ```
+
 Expected: PASS (these behaviors already exist on the new path; this is coverage parity, so they should pass on first run — if any fails, that's a real gap; fix it).
 
 - [ ] **Step 4: Commit**
@@ -877,7 +923,7 @@ In a new `codegen/platform/html/string_helper_test.go`, compile a fixture that f
 ```go
 func TestStringHelperEmittedFromNewPath(t *testing.T) {
 	// fixture source with a click handler doing e.g. label.text = string(count)
-	out := generateHTMLFromSample(t, /* sample with string() in a handler */)
+	out := generateHTMLFromSample(t /* sample with string() in a handler */)
 	if !strings.Contains(out, "function String(v)") {
 		t.Errorf("String helper not emitted; new path flagged Ctx.Helpers but read site checks scope.NeededHelpers")
 	}
@@ -889,19 +935,24 @@ func TestStringHelperEmittedFromNewPath(t *testing.T) {
 ```bash
 go test ./codegen/platform/html/ -run TestStringHelperEmittedFromNewPath -v
 ```
+
 Expected: FAIL — the new path writes `g.ctx.Helpers["String"]` but html reads `g.scope.NeededHelpers["String"]` (the maps are not the same).
 
 - [ ] **Step 3: Implement**
 
 In `newHTMLGen` (around html.go:609), wire the ctx helper map to the shared `common.Helpers`:
+
 ```go
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Helpers = common.Helpers
 ```
+
 And change the read at html.go:1992:
+
 ```go
 	if g.ctx.Helpers["String"] {
 ```
+
 Confirm `common.Helpers` is the same map assigned to `g.scope.NeededHelpers` at line 598 (it is) — so both paths now flag the same map and the read sees both.
 
 - [ ] **Step 4: Verify pass + golden + suite**
@@ -910,6 +961,7 @@ Confirm `common.Helpers` is the same map assigned to `g.scope.NeededHelpers` at 
 go test ./codegen/platform/html/ -run 'TestStringHelper|TestParityGolden' -v
 go test ./codegen/platform/html/...
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -931,6 +983,7 @@ git commit -m "fix(html): read String helper from ctx.Helpers so new-path flaggi
 - [ ] **Step 1: Implement (covered by TestParityGolden + suite, no new unit test needed — but confirm a golden fixture exercises a reactive init expression)**
 
 Change the reactive branch:
+
 ```go
 func (g *htmlGen) exprToJS(expr ir.Expr) string {
 	if codegen.IRIsReactive(expr) {
@@ -942,6 +995,7 @@ func (g *htmlGen) exprToJS(expr ir.Expr) string {
 	return `""`
 }
 ```
+
 (`TranslateIRLiteral` stays on the interface — not part of this migration.)
 
 - [ ] **Step 2: Run golden + full suite**
@@ -950,6 +1004,7 @@ func (g *htmlGen) exprToJS(expr ir.Expr) string {
 go test ./codegen/platform/html/ -run TestParityGolden -v
 go tool verify
 ```
+
 Expected: PASS, zero golden diff. If a diff appears, the new path is missing a behavior the legacy path had for that expression shape — fix the gap in `JsIRContext` (Phase 1 style) before continuing; do NOT regenerate goldens.
 
 - [ ] **Step 3: Commit**
@@ -967,6 +1022,7 @@ git commit -m "refactor(html): route exprToJS reactive branch through JsIRContex
 - [ ] **Step 1: Implement, preserving signature emission and the single-return one-liner**
 
 Keep the signature logic (params, `this`→`state`, `Receiver_Name` mangling, `async function` keyword). Replace the body translation:
+
 ```go
 	// Single-return expression body — preserve the one-line form for output parity.
 	if len(fn.Block) == 1 {
@@ -1001,7 +1057,8 @@ Keep the signature logic (params, `this`→`state`, `Receiver_Name` mangling, `a
 	}
 	b.WriteString("}\n")
 ```
-Delete the old `funcScope := &codegen.ExprScope{...}` block and the per-statement `switch`. Note `translateBlockJC` is the same shape but uses a fixed indent/`;` join; `emitJSFunc` needs `  ` indent and its own brace handling — inline the loop as above rather than calling `translateBlockJC`, OR extend `translateBlockJC` to accept an indent. Prefer inlining to keep `emitJSFunc`'s exact whitespace. Verify against goldens.
+
+Delete the old `funcScope := &codegen.ExprScope{...}` block and the per-statement `switch`. Note `translateBlockJC` is the same shape but uses a fixed indent/`;` join; `emitJSFunc` needs ` ` indent and its own brace handling — inline the loop as above rather than calling `translateBlockJC`, OR extend `translateBlockJC` to accept an indent. Prefer inlining to keep `emitJSFunc`'s exact whitespace. Verify against goldens.
 
 Watch the param-local subtlety: `scopedJC()` copies `g.scope.LocalVars` into ctx locals; once `g.scope` is removed (Phase 4) it must copy from the consts seed instead. For now `scopedJC` still reads `g.scope`; the param `WithLocal` calls above handle function params.
 
@@ -1011,6 +1068,7 @@ Watch the param-local subtlety: `scopedJC()` copies `g.scope.LocalVars` into ctx
 go test ./codegen/platform/html/ -run TestParityGolden -v
 go tool verify
 ```
+
 Expected: PASS, zero golden diff. Investigate any diff (likely whitespace/one-liner formatting) and fix the emission to match, not the golden.
 
 - [ ] **Step 3: Commit**
@@ -1030,6 +1088,7 @@ git commit -m "refactor(html): route emitJSFunc bodies through unified JsIRConte
 ```bash
 grep -n "translateHandlerStmt" codegen/platform/html/*.go
 ```
+
 After Task 3.2, `emitJSFunc` no longer calls it. Identify any other caller (the `domWriteFor` Assign case was its reason for existing; that path is now handled by `htmlTranslator.OnPropAssign` via `WalkLowered`).
 
 - [ ] **Step 2: Remove translateHandlerStmt and its now-dead helpers**
@@ -1043,6 +1102,7 @@ go build ./...
 go test ./codegen/platform/html/ -run TestParityGolden -v
 go tool verify
 ```
+
 Expected: PASS, zero golden diff.
 
 - [ ] **Step 4: Commit**
@@ -1066,11 +1126,13 @@ git commit -m "refactor(html): drop translateHandlerStmt; DOM writes lower via h
 ```bash
 grep -n "g.scope\|\.scope\b" codegen/platform/html/*.go | grep -v "_test.go"
 ```
+
 Expect remaining uses only in `scopedJC` (LocalVars/Renames/EventVar) and the construction. `scopedJC` must source those from `g.ctx` instead.
 
 - [ ] **Step 2: Make scopedJC self-contained on g.ctx**
 
 `g.ctx` already carries `Locals`, `Renames`, `EventVar` (via `ForComponent`/`WithEvent` usage). Seed consts into `g.ctx.Locals` at construction (the old code seeded them into `g.scope.LocalVars`):
+
 ```go
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Helpers = common.Helpers
@@ -1081,7 +1143,9 @@ Expect remaining uses only in `scopedJC` (LocalVars/Renames/EventVar) and the co
 		}
 	}
 ```
+
 Then simplify `scopedJC`:
+
 ```go
 func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	jc := javascript.NewIRContext(g.ctx.Clone())
@@ -1089,10 +1153,13 @@ func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	return jc
 }
 ```
+
 Audit any code that wrote `g.scope.Renames` / `g.scope.LocalVars` / `g.scope.EventVar` mid-emission (e.g. component-inlining renames, loop vars, event binding) and redirect those writes to `g.ctx`. Search:
+
 ```bash
 grep -n "scope.Renames\|scope.LocalVars\|scope.EventVar\|dataRenames" codegen/platform/html/*.go | grep -v "_test.go"
 ```
+
 Redirect each to the `g.ctx` equivalent. This is the most delicate edit — do it incrementally, running `TestParityGolden` after each redirect.
 
 - [ ] **Step 3: Remove the g.scope field and construction**
@@ -1106,6 +1173,7 @@ go build ./...
 go test ./codegen/platform/html/ -run TestParityGolden -v
 go tool verify
 ```
+
 Expected: PASS, zero golden diff.
 
 - [ ] **Step 5: Commit**
@@ -1127,6 +1195,7 @@ git commit -m "refactor(html): drop ExprScope; JsIRContext sources state from Ex
 ```bash
 grep -rn "translateIRExpr\|translateIRMutation\|translateIRCall\|translateIRForJS\|translateErrorAwareCall\|translateIRMutTarget\|nativeBundledNamespaceAlias\b\|registerNativeImport(scope" codegen/lang/javascript/ codegen/platform/ | grep -v "_test.go"
 ```
+
 Expect: no non-test references except inside `translate_ir.go` itself. The free `registerNativeImport(scope, ...)` and `nativeBundledNamespaceAlias` (scope-based) are legacy-only now (the ctx variants live in `jshelpers.go`/`ircontext.go`).
 
 - [ ] **Step 2: Delete the files and the interface-implementing methods**
@@ -1134,6 +1203,7 @@ Expect: no non-test references except inside `translate_ir.go` itself. The free 
 ```bash
 git rm codegen/lang/javascript/translate_ir.go codegen/lang/javascript/translate_ir_test.go
 ```
+
 In `javascript.go`, remove the `TranslateIRExpr` and `TranslateIRMutation` methods (lines ~31-39). Keep `TranslateIRLiteral`.
 
 - [ ] **Step 3: Verify compile**
@@ -1141,6 +1211,7 @@ In `javascript.go`, remove the `TranslateIRExpr` and `TranslateIRMutation` metho
 ```bash
 go build ./codegen/lang/javascript/...
 ```
+
 Expected: success. If the compiler reports an undefined helper that was still in `translate_ir.go`, move it to `jshelpers.go` (it should have been moved in Task 1.1; this catches stragglers).
 
 - [ ] **Step 4: Run JS + html tests**
@@ -1148,6 +1219,7 @@ Expected: success. If the compiler reports an undefined helper that was still in
 ```bash
 go test ./codegen/lang/javascript/... ./codegen/platform/html/...
 ```
+
 Expected: PASS. (`javascript.Translator` no longer satisfies the full old interface — that is fixed in Task 4.3; if `go build ./...` fails here because the interface still lists the methods, proceed to 4.3 and treat 4.2+4.3 as one commit.)
 
 - [ ] **Step 5: Commit**
@@ -1165,10 +1237,12 @@ git commit -m "refactor(javascript): delete legacy translate_ir.go path"
 - [ ] **Step 1: Remove the interface methods**
 
 Delete these two lines from the `LangTranslator` interface:
+
 ```go
 	TranslateIRExpr(e ir.Expr, scope *ExprScope) string
 	TranslateIRMutation(s ir.Stmt, scope *ExprScope) []string
 ```
+
 Keep `TranslateIRLiteral`. Leave `ExprScope` and `NeededHelpers` defined in `codegen.go` (Go/Kotlin still use them via their own concrete methods).
 
 - [ ] **Step 2: Verify the whole tree compiles**
@@ -1176,6 +1250,7 @@ Keep `TranslateIRLiteral`. Leave `ExprScope` and `NeededHelpers` defined in `cod
 ```bash
 go build ./...
 ```
+
 Expected: success. Go (`golang.Translator`) and Kotlin (`kotlin.Translator`) keep their `TranslateIRExpr`/`TranslateIRMutation` as concrete methods — `golang/http.go` calls `t.TranslateIRMutation` directly, which still resolves. `none.Translator` keeps or drops its stubs (they become harmless dead methods; remove them for tidiness if desired).
 
 - [ ] **Step 3: Optionally remove now-dead none stubs**
@@ -1185,6 +1260,7 @@ If `none.Translator.TranslateIRExpr`/`TranslateIRMutation` (none.go:29-30) are n
 ```bash
 go build ./... && go test ./codegen/lang/none/...
 ```
+
 Expected: success.
 
 - [ ] **Step 4: Full suite**
@@ -1192,6 +1268,7 @@ Expected: success.
 ```bash
 go tool verify
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1210,6 +1287,7 @@ go build ./...
 go tool verify
 go test ./codegen/platform/html/ -run TestParityGolden -v
 ```
+
 Expected: all PASS, zero golden diff across the whole project.
 
 - [ ] **Step 2: Confirm dead-code is gone**
@@ -1217,6 +1295,7 @@ Expected: all PASS, zero golden diff across the whole project.
 ```bash
 grep -rn "ExprScope" codegen/platform/html/ | grep -v "_test.go"
 ```
+
 Expected: no matches (html is fully off `ExprScope`).
 
 - [ ] **Step 3: Update the spec status**

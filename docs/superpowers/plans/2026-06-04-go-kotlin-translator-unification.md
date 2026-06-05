@@ -59,9 +59,11 @@ Capture byte-identical baselines of the outputs that the legacy paths produce, B
 - [ ] **Step 1: Enumerate what the legacy paths emit**
 
 Run:
+
 ```bash
 grep -rn "TranslateIRMutation\|translateIRExpr\|translateIRMutation" codegen/lang/golang codegen/lang/kotlin | grep -v "_test.go" | grep -v "func "
 ```
+
 Expected: golang `http.go:104`, golang `testlower.go` (several), kotlin `testlower.go:320,325`. These produce: (a) golang HTTP action-handler bodies (route mode), (b) golang generated test files, (c) kotlin generated test files.
 
 - [ ] **Step 2: Find the existing harnesses that exercise them**
@@ -70,6 +72,7 @@ Expected: golang `http.go:104`, golang `testlower.go` (several), kotlin `testlow
 ls codegen/lang/golang/testlower_test.go codegen/lang/kotlin/testlower_test.go
 grep -rln "Action\|CompileHTTP\|route" codegen/lang/golang/*_test.go cmd/sngl/testdata/*.txt
 ```
+
 Note the helpers/fixtures that drive test-lowering and route mode (e.g. `LowerTestFile`, html `--lang go` golden in `cmd/sngl/testdata`).
 
 ### Task 0.2: Golang parity harness
@@ -120,6 +123,7 @@ Add the test/http-only fields to `ExprCtx` so callers can build one context type
 	MethodFields   map[string]bool   // idents whose recv.<field> is a zero-arg method call
 	IdentRewrites  map[string]string // bare ident → replacement, regardless of scope
 ```
+
 Update `Clone()` to carry `ContextVar` (scalar) and `maps.Clone` the three maps (nil-safe). Update `NewExprCtx` if it should pre-allocate (leave nil — honor-sites must nil-check).
 
 - [ ] **Step 2: Build + existing tests green** (`go build ./... && go test ./codegen/...` for the non-platform packages). No behavior change yet (nothing reads the new fields).
@@ -142,7 +146,7 @@ Port each legacy behavior from `golang/translate_ir.go` `translateIRIdent`/`tran
 
 ### Task 1.3: KtIRContext honors the needed fields
 
-Kotlin testlower uses an EMPTY `ExprScope{}`, so it may need only `IdentRewrites`/method-field handling, if anything. 
+Kotlin testlower uses an EMPTY `ExprScope{}`, so it may need only `IdentRewrites`/method-field handling, if anything.
 
 - [ ] **Step 1: Diff** what kotlin `translate_ir.go` `translateIRIdent`/`translateIRTypeMethodCall` do that `KtIRContext` doesn't, for the shapes testlower routes (calls, method calls).
 - [ ] **Step 2:** If a gap exists, add a failing test + implement (as 1.2). If none (KtIRContext already covers the empty-scope cases), record that and skip.
@@ -171,6 +175,7 @@ go test ./codegen/lang/golang/ -run TestGoBinary_MultiBaseUnit -v   # FAIL
 **Files:** `codegen/lang/golang/http.go`
 
 - [ ] **Step 1: Implement** — in `writeRouteHandler`, replace `scope := &codegen.ExprScope{ContextVar:"r.Context()"}` + `t.TranslateIRMutation(s, scope)` with:
+
 ```go
 	ctx := codegen.NewExprCtx(req.Pkg) // or the pkg available on req; see HTTPRequest fields
 	ctx.ContextVar = "r.Context()"
@@ -178,6 +183,7 @@ go test ./codegen/lang/golang/ -run TestGoBinary_MultiBaseUnit -v   # FAIL
 	...
 	for _, line := range gc.EvalStmt(s) { ... }
 ```
+
 Confirm `HTTPRequest` exposes the package/analysis needed to build an `ExprCtx`; if not, thread it. Collect imports via `gc.Imports()` (replacing/augmenting the existing `collectGoImports` + `nativeMustOK` handling — note GoIRContext wraps error-returning calls inline via `maybeWrapErrorReturn`, so the `nativeMustOK` helper path may become unnecessary; verify against parity golden).
 
 - [ ] **Step 2: Parity golden (route mode) byte-identical** + `go build ./...`. The route fixture from 0.2 guards this. Investigate any diff (esp. the `nativeMustOK` vs inline-wrap difference — if output legitimately changes, this is the one place to call it out and justify, then regenerate that golden with explicit note).
@@ -199,9 +205,11 @@ Confirm `HTTPRequest` exposes the package/analysis needed to build an `ExprCtx`;
 **Files:** `codegen/lang/golang/translate_ir.go`, `translate_ir_test.go`, `golang.go`
 
 - [ ] **Step 1: Confirm no remaining refs**
+
 ```bash
 grep -rn "translateIRExpr\|translateIRMutation\|TranslateIRMutation\|TranslateIRExpr" codegen/lang/golang/ | grep -v "_test.go"
 ```
+
 Port any surviving helper still referenced (e.g. `translateIRLiteral` if `TranslateIRLiteral` delegates to it) into a kept file (`jshelpers.go` analog or inline), exactly as JS did.
 
 - [ ] **Step 2: Delete** `git rm codegen/lang/golang/translate_ir.go codegen/lang/golang/translate_ir_test.go` (port any still-needed legacy-only test cases to `ircontext_test.go` first). Remove `golang.Translator.TranslateIRExpr`/`TranslateIRMutation` methods (keep `TranslateIRLiteral`).
@@ -247,9 +255,11 @@ Port any surviving helper still referenced (e.g. `translateIRLiteral` if `Transl
 **Files:** `codegen/codegen.go`, plus `none.Translator` if it still references it.
 
 - [ ] **Step 1: Confirm zero references**
+
 ```bash
 grep -rn "ExprScope" codegen/ --include=*.go | grep -v "_test.go"
 ```
+
 Expected: none outside the definition. If any test files still construct `ExprScope`, migrate them to `ExprCtx`.
 
 - [ ] **Step 2: Delete** the `ExprScope` struct (and the `NeededHelpers` comment references). Remove any now-dead helpers it uniquely supported.

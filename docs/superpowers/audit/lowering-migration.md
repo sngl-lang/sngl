@@ -478,8 +478,7 @@ JS one already uses.
 - `codegen/lang/javascript/ircontext.go:346`
 - `codegen/lang/kotlin/ircontext.go:246`
 
-**What it does:** Each `evalCall` special-cases `n.Func.Name == "string"|"int"|
-"float"|"size"` and emits a cast, keyed on a high-level name.
+**What it does:** Each `evalCall` special-cases `n.Func.Name == "string"|"int"| "float"|"size"` and emits a cast, keyed on a high-level name.
 
 **Why lower:** A type conversion is a semantic concept already modelled as
 `ir.Conversion` (the checker materializes implicit conversions there). These
@@ -537,8 +536,7 @@ error-handling node) so the driver emits a 1:1 translation.
 
 **Files:** `ForHead` in `codegen/lang/{golang,javascript,kotlin}/ircontext.go`
 
-**What it does:** Each `ForHead` makes the same decision — `iterType.Kind ==
-TypeMap` → key/value iteration; else two-var → indexed; else single element —
+**What it does:** Each `ForHead` makes the same decision — `iterType.Kind == TypeMap` → key/value iteration; else two-var → indexed; else single element —
 then renders it (`range` / `.entries()` / `.withIndex()`).
 
 **Why lower:** The single/two-var index/element *ordering* was just unified

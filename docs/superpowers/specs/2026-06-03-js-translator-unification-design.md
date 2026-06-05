@@ -78,18 +78,18 @@ The legacy path implements these; the new path must gain each (with a
 characterization test written first, asserting parity with current legacy
 output):
 
-| Behavior | Legacy site | New site to add |
-|---|---|---|
-| int/int division → `Math.trunc(a / b)` | `translate_ir.go:49` (`isIntIR`) | `JsIRContext.Binary` |
-| `IsElementRef` ident → `document.querySelector('[data-sngl-id="…"]')` | `:191` | `evalIdent` |
-| native bundled-namespace alias in Select (+ `registerNativeImport`) | `:74–80` | `Select` / `evalIdent` |
-| i18n PluralKey const in Select → string literal | `:66–69` | `Select` |
-| `regex` builtin → `new RegExp(...)` | `:299` | `evalCall` |
-| `CreateComponent` → `factoryName(comp)(props)` | `:409` | `evalNamespaceCall` |
-| `bool` conversion → `Boolean(...)` | `:517` | `evalConversion` |
-| PluralKey map literal → plain object, string keys | `:113` (`isPluralKeyMapType`) | `MapLit` |
-| `async` lambda prefix | `:539` | `evalLambda` |
-| richer literal type coverage (URL/Email/UUID/Regex/Base64/IPv4/IPv6/Hostname/Decimal; unit-suffix ordering) | `translateIRLiteral` | `evalLiteral` |
+| Behavior                                                                                                    | Legacy site                      | New site to add        |
+|-------------------------------------------------------------------------------------------------------------|----------------------------------|------------------------|
+| int/int division → `Math.trunc(a / b)`                                                                      | `translate_ir.go:49` (`isIntIR`) | `JsIRContext.Binary`   |
+| `IsElementRef` ident → `document.querySelector('[data-sngl-id="…"]')`                                       | `:191`                           | `evalIdent`            |
+| native bundled-namespace alias in Select (+ `registerNativeImport`)                                         | `:74–80`                         | `Select` / `evalIdent` |
+| i18n PluralKey const in Select → string literal                                                             | `:66–69`                         | `Select`               |
+| `regex` builtin → `new RegExp(...)`                                                                         | `:299`                           | `evalCall`             |
+| `CreateComponent` → `factoryName(comp)(props)`                                                              | `:409`                           | `evalNamespaceCall`    |
+| `bool` conversion → `Boolean(...)`                                                                          | `:517`                           | `evalConversion`       |
+| PluralKey map literal → plain object, string keys                                                           | `:113` (`isPluralKeyMapType`)    | `MapLit`               |
+| `async` lambda prefix                                                                                       | `:539`                           | `evalLambda`           |
+| richer literal type coverage (URL/Email/UUID/Regex/Base64/IPv4/IPv6/Hostname/Decimal; unit-suffix ordering) | `translateIRLiteral`             | `evalLiteral`          |
 
 **Dispatch reconciliation (highest-risk item):** the legacy namespace /
 type-method paths resolve user functions via `scope.FuncNames` (a set);

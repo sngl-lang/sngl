@@ -49,7 +49,7 @@ stdio JSON-RPC            tcp:<host>:<dev>
 
 Both transports speak the same JSON-RPC protocol established in Plan
 1. The kotlin testagent's `main()` selects between `stdio` and `tcp`
-transports based on an env var the launcher sets.
+   transports based on an env var the launcher sets.
 
 ## testRunner option
 
@@ -71,10 +71,10 @@ Surface to the CLI as `--opt testRunner=device`, or set in source via
 
 ## Dual-mode emission (mirrors Plan 1's Go pattern)
 
-| Trigger | Mode | Emits |
-|---|---|---|
-| `sngl generate --opt test=true` (no testMode) | **Native** | JUnit test classes in the user's gradle test cycle. testRunner=robolectric → `app/src/test/kotlin/...` (JVM unit tests). testRunner=device → `app/src/androidTest/kotlin/...` (instrumented tests). User's `./gradlew test` / `./gradlew connectedAndroidTest` runs them. |
-| `sngl test --platform=android` | **Agent** (testMode=agent) | Our own binary with linked testagent + RegisterTest calls. Gradle just builds; sngl test launches the binary directly. testRunner=robolectric → JVM `main` linking Robolectric + compose-test-rule. testRunner=device → APK with the testagent as a startup hook in `MainActivity`. |
+| Trigger                                       | Mode                       | Emits                                                                                                                                                                                                                                                                               |
+|-----------------------------------------------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sngl generate --opt test=true` (no testMode) | **Native**                 | JUnit test classes in the user's gradle test cycle. testRunner=robolectric → `app/src/test/kotlin/...` (JVM unit tests). testRunner=device → `app/src/androidTest/kotlin/...` (instrumented tests). User's `./gradlew test` / `./gradlew connectedAndroidTest` runs them.           |
+| `sngl test --platform=android`                | **Agent** (testMode=agent) | Our own binary with linked testagent + RegisterTest calls. Gradle just builds; sngl test launches the binary directly. testRunner=robolectric → JVM `main` linking Robolectric + compose-test-rule. testRunner=device → APK with the testagent as a startup hook in `MainActivity`. |
 
 Direction matches Plan 1's bubbletea/fyne/gtk4 cutovers: dual-mode
 emission so user-project test files (`--opt test=true`) are
@@ -317,8 +317,8 @@ fun startTcp(port: Int) {
   unset or no AVDs are configured.
 - **Gradle daemon and warm cache.** First test run downloads gradle
   + kotlin + Robolectric deps (~500MB, several minutes). Subsequent
-  runs reuse `~/.gradle/caches/`. CI should bake the warm cache or
-  accept the cold-start cost.
+    runs reuse `~/.gradle/caches/`. CI should bake the warm cache or
+    accept the cold-start cost.
 - **adb forward port collisions.** If `sngl test` is run concurrently
   against multiple android fixtures, port allocation must be
   thread-safe. Use a free-port helper that grabs+holds a localhost

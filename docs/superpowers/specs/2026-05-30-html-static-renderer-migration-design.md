@@ -127,8 +127,7 @@ replacement:
 ### Phase 2 — delete the switch and helpers
 
 Remove `renderStaticNode`'s `switch name { … }` and all 17 `renderStaticX`
-helpers (`renderStaticBox/Text/Button/Input/Checkbox/Image/Radio/Toggle/Select/
-Textarea/Tabs/Table/Tree/Modal/Datepicker/ConditionalContainer`). `renderIRNode`
+helpers (`renderStaticBox/Text/Button/Input/Checkbox/Image/Radio/Toggle/Select/ Textarea/Tabs/Table/Tree/Modal/Datepicker/ConditionalContainer`). `renderIRNode`
 dispatches non-user, non-recursive nodes straight to the generic renderer.
 After `InlinePure`, those nodes are native tags. Recursive user components retain
 their existing call form (unchanged).
@@ -147,8 +146,7 @@ body, not retained as a helper.
 + `internal/lower/inline_components.go`.
 
 - **Anchor + binding.** Replace the literal `<__renderSlotN>` placeholder with a
-  real, stable DOM anchor — an empty marker element (`<span
-  data-sngl-slot="N">`) emitted at the slot's source position. Bind the slot's
+  real, stable DOM anchor — an empty marker element (`<span data-sngl-slot="N">`) emitted at the slot's source position. Bind the slot's
   `parent`/`__root` reference to that element (the html analog of fyne's
   container Model field). `__renderSlotN(anchor)` appends/removes children of
   the anchor.

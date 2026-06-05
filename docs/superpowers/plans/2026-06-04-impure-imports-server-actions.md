@@ -97,6 +97,7 @@ component main {
 	_ = pkg
 }
 ```
+
 (Use whatever in-package helper checks a source string; mirror an existing checker test's setup.)
 
 - [ ] **Step 2: Run → fails** (unknown `html` namespace / func).
@@ -151,6 +152,7 @@ func TestHtmlDirectiveIsPreservedIntrinsic(t *testing.T) {
 	}
 }
 ```
+
 (Reuse/adapt an existing optimize+lower test helper and an IR call-walker; if none, a minimal recursive walk over `pkg` exprs.)
 
 - [ ] **Step 2: Run → fails** (directive inlined away / no intrinsic id).
@@ -184,6 +186,7 @@ func TestFuncImportScheme(t *testing.T) {
 	}
 }
 ```
+
 (Build a tiny `*ir.Package` whose `Imports` has a `go://` native import matching the func's `NativePkg`. Look at how existing code maps a `Func.NativePkg` back to its import scheme — `codegen.SplitScheme(imp.AST.Path)` / `isBundledImport` in `codegen/lang/javascript/jshelpers.go` is the reference.)
 
 - [ ] **Step 2–4: Implement `funcImportScheme(pkg, fn) string`** — find the `ir.Import` whose `Native.ImportPath == fn.NativePkg`, return its scheme via `codegen.SplitScheme(imp.AST.Path)`. Returns "" for non-native funcs. Make the test pass.
@@ -205,6 +208,7 @@ func TestExprPlacement(t *testing.T) {
 	// html.backend(sngl_expr) → backend
 }
 ```
+
 Write each as a separate assertion building the IR (a `*ir.Call` to a `go://`/`js://` func; an `html.frontend`/`html.backend` wrapper carrying `Func.Intrinsic`).
 
 - [ ] **Step 2: Run → fails.**
@@ -248,6 +252,7 @@ type StateVar struct {
 
 // HoleKind classifies a dynamic slot in a server-rendered page.
 type HoleKind int
+
 const (
 	HoleText HoleKind = iota // interpolate Expr (string-coerced)
 	HoleAttr                 // attribute value = Expr
@@ -257,12 +262,12 @@ const (
 
 // Hole is a dynamic insertion point in a route's HTML skeleton.
 type Hole struct {
-	Kind  HoleKind
-	Expr  ir.Expr      // text/attr/if-cond/for-iter expression (language-agnostic)
-	Attr  string       // attribute name (HoleAttr)
-	Key   string       // loop var (HoleFor)
-	Then  *RenderModel // HoleIf/HoleFor nested
-	Else  *RenderModel // HoleIf
+	Kind HoleKind
+	Expr ir.Expr      // text/attr/if-cond/for-iter expression (language-agnostic)
+	Attr string       // attribute name (HoleAttr)
+	Key  string       // loop var (HoleFor)
+	Then *RenderModel // HoleIf/HoleFor nested
+	Else *RenderModel // HoleIf
 }
 
 // RenderModel is a static HTML skeleton interleaved with holes. Chunks[i] is

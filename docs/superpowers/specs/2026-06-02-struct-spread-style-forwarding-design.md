@@ -10,13 +10,11 @@ Make a caller's `style` reach the element a stdlib wrapper renders, the
 root element, and the compiler flattens that spread during lowering.
 
 Today stdlib wrappers (`vbox`, `text`, …) declare `style Style` but their
-platform bodies render only structural style (`html.div(style={display=
-"flex", flexDirection="column"})`) and never reference the param — so the
+platform bodies render only structural style (`html.div(style={display= "flex", flexDirection="column"})`) and never reference the param — so the
 caller's `style={gap=10, padding=16, background=#f0f2f5}` is dropped, and
 HTML output comes out unstyled. The wrappers need to forward it.
 
-The forwarding idiom is struct spread (`html.div(style={...style, display=
-"flex", flexDirection="column"})`), but **struct spread is currently
+The forwarding idiom is struct spread (`html.div(style={...style, display= "flex", flexDirection="column"})`), but **struct spread is currently
 half-broken**: it parses and type-checks (`ir.FieldInit{Spread:true}`),
 survives to codegen, then:
 
@@ -91,14 +89,14 @@ assignments, literal spreads splice written fields, opaque spreads become
 
 Worked examples:
 
-| Source | Result | Why |
-|--------|--------|-----|
-| `{a=1, ...{a=0, b=2}}` | `{a=0, b=2}` | literal spread splices both written fields; `a`: 1 then 0, last wins |
-| `{a=1, ...{a=5}}` | `{a=5}` | literal spread overrides `a` |
-| `{...{a=1}, a=0}` | `{a=0}` | explicit `a=0` is unconditional, wins (last) |
-| `{...style, display="flex"}` | caller style + locked `display` | structural after spread → locked |
-| `{padding="2px 8px", ...style}` | caller `padding` wins if set | spread after default → caller wins |
-| `{...runtimeStyle}` (opaque) | only `runtimeStyle`'s non-null option fields | runtime merge: `null`-skip |
+| Source                          | Result                                       | Why                                                                  |
+|---------------------------------|----------------------------------------------|----------------------------------------------------------------------|
+| `{a=1, ...{a=0, b=2}}`          | `{a=0, b=2}`                                 | literal spread splices both written fields; `a`: 1 then 0, last wins |
+| `{a=1, ...{a=5}}`               | `{a=5}`                                      | literal spread overrides `a`                                         |
+| `{...{a=1}, a=0}`               | `{a=0}`                                      | explicit `a=0` is unconditional, wins (last)                         |
+| `{...style, display="flex"}`    | caller style + locked `display`              | structural after spread → locked                                     |
+| `{padding="2px 8px", ...style}` | caller `padding` wins if set                 | spread after default → caller wins                                   |
+| `{...runtimeStyle}` (opaque)    | only `runtimeStyle`'s non-null option fields | runtime merge: `null`-skip                                           |
 
 **The canonical "unset" is `option<T> == null`.** The most important
 zero-case — and the one `Style` depends on — is the optional. A struct of
@@ -140,9 +138,9 @@ existing convention (`No<Feature>` = "this target cannot consume
 
 ```go
 var passFlattenStructSpread = pass{
-    name:    "NoStructSpread",
-    enabled: func(c Caps) bool { return c.NoStructSpread },
-    apply:   lowerFlattenStructSpread,
+	name:    "NoStructSpread",
+	enabled: func(c Caps) bool { return c.NoStructSpread },
+	apply:   lowerFlattenStructSpread,
 }
 ```
 
@@ -193,8 +191,7 @@ literals) or requires a **runtime sequence** (any opaque spread).
 - ordered map `name -> Value` (preserve first-seen position; last write
   updates value).
 - explicit field `f=v`: `set(f, v)`.
-- spread of literal `...{…}`: recursively flatten it first, then `set(g,
-  w)` for **every written field** `g=w`. No skip step — a literal carries
+- spread of literal `...{…}`: recursively flatten it first, then `set(g, w)` for **every written field** `g=w`. No skip step — a literal carries
   only the fields the author wrote, and presence is intent (`...{a=0}`
   sets `a=0`). Later writes win, so order is preserved.
 - emit a `StructLit` with no spread fields.
@@ -232,13 +229,11 @@ a silent miscompile (see Risks).
 
 > Implementation note: the common real case — `...style` after inlining —
 > is **always the fully-static case**, so the runtime/hoisting path is
-> exercised only by genuine opaque spreads (`div(style={...computeStyle(),
-> color=red})`, `Config{...base, timeout=30}` with `base` a runtime var).
+> exercised only by genuine opaque spreads (`div(style={...computeStyle(), color=red})`, `Config{...base, timeout=30}` with `base` a runtime var).
 > Build the static path first; the runtime path second.
 >
 > Omitted optional params are safe: a caller that omits `style` binds it
-> (via `ir.ZeroExpr`) to an **empty** struct literal `Style{}` (`Fields:
-> nil`), so `...style` becomes `...{}` and splices nothing — structural
+> (via `ir.ZeroExpr`) to an **empty** struct literal `Style{}` (`Fields: nil`), so `...style` becomes `...{}` and splices nothing — structural
 > style is untouched. "Splice every written field" never clobbers, because
 > an omitted param contributes zero written fields.
 
@@ -274,14 +269,14 @@ merge<Struct>(base Struct, ov Struct) Struct:
 
 **Zero detection per field type** (the "skip when…" test):
 
-| Field type | skip (no-replace) when | notes |
-|------------|------------------------|-------|
-| **`option<T>`** | **`== null` / `== nil` / `== None`** | **primary case; what `Style` depends on. `Some(0)` is non-null → applies** |
-| int / float / duration / unit | `== 0` | plain-field fallback (limited) |
-| string / url / email / … | `== ""` | plain-field fallback (limited) |
-| bool | `== false` | plain-field fallback (limited) |
-| nested struct (e.g. color) | deep-equal to the struct's zero | plain-field fallback (limited) |
-| enum | `== <zero variant>` | plain-field fallback (limited) |
+| Field type                    | skip (no-replace) when               | notes                                                                      |
+|-------------------------------|--------------------------------------|----------------------------------------------------------------------------|
+| **`option<T>`**               | **`== null` / `== nil` / `== None`** | **primary case; what `Style` depends on. `Some(0)` is non-null → applies** |
+| int / float / duration / unit | `== 0`                               | plain-field fallback (limited)                                             |
+| string / url / email / …      | `== ""`                              | plain-field fallback (limited)                                             |
+| bool                          | `== false`                           | plain-field fallback (limited)                                             |
+| nested struct (e.g. color)    | deep-equal to the struct's zero      | plain-field fallback (limited)                                             |
+| enum                          | `== <zero variant>`                  | plain-field fallback (limited)                                             |
 
 `option<T>` lowers to `*T` (Go, `nil`), value-or-`null` (JS), `T?`
 (Kotlin) — so the null test is a direct, cheap comparison in every
@@ -290,17 +285,14 @@ options and carry the limitation noted in Merge Semantics.
 
 **Per-language emission** (shown for `option<T>` fields, the `Style` case):
 
-- **Go** (`codegen/lang/golang`): `func mergeStyle(base, ov Style) Style {
-  if ov.Gap != nil { base.Gap = ov.Gap }; …; return base }` (option fields
+- **Go** (`codegen/lang/golang`): `func mergeStyle(base, ov Style) Style { if ov.Gap != nil { base.Gap = ov.Gap }; …; return base }` (option fields
   are `*T`). Plain-typed fields use the type-zero test (`!= 0`, `!= ""`);
   plain nested structs are comparable in Go when all their fields are
   (`ov.Color != (color{})`).
-- **JS** (`codegen/lang/javascript`): `function mergeStyle(base, ov) {
-  const r = {...base}; if (ov.gap != null) r.gap = ov.gap; …; return r }`
+- **JS** (`codegen/lang/javascript`): `function mergeStyle(base, ov) { const r = {...base}; if (ov.gap != null) r.gap = ov.gap; …; return r }`
   (`!= null` catches both `null` and `undefined`). Plain fields use the
   type-zero test.
-- **Kotlin** (`codegen/lang/kotlin`): `fun mergeStyle(base: Style, ov:
-  Style): Style = base.copy(gap = ov.gap ?: base.gap, …)` (the `?:`
+- **Kotlin** (`codegen/lang/kotlin`): `fun mergeStyle(base: Style, ov: Style): Style = base.copy(gap = ov.gap ?: base.gap, …)` (the `?:`
   elvis is exactly null-skip for `T?` fields). Plain fields use an
   `if (ov.f != <zero>) ov.f else base.f` form.
 
@@ -339,11 +331,9 @@ precedence intent. Across `codegen/platform/html/html.sngl`,
 Precedence rule for authors:
 
 - **Lock** a structural prop the caller must not override → place it
-  **after** `...style`: `html.div(style={...style, display="flex",
-  flexDirection="column"})`.
+  **after** `...style`: `html.div(style={...style, display="flex", flexDirection="column"})`.
 - **Default** a structural prop the caller may override → place it
-  **before** `...style`: `html.span(style={padding="2px 8px",
-  borderRadius=12, ...style})`.
+  **before** `...style`: `html.span(style={padding="2px 8px", borderRadius=12, ...style})`.
 
 Every wrapper with a `style Style` param and a root element gets the
 forward. Wrappers with multiple structural children (radio, tabs, …)
