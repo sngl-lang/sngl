@@ -100,7 +100,7 @@ func New() *Model {
 
 {{range .Computeds}}
 func (m *Model) {{.Name}}() {{.GoType}} {
-	return {{.Body}}
+{{.Body}}
 }
 
 {{end}}

@@ -190,27 +190,30 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 
-	// Collect vars from package + every component (mirrors fyne /
-	// bubbletea). Non-main components with state would otherwise have
-	// `m.<var>` references in render code with no declared Model field.
+	// After inlining, every non-main component has been folded into main, so
+	// its vars live in main.Vars (suffixed). Collect pkg.Vars + pkg.Consts +
+	// main.Vars only — iterating every component's vars re-adds the originals
+	// and collides their synthesized __root/__slot scratch fields. Mirrors
+	// bubbletea's collection.
 	type taggedVar struct {
 		v    *ir.Var
 		comp *ir.Component
 	}
+	main := ctx.MainComponent()
 	var allVars []taggedVar
 	for _, v := range pkg.Vars {
 		allVars = append(allVars, taggedVar{v: v})
 	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			allVars = append(allVars, taggedVar{v: v, comp: comp})
+	for _, c := range pkg.Consts {
+		allVars = append(allVars, taggedVar{v: c})
+	}
+	if main != nil {
+		for _, v := range main.Vars {
+			allVars = append(allVars, taggedVar{v: v, comp: main})
 		}
 	}
 	for _, tv := range allVars {
 		v := tv.v
-		if v.IsConst {
-			continue
-		}
 		if v.Synthesized {
 			if v.Name == "__root" {
 				// Plan C's __root sentinel: stable *C.GtkBox that
@@ -249,6 +252,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			name:   v.Name,
 			goType: goType,
 			init:   initVal,
+			// Consts are read-only: skip getter/setter so the field name
+			// doesn't collide with an exported accessor (APP_NAME field +
+			// APP_NAME() method). Reached via m.<name> / c.<name>.
+			noAccessors: v.IsConst,
 		})
 	}
 
@@ -436,16 +443,27 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		})
 	}
 
-	// Computeds
+	// Computeds. A single `return expr` collapses to one line; block-bodied
+	// computeds (e.g. a for-loop accumulator) render their whole statement
+	// list so we don't emit a bogus `return ""` for a non-string return type.
 	for _, comp := range c.info.computeds {
-		body := ""
+		var body string
 		if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body = gc.EvalExpr(ret.Value)
+				body = "\treturn " + gc.EvalExpr(ret.Value)
 			}
 		}
+		if body == "" && comp.fn != nil {
+			var lines []string
+			for _, stmt := range comp.fn.Block {
+				for _, line := range gc.EvalStmt(stmt) {
+					lines = append(lines, "\t"+line)
+				}
+			}
+			body = strings.Join(lines, "\n")
+		}
 		if body == "" {
-			body = `""`
+			body = "\treturn " + golang.ZeroValueGo(comp.goType)
 		}
 		td.Computeds = append(td.Computeds, computedData{
 			Name:   comp.name,
@@ -454,8 +472,19 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		})
 	}
 
-	// Widget fields
+	// Widget fields. Synthesized slot/root vars (__root, __slot<N>) are
+	// already declared as binds (see analyzeIR), and the BuildUI walk can
+	// register the same element ref more than once; dedupe by name against
+	// binds and prior widget fields so the Model struct declares each once.
+	seenField := make(map[string]bool, len(c.info.binds)+len(widgetFields))
+	for _, bind := range c.info.binds {
+		seenField[bind.name] = true
+	}
 	for _, wf := range widgetFields {
+		if seenField[wf.name] {
+			continue
+		}
+		seenField[wf.name] = true
 		td.WidgetFields = append(td.WidgetFields, widgetFieldData{
 			Name:   wf.name,
 			GoType: wf.goType,
