@@ -1198,7 +1198,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	if st.idCounter > st.slotDeclSt.nextID {
 		st.slotDeclSt.nextID = st.idCounter
 	}
-	body := st.renderSlotBody(st.slotDeclSt, parentParam.Name, slotID, cond, iter, key, value, origBody, origElse)
+	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, iter, key, value, origBody, origElse)
 	// Propagate the slot's advanced counter back so subsequent
 	// reactivity freshNodeID calls (line 253, line 446) don't reuse
 	// __nN values the slot just claimed.
@@ -1213,7 +1213,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // renderSlotBody emits the cond/iter-gated create+append sequence for the
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
-func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
+func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
 	listPushDef := ir.LookupIntrinsic("ListPush")
 	listPushFn := &ir.Func{
 		Name:      "ListPush",
@@ -1243,8 +1243,11 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentName, 
 	case windowOwner:
 		ownerFuncs = &o.w.Funcs
 	}
+	// The append target is the slot func's `parent` param; carry its Sym so
+	// codegen resolves it as the local parameter rather than a Model field.
+	parentRef := &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
-		_, sub := lowerNodeForSlot(declSt, n, parentName, ownerFuncs)
+		_, sub := lowerNodeForSlot(declSt, n, parentRef, ownerFuncs)
 		sub = append(sub, pushToSlot(n.ID))
 		return sub
 	}

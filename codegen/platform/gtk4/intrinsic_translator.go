@@ -378,6 +378,13 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 // or "parent") pass through.
 func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
+		// The __renderSlotN parent container is a function parameter, not a
+		// Model widget field — pass it through even though lowerNodeForSlot
+		// marks the AppendChild target ident IsElementRef+Synthesized (which
+		// would otherwise rewrite it to a bogus `m.Parent`).
+		if id.Name == "parent" || id.Name == "container" {
+			return e
+		}
 		if strings.HasPrefix(id.Name, "__n") {
 			return modelFieldRef(id.Name)
 		}

@@ -416,16 +416,16 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 // appends the resulting top-level node to `parentID` (rather than the
 // source-position parent). funcs is the owning Funcs slice for handler
 // promotion. Returns the LocalVar name bound to the new top-level node ref.
-func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentID string, funcs *[]*ir.Func) (string, []ir.Stmt) {
+func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, funcs *[]*ir.Func) (string, []ir.Stmt) {
 	stmts := st.lowerNodeIntoStmts(n, funcs)
-	if parentID != "" {
+	if parentRef != nil {
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: lowerNSIdent(),
 				Func:     st.intrinsics["AppendChild"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+					{Value: parentRef},
 					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},

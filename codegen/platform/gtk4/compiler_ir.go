@@ -510,7 +510,11 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
+		// Match the IR param name the reactivity pass uses ("parent"); the
+		// slot body references it by that name, so renaming it here would
+		// leave those refs dangling (and gc would mis-qualify them as a
+		// Model field `m.Parent`).
+		Params:   []*ir.Param{{Name: "parent", Type: ir.NativePointerOf("GtkBox")}},
 		Return:   ir.TypVoid,
 		Block:    bodyStmts,
 	}
