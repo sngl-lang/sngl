@@ -112,7 +112,7 @@ func (m *Model) updateToast() {
 	}
 
 	for _, c := range td.Computeds {
-		fmt.Fprintf(b, "func (m *Model) %s() %s {\n\treturn %s\n}\n\n", c.Name, c.GoType, c.Body)
+		fmt.Fprintf(b, "func (m *Model) %s() %s {\n%s\n}\n\n", c.Name, c.GoType, c.Body)
 		requireTypeImports(gc, c.GoType)
 	}
 

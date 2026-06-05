@@ -72,11 +72,21 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	for _, v := range pkg.Vars {
 		allVars = append(allVars, v)
 	}
+	allVars = append(allVars, pkg.Consts...)
 	if main := ctx.MainComponent(); main != nil {
 		allVars = append(allVars, main.Vars...)
 	}
 	for _, v := range allVars {
 		if v.IsConst {
+			// Consts emit as read-only Model fields (reached via m.<name> /
+			// c.<name>); skip getter/setter so the field name doesn't collide
+			// with an exported accessor (APP_NAME field + APP_NAME() method).
+			info.binds = append(info.binds, irBind{
+				name:        v.Name,
+				goType:      irVarGoType(v),
+				init:        v.Init,
+				noAccessors: true,
+			})
 			continue
 		}
 		if v.Synthesized {
@@ -305,14 +315,26 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// Computed bodies
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
-		body := ""
+		var body string
 		if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body = gc.EvalExpr(ret.Value)
+				body = "\treturn " + gc.EvalExpr(ret.Value)
 			}
 		}
+		if body == "" && comp.fn != nil {
+			// Block-bodied computed (e.g. a for-loop accumulator): render
+			// the whole statement list so a non-string return type doesn't
+			// degrade to a bogus `return ""`.
+			var lines []string
+			for _, stmt := range comp.fn.Block {
+				for _, line := range gc.EvalStmt(stmt) {
+					lines = append(lines, "\t"+line)
+				}
+			}
+			body = strings.Join(lines, "\n")
+		}
 		if body == "" {
-			body = `""`
+			body = "\treturn " + golang.ZeroValueGo(comp.goType)
 		}
 		computedDatas = append(computedDatas, computedData{
 			Name:   comp.name,

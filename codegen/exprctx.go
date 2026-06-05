@@ -211,7 +211,14 @@ func (ctx *ExprCtx) WithEvent(eventVar string) *ExprCtx {
 // parameter (from a desugared nested method on a component/struct/enum)
 // does not count toward the param count.
 func IsComputed(f *ir.Func) bool {
-	if f.AST == nil || f.AST.Body == nil || f.IsTest {
+	if f.AST == nil || f.IsTest {
+		return false
+	}
+	// Expression-bodied zero-arg funcs are computeds. Block-bodied zero-arg
+	// funcs are computeds too when they return a value (e.g.
+	// `func total() int { ... }`); a void block func (e.g. `increment()`)
+	// is an action handler, not a reactive property.
+	if f.AST.Body == nil && f.Return == nil {
 		return false
 	}
 	n := len(f.Params)
