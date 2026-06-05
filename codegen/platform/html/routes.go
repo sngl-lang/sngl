@@ -113,6 +113,39 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	return nil
 }
 
+// backendHandlerWindow scans every window's event handlers (node handlers and
+// var handlers) for a Backend placement. It returns the name of the first
+// window carrying a server-side handler, or false if all handlers are
+// client-side. Used by the static-mode (non-HTTPCompiler) guard: a build with
+// no server cannot run a backend handler.
+func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string, bool) {
+	if pkg == nil {
+		return "", false
+	}
+	for _, win := range windows {
+		backend := false
+		check := func(h *ir.EventHandler) {
+			if h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend {
+				backend = true
+			}
+		}
+		for _, v := range win.Vars {
+			for _, h := range v.Handlers {
+				check(h)
+			}
+		}
+		walkInstances(win.Body, func(n *ir.NodeInst) {
+			for i := range n.Handlers {
+				check(&n.Handlers[i])
+			}
+		})
+		if backend {
+			return win.Name, true
+		}
+	}
+	return "", false
+}
+
 func defaultRoutePath(winName string, idx int) string {
 	if idx == 0 || winName == "" || winName == "main" || winName == "index" {
 		return "/"

@@ -88,6 +88,12 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		if err := rejectDynamicHrefs(req); err != nil {
 			return err
 		}
+		// A backend (server-side) handler cannot run in a serverless static
+		// build. The target lang ("none") is not an HTTPCompiler, so there is
+		// no server to host the route's POST handler.
+		if win, ok := backendHandlerWindow(req.Pkg, codegen.NewCodegenCtx(req, "html").Windows()); ok {
+			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js:// import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
+		}
 		c := &compilation{}
 		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 		if err != nil {
