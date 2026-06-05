@@ -117,6 +117,7 @@ func loadBlueprints() map[string]*fyneBlueprint {
 			"widget.NewButton":         `"", nil`,
 			"widget.NewCheck":          `"", nil`,
 			"widget.NewHyperlink":      `"", nil`,
+			"widget.NewSelect":         "nil, nil",
 			"widget.NewEntry":          "",
 			"widget.NewPasswordEntry":  "",
 			"widget.NewMultiLineEntry": "",

@@ -52,6 +52,15 @@ component sngl.input {
     }
 }
 
+// gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
+// the value binding + changed handler compile and round-trip. (Rich
+// multi-line GtkTextView support is a future enhancement.)
+component sngl.textarea {
+    platform gtk4 {
+        gtk4.GtkEntry(text=value, style={...style}, @changed { @input() }) {}
+    }
+}
+
 // --- Container widgets ---
 
 component sngl.vbox {

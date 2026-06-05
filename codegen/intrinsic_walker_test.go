@@ -41,6 +41,10 @@ func (t *trace) OnSlotAppend(_ context.Context, s *ir.Var, c ir.Expr) []ir.Stmt 
 	t.add("append-slot %s %s", s.Name, identName(c))
 	return nil
 }
+func (t *trace) OnCreateComponent(_ context.Context, id string, c *ir.Call) []ir.Stmt {
+	t.add("create-component %s", id)
+	return nil
+}
 func (t *trace) OnIter(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnCond(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnDefault(_ context.Context, s ir.Stmt) []ir.Stmt {

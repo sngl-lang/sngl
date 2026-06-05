@@ -270,6 +270,21 @@ func ctorZeroArg(girType string, t *ir.Type) ir.Expr {
 	return &ir.Literal{Type: ir.TypInt, Raw: "0"}
 }
 
+// OnCreateComponent promotes a recursive/non-inlinable user component
+// instance to a Model field typed as the opaque GtkWidget pointer, then
+// assigns the translated `m.render<Comp>(props...)` call. Keeps `m.<id>`
+// references (parent append, etc.) resolvable, mirroring OnCreateNode.
+func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
+	t.fieldSink(id, "GtkWidget")
+	t.idCTypes[id] = "GtkWidget"
+	t.topLevel = append(t.topLevel, id)
+	return []ir.Stmt{&ir.Assign{
+		Target: modelFieldRef(id),
+		Op:     ast.AssignSet,
+		Value:  call,
+	}}
+}
+
 // emitConstructorAssign records the new widget's id↔cType mapping and
 // emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {

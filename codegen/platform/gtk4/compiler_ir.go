@@ -227,6 +227,29 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				})
 				continue
 			}
+			// NoContext-synthesized hidden context state: `__ctx_<name>`
+			// Vars carry the active context value, typed per the
+			// *ir.Context.Typ (usually a primitive like string). Emit a
+			// plain field keyed off the Var's declared type so reads like
+			// i18n.Translate(m.__ctx_locale, ...) see a concrete type
+			// rather than the slot-var []*C.GtkWidget fallback below.
+			if strings.HasPrefix(v.Name, "__ctx_") {
+				ctxGC := gc
+				if tv.comp != nil {
+					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+				}
+				ctxGoType := irVarGoType(v)
+				if strings.HasPrefix(ctxGoType, "time.") {
+					info.goImports["time"] = true
+				}
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      ctxGoType,
+					init:        irVarInit(v, ctxGC),
+					noAccessors: true,
+				})
+				continue
+			}
 			// Plan A's __slot<N> vars hold widget refs for reactive
 			// if/for teardown. Emit as []*C.GtkWidget so the renderSlot
 			// loop (range, gtk_widget_unparent each, nil the slice)
@@ -332,6 +355,15 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			continue
 		}
 		emitGTK4Func(&funcBuf, fn, gc)
+	}
+
+	// --- Phase 2b: render<Comp> methods for non-inlinable (recursive)
+	// user components left in place as CreateComponent intrinsics. ---
+	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
+	for _, cc := range c.ctx.NonMainComponents() {
+		if createTargets[cc.Component] {
+			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg)
+		}
 	}
 
 	// Detect fmt usage in body/funcs (interpolation lowers to fmt.Sprint).
@@ -676,6 +708,72 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 	return out
 }
 
+// collectCreateComponentTargets returns the set of user components that
+// are instantiated via a `lower.CreateComponent(comp, props)` intrinsic
+// somewhere in the package — i.e. recursive / non-inlinable components
+// that need a generated render<Comp> method. Inlined components never
+// appear here (their bodies are expanded at the call site).
+func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
+	out := map[*ir.Component]bool{}
+	if pkg == nil {
+		return out
+	}
+	var walk func([]ir.Stmt)
+	record := func(call *ir.Call) {
+		if call == nil || call.Func == nil || call.Func.Intrinsic != "CreateComponent" || len(call.Args) == 0 {
+			return
+		}
+		if id, ok := call.Args[0].Value.(*ir.Ident); ok {
+			if comp, ok := id.Sym.(*ir.Component); ok {
+				out[comp] = true
+			}
+		}
+	}
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.LocalVar:
+				if call, ok := n.Init.(*ir.Call); ok {
+					record(call)
+				}
+			case *ir.CallStmt:
+				record(n.Call)
+			case *ir.If:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.PlatformFilter:
+				walk(n.Body)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			case *ir.NodeInst:
+				walk(n.Children)
+			case *ir.Window:
+				walk(n.Body)
+			}
+		}
+	}
+	for _, comp := range pkg.Components {
+		walk(comp.Body)
+		for _, fn := range comp.Funcs {
+			if fn != nil {
+				walk(fn.Block)
+			}
+		}
+	}
+	for _, w := range pkg.Windows {
+		walk(w.Body)
+	}
+	for _, fn := range pkg.Funcs {
+		if fn != nil {
+			walk(fn.Block)
+		}
+	}
+	return out
+}
+
 // emitIRPromotedHandler emits a gtk4 node-attached event handler that
 // the lower pass promoted to a top-level Func. The signal trampoline
 // calls Go handlers with no args, so any SNGL `@input(e)` param is
@@ -708,7 +806,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 			target, _ := assign.Target.(*ir.Ident)
 			sel, _ := assign.Value.(*ir.Select)
 			if target != nil && sel != nil {
-				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name == sig.EventVar && sel.Field == sig.Field {
+				// Match the event accessor structurally: stmts[0] is the
+				// synthesized `<target> = <eventVar>.<field>` two-way bind.
+				// The SNGL event param may be named anything (`e`, `event`,
+				// …), so key off the field rather than a fixed name — the
+				// bare-ident operand IS the event param (never `m`).
+				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name != "m" && sel.Field == sig.Field {
 					// nodeID = handler-name minus the "_<event>_handler" suffix.
 					nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
 					cType := tr.idCTypes[nodeID]
@@ -913,6 +1016,82 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
 	b.WriteString("\treturn win\n")
+	b.WriteString("}\n\n")
+}
+
+// emitIRComponentMethod emits a `render<Comp>(props...) *C.GtkWidget`
+// Model method for a non-inlinable (recursive) user component that the
+// lower pass left in place as a CreateComponent intrinsic. Mirrors
+// emitBuildUI: walk the component body through the gtk4 translator, then
+// return its single top-level widget (or a fresh vbox wrapping several)
+// as *C.GtkWidget. The CreateComponent call site emits
+// `m.<id> = m.render<Comp>(props...)` (see OnCreateComponent).
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
+	methodName := golang.ComponentRenderMethod(cc.Component.Name)
+
+	compGC := gc.ForComponent(cc.Component)
+	var params []*ir.Param
+	for _, p := range cc.Props {
+		params = append(params, &ir.Param{Name: p.Name, Type: p.Type})
+		compGC = compGC.WithLocal(p.Name)
+	}
+
+	tr := newGtk4Translator(compGC, func(name, cType string) {
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
+	}).withPkg(pkg)
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
+	tr.collectTagComponents(cc.Body)
+
+	body := codegen.WalkLowered(context.Background(), cc.Body, tr)
+
+	var bodyBuf strings.Builder
+	for _, stmt := range body {
+		for _, line := range compGC.EvalStmt(stmt) {
+			fmt.Fprintf(&bodyBuf, "\t%s\n", line)
+		}
+	}
+
+	var trailer string
+	switch tops := tr.topLevel; len(tops) {
+	case 0:
+		trailer = "\treturn C.gtk_label_new(nil)\n"
+	case 1:
+		ref := &ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true}
+		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: ref}
+		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(retExpr))
+	default:
+		var tb strings.Builder
+		tb.WriteString("\t__box := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))\n")
+		boxRef := &ir.Ident{Name: "__box"}
+		for _, ref := range tops {
+			childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+			appendCall := &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: &ir.Ident{Name: "C"},
+				Func:     nativeFunc("gtk_box_append"),
+				Args: []ir.CallArg{
+					{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxRef}},
+					{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: childRef}},
+				},
+			}
+			for _, line := range compGC.EvalStmt(&ir.CallStmt{Call: appendCall}) {
+				fmt.Fprintf(&tb, "\t%s\n", line)
+			}
+		}
+		tb.WriteString("\treturn (*C.GtkWidget)(unsafe.Pointer(__box))\n")
+		trailer = tb.String()
+	}
+
+	b.WriteString("func (m *Model) " + methodName + "(")
+	for i, p := range params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(p.Name + " " + golang.IRTypeToGo(p.Type))
+	}
+	b.WriteString(") *C.GtkWidget {\n")
+	b.WriteString(bodyBuf.String())
+	b.WriteString(trailer)
 	b.WriteString("}\n\n")
 }
 

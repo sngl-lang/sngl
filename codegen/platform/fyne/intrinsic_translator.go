@@ -165,6 +165,21 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}}
 }
 
+// OnCreateComponent promotes a recursive/non-inlinable user component
+// instance (`__nX = lower.CreateComponent(...)`) to a Model field, so the
+// `m.__nX` references emitted for it elsewhere (parent Add, etc.) resolve.
+// The translated CreateComponent call becomes `m.render<Comp>(props...)`
+// via the Go IR context when the returned Assign is later evaluated.
+func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
+	t.fieldSink(id, "fyne.CanvasObject")
+	t.topLevel = append(t.topLevel, id)
+	return []ir.Stmt{&ir.Assign{
+		Target: modelFieldRef(id),
+		Op:     ast.AssignSet,
+		Value:  call,
+	}}
+}
+
 // zeroArgsToExprs parses a blueprint's ZeroArgs string into IR exprs.
 // Recognises the small handful of forms blueprints actually use.
 func zeroArgsToExprs(zeroArgs string) []ir.Expr {
@@ -180,6 +195,11 @@ func zeroArgsToExprs(zeroArgs string) []ir.Expr {
 		}
 	case `nil`:
 		return []ir.Expr{&ir.Literal{Type: ir.TypNull}}
+	case `nil, nil`:
+		return []ir.Expr{
+			&ir.Literal{Type: ir.TypNull},
+			&ir.Literal{Type: ir.TypNull},
+		}
 	}
 	return nil
 }

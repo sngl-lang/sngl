@@ -19,6 +19,11 @@ import (
 // treat ctx as opaque — only consume keys they registered themselves.
 type IntrinsicTranslator interface {
 	OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt
+	// OnCreateComponent handles a `LocalVar id = lower.CreateComponent(...)`
+	// — a non-inlinable (recursive) user component left in place by the
+	// lower pass. Mutation-model platforms promote id to a Model field so
+	// references to it elsewhere (qualified to m.id) resolve consistently.
+	OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt
 	OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt
@@ -45,9 +50,14 @@ func WalkLowered(ctx context.Context, stmts []ir.Stmt, t IntrinsicTranslator) []
 func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	switch n := s.(type) {
 	case *ir.LocalVar:
-		if call, ok := n.Init.(*ir.Call); ok && isLowerIntrinsic(call, "CreateNode") {
-			tag, _ := extractStringLit(call.Args[0].Value)
-			return t.OnCreateNode(ctx, n.Name, tag)
+		if call, ok := n.Init.(*ir.Call); ok {
+			if isLowerIntrinsic(call, "CreateNode") {
+				tag, _ := extractStringLit(call.Args[0].Value)
+				return t.OnCreateNode(ctx, n.Name, tag)
+			}
+			if isLowerIntrinsic(call, "CreateComponent") {
+				return t.OnCreateComponent(ctx, n.Name, call)
+			}
 		}
 	case *ir.CallStmt:
 		if n.Call != nil {

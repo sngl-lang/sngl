@@ -65,7 +65,39 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 			field = "size"
 		}
 	}
+	// Field access on a `dyn` operand: Kotlin's `Any` has no user fields.
+	// If exactly one package struct declares this field, emit a safe cast.
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
+		if name := kc.uniqueStructWithField(n.Field); name != "" {
+			return "(" + operand + " as " + name + ")." + field
+		}
+	}
 	return operand + "." + field
+}
+
+// uniqueStructWithField returns the Kotlin type name of the sole package
+// struct declaring a field with this SNGL field name, or "" if zero or
+// multiple structs match. Mirrors the Go IRContext equivalent.
+func (kc *KtIRContext) uniqueStructWithField(field string) string {
+	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
+		return ""
+	}
+	var match *ir.StructDef
+	for _, sd := range kc.Ctx.Pkg.Structs {
+		for _, f := range sd.Fields {
+			if f.Name == field {
+				if match != nil {
+					return ""
+				}
+				match = sd
+				break
+			}
+		}
+	}
+	if match == nil {
+		return ""
+	}
+	return exportName(match.Name)
 }
 func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
