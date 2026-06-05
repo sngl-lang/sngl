@@ -310,12 +310,9 @@ struct Task {
 component main {
     var tasks list<Task> = [{label = "Write tests"}, {label = "Ship it", done = true}, {label = "Celebrate"}]
     var next = ""
-    func remainingCount => tasks.filter(func (x) => !x.done).length
+    func remainingCount() => tasks.filter(func(x) => !x.done).length
     vbox(style={gap = 6, padding = 16}) {
-        text(
-            value="{tasks.length} tasks; {remainingCount} remaining",
-            style={fontWeight = "bold"}
-        )
+        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight = "bold"})
         for &t = tasks {
             checkbox(:checked=t.done, label=t.label)
         }
