@@ -647,9 +647,14 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// emit component method definitions as Model methods, so call sites
 	// must dispatch through `m`.
 	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName {
+		// Method-form call (`v.method()`) threads the receiver as args[0];
+		// strip it. A zero-arg computed referenced by name (e.g. `greeting`
+		// in an interpolation) carries no receiver arg — still dispatch
+		// through `m` rather than lifting to a `MainGreeting()` free func.
 		if len(args) >= 1 && args[0] == "m" {
 			return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 		}
+		return "m." + method + "(" + strings.Join(args, ", ") + ")"
 	}
 
 	// User-attached method on a user-defined struct/enum/component type:
