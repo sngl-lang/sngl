@@ -18,7 +18,11 @@
 // mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
 // differences without writing), and SNGL_FMT_DOCS is not set for tests.
 //
-// Usage: go tool verify [-v] [-dry]
+// The -full flag sets SNGL_TESTS_FULL=1 for the test step (opting in the
+// slow/heavy platform tests that gate on it, e.g. the android fixtures) and
+// raises the go test timeout to 20m. Without it those tests skip themselves.
+//
+// Usage: go tool verify [-v] [-dry] [-full]
 package main
 
 import (
@@ -57,6 +61,7 @@ func (r pkgResult) coverage() float64 {
 func main() {
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
+	full := flag.Bool("full", false, "run the full suite incl. slow/heavy platform tests (sets SNGL_TESTS_FULL=1; raises the go test timeout to 20m)")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -123,7 +128,7 @@ func main() {
 	}
 
 	// Step 7: go test with coverage
-	runTests(*verbose, !*dry)
+	runTests(*verbose, !*dry, *full)
 
 	// Step 8: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
@@ -178,7 +183,7 @@ func runCheckStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose, fmtDocs bool) {
+func runTests(verbose, fmtDocs, full bool) {
 	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
 	if err != nil {
 		log.Fatalf("create coverprofile: %v", err)
@@ -187,6 +192,11 @@ func runTests(verbose, fmtDocs bool) {
 	defer os.Remove(profile.Name())
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
+	if full {
+		// Slow/heavy platform tests (e.g. android fixtures) opt in via
+		// SNGL_TESTS_FULL and can exceed the default 10m go test timeout.
+		args = append(args, "-timeout=20m")
+	}
 	if verbose {
 		args = append(args, "-v")
 	}
@@ -195,8 +205,12 @@ func runTests(verbose, fmtDocs bool) {
 	fmt.Printf(">>> go %s\n", strings.Join(args, " "))
 
 	cmd := exec.Command("go", args...)
+	cmd.Env = os.Environ()
 	if fmtDocs {
-		cmd.Env = append(os.Environ(), "SNGL_FMT_DOCS=1")
+		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
+	}
+	if full {
+		cmd.Env = append(cmd.Env, "SNGL_TESTS_FULL=1")
 	}
 	cmd.Stderr = os.Stderr
 
