@@ -463,9 +463,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
 		}
 		for _, t := range info.Timers {
-			fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
-			fmt.Fprintf(&b, "\t\tcmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))\n", t.IntervalMs, t.Index)
-			b.WriteString("\t}\n")
+			tick := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
+			if t.ActiveVar != "" {
+				// Gated timer: only start when its active condition holds.
+				fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
+				fmt.Fprintf(&b, "\t\t%s\n", tick)
+				b.WriteString("\t}\n")
+			} else {
+				// Always-on timer (no active condition): start unconditionally.
+				// Emitting "if m. {" (empty ActiveVar) would be invalid Go.
+				fmt.Fprintf(&b, "\t%s\n", tick)
+			}
 		}
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
 	} else if len(info.inputs) > 0 {
@@ -594,16 +602,29 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// Timer ticks
 	for _, t := range info.Timers {
 		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
-		fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
-		for _, bodyStmt := range t.Body {
-			for _, line := range gc.EvalStmt(bodyStmt) {
-				fmt.Fprintf(b, "\t\t\t%s\n", line)
+		rearm := fmt.Sprintf("cmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })", t.IntervalMs, t.Index)
+		if t.ActiveVar != "" {
+			// Gated timer: run the body and re-arm only while active.
+			fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
+			for _, bodyStmt := range t.Body {
+				for _, line := range gc.EvalStmt(bodyStmt) {
+					fmt.Fprintf(b, "\t\t\t%s\n", line)
+				}
 			}
+			fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
+			fmt.Fprintf(b, "\t\t\t\t%s\n", rearm)
+			b.WriteString("\t\t\t}\n")
+			b.WriteString("\t\t}\n")
+		} else {
+			// Always-on timer (no active condition): run the body and re-arm
+			// unconditionally. Emitting "if m. {" (empty ActiveVar) is invalid Go.
+			for _, bodyStmt := range t.Body {
+				for _, line := range gc.EvalStmt(bodyStmt) {
+					fmt.Fprintf(b, "\t\t%s\n", line)
+				}
+			}
+			fmt.Fprintf(b, "\t\t%s\n", rearm)
 		}
-		fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
-		fmt.Fprintf(b, "\t\t\t\tcmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })\n", t.IntervalMs, t.Index)
-		b.WriteString("\t\t\t}\n")
-		b.WriteString("\t\t}\n")
 	}
 
 	// Toast dismiss
