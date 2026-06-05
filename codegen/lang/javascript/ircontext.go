@@ -75,6 +75,12 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 			}
 		}
 	}
+	// A field flagged in MethodFields is surfaced by codegen as a zero-arg
+	// method (computeds). In test-harness scope `c.greeting` must invoke it,
+	// not compare the function object. Mirrors the Go/Kotlin testlowers.
+	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
+		return operand + "." + n.Field + "()"
+	}
 	return operand + "." + n.Field
 }
 func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {

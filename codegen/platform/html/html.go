@@ -1883,6 +1883,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
 	}
 	if g.testMode {
+		// Bridge computeds onto the state object as zero-arg methods so
+		// tests can read `c.<computed>()` (computeds are otherwise emitted
+		// as free `<recv>_<name>(state)` functions). Function declarations
+		// hoist, so referencing them here before their definition is fine.
+		for _, fn := range g.pkgFuncs() {
+			if !codegen.IsComputed(fn) {
+				continue
+			}
+			if fn.Receiver != "" {
+				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.Receiver, fn.Name)
+			} else {
+				fmt.Fprintf(b, "state.%s = () => $%s();\n", fn.Name, fn.Name)
+			}
+		}
 		// Hoist the closure-private state object onto window so the
 		// testagent's newTestComponent() can return a live reference.
 		// Tests share one state across the session — no per-test

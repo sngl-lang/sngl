@@ -85,13 +85,14 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 // the Kotlin/Go lowerers consult — but accepted in the signature for
 // symmetry and future use.
 func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
-	_ = methodFields
-
 	// Build an ExprCtx scoped to a minimal package; tests live in their
 	// own emitted module and reference per-component helpers
 	// (newTestComponent, setCurrentTestModel) declared in the same
 	// file rather than reading package state directly.
 	ctx := codegen.NewExprCtx(&ir.Package{})
+	// Computeds are emitted as zero-arg methods; the test body must call
+	// `c.<computed>()` rather than read the function object.
+	ctx.MethodFields = methodFields
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
