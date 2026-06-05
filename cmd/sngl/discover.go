@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,6 +17,15 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// gitIgnored reports whether path is excluded by git (.gitignore et al.).
+// Used by the recursive `...` walk so it doesn't discover scratch/build
+// artifacts (e.g. tmp/, _site/). Exit 0 from `git check-ignore` means the
+// path is ignored; any other status (not ignored, no git, not a repo) is
+// treated as not-ignored so discovery degrades gracefully outside git.
+func gitIgnored(path string) bool {
+	return exec.Command("git", "check-ignore", "-q", path).Run() == nil
+}
 
 func discoverFiles(args []string) ([]string, error) {
 	if len(args) == 0 {
@@ -40,12 +50,12 @@ func discoverFiles(args []string) ([]string, error) {
 					if path == root {
 						return nil
 					}
-					if shouldSkipWalkDir(d.Name()) {
+					if shouldSkipWalkDir(d.Name()) || gitIgnored(path) {
 						return filepath.SkipDir
 					}
 					return nil
 				}
-				if isSNGLFile(path) {
+				if isSNGLFile(path) && !gitIgnored(path) {
 					files = append(files, path)
 				}
 				return nil
