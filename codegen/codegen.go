@@ -344,7 +344,7 @@ type HTTPRequest struct {
 	Main       bool                      // generate standalone server with main()
 	Framework  string                    // HTTP framework: "net/http", "gin", "echo"
 	Routes     []HTTPRoute               // window → route mapping
-	RenderHTML func(routeIdx int) string // callback: returns HTML body for a route
+	RenderHTML func(routeIdx int) string // Deprecated: returns a baked static HTML body for a route. Phase 3 introduced the structured HTTPRoute.Render (RouteRender) model that carries IR-expr holes; the language renders those via its own *IRContext. RenderHTML remains until Phase 4 switches the Go consumer onto Render.
 }
 
 // HTTPRoute maps a window to an HTTP route.
@@ -355,14 +355,74 @@ type HTTPRoute struct {
 	Params    []string     // route parameter names extracted from Path (e.g., ["name"])
 	WindowIdx int          // index into CodegenCtx.Windows()
 	Actions   []HTTPAction // server-state form actions (POST handlers)
+
+	// Render is the language-agnostic per-route render model: a static HTML
+	// skeleton interleaved with IR-expr holes (text/attr bindings, reactive
+	// if/for). The target language fills the holes by translating their IR
+	// against the route's State via its own *IRContext. nil when the route
+	// has no server-rendered content. Added in Phase 3; consumed in Phase 4.
+	Render *RouteRender
+	// StateVars are the component state fields surfaced to the server State
+	// struct. Added in Phase 3; consumed in Phase 4.
+	StateVars []StateVar
 }
 
 // HTTPAction describes a form-based server action triggered by an event handler
 // whose mutation crosses the target-language boundary (e.g. invokes a go://
 // function when compiling with --lang go).
 type HTTPAction struct {
-	Name      string    // action identifier (e.g., "action0")
-	Mutations []ir.Stmt // type-checked handler body to execute server-side
+	Name string // action identifier (e.g., "action0")
+	// Mutations is the type-checked handler body to execute server-side. It
+	// still carries the full handler block (including any visual/DOM-patch
+	// statements) for the legacy RenderHTML-based consumer.
+	//
+	// Deprecated: use LogicalMutations, which excludes DOM/visual statements.
+	// Kept unchanged through Phase 3 so the existing Go consumer's POST body
+	// output stays byte-identical; Phase 4 switches the consumer to
+	// LogicalMutations.
+	Mutations []ir.Stmt
+	// LogicalMutations is the handler's logical state-mutation IR with
+	// visual/DOM-patch statements removed (e.g. assignments to an element-ref
+	// Select target). Added in Phase 3; consumed in Phase 4.
+	LogicalMutations []ir.Stmt
+}
+
+// StateVar is a component state field surfaced to the server State struct.
+type StateVar struct {
+	Name string
+	Type *ir.Type
+}
+
+// RouteHoleKind classifies a dynamic slot in a server-rendered page.
+type RouteHoleKind int
+
+const (
+	HoleText RouteHoleKind = iota // interpolate Expr (string-coerced)
+	HoleAttr                      // attribute value = Expr
+	HoleIf                        // reactive if: Cond + Then/Else skeletons
+	HoleFor                       // reactive for: Iter + element skeleton
+)
+
+// RouteHole is a dynamic insertion point in a route's HTML skeleton.
+type RouteHole struct {
+	Kind RouteHoleKind
+	Expr ir.Expr      // text/attr/if-cond/for-iter expression (language-agnostic)
+	Attr string       // attribute name (HoleAttr)
+	Key  string       // loop var (HoleFor)
+	Then *RouteRender // HoleIf/HoleFor nested skeleton
+	Else *RouteRender // HoleIf else skeleton
+}
+
+// RouteRender is a static HTML skeleton interleaved with holes. Chunks[i] is
+// emitted, then Holes[i] (if present), alternating. Invariant:
+// len(Chunks) == len(Holes)+1.
+//
+// (The spec calls this the "RenderModel"; the codegen package already uses
+// RenderModel for the render-loop platform IR, so the HTTP-seam type is named
+// RouteRender to avoid the collision.)
+type RouteRender struct {
+	Chunks []string
+	Holes  []RouteHole
 }
 
 // WASMCompiler is optionally implemented by LangTranslators that can compile
