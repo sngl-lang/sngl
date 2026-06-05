@@ -55,6 +55,13 @@ type ExprCtx struct {
 	// IdentRewrites remaps bare identifiers regardless of scope, applied
 	// first in identifier translation.
 	IdentRewrites map[string]string
+	// StateReceiver, when non-empty, names a struct receiver onto which
+	// component/package state vars are projected as EXPORTED fields. Set by
+	// the html backend (route mode) so a state read `count` renders
+	// `<recv>.Count` and an assignment `count = …` renders `<recv>.Count = …`,
+	// instead of the default Model-receiver `m.count`. Used by renderRoute /
+	// POST-action emission where the per-session State struct is the receiver.
+	StateReceiver string
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -181,6 +188,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),
 		MethodFields:   maps.Clone(ctx.MethodFields),
 		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
+		StateReceiver:  ctx.StateReceiver,
 	}
 }
 

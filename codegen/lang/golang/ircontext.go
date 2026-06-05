@@ -331,6 +331,9 @@ func (gc *GoIRContext) Indent() string                      { return "\t" }
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	_, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
+		if gc.Ctx.StateReceiver != "" {
+			return gc.Ctx.StateReceiver + "." + ExportName(n.Name)
+		}
 		return "m." + n.Name
 	}
 	return n.Name
@@ -407,6 +410,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameComputed:
 		return "m." + name + "()"
 	case codegen.NameStateVar:
+		if gc.Ctx.StateReceiver != "" {
+			return gc.Ctx.StateReceiver + "." + ExportName(name)
+		}
 		return "m." + name
 	case codegen.NameConst:
 		// Top-level free-function bodies aren't methods on Model; consts
@@ -482,6 +488,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		switch fname {
 		case "string":
 			if len(args) == 1 {
+				gc.RequireImport("fmt")
 				return "fmt.Sprint(" + args[0] + ")"
 			}
 		case "int":
@@ -927,6 +934,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
 	// and general stringification.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
+		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
 	}
 	// Pointer/composite Go types need parens around the cast target:
