@@ -105,7 +105,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 }
 
 func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
-	methodName := "render" + golang.ExportName(cc.Component.Name)
+	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	var params []string
 	for _, p := range cc.Props {
@@ -450,7 +450,7 @@ func (vc *irViewContext) expandStdlibComponent(n *ir.NodeInst, resultVar string)
 }
 
 func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
-	methodName := "render" + golang.ExportName(n.Name)
+	methodName := golang.ComponentRenderMethod(n.Name)
 
 	var args []string
 	if n.Component != nil {

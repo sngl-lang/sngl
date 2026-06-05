@@ -670,7 +670,7 @@ func renderIRComponentMethod(
 	startLabel, startContainer int,
 	importSink func(string),
 ) (code string, fields []irWidgetField, nextLabel, nextContainer int) {
-	methodName := "render" + golang.ExportName(cc.Component.Name)
+	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	var params []*ir.Param
 	for _, p := range cc.Props {

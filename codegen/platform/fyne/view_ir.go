@@ -587,7 +587,7 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 		vc.renderChildrenToObject(n.Children, slotVar)
 		args = append(args, slotVar)
 	}
-	vc.line("%s = m.render%s(%s)", resultVar, golang.ExportName(n.Name), strings.Join(args, ", "))
+	vc.line("%s = m.%s(%s)", resultVar, golang.ComponentRenderMethod(n.Name), strings.Join(args, ", "))
 }
 
 func (vc *irViewContext) renderChildrenToObject(children []ir.Stmt, resultVar string) {

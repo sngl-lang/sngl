@@ -603,7 +603,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 							pargs = append(pargs, "nil")
 						}
 					}
-					return recv + ".render" + ExportName(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
+					return recv + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
 				}
 			}
 		}

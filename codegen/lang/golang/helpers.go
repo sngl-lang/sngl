@@ -125,6 +125,14 @@ func TypeHintToGo(hint string) string {
 	}
 }
 
+// ComponentRenderMethod returns the Model method name a Go backend emits for
+// a user component's per-instance render (e.g. "renderTreeView" for "TreeView").
+// Shared by every Go platform (fyne, bubbletea, gtk4) and the
+// lower.CreateComponent dispatch so call sites and definitions stay in sync.
+func ComponentRenderMethod(componentName string) string {
+	return "render" + ExportName(componentName)
+}
+
 // ZeroValueGo returns the Go zero-value expression for a SNGL type hint or
 // a Go type string (func(...), []T, pkg.T, etc.).
 func ZeroValueGo(hint string) string {
