@@ -285,10 +285,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		gc.RequireImport(p)
 	}
 
-	// Ternary helper
-	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n")
-	b.WriteString("\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
-
 	// Lang-tracked helpers (mustParse*) — picked up via HelpersNeeded.
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {

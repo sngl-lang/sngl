@@ -45,11 +45,12 @@ func (info *irAnalysis) depTracker() *codegen.DepTracker {
 // compilation holds per-request build state flowing between
 // BuildMutationModel and EmitFromMutation.
 type compilation struct {
-	gen      *Generator
-	ctx      *codegen.CodegenCtx
-	info     *irAnalysis
-	cfg      Config
-	registry *gir.TypeRegistry
+	gen            *Generator
+	ctx            *codegen.CodegenCtx
+	info           *irAnalysis
+	cfg            Config
+	registry       *gir.TypeRegistry
+	needsBoolToInt bool // set when any translator calls boolToGoInt
 }
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
@@ -100,17 +101,11 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		return err
 	}
 
-	// gtk4 templates currently render `package main` + the import block
-	// inline, so each file's bytes is a complete Go source. Route both
-	// through the language's FileEmitter so it owns the generated-by
-	// header, the final gofmt pass, and (when Maps is on) source-map
-	// emission. PackageName left empty: the template's `package main`
-	// stays the file's package decl.
-	//
-	// The import-block collapse (template stops emitting imports;
-	// emitter renders them from RequireImport) is a follow-up — it
-	// requires the template + emitIR to register every import at the
-	// translation site instead of statically.
+	// gtk4 templates render `package main` + the import block inline, so each
+	// file's bytes is a complete Go source. Route both through the language's
+	// FileEmitter so it owns the generated-by header, the final gofmt pass,
+	// and (when Maps is on) source-map emission. PackageName left empty: the
+	// template's `package main` stays the file's package decl.
 	for _, pair := range []struct {
 		name    string
 		content []byte
@@ -327,7 +322,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, func(name, cType string) {
 			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
-		}).withPkg(c.ctx.Pkg)
+		}).withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt)
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -347,11 +342,11 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
 			continue
 		}
 		emitGTK4Func(&funcBuf, fn, gc)
@@ -362,13 +357,8 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
 		if createTargets[cc.Component] {
-			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg)
+			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
 		}
-	}
-
-	// Detect fmt usage in body/funcs (interpolation lowers to fmt.Sprint).
-	if strings.Contains(buildBuf.String(), "fmt.") || strings.Contains(funcBuf.String(), "fmt.") {
-		c.info.goImports["fmt"] = true
 	}
 
 	// If emitBuildUI will emit the synthetic __root wrapper, ensure
@@ -388,6 +378,19 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		}
 	}
 
+	// --- Phase 2.5: Pre-render BuildUI + event invokers so gc.RequireImport
+	// calls from EvalExpr (e.g. for unsafe.Pointer casts) are captured before
+	// newTemplateData samples gc.Imports().
+	var buildUIBuf strings.Builder
+	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc)
+	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
+	// structurally rather than by scanning the output.
+	if len(vc.eventInvokers) > 0 {
+		gc.RequireImport("unsafe")
+	}
+	var eventInvokersBuf strings.Builder
+	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers)
+
 	// --- Phase 3: Build template data ---
 	td, err := c.newTemplateData(widgetFields, funcBuf.String(), gc)
 	if err != nil {
@@ -406,9 +409,9 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		}
 	}
 
-	// --- Phase 5: Append dynamic code to model.go ---
-	emitBuildUI(&modelBuf, &buildBuf, topLevelRefs, topLevelCType, gc)
-	emitEventInvokers(&modelBuf, vc.eventInvokers)
+	// --- Phase 5: Append pre-rendered dynamic code to model.go ---
+	modelBuf.WriteString(buildUIBuf.String())
+	modelBuf.WriteString(eventInvokersBuf.String())
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
 	if c.cfg.Main {
@@ -421,21 +424,22 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 
 func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
 	td := templateData{
-		Package:      c.cfg.Package,
-		Main:         c.cfg.Main,
-		FunctionCode: functionCode,
-		Imports:      map[string]bool{},
+		Package:        c.cfg.Package,
+		Main:           c.cfg.Main,
+		FunctionCode:   functionCode,
+		Imports:        map[string]bool{},
+		NeedsBoolToInt: c.needsBoolToInt,
 	}
 	for p := range c.info.goImports {
 		td.Imports[p] = true
 	}
 
 	// Imports the Go translator required while rendering bodies/handlers
-	// (e.g. "math" for a float intrinsic). The template's dynamic .Imports
-	// block renders these; cgo's `import "C"` + `unsafe` stay structural in the
-	// template since cgo mandates that exact layout. C calls don't register an
-	// import (handled via the cgo preamble), so gc.Imports() holds only real
-	// Go paths.
+	// (e.g. "math" for a float intrinsic, "unsafe" for cgo pointer casts).
+	// The template's dynamic .Imports block renders these. C calls don't
+	// register an import (handled via the cgo preamble), so gc.Imports() holds
+	// only real Go paths. "unsafe" is registered via evalConversion whenever a
+	// NativePointerOf cast is emitted, and structurally for emitEventInvokers.
 	for _, p := range gc.Imports() {
 		td.Imports[p] = true
 	}
@@ -532,10 +536,10 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
 // into ir.Stmt fragments; we then synthesize a new *ir.Func and feed
 // it through gc.EmitFuncDef.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
 	tr.collectTagComponents(fn.Block)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
@@ -782,12 +786,12 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // splices that follow flow through codegen.WalkLowered into the gtk4
 // translator so `__nN.value = expr` shapes get rewritten via
 // OnPropAssign into `C.gtk_*_set_*(...)` calls.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
 	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
 	// the C type for nodes created in sibling slot Funcs or the component
 	// body — those CreateNode sites aren't in this handler's own Block.
@@ -948,28 +952,37 @@ func isWindowClass(cType string) bool {
 // synthetic m.__root wrapper or a freshly-constructed
 // gtk_application_window_new.
 func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext) {
-	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
-	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
+	// Empty component: no tree to build; BuildUI just creates a window.
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
+		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
+		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+		b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
 		b.WriteString("\twin := C.gtk_application_window_new(app)\n")
 		b.WriteString("\treturn win\n")
 		b.WriteString("}\n\n")
 		return
 	}
-	// Window-class passthrough: when the sole top-level is a window
-	// widget (e.g. user wrote GtkApplicationWindow at the root), skip
-	// the __root wrapper and return it directly.
+	// Window-class passthrough: sole top-level is a window widget.
 	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
 		ref := topLevelRefs[0]
+		b.WriteString("func (m *Model) buildWidgetTree() {\n")
 		b.WriteString(buildBuf.String())
+		b.WriteString("}\n\n")
+		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+		b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
+		b.WriteString("\tm.buildWidgetTree()\n")
 		retIdent := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
 		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: retIdent}
 		fmt.Fprintf(b, "\treturn %s\n", gc.EvalExpr(retExpr))
 		b.WriteString("}\n\n")
 		return
 	}
-	// Lazy-init __root — cgo calls aren't valid in field initializers,
-	// so the binds-loop in New() puts nil there and BuildUI promotes it.
+	// General case: wrap top-level children in a synthetic __root GtkBox.
+	// buildWidgetTree creates m.__root and appends children to it (idempotent
+	// — guarded by m.__root == nil). BuildUI creates a fresh window per call
+	// and attaches the tree, so calling BuildUI a second time (e.g. once in
+	// newTestComponent and once in sngl_test_activate) does not try to
+	// re-parent an already-parented widget.
 	rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
 	rootCtorCall := &ir.Call{
 		Type:     ir.TypDyn,
@@ -981,9 +994,9 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		},
 	}
 	rootInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootCtorCall}
-	b.WriteString("\tif m.__root == nil {\n")
-	fmt.Fprintf(b, "\t\tm.__root = %s\n", gc.EvalExpr(rootInit))
-	b.WriteString("\t}\n")
+	b.WriteString("func (m *Model) buildWidgetTree() {\n")
+	b.WriteString("\tif m.__root != nil {\n\t\treturn\n\t}\n")
+	fmt.Fprintf(b, "\tm.__root = %s\n", gc.EvalExpr(rootInit))
 	b.WriteString(buildBuf.String())
 	for _, ref := range topLevelRefs {
 		childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
@@ -1000,9 +1013,25 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 			fmt.Fprintf(b, "\t%s\n", line)
 		}
 	}
+	b.WriteString("}\n\n")
+	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
+	b.WriteString("\tm.buildWidgetTree()\n")
 	b.WriteString("\twin := C.gtk_application_window_new(app)\n")
-	b.WriteString("\tC.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)\n")
 	winRef := &ir.Ident{Name: "win"}
+	setSizeCall := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_window_set_default_size"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWindow"), Operand: winRef}},
+			{Value: &ir.Literal{Type: ir.TypInt, Raw: "480"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Raw: "640"}},
+		},
+	}
+	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
+		fmt.Fprintf(b, "\t%s\n", line)
+	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "C"},
@@ -1026,7 +1055,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 // return its single top-level widget (or a fresh vbox wrapping several)
 // as *C.GtkWidget. The CreateComponent call site emits
 // `m.<id> = m.render<Comp>(props...)` (see OnCreateComponent).
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package) {
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	compGC := gc.ForComponent(cc.Component)
@@ -1038,7 +1067,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 
 	tr := newGtk4Translator(compGC, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 
@@ -1061,7 +1090,17 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(retExpr))
 	default:
 		var tb strings.Builder
-		tb.WriteString("\t__box := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))\n")
+		boxCtorCall := &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("gtk_box_new"),
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
+				{Value: &ir.Literal{Type: ir.TypInt, Raw: "6"}},
+			},
+		}
+		boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxCtorCall}
+		fmt.Fprintf(&tb, "\t__box := %s\n", compGC.EvalExpr(boxInit))
 		boxRef := &ir.Ident{Name: "__box"}
 		for _, ref := range tops {
 			childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
@@ -1078,7 +1117,8 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 				fmt.Fprintf(&tb, "\t%s\n", line)
 			}
 		}
-		tb.WriteString("\treturn (*C.GtkWidget)(unsafe.Pointer(__box))\n")
+		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: boxRef}
+		fmt.Fprintf(&tb, "\treturn %s\n", compGC.EvalExpr(retExpr))
 		trailer = tb.String()
 	}
 
@@ -1150,7 +1190,6 @@ func emitGTK4Main(b *strings.Builder, cfg Config) {
 	b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"gtk: application exited with status %d\\n\", status)\n")
 	b.WriteString("\t\tos.Exit(int(status))\n")
 	b.WriteString("\t}\n")
-	b.WriteString("\t_ = fmt.Sprint\n")
 	b.WriteString("}\n")
 }
 

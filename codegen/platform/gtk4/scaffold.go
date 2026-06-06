@@ -31,16 +31,17 @@ var templateFS embed.FS
 
 // templateData is passed to model.go.tmpl and callbacks.go.tmpl.
 type templateData struct {
-	Package      string
-	Main         bool
-	UnitDecls    string // pre-rendered `type X float64 / struct {...}` decls
-	LangHelpers  string // pre-rendered must-parse / runtime helpers
-	Structs      []structData
-	Binds        []bindData
-	Computeds    []computedData
-	WidgetFields []widgetFieldData
-	FunctionCode string
-	Imports      map[string]bool
+	Package        string
+	Main           bool
+	UnitDecls      string // pre-rendered `type X float64 / struct {...}` decls
+	LangHelpers    string // pre-rendered must-parse / runtime helpers
+	Structs        []structData
+	Binds          []bindData
+	Computeds      []computedData
+	WidgetFields   []widgetFieldData
+	FunctionCode   string
+	Imports        map[string]bool
+	NeedsBoolToInt bool // emit boolToInt helper only when boolToGoInt was used
 }
 
 type structData struct {

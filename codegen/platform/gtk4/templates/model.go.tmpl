@@ -51,23 +51,20 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
 import "C"
 
 import (
-	"unsafe"
 {{- range $path, $_ := .Imports}}
 	"{{$path}}"
 {{- end}}
 )
 
-// Reference `unsafe` so the import isn't flagged unused on UIs that
-// don't reach into pointer territory directly.
-var _ unsafe.Pointer
-
 {{.LangHelpers}}
-func ternary[T any](cond bool, a, b T) T {
-	if cond {
-		return a
+{{- if .NeedsBoolToInt}}
+func boolToInt(b bool) int {
+	if b {
+		return 1
 	}
-	return b
+	return 0
 }
+{{end}}
 
 {{.UnitDecls}}
 {{- range .Structs}}

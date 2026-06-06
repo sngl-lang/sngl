@@ -9,6 +9,16 @@ import (
 	"github.com/alecthomas/chroma/v2/styles"
 )
 
+// LexerForFile returns the chroma lexer name inferred from the filename, or
+// empty string if no lexer is registered for that extension.
+func LexerForFile(name string) string {
+	l := lexers.Match(name)
+	if l == nil {
+		return ""
+	}
+	return l.Config().Name
+}
+
 // Terminal applies chroma syntax highlighting for terminal (true-colour)
 // output. Returns the original text unchanged on any error.
 //

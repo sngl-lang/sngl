@@ -7,8 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 )
 
-// emitFyneModel writes the structural model file — everything the model.go
-// template used to render: the ternary helper, lang helpers, unit/struct
+// emitFyneModel writes the structural model file — lang helpers, unit/struct
 // decls, the Model struct, New(), toast + timer methods, computed methods,
 // user functions, and getters/setters. It emits Go directly (not via a
 // template) so every framework reference registers its import through gc:
@@ -17,8 +16,6 @@ import (
 // requireTypeImports. Whitespace is left rough — the FileEmitter gofmt pass
 // normalizes it.
 func emitFyneModel(b *strings.Builder, td *templateData, gc *golang.GoIRContext) {
-	b.WriteString("func ternary[T any](cond bool, a, b T) T {\n\tif cond {\n\t\treturn a\n\t}\n\treturn b\n}\n\n")
-
 	b.WriteString(td.LangHelpers)
 	b.WriteString(td.UnitDecls)
 

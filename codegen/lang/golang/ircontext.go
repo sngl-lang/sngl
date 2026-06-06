@@ -164,8 +164,8 @@ func (gc *GoIRContext) Unary(n *ir.Unary, operand string) string {
 	return "-" + operand
 }
 
-func (gc *GoIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
-	return "ternary(" + cond + ", " + then_ + ", " + else_ + ")"
+func (gc *GoIRContext) Ternary(_ *ir.Ternary, _, _, _ string) string {
+	panic("ir.Ternary reached Go codegen — NoTernary cap must be set for all Go platforms")
 }
 
 func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
@@ -944,6 +944,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		if ref, ok := n.Type.Meta.(ir.NativeTypeRef); ok && ref.CgoC {
 			// Cgo pointer cast: (*C.X)(unsafe.Pointer(y))
 			// Empty Name → bare unsafe.Pointer(y) (used for void* args).
+			gc.RequireImport("unsafe")
 			if ref.Name == "" {
 				return "unsafe.Pointer(" + gc.EvalExpr(n.Operand) + ")"
 			}

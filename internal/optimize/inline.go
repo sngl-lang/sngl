@@ -25,7 +25,16 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 		return nil
 	}
 	if callsFunc(ret.Value, f) {
-		return nil // skip recursive functions
+		return nil // skip directly recursive functions
+	}
+	// Mutual-recursion guard: if this function is already on the inlining
+	// stack (i.e., we reached it via another inlineCall expansion), skip.
+	// Without this, isEven→isOdd→isEven→… expands forever when parameters
+	// are unbound (no concrete value to short-circuit the ternary).
+	if ctx != nil && ctx.inliningFuncs != nil {
+		if ctx.inliningFuncs[f] {
+			return nil
+		}
 	}
 	// Skip inlining bodies that still contain a ContextRead. NoContext (in
 	// lower) is what threads the locale context through wrapper bodies and

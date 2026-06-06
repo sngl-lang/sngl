@@ -30,20 +30,14 @@ type irViewContext struct {
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
-	// Register imports at the emit site: a rendered line that calls fmt.* (the
-	// fmt.Sprint value wrapper) or strings.* (e.g. strings.Join when a reactive
-	// for/list slot joins its rendered items) needs that import. tea/lipgloss
-	// are required structurally; fmt/strings are conditional, so they're
-	// required here only when actually emitted.
-	if vc.gc != nil {
-		if strings.Contains(format, "fmt.") {
-			vc.gc.RequireImport("fmt")
-		}
-		if strings.Contains(format, "strings.") {
-			vc.gc.RequireImport("strings")
-		}
-	}
 	fmt.Fprintf(vc.buf, "%s"+format+"\n", append([]any{strings.Repeat("\t", vc.indent)}, args...)...)
+}
+
+// requireImport registers a Go import on the context's gc; nil-safe.
+func (vc *irViewContext) requireImport(path string) {
+	if vc.gc != nil {
+		vc.gc.RequireImport(path)
+	}
 }
 
 func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
@@ -261,6 +255,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	if vc.vertical {
 		sep = `"\n"`
 	}
+	vc.requireImport("strings")
 	vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
 
 	if len(s.Else) > 0 {
@@ -351,6 +346,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		} else if v := codegen.NodeProp(n, "initials"); v != nil {
 			content = vc.gc.EvalExpr(v)
 		}
+		vc.requireImport("fmt")
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 
 	case "button", "checkbox", "toggle", "select", "textarea", "chip":
@@ -368,6 +364,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		vc.line(`%sFocused := m.focus == %d`, resultVar, focusIdx)
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
+		vc.requireImport("fmt")
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
 
 	case "input":
@@ -404,6 +401,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		if v := codegen.NodeProp(n, "value"); v != nil {
 			content = vc.gc.EvalExpr(v)
 		}
+		vc.requireImport("fmt")
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 
 	default:
@@ -553,6 +551,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		content = vc.gc.EvalExpr(v)
 	}
 
+	vc.requireImport("fmt")
 	if vc.resolveProp(n, "focusable") != nil {
 		focusIdx := vc.focusIndex
 		vc.focusIndex++

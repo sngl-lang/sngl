@@ -62,6 +62,7 @@ type evalCtx struct {
 	fileAssets    []FileAsset
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
+	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
 	interpDepth   int                   // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a go:// import that
 	// failed to evaluate at build time on a platform that requires the value
@@ -157,12 +158,13 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
-		platform:    r.cfg.Platform,
-		language:    r.cfg.Language,
-		dir:         r.cfg.Dir,
-		noCacheBust: r.cfg.NoCacheBust,
-		pkg:         pkg,
-		values:      make(map[ir.Symbol]any),
+		platform:      r.cfg.Platform,
+		language:      r.cfg.Language,
+		dir:           r.cfg.Dir,
+		noCacheBust:   r.cfg.NoCacheBust,
+		pkg:           pkg,
+		values:        make(map[ir.Symbol]any),
+		inliningFuncs: make(map[*ir.Func]bool),
 	}
 
 	// Phase 1: Evaluate all top-level consts.

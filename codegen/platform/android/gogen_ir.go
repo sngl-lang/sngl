@@ -93,42 +93,41 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		gc = gc.ForComponent(main)
 	}
 
-	var b strings.Builder
-	b.WriteString("package golib\n")
-
-	// Collect all funcs
 	allFuncs := ctx.Pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
 	}
 
-	// Check for needed imports
-	needMath := false
-	needStrings := false
+	// Pass 1: dry-run all function bodies through gc to collect imports.
+	// RequireImport is idempotent, so re-running in pass 2 is harmless.
+	var discard strings.Builder
 	for _, fn := range allFuncs {
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn || fn.Receiver != "" {
+		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
-		src := irFuncBodyString(fn, gc)
-		if strings.Contains(src, "math.") {
-			needMath = true
+		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			continue
 		}
-		if strings.Contains(src, "strings.") {
-			needStrings = true
+		emitGoLibIRFunc(&discard, fn, gc)
+	}
+	for _, fn := range allFuncs {
+		if codegen.IsComputed(fn) {
+			emitGoLibIRComputed(&discard, fn, gc)
 		}
 	}
-	if needMath || needStrings {
+
+	// Build output: package clause, conditional import block, then code.
+	var b strings.Builder
+	b.WriteString("package golib\n")
+	if imports := gc.Imports(); len(imports) > 0 {
 		b.WriteString("\nimport (\n")
-		if needMath {
-			b.WriteString("\t\"math\"\n")
-		}
-		if needStrings {
-			b.WriteString("\t\"strings\"\n")
+		for _, p := range imports {
+			fmt.Fprintf(&b, "\t%q\n", p)
 		}
 		b.WriteString(")\n")
 	}
 
-	// Emit exported functions
+	// Pass 2: emit actual code.
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
@@ -138,8 +137,6 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		emitGoLibIRFunc(&b, fn, gc)
 	}
-
-	// Emit computed functions
 	for _, fn := range allFuncs {
 		if codegen.IsComputed(fn) {
 			emitGoLibIRComputed(&b, fn, gc)
@@ -178,11 +175,3 @@ func emitGoLibIRComputed(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext
 	}
 }
 
-func irFuncBodyString(fn *ir.Func, gc *golang.GoIRContext) string {
-	if len(fn.Block) == 1 {
-		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-			return gc.EvalExpr(ret.Value)
-		}
-	}
-	return ""
-}

@@ -27,6 +27,12 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
 		if inlined := inlineCall(call, ctx); inlined != nil {
+			if ctx != nil && call.Func != nil {
+				ctx.inliningFuncs[call.Func] = true
+				result := foldExpr(inlined, ctx)
+				delete(ctx.inliningFuncs, call.Func)
+				return result
+			}
 			return foldExpr(inlined, ctx)
 		}
 	}

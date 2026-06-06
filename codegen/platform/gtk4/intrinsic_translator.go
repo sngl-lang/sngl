@@ -21,13 +21,14 @@ import (
 // via ir.Conversion to an ir.NativePointerOf("X") type (see cgoCast);
 // the Go renderer's evalConversion path emits the cgo cast pattern.
 type gtk4Translator struct {
-	gc           *golang.GoIRContext
-	pkg          *ir.Package // optional; used to consult GIR-resolved native metadata
-	fieldSink    func(name, cType string)
-	idCTypes     map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
-	skipped      map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel     []string
-	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	gc             *golang.GoIRContext
+	pkg            *ir.Package // optional; used to consult GIR-resolved native metadata
+	fieldSink      func(name, cType string)
+	idCTypes       map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
+	skipped        map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
+	topLevel       []string
+	tagComponent   map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	boolToIntUsed  *bool // points to compilation.needsBoolToInt; set when boolToGoInt is called
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
@@ -45,6 +46,13 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 // tag isn't matched by the static SNGL-stdlib switch.
 func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
 	t.pkg = pkg
+	return t
+}
+
+// withBoolToIntFlag points the translator at a flag that gets set when
+// boolToGoInt is called, so the caller knows to emit the boolToInt helper.
+func (t *gtk4Translator) withBoolToIntFlag(flag *bool) *gtk4Translator {
+	t.boolToIntUsed = flag
 	return t
 }
 
@@ -187,20 +195,19 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	}
 }
 
-// boolToGoInt wraps a Go bool expression in `ternary(expr, 1, 0)` so the
-// result is a Go int. cgo cannot convert bool directly to a named C
-// integer typedef like gboolean — `C.gboolean(boolVar)` fails to compile
-// — so callers wrap the bool first, then pass the int through C.gboolean.
-// The ternary helper is already declared in the model.go.tmpl template.
-func boolToGoInt(expr ir.Expr) ir.Expr {
+// boolToGoInt wraps a Go bool expression in `boolToInt(expr)` so the result
+// is a Go int. cgo cannot convert bool directly to a named C integer typedef
+// like gboolean — `C.gboolean(boolVar)` fails to compile — so callers wrap
+// the bool first, then pass the int through C.gboolean.
+// boolToInt is emitted into model.go only when this is called.
+func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
+	if t.boolToIntUsed != nil {
+		*t.boolToIntUsed = true
+	}
 	return &ir.Call{
 		Type: ir.TypInt,
-		Func: &ir.Func{Name: "ternary"},
-		Args: []ir.CallArg{
-			{Value: expr},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: "1"}},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: "0"}},
-		},
+		Func: &ir.Func{Name: "boolToInt"},
+		Args: []ir.CallArg{{Value: expr}},
 	}
 }
 
@@ -476,7 +483,7 @@ func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType
 	// Boolean-only setter shortcut — kept for setters whose GIR metadata
 	// we may not have resolved.
 	if setter == "gtk_check_button_set_active" {
-		return nativeCall("gboolean", boolToGoInt(value))
+		return nativeCall("gboolean", t.boolToGoInt(value))
 	}
 	if valType != "" {
 		// Enum / named-type setter. Map literal strings to C constants.
@@ -492,7 +499,7 @@ func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType
 	if vt := exprIRType(value); vt != nil {
 		switch vt.Kind {
 		case ir.TypeBool:
-			return nativeCall("gboolean", boolToGoInt(value))
+			return nativeCall("gboolean", t.boolToGoInt(value))
 		case ir.TypeInt:
 			return nativeCall("int", value)
 		case ir.TypeFloat:
