@@ -140,7 +140,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
 		}
-		caps := plat.Capabilities().Merge(langT.Capabilities())
+		caps := plat.Capabilities(langT).ToLowerCaps()
 		if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
@@ -184,7 +184,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	if langT == nil {
 		return nil, fmt.Errorf("lang %q not registered", lang)
 	}
-	caps := plat.Capabilities().Merge(langT.Capabilities())
+	caps := plat.Capabilities(langT).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
@@ -353,7 +353,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
 			}
-			batchCaps := plat.Capabilities().Merge(langT.Capabilities())
+			batchCaps := plat.Capabilities(langT).ToLowerCaps()
 			if err := lower.Lower(p.pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}

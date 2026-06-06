@@ -33,12 +33,12 @@ component main {
 		}
 	}
 	g := &Generator{}
-	if err := lower.Lower(pkg, g.Capabilities(), lower.Options{Platform: "gtk4"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
 	lang := codegen.LookupLang("go")
 	if lang == nil {
 		t.Fatal("go lang not registered")
+	}
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "gtk4"}); err != nil {
+		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
 	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {

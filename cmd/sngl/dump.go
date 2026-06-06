@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/highlight"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -14,71 +18,29 @@ import (
 )
 
 var dumpCmd = &cobra.Command{
-	Use:   "dump",
+	Use:   "dump [file|dir]",
 	Short: "Dump compiler phase output",
 	Long: `Dump compiler phase output in various formats.
 
+Use --stage to control how far the compiler runs before dumping.
 Output format is unstable and may change between versions.`,
-}
-
-var dumpParsedCmd = &cobra.Command{
-	Use:   "parsed [file|dir]",
-	Short: "Dump AST after parsing and merging",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runDumpParsed,
-}
-
-var dumpCheckedCmd = &cobra.Command{
-	Use:   "checked [file|dir]",
-	Short: "Dump AST after type checking",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runDumpChecked,
-}
-
-var dumpOptimizedCmd = &cobra.Command{
-	Use:   "optimized [file|dir]",
-	Short: "Dump AST after optimization",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runDumpOptimized,
-}
-
-var dumpAnalysisCmd = &cobra.Command{
-	Use:   "analysis [file|dir]",
-	Short: "Dump codegen analysis",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runDumpAnalysis,
-}
-
-var dumpLoweredCmd = &cobra.Command{
-	Use:   "lowered [file|dir]",
-	Short: "Dump IR after lowering passes",
-	Long: `Dump IR after lowering. Use --after PASS to dump intermediate state
-after a specific pass (case-sensitive, matching Caps field name).
---after none dumps post-optimize / pre-lower state.
---list prints resolved caps and pass list, then exits.`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runDumpLowered,
+	RunE: runDump,
 }
 
 func init() {
-	dumpCmd.PersistentFlags().String("format", "spew", "output format (spew, json, sngl)")
-	dumpCmd.PersistentFlags().String("color", "auto", "colorize output (auto, on, off)")
-	dumpCmd.PersistentFlags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
-	dumpCmd.PersistentFlags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
-	dumpCmd.PersistentFlags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
-	dumpCmd.PersistentFlags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos)")
-
-	dumpOptimizedCmd.Flags().String("lang", "", "target language")
-	dumpOptimizedCmd.Flags().String("platform", "", "target platform")
-	dumpAnalysisCmd.Flags().String("lang", "", "target language")
-	dumpAnalysisCmd.Flags().String("platform", "", "target platform")
-
-	dumpLoweredCmd.Flags().String("lang", "", "target language")
-	dumpLoweredCmd.Flags().String("platform", "", "target platform")
-	dumpLoweredCmd.Flags().String("after", "", "dump IR after named pass (e.g. NoToggle); 'none' = pre-lower state")
-	dumpLoweredCmd.Flags().Bool("list", false, "print resolved caps and pass list, then exit")
-
-	dumpCmd.AddCommand(dumpParsedCmd, dumpCheckedCmd, dumpOptimizedCmd, dumpAnalysisCmd, dumpLoweredCmd)
+	dumpCmd.Flags().String("stage", "codegen", "pipeline stage (parsed, checked, optimized, analysis, lowered, codegen)")
+	dumpCmd.Flags().String("format", "sngl", "output format for IR stages (spew, json, sngl)")
+	dumpCmd.Flags().String("color", "auto", "colorize output (auto, on, off)")
+	dumpCmd.Flags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
+	dumpCmd.Flags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
+	dumpCmd.Flags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
+	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos)")
+	dumpCmd.Flags().String("lang", "", "target language")
+	dumpCmd.Flags().String("platform", "", "target platform")
+	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value, for codegen stage)")
+	dumpCmd.Flags().String("after", "", "dump IR after named pass (lowered stage only; 'none' = pre-lower state)")
+	dumpCmd.Flags().Bool("list", false, "print resolved caps and pass list, then exit (lowered stage only)")
 }
 
 var dumpOmitSet map[string]bool
@@ -110,142 +72,128 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	return f, i, nil
 }
 
-func runDumpParsed(cmd *cobra.Command, args []string) error {
-	f, inp, err := dumpResolveFlags(cmd, args)
-	if err != nil {
-		return err
-	}
-	doc, _, err := dumpParseInput(inp, args)
-	if err != nil {
-		return err
-	}
-	return dumpDocument(f, doc)
-}
+func runDump(cmd *cobra.Command, args []string) error {
+	stage, _ := cmd.Flags().GetString("stage")
 
-func runDumpChecked(cmd *cobra.Command, args []string) error {
-	f, inp, err := dumpResolveFlags(cmd, args)
-	if err != nil {
-		return err
-	}
-	doc, dir, err := dumpParseInput(inp, args)
-	if err != nil {
-		return err
+	// codegen stage has its own output format; skip IR format resolution.
+	if stage == "codegen" {
+		if err := resolveColor(cmd); err != nil {
+			return err
+		}
+		inp, err := resolveDumpInput(cmd, args)
+		if err != nil {
+			return err
+		}
+		return runDumpCodegen(cmd, args, inp)
 	}
 
-	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true)
-	if err != nil {
-		return err
-	}
-	slog.Info("check", "dir", dir, "duration", time.Since(start))
-
-	return dumpDocument(f, pkg)
-}
-
-func runDumpOptimized(cmd *cobra.Command, args []string) error {
 	f, inp, err := dumpResolveFlags(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	doc, dir, err := dumpParseInput(inp, args)
-	if err != nil {
-		return err
-	}
+	switch stage {
+	case "parsed":
+		doc, _, err := dumpParseInput(inp, args)
+		if err != nil {
+			return err
+		}
+		return dumpDocument(f, doc)
 
-	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true)
-	if err != nil {
-		return err
-	}
-	slog.Info("check", "dir", dir, "duration", time.Since(start))
+	case "checked":
+		doc, dir, err := dumpParseInput(inp, args)
+		if err != nil {
+			return err
+		}
+		start := time.Now()
+		pkg, err := checkDoc(doc, dir, true)
+		if err != nil {
+			return err
+		}
+		slog.Info("check", "dir", dir, "duration", time.Since(start))
+		return dumpDocument(f, pkg)
 
-	target, err := dumpResolveTarget(cmd, pkg)
-	if err != nil {
-		return err
-	}
-
-	start = time.Now()
-	if err := optimize.Optimize(pkg, &optimize.Config{
-		Platform: target.Platform,
-		Language: target.Lang,
-		Dir:      dir,
-	}); err != nil {
-		return err
-	}
-	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
-
-	// Also run lowering so the dump matches what codegen actually consumes.
-	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
-		if lang := codegen.LookupLang(target.Lang); lang != nil {
-			caps := plat.Capabilities().Merge(lang.Capabilities())
-			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
-				return err
+	case "optimized":
+		doc, dir, err := dumpParseInput(inp, args)
+		if err != nil {
+			return err
+		}
+		start := time.Now()
+		pkg, err := checkDoc(doc, dir, true)
+		if err != nil {
+			return err
+		}
+		slog.Info("check", "dir", dir, "duration", time.Since(start))
+		target, err := dumpResolveTarget(cmd, pkg)
+		if err != nil {
+			return err
+		}
+		start = time.Now()
+		if err := optimize.Optimize(pkg, &optimize.Config{
+			Platform: target.Platform,
+			Language: target.Lang,
+			Dir:      dir,
+		}); err != nil {
+			return err
+		}
+		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
+			if lang := codegen.LookupLang(target.Lang); lang != nil {
+				caps := plat.Capabilities(lang).ToLowerCaps()
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+					return err
+				}
 			}
 		}
-	}
+		return dumpDocument(f, ir.Convert(pkg))
 
-	doc = ir.Convert(pkg)
-	return dumpDocument(f, doc)
-}
-
-func runDumpAnalysis(cmd *cobra.Command, args []string) error {
-	f, inp, err := dumpResolveFlags(cmd, args)
-	if err != nil {
-		return err
-	}
-
-	doc, dir, err := dumpParseInput(inp, args)
-	if err != nil {
-		return err
-	}
-
-	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true)
-	if err != nil {
-		return err
-	}
-	slog.Info("check", "dir", dir, "duration", time.Since(start))
-
-	target, err := dumpResolveTarget(cmd, pkg)
-	if err != nil {
-		return err
-	}
-
-	start = time.Now()
-	if err := optimize.Optimize(pkg, &optimize.Config{
-		Platform: target.Platform,
-		Language: target.Lang,
-		Dir:      dir,
-	}); err != nil {
-		return err
-	}
-	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
-
-	// Lower as well so analysis reflects post-lowering shape.
-	if plat := codegen.LookupPlatform(target.Platform); plat != nil {
-		if lang := codegen.LookupLang(target.Lang); lang != nil {
-			caps := plat.Capabilities().Merge(lang.Capabilities())
-			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
-				return err
+	case "analysis":
+		doc, dir, err := dumpParseInput(inp, args)
+		if err != nil {
+			return err
+		}
+		start := time.Now()
+		pkg, err := checkDoc(doc, dir, true)
+		if err != nil {
+			return err
+		}
+		slog.Info("check", "dir", dir, "duration", time.Since(start))
+		target, err := dumpResolveTarget(cmd, pkg)
+		if err != nil {
+			return err
+		}
+		start = time.Now()
+		if err := optimize.Optimize(pkg, &optimize.Config{
+			Platform: target.Platform,
+			Language: target.Lang,
+			Dir:      dir,
+		}); err != nil {
+			return err
+		}
+		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
+			if lang := codegen.LookupLang(target.Lang); lang != nil {
+				caps := plat.Capabilities(lang).ToLowerCaps()
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+					return err
+				}
 			}
 		}
-	}
+		return dumpDocument(f, codegen.AnalyzeCommon(pkg))
 
-	return dumpDocument(f, codegen.AnalyzeCommon(pkg))
+	case "lowered":
+		return runDumpLowered(cmd, args, f, inp)
+
+	default:
+		return fmt.Errorf("unknown stage %q (valid: parsed, checked, optimized, analysis, lowered, codegen)", stage)
+	}
 }
 
-func runDumpLowered(cmd *cobra.Command, args []string) error {
-	f, inp, err := dumpResolveFlags(cmd, args)
-	if err != nil {
-		return err
-	}
-
+func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInput) error {
 	doc, dir, err := dumpParseInput(inp, args)
 	if err != nil {
 		return err
 	}
-
 	start := time.Now()
 	pkg, err := checkDoc(doc, dir, true)
 	if err != nil {
@@ -266,7 +214,7 @@ func runDumpLowered(cmd *cobra.Command, args []string) error {
 	if lang == nil {
 		return fmt.Errorf("unknown language %q", target.Lang)
 	}
-	caps := plat.Capabilities().Merge(lang.Capabilities())
+	caps := plat.Capabilities(lang).ToLowerCaps()
 
 	if listOnly, _ := cmd.Flags().GetBool("list"); listOnly {
 		enabled := lower.EnabledPasses(caps)
@@ -296,8 +244,99 @@ func runDumpLowered(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "stopAfter", stopAfter, "duration", time.Since(start))
 
-	doc = ir.Convert(pkg)
-	return dumpDocument(f, doc)
+	return dumpDocument(f, ir.Convert(pkg))
+}
+
+func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
+	doc, dir, err := dumpParseInput(inp, args)
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	pkg, err := checkDoc(doc, dir, true)
+	if err != nil {
+		return err
+	}
+	slog.Info("check", "dir", dir, "duration", time.Since(start))
+
+	target, err := dumpResolveTarget(cmd, pkg)
+	if err != nil {
+		return err
+	}
+
+	plat := codegen.LookupPlatform(target.Platform)
+	lang := codegen.LookupLang(target.Lang)
+	if plat == nil {
+		return fmt.Errorf("unknown platform %q (available: %v)", target.Platform, codegen.Platforms())
+	}
+	if lang == nil {
+		return fmt.Errorf("unknown language %q (available: %v)", target.Lang, codegen.Langs())
+	}
+
+	optSlice, _ := cmd.Flags().GetStringSlice("opt")
+	cliOpts := parseCLIOpts(optSlice)
+	if err := applyCLIOpts(target.Options, cliOpts); err != nil {
+		return err
+	}
+	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
+		codegen.SetOptionField(target.Options, "projectDir", dir)
+	}
+
+	optCfg := &optimize.Config{
+		Platform: target.Platform,
+		Language: target.Lang,
+		Dir:      dir,
+	}
+	start = time.Now()
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		return err
+	}
+	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+	caps := plat.Capabilities(lang).ToLowerCaps()
+	start = time.Now()
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+		return err
+	}
+	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+
+	if caps != (lower.Caps{}) {
+		start = time.Now()
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return err
+		}
+		slog.Info("optimize2", "dir", dir, "duration", time.Since(start))
+	}
+
+	var fileAssets []codegen.FileAsset
+	for _, fa := range optCfg.FileAssets {
+		fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
+	}
+
+	req := &codegen.Request{
+		Pkg:        pkg,
+		Lang:       lang,
+		Options:    target.Options,
+		Source:     filepath.Base(dir),
+		FileAssets: fileAssets,
+		ProjectFS:  os.DirFS(dir),
+	}
+	mem := codegen.NewMemSink()
+	start = time.Now()
+	if err := plat.Generate(req, mem); err != nil {
+		return err
+	}
+	slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+	files := mem.Files()
+	names := make([]string, 0, len(files))
+	for n := range files {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	return dumpCodegenOutput(names, files)
 }
 
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {
@@ -315,4 +354,53 @@ func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error
 		return outputTarget{}, fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
 	}
 	return targets[0], nil
+}
+
+// dumpCodegenOutput prints generated source to stdout. Single file: raw.
+// Multiple files: txtar format with per-file syntax highlighting.
+func dumpCodegenOutput(names []string, files map[string][]byte) error {
+	if len(names) == 1 {
+		name := names[0]
+		content := string(files[name])
+		if dumpColor {
+			if lex := highlight.LexerForFile(name); lex != "" {
+				content = highlight.Terminal(content, lex, "dracula")
+			}
+		}
+		fmt.Print(content)
+		return nil
+	}
+
+	const headerReset = "\033[0m"
+	const headerColor = "\033[1;36m" // bold cyan
+
+	var sb strings.Builder
+	for i, name := range names {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		if dumpColor {
+			sb.WriteString(headerColor)
+		}
+		sb.WriteString("-- ")
+		sb.WriteString(name)
+		sb.WriteString(" --")
+		if dumpColor {
+			sb.WriteString(headerReset)
+		}
+		sb.WriteByte('\n')
+
+		content := string(files[name])
+		if dumpColor {
+			if lex := highlight.LexerForFile(name); lex != "" {
+				content = highlight.Terminal(content, lex, "dracula")
+			}
+		}
+		sb.WriteString(content)
+		if len(content) > 0 && content[len(content)-1] != '\n' {
+			sb.WriteByte('\n')
+		}
+	}
+	fmt.Print(sb.String())
+	return nil
 }

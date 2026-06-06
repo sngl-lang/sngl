@@ -134,13 +134,19 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document { return pkgDocs }
-func (g *Generator) Capabilities() lower.Caps {
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
 	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
 	// mutation of a tracked Var. The gtk4 renderer translates those
-	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne
-	// uses, just emitting C setter invocations instead of Go method
-	// calls.
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true, NoStructSpread: true}
+	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne uses.
+	f.Reactivity = false
+	f.Declarative = false
+	f.StdlibWrappers = false
+	f.InlineComponents = false
+	f.StructSpread = false
+	f.StructComponents = true
+	f.StdlibContextParam = true
+	return f
 }
 
 // Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
@@ -206,12 +212,11 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 					return err
 				}
 				// gtk4's New() returns *Model; the agent helper file boots
-				// GTK in headless mode, registers a non-unique GApplication
-				// without running the main loop, and invokes BuildUI to
+				// GTK in headless mode and calls buildWidgetTree() to
 				// materialize widgets so per-id event invokers fire against
-				// real GTK objects. Snapshot support arrives in a follow-up
-				// commit — the setCurrentTestModel hook is declared here so
-				// LowerTestFile's `setCurrentTestModel(c)` call compiles.
+				// real GTK objects. BuildUI is intentionally NOT called here —
+				// sngl_test_activate calls it with the snapshot app so that
+				// m.__root has no prior parent when gtk_window_set_child runs.
 				mainSrc := []byte(`package ` + c.cfg.Package + `
 
 /*
@@ -221,7 +226,6 @@ import "C"
 
 import (
 	"sync"
-	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
 )
@@ -234,10 +238,8 @@ func setCurrentTestModel(m *Model) { currentModel = m }
 
 func newTestComponent() *Model {
 	gtkInit.Do(func() { C.gtk_init() })
-	app := C.gtk_application_new(C.CString("dev.sngl.test"), C.G_APPLICATION_NON_UNIQUE)
-	C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, nil)
 	m := New()
-	m.BuildUI(app)
+	m.buildWidgetTree()
 	return m
 }
 

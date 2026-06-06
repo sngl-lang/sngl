@@ -21,7 +21,11 @@ func (g *Generator) Description() string {
 func (g *Generator) SupportedLangs() []string            { return nil }
 func (g *Generator) Package() []*ast.Document            { return nil }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
-func (g *Generator) Capabilities() lower.Caps            { return lower.Caps{NoStructSpread: true} }
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
+	f.StructSpread = false
+	return f
+}
 
 // Generate rejects code generation requests. The none platform is a marker
 // for headless test execution; it emits no files.

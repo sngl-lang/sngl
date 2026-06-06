@@ -73,7 +73,8 @@ func TestFixtures(t *testing.T) {
 				t.Fatalf("check: %s", firstError(diags))
 			}
 			gen := &Generator{}
-			if err := lower.Lower(pkg, gen.Capabilities(), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
+			kotlinLang := codegen.LookupLang("kotlin")
+			if err := lower.Lower(pkg, gen.Capabilities(kotlinLang).ToLowerCaps(), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 				t.Fatalf("lower: %v", err)
 			}
 			compileAndVerify(t, doc, pkg)

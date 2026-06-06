@@ -53,10 +53,10 @@ func NativeAlias(importPath string) string {
 type LangTranslator interface {
 	ir.Language
 
-	// Capabilities declares which high-level SNGL constructs this language's
-	// translator cannot consume. Drives lowering passes; return lower.Caps{}
-	// when no lowering is needed.
-	Capabilities() lower.Caps
+	// Capabilities returns the SNGL constructs this language can natively emit.
+	// The platform receives these features and may restrict them further before
+	// lowering runs. See lower.Features and lower.AllFeatures.
+	Capabilities() lower.Features
 
 	GenerateIdentifier(name *ir.Ident) string
 
@@ -164,10 +164,12 @@ type PlatformGenerator interface {
 	ir.Platform
 	SupportedLangs() []string
 
-	// Capabilities declares which high-level SNGL constructs this platform
-	// cannot consume. Drives lowering passes; return lower.Caps{} when no
-	// lowering is needed.
-	Capabilities() lower.Caps
+	// Capabilities receives the active language and returns the combined set of
+	// features the platform+language pair can natively emit. The platform
+	// should start from lang.Capabilities(), restrict what it cannot consume,
+	// and add StructComponents / StdlibContextParam when required. The lang
+	// argument may be type-asserted to check for optional language extensions.
+	Capabilities(lang LangTranslator) lower.Features
 
 	Generate(req *Request, sink Sink) error
 }

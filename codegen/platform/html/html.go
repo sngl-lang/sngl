@@ -52,8 +52,17 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) Capabilities() lower.Caps {
-	return lower.Caps{NoAsyncReactive: true, StructComponents: true, StdlibContextParam: true, NoImplicitRecv: true, NoInlineComponents: true, NoReactivity: true, NoStdlibWrappers: true, NoStructSpread: true}
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
+	f.AsyncReactive = false
+	f.ImplicitRecv = false
+	f.InlineComponents = false
+	f.Reactivity = false
+	f.StdlibWrappers = false
+	f.StructSpread = false
+	f.StructComponents = true
+	f.StdlibContextParam = true
+	return f
 }
 
 // SupportedLangs returns "none" (static-site default) plus any registered

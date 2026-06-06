@@ -44,17 +44,24 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) Capabilities() lower.Caps {
-	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>`
-	// Assigns after every mutation of a tracked Var.
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
+	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>` Assigns
+	// after every mutation of a tracked Var.
+	f.Reactivity = false
 	// NoDeclarative: lowering flattens the entire visual tree into
-	// create/append/attachHandler intrinsic-call sequences. fyne
-	// consumes the flat output via WalkLowered + fyneTranslator.
-	// NoStdlibWrappers: inline fyne.sngl wrapper components at lowering
-	// time. fyne wrappers are already pure blueprint-bearing NodeInsts,
-	// so behavior is unchanged — the translator still reads the same
-	// Constructor/bindings props after inlining.
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true, NoInlineComponents: true, NoStructSpread: true}
+	// create/append/attachHandler intrinsic-call sequences. fyne consumes
+	// the flat output via WalkLowered + fyneTranslator.
+	f.Declarative = false
+	// NoStdlibWrappers: inline fyne.sngl wrapper components at lowering time.
+	// fyne wrappers are pure blueprint-bearing NodeInsts; the translator
+	// reads the same Constructor/bindings props after inlining.
+	f.StdlibWrappers = false
+	f.InlineComponents = false
+	f.StructSpread = false
+	f.StructComponents = true
+	f.StdlibContextParam = true
+	return f
 }
 
 // Generate writes fyne source files directly into sink. This is the

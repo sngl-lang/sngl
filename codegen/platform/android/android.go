@@ -93,12 +93,17 @@ func (g *Generator) SupportedLangs() []string            { return []string{"kotl
 func (g *Generator) PreviewCSS() string                  { return previewCSS }
 func (g *Generator) Package() []*ast.Document            { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
-func (g *Generator) Capabilities() lower.Caps {
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
 	// NoInlineComponents: hoist user-component vars/funcs/timers into main
 	// with per-instance renames. Android's RenderModel emits a Composable
 	// per surviving component; after inlining only main + recursive
 	// components remain, eliminating cross-component state plumbing.
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoInlineComponents: true, NoStructSpread: true}
+	f.InlineComponents = false
+	f.StructSpread = false
+	f.StructComponents = true
+	f.StdlibContextParam = true
+	return f
 }
 
 // Generate writes android platform output directly into sink. This is

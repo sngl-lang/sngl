@@ -553,7 +553,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 
-	caps := gen.Capabilities().Merge(lang.Capabilities())
+	caps := gen.Capabilities(lang).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return ""
 	}

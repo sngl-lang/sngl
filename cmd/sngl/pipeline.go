@@ -138,7 +138,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 			if lang == nil {
 				return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
 			}
-			caps := plat.Capabilities().Merge(lang.Capabilities())
+			caps := plat.Capabilities(lang).ToLowerCaps()
 			start = time.Now()
 			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)

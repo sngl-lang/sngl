@@ -156,7 +156,7 @@ func generateRouteServer(t *testing.T, path string) string {
 		t.Fatal("go language translator not registered")
 	}
 	gen := &htmlplat.Generator{}
-	caps := gen.Capabilities().Merge(lang.Capabilities())
+	caps := gen.Capabilities(lang).ToLowerCaps()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

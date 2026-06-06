@@ -11,6 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -41,8 +42,12 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 		p = pkg[0]
 	}
 	if p != nil {
+		if err := optimize.Optimize(p, &optimize.Config{Platform: "bubbletea", Language: "go"}); err != nil {
+			t.Fatalf("optimize: %v", err)
+		}
 		gen := &Generator{}
-		if err := lower.Lower(p, gen.Capabilities(), lower.Options{Platform: "bubbletea"}); err != nil {
+		goLang := codegen.LookupLang("go")
+		if err := lower.Lower(p, gen.Capabilities(goLang).ToLowerCaps(), lower.Options{Platform: "bubbletea"}); err != nil {
 			t.Fatalf("lower: %v", err)
 		}
 	}

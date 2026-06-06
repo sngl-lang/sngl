@@ -42,7 +42,7 @@ component main {
 			t.Fatalf("check: %s", d.Error())
 		}
 	}
-	caps := gen.Capabilities().Merge(lang.Capabilities())
+	caps := gen.Capabilities(lang).ToLowerCaps()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

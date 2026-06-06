@@ -6,11 +6,98 @@ package lower
 
 import "strings"
 
+// Features declares which high-level SNGL constructs a language or platform
+// can natively emit. A flag set to true means no lowering is needed for that
+// construct; false means the corresponding lowering pass must run.
+//
+// The zero value is safe: every flag defaults to false (needs lowering), so
+// new platforms automatically get all lowering passes until they opt in.
+//
+// Languages return Features from Capabilities(). Platforms receive the
+// language's Features and return the combined set, restricting any constructs
+// the platform cannot consume.
+//
+// Call ToLowerCaps() to convert to the Caps shape required by Lower().
+//
+// StructComponents and StdlibContextParam are platform-opt-in passes rather
+// than language limitations: setting them to true requests the corresponding
+// lowering even when the language could handle the construct directly.
+type Features struct {
+	Toggle           bool // can emit x!! natively
+	Ternary          bool // can emit a ? b : c natively
+	Lambda           bool // can emit closures natively
+	Ref              bool // can emit ref<T> natively
+	Unit             bool // can emit unit types natively
+	Enum             bool // can emit enum types natively
+	AsyncReactive    bool // can handle async in reactive contexts natively
+	Computed         bool // can handle computed vars natively
+	Timer            bool // can handle timer decls natively
+	ListLambdas      bool // can emit xs.filter(f) / xs.map(f) natively
+	Reactivity       bool // can handle reactive deps natively (false → explicit updater stmts)
+	Declarative      bool // can handle declarative visual tree (false → flat create/update/delete calls)
+	StdlibWrappers   bool // keep platform-stdlib wrapper components (false → inline them)
+	InlineComponents bool // can handle inline component references (false → inline into main)
+	ImplicitRecv     bool // can handle implicit receiver (false → explicit Args[0])
+	StructSpread     bool // can handle struct-literal spreads (false → flatten)
+
+	// StructComponents requests that components compile to structs with methods
+	// rather than functions/closures. Set by platforms that use this model.
+	StructComponents bool
+	// StdlibContextParam requests a hidden trailing parameter threaded through
+	// every stdlib func reachable from user code that reads a context.
+	StdlibContextParam bool
+}
+
+// AllFeatures returns a Features with every capability enabled. Use as a
+// starting point for full-featured languages: disable only what you can't emit.
+func AllFeatures() Features {
+	return Features{
+		Toggle:           true,
+		Ternary:          true,
+		Lambda:           true,
+		Ref:              true,
+		Unit:             true,
+		Enum:             true,
+		AsyncReactive:    true,
+		Computed:         true,
+		Timer:            true,
+		ListLambdas:      true,
+		Reactivity:       true,
+		Declarative:      true,
+		StdlibWrappers:   true,
+		InlineComponents: true,
+		ImplicitRecv:     true,
+		StructSpread:     true,
+	}
+}
+
+// ToLowerCaps converts Features to the Caps shape consumed by Lower().
+func (f Features) ToLowerCaps() Caps {
+	return Caps{
+		NoToggle:           !f.Toggle,
+		NoTernary:          !f.Ternary,
+		NoLambda:           !f.Lambda,
+		NoRef:              !f.Ref,
+		NoUnit:             !f.Unit,
+		NoEnum:             !f.Enum,
+		NoAsyncReactive:    !f.AsyncReactive,
+		NoComputed:         !f.Computed,
+		NoTimer:            !f.Timer,
+		NoListLambdas:      !f.ListLambdas,
+		NoReactivity:       !f.Reactivity,
+		NoDeclarative:      !f.Declarative,
+		NoStdlibWrappers:   !f.StdlibWrappers,
+		NoInlineComponents: !f.InlineComponents,
+		NoImplicitRecv:     !f.ImplicitRecv,
+		NoStructSpread:     !f.StructSpread,
+		StructComponents:   f.StructComponents,
+		StdlibContextParam: f.StdlibContextParam,
+	}
+}
+
 // Caps declares which high-level SNGL constructs the target cannot consume
 // directly. A flag set to true requests the corresponding lowering pass.
-//
-// Caps values come from the platform's and language's Capabilities() methods
-// and are merged field-wise via OR before lower.Lower runs.
+// Derived from Features.ToLowerCaps(); prefer Features in public APIs.
 type Caps struct {
 	NoToggle        bool // x!! → x = !x
 	NoTernary       bool // a ? b : c → if/else stmt with temp var

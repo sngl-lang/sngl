@@ -43,8 +43,14 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// from blueprint .sngl bodies (VJoin/HJoin/Styled/TextInput).
 	return &ir.Component{Name: identifier}
 }
-func (g *Generator) Capabilities() lower.Caps {
-	return lower.Caps{StructComponents: true, StdlibContextParam: true, NoListLambdas: true, NoInlineComponents: true, NoImplicitRecv: true, NoStructSpread: true}
+func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
+	f := lang.Capabilities()
+	f.InlineComponents = false
+	f.ImplicitRecv = false
+	f.StructSpread = false
+	f.StructComponents = true
+	f.StdlibContextParam = true
+	return f
 }
 
 func (g *Generator) PreviewCSS() string { return previewCSS }

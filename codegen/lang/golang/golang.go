@@ -33,14 +33,14 @@ func (t *Translator) Description() string {
 }
 func (t *Translator) Package() []*ast.Document            { return pkgDocs }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
-func (t *Translator) Capabilities() lower.Caps {
-	return lower.Caps{
-		// Go can't represent typed lambdas behind an interface{} surface
-		// (no type-asserting a `func(int) bool`). Lower xs.filter(f) /
-		// xs.map(f) into an explicit accumulator + for-loop so codegen
-		// only sees direct lambda calls with their concrete types.
-		NoListLambdas: true,
-	}
+func (t *Translator) Capabilities() lower.Features {
+	f := lower.AllFeatures()
+	// Go has no ternary expression; lower a ? b : c to an if/else with a temp var.
+	f.Ternary = false
+	// Go can't represent typed lambdas behind an interface{} surface
+	// (no type-asserting a `func(int) bool`). Lower xs.filter/map to loops.
+	f.ListLambdas = false
+	return f
 }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {

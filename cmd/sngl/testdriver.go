@@ -61,7 +61,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	// substitutes ContextRead/reactivity into platform-emittable form.
 	// Without this the platform's Generate panics on un-lowered nodes
 	// (e.g. ContextRead in irwalk.EvalExpr).
-	caps := plat.Capabilities().Merge(lang.Capabilities())
+	caps := plat.Capabilities(lang).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
 		return nil, fmt.Errorf("lower for tests: %w", err)
 	}

@@ -177,7 +177,7 @@ func Compile(source string) string {
 		result["error"] = "html/none codegen not registered"
 		return jsonStr(result)
 	}
-	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
+	compileCaps := gen.Capabilities(lang).ToLowerCaps()
 	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
@@ -301,7 +301,7 @@ func Generate(source, platform, lang string) string {
 		result["error"] = "unknown lang: " + lang
 		return jsonStr(result)
 	}
-	genCaps := gen.Capabilities().Merge(lt.Capabilities())
+	genCaps := gen.Capabilities(lt).ToLowerCaps()
 	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platform}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
