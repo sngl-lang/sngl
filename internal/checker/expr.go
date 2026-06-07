@@ -2946,18 +2946,22 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			var expected *ir.Type
 
 			if arg.Name == "" {
-				// Positional: bind to next prop slot.
-				if positional >= len(orderedProps) {
+				// Positional: bind to next prop slot (only when comp is known).
+				if comp == nil {
+					// No component context — pass through unchanged (dynamic call).
+					resolvedName = ""
+				} else if positional >= len(orderedProps) {
 					if arg.Value != nil {
 						c.error(*arg.Value.ExprPos(), "too many positional arguments")
 					}
 					positional++
 					continue
+				} else {
+					p := orderedProps[positional]
+					resolvedName = p.Name
+					expected = p.Type
+					positional++
 				}
-				p := orderedProps[positional]
-				resolvedName = p.Name
-				expected = p.Type
-				positional++
 			} else {
 				// Named.
 				resolvedName = arg.Name
@@ -3047,21 +3051,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	if comp != nil && !comp.Stdlib {
 		for _, p := range comp.Props {
 			if !boundProps[p.Name] && p.Default == nil {
-				// Check if it was provided as named arg.
-				found := false
-				for _, irArg := range props {
-					pname := irArg.Name
-					if strings.HasPrefix(pname, ":") {
-						pname = pname[1:]
-					}
-					if pname == p.Name {
-						found = true
-						break
-					}
-				}
-				if !found {
-					c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
-				}
+				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
 	}
@@ -3124,6 +3114,15 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			}
 
 			if arg.Value != nil {
+				// Duplicate prop check.
+				boundKey := resolvedName
+				if strings.HasPrefix(boundKey, ":") {
+					boundKey = boundKey[1:]
+				}
+				if boundKey != "" && boundProps[boundKey] {
+					c.error(arg.NamePos, "prop %q already provided on component %s", resolvedName, comp.Name)
+					continue
+				}
 				argExpr := c.checkExprExpecting(arg.Value, expected)
 				actual := exprType(argExpr)
 				c.requireValueType(actual, *arg.Value.ExprPos())
@@ -3140,7 +3139,9 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 					argExpr = wrapIfNeeded(argExpr, expected)
 				}
 				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
-				boundProps[resolvedName] = true
+				if boundKey != "" {
+					boundProps[boundKey] = true
+				}
 			}
 
 		case ast.EventHandler:
