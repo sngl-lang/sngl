@@ -60,7 +60,7 @@ func (m *Model) __focusNext() {
 			m.__focusLoop2_cursor = 0
 		} else {
 			if m.__focusID == 2 {
-				__focusLen := ListLength(m.todos)
+				__focusLen := len(m.todos)
 				if (m.__focusLoop2_cursor + 1) < __focusLen {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
 				} else {
@@ -83,7 +83,6 @@ func (m *Model) __focusPrev() {
 			m.__focusID = 0
 		} else {
 			if m.__focusID == 2 {
-				__focusLen := ListLength(m.todos)
 				if m.__focusLoop2_cursor > 0 {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor - 1)
 				} else {
@@ -166,7 +165,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			for index, item := range m.todos {
+			for index, _ := range m.todos {
 				if m.__focusLoop2_cursor == index {
 					m.todos[index].Done = !m.todos[index].Done
 					break

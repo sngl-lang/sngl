@@ -675,15 +675,24 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		syncMutatedInputs(b, block, info.inputs, gc)
 	}
 	emitLoopCase := func(slotIdx int, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
-		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
-		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
-		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
+		// Render body into a temp buffer to check if valName is actually used.
+		var tmp strings.Builder
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t\t\t\t\t%s\n", line)
+				fmt.Fprintf(&tmp, "\t\t\t\t\t%s\n", line)
 			}
 		}
-		syncMutatedInputs(b, block, info.inputs, gc)
+		syncMutatedInputs(&tmp, block, info.inputs, gc)
+		body := tmp.String()
+		// Only bind element variable if the body actually references it.
+		emitVal := "_"
+		if strings.Contains(body, valName) {
+			emitVal = valName
+		}
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
+		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, emitVal, iterExpr)
+		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
+		b.WriteString(body)
 		b.WriteString("\t\t\t\t\tbreak\n")
 		b.WriteString("\t\t\t\t}\n")
 		b.WriteString("\t\t\t}\n")

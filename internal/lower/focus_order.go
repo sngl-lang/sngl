@@ -370,14 +370,15 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 				elseBody = stmtsMoveTo(slots, adjacent, focusIDIdent, true)
 			}
 
-			body = []ir.Stmt{
-				lenVar,
-				&ir.If{
-					Cond: innerCond,
-					Body: []ir.Stmt{innerAdvance},
-					Else: elseBody,
-				},
+			stmts := []ir.Stmt{}
+			if forward {
+				stmts = append(stmts, lenVar)
 			}
+			body = append(stmts, &ir.If{
+				Cond: innerCond,
+				Body: []ir.Stmt{innerAdvance},
+				Else: elseBody,
+			})
 		}
 
 		bodies = append(bodies, body)

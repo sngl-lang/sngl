@@ -43,6 +43,9 @@ func init() {
 	regImp("MathAtan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
 	regImp("MathAtan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
 
+	// --- list ---
+	reg("ListLength", func(a []string) string { return "len(" + a[0] + ")" })
+
 	// --- list (in-place mutations) ---
 	// ListPush/ListRemove mutate the receiver slice in place and return it;
 	// `append` reassigns the receiver, matching the mutates-receiver semantics
