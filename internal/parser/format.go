@@ -1184,7 +1184,7 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeType(p)
+			f.writeType(p.Type)
 		}
 		f.write(")")
 		if t.Return != nil {

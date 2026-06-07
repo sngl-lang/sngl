@@ -845,7 +845,7 @@ func (c *converter) convertFuncType(sig *FuncSig) ast.TypeExpr {
 	}
 	ft := &ast.FuncType{}
 	for _, p := range sig.Params {
-		ft.Params = append(ft.Params, c.convertType(p.Type))
+		ft.Params = append(ft.Params, ast.FuncTypeParam{Type: c.convertType(p.Type)})
 	}
 	if sig.Return != nil {
 		ft.Return = c.convertType(sig.Return)

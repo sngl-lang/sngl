@@ -244,7 +244,7 @@ func typeExprString(te ast.TypeExpr) string {
 	case *ast.FuncType:
 		var params []string
 		for _, p := range t.Params {
-			params = append(params, typeExprString(p))
+			params = append(params, typeExprString(p.Type))
 		}
 		s := "func(" + strings.Join(params, ", ") + ")"
 		if t.Return != nil {

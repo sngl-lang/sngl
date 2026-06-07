@@ -2510,7 +2510,9 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 			it.skip() // lparen
 			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-				ft.Params = b.buildTypeList(it.enter())
+				for _, t := range b.buildTypeList(it.enter()) {
+					ft.Params = append(ft.Params, ast.FuncTypeParam{Type: t})
+				}
 			}
 			if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 				it.skip() // rparen

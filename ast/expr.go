@@ -116,11 +116,18 @@ type NamedType struct {
 	TypeArgs []TypeExpr // generic arguments: List<int>, Map<string, int> (nil if not generic)
 }
 
+// FuncTypeParam is one parameter in a func-type expression.
+// Name is empty when the parameter has no declared name (positional-only when called).
+type FuncTypeParam struct {
+	Name string
+	Type TypeExpr
+}
+
 // FuncType is a function type: func(int, string) -> bool.
 type FuncType struct {
 	Pos    Pos
-	Params []TypeExpr // parameter types
-	Return TypeExpr   // nil for void
+	Params []FuncTypeParam // parameter types (Name="" means anonymous/positional-only)
+	Return TypeExpr        // nil for void
 }
 
 // StructDef, EnumDef, and UnitDef also implement TypeExpr for anonymous type forms.
