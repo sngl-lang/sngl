@@ -3,7 +3,7 @@ func pair<A, B>(a A, b B) A {
 }
 
 component main {
-    var bad = pair(1) // ERROR(check) "expected 2 arguments"
+    var bad = pair(1) // ERROR(check) "missing required argument"
 
     text(value="x")
 }

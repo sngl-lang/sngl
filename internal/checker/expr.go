@@ -1797,77 +1797,186 @@ func (c *checker) inferEventRef(x *ast.EventRefExpr) ir.Expr {
 	return &ir.Ident{Type: TypDyn}
 }
 
-// checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
-// If sig is non-nil, validates positional arg types and arity against it.
-func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
-	var result []ir.CallArg
+// paramNameOK reports whether a param can be targeted by name at a call site.
+func paramNameOK(p *ir.Param) bool {
+	return p.Name != "" && !strings.HasPrefix(p.Name, "_")
+}
+
+// bindArgs resolves args against a FuncSig using Pythonic rules. Returns one
+// *ir.Expr per param slot (nil = use default). Reports errors via c.error.
+func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *ir.FuncSig) ([]*ir.Expr, bool) {
+	n := len(sig.Params)
+	bound := make([]*ir.Expr, n)
 	positional := 0
-	for i, a := range args.Args {
-		switch arg := a.(type) {
-		case ast.Arg:
-			if arg.Value != nil {
-				// Determine expected type from function signature.
-				var expected *ir.Type
-				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
-					expected = sig.Params[positional].Type
-				}
-				argExpr := c.checkExprExpecting(arg.Value, expected)
-				argType := exprType(argExpr)
-				c.requireValueType(argType, *arg.Value.ExprPos())
-				// Validate positional arg type against param.
-				if sig != nil && arg.Name == "" && positional < len(sig.Params) {
-					paramType := sig.Params[positional].Type
-					if argType.Kind != ir.TypeDyn && paramType.Kind != ir.TypeDyn && !argType.IsAssignableTo(paramType) {
-						if adapted, ok := adaptLiteralZero(argExpr, paramType); ok {
-							argExpr = adapted
-						} else if callExpr, _ := c.implicitCall(arg.Value, argType, paramType); callExpr != nil {
-							args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
-							// Re-check the wrapped call to get proper ir.Expr.
-							argExpr = c.checkExpr(callExpr)
-						} else {
-							c.error(*arg.Value.ExprPos(), "argument %d: cannot pass %s as %s", positional+1, argType, paramType)
-						}
-					}
-					argExpr = wrapIfNeeded(argExpr, paramType)
-				}
-				result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: argExpr})
-			}
-			if arg.Name == "" {
-				positional++
-			}
-		case ast.EventHandler:
-			// Per-call @error handlers are extracted (with proper ErrorEvent
-			// defaulting on the param) by resolveCallStmt. Skip here.
-			if arg.Name == "error" {
+	seenNamed := false
+	ok := true
+
+	for _, a := range args {
+		arg, isArg := a.(ast.Arg)
+		if !isArg {
+			continue
+		}
+		if arg.Value == nil {
+			continue
+		}
+
+		if arg.Name == "" {
+			// Positional arg.
+			if seenNamed {
+				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
+				ok = false
+				// Still check the expression for side-effects (e.g. async detection).
+				c.checkExpr(arg.Value)
 				continue
 			}
-			// Inline event handler — check body.
-			c.pushScope()
-			for _, p := range arg.Params.Params {
-				c.scope.Declare(&ir.Param{
-					Name: p.Name,
-					Type: c.resolveType(p.Type),
-				})
+			if positional >= n {
+				c.error(*arg.Value.ExprPos(), "too many arguments: expected %d", n)
+				ok = false
+				positional++
+				continue
 			}
-			c.checkBlock(&arg.Body)
-			c.popScope()
+			expr := c.checkArgExpr(arg.Value, sig.Params[positional])
+			bound[positional] = &expr
+			positional++
+		} else {
+			// Named arg.
+			seenNamed = true
+			idx := -1
+			for i, p := range sig.Params {
+				if p.Name == arg.Name {
+					idx = i
+					break
+				}
+			}
+			if idx == -1 {
+				// Check if any param has an empty name (anonymous func type).
+				hasUnnamed := false
+				for _, p := range sig.Params {
+					if p.Name == "" {
+						hasUnnamed = true
+						break
+					}
+				}
+				if hasUnnamed {
+					c.error(arg.NamePos, "no parameter name: function type has unnamed parameters")
+				} else {
+					c.error(arg.NamePos, "unknown parameter %q", arg.Name)
+				}
+				ok = false
+				continue
+			}
+			p := sig.Params[idx]
+			if strings.HasPrefix(p.Name, "_") {
+				c.error(arg.NamePos, "parameter %q must be passed positionally", p.Name)
+				ok = false
+				continue
+			}
+			if bound[idx] != nil {
+				c.error(arg.NamePos, "parameter %q already provided", p.Name)
+				ok = false
+				continue
+			}
+			expr := c.checkArgExpr(arg.Value, p)
+			bound[idx] = &expr
 		}
 	}
-	// Arity check.
-	if sig != nil {
-		// Count required params (no default).
-		required := 0
-		for _, p := range sig.Params {
-			if p.Default == nil {
-				required++
-			}
-		}
-		if positional < required {
-			c.error(args.Pos, "expected %d arguments, got %d", required, positional)
-		} else if positional > len(sig.Params) {
-			c.error(args.Pos, "expected %d arguments, got %d", len(sig.Params), positional)
+
+	// Every required param must be filled.
+	for i, p := range sig.Params {
+		if bound[i] == nil && p.Default == nil {
+			c.error(callPos, "missing required argument %q", p.Name)
+			ok = false
 		}
 	}
+
+	return bound, ok
+}
+
+// checkArgExpr type-checks a single call argument against a target param.
+func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
+	expr := c.checkExprExpecting(value, p.Type)
+	actual := exprType(expr)
+	c.requireValueType(actual, *value.ExprPos())
+	if p.Type != nil && actual.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn && !actual.IsAssignableTo(p.Type) {
+		if adapted, ok := adaptLiteralZero(expr, p.Type); ok {
+			expr = adapted
+		} else if callExpr, _ := c.implicitCall(value, actual, p.Type); callExpr != nil {
+			expr = c.checkExpr(callExpr)
+		} else {
+			c.error(*value.ExprPos(), "cannot pass %s as %s", actual, p.Type)
+		}
+	}
+	if p.Type != nil {
+		expr = wrapIfNeeded(expr, p.Type)
+	}
+	return expr
+}
+
+// checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
+// If sig is non-nil, validates arg types and arity against it using Pythonic named/positional rules.
+func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
+	// No sig: check exprs, pass through names unchanged (dynamic call).
+	if sig == nil {
+		var result []ir.CallArg
+		for _, a := range args.Args {
+			switch arg := a.(type) {
+			case ast.Arg:
+				if arg.Value != nil {
+					expr := c.checkExpr(arg.Value)
+					c.requireValueType(exprType(expr), *arg.Value.ExprPos())
+					result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: expr})
+				}
+			case ast.EventHandler:
+				// Per-call @error handlers are extracted (with proper ErrorEvent
+				// defaulting on the param) by resolveCallStmt. Skip here.
+				if arg.Name == "error" {
+					continue
+				}
+				// Inline event handler — check body.
+				c.pushScope()
+				for _, p := range arg.Params.Params {
+					c.scope.Declare(&ir.Param{
+						Name: p.Name,
+						Type: c.resolveType(p.Type),
+					})
+				}
+				c.checkBlock(&arg.Body)
+				c.popScope()
+			}
+		}
+		return result
+	}
+
+	bound, _ := c.bindArgs(args.Pos, args.Args, sig)
+
+	// Build result in param order; omit slots with nil (default param).
+	var result []ir.CallArg
+	for i, expr := range bound {
+		if expr == nil {
+			continue
+		}
+		result = append(result, ir.CallArg{
+			Name:  sig.Params[i].Name,
+			Value: *expr,
+		})
+	}
+
+	// For error recovery, check and append any overflow positional args (those
+	// beyond len(sig.Params)). Downstream passes (e.g. async analysis) need
+	// their IR exprs to be reachable via call args even when arity is wrong.
+	positional := 0
+	for _, a := range args.Args {
+		arg, isArg := a.(ast.Arg)
+		if !isArg || arg.Value == nil || arg.Name != "" {
+			continue
+		}
+		if positional >= len(sig.Params) {
+			expr := c.checkExpr(arg.Value)
+			result = append(result, ir.CallArg{Value: expr})
+		}
+		positional++
+	}
+
 	return result
 }
 

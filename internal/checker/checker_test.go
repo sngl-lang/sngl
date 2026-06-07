@@ -814,7 +814,7 @@ func add(a int, b int) => a + b
 func test() {
 	var x = add("hello", 1)
 }
-`, "argument 1: cannot pass string as int")
+`, "cannot pass string as int")
 }
 
 func TestFuncArgArityMismatch(t *testing.T) {
@@ -823,7 +823,7 @@ func add(a int, b int) => a + b
 func test() {
 	var x = add(1)
 }
-`, "expected 2 arguments, got 1")
+`, "missing required argument")
 }
 
 func TestFuncArgValid(t *testing.T) {
@@ -909,7 +909,7 @@ func int.add(a int, b int) => a + b
 func test() {
 	var x = int.add(2)
 }
-`, "expected 2 arguments, got 1")
+`, "missing required argument")
 }
 
 func TestMethodInstanceArity(t *testing.T) {
@@ -919,7 +919,7 @@ func int.add(a int, b int) => a + b
 func test() {
 	var x = 2.add()
 }
-`, "expected 1 arguments, got 0")
+`, "missing required argument")
 }
 
 func TestMethodStringReceiver(t *testing.T) {
