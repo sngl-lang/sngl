@@ -4,7 +4,7 @@ sngl generate --platform=bubbletea --lang=go --out=out app.sngl
 exists out/model.go
 
 # Map field declared with correct Go type on Model struct.
-grep 'scores map\[string\]int' out/model.go
+grep 'scores\s*map\[string\]int' out/model.go
 
 # New() initialises the map literal: map[string]int{"alice": 10, "bob": 20}.
 grep '"alice": 10' out/model.go

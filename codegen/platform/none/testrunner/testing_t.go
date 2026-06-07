@@ -423,7 +423,7 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 // InvokeMethod dispatches `method` on the component. Returns (nil, false, nil)
 // when the method is not defined on the component; the caller falls back to
 // other dispatch paths in that case.
-func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.Expr) (any, bool, error) {
+func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
 	if len(method) > 0 && method[0] == '@' {
 		// Event emission is a no-op in the interpreter.
 		return nil, true, nil
@@ -451,17 +451,49 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	// recursive calls like `fib(n-1)` see the caller frame's local `n`.
 	// Then run the body against compEnv (which carries the component's own
 	// vars / consts / funcs, with `this` bound).
-	evalArgs := make([]any, len(args))
-	for i, ae := range args {
-		v, evErr := env.Eval(ae)
+	// Evaluate arg expressions in the CALLER's env so that closures like
+	// `fib(n-1)` see the caller frame's local variables. Build a by-name
+	// map so named args bind to the right param; fill in defaults for gaps.
+	named := map[string]any{}
+	// Determine which params are addressable by positional args (skip receiver).
+	addrParams := fn.Params
+	if len(fn.Params) > 0 && fn.Params[0].Receiver {
+		addrParams = fn.Params[1:]
+	}
+	positional := 0
+	for _, a := range args {
+		v, evErr := env.Eval(a.Value)
 		if evErr != nil {
 			return nil, true, evErr
 		}
-		evalArgs[i] = v
+		if a.Name != "" {
+			named[a.Name] = v
+		} else if positional < len(addrParams) {
+			named[addrParams[positional].Name] = v
+			positional++
+		}
 	}
+	// Build positional slice in param order, filling in defaults.
+	// Skip the receiver param (param[0] when Receiver==true) — it is bound
+	// via compEnv.Vars[ir.ReceiverParam] below, not through the arg slice.
+	// evalUserFuncCore's argOffset trick requires len(args)==len(fn.Params)-1
+	// for methods with a receiver.
 	compEnv := cv.compEnv()
+	nonReceiverParams := fn.Params
 	if len(fn.Params) > 0 && fn.Params[0].Receiver {
+		nonReceiverParams = fn.Params[1:]
 		compEnv.Vars[ir.ReceiverParam] = cv
+	}
+	evalArgs := make([]any, len(nonReceiverParams))
+	for i, p := range nonReceiverParams {
+		if v, ok := named[p.Name]; ok {
+			evalArgs[i] = v
+		} else if p.Default != nil {
+			dv, evErr := env.Eval(p.Default)
+			if evErr == nil {
+				evalArgs[i] = dv
+			}
+		}
 	}
 	// Inherit the caller's call-depth counter so recursion through component
 	// methods hits the same depth limit as plain functions.

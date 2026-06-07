@@ -1702,9 +1702,20 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 
-	// Declare params.
+	// Declare params and fill in their checked IR defaults now that scope is ready.
+	astParams := map[string]ast.Param{}
+	if fn.AST != nil {
+		for _, ap := range fn.AST.Params.Params {
+			if ap.Default != nil {
+				astParams[ap.Name] = ap
+			}
+		}
+	}
 	for _, p := range fn.Params {
 		c.scope.Declare(p)
+		if ap, ok := astParams[p.Name]; ok {
+			p.Default = c.checkExprExpecting(ap.Default, p.Type)
+		}
 	}
 
 	prevReturn := c.returnType

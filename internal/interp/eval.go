@@ -1157,7 +1157,7 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 			return re, nil
 		}
 	}
-	return env.EvalUserFunc(call.Func, argExprs(call.Args))
+	return env.EvalUserFuncCallArgs(call.Func, call.Args)
 }
 
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
@@ -1210,7 +1210,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 			return tv.CallMethod(env, method, argExprs(call.Args[1:]))
 		}
 		if cv, ok := evalArgs[0].(ComponentValue); ok {
-			if result, handled, err := cv.InvokeMethod(env, method, argExprs(call.Args[1:])); handled {
+			if result, handled, err := cv.InvokeMethod(env, method, call.Args[1:]); handled {
 				return result, err
 			}
 		}
@@ -1245,7 +1245,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 
 	// User-defined type-method.
 	if fn, ok := env.Funcs[qualName]; ok {
-		return env.EvalUserFunc(fn, argExprs(call.Args))
+		return env.EvalUserFuncCallArgs(fn, call.Args)
 	}
 
 	// List/string higher-order and other built-in methods.
@@ -1289,7 +1289,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 			}
 			if fn, ok := env.Funcs[qualName]; ok {
-				return env.EvalUserFunc(fn, argExprs(call.Args))
+				return env.EvalUserFuncCallArgs(fn, call.Args)
 			}
 		}
 	}
@@ -1326,7 +1326,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				return tv.CallMethod(env, method, argExprs(call.Args))
 			}
 			if cv, ok := recv.(ComponentValue); ok {
-				if result, handled, err := cv.InvokeMethod(env, method, argExprs(call.Args)); handled {
+				if result, handled, err := cv.InvokeMethod(env, method, call.Args); handled {
 					return result, err
 				}
 			}
@@ -1697,6 +1697,57 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 			return nil, err
 		}
 		args[i] = v
+	}
+	return env.evalUserFuncCore(fn, args)
+}
+
+// EvalUserFuncCallArgs evaluates fn using named CallArg binding. Args with a
+// Name field are bound to the matching parameter by name; args without a Name
+// are bound positionally. Parameters with no supplied arg use their default.
+func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, error) {
+	// Check whether any arg carries a Name — if not, fall back to positional.
+	hasNamed := false
+	for _, a := range callArgs {
+		if a.Name != "" {
+			hasNamed = true
+			break
+		}
+	}
+	if !hasNamed {
+		return env.EvalUserFunc(fn, argExprs(callArgs))
+	}
+
+	// Build a param→value map honouring defaults.
+	vals := make(map[string]any, len(fn.Params))
+	for _, p := range fn.Params {
+		if p.Default != nil {
+			v, err := env.Eval(p.Default)
+			if err != nil {
+				return nil, err
+			}
+			vals[p.Name] = v
+		}
+	}
+	// Positional index counter (for args without a name).
+	positional := 0
+	for _, a := range callArgs {
+		v, err := env.Eval(a.Value)
+		if err != nil {
+			return nil, err
+		}
+		if a.Name != "" {
+			vals[a.Name] = v
+		} else {
+			if positional < len(fn.Params) {
+				vals[fn.Params[positional].Name] = v
+			}
+			positional++
+		}
+	}
+	// Assemble positional slice in param order for evalUserFuncCore.
+	args := make([]any, len(fn.Params))
+	for i, p := range fn.Params {
+		args[i] = vals[p.Name]
 	}
 	return env.evalUserFuncCore(fn, args)
 }

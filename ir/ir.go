@@ -215,13 +215,13 @@ type Component struct {
 	// (lib/*.sngl). Stdlib component props without explicit defaults are
 	// optional (rendered as zero-values by the platform); only user-defined
 	// component props without defaults are required at call sites.
-	Stdlib bool
-	Props  []*Prop
-	Events []*EventDecl
+	Stdlib       bool
+	Props        []*Prop
+	Events       []*EventDecl
 	ChildrenType *Type
-	Vars   []*Var
-	Funcs  []*Func
-	Timers []*Timer
+	Vars         []*Var
+	Funcs        []*Func
+	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
 	// PlatformBodies holds checked IR bodies for `component sngl.X`
 	// extensions, keyed by platform name (the identifier from

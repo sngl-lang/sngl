@@ -22,8 +22,9 @@ type ComponentValue interface {
 	// InvokeMethod attempts to dispatch `method` on the component. Returns
 	// (result, true, err) when the method exists (including `@event` no-ops);
 	// (nil, false, nil) when the component has no such method. The caller may
-	// then fall back to other dispatch paths.
-	InvokeMethod(env *Env, method string, args []ir.Expr) (any, bool, error)
+	// then fall back to other dispatch paths. Args carry the original
+	// ir.CallArg values (including Name fields) so named/default dispatch works.
+	InvokeMethod(env *Env, method string, args []ir.CallArg) (any, bool, error)
 	// Toggle flips a boolean field, propagating to the underlying env.
 	Toggle(field string) error
 	// WriteBackList sets a list field after in-place list mutation.
