@@ -18,7 +18,7 @@ type irAnalysis struct {
 	*codegen.CommonAnalysis
 	binds     []irBind
 	computeds []irComputed
-	goImports map[string]bool
+	gc        *golang.GoIRContext
 	dt        *codegen.DepTracker
 }
 
@@ -161,29 +161,27 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 
 // analyzeIR collects gtk4-specific binds, computeds, and Go imports.
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	info := &irAnalysis{
-		CommonAnalysis: ctx.Analysis,
-		goImports:      make(map[string]bool),
-	}
-
-	pkg := ctx.Pkg
-	for _, imp := range golang.BaseImports(pkg) {
-		info.goImports[imp.Path] = true
-	}
-	// Alert.* calls lower to fmt.Fprintf(os.Stderr, ...) (see
-	// gtk4IRAlertFunc) — pull in fmt + os when the package uses them.
-	if info.NeedsToast {
-		info.goImports["fmt"] = true
-		info.goImports["os"] = true
-	}
-
-	// Build a GoIRContext so irVarInit can evaluate i18n.tr init calls.
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
+	info := &irAnalysis{
+		CommonAnalysis: ctx.Analysis,
+		gc:             gc,
+	}
+
+	pkg := ctx.Pkg
+	for _, imp := range golang.BaseImports(pkg) {
+		gc.RequireImport(imp.Path)
+	}
+	// Alert.* calls lower to fmt.Fprintf(os.Stderr, ...) (see
+	// gtk4IRAlertFunc) — pull in fmt + os when the package uses them.
+	if info.NeedsToast {
+		gc.RequireImport("fmt")
+		gc.RequireImport("os")
+	}
 
 	// After inlining, every non-main component has been folded into main, so
 	// its vars live in main.Vars (suffixed). Collect pkg.Vars + pkg.Consts +
@@ -235,7 +233,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				}
 				ctxGoType := irVarGoType(v)
 				if strings.HasPrefix(ctxGoType, "time.") {
-					info.goImports["time"] = true
+					gc.RequireImport("time")
 				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -264,7 +262,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		goType := irVarGoType(v)
 		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
-			info.goImports["time"] = true
+			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
@@ -430,7 +428,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		Imports:        map[string]bool{},
 		NeedsBoolToInt: c.needsBoolToInt,
 	}
-	for p := range c.info.goImports {
+	for _, p := range c.info.gc.Imports() {
 		td.Imports[p] = true
 	}
 

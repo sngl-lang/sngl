@@ -19,7 +19,7 @@ type irAnalysis struct {
 	externs    []irExtern
 	computeds  []irComputed
 	dataEvents map[string][]*ir.EventHandler
-	goImports  map[string]bool
+	gc         *golang.GoIRContext
 	dt         *codegen.DepTracker
 }
 
@@ -50,19 +50,20 @@ func (info *irAnalysis) depTracker() *codegen.DepTracker {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
+	exprCtx := ctx.ExprCtx
+	if main := ctx.MainComponent(); main != nil {
+		exprCtx = exprCtx.ForComponent(main)
+	}
+	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		dataEvents:     make(map[string][]*ir.EventHandler),
-		goImports:      make(map[string]bool),
+		gc:             gc,
 	}
 
 	pkg := ctx.Pkg
-
-	// Collect Go imports declared by SNGL plus the sngl-i18n runtime
-	// when needed. C imports are excluded — they enter the file via
-	// the cgo preamble, not the import block.
 	for _, imp := range golang.BaseImports(pkg) {
-		info.goImports[imp.Path] = true
+		gc.RequireImport(imp.Path)
 	}
 
 	// After NoInlineComponents, every non-main component has been inlined
@@ -137,7 +138,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		goType := irVarGoType(v)
 		if strings.HasPrefix(goType, "time.") {
-			info.goImports["time"] = true
+			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
 			name:   v.Name,
@@ -161,15 +162,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Timer analysis
 	for _, t := range info.Timers {
 		if t.IntervalMs > 0 {
-			info.goImports["time"] = true
+			gc.RequireImport("time")
 		}
 	}
-
 	if info.NeedsToast {
-		info.goImports["time"] = true
+		gc.RequireImport("time")
 	}
 
 	return info
@@ -459,17 +458,17 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		FunctionCode: functionCode,
 	}
 
-	// Structural imports only: native go:// imports, blueprint-declared paths,
-	// the Main-only entrypoint packages, and lang helpers. Framework/std and
-	// dynamic imports are recorded at their emit sites (emitFyneModel /
-	// requireTypeImports / gc) and unioned in emitIR. analyzeIR already added
-	// "time" via goImports for time-typed vars, timers, or toasts.
+	// Structural imports: native go:// imports, blueprint-declared paths,
+	// the Main-only entrypoint packages, lang helpers, and conditional
+	// stdlib packages ("time" for time-typed vars, timers, or toasts).
+	// Framework/std dynamic imports are recorded at emit sites (emitFyneModel
+	// / requireTypeImports / gc) and unioned in emitIR.
 	td.Imports = map[string]bool{}
 	if cfg.Main {
 		td.Imports["os"] = true
 		td.Imports["fyne.io/fyne/v2/app"] = true
 	}
-	for p := range info.goImports {
+	for _, p := range info.gc.Imports() {
 		td.Imports[p] = true
 	}
 	for p := range blueprintImports {

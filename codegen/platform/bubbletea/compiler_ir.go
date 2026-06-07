@@ -97,7 +97,7 @@ type irAnalysis struct {
 	inputs     []inputInfo
 	focusables []string
 	forCursors []forLoopCursor
-	goImports  map[string]string
+	gc         *golang.GoIRContext
 }
 
 type irBind struct {
@@ -120,24 +120,20 @@ type irComputed struct {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	info := &irAnalysis{
-		CommonAnalysis: ctx.Analysis,
-		goImports:      make(map[string]string),
-	}
-
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
 	}
 	gc := golang.NewIRContext(exprCtx)
-	_ = gc // used below for init values
+	info := &irAnalysis{
+		CommonAnalysis: ctx.Analysis,
+		gc:             gc,
+	}
 	pkg := ctx.Pkg
 
-	// Collect Go imports declared by SNGL plus the sngl-i18n runtime
-	// when needed, preserving SNGL-declared aliases for the import-block
-	// emission below.
+	// Collect Go imports declared by SNGL (go:// natives, i18n runtime).
 	for _, imp := range golang.BaseImports(pkg) {
-		info.goImports[imp.Path] = imp.Alias
+		gc.RequireImport(imp.Path)
 	}
 
 	// After NoInlineComponents, every non-main component has been inlined
@@ -161,7 +157,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		goType := irVarGoType(v)
 		initVal := irVarInit(v, gc)
 		if strings.HasPrefix(goType, "time.") {
-			info.goImports["time"] = ""
+			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
 			name:        v.Name,
@@ -197,7 +193,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Timer analysis
 	for _, t := range info.Timers {
 		if t.IntervalMs > 0 {
-			info.goImports["time"] = ""
+			gc.RequireImport("time")
 		}
 	}
 
@@ -238,14 +234,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	if info.NeedsToast {
-		info.goImports["time"] = ""
-	}
-
-	// Imports the var-init rendering above required (e.g. "math" for a float
-	// intrinsic in an initializer). This gc is separate from emitIR's, so fold
-	// its imports into goImports, which emitIR requires.
-	for _, p := range gc.Imports() {
-		info.goImports[p] = ""
+		gc.RequireImport("time")
 	}
 
 	return info
@@ -256,16 +245,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // their emit sites: the bubbletea framework packages are required structurally
 // here (every model has Init/Update/View, which reference tea + lipgloss +
 // fmt); dynamic imports (e.g. "math" for a float intrinsic) accumulate on gc
-// as the body is translated; go:// natives and "time" arrive via
-// info.goImports. The caller feeds these to a FileEmitter, which renders the
-// package clause + import block, gofmt, and source-map directives.
+// as the body is translated; go:// natives, "time", and var-init imports
+// arrive via info.gc (accumulated during analyzeIR). The caller feeds these to
+// a FileEmitter, which renders the package clause + import block, gofmt, and
+// source-map directives.
 func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []string) {
 	var b strings.Builder
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
-	gc := golang.NewIRContext(exprCtx)
+	gc := info.gc
 
 	// Structural framework imports: every model's Init/Update/View shells
 	// reference tea, and View renders through lipgloss. "fmt" is NOT structural
@@ -280,15 +266,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.inputs) > 0 {
 		gc.RequireImport("charm.land/bubbles/v2/textinput")
 	}
-	// go:// natives + "time" (timers/toasts) collected during analysis.
-	for p := range info.goImports {
-		gc.RequireImport(p)
-	}
 
 	// Lang-tracked helpers (mustParse*) — picked up via HelpersNeeded.
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {
-		info.goImports[imp] = ""
+		gc.RequireImport(imp)
 	}
 	b.WriteString(helpers.Emit())
 	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
