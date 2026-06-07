@@ -286,7 +286,7 @@ func focusEqExpr(left ir.Expr, slotIdx int) *ir.Binary {
 // focus to the adjacent slot, including per-loop cursor advancement.
 func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident, forward bool) *ir.Func {
 	n := len(slots)
-	var block []ir.Stmt
+	var bodies [][]ir.Stmt
 	for i, slot := range slots {
 		var adjacent int
 		if forward {
@@ -380,13 +380,30 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 			}
 		}
 
-		// if __focusID == i { body }
-		block = append(block, &ir.If{
-			Cond: focusEqExpr(focusIDIdent(), i),
-			Body: body,
-		})
+		bodies = append(bodies, body)
 	}
 
+	// Build a single if/else-if chain so that matching and mutating __focusID
+	// in one branch does not trigger a subsequent branch in the same call.
+	// Construct from the tail so each node becomes the Else of the previous.
+	var chain ir.Stmt
+	for i := len(slots) - 1; i >= 0; i-- {
+		chain = &ir.If{
+			Cond: focusEqExpr(focusIDIdent(), i),
+			Body: bodies[i],
+			Else: func() []ir.Stmt {
+				if chain == nil {
+					return nil
+				}
+				return []ir.Stmt{chain}
+			}(),
+		}
+	}
+
+	var block []ir.Stmt
+	if chain != nil {
+		block = []ir.Stmt{chain}
+	}
 	return &ir.Func{
 		Name:        name,
 		Return:      ir.TypVoid,
