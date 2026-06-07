@@ -1,0 +1,27 @@
+output {
+    none { html }
+}
+
+func testPositionalTimerProps(t Test, c main) {
+    t.assert(c.count == 0)
+    t.tick()
+    t.assert(c.count == 1)
+}
+
+func testMixedTimerProps(t Test, c main2) {
+    t.assert(c.count == 0)
+    t.tick()
+    t.assert(c.count == 1)
+}
+
+component main {
+    var count = 0
+    timer(100ms, true, @tick { count += 1 })
+    text(value=string(count))
+}
+
+component main2 {
+    var count = 0
+    timer(100ms, enabled=true, @tick { count += 1 })
+    text(value=string(count))
+}

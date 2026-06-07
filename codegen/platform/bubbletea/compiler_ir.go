@@ -52,7 +52,6 @@ type inputInfo struct {
 	focusExpr   string // Go expr that is true when this input is focused; "" = no tracking
 }
 
-
 // CompileIR generates a Go source file from IR using the new CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()

@@ -1,0 +1,7 @@
+component Card(title string, subtitle string) {
+    text(value=title)
+}
+
+component main {
+    Card(title="Hi", "oops") // ERROR(check) "positional argument after named"
+}

@@ -221,7 +221,7 @@ TripleInterp = TRIPLE_START Expr { STR_RESUME Expr } TRIPLE_END
 Type = 
     IDENT [ "." IDENT | "<" TypeList ">" ]
     | "component"
-    | "func" "(" [ TypeList ] ")" [ Type ]
+    | "func" "(" [ FuncTypeParamList ] ")" [ Type ]
     | StructDecl
     | EnumDecl
     | UnitDecl

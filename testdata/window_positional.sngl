@@ -1,0 +1,7 @@
+window #home("Home", "/") {
+    text(value="Welcome")
+}
+
+window #settings("Settings", "/settings.html") {
+    text(value="Config")
+}

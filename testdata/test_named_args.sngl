@@ -1,0 +1,27 @@
+component main {
+    func add(a int, b int) => a + b
+    func sub(a int, b int) => a - b
+    func clamp(val int, lo int, hi int) int {
+        var low = val < lo ? lo : val
+        return low > hi ? hi : low
+    }
+    func greet(prefix string, name string) => prefix + ", " + name + "!"
+
+    text(value="named args")
+}
+
+func testAllNamedInOrder(t Test, c main) {
+    t.assert(c.add(a=1, b=2) == 3)
+}
+
+func testAllNamedOutOfOrder(t Test, c main) {
+    t.assert(c.add(b=10, a=5) == 15)
+    t.assert(c.sub(b=3, a=10) == 7)
+    t.assert(c.greet(name="World", prefix="Hello") == "Hello, World!")
+}
+
+func testMixedPositionalThenNamed(t Test, c main) {
+    t.assert(c.clamp(5, lo=0, hi=10) == 5)
+    t.assert(c.clamp(15, lo=0, hi=10) == 10)
+    t.assert(c.clamp(-1, lo=0, hi=10) == 0)
+}

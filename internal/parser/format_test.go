@@ -304,6 +304,36 @@ func TestFormatFuncType(t *testing.T) {
 		`var f func(int, string) bool`)
 }
 
+func TestFormatFuncTypeNamedParams(t *testing.T) {
+	assertFormat(t,
+		`var f func(x int, y int) bool`,
+		`var f func(x int, y int) bool`)
+}
+
+func TestFormatFuncTypeMixedParams(t *testing.T) {
+	assertFormat(t,
+		`var f func(_ int, y int) bool`,
+		`var f func(_ int, y int) bool`)
+}
+
+func TestFormatFuncTypeAnonymousGeneric(t *testing.T) {
+	assertFormat(t,
+		`var f func(list<int>) bool`,
+		`var f func(list<int>) bool`)
+}
+
+func TestFormatFuncTypeNamedGeneric(t *testing.T) {
+	assertFormat(t,
+		`var f func(items list<int>) bool`,
+		`var f func(items list<int>) bool`)
+}
+
+func TestFormatFuncTypeNamedQualified(t *testing.T) {
+	assertFormat(t,
+		`var f func(x int, cb func(string) bool) int`,
+		`var f func(x int, cb func(string) bool) int`)
+}
+
 func TestFormatGenericFunc(t *testing.T) {
 	assertFormat(t,
 		`func identity<T>(x T) => x`,

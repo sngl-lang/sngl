@@ -1,0 +1,7 @@
+component Card(title string, subtitle string = "") {
+    text(value=title)
+}
+
+component main {
+    Card(title="Hi", title="Duplicate") // ERROR(check) "already provided"
+}

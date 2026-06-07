@@ -13,15 +13,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	path   string
-	ident1 string
-	ident2 string
+	path      string
+	ident1    string
+	ident2    string
+	__focusID int
 
 	input0 textinput.Model
 	input1 textinput.Model
 	input2 textinput.Model
 
-	focus         int
 	width, height int
 }
 
@@ -31,6 +31,7 @@ func New() Model {
 	m.path = "sngl"
 	m.ident1 = ""
 	m.ident2 = ""
+	m.__focusID = 0
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "import path"
 	m.input0.SetValue(m.path)
@@ -52,6 +53,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func (m Model) entry() lookup.Entry {
 	return lookup.Resolve(m.path, m.ident1, m.ident2)
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 1
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 2
+		} else {
+			if m.__focusID == 2 {
+				m.__focusID = 0
+			}
+		}
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 2
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 0
+		} else {
+			if m.__focusID == 2 {
+				m.__focusID = 1
+			}
+		}
+	}
 }
 
 func (m Model) Path() string {
@@ -123,50 +152,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.focus = (m.focus + 1) % 3
-			if m.focus == 0 {
+			m.__focusNext()
+			if m.__focusID == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
-			if m.focus == 1 {
+			if m.__focusID == 1 {
 				m.input1.Focus()
 			} else {
 				m.input1.Blur()
 			}
-			if m.focus == 2 {
+			if m.__focusID == 2 {
 				m.input2.Focus()
 			} else {
 				m.input2.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.focus = (m.focus - 1 + 3) % 3
-			if m.focus == 0 {
+			m.__focusPrev()
+			if m.__focusID == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
-			if m.focus == 1 {
+			if m.__focusID == 1 {
 				m.input1.Focus()
 			} else {
 				m.input1.Blur()
 			}
-			if m.focus == 2 {
+			if m.__focusID == 2 {
 				m.input2.Focus()
 			} else {
 				m.input2.Blur()
 			}
 		}
 	}
-	if m.focus == 0 {
+	if m.__focusID == 0 {
 		m.input0, cmd = m.input0.Update(msg)
 		m.path = m.input0.Value()
 	}
-	if m.focus == 1 {
+	if m.__focusID == 1 {
 		m.input1, cmd = m.input1.Update(msg)
 		m.ident1 = m.input1.Value()
 	}
-	if m.focus == 2 {
+	if m.__focusID == 2 {
 		m.input2, cmd = m.input2.Update(msg)
 		m.ident2 = m.input2.Value()
 	}

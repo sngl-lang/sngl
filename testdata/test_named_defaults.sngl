@@ -1,0 +1,21 @@
+component main {
+    // Named args let callers skip intermediate defaults.
+    func connect(host string, port int = 8080, debug bool = false) => host + ":" + string(port)
+    func tag(text string, bold bool = false, italic bool = false) => text
+
+    text(value="named defaults")
+}
+
+func testSkipIntermediateDefault(t Test, c main) {
+    // provide host + debug, skip port (stays 8080)
+    t.assert(c.connect("localhost", debug=true) == "localhost:8080")
+}
+
+func testOnlyNamedOptional(t Test, c main) {
+    // provide required positionally, override only last optional
+    t.assert(c.tag("hi", italic=true) == "hi")
+}
+
+func testAllDefaults(t Test, c main) {
+    t.assert(c.connect("example.com") == "example.com:8080")
+}

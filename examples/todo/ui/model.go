@@ -17,12 +17,13 @@ type Todo struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	newTodo string
-	todos   []Todo
+	newTodo             string
+	todos               []Todo
+	__focusID           int
+	__focusLoop2_cursor int
 
 	input0 textinput.Model
 
-	focus         int
 	width, height int
 }
 
@@ -31,6 +32,8 @@ func New() Model {
 	m := Model{}
 	m.newTodo = ""
 	m.todos = []Todo{Todo{Done: false, Text: "Buy groceries"}, Todo{Done: true, Text: "Walk the dog"}, Todo{Done: false, Text: "Write SNGL docs"}}
+	m.__focusID = 0
+	m.__focusLoop2_cursor = 0
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "Buy eggs"
 	m.input0.SetValue(m.newTodo)
@@ -46,6 +49,54 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 1
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 2
+			m.__focusLoop2_cursor = 0
+		} else {
+			if m.__focusID == 2 {
+				__focusLen := ListLength(m.todos)
+				if (m.__focusLoop2_cursor + 1) < __focusLen {
+					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
+				} else {
+					m.__focusID = 3
+				}
+			} else {
+				if m.__focusID == 3 {
+					m.__focusID = 0
+				}
+			}
+		}
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 3
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 0
+		} else {
+			if m.__focusID == 2 {
+				__focusLen := ListLength(m.todos)
+				if m.__focusLoop2_cursor > 0 {
+					m.__focusLoop2_cursor = (m.__focusLoop2_cursor - 1)
+				} else {
+					m.__focusID = 1
+				}
+			} else {
+				if m.__focusID == 3 {
+					m.__focusID = 2
+					m.__focusLoop2_cursor = 0
+				}
+			}
+		}
+	}
 }
 
 func (m Model) NewTodo() string {
@@ -98,33 +149,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.focus = (m.focus + 1) % 4
-			if m.focus == 0 {
+			m.__focusNext()
+			if m.__focusID == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.focus = (m.focus - 1 + 4) % 4
-			if m.focus == 0 {
+			m.__focusPrev()
+			if m.__focusID == 0 {
 				m.input0.Focus()
 			} else {
 				m.input0.Blur()
 			}
-		case msg.Code == tea.KeyEnter && m.focus == 1:
+		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
-		case msg.Code == tea.KeyEnter && m.focus == 2:
-			index := 0 // TODO: bind loop index to focus slot
-			_ = index
-			item := 0 // TODO: bind loop index to focus slot
-			_ = item
-			m.todos[index].Done = !m.todos[index].Done
-		case msg.Code == tea.KeyEnter && m.focus == 3:
+		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+			for index, item := range m.todos {
+				if m.__focusLoop2_cursor == index {
+					m.todos[index].Done = !m.todos[index].Done
+					break
+				}
+			}
+		case msg.Code == tea.KeyEnter && m.__focusID == 3:
 			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
 		}
 	}
-	if m.focus == 0 {
+	if m.__focusID == 0 {
 		m.input0, cmd = m.input0.Update(msg)
 		m.newTodo = m.input0.Value()
 	}
@@ -144,7 +196,7 @@ func (m Model) View() tea.View {
 	content_1_0 = m.input0.View()
 	content_1Children = append(content_1Children, content_1_0)
 	var content_1_1 string
-	content_1_1Focused := m.focus == 1
+	content_1_1Focused := (m.__focusID == 1)
 	content_1_1Prefix := " "
 	if content_1_1Focused {
 		content_1_1Prefix = ">"
@@ -163,7 +215,7 @@ func (m Model) View() tea.View {
 		_ = index
 		_ = item
 		var content_2_0Item string
-		content_2_0ItemFocused := m.focus == 2
+		content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == index))
 		content_2_0ItemPrefix := " "
 		if content_2_0ItemFocused {
 			content_2_0ItemPrefix = ">"
@@ -176,7 +228,7 @@ func (m Model) View() tea.View {
 	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 	contentChildren = append(contentChildren, content_2)
 	var content_3 string
-	content_3Focused := m.focus == 3
+	content_3Focused := (m.__focusID == 3)
 	content_3Prefix := " "
 	if content_3Focused {
 		content_3Prefix = ">"

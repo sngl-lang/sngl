@@ -1,0 +1,17 @@
+component main {
+    // _-prefix params: usable in body, not targetable by name at call site.
+    func parse(_input string, _index int) => _input
+    func offset(_base int, delta int) => _base + delta
+
+    text(value="underscore params")
+}
+
+func testUnderscoreParamUsableInBody(t Test, c main) {
+    t.assert(c.parse("hello", 0) == "hello")
+}
+
+func testMixedUnderscoreAndNamed(t Test, c main) {
+    // _base must be positional; delta can be named
+    t.assert(c.offset(10, delta=5) == 15)
+    t.assert(c.offset(10, 5) == 15)
+}

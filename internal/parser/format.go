@@ -1184,6 +1184,10 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 			if i > 0 {
 				f.write(", ")
 			}
+			if p.Name != "" {
+				f.write(p.Name)
+				f.write(" ")
+			}
 			f.writeType(p.Type)
 		}
 		f.write(")")

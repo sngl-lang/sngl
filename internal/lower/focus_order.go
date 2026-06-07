@@ -25,7 +25,7 @@ type focusSlot struct {
 
 type loopSlotInfo struct {
 	forStmt   *ir.For
-	cursorVar *ir.Var    // __focusLoopN_cursor
+	cursorVar *ir.Var     // __focusLoopN_cursor
 	keyVar    *ir.LoopVar // synthetic loop key (integer index)
 }
 
@@ -179,7 +179,7 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			if hasFocusableNodes(n.Children) {
 				return true
 			}
-		// *ir.For: intentionally not recursed — nested loops are their own slots.
+			// *ir.For: intentionally not recursed — nested loops are their own slots.
 		}
 	}
 	return false

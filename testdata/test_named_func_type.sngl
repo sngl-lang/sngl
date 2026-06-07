@@ -1,0 +1,14 @@
+component main {
+    // Named func-type variable: type carries param names, named calls OK.
+    var f func(x int, y int) int = func(x int, y int) => x + y
+
+    func callInOrder() => f(x=3, y=4)
+    func callReversed() => f(y=4, x=3)
+
+    text(value="named func type")
+}
+
+func testNamedThroughTypedVar(t Test, c main) {
+    t.assert(c.callInOrder() == 7)
+    t.assert(c.callReversed() == 7)
+}
