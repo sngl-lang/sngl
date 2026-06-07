@@ -1,0 +1,11 @@
+// Component declares exactly one child (bare type T).
+// Zero children: error.
+component RequiresOne() component {
+    vbox {
+        slot
+    }
+}
+
+component main {
+    RequiresOne {} // ERROR(check) "requires exactly one child"
+}

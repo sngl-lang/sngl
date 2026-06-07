@@ -1,0 +1,29 @@
+// Valid children counts for all three child-type forms.
+
+component RequiresOne() component {
+    vbox { slot }
+}
+
+component OptionalOne() option<component> {
+    vbox { slot }
+}
+
+component AnyChildren() list<component> {
+    vbox { slot }
+}
+
+component main {
+    RequiresOne {
+        text(value="exactly one")
+    }
+    OptionalOne {}
+    OptionalOne {
+        text(value="one is ok")
+    }
+    AnyChildren {}
+    AnyChildren {
+        text(value="one")
+        text(value="two")
+        text(value="three")
+    }
+}

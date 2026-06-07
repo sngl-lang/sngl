@@ -2683,8 +2683,17 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	children := c.checkBlockIR(&vn.Block)
-	if comp != nil && len(children) > 0 && comp.ChildrenType == nil && comp.AST != nil {
-		c.error(vn.Pos, "component %s does not accept children", comp.Name)
+	if comp != nil && comp.AST != nil {
+		ct := comp.ChildrenType
+		n := len(children)
+		switch {
+		case ct == nil && n > 0:
+			c.error(vn.Pos, "component %s does not accept children", comp.Name)
+		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
+			c.error(vn.Pos, "component %s requires exactly one child", comp.Name)
+		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
+			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
+		}
 	}
 	props, handlers := c.checkAndSplitArgs(vn.Args, comp)
 
