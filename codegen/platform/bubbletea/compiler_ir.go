@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -48,7 +49,7 @@ type inputInfo struct {
 	fieldName   string
 	bindTarget  string
 	placeholder string
-	focusID     int // __focusID value that activates this input; -1 if no focus tracking
+	focusExpr   string // Go expr that is true when this input is focused; "" = no tracking
 }
 
 
@@ -191,8 +192,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Walk visual tree for inputs. Focus IDs are read from the __focusID prop
-	// injected by passFocusOrder; -1 means focus tracking is not active.
+	// Walk visual tree for inputs. The __focused prop injected by passFocusOrder
+	// is evaluated to a Go expression; "" means focus tracking is not active.
 	wins := ctx.Windows()
 	for _, win := range wins {
 		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
@@ -212,7 +213,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				fieldName:   fieldName,
 				bindTarget:  bindTarget,
 				placeholder: placeholder,
-				focusID:     nodeInjectFocusID(n),
+				focusExpr:   nodeStaticFocusExpr(n, gc),
 			})
 			return false
 		})
@@ -633,8 +634,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 
 	// Forward messages to focused input
 	for _, inp := range info.inputs {
-		if inp.focusID >= 0 {
-			fmt.Fprintf(b, "\tif m.__focusID == %d {\n", inp.focusID)
+		if inp.focusExpr != "" {
+			fmt.Fprintf(b, "\tif %s {\n", inp.focusExpr)
 		} else {
 			b.WriteString("\t{\n")
 		}
@@ -661,16 +662,12 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 }
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
-// button/checkbox handlers. forLoopVars tracks the iter/index variable names
-// of enclosing for-loops so we can stub their declarations inside the case
-// body (dynamic focus-to-loop-item binding is not yet implemented).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, forLoopVars []string) {
-	emitCase := func(focusID int, block []ir.Stmt) {
-		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", focusID)
-		for _, v := range forLoopVars {
-			fmt.Fprintf(b, "\t\t\t%s := 0 // TODO: bind loop index to focus slot\n", v)
-			fmt.Fprintf(b, "\t\t\t_ = %s\n", v)
-		}
+// button/checkbox handlers. currentFor is non-nil when inside a for-loop that
+// passFocusOrder turned into a loop slot; handlers inside it are emitted with a
+// loop-wrapped body that matches the cursor to the current iteration.
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For) {
+	emitStaticCase := func(slotIdx int, block []ir.Stmt) {
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
 				fmt.Fprintf(b, "\t\t\t%s\n", line)
@@ -678,40 +675,92 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.inputs, gc)
 	}
+	emitLoopCase := func(slotIdx int, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
+		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
+		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
+		for _, stmt := range block {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(b, "\t\t\t\t\t%s\n", line)
+			}
+		}
+		syncMutatedInputs(b, block, info.inputs, gc)
+		b.WriteString("\t\t\t\t\tbreak\n")
+		b.WriteString("\t\t\t\t}\n")
+		b.WriteString("\t\t\t}\n")
+	}
+
+	emitNodeCase := func(n *ir.NodeInst, block []ir.Stmt) {
+		if currentFor == nil {
+			// Static slot.
+			if idx := nodeFocusSlotIdx(n); idx >= 0 {
+				emitStaticCase(idx, block)
+			}
+			return
+		}
+		// Loop-body slot: extract slot and cursor info from __focused prop.
+		fp := codegen.NodeProp(n, "__focused")
+		if fp == nil {
+			return
+		}
+		outer, ok := fp.(*ir.Binary)
+		if !ok || outer.Op != ast.BinAnd {
+			return
+		}
+		// Left: __focusID == slotIdx
+		leftBin, ok := outer.Left.(*ir.Binary)
+		if !ok || leftBin.Op != ast.BinEq {
+			return
+		}
+		lit, ok := leftBin.Right.(*ir.Literal)
+		if !ok {
+			return
+		}
+		slotIdx, err := strconv.Atoi(lit.Raw)
+		if err != nil {
+			return
+		}
+		// Right: cursor == key
+		rightBin, ok := outer.Right.(*ir.Binary)
+		if !ok || rightBin.Op != ast.BinEq {
+			return
+		}
+		cursorIdent, ok := rightBin.Left.(*ir.Ident)
+		if !ok {
+			return
+		}
+		keyName := currentFor.Key
+		valName := currentFor.Value
+		if valName == "" || valName == "_" {
+			valName = "_"
+		}
+		iterExpr := gc.EvalExpr(currentFor.Iter)
+		emitLoopCase(slotIdx, cursorIdent.Name, keyName, valName, iterExpr, block)
+	}
+
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			vars := append([]string{}, forLoopVars...)
-			if n.Key != "" && n.Key != "_" {
-				vars = append(vars, n.Key)
-			}
-			if n.Value != "" && n.Value != "_" {
-				vars = append(vars, n.Value)
-			}
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, vars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, n)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, forLoopVars)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor)
 		case *ir.PlatformFilter:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
 		case *ir.NodeInst:
 			switch n.Name {
 			case "checkbox":
 				if h := codegen.NodeHandler(n, "change"); h != nil && h.Func != nil {
-					if focusID := nodeInjectFocusID(n); focusID >= 0 {
-						emitCase(focusID, h.Func.Block)
-					}
+					emitNodeCase(n, h.Func.Block)
 				}
 			case "button":
 				if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
-					if focusID := nodeInjectFocusID(n); focusID >= 0 {
-						emitCase(focusID, h.Func.Block)
-					}
+					emitNodeCase(n, h.Func.Block)
 				}
 			}
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Window:
@@ -728,10 +777,10 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 
 func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
 	for _, inp := range inputs {
-		if inp.focusID < 0 {
+		if inp.focusExpr == "" {
 			continue
 		}
-		fmt.Fprintf(b, "\t\t\tif m.__focusID == %d {\n", inp.focusID)
+		fmt.Fprintf(b, "\t\t\tif %s {\n", inp.focusExpr)
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", inp.fieldName)
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", inp.fieldName)
@@ -739,28 +788,46 @@ func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
 	}
 }
 
-// nodeInjectFocusID returns the focus ID injected by passFocusOrder as the
-// __focusID prop on a NodeInst, or -1 if the prop is absent.
-func nodeInjectFocusID(n *ir.NodeInst) int {
-	for _, p := range n.Props {
-		if p.Name != "__focusID" {
-			continue
-		}
-		bin, ok := p.Value.(*ir.Binary)
-		if !ok {
-			return -1
-		}
-		lit, ok := bin.Right.(*ir.Literal)
-		if !ok {
-			return -1
-		}
-		id, err := strconv.Atoi(lit.Raw)
-		if err != nil {
-			return -1
-		}
-		return id
+// nodeStaticFocusExpr returns a Go expression (suitable for an `if` guard) that
+// is true when the given node is focused. It reads the __focused prop injected
+// by passFocusOrder and evaluates it against the model. For loop-body nodes
+// whose __focused expression references a loop-local variable (non-static), it
+// returns "" to indicate the focus expression is not available outside the loop.
+func nodeStaticFocusExpr(n *ir.NodeInst, gc *golang.GoIRContext) string {
+	fp := codegen.NodeProp(n, "__focused")
+	if fp == nil {
+		return ""
 	}
-	return -1
+	// For loop-body items, __focused = __focusID==S && cursor==loopKey. The
+	// loopKey is a loop-local variable not in scope at the input-dispatch site,
+	// so we can't generate a valid expression there. Detect this by checking
+	// whether the top-level binary op is BinAnd (compound condition).
+	if bin, ok := fp.(*ir.Binary); ok && bin.Op == ast.BinAnd {
+		return "" // loop-body input — not supported at static dispatch site
+	}
+	return gc.EvalExpr(fp)
+}
+
+// nodeFocusSlotIdx extracts the slot index from a static __focused prop
+// (i.e. __focusID == S) on a NodeInst. Returns -1 if absent or compound.
+func nodeFocusSlotIdx(n *ir.NodeInst) int {
+	fp := codegen.NodeProp(n, "__focused")
+	if fp == nil {
+		return -1
+	}
+	bin, ok := fp.(*ir.Binary)
+	if !ok || bin.Op != ast.BinEq {
+		return -1
+	}
+	lit, ok := bin.Right.(*ir.Literal)
+	if !ok {
+		return -1
+	}
+	id, err := strconv.Atoi(lit.Raw)
+	if err != nil {
+		return -1
+	}
+	return id
 }
 
 func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, inputs []inputInfo, gc *golang.GoIRContext) {

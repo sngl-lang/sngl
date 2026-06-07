@@ -18,7 +18,6 @@ type irViewContext struct {
 	gc           *golang.GoIRContext
 	ctx          *codegen.CodegenCtx
 	scaleFactor  int
-	focusIndex   int
 	inputCount   int
 	buf          *strings.Builder
 	indent       int
@@ -359,9 +358,11 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		} else if v := codegen.NodeProp(n, "value"); v != nil {
 			content = vc.gc.EvalExpr(v)
 		}
-		focusIdx := vc.focusIndex
-		vc.focusIndex++
-		vc.line(`%sFocused := m.__focusID == %d`, resultVar, focusIdx)
+		focusedExpr := "false"
+		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
+			focusedExpr = vc.gc.EvalExpr(fp)
+		}
+		vc.line(`%sFocused := %s`, resultVar, focusedExpr)
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 		vc.requireImport("fmt")
@@ -371,7 +372,6 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		// Text input model widget
 		idx := vc.inputCount
 		vc.inputCount++
-		vc.focusIndex++
 		vc.line(`%s = m.input%d.View()`, resultVar, idx)
 
 	case "spacer":
@@ -539,7 +539,6 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		if viewMethod, ok := codegen.IRLiteralString(modelView); ok {
 			idx := vc.inputCount
 			vc.inputCount++
-			vc.focusIndex++
 			vc.line(`%s = m.input%d%s`, resultVar, idx, viewMethod)
 			return
 		}
@@ -552,10 +551,8 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	}
 
 	vc.requireImport("fmt")
-	if vc.resolveProp(n, "focusable") != nil {
-		focusIdx := vc.focusIndex
-		vc.focusIndex++
-		vc.line(`%sFocused := m.__focusID == %d`, resultVar, focusIdx)
+	if fp := codegen.NodeProp(n, "__focused"); fp != nil {
+		vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
