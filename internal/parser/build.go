@@ -2509,10 +2509,8 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 		ft := &ast.FuncType{Pos: pos}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 			it.skip() // lparen
-			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-				for _, t := range b.buildTypeList(it.enter()) {
-					ft.Params = append(ft.Params, ast.FuncTypeParam{Type: t})
-				}
+			if !it.done() && it.isNonTerminal() && it.symbol() == FuncTypeParamList {
+				ft.Params = b.buildFuncTypeParamList(it.enter())
 			}
 			if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 				it.skip() // rparen
@@ -2538,6 +2536,93 @@ func (b *builder) buildTypeList(it nodeIter) []ast.TypeExpr {
 		}
 	}
 	return types
+}
+
+func (b *builder) buildFuncTypeParamList(it nodeIter) []ast.FuncTypeParam {
+	// FuncTypeParamList = FuncTypeParam { comma FuncTypeParam } .
+	var params []ast.FuncTypeParam
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == FuncTypeParam {
+			params = append(params, b.buildFuncTypeParam(it.enter()))
+		} else {
+			it.skip() // comma
+		}
+	}
+	return params
+}
+
+func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
+	// FuncTypeParam =
+	//   ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
+	// | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
+	// | StructDecl | EnumDecl | UnitDecl .
+	//
+	// The parse tree is flat: tokens and nonterminals are direct children.
+	if it.done() {
+		return ast.FuncTypeParam{}
+	}
+
+	// Non-ident leading: anonymous compound type (kw_func/kw_struct/kw_enum/kw_unit).
+	if it.isNonTerminal() {
+		return ast.FuncTypeParam{Type: b.buildType(it)}
+	}
+
+	tok := it.tokenType()
+	if tok != IDENT {
+		// kw_func and friends (when not wrapped in a nonterminal)
+		return ast.FuncTypeParam{Type: b.buildType(it)}
+	}
+
+	// Leading ident — shift it, then inspect what follows.
+	identTok := it.shift()
+	identName := identTok.Literal
+	identPos := b.posFromToken(identTok)
+
+	if it.done() {
+		// Bare ident → anonymous simple type.
+		return ast.FuncTypeParam{Type: &ast.NamedType{Pos: identPos, Name: identName}}
+	}
+
+	if it.isNonTerminal() {
+		// Type nonterminal → leading ident is the param name.
+		typ := b.buildType(it.enter())
+		return ast.FuncTypeParam{Name: identName, Type: typ}
+	}
+
+	// Terminal follows: dot, lt, or something unexpected.
+	switch it.tokenType() {
+	case DOT:
+		it.skip() // dot
+		qualName := ""
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			qualName = it.shift().Literal
+		}
+		nt := &ast.NamedType{Pos: identPos, Package: identName, Name: qualName}
+		// Optional lt TypeList gt
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
+			it.skip() // lt
+			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
+				nt.TypeArgs = b.buildTypeList(it.enter())
+			}
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
+				it.skip() // gt
+			}
+		}
+		return ast.FuncTypeParam{Type: nt}
+	case LT:
+		it.skip() // lt
+		nt := &ast.NamedType{Pos: identPos, Name: identName}
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
+			nt.TypeArgs = b.buildTypeList(it.enter())
+		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
+			it.skip() // gt
+		}
+		return ast.FuncTypeParam{Type: nt}
+	default:
+		// Unexpected — treat ident as anonymous type.
+		return ast.FuncTypeParam{Type: &ast.NamedType{Pos: identPos, Name: identName}}
+	}
 }
 
 // --- Lambda ---

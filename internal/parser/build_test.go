@@ -814,6 +814,63 @@ window #home(title="Home", href="/") {
 	}
 }
 
+func TestParseFuncTypeNamedParams(t *testing.T) {
+	doc := mustParse(t, `var f func(x int, y string) bool`)
+	vd, ok := doc.Stmts[0].(*ast.VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", doc.Stmts[0])
+	}
+	ft, ok := vd.Specs[0].Type.(*ast.FuncType)
+	if !ok {
+		t.Fatalf("expected FuncType, got %T", vd.Specs[0].Type)
+	}
+	if len(ft.Params) != 2 {
+		t.Fatalf("expected 2 params, got %d", len(ft.Params))
+	}
+	if ft.Params[0].Name != "x" {
+		t.Errorf("params[0].Name = %q, want %q", ft.Params[0].Name, "x")
+	}
+	if _, ok := ft.Params[0].Type.(*ast.NamedType); !ok {
+		t.Errorf("params[0].Type = %T, want *ast.NamedType", ft.Params[0].Type)
+	}
+	if ft.Params[1].Name != "y" {
+		t.Errorf("params[1].Name = %q, want %q", ft.Params[1].Name, "y")
+	}
+}
+
+func TestParseFuncTypeAnonParams(t *testing.T) {
+	doc := mustParse(t, `var f func(int, string) bool`)
+	vd, ok := doc.Stmts[0].(*ast.VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", doc.Stmts[0])
+	}
+	ft, ok := vd.Specs[0].Type.(*ast.FuncType)
+	if !ok {
+		t.Fatalf("expected FuncType, got %T", vd.Specs[0].Type)
+	}
+	if len(ft.Params) != 2 {
+		t.Fatalf("expected 2 params, got %d", len(ft.Params))
+	}
+	if ft.Params[0].Name != "" {
+		t.Errorf("params[0].Name = %q, want empty (anonymous)", ft.Params[0].Name)
+	}
+	if ft.Params[1].Name != "" {
+		t.Errorf("params[1].Name = %q, want empty (anonymous)", ft.Params[1].Name)
+	}
+	nt0, ok := ft.Params[0].Type.(*ast.NamedType)
+	if !ok {
+		t.Errorf("params[0].Type = %T, want *ast.NamedType", ft.Params[0].Type)
+	} else if nt0.Name != "int" {
+		t.Errorf("params[0].Type.Name = %q, want %q", nt0.Name, "int")
+	}
+	nt1, ok := ft.Params[1].Type.(*ast.NamedType)
+	if !ok {
+		t.Errorf("params[1].Type = %T, want *ast.NamedType", ft.Params[1].Type)
+	} else if nt1.Name != "string" {
+		t.Errorf("params[1].Type.Name = %q, want %q", nt1.Name, "string")
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
