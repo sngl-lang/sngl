@@ -222,14 +222,10 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 			stripping = false
 		}
 		t, usable := goTypeToIR(v.Type(), pkgPath, structs)
-		name := v.Name()
-		if name == "" {
-			name = fmt.Sprintf("arg%d", i)
-		}
 		if !usable && f.Unusable == "" {
-			f.Unusable = fmt.Sprintf("parameter %q has type not representable in SNGL", name)
+			f.Unusable = fmt.Sprintf("parameter %q has type not representable in SNGL", v.Name())
 		}
-		f.Params = append(f.Params, &ir.Param{Name: name, Type: t})
+		f.Params = append(f.Params, &ir.Param{Name: v.Name(), Type: t})
 		i++
 	}
 
