@@ -2336,20 +2336,29 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// parse as CallStmt but semantically behave like visual nodes — emit
 		// NodeInst so event handlers and the #id are preserved in IR.
 		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
-			props, handlers := c.checkAndSplitArgs(x.Call.Args, nil)
 			// Resolve the addressed component (stdlib `input`, user
 			// component, …) so later passes — including the test-side
 			// event-arg typer — can see what payload `@<event>` takes.
-			var comp *ir.Component
+			// Resolve before checkAndSplitArgs so spread props on
+			// user-defined components can be matched against prop names.
+			var elemComp *ir.Component
 			if sym, ok := c.scope.Lookup(name); ok {
 				if sd, ok := sym.(*ir.Component); ok {
-					comp = sd
+					elemComp = sd
 				}
 			}
+			// Pass the component to checkAndSplitArgs only for user-defined
+			// components. Stdlib components use nil to preserve lenient
+			// arg-checking behavior (events use platform-specific types).
+			argsComp := elemComp
+			if argsComp != nil && argsComp.Stdlib {
+				argsComp = nil
+			}
+			props, handlers := c.checkAndSplitArgs(x.Call.Args, argsComp)
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      name,
-				Component: comp,
+				Component: elemComp,
 				Props:     props,
 				Handlers:  handlers,
 				ID:        id,
@@ -2972,6 +2981,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	boundProps := make(map[string]bool)
 
 	// Order check: positional after named is an error.
+	// Spread args (...expr) expand to named props and are exempt from this check.
 	seenNamed := false
 	for _, a := range args.Args {
 		if arg, ok := a.(ast.Arg); ok {
@@ -2981,6 +2991,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if arg.Name != "" && !strings.HasPrefix(arg.Name, ":") {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
+				if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+					continue // spread expands to named props; not a positional arg
+				}
 				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
 				return nil, nil
 			}
@@ -2993,6 +3006,43 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		case ast.Arg:
 			if arg.Name == "key" {
 				continue // handled separately by checkVisualNodeIR
+			}
+			// Struct spread: ...expr expands struct fields as named props.
+			if arg.Value != nil {
+				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+					operandIR := c.checkExpr(spread.Operand)
+					operandType := exprType(operandIR)
+					if operandType == nil || operandType.Kind != ir.TypeStruct {
+						typStr := "(nil)"
+						if operandType != nil {
+							typStr = operandType.String()
+						}
+						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
+						continue
+					}
+					sd := operandType.Decl.(*ir.StructDef)
+					seenNamed = true
+					for _, f := range sd.Fields {
+						if comp == nil {
+							continue // no component context; can't match prop names
+						}
+						propType := componentPropType(comp, f.Name)
+						if propType == nil {
+							continue // no matching prop; ignore silently
+						}
+						if boundProps[f.Name] {
+							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
+							continue
+						}
+						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
+						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
+							selExpr = wrapIfNeeded(selExpr, propType)
+						}
+						boundProps[f.Name] = true
+						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
+					}
+					continue
+				}
 			}
 			var resolvedName string
 			var expected *ir.Type
@@ -3113,12 +3163,16 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	var result []ir.CallArg
 
 	// Order check: positional after named is an error.
+	// Spread args (...expr) expand to named props and are exempt from this check.
 	seenNamed := false
 	for _, a := range call.Args.Args {
 		if arg, ok := a.(ast.Arg); ok {
 			if arg.Name != "" && arg.Name != "key" {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
+				if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+					continue // spread expands to named props; not a positional arg
+				}
 				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
 				return nil
 			}
@@ -3132,6 +3186,39 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 		case ast.Arg:
 			if arg.Name == "key" {
 				continue // handled by loop diffing
+			}
+			// Struct spread: ...expr expands struct fields as named props.
+			if arg.Value != nil {
+				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+					operandIR := c.checkExpr(spread.Operand)
+					operandType := exprType(operandIR)
+					if operandType == nil || operandType.Kind != ir.TypeStruct {
+						typStr := "(nil)"
+						if operandType != nil {
+							typStr = operandType.String()
+						}
+						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
+						continue
+					}
+					sd := operandType.Decl.(*ir.StructDef)
+					for _, f := range sd.Fields {
+						if !componentHasProp(comp, f.Name) {
+							continue // no matching prop; ignore silently
+						}
+						if boundProps[f.Name] {
+							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
+							continue
+						}
+						propType := componentPropType(comp, f.Name)
+						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
+						if propType != nil && f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
+							selExpr = wrapIfNeeded(selExpr, propType)
+						}
+						result = append(result, ir.CallArg{Name: f.Name, Value: selExpr})
+						boundProps[f.Name] = true
+					}
+					continue
+				}
 			}
 			var resolvedName string
 			var expected *ir.Type
