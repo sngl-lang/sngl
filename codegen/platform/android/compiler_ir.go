@@ -226,50 +226,48 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		kc.IdentRewrites = rewrites
 	}
 
-	var b strings.Builder
-
-	// Package
-	fmt.Fprintf(&b, "package %s\n\n", cfg.Package)
-
-	// Imports
-	b.WriteString("import androidx.compose.foundation.background\n")
-	b.WriteString("import androidx.compose.foundation.clickable\n")
-	b.WriteString("import androidx.compose.foundation.layout.*\n")
-	b.WriteString("import androidx.compose.foundation.rememberScrollState\n")
-	b.WriteString("import androidx.compose.foundation.verticalScroll\n")
-	b.WriteString("import androidx.compose.material3.*\n")
-	b.WriteString("import androidx.compose.material3.pulltorefresh.PullToRefreshBox\n")
-	b.WriteString("import androidx.compose.runtime.*\n")
-	b.WriteString("import androidx.compose.ui.Alignment\n")
-	b.WriteString("import androidx.compose.ui.Modifier\n")
-	b.WriteString("import androidx.compose.ui.platform.testTag\n")
-	b.WriteString("import androidx.compose.ui.draw.alpha\n")
-	b.WriteString("import androidx.compose.ui.draw.clip\n")
-	b.WriteString("import androidx.compose.ui.graphics.Color\n")
-	b.WriteString("import androidx.compose.ui.text.TextStyle\n")
-	b.WriteString("import androidx.compose.ui.text.font.FontWeight\n")
-	b.WriteString("import androidx.compose.ui.text.style.TextAlign\n")
-	b.WriteString("import androidx.compose.ui.unit.dp\n")
-	b.WriteString("import androidx.compose.ui.unit.sp\n")
-	b.WriteString("import androidx.compose.ui.window.Dialog\n")
+	// Pass 1: register all known imports before rendering the body.
+	// Structural Compose imports are always required for any Compose UI.
+	kc.RequireImport("androidx.compose.foundation.background")
+	kc.RequireImport("androidx.compose.foundation.clickable")
+	kc.RequireImport("androidx.compose.foundation.layout.*")
+	kc.RequireImport("androidx.compose.foundation.rememberScrollState")
+	kc.RequireImport("androidx.compose.foundation.verticalScroll")
+	kc.RequireImport("androidx.compose.material3.*")
+	kc.RequireImport("androidx.compose.material3.pulltorefresh.PullToRefreshBox")
+	kc.RequireImport("androidx.compose.runtime.*")
+	kc.RequireImport("androidx.compose.ui.Alignment")
+	kc.RequireImport("androidx.compose.ui.Modifier")
+	kc.RequireImport("androidx.compose.ui.platform.testTag")
+	kc.RequireImport("androidx.compose.ui.draw.alpha")
+	kc.RequireImport("androidx.compose.ui.draw.clip")
+	kc.RequireImport("androidx.compose.ui.graphics.Color")
+	kc.RequireImport("androidx.compose.ui.text.TextStyle")
+	kc.RequireImport("androidx.compose.ui.text.font.FontWeight")
+	kc.RequireImport("androidx.compose.ui.text.style.TextAlign")
+	kc.RequireImport("androidx.compose.ui.unit.dp")
+	kc.RequireImport("androidx.compose.ui.unit.sp")
+	kc.RequireImport("androidx.compose.ui.window.Dialog")
+	// Conditional imports derived from IR analysis (no code scanning needed).
 	if len(info.Timers) > 0 {
-		b.WriteString("import kotlinx.coroutines.delay\n")
+		kc.RequireImport("kotlinx.coroutines.delay")
 	}
 	if info.NeedsToast {
-		b.WriteString("import android.widget.Toast\n")
-		b.WriteString("import androidx.compose.ui.platform.LocalContext\n")
+		kc.RequireImport("android.widget.Toast")
+		kc.RequireImport("androidx.compose.ui.platform.LocalContext")
 	}
 	if cfg.GoLib {
-		b.WriteString("import golib.Golib\n")
+		kc.RequireImport("golib.Golib")
 	}
-	if hasI18nCalls(ctx.Pkg) {
-		fmt.Fprintf(&b, "import %s.I18n\n", kotlin.SnglI18nKotlinPackage)
-	}
-	b.WriteString("\n")
+	// i18n import is registered dynamically by kc.RequireImport during
+	// body rendering whenever an I18n.* call is emitted.
+
+	// Pass 2: render body. kc.RequireImport fires for any i18n calls.
+	var body strings.Builder
 
 	// Data classes
 	for _, sd := range info.Structs {
-		fmt.Fprintf(&b, "data class %s(\n", exportName(sd.Name))
+		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)
 			def := ""
@@ -282,16 +280,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if i == len(sd.Fields)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&b, "    var %s: %s%s%s\n", f.Name, ktType, def, comma)
+			fmt.Fprintf(&body, "    var %s: %s%s%s\n", f.Name, ktType, def, comma)
 		}
-		b.WriteString(")\n\n")
+		body.WriteString(")\n\n")
 	}
 
 	// ErrorEvent is emitted when any error-handling construct is present
 	// (see bubbletea comment). The stdlib struct is not flowed through
 	// user output, so materialise it here.
 	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
-		b.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
+		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 	}
 
 	// Stdlib InputEvent / ChangeEvent payload — emitInputHandlerCall
@@ -299,24 +297,24 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// `val e = SnglInputEvent(newValue)` so user code reading
 	// `e.value` resolves without flowing the stdlib struct through
 	// user output.
-	b.WriteString("data class SnglInputEvent(val value: String)\n\n")
+	body.WriteString("data class SnglInputEvent(val value: String)\n\n")
 
 	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
 	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs); mf != "" {
-		b.WriteString(mf)
+		body.WriteString(mf)
 	}
 
 	// Enum classes
 	for _, ed := range info.Enums {
-		fmt.Fprintf(&b, "enum class %s {\n", exportName(ed.Name))
+		fmt.Fprintf(&body, "enum class %s {\n", exportName(ed.Name))
 		for i, m := range ed.Members {
 			comma := ","
 			if i == len(ed.Members)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&b, "    %s%s\n", strings.ToUpper(m.Name), comma)
+			fmt.Fprintf(&body, "    %s%s\n", strings.ToUpper(m.Name), comma)
 		}
-		b.WriteString("}\n\n")
+		body.WriteString("}\n\n")
 	}
 
 	// State hoisting (test mode): emit a MainScreenState class
@@ -325,7 +323,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// reference for assertions/mutations from outside the
 	// composition.
 	if testMode {
-		b.WriteString("class MainScreenState {\n")
+		body.WriteString("class MainScreenState {\n")
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
@@ -338,12 +336,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 					elems = elems[len("listOf(") : len(elems)-1]
 				}
 				if elems != "" {
-					fmt.Fprintf(&b, "    val %s = mutableStateListOf(%s)\n", bind.name, elems)
+					fmt.Fprintf(&body, "    val %s = mutableStateListOf(%s)\n", bind.name, elems)
 				} else {
-					fmt.Fprintf(&b, "    val %s = mutableStateListOf<%s>()\n", bind.name, elemType)
+					fmt.Fprintf(&body, "    val %s = mutableStateListOf<%s>()\n", bind.name, elemType)
 				}
 			} else {
-				fmt.Fprintf(&b, "    var %s by mutableStateOf(%s)\n", bind.name, initVal)
+				fmt.Fprintf(&body, "    var %s by mutableStateOf(%s)\n", bind.name, initVal)
 			}
 		}
 		// Component-level user funcs become members of the state
@@ -355,23 +353,23 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		if len(stateFuncs) > 0 {
 			memberKC := kotlin.NewIRContext(exprCtx)
 			for _, fn := range stateFuncs {
-				emitIRKtMemberFunc(&b, fn, memberKC)
+				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
 		}
-		b.WriteString("}\n\n")
+		body.WriteString("}\n\n")
 	}
 
 	// Main composable
-	b.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
-	b.WriteString("@Composable\n")
+	body.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
+	body.WriteString("@Composable\n")
 	if testMode {
-		b.WriteString("fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {\n")
+		body.WriteString("fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {\n")
 	} else {
-		b.WriteString("fun MainScreen() {\n")
+		body.WriteString("fun MainScreen() {\n")
 	}
 
 	if info.NeedsToast {
-		b.WriteString("    val context = LocalContext.current\n")
+		body.WriteString("    val context = LocalContext.current\n")
 	}
 
 	// State declarations (skipped in test mode — state lives on
@@ -390,64 +388,55 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 					elems = elems[len("listOf(") : len(elems)-1]
 				}
 				if elems != "" {
-					fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
+					fmt.Fprintf(&body, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
 				} else {
-					fmt.Fprintf(&b, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
+					fmt.Fprintf(&body, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
 				}
 			} else {
-				fmt.Fprintf(&b, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
+				fmt.Fprintf(&body, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
 			}
 		}
 	}
 
 	// Computed state
 	for _, comp := range info.computeds {
-		body := ""
+		compVal := ""
 		if cfg.GoLib {
-			body = "golib.Golib." + exportName(comp.name) + "()"
+			compVal = "golib.Golib." + exportName(comp.name) + "()"
 		} else if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				body = kc.EvalExpr(ret.Value)
+				compVal = kc.EvalExpr(ret.Value)
 			}
 		}
-		if body == "" {
-			body = `""`
+		if compVal == "" {
+			compVal = `""`
 		}
-		if testMode {
-			// In test mode the IdentRewrites map already covers
-			// reads of `<name>` → `state.<name>` inside `body`.
-			// Computed values are derived inside the composable,
-			// not on the state object, so tests should drive them
-			// via inputs rather than read them directly.
-			fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
-		} else {
-			fmt.Fprintf(&b, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, body)
-		}
+		fmt.Fprintf(&body, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, compVal)
 	}
 
 	if len(info.binds) > 0 || len(info.computeds) > 0 {
-		b.WriteString("\n")
+		body.WriteString("\n")
 	}
 
 	// Timers
 	for _, t := range info.Timers {
-		fmt.Fprintf(&b, "    LaunchedEffect(%s) {\n", t.ActiveVar)
-		fmt.Fprintf(&b, "        while (%s) {\n", t.ActiveVar)
-		fmt.Fprintf(&b, "            delay(%dL)\n", t.IntervalMs)
+		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", t.ActiveVar)
+		fmt.Fprintf(&body, "        while (%s) {\n", t.ActiveVar)
+		fmt.Fprintf(&body, "            delay(%dL)\n", t.IntervalMs)
 		for _, stmt := range t.Body {
 			for _, line := range kc.EvalStmt(stmt) {
-				fmt.Fprintf(&b, "            %s\n", line)
+				fmt.Fprintf(&body, "            %s\n", line)
 			}
 		}
-		b.WriteString("        }\n")
-		b.WriteString("    }\n\n")
+		body.WriteString("        }\n")
+		body.WriteString("    }\n\n")
 	}
 
 	// Visual tree
 	cc := &irComposeContext{
 		kc:     kc,
 		ctx:    ctx,
-		buf:    &b,
+		buf:    &body,
 		indent: 1,
 	}
 
@@ -467,11 +456,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
-	b.WriteString("}\n")
+	body.WriteString("}\n")
 
 	// User component composables
 	for _, comp := range ctx.NonMainComponents() {
-		emitIRComponentComposable(&b, comp, ctx, kc)
+		emitIRComponentComposable(&body, comp, ctx, kc)
 	}
 
 	// User functions (non-GoLib). In test mode these were emitted
@@ -488,11 +477,20 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
-			emitIRKtFunc(&b, fn, kc)
+			emitIRKtFunc(&body, fn, kc)
 		}
 	}
 
-	return []byte(b.String())
+	// Assemble final output: package clause + imports (collected during
+	// pass 1 and dynamically during pass 2) + body.
+	var out strings.Builder
+	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
+	for _, imp := range kc.Imports() {
+		fmt.Fprintf(&out, "import %s\n", imp)
+	}
+	out.WriteString("\n")
+	out.WriteString(body.String())
+	return []byte(out.String())
 }
 
 func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext) {

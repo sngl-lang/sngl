@@ -10,6 +10,27 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// ktImportSet is the shared import collector for a KtIRContext tree.
+// Shared by pointer across all derived contexts (WithLocal, ForComponent)
+// so any RequireImport call anywhere in the tree is visible to the root.
+type ktImportSet struct {
+	paths map[string]struct{}
+	order []string
+}
+
+func newKtImportSet() *ktImportSet { return &ktImportSet{paths: map[string]struct{}{}} }
+
+func (s *ktImportSet) require(path string) {
+	if path == "" {
+		return
+	}
+	if _, seen := s.paths[path]; seen {
+		return
+	}
+	s.paths[path] = struct{}{}
+	s.order = append(s.order, path)
+}
+
 // KtIRContext translates IR expressions and statements into Kotlin code.
 type KtIRContext struct {
 	Ctx      *codegen.ExprCtx
@@ -18,11 +39,32 @@ type KtIRContext struct {
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
 	IdentRewrites map[string]string
+	imports       *ktImportSet
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
-	return &KtIRContext{Ctx: ctx}
+	return &KtIRContext{Ctx: ctx, imports: newKtImportSet()}
+}
+
+// RequireImport records that the emitted Kotlin file needs the given import.
+// Safe to call repeatedly; insertion order is preserved, duplicates ignored.
+// Called from emit sites when a native package reference is rendered.
+// Platforms read the result after translation via Imports().
+func (kc *KtIRContext) RequireImport(path string) {
+	if kc.imports != nil {
+		kc.imports.require(path)
+	}
+}
+
+// Imports returns recorded import paths in insertion order.
+func (kc *KtIRContext) Imports() []string {
+	if kc.imports == nil {
+		return nil
+	}
+	out := make([]string, len(kc.imports.order))
+	copy(out, kc.imports.order)
+	return out
 }
 
 // EvalExpr translates an IR expression into a Kotlin expression string.
@@ -328,6 +370,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// wrapper calls have been lowered to direct intl.* intrinsic
 		// calls with the locale threaded as the first arg.
 		if result := kotlinEvalIntlIntrinsic(n.Func, args); result != "" {
+			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
 			return result
 		}
 
@@ -336,6 +379,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// so that a(0) is the first semantic argument (matches type-method path).
 		if receiverName == "i18n" {
 			if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
+				kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
 				return result
 			}
 		}
@@ -549,6 +593,7 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		imports:       kc.imports,
 	}
 }
 
@@ -558,6 +603,7 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 		Ctx:           kc.Ctx.ForComponent(comp),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		imports:       kc.imports,
 	}
 }
 
