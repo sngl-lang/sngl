@@ -3201,17 +3201,18 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 						continue
 					}
 					sd := operandType.Decl.(*ir.StructDef)
+					seenNamed = true
 					for _, f := range sd.Fields {
-						if !componentHasProp(comp, f.Name) {
+						propType := componentPropType(comp, f.Name)
+						if propType == nil {
 							continue // no matching prop; ignore silently
 						}
 						if boundProps[f.Name] {
 							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
 							continue
 						}
-						propType := componentPropType(comp, f.Name)
 						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
-						if propType != nil && f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
+						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
 							selExpr = wrapIfNeeded(selExpr, propType)
 						}
 						result = append(result, ir.CallArg{Name: f.Name, Value: selExpr})
