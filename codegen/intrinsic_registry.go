@@ -75,9 +75,12 @@ func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) 
 	if e == nil {
 		return "", nil, false
 	}
-	args := make([]ir.Expr, len(c.Args))
-	for i, a := range c.Args {
-		args[i] = a.Value
+	args := make([]ir.Expr, 0, len(c.Args)+1)
+	if c.Receiver != nil {
+		args = append(args, c.Receiver)
+	}
+	for _, a := range c.Args {
+		args = append(args, a.Value)
 	}
 	if out, imports := e(args, translate); out != "" {
 		return out, imports, true

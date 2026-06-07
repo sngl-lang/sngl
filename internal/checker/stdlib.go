@@ -544,9 +544,6 @@ func detectIntrinsicCall(fn *ir.Func) string {
 		return ""
 	}
 	for i, a := range call.Args {
-		if a.Name != "" && a.Name != expected[i] {
-			return ""
-		}
 		// Args may be implicitly converted to the intrinsic's parameter types
 		// — e.g. an implicit-receiver method threads `this : list<T>` into a
 		// list<dyn>-typed intrinsic param, materialized as an ir.Conversion.

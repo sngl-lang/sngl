@@ -2998,10 +2998,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
-				if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
-					c.error(args.Pos, "unknown prop %q on component %s", resolvedName, comp.Name)
-					continue
-				}
 				if boundProps[propName] {
 					pos := args.Pos
 					if arg.Value != nil {

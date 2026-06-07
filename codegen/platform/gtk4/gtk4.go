@@ -417,7 +417,8 @@ func stripGtkPrefix(identifier string) string {
 // Props become *ir.Prop entries; signals become *ir.EventDecl entries.
 func girClassToComponent(info *gir.ClassInfo) *ir.Component {
 	comp := &ir.Component{
-		Name: info.CType,
+		Name:   info.CType,
+		Stdlib: true, // GIR-derived platform components: props are optional by convention
 		// GIR doesn't model "accepts children" — but every GTK
 		// container widget can take children, and rejecting children
 		// at the checker level would block GtkBox/GtkWindow/etc.
