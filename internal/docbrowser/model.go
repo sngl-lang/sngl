@@ -11,13 +11,6 @@ import (
 	"strings"
 )
 
-func ternary[T any](cond bool, a, b T) T {
-	if cond {
-		return a
-	}
-	return b
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	path   string

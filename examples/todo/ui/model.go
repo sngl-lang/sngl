@@ -10,13 +10,6 @@ import (
 	"strings"
 )
 
-func ternary[T any](cond bool, a, b T) T {
-	if cond {
-		return a
-	}
-	return b
-}
-
 type Todo struct {
 	Text string
 	Done bool
