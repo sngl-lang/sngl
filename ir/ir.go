@@ -211,6 +211,11 @@ func (v *Var) IsExported() bool { return isExportedName(v.Name) }
 type Component struct {
 	AST          *ast.ComponentDecl
 	Name         string
+	// Stdlib is true for components declared in the SNGL standard library
+	// (lib/*.sngl). Stdlib component props without explicit defaults are
+	// optional (rendered as zero-values by the platform); only user-defined
+	// component props without defaults are required at call sites.
+	Stdlib bool
 	Props        []*Prop
 	Events       []*EventDecl
 	ChildrenType *Type

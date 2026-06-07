@@ -882,8 +882,9 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
 	irComp := &ir.Component{
-		AST:  comp,
-		Name: comp.Name,
+		AST:    comp,
+		Name:   comp.Name,
+		Stdlib: true,
 	}
 
 	for _, p := range comp.Props.Props {

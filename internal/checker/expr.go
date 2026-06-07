@@ -2911,20 +2911,65 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	var props []ir.Arg
 	var handlers []ir.EventHandler
 	seen := make(map[string]ast.Pos)
+
+	// Build ordered prop list for positional binding.
+	var orderedProps []*ir.Prop
+	if comp != nil {
+		orderedProps = comp.Props
+	}
+	boundProps := make(map[string]bool)
+
+	// Order check: positional after named is an error.
+	seenNamed := false
+	for _, a := range args.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			if arg.Name == "key" {
+				continue
+			}
+			if arg.Name != "" && !strings.HasPrefix(arg.Name, ":") {
+				seenNamed = true
+			} else if arg.Name == "" && seenNamed && arg.Value != nil {
+				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
+				return nil, nil
+			}
+		}
+	}
+
+	positional := 0
 	for _, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Name == "key" {
 				continue // handled separately by checkVisualNodeIR
 			}
+			var resolvedName string
 			var expected *ir.Type
-			if comp != nil && arg.Name != "" {
-				propName := arg.Name
+
+			if arg.Name == "" {
+				// Positional: bind to next prop slot.
+				if positional >= len(orderedProps) {
+					if arg.Value != nil {
+						c.error(*arg.Value.ExprPos(), "too many positional arguments")
+					}
+					positional++
+					continue
+				}
+				p := orderedProps[positional]
+				resolvedName = p.Name
+				expected = p.Type
+				positional++
+			} else {
+				// Named.
+				resolvedName = arg.Name
+				propName := resolvedName
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
-				expected = componentPropType(comp, propName)
+				if comp != nil {
+					expected = componentPropType(comp, propName)
+				}
 			}
+
 			var val ir.Expr
 			if arg.Value != nil {
 				val = c.checkExprExpecting(arg.Value, expected)
@@ -2944,7 +2989,27 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					}
 				}
 			}
-			props = append(props, ir.Arg{Name: arg.Name, NamePos: arg.NamePos, Value: val})
+			if comp != nil && resolvedName != "" {
+				propName := resolvedName
+				if strings.HasPrefix(propName, ":") {
+					propName = propName[1:]
+				}
+				if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
+					c.error(args.Pos, "unknown prop %q on component %s", resolvedName, comp.Name)
+					continue
+				}
+				if boundProps[propName] {
+					pos := args.Pos
+					if arg.Value != nil {
+						pos = *arg.Value.ExprPos()
+					}
+					c.error(pos, "prop %q already provided on component %s", propName, comp.Name)
+					continue
+				}
+				boundProps[propName] = true
+			}
+			props = append(props, ir.Arg{Name: resolvedName, NamePos: arg.NamePos, Value: val})
+
 		case ast.EventHandler:
 			if prevPos, exists := seen[arg.Name]; exists {
 				c.error(arg.Pos, "duplicate event handler %q (first at %v)", arg.Name, prevPos)
@@ -2976,6 +3041,31 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			})
 		}
 	}
+
+	// Arity: all required props must be bound (user-defined components only;
+	// stdlib component props without defaults are optional by platform convention).
+	if comp != nil && !comp.Stdlib {
+		for _, p := range comp.Props {
+			if !boundProps[p.Name] && p.Default == nil {
+				// Check if it was provided as named arg.
+				found := false
+				for _, irArg := range props {
+					pname := irArg.Name
+					if strings.HasPrefix(pname, ":") {
+						pname = pname[1:]
+					}
+					if pname == p.Name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
+				}
+			}
+		}
+	}
+
 	return c.desugarBindings(comp, props, handlers)
 }
 
@@ -2983,24 +3073,65 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 // against the component's prop and event declarations, returning resolved args.
 func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component) []ir.CallArg {
 	var result []ir.CallArg
-	for i, a := range call.Args.Args {
+
+	// Order check: positional after named is an error.
+	seenNamed := false
+	for _, a := range call.Args.Args {
+		if arg, ok := a.(ast.Arg); ok {
+			if arg.Name != "" && arg.Name != "key" {
+				seenNamed = true
+			} else if arg.Name == "" && seenNamed && arg.Value != nil {
+				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
+				return nil
+			}
+		}
+	}
+
+	boundProps := make(map[string]bool)
+	positional := 0
+	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Value != nil {
-				var expected *ir.Type
-				if arg.Name != "" {
-					expected = componentPropType(comp, arg.Name)
+			if arg.Name == "key" {
+				continue // handled by loop diffing
+			}
+			var resolvedName string
+			var expected *ir.Type
+
+			if arg.Name == "" {
+				if positional >= len(comp.Props) {
+					if arg.Value != nil {
+						c.error(*arg.Value.ExprPos(), "too many positional arguments")
+					}
+					positional++
+					continue
 				}
+				p := comp.Props[positional]
+				resolvedName = p.Name
+				expected = p.Type
+				positional++
+			} else {
+				resolvedName = arg.Name
+				propName := resolvedName
+				if strings.HasPrefix(propName, ":") {
+					propName = propName[1:]
+				}
+				if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
+					c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
+					continue
+				}
+				expected = componentPropType(comp, propName)
+			}
+
+			if arg.Value != nil {
 				argExpr := c.checkExprExpecting(arg.Value, expected)
 				actual := exprType(argExpr)
 				c.requireValueType(actual, *arg.Value.ExprPos())
 				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
 					if adapted, ok := adaptLiteralZero(argExpr, expected); ok {
 						argExpr = adapted
-					} else if callExpr, ret := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
-						call.Args.Args[i] = ast.Arg{Name: arg.Name, Value: callExpr}
+					} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
 						argExpr = c.checkExpr(callExpr)
-						_ = ret
 					} else {
 						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
 					}
@@ -3008,18 +3139,10 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if expected != nil && expected.Kind != ir.TypeDyn {
 					argExpr = wrapIfNeeded(argExpr, expected)
 				}
-				result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: argExpr})
+				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
+				boundProps[resolvedName] = true
 			}
-			if arg.Name == "" || arg.Name == "key" {
-				continue // positional args and key (handled by loop diffing)
-			}
-			propName := arg.Name
-			if strings.HasPrefix(propName, ":") {
-				propName = propName[1:]
-			}
-			if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
-				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
-			}
+
 		case ast.EventHandler:
 			c.pushScope()
 			for _, p := range arg.Params.Params {
@@ -3029,10 +3152,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 						typ = et
 					}
 				}
-				c.scope.Declare(&ir.Param{
-					Name: p.Name,
-					Type: typ,
-				})
+				c.scope.Declare(&ir.Param{Name: p.Name, Type: typ})
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
@@ -3041,6 +3161,17 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			}
 		}
 	}
+
+	// Arity: required props must be bound (user-defined components only;
+	// stdlib component props without defaults are optional by platform convention).
+	if !comp.Stdlib {
+		for _, p := range comp.Props {
+			if !boundProps[p.Name] && p.Default == nil {
+				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
+			}
+		}
+	}
+
 	return result
 }
 
