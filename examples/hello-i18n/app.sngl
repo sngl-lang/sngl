@@ -59,7 +59,7 @@ component main {
 
         text(
             value=$"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party.",
-            style={fontSize=18, padding=12, background="#f5f5f5", borderRadius=8},
+            style={fontSize=18, padding=12, color=#111111, background="#f5f5f5", borderRadius=8},
         )
 
         text(
