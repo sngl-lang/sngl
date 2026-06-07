@@ -1488,6 +1488,29 @@ func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
 	seen[w.Name] = true
 }
 
+// resolvePositionalArgs maps positional args in an ArgList to named keys using
+// the given positional order. Named args are included as-is. Event handlers
+// are skipped. The caller handles EventHandler entries separately.
+func resolvePositionalArgs(args ast.ArgList, order []string) map[string]ast.Expr {
+	result := make(map[string]ast.Expr)
+	positional := 0
+	for _, a := range args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok {
+			continue
+		}
+		if arg.Name == "" {
+			if positional < len(order) && arg.Value != nil {
+				result[order[positional]] = arg.Value
+			}
+			positional++
+		} else if arg.Value != nil {
+			result[arg.Name] = arg.Value
+		}
+	}
+	return result
+}
+
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{AST: vn, Name: vn.ID, Typ: c.windowType}
 	// URL template params like `{name}` in href become string vars on the
@@ -1500,21 +1523,19 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	for _, v := range w.Vars {
 		c.scope.Declare(v)
 	}
+	named := resolvePositionalArgs(vn.Args, []string{"title", "href", "favicon"})
+	if e, ok := named["href"]; ok {
+		w.Href = c.checkExpr(e)
+	}
+	if e, ok := named["title"]; ok {
+		w.Title = c.checkExpr(e)
+	}
+	if e, ok := named["favicon"]; ok {
+		w.Favicon = c.checkExpr(e)
+	}
 	for _, a := range vn.Args.Args {
-		switch arg := a.(type) {
-		case ast.Arg:
-			switch arg.Name {
-			case "href":
-				w.Href = c.checkExpr(arg.Value)
-			case "title":
-				w.Title = c.checkExpr(arg.Value)
-			case "favicon":
-				w.Favicon = c.checkExpr(arg.Value)
-			}
-		case ast.EventHandler:
-			if arg.Name == "error" {
-				w.ErrorHandler = c.buildErrorHandler(&arg)
-			}
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			w.ErrorHandler = c.buildErrorHandler(&eh)
 		}
 	}
 	return w
@@ -1544,23 +1565,20 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 		AST:     vn,
 		Handler: &ir.Func{},
 	}
+	named := resolvePositionalArgs(vn.Args, []string{"interval", "enabled"})
+	if e, ok := named["interval"]; ok {
+		t.Interval = c.checkExpr(e)
+	}
+	if e, ok := named["enabled"]; ok {
+		t.Enabled = c.checkExpr(e)
+	}
 	for _, a := range vn.Args.Args {
-		switch arg := a.(type) {
-		case ast.Arg:
-			switch arg.Name {
-			case "interval":
-				t.Interval = c.checkExpr(arg.Value)
-			case "enabled":
-				t.Enabled = c.checkExpr(arg.Value)
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "tick" {
+			t.Handler = &ir.Func{
+				Params: c.buildParams(eh.Params),
 			}
-		case ast.EventHandler:
-			if arg.Name == "tick" {
-				t.Handler = &ir.Func{
-					Params: c.buildParams(arg.Params),
-				}
-				// Body is checked later in checkTimerBody.
-				vn.Block = arg.Body
-			}
+			// Body is checked later in checkTimerBody.
+			vn.Block = eh.Body
 		}
 	}
 	return t
