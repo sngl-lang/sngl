@@ -218,7 +218,7 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
-		params[i] = &ir.Param{Type: c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")}
+		params[i] = &ir.Param{Name: p.Name, Type: c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")}
 	}
 	var ret *ir.Type
 	if t.Return != nil {
