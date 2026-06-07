@@ -1838,7 +1838,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			for _, f := range sd.Fields {
 				idx := -1
 				for i, p := range sig.Params {
-					if p.Name == f.Name {
+					if paramNameOK(p) && p.Name == f.Name {
 						idx = i
 						break
 					}
