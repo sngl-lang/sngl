@@ -1866,7 +1866,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				continue
 			}
 			p := sig.Params[idx]
-			if strings.HasPrefix(p.Name, "_") {
+			if !paramNameOK(p) {
 				c.error(arg.NamePos, "parameter %q must be passed positionally", p.Name)
 				ok = false
 				continue
@@ -1884,7 +1884,11 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	// Every required param must be filled.
 	for i, p := range sig.Params {
 		if bound[i] == nil && p.Default == nil {
-			c.error(callPos, "missing required argument %q", p.Name)
+			if p.Name != "" {
+				c.error(callPos, "missing required argument %q", p.Name)
+			} else {
+				c.error(callPos, "missing required argument at position %d", i+1)
+			}
 			ok = false
 		}
 	}
