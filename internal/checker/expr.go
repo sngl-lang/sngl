@@ -1820,6 +1820,54 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			continue
 		}
 
+		// Struct spread: ...expr expands struct fields as named args.
+		if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			operandIR := c.checkExpr(spread.Operand)
+			operandType := exprType(operandIR)
+			if operandType == nil || operandType.Kind != ir.TypeStruct {
+				typStr := "(nil)"
+				if operandType != nil {
+					typStr = operandType.String()
+				}
+				c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
+				ok = false
+				continue
+			}
+			sd := operandType.Decl.(*ir.StructDef)
+			seenNamed = true
+			for _, f := range sd.Fields {
+				idx := -1
+				for i, p := range sig.Params {
+					if p.Name == f.Name {
+						idx = i
+						break
+					}
+				}
+				if idx == -1 {
+					continue // no matching param; ignore silently
+				}
+				if bound[idx] != nil {
+					c.error(spread.Pos, "parameter %q already provided", f.Name)
+					ok = false
+					continue
+				}
+				var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
+				p := sig.Params[idx]
+				if p.Type != nil && f.Type.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn &&
+					!f.Type.IsAssignableTo(p.Type) {
+					c.error(spread.Pos, "cannot use field %q (%s) as parameter %q (%s)",
+						f.Name, f.Type, p.Name, p.Type)
+					ok = false
+					continue
+				}
+				if p.Type != nil {
+					selExpr = wrapIfNeeded(selExpr, p.Type)
+				}
+				bound[idx] = &selExpr
+			}
+			continue
+		}
+
 		if arg.Name == "" {
 			// Positional arg.
 			if seenNamed {
@@ -1926,6 +1974,10 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 			switch arg := a.(type) {
 			case ast.Arg:
 				if arg.Value != nil {
+					if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+						c.error(spread.Pos, "... struct spread cannot be used in a dynamic function call")
+						continue
+					}
 					expr := c.checkExpr(arg.Value)
 					c.requireValueType(exprType(expr), *arg.Value.ExprPos())
 					result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: expr})
