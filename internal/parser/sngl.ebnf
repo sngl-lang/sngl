@@ -595,10 +595,20 @@ NonIdentPrimary =
 Type =
       ident [ dot ident | lt TypeList gt ]
     | kw_component
-    | kw_func lparen [ TypeList ] rparen [ Type ]
+    | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
     | StructDecl
     | EnumDecl
     | UnitDecl
     .
 
 TypeList = Type { comma Type } .
+
+FuncTypeParamList = FuncTypeParam { comma FuncTypeParam } .
+
+FuncTypeParam =
+      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
+    | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
+    | StructDecl
+    | EnumDecl
+    | UnitDecl
+    .
