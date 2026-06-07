@@ -361,7 +361,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		}
 		focusIdx := vc.focusIndex
 		vc.focusIndex++
-		vc.line(`%sFocused := m.focus == %d`, resultVar, focusIdx)
+		vc.line(`%sFocused := m.__focusID == %d`, resultVar, focusIdx)
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 		vc.requireImport("fmt")
@@ -555,7 +555,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	if vc.resolveProp(n, "focusable") != nil {
 		focusIdx := vc.focusIndex
 		vc.focusIndex++
-		vc.line(`%sFocused := m.focus == %d`, resultVar, focusIdx)
+		vc.line(`%sFocused := m.__focusID == %d`, resultVar, focusIdx)
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)

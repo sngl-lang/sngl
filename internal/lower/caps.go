@@ -46,6 +46,12 @@ type Features struct {
 	// StdlibContextParam requests a hidden trailing parameter threaded through
 	// every stdlib func reachable from user code that reads a context.
 	StdlibContextParam bool
+	// FocusOrder requests focus-tracking lowering: the pass walks the visual
+	// tree, assigns integer IDs to focusable nodes, and injects __focusID,
+	// __focusNext, and __focusPrev into the component. Platforms that render
+	// their own widgets (canvas, TUI) opt in; native-widget platforms that
+	// delegate focus to the OS do not.
+	FocusOrder bool
 }
 
 // AllFeatures returns a Features with every capability enabled. Use as a
@@ -92,6 +98,7 @@ func (f Features) ToLowerCaps() Caps {
 		NoStructSpread:     !f.StructSpread,
 		StructComponents:   f.StructComponents,
 		StdlibContextParam: f.StdlibContextParam,
+		FocusOrder:         f.FocusOrder,
 	}
 }
 
@@ -133,6 +140,8 @@ type Caps struct {
 	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
 	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
 	NoStructSpread     bool // struct-literal spreads (`{...x}`) → flattened literal / merge<Struct> call
+	// FocusOrder requests focus-tracking lowering. See Features.FocusOrder.
+	FocusOrder bool
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -150,6 +159,7 @@ func (c Caps) Merge(other Caps) Caps {
 		NoTimer:            c.NoTimer || other.NoTimer,
 		StructComponents:   c.StructComponents || other.StructComponents,
 		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
+		FocusOrder:         c.FocusOrder || other.FocusOrder,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
@@ -217,6 +227,9 @@ func (c Caps) String() string {
 	}
 	if c.NoDeclarative {
 		parts = append(parts, "NoDeclarative")
+	}
+	if c.FocusOrder {
+		parts = append(parts, "FocusOrder")
 	}
 	return strings.Join(parts, ",")
 }

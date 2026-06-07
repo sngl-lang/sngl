@@ -66,6 +66,7 @@ var passes = []pass{
 	passNoImplicitRecv,
 	passReactivity,
 	passTimer,
+	passFocusOrder,
 	passDeclarative,
 	passNoRef,
 }

@@ -50,6 +50,7 @@ component button(
     style Style,
     text string,
     disabled bool,
+    focusable bool = true,
     @click ClickEvent,
     @longPress LongPressEvent,
 ) list<component> {}
@@ -68,6 +69,7 @@ component input(
     readonly bool,
     type string,
     maxLength int,
+    focusable bool = true,
     @input InputEvent,
     @change ChangeEvent,
     @focus FocusEvent,
@@ -124,6 +126,7 @@ component checkbox(
     :checked bool,
     label string,
     disabled bool,
+    focusable bool = true,
     @change ChangeEvent,
 ) {}
 
@@ -176,6 +179,7 @@ component toggle(
     :checked bool,
     label string,
     disabled bool,
+    focusable bool = true,
     @change ChangeEvent,
 ) {}
 
@@ -190,6 +194,7 @@ component select(
     placeholder string,
     disabled bool,
     multiple bool,
+    focusable bool = true,
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
@@ -207,6 +212,7 @@ component textarea(
     readonly bool,
     rows int,
     maxLength int,
+    focusable bool = true,
     @input InputEvent,
     @change ChangeEvent,
     @focus FocusEvent,
@@ -273,6 +279,7 @@ component link(
     text string,
     target string,
     disabled bool,
+    focusable bool = true,
     @click ClickEvent,
 ) {}
 
@@ -450,6 +457,7 @@ component chip(
     removable bool,
     selected bool,
     disabled bool,
+    focusable bool = true,
     @click ClickEvent,
     @remove DismissEvent,
 ) {}

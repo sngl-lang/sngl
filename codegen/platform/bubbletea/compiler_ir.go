@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -47,15 +48,9 @@ type inputInfo struct {
 	fieldName   string
 	bindTarget  string
 	placeholder string
+	focusID     int // __focusID value that activates this input; -1 if no focus tracking
 }
 
-type forLoopCursor struct {
-	cursorField string
-	listField   string
-	focusIdx    int
-	indexVar    string
-	iterVar     string
-}
 
 // CompileIR generates a Go source file from IR using the new CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
@@ -91,13 +86,12 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {
 	*codegen.CommonAnalysis
-	binds      []irBind
-	externs    []irExtern
-	computeds  []irComputed
-	inputs     []inputInfo
-	focusables []string
-	forCursors []forLoopCursor
-	gc         *golang.GoIRContext
+	binds     []irBind
+	externs   []irExtern
+	computeds []irComputed
+	inputs    []inputInfo
+	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
+	gc        *golang.GoIRContext
 }
 
 type irBind struct {
@@ -197,40 +191,39 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Walk visual tree for inputs/buttons/checkboxes
+	// Walk visual tree for inputs. Focus IDs are read from the __focusID prop
+	// injected by passFocusOrder; -1 means focus tracking is not active.
 	wins := ctx.Windows()
 	for _, win := range wins {
-		focusIdx := 0
 		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			switch n.Name {
-			case "input":
-				fieldName := ctx.Namer.Next("input")
-				placeholder := ""
-				if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
-					placeholder = s
-				}
-				bindTarget := ""
-				if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
-					bindTarget = extractIRAssignTarget(h.Func.Block)
-				}
-				info.inputs = append(info.inputs, inputInfo{
-					fieldName:   fieldName,
-					bindTarget:  bindTarget,
-					placeholder: placeholder,
-				})
-				info.focusables = append(info.focusables, fieldName)
-				focusIdx++
-			case "button":
-				btnName := ctx.Namer.Next("button")
-				info.focusables = append(info.focusables, btnName)
-				focusIdx++
-			case "checkbox":
-				chkName := ctx.Namer.Next("checkbox")
-				info.focusables = append(info.focusables, chkName)
-				focusIdx++
+			if n.Name != "input" {
+				return false
 			}
+			fieldName := ctx.Namer.Next("input")
+			placeholder := ""
+			if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
+				placeholder = s
+			}
+			bindTarget := ""
+			if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
+				bindTarget = extractIRAssignTarget(h.Func.Block)
+			}
+			info.inputs = append(info.inputs, inputInfo{
+				fieldName:   fieldName,
+				bindTarget:  bindTarget,
+				placeholder: placeholder,
+				focusID:     nodeInjectFocusID(n),
+			})
 			return false
 		})
+	}
+
+	// Detect whether passFocusOrder ran by checking for the __focusID var.
+	for _, b := range info.binds {
+		if b.name == "__focusID" {
+			info.hasFocus = true
+			break
+		}
 	}
 
 	if info.NeedsToast {
@@ -341,16 +334,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.inputs) > 0 {
 		b.WriteString("\n")
 	}
-	for _, fc := range info.forCursors {
-		fmt.Fprintf(&b, "\t%s int\n", fc.cursorField)
-	}
-	if len(info.forCursors) > 0 {
-		b.WriteString("\n")
-	}
 	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
-	b.WriteString("\tfocus int\n")
 	b.WriteString("\twidth, height int\n")
 	b.WriteString("}\n\n")
 
@@ -627,30 +613,31 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
 	b.WriteString("\t\t\treturn m, tea.Quit\n")
 
-	if len(info.focusables) > 1 {
-		nFocus := len(info.focusables)
+	if info.hasFocus {
 		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0:\n")
-		fmt.Fprintf(b, "\t\t\tm.focus = (m.focus + 1) %% %d\n", nFocus)
+		b.WriteString("\t\t\tm.__focusNext()\n")
 		emitIRFocusSync(b, info.inputs)
 		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:\n")
-		fmt.Fprintf(b, "\t\t\tm.focus = (m.focus - 1 + %d) %% %d\n", nFocus, nFocus)
+		b.WriteString("\t\t\tm.__focusPrev()\n")
 		emitIRFocusSync(b, info.inputs)
 	}
 
 	// Button/checkbox enter handlers from IR
 	wins := ctx.Windows()
 	for _, win := range wins {
-		buttonIdx := 0
-		checkboxIdx := 0
-		emitIRButtonHandlers(b, win.Body, info, gc, &buttonIdx, &checkboxIdx)
+		emitIRButtonHandlers(b, win.Body, info, gc)
 	}
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
 
 	// Forward messages to focused input
-	for i, inp := range info.inputs {
-		fmt.Fprintf(b, "\tif m.focus == %d {\n", i)
+	for _, inp := range info.inputs {
+		if inp.focusID >= 0 {
+			fmt.Fprintf(b, "\tif m.__focusID == %d {\n", inp.focusID)
+		} else {
+			b.WriteString("\t{\n")
+		}
 		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s.Update(msg)\n", inp.fieldName, inp.fieldName)
 		if inp.bindTarget != "" {
 			fmt.Fprintf(b, "\t\tm.%s = m.%s.Value()\n", inp.bindTarget, inp.fieldName)
@@ -669,17 +656,17 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("}\n\n")
 }
 
-func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, buttonIdx *int, checkboxIdx *int) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, buttonIdx, checkboxIdx, nil)
+func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext) {
+	emitIRButtonHandlersWalk(b, stmts, info, gc, nil)
 }
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. forLoopVars tracks the iter/index variable names
 // of enclosing for-loops so we can stub their declarations inside the case
-// body (the focus→item mapping is not yet dynamic; compile-only fix).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, buttonIdx *int, checkboxIdx *int, forLoopVars []string) {
-	emitCase := func(focusIdx int, block []ir.Stmt) {
-		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.focus == %d:\n", focusIdx)
+// body (dynamic focus-to-loop-item binding is not yet implemented).
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, forLoopVars []string) {
+	emitCase := func(focusID int, block []ir.Stmt) {
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", focusID)
 		for _, v := range forLoopVars {
 			fmt.Fprintf(b, "\t\t\t%s := 0 // TODO: bind loop index to focus slot\n", v)
 			fmt.Fprintf(b, "\t\t\t_ = %s\n", v)
@@ -701,34 +688,30 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			if n.Value != "" && n.Value != "_" {
 				vars = append(vars, n.Value)
 			}
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, vars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, vars)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, forLoopVars)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, forLoopVars)
 		case *ir.PlatformFilter:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, forLoopVars)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, forLoopVars)
 		case *ir.NodeInst:
 			switch n.Name {
 			case "checkbox":
 				if h := codegen.NodeHandler(n, "change"); h != nil && h.Func != nil {
-					focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("checkbox%d", *checkboxIdx))
-					if focusIdx >= 0 {
-						emitCase(focusIdx, h.Func.Block)
+					if focusID := nodeInjectFocusID(n); focusID >= 0 {
+						emitCase(focusID, h.Func.Block)
 					}
 				}
-				*checkboxIdx++
 			case "button":
 				if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
-					focusIdx := findFocusIndex(info.focusables, fmt.Sprintf("button%d", *buttonIdx))
-					if focusIdx >= 0 {
-						emitCase(focusIdx, h.Func.Block)
+					if focusID := nodeInjectFocusID(n); focusID >= 0 {
+						emitCase(focusID, h.Func.Block)
 					}
 				}
-				*buttonIdx++
 			}
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, buttonIdx, checkboxIdx, forLoopVars)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, forLoopVars)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Window:
@@ -744,8 +727,11 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 }
 
 func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
-	for i, inp := range inputs {
-		fmt.Fprintf(b, "\t\t\tif m.focus == %d {\n", i)
+	for _, inp := range inputs {
+		if inp.focusID < 0 {
+			continue
+		}
+		fmt.Fprintf(b, "\t\t\tif m.__focusID == %d {\n", inp.focusID)
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", inp.fieldName)
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", inp.fieldName)
@@ -753,11 +739,26 @@ func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
 	}
 }
 
-func findFocusIndex(focusables []string, name string) int {
-	for i, f := range focusables {
-		if f == name {
-			return i
+// nodeInjectFocusID returns the focus ID injected by passFocusOrder as the
+// __focusID prop on a NodeInst, or -1 if the prop is absent.
+func nodeInjectFocusID(n *ir.NodeInst) int {
+	for _, p := range n.Props {
+		if p.Name != "__focusID" {
+			continue
 		}
+		bin, ok := p.Value.(*ir.Binary)
+		if !ok {
+			return -1
+		}
+		lit, ok := bin.Right.(*ir.Literal)
+		if !ok {
+			return -1
+		}
+		id, err := strconv.Atoi(lit.Raw)
+		if err != nil {
+			return -1
+		}
+		return id
 	}
 	return -1
 }

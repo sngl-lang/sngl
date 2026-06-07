@@ -50,6 +50,7 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	f.FocusOrder = true
 	return f
 }
 
