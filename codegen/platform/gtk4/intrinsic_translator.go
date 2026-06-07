@@ -21,14 +21,14 @@ import (
 // via ir.Conversion to an ir.NativePointerOf("X") type (see cgoCast);
 // the Go renderer's evalConversion path emits the cgo cast pattern.
 type gtk4Translator struct {
-	gc             *golang.GoIRContext
-	pkg            *ir.Package // optional; used to consult GIR-resolved native metadata
-	fieldSink      func(name, cType string)
-	idCTypes       map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
-	skipped        map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel       []string
-	tagComponent   map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
-	boolToIntUsed  *bool // points to compilation.needsBoolToInt; set when boolToGoInt is called
+	gc            *golang.GoIRContext
+	pkg           *ir.Package // optional; used to consult GIR-resolved native metadata
+	fieldSink     func(name, cType string)
+	idCTypes      map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
+	skipped       map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
+	topLevel      []string
+	tagComponent  map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	boolToIntUsed *bool                    // points to compilation.needsBoolToInt; set when boolToGoInt is called
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {

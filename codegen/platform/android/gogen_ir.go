@@ -174,4 +174,3 @@ func emitGoLibIRComputed(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext
 		}
 	}
 }
-
