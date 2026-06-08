@@ -20,6 +20,7 @@ type NodeInst struct {
 	Component *Component     // non-nil for user component; nil for platform element
 	Props     []Arg          // property assignments (positional and named)
 	Handlers  []EventHandler // inline event handlers
+	Bindings  []PropBinding  // first-class bidi prop bindings; consumed by lowering
 	Children  []Stmt         // type-checked body
 	ID        string         // #id binding
 	Key       Expr           // key expression for list diffing (nil → implicit index)
@@ -33,6 +34,16 @@ type Arg struct {
 	Name    string // empty for positional
 	NamePos ast.Pos
 	Value   Expr // checked expression
+}
+
+// PropBinding is a first-class bidirectional prop binding at a NodeInst call
+// site. PropName names the component's declared :prop; Target is the lvalue
+// in the parent scope to which child mutations hoist. The lowering phase
+// transforms PropBindings into @event+handler pairs so codegen sees normal IR.
+type PropBinding struct {
+	PropName string
+	NamePos  ast.Pos
+	Target   Expr // must satisfy isAssignableTarget in checker
 }
 
 func (*NodeInst) stmtNode() {}
