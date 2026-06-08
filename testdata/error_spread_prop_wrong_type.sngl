@@ -1,0 +1,6 @@
+component Button(text string) {}
+
+component main {
+    var xs list<string> = ["a", "b"]
+    Button(...xs) // ERROR(check) "spread requires a struct type"
+}
