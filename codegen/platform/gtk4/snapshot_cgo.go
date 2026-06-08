@@ -59,9 +59,22 @@ static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *p
     return ok ? 0 : 6;
 }
 
-// Drain the default GLib main context until idle or maxIter exhausted.
-// Lets layout, realize, and the first frame draw before we capture.
+// Drain the default GLib main context until the widget is mapped (fully
+// realised and visible) or maxIter is exhausted. Blocks on the first
+// iteration so GTK has time to queue layout/draw events after
+// gtk_window_present before we start polling.
+static void sngl_pump_until_mapped(GtkWidget *widget, int maxIter) {
+    g_main_context_iteration(NULL, TRUE);
+    for (int i = 0; i < maxIter; i++) {
+        if (gtk_widget_get_mapped(widget)) return;
+        g_main_context_iteration(NULL, FALSE);
+    }
+}
+
+// Legacy name retained for generated snapshot harnesses that have not been
+// regenerated yet. Drains without a widget-mapped check.
 static void sngl_pump_idle(int maxIter) {
+    g_main_context_iteration(NULL, TRUE);
     for (int i = 0; i < maxIter; i++) {
         if (!g_main_context_iteration(NULL, FALSE)) return;
     }

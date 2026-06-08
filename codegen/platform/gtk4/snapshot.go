@@ -191,7 +191,7 @@ func main() {
 	win := m.BuildUI(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), width, height)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-	C.sngl_pump_idle(100)
+	C.sngl_pump_until_mapped(win, 1000)
 
 	cpath := C.CString(outPath)
 	defer C.free(unsafe.Pointer(cpath))
@@ -261,7 +261,7 @@ func main() {
 
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), width, height)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-	C.sngl_pump_idle(100)
+	C.sngl_pump_until_mapped(win, 1000)
 
 	cpath := C.CString(outPath)
 	defer C.free(unsafe.Pointer(cpath))

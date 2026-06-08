@@ -303,7 +303,7 @@ func sngl_test_activate(app *C.GtkApplication, _ C.gpointer) {
 	}
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-	C.sngl_pump_idle(100)
+	C.sngl_pump_until_mapped(win, 1000)
 	cPath := C.CString(activatePayload.outPath)
 	defer C.free(unsafe.Pointer(cPath))
 	if rc := C.sngl_snapshot(win, 800, 600, cPath); rc != 0 {
