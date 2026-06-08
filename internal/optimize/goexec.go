@@ -67,9 +67,10 @@ func main() {
 }
 `, importPath, funcName, strings.Join(goArgs, ", "))
 
-	// Write temp directory inside project
-	tmpDir := filepath.Join(dir, ".sngl-goexec")
-	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+	// Write temp directory inside project (unique per call to avoid races when
+	// multiple test binaries run the optimizer concurrently under go test ./...).
+	tmpDir, err := os.MkdirTemp(dir, ".sngl-goexec-*")
+	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
@@ -83,9 +84,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "run", "./.sngl-goexec/")
+	cmd := exec.CommandContext(ctx, "go", "run", tmpDir)
 	cmd.Dir = dir
-	slog.Info("exec", "cmd", "go run ./.sngl-goexec/", "dir", dir, "func", nativeType)
+	slog.Info("exec", "cmd", "go run "+tmpDir, "dir", dir, "func", nativeType)
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
