@@ -34,14 +34,11 @@ func New() Model {
 	m.__focusID = 0
 	m.input0 = textinput.New()
 	m.input0.Placeholder = "import path"
-	m.input0.SetValue(m.path)
 	m.input0.Focus()
 	m.input1 = textinput.New()
 	m.input1.Placeholder = "decl"
-	m.input1.SetValue(m.ident1)
 	m.input2 = textinput.New()
 	m.input2.Placeholder = "field/prop"
-	m.input2.SetValue(m.ident2)
 	return m
 }
 
@@ -89,7 +86,6 @@ func (m Model) Path() string {
 
 func (m Model) SetPath(v string) Model {
 	m.path = v
-	m.input0.SetValue(m.path)
 	return m
 }
 
@@ -105,7 +101,6 @@ func (m Model) Ident1() string {
 
 func (m Model) SetIdent1(v string) Model {
 	m.ident1 = v
-	m.input1.SetValue(m.ident1)
 	return m
 }
 
@@ -121,7 +116,6 @@ func (m Model) Ident2() string {
 
 func (m Model) SetIdent2(v string) Model {
 	m.ident2 = v
-	m.input2.SetValue(m.ident2)
 	return m
 }
 
@@ -189,15 +183,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.__focusID == 0 {
 		m.input0, cmd = m.input0.Update(msg)
-		m.path = m.input0.Value()
 	}
 	if m.__focusID == 1 {
 		m.input1, cmd = m.input1.Update(msg)
-		m.ident1 = m.input1.Value()
 	}
 	if m.__focusID == 2 {
 		m.input2, cmd = m.input2.Update(msg)
-		m.ident2 = m.input2.Value()
 	}
 	return m, cmd
 }
