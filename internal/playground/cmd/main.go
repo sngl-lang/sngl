@@ -112,12 +112,13 @@ func compile(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	compileCaps := gen.Capabilities().Merge(lang.Capabilities())
+	compileFeats := gen.Capabilities(lang)
+	compileCaps := compileFeats.ToLowerCaps()
 	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	if compileCaps != (lower.Caps{}) {
+	if compileFeats != (lower.Features{}) {
 		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 			result["error"] = err.Error()
 			return toJSObject(result)
@@ -250,12 +251,13 @@ func generate(this js.Value, args []js.Value) any {
 		return toJSObject(result)
 	}
 
-	genCaps := gen.Capabilities().Merge(lang.Capabilities())
+	genFeats := gen.Capabilities(lang)
+	genCaps := genFeats.ToLowerCaps()
 	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platName}); err != nil {
 		result["error"] = err.Error()
 		return toJSObject(result)
 	}
-	if genCaps != (lower.Caps{}) {
+	if genFeats != (lower.Features{}) {
 		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 			result["error"] = err.Error()
 			return toJSObject(result)
