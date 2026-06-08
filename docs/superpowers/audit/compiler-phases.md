@@ -102,7 +102,7 @@ grep -n adaptLiteralZero internal/checker
 returns 12 call sites; only a few wrap into `ir.Conversion`. Codegen has
 to re-derive that a conversion happened.
 
-### 1.7 Stale `CLAUDE.md`: CEL is not actually used anywhere
+### 1.7 Stale `CLAUDE.md`: CEL is not actually used anywhere (still open as of 2026-06-07)
 
 **File:** `CLAUDE.md:54`, codebase grep.
 

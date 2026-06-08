@@ -78,7 +78,9 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - Cache key is `fmt.Sprintf("%s:%v", nativeType, args)`. `fmt.Sprintf("%v", []any{1})` and `fmt.Sprintf("%v", []any{"1"})` print as `[1]` — collision. Two different calls return the same cached value.
 - **severity**: latent wrong-output
 
-### 14. `.sngl-goexec` temp dir inside project dir — concurrent-build race
+### 14. `.sngl-goexec` temp dir inside project dir — concurrent-build race ✅ RESOLVED (2026-06-07)
+
+`fix(optimize): use unique temp dir per execPureGoFunc call to eliminate concurrent-test race` (1ea3d7c2).
 - **file**: `internal/optimize/goexec.go:71-75`
 - Creates `{dir}/.sngl-goexec/main.go` with a fixed name and `defer os.RemoveAll(tmpDir)`. Two concurrent compile invocations in the same dir will clobber main.go and each other's RemoveAll calls.
 - **severity**: latent (parallel builds)

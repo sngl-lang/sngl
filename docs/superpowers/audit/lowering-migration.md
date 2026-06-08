@@ -581,6 +581,14 @@ tree rewrite disappears.
 
 ---
 
+## Resolved (2026-06-07)
+
+### 10. Per-platform "compute focusables, focus index, button index" walks ✅ RESOLVED
+
+`passFocusOrder` lands in `internal/lower/focus.go` (commits `f9759154`, `47a68022`, `d1407507`). `Features.FocusOrder` (positive capability) drives the pass; bubbletea opts in. The three bubbletea walks (`compiler_ir.go:206-239`, `view_ir.go:350-545`, `compiler_ir.go:706`) now read `NodeInst.FocusIndex` stamped by the pass instead of maintaining independent counter sequences.
+
+---
+
 ## Resolved this pass (2026-06-01)
 
 The "defer to the language driver / desugar in lowering" theme, applied to

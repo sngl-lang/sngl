@@ -289,7 +289,9 @@ direction don't keep both.
 
 ---
 
-### 9. Capabilities are declared imperatively per platform, easy to under-declare
+### 9. Capabilities are declared imperatively per platform, easy to under-declare ✅ RESOLVED (2026-06-07)
+
+`refactor(lower): replace Caps with positive Features capability model` (92737989). `Features` struct is the new positive declaration (platforms declare what they *can* render); `Caps` is derived as the complement via `Features.Caps()`. A platform that forgets to declare a feature gets the lowering pass run for free — safe default.
 
 `codegen/platform/html/html.go:54-55`:
 

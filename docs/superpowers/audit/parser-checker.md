@@ -32,7 +32,9 @@ struct B { a A }
 fails with `unknown type "B"`. Swapping the order fails with `unknown type "A"`. Pass1 must first register name-only shells for all `StructDef`/`EnumDef`/`UnitDef`/`Component`, then field-resolve in a second sub-pass. The fixture `testdata/checker_mutual_recursion.sngl` only exercises function mutual recursion, not types — coverage gap.
 **Severity:** BUG (no workaround for mutually referencing types).
 
-### 3. List spread (`[...xs, 3]`) typechecks the spread as an element
+### 3. List spread (`[...xs, 3]`) typechecks the spread as an element ⚠️ PARTIAL (2026-06-07)
+
+Struct spread in function call arg lists (`f(...s)`) and component prop lists is now supported (`feat(checker): expand ...struct in function call arg lists` / `feat(checker): expand ...struct in component prop lists`). Error fixtures for type/duplicate violations added (`test: add missing spread error fixtures`). **Still open:** list literal spread `[...xs, 3]` — `inferListLit` does not handle `*ast.SpreadExpr`; and call spread with `list<T>` operand `f(...xs)` — the new spread path requires a struct operand.
 
 **Files:** `internal/checker/expr.go:1462-1480`
 `inferListLit` blindly calls `checkExprExpecting(e, elemExpected)` on every element; spread `*ast.SpreadExpr` (parsed correctly per `ast/expr.go:243`) falls through and is typed as `list<int>`, then the literal infers `list<list<int>>`:
