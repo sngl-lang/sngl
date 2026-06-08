@@ -200,9 +200,10 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 	if prop.Type != nil && prop.Type.Kind == ir.TypeBool {
 		// !propName — toggle the prop's current value.
 		// After passInlinePure substitutes the prop param, this becomes !boundVar.
+		synthParam := &ir.Param{Name: propName, Type: prop.Type}
 		emitVal = &ir.Unary{
 			Op:      ast.UnaryNot,
-			Operand: &ir.Ident{Name: propName, Type: prop.Type},
+			Operand: &ir.Ident{Name: propName, Type: prop.Type, Sym: synthParam},
 			Type:    prop.Type,
 		}
 	} else {
@@ -241,23 +242,37 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 // handler's block. Returns true if the injection was performed.
 func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit) bool {
 	for _, s := range stmts {
-		n, ok := s.(*ir.NodeInst)
-		if !ok {
-			continue
-		}
-		for i := range n.Handlers {
-			h := &n.Handlers[i]
-			if h.Func == nil {
-				continue
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			for i := range n.Handlers {
+				h := &n.Handlers[i]
+				if h.Func == nil {
+					continue
+				}
+				if slices.Contains(candidates, h.Name) {
+					h.Func.Block = append([]ir.Stmt{emit}, h.Func.Block...)
+					return true
+				}
 			}
-			if slices.Contains(candidates, h.Name) {
-				h.Func.Block = append([]ir.Stmt{emit}, h.Func.Block...)
+			// Recurse into children.
+			if injectEmitIntoHandlers(n.Children, candidates, emit) {
 				return true
 			}
-		}
-		// Recurse into children.
-		if injectEmitIntoHandlers(n.Children, candidates, emit) {
-			return true
+		case *ir.For:
+			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+				return true
+			}
+		case *ir.If:
+			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+				return true
+			}
+			if injectEmitIntoHandlers(n.Else, candidates, emit) {
+				return true
+			}
+		case *ir.PlatformFilter:
+			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+				return true
+			}
 		}
 	}
 	return false
