@@ -601,7 +601,7 @@ Available events depend on the component (check the stdlib definition). Use `eve
 
 ### Bidirectional Bindings
 
-Input components like `input` and `checkbox` support **bidirectional bindings** using the `:` prefix. A bidirectional binding automatically propagates mutations from the child component to a parent variable without requiring an event handler.
+Input components like `input` and `checkbox` support **bidirectional bindings** using the `:` prefix. A bidirectional binding automatically propagates mutations from the child component to a parent variable without requiring a manually written event handler.
 
 Instead of manually wiring an event:
 
