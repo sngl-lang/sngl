@@ -2315,7 +2315,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		if comp != nil {
 			c.validateCallStmtComponentArgs(x.Call, comp)
-			props, handlers := c.checkAndSplitArgs(x.Call.Args, comp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
 			var keyExpr ir.Expr
 			for _, a := range x.Call.Args.Args {
 				if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
@@ -2329,6 +2329,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				Component: comp,
 				Props:     props,
 				Handlers:  handlers,
+				Bindings:  bindings,
 				Key:       keyExpr,
 			}
 		}
@@ -2354,13 +2355,14 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if argsComp != nil && argsComp.Stdlib {
 				argsComp = nil
 			}
-			props, handlers := c.checkAndSplitArgs(x.Call.Args, argsComp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, argsComp)
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      name,
 				Component: elemComp,
 				Props:     props,
 				Handlers:  handlers,
+				Bindings:  bindings,
 				ID:        id,
 			}
 		}
@@ -2821,7 +2823,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			}
 			if fn, ok := sym.(*ir.Func); ok {
 				// This is a function call, not a visual node.
-				props, _ := c.checkAndSplitArgs(vn.Args, nil)
+				props, _, _ := c.checkAndSplitArgs(vn.Args, nil)
 				var args []ir.CallArg
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
@@ -2869,7 +2871,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
 		}
 	}
-	props, handlers := c.checkAndSplitArgs(vn.Args, comp)
+	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
 
 	// Extract key= arg for loop diffing.
 	var keyExpr ir.Expr
@@ -2890,6 +2892,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Component: comp,
 		Props:     props,
 		Handlers:  handlers,
+		Bindings:  bindings,
 		Children:  children,
 		ID:        vn.ID,
 		Key:       keyExpr,
@@ -2968,7 +2971,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 // checkAndSplitArgs checks values and splits a checked ArgList into IR property
 // assignments and event handlers. Unlike splitNodeArgs, this re-checks values
 // to produce ir.Expr rather than using ast.Expr.
-func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.Arg, []ir.EventHandler) {
+func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.Arg, []ir.EventHandler, []ir.PropBinding) {
 	var props []ir.Arg
 	var handlers []ir.EventHandler
 	seen := make(map[string]ast.Pos)
@@ -2995,7 +2998,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					continue // spread expands to named props; not a positional arg
 				}
 				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
-				return nil, nil
+				return nil, nil, nil
 			}
 		}
 	}
@@ -3154,7 +3157,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
-	return c.desugarBindings(comp, props, handlers)
+	return c.extractBindings(comp, props, handlers)
 }
 
 // checkComponentCallArgs validates and type-checks a component call (text(value="hi"))
