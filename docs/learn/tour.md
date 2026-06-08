@@ -40,7 +40,7 @@ component main {
 
 Static text is boring — applications need state that changes. SNGL declares mutable state with `var` inside a component. Every `var` is reactive: when it changes, any UI that reads it updates automatically.
 
-String interpolation with `{expr}` embeds the current value of `name` into a string. The `:value=name` prefix on `input` is a two-way binding shorthand — the input both reads from and writes to the variable. SNGL synthesises the event wiring for you; no manual handler needed.
+String interpolation with `{expr}` embeds the current value of `name` into a string. The `:value=name` prefix on `input` is a bidirectional binding — the input both reads from and writes to the variable. When the user types, the input automatically updates `name` in the parent scope with no handler needed.
 
 ```sngl
 component main {

@@ -599,6 +599,42 @@ button(text="Add", @click {
 
 Available events depend on the component (check the stdlib definition). Use `event.value` to access the event payload in input handlers.
 
+### Bidirectional Bindings
+
+Input components like `input` and `checkbox` support **bidirectional bindings** using the `:` prefix. A bidirectional binding automatically propagates mutations from the child component to a parent variable without requiring an event handler.
+
+Instead of manually wiring an event:
+
+```sngl
+var name = ""
+input(value=name, @input { name = event.value })
+```
+
+Use a bidirectional binding:
+
+```sngl
+var name = ""
+input(:value=name)
+```
+
+Bidirectional bindings work with custom components too. Declare a parameter with the `:` prefix:
+
+```sngl
+component Stepper(:count = 0) {
+    button(text="+", @click { count += 1 })
+    text(value=string(count))
+}
+
+component main {
+    var steps = 0
+    Stepper(:count=steps)
+    text(value="Steps: {steps}")
+}
+// steps updates when child increments
+```
+
+When the child assigns `count += 1`, the parent variable `steps` automatically updates. The binding works transparently across component boundaries.
+
 ### Inline styles
 
 Apply styles directly on any node:
