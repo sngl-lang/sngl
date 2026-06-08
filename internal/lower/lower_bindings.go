@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"slices"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -64,6 +66,9 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 //  1. Adds EventDecl{Name:"count", Type:prop.Type} to the child component (idempotent).
 //  2. Rewrites count+=1 / count=x / count!! in the component body/funcs to
 //     ir.Emit{Name:"count", Args:[newVal]}.
+//     2a. If step 2 found no mutations (e.g. for stdlib native components that
+//     delegate to DOM events), inject @count(...) into the matching native event
+//     handler in the component body so passInlinePure can route it through.
 //  3. Synthesizes an EventHandler{Name:"count"} on inst that writes the
 //     event arg back to the binding target.
 //  4. Clears inst.Bindings.
@@ -88,6 +93,16 @@ func lowerPropBindings(inst *ir.NodeInst) {
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component.
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
+
+			// 2a. If the component body has no @propName emits after the
+			// rewrite (e.g. stdlib native components like html.input that
+			// fire DOM events rather than assigning to props directly),
+			// inject an emit into the matching native event handler body.
+			// This lets passInlinePure route the DOM event through the
+			// synthetic @propName event to the call-site handler.
+			if !bodyHasEmitFor(comp.Body, b.PropName) {
+				injectNativeEmit(comp, b.PropName, prop)
+			}
 		}
 
 		// 3. Synthesize handler on this NodeInst.
@@ -96,11 +111,13 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		inst.Handlers = append(inst.Handlers, ir.EventHandler{
 			Name: b.PropName,
 			Func: &ir.Func{
-				Params:      []*ir.Param{param},
-				Block:       []ir.Stmt{&ir.Assign{
+				Params: []*ir.Param{param},
+				Block: []ir.Stmt{&ir.Assign{
 					Target: b.Target,
 					Op:     ast.AssignSet,
-					Value:  &ir.Ident{Name: paramName, Type: prop.Type},
+					// Sym must point to param so passInlinePure's
+					// bindEventParams can substitute the call-site arg.
+					Value: &ir.Ident{Name: paramName, Type: prop.Type, Sym: param},
 				}},
 				Synthesized: true,
 			},
@@ -108,6 +125,142 @@ func lowerPropBindings(inst *ir.NodeInst) {
 	}
 
 	inst.Bindings = nil
+}
+
+// bodyHasEmitFor reports whether stmts (recursively) contain an ir.Emit
+// with the given name. Used to detect whether rewritePropMutationsToEmit
+// actually inserted any emits for the prop.
+func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.Emit:
+			if n.Name == name {
+				return true
+			}
+		case *ir.NodeInst:
+			if bodyHasEmitFor(n.Children, name) {
+				return true
+			}
+			for _, h := range n.Handlers {
+				if h.Func != nil && bodyHasEmitFor(h.Func.Block, name) {
+					return true
+				}
+			}
+		case *ir.If:
+			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
+				return true
+			}
+		case *ir.For:
+			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
+				return true
+			}
+		case *ir.PlatformFilter:
+			if bodyHasEmitFor(n.Body, name) {
+				return true
+			}
+		case *ir.SlotInst:
+			if bodyHasEmitFor(n.Children, name) {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if bodyHasEmitFor(n.Children, name) {
+				return true
+			}
+		case *ir.Window:
+			if bodyHasEmitFor(n.Body, name) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// injectNativeEmit adds an ir.Emit{Name:propName} to the first native event
+// handler in comp's body tree that matches a candidate event name. This bridges
+// stdlib components (e.g. sngl.input) that fire DOM events but have no SNGL
+// prop assignments: by injecting the emit into the existing @input/@change
+// handler, passInlinePure's substituteEvents can route the DOM event to the
+// synthetic @propName handler at the call site.
+//
+// For bool-typed props: emits @propName(!propName) — toggles the current value.
+// For other types:      emits @propName(event.value) — reads from the DOM event.
+func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
+	// Choose candidate event names by prop type.
+	var candidates []string
+	if prop.Type != nil && prop.Type.Kind == ir.TypeBool {
+		// Boolean props (e.g. checked) are toggled via @change.
+		candidates = []string{"change"}
+	} else {
+		// String/other props: prefer @input (live updates), fallback to @change.
+		candidates = []string{"input", "change"}
+	}
+
+	// Build the emit argument expression.
+	var emitVal ir.Expr
+	if prop.Type != nil && prop.Type.Kind == ir.TypeBool {
+		// !propName — toggle the prop's current value.
+		// After passInlinePure substitutes the prop param, this becomes !boundVar.
+		emitVal = &ir.Unary{
+			Op:      ast.UnaryNot,
+			Operand: &ir.Ident{Name: propName, Type: prop.Type},
+			Type:    prop.Type,
+		}
+	} else {
+		// event.value — read the new string value from the DOM event.
+		// "event" is the canonical event identifier; the JS emitter maps
+		// event.value → e.target.value inside input/change handler scopes.
+		var evtType *ir.Type
+		for _, ev := range comp.Events {
+			for _, c := range candidates {
+				if ev.Name == c && ev.Type != nil {
+					evtType = ev.Type
+					break
+				}
+			}
+			if evtType != nil {
+				break
+			}
+		}
+		if evtType == nil {
+			evtType = ir.TypDyn
+		}
+		eventIdent := &ir.Ident{Name: "event", Type: evtType}
+		emitVal = &ir.Select{Operand: eventIdent, Field: "value", Type: ir.TypString}
+	}
+
+	emit := &ir.Emit{
+		Name: propName,
+		Args: []ir.CallArg{{Value: emitVal}},
+	}
+
+	injectEmitIntoHandlers(comp.Body, candidates, emit)
+}
+
+// injectEmitIntoHandlers recursively searches stmts for the first NodeInst
+// whose handler name matches one of the candidates, and prepends emit to that
+// handler's block. Returns true if the injection was performed.
+func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit) bool {
+	for _, s := range stmts {
+		n, ok := s.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for i := range n.Handlers {
+			h := &n.Handlers[i]
+			if h.Func == nil {
+				continue
+			}
+			if slices.Contains(candidates, h.Name) {
+				h.Func.Block = append([]ir.Stmt{emit}, h.Func.Block...)
+				return true
+			}
+		}
+		// Recurse into children.
+		if injectEmitIntoHandlers(n.Children, candidates, emit) {
+			return true
+		}
+	}
+	return false
 }
 
 // rewritePropMutationsToEmit rewrites every Assign/Toggle targeting propName

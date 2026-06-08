@@ -23,10 +23,10 @@ component Stepper(:count int = 0, @count int) {
 component main {
     var steps int = 0
     button(text="+", @click {
-        steps = __count
+        steps = steps + 1
     })
     button(text="-", @click {
-        steps = __count
+        steps = steps - 1
     })
     text(value=string(steps))
     text(value="steps=" + string(steps))
