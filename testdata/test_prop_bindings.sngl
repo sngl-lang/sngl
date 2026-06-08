@@ -1,0 +1,21 @@
+// Test: first-class prop bindings — child mutations hoist to parent scope.
+
+component Stepper(:count = 0) {
+    button(text="+", @click { count += 1 })
+    button(text="-", @click { count -= 1 })
+    text(value=string(count))
+}
+
+component NameEditor(:name string) {
+    input(:value=name)
+    text(value="editing: {name}")
+}
+
+component main {
+    var steps = 0
+    var label = "world"
+
+    Stepper(:count=steps)
+    NameEditor(:name=label)
+    text(value="steps={steps}, label={label}")
+}
