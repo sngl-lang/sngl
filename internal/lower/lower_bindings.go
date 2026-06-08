@@ -133,6 +133,12 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 			}
 		}
 	}
+	// Walk timer handler blocks.
+	for _, t := range comp.Timers {
+		if t.Handler != nil {
+			t.Handler.Block = walk(t.Handler.Block)
+		}
+	}
 }
 
 // rewriteStmtPropMutation converts Assign/Toggle targeting propName into an
@@ -182,6 +188,21 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 		}
 	case *ir.ContextProvider:
 		x.Children = walk(x.Children)
+	case *ir.Window:
+		x.Body = walk(x.Body)
+		for _, fn := range x.Funcs {
+			fn.Block = walk(fn.Block)
+		}
+		for _, v := range x.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					h.Func.Block = walk(h.Func.Block)
+				}
+			}
+		}
+		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+			x.ErrorHandler.Func.Block = walk(x.ErrorHandler.Func.Block)
+		}
 	}
 	return s
 }
