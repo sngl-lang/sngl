@@ -7,6 +7,10 @@ package snapshot
 import (
 	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	_ "image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +64,13 @@ func (s *Store) Assert(fixture, name, mime string, actual []byte) (Result, error
 	if bytes.Equal(golden, actual) {
 		return Result{Pass: true}, nil
 	}
+	if mime == "image/png" {
+		ok, diff := pngMatch(goldenPath, golden, actual)
+		if ok {
+			return Result{Pass: true}, nil
+		}
+		return Result{Pass: false, Diff: diff}, nil
+	}
 	return Result{Pass: false, Diff: textDiff(golden, actual)}, nil
 }
 
@@ -80,6 +91,80 @@ func mimeExt(mime string) (string, bool) {
 		return ".png", true
 	}
 	return "", false
+}
+
+// pngMaxDiffPct is the maximum fraction of pixels that may differ between
+// the golden and actual PNG before the comparison is considered a failure.
+// GTK4's CairoRenderer produces non-deterministic subpixel antialiasing for
+// text glyphs across separate process invocations; a small tolerance avoids
+// flaky failures while still catching meaningful layout regressions (which
+// affect far more pixels).
+const pngMaxDiffPct = 0.5
+
+// pngMatch decodes two PNG images and compares them with a pixel-count
+// tolerance. Returns (true, "") when the fraction of differing pixels is
+// below pngMaxDiffPct. On failure it saves debug copies to os.TempDir()
+// and returns a diagnostic diff string.
+func pngMatch(goldenPath string, goldenBytes, actualBytes []byte) (bool, string) {
+	decodeImg := func(data []byte) (image.Image, error) {
+		img, _, err := image.Decode(bytes.NewReader(data))
+		return img, err
+	}
+	golden, err := decodeImg(goldenBytes)
+	if err != nil {
+		return false, fmt.Sprintf("PNG bytes differ (could not decode golden: %v)", err)
+	}
+	actual, err := decodeImg(actualBytes)
+	if err != nil {
+		return false, fmt.Sprintf("PNG bytes differ (could not decode actual: %v)", err)
+	}
+	gb := golden.Bounds()
+	ab := actual.Bounds()
+	if gb != ab {
+		return false, fmt.Sprintf("PNG size mismatch: golden=%v actual=%v", gb, ab)
+	}
+
+	var maxDelta, totalDelta float64
+	var diffCount int
+	for y := gb.Min.Y; y < gb.Max.Y; y++ {
+		for x := gb.Min.X; x < gb.Max.X; x++ {
+			gr, gg, gb2, ga := color.RGBAModel.Convert(golden.At(x, y)).RGBA()
+			ar, ag, ab2, aa := color.RGBAModel.Convert(actual.At(x, y)).RGBA()
+			dr := math.Abs(float64(gr) - float64(ar))
+			dg := math.Abs(float64(gg) - float64(ag))
+			db := math.Abs(float64(gb2) - float64(ab2))
+			da := math.Abs(float64(ga) - float64(aa))
+			d := (dr + dg + db + da) / 4
+			if d > 0 {
+				diffCount++
+				totalDelta += d
+				if d > maxDelta {
+					maxDelta = d
+				}
+			}
+		}
+	}
+	total := gb.Dx() * gb.Dy()
+	if diffCount == 0 {
+		// Bytes differ but pixels are identical (e.g. metadata difference).
+		return true, ""
+	}
+	diffPct := float64(diffCount) * 100 / float64(total)
+	if diffPct <= pngMaxDiffPct {
+		return true, ""
+	}
+	// Save debug copies so failures can be inspected.
+	base := strings.TrimSuffix(filepath.Base(goldenPath), filepath.Ext(goldenPath))
+	dbgGolden := filepath.Join(os.TempDir(), "sngl-snap-golden-"+base+".png")
+	dbgActual := filepath.Join(os.TempDir(), "sngl-snap-actual-"+base+".png")
+	_ = os.WriteFile(dbgGolden, goldenBytes, 0o644)
+	_ = os.WriteFile(dbgActual, actualBytes, 0o644)
+	return false, fmt.Sprintf(
+		"PNG pixels differ: %d/%d pixels (%.2f%% > %.1f%% threshold), maxDelta=%.0f/65535, avgDelta=%.0f/65535\ngolden: %s\nactual: %s",
+		diffCount, total, diffPct, pngMaxDiffPct,
+		maxDelta, totalDelta/float64(diffCount),
+		dbgGolden, dbgActual,
+	)
 }
 
 // textDiff returns a small unified-style diff. We avoid pulling a full

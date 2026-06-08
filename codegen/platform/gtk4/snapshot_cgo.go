@@ -59,20 +59,25 @@ static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *p
     return ok ? 0 : 6;
 }
 
-// Drain the default GLib main context until the widget is mapped (fully
-// realised and visible) or maxIter is exhausted. Blocks on the first
+// Drain the default GLib main context until the widget is mapped and has a
+// non-zero allocated size, or maxIter is exhausted. Blocks on the first
 // iteration so GTK has time to queue layout/draw events after
 // gtk_window_present before we start polling.
+//
+// "mapped" alone is not sufficient: the compositor sends the map event before
+// GTK has run its size-allocate + draw idle callbacks. We therefore keep
+// draining until the widget reports a positive allocated width, which means
+// the layout pass has completed and the render tree is populated.
 static void sngl_pump_until_mapped(GtkWidget *widget, int maxIter) {
     // Block for the first event (Wayland configure/map from compositor).
     g_main_context_iteration(NULL, TRUE);
-    // Poll until the window is mapped.
+    // Poll until the window is mapped AND has been given a non-zero size.
     for (int i = 0; i < maxIter; i++) {
-        if (gtk_widget_get_mapped(widget)) break;
+        if (gtk_widget_get_mapped(widget) && gtk_widget_get_width(widget) > 0) break;
         g_main_context_iteration(NULL, FALSE);
     }
-    // Drain remaining events so GTK can finish the size-allocate and first
-    // draw pass before the caller snapshots the widget.
+    // Drain any remaining queued events (idle redraws, etc.) so the render
+    // tree is fully populated before the caller takes the snapshot.
     for (int i = 0; i < maxIter; i++) {
         if (!g_main_context_iteration(NULL, FALSE)) break;
     }
