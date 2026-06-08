@@ -184,6 +184,29 @@ func TestExtractor_WriteThroughValueStructParam(t *testing.T) {
 	}
 }
 
+// TestDepsPropBindingTarget verifies that a PropBinding's Target is tracked as
+// a write-dep when walking a NodeInst statement.
+func TestDepsPropBindingTarget(t *testing.T) {
+	steps := makeVar("steps")
+	comp := makeComp("main", steps)
+	pkg := &ir.Package{Components: []*ir.Component{comp}}
+	dt := NewDepTrackerFromPkg(pkg)
+
+	target := &ir.Ident{Name: "steps", Sym: steps}
+	n := &ir.NodeInst{
+		Name: "Stepper",
+		Bindings: []ir.PropBinding{
+			{PropName: "count", Target: target},
+		},
+	}
+
+	got := MutatedFields(comp, dt, n)
+	want := asSet(steps)
+	if !equalVarSet(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 // TestExtractor_Recursion verifies the recursion guard prevents infinite loops
 // when a function calls itself, and that an empty dep set is returned.
 func TestExtractor_Recursion(t *testing.T) {

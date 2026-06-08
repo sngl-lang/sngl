@@ -472,6 +472,9 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 		for _, p := range n.Props {
 			w.walkExpr(p.Value)
 		}
+		for i := range n.Bindings {
+			w.recordWrite(n.Bindings[i].Target)
+		}
 		for _, c := range n.Children {
 			w.walkStmt(c)
 		}
