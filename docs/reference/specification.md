@@ -268,7 +268,7 @@ No virtual DOM or runtime diffing is involved. Assignments to state trigger only
 - Parameters in `()` define the component's public API
 - Props are passed at instantiation: `Name(prop=value)`
 - Events use `@` prefix: `@click ClickEvent`
-- Bidirectional bindings use `:` prefix: `:value string`
+- Bidirectional bindings use `:` prefix: `:value string`. `:prop T` declares a first-class bidirectional prop. At instantiation, `:count=steps` binds the component's internal `count` to the parent-scope variable `steps`. When the child assigns to `count`, the change hoists to `steps` automatically — no `@event` wiring is needed or generated in the source IR. The lowering phase handles the reactive linkage transparently.
 - Children type (after params): `list<component>`, `component`, `option<component>`, or omitted (no children)
 - `slot` projects caller's children into the component body
 
