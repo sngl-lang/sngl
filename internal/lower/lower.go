@@ -18,7 +18,11 @@ type pass struct {
 
 // passes is the fixed execution order. Earlier passes may not depend on
 // transformations performed by later ones; later passes may. Order rationale:
-//  0. RefLoop — rewrites &-bound loop element refs to indexed list access
+//  0. PropBindings — transforms NodeInst.Bindings into @event+handler pairs.
+//     Runs after PlatformExtensionBody (so stdlib component bodies are resolved)
+//     and before RefLoop/NoToggle so that prop mutations inside component bodies
+//     are still in their original form when we rewrite them to Emit nodes.
+//     0a. RefLoop — rewrites &-bound loop element refs to indexed list access
 //     (list[idx]). Runs before NoReactivity so the resulting list[idx].field
 //     writes are seen as mutations of the list var, and before NoToggle so a
 //     toggled element-ref target is rewritten first.
@@ -50,6 +54,7 @@ type pass struct {
 var passes = []pass{
 	passPlatformExtensionBody,
 	passPlatformFilter,
+	passPropBindings,
 	passRefLoop,
 	passUnit,
 	passEnum,

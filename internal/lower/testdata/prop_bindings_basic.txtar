@@ -1,0 +1,34 @@
+-- input.sngl --
+component Stepper(:count = 0) {
+    button(text="+", @click { count += 1 })
+    button(text="-", @click { count -= 1 })
+    text(value=string(count))
+}
+
+component main {
+    var steps = 0
+    Stepper(:count=steps)
+    text(value="steps={steps}")
+}
+-- expected.sngl --
+component Stepper(:count int = 0, @count int) {
+    button(text="+", @click {
+        @count(count + 1)
+    })
+    button(text="-", @click {
+        @count(count - 1)
+    })
+    text(value=string(count))
+}
+component main {
+    var steps int = 0
+    button(text="+", @click {
+        steps = __count
+    })
+    button(text="-", @click {
+        steps = __count
+    })
+    text(value=string(steps))
+    text(value="steps=" + string(steps))
+}
+context #locale(i18n.defaultLocale())
