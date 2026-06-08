@@ -64,10 +64,17 @@ static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *p
 // iteration so GTK has time to queue layout/draw events after
 // gtk_window_present before we start polling.
 static void sngl_pump_until_mapped(GtkWidget *widget, int maxIter) {
+    // Block for the first event (Wayland configure/map from compositor).
     g_main_context_iteration(NULL, TRUE);
+    // Poll until the window is mapped.
     for (int i = 0; i < maxIter; i++) {
-        if (gtk_widget_get_mapped(widget)) return;
+        if (gtk_widget_get_mapped(widget)) break;
         g_main_context_iteration(NULL, FALSE);
+    }
+    // Drain remaining events so GTK can finish the size-allocate and first
+    // draw pass before the caller snapshots the widget.
+    for (int i = 0; i < maxIter; i++) {
+        if (!g_main_context_iteration(NULL, FALSE)) break;
     }
 }
 

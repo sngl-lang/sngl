@@ -254,25 +254,12 @@ func main() { testagent.Main() }
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
-				// snapshot.go: Reuses the same gtk4SnapshotCgo preamble the
-				// docsgen path uses (sngl_snapshot via GskCairoRenderer,
-				// sngl_pump_idle to settle layout). The activate handler
-				// builds the widget tree from the registered model,
-				// captures the toplevel to PNG, and quits the app.
-				// runtime.LockOSThread pins gtk4's strict main-thread rule.
-				// agent_main.go already declares currentModel +
-				// setCurrentTestModel, so this file only adds the
-				// currentTestModel accessor + the snapshot path.
-				// Forward-declare the cgo-exported activate handler in the
-				// preamble so C.sngl_test_activate resolves on the Go side.
-				// Inject before the closing comment in the shared preamble.
-				snapshotPreamble := strings.Replace(
-					gtk4SnapshotCgo,
-					"*/\nimport \"C\"\n",
-					"\nextern void sngl_test_activate(GtkApplication *app, gpointer user_data);\n*/\nimport \"C\"\n",
-					1,
-				)
-				snapshotSrc := []byte("package " + c.cfg.Package + "\n\n" + snapshotPreamble + `
+				// snapshot.go: reuses the gtk4SnapshotCgo preamble.
+				// Uses g_application_register (not g_application_run) so
+				// BuildUI and sngl_pump_until_mapped run in the Go call
+				// stack — outside any signal callback — making it safe to
+				// call blocking g_main_context_iteration calls there.
+				snapshotSrc := []byte("package " + c.cfg.Package + "\n\n" + gtk4SnapshotCgo + `
 import (
 	"fmt"
 	"os"
@@ -283,34 +270,6 @@ import (
 )
 
 func currentTestModel() *Model { return currentModel }
-
-// activatePayload threads the active Model + output path into the
-// activate callback, since cgo can't pass a Go closure across the
-// C boundary.
-var activatePayload struct {
-	model   *Model
-	outPath string
-	err     error
-}
-
-//export sngl_test_activate
-func sngl_test_activate(app *C.GtkApplication, _ C.gpointer) {
-	win := activatePayload.model.BuildUI(app)
-	if win == nil {
-		activatePayload.err = fmt.Errorf("BuildUI returned nil")
-		C.g_application_quit((*C.GApplication)(unsafe.Pointer(app)))
-		return
-	}
-	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
-	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-	C.sngl_pump_until_mapped(win, 1000)
-	cPath := C.CString(activatePayload.outPath)
-	defer C.free(unsafe.Pointer(cPath))
-	if rc := C.sngl_snapshot(win, 800, 600, cPath); rc != 0 {
-		activatePayload.err = fmt.Errorf("sngl_snapshot rc=%d", int(rc))
-	}
-	C.g_application_quit((*C.GApplication)(unsafe.Pointer(app)))
-}
 
 func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	runtime.LockOSThread()
@@ -327,29 +286,36 @@ func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	activatePayload.model = m
-	activatePayload.outPath = f.Name()
-	activatePayload.err = nil
-
 	cAppID := C.CString("dev.sngl.test.snapshot")
 	defer C.free(unsafe.Pointer(cAppID))
 	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
 	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
 
-	cSignal := C.CString("activate")
-	defer C.free(unsafe.Pointer(cSignal))
-	C.g_signal_connect_data(
-		C.gpointer(unsafe.Pointer(app)),
-		cSignal,
-		C.GCallback(C.sngl_test_activate),
-		nil, nil, 0,
-	)
-	C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
-
-	if activatePayload.err != nil {
-		return "", nil, activatePayload.err
+	// Register without running the main loop so BuildUI and the pump
+	// execute in the current (locked) OS thread without re-entrancy.
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		if gerr != nil {
+			C.g_error_free(gerr)
+		}
+		return "", nil, fmt.Errorf("g_application_register failed")
 	}
-	data, err := os.ReadFile(activatePayload.outPath)
+
+	win := m.BuildUI(app)
+	if win == nil {
+		return "", nil, fmt.Errorf("BuildUI returned nil")
+	}
+	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
+	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
+	C.sngl_pump_until_mapped(win, 1000)
+
+	cPath := C.CString(f.Name())
+	defer C.free(unsafe.Pointer(cPath))
+	if rc := C.sngl_snapshot(win, 800, 600, cPath); rc != 0 {
+		return "", nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
+	}
+
+	data, err := os.ReadFile(f.Name())
 	if err != nil {
 		return "", nil, err
 	}
