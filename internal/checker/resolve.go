@@ -143,6 +143,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
+	case "shape":
+		return ir.TypShape
 	}
 
 	// Type parameter (checked before scope so generic params shadow types like T).

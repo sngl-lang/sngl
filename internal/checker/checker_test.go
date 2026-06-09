@@ -1430,3 +1430,30 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 		t.Fatalf("want empty Name, got %q", got)
 	}
 }
+
+func TestCheckShapeType(t *testing.T) {
+	// canvas and rect both have list<shape> ChildrenType — rect used inside canvas.
+	expectNoErrors(t, `
+import "internal://canvas"
+component canvas(width float, height float) list<shape> {}
+component rect(x float, y float, w float, h float) list<shape> {}
+component myWidget() {
+    canvas(width=400, height=300) {
+        rect(x=10, y=10, w=100, h=50) {}
+    }
+}
+`)
+}
+
+func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
+	expectError(t, `
+import "internal://canvas"
+component canvas(width float, height float) list<shape> {}
+component notAShape() {}
+component myWidget() {
+    canvas(width=400, height=300) {
+        notAShape() {}
+    }
+}
+`, "expected shape component")
+}
