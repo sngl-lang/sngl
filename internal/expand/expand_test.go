@@ -103,6 +103,32 @@ component badShape(@click) {}`)
 	}
 }
 
+func TestExpandPre_CanvasShape_RewritesListComponent(t *testing.T) {
+	doc := parseDoc(t, `import "internal://canvas"
+#[canvas.shape]
+component myShape(x int) list<component> {}`)
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	comp := doc.Stmts[1].(*ast.ComponentDecl)
+	named := comp.ChildrenType.(*ast.NamedType)
+	inner := named.TypeArgs[0].(*ast.NamedType)
+	if inner.Name != "shape" {
+		t.Fatalf("expected list<shape>, got list<%s>", inner.Name)
+	}
+}
+
+func TestExpandPre_CanvasShape_RejectsListOtherType(t *testing.T) {
+	doc := parseDoc(t, `import "internal://canvas"
+#[canvas.shape]
+component myShape(x int) list<string> {}`)
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) == 0 {
+		t.Fatal("expected error for list<string> on shape")
+	}
+}
+
 func TestExpandPre_CanvasShape_SetsChildrenType(t *testing.T) {
 	doc := parseDoc(t, `import "internal://canvas"
 #[canvas.shape]
