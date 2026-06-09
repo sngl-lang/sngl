@@ -1,0 +1,7 @@
+import "internal://canvas"
+
+#[canvas.shape]
+component rect(x int, y int, w int, h int) {}
+
+#[canvas.shape]
+component circle(cx int, cy int, r int) {}

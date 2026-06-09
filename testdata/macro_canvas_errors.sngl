@@ -1,0 +1,9 @@
+import "internal://canvas"
+
+// ERROR(expand) "shape macro requires a component declaration"
+#[canvas.shape]
+var bad = 5
+
+// ERROR(expand) "shape components do not support event declarations"
+#[canvas.shape]
+component badShape(@click) {}
