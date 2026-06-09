@@ -18,7 +18,14 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	var counter int
 	for _, comp := range pkg.Components {
+		// Walk direct body for canvas nodes.
 		walkCanvasStmts(comp.Body, &comp.Funcs, &counter)
+		// Also walk any Window statements nested inside the component body.
+		for _, s := range comp.Body {
+			if w, ok := s.(*ir.Window); ok {
+				walkCanvasStmts(w.Body, &w.Funcs, &counter)
+			}
+		}
 	}
 	for _, w := range pkg.Windows {
 		walkCanvasStmts(w.Body, &w.Funcs, &counter)
