@@ -2252,11 +2252,35 @@ func (g *htmlGen) timerSyncCalls(mutated map[string]bool) []string {
 	return out
 }
 
+// canvasSyncCalls returns canvas redraw calls for every non-initOnly canvas
+// updater whose deps overlap with the mutated var set. NoReactivity does not
+// visit canvas shapes (they have no DOM element), so we inject redraws here
+// the same way timerSyncCalls injects timer syncs.
+func (g *htmlGen) canvasSyncCalls(mutated map[string]bool) []string {
+	if len(mutated) == 0 {
+		return nil
+	}
+	var out []string
+	for _, u := range g.initWrites {
+		if u.initOnly {
+			continue
+		}
+		for dep := range u.deps {
+			if mutated[dep] {
+				out = append(out, u.body)
+				break
+			}
+		}
+	}
+	return out
+}
+
 func (g *htmlGen) emitHandlers(b *strings.Builder) {
 	for _, h := range g.handlers {
 		var lines []string
 		lines = append(lines, h.body)
 		lines = append(lines, g.timerSyncCalls(h.mutated)...)
+		lines = append(lines, g.canvasSyncCalls(h.mutated)...)
 		if g.preview {
 			lines = append(lines, "__sngl_sync_state();")
 		}
@@ -2278,6 +2302,7 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 		var tickLines []string
 		tickLines = append(tickLines, t.body)
 		tickLines = append(tickLines, g.timerSyncCalls(t.mutated)...)
+		tickLines = append(tickLines, g.canvasSyncCalls(t.mutated)...)
 		if g.preview {
 			tickLines = append(tickLines, "__sngl_sync_state();")
 		}

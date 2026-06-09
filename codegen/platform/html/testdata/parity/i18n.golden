@@ -548,9 +548,11 @@ body { font-family: system-ui, sans-serif; }
   var $2 = document.getElementById("$2");
   $1.addEventListener("click", function() {
     state.count = state.count + 1;
+    $0.value = main_label(state);
   });
   $2.addEventListener("click", function() {
     state.count = 0;
+    $0.value = main_label(state);
   });
   function __sngl_init() {
     $0.value = main_label(state);
