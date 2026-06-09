@@ -62,6 +62,7 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	f.Canvas = true
 	return f
 }
 
@@ -559,6 +560,9 @@ type htmlGen struct {
 	// declaration in emitScript's element-references block, so handlers
 	// emit a bare identifier rather than a fresh querySelector per write.
 	loweredRefs map[string]bool
+
+	// canvasSetups collects canvas elements needing JS draw wiring.
+	canvasSetups []canvasSetup
 }
 
 type componentParam struct {
@@ -1445,7 +1449,7 @@ func isStdlibComponentName(name string) bool {
 		"spinner", "badge", "tabs", "link", "divider", "modal", "drawer",
 		"tooltip", "popover", "splitview", "table", "tree", "menu",
 		"menubar", "toolbar", "datepicker", "chip", "avatar", "card", "slot",
-		"window", "timer":
+		"window", "timer", "canvas":
 		return true
 	}
 	return false
@@ -1484,6 +1488,16 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.nodeID(n)
+	}
+	// Canvas elements always need an ID to wire up the draw call.
+	if n.CanvasDraw != nil && id == "" {
+		id = g.nodeID(n)
+		if g.idToNode != nil {
+			g.idToNode[id] = n
+		}
+	}
+	if n.CanvasDraw != nil {
+		g.canvasSetups = append(g.canvasSetups, canvasSetup{id: id, drawFunc: n.CanvasDraw})
 	}
 	style := g.buildCSSStyle(n)
 
@@ -1982,6 +1996,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// appear as top-level CallStmts in the component body and are emitted
 	// here as one JS statement each.
 	g.emitSynthesizedSlots(b)
+	g.emitCanvasSetups(b)
 
 	// Setters — emit for fields with @change handlers, timer controls, async kicker deps, or preview mode
 	for _, dv := range stateVars {
@@ -2178,6 +2193,19 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		anchor := slotAnchorVar(idx)
 		fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
+	}
+}
+
+// emitCanvasSetups emits the _snglColor helper (once) and an IIFE per canvas
+// element that retrieves the element by ID and calls its synthesized draw
+// function with the 2D rendering context.
+func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
+	if len(g.canvasSetups) == 0 {
+		return
+	}
+	b.WriteString(snglColorHelper)
+	for _, cs := range g.canvasSetups {
+		fmt.Fprintf(b, "(function(){var __el=document.getElementById(%q);if(__el){%s(__el.getContext(\"2d\"));}})();\n", cs.id, cs.drawFunc.Name)
 	}
 }
 

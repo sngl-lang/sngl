@@ -204,6 +204,8 @@ func htmlTagFor(name string) string {
 		return "span"
 	case "button":
 		return "button"
+	case "canvas":
+		return "canvas"
 	}
 	if _, after, ok := strings.Cut(name, "."); ok {
 		return after
