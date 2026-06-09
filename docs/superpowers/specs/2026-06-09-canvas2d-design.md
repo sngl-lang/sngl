@@ -14,25 +14,26 @@ A declarative Canvas2D drawing system for SNGL. Shape components are declared as
 import "internal://canvas"
 
 struct CanvasStyle {
-    fill        color  = color{a=0}
-    stroke      color  = color{a=0}
-    strokeWidth float  = 1.0
-    lineCap     string = "butt"
-    lineJoin    string = "miter"
-    fontSize    float  = 16.0
-    fontFamily  string = "sans-serif"
+    fill color = color{a = 0}
+    stroke color = color{a = 0}
+    strokeWidth float = 1.0
+    lineCap string = "butt"
+    lineJoin string = "miter"
+    fontSize float = 16.0
+    fontFamily string = "sans-serif"
 }
 
 struct PathCmd {
-    op  string        // "moveTo" | "lineTo" | "bezierTo" | "arcTo" | "close"
-    x   float = 0.0
-    y   float = 0.0
+    op string
+    x float = 0.0
+    y float = 0.0
     cx1 float = 0.0
     cy1 float = 0.0
     cx2 float = 0.0
     cy2 float = 0.0
-    r   float = 0.0
+    r float = 0.0
 }
+// "moveTo" | "lineTo" | "bezierTo" | "arcTo" | "close"
 
 component canvas(width Length, height Length, style CanvasStyle, @click ClickEvent) list<shape> {}
 
