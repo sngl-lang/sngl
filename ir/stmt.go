@@ -15,17 +15,17 @@ type Stmt interface {
 // NodeInst is a resolved component or platform-element instantiation.
 // Component is non-nil when instantiating a user-defined component.
 type NodeInst struct {
-	AST       ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
-	Name      string         // resolved element/component name
-	Component *Component     // non-nil for user component; nil for platform element
-	Props     []Arg          // property assignments (positional and named)
-	Handlers  []EventHandler // inline event handlers
-	Bindings  []PropBinding  // first-class bidi prop bindings; consumed by lowering
-	Children  []Stmt         // type-checked body
-	ID        string         // #id binding
-	Key       Expr           // key expression for list diffing (nil → implicit index)
-	Ref       Expr           // ref binding (nil if none)
-	CanvasDraw *Func         // non-nil for canvas containers after passCanvas
+	AST        ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	Name       string         // resolved element/component name
+	Component  *Component     // non-nil for user component; nil for platform element
+	Props      []Arg          // property assignments (positional and named)
+	Handlers   []EventHandler // inline event handlers
+	Bindings   []PropBinding  // first-class bidi prop bindings; consumed by lowering
+	Children   []Stmt         // type-checked body
+	ID         string         // #id binding
+	Key        Expr           // key expression for list diffing (nil → implicit index)
+	Ref        Expr           // ref binding (nil if none)
+	CanvasDraw *Func          // non-nil for canvas containers after passCanvas
 }
 
 // Arg is a property assignment in a node instantiation.
@@ -110,6 +110,15 @@ type LocalVar struct {
 	Name string
 	Type *Type
 	Init Expr // resolved initializer (nil if none)
+	// CanvasDraw is set by passDeclarative when flattening a canvas
+	// NodeInst (whose own CanvasDraw was set by passCanvas) into a
+	// `lower.CreateNode("canvas")` LocalVar. It carries the synthesized
+	// draw func through flattening so widget-emitting platforms (fyne,
+	// gtk4) can wire a raster-backed canvas widget. CanvasWidth/Height
+	// carry the canvas's pixel dimensions (from its width/height props).
+	CanvasDraw   *Func
+	CanvasWidth  int
+	CanvasHeight int
 }
 
 func (*LocalVar) stmtNode() {}
@@ -177,3 +186,13 @@ type PlatformFilter struct {
 }
 
 func (*PlatformFilter) stmtNode() {}
+
+// CanvasRedrawStmt is injected by passCanvasReactivity into handler/timer
+// bodies that mutate state vars read by a canvas draw function. Each platform
+// translates this to its native "clear and redraw the canvas" operation.
+type CanvasRedrawStmt struct {
+	Canvas   *NodeInst // the canvas element (has CanvasDraw set)
+	DrawFunc *Func     // the synthesized draw function
+}
+
+func (*CanvasRedrawStmt) stmtNode() {}

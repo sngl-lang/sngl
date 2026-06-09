@@ -61,6 +61,11 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	// Canvas2D: fyne renders shape subtrees to a software raster (gg) drawn
+	// into a *canvas.Image. ReactiveCanvas re-rasterises + Refreshes when a
+	// state var read by a draw func mutates.
+	f.Canvas = true
+	f.ReactiveCanvas = true
 	return f
 }
 

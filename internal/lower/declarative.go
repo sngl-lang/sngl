@@ -219,6 +219,28 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 //  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
 //  4. for each child: emit child's full subtree, then
 //     lower.appendChild(#__nM, #__nC)
+//
+// nodeIntProp extracts the integer value of a numeric/measurement prop
+// (e.g. a canvas `width=400px`) from a NodeInst. Returns 0 when the prop
+// is absent or not a numeric literal.
+func nodeIntProp(n *ir.NodeInst, name string) int {
+	for _, p := range n.Props {
+		if p.Name != name {
+			continue
+		}
+		if lit, ok := p.Value.(*ir.Literal); ok {
+			raw := strings.TrimSuffix(lit.Raw, lit.Suffix)
+			if v, err := strconv.Atoi(raw); err == nil {
+				return v
+			}
+			if f, err := strconv.ParseFloat(raw, 64); err == nil {
+				return int(f)
+			}
+		}
+	}
+	return 0
+}
+
 func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func) []ir.Stmt {
 	id := n.ID
 	if id == "" {
@@ -244,8 +266,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
 	}
 
-	// 1. createNode
-	stmts = append(stmts, &ir.LocalVar{
+	// 1. createNode — thread canvas draw func + dimensions through the
+	// flattening so widget-emitting platforms can build a raster-backed
+	// canvas widget (the NodeInst's CanvasDraw is otherwise discarded here).
+	lv := &ir.LocalVar{
 		Name: id,
 		Type: varType,
 		Init: &ir.Call{
@@ -256,7 +280,13 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 				{Value: &ir.Literal{Type: ir.TypString, Raw: n.Name}},
 			},
 		},
-	})
+	}
+	if n.CanvasDraw != nil {
+		lv.CanvasDraw = n.CanvasDraw
+		lv.CanvasWidth = nodeIntProp(n, "width")
+		lv.CanvasHeight = nodeIntProp(n, "height")
+	}
+	stmts = append(stmts, lv)
 
 	// 2. props
 	for _, p := range n.Props {

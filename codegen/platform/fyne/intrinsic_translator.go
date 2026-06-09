@@ -26,6 +26,17 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
+
+	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
+	// (LocalVar.CanvasDraw) to their Model widget field + draw func, shared
+	// into every translator that may create a canvas or emit a redraw.
+	// pendingStyle holds the style bound by a CanvasApplyStyle while
+	// translating the following draw primitive; styleCounter names the
+	// per-shape `_styleN` temporaries.
+	canvasByID   map[string]*canvasMeta
+	canvasByFunc map[*ir.Func]*canvasMeta
+	pendingStyle ir.Expr
+	styleCounter int
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
@@ -129,6 +140,11 @@ func methodCall(receiver ir.Expr, method string, args []ir.Expr, retType *ir.Typ
 }
 
 func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	if tag == "canvas" {
+		if _, ok := t.canvasByID[id]; ok {
+			return t.emitCanvasCreate(id)
+		}
+	}
 	bp, ok := t.blueprints[tag]
 	if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
 		return nil
@@ -406,5 +422,13 @@ func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	switch n := stmt.(type) {
+	case *ir.CallStmt:
+		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
+			return t.translateCanvasIntrinsic(n)
+		}
+	case *ir.CanvasRedrawStmt:
+		return t.translateCanvasRedraw(n)
+	}
 	return []ir.Stmt{stmt}
 }
