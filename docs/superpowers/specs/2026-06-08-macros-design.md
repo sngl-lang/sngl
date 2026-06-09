@@ -118,6 +118,7 @@ New `expand` phase in test fixtures, consistent with existing `parse` and `check
 ```sngl
 #[canvas.shape]
 var bad = 5
+
 // ERROR(expand) "shape macro requires a component declaration"
 ```
 
