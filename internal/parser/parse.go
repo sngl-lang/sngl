@@ -10,8 +10,7 @@ import (
 
 // Parse parses SNGL v2 source into an AST Document. Panics in the parser or
 // AST builder are converted into errors so callers don't crash on malformed
-// input (e.g. the `->` arrow form which the lexer accepts but the grammar
-// has no rule for).
+// input.
 func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 	tokens, lexErrs := Tokenize(string(src))
 	var errs []error
@@ -49,6 +48,9 @@ func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 
 	b := newBuilder(filename, filtered, comments)
 	doc = b.buildDocument(body(tree))
+	for _, e := range b.errors {
+		errs = append(errs, fmt.Errorf("%s", e))
+	}
 	return doc, errors.Join(errs...)
 }
 

@@ -25,8 +25,9 @@ type lexer struct {
 	prevTok        TokenType
 	prevPrevTok    TokenType
 	errors         []string
-	interpStack    []interpFrame // active string interpolation nesting
-	macroAttrDepth int           // nesting depth of #[...] macro attribute brackets
+	interpStack     []interpFrame // active string interpolation nesting
+	macroAttrDepth  int           // incremented by #[, decremented by matching ]
+	macroInnerBracks int          // [ inside macro attr args, to skip inner ]
 }
 
 func newLexer(src string) *lexer {
@@ -239,15 +240,22 @@ func (l *lexer) NextToken() Token {
 			}
 			return l.tok(RBRACE, "}", startLine, startCol)
 		case '[':
+			if l.macroAttrDepth > 0 {
+				l.macroInnerBracks++
+			}
 			return l.tok(LBRACKET, "[", startLine, startCol)
 		case ']':
 			if l.macroAttrDepth > 0 {
-				l.macroAttrDepth--
-				tok := l.tok(RBRACKET, "]", startLine, startCol)
-				// Suppress ASI: the closing ] of a macro attribute is not a
-				// statement terminator — the next line holds the decorated decl.
-				l.prevTok = COMMA // something that does not trigger insertsSemicolon
-				return tok
+				if l.macroInnerBracks > 0 {
+					l.macroInnerBracks-- // inner ] — don't decrement depth, don't suppress ASI
+				} else {
+					l.macroAttrDepth--
+					tok := l.tok(RBRACKET, "]", startLine, startCol)
+					// Suppress ASI: the closing ] of a macro attribute is not a
+					// statement terminator — the next line holds the decorated decl.
+					l.prevTok = COMMA // something that does not trigger insertsSemicolon
+					return tok
+				}
 			}
 			return l.tok(RBRACKET, "]", startLine, startCol)
 		case ',':

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -11,10 +12,16 @@ type builder struct {
 	file     string
 	filtered []Token
 	comments []Token
+	errors   []string
 }
 
 func newBuilder(file string, filtered, comments []Token) *builder {
 	return &builder{file: file, filtered: filtered, comments: comments}
+}
+
+func (b *builder) errorf(pos ast.Pos, format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	b.errors = append(b.errors, fmt.Sprintf("%s:%d:%d: %s", pos.File, pos.Line, pos.Column, msg))
 }
 
 // body returns the children portion of a non-terminal parse tree node.
@@ -186,6 +193,8 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 						Inner: inner,
 					})
 				}
+			} else {
+				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
 			}
 		} else if it.symbol() == Stmt {
 			s := b.buildStmt(it.enter())
@@ -1193,6 +1202,8 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 						Inner: inner,
 					})
 				}
+			} else {
+				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
 			}
 		} else if it.symbol() == Stmt {
 			s := b.buildStmt(it.enter())

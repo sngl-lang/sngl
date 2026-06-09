@@ -551,6 +551,49 @@ component rect() {}`
 	}
 }
 
+func TestParseAttrDeclWithArgs(t *testing.T) {
+	src := "#[canvas.shape(\"rect\", 1)]\ncomponent foo() {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	if !ok {
+		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	}
+	if len(ad.Attrs[0].Args) != 2 {
+		t.Errorf("expected 2 args, got %d", len(ad.Attrs[0].Args))
+	}
+}
+
+func TestParseAttrDeclBareNameNoAlias(t *testing.T) {
+	src := "#[shape]\ncomponent foo() {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	if !ok {
+		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	}
+	attr := ad.Attrs[0]
+	if attr.Alias != "" || attr.Name != "shape" {
+		t.Errorf("expected bare name shape, got alias=%q name=%q", attr.Alias, attr.Name)
+	}
+}
+
+func TestParseAttrDeclNestedBrackets(t *testing.T) {
+	// #[ with args that contain subscript — must not trigger spurious semicolons
+	src := "#[canvas.items(arr)]\ncomponent foo() {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if _, ok := doc.Stmts[0].(*ast.AttrDecl); !ok {
+		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	}
+}
+
 func TestParseType(t *testing.T) {
 	doc := mustParse(t, `const x List<int> = [1]`)
 	cd := doc.Stmts[0].(*ast.ConstDecl)
