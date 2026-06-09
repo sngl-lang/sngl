@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -435,20 +436,13 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 // ParseScheme extracts the scheme and URI from an import path.
 // Returns ("go", "pkg/path") for "go://pkg/path", or ("", path) for directory imports.
 func ParseScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
-	}
-	return "", path
+	return imports.ParseScheme(path)
 }
 
 // NamespaceFromPath derives a namespace alias from an import path.
 // Uses the last path segment: "widgets/counter" → "counter".
 func NamespaceFromPath(path string) string {
-	_, uri := ParseScheme(path)
-	if i := strings.LastIndex(uri, "/"); i >= 0 {
-		return uri[i+1:]
-	}
-	return uri
+	return imports.NamespaceFromPath(path)
 }
 
 // buildLambdaParams mirrors buildParams but accepts a contextual signature so
