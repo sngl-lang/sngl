@@ -26,8 +26,8 @@ component main {
 	if !strings.Contains(out, "<canvas") {
 		t.Errorf("expected <canvas element in HTML output\n--- generated ---\n%s", out)
 	}
-	if !strings.Contains(out, "fillRect") && !strings.Contains(out, "_canvasDraw0") {
-		t.Errorf("expected fillRect or _canvasDraw0 draw call in JS output\n--- generated ---\n%s", out)
+	if !strings.Contains(out, "fillRect") {
+		t.Errorf("expected fillRect draw call in JS output\n--- generated ---\n%s", out)
 	}
 	if !strings.Contains(out, "_snglColor") {
 		t.Errorf("expected _snglColor helper in JS output\n--- generated ---\n%s", out)

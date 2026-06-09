@@ -110,6 +110,10 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
 			return ListOf(TypDyn)
 		}
+		// list<shape> is the only valid use of the shape type.
+		if named, ok := t.TypeArgs[0].(*ast.NamedType); ok && named.Name == "shape" {
+			return ListOf(ir.TypShape)
+		}
 		return ListOf(c.resolveType(t.TypeArgs[0]))
 	case "option":
 		if len(t.TypeArgs) == 0 {
@@ -144,7 +148,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
 	case "shape":
-		return ir.TypShape
+		c.error(t.Pos, "shape is only valid as a children type (list<shape>)")
+		return TypDyn
 	}
 
 	// Type parameter (checked before scope so generic params shadow types like T).

@@ -1458,6 +1458,15 @@ component myWidget() {
 `, "expected shape component")
 }
 
+func TestCheckShape_StandaloneRejected(t *testing.T) {
+	// shape must not be usable as a standalone type (field, param, var).
+	expectError(t, `
+component myWidget() {
+    var bad shape = 0
+}
+`, "shape is only valid as a children type")
+}
+
 func TestCheckCanvasStdlib(t *testing.T) {
 	expectNoErrors(t, `
 component myWidget() {

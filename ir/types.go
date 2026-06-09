@@ -171,6 +171,8 @@ func (t *Type) String() string {
 			return t.Decl.SymName()
 		}
 		return "component"
+	case TypeShape:
+		return "shape"
 	case TypeColor:
 		return "color"
 	case TypeDate:
