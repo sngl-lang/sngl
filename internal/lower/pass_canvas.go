@@ -18,14 +18,7 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	var counter int
 	for _, comp := range pkg.Components {
-		// Walk direct body for canvas nodes.
 		walkCanvasStmts(comp.Body, &comp.Funcs, &counter)
-		// Also walk any Window statements nested inside the component body.
-		for _, s := range comp.Body {
-			if w, ok := s.(*ir.Window); ok {
-				walkCanvasStmts(w.Body, &w.Funcs, &counter)
-			}
-		}
 	}
 	for _, w := range pkg.Windows {
 		walkCanvasStmts(w.Body, &w.Funcs, &counter)
@@ -34,20 +27,25 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 }
 
 // walkCanvasStmts finds canvas containers (NodeInsts with list<shape> ChildrenType)
-// and transforms their shape children into a draw function.
+// and transforms their shape children into a draw function. Recurses into
+// layout NodeInsts (vbox, hbox, etc.) and ir.Window nodes to find canvases
+// nested at any depth.
 func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 	for _, s := range stmts {
-		ni, ok := s.(*ir.NodeInst)
-		if !ok {
-			continue
-		}
-		if isShapeContainer(ni) {
-			name := fmt.Sprintf("_canvasDraw%d", *counter)
-			*counter++
-			drawFunc := buildDrawFunc(ni.Children, funcs, name)
-			*funcs = append(*funcs, drawFunc)
-			ni.CanvasDraw = drawFunc
-			ni.Children = nil
+		switch v := s.(type) {
+		case *ir.NodeInst:
+			if isShapeContainer(v) {
+				name := fmt.Sprintf("_canvasDraw%d", *counter)
+				*counter++
+				drawFunc := buildDrawFunc(v.Children, funcs, name)
+				*funcs = append(*funcs, drawFunc)
+				v.CanvasDraw = drawFunc
+				v.Children = nil
+			} else {
+				walkCanvasStmts(v.Children, funcs, counter)
+			}
+		case *ir.Window:
+			walkCanvasStmts(v.Body, &v.Funcs, counter)
 		}
 	}
 }
