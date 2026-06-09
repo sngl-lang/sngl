@@ -937,6 +937,21 @@ func TestParseFuncTypeAnonParams(t *testing.T) {
 	}
 }
 
+func TestFormatAttrDecl(t *testing.T) {
+	// Empty-param list is elided by the formatter; use the canonical form.
+	src := "#[canvas.shape]\ncomponent rect {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := Format(doc)
+	// Format adds a trailing newline
+	want := src + "\n"
+	if got != want {
+		t.Errorf("format round-trip mismatch:\ngot:  %q\nwant: %q", got, want)
+	}
+}
+
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

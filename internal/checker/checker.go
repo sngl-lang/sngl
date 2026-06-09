@@ -300,6 +300,8 @@ func (c *checker) pass1() {
 			}
 		case *ast.DisabledDecl:
 			// Skip disabled declarations.
+		case *ast.AttrDecl:
+			// AttrDecl nodes are removed by the expand pass before the checker runs.
 		case *ast.Comment:
 			// Skip comments.
 		default:

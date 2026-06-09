@@ -2516,6 +2516,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		return nil
 	case *ast.DisabledDecl:
 		return nil
+	case *ast.AttrDecl:
+		return nil
 	}
 	return nil
 }

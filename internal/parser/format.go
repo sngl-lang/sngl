@@ -250,6 +250,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeComment(x)
 	case *ast.DisabledDecl:
 		f.writeDisabledDecl(x)
+	case *ast.AttrDecl:
+		f.writeAttrDecl(x)
 	}
 }
 
@@ -1214,5 +1216,31 @@ func (f *formatter) writeComment(c *ast.Comment) {
 
 func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 	f.write("/- ")
+	f.formatStmt(d.Inner)
+}
+
+// --- attr ---
+
+func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
+	for _, attr := range d.Attrs {
+		f.write("#[")
+		if attr.Alias != "" {
+			f.write(attr.Alias)
+			f.write(".")
+		}
+		f.write(attr.Name)
+		if len(attr.Args) > 0 {
+			f.write("(")
+			for i, arg := range attr.Args {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.writeExpr(arg)
+			}
+			f.write(")")
+		}
+		f.write("]")
+		f.newline()
+	}
 	f.formatStmt(d.Inner)
 }
