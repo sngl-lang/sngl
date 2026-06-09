@@ -73,6 +73,9 @@ func TestPassCanvas_GeneratesDrawFunc(t *testing.T) {
 	if canvasInst.CanvasDraw == nil {
 		t.Fatal("expected CanvasDraw to be set after passCanvas")
 	}
+	if canvasInst.CanvasDraw.Name != "_canvasDraw0" {
+		t.Errorf("expected draw func name %q, got %q", "_canvasDraw0", canvasInst.CanvasDraw.Name)
+	}
 	if len(canvasInst.Children) != 0 {
 		t.Errorf("expected Children to be cleared, got %d", len(canvasInst.Children))
 	}

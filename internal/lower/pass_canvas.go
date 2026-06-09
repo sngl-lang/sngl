@@ -16,25 +16,28 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	var counter int
 	for _, comp := range pkg.Components {
-		walkCanvasStmts(comp.Body, &comp.Funcs)
+		walkCanvasStmts(comp.Body, &comp.Funcs, &counter)
 	}
 	for _, w := range pkg.Windows {
-		walkCanvasStmts(w.Body, &w.Funcs)
+		walkCanvasStmts(w.Body, &w.Funcs, &counter)
 	}
 	return nil
 }
 
 // walkCanvasStmts finds canvas containers (NodeInsts with list<shape> ChildrenType)
 // and transforms their shape children into a draw function.
-func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func) {
+func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 	for _, s := range stmts {
 		ni, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue
 		}
 		if isShapeContainer(ni) {
-			drawFunc := buildDrawFunc(ni.Children, funcs)
+			name := fmt.Sprintf("_canvasDraw%d", *counter)
+			*counter++
+			drawFunc := buildDrawFunc(ni.Children, funcs, name)
 			*funcs = append(*funcs, drawFunc)
 			ni.CanvasDraw = drawFunc
 			ni.Children = nil
@@ -54,11 +57,11 @@ func isShapeContainer(ni *ir.NodeInst) bool {
 }
 
 // buildDrawFunc generates a draw function for a set of shape children.
-func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func) *ir.Func {
+func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func {
 	var body []ir.Stmt
 	emitShapes(children, &body, funcs)
 	return &ir.Func{
-		Name:        "_canvasDraw",
+		Name:        name,
 		Params:      []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
 		Return:      ir.TypVoid,
 		Synthesized: true,

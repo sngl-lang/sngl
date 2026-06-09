@@ -397,6 +397,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.projectDir = projectDir
 		gen.projectFS = projectFS
 		gen.irBodyStmts = win.Body
+		gen.irWindowFuncs = win.Funcs
 		if win.Window != nil {
 			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
 				gen.title = s
@@ -544,6 +545,11 @@ type htmlGen struct {
 
 	// irBodyStmts is the IR body rendered for the current window.
 	irBodyStmts []ir.Stmt
+
+	// irWindowFuncs holds synthesized funcs (e.g. _canvasDrawN) that
+	// lowerCanvas placed on the window IR node rather than on the package
+	// or main component. Set alongside irBodyStmts when rendering a window.
+	irWindowFuncs []*ir.Func
 
 	// idToNode maps each emitted element id (either an alloc'd "$N" or a
 	// pre-assigned "__nN" from internal/lower NoReactivity) back to its
@@ -1287,7 +1293,8 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 }
 
 // synthesizedFuncs returns Synthesized=true funcs (e.g. __renderSlotN funcs
-// from passReactivity) from the package and main component.
+// from passReactivity, _canvasDrawN funcs from passCanvas) from the package,
+// main component, and the current window (irWindowFuncs).
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
 	if g.pkg != nil {
@@ -1302,6 +1309,11 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 					out = append(out, f)
 				}
 			}
+		}
+	}
+	for _, f := range g.irWindowFuncs {
+		if f.Synthesized {
+			out = append(out, f)
 		}
 	}
 	return out

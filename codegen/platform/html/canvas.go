@@ -23,11 +23,14 @@ func init() {
 	reg("CanvasRestore", func(a []string) string { return a[0] + ".restore()" })
 
 	// a[0]=ctx, a[1]=style (CanvasStyle struct)
+	// Always set fillStyle and strokeStyle so subsequent fill/stroke calls use
+	// the right color. When alpha=0, _snglColor produces rgba(r,g,b,0) which
+	// is fully transparent — correct behaviour without needing runtime guards.
 	reg("CanvasApplyStyle", func(a []string) string {
 		ctx, s := a[0], a[1]
 		return strings.Join([]string{
-			"if(" + s + ".fill.a>0){" + ctx + ".fillStyle=_snglColor(" + s + ".fill);}",
-			"if(" + s + ".stroke.a>0){" + ctx + ".strokeStyle=_snglColor(" + s + ".stroke);}",
+			ctx + ".fillStyle=_snglColor(" + s + ".fill);",
+			ctx + ".strokeStyle=_snglColor(" + s + ".stroke);",
 			ctx + ".lineWidth=" + s + ".strokeWidth;",
 			ctx + ".lineCap=" + s + ".lineCap;",
 			ctx + ".lineJoin=" + s + ".lineJoin;",
