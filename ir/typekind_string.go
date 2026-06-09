@@ -22,31 +22,32 @@ func _() {
 	_ = x[TypeUnit-11]
 	_ = x[TypeFunc-12]
 	_ = x[TypeComponent-13]
-	_ = x[TypeColor-14]
-	_ = x[TypeDate-15]
-	_ = x[TypeTime-16]
-	_ = x[TypeDateTime-17]
-	_ = x[TypeDuration-18]
-	_ = x[TypeURL-19]
-	_ = x[TypeEmail-20]
-	_ = x[TypeUUID-21]
-	_ = x[TypeRegex-22]
-	_ = x[TypeBase64-23]
-	_ = x[TypeIPV4-24]
-	_ = x[TypeIPV6-25]
-	_ = x[TypeHostname-26]
-	_ = x[TypeDecimal-27]
-	_ = x[TypeNull-28]
-	_ = x[TypeTypeParam-29]
-	_ = x[TypeVoid-30]
-	_ = x[TypeRef-31]
-	_ = x[TypeIter-32]
-	_ = x[TypeNative-33]
+	_ = x[TypeShape-14]
+	_ = x[TypeColor-15]
+	_ = x[TypeDate-16]
+	_ = x[TypeTime-17]
+	_ = x[TypeDateTime-18]
+	_ = x[TypeDuration-19]
+	_ = x[TypeURL-20]
+	_ = x[TypeEmail-21]
+	_ = x[TypeUUID-22]
+	_ = x[TypeRegex-23]
+	_ = x[TypeBase64-24]
+	_ = x[TypeIPV4-25]
+	_ = x[TypeIPV6-26]
+	_ = x[TypeHostname-27]
+	_ = x[TypeDecimal-28]
+	_ = x[TypeNull-29]
+	_ = x[TypeTypeParam-30]
+	_ = x[TypeVoid-31]
+	_ = x[TypeRef-32]
+	_ = x[TypeIter-33]
+	_ = x[TypeNative-34]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentColorDateTimeDateTimeDurationURLEmailUUIDRegexBase64IPV4IPV6HostnameDecimalNullTypeParamVoidRefIterNative"
+const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentShapeColorDateTimeDateTimeDurationURLEmailUUIDRegexBase64IPV4IPV6HostnameDecimalNullTypeParamVoidRefIterNative"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 77, 81, 89, 97, 100, 105, 109, 114, 120, 124, 128, 136, 143, 147, 156, 160, 163, 167, 173}
+var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 78, 82, 86, 94, 102, 105, 110, 114, 119, 125, 129, 133, 141, 148, 152, 161, 165, 168, 172, 178}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

@@ -25,6 +25,7 @@ type NodeInst struct {
 	ID        string         // #id binding
 	Key       Expr           // key expression for list diffing (nil → implicit index)
 	Ref       Expr           // ref binding (nil if none)
+	CanvasDraw *Func         // non-nil for canvas containers after passCanvas
 }
 
 // Arg is a property assignment in a node instantiation.

@@ -22,6 +22,7 @@ const (
 	TypeUnit      // Decl set
 	TypeFunc      // Sig set
 	TypeComponent // Decl set
+	TypeShape     // virtual; IsShape components satisfy it
 	TypeColor
 	TypeDate
 	TypeTime
@@ -78,6 +79,7 @@ var (
 	TypHostname = &Type{Kind: TypeHostname}
 	TypDecimal  = &Type{Kind: TypeDecimal}
 	TypVoid     = &Type{Kind: TypeVoid}
+	TypShape    = &Type{Kind: TypeShape}
 )
 
 // ListOf returns a list type with the given element type.
