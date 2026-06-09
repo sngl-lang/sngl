@@ -1510,6 +1510,20 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	if n.CanvasDraw != nil {
 		g.canvasSetups = append(g.canvasSetups, canvasSetup{id: id, drawFunc: n.CanvasDraw})
+		// Register a reactive updater so the canvas redraws when any state
+		// variable referenced by the draw function changes.
+		deps := g.drawFuncDeps(n.CanvasDraw)
+		uname := fmt.Sprintf("$u_%s_canvas", id[1:])
+		body := fmt.Sprintf(
+			"(function(){const _ctx=%s.getContext(\"2d\");_ctx.clearRect(0,0,%s.width,%s.height);%s(_ctx);})();",
+			id, id, id, n.CanvasDraw.Name,
+		)
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: uname,
+			body:     body,
+			deps:     deps,
+			initOnly: len(deps) == 0,
+		})
 	}
 	style := g.buildCSSStyle(n)
 
@@ -2208,17 +2222,15 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 }
 
-// emitCanvasSetups emits the _snglColor helper (once) and an IIFE per canvas
-// element that retrieves the element by ID and calls its synthesized draw
-// function with the 2D rendering context.
+// emitCanvasSetups emits the _snglColor helper once when any canvas element is
+// present. The per-canvas draw call is now handled by reactive updaters
+// registered in initWrites (see renderRawElementIR), so no per-canvas IIFE is
+// emitted here.
 func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	if len(g.canvasSetups) == 0 {
 		return
 	}
 	b.WriteString(snglColorHelper)
-	for _, cs := range g.canvasSetups {
-		fmt.Fprintf(b, "(function(){var __el=document.getElementById(%q);if(__el){%s(__el.getContext(\"2d\"));}})();\n", cs.id, cs.drawFunc.Name)
-	}
 }
 
 // timerSyncCalls returns a $timer_N_sync() call for every timer whose enabled
@@ -2686,6 +2698,26 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 }
 
 // addForStmtUpdater adds a list updater for an ir.For statement.
+// drawFuncDeps collects all state variable dependencies from the call
+// arguments inside a synthesized canvas draw function's block.
+func (g *htmlGen) drawFuncDeps(fn *ir.Func) map[string]bool {
+	deps := make(map[string]bool)
+	for _, s := range fn.Block {
+		cs, ok := s.(*ir.CallStmt)
+		if !ok {
+			continue
+		}
+		for _, arg := range cs.Call.Args {
+			if arg.Value != nil {
+				for k := range g.exprDeps(arg.Value) {
+					deps[k] = true
+				}
+			}
+		}
+	}
+	return deps
+}
+
 // exprDeps extracts model field dependencies, remapping through dataRenames
 // when inside a component scope so deps use promoted field names.
 func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
