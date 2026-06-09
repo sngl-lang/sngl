@@ -34,6 +34,10 @@ type pass struct {
 //  4. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
 //  5. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
 //  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
+//  6a. Canvas — must run before NoReactivity. Shape NodeInsts (rect, circle, …)
+//     are removed from the visual tree and replaced by synthesized draw funcs.
+//     If reactivity ran first, it would assign __n* DOM ids to canvas shapes that
+//     never appear in the DOM, generating broken setAttribute calls.
 //  7. NoReactivity — analyzes dataflow, injects updaters.
 //     7a. InlinePure — always on; inlines pure user components and (under
 //     NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
@@ -69,10 +73,10 @@ var passes = []pass{
 	passNoInlineComponents,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
+	passCanvas,
 	passReactivity,
 	passTimer,
 	passFocusOrder,
-	passCanvas,
 	passDeclarative,
 	passNoRef,
 }
