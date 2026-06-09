@@ -23,18 +23,18 @@ func init() {
 	reg("CanvasRestore", func(a []string) string { return a[0] + ".restore()" })
 
 	// a[0]=ctx, a[1]=style (CanvasStyle struct)
-	// Always set fillStyle and strokeStyle so subsequent fill/stroke calls use
-	// the right color. When alpha=0, _snglColor produces rgba(r,g,b,0) which
-	// is fully transparent — correct behaviour without needing runtime guards.
+	// JS struct literals only contain fields explicitly set in the source;
+	// CanvasStyle fields with SNGL defaults may be absent (undefined) in the
+	// JS object. Guard each assignment and use || fallbacks for scalar fields.
 	reg("CanvasApplyStyle", func(a []string) string {
 		ctx, s := a[0], a[1]
 		return strings.Join([]string{
-			ctx + ".fillStyle=_snglColor(" + s + ".fill);",
-			ctx + ".strokeStyle=_snglColor(" + s + ".stroke);",
-			ctx + ".lineWidth=" + s + ".strokeWidth;",
-			ctx + ".lineCap=" + s + ".lineCap;",
-			ctx + ".lineJoin=" + s + ".lineJoin;",
-			ctx + ".font=" + s + ".fontSize+\"px \"+" + s + ".fontFamily;",
+			"if(" + s + ".fill){" + ctx + ".fillStyle=_snglColor(" + s + ".fill);}",
+			"if(" + s + ".stroke){" + ctx + ".strokeStyle=_snglColor(" + s + ".stroke);}",
+			ctx + ".lineWidth=" + s + ".strokeWidth||1;",
+			ctx + ".lineCap=" + s + ".lineCap||\"butt\";",
+			ctx + ".lineJoin=" + s + ".lineJoin||\"miter\";",
+			"if(" + s + ".fontSize){" + ctx + ".font=(" + s + ".fontSize)+\"px \"+(" + s + ".fontFamily||\"sans-serif\");}",
 		}, "")
 	})
 
@@ -107,4 +107,4 @@ type canvasSetup struct {
 
 // snglColorHelper converts a SNGL color struct {r,g,b,a} to CSS rgba().
 // Emitted once in the JS bundle whenever canvas is present.
-const snglColorHelper = "function _snglColor(c){return\"rgba(\"+c.r+\",\"+c.g+\",\"+c.b+\",\"+(c.a/255)+\")\"}\n"
+const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g+\",\"+c.b+\",\"+(c.a/255)+\")\":\"rgba(0,0,0,0)\"}\n"
