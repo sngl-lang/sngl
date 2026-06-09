@@ -32,50 +32,73 @@ import (
 
 const ggImportPath = "github.com/fogleman/gg"
 
-// canvasStdlibDecls emits the Go decls for the canvas stdlib structs
-// (lib/canvas.sngl + lib/types.sngl color) and the SNGL-color→color.Color
-// helper. These stdlib structs are referenced by the synthesized draw funcs
-// but are not carried in pkg.Structs (html, the only other canvas consumer,
-// emits JS object literals and needs no type decls), so the fyne Go path
-// declares them here when any canvas is present. Field names/types mirror the
-// stdlib definitions.
-const canvasStdlibDecls = "type Color struct {\n" +
-	"\tR int\n\tG int\n\tB int\n\tA int\n" +
-	"}\n\n" +
-	"type CanvasStyle struct {\n" +
-	"\tFill        Color\n" +
-	"\tStroke      Color\n" +
-	"\tStrokeWidth float64\n" +
-	"\tLineCap     string\n" +
-	"\tLineJoin    string\n" +
-	"\tFontSize    float64\n" +
-	"\tFontFamily  string\n" +
-	"}\n\n" +
-	"type PathCmd struct {\n" +
-	"\tOp  string\n" +
-	"\tX   float64\n\tY   float64\n" +
-	"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
-	"}\n\n" +
-	"func _snglColor(c Color) color.Color {\n" +
+// The canvas stdlib structs (lib/canvas.sngl: CanvasStyle, PathCmd;
+// lib/types.sngl: color → Color) and the SNGL-color→color.Color helper are
+// referenced by the synthesized draw funcs but are NOT carried in pkg.Structs
+// (html, the only other canvas consumer, emits JS object literals and needs no
+// type decls), so the fyne Go path declares them here when any canvas is
+// present. Field names/types mirror the stdlib definitions; canvas_sync_test.go
+// guards against drift by parsing lib/*.sngl and asserting every stdlib field
+// is present in canvasStructDecls.
+
+// snglColorHelper is the SNGL-color→color.Color helper, emitted alongside (or,
+// on a full collision, instead of) the canvas stdlib struct decls.
+const snglColorHelper = "func _snglColor(c Color) color.Color {\n" +
 	"\treturn color.RGBA{R: uint8(c.R), G: uint8(c.G), B: uint8(c.B), A: uint8(c.A)}\n" +
 	"}\n"
 
-// canvasStdlibDeclsExcluding returns canvasStdlibDecls, but only when none of
-// the canvas stdlib struct names collide with a user-declared struct already
-// in td.Structs. The canvas structs are stdlib-only today; if a program ever
-// declares one itself, fall back to emitting just the _snglColor helper to
-// avoid a duplicate type decl.
+// canvasStructDecls holds the hardcoded Go decl per stdlib struct name, keyed
+// by struct name so a collision with a user-declared struct can omit just that
+// one decl instead of all three. The "_snglColor" helper is emitted separately
+// (see snglColorHelper) and is always kept.
+var canvasStructDecls = map[string]string{
+	"Color": "type Color struct {\n" +
+		"\tR int\n\tG int\n\tB int\n\tA int\n" +
+		"}\n",
+	"CanvasStyle": "type CanvasStyle struct {\n" +
+		"\tFill        Color\n" +
+		"\tStroke      Color\n" +
+		"\tStrokeWidth float64\n" +
+		"\tLineCap     string\n" +
+		"\tLineJoin    string\n" +
+		"\tFontSize    float64\n" +
+		"\tFontFamily  string\n" +
+		"}\n",
+	"PathCmd": "type PathCmd struct {\n" +
+		"\tOp  string\n" +
+		"\tX   float64\n\tY   float64\n" +
+		"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
+		"}\n",
+}
+
+// canvasStructOrder fixes the emission order of canvasStructDecls (CanvasStyle
+// references Color, so Color must come first for readability).
+var canvasStructOrder = []string{"Color", "CanvasStyle", "PathCmd"}
+
+// canvasStdlibDeclsExcluding returns the canvas stdlib decls, omitting any
+// struct whose name collides with a user-declared struct already in
+// td.Structs. The canvas structs are stdlib-only today; if a program declares
+// one (or more) itself, only the colliding name(s) are dropped — the others,
+// and the _snglColor helper, are still emitted to avoid duplicate type decls
+// while keeping the rest available.
 func canvasStdlibDeclsExcluding(structs []structData) string {
+	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
 		case "Color", "CanvasStyle", "PathCmd":
-			// Collision: emit only the helper (the user's structs stand in).
-			return "func _snglColor(c Color) color.Color {\n" +
-				"\treturn color.RGBA{R: uint8(c.R), G: uint8(c.G), B: uint8(c.B), A: uint8(c.A)}\n" +
-				"}\n"
+			declared[s.Name] = struct{}{}
 		}
 	}
-	return canvasStdlibDecls
+	var b strings.Builder
+	for _, name := range canvasStructOrder {
+		if _, collides := declared[name]; collides {
+			continue
+		}
+		b.WriteString(canvasStructDecls[name])
+		b.WriteString("\n")
+	}
+	b.WriteString(snglColorHelper)
+	return b.String()
 }
 
 // canvasMeta records a flattened canvas element discovered via a
@@ -156,6 +179,11 @@ func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 	rest := call.Args[1:]
 	arg := func(i int) ir.Expr { return rest[i].Value }
 
+	// INVARIANT: every draw-primitive case below must consume the pending
+	// style exactly once (directly via takeStyle() or transitively via
+	// paintAround/strokeAround/translatePath). Skipping it leaks the style onto
+	// the next shape — see takeStyle(). CanvasDrawImage calls takeStyle()
+	// despite emitting nothing for this reason.
 	switch id {
 	case "CanvasSave":
 		return []ir.Stmt{methodStmt(ctxArg, "Push")}
@@ -198,6 +226,11 @@ func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 
 // takeStyle returns the pending style (set by the preceding CanvasApplyStyle)
 // and clears it.
+//
+// INVARIANT: every draw-primitive case in translateCanvasIntrinsic must call
+// takeStyle() exactly once. It consumes-and-clears pendingStyle; a primitive
+// that skipped it would leak the previous shape's style onto the next shape.
+// This is why CanvasDrawImage calls takeStyle() even though it emits nothing.
 func (t *fyneTranslator) takeStyle() ir.Expr {
 	s := t.pendingStyle
 	t.pendingStyle = nil
