@@ -102,3 +102,31 @@ component badShape(@click) {}`)
 		t.Errorf("expected 'shape components do not support event declarations', got %v", diags)
 	}
 }
+
+func TestExpandPre_CanvasShape_SetsChildrenType(t *testing.T) {
+	doc := parseDoc(t, `import "internal://canvas"
+#[canvas.shape]
+component myShape(x int) {}`)
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	comp, ok := doc.Stmts[1].(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected ComponentDecl at index 1, got %T", doc.Stmts[1])
+	}
+	if comp.ChildrenType == nil {
+		t.Fatal("expected ChildrenType to be set to list<shape>")
+	}
+	named, ok := comp.ChildrenType.(*ast.NamedType)
+	if !ok || named.Name != "list" {
+		t.Fatalf("expected list<shape>, got %v", comp.ChildrenType)
+	}
+	if len(named.TypeArgs) == 0 {
+		t.Fatal("expected type arg")
+	}
+	inner, ok := named.TypeArgs[0].(*ast.NamedType)
+	if !ok || inner.Name != "shape" {
+		t.Fatalf("expected shape type arg, got %v", named.TypeArgs[0])
+	}
+}
