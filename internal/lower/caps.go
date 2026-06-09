@@ -56,6 +56,9 @@ type Features struct {
 	// bodies and transforms them into draw functions with intrinsic calls.
 	// Set by platforms that support Canvas2D rendering (e.g. HTML5 canvas).
 	Canvas bool
+	// ReactiveCanvas requests passCanvasReactivity: injects CanvasRedrawStmt
+	// into handler/timer bodies that mutate vars read by a canvas draw func.
+	ReactiveCanvas bool
 }
 
 // AllFeatures returns a Features with every capability enabled. Use as a
@@ -104,6 +107,7 @@ func (f Features) ToLowerCaps() Caps {
 		StdlibContextParam: f.StdlibContextParam,
 		FocusOrder:         f.FocusOrder,
 		Canvas:             f.Canvas,
+		ReactiveCanvas:     f.ReactiveCanvas,
 	}
 }
 
@@ -149,6 +153,12 @@ type Caps struct {
 	FocusOrder bool
 	// Canvas requests passCanvas lowering. See Features.Canvas.
 	Canvas bool
+	// ReactiveCanvas requests passCanvasReactivity: after passCanvas extracts
+	// draw funcs and passReactivity wires state deps, this pass injects
+	// CanvasRedrawStmt into any handler/timer body that mutates a var read by
+	// a canvas draw func. Platforms translate CanvasRedrawStmt to their native
+	// "clear and redraw" operation.
+	ReactiveCanvas bool
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -168,6 +178,7 @@ func (c Caps) Merge(other Caps) Caps {
 		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
 		FocusOrder:         c.FocusOrder || other.FocusOrder,
 		Canvas:             c.Canvas || other.Canvas,
+		ReactiveCanvas:     c.ReactiveCanvas || other.ReactiveCanvas,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,

@@ -231,6 +231,8 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		n.Title = substituteParams(n.Title, subs)
 		n.Favicon = substituteParams(n.Favicon, subs)
 		substituteParamsInStmts(n.Body, subs)
+	case *ir.CanvasRedrawStmt:
+		// No params to substitute.
 	default:
 		panic(fmt.Sprintf("substituteParamsInStmt: unhandled stmt %T", n))
 	}
@@ -442,6 +444,8 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 					return
 				}
 				visitExpr(n.Target)
+			case *ir.CanvasRedrawStmt:
+				// No param exprs.
 			default:
 				panic(fmt.Sprintf("bodyHasFoldableParamUse.visitStmts: unhandled stmt %T", n))
 			}
@@ -502,7 +506,7 @@ func substituteSlotsInStmt(s ir.Stmt, slotChildren []ir.Stmt) ir.Stmt {
 	case *ir.SlotInst:
 		// Handled in substituteSlots above; if we land here it's a
 		// nested slot we don't substitute through.
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// No child statements with slots.
 	default:
 		panic(fmt.Sprintf("substituteSlotsInStmt: unhandled stmt %T", n))

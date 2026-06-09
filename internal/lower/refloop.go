@@ -115,7 +115,7 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 		st.stmts(n.Children)
 	case *ir.Window:
 		st.stmts(n.Body)
-	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit:
+	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt:
 		// Leaf statements: no nested loops to descend into. The element
 		// rewrite for an enclosing &-loop already visited these via lowerFor.
 	default:
@@ -319,6 +319,8 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		n.Title = r.expr(n.Title)
 		n.Favicon = r.expr(n.Favicon)
 		r.stmtSlice(n.Body)
+	case *ir.CanvasRedrawStmt:
+		// No expressions to rewrite.
 	default:
 		panic(fmt.Sprintf("refloop.refLoopRewriter.stmt: unhandled stmt %T", n))
 	}

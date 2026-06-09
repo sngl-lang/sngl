@@ -269,6 +269,8 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 		case *ir.ContextProvider:
 			recordExprHelpers(h, n.Value)
 			recordStmtHelpers(h, n.Children)
+		case *ir.CanvasRedrawStmt:
+			// No helpers needed.
 		default:
 			panic(fmt.Sprintf("recordStmtHelpers: unhandled ir.Stmt %T", n))
 		}

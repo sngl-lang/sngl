@@ -156,7 +156,7 @@ func resolveFilterChildren(s ir.Stmt, platform string) ir.Stmt {
 		n.Children = resolveFilterStmts(n.Children, platform, false)
 	case *ir.Window:
 		n.Body = resolveFilterStmts(n.Body, platform, false)
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Leaf statements — no nested statement lists to recurse into.
 	default:
 		panic(fmt.Sprintf("resolveFilterChildren: unhandled stmt %T", s))

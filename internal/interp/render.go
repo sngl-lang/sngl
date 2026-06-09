@@ -74,7 +74,7 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 			env.collectByStmts(n.Body, id, out)
 		case *ir.ContextProvider:
 			env.collectByStmts(n.Children, id, out)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// Imperative stmts contain no rendered nodes.
 		default:
 			panic(fmt.Sprintf("testrunner.collectByStmts: unhandled ir.Stmt %T", n))

@@ -346,7 +346,7 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			walkInstances(n.Children, fn)
 		case *ir.Window:
 			walkInstances(n.Body, fn)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// Imperative stmts contain no NodeInst children.
 		case *ir.ContextProvider:
 			walkInstances(n.Children, fn)
@@ -423,6 +423,8 @@ func stmtCallsTarget(s ir.Stmt, targets, visited map[*ir.Func]bool) bool {
 		return stmtsCallTarget(x.Body, targets, visited)
 	case *ir.ContextProvider:
 		return stmtsCallTarget(x.Children, targets, visited)
+	case *ir.CanvasRedrawStmt:
+		return false
 	default:
 		panic(fmt.Sprintf("html.stmtCallsTarget: unhandled ir.Stmt %T", s))
 	}

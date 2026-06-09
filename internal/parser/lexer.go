@@ -18,16 +18,16 @@ type interpFrame struct {
 //   - Non-base-10 integer literals (0x…, 0o…, 0b…) are rejected (ILLEGAL).
 //   - true, false, null are keyword tokens (KW_TRUE/KW_FALSE/KW_NULL).
 type lexer struct {
-	input          []rune
-	pos            int
-	line           int
-	col            int
-	prevTok        TokenType
-	prevPrevTok    TokenType
-	errors         []string
-	interpStack     []interpFrame // active string interpolation nesting
-	macroAttrDepth  int           // incremented by #[, decremented by matching ]
-	macroInnerBracks int          // [ inside macro attr args, to skip inner ]
+	input            []rune
+	pos              int
+	line             int
+	col              int
+	prevTok          TokenType
+	prevPrevTok      TokenType
+	errors           []string
+	interpStack      []interpFrame // active string interpolation nesting
+	macroAttrDepth   int           // incremented by #[, decremented by matching ]
+	macroInnerBracks int           // [ inside macro attr args, to skip inner ]
 }
 
 func newLexer(src string) *lexer {

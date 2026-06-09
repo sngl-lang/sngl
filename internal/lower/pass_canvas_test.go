@@ -3,8 +3,8 @@ package lower_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {

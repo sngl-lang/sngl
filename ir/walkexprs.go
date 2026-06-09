@@ -159,6 +159,8 @@ func (w *exprWalker) visitStmt(s Stmt) {
 		w.visitStmts(n.Body)
 	case *ContextProvider:
 		w.visitStmts(n.Children)
+	case *CanvasRedrawStmt:
+		// No expressions to walk.
 	default:
 		panic(fmt.Sprintf("ir.WalkExprs: unhandled ir.Stmt %T", n))
 	}

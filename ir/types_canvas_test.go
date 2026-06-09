@@ -1,8 +1,8 @@
 package ir_test
 
 import (
-	"testing"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"testing"
 )
 
 func TestTypeShape(t *testing.T) {

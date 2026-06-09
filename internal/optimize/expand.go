@@ -140,7 +140,7 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 			collectWindowStructValues(n.Children, result)
 		case *ir.NodeInst:
 			collectWindowStructValues(n.Children, result)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// No nested window declarations.
 		default:
 			panic(fmt.Sprintf("collectWindowStructValues: unhandled stmt %T", n))
@@ -241,6 +241,8 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		}
 	case *ir.Toggle:
 		walkAllExprs(n.Target, visit)
+	case *ir.CanvasRedrawStmt:
+		// No expressions.
 	default:
 		panic(fmt.Sprintf("walkStmtExprs: unhandled stmt %T", n))
 	}

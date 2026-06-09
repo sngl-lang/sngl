@@ -168,6 +168,9 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 		// UI-tree statements are platform-specific; the generic
 		// per-language stmt path emits nothing for them.
 		return nil
+	case *ir.CanvasRedrawStmt:
+		// Platform-specific canvas redraw; the generic path emits nothing.
+		return nil
 	default:
 		panic(fmt.Sprintf("irwalk.EvalStmt: unhandled ir.Stmt %T", s))
 	}

@@ -63,7 +63,7 @@ func (tw *TreeWalker) walkStmt(s ir.Stmt) {
 		tw.WalkStmts(n.Children)
 	case *ir.Window:
 		tw.WalkStmts(n.Body)
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Visual-tree walker ignores pure statements (no children of
 		// interest to a NodeVisitor).
 	default:

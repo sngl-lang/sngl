@@ -122,7 +122,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		}
 	case *ir.Window:
 		panic(fmt.Sprintf("fyne: unexpected nested Window in view tree: %#v", s))
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Imperative stmts have no visual rendering.
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("fyne: ContextProvider should be lowered before view emission: %#v", s))

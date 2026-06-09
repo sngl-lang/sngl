@@ -102,7 +102,7 @@ func collectWindows(stmts []ir.Stmt) []*ir.Window {
 			windows = append(windows, collectWindows(n.Children)...)
 		case *ir.NodeInst:
 			windows = append(windows, collectWindows(n.Children)...)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// No nested window declarations.
 		default:
 			panic(fmt.Sprintf("collectWindows: unhandled stmt %T", n))
@@ -187,7 +187,7 @@ func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Compon
 				walkStmts(n.Children)
 			case *ir.ErrorBoundary:
 				walkStmts(n.Children)
-			case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+			case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 				// No nested component refs.
 			default:
 				panic(fmt.Sprintf("collectReachableComponents.walkStmts: unhandled stmt %T", n))
@@ -351,7 +351,7 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Children, fn, depth)
 		case *ir.Window:
 			walkVisual(n.Body, fn, depth)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// Not a visual statement; nothing to visit.
 		default:
 			panic(fmt.Sprintf("walkVisual: unhandled stmt %T", n))

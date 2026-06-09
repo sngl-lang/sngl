@@ -220,6 +220,8 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		n.Target = foldExpr(n.Target, ctx)
 	case *ir.ErrorBoundary:
 		n.Children = foldStmts(n.Children, ctx)
+	case *ir.CanvasRedrawStmt:
+		// Canvas redraw stmts carry only NodeInst/Func pointers; no expressions to fold.
 	default:
 		panic(fmt.Sprintf("foldStmt: unhandled stmt %T", n))
 	}

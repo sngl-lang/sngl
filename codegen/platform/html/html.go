@@ -63,6 +63,7 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructComponents = true
 	f.StdlibContextParam = true
 	f.Canvas = true
+	f.ReactiveCanvas = true
 	return f
 }
 
@@ -711,7 +712,7 @@ func (g *htmlGen) prewalkNodes() {
 			visitStmts(n.Body)
 		case *ir.ContextProvider:
 			visitStmts(n.Children)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// Imperative stmts contain no nested NodeInst to record.
 		default:
 			panic(fmt.Sprintf("html.collectNodeIDs: unhandled ir.Stmt %T", n))
@@ -1132,7 +1133,7 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		// passNoContext eliminates these before codegen. Reaching this case
 		// indicates a regression in NoContext.
 		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Imperative stmts have no visual rendering at top-level slot expansion.
 	default:
 		panic(fmt.Sprintf("html.renderIRStmt: unhandled ir.Stmt %T", n))
@@ -1510,9 +1511,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	if n.CanvasDraw != nil {
 		g.canvasSetups = append(g.canvasSetups, canvasSetup{id: id, drawFunc: n.CanvasDraw})
-		// Register a reactive updater so the canvas redraws when any state
-		// variable referenced by the draw function changes.
-		deps := g.drawFuncDeps(n.CanvasDraw)
+		// Register an init-only updater for the initial mount draw.
+		// Reactive redraws are handled by CanvasRedrawStmt injected into
+		// handler/timer bodies by passCanvasReactivity.
 		uname := fmt.Sprintf("$u_%s_canvas", id[1:])
 		body := fmt.Sprintf(
 			"(function(){const _ctx=%s.getContext(\"2d\");_ctx.clearRect(0,0,%s.width,%s.height);%s(_ctx);})();",
@@ -1521,8 +1522,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		g.initWrites = append(g.initWrites, updateFunc{
 			funcName: uname,
 			body:     body,
-			deps:     deps,
-			initOnly: len(deps) == 0,
+			initOnly: true,
 		})
 	}
 	style := g.buildCSSStyle(n)
@@ -2252,11 +2252,13 @@ func (g *htmlGen) timerSyncCalls(mutated map[string]bool) []string {
 	return out
 }
 
-// canvasSyncCalls returns canvas redraw calls for every non-initOnly canvas
-// updater whose deps overlap with the mutated var set. NoReactivity does not
-// visit canvas shapes (they have no DOM element), so we inject redraws here
-// the same way timerSyncCalls injects timer syncs.
-func (g *htmlGen) canvasSyncCalls(mutated map[string]bool) []string {
+// reactiveUpdaterCalls returns the bodies of non-initOnly updaters whose deps
+// overlap with the mutated var set. These are updaters that cannot be inlined
+// by NoReactivity (e.g. i18n computed text with reactive deps) and must be
+// appended to every handler/timer that touches their deps.
+// Canvas redraws are handled by CanvasRedrawStmt injected during lowering, and
+// their initWrites entries are always initOnly, so they never appear here.
+func (g *htmlGen) reactiveUpdaterCalls(mutated map[string]bool) []string {
 	if len(mutated) == 0 {
 		return nil
 	}
@@ -2280,7 +2282,7 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 		var lines []string
 		lines = append(lines, h.body)
 		lines = append(lines, g.timerSyncCalls(h.mutated)...)
-		lines = append(lines, g.canvasSyncCalls(h.mutated)...)
+		lines = append(lines, g.reactiveUpdaterCalls(h.mutated)...)
 		if g.preview {
 			lines = append(lines, "__sngl_sync_state();")
 		}
@@ -2302,7 +2304,7 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 		var tickLines []string
 		tickLines = append(tickLines, t.body)
 		tickLines = append(tickLines, g.timerSyncCalls(t.mutated)...)
-		tickLines = append(tickLines, g.canvasSyncCalls(t.mutated)...)
+		tickLines = append(tickLines, g.reactiveUpdaterCalls(t.mutated)...)
 		if g.preview {
 			tickLines = append(tickLines, "__sngl_sync_state();")
 		}
@@ -2723,25 +2725,6 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 }
 
 // addForStmtUpdater adds a list updater for an ir.For statement.
-// drawFuncDeps collects all state variable dependencies from the call
-// arguments inside a synthesized canvas draw function's block.
-func (g *htmlGen) drawFuncDeps(fn *ir.Func) map[string]bool {
-	deps := make(map[string]bool)
-	for _, s := range fn.Block {
-		cs, ok := s.(*ir.CallStmt)
-		if !ok {
-			continue
-		}
-		for _, arg := range cs.Call.Args {
-			if arg.Value != nil {
-				for k := range g.exprDeps(arg.Value) {
-					deps[k] = true
-				}
-			}
-		}
-	}
-	return deps
-}
 
 // exprDeps extracts model field dependencies, remapping through dataRenames
 // when inside a component scope so deps use promoted field names.
@@ -2873,7 +2856,18 @@ func (g *htmlGen) scopedJCFresh() *javascript.JsIRContext {
 func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 	jc := g.scopedJC()
 	tr := newHTMLTranslatorWithNodes(jc, g.idToNode)
-	fragments := codegen.WalkLowered(context.Background(), body, tr)
+	// Split off CanvasRedrawStmts: they carry a NodeInst→ID lookup that
+	// only htmlGen has, so handle them here rather than in the translator.
+	var regular []ir.Stmt
+	var redraws []*ir.CanvasRedrawStmt
+	for _, s := range body {
+		if rs, ok := s.(*ir.CanvasRedrawStmt); ok {
+			redraws = append(redraws, rs)
+		} else {
+			regular = append(regular, s)
+		}
+	}
+	fragments := codegen.WalkLowered(context.Background(), regular, tr)
 	var lines []string
 	for _, s := range fragments {
 		// Track __nN refs so the script emits getElementById/querySelector
@@ -2884,7 +2878,25 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 			lines = append(lines, ln+";")
 		}
 	}
+	for _, rs := range redraws {
+		lines = append(lines, g.canvasRedrawLine(rs)+";")
+	}
 	return lines
+}
+
+// canvasRedrawLine returns the JS inline redraw for a CanvasRedrawStmt:
+// clear the canvas and call the draw function with a fresh context.
+func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
+	// Find the canvas element ID by matching the draw func pointer.
+	for _, cs := range g.canvasSetups {
+		if cs.drawFunc == rs.DrawFunc {
+			id := cs.id
+			return "(function(){const _ctx=" + id + ".getContext(\"2d\");" +
+				"_ctx.clearRect(0,0," + id + ".width," + id + ".height);" +
+				rs.DrawFunc.Name + "(_ctx);})()"
+		}
+	}
+	return "" // draw func not found (shouldn't happen)
 }
 
 // collectLoweredRefs walks an IR stmt and registers any IsElementRef Ident
@@ -3004,6 +3016,8 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}
+	case *ir.CanvasRedrawStmt:
+		// No element refs.
 	default:
 		panic(fmt.Sprintf("html.collectLoweredRefs: unhandled ir.Stmt %T", n))
 	}

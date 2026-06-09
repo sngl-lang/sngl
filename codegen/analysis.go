@@ -245,7 +245,7 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			if stmtsUseErrorHandling(x.Body) {
 				return true
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// No nested error sites.
 		default:
 			panic(fmt.Sprintf("stmtsUseErrorHandling: unhandled stmt %T", x))
@@ -279,7 +279,7 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 			collectUsedIRStmts(n.Children, used)
 		case *ir.Window:
 			collectUsedIRStmts(n.Body, used)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 			// Pure statements have no named visual children.
 		default:
 			panic(fmt.Sprintf("collectUsedIRStmts: unhandled stmt %T", n))
@@ -448,7 +448,7 @@ func irStmtUsesAlert(s ir.Stmt) bool {
 		if irStmtsUseAlert(n.Body) {
 			return true
 		}
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Non-call statements can't invoke Alert.
 	default:
 		panic(fmt.Sprintf("irStmtUsesAlert: unhandled stmt %T", n))

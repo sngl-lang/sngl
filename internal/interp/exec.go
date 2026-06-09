@@ -152,6 +152,8 @@ func (env *Env) Exec(s ir.Stmt) error {
 		panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
+	case *ir.CanvasRedrawStmt:
+		return nil
 	default:
 		panic(fmt.Sprintf("testrunner.Exec: unhandled ir.Stmt %T", s))
 	}
