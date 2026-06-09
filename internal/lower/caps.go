@@ -52,6 +52,10 @@ type Features struct {
 	// their own widgets (canvas, TUI) opt in; native-widget platforms that
 	// delegate focus to the OS do not.
 	FocusOrder bool
+	// Canvas requests canvas-drawing lowering: passCanvas walks shape-children
+	// bodies and transforms them into draw functions with intrinsic calls.
+	// Set by platforms that support Canvas2D rendering (e.g. HTML5 canvas).
+	Canvas bool
 }
 
 // AllFeatures returns a Features with every capability enabled. Use as a
@@ -99,6 +103,7 @@ func (f Features) ToLowerCaps() Caps {
 		StructComponents:   f.StructComponents,
 		StdlibContextParam: f.StdlibContextParam,
 		FocusOrder:         f.FocusOrder,
+		Canvas:             f.Canvas,
 	}
 }
 
@@ -142,6 +147,8 @@ type Caps struct {
 	NoStructSpread     bool // struct-literal spreads (`{...x}`) → flattened literal / merge<Struct> call
 	// FocusOrder requests focus-tracking lowering. See Features.FocusOrder.
 	FocusOrder bool
+	// Canvas requests passCanvas lowering. See Features.Canvas.
+	Canvas bool
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -160,6 +167,7 @@ func (c Caps) Merge(other Caps) Caps {
 		StructComponents:   c.StructComponents || other.StructComponents,
 		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
 		FocusOrder:         c.FocusOrder || other.FocusOrder,
+		Canvas:             c.Canvas || other.Canvas,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
@@ -230,6 +238,9 @@ func (c Caps) String() string {
 	}
 	if c.FocusOrder {
 		parts = append(parts, "FocusOrder")
+	}
+	if c.Canvas {
+		parts = append(parts, "Canvas")
 	}
 	return strings.Join(parts, ",")
 }
