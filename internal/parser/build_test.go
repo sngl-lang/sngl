@@ -528,6 +528,29 @@ func TestParseDisabledDecl(t *testing.T) {
 	}
 }
 
+func TestParseAttrDecl(t *testing.T) {
+	src := `#[canvas.shape]
+component rect() {}`
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	if !ok {
+		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	}
+	if len(ad.Attrs) != 1 {
+		t.Fatalf("expected 1 attr, got %d", len(ad.Attrs))
+	}
+	attr := ad.Attrs[0]
+	if attr.Alias != "canvas" || attr.Name != "shape" {
+		t.Errorf("expected canvas.shape, got %s.%s", attr.Alias, attr.Name)
+	}
+	if _, ok := ad.Inner.(*ast.ComponentDecl); !ok {
+		t.Errorf("expected ComponentDecl inner, got %T", ad.Inner)
+	}
+}
+
 func TestParseType(t *testing.T) {
 	doc := mustParse(t, `const x List<int> = [1]`)
 	cd := doc.Stmts[0].(*ast.ConstDecl)

@@ -46,6 +46,22 @@ type DisabledDecl struct {
 	Inner Stmt
 }
 
+// MacroAttr is a single macro attribute: #[alias.name(args)].
+type MacroAttr struct {
+	Pos   Pos
+	Alias string // import alias, e.g. "canvas" in #[canvas.shape]
+	Name  string // macro name, e.g. "shape" in #[canvas.shape]
+	Args  []Expr // optional arguments
+}
+
+// AttrDecl wraps any declaration prefixed with one or more #[...] attributes.
+// The expand pass processes and removes AttrDecl nodes before the checker runs.
+type AttrDecl struct {
+	Pos   Pos
+	Attrs []MacroAttr
+	Inner Stmt
+}
+
 // Document is the top-level container for a .sngl file.
 type Document struct {
 	Stmts []Stmt
@@ -357,3 +373,4 @@ func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
 func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }
+func (a *AttrDecl) StmtPos() *Pos      { return &a.Pos }
