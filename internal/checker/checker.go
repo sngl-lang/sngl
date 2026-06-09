@@ -258,7 +258,11 @@ func (c *checker) pass1() {
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
 	for _, stmt := range c.doc.Stmts {
-		if imp, ok := stmt.(*ast.Import); ok {
+		inner := stmt
+		if attr, ok := stmt.(*ast.AttrDecl); ok {
+			inner = attr.Inner
+		}
+		if imp, ok := inner.(*ast.Import); ok {
 			c.registerImport(imp)
 		}
 	}
@@ -266,7 +270,11 @@ func (c *checker) pass1() {
 	// Pre-register type declarations so they're visible for forward references
 	// (e.g., test functions that reference types defined later in the file).
 	for _, stmt := range c.doc.Stmts {
-		switch s := stmt.(type) {
+		inner := stmt
+		if attr, ok := stmt.(*ast.AttrDecl); ok {
+			inner = attr.Inner
+		}
+		switch s := inner.(type) {
 		case *ast.EnumDef:
 			c.registerEnum(s)
 		case *ast.StructDef:
@@ -301,7 +309,20 @@ func (c *checker) pass1() {
 		case *ast.DisabledDecl:
 			// Skip disabled declarations.
 		case *ast.AttrDecl:
-			// AttrDecl nodes are removed by the expand pass before the checker runs.
+			switch inner := s.Inner.(type) {
+			case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
+				continue // already registered in pre-pass loops above
+			case *ast.ConstDecl:
+				c.registerConsts(inner)
+			case *ast.VarDecl:
+				c.registerVars(inner)
+			case *ast.FuncDef:
+				c.registerFunc(inner)
+			case *ast.VisualNode:
+				c.registerRootVisualNode(inner)
+			case *ast.PlatformStmt:
+				c.pass1PlatformStmt(inner)
+			}
 		case *ast.Comment:
 			// Skip comments.
 		default:
@@ -349,6 +370,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
 		case "lower":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
+		case "canvas":
+			// Macro-only package: provides no IR symbols at runtime.
+			// The expand pass handles #[canvas.*] attributes before type-checking.
+			irImport.Pkg = &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
 		}
