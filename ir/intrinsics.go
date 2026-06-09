@@ -203,10 +203,71 @@ var LowerIntrinsics = []IntrinsicDef{
 	{Name: "CreateComponent", Params: []*Param{{Name: "comp", Type: TypDyn}, {Name: "props", Type: TypDyn}}, Return: TypDyn},
 }
 
+// CanvasIntrinsics are platform-level intrinsics for Canvas2D drawing.
+// Each canvas-capable platform must provide native implementations.
+// The ctx parameter is an opaque platform draw context (TypDyn).
+var CanvasIntrinsics = []IntrinsicDef{
+	{Name: "CanvasSave", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasRestore", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasApplyStyle", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "style", Type: TypDyn},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawRect", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "x", Type: TypFloat},
+		{Name: "y", Type: TypFloat},
+		{Name: "w", Type: TypFloat},
+		{Name: "h", Type: TypFloat},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawCircle", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "cx", Type: TypFloat},
+		{Name: "cy", Type: TypFloat},
+		{Name: "r", Type: TypFloat},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawEllipse", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "cx", Type: TypFloat},
+		{Name: "cy", Type: TypFloat},
+		{Name: "rx", Type: TypFloat},
+		{Name: "ry", Type: TypFloat},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawLine", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "x1", Type: TypFloat},
+		{Name: "y1", Type: TypFloat},
+		{Name: "x2", Type: TypFloat},
+		{Name: "y2", Type: TypFloat},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawPath", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "cmds", Type: ListOf(TypDyn)},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawText", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "x", Type: TypFloat},
+		{Name: "y", Type: TypFloat},
+		{Name: "content", Type: TypString},
+	}, Return: TypVoid, Purity: PurityMutates},
+	{Name: "CanvasDrawImage", Params: []*Param{
+		{Name: "ctx", Type: TypDyn},
+		{Name: "x", Type: TypFloat},
+		{Name: "y", Type: TypFloat},
+		{Name: "w", Type: TypFloat},
+		{Name: "h", Type: TypFloat},
+		{Name: "src", Type: TypString},
+	}, Return: TypVoid, Purity: PurityMutates},
+}
+
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {
-	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, LowerIntrinsics} {
+	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, LowerIntrinsics, CanvasIntrinsics} {
 		for i := range list {
 			if list[i].Name == name {
 				return &list[i]
