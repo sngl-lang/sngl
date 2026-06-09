@@ -1457,3 +1457,15 @@ component myWidget() {
 }
 `, "expected shape component")
 }
+
+func TestCheckCanvasStdlib(t *testing.T) {
+	expectNoErrors(t, `
+component myWidget() {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
+        circle(cx=50.0, cy=50.0, r=30.0, style=CanvasStyle{}) {}
+        canvasText(x=10.0, y=10.0, content="hello", style=CanvasStyle{}) {}
+    }
+}
+`)
+}
