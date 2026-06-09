@@ -101,10 +101,9 @@ func canvasCall(intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
 	}
 	return &ir.CallStmt{
 		Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: &ir.Ident{Name: "canvas", Type: ir.TypDyn},
-			Func:     fn,
-			Args:     args,
+			Type: ir.TypVoid,
+			Func: fn,
+			Args: args,
 		},
 	}
 }
