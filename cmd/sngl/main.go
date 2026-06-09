@@ -14,6 +14,7 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
 )
 
 var rootCmd = &cobra.Command{

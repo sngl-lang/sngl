@@ -13,6 +13,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/expand"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -1385,6 +1387,12 @@ func TestCheckProjectTestdata(t *testing.T) {
 			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {
 				t.Skipf("v2 parse failed: %v", err)
+			}
+			// Run pre-check macro expansion and assert ERROR(expand) directives.
+			expandDiags := expand.ExpandPre([]*ast.Document{doc})
+			testutil.AssertDiagnostics(t, expandDiags, s.Errors, "expand")
+			if s.ExpectsError("expand") {
+				return // expansion errors; skip type-check
 			}
 			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
