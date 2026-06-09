@@ -8,121 +8,7 @@ features are unevenly implemented. Ranked roughly by severity.
 
 ## Severity: High
 
-### 1. Three independent i18n-call IR walkers (duplicate logic) ✅ RESOLVED (2026-05-23)
-
-Collapsed onto the new shared `ir.WalkExprs` (item #17) + the new
-shared `codegen/i18n.IsCall` (item #12). html/i18n.go and
-android/i18n.go's `hasI18nCalls` are now four-line wrappers around
-`ir.WalkExprs`. golang's `PackageUsesI18n` likewise — the old
-`funcUsesI18n` / `stmtUsesI18n` / `exprUsesI18n` trio (~170 LOC) is
-deleted. The Go-side `i18n.zero`/`one`/`other` plural-key Select
-detection stays in `PackageUsesI18n` because it's a Go-runtime-
-specific check; everything else flows through the shared helpers.
-
----
-
-- `codegen/lang/golang/golang.go:447` (`PackageUsesI18n`, with helpers
-  `funcUsesI18n`, `stmtUsesI18n`, `exprUsesI18n` at 492–577).
-- `codegen/platform/html/i18n.go:23` (`hasI18nCalls`, plus a private
-  `walkPkgExprs` IR-visitor at 47–278).
-- `codegen/platform/android/i18n.go:18` (`hasI18nCalls`, with its own
-  duplicate visitor — the file's `visitExpr/visitStmt` panic messages still
-  read `android.i18n.visitExpr`/`visitStmt`).
-
-Each visitor open-codes the same IR walk and asks a per-language
-`IsI18nCall` helper (`codegen/lang/golang/golang.go:406`,
-`codegen/lang/javascript/javascript.go:113`, `codegen/lang/kotlin/kotlin.go:33`)
-whether a qualified call is an i18n intrinsic. The three string-set bodies
-are identical except for spelling (`i18n.tr`, `i18n.numberInt`, ...).
-
-**Problem.** Every new i18n entry point has to be added in four places
-(stdlib + three IsI18nCall lists). The walkers also diverge in node
-coverage — `html/i18n.go`'s walker panics on unhandled nodes, the
-android one panics too, but the golang one falls through silently.
-
-**Direction.** Define `i18n.IsCall(*ir.Call) bool` once (drive it off
-intrinsic name, which the checker already attaches) and use the existing
-`codegen.WalkLowered` / shared `treewalk.go` infrastructure. Move
-`SnglI18nImportPath` into the language translator interface or onto a
-shared `i18nRuntime` capability so platforms don't reach into
-`golang.SnglI18nImportPath` (currently referenced from fyne, bubbletea,
-gtk4).
-
----
-
-### 2. Three near-identical IRContext implementations ✅ RESOLVED (2026-05-23)
-
-Hoisted recursive Expr/Stmt dispatch + body-walk into `codegen/irwalk`.
-Each IRContext now implements `irwalk.Renderer`; the walk skeleton
-(EvalExpr type-switch, EvalStmt, For/If body+indent recursion,
-EvalMutTarget) lives once in irwalk. Three IRContexts kept for the
-lang-owned subgraphs (Call/Conversion/Lambda) and leaf rendering.
-
----
-
-- `codegen/lang/golang/ircontext.go` (1244 lines, `GoIRContext`)
-- `codegen/lang/javascript/ircontext.go` (825 lines, `JsIRContext`)
-- `codegen/lang/kotlin/ircontext.go` (885 lines, `KtIRContext`)
-
-All three implement the same shape: `EvalExpr(ir.Expr) string`,
-`EvalStmt(ir.Stmt) []string`, `evalFor`, `evalIf`, `evalLiteral`,
-`evalIdent`, `evalCall`, `evalNativeCall`, `evalNamespaceCall`,
-`evalTypeMethodCall`, `evalConversion`, `evalLambda`, `evalCallArgs`,
-`evalMutTarget`, `WithLocal`. The walks are mechanical IR traversals;
-only the leaf rendering differs.
-
-**Problem.** A bug fix to the IR walker has to land three times and gets
-caught by three different test suites with different coverage. The
-`LangTranslator` interface still has `WriteExpr` / `WriteStmt` /
-`WriteType` stubs (`codegen.go:107-109`) that all three return
-`"not yet implemented"` for (`golang.go:50`, `javascript.go:29`,
-`kotlin.go:104`) — there is a half-finished v2 API that was never
-unified with these IRContexts.
-
-**Direction.** Either finish the `WriteExpr`/`WriteStmt` migration and
-delete the IRContexts, or hoist the walking skeleton into `codegen/`
-(parallel to `codegen.WalkLowered`) and have each language plug in only
-the rendering hooks (string-format leaves, name mangling).
-
----
-
-### 3. `LangTranslator` interface has a giant abandoned v2 surface ✅ RESOLVED
-
-`WriteExpr`/`WriteStmt`/`WriteType` v2 stubs removed when `FileEmitter`
-landed. Each lang owns file-level emission via `NewFileEmitter`; the
-remaining `LangTranslator` surface is the live API (no dead methods).
-
----
-
-`codegen/codegen.go:98-120`:
-
-```
-WriteExpr(...) error  // stub
-WriteStmt(...) error  // stub
-WriteType(...) error  // stub
-GenerateIdentifier(*ir.Ident) string
-Eval(ir.Expr) string  // "eval not implemented"
-TranslateIRExpr(...) string  // actual API
-TranslateIRMutation(...) []string  // actual API
-TranslateIRLiteral(...) string  // actual API
-TypeToNative(string) string
-ExportName(string) string
-```
-
-`Eval` and the three `Write*` methods are stubs in **every** language
-(see #2). Either the migration is dead or it never started.
-
-**Problem.** New language implementations don't know which methods are
-real and which are placeholders. The interface is large enough to obscure
-its actual contract.
-
-**Direction.** Delete `Eval`, `WriteExpr`, `WriteStmt`, `WriteType` (or
-finish them — but they're inert today). Decide whether
-`GenerateIdentifier` and `ExportName` are the same concept.
-
----
-
-### 4. Bubbletea reaches into HTML via `LookupPlatform("html")`
+### 1. Bubbletea reaches into HTML via `LookupPlatform("html")`
 
 `codegen/platform/bubbletea/snapshot.go:33,150`:
 
@@ -146,7 +32,7 @@ as a top-level `codegen.HTMLScreenshotter` interface). Bubbletea's
 
 ---
 
-### 5. JS has no test lowering; android-go is opaque ✅ RESOLVED-as-documented (2026-05-23)
+### 2. JS has no test lowering; android-go is opaque ✅ RESOLVED-as-documented (2026-05-23)
 
 Confirmed test-execution is platform-driven, not lang-driven, and
 keep the existing asymmetry rather than force a single interface:
@@ -188,149 +74,9 @@ specific thing and remove it from `none` and android-go's `SupportedLangs`.
 
 ---
 
-### 6. Three independent `goImports` maps tracking which Go stdlib packages were used ✅ RESOLVED (2026-05-23)
-
-Shared `golang.BaseImports(pkg) []BaseImport` collects native imports
-+ sngl-i18n runtime in one place. gtk4, fyne, bubbletea seed their
-  `goImports` from this. Android-go's gogen emits a golib bridge only —
-  not a BaseImports user.
-
----
-
-`codegen/platform/bubbletea/compiler_ir.go:93,118,135,141,165,201,242,266,297`
-`codegen/platform/fyne/compiler_ir.go:80,86,149,179,184`
-`codegen/platform/gtk4/compiler_ir.go:172,175,180,181,245,337`
-`codegen/platform/android/gogen_ir.go` similarly
-
-Each Go-emitting platform sprinkles `info.goImports["time"] = ""` /
-`"fmt" = ""` / `"strings"` across its analyzer.
-
-**Problem.** Whether a Go file needs `"time"` should be a fact derivable
-from the lowered IR (it has timers, or uses `i18n.date`, etc.), not
-something every platform recomputes. Today fyne uses
-`map[string]bool`, bubbletea uses `map[string]string` (alias!), gtk4
-uses `map[string]bool` — even the data type differs.
-
-**Direction.** Put the bookkeeping on the `golang.Translator` itself
-(or on `codegen.ExprScope.NativeImports` which already exists for this
-purpose) and have all four platforms read out a single
-`golang.RequiredImports(pkg) []ImportSpec` derived from the IR.
-
----
-
-### 7. Cross-platform i18n manifest reading is duplicated ✅ RESOLVED (2026-05-23)
-
-New `codegen/i18n.LoadManifest(projectFS, projectDir)` is the single
-disk/FS reader; it compact-marshals the JSON so callers can embed it
-inline without bloat. html and android consume it directly. The
-Go-desktop platforms (bubbletea, fyne, gtk4) now ship the manifest
-embedded into the binary via a generated `i18n_embed.go` sidecar
-plus `//go:embed i18n.manifest.json` plus an `init()` calling the
-new `pkg/go/i18n.SetManifestBytes`. Installed Go-desktop binaries no
-longer silently mis-translate when there's no
-working-directory manifest beside the executable. Shared emit helper:
-`golang.EmitI18nManifestEmbed(sink, pkgName, projectFS, projectDir)`.
-
----
-
-`codegen/platform/html/i18n.go:331-371` reads/marshals `i18n.manifest.json`.
-`codegen/platform/android/i18n.go:55+` does the same and emits a different
-output location (`app/src/main/assets/...`).
-
-The bubbletea, fyne, gtk4 platforms don't ship i18n manifests at all,
-even though `golang.PackageUsesI18n` is checked and the runtime import
-is added (`bubbletea/compiler_ir.go:140-141`,
-`fyne/compiler_ir.go:85-86`, `gtk4/compiler_ir.go:174-175`). So i18n
-"works" for android+kotlin and html+js, "compiles but probably
-mis-translates" for the three Go desktop platforms because the runtime
-loads no manifest.
-
-**Direction.** Move manifest discovery into a shared helper
-(`codegen.LoadI18nManifest(projectFS, projectDir) ([]byte, error)`) and
-have each platform decide *where* to drop the file. Or, more
-aggressively: have the Go i18n runtime accept a manifest blob set at
-init time, and have every Go-emitting platform inject it as a
-generated `init()` constant.
-
----
-
 ## Severity: Medium
 
-### 8. `SupportedLangs() []string` AND `IsLanguageSupported(Language) bool` both exist ✅ RESOLVED (2026-05-23)
-
-`IsLanguageSupported` had no callers anywhere in the codebase — pure
-dead surface area. Removed from `ir.Platform`, the six platform
-implementations, and the two test stubs. `SupportedLangs()` remains
-the single source of truth; html's dynamic enumeration of
-HTTPCompiler-implementing langs already drives that method, so the
-dynamic semantics survive.
-
----
-
-`codegen/codegen.go:124-125` (PlatformGenerator):
-
-```
-ir.Platform                          // contributes IsLanguageSupported
-SupportedLangs() []string            // separate
-```
-
-`ir/ir.go:434-440` shows `IsLanguageSupported(Language) bool` on
-`ir.Platform`. Every platform implements both, and they always agree
-(bubbletea/fyne/gtk4 hard-code `"go"` in both; android lists
-`["kotlin","go"]` and a switch returning `id == "kotlin" || id == "go"`).
-
-**Problem.** Two sources of truth — `none.go:22` returns `false` for
-all languages but `SupportedLangs() == nil`. They could disagree
-without any compile error.
-
-**Direction.** Drop `IsLanguageSupported`; derive it from
-`SupportedLangs()` in a registry helper. Or vice versa, but in either
-direction don't keep both.
-
----
-
-### 9. Capabilities are declared imperatively per platform, easy to under-declare ✅ RESOLVED (2026-06-07)
-
-`refactor(lower): replace Caps with positive Features capability model` (92737989). `Features` struct is the new positive declaration (platforms declare what they *can* render); `Caps` is derived as the complement via `Features.Caps()`. A platform that forgets to declare a feature gets the lowering pass run for free — safe default.
-
-`codegen/platform/html/html.go:54-55`:
-
-```go
-return lower.Caps{NoAsyncReactive: true, NoContext: true, NoImplicitRecv: true,
-	NoInlineComponents: true, NoReactivity: true, NoStdlibWrappers: true}
-```
-
-`codegen/platform/android/android.go:51`:
-
-```go
-return lower.Caps{NoContext: true, NoInlineComponents: true}
-```
-
-`codegen/platform/fyne/fyne.go:58`:
-
-```go
-return lower.Caps{NoContext: true, NoReactivity: true, NoDeclarative: true,
-	NoStdlibWrappers: true, NoInlineComponents: true}
-```
-
-bubbletea and gtk4 differ from fyne by one or two flags despite
-solving the same problem. Caps is essentially a free-form bag — a
-platform that forgets to set `NoTernary` gets ternaries the codegen
-doesn't know how to render.
-
-**Problem.** There's no static check that the platform's actual codegen
-matches its capability declaration. Coverage is by panic-in-codegen.
-
-**Direction.** Have each platform declare *positive* capabilities (i.e.
-"I can render `*ir.Ternary` natively") and `lower.Caps` is derived as
-the complement. Then a missing declaration falls back to "lower this"
-which is safe. Or generate a compile-time test that walks lowered IR
-and asserts no high-level node shapes survive that the platform
-hasn't acknowledged.
-
----
-
-### 10. `ExprScope` is a mutable junk-drawer that grows test-runner hacks
+### 3. `ExprScope` is a mutable junk-drawer that grows test-runner hacks
 
 `codegen/codegen.go:22-65`. Test-only fields polluting the everyday
 codegen scope:
@@ -352,7 +98,7 @@ diverge from production emission at all.
 
 ---
 
-### 11. Multiple optional Platform interfaces with overlapping intent
+### 4. Multiple optional Platform interfaces with overlapping intent
 
 `codegen/codegen.go` declares:
 
@@ -382,128 +128,7 @@ emitter the platform needs.
 
 ---
 
-### 12. Per-language `IsI18nCall` is a static string-set, redundant with `Func.Intrinsic` ✅ RESOLVED (2026-05-23)
-
-New `codegen/i18n` package exposes `IsCall(*ir.Call)` (matches both
-`Func.Receiver == "i18n"` pre-inline and `Func.Intrinsic ∈ ir.I18nIntrinsics` post-inline) and `IsIntrinsic(name)`. The three
-per-lang `IsI18nCall` string-set switches are gone; `IsIntlIntrinsic`
-shims remain on the language translators as one-line delegations for
-existing internal call sites. Single source of truth: `ir.I18nIntrinsics`.
-
----
-
-`codegen/lang/golang/golang.go:406`
-`codegen/lang/javascript/javascript.go:113`
-`codegen/lang/kotlin/kotlin.go:33`
-
-All three switch on the same set of strings: `"i18n.tr"`, `"i18n.format"`,
-etc. — i.e. the qualified `Receiver.Name` shape, not the intrinsic.
-Meanwhile `IsIntlIntrinsic` (`javascript.go:129`, similar in others)
-switches on the intrinsic shape *after* `InlinePure` has run.
-
-**Problem.** Two parallel detection schemes (pre-lowering vs
-post-lowering); each lang re-encodes the same i18n function set.
-
-**Direction.** Mark i18n stdlib funcs with a `tags: "i18n"` field on
-the `*ir.Func` at stdlib load time, and have one shared helper check
-it. The set lives in exactly one place: the stdlib declaration in
-`lib/i18n.sngl`.
-
----
-
-### 13. `golang.SnglI18nImportPath` is referenced cross-platform via the lang package ✅ RESOLVED (2026-05-23)
-
-Absorbed by `golang.BaseImports` (item #6): the i18n-runtime gate now
-lives inside the helper, so platforms no longer reference
-`golang.SnglI18nImportPath` directly. (`grep` across non-golang
-packages returns no hits.)
-
----
-
-`codegen/platform/bubbletea/compiler_ir.go:141`
-`codegen/platform/fyne/compiler_ir.go:86`
-`codegen/platform/gtk4/compiler_ir.go:175`
-
-All three Go-target platforms import the constant from
-`codegen/lang/golang`. JS has the parallel `javascript.SnglI18nImportPath`
-(`javascript.go:108`).
-
-**Problem.** Platform code knows the Go-runtime import path for a stdlib
-package. If we add another stdlib runtime package (date/time, http
-client, fs) every platform will grow another `golang.SnglXxxImportPath`
-reference.
-
-**Direction.** Expose stdlib-runtime imports through the language
-translator generically: `golang.StdlibImports(pkg *ir.Package) []string`
-that returns every required `git.duckfam.us/jonathan/sngl/pkg/go/*`
-import. Platform just splices the slice into its import block.
-
----
-
-### 14. `kotlin.testlower` hard-codes `c` as the component receiver ✅ RESOLVED (2026-05-23)
-
-`LowerTestFunc` now walks `fn.Params` for component-typed entries,
-captures the actual receiver name(s) into a `compRecvs map[string]bool`
-threaded through all helpers, and uses the first one as the declared
-local. Test bodies that name their receiver anything other than `c`
-now lower correctly. Falls back to `c` when no component param is
-present (assertion-only tests).
-
----
-
-`codegen/lang/kotlin/testlower.go:60,251,259,263,293`:
-
-```go
-if id, ok := sel.Operand.(*ir.Ident); ok && id.Name == "c" { ... }
-```
-
-The `c.<field>` / `c.<id>.@event()` pattern is encoded as a literal
-string match on `c`. The Go testlower handles this generically through
-`scope.RawFieldAccess` (`golang/testlower.go:34-42`) — by marking
-component-typed params at declaration time.
-
-**Problem.** Test bodies that name their receiver anything other than
-`c` silently produce wrong Kotlin. The convention should be enforced
-or detected, not assumed.
-
-**Direction.** Have Kotlin testlower walk params and seed a
-`compRecvs map[string]bool` mirroring Go's approach.
-
----
-
-### 15. Asymmetric snapshot support across platforms ✅ RESOLVED (2026-05-23)
-
-gtk4 now implements `Snapshotter` + `BatchSnapshotter` via
-`codegen/platform/gtk4/snapshot.go`. The harness wraps the top-level
-window in a `GdkPaintable`, renders it through `GskCairoRenderer`
-(no GdkSurface required), and saves the resulting `GdkTexture` to
-PNG. Still requires `$DISPLAY` / `$WAYLAND_DISPLAY` for
-`gtk_window_present`; a follow-up will spawn weston-headless / Xvfb
-when neither is set so snapshots become fully self-contained.
-
----
-
-- html: yes (cdp/rod, via `cdprunner.go`)
-- bubbletea: yes (via html bridge, see #4)
-- fyne: yes (`snapshot.go`)
-- android: yes (emulator-based, `snapshot.go` + `batchsnapshot.go`)
-- gtk4: **no** — `codegen/platform/gtk4/` has no `snapshot.go`.
-- none: n/a
-
-`TextSnapshotter`/`BatchTextSnapshotter` exists only on bubbletea.
-
-**Problem.** The matrix is sparse and the inconsistency is hidden behind
-type assertions. `cmd/sngl/preview.go` and the docsgen pipeline silently
-skip platforms that don't implement Snapshotter.
-
-**Direction.** At minimum, document the expected interface set per
-platform (the `docs/targets.go` table is a start). For gtk4 specifically,
-either implement Snapshot or have `IsLanguageSupported`/`SupportedLangs`
-acknowledge "preview only" status.
-
----
-
-### 16. WASM extern bridge convention vs ES-import convention is encoded ad-hoc
+### 5. WASM extern bridge convention vs ES-import convention is encoded ad-hoc
 
 `codegen/codegen.go:52-59` describes `BundledNativePkgs` as a JS-only
 convention; html's `jsbundle.go:16-29` populates the set from
@@ -525,35 +150,7 @@ through scope.
 
 ---
 
-### 17. `walkPkgExprs` in html/i18n.go duplicates `ir.Strip` / `treewalk.go` ✅ RESOLVED (2026-05-23)
-
-New `ir.WalkExprs(pkg, fn)` in `ir/walkexprs.go` covers every
-expression-bearing node in a package (consts, vars, funcs,
-components, timers, windows, plus statement-containers like
-If/For/PlatformFilter/SlotInst/ErrorBoundary/ContextProvider). The
-panic-on-unknown convention is preserved. The two ~230-line
-`walkPkgExprs` copies in html/i18n.go and android/i18n.go are
-deleted; both platforms now call `ir.WalkExprs`. Adding a new IR
-node now updates exactly one site.
-
----
-
-`codegen/platform/html/i18n.go:47-278` is a 230-line IR visitor that
-panics on every unhandled node. `codegen/treewalk.go` and `ir/strip.go`
-already exist for IR walks. Android's i18n.go has its own copy too.
-
-**Problem.** Every IR shape addition (e.g. `ir.ErrorBoundary`,
-`ir.ContextProvider`, `ir.ContextRead`) requires updating these
-copy-pasted walkers in lockstep, or unrelated codegen crashes at
-runtime.
-
-**Direction.** A single generic `ir.WalkExprs(pkg, fn)` that callers
-parameterize. The panic-on-unknown convention is reasonable; centralize
-it.
-
----
-
-### 18. The `c` C-FFI receiver is conflated with the Go test-component receiver
+### 6. The `c` C-FFI receiver is conflated with the Go test-component receiver
 
 `codegen/lang/golang/ircontext.go:400`:
 
@@ -584,13 +181,13 @@ convention struct for any C-FFI consumer (cgo, gtk4 intrinsics,
 future C bindings) to share, but it's just one of many possible
 inhabitants of `Native` — not privileged in the IR. This avoids the
 `Kind` enum, lets new schemes self-describe, and frees `"C"` as a
-magic string. Held pending design pass; depends on #16 reaching the
+magic string. Held pending design pass; depends on #5 reaching the
 same conclusion via a different angle (BindingKind on
 NativeImport).
 
 ---
 
-### 19. `Caps.NoContext` is conflated with i18n-locale threading ✅ PARTIAL (2026-05-23) — full split deferred
+### 7. `Caps.NoContext` is conflated with i18n-locale threading ✅ PARTIAL (2026-05-23) — full split deferred
 
 `Caps.NoContext` replaced by two flags that better describe what's
 actually being lowered:
@@ -627,7 +224,7 @@ lowering pass isn't needed.
 
 ---
 
-### 20. PlatformExtensionBody is platform-specific by string
+### 8. PlatformExtensionBody is platform-specific by string
 
 `internal/lower/platform_extension.go:23` is a generic lowering pass
 keyed by the platform identifier string in `Options.Platform`. Stdlib
@@ -649,7 +246,7 @@ match any member. Or allow component-body inheritance.
 
 ## Severity: Low / Cosmetic
 
-### 21. Stub `Description()` strings differ in capitalization
+### 9. Stub `Description()` strings differ in capitalization
 
 `codegen/lang/golang/golang.go:34`: "Generate Go source..."
 `codegen/lang/javascript/javascript.go:22`: "Generate JavaScript source."
@@ -660,7 +257,7 @@ inconsistency.
 
 ---
 
-### 22. `intrinsic_translator.go` files duplicate the pattern but only three platforms use it
+### 10. `intrinsic_translator.go` files duplicate the pattern but only three platforms use it
 
 Present in `html`, `fyne`, `gtk4`. Bubbletea and Android use a
 different walker (RenderModel via `BuildRenderModel`). The
@@ -674,7 +271,7 @@ the two models can't unify.
 
 ---
 
-### 23. `pkg/go/i18n/`, `pkg/js/i18n/`, `pkg/kotlin/i18n/` are the only runtime packages
+### 11. `pkg/go/i18n/`, `pkg/js/i18n/`, `pkg/kotlin/i18n/` are the only runtime packages
 
 Only one stdlib package (`i18n`) has runtime support. `lib/` has
 `components.sngl`, `functions.sngl`, `types.sngl`, `units.sngl` — none
@@ -688,7 +285,7 @@ i18n is a one-off until further notice.
 
 ---
 
-### 24. Two platforms hard-code Go via `LangRunner` while two go through `lang.LangRunner`
+### 12. Two platforms hard-code Go via `LangRunner` while two go through `lang.LangRunner`
 
 `fyne/run.go:11`, `bubbletea/run.go:11`, `gtk4/run.go:11`, `html/run.go:17`
 all do `codegen.LookupLang(cfg.Lang)` and then call `lang.RunDir(...)`
@@ -702,7 +299,7 @@ capabilities; pick one entry point.
 
 ---
 
-### 25. `none` platform has no `IsLanguageSupported` semantics
+### 13. `none` platform has no `IsLanguageSupported` semantics
 
 `codegen/platform/none/none.go:22`: returns `false` for every language,
 yet `RunTests` accepts any LangTranslator (and the test runner is
@@ -716,7 +313,7 @@ supported lang and use it.
 
 ---
 
-### 26. `Translator.Capabilities()` on `none` lang returns `lower.Caps{}` — no lowering
+### 14. `Translator.Capabilities()` on `none` lang returns `lower.Caps{}` — no lowering
 
 `codegen/lang/none/none.go:28`: `Capabilities() lower.Caps { return lower.Caps{} }`.
 
@@ -731,7 +328,7 @@ with `platform=none` would skip every lowering pass.
 
 ---
 
-### 27. `EmitCHeader` is the only `CCompiler` interface user
+### 15. `EmitCHeader` is the only `CCompiler` interface user
 
 `codegen/codegen.go:323` defines `CCompiler.EmitCHeader`. Only golang
 implements it (`ccompiler.go`). It's called from
@@ -745,7 +342,7 @@ broader "native-import emission" interface alongside the WASM path.
 
 ---
 
-### 28. Bubbletea's `runtests_js.go` / `fyne/runtests_js.go` / `gtk4/runtests_js.go` / `html/testing_js.go` are stub files for WASM
+### 16. Bubbletea's `runtests_js.go` / `fyne/runtests_js.go` / `gtk4/runtests_js.go` / `html/testing_js.go` are stub files for WASM
 
 Each file is identical in shape — a no-op `RunTests` for the WASM
 playground build. Four copies of essentially the same stub.
@@ -756,7 +353,7 @@ instead of duplicating.
 
 ---
 
-### 29. `html.html.go` is 4000+ lines and mixes everything
+### 17. `html.html.go` is 4000+ lines and mixes everything
 
 `codegen/platform/html/html.go` has 4000+ lines (line refs above hit
 both 532, 763, 3153). It does: option parsing, asset copy, stylesheet
@@ -772,7 +369,7 @@ its own file.
 
 ---
 
-### 30. `BatchSnapshotter` adoption is uneven
+### 18. `BatchSnapshotter` adoption is uneven
 
 Only `android/batchsnapshot.go` declares `var _ codegen.BatchSnapshotter`.
 Bubbletea has `BatchSnapshot` and `BatchSnapshotText` methods but no
@@ -783,7 +380,7 @@ the platforms without batch support, paying repeated build cost.
 
 ---
 
-### 31. `Pkg().Document` returned from each lang/platform parses its own embedded `.sngl`
+### 19. `Pkg().Document` returned from each lang/platform parses its own embedded `.sngl`
 
 `codegen/lang/golang/golang.go:22-26`, `codegen/platform/android/android.go:22-29`,
 etc.: each `init()` parses its `*.sngl` source and panics on error. The
@@ -794,7 +391,7 @@ that all `init()`s use.
 
 ---
 
-### 32. CLAUDE.md says `--lang none` is the default for html, but the static-mode check is by string
+### 20. CLAUDE.md says `--lang none` is the default for html, but the static-mode check is by string
 
 `codegen/platform/html/html.go:82,294`:
 
@@ -822,7 +419,7 @@ direction isn't forgotten.
 
 ### F1. Migrate JS components from struct-shape to function-shape
 
-The `StructComponents` lowering (item #19) is currently set by every
+The `StructComponents` lowering (item #7) is currently set by every
 backend, including html (JS). JS components conceptually CAN compile
 to factory functions whose nested child components close over the
 parent's locals — that would let user-declared contexts ride along as

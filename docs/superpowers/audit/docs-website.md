@@ -247,11 +247,6 @@ on their own, but the doc never defines the distinction between "function" and
 "method" for `func T.foo() …` declarations. The lib calls them "methods on
 the … receiver" (e.g. types.sngl:13). Pick one term.
 
-### 4.4 `tour.md:225, 351` — "expression-body" vs `effective-sngl.md:372` — "expression form" (**inconsistent**)
-
-CLAUDE.md uses "expression-body". Pick one; tour mixes both ("expression-body
-form" and "expression form").
-
 ## 5. website.sngl & portability
 
 ### 5.1 `website.sngl:62-99, 209-211, etc.` — heavy raw-HTML in `PlatformCarousel`, playground, tutorial sections (**violates portability invariant**)
@@ -423,10 +418,6 @@ Not strictly a docs issue, but `setLocale` is deprecated in favour of
 `setContext(locale, …)`. If the locale context is now declared
 (`lib/i18n.sngl:23`), `setLocale` should be removable — the deprecation has
 been outstanding long enough that anything still using it is stale.
-
-### 7.15 `superpowers/audit/parser-checker.md:9-17` — separate audit already flags the `->` parser panic (**reference**)
-
-Cross-referencing so the next sweep can do parser, lib, and docs in lockstep.
 
 ---
 

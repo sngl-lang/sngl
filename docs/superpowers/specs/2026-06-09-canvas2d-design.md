@@ -99,18 +99,18 @@ New file `internal/lower/pass_canvas.go`. Feature flag: `lower.Canvas`. Platform
 
 **Draw intrinsics** (registered per platform, called by the lowered draw function):
 
-| Intrinsic | Signature |
-|---|---|
-| `canvas.applyStyle` | `(ctx, style CanvasStyle)` |
-| `canvas.save` | `(ctx)` |
-| `canvas.restore` | `(ctx)` |
-| `canvas.drawRect` | `(ctx, x, y, w, h)` |
-| `canvas.drawCircle` | `(ctx, cx, cy, r)` |
-| `canvas.drawEllipse` | `(ctx, cx, cy, rx, ry)` |
-| `canvas.drawLine` | `(ctx, x1, y1, x2, y2)` |
-| `canvas.drawPath` | `(ctx, cmds list<PathCmd>)` |
-| `canvas.drawText` | `(ctx, x, y, content, style)` |
-| `canvas.drawImage` | `(ctx, x, y, w, h, src)` |
+| Intrinsic            | Signature                     |
+|----------------------|-------------------------------|
+| `canvas.applyStyle`  | `(ctx, style CanvasStyle)`    |
+| `canvas.save`        | `(ctx)`                       |
+| `canvas.restore`     | `(ctx)`                       |
+| `canvas.drawRect`    | `(ctx, x, y, w, h)`           |
+| `canvas.drawCircle`  | `(ctx, cx, cy, r)`            |
+| `canvas.drawEllipse` | `(ctx, cx, cy, rx, ry)`       |
+| `canvas.drawLine`    | `(ctx, x1, y1, x2, y2)`       |
+| `canvas.drawPath`    | `(ctx, cmds list<PathCmd>)`   |
+| `canvas.drawText`    | `(ctx, x, y, content, style)` |
+| `canvas.drawImage`   | `(ctx, x, y, w, h, src)`      |
 
 ## HTML Platform
 
@@ -122,17 +122,17 @@ New file `codegen/platform/html/canvas.go`.
 
 **Intrinsic mappings:**
 
-| SNGL intrinsic | Canvas 2D API |
-|---|---|
-| `canvas.applyStyle` | set `fillStyle`, `strokeStyle`, `lineWidth`, `lineCap`, `lineJoin`, `font` |
-| `canvas.save` / `canvas.restore` | `ctx.save()` / `ctx.restore()` |
-| `canvas.drawRect` | `ctx.fillRect(x,y,w,h)` if `style.fill.a > 0`; `ctx.strokeRect(x,y,w,h)` if `style.stroke.a > 0`; both may fire |
-| `canvas.drawCircle` | `ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill()/stroke()` |
-| `canvas.drawEllipse` | `ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill()/stroke()` |
-| `canvas.drawLine` | `ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke()` |
-| `canvas.drawPath` | `ctx.beginPath()` + command loop |
-| `canvas.drawText` | `ctx.fillText(content,x,y)` and/or `ctx.strokeText` |
-| `canvas.drawImage` | `ctx.drawImage(img,x,y,w,h)` via `new Image()` load |
+| SNGL intrinsic                   | Canvas 2D API                                                                                                   |
+|----------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `canvas.applyStyle`              | set `fillStyle`, `strokeStyle`, `lineWidth`, `lineCap`, `lineJoin`, `font`                                      |
+| `canvas.save` / `canvas.restore` | `ctx.save()` / `ctx.restore()`                                                                                  |
+| `canvas.drawRect`                | `ctx.fillRect(x,y,w,h)` if `style.fill.a > 0`; `ctx.strokeRect(x,y,w,h)` if `style.stroke.a > 0`; both may fire |
+| `canvas.drawCircle`              | `ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill()/stroke()`                                            |
+| `canvas.drawEllipse`             | `ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill()/stroke()`                                  |
+| `canvas.drawLine`                | `ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke()`                                           |
+| `canvas.drawPath`                | `ctx.beginPath()` + command loop                                                                                |
+| `canvas.drawText`                | `ctx.fillText(content,x,y)` and/or `ctx.strokeText`                                                             |
+| `canvas.drawImage`               | `ctx.drawImage(img,x,y,w,h)` via `new Image()` load                                                             |
 
 **Reactivity:** the generated JS wraps `_draw` in a redraw scheduler:
 

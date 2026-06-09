@@ -12,24 +12,24 @@
 
 ## File Map
 
-| File | Status | Responsibility |
-|------|--------|----------------|
-| `ast/ast.go` | Modify | Add `MacroAttr`, `AttrDecl` types |
-| `internal/parser/token.go` | Modify | Add `ATTR_OPEN` token constant |
-| `internal/parser/lexer.go` | Modify | Lex `#[` → `ATTR_OPEN` |
-| `internal/parser/build.go` | Modify | Parse `#[alias.name(args)]` → `AttrDecl` |
-| `internal/parser/format.go` | Modify | Format `AttrDecl` back to source |
-| `internal/imports/imports.go` | Create | `ImportRef`, `ResolveAliases`, `ParseScheme`, `NamespaceFromPath` |
-| `internal/checker/resolve.go` | Modify | Remove `ParseScheme`/`NamespaceFromPath`, import from `internal/imports` |
-| `internal/checker/checker.go` | Modify | Use `internal/imports`; add `canvas` to known internal packages; handle `AttrDecl` |
-| `internal/expand/registry.go` | Create | `MacroAttr`, `PreHandler`, `PostHandler`, `RegisterPre`, `RegisterPost` |
-| `internal/expand/pre.go` | Create | `ExpandPre` — resolve aliases, dispatch handlers, consistency checks |
-| `internal/expand/post.go` | Create | `ExpandPost` stub |
-| `internal/expand/expand_test.go` | Create | Fixture-driven tests for `ERROR(expand)` |
-| `internal/macros/canvas/canvas.go` | Create | `canvas.shape` handler registration |
-| `sngl.go` | Modify | Add `ExpandPre`, `ExpandPost` public API functions |
-| `testdata/macro_canvas_shape.sngl` | Create | Happy-path fixture for `#[canvas.shape]` |
-| `testdata/macro_expand_errors.sngl` | Create | `ERROR(expand)` directive fixtures |
+| File                                | Status | Responsibility                                                                     |
+|-------------------------------------|--------|------------------------------------------------------------------------------------|
+| `ast/ast.go`                        | Modify | Add `MacroAttr`, `AttrDecl` types                                                  |
+| `internal/parser/token.go`          | Modify | Add `ATTR_OPEN` token constant                                                     |
+| `internal/parser/lexer.go`          | Modify | Lex `#[` → `ATTR_OPEN`                                                             |
+| `internal/parser/build.go`          | Modify | Parse `#[alias.name(args)]` → `AttrDecl`                                           |
+| `internal/parser/format.go`         | Modify | Format `AttrDecl` back to source                                                   |
+| `internal/imports/imports.go`       | Create | `ImportRef`, `ResolveAliases`, `ParseScheme`, `NamespaceFromPath`                  |
+| `internal/checker/resolve.go`       | Modify | Remove `ParseScheme`/`NamespaceFromPath`, import from `internal/imports`           |
+| `internal/checker/checker.go`       | Modify | Use `internal/imports`; add `canvas` to known internal packages; handle `AttrDecl` |
+| `internal/expand/registry.go`       | Create | `MacroAttr`, `PreHandler`, `PostHandler`, `RegisterPre`, `RegisterPost`            |
+| `internal/expand/pre.go`            | Create | `ExpandPre` — resolve aliases, dispatch handlers, consistency checks               |
+| `internal/expand/post.go`           | Create | `ExpandPost` stub                                                                  |
+| `internal/expand/expand_test.go`    | Create | Fixture-driven tests for `ERROR(expand)`                                           |
+| `internal/macros/canvas/canvas.go`  | Create | `canvas.shape` handler registration                                                |
+| `sngl.go`                           | Modify | Add `ExpandPre`, `ExpandPost` public API functions                                 |
+| `testdata/macro_canvas_shape.sngl`  | Create | Happy-path fixture for `#[canvas.shape]`                                           |
+| `testdata/macro_expand_errors.sngl` | Create | `ERROR(expand)` directive fixtures                                                 |
 
 ---
 
@@ -44,26 +44,26 @@ In `internal/parser/build_test.go`, add after the `TestParseDisabledDecl` test:
 
 ```go
 func TestParseAttrDecl(t *testing.T) {
-    src := `#[canvas.shape]
+	src := `#[canvas.shape]
 component rect() {}`
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse error: %v", err)
-    }
-    ad, ok := doc.Stmts[0].(*ast.AttrDecl)
-    if !ok {
-        t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
-    }
-    if len(ad.Attrs) != 1 {
-        t.Fatalf("expected 1 attr, got %d", len(ad.Attrs))
-    }
-    attr := ad.Attrs[0]
-    if attr.Alias != "canvas" || attr.Name != "shape" {
-        t.Errorf("expected canvas.shape, got %s.%s", attr.Alias, attr.Name)
-    }
-    if _, ok := ad.Inner.(*ast.ComponentDecl); !ok {
-        t.Errorf("expected ComponentDecl inner, got %T", ad.Inner)
-    }
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	if !ok {
+		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	}
+	if len(ad.Attrs) != 1 {
+		t.Fatalf("expected 1 attr, got %d", len(ad.Attrs))
+	}
+	attr := ad.Attrs[0]
+	if attr.Alias != "canvas" || attr.Name != "shape" {
+		t.Errorf("expected canvas.shape, got %s.%s", attr.Alias, attr.Name)
+	}
+	if _, ok := ad.Inner.(*ast.ComponentDecl); !ok {
+		t.Errorf("expected ComponentDecl inner, got %T", ad.Inner)
+	}
 }
 ```
 
@@ -84,9 +84,9 @@ In `ast/ast.go`, after the `DisabledDecl` block (after line 47), insert:
 // MacroAttr is a single macro attribute: #[alias.name(args)].
 type MacroAttr struct {
 	Pos   Pos
-	Alias string     // import alias, e.g. "canvas" in #[canvas.shape]
-	Name  string     // macro name, e.g. "shape" in #[canvas.shape]
-	Args  []Expr     // optional arguments
+	Alias string // import alias, e.g. "canvas" in #[canvas.shape]
+	Name  string // macro name, e.g. "shape" in #[canvas.shape]
+	Args  []Expr // optional arguments
 }
 
 // AttrDecl wraps any declaration prefixed with one or more #[...] attributes.
@@ -151,10 +151,10 @@ In `internal/parser/lexer.go`, find the `#` handler (around line 152):
 ```go
 // Color (#rrggbb / #rrggbbaa) or element reference (#id)
 if ch == '#' && l.pos+1 < len(l.input) {
-    next := l.peekAt(1)
-    if isHexDigit(next) || isIdentStart(next) {
-        return l.scanHashToken(startLine, startCol)
-    }
+	next := l.peekAt(1)
+	if isHexDigit(next) || isIdentStart(next) {
+		return l.scanHashToken(startLine, startCol)
+	}
 }
 ```
 
@@ -163,15 +163,15 @@ Change to:
 ```go
 // #[ — macro attribute open; #hex — color; #id — element reference
 if ch == '#' && l.pos+1 < len(l.input) {
-    next := l.peekAt(1)
-    if next == '[' {
-        l.advance() // #
-        l.advance() // [
-        return l.tok(ATTR_OPEN, "#[", startLine, startCol)
-    }
-    if isHexDigit(next) || isIdentStart(next) {
-        return l.scanHashToken(startLine, startCol)
-    }
+	next := l.peekAt(1)
+	if next == '[' {
+		l.advance() // #
+		l.advance() // [
+		return l.tok(ATTR_OPEN, "#[", startLine, startCol)
+	}
+	if isHexDigit(next) || isIdentStart(next) {
+		return l.scanHashToken(startLine, startCol)
+	}
 }
 ```
 
@@ -181,13 +181,13 @@ In `internal/parser/build_test.go` (or a new `lexer_test.go` if one exists), add
 
 ```go
 func TestLexAttrOpen(t *testing.T) {
-    src := `#[canvas.shape]`
-    doc, err := Parse("test.sngl", []byte(src))
-    // We expect a parse error since AttrDecl is not wired yet,
-    // but ILLEGAL token would cause a different error than ATTR_OPEN.
-    // Just verify no panic.
-    _ = doc
-    _ = err
+	src := `#[canvas.shape]`
+	doc, err := Parse("test.sngl", []byte(src))
+	// We expect a parse error since AttrDecl is not wired yet,
+	// but ILLEGAL token would cause a different error than ATTR_OPEN.
+	// Just verify no panic.
+	_ = doc
+	_ = err
 }
 ```
 
@@ -229,30 +229,30 @@ At an appropriate location in `build.go`, add:
 // parseAttrDecl parses one #[alias.name(args)] attribute.
 // Called after the ATTR_OPEN token has been consumed.
 func (p *parser) parseAttrDecl(startPos ast.Pos) ast.MacroAttr {
-    // expect: alias.name or just name
-    alias := p.expectIdent("macro attribute alias")
-    var name string
-    if p.peek() == DOT {
-        p.advance() // consume .
-        name = p.expectIdent("macro attribute name")
-    } else {
-        // bare name without alias — alias stays empty, name = alias value
-        name = alias
-        alias = ""
-    }
-    var args []ast.Expr
-    if p.peek() == LPAREN {
-        p.advance() // (
-        for p.peek() != RPAREN && p.peek() != EOF {
-            args = append(args, p.parseExpr())
-            if p.peek() == COMMA {
-                p.advance()
-            }
-        }
-        p.expect(RPAREN, "closing ) in macro attribute")
-    }
-    p.expect(RBRACKET, "closing ] in macro attribute")
-    return ast.MacroAttr{Pos: startPos, Alias: alias, Name: name, Args: args}
+	// expect: alias.name or just name
+	alias := p.expectIdent("macro attribute alias")
+	var name string
+	if p.peek() == DOT {
+		p.advance() // consume .
+		name = p.expectIdent("macro attribute name")
+	} else {
+		// bare name without alias — alias stays empty, name = alias value
+		name = alias
+		alias = ""
+	}
+	var args []ast.Expr
+	if p.peek() == LPAREN {
+		p.advance() // (
+		for p.peek() != RPAREN && p.peek() != EOF {
+			args = append(args, p.parseExpr())
+			if p.peek() == COMMA {
+				p.advance()
+			}
+		}
+		p.expect(RPAREN, "closing ) in macro attribute")
+	}
+	p.expect(RBRACKET, "closing ] in macro attribute")
+	return ast.MacroAttr{Pos: startPos, Alias: alias, Name: name, Args: args}
 }
 ```
 
@@ -261,11 +261,13 @@ func (p *parser) parseAttrDecl(startPos ast.Pos) ast.MacroAttr {
 In the document-level statement parsing loop (where `doc.Stmts` is appended), before the existing statement dispatch, add handling for `ATTR_OPEN`:
 
 Find the section that looks like:
+
 ```go
 case token.SLASH_DASH: // or similar for DisabledDecl
 ```
 
 Add before or alongside it:
+
 ```go
 case ATTR_OPEN:
     attrPos := p.pos()
@@ -324,15 +326,15 @@ In `internal/parser/build_test.go`, add:
 
 ```go
 func TestFormatAttrDecl(t *testing.T) {
-    src := "#[canvas.shape]\ncomponent rect() {}"
-    doc, err := Parse("test.sngl", []byte(src))
-    if err != nil {
-        t.Fatalf("parse: %v", err)
-    }
-    got := Format(doc)
-    if got != src+"\n" {
-        t.Errorf("format round-trip mismatch:\ngot:  %q\nwant: %q", got, src+"\n")
-    }
+	src := "#[canvas.shape]\ncomponent rect() {}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := Format(doc)
+	if got != src+"\n" {
+		t.Errorf("format round-trip mismatch:\ngot:  %q\nwant: %q", got, src+"\n")
+	}
 }
 ```
 
@@ -357,27 +359,27 @@ Then add the `writeAttrDecl` function near `writeDisabledDecl`:
 
 ```go
 func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
-    for _, attr := range d.Attrs {
-        f.write("#[")
-        if attr.Alias != "" {
-            f.write(attr.Alias)
-            f.write(".")
-        }
-        f.write(attr.Name)
-        if len(attr.Args) > 0 {
-            f.write("(")
-            for i, arg := range attr.Args {
-                if i > 0 {
-                    f.write(", ")
-                }
-                f.write(FormatExpr(arg))
-            }
-            f.write(")")
-        }
-        f.write("]")
-        f.newline()
-    }
-    f.writeStmt(d.Inner)
+	for _, attr := range d.Attrs {
+		f.write("#[")
+		if attr.Alias != "" {
+			f.write(attr.Alias)
+			f.write(".")
+		}
+		f.write(attr.Name)
+		if len(attr.Args) > 0 {
+			f.write("(")
+			for i, arg := range attr.Args {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.write(FormatExpr(arg))
+			}
+			f.write(")")
+		}
+		f.write("]")
+		f.newline()
+	}
+	f.writeStmt(d.Inner)
 }
 ```
 
@@ -1032,12 +1034,12 @@ In `ast/ast.go`, find `ComponentDecl`:
 
 ```go
 type ComponentDecl struct {
-    Pos          Pos
-    Name         string
-    Props        PropList
-    HasParens    bool
-    ChildrenType TypeExpr
-    Body         StmtBlock
+	Pos          Pos
+	Name         string
+	Props        PropList
+	HasParens    bool
+	ChildrenType TypeExpr
+	Body         StmtBlock
 }
 ```
 
@@ -1045,13 +1047,13 @@ Add `IsShape bool`:
 
 ```go
 type ComponentDecl struct {
-    Pos          Pos
-    Name         string
-    Props        PropList
-    HasParens    bool
-    ChildrenType TypeExpr
-    Body         StmtBlock
-    IsShape      bool // set by #[canvas.shape] macro expansion
+	Pos          Pos
+	Name         string
+	Props        PropList
+	HasParens    bool
+	ChildrenType TypeExpr
+	Body         StmtBlock
+	IsShape      bool // set by #[canvas.shape] macro expansion
 }
 ```
 
@@ -1061,8 +1063,8 @@ In `internal/expand/expand_test.go`, add a blank import of the canvas package so
 
 ```go
 import (
-    _ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
-    // ... existing imports
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
+	// ... existing imports
 )
 ```
 
@@ -1070,13 +1072,13 @@ Update `TestExpandPre_KnownInternal_UnknownName` to use a name that is genuinely
 
 ```go
 func TestExpandPre_KnownInternal_UnknownName(t *testing.T) {
-    doc := parseDoc(t, `import "internal://canvas"
+	doc := parseDoc(t, `import "internal://canvas"
 #[canvas.notarealname]
 component foo() {}`)
-    diags := expand.ExpandPre([]*ast.Document{doc})
-    if len(diags) == 0 {
-        t.Fatal("expected diagnostic for unknown macro name, got none")
-    }
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostic for unknown macro name, got none")
+	}
 }
 ```
 
@@ -1084,46 +1086,46 @@ Add a happy-path test:
 
 ```go
 func TestExpandPre_CanvasShape_ValidComponent(t *testing.T) {
-    doc := parseDoc(t, `import "internal://canvas"
+	doc := parseDoc(t, `import "internal://canvas"
 #[canvas.shape]
 component rect(x int, y int) {}`)
-    diags := expand.ExpandPre([]*ast.Document{doc})
-    if len(diags) != 0 {
-        t.Fatalf("expected no diagnostics, got: %v", diags)
-    }
-    comp, ok := doc.Stmts[1].(*ast.ComponentDecl)
-    if !ok {
-        t.Fatalf("expected ComponentDecl after expand, got %T", doc.Stmts[1])
-    }
-    if !comp.IsShape {
-        t.Error("expected IsShape=true after #[canvas.shape] expansion")
-    }
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) != 0 {
+		t.Fatalf("expected no diagnostics, got: %v", diags)
+	}
+	comp, ok := doc.Stmts[1].(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected ComponentDecl after expand, got %T", doc.Stmts[1])
+	}
+	if !comp.IsShape {
+		t.Error("expected IsShape=true after #[canvas.shape] expansion")
+	}
 }
 
 func TestExpandPre_CanvasShape_RejectsVar(t *testing.T) {
-    doc := parseDoc(t, `import "internal://canvas"
+	doc := parseDoc(t, `import "internal://canvas"
 #[canvas.shape]
 var bad = 5`)
-    diags := expand.ExpandPre([]*ast.Document{doc})
-    if len(diags) == 0 {
-        t.Fatal("expected diagnostic rejecting var")
-    }
-    if diags[0].Message != "shape macro requires a component declaration" {
-        t.Errorf("unexpected message: %q", diags[0].Message)
-    }
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostic rejecting var")
+	}
+	if diags[0].Message != "shape macro requires a component declaration" {
+		t.Errorf("unexpected message: %q", diags[0].Message)
+	}
 }
 
 func TestExpandPre_CanvasShape_RejectsEventDecl(t *testing.T) {
-    doc := parseDoc(t, `import "internal://canvas"
+	doc := parseDoc(t, `import "internal://canvas"
 #[canvas.shape]
 component bad(@click ClickEvent) {}`)
-    diags := expand.ExpandPre([]*ast.Document{doc})
-    if len(diags) == 0 {
-        t.Fatal("expected diagnostic rejecting event declaration")
-    }
-    if diags[0].Message != "shape components do not support event declarations" {
-        t.Errorf("unexpected message: %q", diags[0].Message)
-    }
+	diags := expand.ExpandPre([]*ast.Document{doc})
+	if len(diags) == 0 {
+		t.Fatal("expected diagnostic rejecting event declaration")
+	}
+	if diags[0].Message != "shape components do not support event declarations" {
+		t.Errorf("unexpected message: %q", diags[0].Message)
+	}
 }
 ```
 
@@ -1164,8 +1166,8 @@ In `cmd/sngl/main.go`, add a blank import so `canvas.init()` registers the handl
 
 ```go
 import (
-    // existing imports ...
-    _ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
+	// existing imports ...
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
 )
 ```
 
@@ -1182,10 +1184,10 @@ In the CLI compile path (the function that runs Parse then Check), insert:
 ```go
 // After parse, before check:
 if expandDiags := sngl.ExpandPre([]*ast.Document{doc}); len(expandDiags) > 0 {
-    // format and report expand diagnostics the same way check diagnostics are reported
-    for _, d := range expandDiags {
-        // use existing diagnostic reporting mechanism
-    }
+	// format and report expand diagnostics the same way check diagnostics are reported
+	for _, d := range expandDiags {
+		// use existing diagnostic reporting mechanism
+	}
 }
 ```
 
@@ -1198,10 +1200,10 @@ In `internal/testutil/sample.go`, find where `Check` is called on a sample (arou
 ```go
 expandDiags := sngl.ExpandPre([]*ast.Document{doc})
 if s.ExpectsError("expand") {
-    testutil.AssertDiagnostics(t, expandDiags, s.PhaseErrors("expand"), "expand")
-    if len(expandDiags) > 0 {
-        return // stop pipeline if expand errored
-    }
+	testutil.AssertDiagnostics(t, expandDiags, s.PhaseErrors("expand"), "expand")
+	if len(expandDiags) > 0 {
+		return // stop pipeline if expand errored
+	}
 }
 ```
 

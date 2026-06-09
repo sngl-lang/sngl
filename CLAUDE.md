@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two valid forms — no third:
 
 - `func name(params) [Type] { ... }` — block-bodied function (return type is optional only when there's no return value)
-- `func name(params) => expr` — expression-bodied function
+- `func name(params) => expr` — expression-bodied function (cannot carry a return type annotation; return type is always inferred)
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
@@ -38,7 +38,7 @@ GOOS=js GOARCH=wasm go build ./internal/playground
 SNGL is a UI language that compiles to multiple platforms. The pipeline:
 
 ```
-.sngl source → Parser → AST → Checker → Optimizer → Platform+Lang Codegen → Output
+.sngl source → Parser → AST → Checker → Optimizer → Lower → Platform+Lang Codegen → Output
 ```
 
 **Public API** is in `sngl.go`: `Parse`, `Format`, `FormatTo`, `FormatExpr`, `Check`, `Convert`. Keep this file intact as the stable surface.
@@ -73,13 +73,16 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
+- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata loaded from GIR XML files (`codegen/platform/gtk4/gir/`). Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages
 
+- **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. All phases after the checker operate on IR, not AST.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
-- **`internal/checker/`** — two-pass type checker using CEL (pass1: register declarations, pass2: validate expressions)
+- **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions)
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib

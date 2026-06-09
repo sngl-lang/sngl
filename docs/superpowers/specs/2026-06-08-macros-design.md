@@ -45,14 +45,15 @@ All declaration kinds: `component`, `func`, `var`, `const`, `struct`, `enum`. Th
 The `internal://` scheme handler currently lives in `checker.registerImport`. It is extracted into a new `internal/imports` package with two levels:
 
 **Light layer** (used by pre-check expand):
+
 ```go
 // ResolveAliases scans import declarations and returns alias → ImportRef
 // for each import. No IR building; scheme/uri only.
 func ResolveAliases(docs []*ast.Document) map[string]ImportRef
 
 type ImportRef struct {
-    Scheme string // e.g. "internal"
-    URI    string // e.g. "canvas"
+	Scheme string // e.g. "internal"
+	URI    string // e.g. "canvas"
 }
 ```
 
@@ -69,11 +70,11 @@ func RegisterPre(internalURI, name string, h PreHandler)
 func RegisterPost(internalURI, name string, h PostHandler)
 
 type MacroAttr struct {
-    Name string
-    Args []ast.Expr
+	Name string
+	Args []ast.Expr
 }
 
-type PreHandler  func(attr MacroAttr, decl ast.Decl) (ast.Decl, error)
+type PreHandler func(attr MacroAttr, decl ast.Decl) (ast.Decl, error)
 type PostHandler func(attr MacroAttr, decl ir.Decl) (ir.Decl, error)
 ```
 
