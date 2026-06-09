@@ -98,17 +98,67 @@ func (b *builder) posFromToken(tok Token) ast.Pos {
 	return ast.Pos{File: b.file, Line: tok.Line, Column: tok.Column}
 }
 
+// --- MacroAttr ---
+
+func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
+	// MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
+	attrOpenTok := it.shift() // attr_open
+	pos := b.posFromToken(attrOpenTok)
+
+	firstIdent := it.shift() // first ident (always present)
+	firstName := firstIdent.Literal
+
+	var alias, name string
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+		it.skip() // dot
+		secondIdent := it.shift()
+		alias = firstName
+		name = secondIdent.Literal
+	} else {
+		// bare name without alias
+		alias = ""
+		name = firstName
+	}
+
+	var args []ast.Expr
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
+		it.skip() // lparen
+		for !it.done() {
+			if it.isNonTerminal() {
+				args = append(args, b.buildExpr(it.enter()))
+			} else {
+				tok := it.token()
+				if tok.Type == RPAREN {
+					it.skip()
+					break
+				}
+				it.skip() // comma
+			}
+		}
+	}
+	// consume rbracket
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == RBRACKET {
+		it.skip()
+	}
+
+	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args}
+}
+
 // --- Document ---
 
 func (b *builder) buildDocument(children []int32) *ast.Document {
 	doc := &ast.Document{}
 	it := b.iter(children)
 	for !it.done() {
-		// Document = { [ slashdash ] Stmt semi } .
+		// Document = { [ slashdash ] { MacroAttr } Stmt semi } .
 		if !it.isNonTerminal() {
 			tok := it.token()
 			if tok.Type == SLASHDASH {
 				sdPos := it.shift()
+				// consume any MacroAttr non-terminals after slashdash
+				for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+					it.skip()
+				}
 				if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
 					inner := b.buildStmt(it.enter())
 					doc.Stmts = append(doc.Stmts, &ast.DisabledDecl{
@@ -121,7 +171,23 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 			it.skip() // semi
 			continue
 		}
-		if it.symbol() == Stmt {
+		if it.symbol() == MacroAttr {
+			// Collect consecutive MacroAttr non-terminals.
+			var attrs []ast.MacroAttr
+			for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+				attrs = append(attrs, b.buildMacroAttr(it.enter()))
+			}
+			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
+				inner := b.buildStmt(it.enter())
+				if inner != nil {
+					doc.Stmts = append(doc.Stmts, &ast.AttrDecl{
+						Pos:   attrs[0].Pos,
+						Attrs: attrs,
+						Inner: inner,
+					})
+				}
+			}
+		} else if it.symbol() == Stmt {
 			s := b.buildStmt(it.enter())
 			if s != nil {
 				doc.Stmts = append(doc.Stmts, s)
@@ -1076,7 +1142,7 @@ func (b *builder) buildStatementPrimary(it nodeIter) ast.Expr {
 // --- StmtBlock ---
 
 func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
-	// StmtBlock = lbrace { [ slashdash ] Stmt semi } rbrace .
+	// StmtBlock = lbrace { [ slashdash ] { MacroAttr } Stmt semi } rbrace .
 	var block ast.StmtBlock
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
 		tok := it.shift()
@@ -1094,6 +1160,10 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 			}
 			if tok.Type == SLASHDASH {
 				it.skip() // slashdash
+				// consume any MacroAttr non-terminals after slashdash
+				for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+					it.skip()
+				}
 				if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
 					inner := b.buildStmt(it.enter())
 					block.Stmts = append(block.Stmts, &ast.DisabledDecl{
@@ -1108,7 +1178,23 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 			it.skip() // semi
 			continue
 		}
-		if it.symbol() == Stmt {
+		if it.symbol() == MacroAttr {
+			// Collect consecutive MacroAttr non-terminals.
+			var attrs []ast.MacroAttr
+			for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+				attrs = append(attrs, b.buildMacroAttr(it.enter()))
+			}
+			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
+				inner := b.buildStmt(it.enter())
+				if inner != nil {
+					block.Stmts = append(block.Stmts, &ast.AttrDecl{
+						Pos:   attrs[0].Pos,
+						Attrs: attrs,
+						Inner: inner,
+					})
+				}
+			}
+		} else if it.symbol() == Stmt {
 			s := b.buildStmt(it.enter())
 			if s != nil {
 				block.Stmts = append(block.Stmts, s)

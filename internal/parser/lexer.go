@@ -18,14 +18,15 @@ type interpFrame struct {
 //   - Non-base-10 integer literals (0x…, 0o…, 0b…) are rejected (ILLEGAL).
 //   - true, false, null are keyword tokens (KW_TRUE/KW_FALSE/KW_NULL).
 type lexer struct {
-	input       []rune
-	pos         int
-	line        int
-	col         int
-	prevTok     TokenType
-	prevPrevTok TokenType
-	errors      []string
-	interpStack []interpFrame // active string interpolation nesting
+	input          []rune
+	pos            int
+	line           int
+	col            int
+	prevTok        TokenType
+	prevPrevTok    TokenType
+	errors         []string
+	interpStack    []interpFrame // active string interpolation nesting
+	macroAttrDepth int           // nesting depth of #[...] macro attribute brackets
 }
 
 func newLexer(src string) *lexer {
@@ -155,6 +156,7 @@ func (l *lexer) NextToken() Token {
 			if next == '[' {
 				l.advance() // #
 				l.advance() // [
+				l.macroAttrDepth++
 				return l.tok(ATTR_OPEN, "#[", startLine, startCol)
 			}
 			if isHexDigit(next) || isIdentStart(next) {
@@ -239,6 +241,14 @@ func (l *lexer) NextToken() Token {
 		case '[':
 			return l.tok(LBRACKET, "[", startLine, startCol)
 		case ']':
+			if l.macroAttrDepth > 0 {
+				l.macroAttrDepth--
+				tok := l.tok(RBRACKET, "]", startLine, startCol)
+				// Suppress ASI: the closing ] of a macro attribute is not a
+				// statement terminator — the next line holds the decorated decl.
+				l.prevTok = COMMA // something that does not trigger insertsSemicolon
+				return tok
+			}
 			return l.tok(RBRACKET, "]", startLine, startCol)
 		case ',':
 			return l.tok(COMMA, ",", startLine, startCol)

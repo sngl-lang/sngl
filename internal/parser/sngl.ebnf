@@ -200,7 +200,9 @@ MsgBody = i18n_case_full
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
-Document = { [ slashdash ] Stmt [ semi ] } .
+MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
+
+Document = { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -239,7 +241,7 @@ Stmt =
     | VisualOrStmt
     .
 
-StmtBlock = lbrace { [ slashdash ] Stmt [ semi ] } rbrace .
+StmtBlock = lbrace { [ slashdash ] { MacroAttr } Stmt [ semi ] } rbrace .
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
