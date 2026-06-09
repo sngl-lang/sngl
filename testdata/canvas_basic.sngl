@@ -1,0 +1,7 @@
+component myWidget {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0) {}
+        circle(cx=50.0, cy=50.0, r=30.0) {}
+        canvasText(x=20.0, y=80.0, content="hello") {}
+    }
+}
