@@ -120,6 +120,9 @@ const (
 	I18N_CASE_FULL  TokenType = 0x57 // {literal text} — case body with no nested placeholders
 	I18N_CASE_START TokenType = 0x58 // {literal text { — opening segment of body with placeholders
 	I18N_CASE_END   TokenType = 0x59 // }literal text} — closing segment of case body
+
+	// Macro attribute
+	ATTR_OPEN TokenType = 0x5A // #[ — start of macro attribute
 )
 
 var keywords = map[string]TokenType{

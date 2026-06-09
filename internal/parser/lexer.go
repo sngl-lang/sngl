@@ -149,9 +149,14 @@ func (l *lexer) NextToken() Token {
 			return l.tok(BLOCK_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
 		}
 
-		// Color (#rrggbb / #rrggbbaa) or element reference (#id)
+		// #[ — macro attribute open; #hex — color; #id — element reference
 		if ch == '#' && l.pos+1 < len(l.input) {
 			next := l.peekAt(1)
+			if next == '[' {
+				l.advance() // #
+				l.advance() // [
+				return l.tok(ATTR_OPEN, "#[", startLine, startCol)
+			}
 			if isHexDigit(next) || isIdentStart(next) {
 				return l.scanHashToken(startLine, startCol)
 			}

@@ -84,6 +84,7 @@
 # i18n_case_full   0x57  I18N_CASE_FULL    {body}    (no nested placeholders)
 # i18n_case_start  0x58  I18N_CASE_START   {body{    (opening segment with nested placeholder)
 # i18n_case_end    0x59  I18N_CASE_END     }body}    (closing segment of case body)
+# attr_open        0x5A  ATTR_OPEN         #[        (start of macro attribute)
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -165,6 +166,7 @@ i18n_triple_end   = `\x56` .
 i18n_case_full    = `\x57` .
 i18n_case_start   = `\x58` .
 i18n_case_end     = `\x59` .
+attr_open         = `\x5A` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
