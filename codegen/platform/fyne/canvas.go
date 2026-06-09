@@ -7,9 +7,15 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// canvasMeta aliases the shared platform-neutral canvas metadata type. The
+// collection + Go stdlib struct decls live in codegen/canvasutil (shared with
+// gtk4); the gg-specific translation stays in this package.
+type canvasMeta = canvasutil.Meta
 
 // Canvas2D rendering for fyne.
 //
@@ -47,40 +53,10 @@ const snglColorHelper = "func _snglColor(c Color) color.Color {\n" +
 	"\treturn color.RGBA{R: uint8(c.R), G: uint8(c.G), B: uint8(c.B), A: uint8(c.A)}\n" +
 	"}\n"
 
-// canvasStructDecls holds the hardcoded Go decl per stdlib struct name, keyed
-// by struct name so a collision with a user-declared struct can omit just that
-// one decl instead of all three. The "_snglColor" helper is emitted separately
-// (see snglColorHelper) and is always kept.
-var canvasStructDecls = map[string]string{
-	"Color": "type Color struct {\n" +
-		"\tR int\n\tG int\n\tB int\n\tA int\n" +
-		"}\n",
-	"CanvasStyle": "type CanvasStyle struct {\n" +
-		"\tFill        Color\n" +
-		"\tStroke      Color\n" +
-		"\tStrokeWidth float64\n" +
-		"\tLineCap     string\n" +
-		"\tLineJoin    string\n" +
-		"\tFontSize    float64\n" +
-		"\tFontFamily  string\n" +
-		"}\n",
-	"PathCmd": "type PathCmd struct {\n" +
-		"\tOp  string\n" +
-		"\tX   float64\n\tY   float64\n" +
-		"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
-		"}\n",
-}
-
-// canvasStructOrder fixes the emission order of canvasStructDecls (CanvasStyle
-// references Color, so Color must come first for readability).
-var canvasStructOrder = []string{"Color", "CanvasStyle", "PathCmd"}
-
-// canvasStdlibDeclsExcluding returns the canvas stdlib decls, omitting any
-// struct whose name collides with a user-declared struct already in
-// td.Structs. The canvas structs are stdlib-only today; if a program declares
-// one (or more) itself, only the colliding name(s) are dropped — the others,
-// and the _snglColor helper, are still emitted to avoid duplicate type decls
-// while keeping the rest available.
+// canvasStdlibDeclsExcluding returns the canvas stdlib struct decls (from the
+// shared canvasutil table), omitting any struct whose name collides with a
+// user-declared struct already in td.Structs, then appends the fyne-specific
+// _snglColor helper (always kept).
 func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
@@ -89,83 +65,17 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 			declared[s.Name] = struct{}{}
 		}
 	}
-	var b strings.Builder
-	for _, name := range canvasStructOrder {
-		if _, collides := declared[name]; collides {
-			continue
-		}
-		b.WriteString(canvasStructDecls[name])
-		b.WriteString("\n")
-	}
-	b.WriteString(snglColorHelper)
-	return b.String()
+	return canvasutil.StructDeclsExcluding(declared) + snglColorHelper
 }
 
-// canvasMeta records a flattened canvas element discovered via a
-// `LocalVar id = lower.CreateNode("canvas")` carrying a draw func.
-type canvasMeta struct {
-	id     string // synthesized node id (e.g. "__n0") → Model *canvas.Image field
-	draw   *ir.Func
-	width  int
-	height int
-}
-
-// collectCanvases walks every Func block + component/window body for
-// `LocalVar.CanvasDraw != nil` entries (canvas CreateNode locals threaded
-// through declarative flattening) and returns them keyed by node id and by
-// draw func.
+// collectCanvases delegates to the shared canvasutil collector.
 func collectCanvases(pkg *ir.Package, funcs []*ir.Func) (map[string]*canvasMeta, map[*ir.Func]*canvasMeta) {
-	byID := map[string]*canvasMeta{}
-	byFunc := map[*ir.Func]*canvasMeta{}
-	var walk func([]ir.Stmt)
-	walk = func(stmts []ir.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.LocalVar:
-				if n.CanvasDraw != nil {
-					m := &canvasMeta{id: n.Name, draw: n.CanvasDraw, width: n.CanvasWidth, height: n.CanvasHeight}
-					byID[n.Name] = m
-					byFunc[n.CanvasDraw] = m
-				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
-			case *ir.NodeInst:
-				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
-			}
-		}
-	}
-	for _, fn := range funcs {
-		if fn != nil {
-			walk(fn.Block)
-		}
-	}
-	if pkg != nil {
-		for _, comp := range pkg.Components {
-			walk(comp.Body)
-		}
-		for _, w := range pkg.Windows {
-			walk(w.Body)
-		}
-	}
-	return byID, byFunc
+	return canvasutil.Collect(pkg, funcs)
 }
 
-// canvasByIDFor rebuilds the id→meta map from the func→meta map (both share
-// the same canvasMeta pointers).
+// canvasByIDFor delegates to the shared canvasutil rebuild.
 func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
-	out := make(map[string]*canvasMeta, len(byFunc))
-	for _, m := range byFunc {
-		out[m.id] = m
-	}
-	return out
+	return canvasutil.ByIDFor(byFunc)
 }
 
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
@@ -342,12 +252,12 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
-	dcField := modelFieldRef(canvasCtxField(m.id))
-	imgField := modelFieldRef(m.id)
+	dcField := modelFieldRef(canvasCtxField(m.ID))
+	imgField := modelFieldRef(m.ID)
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "m"},
-		Func:     &ir.Func{Name: m.draw.Name},
+		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	return []ir.Stmt{
@@ -391,7 +301,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		t.importSink("fyne.io/fyne/v2/canvas")
 	}
 
-	w, h := m.width, m.height
+	w, h := m.Width, m.Height
 	if w <= 0 {
 		w = 300
 	}
@@ -413,7 +323,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "m"},
-		Func:     &ir.Func{Name: m.draw.Name},
+		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	newImg := &ir.Call{

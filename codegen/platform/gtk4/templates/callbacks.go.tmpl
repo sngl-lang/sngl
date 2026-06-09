@@ -5,6 +5,23 @@ package {{.Package}}
 
 extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
+{{- if .HasCanvas}}
+
+// Canvas2D draw-func trampoline. gtk_drawing_area_set_draw_func wants a
+// C function pointer, which cannot close over Go state — so we register
+// each draw closure in the snglDrawFuncs slice and pass its index as the
+// user_data. sngl_draw_tramp extracts the index and dispatches into Go,
+// handing through the cairo_t. Mirrors the sngl_connect/snglCallbacks
+// signal pattern.
+extern void sngl_draw_dispatch(int idx, cairo_t* cr);
+static void sngl_draw_tramp(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    (void)area; (void)width; (void)height;
+    sngl_draw_dispatch(GPOINTER_TO_INT(data), cr);
+}
+static void sngl_drawing_area_set_draw(void* area, int idx) {
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), sngl_draw_tramp, GINT_TO_POINTER(idx), NULL);
+}
+{{- end}}
 */
 import "C"
 
@@ -37,3 +54,17 @@ func gtkPost(fn func()) {
 	f := fn
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
+{{- if .HasCanvas}}
+
+// snglDrawFuncs holds registered cairo draw closures indexed by int. Each
+// canvas's GtkDrawingArea registers one closure that invokes the model's
+// _canvasDrawN(cr) method.
+var snglDrawFuncs []func(*C.cairo_t)
+
+//export sngl_draw_dispatch
+func sngl_draw_dispatch(idx C.int, cr *C.cairo_t) {
+	if int(idx) < len(snglDrawFuncs) {
+		snglDrawFuncs[int(idx)](cr)
+	}
+}
+{{- end}}

@@ -1,0 +1,138 @@
+// Package canvasutil holds the platform-neutral Canvas2D helpers shared by
+// every Go-emitting platform (fyne, gtk4, and future Go canvas backends).
+//
+// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
+// synthesized `_canvasDrawN(ctx)` func whose body is canvas-intrinsic
+// CallStmts; passDeclarative then flattens the canvas NodeInst to a
+// `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
+// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.
+//
+// Two pieces generalise across Go platforms and live here:
+//
+//  1. recovering the flattened canvas metadata (Collect / Meta), and
+//  2. emitting the Go stdlib struct decls for Color/CanvasStyle/PathCmd,
+//     which the synthesized draw funcs reference but which aren't carried on
+//     pkg.Structs for the Go path.
+//
+// The native 2D translation (gg for fyne, cairo for gtk4) stays in each
+// platform package: it differs per backend and must not be shared.
+package canvasutil
+
+import (
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// Meta records a flattened canvas element discovered via a
+// `LocalVar id = lower.CreateNode("canvas")` carrying a draw func.
+type Meta struct {
+	ID     string // synthesized node id (e.g. "__n0") → platform widget field
+	Draw   *ir.Func
+	Width  int
+	Height int
+}
+
+// Collect walks every Func block + component/window body for
+// `LocalVar.CanvasDraw != nil` entries (canvas CreateNode locals threaded
+// through declarative flattening) and returns them keyed by node id and by
+// draw func. Both maps share the same *Meta pointers.
+func Collect(pkg *ir.Package, funcs []*ir.Func) (byID map[string]*Meta, byFunc map[*ir.Func]*Meta) {
+	byID = map[string]*Meta{}
+	byFunc = map[*ir.Func]*Meta{}
+	var walk func([]ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.LocalVar:
+				if n.CanvasDraw != nil {
+					m := &Meta{ID: n.Name, Draw: n.CanvasDraw, Width: n.CanvasWidth, Height: n.CanvasHeight}
+					byID[n.Name] = m
+					byFunc[n.CanvasDraw] = m
+				}
+			case *ir.If:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.PlatformFilter:
+				walk(n.Body)
+			case *ir.NodeInst:
+				walk(n.Children)
+			case *ir.Window:
+				walk(n.Body)
+			}
+		}
+	}
+	for _, fn := range funcs {
+		if fn != nil {
+			walk(fn.Block)
+		}
+	}
+	if pkg != nil {
+		for _, comp := range pkg.Components {
+			walk(comp.Body)
+		}
+		for _, w := range pkg.Windows {
+			walk(w.Body)
+		}
+	}
+	return byID, byFunc
+}
+
+// ByIDFor rebuilds the id→Meta map from the func→Meta map (both share the
+// same *Meta pointers).
+func ByIDFor(byFunc map[*ir.Func]*Meta) map[string]*Meta {
+	out := make(map[string]*Meta, len(byFunc))
+	for _, m := range byFunc {
+		out[m.ID] = m
+	}
+	return out
+}
+
+// StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by
+// struct name so a collision with a user-declared struct can omit just that
+// one decl. Field names/types mirror the stdlib definitions in
+// lib/canvas.sngl (CanvasStyle, PathCmd) and lib/types.sngl (color → Color);
+// the per-platform drift-guard tests assert every stdlib field is present.
+var StructDecls = map[string]string{
+	"Color": "type Color struct {\n" +
+		"\tR int\n\tG int\n\tB int\n\tA int\n" +
+		"}\n",
+	"CanvasStyle": "type CanvasStyle struct {\n" +
+		"\tFill        Color\n" +
+		"\tStroke      Color\n" +
+		"\tStrokeWidth float64\n" +
+		"\tLineCap     string\n" +
+		"\tLineJoin    string\n" +
+		"\tFontSize    float64\n" +
+		"\tFontFamily  string\n" +
+		"}\n",
+	"PathCmd": "type PathCmd struct {\n" +
+		"\tOp  string\n" +
+		"\tX   float64\n\tY   float64\n" +
+		"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
+		"}\n",
+}
+
+// StructOrder fixes the emission order of StructDecls (CanvasStyle references
+// Color, so Color must come first for readability).
+var StructOrder = []string{"Color", "CanvasStyle", "PathCmd"}
+
+// StructDeclsExcluding returns the canvas stdlib struct decls, omitting any
+// whose name is in declared (a set of user-declared struct names that already
+// emit their own Go type decl). The canvas structs are stdlib-only today; if a
+// program declares one (or more) itself, only the colliding name(s) are
+// dropped — the others stay so the draw funcs still reference valid types.
+func StructDeclsExcluding(declared map[string]struct{}) string {
+	var b strings.Builder
+	for _, name := range StructOrder {
+		if _, collides := declared[name]; collides {
+			continue
+		}
+		b.WriteString(StructDecls[name])
+		b.WriteString("\n")
+	}
+	return b.String()
+}

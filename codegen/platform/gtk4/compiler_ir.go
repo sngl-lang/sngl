@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -313,6 +314,13 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		depTracker: c.info.depTracker(),
 	}
 
+	// Pre-scan canvas elements: flattened `lower.CreateNode("canvas")`
+	// LocalVars carry a draw func + dimensions threaded through declarative
+	// lowering. Shared into every translator so OnCreateNode builds the
+	// GtkDrawingArea + cairo trampoline and OnDefault wires reactive redraws.
+	canvasByID, canvasByFunc := canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
+	hasCanvas := len(canvasByID) > 0
+
 	var widgetFields []widgetField
 	bodyStmts := flattenPlatformFilters(mainBodyStmts(c.ctx), "gtk4")
 	var topLevelRefs []string
@@ -321,6 +329,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		tr := newGtk4Translator(gc, func(name, cType string) {
 			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
 		}).withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt)
+		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -339,15 +348,19 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
+		if canvasByFunc[fn] != nil {
+			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc)
+			continue
+		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc)
 			continue
 		}
-		emitGTK4Func(&funcBuf, fn, gc)
+		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, canvasByFunc)
 	}
 
 	// --- Phase 2b: render<Comp> methods for non-inlinable (recursive)
@@ -389,10 +402,21 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	var eventInvokersBuf strings.Builder
 	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers)
 
+	// Canvas: the drawing-area trampoline registration emits an
+	// `unsafe.Pointer` cast, and the canvas stdlib struct decls + cairo
+	// helpers go into model.go alongside the lang helpers.
+	if hasCanvas {
+		gc.RequireImport("unsafe")
+	}
+
 	// --- Phase 3: Build template data ---
 	td, err := c.newTemplateData(widgetFields, funcBuf.String(), gc)
 	if err != nil {
 		return nil, nil, err
+	}
+	if hasCanvas {
+		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
+		td.HasCanvas = true
 	}
 
 	// --- Phase 4: Render templates ---
@@ -534,10 +558,12 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
 // into ir.Stmt fragments; we then synthesize a new *ir.Func and feed
 // it through gc.EmitFuncDef.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
 	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
+	tr.canvasByFunc = canvasByFunc
+	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
@@ -784,12 +810,14 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // splices that follow flow through codegen.WalkLowered into the gtk4
 // translator so `__nN.value = expr` shapes get rewritten via
 // OnPropAssign into `C.gtk_*_set_*(...)` calls.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
 	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
+	tr.canvasByFunc = canvasByFunc
+	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
 	// the C type for nodes created in sibling slot Funcs or the component
 	// body — those CreateNode sites aren't in this handler's own Block.
@@ -899,14 +927,25 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 }
 
 // emitGTK4Func emits a top-level user function as a method on *Model.
-func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+// The body is routed through WalkLowered so any reactivity-injected
+// CanvasRedrawStmt (a state mutation that a canvas draw func reads) is
+// translated into a gtk_widget_queue_draw call; plain statements pass
+// through untouched.
+func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, canvasByFunc map[*ir.Func]*canvasMeta) {
 	if len(fn.Block) == 0 {
 		return
 	}
+	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg)
+	tr.canvasByFunc = canvasByFunc
+	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
+	tr.collectTagComponents(fn.Block)
+	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+
 	fnCopy := *fn
 	if fnCopy.Receiver == "" {
 		fnCopy.Receiver = "Model"
 	}
+	fnCopy.Block = body
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')

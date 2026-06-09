@@ -146,6 +146,12 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	// Canvas2D: gtk4 renders shape subtrees via cairo inside a
+	// GtkDrawingArea draw callback. ReactiveCanvas injects CanvasRedrawStmt
+	// (→ gtk_widget_queue_draw) into handler/timer bodies that mutate a var
+	// a draw func reads.
+	f.Canvas = true
+	f.ReactiveCanvas = true
 	return f
 }
 

@@ -29,6 +29,17 @@ type gtk4Translator struct {
 	topLevel      []string
 	tagComponent  map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
 	boolToIntUsed *bool                    // points to compilation.needsBoolToInt; set when boolToGoInt is called
+
+	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
+	// (LocalVar.CanvasDraw) to their GtkDrawingArea Model field + draw func,
+	// shared into every translator that may create a canvas or emit a redraw.
+	// pendingCanvasStyle holds the CanvasStyle local bound by a
+	// CanvasApplyStyle while translating the following draw primitive;
+	// canvasStyleCounter names the per-shape `_styleN` temporaries.
+	canvasByID         map[string]*canvasMeta
+	canvasByFunc       map[*ir.Func]*canvasMeta
+	pendingCanvasStyle ir.Expr
+	canvasStyleCounter int
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
@@ -212,6 +223,15 @@ func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	// Canvas: a `canvas` CreateNode carries a draw func threaded through
+	// declarative flattening (LocalVar.CanvasDraw). It has no GIR-native
+	// widget, so intercept it before the native-tag lookup and build a
+	// GtkDrawingArea with a cairo draw callback.
+	if tag == "canvas" {
+		if _, ok := t.canvasByID[id]; ok {
+			return t.emitCanvasCreate(id)
+		}
+	}
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
 	// button, ...) with their gtk4.sngl-defined native widget bodies
 	// before this translator runs, so every tag landing here is a
@@ -668,5 +688,13 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	switch n := stmt.(type) {
+	case *ir.CallStmt:
+		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
+			return t.translateCanvasIntrinsic(n)
+		}
+	case *ir.CanvasRedrawStmt:
+		return t.translateCanvasRedraw(n)
+	}
 	return []ir.Stmt{stmt}
 }
