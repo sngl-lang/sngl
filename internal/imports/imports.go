@@ -37,6 +37,20 @@ func NamespaceFromPath(path string) string {
 // alias → ImportRef. No IR building; scheme and URI only. Used by the
 // expand pass to resolve #[alias.name] macro attributes before type-checking.
 func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
+	// First pass: collect redirect declarations (import "A" => "B" with no alias).
+	// These are pure path redirects, not namespace-introducing imports.
+	replaces := map[string]string{}
+	for _, doc := range docs {
+		for _, stmt := range doc.Stmts {
+			imp, ok := stmt.(*ast.Import)
+			if !ok || imp.Replace == "" || imp.Alias != "" {
+				continue
+			}
+			replaces[imp.Path] = imp.Replace
+		}
+	}
+
+	// Second pass: build alias → ImportRef for non-redirect imports.
 	out := make(map[string]ImportRef)
 	for _, doc := range docs {
 		for _, stmt := range doc.Stmts {
@@ -44,14 +58,25 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 			if !ok {
 				continue
 			}
+			// Skip pure redirect declarations; they don't introduce a namespace.
+			if imp.Replace != "" && imp.Alias == "" {
+				continue
+			}
+			// Resolve the effective target path through the redirects map.
 			path := imp.Path
 			if imp.Replace != "" {
 				path = imp.Replace
+			} else if mapped, ok := replaces[imp.Path]; ok {
+				path = mapped
 			}
 			scheme, uri := ParseScheme(path)
 			alias := imp.Alias
 			if alias == "" {
 				alias = NamespaceFromPath(imp.Path)
+			}
+			// Skip degenerate paths where no alias could be derived.
+			if alias == "" {
+				continue
 			}
 			out[alias] = ImportRef{Scheme: scheme, URI: uri}
 		}
