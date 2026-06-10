@@ -80,6 +80,11 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 
 		switch s := sym.(type) {
 		case *ir.Var:
+			// Walk the declared type: a struct/enum referenced only as a
+			// type (e.g. `var x option<User> = null`) must stay reachable,
+			// or the shaker prunes its definition while codegen still emits
+			// the type reference → "undefined: User".
+			walkType(s.Type, used, walk)
 			walkExpr(s.Init, used, walk)
 			for _, h := range s.Handlers {
 				walkFunc(h.Func, used, walk)
@@ -87,10 +92,12 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		case *ir.Func:
 			walkStmts(s.Block, used, walk)
 			for _, p := range s.Params {
+				walkType(p.Type, used, walk)
 				if p.Default != nil {
 					walkExpr(p.Default, used, walk)
 				}
 			}
+			walkType(s.Return, used, walk)
 		case *ir.StructDef:
 			for _, f := range s.Fields {
 				walkType(f.Type, used, walk)
@@ -210,6 +217,7 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 			walkExpr(a.Value, used, walk)
 		}
 	case *ir.LocalVar:
+		walkType(n.Type, used, walk)
 		walkExpr(n.Init, used, walk)
 	case *ir.Return:
 		walkExpr(n.Value, used, walk)

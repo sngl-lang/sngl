@@ -249,6 +249,30 @@ component main {
 	}
 }
 
+func TestOptimize_KeepStructUsedOnlyAsType(t *testing.T) {
+	// A struct referenced only as a TYPE (never via a struct literal) must
+	// survive tree-shaking. Otherwise the shaker prunes its definition while
+	// codegen still emits the `*User` reference → "undefined: User". Regression
+	// for the shake.go walkType-on-Var/LocalVar/Func-type fix.
+	src := `
+struct User { name string = "" }
+component main {
+	var picked option<User> = null
+	text(value="hi")
+}
+`
+	pkg, _ := checkAndOptimize(t, src, "fyne", "go")
+	found := false
+	for _, s := range pkg.Structs {
+		if s.Name == "User" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("struct User (referenced only as a var type) was shaken; it must survive")
+	}
+}
+
 func TestOptimize_KeepTestFunc(t *testing.T) {
 	src := `
 func testFoo() => 1
