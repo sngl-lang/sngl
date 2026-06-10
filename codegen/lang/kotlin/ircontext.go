@@ -477,6 +477,27 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	receiverName := n.Func.Receiver
 	qualName := receiverName + "." + method
 
+	// Component-self method reference (the receiver names a component in this
+	// package) — e.g. a computed or 0-arg func referenced from the view. The
+	// Compose backend emits a computed as a `val <name> by remember {
+	// derivedStateOf {...} }` property (read by bare name) and a plain func as
+	// `<name>()`. Resolve to the bare name here rather than falling through to
+	// the unresolved-method marker below. Routes through IdentRewrites so
+	// test-mode `state.` prefixing still applies.
+	if kc.receiverIsComponent(receiverName) {
+		name := method
+		if kc.IdentRewrites != nil {
+			if rw, ok := kc.IdentRewrites[name]; ok {
+				name = rw
+			}
+		}
+		if codegen.IsComputed(n.Func) {
+			return name
+		}
+		callArgs := kc.evalCallArgs(n.Args)
+		return name + "(" + strings.Join(callArgs, ", ") + ")"
+	}
+
 	args := kc.evalCallArgs(n.Args)
 	if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
@@ -489,6 +510,21 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// receiverIsComponent reports whether name matches a component declared in the
+// package — i.e. the call is a component-self method (computed/func), not a
+// real type method on some value.
+func (kc *KtIRContext) receiverIsComponent(name string) bool {
+	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
+		return false
+	}
+	for _, comp := range kc.Ctx.Pkg.Components {
+		if comp.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
