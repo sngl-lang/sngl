@@ -40,6 +40,7 @@ var canvasComposeImports = []string{
 	"androidx.compose.ui.graphics.Path",
 	"androidx.compose.ui.graphics.drawscope.Fill",
 	"androidx.compose.ui.graphics.drawscope.Stroke",
+	"androidx.compose.ui.graphics.nativeCanvas",
 }
 
 // packageHasCanvas reports whether any component/window func is a synthesized
@@ -245,10 +246,23 @@ func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call, ds *canvasDrawSta
 			return fmt.Sprintf("drawLine(color = %%s, start = %s, end = %s, strokeWidth = %s)", start, end, width)
 		})
 	case "CanvasDrawText":
-		// Text rendering needs a TextMeasurer / native canvas; scoped out for
-		// now (consistent with the image no-op). Consume the style so it does
-		// not leak onto the next shape.
-		cc.line("// canvasText not yet supported on Compose DrawScope")
+		// CanvasDrawText(ctx, x, y, content). DrawScope has no text primitive,
+		// so draw through the underlying android.graphics.Canvas with a Paint
+		// carrying the style's fill color + font size (fully qualified to avoid
+		// extra imports). Baseline y matches the Canvas2D / cairo convention.
+		x, y := cc.f(arg(0)), cc.f(arg(1))
+		content := cc.kc.EvalExpr(arg(2))
+		fillA := ds.styleSel("fill.a", "255")
+		fillR := ds.styleSel("fill.r", "0")
+		fillG := ds.styleSel("fill.g", "0")
+		fillB := ds.styleSel("fill.b", "0")
+		fontSize := ds.styleSel("fontSize", "16.0")
+		cc.line("drawContext.canvas.nativeCanvas.drawText(%s, %s, %s, android.graphics.Paint().apply {", content, x, y)
+		cc.indent++
+		cc.line("color = android.graphics.Color.argb(%s, %s, %s, %s)", fillA, fillR, fillG, fillB)
+		cc.line("textSize = (%s).toFloat()", fontSize)
+		cc.indent--
+		cc.line("})")
 		ds.styleExpr = ""
 	case "CanvasDrawPath":
 		cc.emitPath(arg(0), ds)

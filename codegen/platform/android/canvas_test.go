@@ -98,3 +98,23 @@ func TestCanvasComposeEmission(t *testing.T) {
 		t.Errorf("unbalanced braces: %d opens, %d closes", o, c)
 	}
 }
+
+// TestCanvasTextRendersViaNativeCanvas guards that a canvas text shape draws
+// real text (via the native canvas) rather than emitting a "not yet supported"
+// no-op.
+func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
+	src := `component main {
+    canvas(width=200px, height=80px) {
+        canvasText(x=10.0, y=40.0, content="hi", style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
+    }
+}`
+	out := compileCanvasSrc(t, src)
+	if strings.Contains(out, "not yet supported") {
+		t.Errorf("canvas text still a no-op:\n%s", out)
+	}
+	for _, want := range []string{"nativeCanvas.drawText(", "android.graphics.Paint()", "\"hi\""} {
+		if !strings.Contains(out, want) {
+			t.Errorf("canvas text missing %q:\n%s", want, out)
+		}
+	}
+}
