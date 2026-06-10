@@ -174,17 +174,44 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 			t.styleHelperCall("_snglCairoPaint", cr),
 		}
 	case "CanvasDrawEllipse":
-		// cairo has no native ellipse: translate to the unit circle, scale by
-		// (rx, ry), arc, then paint inside the transform. Save/restore brackets
-		// the CTM change so it doesn't leak to following shapes.
+		// cairo has no native ellipse. The CTM-scale trick (translate+scale+arc)
+		// distorts the stroke: cairo applies the CTM at paint time, so scaling by
+		// (rx, ry) scales the pen too, rendering a hugely thick, anisotropic
+		// outline (~2x the intended size vs other platforms). Instead build the
+		// ellipse as an explicit cubic-Bézier path at real coordinates so the
+		// stroke runs in screen space with a uniform width. kappa is the standard
+		// circle-to-Bézier control-point ratio.
+		n := t.canvasStyleCounter
+		mk := func(suffix string, init ir.Expr) (string, ir.Stmt) {
+			name := fmt.Sprintf("_e%s%d", suffix, n)
+			return name, &ir.LocalVar{Name: name, Init: init}
+		}
+		const kappa = "0.5522847498307936"
+		cxN, cxV := mk("cx", arg(0))
+		cyN, cyV := mk("cy", arg(1))
+		rxN, rxV := mk("rx", arg(2))
+		ryN, ryV := mk("ry", arg(3))
+		oxN, oxV := mk("ox", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
+			Left: &ir.Ident{Name: rxN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Raw: kappa}})
+		oyN, oyV := mk("oy", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
+			Left: &ir.Ident{Name: ryN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Raw: kappa}})
+		f := func(name string) ir.Expr { return &ir.Ident{Name: name, Type: ir.TypFloat} }
+		add := func(a, b string) ir.Expr {
+			return &ir.Binary{Op: ast.BinAdd, Type: ir.TypFloat, Left: f(a), Right: f(b)}
+		}
+		sub := func(a, b string) ir.Expr {
+			return &ir.Binary{Op: ast.BinSub, Type: ir.TypFloat, Left: f(a), Right: f(b)}
+		}
 		return []ir.Stmt{
-			cairoCall("cairo_save", cr),
-			cairoCall("cairo_translate", cr, dbl(arg(0)), dbl(arg(1))),
-			cairoCall("cairo_scale", cr, dbl(arg(2)), dbl(arg(3))),
+			cxV, cyV, rxV, ryV, oxV, oyV,
 			cairoCall("cairo_new_sub_path", cr),
-			cairoCall("cairo_arc", cr, zeroF(), zeroF(), &ir.Literal{Type: ir.TypFloat, Raw: "1"}, zeroF(), twoPi()),
+			cairoCall("cairo_move_to", cr, dbl(sub(cxN, rxN)), dbl(f(cyN))),
+			cairoCall("cairo_curve_to", cr, dbl(sub(cxN, rxN)), dbl(sub(cyN, oyN)), dbl(sub(cxN, oxN)), dbl(sub(cyN, ryN)), dbl(f(cxN)), dbl(sub(cyN, ryN))),
+			cairoCall("cairo_curve_to", cr, dbl(add(cxN, oxN)), dbl(sub(cyN, ryN)), dbl(add(cxN, rxN)), dbl(sub(cyN, oyN)), dbl(add(cxN, rxN)), dbl(f(cyN))),
+			cairoCall("cairo_curve_to", cr, dbl(add(cxN, rxN)), dbl(add(cyN, oyN)), dbl(add(cxN, oxN)), dbl(add(cyN, ryN)), dbl(f(cxN)), dbl(add(cyN, ryN))),
+			cairoCall("cairo_curve_to", cr, dbl(sub(cxN, oxN)), dbl(add(cyN, ryN)), dbl(sub(cxN, rxN)), dbl(add(cyN, oyN)), dbl(sub(cxN, rxN)), dbl(f(cyN))),
+			cairoCall("cairo_close_path", cr),
 			t.styleHelperCall("_snglCairoPaint", cr),
-			cairoCall("cairo_restore", cr),
 		}
 	case "CanvasDrawLine":
 		return []ir.Stmt{

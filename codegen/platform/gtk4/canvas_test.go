@@ -108,3 +108,52 @@ component main {
 		}
 	}
 }
+
+// TestCanvas_EllipseUsesBezierPath asserts the ellipse is emitted as an explicit
+// cubic-Bézier path (cairo_move_to + cairo_curve_to) and NOT via a cairo_scale
+// CTM transform. The scale approach scaled the stroke pen too, rendering a
+// hugely thick outline ~2x the intended size vs other platforms; the Bézier
+// path runs in screen space so the stroke width is uniform.
+func TestCanvas_EllipseUsesBezierPath(t *testing.T) {
+	src := `
+component main {
+    canvas(width=200px, height=120px) {
+        ellipse(cx=100.0, cy=60.0, rx=60.0, ry=35.0, style=CanvasStyle{fill=color{r=52, g=211, b=153, a=255}, stroke=color{r=5, g=150, b=105, a=255}, strokeWidth=2.0}) {}
+    }
+}
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms()})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check diag: %s", d.Msg)
+		}
+	}
+	g := &Generator{}
+	lang := codegen.LookupLang("go")
+	caps := g.Capabilities(lang).ToLowerCaps()
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4"}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	out := string(mem.Files()["model.go"])
+
+	if strings.Contains(out, "C.cairo_scale") {
+		t.Errorf("ellipse still emits C.cairo_scale — the scaled-stroke bug; expected a Bézier path\n%s", out)
+	}
+	for _, want := range []string{"C.cairo_move_to", "C.cairo_curve_to", "C.cairo_close_path"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("ellipse missing %q (expected explicit Bézier path)\n%s", want, out)
+		}
+	}
+	// Four cubic-Bézier segments approximate the full ellipse.
+	if n := strings.Count(out, "C.cairo_curve_to"); n != 4 {
+		t.Errorf("expected 4 cairo_curve_to segments for the ellipse, got %d", n)
+	}
+}
