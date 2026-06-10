@@ -158,3 +158,37 @@ func TestTestModeStateHoisting(t *testing.T) {
 		t.Errorf("expected typed null state in class:\n%s", out)
 	}
 }
+
+// TestSelectRadioDatepickerWidgets guards that the select, radio, and
+// datepicker components render real Compose widgets (not the old TODO stubs /
+// bare Text). select must write its two-way :value on selection.
+func TestSelectRadioDatepickerWidgets(t *testing.T) {
+	src := `component main {
+    var fruit = ""
+    var size = "medium"
+    var dob date = date("2000-01-01")
+    vbox {
+        select(options=["Apple", "Banana"], placeholder="Pick", value=fruit)
+        radio(direction="horizontal", options=["small", "medium", "large"], value=size)
+        datepicker(placeholder="Birthday", value=dob)
+    }
+}`
+	out := compileSrc(t, src, false)
+	if strings.Contains(out, "TODO") {
+		t.Errorf("widget rendered as a TODO stub:\n%s", out)
+	}
+	// select: dropdown with two-way write-back.
+	for _, want := range []string{"DropdownMenu(", "DropdownMenuItem(", "fruit = opt"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("select missing %q:\n%s", want, out)
+		}
+	}
+	// radio: a RadioButton per option, selected reflects the bound value.
+	if !strings.Contains(out, "RadioButton(selected = (size == opt)") {
+		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
+	}
+	// datepicker: a field showing the value (not bare Text).
+	if !strings.Contains(out, "OutlinedTextField(") || !strings.Contains(out, "value = dob") {
+		t.Errorf("datepicker not rendered as a value-bound field:\n%s", out)
+	}
+}

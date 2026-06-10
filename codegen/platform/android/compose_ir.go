@@ -18,6 +18,9 @@ type irComposeContext struct {
 	buf     *strings.Builder
 	indent  int
 	hasSlot bool
+	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
+	// uniquely within a composable so multiple instances don't collide.
+	widgetSeq int
 }
 
 func (cc *irComposeContext) line(format string, args ...any) {
@@ -288,10 +291,87 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.line("}")
 
 	case "select":
-		cc.line("// TODO: Select composable")
+		// Two-way `:value` dropdown. The binding pass synthesizes the
+		// write-back as a @change handler (like `input`), so selecting an
+		// option calls it with the chosen label. `expanded` is per-instance
+		// local state controlling the menu.
+		optionsExpr := "listOf<String>()"
+		if o := codegen.NodeProp(n, "options"); o != nil {
+			optionsExpr = cc.kc.EvalExpr(o)
+		}
+		valueExpr := "\"\""
+		if v := codegen.NodeProp(n, "value"); v != nil {
+			valueExpr = cc.kc.EvalExpr(v)
+		}
+		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
+		cc.widgetSeq++
+		exp := fmt.Sprintf("expanded%d", cc.widgetSeq)
+		cc.line("var %s by remember { mutableStateOf(false) }", exp)
+		cc.line("Box(%s) {", style)
+		cc.indent++
+		cc.line("OutlinedButton(onClick = { %s = true }) {", exp)
+		cc.indent++
+		if placeholder != "" {
+			cc.line("Text(if (%s.isNotEmpty()) %s else %q)", valueExpr, valueExpr, placeholder)
+		} else {
+			cc.line("Text(%s)", valueExpr)
+		}
+		cc.indent--
+		cc.line("}")
+		cc.line("DropdownMenu(expanded = %s, onDismissRequest = { %s = false }) {", exp, exp)
+		cc.indent++
+		cc.line("%s.forEach { opt ->", optionsExpr)
+		cc.indent++
+		cc.line("DropdownMenuItem(text = { Text(opt) }, onClick = {")
+		cc.indent++
+		// Two-way `:value` write-back (the bound var is an assignable lvalue),
+		// then any user @change handler, then close the menu.
+		cc.line("%s = opt", valueExpr)
+		emitInputHandlerCall(cc, n, "change", "opt")
+		cc.line("%s = false", exp)
+		cc.indent--
+		cc.line("})")
+		cc.indent--
+		cc.line("}")
+		cc.indent--
+		cc.line("}")
+		cc.indent--
+		cc.line("}")
 
 	case "radio":
-		cc.line("// TODO: RadioGroup composable")
+		// One-way `value` (the selected option) + @change. Each option is a
+		// RadioButton; selecting fires @change (no-op when unwired). direction
+		// "horizontal" lays them in a Row, otherwise a Column.
+		optionsExpr := "listOf<String>()"
+		if o := codegen.NodeProp(n, "options"); o != nil {
+			optionsExpr = cc.kc.EvalExpr(o)
+		}
+		valueExpr := "\"\""
+		if v := codegen.NodeProp(n, "value"); v != nil {
+			valueExpr = cc.kc.EvalExpr(v)
+		}
+		container := "Column"
+		if d, ok := codegen.IRLiteralString(codegen.NodeProp(n, "direction")); ok && d == "horizontal" {
+			container = "Row"
+		}
+		cc.line("%s(%s) {", container, style)
+		cc.indent++
+		cc.line("%s.forEach { opt ->", optionsExpr)
+		cc.indent++
+		cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
+		cc.indent++
+		cc.line("RadioButton(selected = (%s == opt), onClick = {", valueExpr)
+		cc.indent++
+		emitInputHandlerCall(cc, n, "change", "opt")
+		cc.indent--
+		cc.line("})")
+		cc.line("Text(opt)")
+		cc.indent--
+		cc.line("}")
+		cc.indent--
+		cc.line("}")
+		cc.indent--
+		cc.line("}")
 
 	case "progress":
 		if v := codegen.NodeProp(n, "value"); v != nil {
@@ -363,6 +443,31 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		}
 		cc.indent--
 		cc.line("}")
+
+	case "datepicker":
+		// One-way `value` (the date, a String on Android) + @change. Rendered
+		// as a read-only field showing the date with the placeholder as label.
+		// (A full Material3 calendar dialog is a future enhancement.)
+		valueExpr := "\"\""
+		if v := codegen.NodeProp(n, "value"); v != nil {
+			valueExpr = cc.kc.EvalExpr(v)
+		}
+		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
+		cc.line("OutlinedTextField(")
+		cc.indent++
+		cc.line("value = %s,", valueExpr)
+		cc.line("onValueChange = { newValue ->")
+		cc.indent++
+		emitInputHandlerCall(cc, n, "change", "newValue")
+		cc.indent--
+		cc.line("},")
+		cc.line("readOnly = true,")
+		if placeholder != "" {
+			cc.line("label = { Text(%q) },", placeholder)
+		}
+		cc.line("modifier = %s", cc.buildModifierRaw(n))
+		cc.indent--
+		cc.line(")")
 
 	default:
 		if len(n.Children) > 0 {
