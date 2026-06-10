@@ -301,9 +301,10 @@ func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
 	})
 
 	pre = append(pre, tmpDecl, &ir.If{
-		Cond: condExpr,
-		Body: body,
-		Else: elseBlock,
+		Cond:        condExpr,
+		Body:        body,
+		Else:        elseBlock,
+		FromTernary: true,
 	})
 	return pre, tmpRef
 }

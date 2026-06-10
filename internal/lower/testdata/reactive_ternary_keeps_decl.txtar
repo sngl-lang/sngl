@@ -1,0 +1,39 @@
+# Regression: a reactive-conditioned ternary in a prop must keep its lowered
+# `var __ltN` decl together with the `if` that assigns it — at BOTH the build
+# site and the reactivity-injected updater — rather than splitting the decl
+# from its assignment across funcs (the bug fixed by running NoTernary after
+# NoReactivity, plus deep-copying prop exprs into updaters so the two sites no
+# longer alias the same Ternary node).
+caps: NoTernary NoReactivity
+-- input.sngl --
+component main {
+    var dark = false
+    vbox {
+        button(text="toggle", @click { dark = !dark })
+        text(value=dark ? "dark" : "light")
+    }
+}
+-- expected.sngl --
+component main {
+    var dark bool = false
+    vbox {
+        button(text="toggle", @click {
+            dark = !dark
+            var __lt0 string
+            if dark {
+                __lt0 = "dark"
+            } else {
+                __lt0 = "light"
+            }
+            #__n0.value = __lt0
+        })
+        var __lt1 string
+        if dark {
+            __lt1 = "dark"
+        } else {
+            __lt1 = "light"
+        }
+        text #__n0(value=__lt1)
+    }
+}
+context #locale(i18n.defaultLocale())

@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -61,9 +62,31 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	// substitutes ContextRead/reactivity into platform-emittable form.
 	// Without this the platform's Generate panics on un-lowered nodes
 	// (e.g. ContextRead in irwalk.EvalExpr).
+	// Mirror the generate pipeline's optimize→lower→optimize sequence. The
+	// agent path previously ran lower alone; without the optimize passes,
+	// lowering can leave constructs the language codegen rejects — e.g. a
+	// reactive context-provider value that passContext promotes into a
+	// synthesized __ctx_* Var.Init. The post-lower optimize folds/eliminates
+	// that Var so a NoTernary rewrite (which only lowers ternaries in
+	// statement positions, never in Var initializers) never strands a ternary
+	// in a Var.Init reaching Go codegen.
+	optCfg := &optimize.Config{
+		Platform: plat.PlatformIdentifier(),
+		Language: langIdent(lang),
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		return nil, fmt.Errorf("optimize for tests: %w", err)
+	}
+
 	caps := plat.Capabilities(lang).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
 		return nil, fmt.Errorf("lower for tests: %w", err)
+	}
+
+	if caps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return nil, fmt.Errorf("optimize for tests: %w", err)
+		}
 	}
 
 	var testFns []*ir.Func

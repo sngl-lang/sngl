@@ -32,6 +32,15 @@ func (vc *irViewContext) line(format string, args ...any) {
 	fmt.Fprintf(vc.buf, "%s"+format+"\n", append([]any{strings.Repeat("\t", vc.indent)}, args...)...)
 }
 
+// emitIRStmt renders an imperative IR statement (e.g. a NoTernary-hoisted
+// `var __ltN` decl or its value-only If) to Go via the shared Go IR context,
+// honoring the current indent.
+func (vc *irViewContext) emitIRStmt(s ir.Stmt) {
+	for _, l := range vc.gc.EvalStmt(s) {
+		vc.line("%s", l)
+	}
+}
+
 // requireImport registers a Go import on the context's gc; nil-safe.
 func (vc *irViewContext) requireImport(path string) {
 	if vc.gc != nil {
@@ -160,6 +169,14 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	case *ir.NodeInst:
 		vc.renderNode(s, resultVar)
 	case *ir.If:
+		if s.FromTernary {
+			// NoTernary hoists `var __ltN` + this value-only If (Assign bodies,
+			// no NodeInst children) before the widget whose prop reads __ltN.
+			// Emit it as imperative Go so the temp is assigned in scope; the
+			// structural renderIf path would drop the Assign bodies.
+			vc.emitIRStmt(s)
+			return
+		}
 		vc.renderIf(s, resultVar)
 	case *ir.For:
 		vc.renderFor(s, resultVar)
@@ -185,7 +202,12 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	case *ir.Window:
 		// Window only appears at top-level; nested Window in view tree is unexpected.
 		panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+	case *ir.LocalVar:
+		// A LocalVar in the view body is the `var __ltN` decl NoTernary hoists
+		// before the widget consuming it (its FromTernary If assigns it). Emit
+		// so the temp is declared in the view scope.
+		vc.emitIRStmt(s)
+	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 		// Imperative stmts have no visual rendering — skipped.
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("bubbletea: ContextProvider should be lowered before view emission: %#v", s))

@@ -142,6 +142,13 @@ type If struct {
 	// reactive. Pass-2 of passReactivity rewrites these into CallStmt
 	// __renderSlot<N>() invocations.
 	LoweredSlotID string `json:"-"`
+	// FromTernary marks an If synthesized by NoTernary lowering to implement a
+	// `cond ? a : b` expression: its branch bodies are plain Assigns into a
+	// sibling `var __ltN` temp, not visual NodeInsts. RenderModel view emitters
+	// (which otherwise treat an If in the view body as a structural conditional
+	// and render only its NodeInst children) must emit it as imperative control
+	// flow so the temp is assigned in scope for the consuming widget.
+	FromTernary bool `json:"-"`
 }
 
 func (*If) stmtNode() {}

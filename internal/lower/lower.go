@@ -27,7 +27,6 @@ type pass struct {
 //     writes are seen as mutations of the list var, and before NoToggle so a
 //     toggled element-ref target is rewritten first.
 //  1. NoUnit, NoEnum — collapse types, no deps.
-//  2. NoTernary — rewrites expressions, no deps on visual model.
 //  3. NoAsyncReactive — must run before NoComputed (introduces sync state vars
 //     that NoComputed would otherwise inline away) and before NoReactivity
 //     (synthetic vars must be visible as reactive deps).
@@ -39,6 +38,22 @@ type pass struct {
 //     If reactivity ran first, it would assign __n* DOM ids to canvas shapes that
 //     never appear in the DOM, generating broken setAttribute calls.
 //  7. NoReactivity — analyzes dataflow, injects updaters.
+//     NoTernary — MUST run AFTER NoReactivity. It rewrites `cond ? a : b`
+//     into a `var __ltN` decl plus a sibling value-only `if cond { __ltN = a }
+//     else { __ltN = b }`. If it ran first, reactivity's collectFromIf would
+//     misclassify that synthesized `if` (when cond reads a reactive var) as a
+//     reactive render slot and relocate it into a __renderSlotN func, orphaning
+//     the `var __ltN` decl + its uses → compile error, and gatherDeps (which
+//     has a correct `case *ir.Ternary`) couldn't see through the opaque temp to
+//     track the reactive deps. Running after reactivity, ternaries stay intact
+//     through dep analysis, then lower in place inside the bodies and updaters
+//     reactivity produced (reactivity deep-copies each prop expression into its
+//     updater so the build-path prop and its updater no longer alias the same
+//     Ternary node, and each lowers independently). Placed before
+//     NoCanvasReactivity because that pass
+//     injects CanvasRedrawStmt nodes that NoTernary's stmt walker does not
+//     handle; canvas draw funcs (built by NoCanvas, earlier) are still walked
+//     by NoTernary via pkg/component/window Funcs, so their ternaries lower.
 //     7a. InlinePure — always on; inlines pure user components and (under
 //     NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
 //     wires user-level deps and before declarative flattening.
@@ -62,7 +77,6 @@ var passes = []pass{
 	passRefLoop,
 	passUnit,
 	passEnum,
-	passTernary,
 	passAsyncReactive,
 	passComputed,
 	passLambda,
@@ -75,6 +89,7 @@ var passes = []pass{
 	passNoImplicitRecv,
 	passCanvas,
 	passReactivity,
+	passTernary,
 	passCanvasReactivity,
 	passTimer,
 	passFocusOrder,

@@ -892,14 +892,22 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	}
 	var out []ir.Stmt
 	for _, p := range props {
-		// If we're inside a lifted body, the prop expression references the
-		// reactive Var directly; rewrite reads of any captured Sym to go
-		// through `*state.fieldName` so the updater compiles in the lifted
-		// scope.
-		value := p.Expr
-		if fieldRewrite != nil {
-			value = rewriteIdentsToCaptures(value, fieldRewrite)
+		// Deep-copy the prop expression into the updater so the updater never
+		// aliases the build-path prop's sub-nodes. This matters for a later
+		// NoTernary pass: a shared *ir.Ternary would be lowered in place once
+		// (decl + if hoisted into whichever site is walked first), leaving the
+		// other site referencing an undeclared temp. rewriteIdentsToCaptures
+		// reconstructs every interior node (Binary/Ternary/Call/...) while
+		// passing leaf Idents/Literals through unchanged, which is safe since
+		// NoTernary only ever replaces Ternary nodes, never leaves.
+		//
+		// fieldRewrite (non-nil only inside a lifted body) additionally rewrites
+		// reads of captured Syms to go through `*state.fieldName`.
+		rewrite := fieldRewrite
+		if rewrite == nil {
+			rewrite = map[ir.Symbol]ir.Expr{}
 		}
+		value := rewriteIdentsToCaptures(p.Expr, rewrite)
 		out = append(out, &ir.Assign{
 			Target: &ir.Select{
 				Type:    ir.TypDyn,
