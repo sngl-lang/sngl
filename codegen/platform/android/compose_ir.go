@@ -99,6 +99,10 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
+	if n.CanvasDraw != nil {
+		cc.renderCanvas(n)
+		return
+	}
 	if n.Component != nil && cc.isUserComponent(n.Component) {
 		cc.renderUserComponent(n)
 		return
@@ -481,7 +485,7 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 				styleParts = append(styleParts, "textAlign = TextAlign.End")
 			}
 		case "color":
-			styleParts = append(styleParts, fmt.Sprintf("color = Color(android.graphics.Color.parseColor(%s))", normalizeHexColor(val)))
+			styleParts = append(styleParts, fmt.Sprintf("color = ComposeColor(android.graphics.Color.parseColor(%s))", normalizeHexColor(val)))
 		}
 	}
 	if len(styleParts) == 0 {
@@ -529,7 +533,7 @@ func composeModifier(prop, val string) string {
 	case "height":
 		return fmt.Sprintf("height(%s.dp)", val)
 	case "background":
-		return fmt.Sprintf("background(Color(android.graphics.Color.parseColor(%s)))", normalizeHexColor(val))
+		return fmt.Sprintf("background(ComposeColor(android.graphics.Color.parseColor(%s)))", normalizeHexColor(val))
 	case "opacity":
 		return fmt.Sprintf("alpha(%s)", val)
 	case "gap":

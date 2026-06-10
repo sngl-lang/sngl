@@ -103,6 +103,17 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	// Canvas2D: passCanvas extracts the canvas+shapes subtree into a
+	// synthesized _canvasDrawN(ctx) func of canvas intrinsics, which we
+	// translate inline into a Compose Canvas {} DrawScope lambda.
+	f.Canvas = true
+	// ReactiveCanvas stays FALSE: the draw lambda reads Compose state vars
+	// directly (radius, computed styles), so Compose recomposes and
+	// redraws the Canvas automatically when that state changes — no
+	// explicit redraw call (CanvasRedrawStmt) is needed. Leaving
+	// passCanvasReactivity off avoids injecting redraws that have no
+	// Compose-native target.
+	f.ReactiveCanvas = false
 	return f
 }
 

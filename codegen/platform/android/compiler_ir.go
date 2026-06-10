@@ -200,6 +200,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 				continue
 			}
+			// Synthesized canvas draw funcs hold canvas-intrinsic CallStmts
+			// that only the canvas translation understands; they're inlined
+			// into the Canvas {} DrawScope lambda, not emitted as funcs.
+			if isCanvasDrawFunc(fn) {
+				continue
+			}
 			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
@@ -241,7 +247,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	kc.RequireImport("androidx.compose.ui.platform.testTag")
 	kc.RequireImport("androidx.compose.ui.draw.alpha")
 	kc.RequireImport("androidx.compose.ui.draw.clip")
-	kc.RequireImport("androidx.compose.ui.graphics.Color")
+	// Aliased to ComposeColor so the SNGL stdlib `color` struct (emitted as
+	// a `Color` data class for Canvas2D) doesn't collide with the framework
+	// graphics Color. All framework-color uses below say ComposeColor.
+	kc.RequireImport("androidx.compose.ui.graphics.Color as ComposeColor")
 	kc.RequireImport("androidx.compose.ui.text.TextStyle")
 	kc.RequireImport("androidx.compose.ui.text.font.FontWeight")
 	kc.RequireImport("androidx.compose.ui.text.style.TextAlign")
@@ -283,6 +292,22 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			fmt.Fprintf(&body, "    var %s: %s%s%s\n", f.Name, ktType, def, comma)
 		}
 		body.WriteString(")\n\n")
+	}
+
+	// Canvas2D stdlib structs (Color/CanvasStyle/PathCmd) + color helper.
+	// Stdlib-only structs aren't carried on pkg.Structs, so materialize them
+	// here (analogous to canvasutil for the Go platforms) whenever the
+	// program contains a canvas. ComposeColor is the aliased framework color
+	// import; Color is our SNGL `color` data class.
+	if packageHasCanvas(ctx.Pkg) {
+		declared := map[string]struct{}{}
+		for _, sd := range info.Structs {
+			switch sd.Name {
+			case "Color", "CanvasStyle", "PathCmd":
+				declared[exportName(sd.Name)] = struct{}{}
+			}
+		}
+		body.WriteString(canvasKotlinDecls(declared))
 	}
 
 	// ErrorEvent is emitted when any error-handling construct is present
@@ -472,6 +497,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 		for _, fn := range allFuncs {
 			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+				continue
+			}
+			// Canvas draw funcs are inlined into the Canvas {} DrawScope
+			// lambda; never emit them as standalone Kotlin funcs.
+			if isCanvasDrawFunc(fn) {
 				continue
 			}
 			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
