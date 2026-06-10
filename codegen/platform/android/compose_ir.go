@@ -3,6 +3,7 @@ package android
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -485,7 +486,7 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 				styleParts = append(styleParts, "textAlign = TextAlign.End")
 			}
 		case "color":
-			styleParts = append(styleParts, fmt.Sprintf("color = ComposeColor(android.graphics.Color.parseColor(%s))", normalizeHexColor(val)))
+			styleParts = append(styleParts, "color = "+composeColorExpr(val))
 		}
 	}
 	if len(styleParts) == 0 {
@@ -494,26 +495,58 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 	return "style = TextStyle(" + strings.Join(styleParts, ", ") + ")"
 }
 
-// normalizeHexColor expands a 3-digit hex color literal ("#abc") to its
-// 6-digit equivalent ("#aabbcc") since android.graphics.Color.parseColor
-// rejects 3-digit shorthand. val is a Kotlin string-literal expression
-// (e.g. `"#555"`), surrounding quotes preserved; non-literal expressions
-// and already-normalized colors pass through unchanged.
-func normalizeHexColor(val string) string {
-	if len(val) < 2 || val[0] != '"' || val[len(val)-1] != '"' {
-		return val
-	}
-	inner := val[1 : len(val)-1]
-	if len(inner) != 4 || inner[0] != '#' {
-		return val
-	}
-	for i := 1; i < 4; i++ {
-		c := inner[i]
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
-			return val
+// composeColorExpr converts an evaluated SNGL color value to a Compose Color
+// expression. SNGL `color` values lower to a `Color(r=.., g=.., b=.., a=..)`
+// struct (0..255 ints); hex string literals ("#rrggbb") are also accepted.
+// Compose's ComposeColor has an Int (0..255) constructor:
+// ComposeColor(red, green, blue, alpha). Anything else is assumed to be a
+// runtime Color-struct expression and is built from its r/g/b/a fields.
+func composeColorExpr(val string) string {
+	val = strings.TrimSpace(val)
+	// Named-arg struct literal: Color(r = 102, g = 102, b = 102, a = 255)
+	if rest, ok := strings.CutPrefix(val, "Color("); ok && strings.HasSuffix(rest, ")") {
+		inner := strings.TrimSuffix(rest, ")")
+		fields := map[string]string{"r": "0", "g": "0", "b": "0", "a": "255"}
+		for part := range strings.SplitSeq(inner, ",") {
+			kv := strings.SplitN(part, "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+			fields[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
 		}
+		return fmt.Sprintf("ComposeColor(red = %s, green = %s, blue = %s, alpha = %s)",
+			fields["r"], fields["g"], fields["b"], fields["a"])
 	}
-	return fmt.Sprintf(`"#%c%c%c%c%c%c"`, inner[1], inner[1], inner[2], inner[2], inner[3], inner[3])
+	// Hex string literal: "#rrggbb" or "#rgb".
+	if r, g, b, ok := parseHexColorLiteral(val); ok {
+		return fmt.Sprintf("ComposeColor(red = %d, green = %d, blue = %d, alpha = 255)", r, g, b)
+	}
+	// Runtime Color-struct expression: build from its fields.
+	return fmt.Sprintf("ComposeColor((%s).r, (%s).g, (%s).b, (%s).a)", val, val, val, val)
+}
+
+// parseHexColorLiteral parses a Kotlin string literal holding a hex color
+// ("#abc" / "#aabbcc"); returns the 0..255 channel values.
+func parseHexColorLiteral(val string) (r, g, b int, ok bool) {
+	if len(val) < 2 || val[0] != '"' || val[len(val)-1] != '"' {
+		return 0, 0, 0, false
+	}
+	s := val[1 : len(val)-1]
+	if len(s) == 0 || s[0] != '#' {
+		return 0, 0, 0, false
+	}
+	hex := s[1:]
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	if len(hex) != 6 {
+		return 0, 0, 0, false
+	}
+	v, err := strconv.ParseInt(hex, 16, 32)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	return int(v>>16) & 0xff, int(v>>8) & 0xff, int(v) & 0xff, true
 }
 
 func composeModifier(prop, val string) string {
@@ -533,7 +566,7 @@ func composeModifier(prop, val string) string {
 	case "height":
 		return fmt.Sprintf("height(%s.dp)", val)
 	case "background":
-		return fmt.Sprintf("background(ComposeColor(android.graphics.Color.parseColor(%s)))", normalizeHexColor(val))
+		return fmt.Sprintf("background(%s)", composeColorExpr(val))
 	case "opacity":
 		return fmt.Sprintf("alpha(%s)", val)
 	case "gap":
