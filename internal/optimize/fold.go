@@ -14,13 +14,26 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		return nil
 	}
 
-	// Try full constant evaluation.
-	if val, ok := evalExpr(e, ctx); ok {
-		if lit := irLiteral(val, e.ExprType()); lit != nil {
-			return lit
-		}
-		if expr := irFromValue(val, e.ExprType()); expr != nil {
-			return expr
+	// Try full constant evaluation — but NOT for composite literal nodes
+	// (struct/list/map). Round-tripping those through the runtime value
+	// representation loses concrete type info: irFromValue rebuilds a struct
+	// value held in a `dyn` field as a naked StructLit (Def=nil), because a
+	// bare map[string]any carries no StructDef, and Go codegen then emits
+	// `struct{}` instead of the named type. Composite literals are instead
+	// folded element-by-element below, which preserves each node's Def while
+	// still folding any foldable component expressions. (evalExpr is still
+	// used for non-literal nodes like Select/Index/Call over const data.)
+	switch e.(type) {
+	case *ir.StructLit, *ir.ListLit, *ir.MapLitIR:
+		// fall through to per-component recursion
+	default:
+		if val, ok := evalExpr(e, ctx); ok {
+			if lit := irLiteral(val, e.ExprType()); lit != nil {
+				return lit
+			}
+			if expr := irFromValue(val, e.ExprType()); expr != nil {
+				return expr
+			}
 		}
 	}
 

@@ -273,6 +273,47 @@ component main {
 	}
 }
 
+func TestOptimize_StructInDynFieldKeepsDef(t *testing.T) {
+	// A struct literal stored in a `dyn`-typed field must keep its concrete
+	// Def through const-folding. Folding round-tripped composites through a
+	// type-less runtime value, rebuilding the nested struct as a naked
+	// StructLit (Def=nil) → Go codegen emitted `struct{}{...}` (invalid).
+	src := `
+struct TreeNode {
+	value int = 0
+	left dyn = null
+}
+component main {
+	var tree = TreeNode{value=5, left=TreeNode{value=3}}
+	text(value=string(tree.value))
+}
+`
+	pkg, _ := checkAndOptimize(t, src, "fyne", "go")
+	for _, c := range pkg.Components {
+		for _, v := range c.Vars {
+			if v.Name != "tree" {
+				continue
+			}
+			outer, ok := v.Init.(*ir.StructLit)
+			if !ok {
+				t.Fatalf("tree.Init is %T, want *ir.StructLit", v.Init)
+			}
+			for _, f := range outer.Fields {
+				if f.Name != "left" {
+					continue
+				}
+				inner, ok := f.Value.(*ir.StructLit)
+				if !ok {
+					t.Fatalf("left value is %T, want *ir.StructLit", f.Value)
+				}
+				if inner.Def == nil {
+					t.Error("nested struct in dyn field lost its Def after folding")
+				}
+			}
+		}
+	}
+}
+
 func TestOptimize_KeepTestFunc(t *testing.T) {
 	src := `
 func testFoo() => 1
