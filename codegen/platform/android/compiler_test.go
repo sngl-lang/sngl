@@ -58,6 +58,40 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 	return src
 }
 
+// TestComputedNotDoubleEmitted guards against a regression where a nested
+// component computed (registered in BOTH pkg.Funcs and main.Funcs) was emitted
+// twice, producing "Conflicting declarations" in Kotlin. See codegen/iterate.go
+// AllFuncs — all platforms must dedup funcs by pointer.
+func TestComputedNotDoubleEmitted(t *testing.T) {
+	src := `component main {
+    var count = 0
+    func doubled() => count * 2
+    text(value=doubled)
+}`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if hasErrors(diags) {
+		t.Fatalf("check: %s", firstError(diags))
+	}
+	gen := &Generator{}
+	kotlinLang := codegen.LookupLang("kotlin")
+	if err := lower.Lower(pkg, gen.Capabilities(kotlinLang).ToLowerCaps(), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	code := string(compileAndVerify(t, doc, pkg))
+
+	n := strings.Count(code, "by remember { derivedStateOf")
+	if n != 1 {
+		t.Errorf("expected computed emitted exactly once, got %d derivedStateOf decls", n)
+	}
+	if n < 1 {
+		t.Errorf("computed appears to be dropped entirely")
+	}
+}
+
 func TestFixtures(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		if len(s.Errors) > 0 {

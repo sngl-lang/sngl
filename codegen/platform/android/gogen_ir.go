@@ -93,10 +93,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		gc = gc.ForComponent(main)
 	}
 
-	allFuncs := ctx.Pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 
 	// Pass 1: dry-run all function bodies through gc to collect imports.
 	// RequireImport is idempotent, so re-running in pass 2 is harmless.

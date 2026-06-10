@@ -161,10 +161,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		})
 	}
 
-	allFuncs := pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irAndroidComputed{
@@ -192,10 +189,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// actually emit them inside the class body below.
 	var stateFuncs []*ir.Func
 	if testMode && !cfg.GoLib {
-		allFuncs := ctx.Pkg.Funcs
-		if main := ctx.MainComponent(); main != nil {
-			allFuncs = append(allFuncs, main.Funcs...)
-		}
+		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
 			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 				continue
@@ -491,10 +485,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// User functions (non-GoLib). In test mode these were emitted
 	// as members of MainScreenState already.
 	if !cfg.GoLib && !testMode {
-		allFuncs := ctx.Pkg.Funcs
-		if main := ctx.MainComponent(); main != nil {
-			allFuncs = append(allFuncs, main.Funcs...)
-		}
+		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
 			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 				continue
