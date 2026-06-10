@@ -655,7 +655,23 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	condExpr := c.checkExpr(x.Cond)
 	thenExpr := c.checkExprExpecting(x.Then, c.expected)
 	elseExpr := c.checkExprExpecting(x.Else, c.expected)
-	return &ir.Ternary{AST: x, Type: exprType(thenExpr), Cond: condExpr, Then: thenExpr, Else: elseExpr}
+	typ := exprType(thenExpr)
+	// Numeric promotion: a ternary mixing int and float yields float, with an
+	// explicit Conversion materialized on the narrower branch — mirroring the
+	// binary-arithmetic promotion in inferBinary so codegen sees both arms (and
+	// the result) at a single type. Without this, `cond ? 0 : x + 0.01` typed
+	// as int and the float branch failed to assign to the int-typed temp.
+	tt, et := exprType(thenExpr), exprType(elseExpr)
+	if tt != nil && et != nil && tt.IsNumeric() && et.IsNumeric() && tt.Kind != et.Kind {
+		typ = c.narrowNumeric(tt, et)
+		if tt.Kind != typ.Kind {
+			thenExpr = &ir.Conversion{Type: typ, Operand: thenExpr}
+		}
+		if et.Kind != typ.Kind {
+			elseExpr = &ir.Conversion{Type: typ, Operand: elseExpr}
+		}
+	}
+	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {

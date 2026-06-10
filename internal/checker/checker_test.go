@@ -80,6 +80,46 @@ func parse(t *testing.T, src string) *ir.Package {
 	return pkg
 }
 
+func TestTernaryNumericPromotion(t *testing.T) {
+	// A ternary mixing int and float branches must type as float, promoting
+	// the int branch via an explicit Conversion — mirroring binary arithmetic.
+	// Regression: `cond ? 0 : x + 0.01` previously typed as int, so the float
+	// branch failed to assign to the int-typed lowered temp.
+	pkg := parse(t, `
+component main {
+	func pick(b bool) => b ? 0 : 1.5
+	text(value=string(pick(true)))
+}`)
+	var fn *ir.Func
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			if f.Name == "pick" {
+				fn = f
+			}
+		}
+	}
+	if fn == nil {
+		t.Fatal("func pick not found")
+	}
+	if fn.Return == nil || fn.Return.Kind != ir.TypeFloat {
+		t.Fatalf("pick return type = %v, want float", fn.Return)
+	}
+	ret, ok := fn.Block[0].(*ir.Return)
+	if !ok {
+		t.Fatalf("body[0] = %T, want *ir.Return", fn.Block[0])
+	}
+	tern, ok := ret.Value.(*ir.Ternary)
+	if !ok {
+		t.Fatalf("return value = %T, want *ir.Ternary", ret.Value)
+	}
+	if tern.Type == nil || tern.Type.Kind != ir.TypeFloat {
+		t.Errorf("ternary type = %v, want float", tern.Type)
+	}
+	if _, ok := tern.Then.(*ir.Conversion); !ok {
+		t.Errorf("then-branch = %T, want *ir.Conversion (int 0 promoted to float)", tern.Then)
+	}
+}
+
 func TestVarTypes(t *testing.T) {
 	pkg := parse(t, `
 var count int
