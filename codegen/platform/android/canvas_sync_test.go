@@ -80,19 +80,19 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// one decl can't satisfy a check for another struct.
 	bodyOf := func(kName string) (string, bool) {
 		marker := "data class " + kName + "("
-		start := strings.Index(decls, marker)
-		if start < 0 {
+		_, after, ok := strings.Cut(decls, marker)
+		if !ok {
 			return "", false
 		}
-		rest := decls[start+len(marker):]
+		rest := after
 		// canvasKotlinDecls closes each data class with a ")" at the start of
 		// its own line ("\n)"). Field defaults may contain inline "(...)"
 		// (e.g. CanvasStyle's `Color(a = 0)`), so match the line-leading close.
-		end := strings.Index(rest, "\n)")
-		if end < 0 {
+		before, _, ok := strings.Cut(rest, "\n)")
+		if !ok {
 			return rest, true
 		}
-		return rest[:end], true
+		return before, true
 	}
 
 	for structName, fields := range fieldsByStruct {
