@@ -34,6 +34,15 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 		t.Skip("no display available for gtk4 snapshot")
 	}
+	// Legitimately skip only when the GTK4 dev libraries are absent (cgo
+	// could not link). If pkg-config reports gtk4 present, the environment
+	// is capable and any subsequent failure is a real compile/run bug —
+	// which must fail the test, not be masked as an env skip.
+	if pc, err := exec.LookPath("pkg-config"); err != nil {
+		t.Skip("pkg-config not available; cannot confirm gtk4 dev libs")
+	} else if err := exec.Command(pc, "--exists", "gtk4").Run(); err != nil {
+		t.Skip("gtk4 dev libraries not installed")
+	}
 
 	src := `
 component main {
@@ -64,9 +73,12 @@ component main {
 		t.Fatalf("lower: %v", err)
 	}
 
+	// GTK4 dev libs + display are confirmed present above, so a Snapshot
+	// failure here means the generated cgo code failed to compile or the
+	// program crashed at runtime — a real bug. Fail, do not skip.
 	pngBytes, err := g.Snapshot(pkg, lang, 200, 200)
 	if err != nil {
-		t.Skipf("snapshot unavailable (GTK4 dev libs/display): %v", err)
+		t.Fatalf("snapshot failed (generated code did not compile/run): %v", err)
 	}
 	img, err := png.Decode(bytes.NewReader(pngBytes))
 	if err != nil {
