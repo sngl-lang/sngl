@@ -571,6 +571,11 @@ func nullFuncStubKt(t *ir.Type) string {
 	return "{ " + strings.Join(params, ", ") + " -> " + zero + " }"
 }
 
+// KtZeroFor returns the Kotlin zero/default-value expression for an IR type.
+// Exported for platform emitters that need a concrete initializer (e.g. data
+// class field defaults whose source value isn't carried on the IR placeholder).
+func KtZeroFor(t *ir.Type) string { return ktZeroFor(t) }
+
 func ktZeroFor(t *ir.Type) string {
 	if t == nil {
 		return "Unit"
@@ -699,7 +704,9 @@ func IRTypeToKt(t *ir.Type) string {
 		return "String"
 	case ir.TypeFunc:
 		return "Any" // TODO: proper function types
-	case ir.TypeNull:
+	case ir.TypeNull, ir.TypeDyn:
+		// dyn holds anything including null (recursive structs like TreeNode
+		// use `dyn = null` for absent children).
 		return "Any?"
 	default:
 		return "Any"
@@ -809,6 +816,16 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	}
 
 	switch qualName {
+	// Alert.* → Android Toast. The android backend gates the `Toast` import
+	// and the `val context = LocalContext.current` declaration on
+	// CommonAnalysis.NeedsToast, so `context` is in scope at the call site
+	// (toast calls live inside @Composable handler lambdas that capture it).
+	case "Alert.toast":
+		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_SHORT).show()"
+	case "Alert.info", "Alert.warn", "Alert.error":
+		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_LONG).show()"
+	case "Alert.confirm":
+		return "true"
 	case "int.min", "*.min":
 		return "minOf(" + a(0) + ", " + a(1) + ")"
 	case "int.max", "*.max":
