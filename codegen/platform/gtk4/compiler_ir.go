@@ -160,6 +160,23 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 	return nil
 }
 
+// mainComponentLocalRefs returns the non-escaping widget-ref set
+// passNodeEscape recorded for the scope that mainBodyStmts emits (the first
+// window's body if present, else the main component body). Used so the main
+// BuildUI emission renders non-escaping refs as locals.
+func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
+	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
+		if wins[0].Window != nil {
+			return wins[0].Window.LocalRefs
+		}
+		return nil
+	}
+	if main := ctx.MainComponent(); main != nil {
+		return main.LocalRefs
+	}
+	return nil
+}
+
 // analyzeIR collects gtk4-specific binds, computeds, and Go imports.
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	exprCtx := ctx.ExprCtx
@@ -328,7 +345,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, func(name, cType string) {
 			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
-		}).withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt)
+		}).withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt).withLocalRefs(mainComponentLocalRefs(c.ctx))
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
@@ -561,7 +578,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
@@ -815,7 +832,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
@@ -1104,7 +1121,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 
 	tr := newGtk4Translator(compGC, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed)
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(cc.Component.LocalRefs)
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 
@@ -1122,7 +1139,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	case 0:
 		trailer = "\treturn C.gtk_label_new(nil)\n"
 	case 1:
-		ref := &ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true}
+		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
 		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: ref}
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(retExpr))
 	default:
@@ -1140,7 +1157,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		fmt.Fprintf(&tb, "\t__box := %s\n", compGC.EvalExpr(boxInit))
 		boxRef := &ir.Ident{Name: "__box"}
 		for _, ref := range tops {
-			childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+			childRef := tr.qualifyNodeExpr(&ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})
 			appendCall := &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: &ir.Ident{Name: "C"},

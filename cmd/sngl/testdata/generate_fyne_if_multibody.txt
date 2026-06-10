@@ -16,14 +16,18 @@ sngl generate --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
 
 # The vbox is __n3; the three text children are __n0..__n2 (allocated in pass-1).
-grep 'm\.__n0 = widget\.NewLabel' out/model.go
-grep 'm\.__n1 = widget\.NewLabel' out/model.go
-grep 'm\.__n2 = widget\.NewLabel' out/model.go
+# The labels do not escape __renderSlot0 (created, added, and tracked in
+# m.__slot0 all within that scope), so the node-escape lower pass emits them
+# as distinct function-local variables — which also rules out the original
+# variable collision this test guards against.
+grep '__n0 := widget\.NewLabel' out/model.go
+grep '__n1 := widget\.NewLabel' out/model.go
+grep '__n2 := widget\.NewLabel' out/model.go
 
 # Each label inside the if-body is appended to the parent via __renderSlot0.
-grep 'container\.Add\(m\.__n0\)' out/model.go
-grep 'container\.Add\(m\.__n1\)' out/model.go
-grep 'container\.Add\(m\.__n2\)' out/model.go
+grep 'container\.Add\(__n0\)' out/model.go
+grep 'container\.Add\(__n1\)' out/model.go
+grep 'container\.Add\(__n2\)' out/model.go
 
 -- app.sngl --
 output { go { fyne } }

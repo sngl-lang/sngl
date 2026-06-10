@@ -21,9 +21,16 @@ import (
 // via ir.Conversion to an ir.NativePointerOf("X") type (see cgoCast);
 // the Go renderer's evalConversion path emits the cgo cast pattern.
 type gtk4Translator struct {
-	gc            *golang.GoIRContext
-	pkg           *ir.Package // optional; used to consult GIR-resolved native metadata
-	fieldSink     func(name, cType string)
+	gc        *golang.GoIRContext
+	pkg       *ir.Package // optional; used to consult GIR-resolved native metadata
+	fieldSink func(name, cType string)
+	// localRefs is the set of synthesized widget ref ids that the lower
+	// pass passNodeEscape determined do NOT escape this scope. For these
+	// ids OnCreateNode/OnCreateComponent emit a function-local `__nN := ...`
+	// declaration rather than a shared Model field, and qualifyNodeExpr
+	// renders the bare local name rather than `m.__nN`. Escaping ids (not
+	// in this set) keep the Model-field behavior. nil → every id is a field.
+	localRefs     map[string]bool
 	idCTypes      map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped       map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
 	topLevel      []string
@@ -50,6 +57,19 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
 	}
+}
+
+// withLocalRefs sets the non-escaping ref-id set for the scope this
+// translator emits. See gtk4Translator.localRefs.
+func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
+	t.localRefs = local
+	return t
+}
+
+// isLocalRef reports whether id is a non-escaping ref that should be emitted
+// as a function-local variable rather than a Model field.
+func (t *gtk4Translator) isLocalRef(id string) bool {
+	return t.localRefs != nil && t.localRefs[id]
 }
 
 // withPkg attaches a package whose imports may carry GIR-resolved
@@ -302,9 +322,19 @@ func ctorZeroArg(girType string, t *ir.Type) ir.Expr {
 // assigns the translated `m.render<Comp>(props...)` call. Keeps `m.<id>`
 // references (parent append, etc.) resolvable, mirroring OnCreateNode.
 func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	t.fieldSink(id, "GtkWidget")
 	t.idCTypes[id] = "GtkWidget"
 	t.topLevel = append(t.topLevel, id)
+	if t.isLocalRef(id) {
+		// Non-escaping: declare as a function-local `__nN := m.render<Comp>(...)`
+		// so each recursion frame keeps its own widget rather than clobbering
+		// a shared Model field.
+		return []ir.Stmt{&ir.LocalVar{
+			Name: id,
+			Type: ir.NativePointerOf("GtkWidget"),
+			Init: call,
+		}}
+	}
+	t.fieldSink(id, "GtkWidget")
 	return []ir.Stmt{&ir.Assign{
 		Target: modelFieldRef(id),
 		Op:     ast.AssignSet,
@@ -315,9 +345,20 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 // emitConstructorAssign records the new widget's id↔cType mapping and
 // emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
-	t.fieldSink(id, cType)
 	t.idCTypes[id] = cType
 	t.topLevel = append(t.topLevel, id)
+	if t.isLocalRef(id) {
+		// Non-escaping: declare a function-local `__nN := (*C.<cType>)(...)`
+		// rather than registering a shared Model field. Each call frame gets
+		// its own widget temp — required for recursive component render
+		// methods, where a shared field would be clobbered on recursion.
+		return []ir.Stmt{&ir.LocalVar{
+			Name: id,
+			Type: ir.NativePointerOf(cType),
+			Init: cgoCast(cType, ctor),
+		}}
+	}
+	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
 		Target: modelFieldRef(id),
 		Op:     ast.AssignSet,
@@ -426,6 +467,11 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		// would otherwise rewrite it to a bogus `m.Parent`).
 		if id.Name == "parent" || id.Name == "container" {
 			return e
+		}
+		// Non-escaping refs are function-local variables; render the bare
+		// name rather than a Model-field selector.
+		if t.isLocalRef(id.Name) {
+			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
 		if strings.HasPrefix(id.Name, "__n") {
 			return modelFieldRef(id.Name)

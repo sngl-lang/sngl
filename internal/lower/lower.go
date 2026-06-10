@@ -94,6 +94,7 @@ var passes = []pass{
 	passTimer,
 	passFocusOrder,
 	passDeclarative,
+	passNodeEscape,
 	passNoRef,
 }
 

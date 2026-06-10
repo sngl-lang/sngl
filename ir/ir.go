@@ -157,6 +157,13 @@ type Func struct {
 	// takes a single string param rather than the SNGL InputEvent).
 	LoweredFromTag   string `json:"-"`
 	LoweredFromEvent string `json:"-"`
+	// LocalRefs is populated by lower's passNodeEscape (MutationModel
+	// platforms only): the set of synthesized widget ref ids (__nN)
+	// created in this function's Block that do NOT escape to any other
+	// scope. Codegen translators emit these as function-local variables
+	// rather than shared Model fields. nil when the pass did not run.
+	// See internal/lower/node_escape.go and Component.LocalRefs.
+	LocalRefs map[string]bool `json:"-"`
 }
 
 func (f *Func) SymName() string { return f.Name }
@@ -236,6 +243,14 @@ type Component struct {
 	// widgets). nil for user-defined and stdlib components. Opaque to
 	// the checker — consumers cast to a platform-specific shape.
 	Native any `json:"-"`
+	// LocalRefs is populated by lower's passNodeEscape (MutationModel
+	// platforms only): the set of synthesized widget ref ids (__nN)
+	// created in this component's Body that do NOT escape to any other
+	// scope (updater/handler/slot func). Codegen translators emit these
+	// as function-local variables rather than shared Model fields, so a
+	// recursive component's render method gets fresh locals per frame.
+	// nil when the pass did not run. See internal/lower/node_escape.go.
+	LocalRefs map[string]bool `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -300,6 +315,11 @@ type Window struct {
 	Body         []Stmt        // type-checked body statements
 	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
 	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window
+	// LocalRefs is populated by lower's passNodeEscape (MutationModel
+	// platforms only): the set of synthesized widget ref ids (__nN)
+	// created in this window's Body that do NOT escape to any other
+	// scope. See internal/lower/node_escape.go and Component.LocalRefs.
+	LocalRefs map[string]bool `json:"-"`
 }
 
 func (w *Window) SymName() string { return w.Name }

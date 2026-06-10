@@ -20,7 +20,14 @@ type fyneTranslator struct {
 	blueprints map[string]*fyneBlueprint
 	fieldSink  func(name, goType string)
 	importSink func(path string)
-	idTags     map[string]string
+	// localRefs is the set of synthesized widget ref ids that lower's
+	// passNodeEscape determined do NOT escape this scope. For those ids
+	// OnCreateNode/OnCreateComponent emit a function-local `__nN := ...`
+	// rather than a shared Model field, and the qualify* helpers render the
+	// bare local name. Escaping ids keep the Model-field behavior. nil →
+	// every id is a field.
+	localRefs map[string]bool
+	idTags    map[string]string
 	// topLevel tracks widget ids created via OnCreateNode that have not
 	// (yet) been consumed by an AppendChild. Window-body/component-method
 	// emission uses this to discover the topmost widget(s) to return as
@@ -50,6 +57,25 @@ func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBluepr
 }
 
 var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
+
+// withLocalRefs sets the non-escaping ref-id set for the scope this
+// translator emits. See fyneTranslator.localRefs.
+func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
+	t.localRefs = local
+	return t
+}
+
+// isLocalRef reports whether id is a non-escaping ref that should be emitted
+// as a function-local variable rather than a Model field.
+func (t *fyneTranslator) isLocalRef(id string) bool {
+	return t.localRefs != nil && t.localRefs[id]
+}
+
+// localElementRef renders a bare local-variable reference for a non-escaping
+// widget id (used by the qualify* helpers and return trailers).
+func localElementRef(name string) ir.Expr {
+	return &ir.Ident{Name: name, Type: ir.TypDyn}
+}
 
 // platformBlueprints returns the blueprint table loaded at init().
 func platformBlueprints() map[string]*fyneBlueprint {
@@ -149,9 +175,11 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
 		return nil
 	}
-	t.fieldSink(id, bp.Constructor.GoType)
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
+	if !t.isLocalRef(id) {
+		t.fieldSink(id, bp.Constructor.GoType)
+	}
 	// Only flow imports whose package name is referenced by the ctor
 	// goFn/goType — blueprints may list extra imports (e.g. "net/url")
 	// used by the unused prelude/Raw-arg path, which would otherwise
@@ -174,6 +202,12 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 
 	args := zeroArgsToExprs(bp.Constructor.ZeroArgs)
 	ctor := nativeCall(bp.Constructor.GoFn, args, ir.TypDyn)
+	if t.isLocalRef(id) {
+		// Non-escaping: declare a function-local `__nN := <ctor>` so each
+		// call frame (notably a recursive render method) keeps its own
+		// widget temp rather than clobbering a shared Model field.
+		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
+	}
 	return []ir.Stmt{&ir.Assign{
 		Target: modelFieldRef(id),
 		Op:     ast.AssignSet,
@@ -187,8 +221,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 // The translated CreateComponent call becomes `m.render<Comp>(props...)`
 // via the Go IR context when the returned Assign is later evaluated.
 func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	t.fieldSink(id, "fyne.CanvasObject")
 	t.topLevel = append(t.topLevel, id)
+	if t.isLocalRef(id) {
+		// Non-escaping: function-local `__nN := m.render<Comp>(...)` so each
+		// recursion frame keeps its own child widget.
+		return []ir.Stmt{&ir.LocalVar{Name: id, Init: call}}
+	}
+	t.fieldSink(id, "fyne.CanvasObject")
 	return []ir.Stmt{&ir.Assign{
 		Target: modelFieldRef(id),
 		Op:     ast.AssignSet,
@@ -273,6 +312,9 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 		if id.Name == "parent" {
 			return &ir.Ident{Name: "container", Type: ir.TypDyn}
 		}
+		if t.isLocalRef(id.Name) {
+			return localElementRef(id.Name)
+		}
 		// Synthesized __nN parents from inline AppendChild calls in
 		// window/component bodies need an `m.` qualifier; slot Funcs use
 		// the typed `container` param instead.
@@ -288,6 +330,9 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 // "__entry", etc.) and already-qualified expressions pass through.
 func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
+		if t.isLocalRef(id.Name) {
+			return localElementRef(id.Name)
+		}
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
 			return modelFieldRef(id.Name)
 		}
@@ -330,10 +375,19 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}}
 }
 
-// qualifyHandlerNode produces a Model-field ref for a node id.
+// nodeRefFor returns the reference expression for a synthesized widget id:
+// a bare local for non-escaping ids, else a Model-field selector.
+func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {
+	if t.isLocalRef(bareID) {
+		return localElementRef(bareID)
+	}
+	return modelFieldRef(bareID)
+}
+
+// qualifyHandlerNode produces a ref for a node id (local or Model-field).
 func (t *fyneTranslator) qualifyHandlerNode(e ir.Expr, bareID string) ir.Expr {
 	if bareID != "" {
-		return modelFieldRef(bareID)
+		return t.nodeRefFor(bareID)
 	}
 	return e
 }
@@ -378,7 +432,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if transform != "" {
 		value = nativeCall(transform, []ir.Expr{value}, ir.TypString)
 	}
-	nodeRef := modelFieldRef(bareID)
+	nodeRef := t.nodeRefFor(bareID)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}
 }
 

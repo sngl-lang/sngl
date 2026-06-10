@@ -56,7 +56,11 @@ component main {
 		"C.gtk_box_remove",
 		"m.__slot0 = nil",
 		"C.gtk_label_new",
-		"m.__n0 = (*C.GtkLabel)",
+		// The slot-local label does not escape __renderSlot0 (it is created,
+		// appended, and tracked in m.__slot0 all within this scope), so the
+		// node-escape lower pass emits it as a function-local `__n0 := ...`
+		// rather than a shared Model field. The slot slice keeps it alive.
+		"__n0 := (*C.GtkLabel)",
 		"C.gtk_label_set_",
 		"C.gtk_box_append",
 		"m.__slot0 = append(m.__slot0",

@@ -61,10 +61,14 @@ component main {
 		"container.Remove(__entry)",
 		"m.__slot0 = nil",
 		"if m.visible",
-		"m.__n0 = widget.NewLabel",
-		"m.__n0.SetText(fmt.Sprint(",
-		"container.Add(m.__n0)",
-		"m.__slot0 = append(m.__slot0, m.__n0)",
+		// The slot-local label does not escape __renderSlot0 (created,
+		// SetText'd, added, and tracked in m.__slot0 all within this scope),
+		// so the node-escape lower pass emits it as a function-local
+		// `__n0 := ...` rather than a shared Model field.
+		"__n0 := widget.NewLabel",
+		"__n0.SetText(fmt.Sprint(",
+		"container.Add(__n0)",
+		"m.__slot0 = append(m.__slot0, __n0)",
 	} {
 		if !strings.Contains(out, snippet) {
 			t.Errorf("emitted Go missing snippet %q\n--- generated ---\n%s", snippet, out)

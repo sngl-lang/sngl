@@ -33,6 +33,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoTimer",
 		"FocusOrder",
 		"NoDeclarative",
+		"NodeEscape",
 		"NoRef",
 	}
 	if len(passes) != len(expectedOrder) {

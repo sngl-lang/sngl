@@ -31,7 +31,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.newTodo = ""
-	m.todos = []Todo{Todo{Done: false, Text: "Buy groceries"}, Todo{Done: true, Text: "Walk the dog"}, Todo{Done: false, Text: "Write SNGL docs"}}
+	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.input0 = textinput.New()

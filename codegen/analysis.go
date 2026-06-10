@@ -35,6 +35,11 @@ type TimerInfo struct {
 	IntervalMs int
 	ActiveVar  string
 	Body       []ir.Stmt
+	// LocalRefs is the non-escaping widget-ref set lower's passNodeEscape
+	// recorded for this timer's handler scope. MutationModel platforms use
+	// it to emit those refs as function-locals rather than Model fields.
+	// nil when the pass did not run.
+	LocalRefs map[string]bool
 }
 
 // AnalyzeCommon extracts CommonAnalysis from a Package. Platforms call this
@@ -159,6 +164,7 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 			IntervalMs: IntervalToMs(t.Interval),
 			ActiveVar:  activeVar,
 			Body:       t.Handler.Block,
+			LocalRefs:  t.Handler.LocalRefs,
 		})
 	}
 

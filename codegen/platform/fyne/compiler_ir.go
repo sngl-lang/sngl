@@ -226,7 +226,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			bodyStmts := wins[0].Body
 			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addBlueprintImport)
+			}, addBlueprintImport).withLocalRefs(mainScopeLocalRefs(ctx))
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
@@ -247,14 +247,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
 			case 1:
-				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(elementRef(tops[0])))
+				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				singleRoot = false
 				// BuildUI wraps the parts in container.NewVBox(parts...).
 				gc.RequireImport("fyne.io/fyne/v2/container")
 				buildBuf.WriteString("\tvar parts []fyne.CanvasObject\n")
 				for _, ref := range tops {
-					fmt.Fprintf(&buildBuf, "\tparts = append(parts, %s)\n", gc.EvalExpr(elementRef(ref)))
+					fmt.Fprintf(&buildBuf, "\tparts = append(parts, %s)\n", gc.EvalExpr(topRef(tr, ref)))
 				}
 			}
 		}
@@ -274,7 +274,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			var winBuf strings.Builder
 			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addBlueprintImport)
+			}, addBlueprintImport).withLocalRefs(w.Window.LocalRefs)
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
 			for _, stmt := range body {
@@ -291,7 +291,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
 			case 1:
-				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(elementRef(tops[0])))
+				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				gc.RequireImport("fyne.io/fyne/v2/container")
 				winCode.WriteString("\treturn container.NewVBox(")
@@ -299,7 +299,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 					if i > 0 {
 						winCode.WriteString(", ")
 					}
-					winCode.WriteString(gc.EvalExpr(elementRef(ref)))
+					winCode.WriteString(gc.EvalExpr(topRef(tr, ref)))
 				}
 				winCode.WriteString(")\n")
 			}
@@ -407,7 +407,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	for _, t := range info.Timers {
 		tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-		}, addBlueprintImport)
+		}, addBlueprintImport).withLocalRefs(t.LocalRefs)
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		maps.Copy(tr.idTags, nodeTags)
 		bodyStmts := codegen.WalkLowered(context.Background(), t.Body, tr)
@@ -716,7 +716,7 @@ func renderIRComponentMethod(
 	var compFields []irWidgetField
 	tr := newFyneTranslator(compGC, platformBlueprints(), func(name, goType string) {
 		compFields = append(compFields, irWidgetField{name: name, goType: goType})
-	}, importSink)
+	}, importSink).withLocalRefs(cc.Component.LocalRefs)
 
 	bodyStmts := codegen.WalkLowered(context.Background(), cc.Body, tr)
 
@@ -726,7 +726,7 @@ func renderIRComponentMethod(
 	case 0:
 		trailer = "\treturn widget.NewLabel(\"\")\n"
 	case 1:
-		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(elementRef(tops[0])))
+		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(topRef(tr, tops[0])))
 	default:
 		var tb strings.Builder
 		tb.WriteString("\treturn container.NewVBox(")
@@ -734,7 +734,7 @@ func renderIRComponentMethod(
 			if i > 0 {
 				tb.WriteString(", ")
 			}
-			tb.WriteString(compGC.EvalExpr(elementRef(ref)))
+			tb.WriteString(compGC.EvalExpr(topRef(tr, ref)))
 		}
 		tb.WriteString(")\n")
 		trailer = tb.String()
@@ -818,6 +818,32 @@ func irFuncReturnType(f *ir.Func) string {
 // qualification path, so callers don't hand-emit the "m." prefix.
 func elementRef(name string) *ir.Ident {
 	return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
+}
+
+// topRef renders a return-trailer reference to a top-level widget id: a
+// bare local for non-escaping ids (declared as `__nN := ...` in the same
+// scope), else the m.<name> element ref.
+func topRef(tr *fyneTranslator, name string) ir.Expr {
+	if tr.isLocalRef(name) {
+		return localElementRef(name)
+	}
+	return elementRef(name)
+}
+
+// mainScopeLocalRefs returns the non-escaping widget-ref set passNodeEscape
+// recorded for the scope the BuildUI emission walks (the first window's body
+// if present, else the main component body).
+func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
+	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
+		if wins[0].Window != nil {
+			return wins[0].Window.LocalRefs
+		}
+		return nil
+	}
+	if main := ctx.MainComponent(); main != nil {
+		return main.LocalRefs
+	}
+	return nil
 }
 
 func extractIRAssignTarget(stmts []ir.Stmt) string {
@@ -961,7 +987,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink)
+	}, importSink).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
 	// Pre-populate idTags so OnPropAssign in reactivity splices can find
 	// the binding for nodes created in sibling slot Funcs.
@@ -1038,7 +1064,7 @@ func parseSignatureParams(sig string) []*ir.Param {
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
 	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink)
+	}, importSink).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasByIDFor(canvasByFunc)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
