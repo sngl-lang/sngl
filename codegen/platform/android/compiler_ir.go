@@ -116,6 +116,40 @@ type irAndroidBind struct {
 	isList bool
 }
 
+// stateTypeArg returns an explicit type argument ("<String?>") for
+// mutableStateOf when Kotlin can't infer the element type from the
+// initializer — i.e. when the init is `null`. The bind's ktType already
+// carries the nullable form (option<T> → "T?", dyn → "Any?").
+func stateTypeArg(bind irAndroidBind, initVal string) string {
+	if strings.TrimSpace(initVal) == "null" {
+		t := bind.ktType
+		if t == "" {
+			t = "Any?"
+		}
+		if !strings.HasSuffix(t, "?") {
+			t += "?"
+		}
+		return "<" + t + ">"
+	}
+	return ""
+}
+
+// computedValueKt renders the Kotlin expression for a computed's derivedStateOf
+// body using the supplied context (which controls state-var prefixing).
+func computedValueKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext) string {
+	if cfg.GoLib {
+		return "golib.Golib." + exportName(comp.name) + "()"
+	}
+	if comp.fn != nil && len(comp.fn.Block) == 1 {
+		if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+			if v := kc.EvalExpr(ret.Value); v != "" {
+				return v
+			}
+		}
+	}
+	return `""`
+}
+
 type irAndroidComputed struct {
 	name   string
 	ktType string
@@ -215,6 +249,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		for _, bind := range info.binds {
 			rewrites[bind.name] = "state." + bind.name
 		}
+		// Computeds are hoisted onto MainScreenState in test mode (so the test
+		// accessor can read `c.<name>`), hence view sites read `state.<name>`.
 		for _, comp := range info.computeds {
 			rewrites[comp.name] = "state." + comp.name
 		}
@@ -275,9 +311,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			ktType := kotlin.IRTypeToKt(f.Type)
 			def := ""
 			if f.Default != nil {
-				if _, ok := f.Default.(*ir.Literal); ok {
-					def = " = " + kotlin.IRLiteralToKt(f.Default)
+				// The checker stores a type-only placeholder for field
+				// defaults (the source value isn't carried on the IR), so
+				// IRLiteralToKt often yields an empty string. Fall back to
+				// the type's Kotlin zero value so the data class field gets
+				// a usable default (e.g. Int → 0, String → "", dyn → null).
+				lit := kotlin.IRLiteralToKt(f.Default)
+				if lit == "" {
+					lit = kotlin.KtZeroFor(f.Type)
 				}
+				def = " = " + lit
 			}
 			comma := ","
 			if i == len(sd.Fields)-1 {
@@ -343,10 +386,15 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// composition.
 	if testMode {
 		body.WriteString("class MainScreenState {\n")
+		// Init expressions inside the class body resolve sibling state vars
+		// via implicit `this`, NOT the `state` parameter (which doesn't exist
+		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
+		// __ctx_locale` rather than `state.__ctx_locale`.
+		classKC := kotlin.NewIRContext(exprCtx)
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
-				initVal = kc.EvalExpr(bind.initEx)
+				initVal = classKC.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
 				elemType := listElementTypeKt(bind.ktType)
@@ -360,8 +408,15 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 					fmt.Fprintf(&body, "    val %s = mutableStateListOf<%s>()\n", bind.name, elemType)
 				}
 			} else {
-				fmt.Fprintf(&body, "    var %s by mutableStateOf(%s)\n", bind.name, initVal)
+				fmt.Fprintf(&body, "    var %s by mutableStateOf%s(%s)\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
+		}
+		// Computeds become `derivedStateOf` members so tests can read them via
+		// the state accessor (c.<name>). Init exprs use classKC (bare sibling
+		// refs, resolved via implicit `this`).
+		for _, comp := range info.computeds {
+			compVal := computedValueKt(comp, cfg, classKC)
+			fmt.Fprintf(&body, "    val %s by derivedStateOf { %s }\n", comp.name, compVal)
 		}
 		// Component-level user funcs become members of the state
 		// class so their bodies resolve reactive vars via implicit
@@ -412,25 +467,19 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 					fmt.Fprintf(&body, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
 				}
 			} else {
-				fmt.Fprintf(&body, "    var %s by remember { mutableStateOf(%s) }\n", bind.name, initVal)
+				fmt.Fprintf(&body, "    var %s by remember { mutableStateOf%s(%s) }\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
 		}
 	}
 
-	// Computed state
-	for _, comp := range info.computeds {
-		compVal := ""
-		if cfg.GoLib {
-			compVal = "golib.Golib." + exportName(comp.name) + "()"
-		} else if comp.fn != nil && len(comp.fn.Block) == 1 {
-			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-				compVal = kc.EvalExpr(ret.Value)
-			}
+	// Computed state. In test mode computeds live on MainScreenState (emitted
+	// above) so the test accessor can read them; here they're locals only in
+	// non-test mode.
+	if !testMode {
+		for _, comp := range info.computeds {
+			compVal := computedValueKt(comp, cfg, kc)
+			fmt.Fprintf(&body, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, compVal)
 		}
-		if compVal == "" {
-			compVal = `""`
-		}
-		fmt.Fprintf(&body, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, compVal)
 	}
 
 	if len(info.binds) > 0 || len(info.computeds) > 0 {
@@ -439,8 +488,17 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Timers
 	for _, t := range info.Timers {
-		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", t.ActiveVar)
-		fmt.Fprintf(&body, "        while (%s) {\n", t.ActiveVar)
+		// ActiveVar is a bare reactive-var name; in test mode it lives on the
+		// hoisted state object, so route it through the same rewrite map the
+		// body uses (e.g. `animating` → `state.animating`).
+		activeVar := t.ActiveVar
+		if kc.IdentRewrites != nil {
+			if rw, ok := kc.IdentRewrites[activeVar]; ok {
+				activeVar = rw
+			}
+		}
+		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", activeVar)
+		fmt.Fprintf(&body, "        while (%s) {\n", activeVar)
 		fmt.Fprintf(&body, "            delay(%dL)\n", t.IntervalMs)
 		for _, stmt := range t.Body {
 			for _, line := range kc.EvalStmt(stmt) {

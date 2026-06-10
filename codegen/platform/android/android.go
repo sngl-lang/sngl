@@ -282,8 +282,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		}
 	}
 
-	// When i18n is in use, inject the Kotlin runtime and manifest.
-	if usesI18n && cfg.Main {
+	// When i18n is in use, inject the Kotlin runtime and manifest. Gate on
+	// effectiveMain (not cfg.Main) so the runtime lands in the gradle source
+	// set whenever a full project is emitted — including agent/test builds
+	// that force the scaffold on while cfg.Main is false.
+	if usesI18n && effectiveMain {
 		if err := emitI18nRuntimeFile(sink); err != nil {
 			return err
 		}
