@@ -5,9 +5,14 @@
 package tui
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
+	"image/png"
+	"os"
 	"strings"
+	"sync"
 )
 
 // RenderTerminal renders img to a terminal string sized to cols x rows cells.
@@ -61,6 +66,42 @@ func halfBlock(img image.Image, cols, rows int) string {
 	return b.String()
 }
 
-// --- kitty stubs (filled in by Task 5) ---
-func kittySupported() bool         { return false }
-func kitty(img image.Image) string { return "" }
+var (
+	kittyOnce sync.Once
+	kittyOK   bool
+)
+
+// resetKittyDetection clears the cached detection (test-only seam).
+func resetKittyDetection() { kittyOnce = sync.Once{}; kittyOK = false }
+
+// kittySupported reports whether the terminal supports the kitty graphics
+// protocol, via environment heuristics, cached after the first call.
+func kittySupported() bool {
+	kittyOnce.Do(func() {
+		if os.Getenv("KITTY_WINDOW_ID") != "" {
+			kittyOK = true
+			return
+		}
+		term := os.Getenv("TERM")
+		prog := os.Getenv("TERM_PROGRAM")
+		for _, hay := range []string{term, prog} {
+			h := strings.ToLower(hay)
+			if strings.Contains(h, "kitty") || strings.Contains(h, "wezterm") || strings.Contains(h, "ghostty") {
+				kittyOK = true
+				return
+			}
+		}
+	})
+	return kittyOK
+}
+
+// kitty encodes img as a single base64 PNG kitty graphics escape sequence
+// (a=T: transmit + display). Chunking for very large payloads is a follow-up.
+func kitty(img image.Image) string {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return ""
+	}
+	payload := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return "\x1b_Gf=100,a=T;" + payload + "\x1b\\"
+}

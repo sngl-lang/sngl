@@ -26,3 +26,29 @@ func TestHalfBlockKnownImage(t *testing.T) {
 		t.Errorf("expected blue background truecolor, got %q", out)
 	}
 }
+
+func TestKittyEncodeHasGraphicsEscape(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 4, 4))
+	out := kitty(img)
+	if !strings.HasPrefix(out, "\x1b_G") {
+		t.Errorf("kitty output must start with the graphics escape, got %q", out)
+	}
+	if !strings.HasSuffix(out, "\x1b\\") {
+		t.Errorf("kitty output must end with ST, got %q", out)
+	}
+}
+
+func TestKittyDetectionFromEnv(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "1")
+	resetKittyDetection()
+	if !kittySupported() {
+		t.Error("KITTY_WINDOW_ID set should report kitty supported")
+	}
+	t.Setenv("KITTY_WINDOW_ID", "")
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("TERM_PROGRAM", "")
+	resetKittyDetection()
+	if kittySupported() {
+		t.Error("plain xterm should not report kitty supported")
+	}
+}
