@@ -26,37 +26,39 @@ type canvasMeta = canvasutil.Meta
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
 // dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.
 //
-// fyne renders via github.com/fogleman/gg software raster: ctx is a
-// *gg.Context, the canvas widget is a *canvas.Image built from the
-// rasterised image. Reactive redraws re-rasterise into the same image and
-// call Refresh().
+// fyne renders via the shared pkg/go/canvas runtime (software raster over
+// github.com/fogleman/gg): ctx is a *snglcanvas.Context, the canvas widget is a
+// *canvas.Image built from ctx.Result(). Reactive redraws re-rasterise and call
+// Refresh().
 //
 // The canvas intrinsics are NOT registered in the lang-keyed intrinsic
-// registry (that one is shared and JS-specific). They are translated here,
-// inside the fyne translator — the same way gtk4 rewrites widget calls —
-// because each native 2D API differs.
+// registry (that one is shared and JS-specific). They are translated via the
+// shared canvasutil.GoContextStmts helper (also used by bubbletea) into
+// Context method calls.
 
-const ggImportPath = "github.com/fogleman/gg"
+// snglCanvasImportPath is the SNGL Go canvas runtime; snglCanvasAlias is the
+// forced import alias (the path's default "canvas" collides with fyne's own
+// canvas package).
+const (
+	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasAlias      = "snglcanvas"
+)
+
+// canvasCtxType is the IR native type for the draw-func ctx parameter and the
+// Model field backing a canvas: *snglcanvas.Context.
+func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
 
 // The canvas stdlib structs (lib/canvas.sngl: CanvasStyle, PathCmd;
-// lib/types.sngl: color → Color) and the SNGL-color→color.Color helper are
-// referenced by the synthesized draw funcs but are NOT carried in pkg.Structs
-// (html, the only other canvas consumer, emits JS object literals and needs no
-// type decls), so the fyne Go path declares them here when any canvas is
-// present. Field names/types mirror the stdlib definitions; canvas_sync_test.go
-// guards against drift by parsing lib/*.sngl and asserting every stdlib field
-// is present in canvasStructDecls.
-
-// snglColorHelper is the SNGL-color→color.Color helper, emitted alongside (or,
-// on a full collision, instead of) the canvas stdlib struct decls.
-const snglColorHelper = "func _snglColor(c Color) color.Color {\n" +
-	"\treturn color.RGBA{R: uint8(c.R), G: uint8(c.G), B: uint8(c.B), A: uint8(c.A)}\n" +
-	"}\n"
+// lib/types.sngl: color → Color) are referenced by the synthesized draw funcs
+// (e.g. style.Fill.R read by the ApplyStyle setters, _cmd.op in the path loop)
+// but are NOT carried in pkg.Structs (html emits JS object literals), so the
+// fyne Go path declares them here when any canvas is present. Field names/types
+// mirror the stdlib definitions; canvas_sync_test.go guards against drift.
 
 // canvasStdlibDeclsExcluding returns the canvas stdlib struct decls (from the
 // shared canvasutil table), omitting any struct whose name collides with a
-// user-declared struct already in td.Structs, then appends the fyne-specific
-// _snglColor helper (always kept).
+// user-declared struct already in td.Structs. With the Context setter API,
+// generated code no longer needs an image/color helper.
 func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
@@ -65,7 +67,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 			declared[s.Name] = struct{}{}
 		}
 	}
-	return canvasutil.StructDeclsExcluding(declared) + snglColorHelper
+	return canvasutil.StructDeclsExcluding(declared)
 }
 
 // collectCanvases delegates to the shared canvasutil collector.
@@ -79,136 +81,12 @@ func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
 }
 
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
-// draw func body) into native gg calls. passCanvas emits a fixed per-shape
-// structure: Save, [ApplyStyle], DrawPrimitive, Restore. ApplyStyle binds a
-// `_styleN` local that the following primitive's fill/stroke reference.
+// draw func body) into pkg/go/canvas Context method calls via the shared
+// canvasutil helper. The Context is stateful (ApplyStyle's setters mutate a
+// pending style consumed by the next primitive), so no style tracking is
+// threaded here.
 func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
-	call := cs.Call
-	id := call.Func.Intrinsic
-	ctxArg := call.Args[0].Value
-	rest := call.Args[1:]
-	arg := func(i int) ir.Expr { return rest[i].Value }
-
-	// INVARIANT: every draw-primitive case below must consume the pending
-	// style exactly once (directly via takeStyle() or transitively via
-	// paintAround/strokeAround/translatePath). Skipping it leaks the style onto
-	// the next shape — see takeStyle(). CanvasDrawImage calls takeStyle()
-	// despite emitting nothing for this reason.
-	switch id {
-	case "CanvasSave":
-		return []ir.Stmt{methodStmt(ctxArg, "Push")}
-	case "CanvasRestore":
-		return []ir.Stmt{methodStmt(ctxArg, "Pop")}
-	case "CanvasApplyStyle":
-		// Bind the style to a fresh local so the following draw's fill/stroke
-		// don't re-evaluate the (possibly large) style expression repeatedly.
-		t.styleCounter++
-		name := fmt.Sprintf("_style%d", t.styleCounter)
-		t.pendingStyle = &ir.Ident{Name: name, Type: ir.TypDyn}
-		return []ir.Stmt{&ir.LocalVar{Name: name, Init: arg(0)}}
-	case "CanvasDrawRect":
-		return t.paintAround(ctxArg, methodStmt(ctxArg, "DrawRectangle", arg(0), arg(1), arg(2), arg(3)))
-	case "CanvasDrawCircle":
-		return t.paintAround(ctxArg, methodStmt(ctxArg, "DrawCircle", arg(0), arg(1), arg(2)))
-	case "CanvasDrawEllipse":
-		return t.paintAround(ctxArg, methodStmt(ctxArg, "DrawEllipse", arg(0), arg(1), arg(2), arg(3)))
-	case "CanvasDrawLine":
-		return t.strokeAround(ctxArg, methodStmt(ctxArg, "DrawLine", arg(0), arg(1), arg(2), arg(3)))
-	case "CanvasDrawText":
-		style := t.takeStyle()
-		var stmts []ir.Stmt
-		if style != nil {
-			stmts = append(stmts, fillColorStmt(ctxArg, style))
-		}
-		// gg DrawString(s, x, y); content=arg(2), x=arg(0), y=arg(1).
-		stmts = append(stmts, methodStmt(ctxArg, "DrawString", arg(2), arg(0), arg(1)))
-		return stmts
-	case "CanvasDrawPath":
-		return t.translatePath(ctxArg, arg(0))
-	case "CanvasDrawImage":
-		// Drawing an external image src needs async decode; unsupported in
-		// the gg raster path. Emit nothing rather than fail the build.
-		t.takeStyle()
-		return nil
-	}
-	return []ir.Stmt{cs}
-}
-
-// takeStyle returns the pending style (set by the preceding CanvasApplyStyle)
-// and clears it.
-//
-// INVARIANT: every draw-primitive case in translateCanvasIntrinsic must call
-// takeStyle() exactly once. It consumes-and-clears pendingStyle; a primitive
-// that skipped it would leak the previous shape's style onto the next shape.
-// This is why CanvasDrawImage calls takeStyle() even though it emits nothing.
-func (t *fyneTranslator) takeStyle() ir.Expr {
-	s := t.pendingStyle
-	t.pendingStyle = nil
-	return s
-}
-
-// paintAround wraps a path-defining draw call with fill + stroke using the
-// pending style. FillPreserve keeps the path so the following Stroke applies
-// to the same geometry.
-func (t *fyneTranslator) paintAround(ctxArg ir.Expr, draw ir.Stmt) []ir.Stmt {
-	style := t.takeStyle()
-	stmts := []ir.Stmt{draw}
-	if style == nil {
-		return append(stmts, methodStmt(ctxArg, "Fill"))
-	}
-	return append(stmts,
-		fillColorStmt(ctxArg, style),
-		methodStmt(ctxArg, "FillPreserve"),
-		methodStmt(ctxArg, "SetLineWidth", styleField(style, "strokeWidth")),
-		strokeColorStmt(ctxArg, style),
-		methodStmt(ctxArg, "Stroke"),
-	)
-}
-
-// strokeAround emits a stroke-only paint for line primitives.
-func (t *fyneTranslator) strokeAround(ctxArg ir.Expr, draw ir.Stmt) []ir.Stmt {
-	style := t.takeStyle()
-	stmts := []ir.Stmt{draw}
-	if style != nil {
-		stmts = append(stmts,
-			methodStmt(ctxArg, "SetLineWidth", styleField(style, "strokeWidth")),
-			strokeColorStmt(ctxArg, style),
-		)
-	}
-	return append(stmts, methodStmt(ctxArg, "Stroke"))
-}
-
-// translatePath rewrites CanvasDrawPath(ctx, cmds) into a range loop over the
-// PathCmd list emitting gg MoveTo/LineTo/CubicTo/ClosePath, then fill+stroke.
-func (t *fyneTranslator) translatePath(ctxArg, cmds ir.Expr) []ir.Stmt {
-	style := t.takeStyle()
-	loopVar := &ir.Ident{Name: "_cmd", Type: ir.TypDyn}
-	opSel := &ir.Select{Operand: loopVar, Field: "op", Type: ir.TypString}
-	field := func(name string) ir.Expr { return &ir.Select{Operand: loopVar, Field: name, Type: ir.TypFloat} }
-	cmdIf := func(op string, then ir.Stmt) *ir.If {
-		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Raw: op}},
-			Body: []ir.Stmt{then},
-		}
-	}
-	body := []ir.Stmt{
-		cmdIf("moveTo", methodStmt(ctxArg, "MoveTo", field("x"), field("y"))),
-		cmdIf("lineTo", methodStmt(ctxArg, "LineTo", field("x"), field("y"))),
-		cmdIf("bezierTo", methodStmt(ctxArg, "CubicTo", field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
-		cmdIf("close", methodStmt(ctxArg, "ClosePath")),
-	}
-	loop := &ir.For{Key: "_cmd", Iter: cmds, Body: body}
-	stmts := []ir.Stmt{loop}
-	if style != nil {
-		return append(stmts,
-			fillColorStmt(ctxArg, style),
-			methodStmt(ctxArg, "FillPreserve"),
-			methodStmt(ctxArg, "SetLineWidth", styleField(style, "strokeWidth")),
-			strokeColorStmt(ctxArg, style),
-			methodStmt(ctxArg, "Stroke"),
-		)
-	}
-	return append(stmts, methodStmt(ctxArg, "Fill"))
+	return canvasutil.GoContextStmts(cs)
 }
 
 // methodStmt builds `receiver.Method(args...)` as a CallStmt.
@@ -216,36 +94,13 @@ func methodStmt(receiver ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 	return &ir.CallStmt{Call: methodCall(receiver, method, args, ir.TypVoid)}
 }
 
-// styleField builds `<style>.<field>` as an ir.Select with float type.
-func styleField(style ir.Expr, field string) ir.Expr {
-	return &ir.Select{Operand: style, Field: field, Type: ir.TypFloat}
-}
-
-// fillColorStmt emits `ctx.SetColor(_snglColor(style.fill))`.
-func fillColorStmt(ctxArg, style ir.Expr) ir.Stmt {
-	return methodStmt(ctxArg, "SetColor", snglColorCall(&ir.Select{Operand: style, Field: "fill", Type: ir.TypDyn}))
-}
-
-// strokeColorStmt emits `ctx.SetColor(_snglColor(style.stroke))`.
-func strokeColorStmt(ctxArg, style ir.Expr) ir.Stmt {
-	return methodStmt(ctxArg, "SetColor", snglColorCall(&ir.Select{Operand: style, Field: "stroke", Type: ir.TypDyn}))
-}
-
-// snglColorCall builds `_snglColor(<colorExpr>)`.
-func snglColorCall(colorExpr ir.Expr) ir.Expr {
-	return &ir.Call{
-		Type: ir.TypDyn,
-		Func: &ir.Func{Name: "_snglColor"},
-		Args: []ir.CallArg{{Value: colorExpr}},
-	}
-}
-
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into the fyne re-raster
-// sequence for the matching canvas widget field:
+// sequence for the matching canvas widget field. The runtime Context has no
+// clear, so a fresh one is allocated each redraw:
 //
-//	m.<id>Ctx.Clear()
+//	m.<id>Ctx = snglcanvas.New(w, h)
 //	m._canvasDrawN(m.<id>Ctx)
-//	m.<id>.Image = m.<id>Ctx.Image()
+//	m.<id>.Image = m.<id>Ctx.Result()
 //	m.<id>.Refresh()
 func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
 	m := t.canvasMetaForDraw(rs.DrawFunc)
@@ -254,6 +109,7 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	}
 	dcField := modelFieldRef(canvasCtxField(m.ID))
 	imgField := modelFieldRef(m.ID)
+	w, h := canvasDims(m)
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "m"},
@@ -261,12 +117,12 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	return []ir.Stmt{
-		methodStmt(dcField, "Clear"),
+		&ir.Assign{Target: dcField, Op: ast.AssignSet, Value: newCanvasContextCall(w, h)},
 		&ir.CallStmt{Call: drawCall},
 		&ir.Assign{
 			Target: &ir.Select{Operand: imgField, Field: "Image", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
-			Value:  methodCall(dcField, "Image", nil, ir.TypDyn),
+			Value:  methodCall(dcField, "Result", nil, ir.TypDyn),
 		},
 		methodStmt(imgField, "Refresh"),
 	}
@@ -281,26 +137,13 @@ func (t *fyneTranslator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
 	return t.canvasByFunc[draw]
 }
 
-// canvasCtxField names the *gg.Context Model field backing a canvas widget.
+// canvasCtxField names the *snglcanvas.Context Model field backing a canvas
+// widget.
 func canvasCtxField(id string) string { return id + "Ctx" }
 
-// emitCanvasCreate emits the OnCreateNode result for a `canvas` tag: register
-// the *canvas.Image and *gg.Context Model fields, build the context sized to
-// the canvas, rasterise once, and create the image widget.
-func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
-	m := t.canvasByID[id]
-	if m == nil {
-		return nil
-	}
-	t.fieldSink(id, "*canvas.Image")
-	t.fieldSink(canvasCtxField(id), "*gg.Context")
-	t.idTags[id] = "canvas"
-	t.topLevel = append(t.topLevel, id)
-	if t.importSink != nil {
-		t.importSink(ggImportPath)
-		t.importSink("fyne.io/fyne/v2/canvas")
-	}
-
+// canvasDims returns the canvas pixel dimensions, defaulting to the HTML canvas
+// 300x150 when unset.
+func canvasDims(m *canvasMeta) (int, int) {
 	w, h := m.Width, m.Height
 	if w <= 0 {
 		w = 300
@@ -308,18 +151,44 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	if h <= 0 {
 		h = 150
 	}
-	dcField := modelFieldRef(canvasCtxField(id))
-	imgField := modelFieldRef(id)
+	return w, h
+}
 
-	newCtx := &ir.Call{
-		Type:     ir.NativeGoPointerOf("gg.Context"),
-		Receiver: &ir.Ident{Name: "gg"},
-		Func:     &ir.Func{NativePkg: ggImportPath, NativeName: "gg.NewContext"},
+// newCanvasContextCall builds `snglcanvas.New(w, h)` returning a
+// *snglcanvas.Context.
+func newCanvasContextCall(w, h int) *ir.Call {
+	return &ir.Call{
+		Type:     canvasCtxType(),
+		Receiver: &ir.Ident{Name: snglCanvasAlias},
+		Func:     &ir.Func{NativePkg: snglCanvasImportPath, NativeName: snglCanvasAlias + ".New"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(w)}},
 			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(h)}},
 		},
 	}
+}
+
+// emitCanvasCreate emits the OnCreateNode result for a `canvas` tag: register
+// the *canvas.Image and *snglcanvas.Context Model fields, build the context
+// sized to the canvas, rasterise once, and create the image widget.
+func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
+	m := t.canvasByID[id]
+	if m == nil {
+		return nil
+	}
+	t.fieldSink(id, "*canvas.Image")
+	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
+	t.idTags[id] = "canvas"
+	t.topLevel = append(t.topLevel, id)
+	if t.importSink != nil {
+		t.importSink(snglCanvasImportPath)
+		t.importSink("fyne.io/fyne/v2/canvas")
+	}
+
+	w, h := canvasDims(m)
+	dcField := modelFieldRef(canvasCtxField(id))
+	imgField := modelFieldRef(id)
+
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "m"},
@@ -330,10 +199,10 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		Type:     ir.NativeGoPointerOf("canvas.Image"),
 		Receiver: &ir.Ident{Name: "canvas"},
 		Func:     &ir.Func{NativePkg: "fyne.io/fyne/v2/canvas", NativeName: "canvas.NewImageFromImage"},
-		Args:     []ir.CallArg{{Value: methodCall(dcField, "Image", nil, ir.TypDyn)}},
+		Args:     []ir.CallArg{{Value: methodCall(dcField, "Result", nil, ir.TypDyn)}},
 	}
 	return []ir.Stmt{
-		&ir.Assign{Target: dcField, Op: ast.AssignSet, Value: newCtx},
+		&ir.Assign{Target: dcField, Op: ast.AssignSet, Value: newCanvasContextCall(w, h)},
 		&ir.CallStmt{Call: drawCall},
 		&ir.Assign{Target: imgField, Op: ast.AssignSet, Value: newImg},
 		&ir.Assign{
@@ -345,8 +214,8 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 }
 
 // emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
-// method `func (m *Model) _canvasDrawN(ctx *gg.Context)`, translating each
-// canvas-intrinsic CallStmt body statement into native gg calls.
+// method `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating
+// each canvas-intrinsic CallStmt body statement into Context method calls.
 func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta, importSink func(string)) {
 	tr := newFyneTranslator(gc, platformBlueprints(), func(string, string) {}, importSink)
 	tr.canvasByFunc = byFunc
@@ -354,7 +223,7 @@ func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, b
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "ctx", Type: ir.NativeGoPointerOf("gg.Context")}},
+		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
 		Return:   ir.TypVoid,
 		Block:    body,
 	}

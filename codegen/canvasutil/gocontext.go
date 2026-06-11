@@ -1,6 +1,9 @@
 package canvasutil
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // GoContextStmts translates one canvas-intrinsic CallStmt into method-call
 // statements against the pkg/go/canvas Context runtime. The Context is stateful
@@ -13,10 +16,12 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // the Go renderer ExportNames them to Fill/R/StrokeWidth, matching the
 // generated Color/CanvasStyle struct fields.
 //
-// CanvasDrawPath passes the SNGL cmds expression straight through as
-// ctx.Path(cmds). The generated PathCmd struct and runtime canvas.PathCmd
-// differ as Go types; bridging that conversion is the concern of the platform
-// tasks that wire this up (Tasks 7/8), not this helper.
+// CanvasDrawPath emits a range loop over the SNGL cmds list, dispatching on each
+// command's op to ctx.MoveTo/LineTo/CubicTo/ClosePath, then ctx.PaintPath()
+// after the loop. The SNGL PathCmd slice never crosses into the runtime — the
+// generated code reads its fields and calls the Context path-builder methods —
+// so the generated PathCmd Go type and the (removed) runtime type need not
+// match.
 //
 // An unknown intrinsic returns nil.
 func GoContextStmts(cs *ir.CallStmt) []ir.Stmt {
@@ -53,13 +58,40 @@ func GoContextStmts(cs *ir.CallStmt) []ir.Stmt {
 	case "CanvasDrawLine":
 		return []ir.Stmt{ctxCall(ctx, "Line", arg(0), arg(1), arg(2), arg(3))}
 	case "CanvasDrawPath":
-		return []ir.Stmt{ctxCall(ctx, "Path", arg(0))}
+		return pathStmts(ctx, arg(0))
 	case "CanvasDrawText":
 		return []ir.Stmt{ctxCall(ctx, "Text", arg(0), arg(1), arg(2))}
 	case "CanvasDrawImage":
 		return []ir.Stmt{ctxCall(ctx, "Image", arg(0), arg(1), arg(2), arg(3), arg(4))}
 	}
 	return nil
+}
+
+// pathStmts builds a range loop over the SNGL PathCmd list (cmds), emitting
+// ctx.MoveTo/LineTo/CubicTo/ClosePath per command op, followed by
+// ctx.PaintPath() to fill+stroke the built path under the pending style.
+func pathStmts(ctx, cmds ir.Expr) []ir.Stmt {
+	loopVar := &ir.Ident{Name: "_cmd", Type: ir.TypDyn}
+	opSel := &ir.Select{Operand: loopVar, Field: "op", Type: ir.TypString}
+	field := func(name string) ir.Expr {
+		return &ir.Select{Operand: loopVar, Field: name, Type: ir.TypFloat}
+	}
+	cmdIf := func(op string, then ir.Stmt) *ir.If {
+		return &ir.If{
+			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Raw: op}},
+			Body: []ir.Stmt{then},
+		}
+	}
+	body := []ir.Stmt{
+		cmdIf("moveTo", ctxCall(ctx, "MoveTo", field("x"), field("y"))),
+		cmdIf("lineTo", ctxCall(ctx, "LineTo", field("x"), field("y"))),
+		cmdIf("bezierTo", ctxCall(ctx, "CubicTo", field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
+		cmdIf("close", ctxCall(ctx, "ClosePath")),
+	}
+	return []ir.Stmt{
+		&ir.For{Key: "_cmd", Iter: cmds, Body: body},
+		ctxCall(ctx, "PaintPath"),
+	}
 }
 
 // ctxCall builds `ctx.Method(args...)` as a void CallStmt.

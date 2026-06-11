@@ -44,12 +44,11 @@ func TestLineStrokesOnly(t *testing.T) {
 func TestPathFills(t *testing.T) {
 	c := New(20, 20)
 	c.ApplyStyle(Style{Fill: color.NRGBA{0, 255, 0, 255}})
-	c.Path([]PathCmd{
-		{Op: "moveTo", X: 2, Y: 2},
-		{Op: "lineTo", X: 18, Y: 2},
-		{Op: "lineTo", X: 18, Y: 18},
-		{Op: "close"},
-	})
+	c.MoveTo(2, 2)
+	c.LineTo(18, 2)
+	c.LineTo(18, 18)
+	c.ClosePath()
+	c.PaintPath()
 	if got := nrgbaAt(t, c, 15, 10); got.G != 255 {
 		t.Errorf("inside-triangle pixel = %+v, want green", got)
 	}

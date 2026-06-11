@@ -83,7 +83,18 @@ func (fe *fileEmitter) EvalStmt(s ir.Stmt) []string {
 // conflicts get a numeric suffix.
 func (fe *fileEmitter) RequireImport(path string) string {
 	fe.gc.RequireImport(path)
+	if a := fe.gc.ForcedAlias(path); a != "" {
+		return a
+	}
 	return goAliasFor(path)
+}
+
+// RequireImportAs registers an import path under an explicit alias, returning
+// that alias. Used when the path-derived default would collide with another
+// import and call sites reference a fixed selector.
+func (fe *fileEmitter) RequireImportAs(path, alias string) string {
+	fe.gc.RequireImportAs(path, alias)
+	return alias
 }
 
 // Close assembles the file (generated-by + package + imports + body),
@@ -149,13 +160,23 @@ func (fe *fileEmitter) renderImports() []byte {
 	}
 	entries := make([]entry, 0, len(paths))
 	used := map[string]bool{}
+	// Reserve forced aliases first so path-derived defaults that would clash
+	// with them get a numeric suffix instead of stealing the name.
 	for _, p := range paths {
-		alias := goAliasFor(p)
-		base := alias
-		i := 1
-		for used[alias] {
-			i++
-			alias = fmt.Sprintf("%s%d", base, i)
+		if a := fe.gc.ForcedAlias(p); a != "" {
+			used[a] = true
+		}
+	}
+	for _, p := range paths {
+		alias := fe.gc.ForcedAlias(p)
+		if alias == "" {
+			alias = goAliasFor(p)
+			base := alias
+			i := 1
+			for used[alias] {
+				i++
+				alias = fmt.Sprintf("%s%d", base, i)
+			}
 		}
 		used[alias] = true
 		entries = append(entries, entry{path: p, alias: alias, blank: fe.gc.IsBlankImport(p)})

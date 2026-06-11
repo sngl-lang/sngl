@@ -36,14 +36,11 @@ type fyneTranslator struct {
 
 	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
 	// (LocalVar.CanvasDraw) to their Model widget field + draw func, shared
-	// into every translator that may create a canvas or emit a redraw.
-	// pendingStyle holds the style bound by a CanvasApplyStyle while
-	// translating the following draw primitive; styleCounter names the
-	// per-shape `_styleN` temporaries.
+	// into every translator that may create a canvas or emit a redraw. The
+	// drawing itself is stateless here — canvasutil.GoContextStmts translates
+	// each intrinsic into Context method calls.
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
-	pendingStyle ir.Expr
-	styleCounter int
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {

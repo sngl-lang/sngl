@@ -24,15 +24,6 @@ type Style struct {
 	FontFamily  string
 }
 
-// PathCmd mirrors the SNGL stdlib PathCmd (op + coordinates).
-type PathCmd struct {
-	Op       string // "moveTo" | "lineTo" | "bezierTo" | "arcTo" | "close"
-	X, Y     float64
-	Cx1, Cy1 float64
-	Cx2, Cy2 float64
-	R        float64
-}
-
 // Context is a stateful 2D drawing surface.
 type Context struct {
 	dc      *gg.Context
@@ -109,24 +100,20 @@ func (c *Context) Circle(cx, cy, r float64)       { c.dc.DrawCircle(cx, cy, r); 
 func (c *Context) Ellipse(cx, cy, rx, ry float64) { c.dc.DrawEllipse(cx, cy, rx, ry); c.paint() }
 func (c *Context) Line(x1, y1, x2, y2 float64)    { c.dc.DrawLine(x1, y1, x2, y2); c.strokeOnly() }
 
-func (c *Context) Path(cmds []PathCmd) {
-	for _, cmd := range cmds {
-		switch cmd.Op {
-		case "moveTo":
-			c.dc.MoveTo(cmd.X, cmd.Y)
-		case "lineTo":
-			c.dc.LineTo(cmd.X, cmd.Y)
-		case "bezierTo":
-			c.dc.CubicTo(cmd.Cx1, cmd.Cy1, cmd.Cx2, cmd.Cy2, cmd.X, cmd.Y)
-		case "arcTo":
-			// gg has no arcTo; approximate with a line to the endpoint.
-			c.dc.LineTo(cmd.X, cmd.Y)
-		case "close":
-			c.dc.ClosePath()
-		}
-	}
-	c.paint()
+// Path-builder methods. Generated code emits a loop over the SNGL PathCmd list,
+// dispatching on the op to MoveTo/LineTo/CubicTo/ClosePath, then PaintPath to
+// fill+stroke the built path per the pending style. This keeps the SNGL-side
+// PathCmd slice on the generated-code side (no canvas.PathCmd crosses the
+// boundary).
+func (c *Context) MoveTo(x, y float64) { c.dc.MoveTo(x, y) }
+func (c *Context) LineTo(x, y float64) { c.dc.LineTo(x, y) }
+func (c *Context) CubicTo(x1, y1, x2, y2, x3, y3 float64) {
+	c.dc.CubicTo(x1, y1, x2, y2, x3, y3)
 }
+func (c *Context) ClosePath() { c.dc.ClosePath() }
+
+// PaintPath fills+strokes the path built via MoveTo/LineTo/CubicTo/ClosePath.
+func (c *Context) PaintPath() { c.paint() }
 
 func (c *Context) Text(x, y float64, content string) {
 	s := c.pending

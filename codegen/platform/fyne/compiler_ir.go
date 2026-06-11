@@ -215,9 +215,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// scanned here cover window-body slot/handler funcs created by lowering.
 	canvasByID, canvasByFunc := collectCanvases(ctx.Pkg, ctx.AllFuncs())
 	hasCanvas := len(canvasByID) > 0
-	if hasCanvas {
-		gc.RequireImport("image/color")
-	}
 
 	if len(wins) <= 1 {
 		// Single-window: render wins[0] body into BuildUI buffer directly
@@ -428,10 +425,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// --- Phase 3: Build template data and render ---
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
-		// The canvas stdlib structs (Color/CanvasStyle/PathCmd) + _snglColor
-		// helper are package-scope, so emitting them alongside the lang helpers
-		// is fine. Skip any struct the user already declared (in td.Structs) to
-		// avoid a duplicate type decl.
+		// The canvas stdlib structs (Color/CanvasStyle/PathCmd) are package-scope
+		// and read by the synthesized draw funcs, so emitting them alongside the
+		// lang helpers is fine. Skip any struct the user already declared (in
+		// td.Structs) to avoid a duplicate type decl.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 	}
 	if err != nil {

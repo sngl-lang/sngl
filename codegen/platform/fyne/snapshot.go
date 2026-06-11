@@ -6,11 +6,47 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// snapshotGoMod returns the go.mod for a snapshot harness module. Generated
+// fyne code now imports the SNGL Go canvas runtime
+// (git.duckfam.us/jonathan/sngl/pkg/go/canvas), which is not publicly
+// fetchable, so the module requires the sngl module and replaces it with the
+// local checkout resolved from this source file's location.
+func snapshotGoMod() string {
+	const mod = "git.duckfam.us/jonathan/sngl"
+	root := snglModuleRoot()
+	b := &strings.Builder{}
+	b.WriteString("module tmp\n\ngo 1.23\n")
+	if root != "" {
+		fmt.Fprintf(b, "\nrequire %s v0.0.0\n\nreplace %s => %s\n", mod, mod, root)
+	}
+	return b.String()
+}
+
+// snglModuleRoot resolves the sngl module root directory from this file's
+// compile-time path (this package lives at <root>/codegen/platform/fyne).
+// Returns "" if it cannot be determined.
+func snglModuleRoot() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	// .../codegen/platform/fyne/snapshot.go → up four levels to the module root.
+	dir := filepath.Dir(file)
+	for i := 0; i < 3; i++ {
+		dir = filepath.Dir(dir)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "go.mod")); err != nil {
+		return ""
+	}
+	return dir
+}
 
 // Snapshot generates real Fyne code, builds it with a snapshot harness that
 // renders to a headless test window, and returns the captured PNG.
@@ -65,7 +101,7 @@ func main() {
 		return nil, fmt.Errorf("writing harness: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module tmp\n\ngo 1.23\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
 		return nil, fmt.Errorf("writing go.mod: %w", err)
 	}
 
@@ -183,7 +219,7 @@ func main() {
 	if err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(harness), 0o644); err != nil {
 		return nil, fmt.Errorf("writing harness: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module tmp\n\ngo 1.23\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
 		return nil, fmt.Errorf("writing go.mod: %w", err)
 	}
 

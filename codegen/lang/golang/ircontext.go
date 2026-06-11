@@ -38,11 +38,14 @@ type GoIRContext struct {
 // import path; the bool value tracks whether the import is blank ("_") so
 // platforms can render `_ "path"` when needed.
 type importSet struct {
-	paths map[string]bool // path → blank?
-	order []string
+	paths   map[string]bool // path → blank?
+	order   []string
+	aliases map[string]string // path → forced alias (overrides goAliasFor)
 }
 
-func newImportSet() *importSet { return &importSet{paths: map[string]bool{}} }
+func newImportSet() *importSet {
+	return &importSet{paths: map[string]bool{}, aliases: map[string]string{}}
+}
 
 // NewIRContext creates a GoIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
@@ -67,6 +70,30 @@ func (gc *GoIRContext) RequireImport(path string) {
 	}
 	gc.imports.paths[path] = false
 	gc.imports.order = append(gc.imports.order, path)
+}
+
+// RequireImportAs records an import path that must render under an explicit
+// alias (e.g. `alias "path"`), overriding the path-derived default. Used when
+// the conventional alias would collide with another import and the call sites
+// reference a fixed selector (e.g. snglcanvas for pkg/go/canvas alongside
+// fyne's canvas). Safe to call repeatedly.
+func (gc *GoIRContext) RequireImportAs(path, alias string) {
+	if path == "" || gc.imports == nil {
+		return
+	}
+	gc.RequireImport(path)
+	if gc.imports.aliases != nil && alias != "" {
+		gc.imports.aliases[path] = alias
+	}
+}
+
+// ForcedAlias returns the explicit alias registered for path via
+// RequireImportAs, or "" if none.
+func (gc *GoIRContext) ForcedAlias(path string) string {
+	if gc.imports == nil || gc.imports.aliases == nil {
+		return ""
+	}
+	return gc.imports.aliases[path]
 }
 
 // RequireBlankImport records a side-effect-only import (`_ "path"`).

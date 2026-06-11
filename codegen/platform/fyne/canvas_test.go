@@ -66,20 +66,19 @@ component main {
 	out := string(modelSrc)
 
 	for _, snippet := range []string{
-		// draw func signature uses *gg.Context.
-		"func (m *Model) _canvasDraw0(ctx *gg.Context)",
-		// gg import is required.
-		`"github.com/fogleman/gg"`,
-		// color helper.
-		"func _snglColor(",
-		"color.RGBA",
-		// primitive draws.
-		"ctx.DrawRectangle(",
-		"ctx.DrawCircle(",
-		// style application sets fill/stroke.
-		"ctx.SetColor(",
-		// canvas widget field + creation.
-		"gg.NewContext(400, 280)",
+		// draw func signature uses the shared *snglcanvas.Context runtime.
+		"func (m *Model) _canvasDraw0(ctx *snglcanvas.Context)",
+		// the SNGL canvas runtime is imported under the snglcanvas alias.
+		`snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"`,
+		// primitive draws go through Context methods.
+		"ctx.Rect(",
+		"ctx.Circle(",
+		// style application sets fill/stroke via setters.
+		"ctx.SetFill(",
+		"ctx.SetStroke(",
+		// canvas widget field + creation via the runtime.
+		"snglcanvas.New(400, 280)",
+		".Result()",
 		"canvas.NewImageFromImage(",
 		// redraw wiring in the handler.
 		"_canvasDraw0(",
@@ -90,8 +89,11 @@ component main {
 		}
 	}
 
-	// Negative: untranslated canvas intrinsics must not leak.
+	// Negative: the bespoke gg path is gone; no gg context or color helper.
 	for _, leak := range []string{
+		"gg.NewContext",
+		"_snglColor",
+		// untranslated canvas intrinsics must not leak.
 		"CanvasDrawRect",
 		"CanvasDrawCircle",
 		"CanvasApplyStyle",

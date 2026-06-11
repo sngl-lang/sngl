@@ -220,7 +220,19 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		Maps:        req.Maps,
 		CgoPreamble: cgoPreamble,
 	})
+	// The SNGL canvas runtime (pkg/go/canvas) and fyne's own canvas package
+	// both default-alias to "canvas"; force the runtime under snglcanvas so the
+	// draw-func selectors (snglcanvas.New / *snglcanvas.Context) resolve.
+	type aliasImporter interface {
+		RequireImportAs(path, alias string) string
+	}
 	for _, p := range imports {
+		if p == snglCanvasImportPath {
+			if ai, ok := e.(aliasImporter); ok {
+				ai.RequireImportAs(p, snglCanvasAlias)
+				continue
+			}
+		}
 		e.RequireImport(p)
 	}
 	if _, err := e.Write([]byte(body)); err != nil {

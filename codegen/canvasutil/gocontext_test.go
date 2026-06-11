@@ -74,12 +74,24 @@ func TestDrawPrimitives(t *testing.T) {
 		{"CanvasDrawLine", []ir.Expr{ctx, f("1"), f("2"), f("3"), f("4")}, "ctx.Line("},
 		{"CanvasDrawText", []ir.Expr{ctx, f("1"), f("2"), s("hi")}, "ctx.Text("},
 		{"CanvasDrawImage", []ir.Expr{ctx, f("1"), f("2"), f("3"), f("4"), s("p")}, "ctx.Image("},
-		{"CanvasDrawPath", []ir.Expr{ctx, &ir.Ident{Name: "cmds", Type: ir.TypDyn}}, "ctx.Path("},
 	}
 	for _, tc := range cases {
 		got := renderStmts(t, GoContextStmts(intrinsicCall(tc.intrinsic, tc.args...)))
 		if !strings.Contains(got, tc.want) {
 			t.Errorf("%s: want %q, got:\n%s", tc.intrinsic, tc.want, got)
+		}
+	}
+}
+
+// TestDrawPathEmitsLoop verifies CanvasDrawPath emits a range loop dispatching
+// on the command op to ctx path-builder methods, then ctx.PaintPath().
+func TestDrawPathEmitsLoop(t *testing.T) {
+	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
+	cmds := &ir.Ident{Name: "cmds", Type: ir.TypDyn}
+	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasDrawPath", ctx, cmds)))
+	for _, want := range []string{"for", "ctx.MoveTo(", "ctx.LineTo(", "ctx.CubicTo(", "ctx.ClosePath(", "ctx.PaintPath("} {
+		if !strings.Contains(got, want) {
+			t.Errorf("CanvasDrawPath missing %q, got:\n%s", want, got)
 		}
 	}
 }
