@@ -178,13 +178,32 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	// NewStyle().Render() pads the multi-line half-block grid with background
 	// cells, mangling the art. (Mirrors the empty-style guard used by the box
 	// layout cases.)
-	render := fmt.Sprintf("tui.RenderTerminal(%s.Result(), %d, %d)", ctxVar, cols, rows)
+	render := fmt.Sprintf("tui.RenderTerminal(%s.Result(), %d, %d, %d)", ctxVar, cols, rows, canvasImageID(n.CanvasDraw))
 	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
 	} else {
 		vc.line("%s = %s", resultVar, render)
 	}
+}
+
+// canvasImageID derives a stable, nonzero kitty image ID from a canvas draw
+// func. passCanvas names them `_canvasDraw0`, `_canvasDraw1`, … — globally
+// unique per canvas in the package — so the trailing index + 1 gives each
+// on-screen canvas a distinct image ID (kitty IDs must be > 0, and two images
+// sharing an ID would clobber each other's transmitted data).
+func canvasImageID(fn *ir.Func) int {
+	if fn == nil {
+		return 1
+	}
+	i := len(fn.Name)
+	for i > 0 && fn.Name[i-1] >= '0' && fn.Name[i-1] <= '9' {
+		i--
+	}
+	if n, err := strconv.Atoi(fn.Name[i:]); err == nil {
+		return n + 1
+	}
+	return 1
 }
 
 // emitCanvasDrawFuncs emits one `func (m *Model) _canvasDrawN(ctx

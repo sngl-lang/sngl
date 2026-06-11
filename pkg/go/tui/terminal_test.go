@@ -29,12 +29,33 @@ func TestHalfBlockKnownImage(t *testing.T) {
 
 func TestKittyEncodeHasGraphicsEscape(t *testing.T) {
 	img := image.NewNRGBA(image.Rect(0, 0, 4, 4))
-	out := kitty(img)
-	if !strings.HasPrefix(out, "\x1b_G") {
-		t.Errorf("kitty output must start with the graphics escape, got %q", out)
+	out := kitty(img, 4, 2, 1)
+	// Transmit escape: virtual placement (U=1) carrying the image id + cell span.
+	if !strings.HasPrefix(out, "\x1b_Ga=T,U=1,i=1,") {
+		t.Errorf("kitty output must start with a virtual-placement transmit escape, got %.40q", out)
 	}
-	if !strings.HasSuffix(out, "\x1b\\") {
-		t.Errorf("kitty output must end with ST, got %q", out)
+	// Placeholder grid follows: a cell painted with U+10EEEE under the id color.
+	if !strings.Contains(out, string(rune(placeholderRune))) {
+		t.Errorf("kitty output must contain the U+10EEEE placeholder rune")
+	}
+	if !strings.Contains(out, "\x1b[38;5;1m") {
+		t.Errorf("placeholder cells must encode the image id in the foreground color")
+	}
+}
+
+func TestKittyPlaceholderGridDimensions(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
+	out := kitty(img, 5, 3, 1)
+	// Strip the transmit escapes; what remains is the placeholder grid.
+	grid := out[strings.LastIndex(out, "\x1b\\")+len("\x1b\\"):]
+	lines := strings.Split(grid, "\n")
+	if len(lines) != 3 {
+		t.Fatalf("want 3 placeholder rows, got %d: %q", len(lines), grid)
+	}
+	for r, ln := range lines {
+		if got := strings.Count(ln, string(rune(placeholderRune))); got != 5 {
+			t.Errorf("row %d: want 5 placeholder cells, got %d", r, got)
+		}
 	}
 }
 
@@ -49,14 +70,14 @@ func TestKittyChunksLargePayload(t *testing.T) {
 			img.Set(x, y, color.NRGBA{next(), next(), next(), 255})
 		}
 	}
-	out := kitty(img)
+	out := kitty(img, 10, 5, 1)
 
 	escapes := strings.Count(out, "\x1b_G")
 	if escapes < 2 {
 		t.Fatalf("large image must chunk into multiple escapes, got %d", escapes)
 	}
-	if !strings.HasPrefix(out, "\x1b_Gf=100,a=T,m=1;") {
-		t.Errorf("first chunk must carry params + m=1, got prefix %.40q", out)
+	if !strings.HasPrefix(out, "\x1b_Ga=T,U=1,i=1,q=2,f=100,c=10,r=5,m=1;") {
+		t.Errorf("first chunk must carry the full transmit params + m=1, got prefix %.60q", out)
 	}
 	if strings.Count(out, "m=1;") != escapes-1 {
 		t.Errorf("want %d continuation (m=1) chunks, got %d", escapes-1, strings.Count(out, "m=1;"))
@@ -64,12 +85,10 @@ func TestKittyChunksLargePayload(t *testing.T) {
 	if strings.Count(out, "m=0;") != 1 {
 		t.Errorf("want exactly one terminating m=0 chunk, got %d", strings.Count(out, "m=0;"))
 	}
-	if !strings.HasSuffix(out, "\x1b\\") {
-		t.Errorf("output must end with ST")
-	}
+	// Each transmit escape's base64 payload must respect the protocol chunk cap.
 	for _, seg := range strings.Split(out, "\x1b_G")[1:] {
-		seg = strings.TrimSuffix(seg, "\x1b\\")
-		_, data, _ := strings.Cut(seg, ";")
+		esc, _, _ := strings.Cut(seg, "\x1b\\") // drop the placeholder grid tail
+		_, data, _ := strings.Cut(esc, ";")
 		if len(data) > kittyChunk {
 			t.Errorf("chunk payload %d exceeds cap %d", len(data), kittyChunk)
 		}

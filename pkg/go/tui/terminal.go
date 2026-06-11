@@ -16,9 +16,12 @@ import (
 )
 
 // RenderTerminal renders img to a terminal string sized to cols x rows cells.
-func RenderTerminal(img image.Image, cols, rows int) string {
+// id is a per-image identifier (>0) used by the kitty path to distinguish
+// multiple images on screen; it is ignored by the half-block fallback. Callers
+// rendering several images in one frame must pass distinct ids.
+func RenderTerminal(img image.Image, cols, rows, id int) string {
 	if kittySupported() {
-		return kitty(img)
+		return kitty(img, cols, rows, id)
 	}
 	return halfBlock(img, cols, rows)
 }
@@ -102,22 +105,35 @@ func kittySupported() bool {
 // PNG — always larger than 4096 base64 bytes — renders nothing without this.
 const kittyChunk = 4096
 
-// kitty encodes img as kitty graphics escape sequences (a=T: transmit +
-// display). The base64 PNG is split into kittyChunk-sized segments: the first
-// escape carries the format/action params, every escape carries m=1 until the
-// last carries m=0. A payload that fits in one chunk is emitted as a single
-// escape with no m key.
-func kitty(img image.Image) string {
+// placeholderRune is the kitty Unicode placeholder code point (U+10EEEE). A
+// terminal cell containing this rune, with its foreground color set to an image
+// ID, is painted with the corresponding region of that image.
+const placeholderRune = 0x10EEEE
+
+// kitty renders img using the kitty graphics protocol's Unicode placeholder
+// (virtual placement) mechanism: transmit the PNG once and create a virtual
+// placement (U=1) spanning cols x rows cells, then emit a grid of placeholder
+// cells whose foreground encodes the image ID. Unlike classic a=T cursor
+// placement, placeholder cells are ordinary text cells — so they survive
+// lipgloss layout and bubbletea's cell-diffing renderer, and they work through
+// multiplexers. ghostty and kitty both implement this; other terminals fall
+// back to half-blocks (callers gate on kittySupported via RenderTerminal).
+//
+// The base64 PNG is chunked at kittyChunk bytes: every escape carries m=1 until
+// the final one carries m=0. q=2 suppresses the terminal's response codes so
+// they don't corrupt the TUI stream.
+func kitty(img image.Image, cols, rows, id int) string {
+	if id <= 0 {
+		id = 1
+	}
+	cols = clamp(cols, 1, len(rowColumnDiacritics))
+	rows = clamp(rows, 1, len(rowColumnDiacritics))
+
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return ""
 	}
 	payload := base64.StdEncoding.EncodeToString(buf.Bytes())
-
-	// Single-chunk fast path: no continuation framing needed.
-	if len(payload) <= kittyChunk {
-		return "\x1b_Gf=100,a=T;" + payload + "\x1b\\"
-	}
 
 	var b strings.Builder
 	first := true
@@ -130,11 +146,37 @@ func kitty(img image.Image) string {
 			more = 0
 		}
 		if first {
-			fmt.Fprintf(&b, "\x1b_Gf=100,a=T,m=%d;%s\x1b\\", more, chunk)
+			fmt.Fprintf(&b, "\x1b_Ga=T,U=1,i=%d,q=2,f=100,c=%d,r=%d,m=%d;%s\x1b\\", id, cols, rows, more, chunk)
 			first = false
 		} else {
 			fmt.Fprintf(&b, "\x1b_Gm=%d;%s\x1b\\", more, chunk)
 		}
 	}
+
+	// Placeholder grid. Each row's first cell carries the id-encoding foreground
+	// color plus explicit row+column (col 0) diacritics; the remaining cells are
+	// bare placeholders whose column auto-increments from the previous cell.
+	ph := string(rune(placeholderRune))
+	for r := 0; r < rows; r++ {
+		fmt.Fprintf(&b, "\x1b[38;5;%dm%s%c%c", id, ph, rowColumnDiacritics[r], rowColumnDiacritics[0])
+		for c := 1; c < cols; c++ {
+			b.WriteString(ph)
+		}
+		b.WriteString("\x1b[0m")
+		if r < rows-1 {
+			b.WriteByte('\n')
+		}
+	}
 	return b.String()
+}
+
+// clamp constrains v to [lo, hi].
+func clamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
