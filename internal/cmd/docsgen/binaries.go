@@ -3,6 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"os"
@@ -22,9 +23,10 @@ type artifact struct {
 
 const downloadsMarker = "<!-- sngl:downloads -->"
 
-// humanSize renders a byte count as a one-decimal MiB string, e.g. "25.0 MB".
+// humanSize renders a byte count as a one-decimal decimal-MB string, e.g.
+// "26.2 MB" (1 MB = 1,000,000 bytes, matching how download UIs report sizes).
 func humanSize(n int64) string {
-	return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
+	return fmt.Sprintf("%.1f MB", float64(n)/1_000_000)
 }
 
 // injectDownloads replaces the downloadsMarker in learn/installation.html with
@@ -43,9 +45,10 @@ func injectDownloads(outDir string, arts []artifact) error {
 	var b strings.Builder
 	b.WriteString(`<table class="downloads"><thead><tr><th>Platform</th><th>Architecture</th><th>Download</th><th>Size</th></tr></thead><tbody>`)
 	for _, a := range arts {
+		name := html.EscapeString(a.filename)
 		fmt.Fprintf(&b,
 			`<tr><td>%s</td><td>%s</td><td><a href="/downloads/%s">%s</a></td><td>%s</td></tr>`,
-			a.os, a.arch, a.filename, a.filename, humanSize(a.size),
+			html.EscapeString(a.os), html.EscapeString(a.arch), name, name, humanSize(a.size),
 		)
 	}
 	b.WriteString(`</tbody></table>`)

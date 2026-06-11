@@ -40,7 +40,7 @@ func TestInjectDownloads(t *testing.T) {
 		`href="/downloads/sngl-linux-amd64.gz"`,
 		`href="/downloads/sngl-windows-amd64.exe.gz"`,
 		"Linux", "Windows", "amd64",
-		"25.0 MB", // 26_214_400 bytes rounded
+		"26.2 MB", // 26_214_400 bytes / 1e6, rounded
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("injected HTML missing %q", want)
