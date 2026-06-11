@@ -115,6 +115,54 @@ func TestFontSizeHonored(t *testing.T) {
 	}
 }
 
+// TestArcToRoundsCorner: an arcTo from a horizontal lead-in to a vertical
+// lead-out rounds the corner at the control point. The rounded path stays
+// inside the square corner — so a pixel deep in the corner (where a sharp
+// lineTo would draw) is NOT stroked, while a pixel on the arc IS.
+func TestArcToRoundsCorner(t *testing.T) {
+	c := New(40, 40)
+	c.ApplyStyle(Style{Stroke: color.NRGBA{255, 0, 0, 255}, StrokeWidth: 2})
+	// P0=(0,30) -> approach corner P1=(30,30) -> head to P2=(30,0), r=15.
+	c.MoveTo(0, 30)
+	c.ArcTo(30, 30, 30, 0, 15)
+	c.LineTo(30, 0)
+	c.PaintPath()
+
+	// The arc is tangent to both segments; the inner corner near P1=(30,30)
+	// is cut off, so deep in the corner there is no stroke.
+	if got := nrgbaAt(t, c, 29, 29); got.R != 0 {
+		t.Errorf("corner pixel = %+v, want unstroked (arc rounds the corner)", got)
+	}
+	// Somewhere along the lead-in segment the stroke is present.
+	if got := nrgbaAt(t, c, 5, 30); got.R == 0 {
+		t.Errorf("lead-in pixel = %+v, want stroked (red)", got)
+	}
+}
+
+// TestArcToDegenerate: collinear points, zero radius, and a missing current
+// point must degrade to a straight line without panicking.
+func TestArcToDegenerate(t *testing.T) {
+	// Collinear P0,P1,P2.
+	c1 := New(20, 20)
+	c1.ApplyStyle(Style{Stroke: color.NRGBA{0, 0, 0, 255}, StrokeWidth: 1})
+	c1.MoveTo(0, 10)
+	c1.ArcTo(10, 10, 20, 10, 5)
+	c1.PaintPath()
+
+	// Zero radius.
+	c2 := New(20, 20)
+	c2.ApplyStyle(Style{Stroke: color.NRGBA{0, 0, 0, 255}, StrokeWidth: 1})
+	c2.MoveTo(0, 0)
+	c2.ArcTo(10, 10, 19, 0, 0)
+	c2.PaintPath()
+
+	// No current point set before ArcTo.
+	c3 := New(20, 20)
+	c3.ApplyStyle(Style{Stroke: color.NRGBA{0, 0, 0, 255}, StrokeWidth: 1})
+	c3.ArcTo(5, 5, 15, 15, 5)
+	c3.PaintPath()
+}
+
 // TestLineCapRound: a thick round-capped horizontal line extends past its
 // endpoint by ~half the stroke width; a butt cap does not. The pixel just
 // beyond the endpoint distinguishes the two cap styles.

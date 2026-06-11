@@ -105,6 +105,7 @@ func pathStmts(ctx, cmds ir.Expr) []ir.Stmt {
 		cmdIf("moveTo", ctxCall(ctx, "MoveTo", field("x"), field("y"))),
 		cmdIf("lineTo", ctxCall(ctx, "LineTo", field("x"), field("y"))),
 		cmdIf("bezierTo", ctxCall(ctx, "CubicTo", field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
+		cmdIf("arcTo", ctxCall(ctx, "ArcTo", field("cx1"), field("cy1"), field("x"), field("y"), field("r"))),
 		cmdIf("close", ctxCall(ctx, "ClosePath")),
 	}
 	return []ir.Stmt{

@@ -96,7 +96,7 @@ func TestDrawPathEmitsLoop(t *testing.T) {
 	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
 	cmds := &ir.Ident{Name: "cmds", Type: ir.TypDyn}
 	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasDrawPath", ctx, cmds), nil))
-	for _, want := range []string{"for", "ctx.MoveTo(", "ctx.LineTo(", "ctx.CubicTo(", "ctx.ClosePath(", "ctx.PaintPath("} {
+	for _, want := range []string{"for", "ctx.MoveTo(", "ctx.LineTo(", "ctx.CubicTo(", "ctx.ArcTo(", "ctx.ClosePath(", "ctx.PaintPath("} {
 		if !strings.Contains(got, want) {
 			t.Errorf("CanvasDrawPath missing %q, got:\n%s", want, got)
 		}

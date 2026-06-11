@@ -8,6 +8,7 @@ package canvas
 import (
 	"image"
 	"image/color"
+	"math"
 	"sync"
 
 	"github.com/fogleman/gg"
@@ -160,6 +161,79 @@ func (c *Context) CubicTo(x1, y1, x2, y2, x3, y3 float64) {
 	c.dc.CubicTo(x1, y1, x2, y2, x3, y3)
 }
 func (c *Context) ClosePath() { c.dc.ClosePath() }
+
+// ArcTo implements the Canvas2D arcTo: an arc of radius r tangent to the
+// segment from the current point P0 to (x1,y1) and to the segment from
+// (x1,y1) to (x2,y2). It adds a line from P0 to the first tangent point, then
+// the arc to the second tangent point (matching how the HTML backend's
+// ctx.arcTo(cx1,cy1,x,y,r) is driven). Degenerate inputs (no current point,
+// coincident points, zero radius, or collinear points) fall back to a plain
+// line to (x1,y1).
+func (c *Context) ArcTo(x1, y1, x2, y2, r float64) {
+	p0, ok := c.dc.GetCurrentPoint()
+	if !ok {
+		// No subpath yet: start one at the corner point.
+		c.dc.MoveTo(x1, y1)
+		return
+	}
+	x0, y0 := p0.X, p0.Y
+
+	// Vectors from the corner P1 toward P0 and toward P2.
+	d01x, d01y := x0-x1, y0-y1
+	d21x, d21y := x2-x1, y2-y1
+	l01 := math.Hypot(d01x, d01y)
+	l21 := math.Hypot(d21x, d21y)
+	if r <= 0 || l01 == 0 || l21 == 0 {
+		c.dc.LineTo(x1, y1)
+		return
+	}
+	// Unit vectors along each segment (away from the corner).
+	u01x, u01y := d01x/l01, d01y/l01
+	u21x, u21y := d21x/l21, d21y/l21
+
+	// Half-angle between the two segments. cos = u01·u21.
+	cosA := u01x*u21x + u01y*u21y
+	if cosA > 1 {
+		cosA = 1
+	} else if cosA < -1 {
+		cosA = -1
+	}
+	angle := math.Acos(cosA)
+	// Collinear (straight through or doubling back): no arc fits.
+	if angle <= 1e-9 || math.Abs(angle-math.Pi) <= 1e-9 {
+		c.dc.LineTo(x1, y1)
+		return
+	}
+
+	// Distance from the corner to each tangent point along the segments.
+	tanLen := r / math.Tan(angle/2)
+	// Tangent points on each segment.
+	t1x, t1y := x1+u01x*tanLen, y1+u01y*tanLen
+	t2x, t2y := x1+u21x*tanLen, y1+u21y*tanLen
+
+	// Arc center: from the corner along the bisector of the two unit vectors,
+	// at distance r/sin(angle/2). The interior bisector direction is the
+	// normalized sum of the two unit vectors.
+	bx, by := u01x+u21x, u01y+u21y
+	bl := math.Hypot(bx, by)
+	bx, by = bx/bl, by/bl
+	centerDist := r / math.Sin(angle/2)
+	cx, cy := x1+bx*centerDist, y1+by*centerDist
+
+	// Start/end angles measured from the center to each tangent point.
+	a1 := math.Atan2(t1y-cy, t1x-cx)
+	a2 := math.Atan2(t2y-cy, t2x-cx)
+
+	// Line to the first tangent point, then sweep the short way to the second.
+	c.dc.LineTo(t1x, t1y)
+	// Choose the sweep direction that connects t1->t2 the short way.
+	if a2-a1 > math.Pi {
+		a2 -= 2 * math.Pi
+	} else if a1-a2 > math.Pi {
+		a2 += 2 * math.Pi
+	}
+	c.dc.DrawArc(cx, cy, r, a1, a2)
+}
 
 // PaintPath fills+strokes the path built via MoveTo/LineTo/CubicTo/ClosePath.
 func (c *Context) PaintPath() { c.paint() }
