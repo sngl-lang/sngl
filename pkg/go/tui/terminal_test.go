@@ -104,9 +104,53 @@ func TestKittyTransmitSuppressedWithoutSupport(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 	t.Setenv("TERM_PROGRAM", "")
 	resetKittyDetection()
-	img := image.NewNRGBA(image.Rect(0, 0, 4, 4))
-	if got := KittyTransmit(img, 4, 2, 1); got != "" {
+	called := false
+	render := func() image.Image { called = true; return image.NewNRGBA(image.Rect(0, 0, 4, 4)) }
+	if got := KittyTransmit(4, 2, 1, render); got != "" {
 		t.Errorf("KittyTransmit on a non-kitty terminal must be empty, got %.30q", got)
+	}
+	if called {
+		t.Errorf("KittyTransmit must not rasterise (call render) when kitty is unsupported")
+	}
+}
+
+func TestKittyTransmitSkipsUnchanged(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "1")
+	resetKittyDetection()
+	resetTransmitCache()
+	mk := func() image.Image {
+		im := image.NewNRGBA(image.Rect(0, 0, 8, 8))
+		im.Set(2, 2, color.NRGBA{1, 2, 3, 255})
+		return im
+	}
+	first := KittyTransmit(8, 4, 99, mk)
+	if first == "" {
+		t.Fatal("first transmit must emit the image data")
+	}
+	if again := KittyTransmit(8, 4, 99, mk); again != "" {
+		t.Errorf("identical pixels must skip re-transmit, got %d bytes", len(again))
+	}
+	// A different image for the same id must transmit again.
+	changed := KittyTransmit(8, 4, 99, func() image.Image {
+		im := image.NewNRGBA(image.Rect(0, 0, 8, 8))
+		im.Set(5, 5, color.NRGBA{9, 9, 9, 255})
+		return im
+	})
+	if changed == "" {
+		t.Errorf("changed pixels must re-transmit")
+	}
+}
+
+func TestRenderTerminalKittySkipsRasterise(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "1")
+	resetKittyDetection()
+	called := false
+	out := RenderTerminal(5, 3, 1, func() image.Image { called = true; return nil })
+	if called {
+		t.Errorf("kitty path must not rasterise — placeholders need no pixels")
+	}
+	if !strings.Contains(out, string(rune(placeholderRune))) {
+		t.Errorf("kitty RenderTerminal must return the placeholder grid")
 	}
 }
 

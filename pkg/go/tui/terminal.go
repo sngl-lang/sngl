@@ -7,7 +7,9 @@ package tui
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"image"
 	"image/png"
 	"os"
@@ -28,24 +30,88 @@ import (
 // into a cell grid and drops non-cell sequences). The placeholder cells ARE
 // ordinary cells and survive; the pixel data must instead be written to the tty
 // out of band (bubbletea: tea.Raw(KittyTransmit(...)) from Init/Update).
-func RenderTerminal(img image.Image, cols, rows, id int) string {
+//
+// render is a deferred rasteriser: it is called ONLY when the pixels are
+// actually needed (the half-block path). On kitty the placeholder grid depends
+// only on cols/rows/id, so render is never invoked and the (constant) grid is
+// served from a cache — making the per-frame View cost on kitty negligible.
+func RenderTerminal(cols, rows, id int, render func() image.Image) string {
 	if kittySupported() {
-		return kittyPlaceholders(cols, rows, id)
+		return cachedPlaceholders(cols, rows, id)
 	}
-	return halfBlock(img, cols, rows)
+	return halfBlock(render(), cols, rows)
 }
 
-// KittyTransmit returns the out-of-band kitty escape that transmits img's pixels
-// and creates a virtual placement (id, cols x rows cells) for the placeholder
-// grid RenderTerminal emits. It returns "" when the terminal lacks kitty
-// support (the half-block path carries pixels inline, so no transmit is needed).
-// The result must be written raw to the tty, not routed through a cell
-// compositor.
-func KittyTransmit(img image.Image, cols, rows, id int) string {
+// KittyTransmit returns the out-of-band kitty escape that transmits the image's
+// pixels and creates a virtual placement (id, cols x rows cells) for the
+// placeholder grid RenderTerminal emits. It returns "" when the terminal lacks
+// kitty support (render is not called — the half-block path carries pixels
+// inline) OR when the image's pixels are byte-for-byte identical to the last
+// transmit for this id (so a static canvas isn't re-encoded and re-sent every
+// frame). The result must be written raw to the tty, not through a compositor.
+func KittyTransmit(cols, rows, id int, render func() image.Image) string {
 	if !kittySupported() {
 		return ""
 	}
+	img := render()
+	h := hashImage(img)
+	transmitMu.Lock()
+	last, ok := transmitHash[id]
+	transmitHash[id] = h
+	transmitMu.Unlock()
+	if ok && last == h {
+		return "" // unchanged since last transmit — skip the encode + tty write
+	}
 	return kittyTransmit(img, cols, rows, id)
+}
+
+var (
+	transmitMu   sync.Mutex
+	transmitHash = map[int]uint64{}
+
+	placeholderMu    sync.Mutex
+	placeholderCache = map[placeholderKey]string{}
+)
+
+type placeholderKey struct{ cols, rows, id int }
+
+// cachedPlaceholders memoises the placeholder grid: it is constant for a given
+// (cols, rows, id), so View can return it without rebuilding ~cols*rows cells
+// every frame.
+func cachedPlaceholders(cols, rows, id int) string {
+	k := placeholderKey{cols, rows, id}
+	placeholderMu.Lock()
+	defer placeholderMu.Unlock()
+	if s, ok := placeholderCache[k]; ok {
+		return s
+	}
+	s := kittyPlaceholders(cols, rows, id)
+	placeholderCache[k] = s
+	return s
+}
+
+// hashImage returns a fast content hash of img's pixels, fast-pathing the
+// concrete raster types gg produces (their Pix slice) and falling back to a
+// per-pixel scan otherwise.
+func hashImage(img image.Image) uint64 {
+	h := fnv.New64a()
+	switch im := img.(type) {
+	case *image.RGBA:
+		_, _ = h.Write(im.Pix)
+	case *image.NRGBA:
+		_, _ = h.Write(im.Pix)
+	default:
+		b := img.Bounds()
+		var buf [8]byte
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			for x := b.Min.X; x < b.Max.X; x++ {
+				r, g, bl, a := img.At(x, y).RGBA()
+				binary.LittleEndian.PutUint64(buf[:], uint64(r)<<48|uint64(g)<<32|uint64(bl)<<16|uint64(a))
+				_, _ = h.Write(buf[:])
+			}
+		}
+	}
+	return h.Sum64()
 }
 
 // sampleAt nearest-neighbor samples img at the given fraction (0..1).
@@ -98,6 +164,13 @@ var (
 
 // resetKittyDetection clears the cached detection (test-only seam).
 func resetKittyDetection() { kittyOnce = sync.Once{}; kittyOK = false }
+
+// resetTransmitCache clears the per-id transmit-hash cache (test-only seam).
+func resetTransmitCache() {
+	transmitMu.Lock()
+	transmitHash = map[int]uint64{}
+	transmitMu.Unlock()
+}
 
 // kittySupported reports whether the terminal supports the kitty graphics
 // protocol, via environment heuristics, cached after the first call.

@@ -170,21 +170,29 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	cols, rows := terminalCells(w, h)
 	vc.requireImport(snglCanvasImportPath)
 	vc.requireImport(tuiImportPath)
-	ctxVar := resultVar + "Ctx"
-	vc.line("%s := %s.New(%d, %d)", ctxVar, snglCanvasAlias, w, h)
-	vc.line("m.%s(%s)", n.CanvasDraw.Name, ctxVar)
-	// The terminal string is assigned like any other leaf node's output. Only
-	// wrap it in the node's lipgloss style when one is actually set — an empty
-	// NewStyle().Render() pads the multi-line half-block grid with background
-	// cells, mangling the art. (Mirrors the empty-style guard used by the box
-	// layout cases.)
-	render := fmt.Sprintf("tui.RenderTerminal(%s.Result(), %d, %d, %d)", ctxVar, cols, rows, canvasImageID(n.CanvasDraw))
+	vc.requireImport("image")
+	// Rasterisation is deferred into a closure so the kitty path (which needs
+	// only the constant, cached placeholder grid) never runs it every frame;
+	// only the half-block fallback invokes it. The terminal string is assigned
+	// like any other leaf node's output. Only wrap it in the node's lipgloss
+	// style when one is actually set — an empty NewStyle().Render() pads the
+	// multi-line half-block grid with background cells, mangling the art.
+	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(n.CanvasDraw), canvasRasteriser(n, w, h))
 	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
 	} else {
 		vc.line("%s = %s", resultVar, render)
 	}
+}
+
+// canvasRasteriser returns a Go `func() image.Image` literal that allocates a
+// canvas Context, runs the node's draw func, and returns the rasterised image.
+// Shared by the View placeholder path and the out-of-band transmit method; both
+// pass it to tui, which calls it only when pixels are actually required.
+func canvasRasteriser(n *ir.NodeInst, w, h int) string {
+	return fmt.Sprintf("func() image.Image { __c := %s.New(%d, %d); m.%s(__c); return __c.Result() }",
+		snglCanvasAlias, w, h, n.CanvasDraw.Name)
 }
 
 // canvasImageID derives a stable, nonzero kitty image ID from a canvas draw
@@ -220,6 +228,7 @@ const canvasTransmitMethodName = "__canvasTransmit"
 // transmitted (e.g. half-block terminals), so the half-block path is unaffected.
 func emitCanvasTransmitMethod(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRContext) {
 	gc.RequireImport("strings")
+	gc.RequireImport("image")
 	fmt.Fprintf(b, "func (m Model) %s() tea.Cmd {\n", canvasTransmitMethodName)
 	b.WriteString("\tvar __ctb strings.Builder\n")
 	seen := map[*ir.Func]bool{}
@@ -232,11 +241,10 @@ func emitCanvasTransmitMethod(b *strings.Builder, pkg *ir.Package, gc *golang.Go
 			w, h := nodeCanvasDims(n)
 			cols, rows := terminalCells(w, h)
 			id := canvasImageID(n.CanvasDraw)
-			b.WriteString("\t{\n")
-			fmt.Fprintf(b, "\t\t__cctx := %s.New(%d, %d)\n", snglCanvasAlias, w, h)
-			fmt.Fprintf(b, "\t\tm.%s(__cctx)\n", n.CanvasDraw.Name)
-			fmt.Fprintf(b, "\t\t__ctb.WriteString(tui.KittyTransmit(__cctx.Result(), %d, %d, %d))\n", cols, rows, id)
-			b.WriteString("\t}\n")
+			// KittyTransmit calls the rasteriser only when it actually needs to
+			// re-encode (kitty + pixels changed), so a static or off-screen canvas
+			// costs nothing here.
+			fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, id, canvasRasteriser(n, w, h))
 			return false
 		})
 	}
