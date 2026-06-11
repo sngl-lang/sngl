@@ -35,4 +35,4 @@ component path(cmds list<PathCmd>, style CanvasStyle) list<shape> {}
 
 component canvasText(x float, y float, content string, style CanvasStyle) list<shape> {}
 
-component image(x float, y float, w float, h float, src string) list<shape> {}
+component canvasImage(x float, y float, w float, h float, src string) list<shape> {}

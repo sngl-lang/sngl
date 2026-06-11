@@ -118,3 +118,19 @@ func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
 		}
 	}
 }
+
+// TestCanvasImageRenders guards that a canvasImage shape decodes + draws a
+// bitmap (best-effort, local file path) rather than being a silent no-op.
+func TestCanvasImageRenders(t *testing.T) {
+	src := `component main {
+    canvas(width=100px, height=100px) {
+        canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
+    }
+}`
+	out := compileCanvasSrc(t, src)
+	for _, want := range []string{"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(image ="} {
+		if !strings.Contains(out, want) {
+			t.Errorf("canvasImage missing %q:\n%s", want, out)
+		}
+	}
+}

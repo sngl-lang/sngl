@@ -41,6 +41,9 @@ var canvasComposeImports = []string{
 	"androidx.compose.ui.graphics.drawscope.Fill",
 	"androidx.compose.ui.graphics.drawscope.Stroke",
 	"androidx.compose.ui.graphics.nativeCanvas",
+	"androidx.compose.ui.graphics.asImageBitmap",
+	"androidx.compose.ui.unit.IntOffset",
+	"androidx.compose.ui.unit.IntSize",
 }
 
 // packageHasCanvas reports whether any component/window func is a synthesized
@@ -267,7 +270,19 @@ func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call, ds *canvasDrawSta
 	case "CanvasDrawPath":
 		cc.emitPath(arg(0), ds)
 	case "CanvasDrawImage":
-		// External image decode is out of scope (consistent with fyne/gtk4).
+		// CanvasDrawImage(ctx, x, y, w, h, src). Decode the bitmap from a local
+		// file path and draw it scaled into the (x,y,w,h) box. Null-safe: a
+		// missing/undecodable path (or an asset/URL src, which decodeFile can't
+		// read) silently draws nothing rather than crashing. Full asset/URL/
+		// async loading is a follow-up.
+		x, y := cc.f(arg(0)), cc.f(arg(1))
+		w, h := cc.f(arg(2)), cc.f(arg(3))
+		src := cc.kc.EvalExpr(arg(4))
+		cc.line("android.graphics.BitmapFactory.decodeFile(%s)?.asImageBitmap()?.let {", src)
+		cc.indent++
+		cc.line("drawImage(image = it, dstOffset = IntOffset((%s).toInt(), (%s).toInt()), dstSize = IntSize((%s).toInt(), (%s).toInt()))", x, y, w, h)
+		cc.indent--
+		cc.line("}")
 		ds.styleExpr = ""
 	}
 }

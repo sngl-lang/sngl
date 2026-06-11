@@ -162,7 +162,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func) {
 	case "canvasText":
 		*body = append(*body, canvasCall("CanvasDrawText",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "content")))
-	case "image":
+	case "canvasImage":
 		*body = append(*body, canvasCall("CanvasDrawImage",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h"), argVal(ni, "src")))
 		// user-defined shapes: emit only save/restore (children handled by recursion below)
