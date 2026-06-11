@@ -1,6 +1,7 @@
 package bubbletea
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -172,14 +173,21 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	ctxVar := resultVar + "Ctx"
 	vc.line("%s := %s.New(%d, %d)", ctxVar, snglCanvasAlias, w, h)
 	vc.line("m.%s(%s)", n.CanvasDraw.Name, ctxVar)
-	// Render through a lipgloss style (matching the canvas node's own style
-	// fields) so the terminal string integrates with the surrounding layout the
-	// same way every other leaf node does.
+	// The terminal string is assigned like any other leaf node's output. Only
+	// wrap it in the node's lipgloss style when one is actually set — an empty
+	// NewStyle().Render() pads the multi-line half-block grid with background
+	// cells, mangling the art. (Mirrors the empty-style guard used by the box
+	// layout cases.)
+	render := fmt.Sprintf("tui.RenderTerminal(%s.Result(), %d, %d)", ctxVar, cols, rows)
 	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
-	vc.line("%s = %s.Render(tui.RenderTerminal(%s.Result(), %d, %d))", resultVar, style, ctxVar, cols, rows)
+	if style != "lipgloss.NewStyle()" {
+		vc.line("%s = %s.Render(%s)", resultVar, style, render)
+	} else {
+		vc.line("%s = %s", resultVar, render)
+	}
 }
 
-// emitCanvasDrawFuncs emits one `func (m Model) _canvasDrawN(ctx
+// emitCanvasDrawFuncs emits one `func (m *Model) _canvasDrawN(ctx
 // *snglcanvas.Context)` per canvas NodeInst found in the visual tree. The body
 // is the draw func's canvas-intrinsic CallStmts, each translated to ctx method
 // calls via the shared canvasutil.GoContextStmts helper and rendered through
