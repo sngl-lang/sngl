@@ -54,6 +54,22 @@ func (c *Context) Restore() { c.dc.Pop() }
 // ApplyStyle sets the style used by the next primitive.
 func (c *Context) ApplyStyle(s Style) { c.pending = s }
 
+// Style setters used by generated code (avoids emitting struct literals).
+// Color params are int to match the generated Color struct fields.
+func (c *Context) SetFill(r, g, b, a int) {
+	c.pending.Fill = color.NRGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
+}
+func (c *Context) SetStroke(r, g, b, a int) {
+	c.pending.Stroke = color.NRGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
+}
+func (c *Context) SetStrokeWidth(w float64) { c.pending.StrokeWidth = w }
+func (c *Context) SetFont(size float64, family string) {
+	c.pending.FontSize, c.pending.FontFamily = size, family
+}
+func (c *Context) SetLineStyle(cap, join string) {
+	c.pending.LineCap, c.pending.LineJoin = cap, join
+}
+
 // paint fills (when Fill.A>0) then strokes (when Stroke.A>0) the current path.
 // FillPreserve keeps the path for the subsequent stroke.
 func (c *Context) paint() {

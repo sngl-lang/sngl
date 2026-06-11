@@ -55,6 +55,25 @@ func TestPathFills(t *testing.T) {
 	}
 }
 
+func TestSettersDriveFill(t *testing.T) {
+	c := New(10, 10)
+	c.SetFill(0, 255, 0, 255)
+	c.Rect(0, 0, 10, 10)
+	if got := nrgbaAt(t, c, 5, 5); got.G != 255 {
+		t.Errorf("center = %+v, want green via SetFill", got)
+	}
+}
+
+func TestSettersDriveStroke(t *testing.T) {
+	c := New(20, 20)
+	c.SetStroke(0, 0, 255, 255)
+	c.SetStrokeWidth(2)
+	c.Line(0, 10, 20, 10)
+	if got := nrgbaAt(t, c, 10, 10); got.B != 255 {
+		t.Errorf("on-line pixel = %+v, want blue via setters", got)
+	}
+}
+
 func TestTextDoesNotPanic(t *testing.T) {
 	c := New(60, 20)
 	c.ApplyStyle(Style{Fill: color.NRGBA{0, 0, 0, 255}, FontSize: 12})
