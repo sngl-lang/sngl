@@ -92,3 +92,49 @@ func (c *Context) Rect(x, y, w, h float64)        { c.dc.DrawRectangle(x, y, w, 
 func (c *Context) Circle(cx, cy, r float64)       { c.dc.DrawCircle(cx, cy, r); c.paint() }
 func (c *Context) Ellipse(cx, cy, rx, ry float64) { c.dc.DrawEllipse(cx, cy, rx, ry); c.paint() }
 func (c *Context) Line(x1, y1, x2, y2 float64)    { c.dc.DrawLine(x1, y1, x2, y2); c.strokeOnly() }
+
+func (c *Context) Path(cmds []PathCmd) {
+	for _, cmd := range cmds {
+		switch cmd.Op {
+		case "moveTo":
+			c.dc.MoveTo(cmd.X, cmd.Y)
+		case "lineTo":
+			c.dc.LineTo(cmd.X, cmd.Y)
+		case "bezierTo":
+			c.dc.CubicTo(cmd.Cx1, cmd.Cy1, cmd.Cx2, cmd.Cy2, cmd.X, cmd.Y)
+		case "arcTo":
+			// gg has no arcTo; approximate with a line to the endpoint.
+			c.dc.LineTo(cmd.X, cmd.Y)
+		case "close":
+			c.dc.ClosePath()
+		}
+	}
+	c.paint()
+}
+
+func (c *Context) Text(x, y float64, content string) {
+	s := c.pending
+	if s.Fill.A > 0 {
+		c.dc.SetColor(s.Fill)
+	}
+	c.dc.DrawString(content, x, y)
+}
+
+// Image decodes src (a local file path) and draws it scaled into (x,y,w,h).
+// A missing/undecodable path draws nothing.
+func (c *Context) Image(x, y, w, h float64, src string) {
+	img, err := gg.LoadImage(src)
+	if err != nil {
+		return
+	}
+	ib := img.Bounds()
+	if ib.Dx() == 0 || ib.Dy() == 0 {
+		return
+	}
+	sx := w / float64(ib.Dx())
+	sy := h / float64(ib.Dy())
+	c.Save()
+	c.dc.Scale(sx, sy)
+	c.dc.DrawImage(img, int(x/sx), int(y/sy))
+	c.Restore()
+}

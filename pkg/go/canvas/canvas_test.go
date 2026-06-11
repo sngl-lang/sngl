@@ -40,3 +40,23 @@ func TestLineStrokesOnly(t *testing.T) {
 		t.Errorf("on-line pixel = %+v, want blue", got)
 	}
 }
+
+func TestPathFills(t *testing.T) {
+	c := New(20, 20)
+	c.ApplyStyle(Style{Fill: color.NRGBA{0, 255, 0, 255}})
+	c.Path([]PathCmd{
+		{Op: "moveTo", X: 2, Y: 2},
+		{Op: "lineTo", X: 18, Y: 2},
+		{Op: "lineTo", X: 18, Y: 18},
+		{Op: "close"},
+	})
+	if got := nrgbaAt(t, c, 15, 10); got.G != 255 {
+		t.Errorf("inside-triangle pixel = %+v, want green", got)
+	}
+}
+
+func TestTextDoesNotPanic(t *testing.T) {
+	c := New(60, 20)
+	c.ApplyStyle(Style{Fill: color.NRGBA{0, 0, 0, 255}, FontSize: 12})
+	c.Text(2, 14, "hi") // gg uses a built-in basic font when none is set.
+}
