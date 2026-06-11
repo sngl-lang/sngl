@@ -36,13 +36,13 @@ func TestBubbleteaCanvasEmission(t *testing.T) {
 	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	out := ""
+	var out strings.Builder
 	for _, f := range mem.Files() {
-		out += string(f)
+		out.WriteString(string(f))
 	}
 	for _, want := range []string{"snglcanvas.New(40, 20)", "ctx.Rect(", "RenderTerminal("} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing %q in emitted bubbletea output:\n%s", want, out)
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q in emitted bubbletea output:\n%s", want, out.String())
 		}
 	}
 }

@@ -14,19 +14,19 @@
 
 ## File Map
 
-| File | Status | Responsibility |
-|------|--------|----------------|
-| `pkg/go/canvas/canvas.go` | Create | `Context` (gg wrapper), `Style`, `PathCmd`, draw methods, `Result()` |
-| `pkg/go/canvas/canvas_test.go` | Create | Pixel-level tests of each primitive |
-| `pkg/go/tui/terminal.go` | Create | `RenderTerminal(img, cols, rows)`, kitty detection, half-block + kitty encoders |
-| `pkg/go/tui/terminal_test.go` | Create | Half-block + kitty render tests |
-| `codegen/canvasutil/gocontext.go` | Create | Shared: canvas-intrinsic `CallStmt` → `Context` method-call IR (Go) |
-| `codegen/canvasutil/gocontext_test.go` | Create | Asserts intrinsic → `ctx.Rect(...)` etc. |
-| `codegen/platform/fyne/canvas.go` | Modify | Use the shared helper + `pkg/go/canvas`; drop inline gg/`_snglColor`/`paintAround` |
-| `codegen/platform/bubbletea/bubbletea.go` | Modify | `Capabilities()`: `Canvas=true`, `ReactiveCanvas=false` |
-| `codegen/platform/bubbletea/canvas.go` | Create | Emit `_canvasDrawN` (shared helper) + View integration via `tui.RenderTerminal` |
-| `codegen/platform/bubbletea/view_ir.go` | Modify | Render a canvas node into the View string |
-| `codegen/platform/bubbletea/canvas_test.go` | Create | bubbletea canvas golden/codegen test |
+| File                                        | Status | Responsibility                                                                     |
+|---------------------------------------------|--------|------------------------------------------------------------------------------------|
+| `pkg/go/canvas/canvas.go`                   | Create | `Context` (gg wrapper), `Style`, `PathCmd`, draw methods, `Result()`               |
+| `pkg/go/canvas/canvas_test.go`              | Create | Pixel-level tests of each primitive                                                |
+| `pkg/go/tui/terminal.go`                    | Create | `RenderTerminal(img, cols, rows)`, kitty detection, half-block + kitty encoders    |
+| `pkg/go/tui/terminal_test.go`               | Create | Half-block + kitty render tests                                                    |
+| `codegen/canvasutil/gocontext.go`           | Create | Shared: canvas-intrinsic `CallStmt` → `Context` method-call IR (Go)                |
+| `codegen/canvasutil/gocontext_test.go`      | Create | Asserts intrinsic → `ctx.Rect(...)` etc.                                           |
+| `codegen/platform/fyne/canvas.go`           | Modify | Use the shared helper + `pkg/go/canvas`; drop inline gg/`_snglColor`/`paintAround` |
+| `codegen/platform/bubbletea/bubbletea.go`   | Modify | `Capabilities()`: `Canvas=true`, `ReactiveCanvas=false`                            |
+| `codegen/platform/bubbletea/canvas.go`      | Create | Emit `_canvasDrawN` (shared helper) + View integration via `tui.RenderTerminal`    |
+| `codegen/platform/bubbletea/view_ir.go`     | Modify | Render a canvas node into the View string                                          |
+| `codegen/platform/bubbletea/canvas_test.go` | Create | bubbletea canvas golden/codegen test                                               |
 
 ---
 
@@ -91,10 +91,10 @@ type Style struct {
 
 // PathCmd mirrors the SNGL stdlib PathCmd (op + coordinates).
 type PathCmd struct {
-	Op                     string // "moveTo" | "lineTo" | "bezierTo" | "arcTo" | "close"
-	X, Y                   float64
-	Cx1, Cy1, Cx2, Cy2     float64
-	R                      float64
+	Op                 string // "moveTo" | "lineTo" | "bezierTo" | "arcTo" | "close"
+	X, Y               float64
+	Cx1, Cy1, Cx2, Cy2 float64
+	R                  float64
 }
 
 // Context is a stateful 2D drawing surface.
@@ -462,7 +462,7 @@ func halfBlock(img image.Image, cols, rows int) string {
 Add a temporary stub so it compiles (Task 5 fills these in):
 
 ```go
-func kittySupported() bool      { return false }
+func kittySupported() bool         { return false }
 func kitty(img image.Image) string { return "" }
 ```
 
@@ -517,7 +517,12 @@ func TestKittyDetectionFromEnv(t *testing.T) {
 	}
 }
 
-func min(a, b int) int { if a < b { return a }; return b }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -871,9 +876,15 @@ func TestBubbleteaCanvasEmission(t *testing.T) {
     }
 }`
 	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms()})
-	for _, d := range diags { if d.Severity == ir.Error { t.Fatalf("check: %s", d.Msg) } }
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Msg)
+		}
+	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "bubbletea"}); err != nil {
@@ -884,7 +895,9 @@ func TestBubbleteaCanvasEmission(t *testing.T) {
 		t.Fatalf("generate: %v", err)
 	}
 	out := ""
-	for _, f := range mem.Files() { out += string(f) }
+	for _, f := range mem.Files() {
+		out += string(f)
+	}
 	for _, want := range []string{"snglcanvas.New(40, 20)", "ctx.Rect(", "tui.RenderTerminal("} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in emitted bubbletea output:\n%s", want, out)

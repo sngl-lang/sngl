@@ -25,19 +25,20 @@ A `Context` wrapping `*gg.Context`. Stateful, mirroring the per-shape sequence
 
 ```go
 type Style struct {
-    Fill, Stroke color.NRGBA // alpha 0 => that paint is skipped
-    StrokeWidth  float64
-    LineCap, LineJoin string
-    FontSize     float64
-    FontFamily   string
+	Fill, Stroke      color.NRGBA // alpha 0 => that paint is skipped
+	StrokeWidth       float64
+	LineCap, LineJoin string
+	FontSize          float64
+	FontFamily        string
 }
 
-type Context struct { /* wraps *gg.Context + pending Style */ }
+type Context struct { /* wraps *gg.Context + pending Style */
+}
 
 func New(width, height int) *Context
 func (c *Context) Save()
 func (c *Context) Restore()
-func (c *Context) ApplyStyle(s Style)               // sets the pending style
+func (c *Context) ApplyStyle(s Style) // sets the pending style
 func (c *Context) Rect(x, y, w, h float64)
 func (c *Context) Circle(cx, cy, r float64)
 func (c *Context) Ellipse(cx, cy, rx, ry float64)
