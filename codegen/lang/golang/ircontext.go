@@ -78,17 +78,27 @@ func (gc *GoIRContext) RequireImport(path string) {
 // reference a fixed selector (e.g. snglcanvas for pkg/go/canvas alongside
 // fyne's canvas). Safe to call repeatedly.
 //
-// Precondition: forced aliases must be unique across paths. renderImports
-// de-conflicts path-derived defaults against forced aliases, but two distinct
-// paths forced to the SAME alias would both render under it (invalid Go).
+// Forced aliases must be unique across paths: call sites qualify symbols with
+// the literal alias (e.g. `snglcanvas.New`), so renderImports cannot silently
+// suffix a forced alias to de-conflict — the reference would dangle. Two
+// distinct paths forced to the SAME alias is therefore a codegen bug, and this
+// panics rather than emit invalid Go. (Path-derived defaults that clash with a
+// forced alias are still de-conflicted normally in renderImports.) Re-forcing
+// the same (path, alias) is idempotent.
 func (gc *GoIRContext) RequireImportAs(path, alias string) {
 	if path == "" || gc.imports == nil {
 		return
 	}
 	gc.RequireImport(path)
-	if gc.imports.aliases != nil && alias != "" {
-		gc.imports.aliases[path] = alias
+	if gc.imports.aliases == nil || alias == "" {
+		return
 	}
+	for p, a := range gc.imports.aliases {
+		if a == alias && p != path {
+			panic(fmt.Sprintf("golang: forced import alias %q claimed by two paths %q and %q", alias, p, path))
+		}
+	}
+	gc.imports.aliases[path] = alias
 }
 
 // ForcedAlias returns the explicit alias registered for path via

@@ -359,3 +359,43 @@ func TestEmitFuncDef_NativeParam(t *testing.T) {
 		t.Errorf("EmitFuncDef native param mismatch:\ngot:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+// TestRequireImportAs_ForcedDeconfliction verifies a path-derived default alias
+// that clashes with a forced alias yields a suffixed default, while the forced
+// path keeps its exact alias (call sites reference it literally).
+func TestRequireImportAs_ForcedDeconfliction(t *testing.T) {
+	gc := newMinimalIRCtx()
+	gc.RequireImportAs("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "snglcanvas")
+	gc.RequireImport("fyne.io/fyne/v2/canvas")
+	if a := gc.ForcedAlias("git.duckfam.us/jonathan/sngl/pkg/go/canvas"); a != "snglcanvas" {
+		t.Errorf("forced alias = %q, want snglcanvas", a)
+	}
+	if a := gc.ForcedAlias("fyne.io/fyne/v2/canvas"); a != "" {
+		t.Errorf("non-forced path must have no forced alias, got %q", a)
+	}
+}
+
+// TestRequireImportAs_SameAliasTwoPathsPanics verifies forcing two distinct
+// paths onto the same alias panics — call sites qualify with the literal alias,
+// so silently suffixing one would dangle its references.
+func TestRequireImportAs_SameAliasTwoPathsPanics(t *testing.T) {
+	gc := newMinimalIRCtx()
+	gc.RequireImportAs("a/b/canvas", "snglcanvas")
+	defer func() {
+		if recover() == nil {
+			t.Error("expected panic on forced-alias collision")
+		}
+	}()
+	gc.RequireImportAs("c/d/canvas", "snglcanvas")
+}
+
+// TestRequireImportAs_Idempotent verifies re-forcing the same (path, alias) is
+// a no-op, not a self-collision panic.
+func TestRequireImportAs_Idempotent(t *testing.T) {
+	gc := newMinimalIRCtx()
+	gc.RequireImportAs("a/b/canvas", "snglcanvas")
+	gc.RequireImportAs("a/b/canvas", "snglcanvas")
+	if a := gc.ForcedAlias("a/b/canvas"); a != "snglcanvas" {
+		t.Errorf("forced alias = %q, want snglcanvas", a)
+	}
+}
