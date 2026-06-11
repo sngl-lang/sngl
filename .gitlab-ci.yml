@@ -55,7 +55,7 @@ pages:
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
   script:
-    - go tool docsgen -out public
+    - go tool docsgen -binaries -out public
     - cd public
     - rm -rf .git
     - git init
