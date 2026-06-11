@@ -15,6 +15,7 @@ require (
 	github.com/fogleman/gg v1.3.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-rod/rod v0.116.2
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/goodsign/monday v1.0.2
 	github.com/mattn/go-isatty v0.0.20
 	github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555
@@ -82,7 +83,6 @@ require (
 	github.com/gocolly/colly/v2 v2.1.1-0.20201013153555-8252c346cfb0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gohugoio/hugo v0.74.3 // indirect
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect

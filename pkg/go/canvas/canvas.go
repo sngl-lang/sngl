@@ -8,9 +8,54 @@ package canvas
 import (
 	"image"
 	"image/color"
+	"sync"
 
 	"github.com/fogleman/gg"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font/gofont/goregular"
 )
+
+// goFont is the parsed embedded Go Regular TrueType font, used to render Text
+// at the pending FontSize. Parsed once. If parsing fails goFont stays nil and
+// Text falls back to gg's fixed basic font.
+var (
+	goFontOnce sync.Once
+	goFont     *truetype.Font
+)
+
+func loadGoFont() *truetype.Font {
+	goFontOnce.Do(func() {
+		if f, err := truetype.Parse(goregular.TTF); err == nil {
+			goFont = f
+		}
+	})
+	return goFont
+}
+
+// ggLineCap maps SNGL line-cap names to gg constants. Default ("" / unknown)
+// is butt, matching the Canvas2D default.
+func ggLineCap(s string) gg.LineCap {
+	switch s {
+	case "round":
+		return gg.LineCapRound
+	case "square":
+		return gg.LineCapSquare
+	default: // "butt", "", unknown
+		return gg.LineCapButt
+	}
+}
+
+// ggLineJoin maps SNGL line-join names to gg constants. gg v1.3.0 has only
+// Round and Bevel — it lacks a true miter join, so "miter" (the Canvas2D
+// default) and unknown values map to Round.
+func ggLineJoin(s string) gg.LineJoin {
+	switch s {
+	case "bevel":
+		return gg.LineJoinBevel
+	default: // "miter", "round", "", unknown — gg has no miter; use round
+		return gg.LineJoinRound
+	}
+}
 
 // Style is the resolved per-shape paint state. A zero-alpha Fill or Stroke
 // disables that paint (matches the SNGL CanvasStyle transparent default).
@@ -77,6 +122,8 @@ func (c *Context) paint() {
 		if s.StrokeWidth > 0 {
 			c.dc.SetLineWidth(s.StrokeWidth)
 		}
+		c.dc.SetLineCap(ggLineCap(s.LineCap))
+		c.dc.SetLineJoin(ggLineJoin(s.LineJoin))
 		c.dc.SetColor(s.Stroke)
 		c.dc.Stroke()
 	}
@@ -90,6 +137,8 @@ func (c *Context) strokeOnly() {
 		if s.StrokeWidth > 0 {
 			c.dc.SetLineWidth(s.StrokeWidth)
 		}
+		c.dc.SetLineCap(ggLineCap(s.LineCap))
+		c.dc.SetLineJoin(ggLineJoin(s.LineJoin))
 		c.dc.SetColor(s.Stroke)
 	}
 	c.dc.Stroke()
@@ -115,10 +164,22 @@ func (c *Context) ClosePath() { c.dc.ClosePath() }
 // PaintPath fills+strokes the path built via MoveTo/LineTo/CubicTo/ClosePath.
 func (c *Context) PaintPath() { c.paint() }
 
+// Text draws content at (x,y) using the pending Fill color and FontSize.
+// FontSize defaults to 16 when unset. Only the embedded Go Regular font is
+// supported: the pending FontFamily is ignored, since resolving arbitrary
+// family names requires a system font lookup that is out of scope. If the
+// embedded font cannot be parsed, gg's fixed basic font is used instead.
 func (c *Context) Text(x, y float64, content string) {
 	s := c.pending
 	if s.Fill.A > 0 {
 		c.dc.SetColor(s.Fill)
+	}
+	size := s.FontSize
+	if size <= 0 {
+		size = 16
+	}
+	if f := loadGoFont(); f != nil {
+		c.dc.SetFontFace(truetype.NewFace(f, &truetype.Options{Size: size}))
 	}
 	c.dc.DrawString(content, x, y)
 }

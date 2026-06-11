@@ -78,3 +78,61 @@ func TestTextDoesNotPanic(t *testing.T) {
 	c.ApplyStyle(Style{Fill: color.NRGBA{0, 0, 0, 255}, FontSize: 12})
 	c.Text(2, 14, "hi") // gg uses a built-in basic font when none is set.
 }
+
+// countOpaque returns the number of non-transparent pixels in the image.
+func countOpaque(c *Context) int {
+	img := c.Result()
+	b := img.Bounds()
+	n := 0
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if _, _, _, a := img.At(x, y).RGBA(); a > 0 {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// TestFontSizeHonored: a bigger FontSize must produce strictly more glyph
+// pixels for the same string, proving the pending FontSize drives rendering
+// rather than gg's fixed basic font.
+func TestFontSizeHonored(t *testing.T) {
+	small := New(200, 80)
+	small.ApplyStyle(Style{Fill: color.NRGBA{0, 0, 0, 255}, FontSize: 8})
+	small.Text(2, 40, "size")
+
+	big := New(200, 80)
+	big.ApplyStyle(Style{Fill: color.NRGBA{0, 0, 0, 255}, FontSize: 30})
+	big.Text(2, 40, "size")
+
+	ns, nb := countOpaque(small), countOpaque(big)
+	if ns == 0 {
+		t.Fatalf("small text drew no pixels")
+	}
+	if nb <= ns {
+		t.Errorf("font size not honored: size 30 drew %d px, size 8 drew %d px (want strictly more)", nb, ns)
+	}
+}
+
+// TestLineCapRound: a thick round-capped horizontal line extends past its
+// endpoint by ~half the stroke width; a butt cap does not. The pixel just
+// beyond the endpoint distinguishes the two cap styles.
+func TestLineCapRound(t *testing.T) {
+	const w = 10 // stroke width; round cap reaches ~5px past the endpoint
+	round := New(40, 20)
+	round.ApplyStyle(Style{Stroke: color.NRGBA{0, 0, 255, 255}, StrokeWidth: w, LineCap: "round"})
+	round.Line(10, 10, 30, 10)
+
+	butt := New(40, 20)
+	butt.ApplyStyle(Style{Stroke: color.NRGBA{0, 0, 255, 255}, StrokeWidth: w, LineCap: "butt"})
+	butt.Line(10, 10, 30, 10)
+
+	// 2px beyond the right endpoint (x=32), on the line's centerline.
+	if got := nrgbaAt(t, round, 32, 10); got.B == 0 {
+		t.Errorf("round cap: pixel beyond endpoint = %+v, want stroked (blue)", got)
+	}
+	if got := nrgbaAt(t, butt, 32, 10); got.B != 0 {
+		t.Errorf("butt cap: pixel beyond endpoint = %+v, want unstroked", got)
+	}
+}
