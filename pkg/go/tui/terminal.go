@@ -95,13 +95,46 @@ func kittySupported() bool {
 	return kittyOK
 }
 
-// kitty encodes img as a single base64 PNG kitty graphics escape sequence
-// (a=T: transmit + display). Chunking for very large payloads is a follow-up.
+// kittyChunk is the max base64 payload bytes per kitty escape. The protocol
+// caps escape-code data at 4096 bytes; anything larger MUST be split across
+// multiple escapes with m=1 (more follows) / m=0 (last) continuation framing.
+// Terminals (e.g. ghostty) silently drop a single oversized escape, so a real
+// PNG — always larger than 4096 base64 bytes — renders nothing without this.
+const kittyChunk = 4096
+
+// kitty encodes img as kitty graphics escape sequences (a=T: transmit +
+// display). The base64 PNG is split into kittyChunk-sized segments: the first
+// escape carries the format/action params, every escape carries m=1 until the
+// last carries m=0. A payload that fits in one chunk is emitted as a single
+// escape with no m key.
 func kitty(img image.Image) string {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return ""
 	}
 	payload := base64.StdEncoding.EncodeToString(buf.Bytes())
-	return "\x1b_Gf=100,a=T;" + payload + "\x1b\\"
+
+	// Single-chunk fast path: no continuation framing needed.
+	if len(payload) <= kittyChunk {
+		return "\x1b_Gf=100,a=T;" + payload + "\x1b\\"
+	}
+
+	var b strings.Builder
+	first := true
+	for len(payload) > 0 {
+		n := min(kittyChunk, len(payload))
+		chunk := payload[:n]
+		payload = payload[n:]
+		more := 1
+		if len(payload) == 0 {
+			more = 0
+		}
+		if first {
+			fmt.Fprintf(&b, "\x1b_Gf=100,a=T,m=%d;%s\x1b\\", more, chunk)
+			first = false
+		} else {
+			fmt.Fprintf(&b, "\x1b_Gm=%d;%s\x1b\\", more, chunk)
+		}
+	}
+	return b.String()
 }
