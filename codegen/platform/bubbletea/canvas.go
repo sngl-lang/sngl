@@ -206,6 +206,51 @@ func canvasImageID(fn *ir.Func) int {
 	return 1
 }
 
+// canvasTransmitMethodName is the Model method that transmits every canvas's
+// pixels out of band; View() emits only placeholder cells (which a cell-diffing
+// renderer preserves), so the image data must reach the tty via tea.Raw.
+const canvasTransmitMethodName = "__canvasTransmit"
+
+// emitCanvasTransmitMethod emits `func (m Model) __canvasTransmit() tea.Cmd`,
+// which rasterises every canvas in the package, builds each one's kitty
+// transmit escape (via tui.KittyTransmit — empty on non-kitty terminals), and
+// returns them as a single tea.Raw command. Init/Update return this so the
+// image data is written raw to the tty, out of the cell compositor that would
+// otherwise drop the APC graphics sequence. Returns nil when nothing was
+// transmitted (e.g. half-block terminals), so the half-block path is unaffected.
+func emitCanvasTransmitMethod(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRContext) {
+	gc.RequireImport("strings")
+	fmt.Fprintf(b, "func (m Model) %s() tea.Cmd {\n", canvasTransmitMethodName)
+	b.WriteString("\tvar __ctb strings.Builder\n")
+	seen := map[*ir.Func]bool{}
+	emit := func(body []ir.Stmt) {
+		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
+			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
+				return false
+			}
+			seen[n.CanvasDraw] = true
+			w, h := nodeCanvasDims(n)
+			cols, rows := terminalCells(w, h)
+			id := canvasImageID(n.CanvasDraw)
+			b.WriteString("\t{\n")
+			fmt.Fprintf(b, "\t\t__cctx := %s.New(%d, %d)\n", snglCanvasAlias, w, h)
+			fmt.Fprintf(b, "\t\tm.%s(__cctx)\n", n.CanvasDraw.Name)
+			fmt.Fprintf(b, "\t\t__ctb.WriteString(tui.KittyTransmit(__cctx.Result(), %d, %d, %d))\n", cols, rows, id)
+			b.WriteString("\t}\n")
+			return false
+		})
+	}
+	for _, c := range pkg.Components {
+		emit(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		emit(w.Body)
+	}
+	b.WriteString("\tif __ctb.Len() == 0 {\n\t\treturn nil\n\t}\n")
+	b.WriteString("\treturn tea.Raw(__ctb.String())\n")
+	b.WriteString("}\n\n")
+}
+
 // emitCanvasDrawFuncs emits one `func (m *Model) _canvasDrawN(ctx
 // *snglcanvas.Context)` per canvas NodeInst found in the visual tree. The body
 // is the draw func's canvas-intrinsic CallStmts, each translated to ctx method

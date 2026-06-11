@@ -15,15 +15,37 @@ import (
 	"sync"
 )
 
-// RenderTerminal renders img to a terminal string sized to cols x rows cells.
-// id is a per-image identifier (>0) used by the kitty path to distinguish
-// multiple images on screen; it is ignored by the half-block fallback. Callers
-// rendering several images in one frame must pass distinct ids.
+// RenderTerminal renders img into in-band terminal output sized to cols x rows
+// cells. On kitty-capable terminals it emits ONLY the Unicode placeholder grid
+// (the image pixels are sent separately via KittyTransmit — see below);
+// otherwise it emits a truecolor half-block grid that carries the pixels inline.
+// id is the per-image identifier (>0) tying the placeholder grid to the
+// transmitted image; callers with several images on screen must pass distinct
+// ids and matching cols/rows to KittyTransmit.
+//
+// Why the split: kitty image data is an APC escape, which cannot survive a
+// cell-based TUI compositor (e.g. bubbletea/ultraviolet parses View content
+// into a cell grid and drops non-cell sequences). The placeholder cells ARE
+// ordinary cells and survive; the pixel data must instead be written to the tty
+// out of band (bubbletea: tea.Raw(KittyTransmit(...)) from Init/Update).
 func RenderTerminal(img image.Image, cols, rows, id int) string {
 	if kittySupported() {
-		return kitty(img, cols, rows, id)
+		return kittyPlaceholders(cols, rows, id)
 	}
 	return halfBlock(img, cols, rows)
+}
+
+// KittyTransmit returns the out-of-band kitty escape that transmits img's pixels
+// and creates a virtual placement (id, cols x rows cells) for the placeholder
+// grid RenderTerminal emits. It returns "" when the terminal lacks kitty
+// support (the half-block path carries pixels inline, so no transmit is needed).
+// The result must be written raw to the tty, not routed through a cell
+// compositor.
+func KittyTransmit(img image.Image, cols, rows, id int) string {
+	if !kittySupported() {
+		return ""
+	}
+	return kittyTransmit(img, cols, rows, id)
 }
 
 // sampleAt nearest-neighbor samples img at the given fraction (0..1).
@@ -110,19 +132,13 @@ const kittyChunk = 4096
 // ID, is painted with the corresponding region of that image.
 const placeholderRune = 0x10EEEE
 
-// kitty renders img using the kitty graphics protocol's Unicode placeholder
-// (virtual placement) mechanism: transmit the PNG once and create a virtual
-// placement (U=1) spanning cols x rows cells, then emit a grid of placeholder
-// cells whose foreground encodes the image ID. Unlike classic a=T cursor
-// placement, placeholder cells are ordinary text cells — so they survive
-// lipgloss layout and bubbletea's cell-diffing renderer, and they work through
-// multiplexers. ghostty and kitty both implement this; other terminals fall
-// back to half-blocks (callers gate on kittySupported via RenderTerminal).
-//
-// The base64 PNG is chunked at kittyChunk bytes: every escape carries m=1 until
-// the final one carries m=0. q=2 suppresses the terminal's response codes so
-// they don't corrupt the TUI stream.
-func kitty(img image.Image, cols, rows, id int) string {
+// kittyTransmit encodes img as PNG and returns the kitty escape(s) that
+// transmit it and create a virtual placement (U=1) spanning cols x rows cells,
+// keyed by id. The base64 payload is chunked at kittyChunk bytes: every escape
+// carries m=1 until the final one carries m=0. q=2 suppresses the terminal's
+// response codes so they don't corrupt the TUI stream. This is APC data and
+// MUST be written raw to the tty, never through a cell compositor.
+func kittyTransmit(img image.Image, cols, rows, id int) string {
 	if id <= 0 {
 		id = 1
 	}
@@ -152,10 +168,23 @@ func kitty(img image.Image, cols, rows, id int) string {
 			fmt.Fprintf(&b, "\x1b_Gm=%d;%s\x1b\\", more, chunk)
 		}
 	}
+	return b.String()
+}
 
-	// Placeholder grid. Each row's first cell carries the id-encoding foreground
-	// color plus explicit row+column (col 0) diacritics; the remaining cells are
-	// bare placeholders whose column auto-increments from the previous cell.
+// kittyPlaceholders returns the cols x rows Unicode-placeholder grid that
+// displays the image transmitted under id. Each row's first cell carries the
+// id-encoding foreground color plus explicit row+column (col 0) diacritics; the
+// remaining cells are bare placeholders whose column auto-increments from the
+// previous cell. These are ordinary text cells, so they survive lipgloss layout
+// and a cell-diffing renderer. id/cols/rows must match the KittyTransmit call.
+func kittyPlaceholders(cols, rows, id int) string {
+	if id <= 0 {
+		id = 1
+	}
+	cols = clamp(cols, 1, len(rowColumnDiacritics))
+	rows = clamp(rows, 1, len(rowColumnDiacritics))
+
+	var b strings.Builder
 	ph := string(rune(placeholderRune))
 	for r := 0; r < rows; r++ {
 		fmt.Fprintf(&b, "\x1b[38;5;%dm%s%c%c", id, ph, rowColumnDiacritics[r], rowColumnDiacritics[0])

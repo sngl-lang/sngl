@@ -425,6 +425,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// Context translator, so they're excluded from the generic user-func loop.
 	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
 	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
+	hasCanvas := hasCanvasNodes(ctx.Pkg)
+	if hasCanvas {
+		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
+	}
 
 	// User-defined functions (dedupe overlap between pkg.Funcs and main.Funcs).
 	allFuncs := ctx.Pkg.Funcs
@@ -466,7 +470,18 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 				fmt.Fprintf(&b, "\t%s\n", tick)
 			}
 		}
+		if hasCanvas {
+			// Transmit each canvas's pixels on first paint (out of band, so the
+			// kitty image data isn't dropped by the cell compositor).
+			fmt.Fprintf(&b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
+		}
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
+	} else if hasCanvas {
+		base := "nil"
+		if len(info.inputs) > 0 {
+			base = "textinput.Blink"
+		}
+		fmt.Fprintf(&b, "\treturn tea.Batch(%s, m.%s())\n", base, canvasTransmitMethodName)
 	} else if len(info.inputs) > 0 {
 		b.WriteString("\treturn textinput.Blink\n")
 	} else {
@@ -679,7 +694,15 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t}\n")
 	}
 
-	b.WriteString("\treturn m, cmd\n")
+	if hasCanvasNodes(ctx.Pkg) {
+		// Re-transmit canvas pixels after each update so reactive canvases reflect
+		// new state; the image data goes out of band (the View carries only
+		// placeholder cells). The placement is virtual, so re-transmitting causes
+		// no flicker.
+		fmt.Fprintf(b, "\treturn m, tea.Batch(cmd, m.%s())\n", canvasTransmitMethodName)
+	} else {
+		b.WriteString("\treturn m, cmd\n")
+	}
 	b.WriteString("}\n\n")
 }
 

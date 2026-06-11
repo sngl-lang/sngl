@@ -45,4 +45,25 @@ func TestBubbleteaCanvasEmission(t *testing.T) {
 			t.Errorf("missing %q in emitted bubbletea output:\n%s", want, out.String())
 		}
 	}
+
+	// Kitty image data is an APC escape that a cell-diffing renderer drops, so
+	// the pixels must be transmitted out of band via tea.Raw — emitted from a
+	// __canvasTransmit method wired into Init and Update — while View carries
+	// only the placeholder grid (RenderTerminal). Lock that wiring in.
+	got := out.String()
+	for _, want := range []string{
+		"func (m Model) __canvasTransmit() tea.Cmd",
+		"tui.KittyTransmit(",
+		"tea.Raw(",
+		"m.__canvasTransmit()",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing out-of-band transmit wiring %q:\n%s", want, got)
+		}
+	}
+	// The transmit call appears in both Init and Update (so the first paint and
+	// reactive updates both transmit): method def + 2 call sites = 3 references.
+	if n := strings.Count(got, "__canvasTransmit"); n < 3 {
+		t.Errorf("expected __canvasTransmit referenced in Init and Update (>=3 occurrences), got %d", n)
+	}
 }

@@ -27,30 +27,34 @@ func TestHalfBlockKnownImage(t *testing.T) {
 	}
 }
 
-func TestKittyEncodeHasGraphicsEscape(t *testing.T) {
+func TestKittyTransmitHasVirtualPlacement(t *testing.T) {
 	img := image.NewNRGBA(image.Rect(0, 0, 4, 4))
-	out := kitty(img, 4, 2, 1)
+	out := kittyTransmit(img, 4, 2, 1)
 	// Transmit escape: virtual placement (U=1) carrying the image id + cell span.
-	if !strings.HasPrefix(out, "\x1b_Ga=T,U=1,i=1,") {
-		t.Errorf("kitty output must start with a virtual-placement transmit escape, got %.40q", out)
+	if !strings.HasPrefix(out, "\x1b_Ga=T,U=1,i=1,q=2,f=100,c=4,r=2,") {
+		t.Errorf("transmit must start with a virtual-placement escape, got %.50q", out)
 	}
-	// Placeholder grid follows: a cell painted with U+10EEEE under the id color.
-	if !strings.Contains(out, string(rune(placeholderRune))) {
-		t.Errorf("kitty output must contain the U+10EEEE placeholder rune")
+	if !strings.HasSuffix(out, "\x1b\\") {
+		t.Errorf("transmit must end with the APC terminator (ST)")
 	}
-	if !strings.Contains(out, "\x1b[38;5;1m") {
-		t.Errorf("placeholder cells must encode the image id in the foreground color")
+	// The transmit is pure APC data — no placeholder cells in it.
+	if strings.Contains(out, string(rune(placeholderRune))) {
+		t.Errorf("transmit must not contain placeholder cells (those are RenderTerminal's job)")
 	}
 }
 
 func TestKittyPlaceholderGridDimensions(t *testing.T) {
-	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
-	out := kitty(img, 5, 3, 1)
-	// Strip the transmit escapes; what remains is the placeholder grid.
-	grid := out[strings.LastIndex(out, "\x1b\\")+len("\x1b\\"):]
-	lines := strings.Split(grid, "\n")
+	out := kittyPlaceholders(5, 3, 7)
+	// No image data — placeholders only.
+	if strings.Contains(out, "\x1b_G") {
+		t.Errorf("placeholder grid must contain no transmit (APC) escapes")
+	}
+	if !strings.Contains(out, "\x1b[38;5;7m") {
+		t.Errorf("placeholder cells must encode the image id (7) in the foreground color")
+	}
+	lines := strings.Split(out, "\n")
 	if len(lines) != 3 {
-		t.Fatalf("want 3 placeholder rows, got %d: %q", len(lines), grid)
+		t.Fatalf("want 3 placeholder rows, got %d: %q", len(lines), out)
 	}
 	for r, ln := range lines {
 		if got := strings.Count(ln, string(rune(placeholderRune))); got != 5 {
@@ -59,7 +63,7 @@ func TestKittyPlaceholderGridDimensions(t *testing.T) {
 	}
 }
 
-func TestKittyChunksLargePayload(t *testing.T) {
+func TestKittyTransmitChunksLargePayload(t *testing.T) {
 	// A 256x256 LCG-noise image PNG-encodes past one 4096-byte chunk (a smooth
 	// gradient compresses too well to force chunking).
 	img := image.NewNRGBA(image.Rect(0, 0, 256, 256))
@@ -70,7 +74,7 @@ func TestKittyChunksLargePayload(t *testing.T) {
 			img.Set(x, y, color.NRGBA{next(), next(), next(), 255})
 		}
 	}
-	out := kitty(img, 10, 5, 1)
+	out := kittyTransmit(img, 10, 5, 1)
 
 	escapes := strings.Count(out, "\x1b_G")
 	if escapes < 2 {
@@ -87,11 +91,22 @@ func TestKittyChunksLargePayload(t *testing.T) {
 	}
 	// Each transmit escape's base64 payload must respect the protocol chunk cap.
 	for _, seg := range strings.Split(out, "\x1b_G")[1:] {
-		esc, _, _ := strings.Cut(seg, "\x1b\\") // drop the placeholder grid tail
+		esc, _, _ := strings.Cut(seg, "\x1b\\")
 		_, data, _ := strings.Cut(esc, ";")
 		if len(data) > kittyChunk {
 			t.Errorf("chunk payload %d exceeds cap %d", len(data), kittyChunk)
 		}
+	}
+}
+
+func TestKittyTransmitSuppressedWithoutSupport(t *testing.T) {
+	t.Setenv("KITTY_WINDOW_ID", "")
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("TERM_PROGRAM", "")
+	resetKittyDetection()
+	img := image.NewNRGBA(image.Rect(0, 0, 4, 4))
+	if got := KittyTransmit(img, 4, 2, 1); got != "" {
+		t.Errorf("KittyTransmit on a non-kitty terminal must be empty, got %.30q", got)
 	}
 }
 
