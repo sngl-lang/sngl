@@ -293,6 +293,12 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
+	// Canvas2D node — rasterise inline each frame into a terminal string.
+	if n.CanvasDraw != nil {
+		vc.renderCanvas(n, resultVar)
+		return
+	}
+
 	// User component — call render method
 	if n.Component != nil && vc.isUserComponent(n.Component) {
 		vc.renderUserComponent(n, resultVar)

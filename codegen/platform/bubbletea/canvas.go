@@ -1,0 +1,231 @@
+package bubbletea
+
+import (
+	"strconv"
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// Canvas2D rendering for bubbletea.
+//
+// bubbletea keeps the declarative visual tree (it does NOT set NoDeclarative),
+// so a canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw
+// set (the synthesized `_canvasDrawN(ctx)` func produced by passCanvas) and
+// width/height props still on the node. passCanvas's draw func body is a
+// sequence of canvas-intrinsic CallStmts (CanvasApplyStyle / CanvasDrawRect /
+// ...).
+//
+// bubbletea is a RenderModel: View() re-runs on every update, so the canvas is
+// rasterised inline in View() each frame — no persistent widget, no reactive
+// redraw. The shared pkg/go/canvas runtime (snglcanvas) rasterises the shapes
+// into an image.Image; pkg/go/tui (tui) renders that image into a terminal
+// string (kitty escapes when supported, else truecolor half-blocks) that is
+// woven into the lipgloss View output like any other node's string fragment.
+//
+// The canvas intrinsics are translated via the shared canvasutil.GoContextStmts
+// helper (also used by fyne) into Context method calls — never reimplemented.
+
+const (
+	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasAlias      = "snglcanvas"
+	tuiImportPath        = "git.duckfam.us/jonathan/sngl/pkg/go/tui"
+)
+
+// canvasCtxType is the IR native type for the draw-func ctx parameter:
+// *snglcanvas.Context.
+func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
+
+// canvasDims returns the canvas pixel dimensions, defaulting to the HTML canvas
+// 300x150 when unset.
+func canvasDims(w, h int) (int, int) {
+	if w <= 0 {
+		w = 300
+	}
+	if h <= 0 {
+		h = 150
+	}
+	return w, h
+}
+
+// terminalCells maps canvas pixel dimensions to a terminal cell grid. The
+// half-block renderer packs two pixel rows per character cell, so rows is half
+// the pixel height (rounded up). Both are clamped to a sane terminal size.
+func terminalCells(w, h int) (cols, rows int) {
+	cols = w
+	rows = (h + 1) / 2
+	if cols > 200 {
+		cols = 200
+	}
+	if rows > 100 {
+		rows = 100
+	}
+	if cols < 1 {
+		cols = 1
+	}
+	if rows < 1 {
+		rows = 1
+	}
+	return cols, rows
+}
+
+// nodeCanvasDims reads the integer pixel width/height props off a canvas
+// NodeInst, falling back to canvasDims defaults.
+func nodeCanvasDims(n *ir.NodeInst) (int, int) {
+	return canvasDims(intProp(n, "width"), intProp(n, "height"))
+}
+
+// intProp reads a NodeInst prop as an int pixel value, stripping any unit
+// suffix (e.g. "40px"). Mirrors lower.nodeIntProp so the un-flattened canvas
+// NodeInst yields the same dimensions the LocalVar path would. Returns 0 when
+// absent or non-literal.
+func intProp(n *ir.NodeInst, name string) int {
+	for _, p := range n.Props {
+		if p.Name != name {
+			continue
+		}
+		lit, ok := p.Value.(*ir.Literal)
+		if !ok {
+			return 0
+		}
+		raw := strings.TrimSuffix(lit.Raw, lit.Suffix)
+		if v, err := strconv.Atoi(raw); err == nil {
+			return v
+		}
+		if f, err := strconv.ParseFloat(raw, 64); err == nil {
+			return int(f)
+		}
+		return 0
+	}
+	return 0
+}
+
+// canvasDrawFuncSet returns the set of canvas draw funcs referenced by canvas
+// NodeInsts in the visual tree, so the generic user-func loop can skip them.
+func canvasDrawFuncSet(pkg *ir.Package) map[*ir.Func]bool {
+	set := map[*ir.Func]bool{}
+	collect := func(body []ir.Stmt) {
+		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
+			if n.CanvasDraw != nil {
+				set[n.CanvasDraw] = true
+			}
+			return false
+		})
+	}
+	for _, c := range pkg.Components {
+		collect(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		collect(w.Body)
+	}
+	return set
+}
+
+// canvasStdlibDecls returns the Go decls for the canvas stdlib structs
+// (Color/CanvasStyle/PathCmd), omitting any whose name a user struct already
+// declares (those emit their own type decl).
+func canvasStdlibDecls(structs []*ir.StructDef) string {
+	declared := map[string]struct{}{}
+	for _, s := range structs {
+		switch s.Name {
+		case "Color", "CanvasStyle", "PathCmd":
+			declared[s.Name] = struct{}{}
+		}
+	}
+	return canvasutil.StructDeclsExcluding(declared)
+}
+
+// hasCanvasNodes reports whether any canvas NodeInst (CanvasDraw != nil) appears
+// in the package's component/window bodies.
+func hasCanvasNodes(pkg *ir.Package) bool {
+	found := false
+	walk := func(body []ir.Stmt) {
+		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
+			if n.CanvasDraw != nil {
+				found = true
+			}
+			return false
+		})
+	}
+	for _, c := range pkg.Components {
+		walk(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		walk(w.Body)
+	}
+	return found
+}
+
+// renderCanvas weaves a canvas node into the View string output: allocate a
+// snglcanvas.Context sized to the canvas, run the draw func to rasterise the
+// shapes, then render the resulting image into a terminal string fragment via
+// pkg/go/tui. The string is assigned to resultVar like any other node's
+// rendered output, so it joins into the surrounding lipgloss layout normally.
+func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
+	w, h := nodeCanvasDims(n)
+	cols, rows := terminalCells(w, h)
+	vc.requireImport(snglCanvasImportPath)
+	vc.requireImport(tuiImportPath)
+	ctxVar := resultVar + "Ctx"
+	vc.line("%s := %s.New(%d, %d)", ctxVar, snglCanvasAlias, w, h)
+	vc.line("m.%s(%s)", n.CanvasDraw.Name, ctxVar)
+	// Render through a lipgloss style (matching the canvas node's own style
+	// fields) so the terminal string integrates with the surrounding layout the
+	// same way every other leaf node does.
+	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+	vc.line("%s = %s.Render(tui.RenderTerminal(%s.Result(), %d, %d))", resultVar, style, ctxVar, cols, rows)
+}
+
+// emitCanvasDrawFuncs emits one `func (m Model) _canvasDrawN(ctx
+// *snglcanvas.Context)` per canvas NodeInst found in the visual tree. The body
+// is the draw func's canvas-intrinsic CallStmts, each translated to ctx method
+// calls via the shared canvasutil.GoContextStmts helper and rendered through
+// the Go IR context.
+func emitCanvasDrawFuncs(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRContext) {
+	seen := map[*ir.Func]bool{}
+	emit := func(body []ir.Stmt) {
+		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
+			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
+				return false
+			}
+			seen[n.CanvasDraw] = true
+			emitCanvasDrawFunc(b, n.CanvasDraw, gc)
+			return false
+		})
+	}
+	for _, c := range pkg.Components {
+		emit(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		emit(w.Body)
+	}
+}
+
+// emitCanvasDrawFunc emits a single draw func as a Model method, translating
+// each canvas-intrinsic body CallStmt into Context method calls.
+func emitCanvasDrawFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	st := &canvasutil.GoCanvasState{}
+	var body []ir.Stmt
+	for _, stmt := range fn.Block {
+		if cs, ok := stmt.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Intrinsic != "" {
+			body = append(body, canvasutil.GoContextStmts(cs, st)...)
+			continue
+		}
+		body = append(body, stmt)
+	}
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
+		Return:   ir.TypVoid,
+		Block:    body,
+	}
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}

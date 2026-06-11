@@ -67,7 +67,19 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 		Name:        "model.go",
 		PackageName: cfg.Package,
 	})
+	// The SNGL canvas runtime (pkg/go/canvas) default-aliases to "canvas"; the
+	// draw-func selectors reference it as snglcanvas (*snglcanvas.Context,
+	// snglcanvas.New), so force that alias.
+	type aliasImporter interface {
+		RequireImportAs(path, alias string) string
+	}
 	for _, p := range imports {
+		if p == snglCanvasImportPath {
+			if ai, ok := e.(aliasImporter); ok {
+				ai.RequireImportAs(p, snglCanvasAlias)
+				continue
+			}
+		}
 		e.RequireImport(p)
 	}
 	if _, err := e.Write([]byte(body)); err != nil {
@@ -281,6 +293,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
+	// Canvas stdlib structs (Color/CanvasStyle/PathCmd) are read by the
+	// synthesized draw funcs (style.Fill.R etc.) but aren't carried on
+	// pkg.Structs for the Go path, so declare them here when any canvas node is
+	// present. Skip any name a user struct already declares to avoid duplicates.
+	if hasCanvasNodes(ctx.Pkg) {
+		b.WriteString(canvasStdlibDecls(info.Structs))
+	}
+
 	// ErrorEvent is emitted when any error-handling construct is present.
 	// The stdlib defines the struct but codegen doesn't flow stdlib types
 	// into user output, so it needs to materialise here.
@@ -399,6 +419,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
+	// Canvas2D draw funcs (passCanvas-synthesized `_canvasDrawN(ctx)`). These
+	// are emitted specially as `func (m Model) _canvasDrawN(ctx
+	// *snglcanvas.Context)` with their bodies routed through the shared canvas
+	// Context translator, so they're excluded from the generic user-func loop.
+	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
+	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
+
 	// User-defined functions (dedupe overlap between pkg.Funcs and main.Funcs).
 	allFuncs := ctx.Pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
@@ -410,7 +437,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		seenUserFn[fn] = true
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) || canvasDraws[fn] {
 			continue
 		}
 		emitIRFunc(&b, fn, gc)
