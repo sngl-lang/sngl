@@ -37,9 +37,10 @@ func snglModuleRoot() string {
 	if !ok {
 		return ""
 	}
-	// .../codegen/platform/fyne/snapshot.go → up four levels to the module root.
+	// .../codegen/platform/fyne/snapshot.go: Dir strips the filename, then three
+	// levels (fyne → platform → codegen → module root).
 	dir := filepath.Dir(file)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		dir = filepath.Dir(dir)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "go.mod")); err != nil {

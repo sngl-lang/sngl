@@ -77,6 +77,10 @@ func (gc *GoIRContext) RequireImport(path string) {
 // the conventional alias would collide with another import and the call sites
 // reference a fixed selector (e.g. snglcanvas for pkg/go/canvas alongside
 // fyne's canvas). Safe to call repeatedly.
+//
+// Precondition: forced aliases must be unique across paths. renderImports
+// de-conflicts path-derived defaults against forced aliases, but two distinct
+// paths forced to the SAME alias would both render under it (invalid Go).
 func (gc *GoIRContext) RequireImportAs(path, alias string) {
 	if path == "" || gc.imports == nil {
 		return
