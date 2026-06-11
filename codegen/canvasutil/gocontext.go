@@ -1,15 +1,25 @@
 package canvasutil
 
 import (
+	"strconv"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// GoCanvasState carries per-draw-func state for GoContextStmts — currently a
+// counter so each CanvasApplyStyle binds a uniquely-named style local. Callers
+// create one per draw func and pass it to every GoContextStmts call for that
+// func. A nil state is treated as a fresh one (fine for one-off translations).
+type GoCanvasState struct {
+	styleSeq int
+}
+
 // GoContextStmts translates one canvas-intrinsic CallStmt into method-call
 // statements against the pkg/go/canvas Context runtime. The Context is stateful
-// (SetFill/SetStroke/... mutate a pending style; a draw primitive consumes it),
-// so no style-tracking state is threaded here: CanvasApplyStyle emits the
-// setters inline.
+// (SetFill/SetStroke/... mutate a pending style; a draw primitive consumes it).
+// CanvasApplyStyle binds the style to a uniquely-named local (via st) so the
+// setters don't re-evaluate the style expression repeatedly.
 //
 // call.Args[0] is the ctx receiver; the remaining args are positional. Style
 // fields are addressed by their lowercase SNGL names (fill, r, strokeWidth);
@@ -24,7 +34,10 @@ import (
 // match.
 //
 // An unknown intrinsic returns nil.
-func GoContextStmts(cs *ir.CallStmt) []ir.Stmt {
+func GoContextStmts(cs *ir.CallStmt, st *GoCanvasState) []ir.Stmt {
+	if st == nil {
+		st = &GoCanvasState{}
+	}
 	call := cs.Call
 	id := call.Func.Intrinsic
 	ctx := call.Args[0].Value
@@ -37,17 +50,23 @@ func GoContextStmts(cs *ir.CallStmt) []ir.Stmt {
 	case "CanvasRestore":
 		return []ir.Stmt{ctxCall(ctx, "Restore")}
 	case "CanvasApplyStyle":
-		style := arg(0)
+		// Bind the style to a local once so the five setters (each reading
+		// several fields) don't re-evaluate the (possibly composite-literal or
+		// method-call) style expression ~20 times per shape.
+		st.styleSeq++
+		name := "_cstyle" + strconv.Itoa(st.styleSeq)
+		styleRef := &ir.Ident{Name: name, Type: ir.TypDyn}
 		col := func(field string) []ir.Expr {
-			c := sel(style, field)
+			c := sel(styleRef, field)
 			return []ir.Expr{sel(c, "r"), sel(c, "g"), sel(c, "b"), sel(c, "a")}
 		}
 		return []ir.Stmt{
+			&ir.LocalVar{Name: name, Init: arg(0), Type: ir.TypDyn},
 			ctxCall(ctx, "SetFill", col("fill")...),
 			ctxCall(ctx, "SetStroke", col("stroke")...),
-			ctxCall(ctx, "SetStrokeWidth", sel(style, "strokeWidth")),
-			ctxCall(ctx, "SetFont", sel(style, "fontSize"), sel(style, "fontFamily")),
-			ctxCall(ctx, "SetLineStyle", sel(style, "lineCap"), sel(style, "lineJoin")),
+			ctxCall(ctx, "SetStrokeWidth", sel(styleRef, "strokeWidth")),
+			ctxCall(ctx, "SetFont", sel(styleRef, "fontSize"), sel(styleRef, "fontFamily")),
+			ctxCall(ctx, "SetLineStyle", sel(styleRef, "lineCap"), sel(styleRef, "lineJoin")),
 		}
 	case "CanvasDrawRect":
 		return []ir.Stmt{ctxCall(ctx, "Rect", arg(0), arg(1), arg(2), arg(3))}

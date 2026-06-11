@@ -82,11 +82,13 @@ func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
 
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
 // draw func body) into pkg/go/canvas Context method calls via the shared
-// canvasutil helper. The Context is stateful (ApplyStyle's setters mutate a
-// pending style consumed by the next primitive), so no style tracking is
-// threaded here.
+// canvasutil helper. canvasState (per-translator, i.e. per draw func) gives
+// each ApplyStyle a uniquely-named style local.
 func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
-	return canvasutil.GoContextStmts(cs)
+	if t.canvasState == nil {
+		t.canvasState = &canvasutil.GoCanvasState{}
+	}
+	return canvasutil.GoContextStmts(cs, t.canvasState)
 }
 
 // methodStmt builds `receiver.Method(args...)` as a CallStmt.
