@@ -128,6 +128,19 @@ if *binaries {
 }
 ```
 
+### `.gitlab-ci.yml` change
+
+The `pages` job (which publishes the site to GitHub Pages) runs
+`go tool docsgen -out public`. Add the flag so released pages carry the
+binaries:
+
+```yaml
+    - go tool docsgen -binaries -out public
+```
+
+The cross-build runs only in CI / on release publishes, where the extra time
+is acceptable; local `go tool docsgen` runs stay fast (no flag).
+
 ## Data flow
 
 ```
