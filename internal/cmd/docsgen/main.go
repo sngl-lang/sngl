@@ -24,6 +24,7 @@ import (
 func main() {
 	outDir := flag.String("out", "_site", "output directory")
 	httpAddr := flag.String("http", "", "start HTTP server after build (e.g., :3580)")
+	binaries := flag.Bool("binaries", false, "cross-compile sngl CLI downloads and inject the download table")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -43,6 +44,23 @@ func main() {
 
 	// Copy pre-generated stdlib example snapshots to gallery.
 	copySnapshots(*outDir)
+
+	// Optionally cross-compile sngl downloads and inject the download table.
+	// Gated by -binaries so local builds stay fast; CI passes the flag.
+	if *binaries {
+		version, commit, date := resolveVersion()
+		repoRoot, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("binaries: %v", err)
+		}
+		arts, err := buildBinaries(repoRoot, *outDir, version, commit, date)
+		if err != nil {
+			log.Fatalf("binaries: %v", err)
+		}
+		if err := injectDownloads(*outDir, arts); err != nil {
+			log.Printf("downloads: %v", err)
+		}
+	}
 
 	// Inject runtime example/lesson sources into the SNGL-generated pages.
 	if err := injectExamples(*outDir); err != nil {
