@@ -501,10 +501,12 @@ Expected: log lines `binaries: built sngl-linux-amd64.gz (…)` for all five tar
 - [ ] **Step 2: Verify artifacts and injected table**
 
 Run:
+
 ```bash
 ls /tmp/docsgen-bins/downloads/
 grep -o 'href="/downloads/sngl-[^"]*"' /tmp/docsgen-bins/learn/installation.html
 ```
+
 Expected: five `.gz` files listed; five `href="/downloads/sngl-*.gz"` matches printed. No `<!-- sngl:downloads -->` remains:
 
 Run: `grep -c "sngl:downloads" /tmp/docsgen-bins/learn/installation.html`
@@ -513,9 +515,11 @@ Expected: `0`.
 - [ ] **Step 3: Verify a binary actually runs and reports stamped version**
 
 Run:
+
 ```bash
 gunzip -c /tmp/docsgen-bins/downloads/sngl-linux-amd64.gz > /tmp/sngl-test && chmod +x /tmp/sngl-test && /tmp/sngl-test version
 ```
+
 Expected: `sngl <git-describe> (commit <short-sha>, built <rfc3339>)` — not `dev`/`none`/`unknown` when run inside the checkout.
 
 ---

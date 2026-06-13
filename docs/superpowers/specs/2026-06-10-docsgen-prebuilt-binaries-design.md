@@ -13,18 +13,17 @@ documentation site.
 
 Five build targets:
 
-| GOOS    | GOARCH | Artifact filename            |
-|---------|--------|------------------------------|
-| linux   | amd64  | `sngl-linux-amd64.gz`        |
-| linux   | arm64  | `sngl-linux-arm64.gz`        |
-| darwin  | amd64  | `sngl-darwin-amd64.gz`       |
-| darwin  | arm64  | `sngl-darwin-arm64.gz`       |
-| windows | amd64  | `sngl-windows-amd64.exe.gz`  |
+| GOOS    | GOARCH | Artifact filename           |
+|---------|--------|-----------------------------|
+| linux   | amd64  | `sngl-linux-amd64.gz`       |
+| linux   | arm64  | `sngl-linux-arm64.gz`       |
+| darwin  | amd64  | `sngl-darwin-amd64.gz`      |
+| darwin  | arm64  | `sngl-darwin-arm64.gz`      |
+| windows | amd64  | `sngl-windows-amd64.exe.gz` |
 
 The `sngl` CLI cross-compiles cleanly with `CGO_ENABLED=0`: the only CGo in
 the tree lives in the gtk4/fyne snapshot/test paths, which are build-tagged
-out of the CLI binary. Verified by a dry-run `CGO_ENABLED=0 GOOS=windows
-GOARCH=amd64 go build ./cmd/sngl`.
+out of the CLI binary. Verified by a dry-run `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/sngl`.
 
 Raw binaries are ~86 MB, so each is gzip-compressed individually
 (`compress/gzip`, stdlib) — roughly ~25 MB each. No tar/zip archive layout;
@@ -47,9 +46,9 @@ build-from-source instructions.
 type target struct{ goos, goarch string }
 
 type artifact struct {
-    os, arch string // display values
-    filename string // basename under downloads/
-    size     int64  // compressed size in bytes
+	os, arch string // display values
+	filename string // basename under downloads/
+	size     int64  // compressed size in bytes
 }
 
 var targets = []target{ /* the five above */ }
@@ -61,8 +60,7 @@ func buildBinaries(outDir, version, commit, date string) ([]artifact, error)
 
 Per target:
 
-1. `go build -o <tmpfile> -ldflags "-X main.version=<v> -X main.commit=<c>
-   -X main.date=<d>" ./cmd/sngl` with env `CGO_ENABLED=0`, `GOOS`, `GOARCH`.
+1. `go build -o <tmpfile> -ldflags "-X main.version=<v> -X main.commit=<c> -X main.date=<d>" ./cmd/sngl` with env `CGO_ENABLED=0`, `GOOS`, `GOARCH`.
 2. Open the temp binary, stream it through `gzip.Writer` into
    `<outDir>/downloads/<filename>`.
 3. `stat` the compressed file for its size; remove the temp binary.
@@ -120,11 +118,13 @@ replaced by the download table.
 
 ```go
 if *binaries {
-    arts, err := buildBinaries(*outDir, resolveVersion()...)
-    if err != nil { log.Fatalf("binaries: %v", err) }
-    if err := injectDownloads(*outDir, arts); err != nil {
-        log.Printf("downloads: %v", err)
-    }
+	arts, err := buildBinaries(*outDir, resolveVersion()...)
+	if err != nil {
+		log.Fatalf("binaries: %v", err)
+	}
+	if err := injectDownloads(*outDir, arts); err != nil {
+		log.Printf("downloads: %v", err)
+	}
 }
 ```
 
