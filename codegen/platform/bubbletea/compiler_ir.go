@@ -304,7 +304,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// ErrorEvent is emitted when any error-handling construct is present.
 	// The stdlib defines the struct but codegen doesn't flow stdlib types
 	// into user output, so it needs to materialise here.
-	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
+	if ctx.Pkg.UsesErrorHandling {
 		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
 	}
 

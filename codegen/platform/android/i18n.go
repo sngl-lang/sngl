@@ -30,26 +30,11 @@ func emitI18nManifestFile(sink codegen.Sink, cfg Config, projectFS fs.FS) error 
 	return writeAndroidFile(sink, "app/src/main/assets/"+snglI18n.ManifestFileName, data)
 }
 
-// hasI18nCalls reports whether the IR package contains any call to an i18n
-// intrinsic (i18n.tr, i18n.format, i18n.numberInt, etc.). When true the
-// android platform must inject the Kotlin i18n runtime and manifest.
+// hasI18nCalls reports whether the IR package uses i18n. When true the
+// android platform must inject the Kotlin i18n runtime and manifest. The
+// answer is stamped onto the package by the StampUsage lowering pass.
 func hasI18nCalls(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
-		c, ok := e.(*ir.Call)
-		if !ok {
-			return false
-		}
-		if snglI18n.IsCall(c) {
-			found = true
-			return true // signal stop
-		}
-		return false
-	})
-	return found
+	return pkg != nil && pkg.UsesI18n
 }
 
 // i18nRuntimeFile returns the OutputFile that should be written into the

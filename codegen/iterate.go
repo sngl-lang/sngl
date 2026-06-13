@@ -163,7 +163,7 @@ func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Compon
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if n.Component != nil && !isStdlibComponentName(n.Component.Name) {
+				if n.Component != nil && !n.Component.Stdlib {
 					if !reachable[n.Component] {
 						reachable[n.Component] = true
 						walkStmts(n.Component.Body)
@@ -195,7 +195,7 @@ func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Compon
 		}
 	}
 	for _, c := range pkg.Components {
-		if isStdlibComponentName(c.Name) {
+		if c.Stdlib {
 			continue
 		}
 		walkStmts(c.Body)
@@ -204,20 +204,6 @@ func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Compon
 		walkStmts(w.Body)
 	}
 	return reachable
-}
-
-// isStdlibComponentName reports names handled natively by each platform's
-// stdlib-component renderer rather than via user-component method emission.
-func isStdlibComponentName(name string) bool {
-	if name == "" {
-		return true
-	}
-	if len(name) > 5 && name[:5] == "sngl." {
-		return true
-	}
-	// Lowercase bare names are stdlib (vbox, hbox, text, input, …).
-	first := name[0]
-	return first >= 'a' && first <= 'z'
 }
 
 func componentsFor(comps []*ir.Component) []*ComponentCtx {

@@ -96,6 +96,8 @@ var passes = []pass{
 	passDeclarative,
 	passNodeEscape,
 	passNoRef,
+	passIterKind,
+	passStampUsage,
 }
 
 // Options controls a single Lower invocation.

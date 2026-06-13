@@ -7,7 +7,46 @@ sketches the IR / cap shape, not the implementation.
 
 ---
 
+## Re-evaluation (2026-06-11)
+
+Every finding re-checked against current code. Per-finding status lines added
+below (`> **Status (2026-06-11):**`). Summary:
+
+- **RESOLVED:** #10 (see bottom); #9 and #15 fixed 2026-06-11 (quick wins);
+  #1 and #18 fixed 2026-06-12 (Wave 1: `passStampUsage` stamps package usage
+  flags; #6 detection done, full alert lowering still deferred); #20 and #23
+  fixed 2026-06-12 (Wave 2: dead conversion branches removed; `IterKind`
+  stamped). #2 scaffold built (`ir.WalkStmts`); walker-migration long-tail open.
+- **Infra landed but not wired through:**
+  - `ir/walkexprs.go` `ir.WalkExprs` — shared *expression-only* walker. Adopted
+    by the i18n detectors (#1) but not the stmt-level walkers (#2).
+  - `ir.Component.Stdlib` field — exists and used by the checker, but codegen
+    still string-guesses (#15).
+  - `internal/lower/platform_filter.go` `passPlatformFilter` — runs in the
+    pipeline, yet gtk4 still hand-rolls its own copy and ErrorBoundary/SlotInst
+    are unhandled (#4, #9).
+- **OPEN (no pass, no IR field):** #3, #5, #6, #7, #8, #11, #12, #13, #14, #16,
+  #17, #18, #20, #21, #22, #23, #24.
+- **PARTIAL:** #1, #2, #4, #9, #15, #19.
+
+No findings removed: only #10 is complete and it was already in Resolved.
+
+---
+
 ## 1. i18n-usage detection re-implemented in every platform
+
+> **Status (2026-06-12): RESOLVED (package-level).** `ir.Package.UsesI18n` is
+> now stamped by the always-on `passStampUsage` lowering pass
+> (`internal/lower/usage.go`), which runs last so it sees post-inlining IR. The
+> i18n-call predicate moved into `ir` (`ir.IsI18nCall`/`IsI18nIntrinsic`/
+> `IsI18nPluralKey`); `codegen/i18n.IsCall` is now a thin alias. All three
+> package-level detectors (`html`/`android` `hasI18nCalls`, `golang.PackageUsesI18n`)
+> collapse to `return pkg != nil && pkg.UsesI18n` — the stamp uses the Go
+> backend's superset predicate (calls + plural-key Selects) so every backend
+> shares one definition. Verified: full suite green, example codegen byte-identical
+> (only pre-existing android style-order noise). *Remaining:* `html/html.go`
+> `exprUsesI18n` is a per-expression query (updater initOnly decision), not a
+> package predicate — left in place; folds into the #2 visitor scaffold.
 
 **Files:**
 - `codegen/platform/html/i18n.go:23` `hasI18nCalls`
@@ -39,6 +78,17 @@ collapsed to a direct intrinsic. Platform code becomes
 ---
 
 ## 2. `walkPkgExprs` / generic IR visitors duplicated across platforms
+
+> **Status (2026-06-12): PARTIAL — scaffold built.** `ir/walkexprs.go` is now a
+> unified `walker` carrying both an expr and a stmt callback; `ir.WalkExprs` and
+> the new `ir.WalkStmts(pkg, fn)` are its two entry points (one traversal, one
+> place to extend per new IR shape). The Wave-1/2 stamp passes use it
+> (`usage.go`, `iterkind.go`), and `analysis.go` `stmtsUseErrorHandling` +
+> `irStmtUsesAlert` were *deleted* (folded into `WalkStmts`-based passes).
+> *Remaining (long tail):* migrate the surviving bespoke walkers —
+> `collectUsedIRStmts`, html's `prewalkNodes`/`collectLoweredRefs`,
+> `fyne.collectNodeTags`, `gtk4.collectTagComponents`, routes.go walkers — onto
+> `WalkStmts`. Each is a separate, low-risk swap now that the scaffold exists.
 
 **Files:**
 - `codegen/platform/html/i18n.go:47-278` — html's `walkPkgExprs`
@@ -72,6 +122,12 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 ---
 
 ## 3. Stdlib-component → native-widget translation done per platform
+
+> **Status (2026-06-11): OPEN.** `NoStdlibWrappers` (`caps.go:147`, spelled
+> `StdlibWrappers`) is still html-only — only `html/html.go:61` sets it; no
+> other platform opts in. `bubbletea/view_ir.go:325` `renderStdlibComponent`,
+> `android/compose_ir.go:154` `renderStdlibComposable`,
+> `fyne/view_ir.go:209` `renderStdlibComponent` all remain.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:287` `renderStdlibComponent` (switch over
@@ -108,6 +164,14 @@ native nodes. Drop `renderStdlibComponent`/`renderStdlibComposable` entirely.
 ---
 
 ## 4. Visual-tree walker reimplemented in every platform
+
+> **Status (2026-06-11): PARTIAL.** `passPlatformFilter`
+> (`internal/lower/platform_filter.go:28`) lands and runs at `lower.go:75`, so
+> the PlatformFilter half of this finding is addressed in principle — but the
+> `case *ir.PlatformFilter` / `case *ir.ErrorBoundary` arms still exist in
+> `bubbletea/view_ir.go:183,198`, `android/compose_ir.go:38,44`, and many html
+> sites. No `passFlattenErrorBoundary`, no `NoErrorBoundary`/`NoSlotMarker`
+> cap. Render-loop `renderStmt` switches not yet trimmed.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:150` `renderStmt`
@@ -146,6 +210,13 @@ cases to 3 (`NodeInst`, `If`, `For`).
 
 ## 5. Computed-dep tracking done in CommonAnalysis from raw IR.Reads
 
+> **Status (2026-06-11): OPEN.** `Updater` is still a codegen-only struct
+> (`codegen/model.go:33`, `Deps map[*ir.Var]struct{}`); no `ir.Updater` IR node.
+> `codegen/deps.go` `DepTracker`/`ExprDeps` still drives platform emit.
+> See the #5 addendum at the bottom — `OptimizeMutation` is now invoked **only**
+> by html (`html.go:2517`); the deps engine's other consumers have thinned, so
+> the addendum's "annotate in lowering, delete the engine" path is closer.
+
 **Files:**
 - `codegen/analysis.go:65-99` populates `ComputedDeps` by walking
   `f.Reads` (which the *checker* fills in).
@@ -171,6 +242,14 @@ mutation platforms iterate them.
 ---
 
 ## 6. Toast / Alert lowering done per-platform
+
+> **Status (2026-06-12): PARTIAL.** *Detection* is migrated: `ir.Package.UsesAlert`
+> is stamped by `passStampUsage`; `analysis.go` `usesAlert`/`irStmtUsesAlert`/
+> `irExprUsesAlert` deleted, `NeedsToast = pkg.UsesAlert`. *Remaining (the big
+> part):* no `passLowerAlert`/`NoAlert` cap — the per-platform toast overlay
+> emission (bubbletea/fyne/gtk4 render + AlertFunc) is untouched. Full toast
+> *lowering* (synthesize toast-state var + root visual node so platforms see
+> normal IR) is deferred.
 
 **Files:**
 - `codegen/analysis.go:355` `usesAlert` (scans IR for `Alert.*` receiver calls)
@@ -202,6 +281,10 @@ Drop the per-platform NeedsToast/AlertFunc/toast-render code paths.
 
 ## 7. Style props translated per platform with overlapping shape
 
+> **Status (2026-06-11): OPEN.** No `Node.StyleProps []ir.StyleAssign`, no
+> `passApplyTerminalScale`. `bubbletea/view_ir.go:618` `buildIRStyleExpr` +
+> `:659` `irStyleCall`, `android/compose_ir.go:540` `buildModifierRaw` all live.
+
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:578` `buildIRStyleExpr` (lipgloss chain)
   + `:608` `irStyleCall` (per-prop switch: padding/margin/width/color/...)
@@ -230,6 +313,10 @@ separate `passApplyTerminalScale` enabled only by bubbletea.
 
 ## 8. Window collection / dynamic-href detection
 
+> **Status (2026-06-11): OPEN.** No `Window.IsDynamic`/`Window.Index` fields, no
+> normalization pass. `iterate.go:84` `collectWindows`, `html/html.go:170`
+> `rejectDynamicHrefs` (still codegen, not a checker diagnostic) remain.
+
 **Files:**
 - `codegen/iterate.go:84` `collectWindows`
 - `codegen/platform/html/html.go:102` `rejectDynamicHrefs`
@@ -255,6 +342,13 @@ diagnostic, not codegen logic.
 
 ## 9. `flattenPlatformFilters` hand-rolled in gtk4
 
+> **Status (2026-06-11): RESOLVED.** Confirmed every gtk4 codegen entry runs
+> `lower.Lower(pkg, caps, Options{Platform: "gtk4"})` (`cmd/sngl/pipeline.go:143`,
+> `dump.go`, `testdriver.go:82`), so the always-on `passPlatformFilter` strips
+> all `PlatformFilter` nodes before `mainBodyStmts`. gtk4's `flattenPlatformFilters`
+> was a no-op passthrough — deleted; `compiler_ir.go:325` now uses `mainBodyStmts`
+> directly. Full suite green.
+
 **File:** `codegen/platform/gtk4/compiler_ir.go:131-143`
 
 Hand-written 13-line function that does exactly what a lowering pass should
@@ -271,6 +365,12 @@ gtk4 helper outright.
 ---
 
 ## 10. Per-platform "compute focusables, focus index, button index" walks
+
+> **Status (2026-06-11): RESOLVED.** See the Resolved section at the bottom.
+> `passFocusOrder` (`internal/lower/focus_order.go`) lands the fix — note the
+> shipped form injects a synthesized `__focused` prop + `__focusNext/Prev`
+> funcs rather than the `NodeInst.FocusIndex` field the original sketch
+> proposed; net effect (single source of truth for focus order) is the same.
 
 **File:** `codegen/platform/bubbletea/compiler_ir.go:206-239` walks the visual
 tree to build `info.focusables []string` (one entry per focusable
@@ -293,6 +393,9 @@ instead of incrementing counters.
 
 ## 11. `idToNode` map built post-lowering by html.go's prewalk
 
+> **Status (2026-06-11): OPEN.** `prewalkNodes` still at `html/html.go:674`
+> (called `:932`); no `ir.Package.Nodes` index populated by `passReactivity`.
+
 **File:** `codegen/platform/html/html.go:574-645` `prewalkNodes` walks the
 already-lowered IR to build `g.idToNode` so that handler-translation
 (`OnPropAssign`) can map SNGL-prop names to DOM properties via
@@ -310,6 +413,10 @@ as it assigns ids. Delete `prewalkNodes`.
 ---
 
 ## 12. `collectNodeTags` (fyne) parallels gtk4's `collectTagComponents`
+
+> **Status (2026-06-11): OPEN.** No `ir.LocalVar.Tag`. `fyne/compiler_ir.go:905`
+> `collectNodeTags` and `gtk4/intrinsic_translator.go:94` `collectTagComponents`
+> both remain.
 
 **Files:**
 - `codegen/platform/fyne/compiler_ir.go:836` `collectNodeTags` — walks all
@@ -332,6 +439,10 @@ both helpers.
 
 ## 13. fyne / gtk4 parse blueprint `Signature` strings at codegen time
 
+> **Status (2026-06-11): OPEN.** `parseSignatureParams`
+> (`fyne/compiler_ir.go:1033`) still splits a literal Go signature string;
+> blueprint `Bindings.Signature` is still typed `string` (parsed at `:980`).
+
 **File:** `codegen/platform/fyne/compiler_ir.go:963` `parseSignatureParams`
 splits a literal Go signature string like `"func(s string)"` into IR params,
 then re-encodes them as `&ir.Param{Type: &ir.Type{Kind: ir.TypeDyn, Meta: "string"}}`. This is a tiny parser that exists because the blueprint table is
@@ -350,6 +461,11 @@ build the promoted-handler Func with those params set. Delete
 ---
 
 ## 14. `extractIRAssignTarget` re-extracts a two-way bind in 3 places
+
+> **Status (2026-06-11): OPEN.** No `ir.EventHandler.TwoWayTarget`. Helper lives
+> in `bubbletea/compiler_ir.go:944` and `fyne/compiler_ir.go:846`, called from
+> `bubbletea/compiler_ir.go:221`, `fyne/compiler_ir.go:1001`,
+> `fyne/view_ir.go:405`.
 
 **Files:**
 - `codegen/platform/bubbletea/compiler_ir.go:844` `extractIRAssignTarget`
@@ -373,6 +489,13 @@ helper.
 
 ## 15. `isStdlibComponentName` heuristic in codegen package
 
+> **Status (2026-06-11): RESOLVED.** `iterate.go` now reads `n.Component.Stdlib`
+> / `c.Stdlib` directly; the fragile lowercase/`sngl.`-prefix heuristic is
+> deleted. (Scope note: html.go's separate `isStdlibComponentName` is an
+> explicit name *allowlist*, not the heuristic this finding targeted, and it
+> keys on node names incl. non-components like `window`/`timer` — left as-is.)
+> Full suite green.
+
 **File:** `codegen/iterate.go:211` decides "is this name a stdlib component"
 purely by string shape (lowercase first letter, or `sngl.` prefix). Used by
 `collectReachableComponents` to skip component-method emission for stdlib
@@ -390,6 +513,9 @@ to checker — either is fine.
 
 ## 16. html.go `collectLoweredRefs` re-walks for element refs
 
+> **Status (2026-06-11): OPEN.** `collectLoweredRefs` at `html/html.go:2907`
+> (called `:2876`, `:3204`); no `ir.Package.LoweredRefs`.
+
 **File:** `codegen/platform/html/html.go:3548-3663` — full stmt+expr walker
 whose sole purpose is to find every `*ir.Ident{IsElementRef:true, Name:"__n*"}` and add it to `g.loweredRefs`. ~115 lines including the
 unhandled-stmt panic.
@@ -404,6 +530,9 @@ emitting one. Lowering can maintain a set on the Package
 ---
 
 ## 17. android compose's `Checkbox`-shape pattern matching
+
+> **Status (2026-06-11): OPEN.** No `NodeInst.BoundVar`. Pattern-match still at
+> `android/compose_ir.go:263-266`.
 
 **File:** `codegen/platform/android/compose_ir.go:256-269` peeks at the
 *first statement* of a checkbox's `@change` handler to find an `*ir.Toggle`
@@ -423,6 +552,12 @@ also cover `Toggle`. `Checkbox` and `Toggle` widgets pick up a stable
 
 ## 18. NeedsErrorHandling computed at codegen entry by every platform that supports it
 
+> **Status (2026-06-12): RESOLVED.** `ir.Package.UsesErrorHandling` stamped by
+> `passStampUsage` (walker moved verbatim into `internal/lower/usage.go`).
+> `codegen.PackageUsesErrorHandling` + `stmtsUseErrorHandling` deleted; the two
+> readers (`android`/`bubbletea compiler_ir.go`) use `ctx.Pkg.UsesErrorHandling`.
+> Full suite green.
+
 **File:** `codegen/analysis.go:150` `PackageUsesErrorHandling` — yet another
 ~80-line recursive stmt walker.
 
@@ -438,6 +573,13 @@ last lowering pass) and stash on `ir.Package`. Delete
 ---
 
 ## 19. Test functions bypass `lower.Lower` → a full testlower walker per language driver
+
+> **Status (2026-06-11): PARTIAL — grown, not shrunk.** All three testlower
+> files remain and are *larger*: `golang/testlower.go` 393 lines,
+> `kotlin/testlower.go` 534, `javascript/testlower.go` 154. No shared
+> `lowerTest` pass; test funcs still skip `lower.Lower` (`CollectTestFuncs` →
+> `LowerTestFile` at `gtk4.go:216`, `android.go:330`). Biggest duplicated
+> semantic block in the drivers — note kotlin nearly doubled since the audit.
 
 **Files:**
 - `codegen/lang/golang/testlower.go` (whole file: `lowerTestStmt`, `lowerTestIf`,
@@ -473,6 +615,14 @@ JS one already uses.
 
 ## 20. Builtin type conversions matched by function *name* in all three drivers
 
+> **Status (2026-06-12): RESOLVED.** Investigation showed the checker's
+> `inferBuiltinConversion` *already* materializes `ir.Conversion` for
+> string/int/float casts, and each driver's `evalConversion` already renders
+> them identically — so the name-keyed `evalCall` branches were dead. Deleted
+> from all three drivers; only the genuine builtins survive (`size`→`len` in Go,
+> `regex`→`RegExp` in JS — neither is a type conversion). Verified: example
+> codegen byte-identical, full suite green.
+
 **Files:**
 - `codegen/lang/golang/ircontext.go:406` (`evalCall`: `string`/`int`/`float`/`size`)
 - `codegen/lang/javascript/ircontext.go:346`
@@ -492,6 +642,10 @@ branches; route through the single `evalConversion`.
 ---
 
 ## 21. `null`→func/nillable "stub" desugaring duplicated across drivers
+
+> **Status (2026-06-11): OPEN.** Per-driver stubs intact:
+> `golang/ircontext.go:1037,1047`, `kotlin/ircontext.go:550,558`,
+> `javascript/ircontext.go:660,668`. No shared pass.
 
 **Files:**
 - `codegen/lang/golang/ircontext.go:806,832` (`isNullToFuncConv`, `nullFuncStubGo`)
@@ -515,6 +669,9 @@ zero-returning `ir.Lambda` once (drivers translate a normal lambda); emit plain
 
 ## 22. Native `(T, error)` call wrapped in an IIFE at codegen time
 
+> **Status (2026-06-11): OPEN.** `maybeWrapErrorReturn` still at
+> `golang/ircontext.go:493`; no normalizing pass. Go-only.
+
 **File:** `codegen/lang/golang/ircontext.go:370` (`maybeWrapErrorReturn`)
 
 **What it does:** When a native func has `HasErrorReturn`, codegen wraps the call
@@ -534,6 +691,13 @@ error-handling node) so the driver emits a 1:1 translation.
 
 ## 23. `ForHead` re-derives the map-vs-indexed iteration choice in all three drivers
 
+> **Status (2026-06-12): RESOLVED.** `ir.For.IterKind` (Element / Indexed /
+> MapEntries) added with `ir.DeriveIterKind`; stamped by the new always-on
+> late pass `passIterKind` (`internal/lower/iterkind.go`, using `ir.WalkStmts`)
+> after RefLoop so it sees the final loop shape. All three `ForHead`s are now
+> pure per-kind templates with no `n.Iter.ExprType()` map-branch. Verified:
+> example codegen byte-identical (todo loops included), full suite green.
+
 **Files:** `ForHead` in `codegen/lang/{golang,javascript,kotlin}/ircontext.go`
 
 **What it does:** Each `ForHead` makes the same decision — `iterType.Kind == TypeMap` → key/value iteration; else two-var → indexed; else single element —
@@ -551,6 +715,10 @@ stamps an explicit `IterKind` (MapEntries / Indexed / Element) on `ir.For`; each
 ---
 
 ## 24. html `rewriteSlotCallsToAnchors` rewrites synthesized slot-call args post-lowering
+
+> **Status (2026-06-11): OPEN.** `rewriteSlotCallsToAnchors` still at
+> `html/html.go:772`; `passReactivity` still threads a uniform `parent`
+> placeholder that this rewrite retargets.
 
 **File:** `codegen/platform/html/html.go:739` `rewriteSlotCallsToAnchors`
 
@@ -578,6 +746,13 @@ tree rewrite disappears.
 > bubbletea is the one legitimate `deps.go` consumer (RenderModel, no
 > `NoReactivity`); its `MutatedFields` use should become a lowering-pass
 > annotation so the engine can be deleted.
+>
+> **Update (2026-06-11):** `codegen.OptimizeMutation` is now invoked **only**
+> by html (`html.go:2517`) — fyne/gtk4 no longer call it. So the path to
+> deleting `iropt.go`'s mutation optimizer narrows to: (1) move bubbletea's
+> `MutatedFields` to a lowering annotation, (2) fold html's `OptimizeMutation`
+> survivors into `passReactivity`. `deps.go` `ExprDeps` is still consumed at
+> emit time by the mutation platforms.
 
 ---
 

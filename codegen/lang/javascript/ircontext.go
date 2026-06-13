@@ -170,22 +170,22 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
-	iterType := n.Iter.ExprType()
-	if iterType != nil && iterType.Kind == ir.TypeMap {
+	switch n.IterKind {
+	case ir.IterMapEntries:
 		// Map iteration: for (const [k, v] of m.entries()) { ... }
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iter)
-	}
-	if n.Value != "" {
+	case ir.IterIndexed:
 		// Two-var list/iter: Key is the index, Value the element. A list's
 		// .entries() yields [index, element], matching that order.
 		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, n.Value, iter)
+	default:
+		// Single-var list / iter<T>: for (const x of list) { ... }
+		return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
 	}
-	// Single-var list / iter<T>: for (const x of list) { ... }
-	return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
 }
 func (jc *JsIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
 func (jc *JsIRContext) ElseHead() string                    { return "} else {" }
@@ -404,26 +404,11 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Func != nil {
 		fname := n.Func.Name
 		args := jc.evalCallArgs(n.Args)
-		switch fname {
-		case "string":
-			if len(args) == 1 {
-				if jc.Ctx.Helpers != nil {
-					jc.Ctx.Helpers["String"] = true
-				}
-				return "String(" + args[0] + ")"
-			}
-		case "int":
-			if len(args) == 1 {
-				return "Math.trunc(" + args[0] + ")"
-			}
-		case "float":
-			if len(args) == 1 {
-				return "parseFloat(" + args[0] + ")"
-			}
-		case "regex":
-			if len(args) == 1 {
-				return "new RegExp(" + args[0] + ")"
-			}
+		// regex(x) is a genuine builtin (RegExp constructor). The primitive
+		// casts string/int/float are materialized as ir.Conversion by the
+		// checker and handled in evalConversion, so they never arrive here.
+		if fname == "regex" && len(args) == 1 {
+			return "new RegExp(" + args[0] + ")"
 		}
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync {

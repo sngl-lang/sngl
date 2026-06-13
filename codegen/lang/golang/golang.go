@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -341,34 +340,12 @@ func i18nPluralKeyGoName(snglName string) string {
 const SnglI18nImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 
 // PackageUsesI18n reports whether any function or component in pkg
-// contains an i18n stdlib call. Platform generators use this to
-// decide whether to add the SNGL i18n runtime import. Driven by
-// the shared ir.WalkExprs + snglI18n.IsCall; also catches the
-// i18n.zero/one/…/other plural-key Selects that survive as bare
-// idents in plural-map literals.
+// contains an i18n stdlib call. Platform generators use this to decide
+// whether to add the SNGL i18n runtime import. The answer is stamped onto
+// the package by the StampUsage lowering pass (which uses the same
+// call + plural-key-Select predicate this used to compute inline).
 func PackageUsesI18n(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
-		switch n := e.(type) {
-		case *ir.Call:
-			if snglI18n.IsCall(n) {
-				found = true
-				return true
-			}
-		case *ir.Select:
-			if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-				if i18nPluralKeyGoName(n.Field) != "" {
-					found = true
-					return true
-				}
-			}
-		}
-		return false
-	})
-	return found
+	return pkg != nil && pkg.UsesI18n
 }
 
 // NewFileEmitter returns a Go FileEmitter (see fileemit.go).

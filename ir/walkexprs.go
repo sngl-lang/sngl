@@ -13,28 +13,48 @@ import "fmt"
 // ContextProvider — are descended into; pure leaves (Literal, Ident,
 // ContextRead) are visited but have no sub-expressions.
 //
-// Panics on an unknown node kind. The convention matches the
-// platform-specific walkers it replaces (html/android i18n.go): each
-// new IR shape must extend WalkExprs in lockstep, but only this one
-// site needs the update.
+// Panics on an unknown node kind. The convention is that each new IR
+// shape must extend this one walker in lockstep, but only this site
+// needs the update — every platform/lang "does pkg use X" or "stamp X
+// on every node" query routes through WalkExprs / WalkStmts instead of
+// hand-rolling its own recursive switch.
 func WalkExprs(pkg *Package, fn func(Expr) bool) {
 	if pkg == nil {
 		return
 	}
-	w := exprWalker{fn: fn}
+	w := walker{exprFn: fn}
 	w.run(pkg)
 }
 
-type exprWalker struct {
-	fn   func(Expr) bool
-	done bool
+// WalkStmts visits every statement reachable from pkg (the same root set as
+// WalkExprs), calling fn for each in pre-order. Container statements are
+// visited before their children; statements nested inside handler/timer Func
+// bodies and inside lambda/closure expressions are reached too. fn returns
+// true to stop the walk early; a stamping pass that must visit everything
+// returns false unconditionally.
+func WalkStmts(pkg *Package, fn func(Stmt) bool) {
+	if pkg == nil {
+		return
+	}
+	w := walker{stmtFn: fn}
+	w.run(pkg)
 }
 
-func (w *exprWalker) visitExpr(e Expr) {
+// walker is the single IR traversal scaffold backing WalkExprs and WalkStmts.
+// exprFn and/or stmtFn may be nil; the corresponding nodes are still descended
+// into (so e.g. WalkStmts reaches statements buried inside lambda bodies even
+// though it sets no exprFn).
+type walker struct {
+	exprFn func(Expr) bool
+	stmtFn func(Stmt) bool
+	done   bool
+}
+
+func (w *walker) visitExpr(e Expr) {
 	if w.done || e == nil {
 		return
 	}
-	if w.fn(e) {
+	if w.exprFn != nil && w.exprFn(e) {
 		w.done = true
 		return
 	}
@@ -92,8 +112,12 @@ func (w *exprWalker) visitExpr(e Expr) {
 	}
 }
 
-func (w *exprWalker) visitStmt(s Stmt) {
+func (w *walker) visitStmt(s Stmt) {
 	if w.done || s == nil {
+		return
+	}
+	if w.stmtFn != nil && w.stmtFn(s) {
+		w.done = true
 		return
 	}
 	switch n := s.(type) {
@@ -107,10 +131,10 @@ func (w *exprWalker) visitStmt(s Stmt) {
 		w.visitStmts(n.Children)
 	case *CallStmt:
 		if n.Call != nil {
-			// The Call itself is an expression — feed it through fn so
+			// The Call itself is an expression — feed it through exprFn so
 			// callers that key off "any *Call" detect it at the stmt
 			// boundary as well as via expression descent.
-			if w.fn(n.Call) {
+			if w.exprFn != nil && w.exprFn(n.Call) {
 				w.done = true
 				return
 			}
@@ -166,7 +190,7 @@ func (w *exprWalker) visitStmt(s Stmt) {
 	}
 }
 
-func (w *exprWalker) visitStmts(stmts []Stmt) {
+func (w *walker) visitStmts(stmts []Stmt) {
 	for _, s := range stmts {
 		if w.done {
 			return
@@ -175,7 +199,7 @@ func (w *exprWalker) visitStmts(stmts []Stmt) {
 	}
 }
 
-func (w *exprWalker) visitFunc(f *Func) {
+func (w *walker) visitFunc(f *Func) {
 	if w.done || f == nil {
 		return
 	}
@@ -187,7 +211,7 @@ func (w *exprWalker) visitFunc(f *Func) {
 	w.visitStmts(f.Block)
 }
 
-func (w *exprWalker) visitVar(v *Var) {
+func (w *walker) visitVar(v *Var) {
 	if w.done || v == nil {
 		return
 	}
@@ -197,7 +221,7 @@ func (w *exprWalker) visitVar(v *Var) {
 	}
 }
 
-func (w *exprWalker) run(pkg *Package) {
+func (w *walker) run(pkg *Package) {
 	for _, v := range pkg.Consts {
 		w.visitExpr(v.Init)
 	}

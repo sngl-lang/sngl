@@ -181,9 +181,50 @@ type For struct {
 	// sees a RefElem loop. The headless interpreter (which does not lower)
 	// reads it directly to bind the element as a reference.
 	RefElem bool
+	// IterKind records how this loop iterates — element, (index, element),
+	// or (key, value) — so each language's ForHead emits a pure template
+	// instead of re-deriving the map-vs-list choice from Iter's type. Stamped
+	// by the passIterKind lowering pass (always-on, late, so it observes the
+	// final post-RefLoop shape). Zero value (IterElement) holds until lowering
+	// runs; the headless interpreter ignores it.
+	IterKind IterKind
 }
 
 func (*For) stmtNode() {}
+
+// IterKind classifies a For loop's iteration shape. DeriveIterKind computes it
+// from the loop's resolved Iter type and variable arity.
+type IterKind int
+
+const (
+	// IterElement is single-var iteration over a list/iter<T>: bind each
+	// element to Key.
+	IterElement IterKind = iota
+	// IterIndexed is two-var iteration over a list/iter<T>: bind (index,
+	// element) to (Key, Value).
+	IterIndexed
+	// IterMapEntries is iteration over a map: bind (key, value) to
+	// (Key, Value); Value may be empty (caller substitutes a discard).
+	IterMapEntries
+)
+
+// DeriveIterKind classifies n's iteration shape from its resolved Iter type
+// and variable arity — the single decision every language's ForHead used to
+// make independently. A map iterable yields key/value pairs; otherwise a
+// second variable means indexed iteration, and a lone variable binds the
+// element.
+func DeriveIterKind(n *For) IterKind {
+	if n == nil || n.Iter == nil {
+		return IterElement
+	}
+	if t := n.Iter.ExprType(); t != nil && t.Kind == TypeMap {
+		return IterMapEntries
+	}
+	if n.Value != "" {
+		return IterIndexed
+	}
+	return IterElement
+}
 
 // PlatformFilter is a type-checked platform statement with IR body.
 type PlatformFilter struct {

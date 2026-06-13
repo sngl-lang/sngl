@@ -350,7 +350,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// ErrorEvent is emitted when any error-handling construct is present
 	// (see bubbletea comment). The stdlib struct is not flowed through
 	// user output, so materialise it here.
-	if codegen.PackageUsesErrorHandling(ctx.Pkg) {
+	if ctx.Pkg.UsesErrorHandling {
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 	}
 

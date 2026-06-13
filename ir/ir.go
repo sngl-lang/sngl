@@ -79,6 +79,17 @@ type Package struct {
 	// for t.snapshot(). Empty when the package was built from merged input or
 	// in contexts where no single source file applies.
 	SourcePath string
+
+	// UsesI18n, UsesAlert, and UsesErrorHandling are stamped by the
+	// passStampUsage lowering pass (always-on, runs last) so codegen reads a
+	// field instead of re-walking the whole package. They reflect the
+	// fully-lowered IR for the active target — i18n in particular must be
+	// computed post-inlining, which the final-pass timing guarantees. Zero
+	// values (all false) hold until lowering runs; every codegen path lowers
+	// before generating, so readers never observe the unstamped state.
+	UsesI18n          bool
+	UsesAlert         bool
+	UsesErrorHandling bool
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.

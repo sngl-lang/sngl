@@ -131,23 +131,6 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	return nil
 }
 
-// flattenPlatformFilters expands `platform <target> { ... }` blocks: when
-// target matches the wanted platform, the body's statements are inlined;
-// non-matching blocks are dropped. Non-filter statements pass through.
-func flattenPlatformFilters(stmts []ir.Stmt, platform string) []ir.Stmt {
-	var out []ir.Stmt
-	for _, s := range stmts {
-		if pf, ok := s.(*ir.PlatformFilter); ok {
-			if pf.Platform == platform {
-				out = append(out, flattenPlatformFilters(pf.Body, platform)...)
-			}
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
-}
-
 // mainBodyStmts returns the body statements to render: prefer the first
 // window's body, otherwise fall back to the main component body.
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
@@ -339,7 +322,10 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	hasCanvas := len(canvasByID) > 0
 
 	var widgetFields []widgetField
-	bodyStmts := flattenPlatformFilters(mainBodyStmts(c.ctx), "gtk4")
+	// PlatformFilter nodes are already resolved by lower.passPlatformFilter
+	// (always-on, keyed on Options.Platform) before codegen, so mainBodyStmts
+	// never contains one here.
+	bodyStmts := mainBodyStmts(c.ctx)
 	var topLevelRefs []string
 	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {

@@ -264,6 +264,46 @@ var CanvasIntrinsics = []IntrinsicDef{
 	}, Return: TypVoid, Purity: PurityMutates},
 }
 
+// IsI18nCall reports whether c targets an i18n stdlib entry point. Two shapes
+// match: the pre-inlining wrapper (c.Func.Receiver == "i18n", e.g. i18n.tr /
+// i18n.numberInt) and the post-inlining direct intrinsic (c.Func.Intrinsic in
+// I18nIntrinsics, after NoContext+InlinePure collapse the wrapper). Either
+// match keeps "package uses i18n" correct regardless of which passes have run.
+func IsI18nCall(c *Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	if c.Func.Receiver == "i18n" {
+		return true
+	}
+	return IsI18nIntrinsic(c.Func.Intrinsic)
+}
+
+// IsI18nIntrinsic reports whether name matches one of I18nIntrinsics. Empty
+// name returns false (most user funcs carry no Intrinsic tag).
+func IsI18nIntrinsic(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i := range I18nIntrinsics {
+		if I18nIntrinsics[i].Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// IsI18nPluralKey reports whether name is a CLDR plural category (zero, one,
+// two, few, many, other). Plural-map literals carry these as bare i18n.<key>
+// Selects that survive lowering, so usage detection must recognize them.
+func IsI18nPluralKey(name string) bool {
+	switch name {
+	case "zero", "one", "two", "few", "many", "other":
+		return true
+	}
+	return false
+}
+
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {

@@ -224,22 +224,22 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
-	iterType := n.Iter.ExprType()
-	if iterType != nil && iterType.Kind == ir.TypeMap {
+	switch n.IterKind {
+	case ir.IterMapEntries:
 		// Map iteration: for ((k, v) in m) { ... }
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		return fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iter)
-	}
-	if n.Value != "" {
+	case ir.IterIndexed:
 		// Two-var list/iter: Key is the index, Value the element.
 		// withIndex() yields (index, element), matching that order.
 		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", n.Key, n.Value, iter)
+	default:
+		// Single-var list / iter<T>: for (x in list) { ... }
+		return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
 	}
-	// Single-var list / iter<T>: for (x in list) { ... }
-	return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
 }
 func (kc *KtIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
 func (kc *KtIRContext) ElseHead() string                    { return "} else {" }
@@ -325,20 +325,9 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if n.Func != nil {
 		fname := n.Func.Name
 		args := kc.evalCallArgs(n.Args)
-		switch fname {
-		case "string":
-			if len(args) == 1 {
-				return args[0] + ".toString()"
-			}
-		case "int":
-			if len(args) == 1 {
-				return args[0] + ".toInt()"
-			}
-		case "float":
-			if len(args) == 1 {
-				return args[0] + ".toDouble()"
-			}
-		}
+		// Primitive casts string/int/float are materialized as ir.Conversion
+		// by the checker and handled in evalConversion, so they never arrive
+		// here as a named call.
 		// IdentRewrites can redirect a bare func call to a method
 		// on a hoisted state object (e.g. `label()` →
 		// `state.label()` in Android test mode).

@@ -14,27 +14,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// hasI18nCalls reports whether the IR package contains any call to an i18n
-// intrinsic (i18n.tr, i18n.format, i18n.numberInt, etc.). When true the html
-// platform must inject the JS i18n runtime into the generated bundle.
+// hasI18nCalls reports whether the IR package uses i18n. When true the html
+// platform must inject the JS i18n runtime into the generated bundle. The
+// answer is stamped onto the package by the StampUsage lowering pass.
 func hasI18nCalls(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
-		c, ok := e.(*ir.Call)
-		if !ok {
-			return false
-		}
-		if snglI18n.IsCall(c) {
-			found = true
-			return true // signal stop
-		}
-		return false
-	})
-	return found
+	return pkg != nil && pkg.UsesI18n
 }
 
 // i18nRuntimeSnippet returns a self-contained JS snippet that declares a

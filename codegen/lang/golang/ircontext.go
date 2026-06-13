@@ -347,21 +347,21 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
-	iterType := n.Iter.ExprType()
-	if iterType != nil && iterType.Kind == ir.TypeMap {
+	switch n.IterKind {
+	case ir.IterMapEntries:
 		// Map iteration: for k, v := range m { ... }
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iter)
-	}
-	if n.Value != "" {
+	case ir.IterIndexed:
 		// Two-var list/iter: Key is the index, Value the element.
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
+	default:
+		// Single-var list / iter<T>: for _, x := range list { ... }
+		return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 	}
-	// Single-var list / iter<T>: for _, x := range list { ... }
-	return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -525,25 +525,12 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		fname := n.Func.Name
 		args := gc.evalCallArgs(n.Args)
 
-		// Builtin conversions
-		switch fname {
-		case "string":
-			if len(args) == 1 {
-				gc.RequireImport("fmt")
-				return "fmt.Sprint(" + args[0] + ")"
-			}
-		case "int":
-			if len(args) == 1 {
-				return "int(" + args[0] + ")"
-			}
-		case "float":
-			if len(args) == 1 {
-				return "float64(" + args[0] + ")"
-			}
-		case "size":
-			if len(args) == 1 {
-				return "len(" + args[0] + ")"
-			}
+		// size(x) is a length builtin, not a type conversion. The
+		// primitive casts string/int/float are materialized as ir.Conversion
+		// by the checker (inferBuiltinConversion) and handled in
+		// evalConversion, so they never arrive here as a named call.
+		if fname == "size" && len(args) == 1 {
+			return "len(" + args[0] + ")"
 		}
 
 		// Component-scope funcs (including computeds) live as methods on
