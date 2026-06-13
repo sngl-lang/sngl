@@ -18,6 +18,31 @@ Make **bubbletea** and **android** lower stdlib components the way **html/fyne/g
 - **fyne / gtk4** — wrappers inline to a single blueprint-carrying node; `fyne.sngl` declares `Constructor{goFn, goType, args, prelude, switches, imports}` + `Init/Reactive/Event` records, and a **generic** renderer (`fyne/view_ir.go` `renderFromBlueprint`) emits Go from that data with **no name switch**. This is the target model.
 - **bubbletea / android** — wrappers are kept; `bubbletea/view_ir.go` `renderStdlibComponent` (~150-line switch) and `android/compose_ir.go` `renderStdlibComposable` do the dispatch at codegen. `bubbletea.sngl` / `android.sngl` already carry per-widget metadata props (`join=`, `content=`, `focusable=`, `pkg=`, `modelType=`, …) on the wrapper bodies.
 
+## ⚠️ Premise correction (2026-06-13 probe)
+
+A probe found the original plan's step (1) — "flip `StdlibWrappers=false`, the
+wrappers inline, `renderRawTerminal` handles the primitives" — is **inert** for
+bubbletea. Instrumenting `passInlinePure` shows `sngl.vbox` under the cap has
+`pure=false, platImp=false`: its body is **empty** at lower time and its
+`n.Component` is the abstract `lib/` stub, not the `platform://bubbletea`
+component. The `bubbletea.sngl` `VJoin{slot}` body is never installed onto the
+stdlib component (bubbletea uses the Go-side `renderStdlibComponent` switch
+*instead of* the platform-body→inline path html uses). So the cap flip changes
+nothing and `renderStdlibComponent` still runs.
+
+**The actual work is structural and must come first:** make each platform's
+`.sngl` wrapper bodies install onto the stdlib components (so they carry a body
+at lower time and become pure/inlinable), in the checker's platform-package
+handling (`checker.go:381` `platform://` / `buildPkgFromDocs` / how
+`PlatformBodies` are populated — compare to how html's `sngl.vbox` body ends up
+installed). Confirm with the same instrumentation that `pure=true` (or
+`platImp=true`) for `sngl.vbox` under the cap before proceeding. Only then do the
+cap flip + renderer steps below — and the renderer's handling of the inlined
+`VJoin/HJoin/Styled/TextInput` primitives is **unverified** (inlining never
+actually happened in the probe), so validate it byte-exact. Also clean up the
+dead `expandStdlibComponent` + `propVals`/`slotChildren` in `bubbletea/view_ir.go`
+(a half-finished prior attempt at this exact migration).
+
 ## Plan (do bubbletea first, fully verify, then android)
 
 1. Study `fyne.sngl` + `fyne/view_ir.go renderFromBlueprint` as the reference for a data-driven renderer.

@@ -146,6 +146,39 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 > stdlib wrapper at once, so it can't be staged widget-by-widget — and the only
 > regression gate is the 60s+ snapshot suites. Each platform is its own
 > multi-hour, byte-exact redesign; do them in dedicated sessions.
+>
+> **Diagnosis update (2026-06-13) — the handoff premise was wrong.** Flipping
+> `StdlibWrappers=false` for bubbletea is **inert**: instrumenting
+> `passInlinePure`'s eligibility for `sngl.vbox` under the cap shows
+> `pure=false, platImp=false, strict=true` → the wrapper is skipped (neither the
+> pure path nor the strict platform-wrapper path fires), so `renderStdlibComponent`
+> still runs on the original `vbox` node and output is unchanged (an earlier
+> "byte-identical" reading was this no-op, not a working inline).
+>
+> Root cause: bubbletea's `sngl.vbox` arrives at lowering with an **empty body**
+> (`isPure` false because `len(Body)==0`) and its `n.Component` is the abstract
+> `lib/` stdlib stub (`Stdlib=true`), **not** the `platform://bubbletea`
+> component (`isPlatformStdlibComponent` false). The `bubbletea.sngl`
+> `component sngl.vbox { VJoin(join="vertical"){slot} }` body is **never
+> installed** onto the stdlib component — bubbletea implemented its widgets via
+> the Go-side `renderStdlibComponent` switch *instead of* the
+> PlatformBodies/`passPlatformExtensionBody` → `passInlinePure` path that html
+> uses (html has no `renderStdlibComponent` — it genuinely inlines to `html.div`
+> etc., proving the body-install path works there).
+>
+> **Therefore the real #3 work for bubbletea/android is structural, not a cap
+> flip + renderer swap:** (1) wire each platform's `.sngl` wrapper bodies through
+> the platform-body install mechanism so the stdlib component carries a body at
+> lower time (becoming pure/inlinable) — this is in the checker's platform-package
+> handling (`checker.go:381` `platform://`, `buildPkgFromDocs`, and how
+> `PlatformBodies` are populated); (2) only *then* does flipping `StdlibWrappers`
+> inline them; (3) verify `renderRawTerminal` (bubbletea) / the Compose
+> equivalent renders the inlined `VJoin/HJoin/Styled/TextInput` primitives
+> byte-exact — **this is unverified**, since inlining never actually happened in
+> this probe; (4) delete `renderStdlibComponent`/`renderStdlibComposable`. Plus
+> the dead `expandStdlibComponent` + `propVals`/`slotChildren` machinery in
+> `bubbletea/view_ir.go` is a half-finished prior attempt at exactly this — clean
+> it up as part of the work.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:287` `renderStdlibComponent` (switch over
