@@ -179,6 +179,34 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 > the dead `expandStdlibComponent` + `propVals`/`slotChildren` machinery in
 > `bubbletea/view_ir.go` is a half-finished prior attempt at exactly this — clean
 > it up as part of the work.
+>
+> **Probe 2 (2026-06-13) — scope is multi-subsystem, not just the renderer.**
+> Converting `bubbletea.sngl`'s `sngl.{vbox,text,input}` to the new
+> `component sngl.X { platform bubbletea { … } }` form *does* make
+> `mergePlatformExtensions` collect the bodies, `passPlatformExtensionBody`
+> install them, and `passInlinePure` inline them — confirmed: the widgets stop
+> hitting `renderStdlibComponent`. But the generated `hello` model is **badly
+> broken**, exposing that the inline path is only half the story:
+>   - **Prop substitution lost.** `sngl.text`'s `Styled(content=value)` renders
+>     `lipgloss.NewStyle().Render("")` — the caller's `value="Hello…"` never
+>     reaches the inlined `Styled` node (the param→arg substitution that the
+>     stdlib-name path did is gone).
+>   - **Model-field analysis keys on names.** `sngl.input` → the whole textinput
+>     machinery disappears: no `input0 textinput.Model` field, no
+>     `textinput.New()`/`.Focus()` init, `Init()` returns `nil` instead of
+>     `textinput.Blink`. The analysis that allocates input model fields scans for
+>     the `input` stdlib *name*, not the inlined `TextInput` primitive.
+>   - **Focus order keys on names.** `__focusID`/`__focusNext`/`__focusPrev` and
+>     the Tab handlers vanish — `passFocusOrder` / its consumers key on the
+>     stdlib widget names too.
+>
+> So #3-bubbletea requires reworking **prop substitution, input model-field
+> allocation, focus-order, and the view renderer** to all operate on the inlined
+> `VJoin/HJoin/Styled/TextInput` primitives + their metadata — a coordinated
+> multi-subsystem redesign. The `.sngl` rewrite is the easy 10%; the model/focus/
+> input analysis is the hard 90%. android (`renderStdlibComposable`) will have
+> the analogous Compose-side analysis coupling. Confirmed clean-revert; no code
+> landed.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:287` `renderStdlibComponent` (switch over
