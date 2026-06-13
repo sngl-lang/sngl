@@ -123,11 +123,29 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 
 ## 3. Stdlib-component → native-widget translation done per platform
 
-> **Status (2026-06-11): OPEN.** `NoStdlibWrappers` (`caps.go:147`, spelled
-> `StdlibWrappers`) is still html-only — only `html/html.go:61` sets it; no
-> other platform opts in. `bubbletea/view_ir.go:325` `renderStdlibComponent`,
-> `android/compose_ir.go:154` `renderStdlibComposable`,
-> `fyne/view_ir.go:209` `renderStdlibComponent` all remain.
+> **Status (2026-06-12): OPEN — mechanism mapped; needs a dedicated session
+> per platform.** Earlier "html-only" was wrong: **html, fyne, and gtk4 all set
+> `StdlibWrappers=false`** (`html.go:61`, `fyne.go:59`, `gtk4.go:144`). Three
+> distinct realizations of the inline:
+>   - **html** — wrappers inline to native `html.*` element bodies; codegen sees
+>     only native tags.
+>   - **fyne / gtk4** — wrappers inline to a single blueprint-carrying node
+>     (`fyne.sngl` `Constructor{goFn,goType,args,…}`); a *generic* renderer
+>     (`renderFromBlueprint`) emits Go from the blueprint data — **no name
+>     switch**. This is the model the audit wants.
+>   - **bubbletea / android** — wrappers are *kept* (no `NoStdlibWrappers`);
+>     `bubbletea/view_ir.go:324` `renderStdlibComponent` (~150-line switch on
+>     `vbox/hbox/text/button/…`) and `android/compose_ir.go:154`
+>     `renderStdlibComposable` do the dispatch at codegen.
+>
+> **Remaining work (precise):** enable `NoStdlibWrappers` for bubbletea and
+> android, then replace each name-keyed switch with a data-driven renderer
+> reading metadata the platform `.sngl` already carries (`join=`, `content=`,
+> `focusable=`, … for bubbletea; analogous for android), mirroring fyne's
+> blueprint. It is **all-or-nothing per platform** — the cap inlines every
+> stdlib wrapper at once, so it can't be staged widget-by-widget — and the only
+> regression gate is the 60s+ snapshot suites. Each platform is its own
+> multi-hour, byte-exact redesign; do them in dedicated sessions.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:287` `renderStdlibComponent` (switch over
