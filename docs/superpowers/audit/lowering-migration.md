@@ -281,9 +281,21 @@ Drop the per-platform NeedsToast/AlertFunc/toast-render code paths.
 
 ## 7. Style props translated per platform with overlapping shape
 
-> **Status (2026-06-11): OPEN.** No `Node.StyleProps []ir.StyleAssign`, no
-> `passApplyTerminalScale`. `bubbletea/view_ir.go:618` `buildIRStyleExpr` +
-> `:659` `irStyleCall`, `android/compose_ir.go:540` `buildModifierRaw` all live.
+> **Status (2026-06-12): PARTIAL — nondeterminism fixed, extraction unified.**
+> `codegen.NodeStyleFields` now returns an ordered `[]codegen.StyleField`
+> (source order) instead of a `map[string]ir.Expr`. This fixes a real bug:
+> android's `buildModifierRaw`/`textStyle` ranged the map, so `TextStyle(...)`
+> arg order was non-reproducible across builds — confirmed deterministic now
+> (regenerate-twice diff is empty). bubbletea sorts the slice (output
+> byte-identical); the caller-style merge in `renderRawTerminal` is a
+> deterministic `mergeStyleFields` (caller-wins) replacing the old map merge.
+> *Remaining:* the per-key *interpretation* switches (`irStyleCall` lipgloss,
+> `buildModifierRaw`/`textStyle` Modifier/TextStyle, html CSS) stay
+> platform-specific — that's inherent (lipgloss ≠ Compose ≠ CSS), not
+> duplication. The deeper `ir.NodeInst.StyleProps` + `passApplyTerminalScale`
+> form (move extraction into lowering, closed key enum) is deferred; it offers
+> marginal value over the shared ordered helper since extraction is trivial and
+> interpretation can't move.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:578` `buildIRStyleExpr` (lipgloss chain)

@@ -391,9 +391,19 @@ func NodeHasHandlers(n *ir.NodeInst) bool {
 	return len(n.Handlers) > 0
 }
 
-// NodeStyleFields extracts style sub-properties from a NodeInst's "style" prop.
-// Returns nil if no style prop or it's not a struct literal.
-func NodeStyleFields(n *ir.NodeInst) map[string]ir.Expr {
+// StyleField is one entry of a NodeInst's `style=` struct literal. Returned as
+// an ordered slice (not a map) so platform style emitters iterate
+// deterministically — a map range made android's TextStyle/Modifier emission
+// non-reproducible across builds.
+type StyleField struct {
+	Name  string
+	Value ir.Expr
+}
+
+// NodeStyleFields extracts style sub-properties from a NodeInst's "style" prop,
+// preserving source order. Returns nil if there's no style prop or it isn't a
+// struct literal.
+func NodeStyleFields(n *ir.NodeInst) []StyleField {
 	style := NodeProp(n, "style")
 	if style == nil {
 		return nil
@@ -402,11 +412,11 @@ func NodeStyleFields(n *ir.NodeInst) map[string]ir.Expr {
 	if !ok {
 		return nil
 	}
-	fields := make(map[string]ir.Expr, len(sl.Fields))
+	out := make([]StyleField, 0, len(sl.Fields))
 	for _, f := range sl.Fields {
-		fields[f.Name] = f.Value
+		out = append(out, StyleField{Name: f.Name, Value: f.Value})
 	}
-	return fields
+	return out
 }
 
 // --- IR literal extraction ---

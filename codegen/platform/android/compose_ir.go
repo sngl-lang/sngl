@@ -542,8 +542,8 @@ func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("testTag(%q)", id))
 	}
-	for prop, expr := range codegen.NodeStyleFields(n) {
-		if mod := composeModifier(prop, cc.kc.EvalExpr(expr)); mod != "" {
+	for _, sf := range codegen.NodeStyleFields(n) {
+		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
 	}
@@ -574,9 +574,9 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 		return ""
 	}
 	var styleParts []string
-	for prop, expr := range styleFields {
-		val := cc.kc.EvalExpr(expr)
-		switch prop {
+	for _, sf := range styleFields {
+		val := cc.kc.EvalExpr(sf.Value)
+		switch sf.Name {
 		case "fontSize":
 			styleParts = append(styleParts, fmt.Sprintf("fontSize = %s.sp", val))
 		case "fontWeight":

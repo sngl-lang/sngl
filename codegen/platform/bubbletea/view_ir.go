@@ -2,7 +2,6 @@ package bubbletea
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -525,12 +524,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	if vc.propVals != nil {
 		if callerStyle, ok := vc.propVals["style"]; ok {
 			if sl, ok2 := callerStyle.(*ir.StructLit); ok2 {
-				if styleFields == nil {
-					styleFields = make(map[string]ir.Expr)
-				}
-				for _, f := range sl.Fields {
-					styleFields[f.Name] = f.Value
-				}
+				styleFields = mergeStyleFields(styleFields, sl.Fields)
 			}
 		}
 	}
@@ -615,21 +609,39 @@ func (vc *irViewContext) renderChildrenNodes(children []ir.Stmt, resultVar strin
 }
 
 // buildIRStyleExpr builds a Go lipgloss style chain from IR style fields.
-func buildIRStyleExpr(styles map[string]ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
-	var chain []string
-	chain = append(chain, "lipgloss.NewStyle()")
-
-	if styles == nil {
-		return chain[0]
-	}
-
-	for _, prop := range slices.Sorted(maps.Keys(styles)) {
-		if call := irStyleCall(prop, styles[prop], gc, scaleFactor); call != "" {
+func buildIRStyleExpr(styles []codegen.StyleField, gc *golang.GoIRContext, scaleFactor int) string {
+	chain := []string{"lipgloss.NewStyle()"}
+	// Sort by property name: a lipgloss builder chain is order-independent, and
+	// a stable key order keeps the emitted source reproducible.
+	sorted := append([]codegen.StyleField(nil), styles...)
+	slices.SortFunc(sorted, func(a, b codegen.StyleField) int { return strings.Compare(a.Name, b.Name) })
+	for _, sf := range sorted {
+		if call := irStyleCall(sf.Name, sf.Value, gc, scaleFactor); call != "" {
 			chain = append(chain, call)
 		}
 	}
-
 	return strings.Join(chain, ".\n")
+}
+
+// mergeStyleFields applies caller-supplied style fields over base, the caller
+// winning on name collisions — preserving the override semantics the previous
+// map-based merge had, in a deterministic ordered form.
+func mergeStyleFields(base []codegen.StyleField, override []ir.FieldInit) []codegen.StyleField {
+	out := append([]codegen.StyleField(nil), base...)
+	for _, f := range override {
+		replaced := false
+		for i := range out {
+			if out[i].Name == f.Name {
+				out[i].Value = f.Value
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			out = append(out, codegen.StyleField{Name: f.Name, Value: f.Value})
+		}
+	}
+	return out
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A
