@@ -65,6 +65,34 @@ type widgetBind struct {
 	get    string
 }
 
+// widgetValueGoType is the Go type bubbles widget values currently round-trip
+// through: SetValue(string) / Value() string. A bind is only synced (seeded in
+// the constructor, pushed on Set, pulled back in Update) when its target model
+// field has this type. Non-string binds aren't supported yet — wiring them
+// would emit type-mismatched Go (e.g. SetValue on an int field). A follow-on
+// would carry the widget's value type in the Bind record so binds of other
+// types can be coerced or rejected explicitly.
+const widgetValueGoType = "string"
+
+// bindTargetSyncs reports whether a widget bind targeting model field `target`
+// may be synced to/from the widget — true only when the target's Go type
+// matches the widget value type (currently string). Keeps the constructor seed,
+// the Set* setter, and the Update reverse-sync consistent so a non-string bind
+// never emits type-mismatched Go.
+func bindTargetSyncs(binds []irBind, target string) bool {
+	if target == "" {
+		return false
+	}
+	for _, b := range binds {
+		if b.name == target {
+			return b.goType == widgetValueGoType
+		}
+	}
+	// Target not found among model binds (shouldn't happen for a real two-way
+	// bind); be conservative and don't emit a sync.
+	return false
+}
+
 // CompileIR generates a Go source file from IR using the new CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
@@ -415,7 +443,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", w.fieldName, w.placeholder)
 		}
 		for _, bd := range w.binds {
-			if bd.target != "" {
+			if bindTargetSyncs(info.binds, bd.target) {
 				fmt.Fprintf(&b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
 			}
 		}
@@ -618,7 +646,7 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		// Sync bound widgets
 		for _, w := range info.widgets {
 			for _, bd := range w.binds {
-				if bd.target == bind.name && bind.goType == "string" {
+				if bd.target == bind.name && bindTargetSyncs(info.binds, bd.target) {
 					fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bind.name)
 				}
 			}
@@ -746,7 +774,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		}
 		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s%s\n", w.fieldName, w.fieldName, w.model.Update)
 		for _, bd := range w.binds {
-			if bd.target != "" {
+			if bindTargetSyncs(info.binds, bd.target) {
 				fmt.Fprintf(b, "\t\tm.%s = m.%s%s\n", bd.target, w.fieldName, bd.get)
 			}
 		}
@@ -788,7 +816,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 				fmt.Fprintf(b, "\t\t\t%s\n", line)
 			}
 		}
-		syncMutatedInputs(b, block, info.widgets, gc)
+		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
 	emitLoopCase := func(slotIdx int, keyGuard, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
 		// Render body into a temp buffer to check if valName is actually used.
@@ -798,7 +826,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 				fmt.Fprintf(&tmp, "\t\t\t\t\t%s\n", line)
 			}
 		}
-		syncMutatedInputs(&tmp, block, info.widgets, gc)
+		syncMutatedInputs(&tmp, block, info.widgets, info.binds, gc)
 		body := tmp.String()
 		// Only bind element variable if the body actually references it.
 		emitVal := "_"
@@ -986,7 +1014,7 @@ func nodeFocusSlotIdx(n *ir.NodeInst) int {
 	return id
 }
 
-func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo, gc *golang.GoIRContext) {
+func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo, binds []irBind, gc *golang.GoIRContext) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
 		for v := range codegen.MutatedFields(nil, nil, stmt) {
@@ -995,7 +1023,7 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 	}
 	for _, w := range widgets {
 		for _, bd := range w.binds {
-			if bd.target != "" && mutated[bd.target] {
+			if mutated[bd.target] && bindTargetSyncs(binds, bd.target) {
 				fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
 			}
 		}

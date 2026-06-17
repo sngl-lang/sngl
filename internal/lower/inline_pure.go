@@ -415,15 +415,18 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		}
 	}
 
-	// Event-handler transfer: the wrapper body may declare its events
-	// purely as metadata (e.g. the bubbletea `Styled(events=[Event{...}])`
-	// primitive) without emitting them via @name(). Those wrappers never
-	// match in substituteEvents, so the user's call-site handlers (@click,
-	// @change, ...) would be lost. Carry any call-site handler not already
-	// consumed by an emit onto the first top-level primitive NodeInst of
-	// the body so platform codegen can find it. Handlers already wired
-	// through an explicit @name() emit in the body have been substituted in
-	// place above and are skipped here to avoid double-emission.
+	// Event-handler transfer (platform-independent rule): any pure wrapper
+	// that declares its events purely as metadata — rather than emitting
+	// them via an explicit @name() — gets its call-site handlers carried
+	// onto the first inlined node. For example the bubbletea
+	// `Styled(events=[Event{...}])` primitive describes activation as data;
+	// an html wrapper might do the same. Those wrappers never match in
+	// substituteEvents, so the user's call-site handlers (@click, @change,
+	// ...) would otherwise be lost. Carry any call-site handler not already
+	// consumed by an emit onto the first top-level primitive NodeInst of the
+	// body so platform codegen can find it. Handlers already wired through an
+	// explicit @name() emit in the body have been substituted in place above
+	// and are skipped here to avoid double-emission.
 	if len(callsite.Handlers) > 0 {
 		emitted := emittedHandlerNames(comp.Body)
 		var pending []ir.EventHandler

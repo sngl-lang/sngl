@@ -311,6 +311,13 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	// Any other node — a raw terminal element, or a component reference left
 	// over from a non-renderable fixture (e.g. an empty-body component pruned
 	// from Pkg.Components) — renders as a styled/joined terminal string.
+	//
+	// Production codegen always registers platforms, so every stdlib wrapper is
+	// inlined to a primitive above and never reaches here. Some checker-only
+	// test paths (TestFixtures, internal/snapshot TestGenerate) run bubbletea
+	// codegen WITHOUT registered platforms, so stdlib wrappers stay un-inlined
+	// and fall through to this raw-terminal renderer by design — it produces
+	// valid Go. (A loud guard here would break those paths; see #3 review.)
 	vc.renderRawTerminal(n, resultVar)
 }
 
@@ -375,12 +382,15 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		// per-Widget counter stays in lockstep with the allocated field names.
 		idx := vc.widgetCount
 		vc.widgetCount++
-		if idx < len(vc.widgets) {
-			w := vc.widgets[idx]
-			vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
-		} else {
-			vc.line(`%s = m.widget%d.View()`, resultVar, idx)
+		if idx >= len(vc.widgets) {
+			// The analyze walk and this view walk traverse the window body in the
+			// same order, so the per-Widget counter must stay in lockstep with the
+			// allocated field names. Running past the end means the two walks
+			// desynced — a codegen bug, not a recoverable state.
+			panic(fmt.Sprintf("bubbletea: widget index %d out of range (%d widgets analyzed); view/analyze walk desync", idx, len(vc.widgets)))
 		}
+		w := vc.widgets[idx]
+		vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
 	}
 }
 
