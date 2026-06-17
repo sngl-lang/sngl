@@ -25,9 +25,32 @@
 
 ---
 
-## Phase 0 — Param binding through new-form platform bodies
+## Phase 0 — Param binding through new-form platform bodies — ✅ RESOLVED (2026-06-17, commit b8f39b3e)
 
-Goal: a new-form bubbletea component whose body references a stdlib prop (e.g. `Styled(content=value)`) renders the caller's argument, not empty. This unblocks everything; land and verify it alone first.
+**Outcome: the planned checker fix was unnecessary — the premise was wrong.** The
+param-binding mechanism (`checkPendingExtensions` + the inliner's
+`substitute`/`substituteParams`) was already correct on `main`: a new-form
+`Styled(content=value)` body inlines with `value` correctly bound to the
+caller's arg (verified: resolves to `*ir.Param`, arg in bindings map,
+substitution yields `Styled(content="HELLO")`). The probe-2 "empty content" was
+purely **bubbletea codegen**: `renderStdlibComponent` re-implements rendering by
+node name; the inlined node is named `Styled`, which had no case → fell through
+to `default: Render("")`. Fix landed: a `case "Styled"` in `renderStdlibComponent`
+(transitional — Phase 2.2 replaces it with the blueprint-driven path) + a
+self-contained-ish test `TestNewFormTextBindsValue` + new-form `sngl.text` kept
+in `bubbletea.sngl` (the test needs the registered platform's body installed;
+`mergePlatformExtensions` ignores user-doc overrides).
+
+**Implications for the rest of the plan (de-risked):**
+- No checker work needed. Migration is purely: convert a component to new-form
+  → it inlines to a primitive (`Layout`/`Styled`/`Widget`) → handle that
+  primitive in codegen. The "name switch" shrinks from ~20 stdlib-name cases to
+  3 primitive cases (which Phase 1/2 route through the blueprint extractor).
+- The six-subsystem coupling still must be made primitive/metadata-driven for
+  `Widget` (field-alloc/init/update/bind/focus/events) — Phase 2.3/2.4 — but the
+  feared checker-scope rabbit hole is gone.
+
+Original Phase 0 tasks below are retained for history; **skip them** (done).
 
 ### Task 0.1: Reproduce the binding loss with a checker/lower test
 
@@ -122,7 +145,9 @@ struct Model {
     pkg string
 }
 
-struct Focus { enabled bool }
+struct Focus {
+    enabled bool
+}
 
 struct Bind {
     prop string
