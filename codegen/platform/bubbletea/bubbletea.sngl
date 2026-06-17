@@ -254,10 +254,12 @@ component sngl.tabs {
     }
 }
 
-component sngl.modal() {
-    if open {
-        VJoin(join="vertical") {
-            slot
+component sngl.modal {
+    platform bubbletea {
+        if open {
+            Layout(join=JoinDir.vertical, style={...style}) {
+                slot
+            }
         }
     }
 }
