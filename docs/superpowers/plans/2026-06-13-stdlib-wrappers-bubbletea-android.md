@@ -66,6 +66,7 @@ bash tmp/gen-matrix.sh /tmp/sngl-mig/current
 diff -rq /tmp/sngl-mig/baseline /tmp/sngl-mig/current | grep -vE '/\.(stdout|stderr|results|sngl)'
 go tool verify   # full suite; 0 failures required
 ```
+
 `tmp/gen-matrix.sh` runs `sngl generate` for every `examples/*` across the platform×lang matrix. The example most exercising stdlib widgets is `examples/showcase` (bubbletea, fyne, android targets) and `examples/todo`.
 
 ## Project conventions (from CLAUDE.md + repo memory)

@@ -123,20 +123,44 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 
 ## 3. Stdlib-component → native-widget translation done per platform
 
+> **Status (2026-06-17): RESOLVED for bubbletea; android still pending.**
+> bubbletea now inlines *every* stdlib wrapper to one of three blueprint
+> primitives — `Layout` / `Styled` / `Widget` — at lower time. The wrapper
+> bodies live in `codegen/platform/bubbletea/bubbletea.sngl` (new-form
+> `component sngl.X { platform bubbletea { … } }`), are installed onto the
+> stdlib components via the platform-extension-body path, and inline through
+> `passInlinePure` under `NoStdlibWrappers` (now enabled in
+> `bubbletea.go` `Capabilities`, `f.StdlibWrappers = false`). Codegen reads
+> each inlined primitive off a **blueprint record** extracted in
+> `blueprint.go` and rendered by `renderBlueprint` (`view_ir.go`) — no
+> name-keyed switch. The user-facing blueprint vocabulary is declared in
+> `bubbletea.sngl`: the `JoinDir` enum (`vertical`/`horizontal`) plus the
+> `Model` / `Focus` / `Bind` / `Event` records (Widget model metadata, focus
+> participation, prop read-back bindings, and key→event mappings). The legacy
+> `renderStdlibComponent` Go switch — and the dead `expandStdlibComponent`
+> +`propVals`/`slotChildren` machinery — are **deleted**; `renderNode` now
+> routes user components → `renderUserComponent`, the three primitives →
+> `renderBlueprint`, everything else → `renderRawTerminal`. All six example
+> apps generate + compile and the bubbletea snapshot/fixture suites pass.
+> `modal` (the last legacy parens-form wrapper) is converted to
+> `platform bubbletea { if open { Layout(join=vertical){slot} } }`, which
+> inlines cleanly. **android** remains on the kept-wrapper /
+> `renderStdlibComposable` path — a separate plan.
+>
 > **Status (2026-06-12): OPEN — mechanism mapped; needs a dedicated session
 > per platform.** Earlier "html-only" was wrong: **html, fyne, and gtk4 all set
 > `StdlibWrappers=false`** (`html.go:61`, `fyne.go:59`, `gtk4.go:144`). Three
 > distinct realizations of the inline:
->   - **html** — wrappers inline to native `html.*` element bodies; codegen sees
->     only native tags.
->   - **fyne / gtk4** — wrappers inline to a single blueprint-carrying node
->     (`fyne.sngl` `Constructor{goFn,goType,args,…}`); a *generic* renderer
->     (`renderFromBlueprint`) emits Go from the blueprint data — **no name
->     switch**. This is the model the audit wants.
->   - **bubbletea / android** — wrappers are *kept* (no `NoStdlibWrappers`);
->     `bubbletea/view_ir.go:324` `renderStdlibComponent` (~150-line switch on
->     `vbox/hbox/text/button/…`) and `android/compose_ir.go:154`
->     `renderStdlibComposable` do the dispatch at codegen.
+> - **html** — wrappers inline to native `html.*` element bodies; codegen sees
+>   only native tags.
+> - **fyne / gtk4** — wrappers inline to a single blueprint-carrying node
+>   (`fyne.sngl` `Constructor{goFn,goType,args,…}`); a *generic* renderer
+>   (`renderFromBlueprint`) emits Go from the blueprint data — **no name
+>   switch**. This is the model the audit wants.
+> - **bubbletea / android** — wrappers are *kept* (no `NoStdlibWrappers`);
+>   `bubbletea/view_ir.go:324` `renderStdlibComponent` (~150-line switch on
+>   `vbox/hbox/text/button/…`) and `android/compose_ir.go:154`
+>   `renderStdlibComposable` do the dispatch at codegen.
 >
 > **Remaining work (precise):** enable `NoStdlibWrappers` for bubbletea and
 > android, then replace each name-keyed switch with a data-driven renderer
@@ -187,18 +211,18 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 > install them, and `passInlinePure` inline them — confirmed: the widgets stop
 > hitting `renderStdlibComponent`. But the generated `hello` model is **badly
 > broken**, exposing that the inline path is only half the story:
->   - **Prop substitution lost.** `sngl.text`'s `Styled(content=value)` renders
->     `lipgloss.NewStyle().Render("")` — the caller's `value="Hello…"` never
->     reaches the inlined `Styled` node (the param→arg substitution that the
->     stdlib-name path did is gone).
->   - **Model-field analysis keys on names.** `sngl.input` → the whole textinput
->     machinery disappears: no `input0 textinput.Model` field, no
->     `textinput.New()`/`.Focus()` init, `Init()` returns `nil` instead of
->     `textinput.Blink`. The analysis that allocates input model fields scans for
->     the `input` stdlib *name*, not the inlined `TextInput` primitive.
->   - **Focus order keys on names.** `__focusID`/`__focusNext`/`__focusPrev` and
->     the Tab handlers vanish — `passFocusOrder` / its consumers key on the
->     stdlib widget names too.
+> - **Prop substitution lost.** `sngl.text`'s `Styled(content=value)` renders
+>   `lipgloss.NewStyle().Render("")` — the caller's `value="Hello…"` never
+>   reaches the inlined `Styled` node (the param→arg substitution that the
+>   stdlib-name path did is gone).
+> - **Model-field analysis keys on names.** `sngl.input` → the whole textinput
+>   machinery disappears: no `input0 textinput.Model` field, no
+>   `textinput.New()`/`.Focus()` init, `Init()` returns `nil` instead of
+>   `textinput.Blink`. The analysis that allocates input model fields scans for
+>   the `input` stdlib *name*, not the inlined `TextInput` primitive.
+> - **Focus order keys on names.** `__focusID`/`__focusNext`/`__focusPrev` and
+>   the Tab handlers vanish — `passFocusOrder` / its consumers key on the
+>   stdlib widget names too.
 >
 > So #3-bubbletea requires reworking **prop substitution, input model-field
 > allocation, focus-order, and the view renderer** to all operate on the inlined

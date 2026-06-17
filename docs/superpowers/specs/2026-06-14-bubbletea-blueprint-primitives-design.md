@@ -1,7 +1,10 @@
 # Design: bubbletea blueprint primitives (audit finding #3)
 
 **Date:** 2026-06-14
-**Status:** approved (design); pending spec review → implementation plan
+**Status:** implemented for bubbletea (2026-06-17). All stdlib wrappers inline to
+the `Layout`/`Styled`/`Widget` primitives via blueprint records; `NoStdlibWrappers`
+is enabled and `renderStdlibComponent` is deleted. See finding #3 status block in
+the audit for the resolved-state summary.
 **Audit:** `docs/superpowers/audit/lowering-migration.md` finding #3
 ("Stdlib-component → native-widget translation done per platform")
 
@@ -91,29 +94,39 @@ user code can reference them. Shapes (SNGL structs/enums):
 enum JoinDir { vertical, horizontal }
 
 struct Model {
-    type    string   // Go type, e.g. "textinput.Model"
-    new     string   // construction expr, e.g. "textinput.New()"
-    view    string   // view accessor, e.g. ".View()"
-    update  string   // update call, e.g. ".Update(msg)"
-    init    string   // optional Init() cmd, e.g. "textinput.Blink" ("" = none)
-    pkg     string   // Go import path to add
+    type string
+    new string
+    view string
+    update string
+    init string
+    pkg string
 }
+// Go type, e.g. "textinput.Model"
+// construction expr, e.g. "textinput.New()"
+// view accessor, e.g. ".View()"
+// update call, e.g. ".Update(msg)"
+// optional Init() cmd, e.g. "textinput.Blink" ("" = none)
+// Go import path to add
 
 struct Focus {
     enabled bool
 }
 
 struct Bind {
-    prop string   // sngl prop the widget two-way-binds (e.g. value)
-    get  string   // Go accessor read back into the bound var (e.g. ".Value()")
+    prop string
+    get string
 }
+// sngl prop the widget two-way-binds (e.g. value)
+// Go accessor read back into the bound var (e.g. ".Value()")
 
 struct Event {
-    on   string   // sngl event name (e.g. "click", "change")
-    key  string   // terminal key that triggers it (e.g. "enter", "space")
-    // handler body is supplied by the user's @event handler at the call site,
-    // spliced in via the normal event-substitution path.
+    on string
+    key string
 }
+// sngl event name (e.g. "click", "change")
+// terminal key that triggers it (e.g. "enter", "space")
+// handler body is supplied by the user's @event handler at the call site,
+// spliced in via the normal event-substitution path.
 
 // Primitive nodes:
 //   Layout(join=JoinDir.vertical) { slot }
@@ -143,23 +156,13 @@ component sngl.text {
 
 component sngl.input {
     platform bubbletea {
-        Widget(
-            model=Model{
-                type="textinput.Model", new="textinput.New()",
-                view=".View()", update=".Update(msg)", init="textinput.Blink",
-                pkg="charm.land/bubbles/v2/textinput",
-            },
-            focus=Focus{enabled=true},
-            binds=[Bind{prop=value, get=".Value()"}],
-            placeholder=placeholder,
-        ) {}
+        Widget(model=Model{type = "textinput.Model", new = "textinput.New()", view = ".View()", update = ".Update(msg)", init = "textinput.Blink", pkg = "charm.land/bubbles/v2/textinput"}, focus=Focus{enabled = true}, binds=[Bind{prop = value, get = ".Value()"}], placeholder=placeholder) {}
     }
 }
 
 component sngl.button {
     platform bubbletea {
-        Styled(content=text, focus=Focus{enabled=true},
-               events=[Event{on="click", key="enter"}]) {}
+        Styled(content=text, focus=Focus{enabled = true}, events=[Event{on = "click", key = "enter"}]) {}
     }
 }
 ```
@@ -203,14 +206,14 @@ before the subsystem rewrites.
 
 ### Bubbles wrapping plan
 
-| SNGL component(s)                      | Primitive | Bubbles widget |
-|----------------------------------------|-----------|----------------|
-| vbox, stack, scroll, card, drawer, tooltip, popover, table*, tree*, menu*, radio*, modal | Layout (vertical) | — |
-| hbox, tabs, splitview, menubar, toolbar | Layout (horizontal) | — |
-| text, badge, link, divider, avatar, image, spacer, datepicker, progress†, spinner† | Styled | — / (†→Widget later) |
-| button, checkbox, toggle, chip, select | Styled + focus + events | — |
-| input | Widget | textinput |
-| textarea | Widget | textarea |
+| SNGL component(s)                                                                        | Primitive               | Bubbles widget       |
+|------------------------------------------------------------------------------------------|-------------------------|----------------------|
+| vbox, stack, scroll, card, drawer, tooltip, popover, table*, tree*, menu*, radio*, modal | Layout (vertical)       | —                    |
+| hbox, tabs, splitview, menubar, toolbar                                                  | Layout (horizontal)     | —                    |
+| text, badge, link, divider, avatar, image, spacer, datepicker, progress†, spinner†       | Styled                  | — / (†→Widget later) |
+| button, checkbox, toggle, chip, select                                                   | Styled + focus + events | —                    |
+| input                                                                                    | Widget                  | textinput            |
+| textarea                                                                                 | Widget                  | textarea             |
 
 `*`/`†` Components with a natural Bubbles widget (list for menu/tree/select,
 table, spinner, progress) are wrapped as `Widget` where it improves behavior;
