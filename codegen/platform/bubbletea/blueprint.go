@@ -112,11 +112,21 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 	return bp
 }
 
-// extractJoinDir reads a JoinDir enum member off a prop value. Enum members
-// appear in IR as an *ir.Ident with Member set (e.g. "horizontal").
+// extractJoinDir reads a JoinDir enum member off a prop value. A bare enum
+// member appears as an *ir.Ident with Member set; a qualified `JoinDir.horizontal`
+// (the form the platform bodies use) survives as an *ir.Select whose Field names
+// the member. Either shape with the "horizontal" member selects the horizontal
+// axis; anything else (incl. "vertical") defaults to vertical.
 func extractJoinDir(e ir.Expr) joinDir {
-	if id, ok := e.(*ir.Ident); ok && id.Member == "horizontal" {
-		return joinHorizontal
+	switch v := e.(type) {
+	case *ir.Ident:
+		if v.Member == "horizontal" {
+			return joinHorizontal
+		}
+	case *ir.Select:
+		if v.Field == "horizontal" {
+			return joinHorizontal
+		}
 	}
 	return joinVertical
 }

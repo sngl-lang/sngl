@@ -304,6 +304,13 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
+	// Inlined blueprint primitive — render off its blueprint record rather than
+	// keying on a stdlib component name.
+	if n.Component != nil && (n.Name == "Layout" || n.Name == "Styled" || n.Name == "Widget") {
+		vc.renderBlueprint(n, resultVar)
+		return
+	}
+
 	// Stdlib component — map to terminal rendering based on name
 	if n.Component != nil {
 		vc.renderStdlibComponent(n, resultVar)
@@ -318,23 +325,45 @@ func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(vc.ctx.Pkg.Components, comp)
 }
 
-// renderStdlibComponent maps stdlib component names to their bubbletea terminal
-// rendering. This is equivalent to the platform package override bodies in
-// bubbletea.sngl but done directly in Go to avoid IR body expansion complexity.
-func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
+// renderBlueprint renders one inlined blueprint primitive (Layout, Styled, or
+// Widget) off the blueprint record extracted from its props, rather than keying
+// on a stdlib component name. The primitives are produced when a stdlib
+// component's `platform bubbletea { ... }` body is inlined (see bubbletea.sngl).
+func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
+	bp := extractBlueprint(n)
 	styleFields := codegen.NodeStyleFields(n)
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
-	switch n.Name {
-	case "Styled":
-		// New-form blueprint primitive (bubbletea.sngl platform bodies emit
-		// `Styled(content=..., focusable=...)`). The prop carries the already-
-		// inlined caller value; render it through lipgloss like the legacy
-		// name-keyed cases below. A present `__focused` prop (injected by
-		// passFocusOrder for focusable=true primitives) adds the cursor prefix.
+	switch bp.Kind {
+	case bpLayout:
+		// Join children vertically/horizontally, then apply style if present.
+		childrenVar := resultVar + "Children"
+		vc.line("var %s []string", childrenVar)
+		prevVertical := vc.vertical
+		vc.vertical = bp.Join == joinVertical
+		for i, child := range n.Children {
+			childVar := fmt.Sprintf("%s_%d", resultVar, i)
+			vc.line("var %s string", childVar)
+			vc.renderStmt(child, childVar)
+			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		}
+		vc.vertical = prevVertical
+		if bp.Join == joinVertical {
+			vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
+		} else {
+			vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, childrenVar)
+		}
+		if style != "lipgloss.NewStyle()" {
+			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+		}
+
+	case bpStyled:
+		// Render the content expression through lipgloss. A present `__focused`
+		// prop (injected by passFocusOrder for focusable primitives) adds the
+		// cursor prefix.
 		content := `""`
-		if v := vc.resolveProp(n, "content"); v != nil {
-			content = vc.gc.EvalExpr(v)
+		if bp.Content != nil {
+			content = vc.gc.EvalExpr(bp.Content)
 		}
 		vc.requireImport("fmt")
 		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
@@ -346,6 +375,19 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 			vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 		}
 
+	case bpWidget:
+		panic("bubbletea: Widget primitive not yet supported (phase 2.4)")
+	}
+}
+
+// renderStdlibComponent maps stdlib component names to their bubbletea terminal
+// rendering. This is equivalent to the platform package override bodies in
+// bubbletea.sngl but done directly in Go to avoid IR body expansion complexity.
+func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
+	styleFields := codegen.NodeStyleFields(n)
+	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
+
+	switch n.Name {
 	case "vbox", "stack", "scroll", "card", "radio",
 		"drawer", "tooltip", "popover", "table", "tree", "menu":
 		// Vertical join layout

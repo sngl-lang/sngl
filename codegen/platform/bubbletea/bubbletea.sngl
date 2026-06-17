@@ -50,31 +50,41 @@ struct Event {
 
 // --- Core Layout ---
 
-component sngl.vbox() {
-    VJoin(join="vertical") {
-        slot
+component sngl.vbox {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.hbox() {
-    HJoin(join="horizontal") {
-        slot
+component sngl.hbox {
+    platform bubbletea {
+        Layout(join=JoinDir.horizontal, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.stack() {
-    VJoin(join="vertical") {
-        slot
+component sngl.stack {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.spacer() {
-    Styled(content="") {}
+component sngl.spacer {
+    platform bubbletea {
+        Styled(content="", style={...style}) {}
+    }
 }
 
-component sngl.scroll() {
-    VJoin(join="vertical") {
-        slot
+component sngl.scroll {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
@@ -90,8 +100,10 @@ component sngl.button() {
     Styled(content=text, focusable=true) {}
 }
 
-component sngl.image() {
-    Styled(content="[image]") {}
+component sngl.image {
+    platform bubbletea {
+        Styled(content="[image]", style={...style}) {}
+    }
 }
 
 component sngl.input() {
@@ -110,9 +122,11 @@ component sngl.checkbox() {
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio() {
-    VJoin(join="vertical") {
-        slot
+component sngl.radio {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
@@ -128,31 +142,43 @@ component sngl.textarea() {
     Styled(content=value, focusable=true) {}
 }
 
-component sngl.datepicker() {
-    Styled(content=value) {}
+component sngl.datepicker {
+    platform bubbletea {
+        Styled(content=value, style={...style}) {}
+    }
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress() {
-    Styled(content="") {}
+component sngl.progress {
+    platform bubbletea {
+        Styled(content="", style={...style}) {}
+    }
 }
 
-component sngl.spinner() {
-    Styled(content="⣾") {}
+component sngl.spinner {
+    platform bubbletea {
+        Styled(content="⣾", style={...style}) {}
+    }
 }
 
-component sngl.badge() {
-    Styled(content=value) {}
+component sngl.badge {
+    platform bubbletea {
+        Styled(content=value, style={...style}) {}
+    }
 }
 
-component sngl.divider() {
-    Styled(content="─") {}
+component sngl.divider {
+    platform bubbletea {
+        Styled(content="─", style={...style}) {}
+    }
 }
 
-component sngl.card() {
-    VJoin(join="vertical") {
-        slot
+component sngl.card {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
@@ -160,13 +186,17 @@ component sngl.chip() {
     Styled(content=label, focusable=true) {}
 }
 
-component sngl.link() {
-    Styled(content=text) {}
+component sngl.link {
+    platform bubbletea {
+        Styled(content=text, style={...style}) {}
+    }
 }
 
-component sngl.tabs() {
-    HJoin(join="horizontal") {
-        slot
+component sngl.tabs {
+    platform bubbletea {
+        Layout(join=JoinDir.horizontal, style={...style}) {
+            slot
+        }
     }
 }
 
@@ -178,60 +208,80 @@ component sngl.modal() {
     }
 }
 
-component sngl.drawer() {
-    VJoin(join="vertical") {
-        slot
+component sngl.drawer {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.tooltip() {
-    VJoin(join="vertical") {
-        slot
+component sngl.tooltip {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.popover() {
-    VJoin(join="vertical") {
-        slot
+component sngl.popover {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.splitview() {
-    HJoin(join="horizontal") {
-        slot
+component sngl.splitview {
+    platform bubbletea {
+        Layout(join=JoinDir.horizontal, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.table() {
-    VJoin(join="vertical") {
-        slot
+component sngl.table {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.tree() {
-    VJoin(join="vertical") {
-        slot
+component sngl.tree {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.menu() {
-    VJoin(join="vertical") {
-        slot
+component sngl.menu {
+    platform bubbletea {
+        Layout(join=JoinDir.vertical, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.menubar() {
-    HJoin(join="horizontal") {
-        slot
+component sngl.menubar {
+    platform bubbletea {
+        Layout(join=JoinDir.horizontal, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.toolbar() {
-    HJoin(join="horizontal") {
-        slot
+component sngl.toolbar {
+    platform bubbletea {
+        Layout(join=JoinDir.horizontal, style={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.avatar() {
-    Styled(content=initials) {}
+component sngl.avatar {
+    platform bubbletea {
+        Styled(content=initials, style={...style}) {}
+    }
 }
