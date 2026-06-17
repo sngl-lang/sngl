@@ -326,6 +326,26 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	switch n.Name {
+	case "Styled":
+		// New-form blueprint primitive (bubbletea.sngl platform bodies emit
+		// `Styled(content=..., focusable=...)`). The prop carries the already-
+		// inlined caller value; render it through lipgloss like the legacy
+		// name-keyed cases below. A present `__focused` prop (injected by
+		// passFocusOrder for focusable=true primitives) adds the cursor prefix.
+		content := `""`
+		if v := vc.resolveProp(n, "content"); v != nil {
+			content = vc.gc.EvalExpr(v)
+		}
+		vc.requireImport("fmt")
+		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
+			vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
+			vc.line(`%sPrefix := " "`, resultVar)
+			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
+			vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
+		} else {
+			vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
+		}
+
 	case "vbox", "stack", "scroll", "card", "radio",
 		"drawer", "tooltip", "popover", "table", "tree", "menu":
 		// Vertical join layout

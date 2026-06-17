@@ -51,8 +51,10 @@ component sngl.scroll() {
 
 // --- Core Text & Media ---
 
-component sngl.text() {
-    Styled(content=value) {}
+component sngl.text {
+    platform bubbletea {
+        Styled(content=value, style={...style}) {}
+    }
 }
 
 component sngl.button() {
