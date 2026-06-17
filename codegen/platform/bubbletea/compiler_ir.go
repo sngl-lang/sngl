@@ -715,8 +715,8 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 // passFocusOrder turned into a loop slot; handlers inside it are emitted with a
 // loop-wrapped body that matches the cursor to the current iteration.
 func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For) {
-	emitStaticCase := func(slotIdx int, block []ir.Stmt) {
-		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
+	emitStaticCase := func(slotIdx int, keyGuard string, block []ir.Stmt) {
+		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d:\n", keyGuard, slotIdx)
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
 				fmt.Fprintf(b, "\t\t\t%s\n", line)
@@ -724,7 +724,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.inputs, gc)
 	}
-	emitLoopCase := func(slotIdx int, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
+	emitLoopCase := func(slotIdx int, keyGuard, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
 		// Render body into a temp buffer to check if valName is actually used.
 		var tmp strings.Builder
 		for _, stmt := range block {
@@ -739,7 +739,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		if strings.Contains(body, valName) {
 			emitVal = valName
 		}
-		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEnter && m.__focusID == %d:\n", slotIdx)
+		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d:\n", keyGuard, slotIdx)
 		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, emitVal, iterExpr)
 		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
 		b.WriteString(body)
@@ -748,11 +748,11 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		b.WriteString("\t\t\t}\n")
 	}
 
-	emitNodeCase := func(n *ir.NodeInst, block []ir.Stmt) {
+	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
 		if currentFor == nil {
 			// Static slot.
 			if idx := nodeFocusSlotIdx(n); idx >= 0 {
-				emitStaticCase(idx, block)
+				emitStaticCase(idx, keyGuard, block)
 			}
 			return
 		}
@@ -793,7 +793,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			valName = "_"
 		}
 		iterExpr := gc.EvalExpr(currentFor.Iter)
-		emitLoopCase(slotIdx, cursorIdent.Name, keyName, valName, iterExpr, block)
+		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, keyName, valName, iterExpr, block)
 	}
 
 	for _, s := range stmts {
@@ -808,15 +808,22 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
 		case *ir.NodeInst:
-			switch n.Name {
-			case "checkbox":
-				if h := codegen.NodeHandler(n, "change"); h != nil && h.Func != nil {
-					emitNodeCase(n, h.Func.Block)
+			// Blueprint-driven activation: an inlined Styled primitive that
+			// carries Event records maps each event name to a key. The user's
+			// handler for that event name was transferred onto the node during
+			// inlining (see inline_pure.go). Emit one Update() case per event,
+			// keyed on the mapped tea.Key* constant.
+			bp := extractBlueprint(n)
+			for _, ev := range bp.Events {
+				h := codegen.NodeHandler(n, ev.On)
+				if h == nil || h.Func == nil {
+					continue
 				}
-			case "button":
-				if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
-					emitNodeCase(n, h.Func.Block)
+				guard := teaKeyGuard(ev.Key)
+				if guard == "" {
+					continue
 				}
+				emitNodeCase(n, guard, h.Func.Block)
 			}
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
 		case *ir.SlotInst:
@@ -830,6 +837,31 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		default:
 			panic(fmt.Sprintf("bubbletea.emitIRButtonHandlersWalk: unhandled ir.Stmt %T", n))
 		}
+	}
+}
+
+// teaKeyGuard maps an Event record's `key` string to a bubbletea key-message
+// guard expression. Returns "" for an unknown key (the case is skipped).
+func teaKeyGuard(key string) string {
+	switch key {
+	case "enter":
+		return "msg.Code == tea.KeyEnter"
+	case "space":
+		return "msg.Code == tea.KeySpace"
+	case "tab":
+		return "msg.Code == tea.KeyTab"
+	case "esc", "escape":
+		return "msg.Code == tea.KeyEsc"
+	case "up":
+		return "msg.Code == tea.KeyUp"
+	case "down":
+		return "msg.Code == tea.KeyDown"
+	case "left":
+		return "msg.Code == tea.KeyLeft"
+	case "right":
+		return "msg.Code == tea.KeyRight"
+	default:
+		return ""
 	}
 }
 

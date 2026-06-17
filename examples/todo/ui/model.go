@@ -164,7 +164,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
-		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			for index, _ := range m.todos {
 				if m.__focusLoop2_cursor == index {
 					m.todos[index].Done = !m.todos[index].Done

@@ -487,6 +487,23 @@ func callListLength(iter ir.Expr) *ir.Call {
 // value is true. Checks the explicit prop first; falls back to the component's
 // default for that prop.
 func nodeEffectiveFocusable(n *ir.NodeInst) bool {
+	// Blueprint primitives (inlined Styled/Widget) declare focusability via a
+	// `focus=Focus{enabled=true}` record rather than a bare `focusable` prop.
+	for _, p := range n.Props {
+		if p.Name == "focus" {
+			if sl, ok := p.Value.(*ir.StructLit); ok {
+				for _, f := range sl.Fields {
+					if f.Name == "enabled" {
+						if lit, ok := f.Value.(*ir.Literal); ok {
+							return lit.Raw == "true"
+						}
+						return true
+					}
+				}
+			}
+			return false
+		}
+	}
 	for _, p := range n.Props {
 		if p.Name == "focusable" {
 			if lit, ok := p.Value.(*ir.Literal); ok {

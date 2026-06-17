@@ -415,7 +415,83 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		}
 	}
 
+	// Event-handler transfer: the wrapper body may declare its events
+	// purely as metadata (e.g. the bubbletea `Styled(events=[Event{...}])`
+	// primitive) without emitting them via @name(). Those wrappers never
+	// match in substituteEvents, so the user's call-site handlers (@click,
+	// @change, ...) would be lost. Carry any call-site handler not already
+	// consumed by an emit onto the first top-level primitive NodeInst of
+	// the body so platform codegen can find it. Handlers already wired
+	// through an explicit @name() emit in the body have been substituted in
+	// place above and are skipped here to avoid double-emission.
+	if len(callsite.Handlers) > 0 {
+		emitted := emittedHandlerNames(comp.Body)
+		var pending []ir.EventHandler
+		for _, h := range callsite.Handlers {
+			if _, ok := emitted[h.Name]; ok {
+				continue
+			}
+			pending = append(pending, h)
+		}
+		if len(pending) > 0 {
+			for _, s := range body {
+				if ni, ok := s.(*ir.NodeInst); ok {
+					ni.Handlers = append(ni.Handlers, pending...)
+					break
+				}
+			}
+		}
+	}
+
 	return body, nil
+}
+
+// emittedHandlerNames returns the set of event names the component body
+// invokes via an `@name()` emit (either *ir.Emit or a *ir.CallStmt over an
+// *ast.EventRefExpr). Handlers with these names are wired through
+// substituteEvents and must not also be transferred onto the root node.
+func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
+	out := map[string]struct{}{}
+	var visit func(stmts []ir.Stmt)
+	visit = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.Emit:
+				out[n.Name] = struct{}{}
+			case *ir.CallStmt:
+				if n.Call != nil && n.Call.AST != nil {
+					if ev, ok := n.Call.AST.Func.(*ast.EventRefExpr); ok {
+						out[ev.Name] = struct{}{}
+					}
+				}
+			case *ir.NodeInst:
+				visit(n.Children)
+				for _, h := range n.Handlers {
+					if h.Func != nil {
+						visit(h.Func.Block)
+					}
+				}
+			case *ir.If:
+				visit(n.Body)
+				visit(n.Else)
+			case *ir.For:
+				visit(n.Body)
+				visit(n.Else)
+			case *ir.PlatformFilter:
+				visit(n.Body)
+			case *ir.SlotInst:
+				visit(n.Children)
+			case *ir.ErrorBoundary:
+				visit(n.Children)
+			case *ir.Window:
+				visit(n.Body)
+			case *ir.ContextProvider:
+				visit(n.Children)
+			}
+		}
+	}
+	visit(stmts)
+	return out
 }
 
 // substituteParams walks stmts replacing every *ir.Ident whose Sym is a

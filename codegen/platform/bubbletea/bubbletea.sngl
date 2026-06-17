@@ -96,8 +96,15 @@ component sngl.text {
     }
 }
 
-component sngl.button() {
-    Styled(content=text, focusable=true) {}
+component sngl.button {
+    platform bubbletea {
+        Styled(
+            content=text,
+            focus=Focus{enabled=true},
+            events=[Event{on="click", key="enter"}],
+            style={...style}
+        ) {}
+    }
 }
 
 component sngl.image {
@@ -116,8 +123,15 @@ component sngl.input() {
     ) {}
 }
 
-component sngl.checkbox() {
-    Styled(content=label, focusable=true) {}
+component sngl.checkbox {
+    platform bubbletea {
+        Styled(
+            content=label,
+            focus=Focus{enabled=true},
+            events=[Event{on="change", key="space"}],
+            style={...style}
+        ) {}
+    }
 }
 
 // --- Tier 1: Core Input ---
@@ -130,12 +144,26 @@ component sngl.radio {
     }
 }
 
-component sngl.toggle() {
-    Styled(content=label, focusable=true) {}
+component sngl.toggle {
+    platform bubbletea {
+        Styled(
+            content=label,
+            focus=Focus{enabled=true},
+            events=[Event{on="change", key="space"}],
+            style={...style}
+        ) {}
+    }
 }
 
-component sngl.select() {
-    Styled(content=value, focusable=true) {}
+component sngl.select {
+    platform bubbletea {
+        Styled(
+            content=value,
+            focus=Focus{enabled=true},
+            events=[Event{on="change", key="enter"}],
+            style={...style}
+        ) {}
+    }
 }
 
 component sngl.textarea() {
@@ -182,8 +210,15 @@ component sngl.card {
     }
 }
 
-component sngl.chip() {
-    Styled(content=label, focusable=true) {}
+component sngl.chip {
+    platform bubbletea {
+        Styled(
+            content=label,
+            focus=Focus{enabled=true},
+            events=[Event{on="click", key="enter"}],
+            style={...style}
+        ) {}
+    }
 }
 
 component sngl.link {

@@ -388,7 +388,7 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	switch n.Name {
-	case "vbox", "stack", "scroll", "card", "radio",
+	case "vbox", "stack", "scroll", "card",
 		"drawer", "tooltip", "popover", "table", "tree", "menu":
 		// Vertical join layout
 		childrenVar := resultVar + "Children"
@@ -437,8 +437,11 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		vc.requireImport("fmt")
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 
-	case "button", "checkbox", "toggle", "select", "textarea", "chip":
-		// Styled focusable content
+	case "textarea":
+		// Styled focusable content. button/checkbox/toggle/select/chip are
+		// converted to inlined Styled blueprint primitives (see bubbletea.sngl)
+		// and render through renderBlueprint; only textarea stays on the legacy
+		// name-keyed path until Phase 2.4.
 		content := `""`
 		if v := codegen.NodeProp(n, "text"); v != nil {
 			content = vc.gc.EvalExpr(v)

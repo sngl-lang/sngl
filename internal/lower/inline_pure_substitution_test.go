@@ -6,6 +6,62 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// A pure wrapper whose body declares events as metadata (e.g. the bubbletea
+// Styled primitive's `events=[...]` prop) rather than emitting them via
+// @name() must still carry the user's call-site handler onto the inlined root
+// node — otherwise the handler is silently dropped and platform codegen can't
+// wire activation.
+func TestInlinePure_TransfersUnemittedHandler(t *testing.T) {
+	// component btn(text string, @click) { Styled(content=text) }
+	//   — body never invokes @click; it declares activation as metadata.
+	textParam := &ir.Param{Name: "text", Type: ir.TypString}
+	btn := &ir.Component{
+		Name:  "btn",
+		Props: []*ir.Prop{{Name: "text", Type: ir.TypString}},
+		Body: []ir.Stmt{
+			&ir.NodeInst{
+				Name: "Styled",
+				Props: []ir.Arg{{
+					Name:  "content",
+					Value: &ir.Ident{Name: "text", Sym: textParam, Type: ir.TypString},
+				}},
+			},
+		},
+	}
+	// component main { btn(text="OK", @click { ... }) }
+	clickHandler := ir.EventHandler{
+		Name: "click",
+		Func: &ir.Func{Block: []ir.Stmt{&ir.Return{}}},
+	}
+	main := &ir.Component{
+		Name: "main",
+		Body: []ir.Stmt{&ir.NodeInst{
+			Name:      "btn",
+			Component: btn,
+			Handlers:  []ir.EventHandler{clickHandler},
+		}},
+	}
+	pkg := &ir.Package{Components: []*ir.Component{btn, main}}
+
+	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerInlinePure: %v", err)
+	}
+
+	styled, ok := main.Body[0].(*ir.NodeInst)
+	if !ok || styled.Name != "Styled" {
+		t.Fatalf("expected inlined Styled at main.Body[0], got %T", main.Body[0])
+	}
+	var found bool
+	for _, h := range styled.Handlers {
+		if h.Name == "click" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("user @click handler not transferred onto inlined Styled node; handlers=%+v", styled.Handlers)
+	}
+}
+
 // A pure component whose body references a prop the call site omits must
 // have that reference substituted with the prop's zero-value, not left as a
 // bare param identifier (which leaks to codegen as e.g. disabled="disabled").
