@@ -19,6 +19,35 @@ struct Options {
     tests bool
 }
 
+// --- Blueprint vocabulary ---
+//
+// Blueprint records describe how a stdlib component renders through one of the
+// three inlined platform primitives (Layout, Styled, Widget). The Go extractor
+// in blueprint.go reads these off the inlined NodeInst.
+
+enum JoinDir { vertical, horizontal }
+
+struct Model {
+    type string
+    new string
+    view string
+    update string
+    init string
+    pkg string
+}
+
+struct Focus { enabled bool }
+
+struct Bind {
+    prop string
+    get string
+}
+
+struct Event {
+    on string
+    key string
+}
+
 // --- Core Layout ---
 
 component sngl.vbox() {
