@@ -14,18 +14,16 @@ import (
 
 // irViewContext tracks state during IR-based View() code generation.
 type irViewContext struct {
-	gc           *golang.GoIRContext
-	ctx          *codegen.CodegenCtx
-	scaleFactor  int
-	widgetCount  int
-	widgets      []widgetInfo
-	buf          *strings.Builder
-	indent       int
-	vertical     bool
-	inComponent  bool
-	slotVar      string
-	slotChildren []ir.Stmt          // caller's children for stdlib component slot expansion
-	propVals     map[string]ir.Expr // prop overrides during stdlib component expansion
+	gc          *golang.GoIRContext
+	ctx         *codegen.CodegenCtx
+	scaleFactor int
+	widgetCount int
+	widgets     []widgetInfo
+	buf         *strings.Builder
+	indent      int
+	vertical    bool
+	inComponent bool
+	slotVar     string
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
@@ -186,14 +184,9 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 			vc.renderStmt(bs, resultVar)
 		}
 	case *ir.SlotInst:
-		if len(vc.slotChildren) > 0 {
-			for i, child := range vc.slotChildren {
-				childVar := fmt.Sprintf("%sSlot%d", resultVar, i)
-				vc.line("var %s string", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line(`%s += %s`, resultVar, childVar)
-			}
-		} else if vc.slotVar != "" {
+		// Slot in a user component body — substitute the caller's joined
+		// children, threaded in as slotVar when the view function was opened.
+		if vc.slotVar != "" {
 			vc.line(`%s = %s`, resultVar, vc.slotVar)
 		}
 	case *ir.ErrorBoundary:
@@ -307,19 +300,17 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	}
 
 	// Inlined blueprint primitive — render off its blueprint record rather than
-	// keying on a stdlib component name.
+	// keying on a stdlib component name. Every stdlib wrapper is now inlined to
+	// one of these three primitives at lower time (NoStdlibWrappers); see
+	// bubbletea.sngl + blueprint.go.
 	if n.Component != nil && (n.Name == "Layout" || n.Name == "Styled" || n.Name == "Widget") {
 		vc.renderBlueprint(n, resultVar)
 		return
 	}
 
-	// Stdlib component — map to terminal rendering based on name
-	if n.Component != nil {
-		vc.renderStdlibComponent(n, resultVar)
-		return
-	}
-
-	// Raw terminal element
+	// Any other node — a raw terminal element, or a component reference left
+	// over from a non-renderable fixture (e.g. an empty-body component pruned
+	// from Pkg.Components) — renders as a styled/joined terminal string.
 	vc.renderRawTerminal(n, resultVar)
 }
 
@@ -393,136 +384,6 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	}
 }
 
-// renderStdlibComponent maps stdlib component names to their bubbletea terminal
-// rendering. This is equivalent to the platform package override bodies in
-// bubbletea.sngl but done directly in Go to avoid IR body expansion complexity.
-func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string) {
-	styleFields := codegen.NodeStyleFields(n)
-	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
-
-	switch n.Name {
-	case "vbox", "stack", "scroll", "card",
-		"drawer", "tooltip", "popover", "table", "tree", "menu":
-		// Vertical join layout
-		childrenVar := resultVar + "Children"
-		vc.line("var %s []string", childrenVar)
-		prevVertical := vc.vertical
-		vc.vertical = true
-		for i, child := range n.Children {
-			childVar := fmt.Sprintf("%s_%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
-		}
-		vc.vertical = prevVertical
-		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
-		if style != "lipgloss.NewStyle()" {
-			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
-		}
-
-	case "hbox", "tabs", "splitview", "menubar", "toolbar":
-		// Horizontal join layout
-		childrenVar := resultVar + "Children"
-		vc.line("var %s []string", childrenVar)
-		for i, child := range n.Children {
-			childVar := fmt.Sprintf("%s_%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
-		}
-		vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, childrenVar)
-		if style != "lipgloss.NewStyle()" {
-			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
-		}
-
-	case "text", "badge", "link", "image", "progress", "spinner", "divider", "avatar":
-		// Styled content
-		content := `""`
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		} else if v := codegen.NodeProp(n, "text"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		} else if v := codegen.NodeProp(n, "label"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		} else if v := codegen.NodeProp(n, "initials"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		}
-		vc.requireImport("fmt")
-		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
-
-	case "spacer":
-		vc.line(`%s = ""`, resultVar)
-
-	case "modal":
-		// Conditional container
-		if openExpr := codegen.NodeProp(n, "open"); openExpr != nil {
-			cond := vc.gc.EvalExpr(openExpr)
-			vc.line("if %s {", cond)
-			vc.indent++
-			childrenVar := resultVar + "Children"
-			vc.line("var %s []string", childrenVar)
-			for i, child := range n.Children {
-				childVar := fmt.Sprintf("%s_%d", resultVar, i)
-				vc.line("var %s string", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
-			}
-			vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
-			vc.indent--
-			vc.line("}")
-		}
-
-	case "datepicker":
-		content := `""`
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		}
-		vc.requireImport("fmt")
-		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
-
-	default:
-		// Unknown stdlib component — render children vertically
-		if len(n.Children) > 0 {
-			childrenVar := resultVar + "Children"
-			vc.line("var %s []string", childrenVar)
-			for i, child := range n.Children {
-				childVar := fmt.Sprintf("%s_%d", resultVar, i)
-				vc.line("var %s string", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
-			}
-			vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
-		} else {
-			vc.line(`%s = %s.Render("")`, resultVar, style)
-		}
-	}
-}
-
-// expandStdlibComponent inlines a stdlib component's platform override body,
-// substituting props from the caller and threading slot children.
-func (vc *irViewContext) expandStdlibComponent(n *ir.NodeInst, resultVar string) {
-	comp := n.Component
-
-	// Build prop value map from caller
-	propVals := make(map[string]ir.Expr)
-	for _, a := range n.Props {
-		propVals[a.Name] = a.Value
-	}
-
-	// Save and set slot children
-	savedSlot := vc.slotChildren
-	vc.slotChildren = n.Children
-
-	// Walk override body, substituting prop references
-	savedPropVals := vc.propVals
-	vc.propVals = propVals
-	for _, stmt := range comp.Body {
-		vc.renderStmt(stmt, resultVar)
-	}
-	vc.propVals = savedPropVals
-	vc.slotChildren = savedSlot
-}
-
 func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 	methodName := golang.ComponentRenderMethod(n.Name)
 
@@ -549,38 +410,12 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
 }
 
-// resolveProp returns the expression for a prop, checking propVals overrides first.
-func (vc *irViewContext) resolveProp(n *ir.NodeInst, name string) ir.Expr {
-	expr := codegen.NodeProp(n, name)
-	if expr == nil {
-		return nil
-	}
-	// During stdlib expansion, prop references (ir.Ident) may point to component
-	// params. Substitute with caller's actual values.
-	if vc.propVals != nil {
-		if ident, ok := expr.(*ir.Ident); ok {
-			if val, ok := vc.propVals[ident.Name]; ok {
-				return val
-			}
-		}
-	}
-	return expr
-}
-
 func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
-	// During stdlib expansion, merge caller's style with override's style
 	styleFields := codegen.NodeStyleFields(n)
-	if vc.propVals != nil {
-		if callerStyle, ok := vc.propVals["style"]; ok {
-			if sl, ok2 := callerStyle.(*ir.StructLit); ok2 {
-				styleFields = mergeStyleFields(styleFields, sl.Fields)
-			}
-		}
-	}
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	// Join layout
-	if joinExpr := vc.resolveProp(n, "join"); joinExpr != nil {
+	if joinExpr := codegen.NodeProp(n, "join"); joinExpr != nil {
 		if s, ok := codegen.IRLiteralString(joinExpr); ok {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
@@ -607,7 +442,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 
 	// Default: styled content
 	content := `""`
-	if v := vc.resolveProp(n, "content"); v != nil {
+	if v := codegen.NodeProp(n, "content"); v != nil {
 		content = vc.gc.EvalExpr(v)
 	}
 
@@ -660,27 +495,6 @@ func buildIRStyleExpr(styles []codegen.StyleField, gc *golang.GoIRContext, scale
 		}
 	}
 	return strings.Join(chain, ".\n")
-}
-
-// mergeStyleFields applies caller-supplied style fields over base, the caller
-// winning on name collisions — preserving the override semantics the previous
-// map-based merge had, in a deterministic ordered form.
-func mergeStyleFields(base []codegen.StyleField, override []ir.FieldInit) []codegen.StyleField {
-	out := append([]codegen.StyleField(nil), base...)
-	for _, f := range override {
-		replaced := false
-		for i := range out {
-			if out[i].Name == f.Name {
-				out[i].Value = f.Value
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			out = append(out, codegen.StyleField{Name: f.Name, Value: f.Value})
-		}
-	}
-	return out
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A

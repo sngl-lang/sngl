@@ -53,6 +53,7 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.FocusOrder = true
 	f.Canvas = true
 	f.ReactiveCanvas = false // RenderModel: View() re-runs each update, re-rasterizing the canvas; no explicit redraw
+	f.StdlibWrappers = false // strict: all stdlib wrappers must inline to Layout/Styled/Widget primitives
 	return f
 }
 
