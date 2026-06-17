@@ -40,7 +40,7 @@ func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) Package() []*ast.Document { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// Bubbletea accepts any tag name; its codegen reads metadata directly
-	// from blueprint .sngl bodies (VJoin/HJoin/Styled/TextInput).
+	// from blueprint .sngl bodies (Layout/Styled/Widget).
 	return &ir.Component{Name: identifier}
 }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {

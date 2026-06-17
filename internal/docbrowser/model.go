@@ -18,9 +18,9 @@ type Model struct {
 	ident2    string
 	__focusID int
 
-	input0 textinput.Model
-	input1 textinput.Model
-	input2 textinput.Model
+	widget0 textinput.Model
+	widget1 textinput.Model
+	widget2 textinput.Model
 
 	width, height int
 }
@@ -32,13 +32,16 @@ func New() Model {
 	m.ident1 = ""
 	m.ident2 = ""
 	m.__focusID = 0
-	m.input0 = textinput.New()
-	m.input0.Placeholder = "import path"
-	m.input0.Focus()
-	m.input1 = textinput.New()
-	m.input1.Placeholder = "decl"
-	m.input2 = textinput.New()
-	m.input2.Placeholder = "field/prop"
+	m.widget0 = textinput.New()
+	m.widget0.Placeholder = "import path"
+	m.widget0.SetValue(m.path)
+	m.widget0.Focus()
+	m.widget1 = textinput.New()
+	m.widget1.Placeholder = "decl"
+	m.widget1.SetValue(m.ident1)
+	m.widget2 = textinput.New()
+	m.widget2.Placeholder = "field/prop"
+	m.widget2.SetValue(m.ident2)
 	return m
 }
 
@@ -86,6 +89,7 @@ func (m Model) Path() string {
 
 func (m Model) SetPath(v string) Model {
 	m.path = v
+	m.widget0.SetValue(m.path)
 	return m
 }
 
@@ -101,6 +105,7 @@ func (m Model) Ident1() string {
 
 func (m Model) SetIdent1(v string) Model {
 	m.ident1 = v
+	m.widget1.SetValue(m.ident1)
 	return m
 }
 
@@ -116,6 +121,7 @@ func (m Model) Ident2() string {
 
 func (m Model) SetIdent2(v string) Model {
 	m.ident2 = v
+	m.widget2.SetValue(m.ident2)
 	return m
 }
 
@@ -148,47 +154,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
-				m.input0.Focus()
+				m.widget0.Focus()
 			} else {
-				m.input0.Blur()
+				m.widget0.Blur()
 			}
 			if m.__focusID == 1 {
-				m.input1.Focus()
+				m.widget1.Focus()
 			} else {
-				m.input1.Blur()
+				m.widget1.Blur()
 			}
 			if m.__focusID == 2 {
-				m.input2.Focus()
+				m.widget2.Focus()
 			} else {
-				m.input2.Blur()
+				m.widget2.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 			if m.__focusID == 0 {
-				m.input0.Focus()
+				m.widget0.Focus()
 			} else {
-				m.input0.Blur()
+				m.widget0.Blur()
 			}
 			if m.__focusID == 1 {
-				m.input1.Focus()
+				m.widget1.Focus()
 			} else {
-				m.input1.Blur()
+				m.widget1.Blur()
 			}
 			if m.__focusID == 2 {
-				m.input2.Focus()
+				m.widget2.Focus()
 			} else {
-				m.input2.Blur()
+				m.widget2.Blur()
 			}
 		}
 	}
 	if m.__focusID == 0 {
-		m.input0, cmd = m.input0.Update(msg)
+		m.widget0, cmd = m.widget0.Update(msg)
+		m.path = m.widget0.Value()
 	}
 	if m.__focusID == 1 {
-		m.input1, cmd = m.input1.Update(msg)
+		m.widget1, cmd = m.widget1.Update(msg)
+		m.ident1 = m.widget1.Value()
 	}
 	if m.__focusID == 2 {
-		m.input2, cmd = m.input2.Update(msg)
+		m.widget2, cmd = m.widget2.Update(msg)
+		m.ident2 = m.widget2.Value()
 	}
 	return m, cmd
 }
@@ -199,13 +208,13 @@ func (m Model) View() tea.View {
 	var content_0 string
 	var content_0Children []string
 	var content_0_0 string
-	content_0_0 = m.input0.View()
+	content_0_0 = m.widget0.View()
 	content_0Children = append(content_0Children, content_0_0)
 	var content_0_1 string
-	content_0_1 = m.input1.View()
+	content_0_1 = m.widget1.View()
 	content_0Children = append(content_0Children, content_0_1)
 	var content_0_2 string
-	content_0_2 = m.input2.View()
+	content_0_2 = m.widget2.View()
 	content_0Children = append(content_0Children, content_0_2)
 	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 	contentChildren = append(contentChildren, content_0)

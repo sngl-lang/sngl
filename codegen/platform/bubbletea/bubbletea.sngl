@@ -1,14 +1,11 @@
 // BubbleTea (Charm TUI) platform package.
 // Raw terminal components are implicitly available via APIResolver.
 //
-// Components use metadata props to tell the generator how to produce Go code:
-//   join="vertical|horizontal"  — layout join direction
-//   content=expr                — text content to render via lipgloss
-//   focusable=true              — allocates a focus index
-//   pkg="pkg/path"           — Go import to add
-//   modelType="type.Model"      — model struct field type
-//   modelNew="type.New()"       — initialization expression
-//   modelView=".View()"         — view method call pattern
+// Components render through three inlined blueprint primitives — Layout,
+// Styled, and Widget — described by the blueprint records below (JoinDir,
+// Model, Focus, Bind, Event). The Go extractor in blueprint.go reads these
+// off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
+// primitive lowers to lipgloss / bubbles model code.
 
 struct Options {
     // Go package name for the generated files.
@@ -113,14 +110,23 @@ component sngl.image {
     }
 }
 
-component sngl.input() {
-    TextInput(
-        pkg="charm.land/bubbles/v2/textinput",
-        modelType="textinput.Model",
-        modelNew="textinput.New()",
-        modelView=".View()",
-        placeholder=placeholder
-    ) {}
+component sngl.input {
+    platform bubbletea {
+        Widget(
+            model=Model{
+                type="textinput.Model",
+                new="textinput.New()",
+                view=".View()",
+                update=".Update(msg)",
+                init="textinput.Blink",
+                pkg="charm.land/bubbles/v2/textinput"
+            },
+            focus=Focus{enabled=true},
+            binds=[Bind{prop="value", get=".Value()"}],
+            placeholder=placeholder,
+            style={...style}
+        ) {}
+    }
 }
 
 component sngl.checkbox {
@@ -166,8 +172,21 @@ component sngl.select {
     }
 }
 
-component sngl.textarea() {
-    Styled(content=value, focusable=true) {}
+component sngl.textarea {
+    platform bubbletea {
+        Widget(
+            model=Model{
+                type="textarea.Model",
+                new="textarea.New()",
+                view=".View()",
+                update=".Update(msg)",
+                pkg="charm.land/bubbles/v2/textarea"
+            },
+            focus=Focus{enabled=true},
+            binds=[Bind{prop="value", get=".Value()"}],
+            style={...style}
+        ) {}
+    }
 }
 
 component sngl.datepicker {

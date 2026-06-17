@@ -22,7 +22,7 @@ type Model struct {
 	__focusID           int
 	__focusLoop2_cursor int
 
-	input0 textinput.Model
+	widget0 textinput.Model
 
 	width, height int
 }
@@ -34,10 +34,10 @@ func New() Model {
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
-	m.input0 = textinput.New()
-	m.input0.Placeholder = "Buy eggs"
-	m.input0.SetValue(m.newTodo)
-	m.input0.Focus()
+	m.widget0 = textinput.New()
+	m.widget0.Placeholder = "Buy eggs"
+	m.widget0.SetValue(m.newTodo)
+	m.widget0.Focus()
 	return m
 }
 
@@ -104,7 +104,7 @@ func (m Model) NewTodo() string {
 
 func (m Model) SetNewTodo(v string) Model {
 	m.newTodo = v
-	m.input0.SetValue(m.newTodo)
+	m.widget0.SetValue(m.newTodo)
 	return m
 }
 
@@ -150,16 +150,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
-				m.input0.Focus()
+				m.widget0.Focus()
 			} else {
-				m.input0.Blur()
+				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 			if m.__focusID == 0 {
-				m.input0.Focus()
+				m.widget0.Focus()
 			} else {
-				m.input0.Blur()
+				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
@@ -176,8 +176,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		m.input0, cmd = m.input0.Update(msg)
-		m.newTodo = m.input0.Value()
+		m.widget0, cmd = m.widget0.Update(msg)
+		m.newTodo = m.widget0.Value()
 	}
 	return m, cmd
 }
@@ -192,7 +192,7 @@ func (m Model) View() tea.View {
 	var content_1 string
 	var content_1Children []string
 	var content_1_0 string
-	content_1_0 = m.input0.View()
+	content_1_0 = m.widget0.View()
 	content_1Children = append(content_1Children, content_1_0)
 	var content_1_1 string
 	content_1_1Focused := (m.__focusID == 1)

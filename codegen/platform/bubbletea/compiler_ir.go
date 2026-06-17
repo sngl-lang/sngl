@@ -45,11 +45,24 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-type inputInfo struct {
+// widgetInfo describes one inlined Widget blueprint primitive (e.g. an `input`
+// backed by textinput, a `textarea` backed by textarea). It is model-meta-driven
+// — the field type, constructor, view/update methods, and init cmd all come from
+// the node's `Model` record rather than from the stdlib component name.
+type widgetInfo struct {
 	fieldName   string
-	bindTarget  string
-	placeholder string
-	focusExpr   string // Go expr that is true when this input is focused; "" = no tracking
+	model       modelMeta
+	binds       []widgetBind
+	placeholder string // Go-quoted-ready raw string; "" = no placeholder setter
+	focusExpr   string // Go expr that is true when this widget is focused; "" = no tracking
+}
+
+// widgetBind pairs a two-way bound model field with the user var it syncs to.
+// target is the Model field name the user's bind handler assigns to (e.g. "name");
+// get is the model getter method (e.g. ".Value()").
+type widgetBind struct {
+	target string
+	get    string
 }
 
 // CompileIR generates a Go source file from IR using the new CodegenCtx.
@@ -101,7 +114,7 @@ type irAnalysis struct {
 	binds     []irBind
 	externs   []irExtern
 	computeds []irComputed
-	inputs    []inputInfo
+	widgets   []widgetInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	gc        *golang.GoIRContext
 }
@@ -203,26 +216,52 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Walk visual tree for inputs. The __focused prop injected by passFocusOrder
-	// is evaluated to a Go expression; "" means focus tracking is not active.
+	// Walk visual tree for Widget blueprint primitives. Each carries a Model
+	// record (field type, constructor, view/update methods, init cmd, import) so
+	// the subsystem is model-meta-driven rather than keyed on a stdlib name. The
+	// __focused prop injected by passFocusOrder is evaluated to a Go expression;
+	// "" means focus tracking is not active.
 	wins := ctx.Windows()
 	for _, win := range wins {
 		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			if n.Name != "input" {
+			if n.Component == nil || n.Name != "Widget" {
 				return false
 			}
-			fieldName := ctx.Namer.Next("input")
+			bp := extractBlueprint(n)
+			if bp.Kind != bpWidget {
+				return false
+			}
+			fieldName := ctx.Namer.Next("widget")
 			placeholder := ""
-			if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
+			if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
 				placeholder = s
 			}
-			bindTarget := ""
-			if h := codegen.NodeHandler(n, "input"); h != nil && h.Func != nil {
-				bindTarget = extractIRAssignTarget(h.Func.Block)
+			// Two-way binds: find the Model var the bind syncs to. A `:value`
+			// bind lowers to a handler named after the prop ("value"); an
+			// explicit live-update handler (@input/@change) carries the same
+			// write. Check the prop-named handler first, then the live-update
+			// events, taking the first whose body assigns to a var. Pair that
+			// target with the model getter declared in the Bind record.
+			var binds []widgetBind
+			for _, bm := range bp.Binds {
+				target := ""
+				for _, hname := range []string{bm.Prop, "input", "change"} {
+					if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
+						if t := extractIRAssignTarget(h.Func.Block); t != "" {
+							target = t
+							break
+						}
+					}
+				}
+				binds = append(binds, widgetBind{target: target, get: bm.Get})
 			}
-			info.inputs = append(info.inputs, inputInfo{
+			if bp.Model.Pkg != "" {
+				gc.RequireImport(bp.Model.Pkg)
+			}
+			info.widgets = append(info.widgets, widgetInfo{
 				fieldName:   fieldName,
-				bindTarget:  bindTarget,
+				model:       bp.Model,
+				binds:       binds,
 				placeholder: placeholder,
 				focusExpr:   nodeStaticFocusExpr(n, gc),
 			})
@@ -258,19 +297,18 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	var b strings.Builder
 	gc := info.gc
 
-	// Structural framework imports: every model's Init/Update/View shells
-	// reference tea, and View renders through lipgloss. "fmt" is NOT structural
-	// — it's required at the emit site (irViewContext.line, and main below)
-	// only when an fmt.* reference is actually written.
+	// Structural framework import: every model's Init/Update/View shells
+	// reference tea. "lipgloss" and "fmt" are NOT structural — a view that
+	// renders only through a bubbles Widget (e.g. a lone textarea/input) emits
+	// neither, so both are required at the end gated on the rendered body
+	// referencing them.
 	gc.RequireImport("charm.land/bubbletea/v2")
-	gc.RequireImport("charm.land/lipgloss/v2")
 	if cfg.Main {
 		gc.RequireImport("os")
 		gc.RequireImport("fmt") // main() prints errors via fmt.Fprintf
 	}
-	if len(info.inputs) > 0 {
-		gc.RequireImport("charm.land/bubbles/v2/textinput")
-	}
+	// Widget model packages are required during analyzeIR (info.gc accumulates
+	// each Model.Pkg), so no structural widget import is needed here.
 
 	// Lang-tracked helpers (mustParse*) — picked up via HelpersNeeded.
 	helpers := golang.HelpersNeeded(ctx.Pkg)
@@ -348,10 +386,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.binds) > 0 {
 		b.WriteString("\n")
 	}
-	for _, inp := range info.inputs {
-		fmt.Fprintf(&b, "\t%s textinput.Model\n", inp.fieldName)
+	for _, w := range info.widgets {
+		fmt.Fprintf(&b, "\t%s %s\n", w.fieldName, w.model.Type)
 	}
-	if len(info.inputs) > 0 {
+	if len(info.widgets) > 0 {
 		b.WriteString("\n")
 	}
 	if info.NeedsToast {
@@ -370,16 +408,20 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
-	for i, inp := range info.inputs {
-		fmt.Fprintf(&b, "\tm.%s = textinput.New()\n", inp.fieldName)
-		if inp.placeholder != "" {
-			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", inp.fieldName, inp.placeholder)
+	firstFocusable := true
+	for _, w := range info.widgets {
+		fmt.Fprintf(&b, "\tm.%s = %s\n", w.fieldName, w.model.New)
+		if w.placeholder != "" {
+			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", w.fieldName, w.placeholder)
 		}
-		if inp.bindTarget != "" {
-			fmt.Fprintf(&b, "\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
+		for _, bd := range w.binds {
+			if bd.target != "" {
+				fmt.Fprintf(&b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
+			}
 		}
-		if i == 0 {
-			fmt.Fprintf(&b, "\tm.%s.Focus()\n", inp.fieldName)
+		if firstFocusable && w.focusExpr != "" {
+			fmt.Fprintf(&b, "\tm.%s.Focus()\n", w.fieldName)
+			firstFocusable = false
 		}
 	}
 	b.WriteString("\treturn m\n")
@@ -451,11 +493,21 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRGettersSetters(&b, info, ctx, gc)
 
 	// Init()
+	// Widget init cmds (e.g. textinput.Blink) — deduped, model-meta-driven.
+	var widgetInits []string
+	seenInit := map[string]bool{}
+	for _, w := range info.widgets {
+		if w.model.Init != "" && !seenInit[w.model.Init] {
+			seenInit[w.model.Init] = true
+			widgetInits = append(widgetInits, w.model.Init)
+		}
+	}
+
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
-		if len(info.inputs) > 0 {
-			b.WriteString("\tcmds = append(cmds, textinput.Blink)\n")
+		for _, wi := range widgetInits {
+			fmt.Fprintf(&b, "\tcmds = append(cmds, %s)\n", wi)
 		}
 		for _, t := range info.Timers {
 			tick := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
@@ -478,12 +530,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
 	} else if hasCanvas {
 		base := "nil"
-		if len(info.inputs) > 0 {
-			base = "textinput.Blink"
+		if len(widgetInits) > 0 {
+			base = strings.Join(widgetInits, ", ")
 		}
 		fmt.Fprintf(&b, "\treturn tea.Batch(%s, m.%s())\n", base, canvasTransmitMethodName)
-	} else if len(info.inputs) > 0 {
-		b.WriteString("\treturn textinput.Blink\n")
+	} else if len(widgetInits) == 1 {
+		fmt.Fprintf(&b, "\treturn %s\n", widgetInits[0])
+	} else if len(widgetInits) > 1 {
+		fmt.Fprintf(&b, "\treturn tea.Batch(%s)\n", strings.Join(widgetInits, ", "))
 	} else {
 		b.WriteString("\treturn nil\n")
 	}
@@ -511,7 +565,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n")
 	}
 
-	return b.String(), gc.Imports()
+	body := b.String()
+	// lipgloss is emitted via raw view strings (JoinVertical/NewStyle/Color/…)
+	// rather than through requireImport at each site. Require it only when the
+	// rendered body actually references it — a lone-Widget view emits none.
+	if strings.Contains(body, "lipgloss.") {
+		gc.RequireImport("charm.land/lipgloss/v2")
+	}
+
+	return body, gc.Imports()
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
@@ -553,10 +615,12 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		// Setter
 		fmt.Fprintf(b, "func (m Model) Set%s(v %s) Model {\n", getter, bind.goType)
 		fmt.Fprintf(b, "\tm.%s = v\n", bind.name)
-		// Sync bound inputs
-		for _, inp := range info.inputs {
-			if inp.bindTarget == bind.name && bind.goType == "string" {
-				fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", inp.fieldName, bind.name)
+		// Sync bound widgets
+		for _, w := range info.widgets {
+			for _, bd := range w.binds {
+				if bd.target == bind.name && bind.goType == "string" {
+					fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bind.name)
+				}
 			}
 		}
 		// Emit @change handlers from IR vars
@@ -658,10 +722,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0:\n")
 		b.WriteString("\t\t\tm.__focusNext()\n")
-		emitIRFocusSync(b, info.inputs)
+		emitIRFocusSync(b, info.widgets)
 		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:\n")
 		b.WriteString("\t\t\tm.__focusPrev()\n")
-		emitIRFocusSync(b, info.inputs)
+		emitIRFocusSync(b, info.widgets)
 	}
 
 	// Button/checkbox enter handlers from IR
@@ -673,16 +737,18 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
 
-	// Forward messages to focused input
-	for _, inp := range info.inputs {
-		if inp.focusExpr != "" {
-			fmt.Fprintf(b, "\tif %s {\n", inp.focusExpr)
+	// Forward messages to the focused widget, then sync two-way binds back.
+	for _, w := range info.widgets {
+		if w.focusExpr != "" {
+			fmt.Fprintf(b, "\tif %s {\n", w.focusExpr)
 		} else {
 			b.WriteString("\t{\n")
 		}
-		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s.Update(msg)\n", inp.fieldName, inp.fieldName)
-		if inp.bindTarget != "" {
-			fmt.Fprintf(b, "\t\tm.%s = m.%s.Value()\n", inp.bindTarget, inp.fieldName)
+		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s%s\n", w.fieldName, w.fieldName, w.model.Update)
+		for _, bd := range w.binds {
+			if bd.target != "" {
+				fmt.Fprintf(b, "\t\tm.%s = m.%s%s\n", bd.target, w.fieldName, bd.get)
+			}
 		}
 		b.WriteString("\t}\n")
 	}
@@ -722,7 +788,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 				fmt.Fprintf(b, "\t\t\t%s\n", line)
 			}
 		}
-		syncMutatedInputs(b, block, info.inputs, gc)
+		syncMutatedInputs(b, block, info.widgets, gc)
 	}
 	emitLoopCase := func(slotIdx int, keyGuard, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
 		// Render body into a temp buffer to check if valName is actually used.
@@ -732,7 +798,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 				fmt.Fprintf(&tmp, "\t\t\t\t\t%s\n", line)
 			}
 		}
-		syncMutatedInputs(&tmp, block, info.inputs, gc)
+		syncMutatedInputs(&tmp, block, info.widgets, gc)
 		body := tmp.String()
 		// Only bind element variable if the body actually references it.
 		emitVal := "_"
@@ -865,15 +931,15 @@ func teaKeyGuard(key string) string {
 	}
 }
 
-func emitIRFocusSync(b *strings.Builder, inputs []inputInfo) {
-	for _, inp := range inputs {
-		if inp.focusExpr == "" {
+func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
+	for _, w := range widgets {
+		if w.focusExpr == "" {
 			continue
 		}
-		fmt.Fprintf(b, "\t\t\tif %s {\n", inp.focusExpr)
-		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", inp.fieldName)
+		fmt.Fprintf(b, "\t\t\tif %s {\n", w.focusExpr)
+		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", w.fieldName)
 		b.WriteString("\t\t\t} else {\n")
-		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", inp.fieldName)
+		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", w.fieldName)
 		b.WriteString("\t\t\t}\n")
 	}
 }
@@ -920,16 +986,18 @@ func nodeFocusSlotIdx(n *ir.NodeInst) int {
 	return id
 }
 
-func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, inputs []inputInfo, gc *golang.GoIRContext) {
+func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo, gc *golang.GoIRContext) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
 		for v := range codegen.MutatedFields(nil, nil, stmt) {
 			mutated[v.Name] = true
 		}
 	}
-	for _, inp := range inputs {
-		if inp.bindTarget != "" && mutated[inp.bindTarget] {
-			fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", inp.fieldName, inp.bindTarget)
+	for _, w := range widgets {
+		for _, bd := range w.binds {
+			if bd.target != "" && mutated[bd.target] {
+				fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
+			}
 		}
 	}
 }

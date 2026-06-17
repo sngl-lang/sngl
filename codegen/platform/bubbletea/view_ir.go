@@ -17,7 +17,8 @@ type irViewContext struct {
 	gc           *golang.GoIRContext
 	ctx          *codegen.CodegenCtx
 	scaleFactor  int
-	inputCount   int
+	widgetCount  int
+	widgets      []widgetInfo
 	buf          *strings.Builder
 	indent       int
 	vertical     bool
@@ -63,6 +64,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		gc:          gc,
 		ctx:         ctx,
 		scaleFactor: cfg.ScaleFactor,
+		widgets:     info.widgets,
 		buf:         &strings.Builder{},
 		indent:      1,
 	}
@@ -376,7 +378,18 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		}
 
 	case bpWidget:
-		panic("bubbletea: Widget primitive not yet supported (phase 2.4)")
+		// Render the bubbles model's view. The widget's field name + view method
+		// come from the widgetInfo collected during analyzeIR; the view walk and
+		// the analyze walk traverse the window body in the same order, so the
+		// per-Widget counter stays in lockstep with the allocated field names.
+		idx := vc.widgetCount
+		vc.widgetCount++
+		if idx < len(vc.widgets) {
+			w := vc.widgets[idx]
+			vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
+		} else {
+			vc.line(`%s = m.widget%d.View()`, resultVar, idx)
+		}
 	}
 }
 
@@ -436,35 +449,6 @@ func (vc *irViewContext) renderStdlibComponent(n *ir.NodeInst, resultVar string)
 		}
 		vc.requireImport("fmt")
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
-
-	case "textarea":
-		// Styled focusable content. button/checkbox/toggle/select/chip are
-		// converted to inlined Styled blueprint primitives (see bubbletea.sngl)
-		// and render through renderBlueprint; only textarea stays on the legacy
-		// name-keyed path until Phase 2.4.
-		content := `""`
-		if v := codegen.NodeProp(n, "text"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		} else if v := codegen.NodeProp(n, "label"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		} else if v := codegen.NodeProp(n, "value"); v != nil {
-			content = vc.gc.EvalExpr(v)
-		}
-		focusedExpr := "false"
-		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
-			focusedExpr = vc.gc.EvalExpr(fp)
-		}
-		vc.line(`%sFocused := %s`, resultVar, focusedExpr)
-		vc.line(`%sPrefix := " "`, resultVar)
-		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
-		vc.requireImport("fmt")
-		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
-
-	case "input":
-		// Text input model widget
-		idx := vc.inputCount
-		vc.inputCount++
-		vc.line(`%s = m.input%d.View()`, resultVar, idx)
 
 	case "spacer":
 		vc.line(`%s = ""`, resultVar)
@@ -617,16 +601,6 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 			if style != "lipgloss.NewStyle()" {
 				vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
 			}
-			return
-		}
-	}
-
-	// Model widget (textinput)
-	if modelView := vc.resolveProp(n, "modelView"); modelView != nil {
-		if viewMethod, ok := codegen.IRLiteralString(modelView); ok {
-			idx := vc.inputCount
-			vc.inputCount++
-			vc.line(`%s = m.input%d%s`, resultVar, idx, viewMethod)
 			return
 		}
 	}
