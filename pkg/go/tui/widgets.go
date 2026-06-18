@@ -29,6 +29,36 @@ func StringItems(ss []string) []list.Item {
 	return out
 }
 
+// NewList builds a list.Model pre-configured for a simple SNGL list-backed
+// widget (menu / tree / select). It uses the default delegate, sizes the list
+// (a zero-sized list renders nothing), and strips the heavy chrome the bubbles
+// list shows by default — title, status bar, help footer, pagination, and
+// filtering — so the result is a clean scrollable list of rows. Callers that
+// want any of that back can flip the corresponding setter afterward.
+func NewList(items []list.Item, w, h int) list.Model {
+	m := list.New(items, list.NewDefaultDelegate(), w, h)
+	m.SetShowTitle(false)
+	m.SetShowStatusBar(false)
+	m.SetShowHelp(false)
+	m.SetShowPagination(false)
+	m.SetShowFilter(false)
+	m.SetFilteringEnabled(false)
+	return m
+}
+
+// SelectedString returns the underlying string of the list's current
+// selection. It is nil-safe: a list with no items (or no selection) has a nil
+// SelectedItem, so this returns "" rather than panicking. The selected item is
+// expected to be a StringItem (or any list.Item), and its FilterValue carries
+// the row's string.
+func SelectedString(m list.Model) string {
+	it := m.SelectedItem()
+	if it == nil {
+		return ""
+	}
+	return it.FilterValue()
+}
+
 // Columns converts a slice of column names into table.Column values. Each
 // column's width defaults to the header length plus padding so the title is
 // always visible; callers can re-set widths afterwards if needed.

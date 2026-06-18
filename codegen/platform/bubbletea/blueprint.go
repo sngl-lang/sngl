@@ -130,9 +130,15 @@ type modelMeta struct {
 // bindMeta mirrors the SNGL `Bind` record: a two-way binding between a SNGL
 // prop and the getter on the underlying bubbles model (e.g. prop "value"
 // reads back via ".Value()").
+// Set is the method appended to the model field to push the SNGL target value
+// back into the widget (e.g. ".SetValue" → m.field.SetValue(m.target)). When
+// empty the bind is read-only: the widget owns its value and SNGL only reads
+// the selection/value back via Get. List-backed widgets (menu/tree/select) are
+// read-only this way — their items come from a data prop, not the bind target.
 type bindMeta struct {
 	Prop string
 	Get  string
+	Set  string
 }
 
 // eventMeta mirrors the SNGL `Event` record: a key-triggered event handler
@@ -279,6 +285,9 @@ func extractBinds(e ir.Expr) []bindMeta {
 		}
 		if v := structField(sl, "get"); v != nil {
 			b.Get, _ = codegen.IRLiteralString(v)
+		}
+		if v := structField(sl, "set"); v != nil {
+			b.Set, _ = codegen.IRLiteralString(v)
 		}
 		out = append(out, b)
 	}

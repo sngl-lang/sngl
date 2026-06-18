@@ -59,10 +59,31 @@ type widgetInfo struct {
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
 // target is the Model field name the user's bind handler assigns to (e.g. "name");
-// get is the model getter method (e.g. ".Value()").
+// get is the read-back getter (see emitBindReadBack); set is the write-back
+// method appended to the field (e.g. ".SetValue"), or "" for a read-only bind
+// (list-backed widgets, whose items come from a data prop not the bind target).
 type widgetBind struct {
 	target string
 	get    string
+	set    string
+}
+
+// bindReadBack builds the Go expression that reads a widget's current value out
+// of model field `field`, given the Bind record's `get`. Two shapes are
+// supported:
+//
+//	get = ".Value()"          → m.<field>.Value()            (method chain)
+//	get = "tui.SelectedString" → tui.SelectedString(m.<field>) (converter wrap)
+//
+// The converter-wrap form (any get starting with "tui.") lets a list-backed
+// widget read its selection through a nil-safe helper — m.<field>.SelectedItem()
+// can be nil, so a bare ".SelectedItem().FilterValue()" chain would panic on an
+// empty list. Wrapping centralizes the nil guard in pkg/go/tui.
+func bindReadBack(field, get string) string {
+	if strings.HasPrefix(get, "tui.") {
+		return get + "(m." + field + ")"
+	}
+	return "m." + field + get
 }
 
 // widgetValueGoType is the Go type bubbles widget values currently round-trip
@@ -273,7 +294,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			var binds []widgetBind
 			for _, bm := range bp.Binds {
 				target := ""
-				for _, hname := range []string{bm.Prop, "input", "change"} {
+				for _, hname := range []string{bm.Prop, "input", "change", "select"} {
 					if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
 						if t := extractIRAssignTarget(h.Func.Block); t != "" {
 							target = t
@@ -281,7 +302,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 						}
 					}
 				}
-				binds = append(binds, widgetBind{target: target, get: bm.Get})
+				binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
 			}
 			if bp.Model.Pkg != "" {
 				gc.RequireImport(bp.Model.Pkg)
@@ -462,11 +483,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", w.fieldName, w.placeholder)
 		}
 		for _, bd := range w.binds {
-			if bindTargetSyncs(info.binds, bd.target) {
-				fmt.Fprintf(&b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
+			if bindTargetSyncs(info.binds, bd.target) && bd.set != "" {
+				fmt.Fprintf(&b, "\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
-		if firstFocusable && w.focusExpr != "" {
+		if firstFocusable && w.focusExpr != "" && modelHasFocusMethods(w.model.Type) {
 			fmt.Fprintf(&b, "\tm.%s.Focus()\n", w.fieldName)
 			firstFocusable = false
 		}
@@ -665,8 +686,8 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		// Sync bound widgets
 		for _, w := range info.widgets {
 			for _, bd := range w.binds {
-				if bd.target == bind.name && bindTargetSyncs(info.binds, bd.target) {
-					fmt.Fprintf(b, "\tm.%s.SetValue(m.%s)\n", w.fieldName, bind.name)
+				if bd.target == bind.name && bindTargetSyncs(info.binds, bd.target) && bd.set != "" {
+					fmt.Fprintf(b, "\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bind.name)
 				}
 			}
 		}
@@ -801,7 +822,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s%s\n", w.fieldName, w.fieldName, w.model.Update)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
-				fmt.Fprintf(b, "\t\tm.%s = m.%s%s\n", bd.target, w.fieldName, bd.get)
+				fmt.Fprintf(b, "\t\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
 			}
 		}
 		b.WriteString("\t}\n")
@@ -987,7 +1008,7 @@ func teaKeyGuard(key string) string {
 
 func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 	for _, w := range widgets {
-		if w.focusExpr == "" {
+		if w.focusExpr == "" || !modelHasFocusMethods(w.model.Type) {
 			continue
 		}
 		fmt.Fprintf(b, "\t\t\tif %s {\n", w.focusExpr)
@@ -995,6 +1016,23 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", w.fieldName)
 		b.WriteString("\t\t\t}\n")
+	}
+}
+
+// modelHasFocusMethods reports whether a bubbles model type exposes
+// Focus()/Blur() methods. textinput and textarea track an internal focus flag
+// (and only blink/accept keys while focused); the SNGL focus machinery drives
+// that via explicit Focus()/Blur() calls. list-backed widgets (menu/tree/
+// select) have no such methods — they always accept navigation messages and
+// are gated purely by the focus-conditioned Update forwarding — so emitting
+// Focus()/Blur() against them would not compile. Widgets absent from this set
+// still participate in focus routing; they just skip the method calls.
+func modelHasFocusMethods(modelType string) bool {
+	switch modelType {
+	case "textinput.Model", "textarea.Model":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -1049,8 +1087,8 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 	}
 	for _, w := range widgets {
 		for _, bd := range w.binds {
-			if mutated[bd.target] && bindTargetSyncs(binds, bd.target) {
-				fmt.Fprintf(b, "\t\t\tm.%s.SetValue(m.%s)\n", w.fieldName, bd.target)
+			if mutated[bd.target] && bindTargetSyncs(binds, bd.target) && bd.set != "" {
+				fmt.Fprintf(b, "\t\t\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
 	}
