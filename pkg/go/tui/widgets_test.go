@@ -62,3 +62,74 @@ func TestRows(t *testing.T) {
 		t.Errorf("Rows(nil) = %v, want empty slice", got)
 	}
 }
+
+func TestPercent(t *testing.T) {
+	tests := []struct {
+		name       string
+		value, max float64
+		want       float64
+	}{
+		{"zero max guards div-by-zero", 50, 0, 0},
+		{"negative max guards", 50, -10, 0},
+		{"half", 5, 10, 0.5},
+		{"over 100 percent not clamped", 15, 10, 1.5},
+		{"zero value", 0, 10, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Percent(tt.value, tt.max); got != tt.want {
+				t.Errorf("Percent(%v, %v) = %v, want %v", tt.value, tt.max, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSelectedStringEmpty(t *testing.T) {
+	// A list with no items has a nil SelectedItem; SelectedString must not
+	// panic and must return "".
+	m := NewList(StringItems(nil), 40, 10)
+	if got := SelectedString(m); got != "" {
+		t.Errorf("SelectedString(empty list) = %q, want %q", got, "")
+	}
+}
+
+func TestCursorFreshTable(t *testing.T) {
+	// A freshly constructed table starts with its cursor at row 0.
+	m := NewTable(Columns([]string{"Name", "ID"}), Rows([][]string{{"a", "1"}}), 10)
+	if got := Cursor(m); got != 0 {
+		t.Errorf("Cursor(fresh table) = %d, want 0", got)
+	}
+}
+
+func TestTableWidth(t *testing.T) {
+	tests := []struct {
+		name string
+		cols []table.Column
+		want int
+	}{
+		{
+			// Columns(["Name","ID"]) yields widths 6 and 4 (len+2); tableWidth
+			// adds 2 padding each → (6+2)+(4+2) = 14.
+			name: "sums column widths plus padding",
+			cols: Columns([]string{"Name", "ID"}),
+			want: 14,
+		},
+		{
+			name: "single column",
+			cols: []table.Column{{Title: "X", Width: 3}},
+			want: 5,
+		},
+		{
+			name: "no columns clamps to min width 1",
+			cols: nil,
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tableWidth(tt.cols); got != tt.want {
+				t.Errorf("tableWidth = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
