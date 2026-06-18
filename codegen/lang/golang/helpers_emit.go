@@ -51,6 +51,20 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 	for _, f := range pkg.Funcs {
 		recordFuncHelpers(&h, f)
 	}
+	// The loops above miss exprs that live only in the rendered visual tree
+	// (component/window bodies, handlers, timers) — e.g. a date/time literal
+	// synthesized as an inlined widget's zero-value default, like the bubbletea
+	// datepicker's `mustParseDate("0001-01-01")`. Sweep every expression in the
+	// package so such literals still flag their parse helper.
+	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+		switch n := e.(type) {
+		case *ir.Literal:
+			recordTypeHelpers(&h, n.Type)
+		case *ir.Conversion:
+			recordTypeHelpers(&h, n.Type)
+		}
+		return false
+	})
 	return h
 }
 
