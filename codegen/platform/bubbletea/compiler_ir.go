@@ -86,27 +86,39 @@ func bindReadBack(field, get string) string {
 	return "m." + field + get
 }
 
-// widgetValueGoType is the Go type bubbles widget values currently round-trip
-// through: SetValue(string) / Value() string. A bind is only synced (seeded in
-// the constructor, pushed on Set, pulled back in Update) when its target model
-// field has this type. Non-string binds aren't supported yet — wiring them
-// would emit type-mismatched Go (e.g. SetValue on an int field). A follow-on
-// would carry the widget's value type in the Bind record so binds of other
-// types can be coerced or rejected explicitly.
-const widgetValueGoType = "string"
+// widgetSyncGoTypes is the set of Go types a bubbles widget value may round-trip
+// through. A bind is only synced (seeded in the constructor, pushed on Set,
+// pulled back in Update) when its target model field has one of these types.
+//
+//   - string: two-way value widgets (input/textarea) via SetValue(string) /
+//     Value() string, and read-only list-backed widgets via SelectedString.
+//   - int: the read-only `selected` cursor bind on `table` (read back via
+//     tui.Cursor / .Cursor()). Int binds are read-only in practice — the three
+//     push sites (constructor seed, Set* setter, mutated-handler sync) are all
+//     additionally gated on `set != ""`, so only the Update reverse-sync
+//     (m.target = m.field.Cursor()) is emitted, which is valid int Go.
+//
+// Types outside this set aren't synced — wiring them would emit type-mismatched
+// Go. A follow-on could carry the widget's value type in the Bind record so
+// binds of arbitrary types are coerced or rejected explicitly.
+var widgetSyncGoTypes = map[string]struct{}{
+	"string": {},
+	"int":    {},
+}
 
 // bindTargetSyncs reports whether a widget bind targeting model field `target`
-// may be synced to/from the widget — true only when the target's Go type
-// matches the widget value type (currently string). Keeps the constructor seed,
-// the Set* setter, and the Update reverse-sync consistent so a non-string bind
-// never emits type-mismatched Go.
+// may be synced to/from the widget — true only when the target's Go type is one
+// the widget value engine supports (string or int). Keeps the constructor seed,
+// the Set* setter, and the Update reverse-sync consistent so an unsupported bind
+// type never emits type-mismatched Go.
 func bindTargetSyncs(binds []irBind, target string) bool {
 	if target == "" {
 		return false
 	}
 	for _, b := range binds {
 		if b.name == target {
-			return b.goType == widgetValueGoType
+			_, ok := widgetSyncGoTypes[b.goType]
+			return ok
 		}
 	}
 	// Target not found among model binds (shouldn't happen for a real two-way

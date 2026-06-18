@@ -73,12 +73,10 @@ func Columns(names []string) []table.Column {
 // Rows converts row data into table.Row values. table.Row is a []string, so
 // each input row is copied into a fresh table.Row.
 //
-// NOTE: SNGL's `rows dyn` prop lowers to Go `any`. The concrete shape the
-// codegen passes here is not yet pinned down (E2+ converts the `table`
-// component); [][]string is the natural cell-grid representation and what the
-// converter helper is expected to produce. If the realized lowering differs
-// (e.g. []any of records), this signature will need a companion accepting that
-// shape.
+// SNGL's `rows dyn` prop, given a list-of-list-of-string, lowers to Go
+// [][]string (verified against generated bubbletea code), which matches this
+// signature directly: the codegen emits `tui.Rows(<rows expr>)` with no
+// intermediate conversion.
 func Rows(rows [][]string) []table.Row {
 	out := make([]table.Row, len(rows))
 	for i, r := range rows {
@@ -87,6 +85,47 @@ func Rows(rows [][]string) []table.Row {
 		out[i] = row
 	}
 	return out
+}
+
+// NewTable builds a table.Model pre-configured for a SNGL `table` widget. It
+// centralizes the bubbles table construction: columns, rows, a viewport height
+// (a zero-height table renders no rows), a viewport width wide enough for the
+// columns (the bubbles v2 table renders only the header row until its viewport
+// has a non-zero width), and focus enabled so the table responds to
+// cursor-movement keys when the SNGL focus engine routes input to it. Callers
+// can re-set any of these via the table.Model setters afterward.
+func NewTable(cols []table.Column, rows []table.Row, height int) table.Model {
+	width := tableWidth(cols)
+	return table.New(
+		table.WithColumns(cols),
+		table.WithRows(rows),
+		table.WithHeight(height),
+		table.WithWidth(width),
+		table.WithFocused(true),
+	)
+}
+
+// tableWidth sums the column widths plus inter-column padding so the table's
+// viewport is wide enough to show every column (and therefore its rows). A
+// table with no columns still gets a minimum width so an empty table renders a
+// visible (if blank) frame rather than collapsing to nothing.
+func tableWidth(cols []table.Column) int {
+	const colPadding = 2 // matches the per-column cell padding the table adds
+	w := 0
+	for _, c := range cols {
+		w += c.Width + colPadding
+	}
+	if w < 1 {
+		w = 1
+	}
+	return w
+}
+
+// Cursor returns the table's current 0-based cursor row, for read-back into a
+// SNGL `selected int` bind. It mirrors table.Model.Cursor so the codegen can
+// emit a `tui.`-prefixed getter consistent with the other widget helpers.
+func Cursor(m table.Model) int {
+	return m.Cursor()
 }
 
 // Percent computes value/max as a fraction in [0, 1] for progress.Model.ViewAs.
