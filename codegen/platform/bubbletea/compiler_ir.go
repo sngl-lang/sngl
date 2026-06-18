@@ -742,7 +742,14 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 
 func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
 	b.WriteString("func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {\n")
+	// Accumulate every command into a batch. Each widget forward and each
+	// message handler may produce a command (a timer re-arm, a spinner tick, a
+	// textinput blink); a single shared `cmd` would let later assignments clobber
+	// earlier ones (e.g. the spinner's unconditional Update silently dropping a
+	// gated timer's re-arm tick, freezing the timer after one fire).
+	b.WriteString("\tvar cmds []tea.Cmd\n")
 	b.WriteString("\tvar cmd tea.Cmd\n")
+	b.WriteString("\t_ = cmd\n")
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
 	// Set messages — consts have no setter, skip them. Synthesized
@@ -759,7 +766,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// Timer ticks
 	for _, t := range info.Timers {
 		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
-		rearm := fmt.Sprintf("cmd = tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} })", t.IntervalMs, t.Index)
+		rearm := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
 		if t.ActiveVar != "" {
 			// Gated timer: run the body and re-arm only while active.
 			fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
@@ -790,7 +797,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t\tif len(m.toasts) > 0 {\n")
 		b.WriteString("\t\t\tm.toasts = m.toasts[1:]\n")
 		b.WriteString("\t\t\tif len(m.toasts) > 0 {\n")
-		b.WriteString("\t\t\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
+		b.WriteString("\t\t\t\tcmds = append(cmds, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} }))\n")
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
 	}
@@ -839,6 +846,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			b.WriteString("\t{\n")
 		}
 		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s%s\n", w.fieldName, w.fieldName, w.model.Update)
+		b.WriteString("\t\tcmds = append(cmds, cmd)\n")
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
 				fmt.Fprintf(b, "\t\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
@@ -849,8 +857,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 
 	// Toast scheduling
 	if info.NeedsToast {
-		b.WriteString("\tif len(m.toasts) > 0 && cmd == nil {\n")
-		b.WriteString("\t\tcmd = tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} })\n")
+		b.WriteString("\tif len(m.toasts) > 0 && len(cmds) == 0 {\n")
+		b.WriteString("\t\tcmds = append(cmds, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} }))\n")
 		b.WriteString("\t}\n")
 	}
 
@@ -859,10 +867,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		// new state; the image data goes out of band (the View carries only
 		// placeholder cells). The placement is virtual, so re-transmitting causes
 		// no flicker.
-		fmt.Fprintf(b, "\treturn m, tea.Batch(cmd, m.%s())\n", canvasTransmitMethodName)
-	} else {
-		b.WriteString("\treturn m, cmd\n")
+		fmt.Fprintf(b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 	}
+	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
 }
 
