@@ -38,6 +38,7 @@ struct Focus { enabled bool }
 struct Bind {
     prop string
     get string
+    set string
 }
 
 struct Event {
@@ -122,7 +123,7 @@ component sngl.input {
                 pkg="charm.land/bubbles/v2/textinput"
             },
             focus=Focus{enabled=true},
-            binds=[Bind{prop="value", get=".Value()"}],
+            binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
             placeholder=placeholder,
             style={...style}
         ) {}
@@ -163,10 +164,17 @@ component sngl.toggle {
 
 component sngl.select {
     platform bubbletea {
-        Styled(
-            content=value,
+        Widget(
+            model=Model{
+                type="list.Model",
+                new="tui.NewList(tui.StringItems($\{options\}), 40, 10)",
+                view=".View()",
+                update=".Update(msg)",
+                pkg="charm.land/bubbles/v2/list"
+            },
             focus=Focus{enabled=true},
-            events=[Event{on="change", key="enter"}],
+            binds=[Bind{prop="value", get="tui.SelectedString"}],
+            options=options,
             style={...style}
         ) {}
     }
@@ -183,7 +191,7 @@ component sngl.textarea {
                 pkg="charm.land/bubbles/v2/textarea"
             },
             focus=Focus{enabled=true},
-            binds=[Bind{prop="value", get=".Value()"}],
+            binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
             style={...style}
         ) {}
     }
@@ -326,16 +334,38 @@ component sngl.table {
 
 component sngl.tree {
     platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+        Widget(
+            model=Model{
+                type="list.Model",
+                new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+                view=".View()",
+                update=".Update(msg)",
+                pkg="charm.land/bubbles/v2/list"
+            },
+            focus=Focus{enabled=true},
+            binds=[Bind{prop="selected", get="tui.SelectedString"}],
+            items=items,
+            style={...style}
+        ) {}
     }
 }
 
 component sngl.menu {
     platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
+        if open {
+            Widget(
+                model=Model{
+                    type="list.Model",
+                    new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+                    view=".View()",
+                    update=".Update(msg)",
+                    pkg="charm.land/bubbles/v2/list"
+                },
+                focus=Focus{enabled=true},
+                binds=[Bind{prop="selected", get="tui.SelectedString"}],
+                items=items,
+                style={...style}
+            ) {}
         }
     }
 }
