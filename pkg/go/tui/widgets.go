@@ -30,13 +30,19 @@ func StringItems(ss []string) []list.Item {
 }
 
 // NewList builds a list.Model pre-configured for a simple SNGL list-backed
-// widget (menu / tree / select). It uses the default delegate, sizes the list
-// (a zero-sized list renders nothing), and strips the heavy chrome the bubbles
-// list shows by default — title, status bar, help footer, pagination, and
-// filtering — so the result is a clean scrollable list of rows. Callers that
-// want any of that back can flip the corresponding setter afterward.
+// widget (menu / tree / select). It uses a single-line default delegate
+// (description hidden, zero inter-item spacing — SNGL list rows carry no
+// description, so the default two-line item would waste a blank line per row),
+// sizes the list (a zero-sized list renders nothing), and strips the heavy
+// chrome the bubbles list shows by default — title, status bar, help footer,
+// pagination, and filtering — so the result is a clean scrollable list of
+// rows. Callers that want any of that back can flip the corresponding setter
+// afterward.
 func NewList(items []list.Item, w, h int) list.Model {
-	m := list.New(items, list.NewDefaultDelegate(), w, h)
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
+	m := list.New(items, d, w, h)
 	m.SetShowTitle(false)
 	m.SetShowStatusBar(false)
 	m.SetShowHelp(false)

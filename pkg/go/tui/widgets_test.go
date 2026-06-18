@@ -93,6 +93,23 @@ func TestSelectedStringEmpty(t *testing.T) {
 	}
 }
 
+func TestNewListSingleLineDelegate(t *testing.T) {
+	// SNGL list rows (menu/tree/select) carry no description, so each row must
+	// occupy a single line. NewList must hide the description and zero the
+	// inter-item spacing; otherwise the default delegate reserves a title line
+	// plus a blank description line per item (Height() == 2). Mirror the
+	// delegate config NewList applies and assert it renders one line per item.
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
+	if got := d.Height(); got != 1 {
+		t.Errorf("single-line delegate Height() = %d, want 1", got)
+	}
+	if got := d.Spacing(); got != 0 {
+		t.Errorf("single-line delegate Spacing() = %d, want 0", got)
+	}
+}
+
 func TestCursorFreshTable(t *testing.T) {
 	// A freshly constructed table starts with its cursor at row 0.
 	m := NewTable(Columns([]string{"Name", "ID"}), Rows([][]string{{"a", "1"}}), 10)
