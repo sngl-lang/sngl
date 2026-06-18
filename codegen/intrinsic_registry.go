@@ -76,7 +76,18 @@ func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) 
 		return "", nil, false
 	}
 	args := make([]ir.Expr, 0, len(c.Args)+1)
-	if c.Receiver != nil {
+	// Prepend the receiver only when it's a value operand filling the
+	// intrinsic's first param — i.e. a method-style call like canvas
+	// `ctx.fillRect(x,y,w,h)` (params [ctx,x,y,w,h], explicit args [x,y,w,h]).
+	// A namespace-qualified call like `stdlib.StrLength(s)` (the inlined body
+	// of `string.length`) carries the namespace as Receiver but passes every
+	// operand as an explicit arg, so the explicit args already fill all params;
+	// prepending would shift the `stdlib` namespace ident into a[0] and emit
+	// e.g. `len(stdlib)`. Gate on the param count so both shapes land their
+	// operands at the right indices.
+	def := ir.LookupIntrinsic(c.Func.Intrinsic)
+	prependReceiver := c.Receiver != nil && (def == nil || len(c.Args) < len(def.Params))
+	if prependReceiver {
 		args = append(args, c.Receiver)
 	}
 	for _, a := range c.Args {
