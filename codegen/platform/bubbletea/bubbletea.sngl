@@ -364,6 +364,9 @@ component sngl.tree {
 component sngl.menu {
     platform bubbletea {
         if open {
+            // menu surfaces selection via @select only — its stdlib signature
+            // has no `selected` prop, so there's no two-way selection var to
+            // bind. (Read-back would be inert: findBidiProp finds nothing.)
             Widget(
                 model=Model{
                     type="list.Model",
@@ -373,7 +376,6 @@ component sngl.menu {
                     pkg="charm.land/bubbles/v2/list"
                 },
                 focus=Focus{enabled=true},
-                binds=[Bind{prop="selected", get="tui.SelectedString"}],
                 items=items,
                 style={...style}
             ) {}

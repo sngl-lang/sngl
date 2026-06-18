@@ -391,7 +391,7 @@ component table(
 component tree(
     style Style,
     items list<string>,
-    selected string,
+    :selected string,
     expanded list<int>,
     @select SelectEvent,
     @expand ExpandEvent,
