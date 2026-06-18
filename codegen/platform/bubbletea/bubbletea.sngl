@@ -302,7 +302,11 @@ component sngl.drawer {
 
 component sngl.tooltip {
     platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
+        // Render the trigger child, then reveal `text` (dim, below) only while
+        // the wrapped trigger is focused. The `tooltip` prop carries the body
+        // text to the Layout renderer, which appends it gated on the focusable
+        // descendant's focus expression (see renderBlueprint in view_ir.go).
+        Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
             slot
         }
     }

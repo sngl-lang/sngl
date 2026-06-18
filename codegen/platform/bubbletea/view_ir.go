@@ -325,6 +325,40 @@ func (vc *irViewContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(vc.ctx.Pkg.Components, comp)
 }
 
+// tooltipFocusExpr finds the first focusable descendant within a tooltip's
+// children and returns a Go boolean expression that is true when that node is
+// focused (read off the __focused prop passFocusOrder injected). It returns ""
+// when there is no focusable descendant, or when the descendant's focus
+// expression is not statically available (a loop-body trigger), so the caller
+// can skip emitting a tooltip reveal rather than produce invalid Go.
+func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if codegen.NodeProp(n, "__focused") != nil {
+				if expr := nodeStaticFocusExpr(n, gc); expr != "" {
+					return expr
+				}
+			}
+			if expr := tooltipFocusExpr(n.Children, gc); expr != "" {
+				return expr
+			}
+		case *ir.SlotInst:
+			if expr := tooltipFocusExpr(n.Children, gc); expr != "" {
+				return expr
+			}
+		case *ir.If:
+			if expr := tooltipFocusExpr(n.Body, gc); expr != "" {
+				return expr
+			}
+			if expr := tooltipFocusExpr(n.Else, gc); expr != "" {
+				return expr
+			}
+		}
+	}
+	return ""
+}
+
 // renderBlueprint renders one inlined blueprint primitive (Layout, Styled, or
 // Widget) off the blueprint record extracted from its props, rather than keying
 // on a stdlib component name. The primitives are produced when a stdlib
@@ -348,6 +382,20 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 		}
 		vc.vertical = prevVertical
+		// tooltip: reveal the body text (dim) below the trigger while the wrapped
+		// focusable descendant is focused. The `tooltip` prop carries the text;
+		// the focus expression comes from the focusable descendant's injected
+		// __focused prop. If no static focus expression is available (e.g. the
+		// trigger sits inside a for-loop, whose key isn't in scope here), the
+		// tooltip degrades to never showing rather than emitting invalid Go.
+		if tip := codegen.NodeProp(n, "tooltip"); tip != nil {
+			if focusExpr := tooltipFocusExpr(n.Children, vc.gc); focusExpr != "" {
+				vc.requireImport("fmt")
+				vc.line(`if %s {`, focusExpr)
+				vc.line(`%s = append(%s, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(%s)))`, childrenVar, childrenVar, vc.gc.EvalExpr(tip))
+				vc.line(`}`)
+			}
+		}
 		if bp.Join == joinVertical {
 			vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 		} else {
