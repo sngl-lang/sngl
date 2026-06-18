@@ -124,6 +124,60 @@ component main {
 	}
 }
 
+// TestOverlayFocusCapture verifies Phase H2: while a modal/drawer overlay is
+// open, the background is frozen (Tab nav + activation cases gated on
+// !overlayOpen, widget forwarding wrapped in `if !overlayOpen`), Escape closes
+// the topmost open overlay (setting its open var false), and overlay-content
+// activation handlers stay unguarded.
+func TestOverlayFocusCapture(t *testing.T) {
+	src := `component main {
+    var (
+        showModal = false
+        showDrawer = false
+        count = 0
+    )
+    button(text="Open", @click { showModal = true })
+    modal(open=showModal, closable=true) {
+        button(text="Inc", @click { count += 1 })
+    }
+    drawer(open=showDrawer, side="right") {
+        button(text="Close", @click { showDrawer = false })
+    }
+}
+`
+	code := compileBubbletea(t, src)
+
+	mustContain := map[string]string{
+		"overlayOpen gate":                     "overlayOpen := m.showModal || m.showDrawer",
+		"escape case":                          "case msg.Code == tea.KeyEsc:",
+		"escape closes drawer (topmost first)": "case m.showDrawer:\n\t\t\t\tm.showDrawer = false",
+		"escape closes modal":                  "case m.showModal:\n\t\t\t\tm.showModal = false",
+		"tab nav frozen":                       "msg.Code == tea.KeyTab && msg.Mod == 0 && !overlayOpen:",
+		"forwarding frozen":                    "if !overlayOpen {",
+	}
+	for name, want := range mustContain {
+		if !strings.Contains(code, want) {
+			t.Errorf("missing %s: %q\n\ngenerated:\n%s", name, want, code)
+		}
+	}
+
+	// The background "Open" button (focusID 0) must be frozen.
+	if !strings.Contains(code, "m.__focusID == 0 && !overlayOpen") {
+		t.Errorf("background button not frozen\n\ngenerated:\n%s", code)
+	}
+	// Overlay-content handlers stay live: the modal's `count += 1` button and the
+	// drawer's `showDrawer = false` button each follow an unguarded activation
+	// case (focusID 1 and 2 in source order).
+	for _, want := range []string{
+		"case msg.Code == tea.KeyEnter && m.__focusID == 1:\n\t\t\tm.count += 1",
+		"case msg.Code == tea.KeyEnter && m.__focusID == 2:\n\t\t\tm.showDrawer = false",
+	} {
+		if !strings.Contains(code, want) {
+			t.Errorf("overlay-content handler missing or wrongly frozen: %q\n\ngenerated:\n%s", want, code)
+		}
+	}
+}
+
 func TestCompileTodo(t *testing.T) {
 	doc, err := testutil.ParseFile("../../../examples/todo/todo.sngl")
 	if err != nil {

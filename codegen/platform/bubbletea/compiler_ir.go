@@ -176,8 +176,20 @@ type irAnalysis struct {
 	externs   []irExtern
 	computeds []irComputed
 	widgets   []widgetInfo
+	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	gc        *golang.GoIRContext
+}
+
+// overlayInfo records one modal/drawer Overlay primitive for the Update()
+// focus-capture logic. openExpr is the Go boolean expression that is true while
+// the overlay is open (the `if open` gate condition — e.g. "m.showModal").
+// closeVar is the Model field name to set false on dismiss (Escape), recovered
+// when the gate condition is a simple assignable var ident; "" when the gate is
+// a compound expression we can't invert into a single assignment.
+type overlayInfo struct {
+	openExpr string
+	closeVar string
 }
 
 type irBind struct {
@@ -347,6 +359,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			})
 			return false
 		})
+	}
+
+	// Collect modal/drawer overlays and their `if open` gate conditions so
+	// Update() can freeze the background and Escape-close the open overlay.
+	for _, win := range wins {
+		collectOverlays(win.Body, nil, gc, &info.overlays)
 	}
 
 	// Detect whether passFocusOrder ran by checking for the __focusID var.
@@ -750,6 +768,28 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tvar cmds []tea.Cmd\n")
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\t_ = cmd\n")
+
+	// Overlay focus capture: while any modal/drawer overlay is open, the
+	// background UI is frozen — its Tab focus-nav, key-activation handlers, and
+	// widget message-forwarding are gated on !overlayOpen, and Escape closes the
+	// open overlay rather than reaching the background. `overlayOpen` is the OR
+	// of every overlay's `if open` gate condition. _ = overlayOpen guards the
+	// no-overlay case (the var is declared but the gates below are absent).
+	hasOverlays := len(info.overlays) > 0
+	if hasOverlays {
+		var openExprs []string
+		for _, ov := range info.overlays {
+			if ov.openExpr != "" {
+				openExprs = append(openExprs, ov.openExpr)
+			}
+		}
+		if len(openExprs) == 0 {
+			openExprs = []string{"false"}
+		}
+		fmt.Fprintf(b, "\toverlayOpen := %s\n", strings.Join(openExprs, " || "))
+		b.WriteString("\t_ = overlayOpen\n")
+	}
+
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
 	// Set messages — consts have no setter, skip them. Synthesized
@@ -813,25 +853,68 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
 	b.WriteString("\t\t\treturn m, tea.Quit\n")
 
+	// Escape closes the topmost open overlay. Overlays are listed in source
+	// order; the last-declared open one is closed first (a simple modal-over-
+	// drawer / last-opened-wins priority). When the overlay's open var was
+	// recovered (open=showVar binding), set it false; otherwise the key is still
+	// consumed so it never falls through to a background handler.
+	if hasOverlays {
+		b.WriteString("\t\tcase msg.Code == tea.KeyEsc:\n")
+		b.WriteString("\t\t\tswitch {\n")
+		for i := len(info.overlays) - 1; i >= 0; i-- {
+			ov := info.overlays[i]
+			if ov.openExpr == "" {
+				continue
+			}
+			fmt.Fprintf(b, "\t\t\tcase %s:\n", ov.openExpr)
+			if ov.closeVar != "" {
+				fmt.Fprintf(b, "\t\t\t\tm.%s = false\n", ov.closeVar)
+			} else {
+				// No recoverable open var: consume the key but leave state
+				// unchanged (the overlay's gate is a compound expression).
+				b.WriteString("\t\t\t\t// overlay open via compound condition; cannot auto-close\n")
+			}
+		}
+		b.WriteString("\t\t\t}\n")
+	}
+
+	// Background focus-nav and activation handlers run only when no overlay
+	// captures input. With an overlay open the background is frozen.
+	caseGuard := ""
+	if hasOverlays {
+		caseGuard = " && !overlayOpen"
+	}
 	if info.hasFocus {
-		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0:\n")
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusNext()\n")
 		emitIRFocusSync(b, info.widgets)
-		b.WriteString("\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:\n")
+		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusPrev()\n")
 		emitIRFocusSync(b, info.widgets)
 	}
 
-	// Button/checkbox enter handlers from IR
+	// Button/checkbox enter handlers from IR. The overlay guard is appended to
+	// each background case so its activation keys don't fire while frozen;
+	// handlers inside an Overlay primitive stay unguarded (see
+	// emitIRButtonHandlers) so overlay-content buttons keep working.
 	wins := ctx.Windows()
 	for _, win := range wins {
-		emitIRButtonHandlers(b, win.Body, info, gc)
+		emitIRButtonHandlers(b, win.Body, info, gc, caseGuard)
 	}
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
 
-	// Forward messages to the focused widget, then sync two-way binds back.
+	// Forward messages to the focused widget, then sync two-way binds back. While
+	// an overlay captures input the background widgets are frozen — their message
+	// forwarding is wrapped in `if !overlayOpen`. (Widgets nested inside an
+	// overlay aren't currently distinguished from background widgets, so an
+	// overlay containing a text widget won't receive keys; see report.)
+	fwdIndent := "\t"
+	if hasOverlays {
+		b.WriteString("\tif !overlayOpen {\n")
+		fwdIndent = "\t\t"
+	}
 	for _, w := range info.widgets {
 		// A widget with no Update method (e.g. determinate progress, whose
 		// view is a pure function of model state) takes no messages and has
@@ -841,17 +924,20 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			continue
 		}
 		if w.focusExpr != "" {
-			fmt.Fprintf(b, "\tif %s {\n", w.focusExpr)
+			fmt.Fprintf(b, "%sif %s {\n", fwdIndent, w.focusExpr)
 		} else {
-			b.WriteString("\t{\n")
+			fmt.Fprintf(b, "%s{\n", fwdIndent)
 		}
-		fmt.Fprintf(b, "\t\tm.%s, cmd = m.%s%s\n", w.fieldName, w.fieldName, w.model.Update)
-		b.WriteString("\t\tcmds = append(cmds, cmd)\n")
+		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
+		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
-				fmt.Fprintf(b, "\t\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+				fmt.Fprintf(b, "%s\tm.%s = %s\n", fwdIndent, bd.target, bindReadBack(w.fieldName, bd.get))
 			}
 		}
+		fmt.Fprintf(b, "%s}\n", fwdIndent)
+	}
+	if hasOverlays {
 		b.WriteString("\t}\n")
 	}
 
@@ -873,17 +959,28 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("}\n\n")
 }
 
-func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, nil)
+// emitIRButtonHandlers emits the KeyEnter/etc activation cases for the window
+// body. bgGuard (e.g. " && !overlayOpen") is appended to every background
+// (non-overlay) handler case so background activation is frozen while an overlay
+// is open. Handlers inside an Overlay primitive get NO guard — overlay-content
+// buttons (e.g. a modal's Close) stay live while the overlay captures input.
+func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string) {
+	emitIRButtonHandlersWalk(b, stmts, info, gc, nil, bgGuard, false)
 }
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. currentFor is non-nil when inside a for-loop that
 // passFocusOrder turned into a loop slot; handlers inside it are emitted with a
-// loop-wrapped body that matches the cursor to the current iteration.
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For) {
+// loop-wrapped body that matches the cursor to the current iteration. bgGuard is
+// appended to each case unless inOverlay is set (overlay-content handlers stay
+// unguarded so they keep working while the overlay is open).
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For, bgGuard string, inOverlay bool) {
+	overlayGuard := bgGuard
+	if inOverlay {
+		overlayGuard = ""
+	}
 	emitStaticCase := func(slotIdx int, keyGuard string, block []ir.Stmt) {
-		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d:\n", keyGuard, slotIdx)
+		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
 				fmt.Fprintf(b, "\t\t\t%s\n", line)
@@ -906,7 +1003,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		if strings.Contains(body, valName) {
 			emitVal = valName
 		}
-		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d:\n", keyGuard, slotIdx)
+		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
 		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, emitVal, iterExpr)
 		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
 		b.WriteString(body)
@@ -966,14 +1063,14 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, n)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, n, bgGuard, inOverlay)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay)
 		case *ir.PlatformFilter:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay)
 		case *ir.NodeInst:
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
@@ -992,7 +1089,10 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 				}
 				emitNodeCase(n, guard, h.Func.Block)
 			}
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor)
+			// Overlay-content handlers stay live while the overlay is open, so
+			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
+			childInOverlay := inOverlay || (n.Component != nil && n.Name == "Overlay")
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Window:
@@ -1005,6 +1105,58 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			panic(fmt.Sprintf("bubbletea.emitIRButtonHandlersWalk: unhandled ir.Stmt %T", n))
 		}
 	}
+}
+
+// collectOverlays walks the visual IR finding modal/drawer Overlay primitives.
+// Each Overlay's parent is the `if open { Overlay(...) }` gate emitted by the
+// modal/drawer platform body, so the enclosing If's condition (threaded in as
+// `gate`) is the overlay's open-expr. When that gate is a simple assignable var
+// ident (the common `open=showVar` two-way binding), its field name is recorded
+// as the close target so Escape can set it false. The view walk dedupes
+// overlays the same way (one pendingOverlay per Overlay node), so the order and
+// count here match the View's overlay compositing.
+func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *[]overlayInfo) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.If:
+			// Recurse into the body carrying this If as the enclosing gate, so an
+			// Overlay directly inside picks up `if open` as its open condition.
+			collectOverlays(n.Body, n, gc, out)
+			collectOverlays(n.Else, gate, gc, out)
+		case *ir.For:
+			collectOverlays(n.Body, gate, gc, out)
+		case *ir.PlatformFilter:
+			collectOverlays(n.Body, gate, gc, out)
+		case *ir.ErrorBoundary:
+			collectOverlays(n.Children, gate, gc, out)
+		case *ir.NodeInst:
+			if n.Component != nil && n.Name == "Overlay" {
+				oi := overlayInfo{}
+				if gate != nil && gate.Cond != nil {
+					oi.openExpr = gc.EvalExpr(gate.Cond)
+					oi.closeVar = overlayCloseVar(gate.Cond)
+				}
+				*out = append(*out, oi)
+			}
+			collectOverlays(n.Children, gate, gc, out)
+		}
+	}
+}
+
+// overlayCloseVar returns the Model field name to set false to close an overlay
+// whose `if open` gate condition is `cond`. It recovers a target only for a bare
+// assignable var ident (the `open=showVar` binding); for any compound or
+// non-var condition it returns "" — the overlay still freezes the background and
+// Escape is still consumed, but the open var isn't auto-cleared (see report).
+func overlayCloseVar(cond ir.Expr) string {
+	id, ok := cond.(*ir.Ident)
+	if !ok {
+		return ""
+	}
+	if _, ok := id.Sym.(*ir.Var); ok {
+		return id.Name
+	}
+	return ""
 }
 
 // teaKeyGuard maps an Event record's `key` string to a bubbletea key-message
