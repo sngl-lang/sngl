@@ -104,6 +104,7 @@ const (
 	bpStyled blueprintKind = iota
 	bpLayout
 	bpWidget
+	bpOverlay
 )
 
 // joinDir mirrors the JoinDir enum declared in bubbletea.sngl. It selects the
@@ -171,6 +172,12 @@ type blueprint struct {
 
 	// Placeholder carries the `placeholder` prop for input-style widgets.
 	Placeholder ir.Expr
+
+	// Overlay: Placement is the `placement` prop expression — the string
+	// "center" for a modal, or the drawer's `side` prop ("left"/"right"/
+	// "top"/"bottom"). Dim reports the `dim` prop (fade the background).
+	Placement ir.Expr
+	Dim       bool
 }
 
 // extractBlueprint reads a blueprint off an inlined primitive node. Kind is
@@ -181,8 +188,15 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 
 	modelProp := codegen.NodeProp(n, "model")
 	joinProp := codegen.NodeProp(n, "join")
+	placementProp := codegen.NodeProp(n, "placement")
 
 	switch {
+	case n.Name == "Overlay" || placementProp != nil:
+		bp.Kind = bpOverlay
+		bp.Placement = placementProp
+		if d := codegen.NodeProp(n, "dim"); d != nil {
+			bp.Dim, _ = codegen.IRLiteralBool(d)
+		}
 	case modelProp != nil:
 		bp.Kind = bpWidget
 	case joinProp != nil:

@@ -24,6 +24,29 @@ type irViewContext struct {
 	vertical    bool
 	inComponent bool
 	slotVar     string
+
+	// overlays accumulates modal/drawer Overlay primitives encountered while
+	// rendering the body. They are NOT joined inline; instead each records the
+	// Go variable holding its rendered box plus its placement/dim, and
+	// emitIRView composites them over the joined content at the end.
+	overlays []pendingOverlay
+}
+
+// pendingOverlay records one Overlay primitive deferred out of the inline join
+// for post-content compositing. boxVar is the Go string var holding the
+// rendered overlay box (empty when the overlay's `if open` gate is false).
+// placementExpr is a Go expression yielding the placement string ("center" for
+// modals; the drawer's `side` for drawers).
+type pendingOverlay struct {
+	boxVar string
+	// placementExpr is the Go expression for the placement. placementLit is the
+	// statically-known placement string when placement is a literal (modal:
+	// "center"), or "" when dynamic (drawer side may be a runtime prop) — the
+	// compositing emitter uses it to pick a single branch and avoid a constant
+	// `if "center" == "center"` comparison.
+	placementExpr string
+	placementLit  string
+	dim           bool
 }
 
 func (vc *irViewContext) line(format string, args ...any) {
@@ -70,7 +93,6 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	if len(bodyStmts) == 1 {
 		vc.line("var content string")
 		vc.renderStmt(bodyStmts[0], "content")
-		b.WriteString(vc.buf.String())
 	} else {
 		vc.line("var parts []string")
 		for i, child := range bodyStmts {
@@ -80,8 +102,15 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 			vc.line("parts = append(parts, %s)", childVar)
 		}
 		vc.line(`content := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
-		b.WriteString(vc.buf.String())
 	}
+
+	// Overlay (modal/drawer) box vars are assigned inside their `if open { ... }`
+	// gate during the body render, but composited after content — so declare
+	// them at view scope BEFORE the body so they're in scope and default "".
+	for _, ov := range vc.overlays {
+		fmt.Fprintf(b, "\tvar %s string\n", ov.boxVar)
+	}
+	b.WriteString(vc.buf.String())
 
 	// Toast overlay
 	if info.NeedsToast {
@@ -97,6 +126,35 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		b.WriteString("\t\ttoastStyle := lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(\"#ffffff\"))\n")
 		b.WriteString("\t\tcontent = lipgloss.JoinVertical(lipgloss.Left, content, toastStyle.Render(t.message))\n")
 		b.WriteString("\t}\n")
+	}
+
+	// Overlay compositing. Each modal/drawer box is composited over the joined
+	// content here, AFTER the body and toast, so it overlays the whole display
+	// rather than joining inline. A "center" placement centers (modal, dimming
+	// the background); any other placement names a drawer side. The tui helpers
+	// no-op when the box var is "" (overlay closed), so this stays correct
+	// without threading the `open` expr — the `if open` gate leaves boxVar "".
+	for _, ov := range vc.overlays {
+		gc.RequireImport(tuiImportPath)
+		dim := "false"
+		if ov.dim {
+			dim = "true"
+		}
+		switch ov.placementLit {
+		case "center":
+			fmt.Fprintf(b, "\tcontent = tui.OverlayCenter(content, %s, m.width, m.height, %s)\n", ov.boxVar, dim)
+		case "":
+			// Dynamic placement (drawer side may be a runtime value): branch at
+			// runtime between center and side.
+			fmt.Fprintf(b, "\tif %s == \"center\" {\n", ov.placementExpr)
+			fmt.Fprintf(b, "\t\tcontent = tui.OverlayCenter(content, %s, m.width, m.height, %s)\n", ov.boxVar, dim)
+			b.WriteString("\t} else {\n")
+			fmt.Fprintf(b, "\t\tcontent = tui.OverlaySide(content, %s, %s, m.width, m.height)\n", ov.boxVar, ov.placementExpr)
+			b.WriteString("\t}\n")
+		default:
+			// Known side literal (drawer left/right/top/bottom).
+			fmt.Fprintf(b, "\tcontent = tui.OverlaySide(content, %s, %s, m.width, m.height)\n", ov.boxVar, ov.placementExpr)
+		}
 	}
 
 	b.WriteString("\tv := tea.NewView(content)\n")
@@ -303,7 +361,7 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	// keying on a stdlib component name. Every stdlib wrapper is now inlined to
 	// one of these three primitives at lower time (NoStdlibWrappers); see
 	// bubbletea.sngl + blueprint.go.
-	if n.Component != nil && (n.Name == "Layout" || n.Name == "Styled" || n.Name == "Widget") {
+	if n.Component != nil && (n.Name == "Layout" || n.Name == "Styled" || n.Name == "Widget" || n.Name == "Overlay") {
 		vc.renderBlueprint(n, resultVar)
 		return
 	}
@@ -369,6 +427,50 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	switch bp.Kind {
+	case bpOverlay:
+		// An Overlay (modal/drawer body) must NOT join inline into resultVar.
+		// Render its children (joined vertically, then styled) into a private
+		// box var and record a pending overlay; emitIRView composites it over
+		// the whole content after the body is built. resultVar is left as the
+		// caller initialized it ("") so the overlay contributes nothing inline.
+		//
+		// Because the Overlay sits under `if open { ... }`, this block only runs
+		// when open — so boxVar stays "" when closed and the tui overlay helper
+		// no-ops on an empty box. We declare boxVar at view scope (hoisted by
+		// emitIRView) and assign it here.
+		boxVar := fmt.Sprintf("overlay%d", len(vc.overlays))
+		childrenVar := boxVar + "Children"
+		vc.line("var %s []string", childrenVar)
+		prevVertical := vc.vertical
+		vc.vertical = true
+		for i, child := range n.Children {
+			childVar := fmt.Sprintf("%s_%d", boxVar, i)
+			vc.line("var %s string", childVar)
+			vc.renderStmt(child, childVar)
+			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		}
+		vc.vertical = prevVertical
+		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
+		if style != "lipgloss.NewStyle()" {
+			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
+		}
+		placementExpr := `"center"`
+		placementLit := "center"
+		if bp.Placement != nil {
+			placementExpr = vc.gc.EvalExpr(bp.Placement)
+			if lit, ok := codegen.IRLiteralString(bp.Placement); ok {
+				placementLit = lit
+			} else {
+				placementLit = ""
+			}
+		}
+		vc.overlays = append(vc.overlays, pendingOverlay{
+			boxVar:        boxVar,
+			placementExpr: placementExpr,
+			placementLit:  placementLit,
+			dim:           bp.Dim,
+		})
+
 	case bpLayout:
 		// Join children vertically/horizontally, then apply style if present.
 		childrenVar := resultVar + "Children"

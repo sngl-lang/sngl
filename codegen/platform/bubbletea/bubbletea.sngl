@@ -285,7 +285,7 @@ component sngl.tabs {
 component sngl.modal {
     platform bubbletea {
         if open {
-            Layout(join=JoinDir.vertical, style={...style}) {
+            Overlay(placement="center", dim=true, style={...style}) {
                 slot
             }
         }
@@ -294,8 +294,10 @@ component sngl.modal {
 
 component sngl.drawer {
     platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
+        if open {
+            Overlay(placement=side, dim=true, style={...style}) {
+                slot
+            }
         }
     }
 }
