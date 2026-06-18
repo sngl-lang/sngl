@@ -1,11 +1,6 @@
-                      
-                      
-  > Open Drawer       
-                      
-                      
-    [1mDrawer Content[m    
-      Close           
-                      
-                      
-                      
-                      
+                 
+                 
+  > Open Drawer  
+                 
+                 
+                 
