@@ -499,8 +499,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 				fmt.Fprintf(&b, "\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
-		if firstFocusable && w.focusExpr != "" && modelHasFocusMethods(w.model.Type) {
-			fmt.Fprintf(&b, "\tm.%s.Focus()\n", w.fieldName)
+		if firstFocusable && w.focusExpr != "" {
+			// This widget occupies the first focusable slot (where __focusID
+			// starts). Only emit a construction-time .Focus() if it actually
+			// has the method; either way mark the slot consumed so a later
+			// method-having widget (e.g. an input after a list/table) isn't
+			// wrongly focused while __focusID still points here.
+			if modelHasFocusMethods(w.model.Type) {
+				fmt.Fprintf(&b, "\tm.%s.Focus()\n", w.fieldName)
+			}
 			firstFocusable = false
 		}
 	}
