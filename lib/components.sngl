@@ -362,8 +362,9 @@ component splitview(
 // --- Data & Desktop ---
 
 // Tabular data display. `columns` is the list of column headers;
-// `rows` is a `dyn` list of records to render (keys matching column
-// headers). Enable `selectable` for row selection with `selected` as
+// `rows` is the cell grid — one inner `list<string>` per row, each
+// cell aligned to its column by position (defaults to no rows).
+// Enable `selectable` for row selection with `selected` as
 // the 0-based row index (two-way bound). Enable `sortable` to let the
 // user re-order by column; `sortColumn` and `sortDirection` ("asc" or
 // "desc") reflect the current sort and are two-way bound. `@sort`
@@ -372,9 +373,9 @@ component splitview(
 component table(
     style Style,
     columns list<string>,
-    rows dyn,
+    rows list<list<string>> = [],
     selectable bool,
-    selected int,
+    :selected int,
     sortable bool,
     sortColumn string,
     sortDirection string,

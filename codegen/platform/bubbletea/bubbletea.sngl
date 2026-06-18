@@ -326,9 +326,20 @@ component sngl.splitview {
 
 component sngl.table {
     platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+        Widget(
+            model=Model{
+                type="table.Model",
+                new="tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
+                view=".View()",
+                update=".Update(msg)",
+                pkg="charm.land/bubbles/v2/table"
+            },
+            focus=Focus{enabled=true},
+            binds=[Bind{prop="selected", get="tui.Cursor"}],
+            columns=columns,
+            rows=rows,
+            style={...style}
+        ) {}
     }
 }
 
