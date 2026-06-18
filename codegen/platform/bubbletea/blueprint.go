@@ -23,6 +23,8 @@ var widgetTemplateConverters = map[string]string{
 //	${prop}       → the Go expression for n's prop named "prop"
 //	${prop|conv}  → tui.<Helper>(<expr>), where conv maps via
 //	                widgetTemplateConverters; the pkg/go/tui import is required
+//	${self}       → the widget's field accessor `m.<field>` (used by Init
+//	                cmds that are model methods, e.g. spinner `${self}.Tick`)
 //	$${           → a literal "${" (escape)
 //
 // A string with no `${...}` token is returned unchanged (so existing widgets
@@ -30,7 +32,7 @@ var widgetTemplateConverters = map[string]string{
 // byte-identically). An unknown prop or converter leaves the raw token in place
 // — the resulting Go won't compile, surfacing the authoring error loudly rather
 // than silently dropping it.
-func expandWidgetTemplate(gc *golang.GoIRContext, tmpl string, n *ir.NodeInst) string {
+func expandWidgetTemplate(gc *golang.GoIRContext, tmpl string, n *ir.NodeInst, field string) string {
 	if !strings.Contains(tmpl, "${") {
 		return tmpl
 	}
@@ -51,7 +53,7 @@ func expandWidgetTemplate(gc *golang.GoIRContext, tmpl string, n *ir.NodeInst) s
 				break
 			}
 			token := tmpl[i+2 : i+2+end]
-			b.WriteString(expandWidgetToken(gc, token, n))
+			b.WriteString(expandWidgetToken(gc, token, n, field))
 			i += 2 + end + 1
 			continue
 		}
@@ -63,7 +65,12 @@ func expandWidgetTemplate(gc *golang.GoIRContext, tmpl string, n *ir.NodeInst) s
 
 // expandWidgetToken resolves a single token body (the text between "${" and
 // "}") into a Go expression, applying a converter if "prop|conv" form is used.
-func expandWidgetToken(gc *golang.GoIRContext, token string, n *ir.NodeInst) string {
+func expandWidgetToken(gc *golang.GoIRContext, token string, n *ir.NodeInst, field string) string {
+	// ${self} resolves to the widget's field accessor. It carries no prop and
+	// no converter, so handle it before the prop/converter split.
+	if token == "self" {
+		return "m." + field
+	}
 	propName, conv := token, ""
 	if before, after, ok := strings.Cut(token, "|"); ok {
 		propName = before

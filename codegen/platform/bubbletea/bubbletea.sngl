@@ -199,13 +199,33 @@ component sngl.datepicker {
 
 component sngl.progress {
     platform bubbletea {
-        Styled(content="", style={...style}) {}
+        Widget(
+            model=Model{
+                type="progress.Model",
+                new="progress.New()",
+                view=".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+                pkg="charm.land/bubbles/v2/progress"
+            },
+            value=value,
+            max=max,
+            style={...style}
+        ) {}
     }
 }
 
 component sngl.spinner {
     platform bubbletea {
-        Styled(content="⣾", style={...style}) {}
+        Widget(
+            model=Model{
+                type="spinner.Model",
+                new="spinner.New()",
+                view=".View()",
+                update=".Update(msg)",
+                init="$\{self\}.Tick",
+                pkg="charm.land/bubbles/v2/spinner"
+            },
+            style={...style}
+        ) {}
     }
 }
 

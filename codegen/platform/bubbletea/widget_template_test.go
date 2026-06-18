@@ -24,6 +24,7 @@ func TestExpandWidgetTemplate(t *testing.T) {
 		name  string
 		tmpl  string
 		props map[string]string
+		field string
 		want  string
 	}{
 		{
@@ -77,12 +78,18 @@ func TestExpandWidgetTemplate(t *testing.T) {
 			props: map[string]string{"value": "m.v"},
 			want:  "f(${value|bogus})",
 		},
+		{
+			name:  "self resolves to field accessor",
+			tmpl:  "${self}.Tick",
+			field: "widget3",
+			want:  "m.widget3.Tick",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gc := golang.NewIRContext(nil)
-			got := expandWidgetTemplate(gc, tt.tmpl, litNode(tt.props))
+			got := expandWidgetTemplate(gc, tt.tmpl, litNode(tt.props), tt.field)
 			if got != tt.want {
 				t.Errorf("expandWidgetTemplate(%q) = %q, want %q", tt.tmpl, got, tt.want)
 			}
@@ -98,13 +105,13 @@ func TestExpandWidgetTemplateRegistersImport(t *testing.T) {
 	}
 
 	gc := golang.NewIRContext(nil)
-	expandWidgetTemplate(gc, "textinput.New()", litNode(nil))
+	expandWidgetTemplate(gc, "textinput.New()", litNode(nil), "f")
 	if hasTUI(gc) {
 		t.Errorf("no-token template should not require tui import")
 	}
 
 	gc = golang.NewIRContext(nil)
-	expandWidgetTemplate(gc, "${items|listItems}", litNode(map[string]string{"items": "m.xs"}))
+	expandWidgetTemplate(gc, "${items|listItems}", litNode(map[string]string{"items": "m.xs"}), "f")
 	if !hasTUI(gc) {
 		t.Errorf("converter token should require tui import %q", tuiImportPath)
 	}

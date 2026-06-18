@@ -291,10 +291,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// textarea) pass through unchanged, so their output stays
 			// byte-identical. Converter tokens require the pkg/go/tui import.
 			model := bp.Model
-			model.New = expandWidgetTemplate(gc, model.New, n)
-			model.View = expandWidgetTemplate(gc, model.View, n)
-			model.Update = expandWidgetTemplate(gc, model.Update, n)
-			model.Init = expandWidgetTemplate(gc, model.Init, n)
+			model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
+			model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
+			model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
+			model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
+			// A model string may reference a pkg/go/tui helper inline (e.g.
+			// progress's `tui.Percent(...)`) without going through a `|conv`
+			// token, so the converter path's RequireImport doesn't fire. Pull
+			// the import in whenever any expanded string names the tui package.
+			for _, s := range []string{model.New, model.View, model.Update, model.Init} {
+				if strings.Contains(s, "tui.") {
+					gc.RequireImport(tuiImportPath)
+					break
+				}
+			}
 			info.widgets = append(info.widgets, widgetInfo{
 				fieldName:   fieldName,
 				model:       model,
@@ -776,6 +786,13 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 
 	// Forward messages to the focused widget, then sync two-way binds back.
 	for _, w := range info.widgets {
+		// A widget with no Update method (e.g. determinate progress, whose
+		// view is a pure function of model state) takes no messages and has
+		// nothing to sync back — skip its forwarding block entirely. Without
+		// the Update RHS the assignment `m.f, cmd = m.f` would be malformed.
+		if w.model.Update == "" {
+			continue
+		}
 		if w.focusExpr != "" {
 			fmt.Fprintf(b, "\tif %s {\n", w.focusExpr)
 		} else {

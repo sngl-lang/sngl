@@ -58,3 +58,15 @@ func Rows(rows [][]string) []table.Row {
 	}
 	return out
 }
+
+// Percent computes value/max as a fraction in [0, 1] for progress.Model.ViewAs.
+// It guards against a zero (or negative) max — a div-by-zero would otherwise
+// yield NaN/Inf and corrupt the rendered bar — returning 0 in that case. The
+// result is not clamped at the top: callers passing value > max get a fraction
+// above 1.0, which ViewAs renders as a full bar.
+func Percent(value, max float64) float64 {
+	if max <= 0 {
+		return 0
+	}
+	return value / max
+}
