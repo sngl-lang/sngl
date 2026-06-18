@@ -286,9 +286,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if bp.Model.Pkg != "" {
 				gc.RequireImport(bp.Model.Pkg)
 			}
+			// Expand `${prop}`/`${prop|conv}` template tokens in the Model
+			// strings against this node's props. No-token strings (input,
+			// textarea) pass through unchanged, so their output stays
+			// byte-identical. Converter tokens require the pkg/go/tui import.
+			model := bp.Model
+			model.New = expandWidgetTemplate(gc, model.New, n)
+			model.View = expandWidgetTemplate(gc, model.View, n)
+			model.Update = expandWidgetTemplate(gc, model.Update, n)
+			model.Init = expandWidgetTemplate(gc, model.Init, n)
 			info.widgets = append(info.widgets, widgetInfo{
 				fieldName:   fieldName,
-				model:       bp.Model,
+				model:       model,
 				binds:       binds,
 				placeholder: placeholder,
 				focusExpr:   nodeStaticFocusExpr(n, gc),

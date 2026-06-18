@@ -1,9 +1,91 @@
 package bubbletea
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// widgetTemplateConverters maps a `${prop|conv}` converter name to a pkg/go/tui
+// helper function. The substituted prop expression is wrapped as
+// `tui.<helper>(<expr>)`. Extensible: add a row to support a new conversion.
+var widgetTemplateConverters = map[string]string{
+	"listItems": "StringItems",
+	"columns":   "Columns",
+	"rows":      "Rows",
+}
+
+// expandWidgetTemplate substitutes `${...}` tokens in a Model.New/View/Update/
+// Init string against the Widget node `n`'s props. Tokens:
+//
+//	${prop}       → the Go expression for n's prop named "prop"
+//	${prop|conv}  → tui.<Helper>(<expr>), where conv maps via
+//	                widgetTemplateConverters; the pkg/go/tui import is required
+//	$${           → a literal "${" (escape)
+//
+// A string with no `${...}` token is returned unchanged (so existing widgets
+// such as input/textarea, whose Model strings carry no tokens, emit
+// byte-identically). An unknown prop or converter leaves the raw token in place
+// — the resulting Go won't compile, surfacing the authoring error loudly rather
+// than silently dropping it.
+func expandWidgetTemplate(gc *golang.GoIRContext, tmpl string, n *ir.NodeInst) string {
+	if !strings.Contains(tmpl, "${") {
+		return tmpl
+	}
+	var b strings.Builder
+	i := 0
+	for i < len(tmpl) {
+		// Escape: "$${" → literal "${".
+		if strings.HasPrefix(tmpl[i:], "$${") {
+			b.WriteString("${")
+			i += 3
+			continue
+		}
+		if strings.HasPrefix(tmpl[i:], "${") {
+			end := strings.IndexByte(tmpl[i+2:], '}')
+			if end < 0 {
+				// Unterminated token: emit the rest verbatim.
+				b.WriteString(tmpl[i:])
+				break
+			}
+			token := tmpl[i+2 : i+2+end]
+			b.WriteString(expandWidgetToken(gc, token, n))
+			i += 2 + end + 1
+			continue
+		}
+		b.WriteByte(tmpl[i])
+		i++
+	}
+	return b.String()
+}
+
+// expandWidgetToken resolves a single token body (the text between "${" and
+// "}") into a Go expression, applying a converter if "prop|conv" form is used.
+func expandWidgetToken(gc *golang.GoIRContext, token string, n *ir.NodeInst) string {
+	propName, conv := token, ""
+	if before, after, ok := strings.Cut(token, "|"); ok {
+		propName = before
+		conv = after
+	}
+	prop := codegen.NodeProp(n, propName)
+	if prop == nil {
+		// Leave the token in place so the missing prop surfaces as a Go
+		// compile error rather than vanishing.
+		return "${" + token + "}"
+	}
+	expr := gc.EvalExpr(prop)
+	if conv == "" {
+		return expr
+	}
+	helper, ok := widgetTemplateConverters[conv]
+	if !ok {
+		return "${" + token + "}"
+	}
+	gc.RequireImport(tuiImportPath)
+	return "tui." + helper + "(" + expr + ")"
+}
 
 // blueprintKind identifies which of the three inlined platform primitives a
 // stdlib component renders through. It is decided structurally from the
