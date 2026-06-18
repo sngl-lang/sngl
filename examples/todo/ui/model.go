@@ -134,7 +134,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
+	_ = cmd
 	switch msg := msg.(type) {
 	case setNewTodoMsg:
 		m = m.SetNewTodo(msg.value)
@@ -177,9 +179,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.__focusID == 0 {
 		m.widget0, cmd = m.widget0.Update(msg)
+		cmds = append(cmds, cmd)
 		m.newTodo = m.widget0.Value()
 	}
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {

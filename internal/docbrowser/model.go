@@ -136,7 +136,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
+	_ = cmd
 	switch msg := msg.(type) {
 	case setPathMsg:
 		m = m.SetPath(msg.value)
@@ -189,17 +191,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.__focusID == 0 {
 		m.widget0, cmd = m.widget0.Update(msg)
+		cmds = append(cmds, cmd)
 		m.path = m.widget0.Value()
 	}
 	if m.__focusID == 1 {
 		m.widget1, cmd = m.widget1.Update(msg)
+		cmds = append(cmds, cmd)
 		m.ident1 = m.widget1.Value()
 	}
 	if m.__focusID == 2 {
 		m.widget2, cmd = m.widget2.Update(msg)
+		cmds = append(cmds, cmd)
 		m.ident2 = m.widget2.Value()
 	}
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
