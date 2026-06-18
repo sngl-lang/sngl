@@ -137,10 +137,18 @@ func checkDoc(doc *ast.Document, dir string) error {
 
 // checkAndReturn type-checks a document and returns the package or the first error.
 func checkAndReturn(doc *ast.Document, dir string) (*ir.Package, error) {
+	// Register all available languages and platforms so the checker can merge
+	// each stdlib component's platform extension body (e.g. the bubbletea
+	// `Layout`/`Widget` primitives that back vbox/input/etc). Without these the
+	// stdlib components keep no platform body, lowering inlines nothing, and the
+	// generated View renders empty — every snapshot comes out blank.
+	langs, plats := registeredTargets()
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:     os.DirFS(dir),
-		Dir:    dir,
-		IsMain: true,
+		FS:        os.DirFS(dir),
+		Dir:       dir,
+		IsMain:    true,
+		Languages: langs,
+		Platforms: plats,
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -148,4 +156,23 @@ func checkAndReturn(doc *ast.Document, dir string) (*ir.Package, error) {
 		}
 	}
 	return pkg, nil
+}
+
+// registeredTargets returns every language and platform currently registered in
+// the codegen registry, for passing to checker.Config so platform extension
+// bodies are merged. Mirrors the CLI's collectTargets.
+func registeredTargets() ([]ir.Language, []ir.Platform) {
+	var langs []ir.Language
+	for _, name := range codegen.Langs() {
+		if l := codegen.LookupLang(name); l != nil {
+			langs = append(langs, l)
+		}
+	}
+	var plats []ir.Platform
+	for _, name := range codegen.Platforms() {
+		if p := codegen.LookupPlatform(name); p != nil {
+			plats = append(plats, p)
+		}
+	}
+	return langs, plats
 }

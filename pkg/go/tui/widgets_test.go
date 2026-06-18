@@ -118,6 +118,46 @@ func TestCursorFreshTable(t *testing.T) {
 	}
 }
 
+func TestWidgetWidth(t *testing.T) {
+	tests := []struct {
+		name string
+		in   int
+		want int
+	}{
+		{"zero falls back to default minus margin", 0, 36},
+		{"negative falls back", -5, 36},
+		{"normal insets by margin", 80, 76},
+		{"tiny clamps to min 20", 18, 20},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := WidgetWidth(tt.in); got != tt.want {
+				t.Errorf("WidgetWidth(%d) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWidgetHeight(t *testing.T) {
+	tests := []struct {
+		name string
+		in   int
+		want int
+	}{
+		{"zero falls back to default minus margin", 0, 6},
+		{"negative falls back", -5, 6},
+		{"normal insets by margin", 24, 20},
+		{"tiny clamps to min 3", 5, 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := WidgetHeight(tt.in); got != tt.want {
+				t.Errorf("WidgetHeight(%d) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTableWidth(t *testing.T) {
 	tests := []struct {
 		name string

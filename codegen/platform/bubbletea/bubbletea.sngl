@@ -31,6 +31,14 @@ struct Model {
     update string
     init string
     pkg string
+    // resize is an optional method-chain template applied to the widget field
+    // whenever the terminal size changes (e.g. ".SetWidth($\{w\})" or
+    // ".SetSize($\{w\}, $\{h\})"). It is emitted as `m.<field><resize>` from a
+    // generated resizeWidgets() helper, which the WindowSizeMsg case and
+    // SetTerminalSize both call. The $\{w\}/$\{h\} tokens resolve to the inset,
+    // clamped terminal width/height (see tui.WidgetWidth/WidgetHeight). Empty
+    // means the widget has no size (e.g. spinner).
+    resize string
 }
 
 struct Focus { enabled bool }
@@ -120,7 +128,8 @@ component sngl.input {
                 view=".View()",
                 update=".Update(msg)",
                 init="textinput.Blink",
-                pkg="charm.land/bubbles/v2/textinput"
+                pkg="charm.land/bubbles/v2/textinput",
+                resize=".SetWidth($\{w\})"
             },
             focus=Focus{enabled=true},
             binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
@@ -170,7 +179,8 @@ component sngl.select {
                 new="tui.NewList(tui.StringItems($\{options\}), 40, 10)",
                 view=".View()",
                 update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/list"
+                pkg="charm.land/bubbles/v2/list",
+                resize=".SetSize($\{w\}, $\{h\})"
             },
             focus=Focus{enabled=true},
             binds=[Bind{prop="value", get="tui.SelectedString"}],
@@ -188,7 +198,8 @@ component sngl.textarea {
                 new="textarea.New()",
                 view=".View()",
                 update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/textarea"
+                pkg="charm.land/bubbles/v2/textarea",
+                resize=".SetWidth($\{w\})"
             },
             focus=Focus{enabled=true},
             binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
@@ -212,7 +223,8 @@ component sngl.progress {
                 type="progress.Model",
                 new="progress.New()",
                 view=".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
-                pkg="charm.land/bubbles/v2/progress"
+                pkg="charm.land/bubbles/v2/progress",
+                resize=".SetWidth($\{w\})"
             },
             value=value,
             max=max,
@@ -338,7 +350,8 @@ component sngl.table {
                 new="tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
                 view=".View()",
                 update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/table"
+                pkg="charm.land/bubbles/v2/table",
+                resize=".SetWidth($\{w\})"
             },
             focus=Focus{enabled=true},
             binds=[Bind{prop="selected", get="tui.Cursor"}],
@@ -357,7 +370,8 @@ component sngl.tree {
                 new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
                 view=".View()",
                 update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/list"
+                pkg="charm.land/bubbles/v2/list",
+                resize=".SetSize($\{w\}, $\{h\})"
             },
             focus=Focus{enabled=true},
             binds=[Bind{prop="selected", get="tui.SelectedString"}],
@@ -379,7 +393,8 @@ component sngl.menu {
                     new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
                     view=".View()",
                     update=".Update(msg)",
-                    pkg="charm.land/bubbles/v2/list"
+                    pkg="charm.land/bubbles/v2/list",
+                    resize=".SetSize($\{w\}, $\{h\})"
                 },
                 focus=Focus{enabled=true},
                 items=items,

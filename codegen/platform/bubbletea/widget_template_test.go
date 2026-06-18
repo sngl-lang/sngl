@@ -84,6 +84,16 @@ func TestExpandWidgetTemplate(t *testing.T) {
 			field: "widget3",
 			want:  "m.widget3.Tick",
 		},
+		{
+			name: "w token resolves to inset terminal width helper",
+			tmpl: ".SetWidth(${w})",
+			want: ".SetWidth(tui.WidgetWidth(m.width))",
+		},
+		{
+			name: "w and h tokens resolve in SetSize",
+			tmpl: ".SetSize(${w}, ${h})",
+			want: ".SetSize(tui.WidgetWidth(m.width), tui.WidgetHeight(m.height))",
+		},
 	}
 
 	for _, tt := range tests {
@@ -114,5 +124,11 @@ func TestExpandWidgetTemplateRegistersImport(t *testing.T) {
 	expandWidgetTemplate(gc, "${items|listItems}", litNode(map[string]string{"items": "m.xs"}), "f")
 	if !hasTUI(gc) {
 		t.Errorf("converter token should require tui import %q", tuiImportPath)
+	}
+
+	gc = golang.NewIRContext(nil)
+	expandWidgetTemplate(gc, ".SetWidth(${w})", litNode(nil), "f")
+	if !hasTUI(gc) {
+		t.Errorf("${w} token should require tui import %q", tuiImportPath)
 	}
 }

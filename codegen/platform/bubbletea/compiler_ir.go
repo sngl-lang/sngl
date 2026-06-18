@@ -340,11 +340,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
 			model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
 			model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
+			model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
 			// A model string may reference a pkg/go/tui helper inline (e.g.
 			// progress's `tui.Percent(...)`) without going through a `|conv`
 			// token, so the converter path's RequireImport doesn't fire. Pull
 			// the import in whenever any expanded string names the tui package.
-			for _, s := range []string{model.New, model.View, model.Update, model.Init} {
+			for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
 				if strings.Contains(s, "tui.") {
 					gc.RequireImport(tuiImportPath)
 					break
@@ -529,15 +530,43 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			firstFocusable = false
 		}
 	}
+	// Size widgets to the initial terminal extent. m.width/m.height are still
+	// zero here (no WindowSizeMsg yet), so resizeWidgets falls back to its
+	// defaults — but emitting it keeps construction consistent with the post-
+	// resize state and primes any widget whose default size is 0.
+	if widgetsHaveResize(info.widgets) {
+		b.WriteString("\tm.resizeWidgets()\n")
+	}
 	b.WriteString("\treturn m\n")
 	b.WriteString("}\n\n")
 
-	// SetTerminalSize
-	b.WriteString("// SetTerminalSize sets the terminal dimensions.\n")
+	// SetTerminalSize. Also resizes the bubbles widgets: the snapshot harness
+	// calls New() + SetTerminalSize(w,h) + View() with no WindowSizeMsg, so this
+	// is the only place widget sizing happens on that path.
+	b.WriteString("// SetTerminalSize sets the terminal dimensions and resizes widgets.\n")
 	b.WriteString("func (m *Model) SetTerminalSize(w, h int) {\n")
 	b.WriteString("\tm.width = w\n")
 	b.WriteString("\tm.height = h\n")
+	if widgetsHaveResize(info.widgets) {
+		b.WriteString("\tm.resizeWidgets()\n")
+	}
 	b.WriteString("}\n\n")
+
+	// resizeWidgets applies each widget's resize template against the current
+	// m.width/m.height. Called from New(), SetTerminalSize(), and the
+	// tea.WindowSizeMsg case so widgets stay sized to the terminal on every
+	// path. Omitted entirely when no widget declares a resize template.
+	if widgetsHaveResize(info.widgets) {
+		b.WriteString("// resizeWidgets sizes each bubbles widget to the current terminal extent.\n")
+		b.WriteString("func (m *Model) resizeWidgets() {\n")
+		for _, w := range info.widgets {
+			if w.model.Resize == "" {
+				continue
+			}
+			fmt.Fprintf(&b, "\tm.%s%s\n", w.fieldName, w.model.Resize)
+		}
+		b.WriteString("}\n\n")
+	}
 
 	// Computed methods. Single-Return bodies emit `return <expr>` for
 	// minimal output; multi-statement bodies (e.g. those introduced by
@@ -846,6 +875,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tcase tea.WindowSizeMsg:\n")
 	b.WriteString("\t\tm.width = msg.Width\n")
 	b.WriteString("\t\tm.height = msg.Height\n")
+	if widgetsHaveResize(info.widgets) {
+		b.WriteString("\t\tm.resizeWidgets()\n")
+	}
 
 	// KeyPressMsg
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
@@ -1309,6 +1341,18 @@ func irExprGoType(e ir.Expr) string {
 		return golang.IRTypeToGo(t)
 	}
 	return "any"
+}
+
+// widgetsHaveResize reports whether any widget declares a resize template, which
+// gates emission of the resizeWidgets() method and its call sites. An empty
+// method (or calls to a non-existent method) would be dead/invalid code.
+func widgetsHaveResize(widgets []widgetInfo) bool {
+	for _, w := range widgets {
+		if w.model.Resize != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func extractIRAssignTarget(stmts []ir.Stmt) string {

@@ -19,6 +19,28 @@ type htmlSnapshotter interface {
 	SnapshotHTML(html []byte, width, height int) ([]byte, error)
 }
 
+// snapshotGoMod builds the go.mod for a snapshot harness module. It mirrors the
+// language RunDir path: codegen.DetectHostGoMod supplies the host Go version and
+// — critically — a `replace git.duckfam.us/jonathan/sngl => <repo>` directive
+// when run from inside the sngl source tree. Without that replace the harness
+// resolves pkg/go/tui to the *published* module, so any tui helper added in an
+// unpublished commit (e.g. WidgetWidth) fails `go mod tidy`, the harness never
+// builds, and the snapshot comes out blank/stale.
+func snapshotGoMod() string {
+	goVersion, goModExtra := codegen.DetectHostGoMod()
+	if goVersion == "" {
+		goVersion = "1.23"
+	}
+	mod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
+	if goModExtra != "" {
+		mod += "\n" + goModExtra
+		if !strings.HasSuffix(mod, "\n") {
+			mod += "\n"
+		}
+	}
+	return mod
+}
+
 func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	view, err := g.runSnapshot(pkg, lang, width, height)
 	if err != nil {
@@ -88,7 +110,7 @@ func main() {
 		return "", fmt.Errorf("writing harness: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module tmp\n\ngo 1.23\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
 		return "", fmt.Errorf("writing go.mod: %w", err)
 	}
 
@@ -241,7 +263,7 @@ func main() {
 	if err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(harness), 0o644); err != nil {
 		return nil, fmt.Errorf("writing harness: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module tmp\n\ngo 1.23\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
 		return nil, fmt.Errorf("writing go.mod: %w", err)
 	}
 

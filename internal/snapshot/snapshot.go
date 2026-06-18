@@ -278,6 +278,23 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 		if bs, ok := plat.(codegen.BatchSnapshotter); ok && len(parsed) > 1 {
 			var batchDocs []codegen.BatchDoc
 			for _, p := range parsed {
+				// Optimize + lower each package before generating, exactly as the
+				// individual fallback path does (below). Generate() emits straight
+				// from IR and does NOT lower itself, so without this the batch
+				// would feed un-inlined components/widgets to codegen and render
+				// blank. Each pkg is snapshotted once, so in-place lowering is safe.
+				batchOptCfg := &optimize.Config{
+					Platform: platform,
+					Language: lang,
+					Dir:      filepath.Dir(p.entry.SourceFile),
+				}
+				if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
+					return nil, fmt.Errorf("batch snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
+				}
+				batchCaps := plat.Capabilities(langT).ToLowerCaps()
+				if err := lower.Lower(p.pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
+					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
+				}
 				batchDocs = append(batchDocs, codegen.BatchDoc{
 					ID:   p.entry.ID,
 					Pkg:  p.pkg,

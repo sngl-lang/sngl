@@ -134,6 +134,41 @@ func Cursor(m table.Model) int {
 	return m.Cursor()
 }
 
+// WidgetWidth returns the cell width a bubbles widget should occupy given the
+// terminal width `w`. It insets the raw terminal extent so widgets don't span
+// edge-to-edge (leaving room for the surrounding layout's padding/borders) and
+// clamps to a sane minimum. When `w` is zero or negative — which happens before
+// the first tea.WindowSizeMsg, and in some snapshot harnesses — it falls back to
+// a default width so widgets never render at width 0 (which collapses input/
+// list/progress to a near-blank cell).
+func WidgetWidth(w int) int {
+	const margin = 4
+	if w <= 0 {
+		w = 40 // pre-WindowSizeMsg / headless fallback
+	}
+	w -= margin
+	if w < 20 {
+		w = 20
+	}
+	return w
+}
+
+// WidgetHeight returns the cell height a bubbles widget should occupy given the
+// terminal height `h`. Like WidgetWidth it insets and clamps, and falls back to
+// a default when `h` is zero/negative so list/table/textarea widgets get a
+// non-zero viewport before the first tea.WindowSizeMsg arrives.
+func WidgetHeight(h int) int {
+	const margin = 4
+	if h <= 0 {
+		h = 10 // pre-WindowSizeMsg / headless fallback
+	}
+	h -= margin
+	if h < 3 {
+		h = 3
+	}
+	return h
+}
+
 // Percent computes value/max as a fraction in [0, 1] for progress.Model.ViewAs.
 // It guards against a zero (or negative) max — a div-by-zero would otherwise
 // yield NaN/Inf and corrupt the rendered bar — returning 0 in that case. The

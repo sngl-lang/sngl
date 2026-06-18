@@ -71,6 +71,18 @@ func expandWidgetToken(gc *golang.GoIRContext, token string, n *ir.NodeInst, fie
 	if token == "self" {
 		return "m." + field
 	}
+	// ${w}/${h} resolve to the inset, clamped terminal width/height a widget
+	// should occupy. The tui helpers centralize the margin/clamp and the
+	// zero-fallback (so a pre-WindowSizeMsg m.width==0 never sizes a widget to
+	// 0). Used by resize templates (.SetWidth(${w}) / .SetSize(${w}, ${h})).
+	if token == "w" {
+		gc.RequireImport(tuiImportPath)
+		return "tui.WidgetWidth(m.width)"
+	}
+	if token == "h" {
+		gc.RequireImport(tuiImportPath)
+		return "tui.WidgetHeight(m.height)"
+	}
 	propName, conv := token, ""
 	if before, after, ok := strings.Cut(token, "|"); ok {
 		propName = before
@@ -126,6 +138,11 @@ type modelMeta struct {
 	Update string
 	Init   string
 	Pkg    string
+	// Resize is an optional method-chain template (e.g. ".SetWidth(${w})")
+	// applied to the widget field on every terminal-size change. Emitted as
+	// `m.<field><Resize>` from the generated resizeWidgets() helper. Empty for
+	// widgets with no size (spinner).
+	Resize string
 }
 
 // bindMeta mirrors the SNGL `Bind` record: a two-way binding between a SNGL
@@ -275,6 +292,8 @@ func extractModel(e ir.Expr) modelMeta {
 			m.Init = s
 		case "pkg":
 			m.Pkg = s
+		case "resize":
+			m.Resize = s
 		}
 	}
 	return m
