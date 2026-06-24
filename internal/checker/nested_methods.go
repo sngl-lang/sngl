@@ -100,6 +100,16 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	if !hit {
 		if name := recvTypeName(recv); name != "" {
 			if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+				// A sibling method on a COMPONENT receiver must NOT desugar to a
+				// `this.method` selector: component methods are emitted as free
+				// functions (`main_foo(state)`) / Model methods (`m.foo()`), not
+				// as methods on the receiver value. Returning nil routes it
+				// through inferIdent's currentComponent path, which yields a
+				// receiver-stripped func ref → Pattern A call (codegen supplies
+				// the per-instance receiver). Struct/enum methods keep `this.method`.
+				if _, isComp := recv.Decl.(*ir.Component); isComp {
+					return nil
+				}
 				hit = true
 			}
 		}

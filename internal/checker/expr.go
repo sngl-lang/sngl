@@ -420,6 +420,20 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	left := exprType(leftExpr)
 	right := exprType(rightExpr)
 
+	// Implicit call: a bare zero-arg computed used as a binary operand is
+	// called, comparing/combining its return value. The opposite operand's
+	// type drives the expected return (e.g. `count > 0` calls count() → int).
+	if wrapped, ret := c.implicitCall(x.Left, left, right); wrapped != nil {
+		x.Left = wrapped
+		leftExpr = c.checkExpr(x.Left)
+		left = ret
+	}
+	if wrapped, ret := c.implicitCall(x.Right, right, left); wrapped != nil {
+		x.Right = wrapped
+		rightExpr = c.checkExpr(x.Right)
+		right = ret
+	}
+
 	skip := left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn
 
 	var typ *ir.Type
@@ -731,13 +745,28 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			if recv := c.currentRecvType(); recv != nil {
 				if name := recvTypeName(recv); name != "" {
 					if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
-						sel := &ast.SelectExpr{
-							Pos:     ident.Pos,
-							Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
-							Field:   ident.Name,
-							Kind:    ast.SelectField,
+						// Component sibling-method calls fall through to the
+						// regular path below: inferIdent resolves the bare name
+						// via the currentComponent path to a receiver-stripped
+						// func, and the call is built WITHOUT an explicit `this`
+						// arg (Pattern A) — identical to a bare `name` reference.
+						// passNoImplicitRecv / codegen then supply the
+						// per-instance receiver (`m`/`state`). Building
+						// `this.name()` here instead leaks the receiver *param*
+						// into Args[0], which codegen emits as a literal `this`
+						// (undefined in Go → compile error; wrong receiver in JS
+						// → runtime error). Struct/enum receivers still need the
+						// explicit `this` selector — their `this` is a real
+						// emitted parameter.
+						if _, isComp := recv.Decl.(*ir.Component); !isComp {
+							sel := &ast.SelectExpr{
+								Pos:     ident.Pos,
+								Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
+								Field:   ident.Name,
+								Kind:    ast.SelectField,
+							}
+							return c.inferMethodCall(sel, x)
 						}
-						return c.inferMethodCall(sel, x)
 					}
 				}
 			}
