@@ -379,20 +379,10 @@ func (l *lexer) scanIdent(startLine, startCol int) Token {
 }
 
 // scanNumber scans integer and float literals.
-// v2: decimal only. 0x/0o/0b prefixes produce ILLEGAL.
+// v2: decimal only. There are no non-decimal bases; a digit run followed by
+// letters (including 0x/0o/0b) is a unit literal, not a based number.
 func (l *lexer) scanNumber(startLine, startCol int) Token {
 	var sb strings.Builder
-
-	// Reject non-decimal prefixes
-	if l.peek() == '0' && l.pos+1 < len(l.input) {
-		next := l.input[l.pos+1]
-		if next == 'x' || next == 'X' || next == 'o' || next == 'O' || next == 'b' || next == 'B' {
-			sb.WriteRune(l.advance()) // 0
-			sb.WriteRune(l.advance()) // prefix letter
-			l.errors = append(l.errors, fmt.Sprintf("%d:%d: non-decimal integer literals are not supported in v2", startLine, startCol))
-			return l.tok(ILLEGAL, sb.String(), startLine, startCol)
-		}
-	}
 
 	for l.pos < len(l.input) && (isDigit(l.input[l.pos]) || l.input[l.pos] == '_') {
 		sb.WriteRune(l.advance())
