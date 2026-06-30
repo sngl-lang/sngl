@@ -71,11 +71,47 @@ func TestHexColorLowersToStructLit(t *testing.T) {
 	}
 }
 
-// Note: the plan included a TestHexColorThreeDigitExpands case for `#abc`,
-// but the lexer (scanHashToken in internal/parser/lexer.go) only tokenizes
-// 6- or 8-digit hex as a COLOR token; 3-digit `#abc` lexes as an
-// ELEMENT_REF. parseHexChannels still handles len==3 defensively so that if
-// the lexer is ever broadened, the checker side already works.
+// colorChannels checks a `const C color = <literal>` and returns its r/g/b/a.
+func colorChannels(t *testing.T, literal string) map[string]int {
+	t.Helper()
+	doc, err := parser.Parse("t.sngl", []byte("const C color = "+literal))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check %s: %s", literal, d.Error())
+		}
+	}
+	sl := unwrapConv(pkg.Consts[0].Init).(*ir.StructLit)
+	got := map[string]int{}
+	for _, f := range sl.Fields {
+		n := 0
+		fmt.Sscanf(f.Value.(*ir.Literal).Raw, "%d", &n)
+		got[f.Name] = n
+	}
+	return got
+}
+
+// TestHexColorShortForms pins the CSS-style 3- and 4-digit short forms, which
+// double each nibble (#fff -> #ffffff, #f00a -> #ff0000aa). These reach the
+// color path now that the lexer emits a single #-token regardless of length.
+func TestHexColorShortForms(t *testing.T) {
+	cases := map[string]map[string]int{
+		"#fff":  {"r": 255, "g": 255, "b": 255, "a": 255},
+		"#abc":  {"r": 0xaa, "g": 0xbb, "b": 0xcc, "a": 255},
+		"#f00a": {"r": 255, "g": 0, "b": 0, "a": 0xaa},
+	}
+	for lit, want := range cases {
+		got := colorChannels(t, lit)
+		for ch, w := range want {
+			if got[ch] != w {
+				t.Errorf("%s channel %s = %d, want %d", lit, ch, got[ch], w)
+			}
+		}
+	}
+}
 
 func TestHexColorEightDigitIncludesAlpha(t *testing.T) {
 	src := `const C color = #11223344`

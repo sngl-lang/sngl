@@ -35,6 +35,20 @@ func parseHexColor(s string) (Color, bool) {
 			Blue:  float64(b*16+b) / 255.0,
 			Alpha: 1.0,
 		}, true
+	case 4:
+		r, ok1 := hexNibble(hex[0])
+		g, ok2 := hexNibble(hex[1])
+		b, ok3 := hexNibble(hex[2])
+		a, ok4 := hexNibble(hex[3])
+		if !(ok1 && ok2 && ok3 && ok4) {
+			return Color{}, false
+		}
+		return Color{
+			Red:   float64(r*16+r) / 255.0,
+			Green: float64(g*16+g) / 255.0,
+			Blue:  float64(b*16+b) / 255.0,
+			Alpha: float64(a*16+a) / 255.0,
+		}, true
 	case 6:
 		r, ok1 := hexByte(hex[0], hex[1])
 		g, ok2 := hexByte(hex[2], hex[3])

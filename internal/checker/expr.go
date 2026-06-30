@@ -200,8 +200,10 @@ func (c *checker) lowerHexLiteral(x *ast.LiteralExpr) ir.Expr {
 	}
 }
 
-// parseHexChannels parses #rgb, #rrggbb, or #rrggbbaa to 0..255 channels.
-// Alpha defaults to 255 for 3- and 6-digit forms.
+// parseHexChannels parses #rgb, #rgba, #rrggbb, or #rrggbbaa to 0..255
+// channels. The 3- and 4-digit short forms double each nibble (CSS-style, so
+// #fff is #ffffff and #f00a is #ff0000aa). Alpha defaults to 255 for the
+// 3- and 6-digit forms.
 func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
 	if len(raw) == 0 || raw[0] != '#' {
 		return 0, 0, 0, 0, false
@@ -235,6 +237,15 @@ func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
 			return 0, 0, 0, 0, false
 		}
 		return rv*16 + rv, gv*16 + gv, bv*16 + bv, 255, true
+	case 4:
+		rv, ok1 := nibble(hex[0])
+		gv, ok2 := nibble(hex[1])
+		bv, ok3 := nibble(hex[2])
+		av, ok4 := nibble(hex[3])
+		if !(ok1 && ok2 && ok3 && ok4) {
+			return 0, 0, 0, 0, false
+		}
+		return rv*16 + rv, gv*16 + gv, bv*16 + bv, av*16 + av, true
 	case 6:
 		rv, ok1 := byteOf(hex[0], hex[1])
 		gv, ok2 := byteOf(hex[2], hex[3])

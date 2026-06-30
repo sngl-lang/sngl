@@ -279,8 +279,11 @@ selects.
 
 ### Color literals
 
-A color literal is `#` followed by six or eight hexadecimal digits: `#rrggbb`
-(opaque) or `#rrggbbaa` (with an alpha channel).
+A color literal is `#` followed by three, four, six, or eight hexadecimal
+digits: `#rgb`, `#rgba`, `#rrggbb`, or `#rrggbbaa`. The three- and four-digit
+short forms expand CSS-style by doubling each digit — `#fff` is `#ffffff` and
+`#f00a` is `#ff0000aa`. Alpha defaults to fully opaque when omitted (the three-
+and six-digit forms).
 
 The lexer does **not** distinguish a color from an
 [element reference](#element-references); both are the single `#`-token (the
