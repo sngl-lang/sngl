@@ -730,6 +730,41 @@ func (env *Env) findVarOwner(name string) *Env {
 	return nil
 }
 
+// varInScope reports whether name binds a variable or constant in this env or
+// an enclosing one. Unlike lookup it never auto-invokes a zero-arg function, so
+// callers can distinguish a func-typed var from a named function.
+func (env *Env) varInScope(name string) bool {
+	if _, ok := env.Vars[name]; ok {
+		return true
+	}
+	if _, ok := env.Consts[name]; ok {
+		return true
+	}
+	if env.parent != nil {
+		return env.parent.varInScope(name)
+	}
+	return false
+}
+
+// resolveCallableFunc resolves name to a user function for an explicit call,
+// without invoking it. Mirrors lookup's function-resolution order (free/
+// receiver-less funcs, then the current component's methods) up the parent
+// chain, but returns the func so the caller can bind the call's arguments.
+func (env *Env) resolveCallableFunc(name string) *ir.Func {
+	if fn, ok := env.Funcs[name]; ok && fn.Receiver == "" {
+		return fn
+	}
+	if env.Comp != nil {
+		if fn, ok := env.Funcs[env.Comp.Name+"."+name]; ok {
+			return fn
+		}
+	}
+	if env.parent != nil {
+		return env.parent.resolveCallableFunc(name)
+	}
+	return nil
+}
+
 func (env *Env) lookup(name string) (any, error) {
 	if v, ok := env.Vars[name]; ok {
 		return v, nil
@@ -1102,6 +1137,17 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 
 	// Callee expression (func-typed var).
 	if call.Callee != nil {
+		// Bare named-function / component-method call, e.g. `bump()`. The
+		// checker leaves Func nil for component methods (they aren't in plain
+		// scope) and sets Callee to the bare ident. Resolve and invoke directly,
+		// honouring the call's args. This must precede Eval(callee): lookup()
+		// auto-invokes a zero-arg function when its name is *read*, which would
+		// fire the body as a side effect here and then discard the result.
+		if id, ok := call.Callee.(*ir.Ident); ok && !env.varInScope(id.Name) {
+			if fn := env.resolveCallableFunc(id.Name); fn != nil {
+				return env.EvalUserFuncCallArgs(fn, call.Args)
+			}
+		}
 		v, err := env.Eval(call.Callee)
 		if err != nil {
 			return nil, err
