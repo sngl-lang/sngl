@@ -16,22 +16,22 @@ component main {
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
         for __entry = __slot0 {
-            lower.RemoveChild(#parent, __entry)
+            lower.RemoveChild(parent, __entry)
         }
         __slot0 = []
         if visible {
             var __n0 text = lower.CreateNode("text")
-            #__n0.value = "hi"
-            lower.AppendChild(#parent, #__n0)
-            __slot0 = stdlib.ListPush(__slot0, #__n0)
+            __n0.value = "hi"
+            lower.AppendChild(parent, __n0)
+            __slot0 = stdlib.ListPush(__slot0, __n0)
         }
     }
     vbox #__n1(style=Style{gap = 4}) {
         button(@click {
             visible = !visible
-            __renderSlot0(#__n1)
+            __renderSlot0(__n1)
         })
-        __renderSlot0(#__n1)
+        __renderSlot0(__n1)
     }
 }
 context #locale(i18n.defaultLocale())

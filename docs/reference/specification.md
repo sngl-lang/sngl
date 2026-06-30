@@ -295,9 +295,11 @@ quantity in that suffix.
 ### Element references
 
 An element reference is `#` followed by an identifier: `#submit`,
-`#_internal`. The token's value is the name without the `#`. Element references
-name a visual node within a component body so that it can be addressed
-elsewhere — for example to read its state or to drive an event in a test (see
+`#_internal`. The token's value is the name without the `#`. An element
+reference is never a standalone operand; it appears only as a postfix that
+tags a visual node with a name (`button #submit(…)`) or selects one
+(`node.#submit`), so that the node can be reached elsewhere — for example to
+read its state or to drive an event in a test (see
 [Element references](#element-references-1)).
 
 ### Macro attributes
@@ -788,7 +790,6 @@ PrimaryExpr =
     | I18nInterpStr
     | I18nTriple
     | COLOR
-    | ELEM_REF
     | "(" Expr ")"
     | "[" ListBody "]"
     | AnonStructLit
@@ -844,7 +845,9 @@ on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 
 Operands are literals, identifiers, parenthesized expressions, list literals,
 struct and map literals, function literals, interpolated and translatable
-strings, color and unit literals, element references, and event names (`@name`).
+strings, color and unit literals, and event names (`@name`). An element
+reference (`#id`) is not an operand; it appears only as a postfix tag or
+selection (see [Element references](#element-references-1)).
 
 <!-- BEGIN GENERATED: grammar-literals -->
 
@@ -1156,11 +1159,14 @@ statements form its children. A node may be labeled with an element reference,
 
 ### Element references
 
-An element reference `#id` attached to a node names it within the component.
-The reference can be read elsewhere in the component and is the mechanism by
-which tests drive a node's events: `c.id.@click()` invokes the click handler of
-the node named `id`. Event invocation through a reference uses the
-`value.@event(args)` form.
+Attaching `#id` to a node (`button #id(…)`) names it within the component and
+introduces `id` as a component-scoped binding: an opaque, immutable handle to
+that node (it does not shadow an existing name). The node is reached either by
+that bare name or, from a handle to its container, by selection — `c.id.value`
+reads the node's state and `c.id.@click()` drives its events (event invocation
+through a reference uses the `value.@event(args)` form). The `#` sigil itself
+appears only as the node-naming tag or as a selection field (`node.#id`); it is
+never written on its own as an operand.
 
 ## Reactivity
 
@@ -1470,7 +1476,6 @@ PrimaryExpr =
     | I18nInterpStr
     | I18nTriple
     | COLOR
-    | ELEM_REF
     | "(" Expr ")"
     | "[" ListBody "]"
     | AnonStructLit

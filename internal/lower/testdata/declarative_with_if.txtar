@@ -13,10 +13,10 @@ component main {
     var n int = 0
     if n > 0 {
         var __n0 text = lower.CreateNode("text")
-        #__n0.value = "big"
+        __n0.value = "big"
     } else {
         var __n1 text = lower.CreateNode("text")
-        #__n1.value = "small"
+        __n1.value = "small"
     }
 }
 context #locale(i18n.defaultLocale())

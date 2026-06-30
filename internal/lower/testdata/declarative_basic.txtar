@@ -7,8 +7,8 @@ component main {
 -- expected.sngl --
 component main {
     var __n0 text = lower.CreateNode("text")
-    #__n0.value = "hello"
+    __n0.value = "hello"
     var __n1 button = lower.CreateNode("button")
-    #__n1.text = "+"
+    __n1.text = "+"
 }
 context #locale(i18n.defaultLocale())

@@ -11,7 +11,7 @@ component main {
     text #__n0(value=string(n))
     button(text="+", @click {
         n = n + 1
-        #__n0.value = string(n)
+        __n0.value = string(n)
     })
 }
 context #locale(i18n.defaultLocale())

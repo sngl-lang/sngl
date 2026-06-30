@@ -1402,8 +1402,6 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 			return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralNull, Raw: tok.Literal}
 		}
 		return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
-	case ELEMENT_REF:
-		return &ast.ElementRefExpr{Pos: ast.Pos(pos), Name: tok.Literal}
 	case AT:
 		return &ast.EventRefExpr{Pos: ast.Pos(pos)}
 	}

@@ -387,7 +387,6 @@ StatementPrimary =
     | I18nInterpStr
     | I18nTriple
     | color
-    | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
@@ -496,7 +495,6 @@ PrimaryExpr =
     | I18nInterpStr
     | I18nTriple
     | color
-    | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
@@ -586,7 +584,6 @@ NonIdentPrimary =
     | I18nInterpStr
     | I18nTriple
     | color
-    | elem_ref
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit

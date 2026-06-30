@@ -19,6 +19,6 @@ func __lambda0(state __lambda0_caps) {
 component counter {
     var count __ref_int = __ref_int{value = 0}
     var __n0 button = lower.CreateNode("button")
-    lower.AttachHandler(#__n0, "click", __closure(__lambda0, __lambda0_caps{count = count}))
+    lower.AttachHandler(__n0, "click", __closure(__lambda0, __lambda0_caps{count = count}))
 }
 context #locale(i18n.defaultLocale())

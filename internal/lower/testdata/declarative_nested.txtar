@@ -10,10 +10,10 @@ component main {
 component main {
     var __n0 vbox = lower.CreateNode("vbox")
     var __n1 text = lower.CreateNode("text")
-    #__n1.value = "a"
-    lower.AppendChild(#__n0, #__n1)
+    __n1.value = "a"
+    lower.AppendChild(__n0, __n1)
     var __n2 text = lower.CreateNode("text")
-    #__n2.value = "b"
-    lower.AppendChild(#__n0, #__n2)
+    __n2.value = "b"
+    lower.AppendChild(__n0, __n2)
 }
 context #locale(i18n.defaultLocale())

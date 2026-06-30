@@ -1879,6 +1879,14 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		}
 	}
 
+	// Declare named-node ids as component-scoped bindings so a bare reference
+	// to a `#id`-tagged node resolves (this is also what lets lowered IR,
+	// whose synthesized node handles are referenced by bare name, round-trip
+	// through reparse + recheck). Node handles are opaque (dyn) and immutable.
+	if comp.AST != nil {
+		c.declareNodeIDs(&comp.AST.Body)
+	}
+
 	// Check var/const initializers first so types are inferred before function bodies.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		for _, stmt := range comp.AST.Body.Stmts {
@@ -1952,6 +1960,9 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	for _, fn := range w.Funcs {
 		c.scope.Declare(fn)
 	}
+	if w.AST != nil {
+		c.declareNodeIDs(&w.AST.Block)
+	}
 	for _, fn := range w.Funcs {
 		c.checkFuncBody(fn)
 	}
@@ -1959,6 +1970,58 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	if w.AST != nil && w.AST.Block.IsDefined() {
 		w.Body = c.checkBlockIR(&w.AST.Block)
 	}
+}
+
+// declareNodeIDs declares every named visual node's #id within block as a
+// component/window-scoped binding, so a bare reference to a `#id`-tagged node
+// resolves. Node handles are opaque (dyn) and immutable; this is also the
+// mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
+// `__root`) are referenced by bare name — round-trip through reparse + check.
+func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	for _, s := range block.Stmts {
+		c.declareNodeIDsStmt(s)
+	}
+}
+
+func (c *checker) declareNodeIDsStmt(s ast.Stmt) {
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		c.declareNodeID(n.ID)
+		// Descend into the node's own children, but not into a nested
+		// window — a window has its own scope and hoists its ids itself.
+		if visualNodeTarget(n) != "window" {
+			c.declareNodeIDs(&n.Block)
+		}
+	case *ast.CallStmt:
+		// `text #out(...)` / `button(@click)` parse as call statements but
+		// carry an element-ref id semantically.
+		if _, id, isElem := elementRefCallInfo(n.Call); isElem {
+			c.declareNodeID(id)
+		}
+	case *ast.IfStmt:
+		c.declareNodeIDs(&n.Body)
+		c.declareNodeIDs(&n.Else)
+	case *ast.ForStmt:
+		c.declareNodeIDs(&n.Body)
+		c.declareNodeIDs(&n.Else)
+	case *ast.PlatformStmt:
+		c.declareNodeIDs(&n.Body)
+	}
+}
+
+func (c *checker) declareNodeID(id string) {
+	if id == "" {
+		return
+	}
+	// Skip if the name already resolves (a prop, var, func, or outer symbol);
+	// node ids never shadow an existing binding.
+	if _, ok := c.scope.Lookup(id); ok {
+		return
+	}
+	c.scope.Declare(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a

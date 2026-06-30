@@ -822,9 +822,6 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	case *ast.EventRefExpr:
 		f.write("@")
 		f.write(x.Name)
-	case *ast.ElementRefExpr:
-		f.write("#")
-		f.write(x.Name)
 	case *ast.BinaryExpr:
 		f.writeExpr(x.Left)
 		f.write(" ")

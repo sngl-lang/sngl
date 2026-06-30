@@ -17,21 +17,21 @@ component main {
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
         for __entry = __slot0 {
-            lower.RemoveChild(#parent, __entry)
+            lower.RemoveChild(parent, __entry)
         }
         __slot0 = []
         if visible {
             var __n1 text = lower.CreateNode("text")
-            #__n1.value = "bye"
-            lower.AppendChild(#parent, #__n1)
-            __slot0 = stdlib.ListPush(__slot0, #__n1)
+            __n1.value = "bye"
+            lower.AppendChild(parent, __n1)
+            __slot0 = stdlib.ListPush(__slot0, __n1)
         }
     }
     button(text="toggle", @click {
         visible = !visible
-        __renderSlot0(#__root)
+        __renderSlot0(__root)
     })
     text #__n0(value="Hello, " + name + "!")
-    __renderSlot0(#__root)
+    __renderSlot0(__root)
 }
 context #locale(i18n.defaultLocale())

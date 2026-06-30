@@ -121,8 +121,6 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
 		return c.inferConstExpr(x)
-	case *ast.ElementRefExpr:
-		return &ir.Ident{Type: TypDyn, Name: x.Name, IsElementRef: true}
 	case *ast.EventRefExpr:
 		return c.inferEventRef(x)
 	default:

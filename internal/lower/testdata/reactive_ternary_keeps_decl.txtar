@@ -25,7 +25,7 @@ component main {
             } else {
                 __lt0 = "light"
             }
-            #__n0.value = __lt0
+            __n0.value = __lt0
         })
         var __lt1 string
         if dark {

@@ -260,11 +260,6 @@ type InterpolationExpr struct {
 	Style StringStyle
 }
 
-// ElementRefExpr references a visual element by its #id.
-type ElementRefExpr struct {
-	Pos  Pos
-	Name string
-}
 
 // LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.
 // Exactly one of Body or Block is set.
@@ -421,7 +416,6 @@ func (x *ListExpr) ExprPos() *Pos            { return &x.Pos }
 func (x *MapLit) ExprPos() *Pos              { return &x.Pos }
 func (x *SpreadExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *InterpolationExpr) ExprPos() *Pos   { return &x.Pos }
-func (x *ElementRefExpr) ExprPos() *Pos      { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *ConstExpr) ExprPos() *Pos           { return &x.Pos }
