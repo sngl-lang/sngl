@@ -455,20 +455,6 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		Imports:        map[string]bool{},
 		NeedsBoolToInt: c.needsBoolToInt,
 	}
-	for _, p := range c.info.gc.Imports() {
-		td.Imports[p] = true
-	}
-
-	// Imports the Go translator required while rendering bodies/handlers
-	// (e.g. "math" for a float intrinsic, "unsafe" for cgo pointer casts).
-	// The template's dynamic .Imports block renders these. C calls don't
-	// register an import (handled via the cgo preamble), so gc.Imports() holds
-	// only real Go paths. "unsafe" is registered via evalConversion whenever a
-	// NativePointerOf cast is emitted, and structurally for emitEventInvokers.
-	for _, p := range gc.Imports() {
-		td.Imports[p] = true
-	}
-
 	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
 	for _, imp := range helpers.Imports() {
@@ -550,6 +536,20 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 			Name:   wf.name,
 			GoType: wf.goType,
 		})
+	}
+
+	// Sample the translator's required imports LAST, after every gc.EvalExpr /
+	// gc.EvalStmt above (notably the computed bodies, which can be the first
+	// thing to require "fmt" via string interpolation). Sampling earlier would
+	// miss an import first needed while rendering a computed. C calls don't
+	// register an import (handled via the cgo preamble), so gc.Imports() holds
+	// only real Go paths; "unsafe" is registered via evalConversion for
+	// NativePointerOf casts and structurally for emitEventInvokers.
+	for _, p := range c.info.gc.Imports() {
+		td.Imports[p] = true
+	}
+	for _, p := range gc.Imports() {
+		td.Imports[p] = true
 	}
 
 	return td, nil

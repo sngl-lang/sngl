@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"strings"
 )
 
@@ -38,13 +39,20 @@ func New() Model {
 	m.widget0.Placeholder = "Buy eggs"
 	m.widget0.SetValue(m.newTodo)
 	m.widget0.Focus()
+	m.resizeWidgets()
 	return m
 }
 
-// SetTerminalSize sets the terminal dimensions.
+// SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+	m.resizeWidgets()
+}
+
+// resizeWidgets sizes each bubbles widget to the current terminal extent.
+func (m *Model) resizeWidgets() {
+	m.widget0.SetWidth(tui.WidgetWidth(m.width))
 }
 
 func (m Model) status() string {
@@ -145,6 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.resizeWidgets()
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:

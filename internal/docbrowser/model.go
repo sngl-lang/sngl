@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"fmt"
 	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"strings"
 )
 
@@ -42,13 +43,22 @@ func New() Model {
 	m.widget2 = textinput.New()
 	m.widget2.Placeholder = "field/prop"
 	m.widget2.SetValue(m.ident2)
+	m.resizeWidgets()
 	return m
 }
 
-// SetTerminalSize sets the terminal dimensions.
+// SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+	m.resizeWidgets()
+}
+
+// resizeWidgets sizes each bubbles widget to the current terminal extent.
+func (m *Model) resizeWidgets() {
+	m.widget0.SetWidth(tui.WidgetWidth(m.width))
+	m.widget1.SetWidth(tui.WidgetWidth(m.width))
+	m.widget2.SetWidth(tui.WidgetWidth(m.width))
 }
 
 func (m Model) entry() lookup.Entry {
@@ -149,6 +159,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.resizeWidgets()
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
