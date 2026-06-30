@@ -2,11 +2,13 @@ package golang
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -296,6 +298,11 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 }
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	// A color{r,g,b,a} struct (the lowered form of a #rrggbb[aa] literal)
+	// is carried in Go as its CSS hex string, not an undefined Color type.
+	if css, ok := htmlutil.ColorExprToCSS(n); ok {
+		return strconv.Quote(css)
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -1209,6 +1216,11 @@ func IRTypeToGo(t *ir.Type) string {
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
 		}
+		// color is a string-representable stdlib struct: a #rrggbb[aa] literal
+		// lowers to color{r,g,b,a}, but Go carries it as its CSS hex string.
+		if ir.IsColorStruct(t) {
+			return "string"
+		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
 			if sd.Native != "" {
 				return sd.Native
@@ -1348,6 +1360,10 @@ func IRLiteralToGo(e ir.Expr) string {
 		}
 		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.StructLit:
+		// color literals are carried as their CSS hex string in Go.
+		if css, ok := htmlutil.ColorExprToCSS(n); ok {
+			return strconv.Quote(css)
+		}
 		name := "struct{}"
 		if n.Def != nil {
 			name = IRTypeToGo(n.Type)
