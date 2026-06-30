@@ -280,9 +280,17 @@ selects.
 ### Color literals
 
 A color literal is `#` followed by exactly six or eight hexadecimal digits:
-`#rrggbb` (opaque) or `#rrggbbaa` (with an alpha channel). A `#` followed by an
-identifier that is not a valid six- or eight-digit hex run is an
-[element reference](#element-references) instead.
+`#rrggbb` (opaque) or `#rrggbbaa` (with an alpha channel).
+
+The lexer chooses between a color literal and an
+[element reference](#element-references) by *shape alone*, before the parser
+assigns any position: `#` followed by exactly six or eight hex digits is a
+color literal, and `#` followed by any other identifier is an element-reference
+token. The two never compete syntactically — a color literal is a value operand
+while an element reference is only a postfix (see below) — but because the
+choice is purely lexical, an identifier that happens to be exactly six or eight
+hex digits (for example `#facade` or `#deadbeef`) is lexed as a color and so
+cannot be used as an element-reference name.
 
 ### Unit literals
 
@@ -294,13 +302,15 @@ quantity in that suffix.
 
 ### Element references
 
-An element reference is `#` followed by an identifier: `#submit`,
-`#_internal`. The token's value is the name without the `#`. An element
-reference is never a standalone operand; it appears only as a postfix that
-tags a visual node with a name (`button #submit(…)`) or selects one
-(`node.#submit`), so that the node can be reached elsewhere — for example to
-read its state or to drive an event in a test (see
-[Element references](#element-references-1)).
+An element reference is `#` followed by an identifier (`#submit`,
+`#_internal`) — except when that identifier is exactly six or eight hex digits,
+which the lexer reads as a [color literal](#color-literals) instead. The
+token's value is the name without the `#`. An element reference is never a
+standalone operand; it appears only as a postfix that tags a visual node with a
+name (`button #submit(…)`), selects one (`node.#submit`), or names a context
+declaration (`context #locale(…)`), so that the node or context can be reached
+elsewhere — for example to read a node's state or drive its events in a test
+(see [Element references](#element-references-1)).
 
 ### Macro attributes
 
