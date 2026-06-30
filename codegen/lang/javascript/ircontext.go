@@ -309,10 +309,18 @@ func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Raw
 	case ir.TypeNull:
 		return "null"
-	case ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
-		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+	case ir.TypeColor, ir.TypeDuration:
 		return fmt.Sprintf("%q", n.Raw)
+	case ir.TypeStruct:
+		// color/date/time/dateTime are string-representable stdlib structs;
+		// emit their canonical form as a quoted JS string.
+		if ir.StringReprStruct(n.Type) {
+			return fmt.Sprintf("%q", n.Raw)
+		}
+		if n.Suffix != "" {
+			return fmt.Sprintf("%q", n.Raw+n.Suffix)
+		}
+		return n.Raw
 	default:
 		if n.Suffix != "" {
 			return fmt.Sprintf("%q", n.Raw+n.Suffix)

@@ -28,7 +28,7 @@ var SNGLLexer = chroma.MustNewLexer(&chroma.Config{
 			// Builtin constants
 			{Pattern: `\b(true|false|null)\b`, Type: chroma.KeywordConstant, Mutator: nil},
 			// Builtin types
-			{Pattern: `\b(bool|int|float|string|dyn|color|list|map|date|time|duration|measurement|url|email|uuid)\b`, Type: chroma.KeywordType, Mutator: nil},
+			{Pattern: `\b(bool|int|float|string|dyn|color|list|map|date|time|dateTime|duration|measurement)\b`, Type: chroma.KeywordType, Mutator: nil},
 			// Builtin components
 			{Pattern: `\b(vbox|hbox|stack|text|button|input|image|scroll|spacer|checkbox)\b`, Type: chroma.NameTag, Mutator: nil},
 			// Color literals

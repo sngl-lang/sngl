@@ -79,14 +79,13 @@ func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
 		case ir.TypeBool, ir.TypeString:
 			return true
 		}
-	case ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-		ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
-		ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
-		ir.TypeHostname, ir.TypeDecimal:
+	case ir.TypeDuration, ir.TypeColor:
 		// String-domain types accept a string operand (the literal /
 		// expression that holds the canonical form). They also accept
 		// themselves — `date(d)` is identity. The runtime parse/
-		// validate happens at platform-codegen time.
+		// validate happens at platform-codegen time. Note: date/time/
+		// dateTime structs are normalized to the TypeColor kind by the
+		// cast site (inferBuiltinConversion) before reaching here.
 		switch fromKind {
 		case ir.TypeString, targetKind:
 			return true
@@ -99,9 +98,7 @@ func isConvertiblePrimitive(k ir.TypeKind) bool {
 	switch k {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
 		return true
-	case ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
-		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+	case ir.TypeColor, ir.TypeDuration:
 		return true
 	}
 	return false

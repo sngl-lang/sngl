@@ -5,15 +5,6 @@ component main {
         birthday date = "2026-03-12"
         noon time = "12:00"
         event_time dateTime = "2026-03-12T10:00:00Z"
-        site url = "https://example.com"
-        contact email = "test@example.com"
-        id uuid = "550e8400-e29b-41d4-a716-446655440000"
-        pattern regex = "^[a-z]+$"
-        encoded base64 = "SGVsbG8gV29ybGQ="
-        addr4 ipv4 = "192.168.1.1"
-        addr6 ipv6 = "::1"
-        host hostname = "example.com"
-        amount decimal = "123.45"
     )
 
     text(value=bg)

@@ -144,11 +144,21 @@ func TestJsLambda_AsyncPrefix(t *testing.T) {
 func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	for _, k := range []ir.TypeKind{ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal} {
+	// Kind-backed string-domain types.
+	for _, k := range []ir.TypeKind{ir.TypeColor, ir.TypeDuration} {
 		lit := &ir.Literal{Type: &ir.Type{Kind: k}, Raw: "val"}
 		got := jc.evalLiteral(lit)
 		if got != `"val"` {
 			t.Errorf("kind %v: got %q, want \"val\"", k, got)
+		}
+	}
+	// Struct-backed string-representable types (color/date/time/dateTime).
+	for _, name := range []string{"color", "date", "time", "dateTime"} {
+		typ := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: name}}
+		lit := &ir.Literal{Type: typ, Raw: "val"}
+		got := jc.evalLiteral(lit)
+		if got != `"val"` {
+			t.Errorf("struct %s: got %q, want \"val\"", name, got)
 		}
 	}
 }

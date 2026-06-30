@@ -740,32 +740,25 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, TypString, ident.Name)
 		case "bool":
 			return c.inferBuiltinConversion(x, TypBool, ident.Name)
-		case "date":
-			return c.inferBuiltinConversion(x, TypDate, ident.Name)
-		case "time":
-			return c.inferBuiltinConversion(x, TypTime, ident.Name)
-		case "datetime":
-			return c.inferBuiltinConversion(x, TypDateTime, ident.Name)
 		case "duration":
 			return c.inferBuiltinConversion(x, TypDuration, ident.Name)
-		case "color":
-			// color is a stdlib StructDef-backed type, not a primitive,
-			// so the cast form is just convert-to-color-struct. Look up
-			// the StructDef type from scope; if absent (pre-stdlib), fall
-			// back to dyn so the diagnostic comes from the regular path.
-			colorTyp := TypDyn
-			if sym, ok := c.scope.Lookup("color"); ok {
+		case "color", "date", "time", "datetime", "dateTime":
+			// These are stdlib StructDef-backed types, not primitives, so the
+			// cast form is just convert-to-struct. Look up the StructDef type
+			// from scope; if absent (pre-stdlib), fall back to dyn so the
+			// diagnostic comes from the regular path. The legacy `datetime`
+			// spelling resolves to the `dateTime` StructDef.
+			lookup := ident.Name
+			if lookup == "datetime" {
+				lookup = "dateTime"
+			}
+			structTyp := TypDyn
+			if sym, ok := c.scope.Lookup(lookup); ok {
 				if t := sym.SymType(); t != nil {
-					colorTyp = t
+					structTyp = t
 				}
 			}
-			return c.inferBuiltinConversion(x, colorTyp, ident.Name)
-		case "url":
-			return c.inferBuiltinConversion(x, TypURL, ident.Name)
-		case "email":
-			return c.inferBuiltinConversion(x, TypEmail, ident.Name)
-		case "uuid":
-			return c.inferBuiltinConversion(x, TypUUID, ident.Name)
+			return c.inferBuiltinConversion(x, structTyp, ident.Name)
 		}
 	}
 
@@ -888,15 +881,23 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		fromKind := ir.TypeInvalid
 		if from != nil {
 			fromKind = from.Kind
-			// All color values are TypeStruct-backed by the stdlib color
-			// StructDef. For the explicit-cast primitiveConvertible check
-			// (e.g. `string(c)`), substitute the TypeColor string-domain
-			// kind so the string-domain cast rules apply.
-			if ir.IsColorStruct(from) {
+			// color/date/time/dateTime values are TypeStruct-backed by their
+			// stdlib StructDefs. For the explicit-cast primitiveConvertible
+			// check (e.g. `string(c)`, `string(d)`), substitute the string-
+			// domain TypeColor kind so the string-domain cast rules apply.
+			if ir.StringReprStruct(from) {
 				fromKind = ir.TypeColor
 			}
 		}
-		if from != nil && fromKind != target.Kind && !primitiveConvertible(fromKind, target.Kind) {
+		// Likewise, when the *target* is a string-repr struct (e.g.
+		// `date(s)`), normalize it to the TypeColor string-domain kind for
+		// the convertibility check; the actual Conversion still carries the
+		// concrete struct target type.
+		targetKind := target.Kind
+		if ir.StringReprStruct(target) {
+			targetKind = ir.TypeColor
+		}
+		if from != nil && fromKind != targetKind && !primitiveConvertible(fromKind, targetKind) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
@@ -1666,17 +1667,15 @@ func interpPartPrimitive(t *ir.Type) bool {
 	if t == nil {
 		return false
 	}
-	// Color is StructDef-backed but still stringifies like a string-domain
-	// primitive in interpolation.
-	if ir.IsColorStruct(t) {
+	// color/date/time/dateTime are StructDef-backed but still stringify like
+	// string-domain primitives in interpolation.
+	if ir.StringReprStruct(t) {
 		return true
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
 		ir.TypeEnum, ir.TypeUnit, ir.TypeNull,
-		ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
-		ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+		ir.TypeColor, ir.TypeDuration:
 		return true
 	}
 	return false

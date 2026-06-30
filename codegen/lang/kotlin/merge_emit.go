@@ -35,8 +35,7 @@ func kotlinZeroComparand(t *ir.Type) string {
 		return "null"
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex,
-		ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal, ir.TypeColor:
+	case ir.TypeString, ir.TypeColor:
 		return `""`
 	case ir.TypeBool:
 		return "false"

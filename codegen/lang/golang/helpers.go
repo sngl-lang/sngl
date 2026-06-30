@@ -33,9 +33,12 @@ func translateIRLiteral(n *ir.Literal) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "nil"
-		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+		case ir.TypeStruct:
 			if out, ok := LowerTimeLiteralGo(n); ok {
 				return out
+			}
+			if ir.StringReprStruct(n.Type) {
+				return fmt.Sprintf("%q", n.Raw)
 			}
 		}
 	}

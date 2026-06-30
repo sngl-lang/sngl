@@ -27,12 +27,14 @@ func translateIRLiteral(n *ir.Literal) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "null"
-		case ir.TypeString, ir.TypeColor,
-			ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-			ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex, ir.TypeBase64,
-			ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname, ir.TypeDecimal:
+		case ir.TypeString, ir.TypeColor, ir.TypeDuration:
 			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
 			return fmt.Sprintf("%q", n.Raw)
+		case ir.TypeStruct:
+			// color/date/time/dateTime: string-representable stdlib structs.
+			if ir.StringReprStruct(n.Type) {
+				return fmt.Sprintf("%q", n.Raw)
+			}
 		}
 	}
 	return n.Raw

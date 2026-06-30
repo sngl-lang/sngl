@@ -63,42 +63,18 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return TypString
 	case "dyn":
 		return TypDyn
-	case "color":
-		// color is uniformly carried as a TypeStruct backed by the stdlib
-		// "color" StructDef. Look it up via the scope chain.
-		if sym, ok := c.scope.Lookup("color"); ok {
+	case "color", "date", "time", "dateTime":
+		// These are uniformly carried as TypeStructs backed by their stdlib
+		// StructDefs (lib/types.sngl). Look up via the scope chain.
+		if sym, ok := c.scope.Lookup(t.Name); ok {
 			if typ := sym.SymType(); typ != nil {
 				return typ
 			}
 		}
 		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
 		return TypDyn
-	case "date":
-		return TypDate
-	case "time":
-		return TypTime
-	case "dateTime":
-		return TypDateTime
 	case "duration":
 		return TypDuration
-	case "url":
-		return TypURL
-	case "email":
-		return TypEmail
-	case "uuid":
-		return TypUUID
-	case "regex":
-		return TypRegex
-	case "base64":
-		return TypBase64
-	case "ipv4":
-		return TypIPV4
-	case "ipv6":
-		return TypIPV6
-	case "hostname":
-		return TypHostname
-	case "decimal":
-		return TypDecimal
 	case "null":
 		return TypNull
 	}
@@ -559,14 +535,13 @@ func isComparable(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration,
-		ir.TypeColor, ir.TypeURL, ir.TypeEmail, ir.TypeUUID,
-		ir.TypeRegex, ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6,
-		ir.TypeHostname, ir.TypeDecimal:
+		ir.TypeDuration, ir.TypeColor:
 		return true
 	case ir.TypeStruct:
 		// Conservative: accept any named struct as comparable. Refine
-		// in a follow-up if we want to actually check field types.
+		// in a follow-up if we want to actually check field types. This
+		// also covers the string-representable structs (color/date/time/
+		// dateTime).
 		return t.Decl != nil
 	case ir.TypeEnum, ir.TypeUnit:
 		return true

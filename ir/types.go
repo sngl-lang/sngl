@@ -24,19 +24,7 @@ const (
 	TypeComponent // Decl set
 	TypeShape     // virtual; IsShape components satisfy it
 	TypeColor
-	TypeDate
-	TypeTime
-	TypeDateTime
 	TypeDuration
-	TypeURL
-	TypeEmail
-	TypeUUID
-	TypeRegex
-	TypeBase64
-	TypeIPV4
-	TypeIPV6
-	TypeHostname
-	TypeDecimal
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
@@ -65,19 +53,7 @@ var (
 	TypFloat    = &Type{Kind: TypeFloat}
 	TypString   = &Type{Kind: TypeString}
 	TypNull     = &Type{Kind: TypeNull}
-	TypDate     = &Type{Kind: TypeDate}
-	TypTime     = &Type{Kind: TypeTime}
-	TypDateTime = &Type{Kind: TypeDateTime}
 	TypDuration = &Type{Kind: TypeDuration}
-	TypURL      = &Type{Kind: TypeURL}
-	TypEmail    = &Type{Kind: TypeEmail}
-	TypUUID     = &Type{Kind: TypeUUID}
-	TypRegex    = &Type{Kind: TypeRegex}
-	TypBase64   = &Type{Kind: TypeBase64}
-	TypIPV4     = &Type{Kind: TypeIPV4}
-	TypIPV6     = &Type{Kind: TypeIPV6}
-	TypHostname = &Type{Kind: TypeHostname}
-	TypDecimal  = &Type{Kind: TypeDecimal}
 	TypVoid     = &Type{Kind: TypeVoid}
 	TypShape    = &Type{Kind: TypeShape}
 )
@@ -175,32 +151,8 @@ func (t *Type) String() string {
 		return "shape"
 	case TypeColor:
 		return "color"
-	case TypeDate:
-		return "date"
-	case TypeTime:
-		return "time"
-	case TypeDateTime:
-		return "dateTime"
 	case TypeDuration:
 		return "duration"
-	case TypeURL:
-		return "url"
-	case TypeEmail:
-		return "email"
-	case TypeUUID:
-		return "uuid"
-	case TypeRegex:
-		return "regex"
-	case TypeBase64:
-		return "base64"
-	case TypeIPV4:
-		return "ipv4"
-	case TypeIPV6:
-		return "ipv6"
-	case TypeHostname:
-		return "hostname"
-	case TypeDecimal:
-		return "decimal"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:
@@ -383,14 +335,14 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if isStringDomain(t.Kind) && target.Kind == TypeString {
 		return true
 	}
-	// The color value type is carried as a stdlib-StructDef-backed
-	// TypeStruct (it is the only string-domain type with a struct
-	// backing). It still participates in string<->string-domain
-	// implicit conversion.
-	if t.Kind == TypeString && IsColorStruct(target) {
+	// The color/date/time/dateTime value types are carried as stdlib-
+	// StructDef-backed TypeStructs with a canonical string form. They
+	// participate in string<->string implicit conversion just like the
+	// kind-backed string-domain types above.
+	if t.Kind == TypeString && StringReprStruct(target) {
 		return true
 	}
-	if IsColorStruct(t) && target.Kind == TypeString {
+	if StringReprStruct(t) && target.Kind == TypeString {
 		return true
 	}
 	if t.Kind == TypeList && target.Kind == TypeList {
@@ -421,9 +373,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 
 func isStringDomain(k TypeKind) bool {
 	switch k {
-	case TypeColor, TypeDate, TypeTime, TypeDateTime, TypeDuration,
-		TypeURL, TypeEmail, TypeUUID, TypeRegex, TypeBase64,
-		TypeIPV4, TypeIPV6, TypeHostname, TypeDecimal:
+	case TypeColor, TypeDuration:
 		return true
 	}
 	return false
@@ -439,6 +389,85 @@ func IsColorStruct(t *Type) bool {
 	}
 	sd, ok := t.Decl.(*StructDef)
 	return ok && sd.Name == "color"
+}
+
+// StringReprStruct reports whether t is a stdlib struct with a canonical
+// string form (coerces to/from string): color, date, time, dateTime.
+func StringReprStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	if !ok {
+		return false
+	}
+	switch sd.Name {
+	case "color", "date", "time", "dateTime":
+		return true
+	}
+	return false
+}
+
+// IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the stdlib
+// "date"/"time"/"dateTime" StructDef. These three were formerly the TypeDate/
+// TypeTime/TypeDateTime kinds; they are now carried uniformly as TypeStruct
+// backed by the stdlib StructDef (like color). Detect by name.
+func IsDateStruct(t *Type) bool     { return isStdlibStruct(t, "date") }
+func IsTimeStruct(t *Type) bool     { return isStdlibStruct(t, "time") }
+func IsDateTimeStruct(t *Type) bool { return isStdlibStruct(t, "dateTime") }
+
+func isStdlibStruct(t *Type, name string) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == name
+}
+
+// Registered stdlib struct types for date/time/dateTime. Populated by the
+// checker once lib/types.sngl is parsed, so non-checker phases (foreign-type
+// importers, etc.) can synthesize a canonical date/time/dateTime value type
+// without their own scope access. Nil before registration; accessors fall
+// back to TypDyn.
+var (
+	stdlibDateType     *Type
+	stdlibTimeType     *Type
+	stdlibDateTimeType *Type
+)
+
+// RegisterStringReprStructs records the resolved stdlib struct types so the
+// DateType/TimeType/DateTimeType accessors can hand them out. Idempotent.
+func RegisterStringReprStructs(date, time, dateTime *Type) {
+	if date != nil {
+		stdlibDateType = date
+	}
+	if time != nil {
+		stdlibTimeType = time
+	}
+	if dateTime != nil {
+		stdlibDateTimeType = dateTime
+	}
+}
+
+// DateType/TimeType/DateTimeType return the registered stdlib struct types,
+// falling back to dyn when the stdlib has not been loaded yet.
+func DateType() *Type {
+	if stdlibDateType != nil {
+		return stdlibDateType
+	}
+	return TypDyn
+}
+func TimeType() *Type {
+	if stdlibTimeType != nil {
+		return stdlibTimeType
+	}
+	return TypDyn
+}
+func DateTimeType() *Type {
+	if stdlibDateTimeType != nil {
+		return stdlibDateTimeType
+	}
+	return TypDyn
 }
 
 // FuncSig describes a function signature.

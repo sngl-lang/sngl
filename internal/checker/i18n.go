@@ -209,11 +209,8 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		}
 	case "date", "time", "dateTime":
 		if vT != nil {
-			ok := false
-			switch vT.Kind {
-			case ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDyn:
-				ok = true
-			}
+			ok := vT.Kind == ir.TypeDyn ||
+				ir.IsDateStruct(vT) || ir.IsTimeStruct(vT) || ir.IsDateTimeStruct(vT)
 			if !ok {
 				c.error(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
 			}

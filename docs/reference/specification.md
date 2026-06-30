@@ -395,17 +395,13 @@ user-defined types.
 | `string` | Immutable UTF-8 text.                                        |
 | `dyn`    | The dynamic type; see [The dynamic type](#the-dynamic-type). |
 
-In addition, the following *string-domain* types are predeclared. Each is a
-distinct type whose values are conceptually a constrained string, and each
-converts implicitly to and from `string` in both directions:
-
-`date`, `time`, `dateTime`, `duration`, `url`, `email`, `uuid`, `regex`,
-`base64`, `ipv4`, `ipv6`, `hostname`, `decimal`.
-
-> The standard library adds further types in this family — most notably
-> `color` (a struct that behaves as a string-domain type) and the `measurement`
-> and `duration` units used by `Style`. They are not core types; they are
-> defined in SNGL under `lib/`.
+A type may be designated *string-representable*: it has a canonical textual
+form and converts implicitly to and from `string` in both directions (a literal
+such as `"2026-03-12"` is therefore a valid value for one). This is a property a
+type opts into rather than a fixed set of built-in names. The standard library's
+`color`, `date`, `time`, and `dateTime` are string-representable types; the
+library also supplies the `measurement` and `duration` units used by `Style` and
+`timer`. None of these are core types — they are defined in SNGL under `lib/`.
 
 ### Composite and generic types
 
@@ -517,9 +513,8 @@ following holds:
 2. `B` is `dyn` (any value is assignable to `dyn`).
 3. `A` is `null` and `B` is an `option` type or a function type.
 4. `A` is `int` and `B` is `float`.
-5. `A` and `B` are related by the bidirectional string-domain rule: one is
-   `string` and the other is a string-domain type (including the standard
-   library's `color`).
+5. one of `A` and `B` is `string` and the other is a string-representable type
+   (a standard-library type such as `color`, `date`, `time`, or `dateTime`).
 6. `A` is `list<S>`, `B` is `list<T>`, and `S` is assignable to `T` (lists are
    covariant in their element type).
 7. `A` is `list<S>` and `B` is `iter<T>` with `S` assignable to `T` (the
@@ -530,7 +525,7 @@ following holds:
    is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
 
 Every implicit conversion permitted by these rules — a widening, an auto-wrap,
-a string-domain coercion — is **materialized** by the checker as an explicit
+a string coercion — is **materialized** by the checker as an explicit
 conversion node in the intermediate representation, except where `dyn` is
 involved. Code generation therefore never has to re-derive assignability; it
 sees an explicit conversion wherever the source and target types differ.
@@ -543,10 +538,10 @@ permitted conversions among primitives are:
 - to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
   unit;
 - to `float` — from the same set as `int`;
-- to `string` — from `int`, `float`, `bool`, an enum, a unit, or any
-  string-domain type;
+- to `string` — from `int`, `float`, `bool`, an enum, a unit, or a
+  string-representable type;
 - to `bool` — from `bool` or `string`;
-- to a string-domain type — from `string` or from itself.
+- to a string-representable type — from `string` or from itself.
 
 A `dyn` operand may be converted to any primitive type (this is how `dyn` is
 narrowed). Conversions whose operand is a struct, component, function, list,

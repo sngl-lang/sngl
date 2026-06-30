@@ -80,8 +80,8 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "ColorHex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 
 	// --- regex ---
-	{Name: "RegexMatches", Params: []*Param{{Name: "re", Type: TypRegex}, {Name: "s", Type: TypString}}, Return: TypBool},
-	{Name: "RegexFind", Params: []*Param{{Name: "re", Type: TypRegex}, {Name: "s", Type: TypString}}, Return: TypString},
+	{Name: "RegexMatches", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypBool},
+	{Name: "RegexFind", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypString},
 
 	// --- error ---
 	// ErrorRaise is recognised by effect analysis as the user-facing raise
@@ -158,19 +158,25 @@ var I18nIntrinsics = []IntrinsicDef{
 		{Name: "n", Type: TypFloat},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
+	// The date/time/dateTime params accept the stdlib date/time/dateTime
+	// structs. This intrinsic list is built at package init — before the
+	// stdlib is parsed — so the params are typed dyn to stay independent of
+	// stdlib registration order. The wrapping stdlib funcs (i18n.date, etc.)
+	// carry the concrete struct types; codegen dispatches by intrinsic name,
+	// not by these param types.
 	{Name: "Date", Params: []*Param{
 		{Name: "locale", Type: TypString},
-		{Name: "d", Type: TypDate},
+		{Name: "d", Type: TypDyn},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
 	{Name: "Time", Params: []*Param{
 		{Name: "locale", Type: TypString},
-		{Name: "t", Type: TypTime},
+		{Name: "t", Type: TypDyn},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
 	{Name: "DateTime", Params: []*Param{
 		{Name: "locale", Type: TypString},
-		{Name: "dt", Type: TypDateTime},
+		{Name: "dt", Type: TypDyn},
 		{Name: "dateStyle", Type: TypString},
 		{Name: "timeStyle", Type: TypString},
 	}, Return: TypString},

@@ -38,31 +38,7 @@ const (
 	//go:fix inline
 	TypeColor = ir.TypeColor
 	//go:fix inline
-	TypeDate = ir.TypeDate
-	//go:fix inline
-	TypeTime = ir.TypeTime
-	//go:fix inline
-	TypeDateTime = ir.TypeDateTime
-	//go:fix inline
 	TypeDuration = ir.TypeDuration
-	//go:fix inline
-	TypeURL = ir.TypeURL
-	//go:fix inline
-	TypeEmail = ir.TypeEmail
-	//go:fix inline
-	TypeUUID = ir.TypeUUID
-	//go:fix inline
-	TypeRegex = ir.TypeRegex
-	//go:fix inline
-	TypeBase64 = ir.TypeBase64
-	//go:fix inline
-	TypeIPV4 = ir.TypeIPV4
-	//go:fix inline
-	TypeIPV6 = ir.TypeIPV6
-	//go:fix inline
-	TypeHostname = ir.TypeHostname
-	//go:fix inline
-	TypeDecimal = ir.TypeDecimal
 	//go:fix inline
 	TypeNull = ir.TypeNull
 	//go:fix inline
@@ -110,43 +86,7 @@ var TypString = ir.TypString
 var TypNull = ir.TypNull
 
 //go:fix inline
-var TypDate = ir.TypDate
-
-//go:fix inline
-var TypTime = ir.TypTime
-
-//go:fix inline
-var TypDateTime = ir.TypDateTime
-
-//go:fix inline
 var TypDuration = ir.TypDuration
-
-//go:fix inline
-var TypURL = ir.TypURL
-
-//go:fix inline
-var TypEmail = ir.TypEmail
-
-//go:fix inline
-var TypUUID = ir.TypUUID
-
-//go:fix inline
-var TypRegex = ir.TypRegex
-
-//go:fix inline
-var TypBase64 = ir.TypBase64
-
-//go:fix inline
-var TypIPV4 = ir.TypIPV4
-
-//go:fix inline
-var TypIPV6 = ir.TypIPV6
-
-//go:fix inline
-var TypHostname = ir.TypHostname
-
-//go:fix inline
-var TypDecimal = ir.TypDecimal
 
 //go:fix inline
 var TypVoid = ir.TypVoid

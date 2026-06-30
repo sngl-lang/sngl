@@ -14,16 +14,8 @@ func ZeroExpr(t *Type) Expr {
 	case TypeFloat:
 		return &Literal{Type: t, Raw: "0.0"}
 	case TypeString,
-		TypeColor,
-		TypeURL, TypeEmail, TypeUUID, TypeRegex, TypeBase64,
-		TypeIPV4, TypeIPV6, TypeHostname, TypeDecimal:
+		TypeColor:
 		return &Literal{Type: t, Raw: ""}
-	case TypeDate:
-		return &Literal{Type: t, Raw: "0001-01-01"}
-	case TypeTime:
-		return &Literal{Type: t, Raw: "00:00:00"}
-	case TypeDateTime:
-		return &Literal{Type: t, Raw: "0001-01-01 00:00:00"}
 	case TypeDuration:
 		return &Literal{Type: t, Raw: "0ns", Suffix: "ns"}
 	case TypeNull:
@@ -33,6 +25,17 @@ func ZeroExpr(t *Type) Expr {
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
 	case TypeStruct:
+		// date/time/dateTime are string-representable stdlib structs (like
+		// color); their zero value is a canonical-form string literal rather
+		// than an empty struct literal.
+		switch {
+		case IsDateStruct(t):
+			return &Literal{Type: t, Raw: "0001-01-01"}
+		case IsTimeStruct(t):
+			return &Literal{Type: t, Raw: "00:00:00"}
+		case IsDateTimeStruct(t):
+			return &Literal{Type: t, Raw: "0001-01-01 00:00:00"}
+		}
 		sd, _ := t.Decl.(*StructDef)
 		return &StructLit{Type: t, Def: sd, Fields: nil}
 	case TypeEnum:

@@ -226,12 +226,12 @@ func LowerTypedLiteralGo(lit *ir.Literal, target *ir.Type) (string, bool) {
 	if lit == nil || target == nil {
 		return "", false
 	}
-	switch target.Kind {
-	case ir.TypeDate:
+	switch {
+	case ir.IsDateStruct(target):
 		return fmt.Sprintf("mustParseDate(%q)", lit.Raw), true
-	case ir.TypeTime:
+	case ir.IsTimeStruct(target):
 		return fmt.Sprintf("mustParseTime(%q)", lit.Raw), true
-	case ir.TypeDateTime:
+	case ir.IsDateTimeStruct(target):
 		return fmt.Sprintf("mustParseDateTime(%q)", lit.Raw), true
 	}
 	return "", false

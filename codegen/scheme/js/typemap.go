@@ -114,7 +114,7 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 		// handles return-position promises separately.
 		return ir.TypDyn, "Promise type only supported as a function return"
 	case "Date":
-		return ir.TypDateTime, ""
+		return ir.DateTimeType(), ""
 	case "Record", "Map":
 		return ir.TypDyn, "map/record types not supported"
 	}

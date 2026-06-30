@@ -279,8 +279,13 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Raw
 	case ir.TypeNull:
 		return "null"
-	case ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration:
+	case ir.TypeColor, ir.TypeDuration:
 		return fmt.Sprintf("%q", n.Raw)
+	case ir.TypeStruct:
+		if ir.StringReprStruct(n.Type) {
+			return fmt.Sprintf("%q", n.Raw)
+		}
+		return n.Raw
 	default:
 		return n.Raw
 	}
@@ -651,10 +656,7 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Int"
 	case ir.TypeFloat:
 		return "Double"
-	case ir.TypeString, ir.TypeColor,
-		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex,
-		ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname,
-		ir.TypeDecimal:
+	case ir.TypeString, ir.TypeColor:
 		return "String"
 	case ir.TypeList:
 		if len(t.Elems) > 0 {
@@ -672,6 +674,12 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
+		// color/date/time/dateTime are string-representable stdlib structs;
+		// the Kotlin runtime carries them as String (date/time/dateTime are
+		// quoted ISO strings, matching their literal emission).
+		if ir.StringReprStruct(t) {
+			return "String"
+		}
 		if t.Decl != nil {
 			// i18n.PluralKey is represented as String in Kotlin — the Kotlin i18n
 			// runtime uses string plural categories exclusively.
@@ -727,8 +735,13 @@ func IRLiteralToKt(e ir.Expr) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "null"
-		case ir.TypeColor, ir.TypeDate, ir.TypeTime, ir.TypeDateTime, ir.TypeDuration:
+		case ir.TypeColor, ir.TypeDuration:
 			return fmt.Sprintf("%q", n.Raw)
+		case ir.TypeStruct:
+			if ir.StringReprStruct(n.Type) {
+				return fmt.Sprintf("%q", n.Raw)
+			}
+			return n.Raw
 		default:
 			return n.Raw
 		}

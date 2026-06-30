@@ -378,8 +378,8 @@ func TestStringDomainToStringInterp(t *testing.T) {
 	expectNoErrors(t, `
 component main {
     var c color = "#ff0000"
-    var u url = "https://example.com"
-    text(value="c={c} u={u}")
+    var d date = "2026-03-12"
+    text(value="c={c} d={d}")
 }
 `)
 }

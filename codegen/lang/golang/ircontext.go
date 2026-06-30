@@ -412,11 +412,16 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 			return out
 		}
 		return n.Raw
-	case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+	case ir.TypeStruct:
+		// date/time/dateTime literals lower to mustParse* helper calls
+		// (time.Time-valued); other string-repr structs (color) emit quoted.
 		if out, ok := LowerTimeLiteralGo(n); ok {
 			return out
 		}
-		return fmt.Sprintf("%q", n.Raw)
+		if ir.StringReprStruct(n.Type) {
+			return fmt.Sprintf("%q", n.Raw)
+		}
+		return n.Raw
 	default:
 		return n.Raw
 	}
@@ -1173,13 +1178,8 @@ func IRTypeToGo(t *ir.Type) string {
 		return "int"
 	case ir.TypeFloat:
 		return "float64"
-	case ir.TypeString, ir.TypeColor,
-		ir.TypeURL, ir.TypeEmail, ir.TypeUUID, ir.TypeRegex,
-		ir.TypeBase64, ir.TypeIPV4, ir.TypeIPV6, ir.TypeHostname,
-		ir.TypeDecimal:
+	case ir.TypeString, ir.TypeColor:
 		return "string"
-	case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
-		return "time.Time"
 	case ir.TypeDuration:
 		return "time.Duration"
 	case ir.TypeList:
@@ -1203,6 +1203,12 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "*any"
 	case ir.TypeStruct:
+		// date/time/dateTime are string-representable stdlib structs that map
+		// to time.Time in Go (formerly the TypeDate/TypeTime/TypeDateTime
+		// kinds). Detect by name before the generic struct path.
+		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
+			return "time.Time"
+		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
 			if sd.Native != "" {
 				return sd.Native
@@ -1308,11 +1314,14 @@ func IRLiteralToGo(e ir.Expr) string {
 				return out
 			}
 			return n.Raw
-		case ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+		case ir.TypeStruct:
 			if out, ok := LowerTimeLiteralGo(n); ok {
 				return out
 			}
-			return fmt.Sprintf("%q", n.Raw)
+			if ir.StringReprStruct(n.Type) {
+				return fmt.Sprintf("%q", n.Raw)
+			}
+			return n.Raw
 		default:
 			return n.Raw
 		}

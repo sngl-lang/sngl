@@ -81,26 +81,14 @@ func NewBaseScope() *Scope {
 		{"int", TypInt},
 		{"float", TypFloat},
 		{"string", TypString},
-		// "color" is intentionally absent here — the color type is provided
-		// exclusively as the stdlib StructDef (lib/types.sngl). The stdlib
-		// scope sits between this base scope and user code, so resolution
-		// finds the StructDef. Pre-stdlib lookups for "color" will fail,
-		// which is the correct behaviour.
+		// "color", "date", "time", and "dateTime" are intentionally absent
+		// here — they are provided exclusively as stdlib StructDefs
+		// (lib/types.sngl). The stdlib scope sits between this base scope and
+		// user code, so resolution finds the StructDef. Pre-stdlib lookups for
+		// these names will fail, which is the correct behaviour.
 		{"list", ListOf(TypDyn)},
 		{"option", OptionOf(TypDyn)},
-		{"date", TypDate},
-		{"time", TypTime},
-		{"dateTime", TypDateTime},
 		{"duration", TypDuration},
-		{"url", TypURL},
-		{"email", TypEmail},
-		{"uuid", TypUUID},
-		{"regex", TypRegex},
-		{"base64", TypBase64},
-		{"ipv4", TypIPV4},
-		{"ipv6", TypIPV6},
-		{"hostname", TypHostname},
-		{"decimal", TypDecimal},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}

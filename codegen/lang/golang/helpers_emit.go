@@ -135,16 +135,16 @@ func recordTypeHelpers(h *HelperSet, t *ir.Type) {
 	if t == nil {
 		return
 	}
-	switch t.Kind {
-	case ir.TypeDate:
+	switch {
+	case ir.IsDateStruct(t):
 		h.NeedDate = true
-	case ir.TypeTime:
+	case ir.IsTimeStruct(t):
 		h.NeedTime = true
-	case ir.TypeDateTime:
+	case ir.IsDateTimeStruct(t):
 		h.NeedDateTime = true
-	case ir.TypeDuration:
+	case t.Kind == ir.TypeDuration:
 		h.NeedDuration = true
-	case ir.TypeUnit:
+	case t.Kind == ir.TypeUnit:
 		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Name == "duration" {
 			h.NeedDuration = true
 		}

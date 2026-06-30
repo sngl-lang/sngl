@@ -24,30 +24,18 @@ func _() {
 	_ = x[TypeComponent-13]
 	_ = x[TypeShape-14]
 	_ = x[TypeColor-15]
-	_ = x[TypeDate-16]
-	_ = x[TypeTime-17]
-	_ = x[TypeDateTime-18]
-	_ = x[TypeDuration-19]
-	_ = x[TypeURL-20]
-	_ = x[TypeEmail-21]
-	_ = x[TypeUUID-22]
-	_ = x[TypeRegex-23]
-	_ = x[TypeBase64-24]
-	_ = x[TypeIPV4-25]
-	_ = x[TypeIPV6-26]
-	_ = x[TypeHostname-27]
-	_ = x[TypeDecimal-28]
-	_ = x[TypeNull-29]
-	_ = x[TypeTypeParam-30]
-	_ = x[TypeVoid-31]
-	_ = x[TypeRef-32]
-	_ = x[TypeIter-33]
-	_ = x[TypeNative-34]
+	_ = x[TypeDuration-16]
+	_ = x[TypeNull-17]
+	_ = x[TypeTypeParam-18]
+	_ = x[TypeVoid-19]
+	_ = x[TypeRef-20]
+	_ = x[TypeIter-21]
+	_ = x[TypeNative-22]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentShapeColorDateTimeDateTimeDurationURLEmailUUIDRegexBase64IPV4IPV6HostnameDecimalNullTypeParamVoidRefIterNative"
+const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentShapeColorDurationNullTypeParamVoidRefIterNative"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 78, 82, 86, 94, 102, 105, 110, 114, 119, 125, 129, 133, 141, 148, 152, 161, 165, 168, 172, 178}
+var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 78, 86, 90, 99, 103, 106, 110, 116}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

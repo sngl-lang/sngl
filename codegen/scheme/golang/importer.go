@@ -345,7 +345,7 @@ func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) 
 			pkg := named.Obj().Pkg()
 			if pkg != nil {
 				if pkg.Path() == "time" && name == "Time" {
-					return ir.TypDateTime, true
+					return ir.DateTimeType(), true
 				}
 				if _, isStruct := named.Underlying().(*types.Struct); isStruct && pkg.Path() == homePkg {
 					if sd, ok := structs[name]; ok {

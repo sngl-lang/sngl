@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
-	"net"
-	"net/mail"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -2091,11 +2088,27 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	}
 	val := lit.Raw
 
-	// Color is StructDef-backed; treat it as a string-domain target here so
-	// the same string-literal validation applies.
-	if ir.IsColorStruct(typ) {
+	// color/date/time/dateTime are StructDef-backed; detect by name and apply
+	// the same canonical-form validation that the kind-based types use below.
+	switch {
+	case ir.IsColorStruct(typ):
 		if !isValidColor(val) {
 			c.error(pos, "invalid color literal %q", val)
+		}
+		return
+	case ir.IsDateStruct(typ):
+		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).MatchString(val) {
+			c.error(pos, "invalid date literal %q", val)
+		}
+		return
+	case ir.IsTimeStruct(typ):
+		if !regexp.MustCompile(`^\d{2}:\d{2}(:\d{2})?$`).MatchString(val) {
+			c.error(pos, "invalid time literal %q", val)
+		}
+		return
+	case ir.IsDateTimeStruct(typ):
+		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}`).MatchString(val) {
+			c.error(pos, "invalid dateTime literal %q", val)
 		}
 		return
 	}
@@ -2105,45 +2118,9 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		if !isValidColor(val) {
 			c.error(pos, "invalid color literal %q", val)
 		}
-	case ir.TypeDate:
-		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).MatchString(val) {
-			c.error(pos, "invalid date literal %q", val)
-		}
-	case ir.TypeTime:
-		if !regexp.MustCompile(`^\d{2}:\d{2}(:\d{2})?$`).MatchString(val) {
-			c.error(pos, "invalid time literal %q", val)
-		}
-	case ir.TypeDateTime:
-		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}`).MatchString(val) {
-			c.error(pos, "invalid dateTime literal %q", val)
-		}
 	case ir.TypeDuration:
 		if !regexp.MustCompile(`^P`).MatchString(val) {
 			c.error(pos, "invalid duration literal %q", val)
-		}
-	case ir.TypeURL:
-		if u, err := url.Parse(val); err != nil || u.Scheme == "" {
-			c.error(pos, "invalid url literal %q", val)
-		}
-	case ir.TypeEmail:
-		if _, err := mail.ParseAddress(val); err != nil {
-			c.error(pos, "invalid email literal %q", val)
-		}
-	case ir.TypeUUID:
-		if !regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).MatchString(val) {
-			c.error(pos, "invalid uuid literal %q", val)
-		}
-	case ir.TypeIPV4:
-		if ip := net.ParseIP(val); ip == nil || ip.To4() == nil {
-			c.error(pos, "invalid ipv4 literal %q", val)
-		}
-	case ir.TypeIPV6:
-		if ip := net.ParseIP(val); ip == nil || ip.To4() != nil {
-			c.error(pos, "invalid ipv6 literal %q", val)
-		}
-	case ir.TypeHostname:
-		if !regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$`).MatchString(val) {
-			c.error(pos, "invalid hostname literal %q", val)
 		}
 	}
 }

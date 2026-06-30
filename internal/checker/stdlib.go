@@ -295,6 +295,16 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	pkg.Structs = append(pkg.Structs, sd)
 	pkg.Symbols.Types[sd.Name] = sd
 	pkg.Symbols.Root.Declare(sd)
+	// Publish the canonical date/time/dateTime struct types so non-checker
+	// phases (foreign-type importers) can synthesize them without scope access.
+	switch sd.Name {
+	case "date":
+		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
+	case "time":
+		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
+	case "dateTime":
+		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
+	}
 	return sd
 }
 
@@ -824,8 +834,7 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 // color-struct-vs-primitive ambiguity noted in checkStdlibFuncBody.
 func isPrimitiveTypeKind(k ir.TypeKind) bool {
 	switch k {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeDate, ir.TypeTime, ir.TypeDateTime:
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
 		return true
 	}
 	return false
