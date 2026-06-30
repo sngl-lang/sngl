@@ -23,9 +23,13 @@ const (
 	STR_FULL     TokenType = 0x06 // "text" — complete string, no interpolation
 	TRIPLE_FULL  TokenType = 0x07 // """text""" — complete, no interpolation
 	RAW_STRING   TokenType = 0x08 // `...`
-	COLOR        TokenType = 0x09 // #rrggbb or #rrggbbaa
+	// 0x09 retired (was COLOR): #-prefixed tokens are unified as HASH below.
 	UNIT_LITERAL TokenType = 0x0A // 5px, 1.5em, 100ms …
-	ELEMENT_REF  TokenType = 0x0B // #identifier
+	// HASH is `#` followed by identifier/digit chars. It is resolved by
+	// position downstream: a color literal in value position (#rrggbb /
+	// #rrggbbaa, validated by the checker) or an element reference in a
+	// node-naming tag, selection, or context-decl position.
+	HASH TokenType = 0x0B // #rrggbb, #rrggbbaa, #identifier
 
 	// Punctuation
 	LPAREN    TokenType = 0x0C // (
@@ -164,7 +168,7 @@ type Token struct {
 // insertsSemicolon reports whether a token at end-of-line triggers ASI.
 func insertsSemicolon(t TokenType) bool {
 	switch t {
-	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, COLOR, UNIT_LITERAL, ELEMENT_REF,
+	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, UNIT_LITERAL, HASH,
 		STR_END, TRIPLE_END, I18N_STR_FULL, I18N_TRIPLE_FULL, I18N_STR_END, I18N_TRIPLE_END,
 		KW_RETURN,
 		AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:

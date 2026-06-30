@@ -1089,7 +1089,7 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 				}, nil, nil
 			}
 		}
-	case ELEMENT_REF:
+	case HASH:
 		ref := it.shift()
 		return &ast.SelectExpr{
 			Pos:     b.posFromToken(ref),
@@ -1385,8 +1385,11 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 		return &ast.I18nInterpExpr{Pos: ast.Pos(pos), Parts: []ast.Expr{lit}, Style: ast.StyleTriple}
 	case RAW_STRING:
 		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralStringBackticked, Raw: tok.Literal}
-	case COLOR:
-		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralColor, Raw: tok.Literal}
+	case HASH:
+		// `#…` in value position is a color literal; the checker validates the
+		// hex shape and reports `invalid color literal` otherwise. (As a
+		// postfix it is instead an element reference; see applyStmtPostfixOp.)
+		return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralColor, Raw: "#" + tok.Literal}
 	case UNIT_LITERAL:
 		return &ast.UnitLiteral{
 			Pos:         ast.Pos(pos),
@@ -1684,7 +1687,7 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 				}
 			}
 		}
-	case ELEMENT_REF:
+	case HASH:
 		ref := it.shift()
 		return &ast.SelectExpr{
 			Pos:     b.posFromToken(ref),

@@ -125,8 +125,7 @@ itself be preceded by macro attributes.
 
 Tokens are the identifiers, keywords, literals, operators, and punctuation
 described below. The lexer always forms the longest valid token, with the
-documented exceptions for `.`/`...` and for color versus element-reference
-disambiguation.
+documented exception for `.`/`...`.
 
 ### Semicolons and automatic insertion
 
@@ -137,8 +136,9 @@ because the lexer inserts them automatically:
 > When a line terminator is encountered, a semicolon is inserted into the token
 > stream if the last token before it was one of:
 > - an identifier;
-> - an integer, float, string, raw-string, color, unit, or element-reference
->   literal, or the closing segment of an interpolated or i18n string;
+> - an integer, float, string, raw-string, unit, or `#`-token (a color literal
+>   or element reference), or the closing segment of an interpolated or i18n
+>   string;
 > - the keyword `return`;
 > - one of the tokens `@`, `)`, `]`, `}`, `!!`, `++`, `--`.
 
@@ -279,18 +279,17 @@ selects.
 
 ### Color literals
 
-A color literal is `#` followed by exactly six or eight hexadecimal digits:
-`#rrggbb` (opaque) or `#rrggbbaa` (with an alpha channel).
+A color literal is `#` followed by six or eight hexadecimal digits: `#rrggbb`
+(opaque) or `#rrggbbaa` (with an alpha channel).
 
-The lexer chooses between a color literal and an
-[element reference](#element-references) by *shape alone*, before the parser
-assigns any position: `#` followed by exactly six or eight hex digits is a
-color literal, and `#` followed by any other identifier is an element-reference
-token. The two never compete syntactically — a color literal is a value operand
-while an element reference is only a postfix (see below) — but because the
-choice is purely lexical, an identifier that happens to be exactly six or eight
-hex digits (for example `#facade` or `#deadbeef`) is lexed as a color and so
-cannot be used as an element-reference name.
+The lexer does **not** distinguish a color from an
+[element reference](#element-references); both are the single `#`-token (the
+text after `#`, which may begin with a digit). Position alone decides: a
+`#`-token in value position is a color literal — the checker validates the hex
+shape and reports `invalid color literal` otherwise — while as a postfix it is
+an element reference. Because the lexer no longer guesses by shape, no
+identifier is "stolen" by the color rule: `#facade` and `#deadbeef` are valid
+element-reference names, and `#0f0f0f` is a valid color.
 
 ### Unit literals
 
@@ -302,15 +301,16 @@ quantity in that suffix.
 
 ### Element references
 
-An element reference is `#` followed by an identifier (`#submit`,
-`#_internal`) — except when that identifier is exactly six or eight hex digits,
-which the lexer reads as a [color literal](#color-literals) instead. The
-token's value is the name without the `#`. An element reference is never a
-standalone operand; it appears only as a postfix that tags a visual node with a
-name (`button #submit(…)`), selects one (`node.#submit`), or names a context
-declaration (`context #locale(…)`), so that the node or context can be reached
-elsewhere — for example to read a node's state or drive its events in a test
-(see [Element references](#element-references-1)).
+An element reference is the `#`-token used as a postfix: it tags a visual node
+with a name (`button #submit(…)`), selects one (`node.#submit`), or names a
+context declaration (`context #locale(…)`). Its value is the text after `#`,
+and — since the lexer does not split `#`-tokens by shape — that name may be any
+identifier, including one made of hex digits (`#deadbeef`). An element
+reference is never a standalone operand; in value position the same token is a
+[color literal](#color-literals) instead. A named node or context is reached
+elsewhere by the name (or by selection, `node.#id`) — for example to read a
+node's state or drive its events in a test (see
+[Element references](#element-references-1)).
 
 ### Macro attributes
 
@@ -808,7 +808,7 @@ PrimaryExpr =
     | i18n_triple_full
     | I18nInterpStr
     | I18nTriple
-    | COLOR
+    | HASH
     | "(" Expr ")"
     | "[" ListBody "]"
     | AnonStructLit
@@ -819,14 +819,14 @@ PrimaryExpr =
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
     | "." "@" IDENT
-    | ELEM_REF
+    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | "." "@" IDENT
-    | ELEM_REF
+    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock
@@ -1494,7 +1494,7 @@ PrimaryExpr =
     | i18n_triple_full
     | I18nInterpStr
     | I18nTriple
-    | COLOR
+    | HASH
     | "(" Expr ")"
     | "[" ListBody "]"
     | AnonStructLit
@@ -1505,14 +1505,14 @@ PrimaryExpr =
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
     | "." "@" IDENT
-    | ELEM_REF
+    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | "." "@" IDENT
-    | ELEM_REF
+    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock

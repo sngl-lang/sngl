@@ -13,9 +13,9 @@
 # str_full      0x06  STR_FULL      "text"
 # triple_full   0x07  TRIPLE_FULL   """text"""
 # raw_str       0x08  RAW_STRING
-# color         0x09  COLOR
+# (0x09 retired — # tokens unified as hash)
 # unit_lit      0x0A  UNIT_LITERAL
-# elem_ref      0x0B  ELEMENT_REF
+# hash          0x0B  HASH (#rrggbb / #ident)
 # lparen        0x0C  LPAREN  (
 # rparen        0x0D  RPAREN  )
 # lbrace        0x0E  LBRACE  {
@@ -97,9 +97,8 @@ float_lit    = `\x05` .
 str_full     = `\x06` .
 triple_full  = `\x07` .
 raw_str      = `\x08` .
-color        = `\x09` .
 unit_lit     = `\x0A` .
-elem_ref     = `\x0B` .
+hash         = `\x0B` .
 lparen       = `\x0C` .
 rparen       = `\x0D` .
 lbrace       = `\x0E` .
@@ -386,7 +385,7 @@ StatementPrimary =
     | i18n_triple_full
     | I18nInterpStr
     | I18nTriple
-    | color
+    | hash
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
@@ -455,7 +454,7 @@ CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 CondPostfixOp =
       dot ident
     | dot at ident
-    | elem_ref
+    | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
     .
@@ -466,7 +465,7 @@ CondPostfixOp =
 ExprPostfixOp =
       dot ident [ StructLitBody ]
     | dot at ident
-    | elem_ref
+    | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
     .
@@ -475,7 +474,7 @@ ExprPostfixOp =
 StmtPostfixOp =
       dot ident
     | dot at ident
-    | elem_ref
+    | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
     | [ lparen [ ArgList ] rparen ] StmtBlock
@@ -494,7 +493,7 @@ PrimaryExpr =
     | i18n_triple_full
     | I18nInterpStr
     | I18nTriple
-    | color
+    | hash
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
@@ -583,7 +582,7 @@ NonIdentPrimary =
     | i18n_triple_full
     | I18nInterpStr
     | I18nTriple
-    | color
+    | hash
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit

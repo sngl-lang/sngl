@@ -249,7 +249,7 @@ func (g *generator) grammarFull() string {
 var tokenReplacements = map[string]string{
 	"ident": "IDENT", "int_lit": "INT", "float_lit": "FLOAT",
 	"str_full": `STRING`, "triple_full": `TRIPLE_STRING`, "raw_str": "RAW_STRING",
-	"color": "COLOR", "unit_lit": "UNIT", "elem_ref": "ELEM_REF",
+	"unit_lit": "UNIT", "hash": "HASH",
 	"lparen": `"("`, "rparen": `")"`, "lbrace": `"{"`, "rbrace": `"}"`,
 	"lbracket": `"["`, "rbracket": `"]"`,
 	"comma": `","`, "dot": `"."`, "colon": `":"`, "assign": `"="`,

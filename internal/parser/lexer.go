@@ -691,22 +691,15 @@ func (l *lexer) scanHashToken(startLine, startCol int) Token {
 		l.col++
 	}
 	name := string(l.input[start:l.pos])
-	if (len(name) == 6 || len(name) == 8) && isAllHex(name) {
-		return l.tok(COLOR, "#"+name, startLine, startCol)
+	if len(name) == 0 {
+		return l.tok(ILLEGAL, "#", startLine, startCol)
 	}
-	if len(name) == 0 || !isIdentStart(rune(name[0])) {
-		return l.tok(ILLEGAL, "#"+name, startLine, startCol)
-	}
-	return l.tok(ELEMENT_REF, name, startLine, startCol)
-}
-
-func isAllHex(s string) bool {
-	for _, ch := range s {
-		if !isHexDigit(ch) {
-			return false
-		}
-	}
-	return true
+	// A single token for every `#…` form. Whether it is a color literal
+	// (#rrggbb / #rrggbbaa) or an element reference is decided downstream by
+	// position: the parser builds a color literal in value position and an
+	// element reference in a naming-tag/selection position. The token value is
+	// the text after `#`.
+	return l.tok(HASH, name, startLine, startCol)
 }
 
 func dedent(s string) string {
