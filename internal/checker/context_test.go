@@ -116,15 +116,17 @@ func checkSrc(t *testing.T, src string) []ir.Diagnostic {
 	return errs
 }
 
-// TestContextNonConstDefaultRejected verifies that a non-constant default is rejected.
-func TestContextNonConstDefaultRejected(t *testing.T) {
+// TestContextNonConstDefaultAccepted verifies that a non-constant default is
+// allowed: a context default is an initializer expression evaluated at
+// root/provider setup (like a var initializer), not a compile-time constant.
+func TestContextNonConstDefaultAccepted(t *testing.T) {
 	errs := checkSrc(t, `
 var x = 1
 context #foo(x)
 window #home(title="t", href="/") { text(value="") }
 `)
-	if len(errs) == 0 {
-		t.Fatal("expected error for non-const default, got none")
+	if len(errs) != 0 {
+		t.Fatalf("expected non-const default to be accepted, got: %v", errs)
 	}
 }
 

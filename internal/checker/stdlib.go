@@ -861,14 +861,9 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 		c.scope.Declare(ctx)
 		return
 	}
+	// A context default is an initializer expression (see registerContextDecl),
+	// not a compile-time constant.
 	def := c.checkExpr(a.Value)
-	if def != nil && !ir.IsConst(def) {
-		pos := s.Pos
-		if p := a.Value.ExprPos(); p != nil {
-			pos = *p
-		}
-		c.error(pos, "stdlib context default must be a constant expression")
-	}
 	ctx.Default = def
 	if def != nil {
 		ctx.Typ = def.ExprType()

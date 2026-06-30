@@ -330,7 +330,15 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.error(x.Pos, "undefined: %s", x.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
-	c.rejectUnexported(x.Pos, sym)
+	// The export rule only governs cross-package access: an unexported
+	// (`_`-prefixed) name is freely referenceable within the package that
+	// declares it. A bare identifier that resolves inside the current package
+	// (rather than the stdlib/prelude scopes above it) is therefore never an
+	// export violation — this is also what lets `#id`-tagged node handles,
+	// including synthesized `__nN` ids, resolve by bare name.
+	if !c.resolvedInPackage(x.Name) {
+		c.rejectUnexported(x.Pos, sym)
+	}
 	c.reportUnusable(x.Pos, x.Name, sym)
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
@@ -375,6 +383,21 @@ func (c *checker) rejectUnexported(pos ast.Pos, sym ir.Symbol) bool {
 	}
 	c.error(pos, "cannot refer to unexported identifier %q", sym.SymName())
 	return true
+}
+
+// resolvedInPackage reports whether name resolves to a symbol declared within
+// the current package — anywhere from the active scope up to and including the
+// package root, but not in the stdlib/prelude scopes above it. The package
+// root's parent is the boundary: scopes at or beyond it belong to another
+// package (the stdlib prelude or an import), where the export rule applies.
+func (c *checker) resolvedInPackage(name string) bool {
+	boundary := c.symtab.Root.Parent
+	for s := c.scope; s != nil && s != boundary; s = s.Parent {
+		if _, ok := s.LookupLocal(name); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // reportUnusable emits a diagnostic if sym is a scheme-imported declaration

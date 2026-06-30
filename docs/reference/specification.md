@@ -616,6 +616,15 @@ prelude, and is additionally reachable through the `sngl` namespace
 top-level declaration named like a library entity takes precedence over it
 within the package.
 
+### Exported and unexported names
+
+A name is **unexported** if it begins with an underscore (`_`), and **exported**
+otherwise. The distinction governs cross-package access only: an unexported
+name is freely referenced anywhere within the package that declares it, but is
+not reachable through an import namespace (`ns.name`). Referencing another
+package's unexported name — whether qualified, or resolved bare from the
+stdlib prelude — is an error.
+
 ## Constants and variables
 
 <!-- BEGIN GENERATED: grammar-constants-variables -->

@@ -70,14 +70,11 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
 		return
 	}
+	// The default is an initializer expression, evaluated once when the
+	// context's root/provider is set up — the same semantics as a var
+	// initializer. It need not be a compile-time constant (e.g. the stdlib
+	// `#locale` context defaults to the runtime `i18n.defaultLocale()`).
 	def := c.checkExpr(a.Value)
-	if def != nil && !ir.IsConst(def) {
-		pos := s.Pos
-		if p := a.Value.ExprPos(); p != nil {
-			pos = *p
-		}
-		c.error(pos, "context default must be a constant expression")
-	}
 	ctx.Default = def
 	if def != nil {
 		ctx.Typ = def.ExprType()

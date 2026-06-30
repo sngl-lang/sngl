@@ -44,13 +44,7 @@ func TestReactiveLoweredRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reparse lowered output failed: %v\n--- output ---\n%s", err, out)
 	}
-	// The named-node reference must resolve: no "undefined" diagnostic for the
-	// synthesized __n0 handle. (Other unrelated convert-roundtrip wrinkles,
-	// e.g. the auto-injected locale context, are out of scope here.)
-	_, diags = checker.Check(reparsed, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error && strings.Contains(d.Msg, "undefined") {
-			t.Fatalf("named-node reference did not resolve: %s\n--- output ---\n%s", d.Msg, out)
-		}
+	if _, diags := checker.Check(reparsed, &checker.Config{IsMain: true}); hasError(diags) {
+		t.Fatalf("recheck lowered output failed: %s\n--- output ---\n%s", joinDiags(diags), out)
 	}
 }
