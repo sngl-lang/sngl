@@ -25,9 +25,12 @@ struct list<T> {}
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
 // defaults to fully opaque (255). Colors can be constructed in three
-// equivalent ways: a `#RRGGBB` / `#RRGGBBAA` literal in place of a
-// color expression, the `color.rgb(r, g, b)` and `color.rgba(r, g, b, a)`
-// helpers, or a struct literal `color{r=..., g=..., b=..., a=...}`.
+// equivalent ways: a hex literal in place of a color expression, the
+// `color.rgb(r, g, b)` and `color.rgba(r, g, b, a)` helpers, or a struct
+// literal `color{r=..., g=..., b=..., a=...}`. Hex literals accept three,
+// four, six, or eight digits — `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA` —
+// where the short forms expand CSS-style by doubling each digit (`#f00` is
+// `#ff0000`).
 // Derived colors (lighten, darken, opacity-adjust) are available via
 // the functions on the `color` receiver.
 struct color {
