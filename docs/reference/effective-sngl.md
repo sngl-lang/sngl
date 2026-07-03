@@ -84,28 +84,7 @@ Every package that produces an executable must have exactly one `component main`
 
 ### Special types
 
-`color`, `date`, `time`, `dateTime`, `duration`, `measurement`, `url`, `email`, `uuid`, `regex` are built-in types with validation. Color has literal syntax (`#ff0000`). Duration and measurement have unit literal syntax (`5s`, `12px`).
-
-### Regex
-
-The `regex` type represents a compiled regular expression. Declare one with the `regex()` constructor or as a typed variable:
-
-<!-- SNGL-component -->
-
-```sngl
-const pattern = regex("[a-z]+")
-const emailPat regex = "^[^@]+@[^@]+$"
-```
-
-Invalid patterns are caught at compile time. Use `regex.matches` to check for a match and `regex.find` to extract the first match:
-
-<!-- SNGL-component -->
-
-```sngl
-const pattern = regex("[a-z]+")
-func _a() => pattern.matches("hello")
-func _b() => pattern.find("abc 123")
-```
+The standard library provides `color`, `date`, `time`, `dateTime`, `duration`, and `measurement`. Each is *string-representable*: it converts to and from `string`, so a validated string literal is a valid value (`var d date = "2024-01-15"`). `color` has hex literal syntax (`#ff0000`); `duration` and `measurement` have unit-literal syntax (`5s`, `12px`).
 
 ### Collections
 
@@ -179,8 +158,8 @@ At runtime, enum values are strings. The compiler validates assignments against 
 Units declare named suffixes with optional conversion factors:
 
 ```sngl
-unit duration { ms, s = 1000msms, m = 60ss, h = 60mm }
-unit measurement { px, em, rem = 16emem, vw, vh, pct }
+unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+unit measurement { px, em, rem = 16em, vw, vh, pct }
 ```
 
 Same-base additions normalize automatically (`1s + 500ms` becomes `1500ms`). Different-base additions produce compound values (`16px + 2em`). Scalar multiplication and division work as expected (`3px * 2` is `6px`).
@@ -241,7 +220,7 @@ Allow-lists per target:
 |----------|------------------------------------------------------------------|
 | `int`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
 | `float`  | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
-| `string` | any primitive / string-domain (`color`, `date`, …) / enum / unit |
+| `string` | any primitive / string-representable (`color`, `date`, …) / enum / unit |
 | `bool`   | `bool`, `string`                                                 |
 
 ### Implicit conversions
@@ -252,8 +231,8 @@ Narrow list — most type changes are rejected and require an explicit cast.
 |-------------------|---------------|-----------------------------------------------------|
 | `int`             | `float`       | Anywhere a `float` is expected (auto-promotion)     |
 | `int` literal `0` | any unit type | Typed zero: `var t duration = 0`, `delay(0)`        |
-| `string`          | string-domain | Assignment: `var d date = "2024-01-15"` (validated) |
-| string-domain     | `string`      | Assignment: `var s string = myDate`                 |
+| `string`          | string-repr.  | Assignment: `var d date = "2024-01-15"` (validated) |
+| string-repr.      | `string`      | Assignment: `var s string = myDate`                 |
 | `string` literal  | `enum`        | Assignment: `var s Status = "active"` (validated)   |
 | `T`               | `option<T>`   | Assignment: `var x option<int> = 5`                 |
 | `null`            | `option<T>`   | Assignment: `var x option<int> = null`              |
@@ -275,12 +254,12 @@ These are compile errors:
 | list/option/func/component → cast                    | `cannot convert` — define a method instead          |
 | non-zero `int` → unit                                | `cannot initialize` / `cannot pass`                 |
 | wrong type → component param                         | `does not match`                                    |
-| bad string literal → string-domain                   | format-specific error (invalid date, invalid email) |
+| bad string literal → string-repr. type               | format-specific error (e.g. invalid date, color)    |
 | wrong variant → enum                                 | `is not a valid variant`                            |
 
 ### String interpolation
 
-Inside `"{expr}"`, a primitive, string-domain type, enum, unit, `null`, list, option, or zero-arg function flows through automatically. For any other type — struct, component, etc. — the compiler looks up a `.string()` method on the value's type and calls it. When no such method exists the interpolation is a compile error:
+Inside `"{expr}"`, a primitive, string-representable type, enum, unit, `null`, list, option, or zero-arg function flows through automatically. For any other type — struct, component, etc. — the compiler looks up a `.string()` method on the value's type and calls it. When no such method exists the interpolation is a compile error:
 
 <!-- SNGL-component -->
 
@@ -845,7 +824,7 @@ component main {
 
 ### Colors
 
-Hex literals with optional alpha: `#ff0000`, `#fff`, `#00000080`. Use `color.rgb()` and `color.rgba()` for dynamic construction. Access channels with `.r`, `.g`, `.b`, `.a`.
+Hex literals accept three, four, six, or eight digits — `#fff`, `#fff8`, `#ff0000`, `#00000080` — where the short forms expand CSS-style by doubling each digit. Use `color.rgb()` and `color.rgba()` for dynamic construction. Access channels with `.r`, `.g`, `.b`, `.a`.
 
 ### Units in styles
 
