@@ -802,8 +802,8 @@ PrimaryExpr =
     | RAW_STRING
     | InterpStr
     | TripleInterp
-    | i18n_str_full
-    | i18n_triple_full
+    | I18N_STR_FULL
+    | I18N_TRIPLE_FULL
     | I18nInterpStr
     | I18nTriple
     | HASH
@@ -1488,8 +1488,8 @@ PrimaryExpr =
     | RAW_STRING
     | InterpStr
     | TripleInterp
-    | i18n_str_full
-    | i18n_triple_full
+    | I18N_STR_FULL
+    | I18N_TRIPLE_FULL
     | I18nInterpStr
     | I18nTriple
     | HASH

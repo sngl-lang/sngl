@@ -270,6 +270,7 @@ var tokenReplacements = map[string]string{
 	"slashdash":   `"/-"`, "semi": `";"`,
 	"str_start": "STR_START", "str_end": "STR_END", "str_resume": "STR_RESUME",
 	"triple_start": "TRIPLE_START", "triple_end": "TRIPLE_END",
+	"i18n_str_full": "I18N_STR_FULL", "i18n_triple_full": "I18N_TRIPLE_FULL",
 	"i18n_str_start": "I18N_STR_START", "i18n_str_end": "I18N_STR_END",
 	"i18n_str_resume":   "I18N_STR_RESUME",
 	"i18n_triple_start": "I18N_TRIPLE_START", "i18n_triple_end": "I18N_TRIPLE_END",
