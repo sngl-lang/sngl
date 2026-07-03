@@ -43,6 +43,40 @@ import (
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 
+// headlessCompositor holds the resolved `cage` path (empty if unavailable).
+// gtk4 snapshot / RunTests present real GtkWindows via cgo; running the test
+// steps inside cage's wlroots headless backend keeps those windows off the
+// user's desktop. Fyne uses its offscreen test driver and needs no display.
+var headlessCompositor = func() string {
+	p, err := exec.LookPath("cage")
+	if err != nil {
+		return ""
+	}
+	return p
+}()
+
+// headlessEnv is appended to the environment of any command wrapped with cage:
+// force the wlroots headless backend (no DRM/real output) and a software
+// renderer so the compositor works without a GPU. The GTK4 client renders via
+// GskCairoRenderer (software) so it needs no GL context of its own.
+var headlessEnv = []string{"WLR_BACKENDS=headless", "WLR_RENDERER=pixman"}
+
+// wrapHeadless rewrites (command, args) to run under cage when it is available
+// and a Wayland/X11 session is present (so windows would otherwise pop up). It
+// returns the possibly-rewritten command plus the extra env cage needs. When
+// cage is absent it returns the command unchanged and warns once.
+func wrapHeadless(command string, args []string) (string, []string, []string) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		// No session → gtk4 tests skip themselves; nothing to isolate.
+		return command, args, nil
+	}
+	if headlessCompositor == "" {
+		return command, args, nil
+	}
+	wrapped := append([]string{"--", command}, args...)
+	return headlessCompositor, wrapped, headlessEnv
+}
+
 type pkgResult struct {
 	name     string
 	stmts    int
@@ -65,6 +99,10 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(0)
+
+	if headlessCompositor == "" && (os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != "") {
+		log.Printf("note: cage not found; gtk4 snapshot tests will present windows on your desktop. Install it (pacman -S cage) to run the test steps headlessly.")
+	}
 
 	// Step 1: go generate (skip in dry mode)
 	if !*dry {
@@ -144,15 +182,25 @@ func main() {
 		log.Fatalf("getwd: %v", err)
 	}
 	replaceDirective := fmt.Sprintf("replace git.duckfam.us/jonathan/sngl => %s", root)
-	if !runStep("sngl-test", "go", "tool", "sngl", "test",
-		"--platform=all", "--opt", "goModExtra="+replaceDirective, "./...") {
+	sc, sargs, senv := wrapHeadless("go", []string{"tool", "sngl", "test",
+		"--platform=all", "--opt", "goModExtra=" + replaceDirective, "./..."})
+	if !runStepEnv("sngl-test", senv, sc, sargs...) {
 		os.Exit(1)
 	}
 }
 
 func runStep(name string, command string, args ...string) bool {
+	return runStepEnv(name, nil, command, args...)
+}
+
+// runStepEnv is runStep with extra environment variables appended (used to
+// point wrapped commands at the headless compositor backend).
+func runStepEnv(name string, extraEnv []string, command string, args ...string) bool {
 	fmt.Printf(">>> %s %s\n", command, strings.Join(args, " "))
 	cmd := exec.Command(command, args...)
+	if extraEnv != nil {
+		cmd.Env = append(os.Environ(), extraEnv...)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -202,10 +250,14 @@ func runTests(verbose, fmtDocs, full bool) {
 	}
 	args = append(args, "./...")
 
-	fmt.Printf(">>> go %s\n", strings.Join(args, " "))
+	// Run under a headless compositor when available so gtk4's window-present
+	// snapshot tests don't pop up on the user's desktop.
+	command, args, extraEnv := wrapHeadless("go", args)
 
-	cmd := exec.Command("go", args...)
-	cmd.Env = os.Environ()
+	fmt.Printf(">>> %s %s\n", command, strings.Join(args, " "))
+
+	cmd := exec.Command(command, args...)
+	cmd.Env = append(os.Environ(), extraEnv...)
 	if fmtDocs {
 		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
 	}

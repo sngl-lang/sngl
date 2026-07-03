@@ -658,12 +658,20 @@ func buildIRStyleExpr(styles []codegen.StyleField, gc *golang.GoIRContext, scale
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A
-// `#rrggbb` literal lowers to a Color struct, which lipgloss can't consume;
-// convert it to a quoted hex string. Anything else (a string literal or
-// dynamic expression already evaluating to a CSS color) passes through.
-func lipglossColor(expr ir.Expr, val string) string {
+// constant `#rrggbb` literal folds to its quoted CSS string at compile time.
+// A non-constant color expression evaluates to a snglcolor.Color, which
+// lipgloss can't consume — call its String() to get the CSS form. Anything
+// else (a string literal or expression already yielding a CSS color) passes
+// through unchanged.
+func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 	if css, ok := htmlutil.ColorExprToCSS(expr); ok {
+		// Constant fold — never evaluate expr, so a color struct-lit doesn't
+		// side-effect an (unused) snglcolor import via gc.EvalExpr.
 		return strconv.Quote(css)
+	}
+	val := gc.EvalExpr(expr)
+	if expr != nil && ir.IsColorStruct(expr.ExprType()) {
+		return val + ".String()"
 	}
 	return val
 }
@@ -682,6 +690,18 @@ func scaleVal(val string, scaleFactor int) string {
 }
 
 func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
+	// color/background fold a constant #rrggbb to a CSS string without
+	// evaluating expr; handle them before the eager EvalExpr below so a
+	// constant color struct-lit doesn't register an unused snglcolor import.
+	switch prop {
+	case "color":
+		return fmt.Sprintf("Foreground(lipgloss.Color(%s))", lipglossColor(expr, gc))
+	case "background":
+		return fmt.Sprintf("Background(lipgloss.Color(%s))", lipglossColor(expr, gc))
+	case "borderColor":
+		return fmt.Sprintf("BorderForeground(lipgloss.Color(%s))", lipglossColor(expr, gc))
+	}
+
 	val := gc.EvalExpr(expr)
 
 	switch prop {
@@ -713,10 +733,6 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 		return fmt.Sprintf("MaxWidth(%s)", scaleVal(val, scaleFactor))
 	case "maxHeight":
 		return fmt.Sprintf("MaxHeight(%s)", scaleVal(val, scaleFactor))
-	case "color":
-		return fmt.Sprintf("Foreground(lipgloss.Color(%s))", lipglossColor(expr, val))
-	case "background":
-		return fmt.Sprintf("Background(lipgloss.Color(%s))", lipglossColor(expr, val))
 	case "fontWeight":
 		if val == `"bold"` {
 			return "Bold(true)"
@@ -736,8 +752,6 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 		}
 	case "borderWidth":
 		return "Border(lipgloss.NormalBorder())"
-	case "borderColor":
-		return fmt.Sprintf("BorderForeground(lipgloss.Color(%s))", lipglossColor(expr, val))
 	case "opacity":
 		return "Faint(true)"
 	}

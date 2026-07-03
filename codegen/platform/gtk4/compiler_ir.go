@@ -410,6 +410,8 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	// helpers go into model.go alongside the lang helpers.
 	if hasCanvas {
 		gc.RequireImport("unsafe")
+		// The emitted CanvasStyle struct decl references snglcolor.Color.
+		gc.RequireImport(canvasutil.ColorImportPath)
 	}
 
 	// --- Phase 3: Build template data ---

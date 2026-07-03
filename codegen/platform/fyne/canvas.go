@@ -185,6 +185,8 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink("fyne.io/fyne/v2/canvas")
+		// The emitted CanvasStyle struct decl references snglcolor.Color.
+		t.importSink(canvasutil.ColorImportPath)
 	}
 
 	w, h := canvasDims(m)

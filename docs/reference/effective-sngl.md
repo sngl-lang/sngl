@@ -216,12 +216,12 @@ func _g() => float("3.14")
 
 Allow-lists per target:
 
-| Target   | Accepts                                                          |
-|----------|------------------------------------------------------------------|
-| `int`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
-| `float`  | `int`, `float`, `string`, `bool`, `enum`, `unit`                 |
+| Target   | Accepts                                                                 |
+|----------|-------------------------------------------------------------------------|
+| `int`    | `int`, `float`, `string`, `bool`, `enum`, `unit`                        |
+| `float`  | `int`, `float`, `string`, `bool`, `enum`, `unit`                        |
 | `string` | any primitive / string-representable (`color`, `date`, …) / enum / unit |
-| `bool`   | `bool`, `string`                                                 |
+| `bool`   | `bool`, `string`                                                        |
 
 ### Implicit conversions
 
@@ -247,15 +247,15 @@ Narrow list — most type changes are rejected and require an explicit cast.
 
 These are compile errors:
 
-| Conversion                                           | Error                                               |
-|------------------------------------------------------|-----------------------------------------------------|
-| `null` → struct                                      | `null is not assignable to struct type`             |
-| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead          |
-| list/option/func/component → cast                    | `cannot convert` — define a method instead          |
-| non-zero `int` → unit                                | `cannot initialize` / `cannot pass`                 |
-| wrong type → component param                         | `does not match`                                    |
-| bad string literal → string-repr. type               | format-specific error (e.g. invalid date, color)    |
-| wrong variant → enum                                 | `is not a valid variant`                            |
+| Conversion                                           | Error                                            |
+|------------------------------------------------------|--------------------------------------------------|
+| `null` → struct                                      | `null is not assignable to struct type`          |
+| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead       |
+| list/option/func/component → cast                    | `cannot convert` — define a method instead       |
+| non-zero `int` → unit                                | `cannot initialize` / `cannot pass`              |
+| wrong type → component param                         | `does not match`                                 |
+| bad string literal → string-repr. type               | format-specific error (e.g. invalid date, color) |
+| wrong variant → enum                                 | `is not a valid variant`                         |
 
 ### String interpolation
 

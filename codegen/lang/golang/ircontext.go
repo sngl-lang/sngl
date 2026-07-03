@@ -2,14 +2,22 @@ package golang
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// SNGL's built-in `color` maps to the shared pkg/go/snglcolor.Color struct
+// (int channels), so both string contexts (via Color.String()) and canvas
+// contexts (reading .R/.G/.B/.A) work off one type. colorImportPath is
+// registered on demand at the emit sites that actually reference the type:
+// StructLit (a color value) and the canvas emitters (CanvasStyle decls).
+const (
+	colorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	colorGoType     = "snglcolor.Color"
 )
 
 // GoIRContext translates IR expressions and statements into Go code.
@@ -299,9 +307,9 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	// A color{r,g,b,a} struct (the lowered form of a #rrggbb[aa] literal)
-	// is carried in Go as its CSS hex string, not an undefined Color type.
-	if css, ok := htmlutil.ColorExprToCSS(n); ok {
-		return strconv.Quote(css)
+	// emits as a snglcolor.Color composite; register its import.
+	if isColorStructLit(n) {
+		gc.RequireImport(colorImportPath)
 	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
@@ -1066,6 +1074,18 @@ func nullFuncStubGo(t *ir.Type) string {
 	return "func(" + strings.Join(params, ", ") + ")" + ret + " {" + body + "}"
 }
 
+// isColorStructLit reports whether a struct literal is a `color{r,g,b,a}`
+// (including the lowered form of a #rrggbb literal), by type or by Def name.
+func isColorStructLit(n *ir.StructLit) bool {
+	if n == nil {
+		return false
+	}
+	if ir.IsColorStruct(n.Type) {
+		return true
+	}
+	return n.Def != nil && n.Def.Name == "color"
+}
+
 // structLitTypeName picks the Go type prefix for a struct literal. Named
 // structs lower to ExportName(sd.Name); anonymous structs (no name on
 // the StructDef) materialize an inline `struct { Field Type; ... }` so
@@ -1085,6 +1105,10 @@ func structLitTypeName(n *ir.StructLit) string {
 	}
 	if def == nil {
 		return "struct{}"
+	}
+	// color is the shared snglcolor.Color type, not a locally-named struct.
+	if def.Name == "color" || ir.IsColorStruct(n.Type) {
+		return colorGoType
 	}
 	if name := ExportName(def.Name); name != "" {
 		return name
@@ -1216,10 +1240,9 @@ func IRTypeToGo(t *ir.Type) string {
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
 		}
-		// color is a string-representable stdlib struct: a #rrggbb[aa] literal
-		// lowers to color{r,g,b,a}, but Go carries it as its CSS hex string.
+		// color maps to the shared snglcolor.Color struct (int channels).
 		if ir.IsColorStruct(t) {
-			return "string"
+			return colorGoType
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
 			if sd.Native != "" {
@@ -1360,12 +1383,10 @@ func IRLiteralToGo(e ir.Expr) string {
 		}
 		return "map[" + keyType + "]" + valType + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.StructLit:
-		// color literals are carried as their CSS hex string in Go.
-		if css, ok := htmlutil.ColorExprToCSS(n); ok {
-			return strconv.Quote(css)
-		}
 		name := "struct{}"
-		if n.Def != nil {
+		if isColorStructLit(n) {
+			name = colorGoType
+		} else if n.Def != nil {
 			name = IRTypeToGo(n.Type)
 			if name == "any" || name == "" {
 				name = ExportName(n.Def.Name)

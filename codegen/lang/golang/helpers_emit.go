@@ -71,10 +71,11 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 // Imports returns the stdlib import paths needed by the recorded
 // helpers. Returns nil when no helpers are needed.
 func (h HelperSet) Imports() []string {
+	var imps []string
 	if h.NeedDate || h.NeedTime || h.NeedDateTime || h.NeedDuration {
-		return []string{"time"}
+		imps = append(imps, "time")
 	}
-	return nil
+	return imps
 }
 
 // Emit returns the Go source for the helper functions recorded on h,

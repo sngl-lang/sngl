@@ -17,12 +17,12 @@ const (
 	SEMICOLON TokenType = 0x02 // ; (explicit or ASI-inserted)
 
 	// Literals
-	IDENT        TokenType = 0x03
-	INT          TokenType = 0x04 // decimal only in v2 (no 0x/0o/0b)
-	FLOAT        TokenType = 0x05
-	STR_FULL     TokenType = 0x06 // "text" — complete string, no interpolation
-	TRIPLE_FULL  TokenType = 0x07 // """text""" — complete, no interpolation
-	RAW_STRING   TokenType = 0x08 // `...`
+	IDENT       TokenType = 0x03
+	INT         TokenType = 0x04 // decimal only in v2 (no 0x/0o/0b)
+	FLOAT       TokenType = 0x05
+	STR_FULL    TokenType = 0x06 // "text" — complete string, no interpolation
+	TRIPLE_FULL TokenType = 0x07 // """text""" — complete, no interpolation
+	RAW_STRING  TokenType = 0x08 // `...`
 	// 0x09 retired (was COLOR): #-prefixed tokens are unified as HASH below.
 	UNIT_LITERAL TokenType = 0x0A // 5px, 1.5em, 100ms …
 	// HASH is `#` followed by identifier/digit chars. It is resolved by

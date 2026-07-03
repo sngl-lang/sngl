@@ -12,10 +12,13 @@ import (
 
 // TestStructDeclsInSync guards against drift between the hardcoded Go struct
 // decls in StructDecls and the source-of-truth SNGL struct declarations in
-// lib/canvas.sngl (CanvasStyle, PathCmd) and lib/types.sngl (color → Color).
-// These Go decls are hand-written because the canvas stdlib structs aren't
-// carried on the Go codegen path; every Go-emitting canvas platform (fyne,
-// gtk4) consumes StructDecls, so this single test covers them all.
+// lib/canvas.sngl (CanvasStyle, PathCmd). These Go decls are hand-written
+// because those canvas stdlib structs aren't carried on the Go codegen path;
+// every Go-emitting canvas platform (fyne, gtk4) consumes StructDecls, so this
+// single test covers them all.
+//
+// (color lives in lib/types.sngl but maps to the shared pkg/go/snglcolor.Color
+// type rather than a StructDecls entry — see TestColorFieldsInSync.)
 //
 // It checks ALL fields, not just ones a fixture happens to exercise. If a
 // field is added/renamed in the .sngl but not in StructDecls, this fails.
@@ -23,7 +26,6 @@ func TestStructDeclsInSync(t *testing.T) {
 	want := map[string]string{
 		"CanvasStyle": "canvas.sngl",
 		"PathCmd":     "canvas.sngl",
-		"color":       "types.sngl",
 	}
 
 	files := map[string][]string{}
@@ -78,5 +80,35 @@ func TestStructDeclsInSync(t *testing.T) {
 					structName, field, goField, goStruct)
 			}
 		}
+	}
+}
+
+// TestColorFieldsInSync guards that lib/types.sngl's color struct still has
+// exactly the r,g,b,a channels that pkg/go/snglcolor.Color (referenced by
+// ColorGoType) mirrors as R,G,B,A. If the SNGL color gains/loses a channel,
+// the shared Go runtime type must be updated to match.
+func TestColorFieldsInSync(t *testing.T) {
+	src, err := lib.FS.ReadFile("types.sngl")
+	if err != nil {
+		t.Fatalf("read lib/types.sngl: %v", err)
+	}
+	doc, err := parser.Parse("types.sngl", src)
+	if err != nil {
+		t.Fatalf("parse lib/types.sngl: %v", err)
+	}
+	var got []string
+	for _, stmt := range doc.Stmts {
+		sd, ok := stmt.(*ast.StructDef)
+		if !ok || sd.Name != "color" {
+			continue
+		}
+		for _, f := range sd.Fields() {
+			got = append(got, f.Names...)
+		}
+	}
+	want := []string{"r", "g", "b", "a"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("lib color fields = %v, want %v — update pkg/go/snglcolor.Color (ColorGoType %q) to match",
+			got, want, ColorGoType)
 	}
 }

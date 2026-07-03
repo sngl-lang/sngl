@@ -94,15 +94,13 @@ func ByIDFor(byFunc map[*ir.Func]*Meta) map[string]*Meta {
 // StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by
 // struct name so a collision with a user-declared struct can omit just that
 // one decl. Field names/types mirror the stdlib definitions in
-// lib/canvas.sngl (CanvasStyle, PathCmd) and lib/types.sngl (color → Color);
-// the per-platform drift-guard tests assert every stdlib field is present.
+// lib/canvas.sngl (CanvasStyle, PathCmd); their color fields reference the
+// shared ColorGoType. The per-platform drift-guard tests assert every stdlib
+// field is present.
 var StructDecls = map[string]string{
-	"Color": "type Color struct {\n" +
-		"\tR int\n\tG int\n\tB int\n\tA int\n" +
-		"}\n",
 	"CanvasStyle": "type CanvasStyle struct {\n" +
-		"\tFill        Color\n" +
-		"\tStroke      Color\n" +
+		"\tFill        " + ColorGoType + "\n" +
+		"\tStroke      " + ColorGoType + "\n" +
 		"\tStrokeWidth float64\n" +
 		"\tLineCap     string\n" +
 		"\tLineJoin    string\n" +
@@ -116,9 +114,18 @@ var StructDecls = map[string]string{
 		"}\n",
 }
 
-// StructOrder fixes the emission order of StructDecls (CanvasStyle references
-// Color, so Color must come first for readability).
-var StructOrder = []string{"Color", "CanvasStyle", "PathCmd"}
+// Color is the SNGL `color` type. On Go it maps to the shared
+// pkg/go/snglcolor.Color struct (int RGBA channels), so a color value is the
+// same type whether it flows into a CanvasStyle field or is coerced to a CSS
+// string elsewhere. Canvas emitters must register ColorImportPath when they
+// emit CanvasStyle. Kept in sync with lib/types.sngl by the golang lang layer.
+const (
+	ColorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	ColorGoType     = "snglcolor.Color"
+)
+
+// StructOrder fixes the emission order of StructDecls.
+var StructOrder = []string{"CanvasStyle", "PathCmd"}
 
 // StructDeclsExcluding returns the canvas stdlib struct decls, omitting any
 // whose name is in declared (a set of user-declared struct names that already

@@ -27,6 +27,7 @@ type irBind struct {
 	name        string
 	goType      string
 	init        ir.Expr             // nil → rendered as "nil" (or ZeroValueGo) at template-build time
+	varRef      *ir.Var             // set for real state vars → init rendered via golang.LowerVarInit (applies the var's declared type, e.g. string→date parse helpers)
 	initGC      *golang.GoIRContext // optional: per-component GC for init rendering (nil → use top-level)
 	noAccessors bool                // skip getter/setter generation (e.g. synthesized slot vars)
 }
@@ -144,6 +145,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			name:   v.Name,
 			goType: goType,
 			init:   v.Init,
+			varRef: v,
 		})
 		if len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers
@@ -530,7 +532,15 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 			if renderGC == nil {
 				renderGC = gc
 			}
-			initStr = renderGC.EvalExpr(bind.init)
+			if bind.varRef != nil {
+				// Real state var: route through LowerVarInit so the var's
+				// declared type drives temporal literal lowering (e.g. a
+				// `date` var initialized from a string literal emits
+				// mustParseDate(...) rather than a bare string).
+				initStr = golang.LowerVarInit(bind.varRef, renderGC)
+			} else {
+				initStr = renderGC.EvalExpr(bind.init)
+			}
 		} else if !bind.noAccessors {
 			initStr = golang.ZeroValueGo(bind.goType)
 		}

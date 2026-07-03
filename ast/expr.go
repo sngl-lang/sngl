@@ -260,7 +260,6 @@ type InterpolationExpr struct {
 	Style StringStyle
 }
 
-
 // LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.
 // Exactly one of Body or Block is set.
 type LambdaExpr struct {

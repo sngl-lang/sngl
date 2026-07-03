@@ -171,6 +171,8 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	vc.requireImport(snglCanvasImportPath)
 	vc.requireImport(tuiImportPath)
 	vc.requireImport("image")
+	// The emitted CanvasStyle struct decl references snglcolor.Color.
+	vc.requireImport(canvasutil.ColorImportPath)
 	// Rasterisation is deferred into a closure so the kitty path (which needs
 	// only the constant, cached placeholder grid) never runs it every frame;
 	// only the half-block fallback invokes it. The terminal string is assigned

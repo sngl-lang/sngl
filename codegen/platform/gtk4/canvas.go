@@ -40,7 +40,7 @@ type canvasMeta = canvasutil.Meta
 // draw funcs: a 0..255→0..1 source setter and the alpha-gated fill/stroke
 // painters (fill when fill.a>0, stroke when stroke.a>0). Emitted into model.go
 // alongside the canvas stdlib struct decls whenever any canvas is present.
-const canvasCairoHelpers = `func _snglCairoSource(cr *C.cairo_t, c Color) {
+const canvasCairoHelpers = `func _snglCairoSource(cr *C.cairo_t, c ` + canvasutil.ColorGoType + `) {
 	C.cairo_set_source_rgba(cr, C.double(float64(c.R)/255.0), C.double(float64(c.G)/255.0), C.double(float64(c.B)/255.0), C.double(float64(c.A)/255.0))
 }
 
