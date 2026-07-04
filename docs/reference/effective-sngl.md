@@ -10,7 +10,7 @@ SNGL is a declarative UI language that compiles to native code across multiple p
 
 ## File Structure
 
-Every `.sngl` file is a flat list of top-level declarations. Order does not matter -- the compiler resolves references in two passes.
+Every `.sngl` file is a flat list of top-level declarations. Order does not matter -- a declaration may reference any other top-level name in its package regardless of where it appears.
 
 The `output` block declares which language and platform combinations the file targets:
 
@@ -227,19 +227,19 @@ Allow-lists per target:
 
 Narrow list — most type changes are rejected and require an explicit cast.
 
-| From              | To            | When                                                |
-|-------------------|---------------|-----------------------------------------------------|
-| `int`             | `float`       | Anywhere a `float` is expected (auto-promotion)     |
-| `int` literal `0` | any unit type | Typed zero: `var t duration = 0`, `delay(0)`        |
-| `string`          | string-repr.  | Assignment: `var d date = "2024-01-15"` (validated) |
-| string-repr.      | `string`      | Assignment: `var s string = myDate`                 |
-| `string` literal  | `enum`        | Assignment: `var s Status = "active"` (validated)   |
-| `T`               | `option<T>`   | Assignment: `var x option<int> = 5`                 |
-| `null`            | `option<T>`   | Assignment: `var x option<int> = null`              |
-| `null`            | `func(...)`   | Compiles to a zero-value-returning callable stub    |
-| `func() T`        | `T`           | Zero-arg function auto-called where `T` is expected |
-| any               | `dyn`         | `dyn` accepts any type                              |
-| `dyn`             | any           | Escape hatch; no runtime check                      |
+| From              | To            | When                                                       |
+|-------------------|---------------|------------------------------------------------------------|
+| `int`             | `float`       | Anywhere a `float` is expected (auto-promotion)            |
+| `int` literal `0` | any unit type | Typed zero: `var t duration = 0`, `delay(0)`               |
+| `string`          | string-repr.  | Assignment: `var d date = "2024-01-15"` (validated)        |
+| string-repr.      | `string`      | Assignment: `var s string = myDate`                        |
+| `string` literal  | `enum`        | Assignment: `var s Status = "active"` (validated)          |
+| `T`               | `option<T>`   | Assignment: `var x option<int> = 5`                        |
+| `null`            | `option<T>`   | Assignment: `var x option<int> = null`                     |
+| `null`            | `func(...)`   | Assignment; calling it yields the return type's zero value |
+| `func() T`        | `T`           | Zero-arg function auto-called where `T` is expected        |
+| any               | `dyn`         | `dyn` accepts any type                                     |
+| `dyn`             | any           | Escape hatch; no runtime check                             |
 
 `float` → `int` is **not** implicit — write `int(x)` to discard the fractional part. Non-zero `int` → unit is **not** implicit — use unit literals (`5s`) or multiply (`n * 1s`).
 
@@ -762,7 +762,7 @@ component main {
         progress float = 0
         running = true
     )
-    timer(interval=100msms, enabled=running, @tick {
+    timer(interval=100ms, enabled=running, @tick {
         progress += 0.1
     })
     text(value=string(progress))
@@ -1002,7 +1002,7 @@ component main {
         progress float = 0.0
         running = false
     )
-    timer(interval=50msms, enabled=running, @tick {
+    timer(interval=50ms, enabled=running, @tick {
         progress += 0.01
     })
     vbox(style={padding = 16, gap = 8}) {

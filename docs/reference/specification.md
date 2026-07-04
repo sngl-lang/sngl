@@ -66,9 +66,9 @@ Production  = expression .
   (for example `IDENT`, `INT`, `STRING`).
 
 The complete grammar appears in the [Grammar appendix](#grammar-appendix);
-individual productions are reproduced inline in the relevant sections. SNGL is
-parsed by a recursive-descent LL(1) parser operating on the token stream
-described in [Lexical structure](#lexical-structure).
+individual productions are reproduced inline in the relevant sections. The
+grammar is LL(1) over the token stream described in
+[Lexical structure](#lexical-structure).
 
 ## Source representation
 
@@ -375,8 +375,7 @@ The top level admits the same statement forms as a block (see
 [Statements](#statements)); in practice a file consists of imports, an
 `output` block, type declarations (`struct`, `enum`, `unit`), `const` and `var`
 declarations, `func` declarations, component declarations, and root visual
-nodes such as `window` and `timer`. Declaration order is not significant: the
-checker resolves references in two passes (see
+nodes such as `window` and `timer`. Declaration order is not significant (see
 [Declarations and scope](#declarations-and-scope)).
 
 ## Types
@@ -480,9 +479,7 @@ by a unit literal (`5 * 1s`).
 annotation and no inferable initializer. Any value is assignable to `dyn`, and
 operations on a `dyn` operand bypass static operand checking. A `dyn` value is
 **not** implicitly assignable to a concrete type; it must be converted
-explicitly. Conversions involving `dyn` are not materialized in the
-intermediate representation — `dyn` flows through unchanged and the boundary is
-handled by code generation.
+explicitly.
 
 ### References
 
@@ -523,12 +520,6 @@ following holds:
    `S` assignable to `T`.
 9. `A` is `option<S>` and `B` is `option<T>` with `S` assignable to `T`, or `A`
    is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
-
-Every implicit conversion permitted by these rules — a widening, an auto-wrap,
-a string coercion — is **materialized** by the checker as an explicit
-conversion node in the intermediate representation, except where `dyn` is
-involved. Code generation therefore never has to re-derive assignability; it
-sees an explicit conversion wherever the source and target types differ.
 
 ### Conversions
 
@@ -573,23 +564,13 @@ A *declaration* binds a name to an entity — a constant, variable, function,
 component, type, import namespace, or loop variable — within a region of the
 program text called a *scope*.
 
-### Two-pass checking
+### Declaration order
 
-A package is checked in two passes:
-
-1. **Registration.** Imports are resolved first, so imported namespaces are in
-   scope for everything that follows. Type declarations (`struct`, `enum`,
-   `unit`, `component`) are then registered, forward-declaring them so
-   references need not respect source order. Finally `const`, `var`, `func`,
-   and root visual nodes are registered.
-2. **Checking.** Bodies are type-checked and the intermediate representation is
-   populated: component method bodies (so their result types are known to
-   callers), then top-level function bodies, component bodies, window and timer
-   bodies, and variable handlers; purity is then analyzed and `const(expr)`
-   assertions validated.
-
-Because registration precedes checking, the order of top-level declarations in
-a file is not significant.
+The order of top-level declarations is not significant. Every top-level name —
+a type, constant, variable, function, or component — is visible throughout its
+package regardless of where it is declared, and a reference need not follow the
+declaration it resolves to in source order. An imported namespace is in scope
+throughout the file that imports it.
 
 ### Scopes
 
@@ -736,9 +717,10 @@ Every function is classified by its effect on state:
 - **read-only** — reads state but assigns to none;
 - **mutating** — assigns to at least one state variable.
 
-The classification is derived from the body and is used by reactivity and
-optimization: a pure or read-only computed may be cached or inlined, whereas a
-mutating function must run exactly once per call.
+The classification follows from the body and constrains observable behavior: a
+pure or read-only computed yields the same result for the same inputs and may
+be re-evaluated on demand, whereas a mutating function runs exactly once per
+call.
 
 ### Asynchrony
 
@@ -816,14 +798,11 @@ PrimaryExpr =
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "." "@" IDENT
-    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
-    | "." "@" IDENT
     | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
@@ -968,8 +947,7 @@ ArgExprCont =
   values of one unit type yields a dimensionless `float`.
 
 When a binary arithmetic operator mixes `int` and `float` operands, the `int`
-operand is converted to `float` and the result is `float`; the checker inserts
-the conversion explicitly.
+operand is converted to `float` and the result is `float`.
 
 ### String interpolation expressions
 
@@ -1202,11 +1180,11 @@ virtual DOM and no run-time diffing of the whole tree.
 - A **derived value** is a parameterless function (`func total => price * qty`).
   It re-evaluates whenever a reactive variable it reads is assigned.
 
-The checker records, for each reactive variable, every node property,
-condition, and loop iterator whose expression reads it. An assignment to a
-variable therefore has a statically known set of dependents, and only those are
-updated. A conditional or loop whose condition or iterator is reactive is
-re-rendered as a unit when its dependencies change.
+Each reactive variable has a statically determined set of dependents — every
+node property, condition, and loop iterator whose expression reads it — and an
+assignment to the variable updates exactly those. A conditional or loop whose
+condition or iterator is reactive is re-rendered as a unit when its
+dependencies change.
 
 This is the central reason `var` and `func` differ: `var x = expr` captures a
 value once, while `func x => expr` defines a relationship that the compiler
@@ -1505,14 +1483,11 @@ PrimaryExpr =
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "." "@" IDENT
-    | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
-    | "." "@" IDENT
     | HASH
     | "[" Expr "]"
     | "(" [ ArgList ] ")"
