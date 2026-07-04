@@ -9,6 +9,6 @@ component main {
 
 func testReactiveMethodRead(t Test, c main) {
     t.assert(c.out.value == "10")
-    c.bump.@click()
+    c.bump.click()
     t.assert(c.out.value == "12")
 }

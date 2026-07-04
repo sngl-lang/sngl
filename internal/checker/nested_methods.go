@@ -86,8 +86,7 @@ func recvTypeName(t *ir.Type) string {
 //   - the name is not otherwise in scope, AND
 //   - the receiver type has a field/member/var or method with that name.
 //
-// Returns the rewritten SelectExpr (with SelectField kind) or nil if elision
-// does not apply.
+// Returns the rewritten SelectExpr or nil if elision does not apply.
 func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	recv := c.currentRecvType()
 	if recv == nil {
@@ -121,7 +120,6 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 		Pos:     ident.Pos,
 		Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
 		Field:   ident.Name,
-		Kind:    ast.SelectField,
 	}
 }
 

@@ -32,7 +32,7 @@ func testTernaryWithConversion(t Test, c choice) {
 }
 
 func testMultiStatementEvent(t Test, c choice) {
-    c.bump.@click()
+    c.bump.click()
     t.assert(c.x == 11)
     t.assert(c.y == 6)
 }

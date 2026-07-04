@@ -255,18 +255,18 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 }
 
 // lowerEventTrigger matches the IR shape produced by an SNGL test body
-// line like `c.inc.@click()` — a CallStmt whose AST callee is a chain
-// of SelectExprs ending in a field that starts with "@". Lowers to
-// `<receiver>.<id><Event>()`, which platform codegen (gtk4 today)
-// surfaces as a method on *Model that fires the matching widget
-// signal / event so the test exercises the real bridge.
+// line like `c.inc.click()` — a CallStmt the checker tagged with an
+// Event name (its callee is a chain of SelectExprs ending in the event
+// field). Lowers to `<receiver>.<id><Event>()`, which platform codegen
+// (gtk4 today) surfaces as a method on *Model that fires the matching
+// widget signal / event so the test exercises the real bridge.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
-	if c == nil || c.AST == nil {
+	if c == nil || c.AST == nil || c.Event == "" {
 		return "", false
 	}
 	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
-	if !ok || outerSel.Kind != ast.SelectEvent {
+	if !ok {
 		return "", false
 	}
 	// outerSel.Operand is `c.inc` — another SelectExpr Operand:Ident{c},Field:"inc".
@@ -278,11 +278,7 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	event := outerSel.Field
-	if event == "" {
-		return "", false
-	}
-	methodName := innerSel.Field + ExportName(event)
+	methodName := innerSel.Field + ExportName(c.Event)
 	args := make([]string, len(c.Args))
 	for i, a := range c.Args {
 		args[i] = gc.EvalExpr(a.Value)

@@ -95,9 +95,10 @@ type Toggle struct {
 
 func (*Toggle) stmtNode() {}
 
-// Emit is a type-checked event emission.
+// Emit is a type-checked event emission. It originates from a bare
+// `event(args)` call statement whose name resolves to a declared event.
 type Emit struct {
-	AST  *ast.EmitStmt
+	AST  *ast.CallStmt
 	Name string
 	Args []CallArg
 }

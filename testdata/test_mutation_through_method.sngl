@@ -11,9 +11,9 @@ component main {
 
 func testMutationThroughMethod(t Test, c main) {
     t.assert(c.out.value == "0")
-    c.bump.@click()
-    c.bump.@click()
+    c.bump.click()
+    c.bump.click()
     t.assert(c.out.value == "2")
-    c.reset.@click()
+    c.reset.click()
     t.assert(c.out.value == "0")
 }

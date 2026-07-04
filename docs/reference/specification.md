@@ -304,15 +304,15 @@ quantity in that suffix.
 
 ### Element references
 
-An element reference is the `#`-token used as a postfix: it tags a visual node
-with a name (`button #submit(…)`), selects one (`node.#submit`), or names a
-context declaration (`context #locale(…)`). Its value is the text after `#`,
-and — since the lexer does not split `#`-tokens by shape — that name may be any
-identifier, including one made of hex digits (`#deadbeef`). An element
-reference is never a standalone operand; in value position the same token is a
-[color literal](#color-literals) instead. A named node or context is reached
-elsewhere by the name (or by selection, `node.#id`) — for example to read a
-node's state or drive its events in a test (see
+An element reference is the `#`-token used as a postfix declaration tag: it
+names a visual node (`button #submit(…)`) or a context declaration
+(`context #locale(…)`). Its value is the text after `#`, and — since the lexer
+does not split `#`-tokens by shape — that name may be any identifier, including
+one made of hex digits (`#deadbeef`). An element reference is never a standalone
+operand; in value position the same token is a [color literal](#color-literals)
+instead. A named node or context is reached elsewhere by its bare name (or, from
+a handle to its container, by ordinary field selection — `c.id.value`) — for
+example to read a node's state or drive its events in a test (see
 [Element references](#element-references-1)).
 
 ### Macro attributes
@@ -863,8 +863,8 @@ on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 Operands are literals, identifiers, parenthesized expressions, list literals,
 struct and map literals, function literals, interpolated and translatable
 strings, color and unit literals, and event names (`@name`). An element
-reference (`#id`) is not an operand; it appears only as a postfix tag or
-selection (see [Element references](#element-references-1)).
+reference (`#id`) is not an operand; it appears only as a postfix declaration
+tag (see [Element references](#element-references-1)).
 
 <!-- BEGIN GENERATED: grammar-literals -->
 
@@ -899,9 +899,9 @@ position, where a following `{` would otherwise begin a statement block (see
 
 A primary expression may be followed by postfix operators:
 
-- `.field` or `.method` — member selection;
-- `.@event` — selection of an event on a value;
-- `#name` — element-reference selection (addressing a named node);
+- `.field` or `.method` — member selection (a named node is addressed the same
+  way, `c.id.value`, and an event invoked through a reference, `c.inc.click()`,
+  is an ordinary call — neither carries a sigil);
 - `[index]` — indexing into a list or map;
 - `(args)` — a call.
 
@@ -1101,8 +1101,10 @@ specific names (including raw target elements, such as HTML tags) resolve.
 
 ### The emit statement
 
-An `emit` (written `@event(args)`) fires an event declared on the enclosing
-component, invoking the handler the caller attached. See [Events](#events).
+An **emit** fires an event declared on the enclosing component, invoking the
+handler the caller attached. It is written as an ordinary call on the event's
+name — `event(args)` — and carries no sigil; the checker resolves the name to
+the declared event. See [Events](#events).
 
 ## Components
 
@@ -1149,8 +1151,8 @@ A component parameter is one of three kinds:
   lvalue by emitting the corresponding change, so parent and child stay in
   sync;
 - an **event parameter** — `@name Type` (the type is optional, denoting a
-  payloadless event) — an outgoing event the component fires with `emit` and
-  the caller handles with `@name { … }`.
+  payloadless event) — an outgoing event the component fires by calling its
+  name (`name(args)`) and the caller handles with `@name { … }`.
 
 ### Children
 
@@ -1179,11 +1181,12 @@ statements form its children. A node may be labeled with an element reference,
 Attaching `#id` to a node (`button #id(…)`) names it within the component and
 introduces `id` as a component-scoped binding: an opaque, immutable handle to
 that node (it does not shadow an existing name). The node is reached either by
-that bare name or, from a handle to its container, by selection — `c.id.value`
-reads the node's state and `c.id.@click()` drives its events (event invocation
-through a reference uses the `value.@event(args)` form). The `#` sigil itself
-appears only as the node-naming tag or as a selection field (`node.#id`); it is
-never written on its own as an operand.
+that bare name or, from a handle to its container, by ordinary field
+selection — `c.id.value` reads the node's state and `c.id.click()` drives its
+events (event invocation through a reference is an ordinary call on the event
+name, `value.event(args)`). The `#` sigil itself appears only as the node- or
+context-naming declaration tag; it is never a selection field nor written on
+its own as an operand.
 
 ## Reactivity
 

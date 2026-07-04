@@ -29,12 +29,12 @@ component listcomp {
 
 func testEventTriggering(t Test, c counter) {
     t.assert(c.count == 0)
-    c.inc.@click()
+    c.inc.click()
     t.assert(c.count == 1)
-    c.inc.@click()
-    c.inc.@click()
+    c.inc.click()
+    c.inc.click()
     t.assert(c.count == 3)
-    c.dec.@click()
+    c.dec.click()
     t.assert(c.count == 2)
     t.assert(c.display.value == "Count: 2")
 }

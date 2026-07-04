@@ -15,6 +15,6 @@ component main {
 // does not currently fire @change handlers.
 func testDataFieldExists(t Test, c main) {
     t.assert(c.tracked == 0)
-    c.inc.@click()
+    c.inc.click()
     t.assert(c.tracked == 1)
 }

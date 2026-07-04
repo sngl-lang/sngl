@@ -78,7 +78,7 @@ func testIsolation(t Test, c main) {
 	var l = c.children[0]
 	var r = c.children[1]
 	t.assert(l.o.value == "0")
-	l.b.@click()
+	l.b.click()
 	t.assert(l.o.value == "1")
 	t.assert(r.o.value == "0")
 }

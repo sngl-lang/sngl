@@ -194,11 +194,11 @@ func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs 
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	c := call.Call
-	if c == nil || c.AST == nil {
+	if c == nil || c.AST == nil || c.Event == "" {
 		return "", false
 	}
 	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
-	if !ok || outerSel.Kind != ast.SelectEvent {
+	if !ok {
 		return "", false
 	}
 	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
@@ -208,7 +208,7 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	if _, ok := innerSel.Operand.(*ast.IdentExpr); !ok {
 		return "", false
 	}
-	event := outerSel.Field
+	event := c.Event
 	id := innerSel.Field
 	finder := fmt.Sprintf("composeTestRule.onNodeWithTag(%q)", id)
 	action := composeAction(event, c.Args)

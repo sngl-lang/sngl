@@ -845,8 +845,7 @@ func isPrimitiveTypeKind(k ir.TypeKind) bool {
 // source can read it as an identifier, and appended to c.pkg.Contexts so the
 // interpreter and codegen discover it alongside user-declared contexts.
 func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
-	sel := s.Call.Func.(*ast.SelectExpr)
-	name := sel.Field
+	name := s.Call.ID
 	ctx := &ir.Context{AST: s, Name: name}
 	if name == "" {
 		c.error(s.Pos, "stdlib context decl requires #identifier")

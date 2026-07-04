@@ -13,10 +13,10 @@ component main {
 -- expected.sngl --
 component Stepper(:count int = 0, @count int) {
     button(text="+", @click {
-        @count(count + 1)
+        count(count + 1)
     })
     button(text="-", @click {
-        @count(count - 1)
+        count(count - 1)
     })
     text(value=string(count))
 }

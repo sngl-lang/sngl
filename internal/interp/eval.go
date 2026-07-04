@@ -1348,24 +1348,32 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	if err == nil {
 		method := methodNameFromCall(call)
 		if method != "" {
-			// Element-ref event invocation: c.btn.@click() → look up the
-			// handler stored at key "@click" on the rendered element map.
-			if after, ok := strings.CutPrefix(method, "@"); ok {
-				if m, ok := recv.(map[string]any); ok {
-					if h, ok := m[method].(*ir.Func); ok {
-						handlerEnv := env
-						if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
-							handlerEnv = oe
-						}
-						if owner, ok := m["__ownerComponent"]; ok && owner != nil {
-							if handlerEnv.Vars == nil {
-								handlerEnv.Vars = map[string]any{}
-							}
-							handlerEnv.Vars[ir.ReceiverParam] = owner
-						}
-						return handlerEnv.runEventHandler(h, call.Args, after)
+			// Element-ref event invocation: `c.btn.click()` (the handler is
+			// stored at key "@click" on the rendered element map). The name
+			// arrives "@"-prefixed when the checker statically tagged it, or
+			// bare when the receiver's type was dynamic (e.g.
+			// c.children[0].click()) and the checker couldn't resolve the
+			// host component — so try the "@"-prefixed key regardless.
+			explicitEvent := strings.HasPrefix(method, "@")
+			event := strings.TrimPrefix(method, "@")
+			if m, ok := recv.(map[string]any); ok {
+				if h, ok := m["@"+event].(*ir.Func); ok {
+					handlerEnv := env
+					if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
+						handlerEnv = oe
 					}
+					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
+						if handlerEnv.Vars == nil {
+							handlerEnv.Vars = map[string]any{}
+						}
+						handlerEnv.Vars[ir.ReceiverParam] = owner
+					}
+					return handlerEnv.runEventHandler(h, call.Args, event)
 				}
+			}
+			if explicitEvent {
+				// Checker tagged this as an event but no handler is installed:
+				// the caller never bound it, so the invocation is a no-op.
 				return nil, nil
 			}
 			if tv, ok := recv.(TestingT); ok {
@@ -1544,6 +1552,11 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 // the AST back-reference (set by the checker when Func couldn't be resolved).
 // For @event access ("c.btn.@click"), the name is prefixed with "@".
 func methodNameFromCall(call *ir.Call) string {
+	// Element-ref event triggers (`c.btn.click()`) are tagged by the
+	// checker; the interpreter keys handlers under "@<event>" internally.
+	if call.Event != "" {
+		return "@" + call.Event
+	}
 	if call.Func != nil {
 		return call.Func.Name
 	}
@@ -1551,9 +1564,6 @@ func methodNameFromCall(call *ir.Call) string {
 		return ""
 	}
 	if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
-		if sel.Kind == ast.SelectEvent {
-			return "@" + sel.Field
-		}
 		return sel.Field
 	}
 	return ""

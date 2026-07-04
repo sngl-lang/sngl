@@ -91,7 +91,7 @@ Emit expression
 ================
 
 component App(@submit) {
-    button(@click { @submit() })
+    button(@click { submit() })
 }
 
 ---
@@ -107,8 +107,8 @@ component App(@submit) {
         (event_arg
           name: (identifier)
           (statement_block
-            (emit_expression
-              (event_method))))))))
+            (visual_node
+              component: (identifier))))))))
 
 ================
 Field assignment

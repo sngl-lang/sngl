@@ -4,8 +4,8 @@
 // with mixed kinds escapes into codegen, violating the explicit-conversion rule.
 component main {
     var i int = 0
-    @click {
+    button(@click {
         i += 1.5 // ERROR(check) "cannot"
-    }
+    })
     text(value="{i}")
 }

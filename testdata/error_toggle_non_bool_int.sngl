@@ -3,8 +3,8 @@
 // codegen would emit `!x` on whatever type slipped through.
 component main {
     var i int = 0
-    @click {
+    button(@click {
         i!! // ERROR(check) "bool"
-    }
+    })
     text(value="{i}")
 }

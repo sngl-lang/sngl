@@ -6,13 +6,12 @@ import (
 )
 
 // isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:
-// Call.Func is *ast.SelectExpr{Operand: *ast.IdentExpr{Name: "context"}, Kind: SelectElemRef}.
+// a call to the bare `context` identifier carrying an element-ref id.
 func isContextDeclCallStmt(s *ast.CallStmt) bool {
-	sel, ok := s.Call.Func.(*ast.SelectExpr)
-	if !ok || sel.Kind != ast.SelectElemRef {
+	if s.Call.ID == "" {
 		return false
 	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
+	ident, ok := s.Call.Func.(*ast.IdentExpr)
 	return ok && ident.Name == "context"
 }
 
@@ -45,8 +44,7 @@ func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.
 }
 
 func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
-	sel := s.Call.Func.(*ast.SelectExpr)
-	name := sel.Field
+	name := s.Call.ID
 	ctx := &ir.Context{AST: s, Name: name}
 	if name == "" {
 		c.error(s.Pos, "context decl requires #identifier")

@@ -32,7 +32,7 @@ func testLoopRefFieldWriteThrough(t Test, c main) {
     // tasks[0] starts not done
     t.assert(c.t0.value == "false")
     // &t field write updates the element in place
-    c.mark.@click()
+    c.mark.click()
     t.assert(c.t0.value == "true")
 }
 
@@ -40,6 +40,6 @@ func testLoopRefScalarWriteThrough(t Test, c main) {
     // nums[0] starts 1
     t.assert(c.n0.value == "1")
     // &n whole-element write (n = n + 10) updates the list element in place
-    c.bump.@click()
+    c.bump.click()
     t.assert(c.n0.value == "11")
 }

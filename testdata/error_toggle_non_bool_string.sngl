@@ -1,8 +1,8 @@
 // Bug: toggle (`!!`) on string passes typecheck.
 component main {
     var s = "x"
-    @click {
+    button(@click {
         s!! // ERROR(check) "bool"
-    }
+    })
     text(value=s)
 }

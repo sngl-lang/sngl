@@ -30,13 +30,13 @@ component sngl.text {
 
 component sngl.button {
     platform gtk4 {
-        gtk4.GtkButton(label=text, style={...style}, @clicked { @click() }) {}
+        gtk4.GtkButton(label=text, style={...style}, @clicked { click() }) {}
     }
 }
 
 component sngl.checkbox {
     platform gtk4 {
-        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { @change(checked) }) {}
+        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change(checked) }) {}
     }
 }
 
@@ -48,7 +48,7 @@ component sngl.image {
 
 component sngl.input {
     platform gtk4 {
-        gtk4.GtkEntry(text=value, style={...style}, @changed { @input() }) {}
+        gtk4.GtkEntry(text=value, style={...style}, @changed { input() }) {}
     }
 }
 
@@ -57,7 +57,7 @@ component sngl.input {
 // multi-line GtkTextView support is a future enhancement.)
 component sngl.textarea {
     platform gtk4 {
-        gtk4.GtkEntry(text=value, style={...style}, @changed { @input() }) {}
+        gtk4.GtkEntry(text=value, style={...style}, @changed { input() }) {}
     }
 }
 

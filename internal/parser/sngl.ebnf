@@ -358,11 +358,14 @@ CompParamTail =
 # VisualOrStmt unifies: visual node declarations, function/emit calls, assignments,
 # and toggles. All parse as StatementPrimary followed by PostfixOps.
 #
+# Emits and element-ref event calls carry no sigil: they parse as ordinary
+# calls (save(count), c.inc.click()) and the checker resolves the name to a
+# declared event. The '@' sigil survives only on event declarations
+# (@click in CompParam), handlers (@click { } in ArgList), and VarHandler.
+#
 # StmtBlock is a PostfixOp, so trailing bodies attach naturally:
 #   Button { Text("hi") }           → ident + StmtBlock postfix
 #   Button(text="hi") { }           → ident + call postfix + StmtBlock postfix
-#   @tick { progress += 0.01 }      → at-ident primary + StmtBlock postfix
-#   @click(e) { doSomething() }     → at-ident primary + call postfix + StmtBlock postfix
 #   output { go { bubbletea { } } } → ident primary + StmtBlock postfix (nested)
 #   timer(interval=1s, @tick { })   → ident + call postfix (with @tick in ArgList)
 #
@@ -389,7 +392,6 @@ StatementPrimary =
     | lparen Expr rparen
     | lbracket ListBody rbracket
     | AnonStructLit
-    | at ident
     | ident
     .
 
@@ -453,8 +455,6 @@ CondPostfixExpr = StatementPrimary { CondPostfixOp } .
 # no StmtBlock (not a statement).
 CondPostfixOp =
       dot ident
-    | dot at ident
-    | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
     .
@@ -464,16 +464,15 @@ CondPostfixOp =
 # in PrimaryExpr is LL(1) conflict-free.
 ExprPostfixOp =
       dot ident [ StructLitBody ]
-    | dot at ident
-    | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen
     .
 
 # Statement context: StmtBlock for visual node bodies, NO struct lit.
+# `hash` here is the element-reference declaration tag (`name #id(...)`),
+# not a selector — it names the enclosing node (see build.go).
 StmtPostfixOp =
       dot ident
-    | dot at ident
     | hash
     | lbracket Expr rbracket
     | lparen [ ArgList ] rparen

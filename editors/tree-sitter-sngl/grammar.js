@@ -305,7 +305,6 @@ module.exports = grammar({
         $.for_node,
         $.assignment_statement,
         $.toggle_statement,
-        $.emit_expression,
         $.visual_node,
         $._expression,
       ),
@@ -317,7 +316,6 @@ module.exports = grammar({
       choice(
         $.assignment_statement,
         $.toggle_statement,
-        $.emit_expression,
         $.visual_node,
         $._expression,
       ),
@@ -414,13 +412,6 @@ module.exports = grammar({
         $.null,
       ),
 
-    // Emit/event expression for statement context: @click, @click(1)
-    emit_expression: ($) =>
-      prec.right(PREC.POSTFIX, seq(
-        $.event_method,
-        optional(seq("(", optional($._arg_list), ")")),
-      )),
-
     ternary_expression: ($) =>
       prec.right(
         PREC.TERNARY,
@@ -488,14 +479,12 @@ module.exports = grammar({
         seq(
           field("receiver", $._expression),
           ".",
-          field("method", choice($.identifier, $.event_method, $.element_ref)),
+          field("method", $.identifier),
           "(",
           optional($._arg_list),
           ")",
         ),
       ),
-
-    event_method: (_$) => token(seq("@", /[a-zA-Z_]\w*/)),
 
     field_expression: ($) =>
       prec(
@@ -503,7 +492,7 @@ module.exports = grammar({
         seq(
           field("operand", $._expression),
           ".",
-          field("field", choice($.identifier, $.event_method, $.element_ref)),
+          field("field", $.identifier),
         ),
       ),
 

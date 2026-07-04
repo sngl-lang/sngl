@@ -74,6 +74,12 @@ type Call struct {
 	Receiver Expr      // non-nil only for namespace/component/element-ref calls
 	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
 
+	// Event is the event name when this call is an element-ref event
+	// trigger (`c.inc.click()`), set by the checker after resolving the
+	// field to a declared event on the addressed component. Empty for
+	// ordinary method/function calls.
+	Event string
+
 	// Error handling. These are set by the checker + effect analysis.
 	// ErrorHandler is an inline `@error(e) { ... }` attached to this call
 	// site. ResolvedHandler is the handler this call's errors route to —

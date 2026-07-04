@@ -680,8 +680,8 @@ Tag a node with `#id` to reference it in tests:
 
 ```sngl
 var count = 0
-button.#inc(text="+", @click { count += 1 })
-text.#display(value="Count: {count}")
+button #inc(text="+", @click { count += 1 })
+text #display(value="Count: {count}")
 ```
 
 ## Events and Mutations
@@ -747,7 +747,7 @@ Fire a component event to notify the parent:
 
 ```sngl
 var data = "saved"
-button(text="Save", @click { @save(data) })
+button(text="Save", @click { save(data) })
 ```
 
 ### Gotchas
@@ -843,7 +843,6 @@ Tests target a specific component and get a fresh copy of its state:
 ```sngl
 component counter {
     var count = 0
-
     button #inc(text="+", @click { count += 1 })
     text #display(value="Count: {count}")
 }
@@ -853,9 +852,9 @@ func testStartsAtZero(t Test, c counter) {
 }
 
 func testIncrements(t Test, c counter) {
-    c.#inc.@click()
+    c.inc.click()
     t.assert(c.count == 1)
-    t.assert(c.#display.value == "Count: 1")
+    t.assert(c.display.value == "Count: 1")
 }
 ```
 
@@ -871,13 +870,13 @@ Tag nodes with `#id`, then access props and fire events in tests:
 
 ```sngl
 var count = 0
-button.#inc(text="+", @click { count += 1 })
-text.#display(value="Count: {count}")
+button #inc(text="+", @click { count += 1 })
+text #display(value="Count: {count}")
 ```
 
-In a for loop, refs become indexed: `#item[0].value`, `#item[2].value`.
+In a for loop, refs become indexed: `item[0].value`, `item[2].value`.
 
-Access props: `#display.value`, `#display.class`. Fire events: `#inc.@click()`. Check existence: `#conditional != null`.
+Access props: `display.value`, `display.class`. Fire events: `inc.click()`. Check existence: `conditional != null`.
 
 ### State isolation
 

@@ -317,15 +317,13 @@ func (c *converter) convertTimer(t *Timer) *ast.VisualNode {
 }
 
 // convertContext emits a top-level context declaration as the CallStmt that the
-// parser produces for `context.#name(default)`. If Default is nil the arg list
+// parser produces for `context #name(default)`. If Default is nil the arg list
 // is omitted (degenerate case; real declarations always carry a default).
 func (c *converter) convertContext(ctx *Context) *ast.CallStmt {
-	sel := &ast.SelectExpr{
-		Operand: &ast.IdentExpr{Name: "context"},
-		Field:   ctx.Name,
-		Kind:    ast.SelectElemRef,
+	call := &ast.CallExpr{
+		Func: &ast.IdentExpr{Name: "context"},
+		ID:   ctx.Name,
 	}
-	call := &ast.CallExpr{Func: sel}
 	if ctx.Default != nil {
 		call.Args = ast.ArgList{
 			Args: []ast.ArgOrEventHandler{
@@ -439,9 +437,12 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 			Target: c.convertExpr(s.Target).(ast.TargetExpr),
 		}
 	case *Emit:
-		return &ast.EmitStmt{
-			Name: s.Name,
-			Args: c.convertCallArgList(s.Args),
+		// Emits are surfaced as ordinary calls: `event(args)`.
+		return &ast.CallStmt{
+			Call: &ast.CallExpr{
+				Func: &ast.IdentExpr{Name: s.Name},
+				Args: c.convertCallArgList(s.Args),
+			},
 		}
 	case *LocalVar:
 		vs := &ast.VarStmt{
@@ -511,7 +512,6 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		target = &ast.SelectExpr{
 			Operand: &ast.IdentExpr{Name: ns},
 			Field:   field,
-			Kind:    ast.SelectField,
 		}
 	} else {
 		target = &ast.IdentExpr{Name: n.Name}
@@ -595,7 +595,6 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return &ast.SelectExpr{
 			Operand: c.convertExpr(e.Operand),
 			Field:   e.Field,
-			Kind:    ast.SelectField,
 		}
 	case *Index:
 		return &ast.IndexExpr{
@@ -664,7 +663,6 @@ func (c *converter) convertIdent(id *Ident) ast.Expr {
 			return &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: id.Sym.SymName()},
 				Field:   id.Member,
-				Kind:    ast.SelectField,
 			}
 		}
 		return &ast.IdentExpr{Name: id.Member}
@@ -679,7 +677,6 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 		funcExpr = &ast.SelectExpr{
 			Operand: c.convertExpr(call.Receiver),
 			Field:   call.Func.Name,
-			Kind:    ast.SelectField,
 		}
 	} else if call.Receiver != nil {
 		// Namespaced component/element (html.div, docui.Foo) resolved via
@@ -689,7 +686,6 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 				funcExpr = &ast.SelectExpr{
 					Operand: c.convertExpr(call.Receiver),
 					Field:   sel.Field,
-					Kind:    ast.SelectField,
 				}
 			}
 		}
@@ -705,7 +701,6 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
 				Field:   call.Func.Name,
-				Kind:    ast.SelectField,
 			}
 		} else {
 			funcExpr = &ast.IdentExpr{Name: call.Func.Name}

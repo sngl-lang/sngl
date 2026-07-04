@@ -6,8 +6,10 @@ import (
 )
 
 // analyzePurity determines the purity level of a function by walking its body.
-func analyzePurity(f *ir.Func, vars map[string]*ir.Var) ir.Purity {
-	w := &purityWalker{vars: vars}
+// events names the enclosing component's events (nil for package-level funcs)
+// so a sigil-free emit `save(x)` is recognised as a side effect.
+func analyzePurity(f *ir.Func, vars map[string]*ir.Var, events map[string]struct{}) ir.Purity {
+	w := &purityWalker{vars: vars, events: events}
 	if f.AST != nil {
 		if f.AST.Body != nil {
 			w.walkExpr(f.AST.Body)
@@ -52,6 +54,7 @@ func trackAccess(f *ir.Func, vars map[string]*ir.Var) {
 
 type purityWalker struct {
 	vars     map[string]*ir.Var
+	events   map[string]struct{}
 	readsVar bool
 	mutates  bool
 }
@@ -75,6 +78,13 @@ func (w *purityWalker) walkExpr(e ast.Expr) {
 		w.walkExpr(x.Then)
 		w.walkExpr(x.Else)
 	case *ast.CallExpr:
+		// A bare `event(...)` call is an emit — a side effect that fires
+		// parent handlers — so it makes the function impure.
+		if id, ok := x.Func.(*ast.IdentExpr); ok {
+			if _, isEvent := w.events[id.Name]; isEvent {
+				w.mutates = true
+			}
+		}
 		w.walkExpr(x.Func)
 		w.walkArgList(x.Args)
 	case *ast.SelectExpr:
@@ -124,9 +134,6 @@ func (w *purityWalker) walkStmt(s ast.Stmt) {
 		w.mutates = true
 	case *ast.IncDecStmt:
 		w.mutates = true
-	case *ast.EmitStmt:
-		w.mutates = true
-		w.walkArgList(x.Args)
 	case *ast.VarStmt:
 		if x.Init != nil {
 			w.walkExpr(x.Init)
@@ -254,8 +261,6 @@ func (w *accessWalker) walkStmt(s ast.Stmt) {
 				w.writes[ident.Name] = true
 			}
 		}
-	case *ast.EmitStmt:
-		w.walkArgList(x.Args)
 	case *ast.VarStmt:
 		if x.Init != nil {
 			w.walkExpr(x.Init)

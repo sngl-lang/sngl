@@ -238,8 +238,6 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeToggleStmt(x)
 	case *ast.IncDecStmt:
 		f.writeIncDecStmt(x)
-	case *ast.EmitStmt:
-		f.writeEmitStmt(x)
 	case *ast.VarStmt:
 		f.writeVarStmt(x)
 	case *ast.ReturnStmt:
@@ -614,16 +612,6 @@ func (f *formatter) writeIncDecStmt(s *ast.IncDecStmt) {
 	}
 }
 
-func (f *formatter) writeEmitStmt(s *ast.EmitStmt) {
-	f.write("@")
-	f.write(s.Name)
-	if len(s.Args.Args) > 0 {
-		f.write("(")
-		f.writeArgs(s.Args)
-		f.write(")")
-	}
-}
-
 func (f *formatter) writeVarStmt(s *ast.VarStmt) {
 	f.write("var ")
 	f.write(s.Name)
@@ -846,6 +834,11 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.write("]")
 	case *ast.CallExpr:
 		f.writeExpr(x.Func)
+		if x.ID != "" {
+			// Element-reference declaration: `name #id(...)`.
+			f.write(" #")
+			f.write(x.ID)
+		}
 		f.write("(")
 		f.writeArgs(x.Args)
 		f.write(")")
@@ -897,39 +890,17 @@ func (f *formatter) writeLiteral(lit *ast.LiteralExpr) {
 	}
 }
 
-// writeCallStmt emits a statement-level call. When the callee is
-// `name #id(...)` (a SelectElemRef on a bare identifier), emit the
-// space form — matching the source syntax that produced this AST.
-// Other CallStmts (method calls, package-qualified calls, etc.) emit
-// via the generic CallExpr writer.
+// writeCallStmt emits a statement-level call. The `name #id(...)`
+// element-reference form is handled by the generic CallExpr writer
+// (which emits the `#id` from CallExpr.ID).
 func (f *formatter) writeCallStmt(s *ast.CallStmt) {
-	if sel, ok := s.Call.Func.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
-		if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-			f.write(ident.Name)
-			f.write(" #")
-			f.write(sel.Field)
-			f.write("(")
-			f.writeArgs(s.Call.Args)
-			f.write(")")
-			return
-		}
-	}
 	f.writeExpr(s.Call)
 }
 
 func (f *formatter) writeSelectExpr(x *ast.SelectExpr) {
 	f.writeExpr(x.Operand)
-	switch x.Kind {
-	case ast.SelectField:
-		f.write(".")
-		f.write(x.Field)
-	case ast.SelectEvent:
-		f.write(".@")
-		f.write(x.Field)
-	case ast.SelectElemRef:
-		f.write(".#")
-		f.write(x.Field)
-	}
+	f.write(".")
+	f.write(x.Field)
 }
 
 func (f *formatter) writeStructExpr(x *ast.StructExpr) {

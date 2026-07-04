@@ -4,7 +4,7 @@ component Counter(label = "", @save) {
     var count = 0
 
     button(text="+", @click { count += 1 })
-    button(text="Save", @click { @save(count) })
+    button(text="Save", @click { save(count) })
     text(value="{label}: {count}")
 }
 

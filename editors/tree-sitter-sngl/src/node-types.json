@@ -122,10 +122,6 @@
         "named": true
       },
       {
-        "type": "emit_expression",
-        "named": true
-      },
-      {
         "type": "enum_declaration",
         "named": true
       },
@@ -575,41 +571,6 @@
     }
   },
   {
-    "type": "emit_expression",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "_expression",
-          "named": true
-        },
-        {
-          "type": "binding_arg",
-          "named": true
-        },
-        {
-          "type": "event_arg",
-          "named": true
-        },
-        {
-          "type": "event_method",
-          "named": true
-        },
-        {
-          "type": "named_arg",
-          "named": true
-        },
-        {
-          "type": "spread_expression",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "enum_declaration",
     "named": true,
     "fields": {
@@ -699,14 +660,6 @@
         "multiple": false,
         "required": true,
         "types": [
-          {
-            "type": "element_ref",
-            "named": true
-          },
-          {
-            "type": "event_method",
-            "named": true
-          },
           {
             "type": "identifier",
             "named": true
@@ -950,14 +903,6 @@
         "multiple": false,
         "required": true,
         "types": [
-          {
-            "type": "element_ref",
-            "named": true
-          },
-          {
-            "type": "event_method",
-            "named": true
-          },
           {
             "type": "identifier",
             "named": true
@@ -1700,10 +1645,6 @@
   {
     "type": "enum",
     "named": false
-  },
-  {
-    "type": "event_method",
-    "named": true
   },
   {
     "type": "false",

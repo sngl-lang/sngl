@@ -1771,10 +1771,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "emit_expression"
-        },
-        {
-          "type": "SYMBOL",
           "name": "visual_node"
         },
         {
@@ -1818,10 +1814,6 @@
         {
           "type": "SYMBOL",
           "name": "toggle_statement"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "emit_expression"
         },
         {
           "type": "SYMBOL",
@@ -2307,52 +2299,6 @@
           "name": "null"
         }
       ]
-    },
-    "emit_expression": {
-      "type": "PREC_RIGHT",
-      "value": 9,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "SYMBOL",
-            "name": "event_method"
-          },
-          {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SEQ",
-                "members": [
-                  {
-                    "type": "STRING",
-                    "value": "("
-                  },
-                  {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_arg_list"
-                      },
-                      {
-                        "type": "BLANK"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "STRING",
-                    "value": ")"
-                  }
-                ]
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          }
-        ]
-      }
     },
     "ternary_expression": {
       "type": "PREC_RIGHT",
@@ -2922,21 +2868,8 @@
             "type": "FIELD",
             "name": "method",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "identifier"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "event_method"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "element_ref"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "identifier"
             }
           },
           {
@@ -2958,22 +2891,6 @@
           {
             "type": "STRING",
             "value": ")"
-          }
-        ]
-      }
-    },
-    "event_method": {
-      "type": "TOKEN",
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "STRING",
-            "value": "@"
-          },
-          {
-            "type": "PATTERN",
-            "value": "[a-zA-Z_]\\w*"
           }
         ]
       }
@@ -3000,21 +2917,8 @@
             "type": "FIELD",
             "name": "field",
             "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "identifier"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "event_method"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "element_ref"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "identifier"
             }
           }
         ]

@@ -207,9 +207,11 @@ func TestFormatToggle(t *testing.T) {
 }
 
 func TestFormatEmit(t *testing.T) {
+	// Emits are sigil-free calls: `click()` (the checker resolves the name
+	// to a declared event). They format like any other call statement.
 	assertFormat(t,
-		"func foo() {\n    @click\n}",
-		"func foo() {\n    @click\n}")
+		"func foo() {\n    click()\n}",
+		"func foo() {\n    click()\n}")
 }
 
 func TestFormatEventHandler(t *testing.T) {

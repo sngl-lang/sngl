@@ -215,17 +215,11 @@ func elemCallInfo(cs *ir.CallStmt) (string, string) {
 	name := ""
 	id := ""
 	if call := cs.Call.AST; call != nil {
+		id = call.ID
 		switch f := call.Func.(type) {
 		case *ast.SelectExpr:
-			if f.Kind == ast.SelectElemRef {
-				id = f.Field
-				if ident, ok := f.Operand.(*ast.IdentExpr); ok {
-					name = ident.Name
-				}
-			} else {
-				if ident, ok := f.Operand.(*ast.IdentExpr); ok {
-					name = ident.Name
-				}
+			if ident, ok := f.Operand.(*ast.IdentExpr); ok {
+				name = ident.Name
 			}
 		case *ast.IdentExpr:
 			name = f.Name

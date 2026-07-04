@@ -12,6 +12,6 @@ component main {
 func testGlobalVarReactivity(t Test, c main) {
     var cd = c.children[1]
     t.assert(cd.out.value == "light")
-    c.toggle.@click()
+    c.toggle.click()
     t.assert(cd.out.value == "dark")
 }

@@ -1684,7 +1684,7 @@ func (c *checker) pass2() {
 	// Purity analysis.
 	vars := c.collectVarMap()
 	for _, fn := range c.pkg.Funcs {
-		fn.Purity = analyzePurity(fn, vars)
+		fn.Purity = analyzePurity(fn, vars, nil)
 		trackAccess(fn, vars)
 	}
 	for _, comp := range c.pkg.Components {
@@ -1699,8 +1699,12 @@ func (c *checker) pass2() {
 		for _, v := range comp.Vars {
 			compVars[v.Name] = v
 		}
+		events := make(map[string]struct{}, len(comp.Events))
+		for _, e := range comp.Events {
+			events[e.Name] = struct{}{}
+		}
 		for _, fn := range comp.Funcs {
-			fn.Purity = analyzePurity(fn, compVars)
+			fn.Purity = analyzePurity(fn, compVars, events)
 			trackAccess(fn, compVars)
 		}
 	}

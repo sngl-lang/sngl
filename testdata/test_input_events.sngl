@@ -12,18 +12,18 @@ component editor {
 
 func testInputFiresOnEachKeystroke(t Test, c editor) {
     t.assert(c.name == "")
-    c.field.@input({value="h"})
+    c.field.input({value="h"})
     t.assert(c.name == "h")
-    c.field.@input({value="hello"})
+    c.field.input({value="hello"})
     t.assert(c.name == "hello")
 }
 
 func testInputUpdatesBoundText(t Test, c editor) {
-    c.field.@input({value="world"})
+    c.field.input({value="world"})
     t.assert(c.display.value == "world")
 }
 
 func testChangeFiresOnCommit(t Test, c editor) {
-    c.field.@change({value="committed"})
+    c.field.change({value="committed"})
     t.assert(c.lastCommit == "committed")
 }

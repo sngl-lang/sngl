@@ -95,17 +95,6 @@ const (
 	AssignMod                 // %=
 )
 
-//go:generate go tool stringer -type=SelectKind -linecomment
-
-// SelectKind identifies the kind of member access in a SelectExpr.
-type SelectKind int
-
-const (
-	SelectField   SelectKind = iota // field
-	SelectEvent                     // @event
-	SelectElemRef                   // #ref
-)
-
 // --- Type expressions ---
 
 // NamedType is a type reference: int, pkg.Type, List<int>.
@@ -183,12 +172,11 @@ type TernaryExpr struct {
 	Else Expr
 }
 
-// SelectExpr is member access: .field, .@event, .#ref, #ref.
+// SelectExpr is member access: operand.field.
 type SelectExpr struct {
 	Pos     Pos
 	Operand Expr
 	Field   string
-	Kind    SelectKind
 }
 
 // IndexExpr is index access: operand[index].
@@ -204,6 +192,10 @@ type CallExpr struct {
 	Pos  Pos
 	Func Expr
 	Args ArgList
+	// ID is the element-reference name from `Func #id(args)` declaration
+	// syntax (e.g. `button #inc(...)`, `context #locale(...)`). Empty for
+	// ordinary calls. Node declarations carry it onto VisualNode.ID.
+	ID string
 }
 
 // StructFieldLit is a field in a struct literal.
@@ -312,13 +304,6 @@ type IncDecStmt struct {
 	Pos    Pos
 	Target TargetExpr
 	IsDec  bool // false: ++, true: --
-}
-
-// EmitStmt is an event emission: @name(args...).
-type EmitStmt struct {
-	Pos  Pos
-	Name string
-	Args ArgList
 }
 
 // StmtBlock is a braced list of statements: { stmt; stmt }.
@@ -447,7 +432,6 @@ func (*UnaryExpr) targetExpr()  {}
 func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
 func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
 func (x *IncDecStmt) StmtPos() *Pos { return &x.Pos }
-func (x *EmitStmt) StmtPos() *Pos   { return &x.Pos }
 func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
 func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
 func (x *CallStmt) StmtPos() *Pos   { return &x.Pos }

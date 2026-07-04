@@ -918,8 +918,21 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 	// Apply postfix ops
 	var lastBlock *ast.StmtBlock
 	var args *ast.ArgList
+	var elemID string
 	for !it.done() && it.isNonTerminal() && it.symbol() == StmtPostfixOp {
-		base, lastBlock, args = b.applyStmtPostfixOp(it.enter(), base, lastBlock, args)
+		var id string
+		base, lastBlock, args, id = b.applyStmtPostfixOp(it.enter(), base, lastBlock, args)
+		if id != "" {
+			elemID = id
+		}
+	}
+	// A `name #id(...)` declaration threads its id here; land it on the
+	// CallExpr so downstream (VisualNode decomposition, context decls,
+	// element-ref calls) reads it from a single field.
+	if elemID != "" {
+		if call, ok := base.(*ast.CallExpr); ok {
+			call.ID = elemID
+		}
 	}
 
 	// Check for trailing assign or toggle
@@ -967,36 +980,19 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		}
 	}
 
-	// Emit: base is EventRefExpr
-	if evRef, ok := base.(*ast.EventRefExpr); ok {
-		emit := &ast.EmitStmt{
-			Pos:  ast.Pos(*base.ExprPos()),
-			Name: evRef.Name,
-		}
-		if args != nil {
-			emit.Args = *args
-		}
-		if lastBlock != nil {
-			emit.Args.Args = append(emit.Args.Args, ast.EventHandler{
-				Pos:  ast.Pos(emit.Pos),
-				Name: evRef.Name,
-				Body: *lastBlock,
-			})
-		}
-		return emit
-	}
-
 	// Visual node: has a block body or args
 	if lastBlock != nil || args != nil {
 		vn := &ast.VisualNode{
 			Pos: ast.Pos(*base.ExprPos()),
 		}
-		// If base is a CallExpr, decompose: Target = Func, Args = call's args
+		// If base is a CallExpr, decompose: Target = Func, Args = call's args,
+		// and carry the element-ref id (`name #id(...)`) onto the node.
 		if call, ok := base.(*ast.CallExpr); ok {
 			if target, ok := call.Func.(ast.TargetExpr); ok {
 				vn.Target = target
 			}
 			vn.Args = call.Args
+			vn.ID = call.ID
 		} else {
 			if target, ok := base.(ast.TargetExpr); ok {
 				vn.Target = target
@@ -1004,13 +1000,7 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 			if args != nil {
 				vn.Args = *args
 			}
-		}
-		// Extract #id from target: "name #id(...)" → Target=name, ID=id.
-		if sel, ok := vn.Target.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
-			if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-				vn.Target = ident
-				vn.ID = sel.Field
-			}
+			vn.ID = elemID
 		}
 		if lastBlock != nil {
 			vn.Block = *lastBlock
@@ -1026,41 +1016,37 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		}
 	}
 
-	// Bare expression as a visual node
+	// Bare expression as a visual node (e.g. `spacer #s`).
 	vn := &ast.VisualNode{
 		Pos: ast.Pos(*base.ExprPos()),
+		ID:  elemID,
 	}
 	if target, ok := base.(ast.TargetExpr); ok {
 		vn.Target = target
 	}
-	// Split "target.#id" SelectExpr into Target + ID.
-	if sel, ok := vn.Target.(*ast.SelectExpr); ok && sel.Kind == ast.SelectElemRef {
-		if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-			vn.Target = ident
-			vn.ID = sel.Field
-		}
-	}
 	return vn
 }
 
-func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.StmtBlock, lastArgs *ast.ArgList) (ast.Expr, *ast.StmtBlock, *ast.ArgList) {
-	// StmtPostfixOp = dot ident | dot at ident | dot elem_ref | elem_ref
-	//               | lbracket Expr rbracket | lparen [ ArgList ] rparen | StmtBlock .
+func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.StmtBlock, lastArgs *ast.ArgList) (ast.Expr, *ast.StmtBlock, *ast.ArgList, string) {
+	// StmtPostfixOp = dot ident | hash | lbracket Expr rbracket
+	//               | lparen [ ArgList ] rparen | StmtBlock .
+	// The last return value carries the element-reference id from a `hash`
+	// postfix (`name #id`); the caller attaches it to the enclosing node.
 	if it.done() {
-		return base, lastBlock, lastArgs
+		return base, lastBlock, lastArgs, ""
 	}
 
 	if it.isNonTerminal() {
 		switch it.symbol() {
 		case StmtBlock:
 			block := b.buildStmtBlock(it.enter())
-			return base, &block, lastArgs
+			return base, &block, lastArgs, ""
 		case ArgList:
 			args := b.buildArgList(it.enter())
-			return base, lastBlock, &args
+			return base, lastBlock, &args, ""
 		}
 		it.skip()
-		return base, lastBlock, lastArgs
+		return base, lastBlock, lastArgs, ""
 	}
 
 	tok := it.token()
@@ -1076,27 +1062,15 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 					Pos:     b.posFromToken(tok),
 					Operand: base,
 					Field:   field.Literal,
-					Kind:    ast.SelectField,
-				}, nil, nil
-			case AT:
-				it.skip() // at
-				field := it.shift()
-				return &ast.SelectExpr{
-					Pos:     b.posFromToken(tok),
-					Operand: base,
-					Field:   field.Literal,
-					Kind:    ast.SelectEvent,
-				}, nil, nil
+				}, nil, nil, ""
 			}
 		}
 	case HASH:
+		// `name #id` — an element-reference declaration. Leave base
+		// unchanged and hand the id back to the caller, which lands it on
+		// the CallExpr / VisualNode being built.
 		ref := it.shift()
-		return &ast.SelectExpr{
-			Pos:     b.posFromToken(ref),
-			Operand: base,
-			Field:   ref.Literal,
-			Kind:    ast.SelectElemRef,
-		}, nil, nil
+		return base, lastBlock, lastArgs, ref.Literal
 	case LBRACKET:
 		it.skip() // lbracket
 		var idx ast.Expr
@@ -1108,7 +1082,7 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 			Pos:     b.posFromToken(tok),
 			Operand: base,
 			Index:   idx,
-		}, nil, nil
+		}, nil, nil, ""
 	case LPAREN:
 		it.skip() // lparen
 		call := &ast.CallExpr{
@@ -1125,22 +1099,22 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 			block := b.buildStmtBlock(it.enter())
 			// Preserve EventRefExpr so caller can convert to EventHandler.
 			if _, ok := base.(*ast.EventRefExpr); ok {
-				return base, &block, &call.Args
+				return base, &block, &call.Args, ""
 			}
-			return call, &block, nil
+			return call, &block, nil, ""
 		}
-		return call, nil, nil
+		return call, nil, nil, ""
 	case LBRACE:
 		// StmtBlock path
 		if it.isNonTerminal() && it.symbol() == StmtBlock {
 			block := b.buildStmtBlock(it.enter())
-			return base, &block, lastArgs
+			return base, &block, lastArgs, ""
 		}
 	}
 	if !it.done() {
 		it.skip()
 	}
-	return base, lastBlock, lastArgs
+	return base, lastBlock, lastArgs, ""
 }
 
 func (b *builder) buildStatementPrimary(it nodeIter) ast.Expr {
@@ -1663,7 +1637,6 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 					Pos:     b.posFromToken(tok),
 					Operand: base,
 					Field:   field.Literal,
-					Kind:    ast.SelectField,
 				}
 				// Check for StructLitBody after dot ident
 				if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
@@ -1676,24 +1649,7 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 					return s
 				}
 				return sel
-			case AT:
-				it.skip() // at
-				field := it.shift()
-				return &ast.SelectExpr{
-					Pos:     b.posFromToken(tok),
-					Operand: base,
-					Field:   field.Literal,
-					Kind:    ast.SelectEvent,
-				}
 			}
-		}
-	case HASH:
-		ref := it.shift()
-		return &ast.SelectExpr{
-			Pos:     b.posFromToken(ref),
-			Operand: base,
-			Field:   ref.Literal,
-			Kind:    ast.SelectElemRef,
 		}
 	case LBRACKET:
 		it.skip() // lbracket
@@ -2394,7 +2350,7 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 		var lastBlock *ast.StmtBlock
 		var lastArgs *ast.ArgList
 		for !it.done() && it.isNonTerminal() && it.symbol() == StmtPostfixOp {
-			base, lastBlock, lastArgs = b.applyStmtPostfixOp(it.enter(), base, lastBlock, lastArgs)
+			base, lastBlock, lastArgs, _ = b.applyStmtPostfixOp(it.enter(), base, lastBlock, lastArgs)
 		}
 		// Convert EventRefExpr with trailing block to EventHandler.
 		if ref, ok := base.(*ast.EventRefExpr); ok && lastBlock != nil {

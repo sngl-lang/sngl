@@ -858,16 +858,17 @@ window #home(title="Home", href="/") {
 		t.Fatalf("expected CallStmt for context decl, got %T", doc.Stmts[0])
 	}
 
-	// The call's func should be a SelectExpr with ElemRef kind (context.#theme)
-	sel, ok := cs.Call.Func.(*ast.SelectExpr)
+	// The call's func should be the bare `context` identifier carrying the
+	// element-ref id (`context #theme`).
+	ident, ok := cs.Call.Func.(*ast.IdentExpr)
 	if !ok {
-		t.Fatalf("expected SelectExpr, got %T", cs.Call.Func)
+		t.Fatalf("expected IdentExpr, got %T", cs.Call.Func)
 	}
-	if sel.Kind != ast.SelectElemRef {
-		t.Errorf("expected SelectElemRef, got %v", sel.Kind)
+	if ident.Name != "context" {
+		t.Errorf("expected callee 'context', got %q", ident.Name)
 	}
-	if sel.Field != "theme" {
-		t.Errorf("expected field 'theme', got %q", sel.Field)
+	if cs.Call.ID != "theme" {
+		t.Errorf("expected element-ref id 'theme', got %q", cs.Call.ID)
 	}
 
 	// Second statement should be the window declaration

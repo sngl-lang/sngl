@@ -84,7 +84,7 @@ component sngl.text {
 
 component sngl.button {
     platform html {
-        html.button(disabled=disabled, style={...style}, @click { @click() }) {
+        html.button(disabled=disabled, style={...style}, @click { click() }) {
             html.span(textContent=text) {}
             slot
         }
@@ -99,14 +99,14 @@ component sngl.image {
 
 component sngl.input {
     platform html {
-        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { @input() }, @change { @change() }) {}
+        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
     }
 }
 
 component sngl.checkbox {
     platform html {
         html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
-            html.input(type="checkbox", checked=checked, disabled=disabled, @change { @change() }) {}
+            html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
             html.span(textContent=label) {}
         }
     }
@@ -119,7 +119,7 @@ component sngl.radio {
         html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
             for opt = options {
                 html.label(style={display="inline-flex", alignItems="center", gap=4}) {
-                    html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { @change() })
+                    html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
                     html.span(textContent=opt)
                 }
             }
@@ -130,7 +130,7 @@ component sngl.radio {
 component sngl.toggle {
     platform html {
         html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
-            html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { @change() }) {}
+            html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
             html.span(textContent=label) {}
         }
     }
@@ -138,7 +138,7 @@ component sngl.toggle {
 
 component sngl.select {
     platform html {
-        html.select(disabled=disabled, style={...style}, @change { @change() }) {
+        html.select(disabled=disabled, style={...style}, @change { change() }) {
             if placeholder != "" {
                 html.option(value="", disabled=true, selected=true, textContent=placeholder)
             }
@@ -151,7 +151,7 @@ component sngl.select {
 
 component sngl.textarea {
     platform html {
-        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, style={...style}, @input { @input() }, @change { @change() }) {
+        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, style={...style}, @input { input() }, @change { change() }) {
             slot
         }
     }
@@ -199,7 +199,7 @@ component sngl.tabs {
 
 component sngl.link {
     platform html {
-        html.a(href=href, style={...style}, @click { @click() }) {
+        html.a(href=href, style={...style}, @click { click() }) {
             html.span(textContent=text) {}
         }
     }
@@ -321,7 +321,7 @@ component sngl.toolbar {
 
 component sngl.datepicker {
     platform html {
-        html.input(type="date", value=value, disabled=disabled, style={...style}, @change { @change() }) {}
+        html.input(type="date", value=value, disabled=disabled, style={...style}, @change { change() }) {}
     }
 }
 

@@ -124,7 +124,7 @@ component sngl.select() {
 }
 
 component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange { @input() }) {}
+    OutlinedTextField(value=value, minLines=3, @onValueChange { input() }) {}
 }
 
 component sngl.datepicker() {
@@ -162,7 +162,7 @@ component sngl.chip() {
 }
 
 component sngl.link() {
-    TextButton(@onClick { @click() }) {
+    TextButton(@onClick { click() }) {
         Text(text=text) {}
     }
 }

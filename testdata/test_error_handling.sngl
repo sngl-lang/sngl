@@ -10,7 +10,7 @@ component boundaryCatches {
 }
 
 func testBoundaryCatchesBubblesUp(t Test, c boundaryCatches) {
-    c.go.@click()
+    c.go.click()
     t.assert(c.caught == "boom")
 }
 
@@ -25,7 +25,7 @@ component innerWinsOverOuter {
 }
 
 func testInnerBoundaryWins(t Test, c innerWinsOverOuter) {
-    c.go.@click()
+    c.go.click()
     t.assert(c.innerCaught == "pick-me")
     t.assert(c.outerCaught == "")
 }
@@ -38,6 +38,6 @@ component kindPropagates {
 }
 
 func testKindPropagates(t Test, c kindPropagates) {
-    c.go.@click()
+    c.go.click()
     t.assert(c.k == "validation")
 }

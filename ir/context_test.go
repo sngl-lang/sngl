@@ -40,16 +40,12 @@ func TestConvertContextDecl(t *testing.T) {
 	if cs == nil {
 		t.Fatalf("Convert did not emit a CallStmt for the context decl")
 	}
-	sel, ok := cs.Call.Func.(*ast.SelectExpr)
-	if !ok || sel.Kind != ast.SelectElemRef {
-		t.Fatalf("Convert emitted wrong Func shape: %T %+v", cs.Call.Func, sel)
-	}
-	if sel.Field != "theme" {
-		t.Errorf("Field = %q, want \"theme\"", sel.Field)
-	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
+	ident, ok := cs.Call.Func.(*ast.IdentExpr)
 	if !ok || ident.Name != "context" {
-		t.Errorf("Operand wrong: %T %+v", sel.Operand, ident)
+		t.Fatalf("Convert emitted wrong Func shape: %T %+v", cs.Call.Func, ident)
+	}
+	if cs.Call.ID != "theme" {
+		t.Errorf("ID = %q, want \"theme\"", cs.Call.ID)
 	}
 }
 

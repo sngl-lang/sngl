@@ -67,9 +67,6 @@
 (assignment_statement operator: (assignment_operator) @operator)
 (toggle_statement "!!" @operator)
 
-; Emit expression: @click(...)
-(emit_expression (event_method) @function)
-
 ; Functions
 (func_declaration (func_name name: (identifier) @function))
 (func_param name: (identifier) @variable.parameter)
@@ -77,9 +74,7 @@
 ; Expressions
 (call_expression function: (identifier) @function)
 (method_expression method: (identifier) @function.method)
-(method_expression method: (event_method) @function.method)
 (field_expression field: (identifier) @property)
-(field_expression field: (event_method) @property)
 
 ; Operators
 (binary_expression "+" @operator)

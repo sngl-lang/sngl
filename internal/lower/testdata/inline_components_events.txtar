@@ -4,7 +4,7 @@ component LabeledCounter(start = 0, @changed) {
     var n = start
     button(text=string(n), @click {
         n = n + 1
-        @changed(n)
+        changed(n)
     })
 }
 component main {

@@ -565,7 +565,10 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args)...)
 				continue
 			}
-			out = append(out, s)
+			// No matching handler — the caller never subscribed to this
+			// event, so the emit goes nowhere. Drop it (same as the
+			// EventRefExpr CallStmt shape below) rather than leaving a
+			// dangling `emit(...)` for codegen to choke on.
 			continue
 		}
 		// CallStmt whose callee is an EventRefExpr is the parser's

@@ -1,5 +1,5 @@
 component Button(variant = "primary", @click) {
-    button(text="Click me", @click { @click(1) })
+    button(text="Click me", @click { click(1) })
 }
 
 component main {

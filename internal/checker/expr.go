@@ -788,7 +788,6 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 								Pos:     ident.Pos,
 								Operand: &ast.IdentExpr{Pos: ident.Pos, Name: ir.ReceiverParam},
 								Field:   ident.Name,
-								Kind:    ast.SelectField,
 							}
 							return c.inferMethodCall(sel, x)
 						}
@@ -1114,41 +1113,47 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
-	// Element-ref event invocation: `c.<id>.@<event>(payload)`. Look
-	// up the event's declared payload type on the addressed component
-	// so anonymous struct literals in the arg position get their
-	// expected type (and InputEvent{value="x"} can be written {value="x"}).
+	// Element-ref event invocation: `c.<id>.<event>(payload)`. When the
+	// field names a declared event on the addressed component, tag the
+	// call as an event trigger and type any payload arg against the
+	// event's declared type (so anonymous struct literals like
+	// InputEvent{value="x"} can be written {value="x"}).
 	var argSig *ir.FuncSig
-	if sel.Kind == ast.SelectEvent {
-		argSig = c.eventArgSig(sel.Operand, sel.Field)
+	event := ""
+	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
+		event = evt.Name
+		if evt.Type != nil {
+			// Mark the param optional via a placeholder Default so
+			// `c.btn.click()` (zero args) and `c.entry.input({…})`
+			// (one struct arg) both pass arity, while the single
+			// positional arg still gets the payload's expected type.
+			argSig = &ir.FuncSig{Params: []*ir.Param{{
+				Type:    evt.Type,
+				Default: &ir.Literal{Type: evt.Type},
+			}}}
+		}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
-	if isPrimitiveMethodReceiver(receiver) {
+	if event == "" && isPrimitiveMethodReceiver(receiver) {
 		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
 	}
-	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args}
+	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args, Event: event}
 }
 
-// eventArgSig synthesises a one-param FuncSig matching the payload
-// type of `<event>` declared on the component referenced by
-// `operand` — either `c.<id>` (look up #id inside c's component) or a
-// bare element ref. Returns nil when the event can't be resolved,
-// letting the call fall back to untyped arg checking.
-func (c *checker) eventArgSig(operand ast.Expr, event string) *ir.FuncSig {
+// elementEvent returns the event declared on the component addressed by
+// `operand` (either `c.<id>` — look up #id inside c's component — or a
+// bare element ref) whose name matches `event`, or nil when `operand`
+// doesn't address a component or the component has no such event. This
+// is how a sigil-free `c.inc.click()` is recognised as an event trigger
+// rather than an ordinary method call.
+func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 	comp := c.elementHostComponent(operand)
 	if comp == nil {
 		return nil
 	}
 	for _, e := range comp.Events {
-		if e.Name == event && e.Type != nil {
-			// Mark the param optional via a placeholder Default so
-			// `c.btn.@click()` (zero args) and `c.entry.@input({…})`
-			// (one struct arg) both pass arity, while the single
-			// positional arg still gets the payload's expected type.
-			return &ir.FuncSig{Params: []*ir.Param{{
-				Type:    e.Type,
-				Default: &ir.Literal{Type: e.Type},
-			}}}
+		if e.Name == event {
+			return e
 		}
 	}
 	return nil
@@ -1312,12 +1317,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		operand = operand.Elems[0]
 	}
 
-	switch x.Kind {
-	case ast.SelectEvent:
-		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-	case ast.SelectElemRef:
-		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-	case ast.SelectField:
+	{
 		// Namespace member access: ns.field.
 		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
@@ -2270,9 +2270,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			},
 		}
 		return c.checkStmt(lowered)
-	case *ast.EmitStmt:
-		args := c.checkCallArgs(x.Args, nil)
-		return &ir.Emit{AST: x, Name: x.Name, Args: args}
 	case *ast.VarStmt:
 		typ := c.resolveType(x.Type)
 		var initExpr ir.Expr
@@ -2324,7 +2321,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// the tick handler inside the parens) parse as CallStmt but must
 		// dispatch through the VisualNode special-cases so they register
 		// on package/component instead of becoming a generic node instance.
-		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
+		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
 			switch id.Name {
 			case "timer", "window", "output", "errorBoundary":
 				vn := &ast.VisualNode{
@@ -2333,6 +2330,19 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					Args:   x.Call.Args,
 				}
 				return c.checkVisualNodeIR(vn)
+			}
+		}
+		// A bare `event(args)` whose name matches an event declared on the
+		// enclosing component is an emit, not a function call. Events share
+		// the component's namespace but cannot collide with funcs/vars, so
+		// resolving by name here is unambiguous. A `name #id(...)` element-ref
+		// declaration (ID set) is never an emit.
+		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" && c.currentComponent != nil {
+			for _, evt := range c.currentComponent.Events {
+				if evt.Name == id.Name {
+					args := c.checkCallArgs(x.Call.Args, nil)
+					return &ir.Emit{AST: x, Name: id.Name, Args: args}
+				}
 			}
 		}
 		// Check if the call target is a component — handle directly to avoid
@@ -2389,7 +2399,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		if comp != nil {
+		// An element-ref declaration (`Comp #id(...)`) is handled uniformly by
+		// the elementRefCallInfo path below, which preserves the #id and applies
+		// the same stdlib-lenient / user-component-strict arg checking.
+		if comp != nil && x.Call.ID == "" {
 			c.validateCallStmtComponentArgs(x.Call, comp)
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
 			var keyExpr ir.Expr
@@ -2681,17 +2694,17 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 }
 
 // elementRefCallInfo recognizes CallStmts whose callee represents an element
-// tag — either `text #id(...)` (SelectExpr with SelectElemRef kind) or a bare
+// tag — either `text #id(...)` (a call carrying an element-ref id) or a bare
 // tag ident like `button(...)` that carries event handlers. Returns the tag
 // name, the #id (possibly empty), and whether this looks like an element call.
 func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
-	switch f := call.Func.(type) {
-	case *ast.SelectExpr:
-		if f.Kind == ast.SelectElemRef {
-			if ident, ok := f.Operand.(*ast.IdentExpr); ok {
-				return ident.Name, f.Field, true
-			}
+	// `text #id(...)` — a bare tag ident carrying an element-ref id.
+	if call.ID != "" {
+		if ident, ok := call.Func.(*ast.IdentExpr); ok {
+			return ident.Name, call.ID, true
 		}
+	}
+	switch f := call.Func.(type) {
 	case *ast.IdentExpr:
 		// Bare ident with an event handler — treat as element call so the
 		// handler body lands on an ir.NodeInst rather than disappearing.

@@ -22,7 +22,7 @@ func testTwoComponentsIsolated(t Test, c main) {
     var r = c.children[1]
     t.assert(l.out.value == "0")
     t.assert(r.out.value == "100")
-    l.bump.@click()
+    l.bump.click()
     t.assert(l.out.value == "1")
     t.assert(r.out.value == "100")
 }
