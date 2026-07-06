@@ -177,11 +177,13 @@ Grammar: `FuncBodyTail = fat_arrow Expr | [ Type ] StmtBlock`. The return type c
 **Severity:** INCONSISTENCY (expressiveness gap between the two forms; also blocks the natural generic-method-with-explicit-return signature).
 Repro: `func double(x int) int => x * 2`
 
-### 11. `else if` not supported in the grammar
+### 11. `else if` not supported in the grammar — ✅ RESOLVED (2026-07-06)
 
-**Files:** `internal/parser/sngl.ebnf:397`
-`IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ]`. Only `else { ... }` is permitted; `else if` requires `else { if ... }`. Universal expected feature; absence forces verbose nesting.
-**Severity:** INCONSISTENCY / UX (universally expected from C-family syntax).
+> Fixed: `IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ]`.
+> `build.go` desugars an `else if` into a nested `IfStmt` wrapped in a synthetic
+> block (reusing `IfStmt.Else StmtBlock` — no new AST shape), and the formatter
+> prints the chain as `else if` rather than `else { if … }`. Guards:
+> `internal/parser/else_if_test.go` (`TestElseIfChain`, `TestElseIfFormatting`).
 Repro: `if x == 0 { } else if x == 1 { }`
 
 ### 12. Bare lambda `x => expr` rejected — only `func(x) => expr`

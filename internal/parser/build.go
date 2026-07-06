@@ -1194,7 +1194,7 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 // --- Control flow ---
 
 func (b *builder) buildIfNode(it nodeIter) *ast.IfStmt {
-	// IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
+	// IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 	pos := b.posFromToken(it.shift()) // kw_if
 	stmt := &ast.IfStmt{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
@@ -1205,8 +1205,17 @@ func (b *builder) buildIfNode(it nodeIter) *ast.IfStmt {
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == KW_ELSE {
 		it.skip() // kw_else
-		if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
-			stmt.Else = b.buildStmtBlock(it.enter())
+		if !it.done() && it.isNonTerminal() {
+			switch it.symbol() {
+			case IfNode:
+				// `else if`: desugar the chained IfNode into a nested IfStmt
+				// wrapped in a synthetic block, reusing IfStmt.Else StmtBlock
+				// so no new AST shape is needed downstream.
+				nested := b.buildIfNode(it.enter())
+				stmt.Else = ast.StmtBlock{Pos: nested.Pos, Stmts: []ast.Stmt{nested}}
+			case StmtBlock:
+				stmt.Else = b.buildStmtBlock(it.enter())
+			}
 		}
 	}
 	return stmt

@@ -398,7 +398,7 @@ StatementPrimary =
 
 # ── Control flow ──────────────────────────────────────────────────────────────
 
-IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ] .
+IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 
 ForNode = kw_for [ amp ] ident [ comma [ amp ] ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
 
