@@ -39,7 +39,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = String(main_quotient(state));
   });
   function __sngl_init() {
-    __n0.value = String(main_quotient(state));
+    __n0.textContent = String(main_quotient(state));
   }
   __sngl_init();
 })();

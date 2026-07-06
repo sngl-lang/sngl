@@ -1681,31 +1681,51 @@ func (c *checker) pass2() {
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
 
-	// Purity analysis.
-	vars := c.collectVarMap()
+	// Purity + access analysis, over the checked IR with resolved symbols.
+	// The var *set* is by pointer identity, so a local that shadows a package
+	// var is correctly excluded (fixes the name-collision false positive).
+	pkgVarSet := make(map[*ir.Var]struct{}, len(c.pkg.Vars))
+	for _, v := range c.pkg.Vars {
+		pkgVarSet[v] = struct{}{}
+	}
 	for _, fn := range c.pkg.Funcs {
-		fn.Purity = analyzePurity(fn, vars, nil)
-		trackAccess(fn, vars)
+		analyzeEffects(fn, pkgVarSet)
 	}
 	for _, comp := range c.pkg.Components {
 		// Component methods read/write the component's own vars (referenced
 		// bare, e.g. `name`), so purity and Reads/Writes must be computed
-		// against a scope that includes them. Using only package vars marks a
+		// against a set that includes them. Using only package vars marks a
 		// method like `func isLong() => name.length > 3` as PurityPure with
 		// empty Reads — which lets the optimizer const-fold calls to it and
 		// leaves reactivity unable to see its dep on `name`.
-		compVars := make(map[string]*ir.Var, len(vars)+len(comp.Vars))
-		maps.Copy(compVars, vars)
+		varSet := make(map[*ir.Var]struct{}, len(pkgVarSet)+len(comp.Vars))
+		maps.Copy(varSet, pkgVarSet)
 		for _, v := range comp.Vars {
-			compVars[v.Name] = v
-		}
-		events := make(map[string]struct{}, len(comp.Events))
-		for _, e := range comp.Events {
-			events[e.Name] = struct{}{}
+			varSet[v] = struct{}{}
 		}
 		for _, fn := range comp.Funcs {
-			fn.Purity = analyzePurity(fn, compVars, events)
-			trackAccess(fn, compVars)
+			analyzeEffects(fn, varSet)
+		}
+	}
+
+	// Transitive purity propagation. analyzePurity above only sees a
+	// function's *direct* effects, so a function that merely calls an impure
+	// one is left PurityPure — which the optimizer would then const-fold or
+	// inline, silently discarding the transitive side effect. Propagate over
+	// the user call graph to a fixed point (purity only increases, so this
+	// converges), mirroring the stdlib pass's highestCalledPurity loop.
+	allFuncs := make([]*ir.Func, 0, len(c.pkg.Funcs))
+	allFuncs = append(allFuncs, c.pkg.Funcs...)
+	for _, comp := range c.pkg.Components {
+		allFuncs = append(allFuncs, comp.Funcs...)
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, fn := range allFuncs {
+			if p := highestCalledPurity(fn); p > fn.Purity {
+				fn.Purity = p
+				changed = true
+			}
 		}
 	}
 
@@ -1716,14 +1736,6 @@ func (c *checker) pass2() {
 			c.error(a.pos, "const() operand is not a constant expression")
 		}
 	}
-}
-
-func (c *checker) collectVarMap() map[string]*ir.Var {
-	vars := make(map[string]*ir.Var)
-	for _, v := range c.pkg.Vars {
-		vars[v.Name] = v
-	}
-	return vars
 }
 
 func (c *checker) checkFuncBody(fn *ir.Func) {

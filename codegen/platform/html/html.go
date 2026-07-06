@@ -1656,11 +1656,19 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
-			switch name {
-			case "innerHTML", "innerText", "textContent", "value", "checked", "disabled", "selected", "hidden":
-				body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
-			default:
-				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
+			// Route the init write through the same component→DOM-field
+			// mapping the handler path uses (domWriteForIR), so e.g. a text
+			// node's `value` is written as `.textContent` at init just as it
+			// is in handlers — not the raw `.value`.
+			if field, ok := domFieldForIR(n.Name, name); ok {
+				body = fmt.Sprintf(`%s.%s = %s;`, id, field, jsVal)
+			} else {
+				switch name {
+				case "innerHTML", "innerText", "textContent", "value", "checked", "disabled", "selected", "hidden":
+					body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
+				default:
+					body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
+				}
 			}
 			// An i18n.tr-rooted prop with no state dependencies still
 			// varies by locale and must run at least once on initial

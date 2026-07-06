@@ -35,7 +35,7 @@ body { font-family: system-ui, sans-serif; }
   });
   function __sngl_init() {
     __n0.value = state.name;
-    __n1.value = "Hello, " + state.name + "!";
+    __n1.textContent = "Hello, " + state.name + "!";
   }
   __sngl_init();
 })();

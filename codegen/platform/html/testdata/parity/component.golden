@@ -46,9 +46,9 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = "Doubled: " + String(main_doubled(state));
   });
   function __sngl_init() {
-    __n0.value = main_greeting(state);
-    __n1.value = "Clicks: " + String(state.clicks);
-    __n2.value = "Doubled: " + String(main_doubled(state));
+    __n0.textContent = main_greeting(state);
+    __n1.textContent = "Clicks: " + String(state.clicks);
+    __n2.textContent = "Doubled: " + String(main_doubled(state));
   }
   __sngl_init();
 })();
