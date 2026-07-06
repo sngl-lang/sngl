@@ -12,16 +12,6 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **repro**: feed a syntactically malformed-but-parseable program whose checker error-recovery path produces a stmt/expr type that any `lower/*.go` switch doesn't cover.
 - **severity**: crash (host process)
 
-### 2. `string.substring` panics on out-of-range start
-- **file**: `internal/interp/builtins.go:178`
-- After clamping `start < 0` and `end > len(s)`, no guard for `start > len(s)`. `s[start:end]` panics with slice bounds.
-- **repro**: `"abc".substring(10, 5)` — start is clamped to start (`start > end` returns `""`); but `"abc".substring(10, 20)`: end becomes 3, start stays 10, `start > end` returns "". Actually safe via `start > end` branch. But: `"abc".substring(100, 100)`: end clamped to 3, start stays 100; 100 > 3 → returns "". Re-checked — actually fine due to `start > end` short-circuit. **DEMOTE to wrong-output** for byte-vs-rune slicing (see #16).
-
-### 3. `Parser.err` panics on EOF using `p.sc.Err()`
-- **file**: `internal/parser/zparser.go:7019`
-- When `p.eof` is true, `p.err()` calls `panic(p.sc.Err())`. Caught by recover in `Parser.Parse`. But `p.sc.Err()` is `scanner.ErrList`. If `Err()` returns nil (no errors collected yet), the recover at zparser.go:6991 sees `case nil → ok`, swallows the panic, and `Parser.Parse` returns nil tree with nil err. Then `parse.go:38` returns an empty document with no error → caller thinks parse succeeded on a truncated file.
-- **severity**: latent / wrong-output (silently empty AST)
-
 ### 4. `evalIndex` map key collisions
 - **file**: `internal/interp/eval.go:822-836`
 - For `map[string]any`, the code does `key := fmt.Sprintf("%v", idx)` — int `1`, float `1.0`, and string `"1"` all collide on the same key. For miss with `Type == Dyn`, it samples the map by range — non-deterministic.
@@ -78,13 +68,6 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - Cache key is `fmt.Sprintf("%s:%v", nativeType, args)`. `fmt.Sprintf("%v", []any{1})` and `fmt.Sprintf("%v", []any{"1"})` print as `[1]` — collision. Two different calls return the same cached value.
 - **severity**: latent wrong-output
 
-### 14. `.sngl-goexec` temp dir inside project dir — concurrent-build race ✅ RESOLVED (2026-06-07)
-
-`fix(optimize): use unique temp dir per execPureGoFunc call to eliminate concurrent-test race` (1ea3d7c2).
-- **file**: `internal/optimize/goexec.go:71-75`
-- Creates `{dir}/.sngl-goexec/main.go` with a fixed name and `defer os.RemoveAll(tmpDir)`. Two concurrent compile invocations in the same dir will clobber main.go and each other's RemoveAll calls.
-- **severity**: latent (parallel builds)
-
 ### 15. LSP `if err == io.EOF` won't match wrapped EOF
 - **file**: `internal/lsp/server.go:98`
 - `bufio` can return a `*net.OpError` wrapping EOF on TCP. Use `errors.Is(err, io.EOF)`. With the current code, the EOF path is skipped and the connection logs "read: <wrapped EOF>" before closing.
@@ -103,11 +86,6 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **file**: `internal/lsp/server.go:65-91`
 - Each accepted conn creates a new `previewServer` with its own listener. If `srv.serve` returns via panic (no recover in goroutine), `conn.Close()` runs but `srv.preview.Stop()` only runs on EOF/read error. Any panic above that point leaks the preview listener.
 - **severity**: latent leak
-
-### 19. CDP browser snapshot indexes `resp.Files[0]` without bound check
-- **file**: `codegen/platform/html/testing.go:182`, `internal/snapshot/compile.go:70`
-- `Generate` could in principle return `Files: nil` if an upstream error path missed setting `resp.Error`. Index out of range. The `_test.go` callers all check; production paths don't.
-- **severity**: latent crash
 
 ### 20. `parseStdlibDocs` swallows parse errors
 - **file**: `internal/checker/stdlib.go:44-47`
@@ -147,11 +125,6 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 ### 28. Many `panic(fmt.Sprintf("unhandled %T"))` in lower/ are not under recover
 - **file**: `internal/lower/*.go` (60+ sites)
 - `sngl.Lower` does not install a recover. If checker outputs a new node kind that any lowering pass doesn't case on, the CLI / LSP crashes instead of reporting an internal-error diagnostic.
-
-### 29. `Generator.SnapshotHTML` browser cleanup on error path
-- **file**: `codegen/platform/html/testing.go:197-208`
-- If `NavigateRaw` errors, returns directly via `return nil, err` after `defer browser.Close()` runs — fine. But `engine.Close()` is also deferred earlier — both run. No bug, but worth confirming that simultaneous `Close()` of the underlying mux/listener and rod browser is safe; rod's Close() during Navigate-in-flight has been a flake source historically.
-- **severity**: cosmetic
 
 ### 30. Tar extraction doesn't check `hdr.Size` vs disk
 - **file**: `codegen/scheme/http/http.go:206-217`

@@ -36,27 +36,6 @@ of `cmd/sngl/testdata/`. Ranked by user-visible impact, highest first.
 - Either implement it (resolve relative paths under it) or delete the
   flag.
 
-### 4. `build` and `compile` are 95% the same code
-- `compile.go:40-190` and `build.go:31-169` duplicate parse / merge /
-  check / validate / optimize / lower / generate. The only real difference:
-  `build` additionally calls `plat.(codegen.Builder).Build()` afterwards
-  and prints the artifact path. `build` also unconditionally sets
-  `main=true` on options (`build.go:104`) whereas `compile` does not.
-- `compile` runs `OptionConfigurable.Configure` on every registered
-  platform (`compile.go:55-62`); `build` does not. This means `--opt gir=/path` works under `compile` but is silently dropped under `build`.
-- `compile` reads `noCacheBust` from options into the optimizer config
-  (`compile.go:137`); `build` ignores it. So a build can re-emit
-  cache-busted asset names even if the source declared `noCacheBust: true`.
-- Refactor: have `build` call into the compile pipeline, then run the
-  builder. The two should not have diverged copies of parse-through-lower.
-
-### 5. `run` skips `OptionConfigurable.Configure` and `noCacheBust`
-- Same divergence as #4. `run.go` is a third copy of the pipeline and is
-  missing both the per-platform Configure loop and the noCacheBust read.
-- `run.go:124` sets `lang` option, but `compile.go` does not. `build.go`
-  doesn't either. So options diverge across the three.
-- Centralize the pipeline.
-
 ### 6. `dump optimized` always lowers but is named "optimized"
 - `dump.go:178-186` runs `lower.Lower` after Optimize. So the result is
   post-lowering IR, not post-optimization IR. The comment says
@@ -265,19 +244,13 @@ of `cmd/sngl/testdata/`. Ranked by user-visible impact, highest first.
 | Format flag     | persistent root `--format text` + per-cmd `--format` (dump, test) with different valid value sets | drop root, document per-cmd values, validate                                      |
 | Platform flag   | `String` everywhere, `StringSlice` in snapshot                                                    | `StringSlice` everywhere; single-element common case                              |
 | Quiet sentinel  | `quiet(cmd)` helper in `compile.go:436` used inconsistently                                       | always honor `-q` to suppress per-file "ok" lines                                 |
-| Pipeline        | parse→merge→check→optimize→lower→generate duplicated in compile/build/run/dump                    | single internal function, parameterized                                           |
+| Pipeline        | now unified: compile/build/run all call `runPipeline` in `pipeline.go` (dump still separate)      | fold dump into the shared pipeline too                                            |
 | Pkg flags       | `--yes` lives only on `pkg cache clear`                                                           | Promote to `pkgCmd.PersistentFlags()` since `download`/`update` may want it later |
 
 ## Bugs (definite)
 
 - `main.go:27` — `--project` flag dead.
 - `doc.go:1038` — re-exec via `os.Args[0]` breaks under `go tool sngl`.
-- `build.go` vs `compile.go` — `OptionConfigurable.Configure` only runs in
-  compile, so the same source file produces different bytes depending on
-  whether you build or compile. (See finding #4.)
-- `build.go:160` — `builder.Build` runs even when `len(targets) > 1`,
-  but `outDir` is shared across iterations; the second target overwrites
-  the first artifact name if both use the same default `app` binary name.
 - `compile.go:411` — `os.Create` happens before `MkdirAll`'s error is
   observed for sibling files; if any file in `resp.Files` has an
   unwritable parent, a partial file tree is left behind with no cleanup.
@@ -309,9 +282,9 @@ of `cmd/sngl/testdata/`. Ranked by user-visible impact, highest first.
 | File           | Findings touching it      |
 |----------------|---------------------------|
 | `main.go`      | 2, 3, 22, 26              |
-| `compile.go`   | 2, 4, 9, 19, 20, 33       |
-| `build.go`     | 4, 5, 31, build bug       |
-| `run.go`       | 5, 14                     |
+| `compile.go`   | 2, 9, 19, 20, 33          |
+| `build.go`     | 31                        |
+| `run.go`       | 14                        |
 | `test.go`      | 1, 13, 20, 21             |
 | `check.go`     | 2, 20                     |
 | `fmt.go`       | 2, 15, 20                 |

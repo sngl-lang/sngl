@@ -138,22 +138,38 @@ type-system level.
 
 ## 2. IR issues
 
-### 2.1 IR carries source position only via `AST` backrefs — no first-class `Pos`
+### 2.1 Synthesized IR nodes have no position (via `AST` backref) — scoped
+
+> **Decision (2026-07-05):** The `AST *ast.X` backref stays as IR's single,
+> intentional source of both position and structured syntax — IR will **not**
+> grow a first-class `Pos` field, and the IR→AST link is kept long-term (this
+> is the deliberate syntax/semantics boundary, not a leak). The earlier
+> "add `Pos` to every IR node" recommendation is rejected. The real gap —
+> synthesized nodes with `AST == nil` — is closed by:
+>   1. **Propagating the origin `AST`** into synthesized nodes: a pass that
+>      derives a node from a user node copies that node's `AST` (or the
+>      nearest enclosing decl's) so position flows through the existing field.
+>   2. **Graceful diagnostic fallback**: when a post-check diagnostic lands on
+>      a node with `AST == nil`, resolve position from the enclosing
+>      decl/component rather than 1:1.
+>   3. **A synthetic `AST` node** where a good error message genuinely needs
+>      one for an otherwise origin-less synthesized node.
+>
+> Not scheduled as a standalone task — applied opportunistically as
+> synthesizing passes are touched. Separately, the analyses that *misuse* the
+> backref by re-walking the AST post-check (purity — compiler-phases 1.3;
+> testlower — lowering-migration #19) and the imports reading `imp.AST.Path`
+> instead of the existing `imp.Path` are tracked by their own findings. Docs
+> (`docs/lookup/*`) legitimately consume AST structure and keep doing so.
 
 Every IR expr has `AST *ast.X` (`ir/expr.go:14,22,38,...`) and codegen
-extracts positions through `e.AST.Pos`. Problems:
+extracts positions through `e.AST.Pos`. The remaining gap:
 
 - Synthesized IR (lowering, defaults) has `AST == nil` (`ir/expr.go:38`
   comment "nil for synthetic", `ir/expr.go:198` Closure "nil for
   synthesized"). Diagnostics on those nodes have no position at all.
-- `ir.Diagnostic` (`ir/ir.go:402-413`) carries its own `ast.Pos`, but
-  there is no way to derive that from a synthesized `ir.Expr` —
-  callers must thread positions manually.
 - `ir.Literal` synthesized by `ZeroExpr` (`ir/defaults.go:11-28`) has
   no position info at all.
-
-Recommend: add `Pos ast.Pos` to every IR node, populated from AST when
-present, propagated explicitly by lowering passes when synthesizing.
 
 ### 2.2 `TypeColor` exists but is "intentionally never produced"
 
@@ -334,10 +350,15 @@ Some of these are pure validity checks (no expression in flight), but
 each should be audited to confirm no actual coercion site is missing
 the wrap. (Per user feedback `feedback_explicit_conversions.md`.)
 
-### 2.16 No `ir.Walk` — every consumer rolls its own visitor
+### 2.16 Centralised `ir.Walk` exists; consumers not yet migrated — PARTIAL
 
-There is no centralised walker. Each consumer reimplements stmt+expr
-traversal:
+> **Status (2026-07-05):** The centralised walker now exists —
+> `ir.Walk(pkg, VisitorFuncs{Stmt, Expr})` plus the single-callback
+> `ir.WalkExprs`/`ir.WalkStmts` conveniences (`ir/walkexprs.go`): one
+> traversal that panics on an unknown node kind, so a new IR shape extends
+> exactly one site. **Remaining:** migrate the bespoke walkers below onto it.
+
+Each consumer still reimplements stmt+expr traversal:
 
 - `ir/async.go:21-150` walks for async detection
 - `ir/strip.go:217-362` walks for AST-strip
@@ -350,19 +371,28 @@ traversal:
   finding 2.
 
 Each one switches over `ir.Stmt`/`ir.Expr` and panics on unknown
-variants — so adding a new IR node breaks all of them at once.
-Strongly recommend an `ir.Walk(node, Visitor)` with method-per-variant.
+variants — so adding a new IR node breaks all of them at once. Migrating
+them onto `ir.Walk` removes that fan-out.
 
-### 2.17 IR is mutated in place across every pass
+### 2.17 IR is mutated in place across every pass — PARTIAL
+
+> **Status (2026-07-05):** The missing clone helper now exists:
+> `ir.ClonePackage` (`ir/clone.go`) is a reflection deep-copy with a
+> pointer-identity map that re-points every cross-reference (Ident.Sym,
+> Call.Func, StructLit.Def, Type.Decl, the Symbols table, the pointer-keyed
+> side tables) to the cloned nodes while sharing AST nodes and the immutable
+> global Type singletons. This fixed the multi-target build bug — the
+> pipeline now lowers a per-target clone (see compiler-phases 2.1). The
+> broader observation below still holds: individual passes mutate in place,
+> so pass output still can't be cached and snapshot diffing still needs
+> `StripForCompare`; `ClonePackage` unblocks that work but hasn't been
+> applied to it yet.
 
 `ir/strip.go` is the most extreme example — it mutates the Package
 for `reflect.DeepEqual` test comparison (`ir/strip.go:7-11`). But
 also `internal/lower/walk.go` callbacks return rewritten slices and
 the package is mutated in place (`walkVar` reassigns `v.Init`). This
-means no pass can run twice safely, no pass output can be cached, and
-diffing two snapshots requires `StripForCompare` first.
-
-A clone helper (`ir.ClonePackage`) would unblock this and is missing.
+means no pass can run twice safely and no pass output can be cached.
 
 ### 2.18 `Symbol` interface is anaemic; resolution requires type-asserting
 
@@ -488,13 +518,6 @@ when rewriting a `*Call` from a method dispatch to an intrinsic;
 stale cross-pointers can survive. No real-bug-found but worth
 auditing every lower pass that produces a `*Call`.
 
-### 4.5 No invariant validator / IR-shape verifier
-
-There is no `ir.Validate(pkg) error` that walks the package after
-each pass to confirm structural invariants (e.g. every `*Ident.Sym != nil`, every `*Call.Type != nil`, every `Func.Block` ends in
-`*Return` for non-void returns). Adding one would catch
-"silent no-op on unknown variant" bugs immediately.
-
 ---
 
 ## 5. Other / cross-cutting
@@ -539,14 +562,6 @@ or it'll emit `null` where it needs e.g. `Optional.empty()`.
 
 `ir/intrinsics.go:18-75`. Every backend does a linear scan to find
 an intrinsic by name. Make it a `map[string]IntrinsicDef`.
-
-### 5.6 `convertExpr` for `*ir.Closure` reconstructs as `LambdaExpr` losing capture info
-
-`ir/convert.go:817` default branch — `Closure` likely falls to the
-panic, since I don't see an explicit case (verify around `:600-700`).
-Format-after-NoLambda would crash. If the convert path is only ever
-called pre-lower, document and panic loudly; if it's called
-post-lower too, handle Closure.
 
 ### 5.7 `Window.Checked bool` — a transient flag in IR
 

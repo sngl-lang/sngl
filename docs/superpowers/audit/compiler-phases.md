@@ -9,7 +9,18 @@ throughout. Ordered by severity within each section.
 
 ## 1. Phase-boundary violations
 
-### 1.1 Purity analysis ignores transitive purity (UNSOUND)
+### 1.1 Purity analysis ignores transitive purity (UNSOUND) — ✅ RESOLVED (2026-07-05)
+
+> Fixed: after the per-function `analyzePurity` pass, `checker.go` now runs a
+> call-graph fixed-point over all user funcs (`pkg.Funcs` + every component's
+> funcs) using the existing `highestCalledPurity` walk — the same loop the
+> stdlib pass uses — so a function transitively calling an impure one is
+> raised to the caller's purity and no longer const-folds. Purity only
+> increases, so it converges. Guard: `internal/checker/transitive_purity_test.go`
+> (`wrap`/`wrap2` around an impure `bump` are non-pure; a wrapper of a pure
+> func stays pure). Full suite incl. all codegen snapshots green — no output
+> changed. Findings 1.2 (scope-awareness) and 1.3 (walk IR not AST) remain
+> open: the *direct* `analyzePurity`/`trackAccess` still walk the AST by name.
 
 **File:** `internal/checker/purity.go:9-26`, `internal/checker/purity.go:138-139`
 
@@ -31,7 +42,13 @@ which is correct for stdlib but never runs over user funcs.
 pass2 after `analyzePurity` completes the per-func walk, identical to the
 stdlib loop.
 
-### 1.2 Purity walker is name-based, no scope awareness
+### 1.2 Purity walker is name-based, no scope awareness — ✅ RESOLVED (2026-07-06)
+
+> Fixed together with 1.3: `purity.go` was rewritten as a single IR-based
+> `analyzeEffects(fn, varSet)` that keys on resolved `Ident.Sym` pointers and a
+> **pointer-identity** reactive-var set (package + component vars), so a local
+> that shadows a package var is excluded and a plain local/param write is no
+> longer a mutation. Guard: `transitive_purity_test.go::TestPurityLocalShadowingVarStaysPure`.
 
 **File:** `internal/checker/purity.go:64-67`, `:181-183`, `:238-242`
 
@@ -49,7 +66,17 @@ a pure function as mutating.
 `*ir.Var` pointers via `ir.Ident.Sym`) instead of the AST, or thread the
 real scope through.
 
-### 1.3 Purity / access analysis walks AST, not IR
+### 1.3 Purity / access analysis walks AST, not IR — ✅ RESOLVED (2026-07-06)
+
+> Fixed: `analyzeEffects` now walks `fn.Block` (checked IR) instead of
+> `f.AST.Body`/`Block`, so it sees desugaring the checker performed. Notably
+> this closed a latent under-reporting bug — the old AST walker never scanned
+> inside `$"..."` i18n interpolations, so a computed reading a var only through
+> an i18n string had an empty `Reads` set. Correcting that surfaced (and a
+> companion html fix resolved) a reactive-text init bug where a text node's
+> initial render wrote `.value` on a span instead of `.textContent` — see
+> `html.go` `domFieldForIR`. This also retires one of the AST-backref
+> misuse cases noted in ast-ir 2.1.
 
 **File:** `internal/checker/purity.go:9-49`
 
@@ -118,7 +145,16 @@ the round-trip property (no nested comments) or fix.
 
 ## 2. Ordering / correctness bugs
 
-### 2.1 Same `*ir.Package` mutated across multiple build targets
+### 2.1 Same `*ir.Package` mutated across multiple build targets — ✅ RESOLVED (2026-07-05)
+
+> The unified `runPipeline` target loop (`cmd/sngl/pipeline.go`) now lowers a
+> per-target `ir.ClonePackage(pkg)` clone when `len(targets) > 1`, leaving the
+> checked IR pristine so each target lowers from the original shape. Verified
+> byte-identical: a two-target `output { none { html } go { bubbletea } }`
+> build produces output identical to building each target alone
+> (`cmd/sngl/testdata/generate_multitarget.txt`). `ir.ClonePackage`
+> (`ir/clone.go`) is a reflection deep-copy with pointer-identity mapping —
+> see ast-ir 2.17. Original finding below.
 
 **File:** `cmd/sngl/compile.go:122-188`, `cmd/sngl/build.go:122-160`,
 `cmd/sngl/run.go:134-149`.
@@ -594,12 +630,11 @@ concurrent `Check` calls (LSP serves files in parallel) race on
 `stdlibOnce.Do`, the second waits — but each then re-checks the same
 docs into its own scope. Acceptable for correctness; wasteful for perf.
 
-### 7.2 Test runner runs both pre-lower and post-lower with shared `pkg` — same multi-target bug
+### 7.2 Test runner runs both pre-lower and post-lower with shared `pkg` — ✅ RESOLVED (2026-07-05)
 
-**File:** `cmd/sngl/run.go:127-149`, similar shape to `compile.go`.
-
-If `sngl test` ever supports multi-target, hits the same multi-mutate
-issue from #2.1.
+`run`/`test`/`generate` all share the unified `runPipeline`, which now
+clones per target (see #2.1), so the multi-mutate hazard is fixed for every
+command, not just `generate`.
 
 ### 7.3 `irLiteral` returns `nil` for unknown types — silently drops folded values
 

@@ -7,18 +7,6 @@ counterpart).
 
 ## 1. Syntax drift
 
-### 1.1 `effective-sngl.md:182-183` — unit-literal example contains `msms`/`ss`/`mm`/`emem` typos (**wrong**)
-
-```sngl
-unit duration { ms, s = 1000msms, m = 60ss, h = 60mm }
-unit measurement { px, em, rem = 16emem, vw, vh, pct }
-```
-
-Same typo also at line 750 (`interval=100msms`) and line 991 (`interval=50msms`).
-The fixtures wouldn't lex (`msms` isn't a unit literal). Real declarations in
-`lib/units.sngl` are `s = 1000ms`, `m = 60s`, `h = 60m`, `rem = 16em`. Most
-egregious doc bug — a reader copy/pasting any of these gets a parser error.
-
 ### 1.2 `effective-sngl.md:444-447` — generic method declaration syntax is the dropped pre-`<T>.method` form (**outdated**)
 
 ```sngl
@@ -58,10 +46,6 @@ var timeout duration = "5s"
 Unit values can't be initialised from string literals. The correct form is
 `var timeout duration = 5s` (unit literal). Reader would copy a value the
 checker will reject.
-
-### 1.5 `effective-sngl.md:215-217` — `var handler func() = null` mixed with unrelated coercion claim (**inconsistent**)
-
-Line 260's coercion table says "`null` → `func(...)` compiles to a zero-value-returning callable stub" — but `func` types aren't `option<T>`-style nullable in the type model, and the `lib/functions.sngl` decls don't carry a null story. Either the coercion table or the type-system docs should be reconciled; treating funcs as nullable is at odds with "structs cannot be null" in the same file.
 
 ### 1.6 `effective-sngl.md:182, 446, 506` — `enum { … }` inline syntax (**inconsistent style**)
 
@@ -133,14 +117,6 @@ as a built-in named type, so the docs aren't wrong functionally — but the lib
 surface fails to advertise it. Either declare `struct option<T> {}` in
 `lib/types.sngl` alongside `list<T>` / `map<K, V>` / `iter<T>`, or downgrade
 the doc examples.
-
-### 2.2 `effective-sngl.md:87, 95-108` — `regex`, `url`, `email`, `uuid`, `date`, `time`, `dateTime` documented but undeclared (**inconsistent**)
-
-Same shape as #2.1: builtins recognised by `internal/checker/resolve.go:75-89`
-and `expr.go:641-665` but with no `struct` declaration in `lib/types.sngl`. The
-playground / `sngl doc` lookup of these types finds nothing because they have
-no doc source. Adding stub declarations with doc comments would close the gap
-without touching the checker.
 
 ### 2.3 `README.md:26, docs/index.md:39` — `style={flexGrow=1}` references undeclared field (**wrong**)
 
@@ -309,37 +285,7 @@ Same example, different idiom. Tour favours `:value=`. Make README and
 index.md match (preferably both using the `:value=` shorthand since that's
 the language's headline feature).
 
-### 6.4 `README.md:60` — "Requires Go 1.26+" matches `learn/installation.md:9` but no `go.mod` cross-check done here (**cross-check requested**)
-
-If `go.mod` declares `go 1.26.0` it's fine. Otherwise drift.
-
 ## 7. Other
-
-### 7.1 `specification.md:284, 286` — built-in / generic type lists are out of sync with lib (**incomplete**)
-
-> Built-in types: `int`, `float`, `bool`, `string`, `color`, `date`, `measurement`, `dyn`
-> Generic types: `list<T>`, `option<T>`
-
-Missing: `time`, `dateTime`, `duration`, `url`, `email`, `uuid`, `regex` (all
-recognised by the checker; see #2.2). Generics missing: `map<K, V>`, `iter<T>`
-(both declared in `lib/types.sngl:316-330`, both have method syntax in
-`lib/functions.sngl:258-272`).
-
-### 7.2 `specification.md:54-56` — `ImportDecl` grammar shows `[ "=>" STRING ]` (**verify**)
-
-```ebnf
-ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
-```
-
-The `=>` suffix is unique to imports and isn't explained anywhere in the
-`Imports` section. If this is the rename-target syntax (`import "go://…" => "foo"`),
-spell it out next to the grammar. Otherwise it looks like a copy-paste
-mistake.
-
-### 7.3 `specification.md:284` lists `dyn` but no narrative coverage (**incomplete**)
-
-`dyn` is the host-interop escape hatch (per `effective-sngl.md:85`). The
-spec mentions it once and doesn't define it. Add one paragraph.
 
 ### 7.4 `effective-sngl.md:55-56` — "top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `style`, `const`, `var`, `func`, components (PascalCase names), `timer`, and `test`." (**outdated**)
 
@@ -350,11 +296,6 @@ spec mentions it once and doesn't define it. Add one paragraph.
   see `lib/types.sngl:42-74`).
 - Missing: `context` (declared at top-level per `lib/i18n.sngl:23` and
   `tour.md:658`), `window`.
-
-### 7.5 `effective-sngl.md:619` — "if active = true" reads as assignment but is comparison (**typo**, cosmetic)
-
-The surrounding sentence is fine; just flagging the visual confusion. Low
-impact.
 
 ### 7.6 `effective-sngl.md:825-845, 879-890` — `test` blocks (`/-test app …`) syntax (**outdated**)
 
@@ -390,10 +331,6 @@ lib (compare #2.7).
 
 All `.md` files in `docs/` consistently use `sngl`, `bash`, or ````ebnf`. No untagged or `snippet` blocks observed.
 
-### 7.10 `TODO.md:3` — "revisit highlighted code in the tutorial once cross-package const folding works" (**still valid**)
-
-Recorded. Not stale — matches the open design in `website.sngl:23`.
-
 ### 7.11 `docs/reference/effective-sngl.md:9` — "Bubbletea" capitalisation drift (**cosmetic**)
 
 `bubbletea` (lower) in CLI flags and most docs; `Bubbletea` here; `BubbleTea`
@@ -423,11 +360,10 @@ been outstanding long enough that anything still using it is stale.
 
 ## Quick-fix priorities
 
-1. **`effective-sngl.md` unit literals** (#1.1) — copy-paste poison, trivially fixable.
-2. **`effective-sngl.md` list method form + `style { … }` + `class` + "no else"** (#1.2, 1.3, 1.7, 1.8) — large swathes of the doc are wrong; users following them will hit errors.
-3. **`tour.md` `--target` flag** (#1.9) — first CLI line a reader sees.
-4. **`README.md` / `index.md` `flexGrow`** (#2.3) — featured example doesn't compile against current `Style`.
-5. **Spec built-in / generic type lists** (#7.1) and **option/regex/etc. lib decls** (#2.1, 2.2) — get the stdlib surface honest.
-6. **Test-section rewrite** (#7.6, 7.7, 7.8) — the entire testing API in `effective-sngl.md` predates the function-based runner.
-7. **`PageLayout` dual-implementation in `website.sngl`** (#5.1) — pick one path, delete the other.
-8. **GTK4 visibility** (#6.2) — either land it on the platform table or quarantine it.
+1. **`effective-sngl.md` list method form + `style { … }` + `class` + "no else"** (#1.2, 1.3, 1.7, 1.8) — large swathes of the doc are wrong; users following them will hit errors.
+2. **`tour.md` `--target` flag** (#1.9) — first CLI line a reader sees.
+3. **`README.md` / `index.md` `flexGrow`** (#2.3) — featured example doesn't compile against current `Style`.
+4. **option lib decl** (#2.1) — get the stdlib surface honest.
+5. **Test-section rewrite** (#7.6, 7.7, 7.8) — the entire testing API in `effective-sngl.md` predates the function-based runner.
+6. **`PageLayout` dual-implementation in `website.sngl`** (#5.1) — pick one path, delete the other.
+7. **GTK4 visibility** (#6.2) — either land it on the platform table or quarantine it.
