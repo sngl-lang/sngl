@@ -1,0 +1,31 @@
+# Regression: a single output{} with two targets must compile each target from
+# the original checked IR, not the state left after lowering the previous target.
+# Before ir.ClonePackage per target, the second target consumed already-lowered
+# IR and produced corrupt/broken output.
+
+sngl generate --out=out app.sngl
+
+# Both targets produced their platform-appropriate output.
+exists out/index.html
+exists out/model.go
+
+# html target: real DOM + client JS, not corrupted.
+grep '<button id=' out/index.html
+grep 'sngl \(html\)' out/index.html
+
+# bubbletea target: real Go TUI code, not html-lowered leftovers.
+grep 'package ui' out/model.go
+grep 'charm.land/bubbletea' out/model.go
+grep 'sngl \(bubbletea\)' out/model.go
+
+-- app.sngl --
+output {
+    none { html }
+    go { bubbletea }
+}
+
+component main {
+    var count = 0
+    button(text="inc", @click { count = count + 1 })
+    text(value=string(count))
+}

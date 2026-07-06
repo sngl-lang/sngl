@@ -108,6 +108,17 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 
 		for _, target := range targets {
+			// Each target optimizes+lowers the IR in place, so with more than
+			// one target every target after the first must start from the
+			// original checked IR — not the already-lowered state left by the
+			// previous target. Clone per target from the pristine pkg (which
+			// is never mutated when len(targets) > 1). A single target lowers
+			// pkg directly.
+			tpkg := pkg
+			if len(targets) > 1 {
+				tpkg = ir.ClonePackage(pkg)
+			}
+
 			if target.Options == nil {
 				target.Options = &ir.StructLit{}
 			}
@@ -125,7 +136,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 				NoCacheBust: optionBool(target.Options, "noCacheBust"),
 			}
 			start = time.Now()
-			if err := optimize.Optimize(pkg, optCfg); err != nil {
+			if err := optimize.Optimize(tpkg, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -140,14 +151,14 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 			}
 			caps := plat.Capabilities(lang).ToLowerCaps()
 			start = time.Now()
-			if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+			if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
 
 			if caps != (lower.Caps{}) {
 				start = time.Now()
-				if err := optimize.Optimize(pkg, optCfg); err != nil {
+				if err := optimize.Optimize(tpkg, optCfg); err != nil {
 					return fmt.Errorf("%s: %w", dir, err)
 				}
 				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -159,13 +170,13 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 			}
 
 			start = time.Now()
-			if err := generateTarget(filename, pkg, target, p.outDir, fileAssets, p.quiet); err != nil {
+			if err := generateTarget(filename, tpkg, target, p.outDir, fileAssets, p.quiet); err != nil {
 				return err
 			}
 			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 			if p.onTarget != nil {
-				if err := p.onTarget(target, pkg, dir, p.outDir); err != nil {
+				if err := p.onTarget(target, tpkg, dir, p.outDir); err != nil {
 					return err
 				}
 			}
