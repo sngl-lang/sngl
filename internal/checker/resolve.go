@@ -258,6 +258,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 	defer func() { c.typeParams = prevTypeParams }()
 
 	var fields []*ir.StructField
+	seen := make(map[string]struct{})
 	for _, f := range s.Fields() {
 		fieldLabel := "struct field"
 		if len(f.Names) > 0 {
@@ -265,6 +266,10 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 		}
 		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
 		for _, name := range f.Names {
+			if _, dup := seen[name]; dup {
+				c.error(f.Pos, "duplicate struct field %q", name)
+			}
+			seen[name] = struct{}{}
 			var def ir.Expr
 			if f.Default != nil {
 				// Placeholder; actual default checked later when scope is ready.
@@ -469,7 +474,12 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 // buildParams converts AST Params to IR Params.
 func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	params := make([]*ir.Param, len(pl.Params))
+	seen := make(map[string]struct{}, len(pl.Params))
 	for i, p := range pl.Params {
+		if _, dup := seen[p.Name]; dup {
+			c.error(p.Pos, "duplicate parameter %q", p.Name)
+		}
+		seen[p.Name] = struct{}{}
 		typ := c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
 		var def ir.Expr
 		if p.Default != nil {

@@ -1909,6 +1909,35 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
+		// A non-empty block-bodied func with a non-void return type must return
+		// on all paths. (Expression bodies always return; void funcs need no
+		// return; an empty `{}` body is a signature stub whose implementation
+		// lives elsewhere — e.g. stdlib/native generic-method declarations.)
+		if len(fn.Block) > 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn && !blockAlwaysReturns(fn.Block) {
+			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
+		}
+	}
+}
+
+// blockAlwaysReturns reports whether a statement block is guaranteed to return
+// (or otherwise not fall off the end) on every path. Used for missing-return
+// analysis on block-bodied funcs with a declared return type.
+func blockAlwaysReturns(stmts []ir.Stmt) bool {
+	if len(stmts) == 0 {
+		return false
+	}
+	return stmtAlwaysReturns(stmts[len(stmts)-1])
+}
+
+func stmtAlwaysReturns(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.Return:
+		return true
+	case *ir.If:
+		// An if terminates only when it has an else and both arms terminate.
+		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
+	default:
+		return false
 	}
 }
 

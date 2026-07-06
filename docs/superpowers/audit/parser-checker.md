@@ -98,7 +98,15 @@ Beyond the `->` case, at least one other input panics:
 The deferred `recover()` in `Parse` catches the panic but the user-facing message ("index out of range [N] with length N") is useless. Either fix the builder's iterator bounds-checking (likely in `build.go` where `tokenAt`/iterator advance happens after a parse error tree has gaps) or wrap the recover with "internal parser bug, please report" plus dump the original source span.
 **Severity:** BUG (compiler crash messages reach users).
 
-### 7. Integer literal overflow is not detected anywhere
+### 7. Integer literal overflow is not detected anywhere — ✅ RESOLVED (2026-07-06)
+
+> Fixed: `inferLiteral` (`internal/checker/expr.go`) now runs
+> `strconv.ParseInt(raw, 0, 64)` on every int literal and reports an error on
+> `strconv.ErrRange`. The fixture `testdata/error_integer_overflow.sngl` was
+> retargeted from the never-enforced `ERROR(parse)` to `ERROR(check) "overflows"`
+> so it is now an active guard. Note: a literal equal to the int64 *minimum*
+> written with a leading `-` would false-positive (the `-` is a separate unary
+> expr) — not present anywhere today; left as a known edge.
 
 **Files:** `internal/parser/lexer.go`, `internal/checker/expr.go`
 
@@ -109,7 +117,11 @@ var x int = 99999999999999999999
 typechecks `ok`. Fixture `testdata/error_integer_overflow.sngl` claims this should be `ERROR(parse) "invalid integer literal"`, but neither the parser nor the checker performs `strconv.ParseInt` on `INT` literals. The fixture is also never enforced (see #14).
 **Severity:** BUG (silent overflow into IR; depending on codegen path may produce wrong runtime values).
 
-### 8. Duplicate struct field and function parameter names accepted silently
+### 8. Duplicate struct field and function parameter names accepted silently — ✅ RESOLVED (2026-07-06)
+
+> Fixed: `resolveStructFields` and `buildParams` (`internal/checker/resolve.go`)
+> track seen names and emit `duplicate struct field %q` / `duplicate parameter %q`.
+> Guards: `diagnostics_batch_test.go` (`TestDuplicateStructField`, `TestDuplicateFuncParam`).
 
 **Files:** `internal/checker/resolve.go:255-289` (`buildStructDef`), `internal/checker/resolve.go` (param resolution)
 
@@ -121,7 +133,13 @@ func f(x int, x int) => x          // ok
 Both should be hard errors. Currently the second `x` field/param silently overrides or is appended, leaving an inconsistent IR.
 **Severity:** BUG (incoherent IR for malformed input).
 
-### 9. Block-bodied func without explicit `return` and non-void return type accepted
+### 9. Block-bodied func without explicit `return` and non-void return type accepted — ✅ RESOLVED (2026-07-06)
+
+> Fixed: `checkFuncBody` runs `blockAlwaysReturns` (last-statement analysis:
+> a `Return`, or an `If` whose arms both terminate) on non-empty block bodies
+> with a declared non-void return type, erroring with "missing return". Empty
+> `{}` bodies are exempt (signature stubs — stdlib/native/generic-method
+> declarations). Guard: `diagnostics_batch_test.go::TestMissingReturn`.
 
 **Files:** `internal/checker/checker.go`, `internal/checker/expr.go`
 

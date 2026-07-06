@@ -147,6 +147,13 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	switch x.Kind {
 	case ast.LiteralInt:
 		typ = TypInt
+		// Detect literals outside int64 range. A leading '-' is a separate
+		// UnaryExpr, so Raw is always the unsigned magnitude here.
+		if _, err := strconv.ParseInt(x.Raw, 0, 64); err != nil {
+			if ne, ok := err.(*strconv.NumError); ok && ne.Err == strconv.ErrRange {
+				c.error(x.Pos, "integer literal %s overflows int (max %d)", x.Raw, int64(^uint64(0)>>1))
+			}
+		}
 	case ast.LiteralFloat:
 		typ = TypFloat
 	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
