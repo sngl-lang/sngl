@@ -1554,6 +1554,11 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 	}
 	keyT := mapType.Elems[0]
 	valT := mapType.Elems[1]
+	// An empty `{}` is a valid empty map of any key type — there are no ident
+	// keys to (mis)interpret as strings.
+	if len(x.Fields) == 0 {
+		return &ir.MapLitIR{Type: mapType, Entries: nil}
+	}
 	if keyT.Kind != ir.TypeString {
 		c.error(x.Pos, "ident-keyed literal does not match map<%s, ...> with non-string key type", keyT)
 		return &ir.MapLitIR{Type: mapType, Entries: nil}

@@ -43,7 +43,16 @@ var b list<int> = [...a, 3]   // error: cannot initialize list<int> with list<li
 The function must special-case `*ast.SpreadExpr`, validate that the operand is a `list<T>` matching the element type, and flatten in IR. Same code path likely affects function-call spread (`f(...xs)`) — that case also fails (`spread_func.sngl` → "cannot pass list<int> as int").
 **Severity:** BUG (no working spread syntax in lists or calls).
 
-### 3. Field/method access on `string` (and likely other primitives) for unknown name silently returns `dyn`
+### 3. Field/method access on `string` (and likely other primitives) for unknown name silently returns `dyn` — ⚠️ PARTIAL (2026-07-06)
+
+> The method form (`x.foo()`) errors ("no method %q on type string"), and
+> int/float/bool field access errors via `hasNoLegitimateFields`. **Still open:**
+> the *field* form on `string` (`x.foo`) falls through to `dyn` at
+> `inferSelect`'s tail (`expr.go:~1438`). A safe fix must first distinguish an
+> unknown field from a valid auto-firing zero-arg method-field (only `.length`
+> is special-cased today; whether bare `s.upper` should auto-fire is
+> unresolved) — deferred until that method-field-resolution question is settled
+> rather than risk rejecting valid access.
 
 **Files:** `internal/checker/expr.go` (SelectExpr branch)
 
@@ -55,7 +64,12 @@ var y = x.foo   // checks OK, y typed `dyn`
 The fixture `testdata/error_selector_unknown_method_string.sngl` documents the method-form bug; the field-form has no fixture. Both should produce `no field "foo" on type string`. Compounded by the silent `dyn` infection — downstream uses don't error either.
 **Severity:** BUG (loss of type safety).
 
-### 4. Empty map literal `{}` against non-string-keyed map type emits wrong-shape error
+### 4. Empty map literal `{}` against non-string-keyed map type emits wrong-shape error — ✅ RESOLVED (2026-07-06)
+
+> Fixed: `reinterpretStructAsMap` short-circuits `len(x.Fields) == 0` to an
+> empty `MapLitIR` typed at the expected map type, before the non-string-key
+> check. Guard: `empty_map_test.go::TestEmptyMapLiteralNonStringKey` (float/int/
+> string key types).
 
 **Files:** `internal/checker/expr.go:1419-1428`
 
