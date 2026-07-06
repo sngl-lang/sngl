@@ -237,11 +237,25 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 
 // buildStructDef builds an IR StructDef from an AST StructDef.
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
+	return &ir.StructDef{
+		AST:        s,
+		Name:       s.Name,
+		TypeParams: s.TypeParams,
+		Fields:     c.resolveStructFields(s),
+	}
+}
+
+// resolveStructFields resolves a struct's field types. Split out from
+// buildStructDef so the top-level pass1 path can register a field-less shell
+// first (making the name visible for forward/mutually-recursive references)
+// and resolve fields in a second sub-pass once every type shell exists.
+func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 	// Push struct-level type params into scope so field types like T resolve.
 	prevTypeParams := c.typeParams
 	if len(s.TypeParams) > 0 {
 		c.typeParams = append(append([]string(nil), c.typeParams...), s.TypeParams...)
 	}
+	defer func() { c.typeParams = prevTypeParams }()
 
 	var fields []*ir.StructField
 	for _, f := range s.Fields() {
@@ -263,14 +277,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 			})
 		}
 	}
-
-	c.typeParams = prevTypeParams
-	return &ir.StructDef{
-		AST:        s,
-		Name:       s.Name,
-		TypeParams: s.TypeParams,
-		Fields:     fields,
-	}
+	return fields
 }
 
 // buildEnumDef builds an IR EnumDef from an AST EnumDef.

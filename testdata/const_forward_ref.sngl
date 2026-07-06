@@ -1,0 +1,8 @@
+// Const initializers may forward-reference a const declared later in the file.
+// Pass1 registers every top-level const as a name shell before checking any
+// initializer (checkPendingConstInits), so declaration order does not matter.
+const A = B + 1
+const B = 10
+component main {
+    text(value="{A}")
+}

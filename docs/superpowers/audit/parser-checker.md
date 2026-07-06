@@ -6,7 +6,16 @@ Audit of parser and type-checker for inconsistencies, bugs, and UX gaps. Finding
 
 ## BUG
 
-### 1. Mutually recursive struct types fail in both orderings
+### 1. Mutually recursive struct types fail in both orderings — ✅ RESOLVED (2026-07-06)
+
+> Fixed: pass1 now registers every top-level type as a name shell first
+> (`registerStructShell` for structs — name + type params, no fields;
+> enums/units full; components after the shells so their prop/children types
+> resolve), then resolves struct fields in a sub-pass (`resolveStructBody`)
+> once all shells exist. Guards: `two_shell_pass1_test.go`
+> (`TestStructForwardReference`, `TestStructMutualRecursion`,
+> `TestStructSelfRecursion`). Method-signature forward references remain a
+> pre-existing edge case (buildFunc resolves eagerly) — out of scope here.
 
 **Files:** `internal/checker/checker.go:264-265`, `internal/checker/resolve.go:255-289`
 `registerStruct` calls `buildStructDef` which calls `resolveTypeRequired` on every field type *immediately* during pass1's source-order walk. So:
@@ -57,7 +66,15 @@ var m map<float, int> = {}   // "ident-keyed literal does not match map<float,..
 `reinterpretStructAsMap` runs on every anon struct lit against a map type, even when there are zero fields. It should short-circuit when `len(x.Fields) == 0` and return an empty `MapLitIR` typed at the expected map type, mirroring `inferMapLit`'s empty path at line 1493.
 **Severity:** BUG (correct empty map syntax rejected with misleading message).
 
-### 5. Bare enum-member name in `const` initializer not resolved against expected enum type
+### 5. Bare enum-member name in `const` initializer not resolved against expected enum type — ✅ RESOLVED (2026-07-06)
+
+> Fixed: top-level const values are checked in a deferred sub-pass
+> (`checkPendingConstInits`) that runs `checkExprExpecting` first (resolving
+> the bare enum member against the declared type) and then judges const-ness on
+> the resolved IR via `ir.IsConst` — which now recognizes a bare enum-member
+> Ident (`Member != ""`). `nonConstRef` is consulted only to phrase the error
+> when the value is genuinely non-const. Guard:
+> `two_shell_pass1_test.go::TestConstBareEnumMember`.
 
 **Files:** `internal/checker/checker.go:572-624` (`registerConsts`, `nonConstRef`)
 
@@ -164,20 +181,19 @@ unexpected "enum", expected "FuncLit", "AnonStructLit", "PrimaryExpr", "PostfixE
 Every test that walks `testdata/` skips files with `ERROR(parse)` directives instead of asserting them. So fixtures like `error_integer_overflow.sngl`, `error_unterminated_string.sngl`, `error_bad_interpolation.sngl` (and ~30 others — `grep -l ERROR(parse) testdata/*.sngl | wc -l`) are dead — they neither verify the error message nor protect against parse-time regressions. Either run them through `parser.Parse` and assert the directive line/substring matches a reported error, or remove them.
 **Severity:** INCONSISTENCY (silent test coverage hole; documented bugs in fixtures stay broken indefinitely).
 
-### 15. Known const-forward-reference bug documented in fixture, never fixed
+### 15. Known const-forward-reference bug documented in fixture, never fixed — ✅ RESOLVED (2026-07-06)
 
-**Files:** `testdata/error_const_forward_ref.sngl`, `internal/checker/checker.go:572-611`
-The fixture's own comment explains the bug:
+> Fixed exactly as the fixture's own note prescribed: pass1 registers `*ir.Var`
+> shells for all top-level consts (`registerConstShells`) before any initializer
+> is checked, and the deferred `checkPendingConstInits` validates const-ness on
+> the resolved IR. The documenting fixture was converted from an ERROR fixture
+> to a passing one (`testdata/const_forward_ref.sngl`). See also #5.
 
-> Bug: const forward references work in backward order but not forward order. […] The diagnostic also misleads — it labels B as "non-const" when the real reason is that B is unregistered at this point.
-> Fix: pass1 should register `*ir.Var` shells for *all* consts before checking initializers (analogous to type shells in #1). The existing `nonConstRef` should then either operate on the IR after registration, or be removed in favor of the deferred const-purity check (`constAsserts`) already implemented for `const(expr)`.
-> **Severity:** INCONSISTENCY (acknowledged bug, persistent).
+### 16. `func` mutual recursion works but `struct` mutual recursion doesn't — same compiler, different rules — ✅ RESOLVED (2026-07-06)
 
-### 16. `func` mutual recursion works but `struct` mutual recursion doesn't — same compiler, different rules
-
-**Files:** `internal/checker/checker.go:232-301`
-Functions are pre-registered (pass1 collects signatures, pass2 walks bodies). Structs/enums/units are registered *with their field types resolved inline*. Either both should pre-register or neither. See #1.
-**Severity:** INCONSISTENCY.
+> Fixed with #1: structs are now pre-registered as name+type-param shells like
+> functions, and field types resolve in a later sub-pass, so both follow the
+> same shell-then-body rule.
 
 ### 17. Stale comment in `ast/expr.go:119` references the old `->` arrow form
 

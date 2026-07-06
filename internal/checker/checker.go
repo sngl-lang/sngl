@@ -142,6 +142,12 @@ type checker struct {
 	// purity, which is only assigned after all bodies are checked, so the
 	// assertions are run in a final pass.
 	constAsserts []constAssertion
+
+	// pendingConstInits holds top-level const initializers whose names are
+	// registered as shells in pass1 but whose values are checked in a
+	// sub-pass after every const shell (and func) is registered, so a const
+	// may forward-reference another const or use a bare enum member.
+	pendingConstInits []pendingConstInit
 }
 
 // constAssertion captures a const(expr) use site and the IR expression to
@@ -149,6 +155,15 @@ type checker struct {
 type constAssertion struct {
 	pos     ast.Pos
 	operand ir.Expr
+}
+
+// pendingConstInit is a top-level const spec whose value check is deferred to
+// checkPendingConstInits (after all shells are registered).
+type pendingConstInit struct {
+	decl *ast.ConstDecl
+	spec ast.VarSpec
+	typ  *ir.Type
+	vars []*ir.Var
 }
 
 func newChecker(doc *ast.Document, cfg *Config) *checker {
@@ -265,22 +280,34 @@ func (c *checker) pass1() {
 	}
 
 	// Pre-register type declarations so they're visible for forward references
-	// (e.g., test functions that reference types defined later in the file).
+	// (test functions referencing later types, a struct field or component prop
+	// naming a type declared later, mutually recursive structs). Register every
+	// type NAME first — structs as field-less shells — then resolve struct
+	// fields in a sub-pass once all shells exist. Components are registered
+	// after the shells because their prop/children types may name any of them.
+	var structShells []*ir.StructDef
+	var pendingComponents []*ast.ComponentDecl
 	for _, stmt := range c.doc.Stmts {
 		inner := stmt
 		if attr, ok := stmt.(*ast.AttrDecl); ok {
 			inner = attr.Inner
 		}
 		switch s := inner.(type) {
+		case *ast.StructDef:
+			structShells = append(structShells, c.registerStructShell(s))
 		case *ast.EnumDef:
 			c.registerEnum(s)
-		case *ast.StructDef:
-			c.registerStruct(s)
 		case *ast.UnitDef:
 			c.registerUnit(s)
 		case *ast.ComponentDecl:
-			c.registerComponent(s)
+			pendingComponents = append(pendingComponents, s)
 		}
+	}
+	for _, comp := range pendingComponents {
+		c.registerComponent(comp)
+	}
+	for _, sd := range structShells {
+		c.resolveStructBody(sd)
 	}
 
 	for _, stmt := range c.doc.Stmts {
@@ -288,7 +315,7 @@ func (c *checker) pass1() {
 		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 			continue // already registered above
 		case *ast.ConstDecl:
-			c.registerConsts(s)
+			c.registerConstShells(s)
 		case *ast.VarDecl:
 			c.registerVars(s)
 		case *ast.FuncDef:
@@ -310,7 +337,7 @@ func (c *checker) pass1() {
 			case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 				continue // already registered in pre-pass loops above
 			case *ast.ConstDecl:
-				c.registerConsts(inner)
+				c.registerConstShells(inner)
 			case *ast.VarDecl:
 				c.registerVars(inner)
 			case *ast.FuncDef:
@@ -326,6 +353,11 @@ func (c *checker) pass1() {
 			// IfStmt, ForStmt at top level are checked in pass2.
 		}
 	}
+
+	// Check deferred top-level const values now that every const shell, type,
+	// and func is registered (enables forward references between consts and
+	// bare enum members in const initializers).
+	c.checkPendingConstInits()
 }
 
 func (c *checker) registerImport(imp *ast.Import) {
@@ -590,6 +622,23 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
 
+// registerStructShell registers a struct's name and type parameters without
+// resolving its fields, so the type is visible for forward and mutually
+// recursive references. resolveStructBody fills in the fields (and nested
+// methods) in a later pass1 sub-pass, once every type shell exists.
+func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	c.pkg.Structs = append(c.pkg.Structs, sd)
+	c.symtab.Types[sd.Name] = sd
+	c.scope.Declare(sd)
+	return sd
+}
+
+func (c *checker) resolveStructBody(sd *ir.StructDef) {
+	sd.Fields = c.resolveStructFields(sd.AST)
+	c.registerNestedMethods(sd.Name, sd.TypeParams, sd.AST.Funcs())
+}
+
 func (c *checker) registerUnit(u *ast.UnitDef) {
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
@@ -651,6 +700,83 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.scope.Declare(v)
+		}
+	}
+}
+
+// registerConstShells registers a top-level const decl's names (as const Var
+// shells with resolved types but no value yet) and defers value checking to
+// checkPendingConstInits. This lets a const forward-reference another const or
+// use a bare enum member of its declared type — both of which the eager
+// registerConsts path rejects because it checks the value before later
+// declarations exist.
+func (c *checker) registerConstShells(decl *ast.ConstDecl) {
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		vars := make([]*ir.Var, 0, len(spec.Names))
+		for _, name := range spec.Names {
+			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
+			c.pkg.Consts = append(c.pkg.Consts, v)
+			c.scope.Declare(v)
+			vars = append(vars, v)
+		}
+		c.pendingConstInits = append(c.pendingConstInits, pendingConstInit{
+			decl: decl, spec: spec, typ: typ, vars: vars,
+		})
+	}
+}
+
+// checkPendingConstInits checks the value of every deferred top-level const now
+// that all const shells, types, and funcs are registered. Const-ness is judged
+// on the resolved IR via ir.IsConst (so a bare enum member or a forward const
+// reference is accepted); nonConstRef is consulted only to phrase the error
+// when the value is genuinely non-const.
+func (c *checker) checkPendingConstInits() {
+	for _, p := range c.pendingConstInits {
+		if p.spec.Default == nil {
+			continue
+		}
+		typ := p.typ
+		initExpr := c.checkExprExpecting(p.spec.Default, typ)
+
+		// nonConstRef is the primary const-ness gate (it recognizes pure-call
+		// initializers during pass1, before purity analysis runs, and — now
+		// that all const shells are registered — no longer misfires on forward
+		// references). ir.IsConst on the resolved IR is an additional acceptor
+		// for forms nonConstRef cannot judge from the AST, notably a bare enum
+		// member resolved against the declared type.
+		if name := c.nonConstRef(p.spec.Default); name != "" && !ir.IsConst(initExpr) {
+			if !strings.HasPrefix(name, "<") {
+				if _, declared := c.scope.Lookup(name); !declared {
+					c.error(p.decl.Pos, "const initializer forward-references %q (declare it earlier)", name)
+				} else {
+					c.error(p.decl.Pos, "const initializer references non-const %q", name)
+				}
+			} else {
+				c.error(p.decl.Pos, "const initializer references non-const %q", name)
+			}
+		}
+
+		initType := exprType(initExpr)
+		if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
+			if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
+				initExpr = adapted
+			} else {
+				c.error(p.decl.Pos, "cannot initialize %s with %s", typ, initType)
+			}
+		}
+		if typ.Kind != ir.TypeDyn {
+			initExpr = wrapIfNeeded(initExpr, typ)
+		}
+		finalType := typ
+		if c.requireValueType(initType, p.decl.Pos) {
+			// Don't propagate void into an inferred const type.
+		} else if typ.Kind == ir.TypeDyn {
+			finalType = initType
+		}
+		for _, v := range p.vars {
+			v.Init = initExpr
+			v.Type = finalType
 		}
 	}
 }
