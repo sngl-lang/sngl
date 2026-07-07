@@ -57,6 +57,37 @@ func mustReturn() int {
 `, "return")
 }
 
+// #9 regression guard — a for-else where both arms return must NOT be flagged
+// as missing-return.
+func TestMissingReturnForElseOK(t *testing.T) {
+	checkNoErrors(t, `
+component main {
+    func first(xs list<int>) int {
+        for x = xs {
+            return x
+        } else {
+            return 0
+        }
+    }
+    text(value="{first([1,2])}")
+}
+`)
+}
+
+// #9 regression guard — a func whose body ends in a call (which may raise /
+// never return) must NOT be flagged as missing-return.
+func TestMissingReturnTrailingCallOK(t *testing.T) {
+	checkNoErrors(t, `
+component main {
+    func sideEffect() { }
+    func boom() int {
+        sideEffect()
+    }
+    text(value="{boom()}")
+}
+`)
+}
+
 // #7 — an integer literal exceeding int64 range is an error.
 func TestIntegerOverflow(t *testing.T) {
 	expectCheckError(t, `

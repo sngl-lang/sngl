@@ -821,6 +821,42 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			}
 		case *ir.CallStmt:
 			walkExpr(x.Call)
+		case *ir.Toggle:
+			walkExpr(x.Target)
+		case *ir.Emit:
+			for _, a := range x.Args {
+				walkExpr(a.Value)
+			}
+		case *ir.NodeInst:
+			for _, p := range x.Props {
+				walkExpr(p.Value)
+			}
+			for _, h := range x.Handlers {
+				if h.Func != nil {
+					for _, c := range h.Func.Block {
+						walkStmt(c)
+					}
+				}
+			}
+			for _, c := range x.Children {
+				walkStmt(c)
+			}
+		case *ir.SlotInst:
+			for _, c := range x.Children {
+				walkStmt(c)
+			}
+		case *ir.PlatformFilter:
+			for _, c := range x.Body {
+				walkStmt(c)
+			}
+		case *ir.ErrorBoundary:
+			for _, c := range x.Children {
+				walkStmt(c)
+			}
+		case *ir.ContextProvider:
+			for _, c := range x.Children {
+				walkStmt(c)
+			}
 		}
 	}
 	for _, s := range fn.Block {

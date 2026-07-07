@@ -96,6 +96,7 @@ func (w *walker) visitExpr(e Expr) {
 		w.visitExpr(x.Else)
 	case *Call:
 		w.visitExpr(x.Receiver)
+		w.visitExpr(x.Callee)
 		for _, a := range x.Args {
 			w.visitExpr(a.Value)
 		}
@@ -165,6 +166,7 @@ func (w *walker) visitStmt(s Stmt) {
 				return
 			}
 			w.visitExpr(n.Call.Receiver)
+			w.visitExpr(n.Call.Callee)
 			for _, a := range n.Call.Args {
 				w.visitExpr(a.Value)
 			}

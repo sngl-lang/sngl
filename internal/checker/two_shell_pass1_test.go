@@ -64,3 +64,27 @@ const a = b
 const b = 5
 `)
 }
+
+// A top-level var (or const) that bare-references an un-annotated const must
+// infer that const's concrete type, not dyn. Regression: deferring all const
+// value checks to the end of pass1 left the const shell typed dyn while
+// registerVars ran, so `var count = MAX` inferred dyn.
+func TestConstTypePropagatesToVar(t *testing.T) {
+	pkg := checkNoErrors(t, `
+const MAX = 10
+var count = MAX
+component main { text(value="{count}") }
+`)
+	var v *ir.Var
+	for _, x := range pkg.Vars {
+		if x.Name == "count" {
+			v = x
+		}
+	}
+	if v == nil {
+		t.Fatal("var count not found")
+	}
+	if v.Type == nil || v.Type.Kind != ir.TypeInt {
+		t.Fatalf("count type = %v, want int (regression: dyn)", v.Type)
+	}
+}

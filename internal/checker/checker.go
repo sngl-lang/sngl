@@ -713,6 +713,16 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		// An un-annotated const backed by a literal gets its concrete type on
+		// the shell immediately, so a later `var x = SOME_CONST` (registered
+		// before the deferred checkPendingConstInits runs) infers the const's
+		// type rather than dyn. Non-literal initializers still resolve in the
+		// deferred pass.
+		if typ.Kind == ir.TypeDyn && spec.Type == nil {
+			if lt := literalConstType(spec.Default); lt != nil {
+				typ = lt
+			}
+		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
@@ -724,6 +734,27 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 			decl: decl, spec: spec, typ: typ, vars: vars,
 		})
 	}
+}
+
+// literalConstType returns the concrete type of a const initializer that is a
+// plain literal, or nil when the initializer is absent or non-literal (in
+// which case the type is resolved later by checkPendingConstInits).
+func literalConstType(e ast.Expr) *ir.Type {
+	lit, ok := e.(*ast.LiteralExpr)
+	if !ok {
+		return nil
+	}
+	switch lit.Kind {
+	case ast.LiteralInt:
+		return TypInt
+	case ast.LiteralFloat:
+		return TypFloat
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		return TypString
+	case ast.LiteralBool:
+		return TypBool
+	}
+	return nil
 }
 
 // checkPendingConstInits checks the value of every deferred top-level const now
@@ -1913,7 +1944,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		// on all paths. (Expression bodies always return; void funcs need no
 		// return; an empty `{}` body is a signature stub whose implementation
 		// lives elsewhere — e.g. stdlib/native generic-method declarations.)
-		if len(fn.Block) > 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn && !blockAlwaysReturns(fn.Block) {
+		if len(fn.Block) > 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
+			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
 	}
@@ -1936,9 +1968,30 @@ func stmtAlwaysReturns(s ir.Stmt) bool {
 	case *ir.If:
 		// An if terminates only when it has an else and both arms terminate.
 		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
+	case *ir.For:
+		// A for terminates only when it has an else and both the body (which
+		// returns before the first iteration completes) and the else (empty
+		// case) terminate.
+		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
 	default:
 		return false
 	}
+}
+
+// lastStmtMayDiverge reports whether a block's final statement has control flow
+// the checker does not fully model and that may not fall through: a call (which
+// may raise or never return), or a build-conditional / structural container.
+// Missing-return is suppressed in these cases so a function that in fact always
+// diverges or returns is not wrongly rejected.
+func lastStmtMayDiverge(stmts []ir.Stmt) bool {
+	if len(stmts) == 0 {
+		return false
+	}
+	switch stmts[len(stmts)-1].(type) {
+	case *ir.CallStmt, *ir.PlatformFilter, *ir.ErrorBoundary, *ir.SlotInst, *ir.ContextProvider, *ir.NodeInst:
+		return true
+	}
+	return false
 }
 
 // preCheckComponentMethods runs an early pass over a component's nested
