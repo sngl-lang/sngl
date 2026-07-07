@@ -6,28 +6,6 @@ Audit of parser and type-checker for inconsistencies, bugs, and UX gaps. Finding
 
 ## BUG
 
-### 1. Mutually recursive struct types fail in both orderings — ✅ RESOLVED (2026-07-06)
-
-> Fixed: pass1 now registers every top-level type as a name shell first
-> (`registerStructShell` for structs — name + type params, no fields;
-> enums/units full; components after the shells so their prop/children types
-> resolve), then resolves struct fields in a sub-pass (`resolveStructBody`)
-> once all shells exist. Guards: `two_shell_pass1_test.go`
-> (`TestStructForwardReference`, `TestStructMutualRecursion`,
-> `TestStructSelfRecursion`). Method-signature forward references remain a
-> pre-existing edge case (buildFunc resolves eagerly) — out of scope here.
-
-**Files:** `internal/checker/checker.go:264-265`, `internal/checker/resolve.go:255-289`
-`registerStruct` calls `buildStructDef` which calls `resolveTypeRequired` on every field type *immediately* during pass1's source-order walk. So:
-
-```
-struct A { b B }
-struct B { a A }
-```
-
-fails with `unknown type "B"`. Swapping the order fails with `unknown type "A"`. Pass1 must first register name-only shells for all `StructDef`/`EnumDef`/`UnitDef`/`Component`, then field-resolve in a second sub-pass. The fixture `testdata/checker_mutual_recursion.sngl` only exercises function mutual recursion, not types — coverage gap.
-**Severity:** BUG (no workaround for mutually referencing types).
-
 ### 2. List spread (`[...xs, 3]`) typechecks the spread as an element ⚠️ PARTIAL (2026-06-07)
 
 Struct spread in function call arg lists (`f(...s)`) and component prop lists is now supported (`feat(checker): expand ...struct in function call arg lists` / `feat(checker): expand ...struct in component prop lists`). Error fixtures for type/duplicate violations added (`test: add missing spread error fixtures`). **Still open:** list literal spread `[...xs, 3]` — `inferListLit` does not handle `*ast.SpreadExpr`; and call spread with `list<T>` operand `f(...xs)` — the new spread path requires a struct operand.
@@ -82,42 +60,6 @@ var y = x.foo   // checks OK, y typed `dyn`
 The fixture `testdata/error_selector_unknown_method_string.sngl` documents the method-form bug; the field-form has no fixture. Both should produce `no field "foo" on type string`. Compounded by the silent `dyn` infection — downstream uses don't error either.
 **Severity:** BUG (loss of type safety).
 
-### 4. Empty map literal `{}` against non-string-keyed map type emits wrong-shape error — ✅ RESOLVED (2026-07-06)
-
-> Fixed: `reinterpretStructAsMap` short-circuits `len(x.Fields) == 0` to an
-> empty `MapLitIR` typed at the expected map type, before the non-string-key
-> check. Guard: `empty_map_test.go::TestEmptyMapLiteralNonStringKey` (float/int/
-> string key types).
-
-**Files:** `internal/checker/expr.go:1419-1428`
-
-```
-var m map<float, int> = {}   // "ident-keyed literal does not match map<float,...>"
-```
-
-`reinterpretStructAsMap` runs on every anon struct lit against a map type, even when there are zero fields. It should short-circuit when `len(x.Fields) == 0` and return an empty `MapLitIR` typed at the expected map type, mirroring `inferMapLit`'s empty path at line 1493.
-**Severity:** BUG (correct empty map syntax rejected with misleading message).
-
-### 5. Bare enum-member name in `const` initializer not resolved against expected enum type — ✅ RESOLVED (2026-07-06)
-
-> Fixed: top-level const values are checked in a deferred sub-pass
-> (`checkPendingConstInits`) that runs `checkExprExpecting` first (resolving
-> the bare enum member against the declared type) and then judges const-ness on
-> the resolved IR via `ir.IsConst` — which now recognizes a bare enum-member
-> Ident (`Member != ""`). `nonConstRef` is consulted only to phrase the error
-> when the value is genuinely non-const. Guard:
-> `two_shell_pass1_test.go::TestConstBareEnumMember`.
-
-**Files:** `internal/checker/checker.go:572-624` (`registerConsts`, `nonConstRef`)
-
-```
-enum Color { red, green, blue }
-const c Color = red   // error: const initializer forward-references "red"
-```
-
-Equivalent `var c Color = red` works. The cause: `nonConstRef` walks the AST before any expected-type / enum-member resolution; it doesn't know `red` is `Color.red`. Either make `nonConstRef` aware of enum member shorthand against `spec.Type`, or move the const-initializer-purity check to run on the IR after `checkExprExpecting` has performed enum-bare-name resolution.
-**Severity:** BUG (asymmetry between var and const init, blocking idiomatic constant declarations).
-
 ### 6. Multiple parser productions panic on benign inputs
 
 **Files:** `internal/parser/build.go`, `internal/parser/parse.go:42-48`
@@ -129,60 +71,6 @@ Beyond the `->` case, at least one other input panics:
 
 The deferred `recover()` in `Parse` catches the panic but the user-facing message ("index out of range [N] with length N") is useless. Either fix the builder's iterator bounds-checking (likely in `build.go` where `tokenAt`/iterator advance happens after a parse error tree has gaps) or wrap the recover with "internal parser bug, please report" plus dump the original source span.
 **Severity:** BUG (compiler crash messages reach users).
-
-### 7. Integer literal overflow is not detected anywhere — ✅ RESOLVED (2026-07-06)
-
-> Fixed: `inferLiteral` (`internal/checker/expr.go`) now runs
-> `strconv.ParseInt(raw, 0, 64)` on every int literal and reports an error on
-> `strconv.ErrRange`. The fixture `testdata/error_integer_overflow.sngl` was
-> retargeted from the never-enforced `ERROR(parse)` to `ERROR(check) "overflows"`
-> so it is now an active guard. Note: a literal equal to the int64 *minimum*
-> written with a leading `-` would false-positive (the `-` is a separate unary
-> expr) — not present anywhere today; left as a known edge.
-
-**Files:** `internal/parser/lexer.go`, `internal/checker/expr.go`
-
-```
-var x int = 99999999999999999999
-```
-
-typechecks `ok`. Fixture `testdata/error_integer_overflow.sngl` claims this should be `ERROR(parse) "invalid integer literal"`, but neither the parser nor the checker performs `strconv.ParseInt` on `INT` literals. The fixture is also never enforced (see #14).
-**Severity:** BUG (silent overflow into IR; depending on codegen path may produce wrong runtime values).
-
-### 8. Duplicate struct field and function parameter names accepted silently — ✅ RESOLVED (2026-07-06)
-
-> Fixed: `resolveStructFields` and `buildParams` (`internal/checker/resolve.go`)
-> track seen names and emit `duplicate struct field %q` / `duplicate parameter %q`.
-> Guards: `diagnostics_batch_test.go` (`TestDuplicateStructField`, `TestDuplicateFuncParam`).
-
-**Files:** `internal/checker/resolve.go:255-289` (`buildStructDef`), `internal/checker/resolve.go` (param resolution)
-
-```
-struct P { x int; y int; x bool }  // ok
-func f(x int, x int) => x          // ok
-```
-
-Both should be hard errors. Currently the second `x` field/param silently overrides or is appended, leaving an inconsistent IR.
-**Severity:** BUG (incoherent IR for malformed input).
-
-### 9. Block-bodied func without explicit `return` and non-void return type accepted — ✅ RESOLVED (2026-07-06)
-
-> Fixed: `checkFuncBody` runs `blockAlwaysReturns` (last-statement analysis:
-> a `Return`, or an `If` whose arms both terminate) on non-empty block bodies
-> with a declared non-void return type, erroring with "missing return". Empty
-> `{}` bodies are exempt (signature stubs — stdlib/native/generic-method
-> declarations). Guard: `diagnostics_batch_test.go::TestMissingReturn`.
-
-**Files:** `internal/checker/checker.go`, `internal/checker/expr.go`
-
-```
-func mustReturn() int {
-  var x = 1
-}    // ok
-```
-
-No "missing return" diagnostic. Code generators must then synthesize a default, which has been a recurring bug source.
-**Severity:** BUG (control-flow analysis missing).
 
 ---
 
@@ -201,15 +89,6 @@ No "missing return" diagnostic. Code generators must then synthesize a default, 
 Grammar: `FuncBodyTail = fat_arrow Expr | [ Type ] StmtBlock`. The return type can attach only to the block form. So users can't write `func id<T>(x T) T => x`; they must drop the annotation and rely on inference, or rewrite as a block. This is undocumented in CLAUDE.md (which says the two valid forms are `func name(params) [Type] { ... }` and `func name(params) => expr` — leaving the question "may `=> expr` carry a return type?" implicit). Same constraint on `FuncLit` (line 521). Either accept `[Type] fat_arrow Expr` or document the restriction loudly.
 **Severity:** INCONSISTENCY (expressiveness gap between the two forms; also blocks the natural generic-method-with-explicit-return signature).
 Repro: `func double(x int) int => x * 2`
-
-### 11. `else if` not supported in the grammar — ✅ RESOLVED (2026-07-06)
-
-> Fixed: `IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ]`.
-> `build.go` desugars an `else if` into a nested `IfStmt` wrapped in a synthetic
-> block (reusing `IfStmt.Else StmtBlock` — no new AST shape), and the formatter
-> prints the chain as `else if` rather than `else { if … }`. Guards:
-> `internal/parser/else_if_test.go` (`TestElseIfChain`, `TestElseIfFormatting`).
-Repro: `if x == 0 { } else if x == 1 { }`
 
 ### 12. Bare lambda `x => expr` rejected — only `func(x) => expr` — ⏸ DESIGN DECISION (not auto-implemented)
 
@@ -245,20 +124,6 @@ unexpected "enum", expected "FuncLit", "AnonStructLit", "PrimaryExpr", "PostfixE
 **Files:** `internal/parser/build_test.go:817-829`, `internal/checker/checker_test.go:1172-1175,1265,1382`, `internal/optimize/optimize_test.go:553`
 Every test that walks `testdata/` skips files with `ERROR(parse)` directives instead of asserting them. So fixtures like `error_integer_overflow.sngl`, `error_unterminated_string.sngl`, `error_bad_interpolation.sngl` (and ~30 others — `grep -l ERROR(parse) testdata/*.sngl | wc -l`) are dead — they neither verify the error message nor protect against parse-time regressions. Either run them through `parser.Parse` and assert the directive line/substring matches a reported error, or remove them.
 **Severity:** INCONSISTENCY (silent test coverage hole; documented bugs in fixtures stay broken indefinitely).
-
-### 15. Known const-forward-reference bug documented in fixture, never fixed — ✅ RESOLVED (2026-07-06)
-
-> Fixed exactly as the fixture's own note prescribed: pass1 registers `*ir.Var`
-> shells for all top-level consts (`registerConstShells`) before any initializer
-> is checked, and the deferred `checkPendingConstInits` validates const-ness on
-> the resolved IR. The documenting fixture was converted from an ERROR fixture
-> to a passing one (`testdata/const_forward_ref.sngl`). See also #5.
-
-### 16. `func` mutual recursion works but `struct` mutual recursion doesn't — same compiler, different rules — ✅ RESOLVED (2026-07-06)
-
-> Fixed with #1: structs are now pre-registered as name+type-param shells like
-> functions, and field types resolve in a later sub-pass, so both follow the
-> same shell-then-body rule.
 
 ### 17. Stale comment in `ast/expr.go:119` references the old `->` arrow form
 
