@@ -22,11 +22,11 @@ func expectCheckError(t *testing.T, src, substr string) {
 			return
 		}
 	}
-	var got string
+	var got strings.Builder
 	for _, d := range diags {
-		got += "\n  " + d.Error()
+		got.WriteString("\n  " + d.Error())
 	}
-	t.Errorf("expected error containing %q, got:%s", substr, got)
+	t.Errorf("expected error containing %q, got:%s", substr, got.String())
 }
 
 // #8 — duplicate struct field names are a hard error.

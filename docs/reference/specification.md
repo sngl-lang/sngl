@@ -1004,7 +1004,7 @@ Stmt =
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
 
-IfNode = "if" CondExpr StmtBlock [ "else" StmtBlock ]
+IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
 
@@ -1341,7 +1341,7 @@ Stmt =
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
 
-IfNode = "if" CondExpr StmtBlock [ "else" StmtBlock ]
+IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
 

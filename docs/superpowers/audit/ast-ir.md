@@ -146,14 +146,14 @@ type-system level.
 > is the deliberate syntax/semantics boundary, not a leak). The earlier
 > "add `Pos` to every IR node" recommendation is rejected. The real gap —
 > synthesized nodes with `AST == nil` — is closed by:
->   1. **Propagating the origin `AST`** into synthesized nodes: a pass that
->      derives a node from a user node copies that node's `AST` (or the
->      nearest enclosing decl's) so position flows through the existing field.
->   2. **Graceful diagnostic fallback**: when a post-check diagnostic lands on
->      a node with `AST == nil`, resolve position from the enclosing
->      decl/component rather than 1:1.
->   3. **A synthetic `AST` node** where a good error message genuinely needs
->      one for an otherwise origin-less synthesized node.
+> 1. **Propagating the origin `AST`** into synthesized nodes: a pass that
+>    derives a node from a user node copies that node's `AST` (or the
+>    nearest enclosing decl's) so position flows through the existing field.
+> 2. **Graceful diagnostic fallback**: when a post-check diagnostic lands on
+>    a node with `AST == nil`, resolve position from the enclosing
+>    decl/component rather than 1:1.
+> 3. **A synthetic `AST` node** where a good error message genuinely needs
+>    one for an otherwise origin-less synthesized node.
 >
 > Not scheduled as a standalone task — applied opportunistically as
 > synthesizing passes are touched. Separately, the analyses that *misuse* the

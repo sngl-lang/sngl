@@ -5,7 +5,7 @@ import "reflect"
 // irPkgPath is the import path of this package; used by the cloner to decide
 // which values to deep-copy (ir types) versus share (AST nodes, platform
 // metadata carried in `any` fields, and other foreign types).
-var irPkgPath = reflect.TypeOf(Package{}).PkgPath()
+var irPkgPath = reflect.TypeFor[Package]().PkgPath()
 
 // ClonePackage returns a deep, independent copy of pkg. Every internal
 // cross-reference — Ident.Sym, Call.Func, StructLit.Def, Type.Decl, the

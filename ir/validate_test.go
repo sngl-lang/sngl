@@ -21,15 +21,15 @@ func TestValidateCatchesUnresolvedIdentAndNilCallType(t *testing.T) {
 	pkg := &ir.Package{Funcs: []*ir.Func{fn}}
 
 	errs := ir.Validate(pkg)
-	joined := ""
+	var joined strings.Builder
 	for _, e := range errs {
-		joined += e.Error() + "\n"
+		joined.WriteString(e.Error() + "\n")
 	}
-	if !strings.Contains(joined, "unresolved identifier \"x\"") {
-		t.Errorf("expected unresolved-ident violation, got:\n%s", joined)
+	if !strings.Contains(joined.String(), "unresolved identifier \"x\"") {
+		t.Errorf("expected unresolved-ident violation, got:\n%s", joined.String())
 	}
-	if !strings.Contains(joined, "nil return Type") {
-		t.Errorf("expected nil-call-Type violation, got:\n%s", joined)
+	if !strings.Contains(joined.String(), "nil return Type") {
+		t.Errorf("expected nil-call-Type violation, got:\n%s", joined.String())
 	}
 }
 

@@ -20,7 +20,6 @@ func TestValidateNoFalsePositives(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range fixtures {
-		f := f
 		src, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
