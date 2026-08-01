@@ -353,7 +353,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	var target string
 	for _, b := range bp.Bindings {
-		if b.Kind == bindEvent && b.Prop == event {
+		if b.matchesEvent(event) {
 			target = b.Target
 			break
 		}

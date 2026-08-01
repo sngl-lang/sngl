@@ -392,6 +392,9 @@ func (vc *irViewContext) renderFromBlueprintBody(n *ir.NodeInst, resultVar strin
 			continue
 		}
 		h := codegen.NodeHandler(n, b.Prop)
+		if (h == nil || h.Func == nil) && b.BindProp != "" {
+			h = codegen.NodeHandler(n, b.BindProp)
+		}
 		if h == nil || h.Func == nil {
 			continue
 		}
