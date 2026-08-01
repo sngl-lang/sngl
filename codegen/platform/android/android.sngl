@@ -25,6 +25,15 @@ struct Options {
     //   "robolectric": JVM simulation, fast, no emulator (default).
     //   "device":      APK on a real emulator/device via adb.
     testRunner string
+    // Toolchain combo — a known-good set of Gradle/AGP/Kotlin/Compose/SDK
+    // versions (see internal/androidtc). "stable" (default) or "next".
+    toolchain string
+    // Override compileSdk / targetSdk (0 = combo default).
+    sdk int
+    // Override minSdk (0 = default 26).
+    minSdk int
+    // Override the Gradle distribution version (unset = combo default).
+    gradleVersion string
 }
 
 // ComposableProp is a key-value pair for composable lambda parameters.

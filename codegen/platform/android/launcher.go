@@ -55,8 +55,9 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 // System.getProperty(). If the test class fails to compile or load,
 // gradle exits without anyone dialling back — the listener's deadline
 // (5 minutes, generous for cold dependency caches) catches that case.
-func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-	jdkHome, jdkReason := jdk.CompatibleHome()
+func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
+	combo := comboFromOpts(opts)
+	jdkHome, jdkReason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
 	if jdkReason != "" {
 		return nil, nil, &codegen.SkipError{Reason: jdkReason}
 	}
@@ -152,7 +153,8 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 
 func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	// SDK preconditions
-	jdkHome, jdkReason := jdk.CompatibleHome()
+	combo := comboFromOpts(opts)
+	jdkHome, jdkReason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
 	if jdkReason != "" {
 		return nil, nil, &codegen.SkipError{Reason: jdkReason}
 	}

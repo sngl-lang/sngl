@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -207,8 +208,8 @@ func readPackage(dir string) (string, error) {
 	return "app", nil
 }
 
-func gradleBuild(dir string) error {
-	jdkHome, jdkReason := jdk.CompatibleHome()
+func gradleBuild(dir string, combo androidtc.Combo) error {
+	jdkHome, jdkReason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
 	if jdkReason != "" {
 		return fmt.Errorf("android build: %s", jdkReason)
 	}

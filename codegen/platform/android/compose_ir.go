@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,6 +19,11 @@ type irComposeContext struct {
 	buf     *strings.Builder
 	indent  int
 	hasSlot bool
+	// combo is the selected Android toolchain (versions/SDK). Available so
+	// emitters can branch where a real version difference changes output;
+	// there is no such divergence between the current combos, so nothing
+	// branches on it yet — it's the wired hook, not dead weight.
+	combo androidtc.Combo
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int

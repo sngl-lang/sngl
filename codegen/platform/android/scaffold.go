@@ -43,6 +43,19 @@ type templateData struct {
 	// settings.gradle.kts as `includeBuild(...)`.
 	HasTestAgent     bool
 	TestAgentInclude string
+
+	// Toolchain versions (from the selected androidtc.Combo) injected into the
+	// Gradle scaffold so every version reference has a single source of truth.
+	GradleVersion   string
+	AGPVersion      string
+	KotlinVersion   string
+	ComposePluginV  string
+	ComposeBOM      string
+	ActivityCompose string
+	Coil            string
+	CompileSdk      int
+	TargetSdk       int
+	MinSdk          int
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -53,6 +66,7 @@ type ManifestActivity struct {
 }
 
 func newTemplateData(cfg Config) templateData {
+	combo := cfg.combo()
 	return templateData{
 		Package:         cfg.Package,
 		AppName:         appLabel(cfg),
@@ -61,6 +75,16 @@ func newTemplateData(cfg Config) templateData {
 		Color:           cfg.Color,
 		Gradle:          cfg.UseGradle(),
 		HasGoLib:        cfg.GoLib,
+		GradleVersion:   combo.Gradle,
+		AGPVersion:      combo.AGP,
+		KotlinVersion:   combo.Kotlin,
+		ComposePluginV:  combo.ComposePlugin,
+		ComposeBOM:      combo.ComposeBOM,
+		ActivityCompose: combo.ActivityCompose,
+		Coil:            combo.Coil,
+		CompileSdk:      combo.CompileSdk,
+		TargetSdk:       combo.CompileSdk,
+		MinSdk:          cfg.minSdk(),
 	}
 }
 

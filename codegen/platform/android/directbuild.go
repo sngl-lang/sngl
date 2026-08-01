@@ -18,7 +18,7 @@ import (
 func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc, d8, and
 	// the signers all run on it — never the ambient (possibly too-new) JDK.
-	home, reason := jdk.CompatibleHome()
+	home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
 	if reason != "" {
 		return "", fmt.Errorf("android build: %s", reason)
 	}
@@ -757,7 +757,7 @@ func addFilesToZip(zipPath string, files []string) error {
 
 func runD8(tc *toolchain, args []string) error {
 	slog.Info("exec", "cmd", "d8")
-	javaBin := javaPath()
+	javaBin := javaPath(tc.jdkMin, tc.jdkMax)
 	// d8 can be a jar or a wrapper script
 	if strings.HasSuffix(tc.D8, ".jar") {
 		javaArgs := append([]string{"-jar", tc.D8}, args...)
@@ -773,11 +773,11 @@ func runD8(tc *toolchain, args []string) error {
 	return cmd.Run()
 }
 
-// javaPath returns the `java` binary of a version-compatible JDK (see
-// jdk.CompatibleHome), or the sentinel "java" when none was found so callers
-// that don't validate still produce a recognizable error.
-func javaPath() string {
-	home, reason := jdk.CompatibleHome()
+// javaPath returns the `java` binary of a JDK compatible with the [min, max]
+// window (see jdk.CompatibleHome), or the sentinel "java" when none was found
+// so callers that don't validate still produce a recognizable error.
+func javaPath(minJDK, maxJDK int) string {
+	home, reason := jdk.CompatibleHome(minJDK, maxJDK)
 	if reason != "" {
 		return "java"
 	}

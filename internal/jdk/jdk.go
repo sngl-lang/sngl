@@ -16,74 +16,78 @@ import (
 	"sync"
 )
 
-// JDK major-version window the Android build can use. The lower bound is the
-// scaffold's compile target (jvmTarget/sourceCompatibility = 17); the upper
-// bound is the newest JDK the pinned Gradle can *launch on* (gradle-8.11.1
-// runs on JDK 8–23; JDK 24+ is rejected at startup). Keep both in sync with
-// codegen/platform/android/templates/gradle/wrapper/gradle-wrapper.properties
-// and app.build.gradle.kts.
-//
-// This is deliberately not a treadmill: pin a known-good JDK rather than chase
-// each new host JDK. A rolling distro (or an Android Studio JBR bump) can move
-// the ambient JDK past this window; discovery below simply looks past it for a
-// compatible one, and reports a clear "install JDK 21" message if none exists.
-const (
-	MinMajor = 17
-	MaxMajor = 23
-)
-
-// once memoizes discovery — it execs `java -version` on each candidate, so we
-// do it at most once per process.
-var once = sync.OnceValues(discover)
-
-// CompatibleHome returns the JAVA_HOME of a JDK whose major version is within
-// [MinMajor, MaxMajor] — the range the scaffold's Gradle can launch on and
-// compile against. On success reason is ""; otherwise home is "" and reason is
-// a plain-English explanation of what to install. The result is memoized.
-// `SNGL_JAVA_HOME` overrides discovery entirely.
-func CompatibleHome() (home string, reason string) {
-	return once()
+// scan holds one discovered, runnable JDK.
+type scan struct {
+	home  string
+	major int
 }
 
-func discover() (string, string) {
-	// Explicit override wins — trusted when it points to a runnable, in-range
-	// JDK. We still range-check so a mistaken override fails loudly rather than
-	// crashing Gradle later with a cryptic version string.
+// scanOnce memoizes the expensive part of discovery — exec'ing `java -version`
+// on every candidate home. It is range-independent, so callers asking for
+// different JDK windows (different toolchain combos) share one probe pass.
+var scanOnce = sync.OnceValue(scanAll)
+
+func scanAll() []scan {
+	var out []scan
+	for _, h := range candidateHomes() {
+		if v, ok := majorVersion(h); ok {
+			out = append(out, scan{home: h, major: v})
+		}
+	}
+	return out
+}
+
+// CompatibleHome returns the JAVA_HOME of a JDK whose major version is within
+// [minMajor, maxMajor] — the window the selected toolchain's Gradle can launch
+// on and compile against (see internal/androidtc). On success reason is "";
+// otherwise home is "" and reason is a plain-English explanation of what to
+// install. The candidate probe is memoized. `SNGL_JAVA_HOME` overrides
+// discovery entirely (still range-checked, so a mistaken override fails loudly
+// rather than crashing Gradle later with a cryptic version string).
+func CompatibleHome(minMajor, maxMajor int) (home string, reason string) {
+	inRange := func(v int) bool { return v >= minMajor && v <= maxMajor }
+
 	if h := os.Getenv("SNGL_JAVA_HOME"); h != "" {
 		v, ok := majorVersion(h)
 		if !ok {
 			return "", fmt.Sprintf("SNGL_JAVA_HOME=%s has no runnable bin/java", h)
 		}
 		if !inRange(v) {
-			return "", fmt.Sprintf("SNGL_JAVA_HOME points to JDK %d, outside the supported range %d–%d — install JDK 21 (LTS)", v, MinMajor, MaxMajor)
+			return "", fmt.Sprintf("SNGL_JAVA_HOME points to JDK %d, outside the supported range %d–%d — install JDK %d", v, minMajor, maxMajor, preferredInstall(minMajor, maxMajor))
 		}
 		return h, ""
 	}
 
-	// Scan every candidate; keep the newest in-range JDK, and remember any
-	// out-of-range one so the failure message can be specific.
+	// Pick the newest in-range JDK; remember any out-of-range one so the
+	// failure message can be specific.
 	best, bestV := "", -1
 	exampleV := 0
-	for _, h := range candidateHomes() {
-		v, ok := majorVersion(h)
-		if !ok {
-			continue
-		}
-		exampleV = v
-		if inRange(v) && v > bestV {
-			best, bestV = h, v
+	for _, s := range scanOnce() {
+		exampleV = s.major
+		if inRange(s.major) && s.major > bestV {
+			best, bestV = s.home, s.major
 		}
 	}
 	if best != "" {
 		return best, ""
 	}
+	install := preferredInstall(minMajor, maxMajor)
 	if exampleV != 0 {
-		return "", fmt.Sprintf("found JDK %d but the Android build needs JDK %d–%d; install JDK 21 (LTS) or set SNGL_JAVA_HOME", exampleV, MinMajor, MaxMajor)
+		return "", fmt.Sprintf("found JDK %d but this Android toolchain needs JDK %d–%d; install JDK %d or set SNGL_JAVA_HOME", exampleV, minMajor, maxMajor, install)
 	}
-	return "", fmt.Sprintf("no JDK found; install JDK 21 (LTS), or set SNGL_JAVA_HOME (need major version %d–%d)", MinMajor, MaxMajor)
+	return "", fmt.Sprintf("no JDK found; install JDK %d, or set SNGL_JAVA_HOME (need major version %d–%d)", install, minMajor, maxMajor)
 }
 
-func inRange(major int) bool { return major >= MinMajor && major <= MaxMajor }
+// preferredInstall picks a friendly "install JDK N" suggestion inside the
+// window: the newest LTS (21, then 17) that fits, else the window's upper bound.
+func preferredInstall(minMajor, maxMajor int) int {
+	for _, lts := range []int{21, 17} {
+		if lts >= minMajor && lts <= maxMajor {
+			return lts
+		}
+	}
+	return maxMajor
+}
 
 var versionRe = regexp.MustCompile(`version "([^"]+)"`)
 

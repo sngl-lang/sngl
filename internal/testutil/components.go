@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
@@ -268,7 +269,7 @@ func nativeSkipReason(platform string) string {
 		}
 		return ""
 	case "android":
-		if _, reason := jdk.CompatibleHome(); reason != "" {
+		if _, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax); reason != "" {
 			return reason
 		}
 		if os.Getenv("ANDROID_HOME") == "" && os.Getenv("ANDROID_SDK_ROOT") == "" {
@@ -301,7 +302,7 @@ func agentSkipReason(platform string) string {
 		}
 		return ""
 	case "android":
-		if _, reason := jdk.CompatibleHome(); reason != "" {
+		if _, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax); reason != "" {
 			return reason
 		}
 		return ""
@@ -384,7 +385,7 @@ func writeTempGoMod(dir string) error {
 // runGradleTest runs `./gradlew :app:testDebugUnitTest` in dir, pinned to a
 // version-compatible JDK so a too-new ambient JDK doesn't fail the launch.
 func runGradleTest(dir string) error {
-	home, reason := jdk.CompatibleHome()
+	home, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax)
 	if reason != "" {
 		return &skipErr{reason: reason}
 	}

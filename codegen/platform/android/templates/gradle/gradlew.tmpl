@@ -3,7 +3,7 @@
 # Lightweight Gradle bootstrap — downloads and caches a Gradle distribution.
 set -e
 
-GRADLE_VERSION="8.11.1"
+GRADLE_VERSION="{{.GradleVersion}}"
 GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
 GRADLE_CACHE="${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/gradle-${GRADLE_VERSION}-bin"
 GRADLE_BIN="$GRADLE_CACHE/gradle-${GRADLE_VERSION}/bin/gradle"
