@@ -9,17 +9,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.
 // Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly → sign
 func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
-	// Ensure java/keytool/jarsigner are reachable for kotlinc, d8, signers.
-	if javaBin := javaPath(); javaBin != "java" {
-		jdkBin := filepath.Dir(javaBin)
-		if !strings.Contains(os.Getenv("PATH"), jdkBin) {
-			os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		}
+	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc, d8, and
+	// the signers all run on it — never the ambient (possibly too-new) JDK.
+	home, reason := jdk.CompatibleHome()
+	if reason != "" {
+		return "", fmt.Errorf("android build: %s", reason)
+	}
+	os.Setenv("JAVA_HOME", home)
+	jdkBin := filepath.Join(home, "bin")
+	if !strings.Contains(os.Getenv("PATH"), jdkBin) {
+		os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
 
 	outDir := filepath.Join(dir, "out")
@@ -767,52 +773,15 @@ func runD8(tc *toolchain, args []string) error {
 	return cmd.Run()
 }
 
-// javaPath returns the path to the java binary, preferring JAVA_HOME, then
-// PATH, then well-known JDK locations adjacent to Android Studio / the SDK.
-// Returns "java" as last-resort sentinel so callers that don't validate still
-// produce a recognizable error.
+// javaPath returns the `java` binary of a version-compatible JDK (see
+// jdk.CompatibleHome), or the sentinel "java" when none was found so callers
+// that don't validate still produce a recognizable error.
 func javaPath() string {
-	if home := os.Getenv("JAVA_HOME"); home != "" {
-		candidate := filepath.Join(home, "bin", "java")
-		if fileExists(candidate) {
-			return candidate
-		}
+	home, reason := jdk.CompatibleHome()
+	if reason != "" {
+		return "java"
 	}
-	if p, err := exec.LookPath("java"); err == nil {
-		return p
-	}
-	for _, c := range jdkSearchPaths() {
-		if fileExists(c) {
-			return c
-		}
-	}
-	return "java"
-}
-
-// jdkSearchPaths returns candidate `java` binary paths under typical
-// Android Studio / system JDK install layouts. ANDROID_HOME itself does
-// not contain a JDK, but Android Studio installs one alongside the SDK
-// (the JetBrains Runtime, "jbr"), and Linux distros ship OpenJDK under
-// /usr/lib/jvm.
-func jdkSearchPaths() []string {
-	var out []string
-	if home := os.Getenv("ANDROID_HOME"); home != "" {
-		out = append(out,
-			filepath.Join(home, "jbr", "bin", "java"),
-			filepath.Join(filepath.Dir(home), "android-studio", "jbr", "bin", "java"),
-		)
-	}
-	out = append(out,
-		"/opt/android-studio/jbr/bin/java",
-		"/usr/local/android-studio/jbr/bin/java",
-	)
-	return out
-}
-
-// javaFound reports whether javaPath() actually located a usable binary.
-func javaFound() bool {
-	p := javaPath()
-	return p != "java" && fileExists(p)
+	return jdk.Bin(home)
 }
 
 func copyFile(src, dst string) error {

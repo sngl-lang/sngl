@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -207,6 +208,10 @@ func readPackage(dir string) (string, error) {
 }
 
 func gradleBuild(dir string) error {
+	jdkHome, jdkReason := jdk.CompatibleHome()
+	if jdkReason != "" {
+		return fmt.Errorf("android build: %s", jdkReason)
+	}
 	gradle := filepath.Join(dir, "gradlew")
 	if info, err := os.Stat(gradle); err != nil {
 		var lookErr error
@@ -218,9 +223,10 @@ func gradleBuild(dir string) error {
 		os.Chmod(gradle, 0o755)
 	}
 
-	slog.Info("exec", "cmd", "gradle assembleDebug", "dir", dir)
+	slog.Info("exec", "cmd", "gradle assembleDebug", "dir", dir, "java", jdkHome)
 	build := exec.Command(gradle, "assembleDebug")
 	build.Dir = dir
+	build.Env = jdk.Env(jdkHome)
 	build.Stdout = os.Stdout
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

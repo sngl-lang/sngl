@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
 // gomobileBind runs "gomobile bind" on the Go module at goLibDir, producing
@@ -21,6 +23,11 @@ func gomobileBind(goLibDir, aarPath string) error {
 		".",
 	)
 	bind.Dir = goLibDir
+	// gomobile bind shells out to the Android toolchain (javac/gradle for the
+	// AAR); pin a version-compatible JDK when one was found, else inherit.
+	if home, reason := jdk.CompatibleHome(); reason == "" {
+		bind.Env = jdk.Env(home)
+	}
 	bind.Stdout = os.Stderr
 	bind.Stderr = os.Stderr
 	if err := bind.Run(); err != nil {
