@@ -19,7 +19,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { n: 5 };
   function main_display(state2) {
     return "clamped: " + String(clamp(state2.n, 0, 10));

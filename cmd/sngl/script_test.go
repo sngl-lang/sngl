@@ -27,9 +27,18 @@ func TestScript(t *testing.T) {
 			t.Setenv("SNGL_HOST_GO_MOD", mod)
 		}
 	}
+	conds := scripttest.DefaultConds()
+	// `display` is true when an X11/Wayland display is reachable. gtk4 renders
+	// through real GDK, which calls the X/Wayland server; headless CI has
+	// neither, so those snapshot scripts guard with `[!display] skip`. (fyne
+	// renders in-memory via fyne/test and needs no guard.)
+	conds["display"] = script.BoolCondition(
+		"an X11/Wayland display is available",
+		os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "",
+	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
-		Conds: scripttest.DefaultConds(),
+		Conds: conds,
 	}
 	files, err := filepath.Glob("testdata/*.txt")
 	if err != nil {

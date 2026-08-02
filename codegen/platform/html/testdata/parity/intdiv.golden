@@ -19,7 +19,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { a: 10, b: 3 };
   function main_quotient(state2) {
     return Math.trunc(state2.a / state2.b);

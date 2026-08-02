@@ -52,14 +52,17 @@ func i18nRuntimeSnippet() (string, error) {
 				Sourcefile: "i18n-entry.js",
 				Loader:     api.LoaderJS,
 			},
-			Bundle:     true,
-			Write:      false,
-			Format:     api.FormatIIFE,
-			GlobalName: "i18n",
-			Platform:   api.PlatformBrowser,
-			Target:     api.ES2020,
-			Plugins:    []api.Plugin{virtFSPlugin(runtimeFS, js.VirtualRoot)},
-			LogLevel:   api.LogLevelWarning,
+			// Stable module-path comments (see jsbundle.go) so the emitted
+			// snippet is reproducible across build machines.
+			AbsWorkingDir: js.VirtualRoot,
+			Bundle:        true,
+			Write:         false,
+			Format:        api.FormatIIFE,
+			GlobalName:    "i18n",
+			Platform:      api.PlatformBrowser,
+			Target:        api.ES2020,
+			Plugins:       []api.Plugin{virtFSPlugin(runtimeFS, js.VirtualRoot)},
+			LogLevel:      api.LogLevelWarning,
 		})
 		if err := esbuildBuildErr(res.Errors); err != nil {
 			i18nSnippetErr = err

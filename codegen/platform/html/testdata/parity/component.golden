@@ -25,7 +25,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { clicks: 0, name: "World" };
   function main_greeting(state2) {
     return "Hello, " + state2.name + "!";
