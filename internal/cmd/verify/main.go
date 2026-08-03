@@ -36,7 +36,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,56 +61,20 @@ var headlessCompositor = func() string {
 // GskCairoRenderer (software) so it needs no GL context of its own.
 var headlessEnv = []string{"WLR_BACKENDS=headless", "WLR_RENDERER=pixman"}
 
-// wrapHeadless rewrites (command, args) to run under a headless display so the
-// gtk4 window-present snapshot tests can render without a real session (and so
-// they don't pop up on a developer's desktop). It prefers cage's wlroots
-// headless backend, falling back to Xvfb.
-//
-// cage refuses to run as root (it can't safely drop privileges), so in a root
-// CI container it is unusable; Xvfb has no such restriction and drives GTK4's
-// X11 backend instead. Returns the possibly-rewritten command plus any extra
-// env. When neither is available the command is returned unchanged — gtk4 tests
-// then skip via their `[!display]` guard, or pop up windows on a real session.
+// wrapHeadless rewrites (command, args) to run under cage when it is available
+// and a Wayland/X11 session is present (so windows would otherwise pop up). It
+// returns the possibly-rewritten command plus the extra env cage needs. When
+// cage is absent it returns the command unchanged and warns once.
 func wrapHeadless(command string, args []string) (string, []string, []string) {
-	if headlessCompositor != "" && os.Geteuid() != 0 {
-		env := slices.Clone(headlessEnv)
-		// Wayland needs XDG_RUNTIME_DIR for its socket; create a private 0700
-		// dir when the environment has none.
-		if os.Getenv("XDG_RUNTIME_DIR") == "" {
-			if dir := ensureRuntimeDir(); dir != "" {
-				env = append(env, "XDG_RUNTIME_DIR="+dir)
-			}
-		}
-		wrapped := append([]string{"--", command}, args...)
-		return headlessCompositor, wrapped, env
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		// No session → gtk4 tests skip themselves; nothing to isolate.
+		return command, args, nil
 	}
-	if xvfb, err := exec.LookPath("xvfb-run"); err == nil {
-		// -a picks a free display number; xvfb-run sets DISPLAY for the child.
-		wrapped := append([]string{"-a", command}, args...)
-		return xvfb, wrapped, nil
+	if headlessCompositor == "" {
+		return command, args, nil
 	}
-	return command, args, nil
-}
-
-// hasXvfb reports whether xvfb-run is on PATH (the headless fallback used when
-// cage is unavailable or can't run, e.g. as root in CI).
-func hasXvfb() bool {
-	_, err := exec.LookPath("xvfb-run")
-	return err == nil
-}
-
-// ensureRuntimeDir creates a private, 0700 directory suitable for
-// XDG_RUNTIME_DIR (Wayland refuses to use a world-accessible one) and returns
-// its path, or "" on failure.
-func ensureRuntimeDir() string {
-	dir := filepath.Join(os.TempDir(), fmt.Sprintf("sngl-xdg-%d", os.Getpid()))
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		log.Printf("note: could not create XDG_RUNTIME_DIR %s: %v", dir, err)
-		return ""
-	}
-	// MkdirAll honours umask; force 0700 so Wayland accepts it.
-	_ = os.Chmod(dir, 0o700)
-	return dir
+	wrapped := append([]string{"--", command}, args...)
+	return headlessCompositor, wrapped, headlessEnv
 }
 
 type pkgResult struct {
@@ -137,8 +100,8 @@ func main() {
 
 	log.SetFlags(0)
 
-	if headlessCompositor == "" && !hasXvfb() && (os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != "") {
-		log.Printf("note: no headless compositor found; gtk4 snapshot tests will present windows on your desktop. Install cage (pacman -S cage) or xvfb-run to run the test steps headlessly.")
+	if headlessCompositor == "" && (os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != "") {
+		log.Printf("note: cage not found; gtk4 snapshot tests will present windows on your desktop. Install it (pacman -S cage) to run the test steps headlessly.")
 	}
 
 	// Step 1: go generate (skip in dry mode)
