@@ -2,12 +2,8 @@
 # golden under app.sngl.snapshots/initial.ansi.
 
 [!exec:go] skip 'go toolchain required'
-# QUARANTINE: the second (compare) run's snapshotAssert RPC hangs to its 30s
-# timeout in the GitLab CI environment specifically — it passes on dev machines
-# and could not be reproduced locally or in a matching Debian container (which
-# hits an unrelated gtk4 GIR-path error instead). Skipped under CI while the
-# CI-only hang is investigated; runs everywhere else so coverage is retained.
-[ci] skip 'bubbletea snapshot compare hangs only under CI — quarantined, under investigation'
+# TEMP DEBUG: un-quarantined with RPC tracing to capture the CI-only hang.
+env SNGL_RPC_DEBUG=1
 
 # First run with SNGL_UPDATE_SNAPSHOTS=1 creates the golden.
 env SNGL_UPDATE_SNAPSHOTS=1
