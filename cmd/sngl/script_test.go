@@ -45,6 +45,13 @@ func TestScript(t *testing.T) {
 		"gtk4 development libraries are available",
 		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil,
 	)
+	// `ci` is true under GitLab CI. Used to quarantine a script that fails only
+	// in the CI environment while it's being investigated, without losing the
+	// coverage everywhere else.
+	conds["ci"] = script.BoolCondition(
+		"running under GitLab CI",
+		os.Getenv("GITLAB_CI") == "true" || os.Getenv("CI") == "true",
+	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
 		Conds: conds,
