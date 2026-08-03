@@ -2,8 +2,6 @@
 # golden under app.sngl.snapshots/initial.ansi.
 
 [!exec:go] skip 'go toolchain required'
-# TEMP DEBUG: un-quarantined with RPC tracing to capture the CI-only hang.
-env SNGL_RPC_DEBUG=1
 
 # First run with SNGL_UPDATE_SNAPSHOTS=1 creates the golden.
 env SNGL_UPDATE_SNAPSHOTS=1

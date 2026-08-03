@@ -127,16 +127,27 @@ func (w *Writer) Notify(method string, params any) error {
 	return w.send(Message{JSONRPC: "2.0", Method: method, Params: raw})
 }
 
-// Request sends a request and returns the allocated id. The caller is
-// responsible for matching the eventual response by id (the reader
-// loop on the other side typically dispatches by id).
-func (w *Writer) Request(method string, params any) (uint64, error) {
+// ReserveID allocates the next request id without sending anything. Pair it
+// with SendRequest when the caller must register a response handler *before*
+// the request goes on the wire — otherwise a fast reply can arrive and be
+// dropped before the handler exists (a register-after-send race).
+func (w *Writer) ReserveID() uint64 { return w.seq.Add(1) }
+
+// SendRequest sends a request under a previously reserved id.
+func (w *Writer) SendRequest(id uint64, method string, params any) error {
 	raw, err := json.Marshal(params)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	id := w.seq.Add(1)
-	return id, w.send(Message{JSONRPC: "2.0", ID: &id, Method: method, Params: raw})
+	return w.send(Message{JSONRPC: "2.0", ID: &id, Method: method, Params: raw})
+}
+
+// Request reserves an id and sends a request in one call, returning the id.
+// Use ReserveID + SendRequest instead when you need to register a response
+// handler before the request is sent.
+func (w *Writer) Request(method string, params any) (uint64, error) {
+	id := w.ReserveID()
+	return id, w.SendRequest(id, method, params)
 }
 
 // Respond sends a response to a previously received request. Either
