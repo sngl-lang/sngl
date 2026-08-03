@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -35,6 +36,14 @@ func TestScript(t *testing.T) {
 	conds["display"] = script.BoolCondition(
 		"an X11/Wayland display is available",
 		os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "",
+	)
+	// `gtk4` is true when the gtk4 development libraries are installed, so the
+	// generated cgo can be compiled. The gtk4 build script uses it to compile
+	// generated gtk4 code in CI (no display needed) even though the render-based
+	// snapshot script skips there.
+	conds["gtk4"] = script.BoolCondition(
+		"gtk4 development libraries are available",
+		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil,
 	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
