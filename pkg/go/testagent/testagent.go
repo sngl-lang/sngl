@@ -241,8 +241,22 @@ func Main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	in := testrpc.NewReader(os.Stdin)
-	out := testrpc.NewWriter(os.Stdout)
+	// The JSON-RPC stream travels over this process's real stdin/stdout. Test
+	// code must not touch those fds: a stray write to stdout (e.g. bubbletea /
+	// lipgloss probing the terminal for its colour profile) corrupts the RPC
+	// framing, so the driver can't parse the request and never replies — the
+	// per-request awaitResponse then hangs to its 30s timeout (a flaky CI
+	// failure). Reserve the real fds for RPC and redirect os.Stdin/os.Stdout so
+	// any test-code I/O goes to a harmless place instead of the wire.
+	rpcIn := os.Stdin
+	rpcOut := os.Stdout
+	if devnull, err := os.Open(os.DevNull); err == nil {
+		os.Stdin = devnull
+	}
+	os.Stdout = os.Stderr
+
+	in := testrpc.NewReader(rpcIn)
+	out := testrpc.NewWriter(rpcOut)
 
 	for {
 		select {
