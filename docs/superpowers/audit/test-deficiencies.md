@@ -87,31 +87,12 @@ against `errorBoundary`, `timer`, `select`, `modal`, `tabs`, etc.
 
 ## (b) Specific gaps (proposed fixture names)
 
-### Components without any fixture (1–22)
+### Components without any fixture
 
-1. `testdata/component_image.sngl` — exercise `image` with src/alt/ObjectFit.
-2. `testdata/component_scroll.sngl` — vertical scroll container.
-3. `testdata/component_spacer.sngl` — flex grow in hbox/vbox.
-4. `testdata/component_checkbox.sngl` — bound to bool var, click toggles.
-5. `testdata/component_radio.sngl` — group selection via shared var.
-6. `testdata/component_textarea.sngl` — multiline input/value bind.
-7. `testdata/component_spinner.sngl` — visible/hidden via bool.
-8. `testdata/component_tabs.sngl` — selected index, tab change event.
-9. `testdata/component_link.sngl` — href ref + window id.
-10. `testdata/component_divider.sngl` — minimal render.
-11. `testdata/component_modal.sngl` — open/close via var, `@dismiss` event.
-12. `testdata/component_drawer.sngl` — side prop, dismiss handler.
-13. `testdata/component_tooltip.sngl` — wrapping child, message prop.
-14. `testdata/component_popover.sngl` — anchor + visible toggle.
-15. `testdata/component_splitview.sngl` — two-pane resize event.
-16. `testdata/component_table.sngl` — rows iterated from `list<T>`.
-17. `testdata/component_tree.sngl` — recursive node, expand event (only 2 mentions today, no behavioural test).
-18. `testdata/component_menu.sngl` + `_menubar` + `_toolbar` — menu event.
-19. `testdata/component_datepicker.sngl` — bound to `date`, `@dateChange`.
-20. `testdata/component_chip.sngl` — closable variant.
-21. `testdata/component_avatar.sngl` — image fallback when src empty.
-22. `testdata/component_slot.sngl` — children projection through slot
-    (component appears in lib but no test exercises slot semantics).
+All 22 component fixtures now exist in `testdata/`. Follow-up (still open):
+several are render-only stubs with no `t.assert` — spacer, spinner, link,
+divider, splitview, menubar, toolbar, chip, avatar, slot — and should gain
+behavioural assertions.
 
 ### Platform-asymmetric gaps (23–32)
 
@@ -123,8 +104,7 @@ against `errorBoundary`, `timer`, `select`, `modal`, `tabs`, etc.
 28. `cmd/sngl/testdata/compile_fyne_i18n.txt` — same.
 29. `cmd/sngl/testdata/compile_html_locale_override.txt` — locale override golden exists for android and bubbletea but not html.
 30. `codegen/platform/fyne/snapshot_test.go` — fyne `snapshot.go` exists, no test. Android has `batchsnapshot_test.go` + `compiler_test.go`, fyne has only intrinsic_*.
-31. `codegen/platform/bubbletea/snapshot_test.go` — same missing.
-32. `codegen/platform/gtk4/intrinsic_*` tests exist, but no compiler/view-builder integration test parallel to bubbletea/fyne.
+31. `codegen/platform/bubbletea/snapshot_test.go` — no test by that name, but bubbletea is now broadly covered by `compiler_test.go`, `component_test.go`, `blueprint_test.go`, `canvas_test.go`, and `widget_template_test.go`. Low-priority / mostly-covered; a dedicated snapshot test would be the only remaining gap.
 
 ### Untested checker error paths (33–46)
 
@@ -189,15 +169,15 @@ Cross-referencing the 177 `c.error(...)` sites against `testdata/error_*.sngl`:
 77. **IR nodes** — `ir/intrinsics_test.go`, `ir/async_test.go`, `ir/color_test.go`, `ir/context_test.go`, `ir/pointsto_test.go`, `ir/types_test.go` exist. **No tests for `ir/scope.go`, `ir/defaults.go`, `ir/strip.go`, `ir/expr.go`, `ir/stmt.go` independently.**
 78. **Formatter round-trip** — only the FuzzDocument target enforces it; no static fixture list. Add `internal/parser/roundtrip_test.go` that walks every `testdata/*.sngl` and asserts `Format(Parse(src))` reparses to identical AST.
 79. **LSP** — many `lsp_*_test.go` files but no test for `internal/lsp/preview_*` round-trip with mutation, no test for semantic tokens against unicode identifiers, no test for completion mid-string interpolation, no test for hover on stdlib `Style` fields specifically.
-80. **CLI** — `cmd/sngl/preview.go`, `cmd/sngl/snapshot.go`, `cmd/sngl/snapshot_examples.go`, `cmd/sngl/build.go` have no dedicated `.txt` golden scripts. Add `cmd/sngl/testdata/preview.txt`, `snapshot.txt`, `snapshot_examples.txt`, `build.txt`.
+80. **CLI** — `cmd/sngl/preview.go`, `cmd/sngl/snapshot.go`, `cmd/sngl/snapshot_examples.go` have no dedicated `.txt` golden scripts. Add `cmd/sngl/testdata/preview.txt`, `snapshot.txt`, `snapshot_examples.txt`. (`build` is now covered by `build_basic.txt`, `build_test_opt.txt`, and `build_nocachebust_parity.txt`.)
 81. **dump subcommand** — only `dump_lowered_list.txt`; no golden for `dump parsed`, `dump checked`, `dump optimized`, `dump analysis`. Add four scripts.
 82. **format subcommand** — `fmt.txt` and `fmt_errors.txt` exist but no `fmt --check` mode test, no test of stdin pipe behavior.
 83. **Playground/WASM** — `internal/playground/api_test.go`, `minify_test.go` cover the HTTP API + minifier. **Zero tests for the `//go:build js` codepath** (`runtests_js.go` files in bubbletea/fyne, playground wasm). No way to detect breakage of the WASM build short of `GOOS=js GOARCH=wasm go build`.
 84. **Snapshot / imgdiff** — `internal/imgdiff/imgdiff.go` has no `_test.go` whatsoever. Add tests for pixel tolerance, alpha handling, size-mismatch error.
-85. **docsgen** — `internal/cmd/docsgen/main.go` has no tests; `internal/docbrowser/server.go` (currently in working-tree modification) has no `_test.go`. Add `internal/docbrowser/server_test.go` for routing and frontmatter parsing.
+85. **docsgen** — `internal/cmd/docsgen` is now partially covered (`binaries_test.go`, `build_test.go`). Remaining gap: `internal/docbrowser/server.go` has no `_test.go`. Add `internal/docbrowser/server_test.go` for routing and frontmatter parsing.
 86. **tsgen / specgen / ebnf2ts** — `internal/cmd/{tsgen,specgen,ebnf2ts}` have no tests.
 87. **Schemes** — `codegen/scheme/file/file.go` and `codegen/scheme/git/git.go` have **no `_test.go`**. C, go, http, js schemes all have importer tests. Add `file_test.go`, `git_test.go` (mock-backed for git).
-88. **Android scaffold / gradle template** — `codegen/platform/android/{build.go,toolchain.go,gomobile.go,directbuild.go,scaffold.go,icon.go}` have no dedicated tests; only the IR compiler is covered.
+88. **Android scaffold / gradle template** — the android package is now broadly covered (`android_test.go`, `batchsnapshot_test.go`, `compiler_test.go`, `component_test.go`, etc.). Remaining low-priority gap: `codegen/platform/android/{scaffold.go,toolchain.go,gomobile.go,icon.go}` still have no dedicated tests.
 
 ### Generic methods matrix (89–94)
 
@@ -210,9 +190,6 @@ Cross-referencing the 177 `c.error(...)` sites against `testdata/error_*.sngl`:
 
 ### i18n parity gaps (95–99)
 
-95. `pkg/js/i18n/locale_currency_test.js` — currency default per locale (matches `pkg/go/i18n/TestNumberCurrencyDefaultsByLocale`).
-96. `pkg/js/i18n/apostrophe_test.js` — ICU apostrophe escape (matches `TestTrApostrophe`).
-97. `pkg/kotlin/i18n/I18nTest.kt::testApostropheEscape` — same.
 98. `pkg/kotlin/i18n/I18nTest.kt::testDefaultLocaleFromLANG` — env-driven default locale (Go has 4 variants, Kotlin has 0).
 99. `pkg/kotlin/i18n/I18nTest.kt::testNumberCurrencyInTemplate` — template-driven currency formatting.
 
@@ -233,8 +210,8 @@ Cross-referencing the 177 `c.error(...)` sites against `testdata/error_*.sngl`:
 
 ---
 
-Totals: 108 specific gaps. Hot spots: 22 untested stdlib components, 23
-checker error paths without `error_*.sngl` fixtures, gtk4 platform almost
-entirely untested, file/git URL schemes untested, imgdiff/docbrowser/
-docsgen/tsgen untested, no `t.Parallel` anywhere in the repo, WASM build
-has no Go-level test coverage.
+Totals: ~80 specific gaps remaining (down from 108 as component fixtures,
+gtk4, and several i18n/CLI/docsgen items have since been filled). Hot spots:
+23 checker error paths without `error_*.sngl` fixtures, file/git URL schemes
+untested, imgdiff/docbrowser/tsgen untested, no `t.Parallel` anywhere in the
+repo, WASM build has no Go-level test coverage.

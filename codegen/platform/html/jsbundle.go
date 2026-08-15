@@ -46,12 +46,17 @@ func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, er
 			Sourcefile: "sngl-entry.js",
 			Loader:     api.LoaderJS,
 		},
-		Bundle:    true,
-		Write:     false,
-		Format:    api.FormatIIFE,
-		Platform:  api.PlatformBrowser,
-		Target:    api.ES2020,
-		Sourcemap: sourcemapOpt,
+		// Compute module-path comments relative to the virtual root, not the
+		// process cwd — otherwise esbuild emits `// ../../..×N/sngl/sngl-entry.js`
+		// where N is the build directory's absolute depth, making output
+		// non-reproducible across machines (and breaking golden tests in CI).
+		AbsWorkingDir: js.VirtualRoot,
+		Bundle:        true,
+		Write:         false,
+		Format:        api.FormatIIFE,
+		Platform:      api.PlatformBrowser,
+		Target:        api.ES2020,
+		Sourcemap:     sourcemapOpt,
 		Loader: map[string]api.Loader{
 			".ts":   api.LoaderTS,
 			".tsx":  api.LoaderTSX,

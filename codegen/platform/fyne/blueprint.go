@@ -85,6 +85,18 @@ type bindMeta struct {
 	// vc.entrySync so SetVar() emits `m.<field><syncTarget>(v)` to keep the
 	// widget in sync with externally-driven state changes.
 	SyncTarget string
+	// BindProp is the bidi prop name whose `:prop=var` two-way binding this
+	// Event services (e.g. "value" for an Entry's OnChanged). The prop-binding
+	// lower pass names the synthesized writeback handler after the prop, not
+	// the DOM event, so handler lookups match on BindProp as well as Prop.
+	BindProp string
+}
+
+// matchesEvent reports whether b is the bindEvent that services the given
+// sngl event name — either its own DOM event (Prop) or the bidi prop whose
+// two-way binding it backs (BindProp).
+func (b bindMeta) matchesEvent(event string) bool {
+	return b.Kind == bindEvent && (b.Prop == event || (b.BindProp != "" && b.BindProp == event))
 }
 
 var (
@@ -332,6 +344,8 @@ func parseBindings(e ast.Expr) []bindMeta {
 				b.BindParam = stringValue(f.Value)
 			case "syncTarget":
 				b.SyncTarget = stringValue(f.Value)
+			case "bindProp":
+				b.BindProp = stringValue(f.Value)
 			}
 		}
 		out = append(out, b)

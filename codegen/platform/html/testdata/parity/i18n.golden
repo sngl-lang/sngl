@@ -9,17 +9,17 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <vbox>
-  <text id="$0">
+  <text id="__n0" data-sngl-id="__n0">
   </text>
-  <button id="$1" text="Add">
+  <button id="$0" text="Add">
   </button>
-  <button id="$2" text="Reset">
+  <button id="$1" text="Reset">
   </button>
 </vbox>
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var i18n = (() => {
     var __defProp = Object.defineProperty;
     var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -545,17 +545,17 @@ body { font-family: system-ui, sans-serif; }
   var __ctx_locale = i18n.defaultLocale();
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var $2 = document.getElementById("$2");
-  $1.addEventListener("click", function() {
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $0.addEventListener("click", function() {
     state.count = state.count + 1;
-    $0.value = main_label(state);
+    __n0.textContent = main_label(state);
   });
-  $2.addEventListener("click", function() {
+  $1.addEventListener("click", function() {
     state.count = 0;
-    $0.value = main_label(state);
+    __n0.textContent = main_label(state);
   });
   function __sngl_init() {
-    $0.value = main_label(state);
+    __n0.textContent = main_label(state);
   }
   __sngl_init();
 })();

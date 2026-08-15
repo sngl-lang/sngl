@@ -386,12 +386,16 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc, addBlueprintImport)
 			continue
 		}
-		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, addBlueprintImport, canvasByFunc)
-			continue
-		}
+		// A promoted node handler (LoweredFromTag set) routes to
+		// emitIRPromotedHandler even when Synthesized — the two-way-bind
+		// writeback handler is both. Only genuine render/slot funcs (no
+		// LoweredFromTag) take the slot path.
 		if fn.LoweredFromTag != "" {
 			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeTags, addBlueprintImport, canvasByFunc)
+			continue
+		}
+		if fn.Synthesized {
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, addBlueprintImport, canvasByFunc)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -978,7 +982,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	var binding *bindMeta
 	if bp != nil {
 		for i := range bp.Bindings {
-			if bp.Bindings[i].Kind == bindEvent && bp.Bindings[i].Prop == fn.LoweredFromEvent {
+			if bp.Bindings[i].matchesEvent(fn.LoweredFromEvent) {
 				binding = &bp.Bindings[i]
 				break
 			}

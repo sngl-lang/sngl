@@ -19,7 +19,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { n: 5 };
   function main_display(state2) {
     return "clamped: " + String(clamp(state2.n, 0, 10));
@@ -53,7 +53,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = main_display(state);
   });
   function __sngl_init() {
-    __n0.value = main_display(state);
+    __n0.textContent = main_display(state);
   }
   __sngl_init();
 })();

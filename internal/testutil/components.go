@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
 // snglBinary returns the path to a freshly-built `sngl` binary. The
@@ -228,6 +230,12 @@ func skipReasonFromOutput(out string) (string, bool) {
 		{"Package gtk4 was not found", "gtk4 dev libraries not installed"},
 		{"No package 'gtk4' found", "gtk4 dev libraries not installed"},
 		{"go not found in PATH", "go not on PATH"},
+		// JDK/Gradle version incompatibility — the JDK selector should pin a
+		// supported JDK, but if Gradle still rejects the runtime, skip rather
+		// than fail on an environment mismatch.
+		{"install JDK 21", "no compatible JDK for the Android build"},
+		{"Could not determine java version", "JDK unsupported by bundled Gradle"},
+		{"Unsupported class file major version", "JDK unsupported by bundled Gradle"},
 	}
 	for _, s := range signals {
 		if strings.Contains(out, s.needle) {
@@ -261,8 +269,8 @@ func nativeSkipReason(platform string) string {
 		}
 		return ""
 	case "android":
-		if _, err := exec.LookPath("java"); err != nil && os.Getenv("JAVA_HOME") == "" {
-			return "JDK 17+ not on PATH"
+		if _, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax); reason != "" {
+			return reason
 		}
 		if os.Getenv("ANDROID_HOME") == "" && os.Getenv("ANDROID_SDK_ROOT") == "" {
 			return "ANDROID_HOME / ANDROID_SDK_ROOT not set"
@@ -294,8 +302,8 @@ func agentSkipReason(platform string) string {
 		}
 		return ""
 	case "android":
-		if _, err := exec.LookPath("java"); err != nil && os.Getenv("JAVA_HOME") == "" {
-			return "JDK 17+ not on PATH"
+		if _, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax); reason != "" {
+			return reason
 		}
 		return ""
 	case "html":
@@ -374,8 +382,13 @@ func writeTempGoMod(dir string) error {
 	return os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
 }
 
-// runGradleTest runs `./gradlew :app:testDebugUnitTest` in dir.
+// runGradleTest runs `./gradlew :app:testDebugUnitTest` in dir, pinned to a
+// version-compatible JDK so a too-new ambient JDK doesn't fail the launch.
 func runGradleTest(dir string) error {
+	home, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax)
+	if reason != "" {
+		return &skipErr{reason: reason}
+	}
 	gradlew := filepath.Join(dir, "gradlew")
 	if _, err := os.Stat(gradlew); err != nil {
 		return &skipErr{reason: "no gradle wrapper in scaffold"}
@@ -383,6 +396,7 @@ func runGradleTest(dir string) error {
 	_ = os.Chmod(gradlew, 0o755)
 	cmd := exec.Command(gradlew, ":app:testDebugUnitTest", "--no-daemon", "--console=plain")
 	cmd.Dir = dir
+	cmd.Env = jdk.Env(home)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if reason, ok := skipReasonFromOutput(string(out)); ok {
 			return &skipErr{reason: reason}

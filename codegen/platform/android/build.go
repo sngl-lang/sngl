@@ -20,12 +20,13 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	cfg = cfg.withDefaults()
 	useGradle := cfg.UseGradle()
 	pkg := cfg.Package
+	combo := cfg.combo()
 
 	// If a Go module is present (go+android), run gomobile bind first.
 	goLibDir := filepath.Join(dir, "golib")
 	if info, err := os.Stat(goLibDir); err == nil && info.IsDir() {
 		aarPath := filepath.Join(dir, "golib.aar")
-		if err := gomobileBind(goLibDir, aarPath); err != nil {
+		if err := gomobileBind(goLibDir, aarPath, combo); err != nil {
 			return "", fmt.Errorf("gomobile bind: %w", err)
 		}
 	}
@@ -36,13 +37,13 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if err := gradleBuild(dir); err != nil {
+		if err := gradleBuild(dir, combo); err != nil {
 			return "", err
 		}
 		return filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk"), nil
 	}
 
-	tc, err := resolveToolchain()
+	tc, err := resolveToolchain(combo)
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain: %w", err)
 	}

@@ -201,6 +201,38 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 // (stmts, true) when the (componentName, prop) pair maps to a known DOM
 // write, or (nil, false) when the caller should fall back to the generic
 // DOM-name dispatch.
+// domFieldForIR returns the DOM property that a component prop maps to for a
+// direct `el.<field> = value` write, and whether such a flat mapping exists.
+// Components whose reactive prop needs an attribute, a nested element, or a
+// style write (progress, checkbox, modal, …) return ok=false and must go
+// through domWriteForIR. Both the handler-path (domWriteForIR) and the
+// initial-render write share this table so the two never disagree — e.g. a
+// text node's `value` is `textContent` in both, not `.textContent` in
+// handlers and `.value` at init.
+func domFieldForIR(componentName, prop string) (string, bool) {
+	switch componentName {
+	case "text", "badge":
+		if prop == "value" {
+			return "textContent", true
+		}
+	case "button":
+		if prop == "text" {
+			return "textContent", true
+		}
+		if prop == "disabled" {
+			return "disabled", true
+		}
+	case "input":
+		if prop == "value" {
+			return "value", true
+		}
+		if prop == "disabled" {
+			return "disabled", true
+		}
+	}
+	return "", false
+}
+
 func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, bool) {
 	mkAssign := func(field string) []ir.Stmt {
 		return []ir.Stmt{&ir.Assign{
@@ -209,25 +241,10 @@ func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, 
 			Value:  value,
 		}}
 	}
+	if field, ok := domFieldForIR(componentName, prop); ok {
+		return mkAssign(field), true
+	}
 	switch componentName {
-	case "text", "badge":
-		if prop == "value" {
-			return mkAssign("textContent"), true
-		}
-	case "button":
-		if prop == "text" {
-			return mkAssign("textContent"), true
-		}
-		if prop == "disabled" {
-			return mkAssign("disabled"), true
-		}
-	case "input":
-		if prop == "value" {
-			return mkAssign("value"), true
-		}
-		if prop == "disabled" {
-			return mkAssign("disabled"), true
-		}
 	case "progress":
 		if prop == "value" {
 			return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{

@@ -1,0 +1,20 @@
+# gtk4 codegen must produce compilable cgo. `sngl build` compiles the generated
+# C/cgo to a binary without running it, so it needs no display — this guards the
+# gtk4 codegen in CI, where the render-based snapshot script (test_gtk4_snapshot)
+# skips for lack of an X11/Wayland display.
+
+[!exec:go] skip 'go toolchain required'
+[!exec:pkg-config] skip 'pkg-config required'
+[!exec:cc] skip 'C compiler required for cgo'
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl build --platform=gtk4 --lang=go app.sngl -o out
+exists out/app
+
+-- app.sngl --
+output { go { gtk4 } }
+
+component greeter {
+    var name = "world"
+    text(value=name)
+}

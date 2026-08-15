@@ -1,299 +1,200 @@
 package checker
 
-import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
-)
+import "git.duckfam.us/jonathan/sngl/ir"
 
-// analyzePurity determines the purity level of a function by walking its body.
-// events names the enclosing component's events (nil for package-level funcs)
-// so a sigil-free emit `save(x)` is recognised as a side effect.
-func analyzePurity(f *ir.Func, vars map[string]*ir.Var, events map[string]struct{}) ir.Purity {
-	w := &purityWalker{vars: vars, events: events}
-	if f.AST != nil {
-		if f.AST.Body != nil {
-			w.walkExpr(f.AST.Body)
-		}
-		if f.AST.Block.IsDefined() {
-			w.walkBlock(&f.AST.Block)
-		}
+// analyzeEffects computes a function's direct purity and its Reads/Writes sets
+// by walking the checked IR body (fn.Block), using resolved identifier symbols
+// rather than names. varSet is the set of *reactive* vars in scope (package +
+// component vars, by pointer) — locals, params, loop vars, and consts are not
+// members, so a write to a local that shadows a package var is correctly seen
+// as internal, not a mutation of external state.
+//
+// This computes only *direct* effects. Transitive purity (a function that
+// calls an impure one) is propagated separately by the call-graph fixed point
+// in checkBodies, after every function has its direct purity.
+func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
+	w := &effectWalker{
+		vars:   varSet,
+		reads:  make(map[*ir.Var]struct{}),
+		writes: make(map[*ir.Var]struct{}),
 	}
+	w.walkStmts(f.Block)
+
 	if w.mutates {
-		return ir.PurityMutates
+		f.Purity = ir.PurityMutates
+	} else if len(w.reads) > 0 {
+		f.Purity = ir.PurityReadonly
+	} else {
+		f.Purity = ir.PurityPure
 	}
-	if w.readsVar {
-		return ir.PurityReadonly
-	}
-	return ir.PurityPure
-}
 
-// trackAccess populates Func.Reads/Writes by walking the function body.
-func trackAccess(f *ir.Func, vars map[string]*ir.Var) {
-	w := &accessWalker{vars: vars, reads: make(map[string]bool), writes: make(map[string]bool)}
-	if f.AST != nil {
-		if f.AST.Body != nil {
-			w.walkExpr(f.AST.Body)
-		}
-		if f.AST.Block.IsDefined() {
-			w.walkBlock(&f.AST.Block)
-		}
+	f.Reads = f.Reads[:0]
+	for v := range w.reads {
+		f.Reads = append(f.Reads, v)
 	}
-	for name := range w.reads {
-		if v, ok := vars[name]; ok {
-			f.Reads = append(f.Reads, v)
-		}
-	}
-	for name := range w.writes {
-		if v, ok := vars[name]; ok {
-			f.Writes = append(f.Writes, v)
-		}
+	f.Writes = f.Writes[:0]
+	for v := range w.writes {
+		f.Writes = append(f.Writes, v)
 	}
 }
 
-// --- purity walker ---
-
-type purityWalker struct {
-	vars     map[string]*ir.Var
-	events   map[string]struct{}
-	readsVar bool
-	mutates  bool
+type effectWalker struct {
+	vars    map[*ir.Var]struct{}
+	reads   map[*ir.Var]struct{}
+	writes  map[*ir.Var]struct{}
+	mutates bool
 }
 
-func (w *purityWalker) walkExpr(e ast.Expr) {
-	if e == nil {
-		return
+// externalVar returns the reactive var an expression refers to, or nil when the
+// expression is not a plain identifier bound to a reactive var (i.e. it is a
+// local/param/loop-var, a const, or a non-identifier).
+func (w *effectWalker) externalVar(e ir.Expr) *ir.Var {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return nil
 	}
-	switch x := e.(type) {
-	case *ast.IdentExpr:
-		if _, ok := w.vars[x.Name]; ok {
-			w.readsVar = true
-		}
-	case *ast.BinaryExpr:
-		w.walkExpr(x.Left)
-		w.walkExpr(x.Right)
-	case *ast.UnaryExpr:
-		w.walkExpr(x.Operand)
-	case *ast.TernaryExpr:
-		w.walkExpr(x.Cond)
-		w.walkExpr(x.Then)
-		w.walkExpr(x.Else)
-	case *ast.CallExpr:
-		// A bare `event(...)` call is an emit — a side effect that fires
-		// parent handlers — so it makes the function impure.
-		if id, ok := x.Func.(*ast.IdentExpr); ok {
-			if _, isEvent := w.events[id.Name]; isEvent {
-				w.mutates = true
-			}
-		}
-		w.walkExpr(x.Func)
-		w.walkArgList(x.Args)
-	case *ast.SelectExpr:
-		w.walkExpr(x.Operand)
-	case *ast.IndexExpr:
-		w.walkExpr(x.Operand)
-		w.walkExpr(x.Index)
-	case *ast.StructExpr:
-		for _, f := range x.Fields {
-			w.walkExpr(f.Value)
-		}
-	case *ast.ListExpr:
-		for _, el := range x.Elements {
-			w.walkExpr(el)
-		}
-	case *ast.InterpolationExpr:
-		for _, part := range x.Parts {
-			w.walkExpr(part)
-		}
-	case *ast.LambdaExpr:
-		w.walkExpr(x.Body)
-		w.walkBlock(&x.Block)
-	case *ast.SpreadExpr:
-		w.walkExpr(x.Operand)
-	case *ast.ParenExpr:
-		w.walkExpr(x.Inner)
-	case *ast.ConstExpr:
-		w.walkExpr(x.Operand)
+	v, ok := id.Sym.(*ir.Var)
+	if !ok {
+		return nil
 	}
+	if _, ok := w.vars[v]; ok {
+		return v
+	}
+	return nil
 }
 
-func (w *purityWalker) walkBlock(block *ast.StmtBlock) {
-	if block == nil || !block.IsDefined() {
-		return
-	}
-	for _, s := range block.Stmts {
+func (w *effectWalker) walkStmts(stmts []ir.Stmt) {
+	for _, s := range stmts {
 		w.walkStmt(s)
 	}
 }
 
-func (w *purityWalker) walkStmt(s ast.Stmt) {
-	switch x := s.(type) {
-	case *ast.AssignStmt:
+func (w *effectWalker) walkStmt(s ir.Stmt) {
+	switch n := s.(type) {
+	case *ir.Assign:
+		w.recordWrite(n.Target)
+		w.walkExpr(n.Value)
+	case *ir.Toggle:
+		w.recordWrite(n.Target)
+	case *ir.Emit:
+		// Emitting an event fires parent handlers — an observable side effect.
 		w.mutates = true
-		w.walkExpr(x.Value)
-	case *ast.ToggleStmt:
-		w.mutates = true
-	case *ast.IncDecStmt:
-		w.mutates = true
-	case *ast.VarStmt:
-		if x.Init != nil {
-			w.walkExpr(x.Init)
+		for _, a := range n.Args {
+			w.walkExpr(a.Value)
 		}
-	case *ast.ReturnStmt:
-		if x.Value != nil {
-			w.walkExpr(x.Value)
+	case *ir.LocalVar:
+		w.walkExpr(n.Init)
+	case *ir.Return:
+		w.walkExpr(n.Value)
+	case *ir.CallStmt:
+		if n.Call != nil {
+			w.walkExpr(n.Call)
 		}
-	case *ast.CallStmt:
-		w.walkExpr(x.Call)
-	case *ast.IfStmt:
-		w.walkExpr(x.Cond)
-		w.walkBlock(&x.Body)
-		w.walkBlock(&x.Else)
-	case *ast.ForStmt:
-		w.walkExpr(x.Iter)
-		w.walkBlock(&x.Body)
-		w.walkBlock(&x.Else)
-	case *ast.PlatformStmt:
-		w.walkBlock(&x.Body)
-	case *ast.VisualNode:
-		w.walkArgList(x.Args)
-		w.walkBlock(&x.Block)
+	case *ir.If:
+		w.walkExpr(n.Cond)
+		w.walkStmts(n.Body)
+		w.walkStmts(n.Else)
+	case *ir.For:
+		w.walkExpr(n.Iter)
+		w.walkStmts(n.Body)
+		w.walkStmts(n.Else)
+	case *ir.NodeInst:
+		for _, p := range n.Props {
+			w.walkExpr(p.Value)
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil {
+				w.walkStmts(h.Func.Block)
+			}
+		}
+		w.walkStmts(n.Children)
+	case *ir.SlotInst:
+		w.walkStmts(n.Children)
+	case *ir.PlatformFilter:
+		w.walkStmts(n.Body)
+	case *ir.ErrorBoundary:
+		w.walkStmts(n.Children)
+	case *ir.ContextProvider:
+		w.walkStmts(n.Children)
 	}
 }
 
-func (w *purityWalker) walkArgList(args ast.ArgList) {
-	for _, a := range args.Args {
-		switch arg := a.(type) {
-		case ast.Arg:
-			w.walkExpr(arg.Value)
-		case ast.EventHandler:
-			w.walkBlock(&arg.Body)
-		}
-	}
-}
-
-// --- access walker ---
-
-type accessWalker struct {
-	vars   map[string]*ir.Var
-	reads  map[string]bool
-	writes map[string]bool
-}
-
-func (w *accessWalker) walkExpr(e ast.Expr) {
-	if e == nil {
+// recordWrite classifies an assignment/toggle target. A plain identifier bound
+// to a reactive var is a mutation of external state; a plain identifier bound
+// to a local/param is internal (pure). Any other target shape (field, index,
+// deref) may reach external state, so it is treated conservatively as a
+// mutation. The target is also walked for reads (e.g. `m[k] = v` reads m, k).
+func (w *effectWalker) recordWrite(target ir.Expr) {
+	if v := w.externalVar(target); v != nil {
+		w.mutates = true
+		w.writes[v] = struct{}{}
 		return
 	}
+	if _, ok := target.(*ir.Ident); ok {
+		// Local/param/loop-var write — no external effect.
+		return
+	}
+	// Field/index/deref target: conservatively a side effect.
+	w.mutates = true
+	w.walkExpr(target)
+}
+
+func (w *effectWalker) walkExpr(e ir.Expr) {
 	switch x := e.(type) {
-	case *ast.IdentExpr:
-		if _, ok := w.vars[x.Name]; ok {
-			w.reads[x.Name] = true
+	case nil:
+		return
+	case *ir.Ident:
+		if v := w.externalVar(x); v != nil {
+			w.reads[v] = struct{}{}
 		}
-	case *ast.BinaryExpr:
+	case *ir.Binary:
 		w.walkExpr(x.Left)
 		w.walkExpr(x.Right)
-	case *ast.UnaryExpr:
+	case *ir.Unary:
 		w.walkExpr(x.Operand)
-	case *ast.TernaryExpr:
+	case *ir.Ternary:
 		w.walkExpr(x.Cond)
 		w.walkExpr(x.Then)
 		w.walkExpr(x.Else)
-	case *ast.CallExpr:
-		w.walkExpr(x.Func)
-		w.walkArgList(x.Args)
-	case *ast.SelectExpr:
+	case *ir.Call:
+		w.walkExpr(x.Receiver)
+		w.walkExpr(x.Callee)
+		for _, a := range x.Args {
+			w.walkExpr(a.Value)
+		}
+	case *ir.Conversion:
 		w.walkExpr(x.Operand)
-	case *ast.IndexExpr:
+	case *ir.Select:
 		w.walkExpr(x.Operand)
-		w.walkExpr(x.Index)
-	case *ast.StructExpr:
+	case *ir.Index:
+		w.walkExpr(x.Operand)
+		w.walkExpr(x.Idx)
+	case *ir.ListLit:
+		for _, el := range x.Elems {
+			w.walkExpr(el)
+		}
+	case *ir.MapLitIR:
+		for _, kv := range x.Entries {
+			w.walkExpr(kv.Key)
+			w.walkExpr(kv.Value)
+		}
+	case *ir.StructLit:
 		for _, f := range x.Fields {
 			w.walkExpr(f.Value)
 		}
-	case *ast.ListExpr:
-		for _, el := range x.Elements {
-			w.walkExpr(el)
-		}
-	case *ast.InterpolationExpr:
-		for _, part := range x.Parts {
-			w.walkExpr(part)
-		}
-	case *ast.LambdaExpr:
-		w.walkExpr(x.Body)
-		w.walkBlock(&x.Block)
-	case *ast.SpreadExpr:
+	case *ir.Spread:
 		w.walkExpr(x.Operand)
-	case *ast.ParenExpr:
-		w.walkExpr(x.Inner)
-	case *ast.ConstExpr:
-		w.walkExpr(x.Operand)
-	}
-}
-
-func (w *accessWalker) walkBlock(block *ast.StmtBlock) {
-	if block == nil || !block.IsDefined() {
-		return
-	}
-	for _, s := range block.Stmts {
-		w.walkStmt(s)
-	}
-}
-
-func (w *accessWalker) walkStmt(s ast.Stmt) {
-	switch x := s.(type) {
-	case *ast.AssignStmt:
-		// Target is a write.
-		if ident, ok := x.Target.(*ast.IdentExpr); ok {
-			if _, ok := w.vars[ident.Name]; ok {
-				w.writes[ident.Name] = true
-			}
+	case *ir.Lambda:
+		// Effects inside a lambda body count toward the enclosing function,
+		// matching the conservative pre-IR behaviour.
+		if x.Func != nil {
+			w.walkStmts(x.Func.Block)
 		}
-		w.walkExpr(x.Value)
-	case *ast.ToggleStmt:
-		if ident, ok := x.Target.(*ast.IdentExpr); ok {
-			if _, ok := w.vars[ident.Name]; ok {
-				w.writes[ident.Name] = true
-			}
+	case *ir.Closure:
+		if x.Func != nil {
+			w.walkStmts(x.Func.Block)
 		}
-	case *ast.IncDecStmt:
-		if ident, ok := x.Target.(*ast.IdentExpr); ok {
-			if _, ok := w.vars[ident.Name]; ok {
-				w.reads[ident.Name] = true
-				w.writes[ident.Name] = true
-			}
-		}
-	case *ast.VarStmt:
-		if x.Init != nil {
-			w.walkExpr(x.Init)
-		}
-	case *ast.ReturnStmt:
-		if x.Value != nil {
-			w.walkExpr(x.Value)
-		}
-	case *ast.CallStmt:
-		w.walkExpr(x.Call)
-	case *ast.IfStmt:
-		w.walkExpr(x.Cond)
-		w.walkBlock(&x.Body)
-		w.walkBlock(&x.Else)
-	case *ast.ForStmt:
-		w.walkExpr(x.Iter)
-		w.walkBlock(&x.Body)
-		w.walkBlock(&x.Else)
-	case *ast.PlatformStmt:
-		w.walkBlock(&x.Body)
-	case *ast.VisualNode:
-		w.walkArgList(x.Args)
-		w.walkBlock(&x.Block)
-	}
-}
-
-func (w *accessWalker) walkArgList(args ast.ArgList) {
-	for _, a := range args.Args {
-		switch arg := a.(type) {
-		case ast.Arg:
-			w.walkExpr(arg.Value)
-		case ast.EventHandler:
-			w.walkBlock(&arg.Body)
-		}
+	case *ir.Literal, *ir.ContextRead:
+		// Leaf — no sub-expressions and no external access.
 	}
 }

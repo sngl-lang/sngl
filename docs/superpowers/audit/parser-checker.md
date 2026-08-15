@@ -6,19 +6,6 @@ Audit of parser and type-checker for inconsistencies, bugs, and UX gaps. Finding
 
 ## BUG
 
-### 1. Mutually recursive struct types fail in both orderings
-
-**Files:** `internal/checker/checker.go:264-265`, `internal/checker/resolve.go:255-289`
-`registerStruct` calls `buildStructDef` which calls `resolveTypeRequired` on every field type *immediately* during pass1's source-order walk. So:
-
-```
-struct A { b B }
-struct B { a A }
-```
-
-fails with `unknown type "B"`. Swapping the order fails with `unknown type "A"`. Pass1 must first register name-only shells for all `StructDef`/`EnumDef`/`UnitDef`/`Component`, then field-resolve in a second sub-pass. The fixture `testdata/checker_mutual_recursion.sngl` only exercises function mutual recursion, not types — coverage gap.
-**Severity:** BUG (no workaround for mutually referencing types).
-
 ### 2. List spread (`[...xs, 3]`) typechecks the spread as an element ⚠️ PARTIAL (2026-06-07)
 
 Struct spread in function call arg lists (`f(...s)`) and component prop lists is now supported (`feat(checker): expand ...struct in function call arg lists` / `feat(checker): expand ...struct in component prop lists`). Error fixtures for type/duplicate violations added (`test: add missing spread error fixtures`). **Still open:** list literal spread `[...xs, 3]` — `inferListLit` does not handle `*ast.SpreadExpr`; and call spread with `list<T>` operand `f(...xs)` — the new spread path requires a struct operand.
@@ -34,7 +21,34 @@ var b list<int> = [...a, 3]   // error: cannot initialize list<int> with list<li
 The function must special-case `*ast.SpreadExpr`, validate that the operand is a `list<T>` matching the element type, and flatten in IR. Same code path likely affects function-call spread (`f(...xs)`) — that case also fails (`spread_func.sngl` → "cannot pass list<int> as int").
 **Severity:** BUG (no working spread syntax in lists or calls).
 
-### 3. Field/method access on `string` (and likely other primitives) for unknown name silently returns `dyn`
+> **Scoping note (2026-07-06):** the checker fix (make `inferListLit` handle
+> `*ast.SpreadExpr` → `list<T>` operand, keep list flat, emit an `ir.Spread`
+> element) is small and correct — but it is *not sufficient*, and shipping it
+> alone is a **regression** for Go-family targets: `[...a, 3]` would change from
+> a clean check-error into broken generated code. Verified after a trial
+> implementation: the interpreter (`evalListLit`) and JS/html (native `[...a,3]`)
+> handle a `Spread` inside a `ListLit`, but the Go backends do not, on **two**
+> paths each: (1) `GoIRContext.ListLit` would emit invalid `[]int{a..., 3}`
+> (composite literals can't spread); (2) the literal fast-path `IRLiteralToGo`
+> (via `golang.LowerVarInit`, used for bind/const init) renders the spread
+> element as `""` → `[]int{"", 3}`. Kotlin has the analogous two paths.
+> **Right fix:** a lowering pass (cap-gated OFF for JS, which has native spread)
+> that desugars a spread-bearing `ListLit` into an append/concat expression
+> (`append(append([]T{}, a...), 3)` for Go, `a + listOf(3)` for Kotlin) so every
+> backend gets it from one place — matching the lowering-migration philosophy.
+> Do list-literal spread and the `f(...xs)` list-operand call spread together in
+> that pass. Trial checker-only change was reverted to avoid the regression.
+
+### 3. Field/method access on `string` (and likely other primitives) for unknown name silently returns `dyn` — ⚠️ PARTIAL (2026-07-06)
+
+> The method form (`x.foo()`) errors ("no method %q on type string"), and
+> int/float/bool field access errors via `hasNoLegitimateFields`. **Still open:**
+> the *field* form on `string` (`x.foo`) falls through to `dyn` at
+> `inferSelect`'s tail (`expr.go:~1438`). A safe fix must first distinguish an
+> unknown field from a valid auto-firing zero-arg method-field (only `.length`
+> is special-cased today; whether bare `s.upper` should auto-fire is
+> unresolved) — deferred until that method-field-resolution question is settled
+> rather than risk rejecting valid access.
 
 **Files:** `internal/checker/expr.go` (SelectExpr branch)
 
@@ -45,29 +59,6 @@ var y = x.foo   // checks OK, y typed `dyn`
 
 The fixture `testdata/error_selector_unknown_method_string.sngl` documents the method-form bug; the field-form has no fixture. Both should produce `no field "foo" on type string`. Compounded by the silent `dyn` infection — downstream uses don't error either.
 **Severity:** BUG (loss of type safety).
-
-### 4. Empty map literal `{}` against non-string-keyed map type emits wrong-shape error
-
-**Files:** `internal/checker/expr.go:1419-1428`
-
-```
-var m map<float, int> = {}   // "ident-keyed literal does not match map<float,...>"
-```
-
-`reinterpretStructAsMap` runs on every anon struct lit against a map type, even when there are zero fields. It should short-circuit when `len(x.Fields) == 0` and return an empty `MapLitIR` typed at the expected map type, mirroring `inferMapLit`'s empty path at line 1493.
-**Severity:** BUG (correct empty map syntax rejected with misleading message).
-
-### 5. Bare enum-member name in `const` initializer not resolved against expected enum type
-
-**Files:** `internal/checker/checker.go:572-624` (`registerConsts`, `nonConstRef`)
-
-```
-enum Color { red, green, blue }
-const c Color = red   // error: const initializer forward-references "red"
-```
-
-Equivalent `var c Color = red` works. The cause: `nonConstRef` walks the AST before any expected-type / enum-member resolution; it doesn't know `red` is `Color.red`. Either make `nonConstRef` aware of enum member shorthand against `spec.Type`, or move the const-initializer-purity check to run on the IR after `checkExprExpecting` has performed enum-bare-name resolution.
-**Severity:** BUG (asymmetry between var and const init, blocking idiomatic constant declarations).
 
 ### 6. Multiple parser productions panic on benign inputs
 
@@ -81,61 +72,31 @@ Beyond the `->` case, at least one other input panics:
 The deferred `recover()` in `Parse` catches the panic but the user-facing message ("index out of range [N] with length N") is useless. Either fix the builder's iterator bounds-checking (likely in `build.go` where `tokenAt`/iterator advance happens after a parse error tree has gaps) or wrap the recover with "internal parser bug, please report" plus dump the original source span.
 **Severity:** BUG (compiler crash messages reach users).
 
-### 7. Integer literal overflow is not detected anywhere
-
-**Files:** `internal/parser/lexer.go`, `internal/checker/expr.go`
-
-```
-var x int = 99999999999999999999
-```
-
-typechecks `ok`. Fixture `testdata/error_integer_overflow.sngl` claims this should be `ERROR(parse) "invalid integer literal"`, but neither the parser nor the checker performs `strconv.ParseInt` on `INT` literals. The fixture is also never enforced (see #14).
-**Severity:** BUG (silent overflow into IR; depending on codegen path may produce wrong runtime values).
-
-### 8. Duplicate struct field and function parameter names accepted silently
-
-**Files:** `internal/checker/resolve.go:255-289` (`buildStructDef`), `internal/checker/resolve.go` (param resolution)
-
-```
-struct P { x int; y int; x bool }  // ok
-func f(x int, x int) => x          // ok
-```
-
-Both should be hard errors. Currently the second `x` field/param silently overrides or is appended, leaving an inconsistent IR.
-**Severity:** BUG (incoherent IR for malformed input).
-
-### 9. Block-bodied func without explicit `return` and non-void return type accepted
-
-**Files:** `internal/checker/checker.go`, `internal/checker/expr.go`
-
-```
-func mustReturn() int {
-  var x = 1
-}    // ok
-```
-
-No "missing return" diagnostic. Code generators must then synthesize a default, which has been a recurring bug source.
-**Severity:** BUG (control-flow analysis missing).
-
 ---
 
 ## INCONSISTENCY
 
-### 10. `func name(params) ReturnType => expr` rejected — no expression-body form with explicit return type
+### 10. `func name(params) ReturnType => expr` rejected — ⛔ BY DESIGN (2026-07-06)
+
+> Resolved as documented, not implemented. CLAUDE.md now states the rule
+> explicitly: an expression-bodied `=> expr` func "cannot carry a return type
+> annotation; return type is always inferred." The restriction is intentional,
+> so this is WONTFIX. Note: the related stdlib-`dyn`-propagation gap (#26) must
+> therefore be solved by a return-type *inference* sub-pass, not by annotating
+> stdlib `=>` funcs.
 
 **Files:** `internal/parser/sngl.ebnf:306-309`
 Grammar: `FuncBodyTail = fat_arrow Expr | [ Type ] StmtBlock`. The return type can attach only to the block form. So users can't write `func id<T>(x T) T => x`; they must drop the annotation and rely on inference, or rewrite as a block. This is undocumented in CLAUDE.md (which says the two valid forms are `func name(params) [Type] { ... }` and `func name(params) => expr` — leaving the question "may `=> expr` carry a return type?" implicit). Same constraint on `FuncLit` (line 521). Either accept `[Type] fat_arrow Expr` or document the restriction loudly.
 **Severity:** INCONSISTENCY (expressiveness gap between the two forms; also blocks the natural generic-method-with-explicit-return signature).
 Repro: `func double(x int) int => x * 2`
 
-### 11. `else if` not supported in the grammar
+### 12. Bare lambda `x => expr` rejected — only `func(x) => expr` — ⏸ DESIGN DECISION (not auto-implemented)
 
-**Files:** `internal/parser/sngl.ebnf:397`
-`IfNode = kw_if CondExpr StmtBlock [ kw_else StmtBlock ]`. Only `else { ... }` is permitted; `else if` requires `else { if ... }`. Universal expected feature; absence forces verbose nesting.
-**Severity:** INCONSISTENCY / UX (universally expected from C-family syntax).
-Repro: `if x == 0 { } else if x == 1 { }`
-
-### 12. Bare lambda `x => expr` rejected — only `func(x) => expr`
+> Held for an explicit design call, not implemented autonomously: the author's
+> demonstrated preference for explicit forms (memory
+> `feedback_test_api_use_event_form.md`) suggests the verbose `func(x) => …`
+> lambda is intentional. Adding a bare-arrow lambda is a language-surface
+> decision for the maintainer, not a bug fix. Left open pending that decision.
 
 **Files:** `internal/parser/sngl.ebnf:481-502` (`PrimaryExpr` includes `FuncLit` but no bare-arrow alternative)
 
@@ -163,21 +124,6 @@ unexpected "enum", expected "FuncLit", "AnonStructLit", "PrimaryExpr", "PostfixE
 **Files:** `internal/parser/build_test.go:817-829`, `internal/checker/checker_test.go:1172-1175,1265,1382`, `internal/optimize/optimize_test.go:553`
 Every test that walks `testdata/` skips files with `ERROR(parse)` directives instead of asserting them. So fixtures like `error_integer_overflow.sngl`, `error_unterminated_string.sngl`, `error_bad_interpolation.sngl` (and ~30 others — `grep -l ERROR(parse) testdata/*.sngl | wc -l`) are dead — they neither verify the error message nor protect against parse-time regressions. Either run them through `parser.Parse` and assert the directive line/substring matches a reported error, or remove them.
 **Severity:** INCONSISTENCY (silent test coverage hole; documented bugs in fixtures stay broken indefinitely).
-
-### 15. Known const-forward-reference bug documented in fixture, never fixed
-
-**Files:** `testdata/error_const_forward_ref.sngl`, `internal/checker/checker.go:572-611`
-The fixture's own comment explains the bug:
-
-> Bug: const forward references work in backward order but not forward order. […] The diagnostic also misleads — it labels B as "non-const" when the real reason is that B is unregistered at this point.
-> Fix: pass1 should register `*ir.Var` shells for *all* consts before checking initializers (analogous to type shells in #1). The existing `nonConstRef` should then either operate on the IR after registration, or be removed in favor of the deferred const-purity check (`constAsserts`) already implemented for `const(expr)`.
-> **Severity:** INCONSISTENCY (acknowledged bug, persistent).
-
-### 16. `func` mutual recursion works but `struct` mutual recursion doesn't — same compiler, different rules
-
-**Files:** `internal/checker/checker.go:232-301`
-Functions are pre-registered (pass1 collects signatures, pass2 walks bodies). Structs/enums/units are registered *with their field types resolved inline*. Either both should pre-register or neither. See #1.
-**Severity:** INCONSISTENCY.
 
 ### 17. Stale comment in `ast/expr.go:119` references the old `->` arrow form
 

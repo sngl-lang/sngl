@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 )
@@ -207,5 +208,52 @@ func TestT_SnapshotMismatchReportsDiff(t *testing.T) {
 	at.Snapshot("foo")
 	if !at.failed {
 		t.Errorf("expected mismatch to fail the test")
+	}
+}
+
+// writerFunc adapts a function to io.Writer.
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+// TestSendAndAwaitRegistersBeforeSend is a regression test for the
+// register-after-send race that caused the intermittent CI hang in
+// test_bubbletea_snapshot. The writer delivers the response synchronously the
+// instant the request is written — mimicking a driver whose reply beats the
+// caller's registration. sendAndAwait must register the pending channel before
+// sending, or the response is dropped and this hangs.
+func TestSendAndAwaitRegistersBeforeSend(t *testing.T) {
+	var w *testrpc.Writer
+	w = testrpc.NewWriter(writerFunc(func(p []byte) (int, error) {
+		var m testrpc.Message
+		if json.Unmarshal(bytes.TrimSpace(p), &m) == nil && m.ID != nil && m.Method != "" {
+			// Respond before Write returns — i.e. before the old code
+			// would have registered its response channel.
+			deliverResponse(&testrpc.Message{JSONRPC: "2.0", ID: m.ID, Result: json.RawMessage(`{"ok":true}`)})
+		}
+		return len(p), nil
+	}))
+
+	done := make(chan error, 1)
+	go func() {
+		resp, err := sendAndAwait(w, "ping", map[string]any{})
+		if err != nil {
+			done <- err
+			return
+		}
+		if resp == nil || resp.ID == nil {
+			done <- io.ErrUnexpectedEOF
+			return
+		}
+		done <- nil
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("sendAndAwait: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("sendAndAwait hung: a response delivered before registration was dropped (register-after-send race)")
 	}
 }

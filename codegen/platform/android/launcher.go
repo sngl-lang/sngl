@@ -16,6 +16,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -54,9 +55,11 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 // System.getProperty(). If the test class fails to compile or load,
 // gradle exits without anyone dialling back — the listener's deadline
 // (5 minutes, generous for cold dependency caches) catches that case.
-func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-	if !javaFound() {
-		return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
+func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
+	combo := comboFromOpts(opts)
+	jdkHome, jdkReason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
+	if jdkReason != "" {
+		return nil, nil, &codegen.SkipError{Reason: jdkReason}
 	}
 	if sdkRoot() == "" {
 		return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
@@ -85,6 +88,7 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 		"--tests", "*.MainScreenAgentTest",
 	)
 	cmd.Dir = dir
+	cmd.Env = jdk.Env(jdkHome)
 	cmd.Stdout = &buildLog
 	cmd.Stderr = &buildLog
 	if err := cmd.Start(); err != nil {
@@ -149,8 +153,10 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 
 func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	// SDK preconditions
-	if !javaFound() {
-		return nil, nil, &codegen.SkipError{Reason: "JDK 17+ not on PATH"}
+	combo := comboFromOpts(opts)
+	jdkHome, jdkReason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
+	if jdkReason != "" {
+		return nil, nil, &codegen.SkipError{Reason: jdkReason}
 	}
 	if sdkRoot() == "" {
 		return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
@@ -190,6 +196,7 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 	var buildOut bytes.Buffer
 	bld := exec.CommandContext(ctx, gradleBin, ":app:assembleDebug", "--no-daemon", "--console=plain")
 	bld.Dir = dir
+	bld.Env = jdk.Env(jdkHome)
 	bld.Stdout = &buildOut
 	bld.Stderr = &buildOut
 	if err := bld.Run(); err != nil {

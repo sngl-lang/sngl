@@ -40,7 +40,33 @@ func WalkStmts(pkg *Package, fn func(Stmt) bool) {
 	w.run(pkg)
 }
 
-// walker is the single IR traversal scaffold backing WalkExprs and WalkStmts.
+// VisitorFuncs holds the optional per-node callbacks for Walk. Either
+// field may be nil; the corresponding node kind is still descended into.
+// A callback returns true to stop the walk early.
+type VisitorFuncs struct {
+	Stmt func(Stmt) bool
+	Expr func(Expr) bool
+}
+
+// Walk visits every statement and expression reachable from pkg in a
+// single traversal (the same root set as WalkStmts/WalkExprs), invoking
+// v.Stmt on each statement and v.Expr on each expression. Statements are
+// visited in pre-order before their children. Returning true from either
+// callback stops the whole walk.
+//
+// Walk is the general entry point; WalkStmts and WalkExprs are the
+// single-callback conveniences. New IR shapes are handled by extending
+// the one walker below, so every consumer stays in lockstep.
+func Walk(pkg *Package, v VisitorFuncs) {
+	if pkg == nil {
+		return
+	}
+	w := walker{exprFn: v.Expr, stmtFn: v.Stmt}
+	w.run(pkg)
+}
+
+// walker is the single IR traversal scaffold backing Walk, WalkExprs, and
+// WalkStmts.
 // exprFn and/or stmtFn may be nil; the corresponding nodes are still descended
 // into (so e.g. WalkStmts reaches statements buried inside lambda bodies even
 // though it sets no exprFn).
@@ -70,6 +96,7 @@ func (w *walker) visitExpr(e Expr) {
 		w.visitExpr(x.Else)
 	case *Call:
 		w.visitExpr(x.Receiver)
+		w.visitExpr(x.Callee)
 		for _, a := range x.Args {
 			w.visitExpr(a.Value)
 		}
@@ -139,6 +166,7 @@ func (w *walker) visitStmt(s Stmt) {
 				return
 			}
 			w.visitExpr(n.Call.Receiver)
+			w.visitExpr(n.Call.Callee)
 			for _, a := range n.Call.Args {
 				w.visitExpr(a.Value)
 			}

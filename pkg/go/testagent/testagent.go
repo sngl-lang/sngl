@@ -111,10 +111,17 @@ var (
 	pending   = map[uint64]chan *testrpc.Message{}
 )
 
-// awaitResponse parks the caller until the driver replies to id, or the
-// 30s timeout fires. Caller is responsible for sending the request first
-// and registering the channel before calling.
-func awaitResponse(id uint64) (*testrpc.Message, error) {
+// sendAndAwait registers a response channel, then sends the request, then
+// parks until the driver replies or the 30s timeout fires.
+//
+// The channel MUST be registered before the request is sent. Otherwise a fast
+// reply can reach the read loop's deliverResponse before the channel exists —
+// the response is dropped and this call hangs to its timeout. That
+// register-after-send race was the intermittent, CI-only
+// test_bubbletea_snapshot hang: under the runner's scheduling the driver's
+// snapshotAssert reply routinely beat the (previously post-send) registration.
+func sendAndAwait(w *testrpc.Writer, method string, params any) (*testrpc.Message, error) {
+	id := w.ReserveID()
 	ch := make(chan *testrpc.Message, 1)
 	pendingMu.Lock()
 	pending[id] = ch
@@ -124,6 +131,9 @@ func awaitResponse(id uint64) (*testrpc.Message, error) {
 		delete(pending, id)
 		pendingMu.Unlock()
 	}()
+	if err := w.SendRequest(id, method, params); err != nil {
+		return nil, err
+	}
 	select {
 	case m := <-ch:
 		return m, nil
@@ -133,7 +143,7 @@ func awaitResponse(id uint64) (*testrpc.Message, error) {
 }
 
 // deliverResponse routes a received response message to whatever caller
-// is parked on awaitResponse for its id. No-op if no one is waiting.
+// is parked on sendAndAwait for its id. No-op if no one is waiting.
 func deliverResponse(m *testrpc.Message) {
 	if m.ID == nil {
 		return
@@ -171,17 +181,12 @@ func (t *T) Snapshot(name string) {
 		t.Errorf("snapshot %q: capture: %v", name, err)
 		return
 	}
-	id, err := t.w.Request("snapshotAssert", map[string]any{
+	resp, err := sendAndAwait(t.w, "snapshotAssert", map[string]any{
 		"test":  t.name,
 		"name":  name,
 		"mime":  mime,
 		"bytes": base64.StdEncoding.EncodeToString(raw),
 	})
-	if err != nil {
-		t.Errorf("snapshot %q: rpc send: %v", name, err)
-		return
-	}
-	resp, err := awaitResponse(id)
 	if err != nil {
 		t.Errorf("snapshot %q: %v", name, err)
 		return
@@ -241,8 +246,21 @@ func Main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	in := testrpc.NewReader(os.Stdin)
-	out := testrpc.NewWriter(os.Stdout)
+	// Defense-in-depth: the JSON-RPC stream travels over this process's real
+	// stdin/stdout, so reserve those fds for RPC and redirect os.Stdin/os.Stdout
+	// elsewhere. Test code (e.g. bubbletea/lipgloss probing the terminal) could
+	// otherwise write stray bytes to stdout and corrupt the wire framing. (The
+	// intermittent CI hang was a separate register-after-send race in
+	// sendAndAwait, fixed there; this isolation just keeps the channel clean.)
+	rpcIn := os.Stdin
+	rpcOut := os.Stdout
+	if devnull, err := os.Open(os.DevNull); err == nil {
+		os.Stdin = devnull
+	}
+	os.Stdout = os.Stderr
+
+	in := testrpc.NewReader(rpcIn)
+	out := testrpc.NewWriter(rpcOut)
 
 	for {
 		select {

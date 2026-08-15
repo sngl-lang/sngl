@@ -9,57 +9,6 @@ throughout. Ordered by severity within each section.
 
 ## 1. Phase-boundary violations
 
-### 1.1 Purity analysis ignores transitive purity (UNSOUND)
-
-**File:** `internal/checker/purity.go:9-26`, `internal/checker/purity.go:138-139`
-
-`analyzePurity` walks the AST and only flags `w.mutates=true` on direct
-`AssignStmt`/`ToggleStmt`/`IncDecStmt`/`EmitStmt`/`IncDec`. The `CallStmt`
-case at line 138 walks `x.Call` (the operand/args) but never inspects the
-callee's purity. So `func f() { g() }` is `PurityPure` even if `g` is
-`PurityMutates`. Optimizer then folds `f()` via `interpretFunc`
-(`internal/optimize/interpret.go:65-67`) — which gates only on
-`fn.Purity == ir.PurityPure`. A user-declared impure function transitively
-called from a "pure" wrapper will be silently evaluated at compile time and
-its side effects discarded.
-
-Stdlib has a separate fixed-point propagation in
-`internal/checker/stdlib.go:190-199` (`highestCalledPurity` iteration),
-which is correct for stdlib but never runs over user funcs.
-
-**Severity:** soundness bug. Fix: propagate purity over the call graph in
-pass2 after `analyzePurity` completes the per-func walk, identical to the
-stdlib loop.
-
-### 1.2 Purity walker is name-based, no scope awareness
-
-**File:** `internal/checker/purity.go:64-67`, `:181-183`, `:238-242`
-
-`purityWalker.walkExpr` checks `if _, ok := w.vars[x.Name]; ok` against a
-single `map[string]*ir.Var` built from `c.pkg.Vars` only
-(`internal/checker/checker.go:1656-1662`). Component-local vars
-(`comp.Vars`), window vars, and lambda-local `LocalVar`s aren't in the map.
-Worse, a local var that shadows a package var gets the package-var purity
-flag wrongly attributed: `func f(x int) { x = 1 }` reads `x` as the
-parameter but `w.vars["x"]` may match an unrelated package var of the same
-name, and `w.mutates = true` fires for a write to a *parameter* — flagging
-a pure function as mutating.
-
-**Severity:** correctness. Walk over IR (which already has resolved
-`*ir.Var` pointers via `ir.Ident.Sym`) instead of the AST, or thread the
-real scope through.
-
-### 1.3 Purity / access analysis walks AST, not IR
-
-**File:** `internal/checker/purity.go:9-49`
-
-After pass2 builds the IR, `analyzePurity` and `trackAccess` re-walk
-`f.AST.Body` / `f.AST.Block` from the AST. Means they ignore desugaring
-that the checker performed (interpolation lowered to concat calls, method
-desugaring, implicit conversions, etc.). For any future pre-lower
-desugaring done in the checker, purity will silently diverge from what the
-optimizer/lower see. Should walk `fn.Block` IR.
-
 ### 1.4 Type-namespace method recognition duplicated in `nonConstCallRef`
 
 **File:** `internal/checker/checker.go:717-735`
@@ -117,34 +66,6 @@ the round-trip property (no nested comments) or fix.
 ---
 
 ## 2. Ordering / correctness bugs
-
-### 2.1 Same `*ir.Package` mutated across multiple build targets
-
-**File:** `cmd/sngl/compile.go:122-188`, `cmd/sngl/build.go:122-160`,
-`cmd/sngl/run.go:134-149`.
-
-```
-for _, target := range targets {
-    optimize.Optimize(pkg, optCfg)       // mutates pkg
-    lower.Lower(pkg, caps, opts{...})    // mutates pkg further
-    optimize.Optimize(pkg, optCfg)       // optimize2
-    generateTarget(..., pkg, target, ...)
-}
-```
-
-`pkg` is the same pointer across iterations. After target #1 runs through
-lower, `pkg.Components[*].Body` has been rewritten into the create/append
-intrinsic stream, `pkg.Vars` extended with synthesized reactive vars,
-ternaries lowered, etc. Target #2 sees that already-lowered state instead
-of the original IR, then runs its own optimize+lower on top — producing
-either compile failures, double-lowering corruption, or just wrong code
-that happens to look OK on toy fixtures. There is no `ir.ClonePackage` in
-the codebase. Either deep-copy the package per target or have lower be
-non-destructive. The "fold once, lower once per target" topology is broken
-under multi-target builds.
-
-**Severity:** correctness, latent. Triggers any time `output { ... }`
-declares more than one platform.
 
 ### 2.2 Optimizer runs before lower — sees high-level constructs lower will rewrite
 
@@ -593,13 +514,6 @@ contract or have downstream phases short-circuit when `len(diags) > 0`.
 concurrent `Check` calls (LSP serves files in parallel) race on
 `stdlibOnce.Do`, the second waits — but each then re-checks the same
 docs into its own scope. Acceptable for correctness; wasteful for perf.
-
-### 7.2 Test runner runs both pre-lower and post-lower with shared `pkg` — same multi-target bug
-
-**File:** `cmd/sngl/run.go:127-149`, similar shape to `compile.go`.
-
-If `sngl test` ever supports multi-target, hits the same multi-mutate
-issue from #2.1.
 
 ### 7.3 `irLiteral` returns `nil` for unknown types — silently drops folded values
 

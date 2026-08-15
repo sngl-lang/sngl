@@ -19,7 +19,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { a: 10, b: 3 };
   function main_quotient(state2) {
     return Math.trunc(state2.a / state2.b);
@@ -39,7 +39,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = String(main_quotient(state));
   });
   function __sngl_init() {
-    __n0.value = String(main_quotient(state));
+    __n0.textContent = String(main_quotient(state));
   }
   __sngl_init();
 })();

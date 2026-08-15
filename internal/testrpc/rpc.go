@@ -14,9 +14,29 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"sync/atomic"
 )
+
+// rpcLog emits per-message wire tracing to stderr when SNGL_RPC_DEBUG is set.
+// Used to diagnose the CI-only test_bubbletea_snapshot hang, which reproduces
+// only inside the GitLab runner. The env is read per-call (not cached) so an
+// in-process driver picks it up even when the script sets it after start; logs
+// carry the pid so the driver and the agent subprocess can be told apart.
+func rpcLog(format string, args ...any) {
+	if os.Getenv("SNGL_RPC_DEBUG") == "" {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[rpc pid=%d] "+format+"\n", append([]any{os.Getpid()}, args...)...)
+}
+
+func idStr(id *uint64) string {
+	if id == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d", *id)
+}
 
 // Message is the discriminated union of request, notification, and
 // response. JSON tags use omitempty so a single struct round-trips
@@ -63,15 +83,30 @@ func NewReader(r io.Reader) *Reader {
 func (r *Reader) Read() (*Message, error) {
 	if !r.sc.Scan() {
 		if err := r.sc.Err(); err != nil {
+			rpcLog("read error: %v", err)
 			return nil, err
 		}
+		rpcLog("read EOF")
 		return nil, io.EOF
 	}
+	b := r.sc.Bytes()
 	var m Message
-	if err := json.Unmarshal(r.sc.Bytes(), &m); err != nil {
+	if err := json.Unmarshal(b, &m); err != nil {
+		rpcLog("PARSE ERROR on %d bytes: %q", len(b), truncForLog(b))
 		return nil, fmt.Errorf("testrpc: parse: %w", err)
 	}
+	rpcLog("recv id=%s method=%q response=%v len=%d", idStr(m.ID), m.Method, m.IsResponse(), len(b))
 	return &m, nil
+}
+
+// truncForLog returns b as a string, truncated so a giant/corrupt frame
+// doesn't flood the log.
+func truncForLog(b []byte) string {
+	const max = 200
+	if len(b) > max {
+		return string(b[:max]) + fmt.Sprintf("…(+%d bytes)", len(b)-max)
+	}
+	return string(b)
 }
 
 // Writer serialises messages. Safe for concurrent use.
@@ -92,16 +127,27 @@ func (w *Writer) Notify(method string, params any) error {
 	return w.send(Message{JSONRPC: "2.0", Method: method, Params: raw})
 }
 
-// Request sends a request and returns the allocated id. The caller is
-// responsible for matching the eventual response by id (the reader
-// loop on the other side typically dispatches by id).
-func (w *Writer) Request(method string, params any) (uint64, error) {
+// ReserveID allocates the next request id without sending anything. Pair it
+// with SendRequest when the caller must register a response handler *before*
+// the request goes on the wire — otherwise a fast reply can arrive and be
+// dropped before the handler exists (a register-after-send race).
+func (w *Writer) ReserveID() uint64 { return w.seq.Add(1) }
+
+// SendRequest sends a request under a previously reserved id.
+func (w *Writer) SendRequest(id uint64, method string, params any) error {
 	raw, err := json.Marshal(params)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	id := w.seq.Add(1)
-	return id, w.send(Message{JSONRPC: "2.0", ID: &id, Method: method, Params: raw})
+	return w.send(Message{JSONRPC: "2.0", ID: &id, Method: method, Params: raw})
+}
+
+// Request reserves an id and sends a request in one call, returning the id.
+// Use ReserveID + SendRequest instead when you need to register a response
+// handler before the request is sent.
+func (w *Writer) Request(method string, params any) (uint64, error) {
+	id := w.ReserveID()
+	return id, w.SendRequest(id, method, params)
 }
 
 // Respond sends a response to a previously received request. Either
@@ -130,9 +176,14 @@ func (w *Writer) send(m Message) error {
 	if err != nil {
 		return err
 	}
+	rpcLog("send id=%s method=%q response=%v len=%d", idStr(m.ID), m.Method, m.IsResponse(), len(enc))
 	if _, err := w.w.Write(enc); err != nil {
+		rpcLog("send write error: %v", err)
 		return err
 	}
 	_, err = w.w.Write([]byte{'\n'})
+	if err != nil {
+		rpcLog("send newline error: %v", err)
+	}
 	return err
 }

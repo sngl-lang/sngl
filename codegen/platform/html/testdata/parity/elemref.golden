@@ -18,7 +18,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { name: "" };
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
@@ -35,7 +35,7 @@ body { font-family: system-ui, sans-serif; }
   });
   function __sngl_init() {
     __n0.value = state.name;
-    __n1.value = "Hello, " + state.name + "!";
+    __n1.textContent = "Hello, " + state.name + "!";
   }
   __sngl_init();
 })();

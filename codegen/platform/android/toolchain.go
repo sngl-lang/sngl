@@ -9,17 +9,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 )
 
-const (
-	kotlinVersion  = "2.1.0"
-	composeVersion = "1.7.6"
-	buildToolsVer  = "35.0.0"
-	platformAPI    = "35"
-)
-
-// toolchain holds paths to the minimal Android build tools.
+// toolchain holds paths to the minimal Android build tools plus the version
+// numbers (from the selected androidtc.Combo) that drive tool discovery and
+// artifact downloads.
 type toolchain struct {
 	Kotlinc       string   // kotlinc binary
 	ComposePlugin string   // compose-compiler-plugin-embeddable.jar
@@ -30,15 +28,31 @@ type toolchain struct {
 	ComposeJars   []string // compose runtime + dependency JARs
 	KotlinLibs    []string // kotlin-stdlib etc.
 	CacheDir      string   // ~/.cache/sngl/android-toolchain
+
+	// Versions from the selected combo.
+	cKotlin      string // e.g. "2.1.0"
+	cCompose     string // androidx.compose runtime/ui version
+	cBuildTools  string // e.g. "35.0.0"
+	cPlatformAPI string // e.g. "35"
+	jdkMin       int    // JDK window this combo's build can use
+	jdkMax       int
 }
 
-// resolveToolchain locates all required tools, first checking ANDROID_HOME
-// and PATH, then falling back to the sngl toolchain cache.
-func resolveToolchain() (*toolchain, error) {
+// resolveToolchain locates all required tools for combo c, first checking
+// ANDROID_HOME and PATH, then falling back to the sngl toolchain cache.
+func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 	home, _ := os.UserHomeDir()
 	cacheDir := filepath.Join(home, ".cache", "sngl", "android-toolchain")
 
-	tc := &toolchain{CacheDir: cacheDir}
+	tc := &toolchain{
+		CacheDir:     cacheDir,
+		cKotlin:      c.Kotlin,
+		cCompose:     c.ComposeRuntime,
+		cBuildTools:  c.BuildTools,
+		cPlatformAPI: strconv.Itoa(c.CompileSdk),
+		jdkMin:       c.JDKMin,
+		jdkMax:       c.JDKMax,
+	}
 
 	if err := tc.findAndroidJar(); err != nil {
 		return nil, err
@@ -62,7 +76,7 @@ func resolveToolchain() (*toolchain, error) {
 func (tc *toolchain) findAndroidJar() error {
 	home := sdkRoot()
 	if home != "" {
-		exact := filepath.Join(home, "platforms", "android-"+platformAPI, "android.jar")
+		exact := filepath.Join(home, "platforms", "android-"+tc.cPlatformAPI, "android.jar")
 		if fileExists(exact) {
 			tc.AndroidJar = exact
 			return nil
@@ -76,12 +90,12 @@ func (tc *toolchain) findAndroidJar() error {
 			}
 		}
 	}
-	cached := filepath.Join(tc.CacheDir, "platforms", "android-"+platformAPI, "android.jar")
+	cached := filepath.Join(tc.CacheDir, "platforms", "android-"+tc.cPlatformAPI, "android.jar")
 	if fileExists(cached) {
 		tc.AndroidJar = cached
 		return nil
 	}
-	return fmt.Errorf("android.jar not found; install Android SDK platform %s or set ANDROID_HOME", platformAPI)
+	return fmt.Errorf("android.jar not found; install Android SDK platform %s or set ANDROID_HOME", tc.cPlatformAPI)
 }
 
 func (tc *toolchain) findBuildTools() error {
@@ -89,7 +103,7 @@ func (tc *toolchain) findBuildTools() error {
 	if home != "" {
 		btDir := filepath.Join(home, "build-tools")
 		entries, _ := os.ReadDir(btDir)
-		for _, ver := range []string{buildToolsVer} {
+		for _, ver := range []string{tc.cBuildTools} {
 			dir := filepath.Join(btDir, ver)
 			if dirExists(dir) {
 				return tc.setBuildTools(dir)
@@ -102,11 +116,11 @@ func (tc *toolchain) findBuildTools() error {
 			}
 		}
 	}
-	cached := filepath.Join(tc.CacheDir, "build-tools", buildToolsVer)
+	cached := filepath.Join(tc.CacheDir, "build-tools", tc.cBuildTools)
 	if dirExists(cached) {
 		return tc.setBuildTools(cached)
 	}
-	return fmt.Errorf("Android build-tools not found; install build-tools %s or set ANDROID_HOME", buildToolsVer)
+	return fmt.Errorf("Android build-tools not found; install build-tools %s or set ANDROID_HOME", tc.cBuildTools)
 }
 
 func (tc *toolchain) setBuildTools(dir string) error {
@@ -142,30 +156,30 @@ func (tc *toolchain) findKotlinc() error {
 		return nil
 	}
 
-	cachedBin := filepath.Join(tc.CacheDir, "kotlin-"+kotlinVersion, "bin", "kotlinc")
+	cachedBin := filepath.Join(tc.CacheDir, "kotlin-"+tc.cKotlin, "bin", "kotlinc")
 	if fileExists(cachedBin) {
 		tc.Kotlinc = cachedBin
-		tc.KotlinLibs = findJars(filepath.Join(tc.CacheDir, "kotlin-"+kotlinVersion, "lib"), "kotlin-stdlib")
+		tc.KotlinLibs = findJars(filepath.Join(tc.CacheDir, "kotlin-"+tc.cKotlin, "lib"), "kotlin-stdlib")
 		return nil
 	}
 
-	fmt.Fprintf(os.Stderr, "sngl: downloading Kotlin %s...\n", kotlinVersion)
+	fmt.Fprintf(os.Stderr, "sngl: downloading Kotlin %s...\n", tc.cKotlin)
 	if err := tc.downloadKotlin(); err != nil {
 		return fmt.Errorf("downloading kotlinc: %w", err)
 	}
 	tc.Kotlinc = cachedBin
-	tc.KotlinLibs = findJars(filepath.Join(tc.CacheDir, "kotlin-"+kotlinVersion, "lib"), "kotlin-stdlib")
+	tc.KotlinLibs = findJars(filepath.Join(tc.CacheDir, "kotlin-"+tc.cKotlin, "lib"), "kotlin-stdlib")
 	return nil
 }
 
 func (tc *toolchain) downloadKotlin() error {
-	url := fmt.Sprintf("https://github.com/JetBrains/kotlin/releases/download/v%s/kotlin-compiler-%s.zip", kotlinVersion, kotlinVersion)
+	url := fmt.Sprintf("https://github.com/JetBrains/kotlin/releases/download/v%s/kotlin-compiler-%s.zip", tc.cKotlin, tc.cKotlin)
 	zipPath := filepath.Join(tc.CacheDir, "kotlin-compiler.zip")
 	if err := downloadFile(url, zipPath); err != nil {
 		return err
 	}
 	defer os.Remove(zipPath)
-	destDir := filepath.Join(tc.CacheDir, "kotlin-"+kotlinVersion)
+	destDir := filepath.Join(tc.CacheDir, "kotlin-"+tc.cKotlin)
 	return extractZip(zipPath, destDir, "kotlinc/")
 }
 
@@ -192,7 +206,7 @@ func (tc *toolchain) findComposePlugin() error {
 
 	// Fall back to downloading from Maven Central
 	cached := filepath.Join(tc.CacheDir, "compose-plugin",
-		fmt.Sprintf("kotlin-compose-compiler-plugin-embeddable-%s.jar", kotlinVersion))
+		fmt.Sprintf("kotlin-compose-compiler-plugin-embeddable-%s.jar", tc.cKotlin))
 	if fileExists(cached) {
 		tc.ComposePlugin = cached
 		return nil
@@ -201,7 +215,7 @@ func (tc *toolchain) findComposePlugin() error {
 	fmt.Fprintf(os.Stderr, "sngl: downloading Compose compiler plugin...\n")
 	url := fmt.Sprintf(
 		"https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-compose-compiler-plugin-embeddable/%s/kotlin-compose-compiler-plugin-embeddable-%s.jar",
-		kotlinVersion, kotlinVersion)
+		tc.cKotlin, tc.cKotlin)
 	os.MkdirAll(filepath.Dir(cached), 0o755)
 	if err := downloadFile(url, cached); err != nil {
 		return fmt.Errorf("downloading Compose plugin: %w", err)
@@ -245,19 +259,19 @@ func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
 
 	arts := []artifact{
 		// Compose runtime & UI (KMP — need -android suffix)
-		{"androidx.compose.runtime", "runtime", composeVersion, true, false},
-		{"androidx.compose.runtime", "runtime-saveable", composeVersion, true, false},
-		{"androidx.compose.ui", "ui", composeVersion, true, false},
-		{"androidx.compose.ui", "ui-geometry", composeVersion, true, false},
-		{"androidx.compose.ui", "ui-graphics", composeVersion, true, false},
-		{"androidx.compose.ui", "ui-text", composeVersion, true, false},
-		{"androidx.compose.ui", "ui-unit", composeVersion, true, false},
-		{"androidx.compose.ui", "ui-util", composeVersion, true, false},
-		{"androidx.compose.foundation", "foundation", composeVersion, true, false},
-		{"androidx.compose.foundation", "foundation-layout", composeVersion, true, false},
-		{"androidx.compose.animation", "animation", composeVersion, true, false},
-		{"androidx.compose.animation", "animation-core", composeVersion, true, false},
-		{"androidx.compose.material", "material-ripple", composeVersion, true, false},
+		{"androidx.compose.runtime", "runtime", tc.cCompose, true, false},
+		{"androidx.compose.runtime", "runtime-saveable", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui-geometry", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui-graphics", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui-text", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui-unit", tc.cCompose, true, false},
+		{"androidx.compose.ui", "ui-util", tc.cCompose, true, false},
+		{"androidx.compose.foundation", "foundation", tc.cCompose, true, false},
+		{"androidx.compose.foundation", "foundation-layout", tc.cCompose, true, false},
+		{"androidx.compose.animation", "animation", tc.cCompose, true, false},
+		{"androidx.compose.animation", "animation-core", tc.cCompose, true, false},
+		{"androidx.compose.material", "material-ripple", tc.cCompose, true, false},
 		{"androidx.compose.material3", "material3", "1.3.1", true, false},
 		// AndroidX (not KMP — no -android suffix, but still AAR)
 		{"androidx.activity", "activity-compose", "1.9.3", false, false},
@@ -425,9 +439,9 @@ func (tc *toolchain) ensureAARs(cacheDir string) {
 	// Key libraries that have runtime resources (strings, ids)
 	resourceAARs := []struct{ group, name, version string }{
 		{"androidx.compose.material3", "material3-android", "1.3.1"},
-		{"androidx.compose.material", "material-android", composeVersion},
-		{"androidx.compose.ui", "ui-android", composeVersion},
-		{"androidx.compose.foundation", "foundation-android", composeVersion},
+		{"androidx.compose.material", "material-android", tc.cCompose},
+		{"androidx.compose.ui", "ui-android", tc.cCompose},
+		{"androidx.compose.foundation", "foundation-android", tc.cCompose},
 		{"androidx.customview", "customview-poolingcontainer", "1.0.0"},
 		{"androidx.core", "core", "1.15.0"},
 	}

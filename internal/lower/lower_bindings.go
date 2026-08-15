@@ -237,8 +237,28 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 	injectEmitIntoHandlers(comp.Body, candidates, emit)
 }
 
+// handlerReportsValueChange reports whether h fires for one of the candidate
+// value-changing SNGL events. Native stdlib wrappers name their handler after
+// the DOM/framework signal (html `@input`, gtk4 `@changed`, android
+// `@onValueChange`) but forward it by emitting the SNGL event (`input()`) from
+// the body — so both the handler name and the emitted events count.
+func handlerReportsValueChange(h *ir.EventHandler, candidates []string) bool {
+	if slices.Contains(candidates, h.Name) {
+		return true
+	}
+	for _, c := range candidates {
+		if bodyHasEmitFor(h.Func.Block, c) {
+			return true
+		}
+	}
+	return false
+}
+
 // injectEmitIntoHandlers recursively searches stmts for the first NodeInst
-// whose handler name matches one of the candidates, and prepends emit to that
+// whose handler reports a value change — either the handler's own name is one
+// of the candidate SNGL events (html: `@input { input() }`) or its body emits
+// one of them (gtk4: `@changed { input() }`, android: `@onValueChange { input() }`,
+// where the handler is named for the native signal). It prepends emit to that
 // handler's block. Returns true if the injection was performed.
 func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit) bool {
 	for _, s := range stmts {
@@ -249,7 +269,7 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit)
 				if h.Func == nil {
 					continue
 				}
-				if slices.Contains(candidates, h.Name) {
+				if handlerReportsValueChange(h, candidates) {
 					h.Func.Block = append([]ir.Stmt{emit}, h.Func.Block...)
 					return true
 				}

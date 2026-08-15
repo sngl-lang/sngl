@@ -271,20 +271,6 @@ the two models can't unify.
 
 ---
 
-### 11. `pkg/go/i18n/`, `pkg/js/i18n/`, `pkg/kotlin/i18n/` are the only runtime packages
-
-Only one stdlib package (`i18n`) has runtime support. `lib/` has
-`components.sngl`, `functions.sngl`, `types.sngl`, `units.sngl` — none
-of these have a `pkg/<lang>/` runtime. So today the three-language
-runtime layout is bespoke for i18n; the pattern is asserted by CLAUDE.md
-but un-tested by repetition.
-
-**Direction.** Either build another runtime package (date/time
-formatting, http client) to validate the pattern, or document that
-i18n is a one-off until further notice.
-
----
-
 ### 12. Two platforms hard-code Go via `LangRunner` while two go through `lang.LangRunner`
 
 `fyne/run.go:11`, `bubbletea/run.go:11`, `gtk4/run.go:11`, `html/run.go:17`
@@ -339,17 +325,6 @@ preamble emission.
 and two callers. Could be a method on the golang translator directly,
 called via type-assert at call sites. Or, better, made part of a
 broader "native-import emission" interface alongside the WASM path.
-
----
-
-### 16. Bubbletea's `runtests_js.go` / `fyne/runtests_js.go` / `gtk4/runtests_js.go` / `html/testing_js.go` are stub files for WASM
-
-Each file is identical in shape — a no-op `RunTests` for the WASM
-playground build. Four copies of essentially the same stub.
-
-**Direction.** A single `codegen/wasmstub.go` with `//go:build js` that
-provides a `NoopTestRunner` embeddable struct. Each platform embeds it
-instead of duplicating.
 
 ---
 

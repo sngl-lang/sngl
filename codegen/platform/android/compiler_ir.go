@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -23,6 +24,14 @@ type Config struct {
 	Color      string // theme/icon background color as hex (#RRGGBB)
 	ProjectDir string // project root directory (for resolving relative icon paths)
 	TestRunner string // "robolectric" (default) or "device"
+
+	// Toolchain selection (see internal/androidtc). Toolchain picks a whole
+	// known-good combo by name; the remaining knobs override individual
+	// versions within it (an unlisted mix is unvalidated — you're on your own).
+	Toolchain     string // combo name, e.g. "stable" (default) or "next"
+	Sdk           int    // override compileSdk / targetSdk (0 = combo default)
+	MinSdk        int    // override minSdk (0 = default 26)
+	GradleVersion string // override Gradle distribution version
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -62,6 +71,44 @@ func (c Config) UseGradle() bool {
 		return true
 	}
 	return *c.Gradle
+}
+
+// defaultMinSdk is the minSdk used when the option is unset. It is an app-level
+// choice, not a toolchain-compatibility constraint, so it lives outside the
+// combo matrix.
+const defaultMinSdk = 26
+
+// combo resolves the toolchain combo for this config: the named combo (or the
+// default), with per-field overrides applied. An unknown Toolchain name falls
+// back to the default.
+func (c Config) combo() androidtc.Combo {
+	tc, ok := androidtc.ByName(c.Toolchain)
+	if !ok {
+		tc = androidtc.Default()
+	}
+	if c.Sdk > 0 {
+		tc.CompileSdk = c.Sdk
+	}
+	if c.GradleVersion != "" {
+		tc.Gradle = c.GradleVersion
+	}
+	return tc
+}
+
+// minSdk returns the configured minSdk, or the default.
+func (c Config) minSdk() int {
+	if c.MinSdk > 0 {
+		return c.MinSdk
+	}
+	return defaultMinSdk
+}
+
+// comboFromOpts resolves the toolchain combo from raw build options. Used by
+// the launcher paths, which receive *ir.StructLit rather than a Config.
+func comboFromOpts(opts *ir.StructLit) androidtc.Combo {
+	var cfg Config
+	_ = codegen.ApplyOptions(&cfg, opts)
+	return cfg.combo()
 }
 
 func exportName(s string) string {
@@ -515,6 +562,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		ctx:    ctx,
 		buf:    &body,
 		indent: 1,
+		combo:  cfg.combo(),
 	}
 
 	wins := ctx.Windows()
@@ -537,7 +585,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonMainComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc)
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg.combo())
 	}
 
 	// User functions (non-GoLib). In test mode these were emitted
@@ -572,7 +620,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String())
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, combo androidtc.Combo) {
 	b.WriteString("\n@Composable\n")
 	var params []string
 	for _, p := range cc.Props {
@@ -602,6 +650,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		buf:     b,
 		indent:  1,
 		hasSlot: hasSlot,
+		combo:   combo,
 	}
 
 	for _, s := range cc.Body {

@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
 // gomobileBind runs "gomobile bind" on the Go module at goLibDir, producing
 // an AAR at aarPath that exposes the module's exported functions to Kotlin.
-func gomobileBind(goLibDir, aarPath string) error {
+func gomobileBind(goLibDir, aarPath string, combo androidtc.Combo) error {
 	gomobile, err := exec.LookPath("gomobile")
 	if err != nil {
 		return fmt.Errorf("gomobile not found in PATH (install with: go install golang.org/x/mobile/cmd/gomobile@latest)")
@@ -21,6 +24,11 @@ func gomobileBind(goLibDir, aarPath string) error {
 		".",
 	)
 	bind.Dir = goLibDir
+	// gomobile bind shells out to the Android toolchain (javac/gradle for the
+	// AAR); pin a version-compatible JDK when one was found, else inherit.
+	if home, reason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax); reason == "" {
+		bind.Env = jdk.Env(home)
+	}
 	bind.Stdout = os.Stderr
 	bind.Stderr = os.Stderr
 	if err := bind.Run(); err != nil {

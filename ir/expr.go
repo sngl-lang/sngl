@@ -252,6 +252,11 @@ func IsConst(e Expr) bool {
 	case *Literal:
 		return true
 	case *Ident:
+		// A bare enum member (e.g. `active` resolving to `Status.active`) is a
+		// compile-time constant; it carries Member but no resolved Sym.
+		if x.Member != "" {
+			return true
+		}
 		switch x.Name {
 		case "PLATFORM", "LANGUAGE", "true", "false", "null":
 			return true

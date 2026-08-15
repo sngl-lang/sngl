@@ -80,8 +80,12 @@ func main() {
 		return nil, fmt.Errorf("writing temp file: %w", err)
 	}
 
-	// Run with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Run with a timeout as a safeguard against a hanging function. It must be
+	// generous: `go run` compiles before it runs, and the first invocation in a
+	// cold cache (fresh CI runner) can take far longer than the execution
+	// itself — a 10s limit here flaked on the initial cold build.
+	const goRunTimeout = 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), goRunTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "run", tmpDir)
@@ -89,6 +93,9 @@ func main() {
 	slog.Info("exec", "cmd", "go run "+tmpDir, "dir", dir, "func", nativeType)
 	out, err := cmd.Output()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("compile-time evaluation of %s timed out after %s (cold `go run` build?)", nativeType, goRunTimeout)
+		}
 		if ee, ok := err.(*exec.ExitError); ok {
 			return nil, fmt.Errorf("compile-time evaluation of %s failed: %s", nativeType, string(ee.Stderr))
 		}

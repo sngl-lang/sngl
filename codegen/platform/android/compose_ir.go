@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,6 +19,11 @@ type irComposeContext struct {
 	buf     *strings.Builder
 	indent  int
 	hasSlot bool
+	// combo is the selected Android toolchain (versions/SDK). Available so
+	// emitters can branch where a real version difference changes output;
+	// there is no such divergence between the current combos, so nothing
+	// branches on it yet — it's the wired hook, not dead weight.
+	combo androidtc.Combo
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -124,6 +130,32 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 // handler's event param (if any) is materialized as a tiny data
 // holder so `e.value` reads return the same Kotlin string. Handlers
 // with no event param (e.g. `@input { count += 1 }`) drop the alias.
+// emitValueWriteback lowers the synthesized `:value=var` two-way-bind
+// handler inside Compose's onValueChange lambda. The prop-binding lower
+// pass names this handler after the "value" prop and shapes its body as
+// `var = <param>` where the param IS the new string value (not an event
+// object). So the param binds directly to newValueVar — unlike
+// emitInputHandlerCall, which wraps it in a SnglInputEvent holder for
+// user `@input(e)` handlers that read `e.value`.
+func emitValueWriteback(cc *irComposeContext, n *ir.NodeInst, newValueVar string) {
+	h := codegen.NodeHandler(n, "value")
+	if h == nil || h.Func == nil {
+		return
+	}
+	cc.line("run {")
+	cc.indent++
+	if len(h.Func.Params) > 0 {
+		cc.line("val %s = %s", h.Func.Params[0].Name, newValueVar)
+	}
+	for _, stmt := range h.Func.Block {
+		for _, line := range cc.kc.EvalStmt(stmt) {
+			cc.line("%s", line)
+		}
+	}
+	cc.indent--
+	cc.line("}")
+}
+
 func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
 	h := codegen.NodeHandler(n, eventName)
 	if h == nil || h.Func == nil {
@@ -237,6 +269,7 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.line("value = %s,", valueExpr)
 		cc.line("onValueChange = { newValue ->")
 		cc.indent++
+		emitValueWriteback(cc, n, "newValue")
 		emitInputHandlerCall(cc, n, "input", "newValue")
 		emitInputHandlerCall(cc, n, "change", "newValue")
 		emitInputHandlerCall(cc, n, "changed", "newValue")

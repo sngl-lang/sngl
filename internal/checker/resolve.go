@@ -237,13 +237,28 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 
 // buildStructDef builds an IR StructDef from an AST StructDef.
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
+	return &ir.StructDef{
+		AST:        s,
+		Name:       s.Name,
+		TypeParams: s.TypeParams,
+		Fields:     c.resolveStructFields(s),
+	}
+}
+
+// resolveStructFields resolves a struct's field types. Split out from
+// buildStructDef so the top-level pass1 path can register a field-less shell
+// first (making the name visible for forward/mutually-recursive references)
+// and resolve fields in a second sub-pass once every type shell exists.
+func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 	// Push struct-level type params into scope so field types like T resolve.
 	prevTypeParams := c.typeParams
 	if len(s.TypeParams) > 0 {
 		c.typeParams = append(append([]string(nil), c.typeParams...), s.TypeParams...)
 	}
+	defer func() { c.typeParams = prevTypeParams }()
 
 	var fields []*ir.StructField
+	seen := make(map[string]struct{})
 	for _, f := range s.Fields() {
 		fieldLabel := "struct field"
 		if len(f.Names) > 0 {
@@ -251,6 +266,10 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		}
 		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
 		for _, name := range f.Names {
+			if _, dup := seen[name]; dup {
+				c.error(f.Pos, "duplicate struct field %q", name)
+			}
+			seen[name] = struct{}{}
 			var def ir.Expr
 			if f.Default != nil {
 				// Placeholder; actual default checked later when scope is ready.
@@ -263,14 +282,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 			})
 		}
 	}
-
-	c.typeParams = prevTypeParams
-	return &ir.StructDef{
-		AST:        s,
-		Name:       s.Name,
-		TypeParams: s.TypeParams,
-		Fields:     fields,
-	}
+	return fields
 }
 
 // buildEnumDef builds an IR EnumDef from an AST EnumDef.
@@ -462,7 +474,12 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 // buildParams converts AST Params to IR Params.
 func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	params := make([]*ir.Param, len(pl.Params))
+	seen := make(map[string]struct{}, len(pl.Params))
 	for i, p := range pl.Params {
+		if _, dup := seen[p.Name]; dup {
+			c.error(p.Pos, "duplicate parameter %q", p.Name)
+		}
+		seen[p.Name] = struct{}{}
 		typ := c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
 		var def ir.Expr
 		if p.Default != nil {

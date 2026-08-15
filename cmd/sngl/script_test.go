@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -27,9 +28,33 @@ func TestScript(t *testing.T) {
 			t.Setenv("SNGL_HOST_GO_MOD", mod)
 		}
 	}
+	conds := scripttest.DefaultConds()
+	// `display` is true when an X11/Wayland display is reachable. gtk4 renders
+	// through real GDK, which calls the X/Wayland server; headless CI has
+	// neither, so those snapshot scripts guard with `[!display] skip`. (fyne
+	// renders in-memory via fyne/test and needs no guard.)
+	conds["display"] = script.BoolCondition(
+		"an X11/Wayland display is available",
+		os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "",
+	)
+	// `gtk4` is true when the gtk4 development libraries are installed, so the
+	// generated cgo can be compiled. The gtk4 build script uses it to compile
+	// generated gtk4 code in CI (no display needed) even though the render-based
+	// snapshot script skips there.
+	conds["gtk4"] = script.BoolCondition(
+		"gtk4 development libraries are available",
+		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil,
+	)
+	// `ci` is true under GitLab CI. Used to quarantine a script that fails only
+	// in the CI environment while it's being investigated, without losing the
+	// coverage everywhere else.
+	conds["ci"] = script.BoolCondition(
+		"running under GitLab CI",
+		os.Getenv("GITLAB_CI") == "true" || os.Getenv("CI") == "true",
+	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
-		Conds: scripttest.DefaultConds(),
+		Conds: conds,
 	}
 	files, err := filepath.Glob("testdata/*.txt")
 	if err != nil {

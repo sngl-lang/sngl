@@ -21,7 +21,7 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
-  // ../../../../../../../../../sngl/sngl-entry.js
+  // sngl-entry.js
   var state = { xs: [1, 2, 3, 4, 5] };
   function main_evens(state2) {
     return state2.xs.filter((x) => x % 2 === 0);
@@ -42,7 +42,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = "count: " + String(main_total(state));
   });
   function __sngl_init() {
-    __n0.value = "count: " + String(main_total(state));
+    __n0.textContent = "count: " + String(main_total(state));
   }
   __sngl_init();
 })();

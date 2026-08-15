@@ -3,6 +3,7 @@
 
 [!exec:go] skip 'go toolchain required'
 [!exec:pkg-config] skip 'pkg-config required'
+[!display] skip 'gtk4 snapshot needs an X11/Wayland display (headless CI)'
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=gtk4 app.sngl

@@ -553,6 +553,15 @@ func (f *formatter) writeIfStmt(s *ast.IfStmt) {
 	f.write(" ")
 	f.writeBlock(&s.Body)
 	if s.Else.IsDefined() {
+		// An else block that is exactly one IfStmt is an `else if` chain;
+		// print it as such rather than `else { if ... }`.
+		if len(s.Else.Stmts) == 1 {
+			if elseIf, ok := s.Else.Stmts[0].(*ast.IfStmt); ok {
+				f.write(" else ")
+				f.writeIfStmt(elseIf)
+				return
+			}
+		}
 		f.write(" else ")
 		f.writeBlock(&s.Else)
 	}
