@@ -2,6 +2,8 @@ package checker
 
 import (
 	"io/fs"
+	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 
@@ -19,8 +21,11 @@ var (
 
 // StdlibDocs returns the parsed stdlib documents.
 // The results are cached after the first call.
+//
+// Returns a copy of the cached slice so a caller that appends can't write into
+// the shared package-global backing array (bugs.md #12).
 func StdlibDocs() []*ast.Document {
-	return parseStdlibDocs()
+	return slices.Clone(parseStdlibDocs())
 }
 
 // parseStdlibDocs parses every .sngl file embedded in the lib package. File
@@ -39,10 +44,15 @@ func parseStdlibDocs() []*ast.Document {
 			}
 			data, err := fs.ReadFile(lib.FS, e.Name())
 			if err != nil {
+				slog.Error("stdlib read failed", "file", e.Name(), "err", err)
 				continue
 			}
 			doc, err := parser.Parse(e.Name(), data)
 			if err != nil {
+				// A silently-skipped stdlib file leaves the checker with a
+				// partial stdlib, so downstream "undefined component/func"
+				// errors look unrelated. Surface it (bugs.md #20).
+				slog.Error("stdlib parse failed", "file", e.Name(), "err", err)
 				continue
 			}
 			stdlibDocs = append(stdlibDocs, doc)

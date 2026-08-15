@@ -60,6 +60,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **severity**: cosmetic (poor UX)
 
 ### 12. Static stdlib slice exposed by value
+- **RESOLVED**: `StdlibDocs()` returns `slices.Clone(...)` so a caller's `append` can't corrupt the shared backing array.
 - **file**: `internal/checker/stdlib.go:22-51`
 - `StdlibDocs()` returns the package-global `stdlibDocs` slice directly. Callers in `docs/lookup`, `docs/targets`, `internal/lspcore` only iterate, but an `append` by a future caller would write into shared state. Return a defensive copy.
 - **severity**: latent
@@ -94,6 +95,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **severity**: latent leak
 
 ### 20. `parseStdlibDocs` swallows parse errors
+- **RESOLVED**: parse (and read) failures now `slog.Error` with the filename instead of silently skipping.
 - **file**: `internal/checker/stdlib.go:44-47`
 - Stdlib file with a parse error is silently skipped — checker proceeds with a partial stdlib, and downstream errors look unrelated. Worth at least a `slog.Error`.
 
