@@ -5,6 +5,7 @@ import (
 	"maps"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -865,8 +866,16 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
 			return zeroValueFor(e.Type), nil
 		}
-		for _, sample := range m {
-			return zeroValueForValue(sample), nil
+		// Sample deterministically (smallest key): Go map iteration is
+		// randomised, so ranging picked a run-to-run-varying value, making the
+		// zero-value template flaky for heterogeneous dyn maps (bugs.md #24).
+		if len(m) > 0 {
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			return zeroValueForValue(m[keys[0]]), nil
 		}
 		return nil, nil
 	}
@@ -1076,7 +1085,11 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 		}
 		return numericResult(toFloat(left) / r), nil
 	case ast.BinMod:
-		return numericResult(math.Mod(toFloat(left), toFloat(right))), nil
+		r := toFloat(right)
+		if r == 0 {
+			return nil, fmt.Errorf("modulo by zero")
+		}
+		return numericResult(math.Mod(toFloat(left), r)), nil
 	}
 	return nil, fmt.Errorf("unknown binary op %d", e.Op)
 }

@@ -18,6 +18,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - For `map[string]any`, the code does `key := fmt.Sprintf("%v", idx)` — int `1`, float `1.0`, and string `"1"` all collide on the same key. For miss with `Type == Dyn`, it samples the map by range — non-deterministic.
 - **repro**: `m[1] vs m["1"]` with a `map<dyn, T>`.
 - **severity**: wrong-output
+- **DEFERRED**: the non-deterministic sampling half is fixed (#24). The collision itself is inherent to the `map[string]any` runtime representation — keys are stringified on both write and read, so a fix needs a type-discriminated key scheme applied consistently across every map write and read path (a representation change, not a local patch). Tracked separately.
 
 ### 5. `i18n.tr`-style native call paths assume arg count
 - **file**: `internal/interp/builtins.go:24-203` (all entries)
@@ -29,10 +30,12 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 ## WRONG-OUTPUT
 
 ### 6. `evalBinary` BinMod ignores divisor=0
+- **RESOLVED**: BinMod now guards `r == 0` → "modulo by zero" error, matching BinDiv.
 - **file**: `internal/interp/eval.go:1043-1044`
 - BinDiv guards `r == 0` (returns error). BinMod calls `math.Mod(.., 0)` which returns NaN — no error. Same hole in `execAssignOp`/AssignMod at `internal/interp/exec.go:328`.
 
 ### 7. `execAssignOp` AssignDiv ignores divisor=0
+- **RESOLVED**: `ApplyOp` now returns `(any, error)`; AssignDiv and AssignMod guard divisor=0. All 5 call sites (interp exec + none testrunner SetField) propagate the error. Regression test in `internal/interp/arith_test.go`.
 - **file**: `internal/interp/exec.go:325-326`
 - `numericResult(toFloat(cur) / toFloat(val))` produces ±Inf / NaN with no error. The plain `BinDiv` path checks divisor; `AssignDiv` (`x /= 0`) does not.
 
@@ -44,6 +47,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 ### 9. `evalSelect` returns nil for missing map field
 - **file**: `internal/interp/eval.go:780-781`
 - `m[e.Field]` on `map[string]any` returns zero (nil) silently rather than an error. The same path errors for non-map types (line 783). Test runner thus accepts misspellings as "value is nil".
+- **DEFERRED**: erroring on an absent key is a runtime-semantics change. Whether it's safe depends on SNGL struct-field-presence guarantees (are all struct fields always materialised in the backing map, so absent ⇒ only a checker-caught misspelling?). Needs that confirmation plus a full test-suite pass before flipping; a `v, ok := m[field]` two-value guard is the intended shape.
 
 ### 10. Constant folder integer overflow is ignored
 - **file**: `internal/optimize/consteval.go:517-522`
@@ -108,6 +112,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - The `defer recover` (line 42) is registered *after* the `if tree == nil { return ... }` short-circuit. Means panics from `Tokenize`, `encode`, or remapErrors are not recovered. They reach the top-level `recover` in `sngl.go:27`, but library callers using `parser.Parse` directly (lspcore, snapshot) lose the protection.
 
 ### 24. `evalIndex` zero-value sampling is non-deterministic
+- **RESOLVED**: sample the value at the smallest (sorted) key instead of ranging, so a dyn-map miss yields a deterministic zero-value template.
 - **file**: `internal/interp/eval.go:833-835`
 - For map miss with `Dyn` value type, samples an existing value via `range m`. Map iteration is randomized in Go — the zero-value template differs run-to-run. Test runs become flaky.
 

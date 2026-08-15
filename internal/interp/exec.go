@@ -170,7 +170,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		owner.Vars[target.Name] = ApplyOp(s.Op, owner.Vars[target.Name], val)
+		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val)
+		if err != nil {
+			return err
+		}
+		owner.Vars[target.Name] = nv
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -181,7 +185,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
-			m[target.Field] = ApplyOp(s.Op, m[target.Field], val)
+			nv, err := ApplyOp(s.Op, m[target.Field], val)
+			if err != nil {
+				return err
+			}
+			m[target.Field] = nv
 			return nil
 		}
 		return fmt.Errorf("cannot assign to field on %T", obj)
@@ -199,7 +207,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			if i < 0 || i >= len(list) {
 				return fmt.Errorf("index %d out of range (len %d)", i, len(list))
 			}
-			list[i] = ApplyOp(s.Op, list[i], val)
+			nv, err := ApplyOp(s.Op, list[i], val)
+			if err != nil {
+				return err
+			}
+			list[i] = nv
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
@@ -212,7 +224,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			if ref, ok := obj.(*listRef); ok {
-				ref.set(ApplyOp(s.Op, ref.get(), val))
+				nv, err := ApplyOp(s.Op, ref.get(), val)
+				if err != nil {
+					return err
+				}
+				ref.set(nv)
 				return nil
 			}
 			return fmt.Errorf("cannot deref-assign to %T", obj)
@@ -331,23 +347,31 @@ func (env *Env) execFor(s *ir.For) error {
 	return nil
 }
 
-func ApplyOp(op ast.AssignOp, cur, val any) any {
+func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
 	switch op {
 	case ast.AssignSet:
-		return val
+		return val, nil
 	case ast.AssignAdd:
 		if s, ok := cur.(string); ok {
-			return s + fmt.Sprintf("%v", val)
+			return s + fmt.Sprintf("%v", val), nil
 		}
-		return numericResult(toFloat(cur) + toFloat(val))
+		return numericResult(toFloat(cur) + toFloat(val)), nil
 	case ast.AssignSub:
-		return numericResult(toFloat(cur) - toFloat(val))
+		return numericResult(toFloat(cur) - toFloat(val)), nil
 	case ast.AssignMul:
-		return numericResult(toFloat(cur) * toFloat(val))
+		return numericResult(toFloat(cur) * toFloat(val)), nil
 	case ast.AssignDiv:
-		return numericResult(toFloat(cur) / toFloat(val))
+		d := toFloat(val)
+		if d == 0 {
+			return nil, fmt.Errorf("division by zero")
+		}
+		return numericResult(toFloat(cur) / d), nil
 	case ast.AssignMod:
-		return numericResult(math.Mod(toFloat(cur), toFloat(val)))
+		d := toFloat(val)
+		if d == 0 {
+			return nil, fmt.Errorf("modulo by zero")
+		}
+		return numericResult(math.Mod(toFloat(cur), d)), nil
 	}
-	return val
+	return val, nil
 }

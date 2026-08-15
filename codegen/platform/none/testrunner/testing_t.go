@@ -413,7 +413,11 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if !exists {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
-	cv.Vars[field] = interp.ApplyOp(op, cur, val)
+	nv, err := interp.ApplyOp(op, cur, val)
+	if err != nil {
+		return err
+	}
+	cv.Vars[field] = nv
 	if !cv.testParams[field] {
 		cv.Env.Vars[field] = cv.Vars[field]
 	}
