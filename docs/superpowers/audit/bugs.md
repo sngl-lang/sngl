@@ -7,6 +7,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 ## CRASH
 
 ### 1. `sngl.Check` / `sngl.Lower` not protected by `recover`
+- **RESOLVED**: `Check`, `Lower`, and `Convert` now wrap their bodies in `recover` at the `sngl.go` boundary (Check → internal-error diagnostic, Lower → error, Convert → nil), mirroring `Parse`. Regression test in `sngl_test.go`. Remaining: the string-returning `Format`/`FormatExpr`/`FormatType` (no error channel) — see #17.
 - **file**: `sngl.go:63`, `sngl.go:78`
 - The package-level `Parse` wraps `recover()`, but `Check`, `Lower`, and `Convert` do not. The pipeline contains 100+ `panic(fmt.Sprintf("unhandled %T", ...))` guards across `internal/checker`, `internal/lower`, `internal/optimize`, `internal/interp` (155 total `panic(` sites). Any malformed IR or unexpected node — including from a checker error-recovery path that emits an unusual node — crashes the embedding host (LSP, playground WASM, docsgen).
 - **repro**: feed a syntactically malformed-but-parseable program whose checker error-recovery path produces a stmt/expr type that any `lower/*.go` switch doesn't cover.
@@ -81,6 +82,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 ### 17. Public API `Convert` / `Format*` panic-prone on partial IR
 - **file**: `sngl.go:36-58`
 - No recover. If a host (LSP, doc tooling) passes a partially-constructed AST/IR, a panic in `ir.Convert` propagates. Parser is protected; nothing else is.
+- **PARTIAL**: `Convert` now recovers (returns nil). Still open: `Format`, `FormatExpr`, `FormatType` return a bare string with no error channel, so a recover would have to substitute "" — deferred pending a degradation-contract decision. `FormatTo` (has an error return) is a clean candidate to wrap next.
 
 ### 18. `LSP.RunTCP` leaks preview servers on accept-loop errors
 - **file**: `internal/lsp/server.go:65-91`
