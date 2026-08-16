@@ -40,6 +40,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - `numericResult(toFloat(cur) / toFloat(val))` produces ±Inf / NaN with no error. The plain `BinDiv` path checks divisor; `AssignDiv` (`x /= 0`) does not.
 
 ### 8. Integer arithmetic silently promotes to float
+- **RESOLVED**: extracted the operator semantics into a shared leaf package `internal/opeval`, used by BOTH the interpreter and the const folder, so they can no longer diverge. int/int now uses integer math (division + modulo, exact past 2^53); a float operand yields a float result (`3.0` stays `3.0`). `3/2` is `1` in both paths now. (Also fixed a latent float-collapse difference: the interpreter used to collapse whole float results to int; it no longer does, matching the folder.)
 - **file**: `internal/interp/eval.go:1025-1042`
 - `BinAdd/Sub/Mul/Div` always go through `toFloat()`/`numericResult()`. For two `int` operands, this introduces float64 rounding error for values > 2^53. The const folder (`internal/optimize/consteval.go:512`) keeps int+int in int — so interp and folded values disagree at large magnitudes.
 - **severity**: wrong-output (rare)
@@ -50,6 +51,7 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **DEFERRED**: erroring on an absent key is a runtime-semantics change. Whether it's safe depends on SNGL struct-field-presence guarantees (are all struct fields always materialised in the backing map, so absent ⇒ only a checker-caught misspelling?). Needs that confirmation plus a full test-suite pass before flipping; a `v, ok := m[field]` two-value guard is the intended shape.
 
 ### 10. Constant folder integer overflow is ignored
+- **RESOLVED (divergence)**: folder and interpreter now share `internal/opeval`, so they perform identical Go-int arithmetic — the folded-vs-interpreted divergence near int64 limits is gone. Per the size decision, int width/overflow is left runtime-defined (unspecified sizes), so the overflow *behavior* itself is intentionally not pinned.
 - **file**: `internal/optimize/consteval.go:517-522`
 - `li + ri`, `li * ri` in `numericOp` use Go int arithmetic with no overflow check. Folded value at compile time differs from runtime (where the same int arithmetic also overflows, so consistent in Go) — but the interp eval uses `toFloat` (#8), so folded vs interpreted results diverge near int64 limits.
 - **severity**: wrong-output (rare)

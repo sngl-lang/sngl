@@ -13,6 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -522,48 +523,15 @@ func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
 }
 
 func numericOp(op ast.BinaryOp, left, right any) (any, bool) {
-	li, lok := toInt(left)
-	ri, rok := toInt(right)
-	if lok && rok {
-		switch op {
-		case ast.BinAdd:
-			return li + ri, true
-		case ast.BinSub:
-			return li - ri, true
-		case ast.BinMul:
-			return li * ri, true
-		case ast.BinDiv:
-			if ri == 0 {
-				return nil, false
-			}
-			return li / ri, true
-		case ast.BinMod:
-			if ri == 0 {
-				return nil, false
-			}
-			return li % ri, true
-		}
+	// Arithmetic semantics live in internal/opeval, shared with the
+	// interpreter so folded and interpreted results can't diverge (#8/#10).
+	// A non-nil error (div/mod by zero, non-numeric) means "not foldable".
+	v, err := opeval.Arith(op, left, right)
+	if err != nil {
+		return nil, false
 	}
-	lf, lok := toFloat(left)
-	rf, rok := toFloat(right)
-	if lok && rok {
-		switch op {
-		case ast.BinAdd:
-			return lf + rf, true
-		case ast.BinSub:
-			return lf - rf, true
-		case ast.BinMul:
-			return lf * rf, true
-		case ast.BinDiv:
-			if rf == 0 {
-				return nil, false
-			}
-			return lf / rf, true
-		}
-	}
-	return nil, false
+	return v, true
 }
-
 func compareOp(op ast.BinaryOp, left, right any) (any, bool) {
 	li, lok := toInt(left)
 	ri, rok := toInt(right)

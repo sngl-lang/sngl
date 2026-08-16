@@ -23,6 +23,9 @@ func testMultiplication(t Test, c math) {
 func testDivision(t Test, c math) {
     t.assert(12 / 4 == 3)
     t.assert(c.a / 2 == 5)
+    // int / int is integer division (matches the const folder).
+    t.assert(3 / 2 == 1)
+    t.assert(7 / 2 == 3)
 }
 
 func testModulo(t Test, c math) {
@@ -32,7 +35,8 @@ func testModulo(t Test, c math) {
 
 func testFloatArithmetic(t Test, c math) {
     t.assert(1.5 + 2.5 == 4)
-    t.assert(3 / 2 == 1.5)
+    // A float operand makes division floating-point.
+    t.assert(3.0 / 2.0 == 1.5)
 }
 
 func testCompoundAssignmentAdd(t Test, c math) {

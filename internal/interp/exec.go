@@ -2,9 +2,9 @@ package interp
 
 import (
 	"fmt"
-	"math"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -355,23 +355,15 @@ func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
 		if s, ok := cur.(string); ok {
 			return s + fmt.Sprintf("%v", val), nil
 		}
-		return numericResult(toFloat(cur) + toFloat(val)), nil
+		return opeval.Arith(ast.BinAdd, cur, val)
 	case ast.AssignSub:
-		return numericResult(toFloat(cur) - toFloat(val)), nil
+		return opeval.Arith(ast.BinSub, cur, val)
 	case ast.AssignMul:
-		return numericResult(toFloat(cur) * toFloat(val)), nil
+		return opeval.Arith(ast.BinMul, cur, val)
 	case ast.AssignDiv:
-		d := toFloat(val)
-		if d == 0 {
-			return nil, fmt.Errorf("division by zero")
-		}
-		return numericResult(toFloat(cur) / d), nil
+		return opeval.Arith(ast.BinDiv, cur, val)
 	case ast.AssignMod:
-		d := toFloat(val)
-		if d == 0 {
-			return nil, fmt.Errorf("modulo by zero")
-		}
-		return numericResult(math.Mod(toFloat(cur), d)), nil
+		return opeval.Arith(ast.BinMod, cur, val)
 	}
 	return val, nil
 }

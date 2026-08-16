@@ -330,10 +330,12 @@ func TestCompareOp_IntComparison(t *testing.T) {
 	}
 }
 
-func TestFloatModReturnsNil(t *testing.T) {
+func TestFloatModFolds(t *testing.T) {
+	// Float modulo now folds via the shared opeval semantics (the interpreter
+	// always computed it with math.Mod; the folder used to bail, a divergence).
 	result, ok := numericOp(ast.BinMod, 3.5, 2.0)
-	if ok {
-		t.Errorf("expected float mod to not fold, but got %v", result)
+	if !ok || result != 1.5 {
+		t.Errorf("numericOp(BinMod, 3.5, 2.0) = (%v, %v); want (1.5, true)", result, ok)
 	}
 }
 

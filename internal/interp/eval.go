@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 	goi18n "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 )
@@ -1073,23 +1074,9 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 		if rs, ok := right.(string); ok {
 			return fmt.Sprintf("%v", left) + rs, nil
 		}
-		return numericResult(toFloat(left) + toFloat(right)), nil
-	case ast.BinSub:
-		return numericResult(toFloat(left) - toFloat(right)), nil
-	case ast.BinMul:
-		return numericResult(toFloat(left) * toFloat(right)), nil
-	case ast.BinDiv:
-		r := toFloat(right)
-		if r == 0 {
-			return nil, fmt.Errorf("division by zero")
-		}
-		return numericResult(toFloat(left) / r), nil
-	case ast.BinMod:
-		r := toFloat(right)
-		if r == 0 {
-			return nil, fmt.Errorf("modulo by zero")
-		}
-		return numericResult(math.Mod(toFloat(left), r)), nil
+		return opeval.Arith(ast.BinAdd, left, right)
+	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
+		return opeval.Arith(e.Op, left, right)
 	}
 	return nil, fmt.Errorf("unknown binary op %d", e.Op)
 }
@@ -2177,7 +2164,6 @@ func numericResult(f float64) any {
 	return f
 }
 
-// literalString pulls the cooked string value from an ast literal.
 func literalString(e *ast.LiteralExpr) (string, bool) {
 	if e == nil {
 		return "", false
