@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
@@ -760,7 +761,8 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		}
 	case "string.length":
 		if s, ok := args[0].(string); ok {
-			return len(s), true
+			// Rune count, not byte count — SNGL strings are runes (bugs.md #16).
+			return utf8.RuneCountInString(s), true
 		}
 	case "list.length":
 		if l, ok := args[0].([]any); ok {
@@ -801,8 +803,12 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		s, sok := args[0].(string)
 		start, stok := toInt(args[1])
 		end, eok := toInt(args[2])
-		if sok && stok && eok && start >= 0 && end <= len(s) && start <= end {
-			return s[start:end], true
+		if sok && stok && eok {
+			// Rune indices, not byte indices (bugs.md #16).
+			runes := []rune(s)
+			if start >= 0 && end <= len(runes) && start <= end {
+				return string(runes[start:end]), true
+			}
 		}
 	case "string.startsWith":
 		s, sok := args[0].(string)

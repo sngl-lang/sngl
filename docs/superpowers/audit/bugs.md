@@ -82,8 +82,9 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - **severity**: cosmetic→latent (logs noise; rarely missed-cleanup)
 
 ### 16. `string.substring` and `string.length` byte-not-rune
-- **file**: `internal/interp/builtins.go:178-197`
-- Operates on byte indices. `"é".length` returns 2, `"é".substring(0,1)` returns the leading byte of a multi-byte rune (invalid UTF-8). Test runner output disagrees with browser runtime that uses JS string ops (UTF-16 code units).
+- **RESOLVED**: SNGL strings now have rune (Unicode code point) semantics for `length` and `substring`, per design ("keep the string and give it rune semantics"). Fixed in all three compiler-side paths so they agree: the interpreter (`internal/interp/builtins.go` — `utf8.RuneCountInString`, `[]rune` slice), the const folder (`internal/optimize/consteval.go`), and the Go codegen intrinsics (`codegen/lang/golang/intrinsics.go` — `StrLength`→`utf8.RuneCountInString`, `StrSubstring`→`string([]rune(s)[a:b])`). `"é".length` is now 1; `substring` never splits a multi-byte rune. Fixture: `testdata/test_stdlib.sngl` (`"é"`, `"café"`).
+- JS/Kotlin codegen emit `.length`/`.substring` (UTF-16 code units), which already agree with rune semantics for the entire Basic Multilingual Plane (including the `é` example). Full parity for astral-plane characters (emoji beyond U+FFFF, where UTF-16 uses surrogate pairs) in the JS/Kotlin *runtimes* is a separate follow-up — it needs code-point-based string ops in generated code. `indexOf` is left as an implementation-defined index (byte in Go/interp/folder, UTF-16 in JS/Kotlin) and unchanged here; rune-indexed `indexOf` is a related follow-up.
+- **file**: `internal/interp/builtins.go`, `internal/optimize/consteval.go`, `codegen/lang/golang/intrinsics.go`
 - **severity**: wrong-output (i18n/unicode)
 
 ### 17. Public API `Convert` / `Format*` panic-prone on partial IR

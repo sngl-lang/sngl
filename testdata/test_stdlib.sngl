@@ -67,6 +67,9 @@ func testStringLength(t Test, c main) {
     t.assert(string.length("hello") == 5)
     t.assert(string.length("") == 0)
     t.assert("hello".length() == 5)
+    // Rune (code point) semantics, not bytes: "é" is one rune (2 UTF-8 bytes).
+    t.assert(string.length("é") == 1)
+    t.assert(string.length("café") == 4)
 }
 
 func testStringMethods(t Test, c main) {
@@ -77,6 +80,9 @@ func testStringMethods(t Test, c main) {
     t.assert(string.indexOf("hello", "llo") == 2)
     t.assert(string.indexOf("hello", "xyz") == -1)
     t.assert(string.substring("hello", 1, 4) == "ell")
+    // Rune indices: slicing never splits a multi-byte rune (bugs.md #16).
+    t.assert(string.substring("café", 0, 3) == "caf")
+    t.assert(string.substring("café", 3, 4) == "é")
 }
 
 func testStringContainsStartsWithEndsWith(t Test, c main) {

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // nativeMethod looks up a native Go implementation for a stdlib method.
@@ -176,24 +177,28 @@ var nativeMethods = map[string]nativeFunc{
 		return out, nil
 	},
 	"string.substring": func(args []any) (any, error) {
-		s := fmt.Sprintf("%v", args[0])
+		// Rune (Unicode code point) semantics: indices count code points,
+		// not bytes, so a multi-byte rune is never split into invalid
+		// UTF-8. Matches SNGL's string-is-runes model (bugs.md #16).
+		runes := []rune(fmt.Sprintf("%v", args[0]))
 		start := ToInt(args[1])
 		end := ToInt(args[2])
 		if start < 0 {
 			start = 0
 		}
-		if end > len(s) {
-			end = len(s)
+		if end > len(runes) {
+			end = len(runes)
 		}
 		if start > end {
 			return "", nil
 		}
-		return s[start:end], nil
+		return string(runes[start:end]), nil
 	},
 
 	// --- string/list length (native, replaces size()) ---
 	"string.length": func(args []any) (any, error) {
-		return len(fmt.Sprintf("%v", args[0])), nil
+		// Rune count, not byte count: `"é".length` is 1 (bugs.md #16).
+		return utf8.RuneCountInString(fmt.Sprintf("%v", args[0])), nil
 	},
 	"list.length": func(args []any) (any, error) {
 		if list, ok := args[0].([]any); ok {
