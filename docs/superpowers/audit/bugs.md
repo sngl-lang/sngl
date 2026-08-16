@@ -121,8 +121,9 @@ Findings from a strategic-sample audit (Parser, Checker, Optimizer, Lower, Inter
 - For map miss with `Dyn` value type, samples an existing value via `range m`. Map iteration is randomized in Go — the zero-value template differs run-to-run. Test runs become flaky.
 
 ### 25. Reactivity panics on nested slot constructs
-- **file**: `internal/lower/reactivity.go:982-993`
-- `panic("nested *ir.If with its own slot — not yet supported")`. Any user program that triggers this nesting (e.g. condition inside a list) crashes the compiler. Should be a checker error, not a lowering panic.
+- **RESOLVED**: the two `panic(...)` calls in `renderSlotBody`'s `emitStmts` now record a positioned compile error (`file:line:col: a reactive \`if\`/\`for\` nested inside another reactive block is not yet supported ...`) via a new `reactivityState.err` / `failf`, returned from `lowerReactivity`. The build fails cleanly instead of crashing.
+- Investigation note: the panics were in fact **unreachable** in the current design — the collection pass (`collectFromStmt`, reactivity.go ~475/490) never recurses `collectFromIf/For` into a reactive slot's body; it calls `registerSlotBodyDeps` instead, so a *nested* reactive structure is handled by making the enclosing slot re-fire on the inner's deps (coarse whole-slot re-render). So "condition inside a list" compiles correctly today, not a crash. The guard is retained as defensive hardening: if a future collection change ever surfaces a slotted node inside a slot body, it now errors with a position rather than panicking.
+- **file**: `internal/lower/reactivity.go` (`failf`, `emitStmts` guards). Tests: `TestNestedReactiveCompilesCleanly`, `TestFailfGuardIsPositionedError`.
 
 ### 26. WASM playground builds depend on `goexec` having a `_js` stub
 - **file**: `internal/optimize/goexec_js.go`

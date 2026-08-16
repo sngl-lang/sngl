@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -534,5 +535,56 @@ component main {
 		if v.Name == "__root" {
 			t.Error("__root unexpectedly synthesized for component with no reactive slots")
 		}
+	}
+}
+
+// TestNestedReactiveCompilesCleanly guards the resolution of audit bugs.md
+// #25. A reactive structure nested inside another reactive structure (a
+// reactive `for` inside a reactive `if`) must lower without panicking. The
+// collection pass never assigns a slot to a nested structure — instead the
+// enclosing slot re-fires on the inner's deps (coarse whole-slot re-render),
+// so this shape is handled, not a crash.
+func TestNestedReactiveCompilesCleanly(t *testing.T) {
+	src := `
+component main {
+    var visible bool = true
+    var items list<int> = [1, 2, 3]
+    if visible {
+        for x = items {
+            text(value=x)
+        }
+    }
+}
+`
+	doc, perr := parser.Parse("t.sngl", []byte(src))
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+		t.Fatalf("nested reactive structure should lower cleanly, got: %v", err)
+	}
+}
+
+// TestFailfGuardIsPositionedError verifies the nested-slot guard now records
+// a positioned compile error instead of panicking, should a future
+// collection change ever surface a slotted node inside a slot body (audit
+// bugs.md #25 — "should be a checker error, not a lowering panic").
+func TestFailfGuardIsPositionedError(t *testing.T) {
+	st := &reactivityState{}
+	st.failf(ast.Pos{File: "t.sngl", Line: 5, Column: 9}, "a reactive %s is not yet supported", "for")
+	if st.err == nil {
+		t.Fatal("failf should record an error")
+	}
+	if !strings.Contains(st.err.Error(), "t.sngl:5:9:") {
+		t.Errorf("error should carry a source position; got: %v", st.err)
+	}
+	if !strings.Contains(st.err.Error(), "not yet supported") {
+		t.Errorf("error should explain the limitation; got: %v", st.err)
+	}
+	// First error wins; a later call must not clobber it.
+	st.failf(ast.Pos{File: "t.sngl", Line: 9, Column: 1}, "second")
+	if strings.Contains(st.err.Error(), "second") {
+		t.Errorf("failf should keep the first error; got: %v", st.err)
 	}
 }
