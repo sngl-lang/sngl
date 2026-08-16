@@ -92,6 +92,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	if main := ctx.MainComponent(); main != nil {
 		gc = gc.ForComponent(main)
 	}
+	// go-lib funcs are emitted as free, exported package-level functions, so
+	// calls among them (including recursion) must render as `Fib(...)`, not
+	// `m.fib(...)` — there is no Model receiver in this module.
+	gc.FreeFuncScope = true
 
 	allFuncs := ctx.AllFuncs()
 

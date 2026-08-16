@@ -29,6 +29,16 @@ type GoIRContext struct {
 	// If nil, a default "m.toasts = append(...)" implementation is used.
 	AlertFunc func(ctx *GoIRContext, method string, args []ir.CallArg) []string
 
+	// FreeFuncScope makes calls to component/window-scoped user funcs and
+	// computeds render as free, exported package-level functions
+	// (`Fib(n-1)`) rather than Model-receiver methods (`m.fib(n-1)`). Set by
+	// hosts that emit user funcs as free functions in a separate package —
+	// today only the android `go { android() }` go-lib (gomobile bind)
+	// module. Without it a recursive or mutually-recursive go-lib func
+	// renders its call with an `m.` receiver that has no binding in the free
+	// function, producing Go that does not compile.
+	FreeFuncScope bool
+
 	// EmitLineDirectives controls whether EvalStmt prepends `//line file:line`
 	// directives at statement boundaries. Set by platforms when req.Maps is
 	// true. Go's compiler reads //line natively and attributes errors/panics
@@ -559,6 +569,15 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		// `greeting()` referencing an undefined package-level identifier.
 		_, kind := gc.Ctx.Resolve(fname)
 		if kind == codegen.NameComputed || kind == codegen.NameFunc {
+			// In a free-function scope (android go-lib) there is no Model
+			// receiver: these funcs are emitted as exported package-level
+			// functions, so call them by their exported name. This is what
+			// makes a recursive go-lib func (`func fib => fib(n-1)+...`)
+			// compile. A call to a func that was not emitted into the lib
+			// yields a clean "undefined" Go error rather than silent bad code.
+			if gc.FreeFuncScope {
+				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			}
 			return "m." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
 
@@ -1180,6 +1199,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	return &GoIRContext{
 		Ctx:                gc.Ctx.WithLocal(name),
 		AlertFunc:          gc.AlertFunc,
+		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		imports:            gc.imports, // shared so child writes propagate
 	}
@@ -1190,6 +1210,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 	return &GoIRContext{
 		Ctx:                gc.Ctx.ForComponent(comp),
 		AlertFunc:          gc.AlertFunc,
+		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		imports:            gc.imports, // shared so child writes propagate
 	}
