@@ -240,11 +240,12 @@ func runTests(verbose, fmtDocs, full bool) {
 	defer os.Remove(profile.Name())
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
-	if full {
-		// Slow/heavy platform tests (e.g. android fixtures) opt in via
-		// SNGL_TESTS_FULL and can exceed the default 10m go test timeout.
-		args = append(args, "-timeout=20m")
-	}
+	// Always raise the per-package timeout above Go's 10m default. Even
+	// without SNGL_TESTS_FULL, the heavy cgo GUI packages run close to the
+	// wall: the fyne suite alone takes ~560s, so on a loaded CI runner the
+	// default 10m flakes into a timeout with no margin. --full adds still
+	// more (android fixtures) but the default set needs headroom too.
+	args = append(args, "-timeout=20m")
 	if verbose {
 		args = append(args, "-v")
 	}
