@@ -324,7 +324,7 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "GtkWidget")
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(id),
+		Target: codegen.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -348,7 +348,7 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}
 	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(id),
+		Target: codegen.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  cgoCast(cType, ctor),
 	}}
@@ -383,7 +383,7 @@ func (t *gtk4Translator) parentCType(e ir.Expr) string {
 		if id.Name == "container" || id.Name == "parent" {
 			return "GtkBox"
 		}
-		return t.idCTypes[golang.IdentBareName(e)]
+		return t.idCTypes[codegen.IdentBareName(e)]
 	}
 	return ""
 }
@@ -462,10 +462,10 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
 		if strings.HasPrefix(id.Name, "__n") {
-			return golang.ModelFieldRef(id.Name)
+			return codegen.ModelFieldRef(id.Name)
 		}
 		if id.IsElementRef && id.Synthesized {
-			return golang.ModelFieldRef(id.Name)
+			return codegen.ModelFieldRef(id.Name)
 		}
 	}
 	return e
@@ -475,7 +475,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isSkipped(node) {
 		return nil
 	}
-	bare := golang.IdentBareName(node)
+	bare := codegen.IdentBareName(node)
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
@@ -622,7 +622,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if t.isSkipped(node) {
 		return nil
 	}
-	bare := golang.IdentBareName(node)
+	bare := codegen.IdentBareName(node)
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
 	if signal == "" {
@@ -677,14 +677,14 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(slot.Name),
+		Target: codegen.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := golang.ModelFieldRef(slot.Name)
+	slotRef := codegen.ModelFieldRef(slot.Name)
 	castChild := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	appendCall := &ir.Call{
 		Type: slot.Type,
@@ -695,7 +695,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(slot.Name),
+		Target: codegen.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}}
@@ -703,7 +703,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return golang.ModelFieldRef(id.Name)
+		return codegen.ModelFieldRef(id.Name)
 	}
 	return iter
 }

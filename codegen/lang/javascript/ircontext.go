@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -69,7 +70,7 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	// Predeclared i18n.PluralKey constants lower to JS string literals.
 	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := codegen.PluralKeyConstString("i18n." + n.Field); s != "" {
+		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
 			return s
 		}
 	}
@@ -226,7 +227,7 @@ func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !jc.EmitPositionMarkers {
 		return nil
 	}
-	pos := codegen.StmtIRPos(s)
+	pos := ir.StmtPos(s)
 	if !pos.IsValid() || pos.File == "" {
 		return nil
 	}
@@ -243,7 +244,7 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !codegen.IsErrorRaiseFunc(call.Func) {
+	if !ir.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -598,7 +599,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 }
 
 func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
-	if codegen.IsNullToFuncConv(n) {
+	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubJS(n.Type)
 	}
 	operand := jc.EvalExpr(n.Operand)

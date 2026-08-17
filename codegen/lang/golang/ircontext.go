@@ -410,7 +410,7 @@ func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !gc.EmitLineDirectives {
 		return nil
 	}
-	pos := codegen.StmtIRPos(s)
+	pos := ir.StmtPos(s)
 	if !pos.IsValid() || pos.File == "" {
 		return nil
 	}
@@ -904,7 +904,7 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !codegen.IsErrorRaiseFunc(call.Func) {
+	if !ir.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -992,7 +992,7 @@ func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 }
 
 func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
-	if codegen.IsNullToFuncConv(n) {
+	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubGo(n.Type)
 	}
 	if n.Type != nil && n.Type.Kind == ir.TypeNative {
@@ -1334,7 +1334,7 @@ func IRLiteralToGo(e ir.Expr) string {
 		// null → func: emit a zero-value callable lambda so calling through
 		// the var at runtime returns the declared return type's zero instead
 		// of panicking on a nil func value.
-		if codegen.IsNullToFuncConv(n) {
+		if ir.IsNullToFuncConv(n) {
 			return nullFuncStubGo(n.Type)
 		}
 		return IRLiteralToGo(n.Operand)

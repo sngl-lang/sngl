@@ -1,8 +1,6 @@
 package golang
 
 import (
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -39,23 +37,4 @@ func VarGoType(v *ir.Var) string {
 		}
 	}
 	return "any"
-}
-
-// IdentBareName returns an ident's name with the "m." model-struct prefix
-// stripped, or "" if e is not an *ir.Ident.
-func IdentBareName(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		return strings.TrimPrefix(id.Name, "m.")
-	}
-	return ""
-}
-
-// ModelFieldRef builds an `m.<name>` selector against the generated model
-// struct — the shared field-access convention of the Go desktop generators.
-func ModelFieldRef(name string) ir.Expr {
-	return &ir.Select{
-		Operand: &ir.Ident{Name: "m"},
-		Field:   name,
-		Type:    ir.TypDyn,
-	}
 }

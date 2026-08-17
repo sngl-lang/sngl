@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -97,7 +98,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	// string category exclusively. Mirrors golang/JS IRContext and the legacy
 	// kotlin translateIRExpr Select case.
 	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := codegen.PluralKeyConstString("i18n." + n.Field); s != "" {
+		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
 			return s
 		}
 	}
@@ -408,7 +409,7 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !codegen.IsErrorRaiseFunc(call.Func) {
+	if !ir.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -536,7 +537,7 @@ func ktIntConvMethod(t *ir.Type) string {
 }
 
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
-	if codegen.IsNullToFuncConv(n) {
+	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubKt(n.Type)
 	}
 	operand := kc.EvalExpr(n.Operand)

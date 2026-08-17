@@ -198,7 +198,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(id),
+		Target: codegen.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
 	}}
@@ -218,7 +218,7 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "fyne.CanvasObject")
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(id),
+		Target: codegen.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -262,7 +262,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to .Content instead. Detected via parent's tag → blueprint.
-	parentTag := t.idTags[golang.IdentBareName(parent)]
+	parentTag := t.idTags[codegen.IdentBareName(parent)]
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	if bp, ok := t.blueprints[parentTag]; ok && bp.Constructor != nil && isSingleChildContainerGoFn(bp.Constructor.GoFn) {
@@ -308,7 +308,7 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 		// window/component bodies need an `m.` qualifier; slot Funcs use
 		// the typed `container` param instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return golang.ModelFieldRef(id.Name)
+			return codegen.ModelFieldRef(id.Name)
 		}
 	}
 	return e
@@ -323,14 +323,14 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 			return localElementRef(id.Name)
 		}
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return golang.ModelFieldRef(id.Name)
+			return codegen.ModelFieldRef(id.Name)
 		}
 	}
 	return e
 }
 
 func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	bareID := golang.IdentBareName(node)
+	bareID := codegen.IdentBareName(node)
 	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
@@ -370,7 +370,7 @@ func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {
 	if t.isLocalRef(bareID) {
 		return localElementRef(bareID)
 	}
-	return golang.ModelFieldRef(bareID)
+	return codegen.ModelFieldRef(bareID)
 }
 
 // qualifyHandlerNode produces a ref for a node id (local or Model-field).
@@ -390,14 +390,14 @@ func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
 			return e
 		}
 		if strings.HasPrefix(name, "__") {
-			return golang.ModelFieldRef(name)
+			return codegen.ModelFieldRef(name)
 		}
 	}
 	return e
 }
 
 func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	bareID := golang.IdentBareName(node)
+	bareID := codegen.IdentBareName(node)
 	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
@@ -427,18 +427,18 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(slot.Name),
+		Target: codegen.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := golang.ModelFieldRef(slot.Name)
+	slotRef := codegen.ModelFieldRef(slot.Name)
 	child = t.qualifyChildExpr(child)
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
-		Target: golang.ModelFieldRef(slot.Name),
+		Target: codegen.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendExpr,
 	}}
@@ -446,7 +446,7 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return golang.ModelFieldRef(id.Name)
+		return codegen.ModelFieldRef(id.Name)
 	}
 	return iter
 }
