@@ -83,31 +83,15 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 // at the top level or inside expanded for-loops, if-blocks, and platform filters.
 func collectWindows(stmts []ir.Stmt) []*ir.Window {
 	var windows []*ir.Window
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.Window:
-			windows = append(windows, n)
-		case *ir.If:
-			windows = append(windows, collectWindows(n.Body)...)
-			windows = append(windows, collectWindows(n.Else)...)
-		case *ir.For:
-			windows = append(windows, collectWindows(n.Body)...)
-		case *ir.PlatformFilter:
-			windows = append(windows, collectWindows(n.Body)...)
-		case *ir.ContextProvider:
-			windows = append(windows, collectWindows(n.Children)...)
-		case *ir.SlotInst:
-			windows = append(windows, collectWindows(n.Children)...)
-		case *ir.ErrorBoundary:
-			windows = append(windows, collectWindows(n.Children)...)
-		case *ir.NodeInst:
-			windows = append(windows, collectWindows(n.Children)...)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
-			// No nested window declarations.
-		default:
-			panic(fmt.Sprintf("collectWindows: unhandled stmt %T", n))
+	ir.InspectStmts(stmts, ir.Inspector{Stmt: func(s ir.Stmt) ir.WalkAction {
+		if w, ok := s.(*ir.Window); ok {
+			windows = append(windows, w)
+			// A window is a leaf here: its own body is a separate root, and
+			// windows do not nest inside one another.
+			return ir.SkipChildren
 		}
-	}
+		return ir.Continue
+	}})
 	return windows
 }
 
