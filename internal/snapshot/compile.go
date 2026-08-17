@@ -107,19 +107,6 @@ func CheckOutputs(sourceFile string) ([]*ir.Output, error) {
 	return pkg.Outputs, nil
 }
 
-// PlatformsForFile returns the platform names from a .sngl file's output block.
-func PlatformsForFile(sourceFile string) []string {
-	outputs, err := CheckOutputs(sourceFile)
-	if err != nil {
-		return nil
-	}
-	var platforms []string
-	for _, o := range outputs {
-		platforms = append(platforms, o.Platform)
-	}
-	return platforms
-}
-
 // ParseSNGL parses a .sngl file and returns the AST document.
 func ParseSNGL(filename string) (*ast.Document, error) {
 	src, err := os.ReadFile(filename)
@@ -127,12 +114,6 @@ func ParseSNGL(filename string) (*ast.Document, error) {
 		return nil, err
 	}
 	return parser.Parse(filename, src)
-}
-
-// checkDoc type-checks a document and returns the first error diagnostic, if any.
-func checkDoc(doc *ast.Document, dir string) error {
-	_, err := checkAndReturn(doc, dir)
-	return err
 }
 
 // checkAndReturn type-checks a document and returns the package or the first error.

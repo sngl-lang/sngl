@@ -23,12 +23,6 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
-var workspaceDir string
-
-// SetWorkspaceDir sets the directory to scan for workspace .sngl files.
-// When set, Components() includes workspace component declarations before stdlib.
-func SetWorkspaceDir(dir string) { workspaceDir = dir }
-
 //go:embed *.md learn reference
 var content embed.FS
 
@@ -364,28 +358,6 @@ func StdlibComponents() []Component {
 	return comps
 }
 
-// Components returns metadata for all components. When a workspace directory
-// has been set via SetWorkspaceDir, workspace declarations appear first,
-// followed by stdlib components.
-func Components() []Component {
-	var comps []Component
-
-	// Workspace components (if dir set).
-	if workspaceDir != "" {
-		if doc, err := parseDir(workspaceDir); err == nil {
-			pd := checker.ExtractPackageDocs(doc)
-			for _, d := range pd.Components {
-				if !strings.HasPrefix(d.Name, "sngl.") {
-					comps = append(comps, Component{Name: d.Name, Doc: d.Doc, Tier: "workspace"})
-				}
-			}
-		}
-	}
-
-	comps = append(comps, StdlibComponents()...)
-	return comps
-}
-
 // ComponentsByTier returns stdlib components grouped by tier for the gallery.
 //
 //sngl:pure
@@ -402,16 +374,6 @@ func ComponentsByTier() []Tier {
 		}
 	}
 	return tiers
-}
-
-// Lookup returns the component with the given name, or a zero Component if not found.
-func Lookup(name string) Component {
-	for _, c := range Components() {
-		if c.Name == name {
-			return c
-		}
-	}
-	return Component{Name: name, Doc: "Component not found."}
 }
 
 // StdlibLookup returns the stdlib component with the given name.

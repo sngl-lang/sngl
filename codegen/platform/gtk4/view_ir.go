@@ -6,7 +6,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // widgetField is a persistent widget reference stored on the Model struct.
@@ -46,18 +45,6 @@ type gtkEventInvoker struct {
 	PreFire    string // optional pre-fire snippet (e.g. push entry text into widget state)
 }
 
-// userNodeID returns n.ID when it looks like a user-authored #id
-// rather than a synthetic passReactivity id ("__nN").
-func userNodeID(n *ir.NodeInst) string {
-	if n == nil {
-		return ""
-	}
-	if n.ID == "" || strings.HasPrefix(n.ID, "__n") {
-		return ""
-	}
-	return n.ID
-}
-
 // --- Lookup tables (consumed by gtk4Translator) ---
 
 // gtkSetterEntry describes the C setter (and cast type) for one prop
@@ -88,12 +75,6 @@ var gtkSetterTable = map[string]map[string]gtkSetterEntry{
 	"GtkImage": {
 		"file": {Setter: "gtk_image_set_from_file"},
 	},
-}
-
-// gtkSetter returns the C setter for (cType, prop). Kept for callers
-// that don't need the cast-type override.
-func gtkSetter(cType, prop string) string {
-	return gtkSetterFor(cType, prop).Setter
 }
 
 // gtkSetterFor returns both the setter and its receiver cast override

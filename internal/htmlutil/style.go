@@ -7,26 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// BuildCSSStyle builds a complete inline CSS style string from a visual node's
-// named args that map to CSS properties.
-func BuildCSSStyle(vn *ast.VisualNode) string {
-	var parts []string
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name == "" {
-			continue
-		}
-		if css := StylePropToCSS(arg.Name, arg.Value); css != "" {
-			parts = append(parts, css)
-		}
-	}
-	sort.Strings(parts)
-	return strings.Join(parts, ";")
-}
 
 // BuildCSSStyleIR builds an inline CSS style string from a slice of IR args
 // (typically ir.NodeInst.Props). A `style={...}` struct prop has its fields
@@ -97,14 +79,6 @@ func stylePropCSS(prop, val string) string {
 		val += "px"
 	}
 	return cssProp + ":" + val
-}
-
-// StylePropToCSS converts a SNGL style property and expression to a CSS
-// declaration string. Returns "" if the value cannot be statically resolved.
-// Some properties (paddingX, marginX, maxLines, borderWidth) expand to
-// multiple CSS declarations.
-func StylePropToCSS(prop string, expr ast.Expr) string {
-	return stylePropCSS(prop, ExprToStaticValue(expr))
 }
 
 // PropToCSS maps a SNGL style property name to its CSS equivalent.
@@ -189,15 +163,6 @@ func PropToCSS(prop string) string {
 	default:
 		return ""
 	}
-}
-
-// AppendCSS appends a CSS property:value to an existing style string.
-func AppendCSS(existing, prop, value string) string {
-	entry := prop + ":" + value
-	if existing == "" {
-		return entry
-	}
-	return existing + ";" + entry
 }
 
 // IsNumeric reports whether s consists only of digits, dots, and hyphens.

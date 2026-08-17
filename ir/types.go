@@ -460,45 +460,22 @@ func isStdlibStruct(t *Type, name string) bool {
 	return ok && sd.Name == name
 }
 
-// Registered stdlib struct types for date/time/dateTime. Populated by the
-// checker once lib/types.sngl is parsed, so non-checker phases (foreign-type
-// importers, etc.) can synthesize a canonical date/time/dateTime value type
-// without their own scope access. Nil before registration; accessors fall
-// back to TypDyn.
-var (
-	stdlibDateType     *Type
-	stdlibTimeType     *Type
-	stdlibDateTimeType *Type
-)
+// Registered stdlib dateTime struct type. Populated by the checker once
+// lib/types.sngl is parsed, so non-checker phases (foreign-type importers,
+// etc.) can synthesize a canonical dateTime value type without their own scope
+// access. Nil before registration; the accessor falls back to TypDyn.
+var stdlibDateTimeType *Type
 
-// RegisterStringReprStructs records the resolved stdlib struct types so the
-// DateType/TimeType/DateTimeType accessors can hand them out. Idempotent.
+// RegisterStringReprStructs records the resolved stdlib dateTime struct type so
+// the DateTimeType accessor can hand it out. Idempotent.
 func RegisterStringReprStructs(date, time, dateTime *Type) {
-	if date != nil {
-		stdlibDateType = date
-	}
-	if time != nil {
-		stdlibTimeType = time
-	}
 	if dateTime != nil {
 		stdlibDateTimeType = dateTime
 	}
 }
 
-// DateType/TimeType/DateTimeType return the registered stdlib struct types,
+// DateTimeType returns the registered stdlib struct type,
 // falling back to dyn when the stdlib has not been loaded yet.
-func DateType() *Type {
-	if stdlibDateType != nil {
-		return stdlibDateType
-	}
-	return TypDyn
-}
-func TimeType() *Type {
-	if stdlibTimeType != nil {
-		return stdlibTimeType
-	}
-	return TypDyn
-}
 func DateTimeType() *Type {
 	if stdlibDateTimeType != nil {
 		return stdlibDateTimeType

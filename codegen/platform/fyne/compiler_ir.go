@@ -20,7 +20,6 @@ type irAnalysis struct {
 	computeds  []irComputed
 	dataEvents map[string][]*ir.EventHandler
 	gc         *golang.GoIRContext
-	dt         *codegen.DepTracker
 }
 
 type irBind struct {
@@ -41,13 +40,6 @@ type irComputed struct {
 	name   string
 	goType string
 	fn     *ir.Func
-}
-
-func (info *irAnalysis) depTracker() *codegen.DepTracker {
-	if info.dt == nil {
-		info.dt = info.CommonAnalysis.DepTracker()
-	}
-	return info.dt
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {

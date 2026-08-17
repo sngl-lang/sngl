@@ -48,8 +48,6 @@ func (b *builder) iter(children []int32) nodeIter {
 
 func (it *nodeIter) done() bool { return it.pos >= len(it.tree) }
 
-func (it *nodeIter) peek() int32 { return it.tree[it.pos] }
-
 func (it *nodeIter) isNonTerminal() bool { return it.tree[it.pos] < 0 }
 
 func (it *nodeIter) symbol() Symbol { return Symbol(-it.tree[it.pos]) }
@@ -63,13 +61,6 @@ func (it *nodeIter) shift() Token {
 	tok := tokenAt(it.filtered, it.tree[it.pos])
 	it.pos++
 	return tok
-}
-
-// shiftIdx consumes a terminal and returns its index.
-func (it *nodeIter) shiftIdx() int32 {
-	idx := it.tree[it.pos]
-	it.pos++
-	return idx
 }
 
 // skip advances past the current element (terminal or non-terminal).
@@ -88,17 +79,6 @@ func (it *nodeIter) enter() nodeIter {
 	children := it.tree[it.pos+2 : it.pos+2+count]
 	it.pos += 2 + count
 	return nodeIter{tree: children, filtered: it.filtered}
-}
-
-// childSlice returns the raw children slice of the current non-terminal without consuming.
-func (it *nodeIter) childSlice() []int32 {
-	count := int(it.tree[it.pos+1])
-	return it.tree[it.pos+2 : it.pos+2+count]
-}
-
-func (b *builder) pos(idx int32) ast.Pos {
-	tok := tokenAt(b.filtered, idx)
-	return ast.Pos{File: b.file, Line: tok.Line, Column: tok.Column}
 }
 
 func (b *builder) posFromToken(tok Token) ast.Pos {
@@ -296,13 +276,6 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 	it.skip()
 	return nil
 }
-
-// exprStmt wraps an Expr as a Stmt for use in StmtBlock.Stmts.
-type exprStmt struct {
-	ast.Expr
-}
-
-func (e exprStmt) StmtPos() *ast.Pos { return e.Expr.ExprPos() }
 
 // --- Imports ---
 

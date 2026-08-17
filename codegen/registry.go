@@ -37,23 +37,6 @@ func RegisterPlatform(p PlatformGenerator) {
 	platforms[name] = p
 }
 
-// CollectLanguages returns all registered languages as checker.Language slices,
-// ordered by language identifier.
-func CollectLanguages() []ir.Language {
-	langMu.RLock()
-	defer langMu.RUnlock()
-	names := make([]string, 0, len(langs))
-	for name := range langs {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	out := make([]ir.Language, 0, len(langs))
-	for _, name := range names {
-		out = append(out, langs[name])
-	}
-	return out
-}
-
 // CollectPlatforms returns all registered platforms as checker.Platform slices,
 // ordered by platform identifier.
 func CollectPlatforms() []ir.Platform {

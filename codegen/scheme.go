@@ -82,14 +82,3 @@ func LookupFSScheme(scheme string) FSSchemeImporter {
 	defer schemeMu.RUnlock()
 	return fsSchemes[scheme]
 }
-
-// Schemes returns the names of all registered schemes.
-func Schemes() []string {
-	schemeMu.RLock()
-	defer schemeMu.RUnlock()
-	names := make([]string, 0, len(schemes))
-	for name := range schemes {
-		names = append(names, name)
-	}
-	return names
-}

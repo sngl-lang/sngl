@@ -9,36 +9,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// LowerTestFunc renders a SNGL test function as a Go *testing.T test
-// function. The output is a single self-contained Go source block
-// suitable for inclusion in a `_test.go` file inside the temp module
-// emitted by a platform RunTests.
-//
-// The caller is responsible for declaring a `newTestComponent()` helper
-// in the same file; the lowered body references `c := newTestComponent()`.
-//
-// Component-typed params (e.g. `c counter`) are marked for raw-field
-// access on the context so reads and writes to component state lower as
-// direct unexported field access (`c.count`, `c.count = 1`) — valid
-// because the lowered test lives in the same Go package as the
-// generated Model.
-func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "func Test%s(t *testing.T) {\n", suffix)
-	b.WriteString("\tc := newTestComponent()\n")
-	// Tests that exercise pure literal arithmetic don't reference `c`;
-	// `_ = c` keeps the local valid under Go's unused-variable rule.
-	b.WriteString("\t_ = c\n")
-	gc := testIRContext(fn, methodFields)
-	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, gc) {
-			fmt.Fprintf(&b, "\t%s\n", line)
-		}
-	}
-	b.WriteString("}\n")
-	return b.String()
-}
-
 // testIRContext builds a GoIRContext for rendering a test body. The
 // ExprCtx is backed by an empty package: idents in a test body are either
 // locals (params/loop vars, registered below) or — for component state —

@@ -3,7 +3,6 @@ package html
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"html"
 	"io/fs"
@@ -1464,21 +1463,6 @@ func isStdlibComponentName(name string) bool {
 		"menubar", "toolbar", "datepicker", "chip", "avatar", "card", "slot",
 		"window", "timer", "canvas":
 		return true
-	}
-	return false
-}
-
-// isFunction reports whether a visual node name resolves to a function (not component).
-func (g *htmlGen) isFunction(name string) bool {
-	if g.pkg == nil || g.pkg.Symbols == nil {
-		return false
-	}
-	if _, ok := g.pkg.Symbols.LookupComponent(name); ok {
-		return false // it's a component
-	}
-	if sym, ok := g.pkg.Symbols.Root.Lookup(name); ok {
-		_, isFunc := sym.(*ir.Func)
-		return isFunc
 	}
 	return false
 }
@@ -3277,15 +3261,6 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 	return g.exprToJS(expr)
 }
 
-// complexLiteralToJS converts []any or map[string]any to JSON for embedding in JS.
-func complexLiteralToJS(v any) string {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return "null"
-	}
-	return string(data)
-}
-
 func (g *htmlGen) evalStaticString(props map[string]ir.Expr, key string) string {
 	if props == nil {
 		return ""
@@ -3388,17 +3363,6 @@ func splitJSConcat(s string) []string {
 		return nil
 	}
 	return parts
-}
-
-// extractSetTarget finds the target expression of an assignment statement.
-func extractSetTarget(s ir.Stmt) (ir.Expr, bool) {
-	if s == nil {
-		return nil, false
-	}
-	if n, ok := s.(*ir.Assign); ok {
-		return n.Target, true
-	}
-	return nil, false
 }
 
 // writeUserAttrs emits user-specified id and class attributes in test mode.

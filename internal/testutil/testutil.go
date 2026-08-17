@@ -17,7 +17,6 @@ import (
 
 var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+("(?:[^"\\]|\\.)*")`)
 var foldRE = regexp.MustCompile(`//\s*FOLD\s+(.+)`)
-var posLineRE = regexp.MustCompile(`^\d+:\d+:`)
 
 // ErrorDirective represents a // ERROR(phase) "substring" comment in a test fixture.
 type ErrorDirective struct {
@@ -79,105 +78,6 @@ func parseSNGLLiteral(s string) (any, error) {
 	return nil, fmt.Errorf("unrecognized SNGL literal: %s", s)
 }
 
-// AssertFolds checks that data and computed fields on directive lines were folded
-// to the expected literal values after optimization. Both value and type must match.
-func AssertFolds(t *testing.T, doc *ast.Document, folds []FoldDirective) {
-	t.Helper()
-	assertFolds(t, doc, folds)
-}
-
-func assertFolds(t testing.TB, doc *ast.Document, folds []FoldDirective) {
-	t.Helper()
-	for _, fd := range folds {
-		expr, name := findExprAtLine(doc, fd.Line)
-		if expr == nil {
-			t.Errorf("line %d: no data or computed field found for FOLD directive", fd.Line)
-			continue
-		}
-		lit, ok := expr.(*ast.LiteralExpr)
-		if !ok {
-			t.Errorf("line %d (%s): expression was not folded (not a literal)", fd.Line, name)
-			continue
-		}
-		got := parseLiteralValue(lit)
-		if got != fd.Expected {
-			t.Errorf("line %d (%s): expected %v (%T), got %v (%T)",
-				fd.Line, name, fd.Expected, fd.Expected, got, got)
-		}
-	}
-}
-
-// parseLiteralValue extracts a Go value from a v2 LiteralExpr.
-func parseLiteralValue(lit *ast.LiteralExpr) any {
-	switch lit.Kind {
-	case ast.LiteralBool:
-		return lit.Raw == "true"
-	case ast.LiteralNull:
-		return nil
-	case ast.LiteralInt:
-		if v, err := strconv.Atoi(lit.Raw); err == nil {
-			return v
-		}
-	case ast.LiteralFloat:
-		if v, err := strconv.ParseFloat(lit.Raw, 64); err == nil {
-			return v
-		}
-	case ast.LiteralStringQuoted:
-		if v, err := strconv.Unquote(lit.Raw); err == nil {
-			return v
-		}
-	}
-	return lit.Raw
-}
-
-// findExprAtLine returns the Expr and name for the var/const/func
-// declaration at the given line, searching both top-level and inside components.
-func findExprAtLine(doc *ast.Document, line int) (ast.Expr, string) {
-	for _, stmt := range doc.Stmts {
-		switch s := stmt.(type) {
-		case *ast.VarDecl:
-			if e, name := searchVarSpecs(s.Specs, s.Pos.Line, line); e != nil {
-				return e, name
-			}
-		case *ast.ConstDecl:
-			if e, name := searchVarSpecs(s.Specs, s.Pos.Line, line); e != nil {
-				return e, name
-			}
-		case *ast.FuncDef:
-			if s.Pos.Line == line && s.Body != nil {
-				return s.Body, s.Name
-			}
-		case *ast.ComponentDecl:
-			for _, cs := range s.Body.Stmts {
-				switch cs := cs.(type) {
-				case *ast.VarDecl:
-					if e, name := searchVarSpecs(cs.Specs, cs.Pos.Line, line); e != nil {
-						return e, name
-					}
-				case *ast.ConstDecl:
-					if e, name := searchVarSpecs(cs.Specs, cs.Pos.Line, line); e != nil {
-						return e, name
-					}
-				case *ast.FuncDef:
-					if cs.Pos.Line == line && cs.Body != nil {
-						return cs.Body, cs.Name
-					}
-				}
-			}
-		}
-	}
-	return nil, ""
-}
-
-func searchVarSpecs(specs []ast.VarSpec, declLine, targetLine int) (ast.Expr, string) {
-	for _, spec := range specs {
-		if declLine == targetLine && spec.Default != nil && len(spec.Names) > 0 {
-			return spec.Default, spec.Names[0]
-		}
-	}
-	return nil, ""
-}
-
 // ParseDirectives scans a file for // ERROR(phase) "substring" comments.
 func ParseDirectives(path string) ([]ErrorDirective, error) {
 	f, err := os.Open(path)
@@ -211,55 +111,6 @@ func Filter(dirs []ErrorDirective, phase string) []ErrorDirective {
 		}
 	}
 	return out
-}
-
-// AssertErrors checks: if expected is empty, err must be nil;
-// if expected is non-empty, err must be non-nil and each directive's substring
-// must appear in an error line that starts with the directive's line number.
-// For errors without position prefixes (e.g. "missing app node"), the directive
-// matches if any error line contains the substring.
-func AssertErrors(t *testing.T, err error, expected []ErrorDirective) {
-	t.Helper()
-	assertErrors(t, err, expected)
-}
-
-func assertErrors(t testing.TB, err error, expected []ErrorDirective) {
-	t.Helper()
-	if len(expected) == 0 {
-		if err != nil {
-			t.Fatalf("expected no error, got: %v", err)
-		}
-		return
-	}
-	if err == nil {
-		t.Fatalf("expected error containing %v, got nil", expected)
-	}
-	msg := err.Error()
-	errLines := strings.Split(msg, "\n")
-	for _, exp := range expected {
-		found := false
-		linePrefix := fmt.Sprintf("%d:", exp.Line)
-		for _, line := range errLines {
-			if strings.HasPrefix(line, linePrefix) && strings.Contains(line, exp.Substring) {
-				found = true
-				break
-			}
-		}
-		// Fall back: match non-positional error lines (those not starting with "N:")
-		// by substring only. This handles errors like "missing app node" that have
-		// no source position.
-		if !found {
-			for _, line := range errLines {
-				if !posLineRE.MatchString(line) && strings.Contains(line, exp.Substring) {
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			t.Errorf("expected error at line %d containing %q, got:\n%s", exp.Line, exp.Substring, msg)
-		}
-	}
 }
 
 // AssertDiagnostics matches directives against the diagnostic stream.
@@ -309,25 +160,3 @@ func ParseFile(path string) (*ast.Document, error) {
 	return parser.Parse(name, src)
 }
 
-// RunFixtures globs dir for *.sngl files, creates a subtest per file,
-// parses directives, and calls fn.
-func RunFixtures(t *testing.T, dir string, fn func(t *testing.T, path string, dirs []ErrorDirective)) {
-	t.Helper()
-	matches, err := filepath.Glob(filepath.Join(dir, "*.sngl"))
-	if err != nil {
-		t.Fatalf("glob: %v", err)
-	}
-	if len(matches) == 0 {
-		t.Fatalf("no *.sngl files found in %s", dir)
-	}
-	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".sngl")
-		t.Run(name, func(t *testing.T) {
-			dirs, err := ParseDirectives(path)
-			if err != nil {
-				t.Fatalf("parse directives: %v", err)
-			}
-			fn(t, path, dirs)
-		})
-	}
-}

@@ -93,12 +93,6 @@ func (f *formatter) blankLine() {
 	f.pendingBlank = true
 }
 
-func (f *formatter) flushBlank() {
-	if f.pendingBlank {
-		f.pendingBlank = false
-	}
-}
-
 // --- operator string tables ---
 
 var binOpStr = [...]string{

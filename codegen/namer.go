@@ -29,8 +29,3 @@ func (n *Namer) NextPrefixed(prefix string) string {
 	n.counters[prefix] = idx + 1
 	return fmt.Sprintf("%s%d", prefix, idx)
 }
-
-// Count returns the current count for a category without incrementing.
-func (n *Namer) Count(category string) int {
-	return n.counters[category]
-}

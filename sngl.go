@@ -39,12 +39,6 @@ func ExpandPre(docs []*ast.Document) []ir.Diagnostic {
 	return expand.ExpandPre(docs)
 }
 
-// ExpandPost runs post-check macro expansion on pkg. Call after Check and before
-// Lower. Currently a no-op; reserved for future behavioral macros.
-func ExpandPost(pkg *ir.Package) []ir.Diagnostic {
-	return expand.ExpandPost(pkg)
-}
-
 // Format returns the formatted SNGL source for a document.
 func Format(doc *ast.Document) string {
 	return parser.Format(doc)

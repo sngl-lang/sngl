@@ -36,25 +36,3 @@ func emitI18nManifestFile(sink codegen.Sink, cfg Config, projectFS fs.FS) error 
 func hasI18nCalls(pkg *ir.Package) bool {
 	return pkg != nil && pkg.UsesI18n
 }
-
-// i18nRuntimeFile returns the OutputFile that should be written into the
-// generated module's source tree for the Kotlin i18n runtime.
-// Path: app/src/main/kotlin/us/duckfam/git/jonathan/sngl/i18n/I18n.kt
-func i18nRuntimeFile() *codegen.OutputFile {
-	path := "app/src/main/kotlin/" +
-		pkgToPath(kotlin.SnglI18nKotlinPackage) +
-		"/I18n.kt"
-	return codegen.BytesFile(path, []byte(i18nruntime.I18nKt))
-}
-
-// i18nManifestFile reads the project-root i18n.manifest.json and returns
-// an OutputFile that places it at app/src/main/assets/i18n.manifest.json.
-// Returns nil when the manifest is absent. Uses the shared codegen/i18n
-// loader.
-func i18nManifestFile(cfg Config, projectFS fs.FS) *codegen.OutputFile {
-	data, err := snglI18n.LoadManifest(projectFS, cfg.ProjectDir)
-	if err != nil || data == nil {
-		return nil
-	}
-	return codegen.BytesFile("app/src/main/assets/"+snglI18n.ManifestFileName, data)
-}
