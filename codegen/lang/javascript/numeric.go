@@ -20,6 +20,31 @@ func jsIsBigInt(t *ir.Type) bool {
 	return t != nil && t.Kind == ir.TypeInt && t.Bits == 64
 }
 
+// NumericLiteral renders an integer or float literal in its sized-width JS
+// representation: a BigInt literal (123n) for 64-bit integers, Math.fround for
+// float32, and the plain number text otherwise. ok is false for non-numeric
+// (or nil) literals, which each literal emitter renders its own way. This is
+// the single source of truth for numeric-literal width so the JS emitters
+// cannot drift apart (they did once, silently dropping BigInt).
+func NumericLiteral(n *ir.Literal) (string, bool) {
+	if n == nil || n.Type == nil {
+		return "", false
+	}
+	switch n.Type.Kind {
+	case ir.TypeInt:
+		if n.Type.Bits == 64 {
+			return n.Raw + "n", true
+		}
+		return n.Raw, true
+	case ir.TypeFloat:
+		if n.Type.Bits == 32 {
+			return "Math.fround(" + n.Raw + ")", true
+		}
+		return n.Raw, true
+	}
+	return "", false
+}
+
 // jsWrapArith wraps the JS text of an arithmetic (or negation) result so it
 // carries type t's declared width. Non-sized and non-numeric types pass
 // through unchanged.

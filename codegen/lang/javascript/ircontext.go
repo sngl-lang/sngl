@@ -306,48 +306,11 @@ func jsIsRaiseFunc(fn *ir.Func) bool {
 	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
+// evalLiteral renders an ir.Literal to JS. The rendering lives in the package-
+// level translateIRLiteral so the IRContext path and the lang-translator path
+// (TranslateIRLiteral) stay identical.
 func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
-	if n.Type == nil {
-		return n.Raw
-	}
-	switch n.Type.Kind {
-	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Raw)
-	case ir.TypeInt:
-		// 64-bit widths are BigInt literals (123n); float32 handled below.
-		if n.Type.Bits == 64 {
-			return n.Raw + "n"
-		}
-		return n.Raw
-	case ir.TypeFloat:
-		// A float32 literal pre-rounds to single precision, matching the
-		// interpreter and sized-float arithmetic.
-		if n.Type.Bits == 32 {
-			return "Math.fround(" + n.Raw + ")"
-		}
-		return n.Raw
-	case ir.TypeBool:
-		return n.Raw
-	case ir.TypeNull:
-		return "null"
-	case ir.TypeColor, ir.TypeDuration:
-		return fmt.Sprintf("%q", n.Raw)
-	case ir.TypeStruct:
-		// color/date/time/dateTime are string-representable stdlib structs;
-		// emit their canonical form as a quoted JS string.
-		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Raw)
-		}
-		if n.Suffix != "" {
-			return fmt.Sprintf("%q", n.Raw+n.Suffix)
-		}
-		return n.Raw
-	default:
-		if n.Suffix != "" {
-			return fmt.Sprintf("%q", n.Raw+n.Suffix)
-		}
-		return n.Raw
-	}
+	return translateIRLiteral(n)
 }
 
 func (jc *JsIRContext) evalIdent(n *ir.Ident) string {

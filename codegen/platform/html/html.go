@@ -3252,18 +3252,12 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 				if s, ok := codegen.IRLiteralString(expr); ok {
 					return fmt.Sprintf("%q", s)
 				}
-			case ir.TypeInt:
-				// 64-bit integer state carries as a BigInt literal so it stays
-				// exact and its arithmetic (BigInt.asIntN/asUintN) type-checks.
-				if lit.Type.Bits == 64 {
-					return lit.Raw + "n"
+			case ir.TypeInt, ir.TypeFloat:
+				// Shared with the JS lang translator so sized-width rendering
+				// (BigInt for 64-bit, Math.fround for float32) can't drift.
+				if s, ok := javascript.NumericLiteral(lit); ok {
+					return s
 				}
-				return lit.Raw
-			case ir.TypeFloat:
-				if lit.Type.Bits == 32 {
-					return "Math.fround(" + lit.Raw + ")"
-				}
-				return lit.Raw
 			case ir.TypeBool:
 				return lit.Raw
 			case ir.TypeNull:

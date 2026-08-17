@@ -21,18 +21,11 @@ func translateIRLiteral(n *ir.Literal) string {
 	if n.Suffix != "" {
 		return fmt.Sprintf("%q", n.Raw+n.Suffix)
 	}
+	if s, ok := NumericLiteral(n); ok {
+		return s
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			if n.Type.Bits == 64 {
-				return n.Raw + "n"
-			}
-			return n.Raw
-		case ir.TypeFloat:
-			if n.Type.Bits == 32 {
-				return "Math.fround(" + n.Raw + ")"
-			}
-			return n.Raw
 		case ir.TypeBool:
 			return n.Raw
 		case ir.TypeNull:
