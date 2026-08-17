@@ -180,12 +180,12 @@ func (rb *renderBuilder) nodeActionIndex(n *ir.NodeInst) (int, bool) {
 // dynamic binding that must become a hole rather than baked HTML).
 func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 	reactive := false
-	walkExpr(e, func(x ir.Expr) bool {
+	ir.InspectExpr(e, ir.Inspector{Expr: func(x ir.Expr) ir.WalkAction {
 		if id, ok := x.(*ir.Ident); ok && !id.IsElementRef && rb.state[id.Name] {
 			reactive = true
 		}
-		return false
-	})
+		return ir.Continue
+	}})
 	return reactive
 }
 
