@@ -18,7 +18,7 @@ func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
 		reads:  make(map[*ir.Var]struct{}),
 		writes: make(map[*ir.Var]struct{}),
 	}
-	w.walkStmts(f.Block)
+	ir.InspectStmts(f.Block, w.inspector())
 
 	if w.mutates {
 		f.Purity = ir.PurityMutates
@@ -63,59 +63,38 @@ func (w *effectWalker) externalVar(e ir.Expr) *ir.Var {
 	return nil
 }
 
-func (w *effectWalker) walkStmts(stmts []ir.Stmt) {
-	for _, s := range stmts {
-		w.walkStmt(s)
-	}
-}
-
-func (w *effectWalker) walkStmt(s ir.Stmt) {
-	switch n := s.(type) {
-	case *ir.Assign:
-		w.recordWrite(n.Target)
-		w.walkExpr(n.Value)
-	case *ir.Toggle:
-		w.recordWrite(n.Target)
-	case *ir.Emit:
-		// Emitting an event fires parent handlers — an observable side effect.
-		w.mutates = true
-		for _, a := range n.Args {
-			w.walkExpr(a.Value)
-		}
-	case *ir.LocalVar:
-		w.walkExpr(n.Init)
-	case *ir.Return:
-		w.walkExpr(n.Value)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			w.walkExpr(n.Call)
-		}
-	case *ir.If:
-		w.walkExpr(n.Cond)
-		w.walkStmts(n.Body)
-		w.walkStmts(n.Else)
-	case *ir.For:
-		w.walkExpr(n.Iter)
-		w.walkStmts(n.Body)
-		w.walkStmts(n.Else)
-	case *ir.NodeInst:
-		for _, p := range n.Props {
-			w.walkExpr(p.Value)
-		}
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				w.walkStmts(h.Func.Block)
+// inspector returns the shared-visitor callbacks for the effect analysis. The
+// Expr callback records reads of external reactive vars. The Stmt callback
+// handles the write side: an Assign/Toggle target is a write (via recordWrite),
+// not a read, so those nodes are pruned (SkipChildren) and their read-bearing
+// operands walked explicitly; an Emit is an observable side effect. Every other
+// statement is descended into by the shared walker, which visits its
+// expressions (recording reads) and reaches statements nested inside handler,
+// timer, and lambda/closure bodies.
+func (w *effectWalker) inspector() ir.Inspector {
+	return ir.Inspector{
+		Expr: func(e ir.Expr) ir.WalkAction {
+			if v := w.externalVar(e); v != nil {
+				w.reads[v] = struct{}{}
 			}
-		}
-		w.walkStmts(n.Children)
-	case *ir.SlotInst:
-		w.walkStmts(n.Children)
-	case *ir.PlatformFilter:
-		w.walkStmts(n.Body)
-	case *ir.ErrorBoundary:
-		w.walkStmts(n.Children)
-	case *ir.ContextProvider:
-		w.walkStmts(n.Children)
+			return ir.Continue
+		},
+		Stmt: func(s ir.Stmt) ir.WalkAction {
+			switch n := s.(type) {
+			case *ir.Assign:
+				w.recordWrite(n.Target)
+				ir.InspectExpr(n.Value, w.inspector())
+				return ir.SkipChildren
+			case *ir.Toggle:
+				w.recordWrite(n.Target)
+				return ir.SkipChildren
+			case *ir.Emit:
+				// Emitting an event fires parent handlers — an observable
+				// side effect. Args are read; the walker descends into them.
+				w.mutates = true
+			}
+			return ir.Continue
+		},
 	}
 }
 
@@ -134,67 +113,8 @@ func (w *effectWalker) recordWrite(target ir.Expr) {
 		// Local/param/loop-var write — no external effect.
 		return
 	}
-	// Field/index/deref target: conservatively a side effect.
+	// Field/index/deref target: conservatively a side effect. The target is
+	// still walked for the reads it performs (e.g. `m[k] = v` reads m and k).
 	w.mutates = true
-	w.walkExpr(target)
-}
-
-func (w *effectWalker) walkExpr(e ir.Expr) {
-	switch x := e.(type) {
-	case nil:
-		return
-	case *ir.Ident:
-		if v := w.externalVar(x); v != nil {
-			w.reads[v] = struct{}{}
-		}
-	case *ir.Binary:
-		w.walkExpr(x.Left)
-		w.walkExpr(x.Right)
-	case *ir.Unary:
-		w.walkExpr(x.Operand)
-	case *ir.Ternary:
-		w.walkExpr(x.Cond)
-		w.walkExpr(x.Then)
-		w.walkExpr(x.Else)
-	case *ir.Call:
-		w.walkExpr(x.Receiver)
-		w.walkExpr(x.Callee)
-		for _, a := range x.Args {
-			w.walkExpr(a.Value)
-		}
-	case *ir.Conversion:
-		w.walkExpr(x.Operand)
-	case *ir.Select:
-		w.walkExpr(x.Operand)
-	case *ir.Index:
-		w.walkExpr(x.Operand)
-		w.walkExpr(x.Idx)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			w.walkExpr(el)
-		}
-	case *ir.MapLitIR:
-		for _, kv := range x.Entries {
-			w.walkExpr(kv.Key)
-			w.walkExpr(kv.Value)
-		}
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			w.walkExpr(f.Value)
-		}
-	case *ir.Spread:
-		w.walkExpr(x.Operand)
-	case *ir.Lambda:
-		// Effects inside a lambda body count toward the enclosing function,
-		// matching the conservative pre-IR behaviour.
-		if x.Func != nil {
-			w.walkStmts(x.Func.Block)
-		}
-	case *ir.Closure:
-		if x.Func != nil {
-			w.walkStmts(x.Func.Block)
-		}
-	case *ir.Literal, *ir.ContextRead:
-		// Leaf — no sub-expressions and no external access.
-	}
+	ir.InspectExpr(target, w.inspector())
 }
