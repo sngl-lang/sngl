@@ -364,9 +364,8 @@ Each consumer still reimplements stmt+expr traversal:
 - `ir/strip.go:217-362` walks for AST-strip
 - `internal/lower/walk.go:7-118` walks for lowering (but only top-level
   iteration over decls — not deep)
-- `codegen/treewalk.go:35` `TreeWalker` (visual-tree only)
-- `codegen/iterate.go:84+` collectWindows / collectReachableComponents
-- `codegen/deps.go:350` ternary walk
+- `codegen/iterate.go:84+` collectWindows
+- `codegen/deps.go:284` ternary walk
 - Many platform-side walkers — see `docs/superpowers/audit/lowering-migration.md`
   finding 2.
 

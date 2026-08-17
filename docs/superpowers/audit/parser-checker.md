@@ -8,7 +8,7 @@ Audit of parser and type-checker for inconsistencies, bugs, and UX gaps. Finding
 
 ### 2. List spread (`[...xs, 3]`) typechecks the spread as an element ⚠️ PARTIAL (2026-06-07)
 
-Struct spread in function call arg lists (`f(...s)`) and component prop lists is now supported (`feat(checker): expand ...struct in function call arg lists` / `feat(checker): expand ...struct in component prop lists`). Error fixtures for type/duplicate violations added (`test: add missing spread error fixtures`). **Still open:** list literal spread `[...xs, 3]` — `inferListLit` does not handle `*ast.SpreadExpr`; and call spread with `list<T>` operand `f(...xs)` — the new spread path requires a struct operand.
+**Still open:** list literal spread `[...xs, 3]` — `inferListLit` does not handle `*ast.SpreadExpr`; and call spread with a `list<T>` operand `f(...xs)` — the spread path currently requires a struct operand. (Struct spread in function call arg lists and component prop lists is already supported.)
 
 **Files:** `internal/checker/expr.go:1462-1480`
 `inferListLit` blindly calls `checkExprExpecting(e, elemExpected)` on every element; spread `*ast.SpreadExpr` (parsed correctly per `ast/expr.go:243`) falls through and is typed as `list<int>`, then the literal infers `list<list<int>>`:
@@ -75,20 +75,6 @@ The deferred `recover()` in `Parse` catches the panic but the user-facing messag
 ---
 
 ## INCONSISTENCY
-
-### 10. `func name(params) ReturnType => expr` rejected — ⛔ BY DESIGN (2026-07-06)
-
-> Resolved as documented, not implemented. CLAUDE.md now states the rule
-> explicitly: an expression-bodied `=> expr` func "cannot carry a return type
-> annotation; return type is always inferred." The restriction is intentional,
-> so this is WONTFIX. Note: the related stdlib-`dyn`-propagation gap (#26) must
-> therefore be solved by a return-type *inference* sub-pass, not by annotating
-> stdlib `=>` funcs.
-
-**Files:** `internal/parser/sngl.ebnf:306-309`
-Grammar: `FuncBodyTail = fat_arrow Expr | [ Type ] StmtBlock`. The return type can attach only to the block form. So users can't write `func id<T>(x T) T => x`; they must drop the annotation and rely on inference, or rewrite as a block. This is undocumented in CLAUDE.md (which says the two valid forms are `func name(params) [Type] { ... }` and `func name(params) => expr` — leaving the question "may `=> expr` carry a return type?" implicit). Same constraint on `FuncLit` (line 521). Either accept `[Type] fat_arrow Expr` or document the restriction loudly.
-**Severity:** INCONSISTENCY (expressiveness gap between the two forms; also blocks the natural generic-method-with-explicit-return signature).
-Repro: `func double(x int) int => x * 2`
 
 ### 12. Bare lambda `x => expr` rejected — only `func(x) => expr` — ⏸ DESIGN DECISION (not auto-implemented)
 
@@ -216,7 +202,7 @@ Per memory `feedback_explicit_conversions.md`, every implicit conversion must ma
 `TestNoSilentDynInferred` whitelist documents this:
 
 > Calls through these stdlib receivers produce TypDyn today because the stdlib's `=>` funcs omit explicit return annotations.
-> This is the same issue as #10 from the other direction — without explicit return types on `=>` funcs, every stdlib generic method poisons inference. Either annotate the stdlib (blocked by #10's grammar gap) or run a return-type inference sub-pass before user pass2.
+> Since an expression-bodied `=> expr` func cannot carry a return-type annotation by design (WONTFIX), annotating the stdlib is not an option — the fix is a return-type inference sub-pass run before user pass2.
 > **Severity:** UX (silent `dyn` is the documented anti-goal).
 
 ---

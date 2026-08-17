@@ -32,48 +32,6 @@ as a top-level `codegen.HTMLScreenshotter` interface). Bubbletea's
 
 ---
 
-### 2. JS has no test lowering; android-go is opaque ✅ RESOLVED-as-documented (2026-05-23)
-
-Confirmed test-execution is platform-driven, not lang-driven, and
-keep the existing asymmetry rather than force a single interface:
-
-- **html (any lang)** runs tests via CDP/rod through
-  `codegen/platform/html/testing.go` — exercises the real JS bundle
-  in a headless browser, no per-lang testlower needed.
-- **gtk4, fyne, bubbletea (go)** use `golang.LowerTestFunc` and
-  delegate to per-platform `RunTests` Go-test-harness scaffolding.
-- **android (kotlin)** uses `kotlin.LowerTestFunc` and
-  `android/runtests.go`'s Robolectric harness.
-- **android (go)** generates a golib bridge for use inside an
-  Android app — it is not itself a runnable app, so
-  `android/runtests.go:62` correctly errors when `lang != "kotlin"`.
-
-Unifying these behind a single `LangTranslator.LowerTestFunc` would
-obscure the difference between in-process testlowers and
-browser/emulator-driven harnesses. The matrix is data-driven via
-`codegen.Snapshotter` / `codegen.TestRunner` type assertions in
-`docs/targets.go`, so the docs site reflects this automatically.
-
----
-
-`codegen/lang/golang/testlower.go` exists (191 lines).
-`codegen/lang/kotlin/testlower.go` exists (305 lines).
-JS has no testlower; the html platform's tests run inside CDP/rod
-through `codegen/platform/html/testing.go` instead.
-
-**Problem.** The matrix is uneven: tests for the same SNGL source render
-through different translation paths depending on the target. The
-android+go combination (`android.go:38` says `SupportedLangs = ["kotlin","go"]`)
-also lacks a `go`-specific test lowering — `android/runtests.go:62`
-hard-errors when `lang != "kotlin"`.
-
-**Direction.** Either unify test lowering into a single
-`LangTranslator.LowerTestFunc` interface (so all langs implement it the
-same way) or document that test-runner is a platform-platform-and-lang
-specific thing and remove it from `none` and android-go's `SupportedLangs`.
-
----
-
 ## Severity: Medium
 
 ### 3. `ExprScope` is a mutable junk-drawer that grows test-runner hacks
@@ -207,20 +165,12 @@ codegen output is unchanged. The split exists so a future migration
 to function-shaped JS components (or a context.Context-style
 runtime) can flip just one flag off — see "Future ideas" below.
 
----
-
-The `NoContext` lowering rewrites context reads into hidden parameters.
-Every Go-target platform sets it because Go has no implicit threading.
-But `codegen/platform/html/html.go:55` *also* sets `NoContext` even
-though JS could fake context via closures — and html therefore has to
-specially re-inject `__ctx_locale` for i18n in `html.go`'s emit path.
-
-**Problem.** A platform that wants ordinary context support but not
-locale-as-context can't get it. The behavior is all-or-nothing.
-
-**Direction.** Either split `NoContext` into per-context-name flags, or
-build context support directly into each language's IR walker so the
-lowering pass isn't needed.
+**Remaining open work.** The full split is only latent: every former
+`NoContext` setter still sets both `StructComponents` and
+`StdlibContextParam`, and `codegen/platform/html/html.go` still forces
+`StructComponents` for JS (re-injecting `__ctx_locale` for i18n) rather
+than faking context via closures. Flipping one flag off requires the
+function-shaped-JS-components migration in F1.
 
 ---
 

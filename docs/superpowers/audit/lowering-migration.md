@@ -7,56 +7,49 @@ sketches the IR / cap shape, not the implementation.
 
 ---
 
-## Re-evaluation (2026-06-11)
+## Re-evaluation
 
-Every finding re-checked against current code. Per-finding status lines added
-below (`> **Status (2026-06-11):**`). Summary:
+Every finding re-checked against current code. Findings that were fully
+migrated have been removed; only open and partial work remains below. Summary:
 
-- **RESOLVED (fully migrated, findings removed):** #1, #9, #10, #15, #18, #20,
+- **Fully migrated / removed in earlier passes:** #1, #9, #10, #15, #18, #20,
   #23 — package usage flags (`passStampUsage`), gtk4 `flattenPlatformFilters`,
   focus order (`passFocusOrder`), stdlib-name heuristic, dead conversion
-  branches, and `IterKind` stamping all landed and the per-platform duplication
-  is gone. `#6` detection is done (full alert lowering still deferred). `#2`
-  scaffold built (`ir.WalkStmts`); walker-migration long-tail open.
+  branches, and `IterKind` stamping. The internal/lower stmt-walkers
+  (enum / computed / struct-spread / unit) that each carried an identical
+  traversal are now unified into `rewriteStmtExprs` (`internal/lower/walk.go`).
 - **Infra landed but not wired through:**
-  - `ir/walkexprs.go` `ir.WalkExprs` — shared *expression-only* walker. Adopted
-    by the usage-stamp pass but not the stmt-level walkers (#2).
+  - `ir/walkexprs.go` `ir.WalkExprs`/`ir.WalkStmts` — shared walker scaffold.
+    Adopted by the usage-stamp / iterkind passes; the platform/codegen walkers
+    are not yet migrated onto it (#2).
   - `internal/lower/platform_filter.go` `passPlatformFilter` — runs in the
     pipeline, yet ErrorBoundary/SlotInst are still unhandled (#4).
-- **OPEN (no pass, no IR field):** #3, #5, #6, #7, #8, #11, #12, #13, #14, #16,
-  #17, #21, #22, #24.
-- **PARTIAL:** #2, #4, #19.
+- **OPEN (no pass, no IR field):** #5, #8, #11, #12, #13, #14, #16, #17, #21,
+  #22, #24.
+- **PARTIAL (remaining work only, below):** #2, #3 (android), #4, #6, #7, #19.
 
 ---
 
 ## 2. `walkPkgExprs` / generic IR visitors duplicated across platforms
 
-> **Status (2026-06-12): PARTIAL — scaffold built.** `ir/walkexprs.go` is now a
-> unified `walker` carrying both an expr and a stmt callback; `ir.WalkExprs` and
-> the new `ir.WalkStmts(pkg, fn)` are its two entry points (one traversal, one
-> place to extend per new IR shape). The Wave-1/2 stamp passes use it
-> (`usage.go`, `iterkind.go`), and `analysis.go` `stmtsUseErrorHandling` +
-> `irStmtUsesAlert` were *deleted* (folded into `WalkStmts`-based passes).
-> *Remaining (long tail):* migrate the surviving bespoke walkers —
-> `collectUsedIRStmts`, html's `prewalkNodes`/`collectLoweredRefs`,
-> `fyne.collectNodeTags`, `gtk4.collectTagComponents`, routes.go walkers — onto
-> `WalkStmts`. Each is a separate, low-risk swap now that the scaffold exists.
+> **Status: PARTIAL — scaffold built, platform walkers not migrated.**
+> `ir/walkexprs.go` is a unified `walker` carrying both an expr and a stmt
+> callback; `ir.WalkExprs` and `ir.WalkStmts(pkg, fn)` are its two entry points.
+> The stamp passes use it, and the former `analysis.go` error-handling / alert
+> scanners were deleted. Inside `internal/lower`, the four identical stmt-walkers
+> (enum / computed / struct-spread / unit) are unified into `rewriteStmtExprs`
+> (`internal/lower/walk.go`). *Remaining (long tail):* migrate the surviving
+> bespoke codegen walkers onto `WalkStmts` (each a separate low-risk swap).
 
-**Files:**
-- `codegen/platform/html/i18n.go:47-278` — html's `walkPkgExprs`
-- `codegen/platform/android/i18n.go:80-308` — android's `walkPkgExprs`
-  (comment literally: "Mirrors html.walkPkgExprs.")
-- `codegen/platform/html/html.go:580` `visit`/`visitStmts` (collectNodeIDs)
-- `codegen/platform/html/html.go:3145` `walk` (exprUsesI18n)
-- `codegen/platform/html/html.go:3219` `walkStmtExprs`
-- `codegen/platform/html/html.go:3548` `collectLoweredRefs` (full stmt+expr walker)
-- `codegen/platform/html/routes.go:254` `walkInstances`, `:301` `stmtCallsTarget`, `:357` `exprCallsTarget`
-- `codegen/platform/fyne/compiler_ir.go:838` `collectNodeTags`
-- `codegen/platform/gtk4/intrinsic_translator.go:59` `collectFromStmt`
-- `codegen/platform/bubbletea/compiler_ir.go:706` `emitIRButtonHandlersWalk`
-- `codegen/analysis.go:177` `stmtsUseErrorHandling`, `:232` `collectUsedIRStmts`, `:379` `irStmtUsesAlert`
-- `codegen/iterate.go:84` `collectWindows`, `:162` `collectReachableComponents`
-- `codegen/treewalk.go:35` `TreeWalker.WalkStmts`, `codegen/iterate.go:290` `walkVisual`
+**Remaining walkers to migrate:**
+- `codegen/platform/html/html.go` `collectLoweredRefs` (full stmt+expr walker),
+  `prewalkNodes`
+- `codegen/platform/html/routes.go` `walkInstances`, `stmtCallsTarget`, `exprCallsTarget`
+- `codegen/platform/fyne/compiler_ir.go` `collectNodeTags`
+- `codegen/platform/gtk4/intrinsic_translator.go` `collectFromStmt`
+- `codegen/platform/bubbletea/compiler_ir.go` `emitIRButtonHandlersWalk`
+- `codegen/analysis.go` `collectUsedIRStmts`
+- `codegen/iterate.go` `collectWindows`; `codegen/treewalk.go` `TreeWalker.WalkStmts`
 
 **What it does:** Each one is a recursive stmt+expr visitor that case-switches
 over the same set of `ir.Stmt`/`ir.Expr` constructors, and each one panics
@@ -75,146 +68,41 @@ This deletes ~1500 lines of duplicated walker code across the platforms.
 
 ## 3. Stdlib-component → native-widget translation done per platform
 
-> **Status (2026-06-17): RESOLVED for bubbletea; android still pending.**
-> bubbletea now inlines *every* stdlib wrapper to one of three blueprint
-> primitives — `Layout` / `Styled` / `Widget` — at lower time. The wrapper
-> bodies live in `codegen/platform/bubbletea/bubbletea.sngl` (new-form
-> `component sngl.X { platform bubbletea { … } }`), are installed onto the
-> stdlib components via the platform-extension-body path, and inline through
-> `passInlinePure` under `NoStdlibWrappers` (now enabled in
-> `bubbletea.go` `Capabilities`, `f.StdlibWrappers = false`). Codegen reads
-> each inlined primitive off a **blueprint record** extracted in
-> `blueprint.go` and rendered by `renderBlueprint` (`view_ir.go`) — no
-> name-keyed switch. The user-facing blueprint vocabulary is declared in
-> `bubbletea.sngl`: the `JoinDir` enum (`vertical`/`horizontal`) plus the
-> `Model` / `Focus` / `Bind` / `Event` records (Widget model metadata, focus
-> participation, prop read-back bindings, and key→event mappings). The legacy
-> `renderStdlibComponent` Go switch — and the dead `expandStdlibComponent`
-> +`propVals`/`slotChildren` machinery — are **deleted**; `renderNode` now
-> routes user components → `renderUserComponent`, the three primitives →
-> `renderBlueprint`, everything else → `renderRawTerminal`. All six example
-> apps generate + compile and the bubbletea snapshot/fixture suites pass.
-> `modal` (the last legacy parens-form wrapper) is converted to
-> `platform bubbletea { if open { Layout(join=vertical){slot} } }`, which
-> inlines cleanly. **android** remains on the kept-wrapper /
-> `renderStdlibComposable` path — a separate plan.
+> **Status: RESOLVED for html, fyne, gtk4, and bubbletea; android still pending.**
+> html, fyne, and gtk4 set `StdlibWrappers=false` and inline stdlib wrappers to
+> native/blueprint bodies via `passInlinePure` — no name-keyed switch reaches
+> codegen. bubbletea now inlines every stdlib wrapper to one of three blueprint
+> primitives (`Layout` / `Styled` / `Widget`) declared in
+> `codegen/platform/bubbletea/bubbletea.sngl` and rendered by `renderBlueprint`;
+> its legacy `renderStdlibComponent` switch is deleted. **android** is the last
+> platform on the kept-wrapper path.
 >
-> **Status (2026-06-12): OPEN — mechanism mapped; needs a dedicated session
-> per platform.** Earlier "html-only" was wrong: **html, fyne, and gtk4 all set
-> `StdlibWrappers=false`** (`html.go:61`, `fyne.go:59`, `gtk4.go:144`). Three
-> distinct realizations of the inline:
-> - **html** — wrappers inline to native `html.*` element bodies; codegen sees
->   only native tags.
-> - **fyne / gtk4** — wrappers inline to a single blueprint-carrying node
->   (`fyne.sngl` `Constructor{goFn,goType,args,…}`); a *generic* renderer
->   (`renderFromBlueprint`) emits Go from the blueprint data — **no name
->   switch**. This is the model the audit wants.
-> - **bubbletea / android** — wrappers are *kept* (no `NoStdlibWrappers`);
->   `bubbletea/view_ir.go:324` `renderStdlibComponent` (~150-line switch on
->   `vbox/hbox/text/button/…`) and `android/compose_ir.go:154`
->   `renderStdlibComposable` do the dispatch at codegen.
->
-> **Remaining work (precise):** enable `NoStdlibWrappers` for bubbletea and
-> android, then replace each name-keyed switch with a data-driven renderer
-> reading metadata the platform `.sngl` already carries (`join=`, `content=`,
-> `focusable=`, … for bubbletea; analogous for android), mirroring fyne's
-> blueprint. It is **all-or-nothing per platform** — the cap inlines every
-> stdlib wrapper at once, so it can't be staged widget-by-widget — and the only
-> regression gate is the 60s+ snapshot suites. Each platform is its own
-> multi-hour, byte-exact redesign; do them in dedicated sessions.
->
-> **Diagnosis update (2026-06-13) — the handoff premise was wrong.** Flipping
-> `StdlibWrappers=false` for bubbletea is **inert**: instrumenting
-> `passInlinePure`'s eligibility for `sngl.vbox` under the cap shows
-> `pure=false, platImp=false, strict=true` → the wrapper is skipped (neither the
-> pure path nor the strict platform-wrapper path fires), so `renderStdlibComponent`
-> still runs on the original `vbox` node and output is unchanged (an earlier
-> "byte-identical" reading was this no-op, not a working inline).
->
-> Root cause: bubbletea's `sngl.vbox` arrives at lowering with an **empty body**
-> (`isPure` false because `len(Body)==0`) and its `n.Component` is the abstract
-> `lib/` stdlib stub (`Stdlib=true`), **not** the `platform://bubbletea`
-> component (`isPlatformStdlibComponent` false). The `bubbletea.sngl`
-> `component sngl.vbox { VJoin(join="vertical"){slot} }` body is **never
-> installed** onto the stdlib component — bubbletea implemented its widgets via
-> the Go-side `renderStdlibComponent` switch *instead of* the
-> PlatformBodies/`passPlatformExtensionBody` → `passInlinePure` path that html
-> uses (html has no `renderStdlibComponent` — it genuinely inlines to `html.div`
-> etc., proving the body-install path works there).
->
-> **Therefore the real #3 work for bubbletea/android is structural, not a cap
-> flip + renderer swap:** (1) wire each platform's `.sngl` wrapper bodies through
-> the platform-body install mechanism so the stdlib component carries a body at
-> lower time (becoming pure/inlinable) — this is in the checker's platform-package
-> handling (`checker.go:381` `platform://`, `buildPkgFromDocs`, and how
-> `PlatformBodies` are populated); (2) only *then* does flipping `StdlibWrappers`
-> inline them; (3) verify `renderRawTerminal` (bubbletea) / the Compose
-> equivalent renders the inlined `VJoin/HJoin/Styled/TextInput` primitives
-> byte-exact — **this is unverified**, since inlining never actually happened in
-> this probe; (4) delete `renderStdlibComponent`/`renderStdlibComposable`. Plus
-> the dead `expandStdlibComponent` + `propVals`/`slotChildren` machinery in
-> `bubbletea/view_ir.go` is a half-finished prior attempt at exactly this — clean
-> it up as part of the work.
->
-> **Probe 2 (2026-06-13) — scope is multi-subsystem, not just the renderer.**
-> Converting `bubbletea.sngl`'s `sngl.{vbox,text,input}` to the new
-> `component sngl.X { platform bubbletea { … } }` form *does* make
-> `mergePlatformExtensions` collect the bodies, `passPlatformExtensionBody`
-> install them, and `passInlinePure` inline them — confirmed: the widgets stop
-> hitting `renderStdlibComponent`. But the generated `hello` model is **badly
-> broken**, exposing that the inline path is only half the story:
-> - **Prop substitution lost.** `sngl.text`'s `Styled(content=value)` renders
->   `lipgloss.NewStyle().Render("")` — the caller's `value="Hello…"` never
->   reaches the inlined `Styled` node (the param→arg substitution that the
->   stdlib-name path did is gone).
-> - **Model-field analysis keys on names.** `sngl.input` → the whole textinput
->   machinery disappears: no `input0 textinput.Model` field, no
->   `textinput.New()`/`.Focus()` init, `Init()` returns `nil` instead of
->   `textinput.Blink`. The analysis that allocates input model fields scans for
->   the `input` stdlib *name*, not the inlined `TextInput` primitive.
-> - **Focus order keys on names.** `__focusID`/`__focusNext`/`__focusPrev` and
->   the Tab handlers vanish — `passFocusOrder` / its consumers key on the
->   stdlib widget names too.
->
-> So #3-bubbletea requires reworking **prop substitution, input model-field
-> allocation, focus-order, and the view renderer** to all operate on the inlined
-> `VJoin/HJoin/Styled/TextInput` primitives + their metadata — a coordinated
-> multi-subsystem redesign. The `.sngl` rewrite is the easy 10%; the model/focus/
-> input analysis is the hard 90%. android (`renderStdlibComposable`) will have
-> the analogous Compose-side analysis coupling. Confirmed clean-revert; no code
-> landed.
+> **Remaining (android only):** enabling the inline for android is a coordinated
+> multi-subsystem redesign, not a cap flip + renderer swap. Beyond wiring
+> `android.sngl` wrapper bodies through the platform-body install path so the
+> stdlib components become inlinable, the Compose-side analysis that currently
+> keys on stdlib *names* — prop substitution, model-field allocation, and
+> focus-order — must all be reworked to operate on the inlined primitives and
+> their metadata (this coupling is what makes the naive flip produce broken
+> output, as verified on the bubbletea port). Only then can `renderStdlibComposable`
+> be deleted.
 
 **Files:**
-- `codegen/platform/bubbletea/view_ir.go:287` `renderStdlibComponent` (switch over
-  ~20 stdlib names: vbox, hbox, scroll, text, badge, button, checkbox, modal,
-  input, datepicker, etc.)
-- `codegen/platform/android/compose_ir.go:147` `renderStdlibComposable` (same 20-ish
-  names, mapped to Compose widgets)
-- `codegen/platform/fyne/view_ir.go:206` `renderStdlibComponent` →
-  `renderFromBlueprint` (blueprint-driven, but the blueprint table is still
-  per-platform and the dispatch path is custom)
-- `codegen/platform/gtk4/intrinsic_translator.go` (similar, blueprint-style)
-- `codegen/platform/html/html.go` `domWriteForIR:193` + props table at `:54`
-  hard-codes the SNGL-component → DOM-property mapping.
+- `codegen/platform/android/compose_ir.go` `renderStdlibComposable` (~20 stdlib
+  names mapped to Compose widgets — the last name-keyed dispatch switch)
 
-**What it does:** Each platform has a giant switch keyed on the stdlib
-component name (`"vbox"`, `"button"`, `"input"`, …) that decides which native
-widget to build and how to map SNGL props to native props/events.
+**What it does:** android has a giant switch keyed on the stdlib component name
+(`"vbox"`, `"button"`, `"input"`, …) that decides which native widget to build
+and how to map SNGL props to native props/events.
 
-**Why lower:** html *already* dodges this via `NoStdlibWrappers` —
+**Why lower:** the other four platforms dodge this via `NoStdlibWrappers` —
 `passInlinePure` substitutes wrapper components with platform-defined
-native-element bodies before codegen. The other platforms still hand-roll the
-dispatch because `NoStdlibWrappers` only fires for html in
-`Capabilities()`. They have blueprint tables (`fyne/blueprint.go`) or hardcoded
-switches doing the same job, but only after the visual tree has reached
-codegen.
+native/blueprint bodies before codegen. android still hand-rolls the dispatch
+after the visual tree has reached codegen.
 
-**Migration:** Generalize `NoStdlibWrappers` so every platform can opt in.
-Move the per-platform "what widget for `button`" definitions into each
-platform's `.sngl` file (`bubbletea.sngl`, `android.sngl`, `fyne.sngl`,
-`gtk4.sngl` already exist via `pkgSource`). Lower the visual tree through
-`passInlinePure` with the platform's overrides applied so codegen only sees
-native nodes. Drop `renderStdlibComponent`/`renderStdlibComposable` entirely.
+**Migration:** enable `NoStdlibWrappers` for android with its `.sngl` wrapper
+bodies installed and the Compose analysis retargeted onto the inlined
+primitives, then drop `renderStdlibComposable`.
 
 ---
 
@@ -306,8 +194,7 @@ mutation platforms iterate them.
 > *lowering* (synthesize toast-state var + root visual node so platforms see
 > normal IR) is deferred.
 
-**Files:**
-- `codegen/analysis.go:355` `usesAlert` (scans IR for `Alert.*` receiver calls)
+**Files (remaining per-platform emission; detection scanner already deleted):**
 - `codegen/platform/bubbletea/view_ir.go:71-84` emits 14 lines of hand-written
   toast overlay code (variant→bg color switch, lipgloss styling, JoinVertical
   splice) directly into the `View()` body.
@@ -336,21 +223,14 @@ Drop the per-platform NeedsToast/AlertFunc/toast-render code paths.
 
 ## 7. Style props translated per platform with overlapping shape
 
-> **Status (2026-06-12): PARTIAL — nondeterminism fixed, extraction unified.**
-> `codegen.NodeStyleFields` now returns an ordered `[]codegen.StyleField`
-> (source order) instead of a `map[string]ir.Expr`. This fixes a real bug:
-> android's `buildModifierRaw`/`textStyle` ranged the map, so `TextStyle(...)`
-> arg order was non-reproducible across builds — confirmed deterministic now
-> (regenerate-twice diff is empty). bubbletea sorts the slice (output
-> byte-identical); the caller-style merge in `renderRawTerminal` is a
-> deterministic `mergeStyleFields` (caller-wins) replacing the old map merge.
-> *Remaining:* the per-key *interpretation* switches (`irStyleCall` lipgloss,
-> `buildModifierRaw`/`textStyle` Modifier/TextStyle, html CSS) stay
-> platform-specific — that's inherent (lipgloss ≠ Compose ≠ CSS), not
-> duplication. The deeper `ir.NodeInst.StyleProps` + `passApplyTerminalScale`
-> form (move extraction into lowering, closed key enum) is deferred; it offers
-> marginal value over the shared ordered helper since extraction is trivial and
-> interpretation can't move.
+> **Status: PARTIAL — extraction unified and deterministic; deeper form
+> deferred.** `codegen.NodeStyleFields` returns an ordered `[]codegen.StyleField`
+> (source order), fixing the earlier map-range nondeterminism. *Remaining
+> (deferred):* the deeper `ir.NodeInst.StyleProps` + `passApplyTerminalScale`
+> form (move extraction into lowering behind a closed key enum). Low priority —
+> the per-key *interpretation* switches (lipgloss / Compose / CSS) are inherently
+> platform-specific and cannot move into lowering, and extraction is already
+> trivial via the shared ordered helper.
 
 **Files:**
 - `codegen/platform/bubbletea/view_ir.go:578` `buildIRStyleExpr` (lipgloss chain)
@@ -673,32 +553,6 @@ tree rewrite disappears.
 
 ---
 
-## Resolved (2026-06-07)
-
-### 10. Per-platform "compute focusables, focus index, button index" walks ✅ RESOLVED
-
-`passFocusOrder` lands in `internal/lower/focus.go` (commits `f9759154`, `47a68022`, `d1407507`). `Features.FocusOrder` (positive capability) drives the pass; bubbletea opts in. The three bubbletea walks (`compiler_ir.go:206-239`, `view_ir.go:350-545`, `compiler_ir.go:706`) now read `NodeInst.FocusIndex` stamped by the pass instead of maintaining independent counter sequences.
-
----
-
-## Resolved this pass (2026-06-01)
-
-The "defer to the language driver / desugar in lowering" theme, applied to
-loops, conditionals, and func definitions:
-
-- `for &t = list` (ref<T> loop write-through) is desugared **entirely in
-  lowering** (`internal/lower/refloop.go`) into an ordinary two-var indexed
-  loop; `ir.For` carries no codegen-facing ref fields and no driver has a ref
-  branch.
-- Two-var **list** iteration was fixed/aligned across golang (was index/element
-  swapped), javascript (dropped the index), and kotlin (`withIndex()`).
-- bubbletea / fyne / android view emitters now defer `for`, `if`, and func-def
-  emission to the language driver (`ForHead`/`IfHead`/`ElseHead`/`BlockEnd`/
-  `EmitFuncDef`); gtk4 already routed through `gc.EvalStmt`. android was the
-  un-migrated platform (its loop had no map branch).
-
----
-
 ## Cross-cutting recommendations
 
 1. **Build a single `ir.Walk(visitor)`.** Every grep in finding #2 disappears.
@@ -706,17 +560,16 @@ loops, conditionals, and func definitions:
    `Rewrite`) live next to it. This is by far the highest leverage change.
 
 2. **Promote "stamp-on-IR" features over "scan-at-codegen" features.**
-   Findings #1, #5, #10, #11, #12, #14, #15, #16, #17, #18 all share the
+   Findings #5, #11, #12, #14, #16, #17 all share the
    shape "lower knows; codegen re-derives by walking." A simple rule —
    `passes may only set IR fields, codegen may only read them` — pushes this
    in the right direction.
 
-3. **Make `NoStdlibWrappers` the default.** Only html uses it today;
-   bubbletea/android/fyne/gtk4 reimplement the same dispatch by hand
-   (finding #3). Standardizing on `passInlinePure` + per-platform native
-   bodies in the platform's `.sngl` file would delete the largest cluster
-   of platform-specific switch statements in the repo (`renderStdlibComponent`,
-   `renderStdlibComposable`, blueprint dispatchers).
+3. **Make `NoStdlibWrappers` the default everywhere.** html, fyne, gtk4, and
+   bubbletea now inline stdlib wrappers; only android still reimplements the
+   dispatch by hand (finding #3). Standardizing on `passInlinePure` + per-platform
+   native bodies in the platform's `.sngl` file would delete the last of that
+   cluster (`renderStdlibComposable`).
 
 4. **Extend `Caps` to cover the small structural sugars.** PlatformFilter,
    ErrorBoundary, SlotInst, Window-synthesis, two-way bind, focus order —

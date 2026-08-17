@@ -9,17 +9,6 @@ throughout. Ordered by severity within each section.
 
 ## 1. Phase-boundary violations
 
-### 1.4 Type-namespace method recognition duplicated in `nonConstCallRef`
-
-**File:** `internal/checker/checker.go:717-735`
-
-`nonConstCallRef` hardcodes `int, float, string, bool, list, color, ref`
-as type namespaces to accept method calls on. This is checker doing the
-parser/resolver's job of "is this a type-method dispatch" — and it will
-silently fall out of sync with the actual type-namespace dispatch in
-`expr.go`. Already missing `map`, `iter`. Should ask `c.scope` /
-`c.symtab.Methods` rather than string-list.
-
 ### 1.5 Checker re-checks stdlib documents during every package check
 
 **File:** `internal/checker/checker.go:490-503` `buildPkgFromDocs` and
@@ -459,22 +448,6 @@ A `recover()` converts panics in the AST builder into a generic
 crash — it survives as an unhelpful error. Useful for production
 robustness; counterproductive for development. Gate on a build tag /
 env var to keep panics visible during dev.
-
-### 6.5 Stdlib parse errors are silently swallowed
-
-**File:** `internal/checker/stdlib.go:44-47`.
-
-```go
-doc, err := parser.Parse(e.Name(), data)
-if err != nil {
-	continue
-}
-```
-
-A malformed `lib/*.sngl` causes the stdlib file to vanish from the
-language — every user program then fails to find e.g. `text` or
-`Color`. No diagnostic, no warning. Log at slog.Error or panic during
-init.
 
 ### 6.6 `Check` resolves imports synchronously, recursively, no cycle telemetry
 
