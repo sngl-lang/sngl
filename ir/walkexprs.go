@@ -2,77 +2,130 @@ package ir
 
 import "fmt"
 
-// WalkExprs visits every expression reachable from pkg, calling fn for
-// each. fn returns true to stop the walk early (e.g. for "does this
-// package contain X?" queries that can short-circuit on the first hit).
-//
-// Roots covered: package consts, vars (init + handlers), funcs,
-// components (vars + funcs + timers + body), package timers, and
-// windows (href / title / favicon / vars / funcs / body). Statement
-// containers — If/For/PlatformFilter/SlotInst/ErrorBoundary/Window/
-// ContextProvider — are descended into; pure leaves (Literal, Ident,
-// ContextRead) are visited but have no sub-expressions.
-//
-// Panics on an unknown node kind. The convention is that each new IR
-// shape must extend this one walker in lockstep, but only this site
-// needs the update — every platform/lang "does pkg use X" or "stamp X
-// on every node" query routes through WalkExprs / WalkStmts instead of
-// hand-rolling its own recursive switch.
+// WalkAction is returned by an Inspector callback to steer the traversal.
+type WalkAction int
+
+const (
+	// Continue descends into the visited node's children (the default).
+	Continue WalkAction = iota
+	// SkipChildren does not descend into this node's children but continues
+	// with its siblings — a per-branch prune. Use this when a node has been
+	// handled "as a whole" and its interior should not be visited.
+	SkipChildren
+	// Stop ends the entire traversal immediately — a short-circuit for
+	// "does this contain X?" queries.
+	Stop
+)
+
+// Inspector holds the optional per-node callbacks for the Inspect* family.
+// Either field may be nil; the corresponding node kind is still descended
+// into. Each callback returns a WalkAction (Continue / SkipChildren / Stop).
+type Inspector struct {
+	Stmt func(Stmt) WalkAction
+	Expr func(Expr) WalkAction
+}
+
+// InspectPackage walks every statement and expression reachable from pkg in a
+// single pre-order traversal, invoking in.Stmt / in.Expr on each. This is the
+// general read-only visitor; the roots covered are package consts, vars (init +
+// handlers), funcs, components (vars + funcs + timers + body), package timers,
+// and windows. Container statements — If/For/PlatformFilter/SlotInst/
+// ErrorBoundary/Window/ContextProvider — and lambda/closure bodies are
+// descended into. Panics on an unknown node kind, so every new IR shape extends
+// this one scaffold and all consumers stay in lockstep.
+func InspectPackage(pkg *Package, in Inspector) {
+	if pkg == nil {
+		return
+	}
+	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
+	w.run(pkg)
+}
+
+// InspectFunc walks the statements/expressions of a single function subtree
+// (its param defaults and body), not a whole package.
+func InspectFunc(fn *Func, in Inspector) {
+	if fn == nil {
+		return
+	}
+	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
+	w.visitFunc(fn)
+}
+
+// InspectStmts walks a statement slice (a subtree), not a whole package.
+func InspectStmts(stmts []Stmt, in Inspector) {
+	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
+	w.visitStmts(stmts)
+}
+
+// InspectExpr walks a single expression subtree (the expression and its
+// descendants), not a whole package.
+func InspectExpr(e Expr, in Inspector) {
+	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
+	w.visitExpr(e)
+}
+
+// WalkExprs visits every expression reachable from pkg, calling fn for each.
+// fn returns true to stop the walk early (short-circuit). Thin bool adapter
+// over InspectPackage; new code that needs subtree roots or per-branch pruning
+// should use the Inspect* family with WalkAction directly.
 func WalkExprs(pkg *Package, fn func(Expr) bool) {
-	if pkg == nil {
-		return
-	}
-	w := walker{exprFn: fn}
-	w.run(pkg)
+	InspectPackage(pkg, Inspector{Expr: boolExpr(fn)})
 }
 
-// WalkStmts visits every statement reachable from pkg (the same root set as
-// WalkExprs), calling fn for each in pre-order. Container statements are
-// visited before their children; statements nested inside handler/timer Func
-// bodies and inside lambda/closure expressions are reached too. fn returns
-// true to stop the walk early; a stamping pass that must visit everything
-// returns false unconditionally.
+// WalkStmts visits every statement reachable from pkg in pre-order, calling fn
+// for each; fn returns true to stop early. Thin bool adapter over
+// InspectPackage.
 func WalkStmts(pkg *Package, fn func(Stmt) bool) {
-	if pkg == nil {
-		return
-	}
-	w := walker{stmtFn: fn}
-	w.run(pkg)
+	InspectPackage(pkg, Inspector{Stmt: boolStmt(fn)})
 }
 
-// VisitorFuncs holds the optional per-node callbacks for Walk. Either
-// field may be nil; the corresponding node kind is still descended into.
-// A callback returns true to stop the walk early.
+// VisitorFuncs is the bool-returning form of Inspector (true == stop the whole
+// walk). Retained for existing Walk callers; prefer Inspector/WalkAction for
+// new code.
 type VisitorFuncs struct {
 	Stmt func(Stmt) bool
 	Expr func(Expr) bool
 }
 
-// Walk visits every statement and expression reachable from pkg in a
-// single traversal (the same root set as WalkStmts/WalkExprs), invoking
-// v.Stmt on each statement and v.Expr on each expression. Statements are
-// visited in pre-order before their children. Returning true from either
-// callback stops the whole walk.
-//
-// Walk is the general entry point; WalkStmts and WalkExprs are the
-// single-callback conveniences. New IR shapes are handled by extending
-// the one walker below, so every consumer stays in lockstep.
+// Walk visits every statement and expression reachable from pkg, stopping the
+// whole walk when either callback returns true. Thin bool adapter over
+// InspectPackage.
 func Walk(pkg *Package, v VisitorFuncs) {
-	if pkg == nil {
-		return
-	}
-	w := walker{exprFn: v.Expr, stmtFn: v.Stmt}
-	w.run(pkg)
+	InspectPackage(pkg, Inspector{Stmt: boolStmt(v.Stmt), Expr: boolExpr(v.Expr)})
 }
 
-// walker is the single IR traversal scaffold backing Walk, WalkExprs, and
-// WalkStmts.
-// exprFn and/or stmtFn may be nil; the corresponding nodes are still descended
-// into (so e.g. WalkStmts reaches statements buried inside lambda bodies even
-// though it sets no exprFn).
+// boolStmt/boolExpr adapt a bool "true == stop" callback to a WalkAction one.
+func boolStmt(fn func(Stmt) bool) func(Stmt) WalkAction {
+	if fn == nil {
+		return nil
+	}
+	return func(s Stmt) WalkAction {
+		if fn(s) {
+			return Stop
+		}
+		return Continue
+	}
+}
+
+func boolExpr(fn func(Expr) bool) func(Expr) WalkAction {
+	if fn == nil {
+		return nil
+	}
+	return func(e Expr) WalkAction {
+		if fn(e) {
+			return Stop
+		}
+		return Continue
+	}
+}
+
+// walker is the single IR traversal scaffold backing every Inspect*/Walk*
+// entry point. exprFn and/or stmtFn may be nil; the corresponding nodes are
+// still descended into (so e.g. a stmt-only walk still reaches statements
+// buried inside lambda bodies).
 type walker struct {
-	exprFn func(Expr) bool
-	stmtFn func(Stmt) bool
+	exprFn func(Expr) WalkAction
+	stmtFn func(Stmt) WalkAction
 	done   bool
 }
 
@@ -80,9 +133,14 @@ func (w *walker) visitExpr(e Expr) {
 	if w.done || e == nil {
 		return
 	}
-	if w.exprFn != nil && w.exprFn(e) {
-		w.done = true
-		return
+	if w.exprFn != nil {
+		switch w.exprFn(e) {
+		case Stop:
+			w.done = true
+			return
+		case SkipChildren:
+			return
+		}
 	}
 	switch x := e.(type) {
 	case *Binary:
@@ -143,9 +201,14 @@ func (w *walker) visitStmt(s Stmt) {
 	if w.done || s == nil {
 		return
 	}
-	if w.stmtFn != nil && w.stmtFn(s) {
-		w.done = true
-		return
+	if w.stmtFn != nil {
+		switch w.stmtFn(s) {
+		case Stop:
+			w.done = true
+			return
+		case SkipChildren:
+			return
+		}
 	}
 	switch n := s.(type) {
 	case *NodeInst:
@@ -161,9 +224,14 @@ func (w *walker) visitStmt(s Stmt) {
 			// The Call itself is an expression — feed it through exprFn so
 			// callers that key off "any *Call" detect it at the stmt
 			// boundary as well as via expression descent.
-			if w.exprFn != nil && w.exprFn(n.Call) {
-				w.done = true
-				return
+			if w.exprFn != nil {
+				switch w.exprFn(n.Call) {
+				case Stop:
+					w.done = true
+					return
+				case SkipChildren:
+					return
+				}
 			}
 			w.visitExpr(n.Call.Receiver)
 			w.visitExpr(n.Call.Callee)

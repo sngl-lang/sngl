@@ -66,3 +66,99 @@ func TestWalkNilPackage(t *testing.T) {
 	// Must not panic.
 	ir.Walk(nil, ir.VisitorFuncs{Stmt: func(ir.Stmt) bool { return false }})
 }
+
+func TestInspectFuncSubtree(t *testing.T) {
+	pkg := buildWalkPkg()
+	fn := pkg.Funcs[0]
+
+	var stmts, exprs int
+	ir.InspectFunc(fn, ir.Inspector{
+		Stmt: func(ir.Stmt) ir.WalkAction { stmts++; return ir.Continue },
+		Expr: func(ir.Expr) ir.WalkAction { exprs++; return ir.Continue },
+	})
+	// Only the func body: If, Assign, CallStmt = 3 stmts. Exprs: If.Cond
+	// Ident (1), Assign target Ident + value Literal (2), CallStmt.Call (1) = 4.
+	// The package var's Binary is NOT reached (subtree root is the func).
+	if stmts != 3 {
+		t.Errorf("InspectFunc stmt visits = %d, want 3", stmts)
+	}
+	if exprs != 4 {
+		t.Errorf("InspectFunc expr visits = %d, want 4", exprs)
+	}
+}
+
+func TestInspectStmtsSubtree(t *testing.T) {
+	pkg := buildWalkPkg()
+
+	var stmts int
+	ir.InspectStmts(pkg.Funcs[0].Block, ir.Inspector{
+		Stmt: func(ir.Stmt) ir.WalkAction { stmts++; return ir.Continue },
+	})
+	if stmts != 3 {
+		t.Errorf("InspectStmts stmt visits = %d, want 3", stmts)
+	}
+}
+
+func TestInspectSkipChildrenPrunesButContinuesSiblings(t *testing.T) {
+	pkg := buildWalkPkg()
+
+	// Prune the If (skip its nested Assign) but keep visiting siblings
+	// (the CallStmt). Expect: If + CallStmt visited = 2, Assign skipped.
+	var seen []string
+	ir.InspectFunc(pkg.Funcs[0], ir.Inspector{
+		Stmt: func(s ir.Stmt) ir.WalkAction {
+			switch s.(type) {
+			case *ir.If:
+				seen = append(seen, "if")
+				return ir.SkipChildren
+			case *ir.Assign:
+				seen = append(seen, "assign")
+			case *ir.CallStmt:
+				seen = append(seen, "call")
+			}
+			return ir.Continue
+		},
+	})
+	if len(seen) != 2 || seen[0] != "if" || seen[1] != "call" {
+		t.Errorf("SkipChildren visits = %v, want [if call] (Assign pruned, sibling kept)", seen)
+	}
+}
+
+func TestInspectStopHaltsWholeWalk(t *testing.T) {
+	pkg := buildWalkPkg()
+	var seen int
+	ir.InspectFunc(pkg.Funcs[0], ir.Inspector{
+		Stmt: func(ir.Stmt) ir.WalkAction { seen++; return ir.Stop },
+	})
+	if seen != 1 {
+		t.Errorf("Stop visited %d stmts, want 1", seen)
+	}
+}
+
+func TestInspectExprSubtree(t *testing.T) {
+	// (1+2) * x : Binary(Mul, Binary(Add,1,2), Ident x). Prune the inner
+	// Add subtree; expect to still visit the outer Binary, the inner Binary,
+	// and the Ident sibling — but not the two Literals inside the pruned Add.
+	inner := &ir.Binary{Left: &ir.Literal{Raw: "1"}, Right: &ir.Literal{Raw: "2"}}
+	root := &ir.Binary{Left: inner, Right: &ir.Ident{Name: "x"}}
+	var lits, idents, bins int
+	ir.InspectExpr(root, ir.Inspector{
+		Expr: func(e ir.Expr) ir.WalkAction {
+			switch e.(type) {
+			case *ir.Literal:
+				lits++
+			case *ir.Ident:
+				idents++
+			case *ir.Binary:
+				bins++
+				if e == inner {
+					return ir.SkipChildren // prune the inner Add's literals
+				}
+			}
+			return ir.Continue
+		},
+	})
+	if bins != 2 || idents != 1 || lits != 0 {
+		t.Errorf("InspectExpr prune: bins=%d idents=%d lits=%d, want 2/1/0", bins, idents, lits)
+	}
+}
