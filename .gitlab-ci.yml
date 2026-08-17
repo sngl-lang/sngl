@@ -3,8 +3,20 @@ stages:
   - test
   - pages
 
+# Cancel superseded pipelines instead of letting them pile up. Declared
+# in-file rather than relying on the project's "Auto-cancel redundant
+# pipelines" toggle, so the behaviour is version controlled.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
 variables:
   IMAGE: $CI_REGISTRY_IMAGE/ci
+
+default:
+  # The kaniko build in particular is expensive -- it was a top memory
+  # consumer during the host lockups in Aug 2026.
+  interruptible: true
 
 build-image:
   stage: dependencies
