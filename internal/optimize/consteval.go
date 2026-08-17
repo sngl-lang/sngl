@@ -388,30 +388,31 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	case ir.TypeString:
 		return fmt.Sprintf("%v", operand), true
 	case ir.TypeInt:
-		switch v := operand.(type) {
-		case int:
-			return v, true
-		case float64:
-			return int(v), true
-		case string:
-			i, err := strconv.Atoi(v)
+		// Numeric operands go through the shared width-aware converter so a
+		// folded int8(x)/uint64(x) matches the interpreter exactly. String
+		// operands parse first, then apply the target width.
+		if r, ok := opeval.ConvertInt(operand, conv.Type.Bits, conv.Type.Unsigned); ok {
+			return r, true
+		}
+		if s, ok := operand.(string); ok {
+			i, err := strconv.Atoi(s)
 			if err != nil {
 				return nil, false
 			}
-			return i, true
+			r, _ := opeval.ConvertInt(i, conv.Type.Bits, conv.Type.Unsigned)
+			return r, true
 		}
 	case ir.TypeFloat:
-		switch v := operand.(type) {
-		case float64:
-			return v, true
-		case int:
-			return float64(v), true
-		case string:
-			f, err := strconv.ParseFloat(v, 64)
+		if r, ok := opeval.ConvertFloat(operand, conv.Type.Bits); ok {
+			return r, true
+		}
+		if s, ok := operand.(string); ok {
+			f, err := strconv.ParseFloat(s, 64)
 			if err != nil {
 				return nil, false
 			}
-			return f, true
+			r, _ := opeval.ConvertFloat(f, conv.Type.Bits)
+			return r, true
 		}
 	case ir.TypeBool:
 		if b, ok := operand.(bool); ok {
@@ -460,9 +461,11 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	case string:
 		return &ir.Literal{Type: ir.TypString, Raw: v}
 	case int:
-		return &ir.Literal{Type: ir.TypInt, Raw: intToStr(v)}
+		return &ir.Literal{Type: intLitType(typ), Raw: intToStr(v)}
+	case uint64:
+		return &ir.Literal{Type: intLitType(typ), Raw: strconv.FormatUint(v, 10)}
 	case float64:
-		return &ir.Literal{Type: ir.TypFloat, Raw: floatToStr(v)}
+		return &ir.Literal{Type: floatLitType(typ), Raw: floatToStr(v)}
 	case bool:
 		raw := "false"
 		if v {
@@ -473,6 +476,24 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
 	}
 	return nil
+}
+
+// intLitType returns typ when it is an integer type (preserving a sized
+// width/signedness), else plain int. Keeps folded constants at the width the
+// checker assigned so codegen still emits e.g. a BigInt literal for uint64.
+func intLitType(typ *ir.Type) *ir.Type {
+	if typ != nil && typ.Kind == ir.TypeInt {
+		return typ
+	}
+	return ir.TypInt
+}
+
+// floatLitType mirrors intLitType for float widths.
+func floatLitType(typ *ir.Type) *ir.Type {
+	if typ != nil && typ.Kind == ir.TypeFloat {
+		return typ
+	}
+	return ir.TypFloat
 }
 
 // numericOrNativeEq compares two folded constants. When both sides are

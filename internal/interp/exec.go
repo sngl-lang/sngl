@@ -170,7 +170,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val)
+		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val, target.ExprType())
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
-			nv, err := ApplyOp(s.Op, m[target.Field], val)
+			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
 			if err != nil {
 				return err
 			}
@@ -207,7 +207,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			if i < 0 || i >= len(list) {
 				return fmt.Errorf("index %d out of range (len %d)", i, len(list))
 			}
-			nv, err := ApplyOp(s.Op, list[i], val)
+			nv, err := ApplyOp(s.Op, list[i], val, target.ExprType())
 			if err != nil {
 				return err
 			}
@@ -224,7 +224,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			if ref, ok := obj.(*listRef); ok {
-				nv, err := ApplyOp(s.Op, ref.get(), val)
+				nv, err := ApplyOp(s.Op, ref.get(), val, target.ExprType())
 				if err != nil {
 					return err
 				}
@@ -347,12 +347,15 @@ func (env *Env) execFor(s *ir.For) error {
 	return nil
 }
 
-func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
-	// Width is inferred from the current runtime carrier: uint64 → unsigned
-	// 64-bit, float64 → float, otherwise default int. Sized-int compound
-	// assignment does not carry its declared width at runtime, so it wraps at
-	// 64 bits rather than the narrower declared width — a known model gap.
-	kind := numKindOfValue(cur)
+func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {
+	// The declared target type drives the width so sized-integer compound
+	// assignment wraps at the right width. When the target type is unavailable
+	// or dyn (e.g. a dynamically-typed field in a test context), fall back to
+	// inferring from the current runtime carrier.
+	kind := numKindOf(targetType)
+	if kind == (opeval.NumKind{}) {
+		kind = numKindOfValue(cur)
+	}
 	switch op {
 	case ast.AssignSet:
 		return val, nil

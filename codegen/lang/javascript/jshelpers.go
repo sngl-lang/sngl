@@ -23,7 +23,17 @@ func translateIRLiteral(n *ir.Literal) string {
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		case ir.TypeInt:
+			if n.Type.Bits == 64 {
+				return n.Raw + "n"
+			}
+			return n.Raw
+		case ir.TypeFloat:
+			if n.Type.Bits == 32 {
+				return "Math.fround(" + n.Raw + ")"
+			}
+			return n.Raw
+		case ir.TypeBool:
 			return n.Raw
 		case ir.TypeNull:
 			return "null"

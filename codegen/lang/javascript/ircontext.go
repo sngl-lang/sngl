@@ -45,13 +45,21 @@ func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
 
 func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
-		return "Math.trunc(" + left + " / " + right + ")"
+		// BigInt division truncates toward zero natively; Number division needs
+		// an explicit Math.trunc to match integer semantics.
+		if jsIsBigInt(n.Type) {
+			return jsWrapArith("("+left+" / "+right+")", n.Type)
+		}
+		return jsWrapArith("Math.trunc("+left+" / "+right+")", n.Type)
 	}
-	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+	return jsWrapArith("("+left+" "+binaryOpStr(n.Op)+" "+right+")", n.Type)
 }
 func (jc *JsIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
 		return "!" + operand
+	}
+	if n.Type != nil && n.Type.IsSized() {
+		return jsWrapArith("(-"+operand+")", n.Type)
 	}
 	return "-" + operand
 }
@@ -305,7 +313,20 @@ func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
 	switch n.Type.Kind {
 	case ir.TypeString:
 		return fmt.Sprintf("%q", n.Raw)
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+	case ir.TypeInt:
+		// 64-bit widths are BigInt literals (123n); float32 handled below.
+		if n.Type.Bits == 64 {
+			return n.Raw + "n"
+		}
+		return n.Raw
+	case ir.TypeFloat:
+		// A float32 literal pre-rounds to single precision, matching the
+		// interpreter and sized-float arithmetic.
+		if n.Type.Bits == 32 {
+			return "Math.fround(" + n.Raw + ")"
+		}
+		return n.Raw
+	case ir.TypeBool:
 		return n.Raw
 	case ir.TypeNull:
 		return "null"
@@ -630,10 +651,8 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 	operand := jc.EvalExpr(n.Operand)
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			return "Math.trunc(" + operand + ")"
-		case ir.TypeFloat:
-			return "parseFloat(" + operand + ")"
+		case ir.TypeInt, ir.TypeFloat:
+			return jsConvert(operand, n.Operand.ExprType(), n.Type)
 		case ir.TypeString:
 			// Flag the String() helper for emission, mirroring legacy
 			// translateIRConversion. The plain-call string(x) path flags it

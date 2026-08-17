@@ -413,7 +413,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if !exists {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
-	nv, err := interp.ApplyOp(op, cur, val)
+	// Component-field values are dynamically typed in the test harness, so the
+	// declared width is not available here; ApplyOp falls back to inferring the
+	// width from the runtime carrier.
+	nv, err := interp.ApplyOp(op, cur, val, nil)
 	if err != nil {
 		return err
 	}
