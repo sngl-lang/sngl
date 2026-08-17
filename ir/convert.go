@@ -916,12 +916,6 @@ func literalKindFromType(t *Type) ast.LiteralKind {
 	}
 }
 
-// stringLit creates a quoted string literal from a raw string value.
-// Raw stores the unquoted content; the formatter applies %q quoting.
-func stringLit(s string) *ast.LiteralExpr {
-	return &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: s}
-}
-
 func formatFloat(f float64) string {
 	if f == float64(int64(f)) {
 		return fmt.Sprintf("%d", int64(f))

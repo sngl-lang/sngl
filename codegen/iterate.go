@@ -116,96 +116,6 @@ func (ctx *CodegenCtx) Components() []*ComponentCtx {
 	return componentsFor(ctx.Pkg.Components)
 }
 
-// AllComponents returns ComponentCtx entries for every user component that
-// is referenced from the main package's visual tree, including components
-// contributed by imported SNGL packages. Stdlib components and unreferenced
-// imports are excluded — codegen platforms render stdlib directly rather
-// than via generated methods.
-func (ctx *CodegenCtx) AllComponents() []*ComponentCtx {
-	reachable := collectReachableComponents(ctx.Pkg, ctx.Platform)
-	// Stable order: main package first (preserving declaration order), then
-	// imports reachable, each in declaration order.
-	var ordered []*ir.Component
-	seenOrdered := map[*ir.Component]bool{}
-	var walk func(pkg *ir.Package)
-	walk = func(pkg *ir.Package) {
-		if pkg == nil {
-			return
-		}
-		for _, c := range pkg.Components {
-			if reachable[c] && !seenOrdered[c] {
-				seenOrdered[c] = true
-				ordered = append(ordered, c)
-			}
-		}
-		for _, imp := range pkg.Imports {
-			if imp.Pkg != nil {
-				walk(imp.Pkg)
-			}
-		}
-	}
-	walk(ctx.Pkg)
-	return componentsFor(ordered)
-}
-
-// collectReachableComponents walks the main package's visual tree and returns
-// every user component reachable through NodeInst references — skipping
-// `platform X { … }` blocks whose guard doesn't match the target platform so
-// codegen doesn't emit methods for components that won't render (and may
-// pull in imports the target doesn't provide).
-func collectReachableComponents(pkg *ir.Package, platform string) map[*ir.Component]bool {
-	reachable := map[*ir.Component]bool{}
-	if pkg == nil {
-		return reachable
-	}
-	var walkStmts func(stmts []ir.Stmt)
-	walkStmts = func(stmts []ir.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.NodeInst:
-				if n.Component != nil && !n.Component.Stdlib {
-					if !reachable[n.Component] {
-						reachable[n.Component] = true
-						walkStmts(n.Component.Body)
-					}
-				}
-				walkStmts(n.Children)
-			case *ir.If:
-				walkStmts(n.Body)
-				walkStmts(n.Else)
-			case *ir.For:
-				walkStmts(n.Body)
-			case *ir.PlatformFilter:
-				if platform == "" || n.Platform == "" || n.Platform == platform {
-					walkStmts(n.Body)
-				}
-			case *ir.Window:
-				walkStmts(n.Body)
-			case *ir.ContextProvider:
-				walkStmts(n.Children)
-			case *ir.SlotInst:
-				walkStmts(n.Children)
-			case *ir.ErrorBoundary:
-				walkStmts(n.Children)
-			case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
-				// No nested component refs.
-			default:
-				panic(fmt.Sprintf("collectReachableComponents.walkStmts: unhandled stmt %T", n))
-			}
-		}
-	}
-	for _, c := range pkg.Components {
-		if c.Stdlib {
-			continue
-		}
-		walkStmts(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		walkStmts(w.Body)
-	}
-	return reachable
-}
-
 func componentsFor(comps []*ir.Component) []*ComponentCtx {
 	out := make([]*ComponentCtx, 0, len(comps))
 	for _, c := range comps {
@@ -293,20 +203,6 @@ func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
 	return out
 }
 
-// AllNonMainComponents returns every reachable non-main component including
-// imported packages. Use in platforms that emit render methods per user
-// component (bubbletea).
-func (ctx *CodegenCtx) AllNonMainComponents() []*ComponentCtx {
-	main := ctx.MainComponent()
-	var out []*ComponentCtx
-	for _, cc := range ctx.AllComponents() {
-		if cc.Component != main {
-			out = append(out, cc)
-		}
-	}
-	return out
-}
-
 // --- Visual node walking ---
 
 // WalkVisualTree walks IR statements, calling fn for each NodeInst.
@@ -345,25 +241,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 	}
 }
 
-// CollectNodes returns all NodeInst nodes matching a predicate.
-func CollectNodes(stmts []ir.Stmt, match func(*ir.NodeInst) bool) []*ir.NodeInst {
-	var out []*ir.NodeInst
-	WalkVisualTree(stmts, func(n *ir.NodeInst, _ int) bool {
-		if match(n) {
-			out = append(out, n)
-		}
-		return false
-	})
-	return out
-}
-
-// CollectNodesByName returns all NodeInst nodes with the given element name.
-func CollectNodesByName(stmts []ir.Stmt, name string) []*ir.NodeInst {
-	return CollectNodes(stmts, func(n *ir.NodeInst) bool {
-		return n.Name == name
-	})
-}
-
 // --- NodeInst accessors ---
 
 // NodeProp returns the value of a named prop on a NodeInst, or nil.
@@ -384,11 +261,6 @@ func NodeHandler(n *ir.NodeInst, name string) *ir.EventHandler {
 		}
 	}
 	return nil
-}
-
-// NodeHasHandlers reports whether the node has any event handlers.
-func NodeHasHandlers(n *ir.NodeInst) bool {
-	return len(n.Handlers) > 0
 }
 
 // StyleField is one entry of a NodeInst's `style=` struct literal. Returned as
@@ -437,22 +309,6 @@ func IRLiteralString(e ir.Expr) (string, bool) {
 		s, _ = strconv.Unquote(s)
 	}
 	return s, true
-}
-
-// IRLiteralInt extracts an int value from an IR Literal expression.
-func IRLiteralInt(e ir.Expr) (int, bool) {
-	if e == nil {
-		return 0, false
-	}
-	lit, ok := e.(*ir.Literal)
-	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeInt {
-		return 0, false
-	}
-	n, err := strconv.Atoi(lit.Raw)
-	if err != nil {
-		return 0, false
-	}
-	return n, true
 }
 
 // IRLiteralBool extracts a bool value from an IR Literal expression.

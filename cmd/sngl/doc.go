@@ -12,7 +12,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/docs"
 	"git.duckfam.us/jonathan/sngl/docs/lookup"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
@@ -654,22 +653,8 @@ func renderFuncDoc(f *ast.FuncDef, doc string) string {
 	return sb.String()
 }
 
-func renderValueDoc(info *checker.DeclInfo) string {
-	var sb strings.Builder
-	kind := "var"
-	if _, ok := info.Decl.(*ast.ConstDecl); ok {
-		kind = "const"
-	}
-	sb.WriteString(fmt.Sprintf("# %s %s\n\n", kind, info.Name))
-	if info.Doc != "" {
-		sb.WriteString(info.Doc + "\n")
-	}
-	return sb.String()
-}
-
 // serveDocHTTP starts the web documentation browser.
 func serveDocHTTP(addr, dir string) error {
-	docs.SetWorkspaceDir(dir)
 	fmt.Fprintf(os.Stderr, "SNGL docs → http://%s\n", addr)
 	return http.ListenAndServe(addr, docbrowser.Handler())
 }
@@ -949,68 +934,6 @@ func showDirTopic(docsDir, dirPath, topic string) error {
 	}
 	sb.WriteString(fmt.Sprintf("\nRun `sngl doc %s/<page>` or `sngl doc <page>` to read a page.\n", topic))
 	return renderToTerminal(sb.String())
-}
-
-type topicInfo struct {
-	name string
-	desc string
-}
-
-func listTopics(docsDir string) ([]topicInfo, error) {
-	var topics []topicInfo
-
-	entries, err := os.ReadDir(docsDir)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), "_") || strings.HasPrefix(e.Name(), ".") || e.Name() == "assets" {
-			continue
-		}
-
-		if e.IsDir() {
-			indexPath := filepath.Join(docsDir, e.Name(), "index.md")
-			data, err := os.ReadFile(indexPath)
-			if err != nil {
-				topics = append(topics, topicInfo{
-					name: e.Name(),
-					desc: strings.ReplaceAll(e.Name(), "-", " "),
-				})
-				continue
-			}
-			fm, _, _ := docsite.ParseFrontMatter(data)
-			desc := fm.Description
-			if desc == "" {
-				desc = fm.Title
-			}
-			topics = append(topics, topicInfo{name: e.Name(), desc: desc})
-			continue
-		}
-
-		if filepath.Ext(e.Name()) != ".md" {
-			continue
-		}
-		name := strings.TrimSuffix(e.Name(), ".md")
-		if name == "index" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(docsDir, e.Name()))
-		if err != nil {
-			continue
-		}
-		fm, _, _ := docsite.ParseFrontMatter(data)
-		desc := fm.Description
-		if desc == "" {
-			desc = fm.Title
-		}
-		topics = append(topics, topicInfo{name: name, desc: desc})
-	}
-
-	sort.Slice(topics, func(i, j int) bool {
-		return topics[i].name < topics[j].name
-	})
-	return topics, nil
 }
 
 // findWebsiteSNGL walks up from cwd looking for a website.sngl file.

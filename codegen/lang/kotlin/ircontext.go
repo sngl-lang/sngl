@@ -1007,20 +1007,6 @@ func kotlinI18nConstString(qual string) string {
 	return ""
 }
 
-// isPluralKeyMapType reports whether t is map<i18n.PluralKey, V>.
-// The Kotlin translator lowers such maps to mapOf() with string keys,
-// because the Kotlin i18n runtime uses string plural categories exclusively.
-func isPluralKeyMapType(t *ir.Type) bool {
-	if t == nil || t.Kind != ir.TypeMap || len(t.Elems) < 1 {
-		return false
-	}
-	k := t.Elems[0]
-	if k == nil || k.Kind != ir.TypeStruct || k.Decl == nil {
-		return false
-	}
-	return k.Decl.SymName() == "PluralKey"
-}
-
 // ktMapValZero returns the Kotlin zero value for the value type of a map IR type.
 func ktMapValZero(t *ir.Type) string {
 	if t == nil || len(t.Elems) < 2 {

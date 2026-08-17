@@ -72,12 +72,6 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 	}
 }
 
-// Dependent is implemented by types that have a reactive dep set, allowing
-// FindAffected to filter them against a mutated-var set.
-type Dependent interface {
-	DepVars() map[*ir.Var]struct{}
-}
-
 // ExprDeps returns the set of model vars that a tracked expression reads,
 // expanded transitively through computed funcs.
 //
@@ -116,36 +110,6 @@ func (dt *DepTracker) ExpandDeps(deps map[*ir.Var]struct{}) map[*ir.Var]struct{}
 	return result
 }
 
-// ExpandMutated returns the input set unchanged. Computed-mutation propagation
-// (mutating a var → invalidating computed funcs that depend on it) is the
-// consumer's job: FindAffected joins via Dependent.DepVars directly.
-func (dt *DepTracker) ExpandMutated(mutated map[*ir.Var]struct{}) map[*ir.Var]struct{} {
-	result := make(map[*ir.Var]struct{}, len(mutated))
-	for v := range mutated {
-		result[v] = struct{}{}
-	}
-	return result
-}
-
-// FindAffected returns items whose DepVars intersect with the expanded
-// mutated-var set.
-func FindAffected[T Dependent](dt *DepTracker, items []T, mutated map[*ir.Var]struct{}) []T {
-	if len(mutated) == 0 {
-		return nil
-	}
-	expanded := dt.ExpandMutated(mutated)
-	var result []T
-	for _, item := range items {
-		for v := range item.DepVars() {
-			if _, hit := expanded[v]; hit {
-				result = append(result, item)
-				break
-			}
-		}
-	}
-	return result
-}
-
 // MutatedFields returns the set of model vars mutated by a statement
 // (including writes that reach a var through called helpers).
 func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[*ir.Var]struct{} {
@@ -155,36 +119,6 @@ func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[*ir
 	w := newExtractor(dt, currentComp, false)
 	w.walkStmt(s)
 	return w.mutated
-}
-
-// MutatedFieldsExpr returns the set of model vars mutated by an expression
-// (e.g. a method call whose body writes to a model field).
-func MutatedFieldsExpr(currentComp *ir.Component, dt *DepTracker, e ir.Expr) map[*ir.Var]struct{} {
-	if e == nil || dt == nil {
-		return nil
-	}
-	w := newExtractor(dt, currentComp, false)
-	w.walkExpr(e)
-	return w.mutated
-}
-
-// FindRootIdent extracts the root identifier name from nested
-// Select/Index expressions. Returns "" if the leftmost operand isn't an
-// Ident. Retained for callers that work at the name level (e.g. codegen
-// sites that need to emit a member-access string).
-func FindRootIdent(e ir.Expr) string {
-	if e == nil {
-		return ""
-	}
-	switch n := e.(type) {
-	case *ir.Ident:
-		return n.Name
-	case *ir.Select:
-		return FindRootIdent(n.Operand)
-	case *ir.Index:
-		return FindRootIdent(n.Operand)
-	}
-	return ""
 }
 
 // --- substituting walker ---

@@ -33,16 +33,9 @@ type gtk4NativeComponent struct {
 	CtorParams []gir.ConstructorParam
 }
 
-// pickPrimaryConstructor returns the C identifier of the first
-// constructor in the class, falling back to a synthesized "gtk_<lower>_new".
-func pickPrimaryConstructor(info *gir.ClassInfo) string {
-	return pickPrimaryConstructorInfo(info).Name
-}
-
 // pickPrimaryConstructorInfo returns the full ConstructorInfo for the
-// constructor chosen by pickPrimaryConstructor. Falls back to a
-// synthetic "gtk_<lower>_new" with no params when the class declared
-// none in GIR.
+// first constructor in the class. Falls back to a synthetic
+// "gtk_<lower>_new" with no params when the class declared none in GIR.
 func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	if len(info.Constructors) == 0 {
 		return gir.ConstructorInfo{Name: "gtk_" + lowerCType(info.CType) + "_new"}

@@ -1,0 +1,15 @@
+// Regression: component/block-level consts initialized with a sized-numeric or
+// temporal conversion must be accepted. Previously nonConstCallRef hardcoded
+// only int/float/string/bool as const-safe cast names, so int32(..)/float32(..)
+// etc. wrongly errored "const initializer references non-const".
+component main {
+    const A = int(5)
+    const B = int32(5)
+    const C = uint8(200)
+    const D = int64(9999)
+    const E = float(1.5)
+    const F = float32(1.5)
+    const G = float64(2.5)
+
+    text(value="sized const casts")
+}

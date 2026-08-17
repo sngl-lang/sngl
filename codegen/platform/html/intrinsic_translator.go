@@ -82,14 +82,6 @@ func htmlEventName(event string) string {
 	return ""
 }
 
-// identBareName returns the bare name of an Ident expression, or "".
-func identBareName(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		return id.Name
-	}
-	return ""
-}
-
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
 	// button, ...) with html.sngl's native element bodies before this

@@ -97,10 +97,5 @@ var ListOf = ir.ListOf
 //go:fix inline
 var OptionOf = ir.OptionOf
 
-// MapOf is re-exported for checker use.
-//
-//go:fix inline
-func MapOf(k, v *ir.Type) *ir.Type { return ir.MapOf(k, v) }
-
 //go:fix inline
 var IterOf = ir.IterOf

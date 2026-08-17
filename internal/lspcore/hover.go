@@ -692,49 +692,6 @@ func visualNodeName(vn *ast.VisualNode) string {
 	return ""
 }
 
-// walkVisualNodes invokes fn for every VisualNode in the document, recursively.
-func walkVisualNodes(doc *ast.Document, fn func(*ast.VisualNode)) {
-	if doc == nil {
-		return
-	}
-	var walkStmt func(s ast.Stmt)
-	walkStmt = func(s ast.Stmt) {
-		switch x := s.(type) {
-		case *ast.VisualNode:
-			fn(x)
-			for _, child := range x.Block.Stmts {
-				walkStmt(child)
-			}
-		case *ast.ComponentDecl:
-			for _, c := range x.Body.Stmts {
-				walkStmt(c)
-			}
-		case *ast.FuncDef:
-			for _, c := range x.Block.Stmts {
-				walkStmt(c)
-			}
-		case *ast.IfStmt:
-			for _, c := range x.Body.Stmts {
-				walkStmt(c)
-			}
-			for _, c := range x.Else.Stmts {
-				walkStmt(c)
-			}
-		case *ast.ForStmt:
-			for _, c := range x.Body.Stmts {
-				walkStmt(c)
-			}
-		case *ast.PlatformStmt:
-			for _, c := range x.Body.Stmts {
-				walkStmt(c)
-			}
-		}
-	}
-	for _, s := range doc.Stmts {
-		walkStmt(s)
-	}
-}
-
 // hoverWord is the position→identifier→markdown path used by HoverAt.
 // Hover() (no options) remains as a back-compat shim for callers that
 // don't care about per-component image embedding.

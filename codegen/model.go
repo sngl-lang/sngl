@@ -91,9 +91,6 @@ func (r *Requirement) union(other Requirement) {
 	}
 }
 
-// DepVars implements Dependent for use with FindAffected.
-func (u Updater) DepVars() map[*ir.Var]struct{} { return u.Deps }
-
 // Handler represents an event binding on a visual node.
 type Handler struct {
 	NodeID  string               // element/widget identifier
@@ -121,9 +118,4 @@ func NewRenderModel(a *CommonAnalysis) *RenderModel {
 	return &RenderModel{
 		Analysis: a,
 	}
-}
-
-// AffectedUpdaters returns the updaters affected by a set of mutated vars.
-func (m *MutationModel) AffectedUpdaters(mutated map[*ir.Var]struct{}) []Updater {
-	return FindAffected(m.DepTracker, m.Updaters, mutated)
 }

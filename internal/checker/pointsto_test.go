@@ -11,11 +11,6 @@ func funcType() *ir.Type {
 	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: ir.TypString}}
 }
 
-// funcTypeNoArgs returns a minimal funcvar type with no return value.
-func funcTypeNoArgs() *ir.Type {
-	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{}}
-}
-
 // identTo builds an *ir.Ident referring to the given Symbol.
 func identTo(sym ir.Symbol) *ir.Ident {
 	return &ir.Ident{Name: sym.SymName(), Sym: sym, Type: sym.SymType()}

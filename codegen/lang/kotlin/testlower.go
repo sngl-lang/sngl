@@ -28,53 +28,6 @@ func testIRContext() *KtIRContext {
 	return testFallbackCtx
 }
 
-// LowerTestFunc renders a SNGL test function as one Kotlin
-// `@Test` method body suitable for inclusion inside a
-// Robolectric-driven Compose UI test class. Idioms map as
-// follows:
-//
-//	t.assert(expr)                  → org.junit.Assert.assertTrue(...)
-//	c.<id>.@<event>()               → composeTestRule.onNodeWithTag(id).performClick() / etc.
-//	c.<id>.<prop> (Text widget)     → composeTestRule.onNodeWithTag(id) text fetched via SemanticsNode
-//	c.<var> = X / c.<var> += X      → state mutation on the hoisted MainScreenState
-//	c.<var>                         → direct field read on MainScreenState
-//
-// The Kotlin source lives in src/test/kotlin/, runs under
-// RobolectricTestRunner, and constructs MainScreenState directly
-// (no Activity needed).
-func LowerTestFunc(fn *ir.Func, suffix string, methodFields map[string]bool) string {
-	// Walk params for component-typed entries; the first one becomes the
-	// declared local in the test body and all of them populate compRecvs
-	// so `<recv>.<field>` expressions lower correctly regardless of the
-	// name the test author chose. Falls back to "c" when no component
-	// param is present (assertion-only tests that never reach into state).
-	recv := "c"
-	compRecvs := map[string]bool{}
-	first := true
-	for _, p := range fn.Params {
-		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			compRecvs[p.Name] = true
-			if first {
-				recv = p.Name
-				first = false
-			}
-		}
-	}
-
-	var b strings.Builder
-	fmt.Fprintf(&b, "    @Test fun test%s() {\n", suffix)
-	fmt.Fprintf(&b, "        val %s = MainScreenState()\n", recv)
-	fmt.Fprintf(&b, "        composeTestRule.setContent { MainScreen(%s) }\n", recv)
-	ctxCounts := map[string]int{}
-	for _, s := range fn.Block {
-		for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitNative) {
-			fmt.Fprintf(&b, "        %s\n", line)
-		}
-	}
-	b.WriteString("    }\n\n")
-	return b.String()
-}
-
 func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:

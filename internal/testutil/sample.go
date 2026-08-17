@@ -51,27 +51,6 @@ func (s Sample) PhaseErrors(phase string) []ErrorDirective {
 	return Filter(s.Errors, phase)
 }
 
-// AssertErrors checks actual error against expected directives for a phase.
-func (s Sample) AssertErrors(t testing.TB, err error, phase string) {
-	t.Helper()
-	assertErrors(t, err, Filter(s.Errors, phase))
-}
-
-// AssertFolds checks FOLD directives match after optimization.
-func (s Sample) AssertFolds(t testing.TB, doc *ast.Document) {
-	t.Helper()
-	assertFolds(t, doc, s.Folds)
-}
-
-// WriteBack serializes the AST via parser.Format and writes the result back
-// to the source location. For testdata files, writes directly. For doc blocks,
-// queues the replacement and flushes on test cleanup.
-func (s Sample) WriteBack(doc *ast.Document) {
-	if s.writeback != nil {
-		s.writeback(doc)
-	}
-}
-
 var projectRoot = sync.OnceValue(func() string {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -79,22 +58,6 @@ var projectRoot = sync.OnceValue(func() string {
 	}
 	return filepath.Join(filepath.Dir(thisFile), "..", "..")
 })
-
-// Samples returns an iterator over all test samples (testdata + docs).
-func Samples(t testing.TB) iter.Seq[Sample] {
-	return func(yield func(Sample) bool) {
-		for s := range TestdataSamples(t) {
-			if !yield(s) {
-				return
-			}
-		}
-		for s := range DocSamples(t) {
-			if !yield(s) {
-				return
-			}
-		}
-	}
-}
 
 // TestdataSamples returns an iterator over testdata/*.sngl samples.
 func TestdataSamples(t testing.TB) iter.Seq[Sample] {

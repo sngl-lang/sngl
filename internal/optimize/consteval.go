@@ -910,13 +910,6 @@ func toFloat(v any) (float64, bool) {
 	return 0, false
 }
 
-func toStr(v any) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return fmt.Sprintf("%v", v)
-}
-
 func intToStr(v int) string {
 	return strconv.Itoa(v)
 }

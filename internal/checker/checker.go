@@ -891,6 +891,27 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 }
 
 // nonConstCallRef checks whether a call expression is const-safe.
+// isBuiltinTypeName reports whether name is a builtin type/conversion namespace
+// (int, sized numerics, float, string, bool, duration, the string-repr structs,
+// and the generic containers). Kept in sync with the conversion dispatch in
+// expr.go (inferBuiltinConversion) and resolve.go (resolveType). Used by
+// nonConstCallRef so a const initialized with any builtin cast — e.g.
+// int32(5), float64(x), duration(1000) — is recognized as const-safe rather
+// than tripping on a hand-maintained short list that drifts as new numeric
+// types are added.
+func isBuiltinTypeName(name string) bool {
+	switch name {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint8", "uint16", "uint32", "uint64",
+		"float", "float32", "float64",
+		"string", "bool", "duration",
+		"color", "date", "time", "dateTime", "datetime",
+		"list", "map", "iter", "ref":
+		return true
+	}
+	return false
+}
+
 func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 	checkArgs := func() string {
 		for _, a := range x.Args.Args {
@@ -905,15 +926,15 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 
 	switch fn := x.Func.(type) {
 	case *ast.IdentExpr:
-		switch fn.Name {
-		case "int", "float", "string", "bool":
+		// A builtin conversion like int32(5) or duration(1000) stays const when
+		// its arguments are const — checkArgs recurses into them.
+		if isBuiltinTypeName(fn.Name) {
 			return checkArgs()
 		}
 	case *ast.SelectExpr:
 		if ident, ok := fn.Operand.(*ast.IdentExpr); ok {
-			// Type-namespace methods (e.g., string.length("hi")).
-			switch ident.Name {
-			case "int", "float", "string", "bool", "list", "color", "ref":
+			// Type-namespace methods (e.g., string.length("hi"), map.keys(m)).
+			if isBuiltinTypeName(ident.Name) {
 				return checkArgs()
 			}
 			// Namespace function calls (e.g., docs.Pages()).

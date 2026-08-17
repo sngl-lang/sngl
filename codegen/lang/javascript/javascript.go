@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -81,11 +80,6 @@ func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions)
 // the output as a sibling of the entry bundle so this relative path
 // resolves at runtime.
 const SnglI18nImportPath = "./i18n/i18n.js"
-
-// IsIntlIntrinsic delegates to codegen/i18n.IsIntrinsic. Kept as a
-// thin shim for internal javascript-translator call sites; new code
-// should use the shared helper directly.
-func IsIntlIntrinsic(intrinsic string) bool { return snglI18n.IsIntrinsic(intrinsic) }
 
 // jsEvalIntlIntrinsic emits JavaScript source for an intl.* intrinsic
 // call. After NoContext + InlinePure, calls to i18n.* SNGL wrappers are
@@ -202,31 +196,6 @@ func binaryOpStr(op ast.BinaryOp) string {
 	default:
 		return "?"
 	}
-}
-
-// isIntNode reports whether a SNGL node is known to produce an integer value.
-func isIntNode(e ast.Expr) bool {
-	switch n := e.(type) {
-	case *ast.LiteralExpr:
-		return n.Kind == ast.LiteralInt
-	case *ast.CallExpr:
-		if ident, ok := n.Func.(*ast.IdentExpr); ok {
-			return ident.Name == "int"
-		}
-		return false
-	case *ast.BinaryExpr:
-		switch n.Op {
-		case ast.BinAdd, ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
-			return isIntNode(n.Left) && isIntNode(n.Right)
-		}
-	case *ast.UnaryExpr:
-		if n.Op == ast.UnaryNeg {
-			return isIntNode(n.Operand)
-		}
-	case *ast.ParenExpr:
-		return isIntNode(n.Inner)
-	}
-	return false
 }
 
 func assignOpStr(op ast.AssignOp) string {

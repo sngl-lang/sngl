@@ -290,17 +290,6 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	}
 }
 
-// lookupI18nTr resolves the i18n.tr stdlib function from the symbol table.
-// Returns nil and emits an error diagnostic if not found.
-func (c *checker) lookupI18nTr(pos ast.Pos) *ir.Func {
-	fn, ok := c.symtab.LookupMethod("i18n", "tr")
-	if !ok {
-		c.error(pos, "i18n.tr is not in scope; ensure lib/i18n.sngl is loaded")
-		return nil
-	}
-	return fn
-}
-
 // lookupI18nTrInline resolves the i18n.trInline stdlib function — the
 // target of $"..." interpolation lowering. Returns nil and emits an error
 // diagnostic if not found.

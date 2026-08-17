@@ -43,7 +43,7 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	walkPackage(pkg, walkFuncs{
 		expr:  rewrite,
-		stmts: func(stmts []ir.Stmt) []ir.Stmt { return inlineComputedStmts(stmts, rewrite) },
+		stmts: func(stmts []ir.Stmt) []ir.Stmt { return rewriteStmtExprs(stmts, rewrite) },
 	})
 
 	pkg.Funcs = filterFuncs(pkg.Funcs, bodies)
@@ -161,13 +161,13 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 		}
 		if x.Func != nil {
 			rewrite := func(e ir.Expr) ir.Expr { return inlineComputedExpr(e, bodies) }
-			x.Func.Block = inlineComputedStmts(x.Func.Block, rewrite)
+			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
 		return x
 	case *ir.Lambda:
 		if x.Func != nil {
 			rewrite := func(e ir.Expr) ir.Expr { return inlineComputedExpr(e, bodies) }
-			x.Func.Block = inlineComputedStmts(x.Func.Block, rewrite)
+			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
 		return x
 	case *ir.MapLitIR:
@@ -182,88 +182,4 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 	default:
 		panic(fmt.Sprintf("inlineComputedExpr: unhandled %T", x))
 	}
-}
-
-func inlineComputedStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.Assign:
-			n.Value = rewrite(n.Value)
-		case *ir.LocalVar:
-			if n.Init != nil {
-				n.Init = rewrite(n.Init)
-			}
-		case *ir.Return:
-			if n.Value != nil {
-				n.Value = rewrite(n.Value)
-			}
-		case *ir.If:
-			n.Cond = rewrite(n.Cond)
-			n.Body = inlineComputedStmts(n.Body, rewrite)
-			n.Else = inlineComputedStmts(n.Else, rewrite)
-		case *ir.For:
-			n.Iter = rewrite(n.Iter)
-			n.Body = inlineComputedStmts(n.Body, rewrite)
-			n.Else = inlineComputedStmts(n.Else, rewrite)
-		case *ir.PlatformFilter:
-			n.Body = inlineComputedStmts(n.Body, rewrite)
-		case *ir.NodeInst:
-			for i := range n.Props {
-				if n.Props[i].Value != nil {
-					n.Props[i].Value = rewrite(n.Props[i].Value)
-				}
-			}
-			if n.Key != nil {
-				n.Key = rewrite(n.Key)
-			}
-			if n.Ref != nil {
-				n.Ref = rewrite(n.Ref)
-			}
-			n.Children = inlineComputedStmts(n.Children, rewrite)
-			for i := range n.Handlers {
-				if n.Handlers[i].Func != nil {
-					n.Handlers[i].Func.Block = inlineComputedStmts(n.Handlers[i].Func.Block, rewrite)
-				}
-			}
-		case *ir.SlotInst:
-			n.Children = inlineComputedStmts(n.Children, rewrite)
-		case *ir.ErrorBoundary:
-			n.Children = inlineComputedStmts(n.Children, rewrite)
-			if n.Handler != nil && n.Handler.Func != nil {
-				n.Handler.Func.Block = inlineComputedStmts(n.Handler.Func.Block, rewrite)
-			}
-		case *ir.Emit:
-			for i := range n.Args {
-				n.Args[i].Value = rewrite(n.Args[i].Value)
-			}
-		case *ir.CallStmt:
-			if n.Call != nil {
-				if n.Call.Receiver != nil {
-					n.Call.Receiver = rewrite(n.Call.Receiver)
-				}
-				for i := range n.Call.Args {
-					n.Call.Args[i].Value = rewrite(n.Call.Args[i].Value)
-				}
-			}
-		case *ir.Window:
-			if n.Href != nil {
-				n.Href = rewrite(n.Href)
-			}
-			if n.Title != nil {
-				n.Title = rewrite(n.Title)
-			}
-			if n.Favicon != nil {
-				n.Favicon = rewrite(n.Favicon)
-			}
-			n.Body = inlineComputedStmts(n.Body, rewrite)
-		case *ir.Toggle:
-			n.Target = rewrite(n.Target)
-		case *ir.ContextProvider:
-			n.Value = rewrite(n.Value)
-			n.Children = inlineComputedStmts(n.Children, rewrite)
-		default:
-			panic(fmt.Sprintf("inlineComputedStmts: unhandled %T", n))
-		}
-	}
-	return stmts
 }

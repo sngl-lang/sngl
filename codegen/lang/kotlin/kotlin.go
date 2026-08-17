@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -25,11 +24,6 @@ func (t *Translator) Description() string {
 // SnglI18nKotlinPackage is the fully-qualified Kotlin package name for the
 // SNGL i18n runtime shipped in pkg/kotlin/i18n/.
 const SnglI18nKotlinPackage = "us.duckfam.git.jonathan.sngl.i18n"
-
-// IsIntlIntrinsic delegates to codegen/i18n.IsIntrinsic. Kept as a
-// thin shim for internal kotlin-translator call sites; new code
-// should use the shared helper directly.
-func IsIntlIntrinsic(intrinsic string) bool { return snglI18n.IsIntrinsic(intrinsic) }
 
 // kotlinEvalIntlIntrinsic emits Kotlin source for an intl.* intrinsic call.
 // Matches the structure of the Go runtime helper: maps the SNGL intrinsic

@@ -200,8 +200,7 @@ func Lookup(path string, idents ...string) (Result, error) {
 }
 
 // LookupIn resolves a doc path + ident chain against a specific cwd. Results
-// are memoized by (cwd, path, idents); call InvalidateCache after editing any
-// .sngl file the lookup may have read.
+// are memoized by (cwd, path, idents).
 //
 //sngl:pure
 func LookupIn(cwd, path string, idents ...string) (Result, error) {
@@ -239,8 +238,7 @@ func Index() []PackageRef {
 }
 
 // IndexIn enumerates the stdlib, the cwd's own package, and each aliased
-// import declared in the cwd's .sngl files. Results are memoized per cwd;
-// call InvalidateCache after editing imports or .sngl files in cwd.
+// import declared in the cwd's .sngl files. Results are memoized per cwd.
 //
 //sngl:pure
 func IndexIn(cwd string) []PackageRef {
