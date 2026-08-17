@@ -159,4 +159,3 @@ func ParseFile(path string) (*ast.Document, error) {
 	name := filepath.Base(path)
 	return parser.Parse(name, src)
 }
-
