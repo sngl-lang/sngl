@@ -24,7 +24,7 @@ func lowerFlattenStructSpread(pkg *ir.Package, _ Caps, _ Options) error {
 	rewrite := func(e ir.Expr) ir.Expr { return flattenSpreadExprCtx(e, pkg) }
 	walkPackage(pkg, walkFuncs{
 		expr:  rewrite,
-		stmts: func(stmts []ir.Stmt) []ir.Stmt { return flattenSpreadStmts(stmts, rewrite) },
+		stmts: func(stmts []ir.Stmt) []ir.Stmt { return rewriteStmtExprs(stmts, rewrite) },
 	})
 	return nil
 }
@@ -82,7 +82,7 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 		}
 	case *ir.Lambda:
 		if x.Func != nil {
-			x.Func.Block = flattenSpreadStmts(x.Func.Block, rewrite)
+			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
 	case *ir.Closure:
 		if x.State != nil {
@@ -93,7 +93,7 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 			}
 		}
 		if x.Func != nil {
-			x.Func.Block = flattenSpreadStmts(x.Func.Block, rewrite)
+			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
 	case *ir.Literal, *ir.Ident, *ir.ContextRead:
 		// Terminal — no struct literals beneath.
@@ -249,88 +249,4 @@ func recordMergeStruct(pkg *ir.Package, sd *ir.StructDef) {
 	if !slices.Contains(pkg.MergeStructs, sd) {
 		pkg.MergeStructs = append(pkg.MergeStructs, sd)
 	}
-}
-
-func flattenSpreadStmts(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.Assign:
-			n.Value = rewrite(n.Value)
-		case *ir.LocalVar:
-			if n.Init != nil {
-				n.Init = rewrite(n.Init)
-			}
-		case *ir.Return:
-			if n.Value != nil {
-				n.Value = rewrite(n.Value)
-			}
-		case *ir.If:
-			n.Cond = rewrite(n.Cond)
-			n.Body = flattenSpreadStmts(n.Body, rewrite)
-			n.Else = flattenSpreadStmts(n.Else, rewrite)
-		case *ir.For:
-			n.Iter = rewrite(n.Iter)
-			n.Body = flattenSpreadStmts(n.Body, rewrite)
-			n.Else = flattenSpreadStmts(n.Else, rewrite)
-		case *ir.PlatformFilter:
-			n.Body = flattenSpreadStmts(n.Body, rewrite)
-		case *ir.NodeInst:
-			for i := range n.Props {
-				if n.Props[i].Value != nil {
-					n.Props[i].Value = rewrite(n.Props[i].Value)
-				}
-			}
-			if n.Key != nil {
-				n.Key = rewrite(n.Key)
-			}
-			if n.Ref != nil {
-				n.Ref = rewrite(n.Ref)
-			}
-			n.Children = flattenSpreadStmts(n.Children, rewrite)
-			for i := range n.Handlers {
-				if n.Handlers[i].Func != nil {
-					n.Handlers[i].Func.Block = flattenSpreadStmts(n.Handlers[i].Func.Block, rewrite)
-				}
-			}
-		case *ir.SlotInst:
-			n.Children = flattenSpreadStmts(n.Children, rewrite)
-		case *ir.ErrorBoundary:
-			n.Children = flattenSpreadStmts(n.Children, rewrite)
-			if n.Handler != nil && n.Handler.Func != nil {
-				n.Handler.Func.Block = flattenSpreadStmts(n.Handler.Func.Block, rewrite)
-			}
-		case *ir.Emit:
-			for i := range n.Args {
-				n.Args[i].Value = rewrite(n.Args[i].Value)
-			}
-		case *ir.CallStmt:
-			if n.Call != nil {
-				if n.Call.Receiver != nil {
-					n.Call.Receiver = rewrite(n.Call.Receiver)
-				}
-				for i := range n.Call.Args {
-					n.Call.Args[i].Value = rewrite(n.Call.Args[i].Value)
-				}
-			}
-		case *ir.Window:
-			if n.Href != nil {
-				n.Href = rewrite(n.Href)
-			}
-			if n.Title != nil {
-				n.Title = rewrite(n.Title)
-			}
-			if n.Favicon != nil {
-				n.Favicon = rewrite(n.Favicon)
-			}
-			n.Body = flattenSpreadStmts(n.Body, rewrite)
-		case *ir.Toggle:
-			n.Target = rewrite(n.Target)
-		case *ir.ContextProvider:
-			n.Value = rewrite(n.Value)
-			n.Children = flattenSpreadStmts(n.Children, rewrite)
-		default:
-			panic(fmt.Sprintf("flattenSpreadStmts: unhandled %T", n))
-		}
-	}
-	return stmts
 }
