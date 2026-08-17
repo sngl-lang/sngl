@@ -18,13 +18,24 @@ deletions, and §2.1 (the lower-walker unification). §0.2 (a suspected Kotlin
 
 ## Remaining: REDUNDANT / DUPLICATED — consolidate (follow-up)
 
-**§2.2, §2.3, and the identical-helper parts of §2.5 landed in MR !11**
-(`codegen/langshared.go` + `codegen/lang/golang/irhelpers.go`): the triplicated
-Go-desktop helpers (`irFuncReturnType`/`irVarGoType`/`identBareName`/
-`modelFieldRef`), the three-language IR predicates (`isNullToFuncConv`,
-`isRaiseFunc`, `i18nConstString`), and `stmtIRPos`/`firstSentence` are now
-single-sourced. `isLocalRef` (fyne/gtk4) was intentionally left — it's a method
-differing only in receiver type, so unifying adds more indirection than it saves.
+**§2.2, §2.3, and the identical-helper parts of §2.5 landed in MR !11**, each
+placed in its proper layer rather than a shared grab-bag:
+
+- **`ir`** (`ir/predicates.go`): `IsNullToFuncConv`, `IsErrorRaiseFunc`, `StmtPos`
+  — pure IR queries, alongside the existing `IsColorStruct`/`IsDateStruct` family.
+  This also absorbed the checker's own byte-identical `isRaiseFunc`, which a
+  codegen home couldn't reach.
+- **`codegen/i18n`**: `PluralKeyConstString` (JS+Kotlin).
+- **`codegen`** (`modelref.go`): `ModelFieldRef`/`IdentBareName` — the `m.` model-
+  receiver convention.
+- **`codegen/lang/golang`** (`irhelpers.go`): `FuncReturnGoType`/`VarGoType` —
+  genuinely Go-type rendering, shared by the Go-emitting platforms.
+
+`isLocalRef` (fyne/gtk4) was intentionally left — a method differing only in
+receiver type, so unifying adds more indirection than it saves.
+
+**Latent gap surfaced:** `StmtPos` only exists because `ir.Stmt` has no uniform
+`Pos()` accessor; adding one (and repointing `StmtPos`) is a small follow-up.
 
 What remains:
 
