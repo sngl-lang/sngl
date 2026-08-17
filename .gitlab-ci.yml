@@ -64,6 +64,9 @@ pages:
     - git -c user.name="SNGL CI" -c user.email="ci@sngl.dev" commit -m "Deploy docs from $CI_COMMIT_SHORT_SHA"
     - ssh-keyscan github.com >> ~/.ssh/known_hosts
     - git push -f git@github.com:sngl-lang/sngl-lang.github.io.git main
+    # Binaries ship to GitHub above; drop them (and the scratch git dir) so the
+    # GitLab Pages artifact upload stays small.
+    - rm -rf .git downloads
   artifacts:
     paths:
       - public
