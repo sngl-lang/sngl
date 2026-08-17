@@ -1,0 +1,32 @@
+// Runtime two's-complement wraparound at each signed width. The operands are
+// concrete-typed locals, so the arithmetic runs in the interpreter/opeval at
+// the declared width and the result wraps (no compile-time range check).
+component wrap {
+    var dummy = 0
+}
+
+func testInt8Wrap(t Test, c wrap) {
+    var a int8 = 100
+    // 100 + 100 = 200, wraps into int8 (-128..127) => -56
+    t.assert(a + a == -56)
+    // 100 * 2 = 200 => -56 as well
+    t.assert(a * 2 == -56)
+}
+
+func testInt16Wrap(t Test, c wrap) {
+    var a int16 = 30000
+    // 30000 + 30000 = 60000, wraps into int16 (-32768..32767) => -5536
+    t.assert(a + a == -5536)
+}
+
+func testInt32Wrap(t Test, c wrap) {
+    var a int32 = 2000000000
+    // 2e9 + 2e9 = 4e9, wraps into int32 => -294967296
+    t.assert(a + a == -294967296)
+}
+
+func testNegationWraps(t Test, c wrap) {
+    var min int8 = -128
+    // -(-128) has no positive int8 representation; wraps back to -128.
+    t.assert(-min == -128)
+}

@@ -20,9 +20,12 @@ func init() {
 	}
 
 	// --- string ---
-	reg("StrLength", func(a []string) string { return "len(" + a[0] + ")" })
+	// SNGL strings have rune (Unicode code point) semantics, not byte
+	// semantics (bugs.md #16), so length counts runes and substring slices by
+	// rune index — matching the interpreter and const folder.
+	regImp("StrLength", []string{"unicode/utf8"}, func(a []string) string { return "utf8.RuneCountInString(" + a[0] + ")" })
 	regImp("StrIndexOf", []string{"strings"}, func(a []string) string { return "strings.Index(" + a[0] + ", " + a[1] + ")" })
-	reg("StrSubstring", func(a []string) string { return a[0] + "[" + a[1] + ":" + a[2] + "]" })
+	reg("StrSubstring", func(a []string) string { return "string([]rune(" + a[0] + ")[" + a[1] + ":" + a[2] + "])" })
 	regImp("StrUpper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
 	regImp("StrLower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
 	regImp("StrTrim", []string{"strings"}, func(a []string) string { return "strings.TrimSpace(" + a[0] + ")" })

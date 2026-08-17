@@ -8,7 +8,7 @@ output { js { html } }
 
 import lib "js://./lib"
 
-func wrap(a int, b int) => lib.add(a, b)
+func wrap(a float, b float) => lib.add(a, b)
 
 component main {
     text(value=string(wrap(1, 2)))

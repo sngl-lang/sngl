@@ -3252,7 +3252,13 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 				if s, ok := codegen.IRLiteralString(expr); ok {
 					return fmt.Sprintf("%q", s)
 				}
-			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			case ir.TypeInt, ir.TypeFloat:
+				// Shared with the JS lang translator so sized-width rendering
+				// (BigInt for 64-bit, Math.fround for float32) can't drift.
+				if s, ok := javascript.NumericLiteral(lit); ok {
+					return s
+				}
+			case ir.TypeBool:
 				return lit.Raw
 			case ir.TypeNull:
 				return "null"

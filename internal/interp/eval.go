@@ -5,11 +5,13 @@ import (
 	"maps"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 	goi18n "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 )
@@ -689,6 +691,14 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 		return nil, nil
 	case ir.TypeInt:
 		raw := strings.ReplaceAll(e.Raw, "_", "")
+		if e.Type.Unsigned && e.Type.Bits == 64 {
+			// uint64 carries as Go uint64 to keep the range above 2^63 exact.
+			u, err := strconv.ParseUint(raw, 0, 64)
+			if err != nil {
+				return uint64(0), nil
+			}
+			return u, nil
+		}
 		n, err := strconv.ParseInt(raw, 0, 64)
 		if err != nil {
 			return 0, nil
@@ -697,6 +707,11 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 	case ir.TypeFloat:
 		raw := strings.ReplaceAll(e.Raw, "_", "")
 		f, _ := strconv.ParseFloat(raw, 64)
+		if e.Type.Bits == 32 {
+			// Pre-round to single precision so float32 arithmetic matches
+			// native float32 targets.
+			return float64(float32(f)), nil
+		}
 		return f, nil
 	case ir.TypeString:
 		if e.AST != nil {
@@ -865,8 +880,16 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
 			return zeroValueFor(e.Type), nil
 		}
-		for _, sample := range m {
-			return zeroValueForValue(sample), nil
+		// Sample deterministically (smallest key): Go map iteration is
+		// randomised, so ranging picked a run-to-run-varying value, making the
+		// zero-value template flaky for heterogeneous dyn maps (bugs.md #24).
+		if len(m) > 0 {
+			keys := make([]string, 0, len(m))
+			for k := range m {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			return zeroValueForValue(m[keys[0]]), nil
 		}
 		return nil, nil
 	}
@@ -883,8 +906,14 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 	}
 	switch e.Type.Kind {
 	case ir.TypeInt:
+		if r, ok := opeval.ConvertInt(v, e.Type.Bits, e.Type.Unsigned); ok {
+			return r, nil
+		}
 		return ToInt(v), nil
 	case ir.TypeFloat:
+		if r, ok := opeval.ConvertFloat(v, e.Type.Bits); ok {
+			return r, nil
+		}
 		return toFloat(v), nil
 	case ir.TypeString:
 		return fmt.Sprintf("%v", v), nil
@@ -1064,21 +1093,21 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 		if rs, ok := right.(string); ok {
 			return fmt.Sprintf("%v", left) + rs, nil
 		}
-		return numericResult(toFloat(left) + toFloat(right)), nil
-	case ast.BinSub:
-		return numericResult(toFloat(left) - toFloat(right)), nil
-	case ast.BinMul:
-		return numericResult(toFloat(left) * toFloat(right)), nil
-	case ast.BinDiv:
-		r := toFloat(right)
-		if r == 0 {
-			return nil, fmt.Errorf("division by zero")
-		}
-		return numericResult(toFloat(left) / r), nil
-	case ast.BinMod:
-		return numericResult(math.Mod(toFloat(left), toFloat(right))), nil
+		return opeval.Arith(ast.BinAdd, left, right, numKindOf(e.Type))
+	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
+		return opeval.Arith(e.Op, left, right, numKindOf(e.Type))
 	}
 	return nil, fmt.Errorf("unknown binary op %d", e.Op)
+}
+
+// numKindOf maps an IR result type to the opeval width descriptor so arithmetic
+// wraps to the right width. A nil or non-numeric type (e.g. a dyn operand in a
+// test context) yields the zero NumKind, which is default int / float-fallback.
+func numKindOf(t *ir.Type) opeval.NumKind {
+	if t == nil || !t.IsNumeric() {
+		return opeval.NumKind{}
+	}
+	return opeval.NumKind{Bits: t.Bits, Unsigned: t.Unsigned, Float: t.Kind == ir.TypeFloat}
 }
 
 func (env *Env) evalUnary(e *ir.Unary) (any, error) {
@@ -1094,7 +1123,9 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 		}
 		return !b, nil
 	case ast.UnaryNeg:
-		return numericResult(-toFloat(v)), nil
+		// Negation is 0 - v at the result width, so sized integers wrap
+		// correctly (e.g. -(int8 -128) is -128) and floats stay floats.
+		return opeval.Arith(ast.BinSub, 0, v, numKindOf(e.Type))
 	case ast.UnaryDeref:
 		// `*t` for an &-bound loop element (`for &t = list`). The operand is a
 		// listRef into the live list; reading derefs to the current element.
@@ -2051,6 +2082,8 @@ func toFloat(v any) float64 {
 	switch val := v.(type) {
 	case int:
 		return float64(val)
+	case uint64:
+		return float64(val)
 	case float64:
 		return val
 	case bool:
@@ -2071,6 +2104,8 @@ func ToInt(v any) int {
 	switch val := v.(type) {
 	case int:
 		return val
+	case uint64:
+		return int(val)
 	case float64:
 		return int(val)
 	case bool:
@@ -2157,14 +2192,6 @@ func zeroValueForValue(v any) any {
 	return nil
 }
 
-func numericResult(f float64) any {
-	if f == math.Trunc(f) && !math.IsInf(f, 0) && !math.IsNaN(f) {
-		return int(f)
-	}
-	return f
-}
-
-// literalString pulls the cooked string value from an ast literal.
 func literalString(e *ast.LiteralExpr) (string, bool) {
 	if e == nil {
 		return "", false

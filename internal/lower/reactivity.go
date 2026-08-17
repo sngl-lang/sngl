@@ -41,6 +41,27 @@ type reactivityState struct {
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
 	owner reactivityOwner
+	// err holds the first fatal lowering diagnostic (e.g. an unsupported
+	// nested reactive structure). Recorded rather than panicked so the
+	// build fails with a positioned compile error; the partially-built IR
+	// is discarded once lowerReactivity returns this.
+	err error
+}
+
+// failf records the first fatal reactivity-lowering diagnostic, prefixed
+// with the source position when available. Subsequent calls are ignored so
+// the earliest, most-relevant error wins. Callers keep walking after this
+// (building otherwise-harmless IR); lowerReactivity returns st.err and the
+// malformed IR is never used.
+func (st *reactivityState) failf(pos ast.Pos, format string, args ...any) {
+	if st.err != nil {
+		return
+	}
+	msg := fmt.Sprintf(format, args...)
+	if pos.IsValid() {
+		msg = pos.String() + ": " + msg
+	}
+	st.err = fmt.Errorf("%s", msg)
 }
 
 // reactiveSlot records a per-If/per-For reactive dep. SlotID names the
@@ -169,7 +190,7 @@ func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
 	}
-	return nil
+	return st.err
 }
 
 // rewriteAndInject is the unified pass-2 walk. Synthesizes slot Vars for
@@ -1275,7 +1296,11 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 				out = append(out, emitNodeAt(sx)...)
 			case *ir.If:
 				if sx.LoweredSlotID != "" {
-					panic("lower(reactivity): nested *ir.If with its own slot — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)")
+					var pos ast.Pos
+					if sx.AST != nil {
+						pos = sx.AST.Pos
+					}
+					st.failf(pos, "a reactive `if` nested inside another reactive `if`/`for` is not yet supported; move it out of the enclosing reactive block or gate it on a non-reactive condition")
 				}
 				inner := &ir.If{Cond: sx.Cond, Body: emitStmts(sx.Body)}
 				if len(sx.Else) > 0 {
@@ -1284,7 +1309,11 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 				out = append(out, inner)
 			case *ir.For:
 				if sx.LoweredSlotID != "" {
-					panic("lower(reactivity): nested *ir.For with its own slot — nested reactive structures are not yet supported (see docs/superpowers/specs/2026-05-12-reactivity-lowering-consolidation-design.md Next steps)")
+					var pos ast.Pos
+					if sx.AST != nil {
+						pos = sx.AST.Pos
+					}
+					st.failf(pos, "a reactive `for` nested inside another reactive `if`/`for` is not yet supported; move it out of the enclosing reactive block or iterate a non-reactive collection")
 				}
 				inner := &ir.For{
 					Key:      sx.Key,

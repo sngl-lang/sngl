@@ -1,0 +1,29 @@
+// Compound assignment (+=, -=, *=) on sized integers wraps at the declared
+// width, not at 64 bits. The target's declared type drives the width.
+component compound {
+    var dummy = 0
+}
+
+func testInt8CompoundAdd(t Test, c compound) {
+    var x int8 = 100
+    x += 100 // 200 wraps into int8 => -56
+    t.assert(x == -56)
+}
+
+func testInt8CompoundMul(t Test, c compound) {
+    var x int8 = 100
+    x *= 2 // 200 => -56
+    t.assert(x == -56)
+}
+
+func testUint8CompoundSub(t Test, c compound) {
+    var x uint8 = 0
+    x -= 1 // wraps to 255
+    t.assert(x == 255)
+}
+
+func testUint32CompoundAdd(t Test, c compound) {
+    var x uint32 = 4000000000
+    x += x // 8e9 wraps modulo 2^32 => 3705032704
+    t.assert(x == 3705032704)
+}

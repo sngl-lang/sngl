@@ -2,9 +2,9 @@ package interp
 
 import (
 	"fmt"
-	"math"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -170,7 +170,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		owner.Vars[target.Name] = ApplyOp(s.Op, owner.Vars[target.Name], val)
+		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val, target.ExprType())
+		if err != nil {
+			return err
+		}
+		owner.Vars[target.Name] = nv
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -181,7 +185,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
-			m[target.Field] = ApplyOp(s.Op, m[target.Field], val)
+			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
+			if err != nil {
+				return err
+			}
+			m[target.Field] = nv
 			return nil
 		}
 		return fmt.Errorf("cannot assign to field on %T", obj)
@@ -199,7 +207,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			if i < 0 || i >= len(list) {
 				return fmt.Errorf("index %d out of range (len %d)", i, len(list))
 			}
-			list[i] = ApplyOp(s.Op, list[i], val)
+			nv, err := ApplyOp(s.Op, list[i], val, target.ExprType())
+			if err != nil {
+				return err
+			}
+			list[i] = nv
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
@@ -212,7 +224,11 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			if ref, ok := obj.(*listRef); ok {
-				ref.set(ApplyOp(s.Op, ref.get(), val))
+				nv, err := ApplyOp(s.Op, ref.get(), val, target.ExprType())
+				if err != nil {
+					return err
+				}
+				ref.set(nv)
 				return nil
 			}
 			return fmt.Errorf("cannot deref-assign to %T", obj)
@@ -331,23 +347,44 @@ func (env *Env) execFor(s *ir.For) error {
 	return nil
 }
 
-func ApplyOp(op ast.AssignOp, cur, val any) any {
+func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {
+	// The declared target type drives the width so sized-integer compound
+	// assignment wraps at the right width. When the target type is unavailable
+	// or dyn (e.g. a dynamically-typed field in a test context), fall back to
+	// inferring from the current runtime carrier.
+	kind := numKindOf(targetType)
+	if kind == (opeval.NumKind{}) {
+		kind = numKindOfValue(cur)
+	}
 	switch op {
 	case ast.AssignSet:
-		return val
+		return val, nil
 	case ast.AssignAdd:
 		if s, ok := cur.(string); ok {
-			return s + fmt.Sprintf("%v", val)
+			return s + fmt.Sprintf("%v", val), nil
 		}
-		return numericResult(toFloat(cur) + toFloat(val))
+		return opeval.Arith(ast.BinAdd, cur, val, kind)
 	case ast.AssignSub:
-		return numericResult(toFloat(cur) - toFloat(val))
+		return opeval.Arith(ast.BinSub, cur, val, kind)
 	case ast.AssignMul:
-		return numericResult(toFloat(cur) * toFloat(val))
+		return opeval.Arith(ast.BinMul, cur, val, kind)
 	case ast.AssignDiv:
-		return numericResult(toFloat(cur) / toFloat(val))
+		return opeval.Arith(ast.BinDiv, cur, val, kind)
 	case ast.AssignMod:
-		return numericResult(math.Mod(toFloat(cur), toFloat(val)))
+		return opeval.Arith(ast.BinMod, cur, val, kind)
 	}
-	return val
+	return val, nil
+}
+
+// numKindOfValue infers an opeval width descriptor from a runtime value's Go
+// carrier type. Only used where the static IR type is unavailable (compound
+// assignment).
+func numKindOfValue(v any) opeval.NumKind {
+	switch v.(type) {
+	case uint64:
+		return opeval.NumKind{Bits: 64, Unsigned: true}
+	case float64:
+		return opeval.NumKind{Float: true}
+	}
+	return opeval.NumKind{}
 }

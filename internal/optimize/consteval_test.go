@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -79,7 +80,7 @@ func TestCompareOp_Incompatible(t *testing.T) {
 }
 
 func TestFloatDivByZero(t *testing.T) {
-	_, ok := numericOp(ast.BinDiv, 1.5, 0.0)
+	_, ok := numericOp(ast.BinDiv, 1.5, 0.0, opeval.NumKind{})
 	if ok {
 		t.Error("expected float division by zero to return false")
 	}
@@ -97,33 +98,33 @@ func TestNumericOp_FloatArithmetic(t *testing.T) {
 		{ast.BinDiv, 10.0, 4.0, 2.5},
 	}
 	for _, tc := range tests {
-		got, ok := numericOp(tc.op, tc.l, tc.r)
+		got, ok := numericOp(tc.op, tc.l, tc.r, opeval.NumKind{})
 		if !ok {
-			t.Errorf("numericOp(%v, %v, %v) returned !ok", tc.op, tc.l, tc.r)
+			t.Errorf("numericOp(%v, %v, %v, opeval.NumKind{}) returned !ok", tc.op, tc.l, tc.r)
 			continue
 		}
 		if got != tc.want {
-			t.Errorf("numericOp(%v, %v, %v) = %v, want %v", tc.op, tc.l, tc.r, got, tc.want)
+			t.Errorf("numericOp(%v, %v, %v, opeval.NumKind{}) = %v, want %v", tc.op, tc.l, tc.r, got, tc.want)
 		}
 	}
 }
 
 func TestNumericOp_NonNumeric(t *testing.T) {
-	_, ok := numericOp(ast.BinAdd, "a", "b")
+	_, ok := numericOp(ast.BinAdd, "a", "b", opeval.NumKind{})
 	if ok {
 		t.Error("expected numericOp with strings to return false")
 	}
 }
 
 func TestEvalUnaryOp_NonBoolNot(t *testing.T) {
-	_, ok := evalUnaryOp(ast.UnaryNot, 42)
+	_, ok := evalUnaryOp(ast.UnaryNot, 42, opeval.NumKind{})
 	if ok {
 		t.Error("expected UnaryNot on int to return false")
 	}
 }
 
 func TestEvalUnaryOp_NegNonNumeric(t *testing.T) {
-	_, ok := evalUnaryOp(ast.UnaryNeg, "hello")
+	_, ok := evalUnaryOp(ast.UnaryNeg, "hello", opeval.NumKind{})
 	if ok {
 		t.Error("expected UnaryNeg on string to return false")
 	}
@@ -200,35 +201,35 @@ func TestEvalMethodListLength(t *testing.T) {
 }
 
 func TestEvalBinaryOp_OrBool(t *testing.T) {
-	v, ok := evalBinaryOp(ast.BinOr, true, false)
+	v, ok := evalBinaryOp(ast.BinOr, true, false, opeval.NumKind{})
 	if !ok || v != true {
 		t.Errorf("true || false = (%v, %v), want (true, true)", v, ok)
 	}
 }
 
 func TestEvalBinaryOp_AndBool(t *testing.T) {
-	v, ok := evalBinaryOp(ast.BinAnd, true, false)
+	v, ok := evalBinaryOp(ast.BinAnd, true, false, opeval.NumKind{})
 	if !ok || v != false {
 		t.Errorf("true && false = (%v, %v), want (false, true)", v, ok)
 	}
 }
 
 func TestEvalBinaryOp_NonBoolAnd(t *testing.T) {
-	_, ok := evalBinaryOp(ast.BinAnd, "a", "b")
+	_, ok := evalBinaryOp(ast.BinAnd, "a", "b", opeval.NumKind{})
 	if ok {
 		t.Error("expected && on strings to fail")
 	}
 }
 
 func TestEvalBinaryOp_NonBoolOr(t *testing.T) {
-	_, ok := evalBinaryOp(ast.BinOr, 1, 2)
+	_, ok := evalBinaryOp(ast.BinOr, 1, 2, opeval.NumKind{})
 	if ok {
 		t.Error("expected || on ints to fail")
 	}
 }
 
 func TestEvalBinaryOp_Neq(t *testing.T) {
-	v, ok := evalBinaryOp(ast.BinNeq, "a", "b")
+	v, ok := evalBinaryOp(ast.BinNeq, "a", "b", opeval.NumKind{})
 	if !ok || v != true {
 		t.Errorf("a != b = (%v, %v), want (true, true)", v, ok)
 	}
@@ -284,7 +285,7 @@ func TestEvalQualifiedMethod_ListLength(t *testing.T) {
 }
 
 func TestEvalBinaryOp_StringAdd(t *testing.T) {
-	v, ok := evalBinaryOp(ast.BinAdd, "hello", " world")
+	v, ok := evalBinaryOp(ast.BinAdd, "hello", " world", opeval.NumKind{})
 	if !ok || v != "hello world" {
 		t.Errorf("'hello' + ' world' = (%v, %v)", v, ok)
 	}
@@ -303,9 +304,9 @@ func TestEvalBinaryOp_IntArithmetic(t *testing.T) {
 		{ast.BinMod, 10, 3, 1},
 	}
 	for _, tc := range tests {
-		got, ok := numericOp(tc.op, tc.l, tc.r)
+		got, ok := numericOp(tc.op, tc.l, tc.r, opeval.NumKind{})
 		if !ok || got != tc.want {
-			t.Errorf("numericOp(%v, %d, %d) = (%v, %v), want (%d, true)", tc.op, tc.l, tc.r, got, ok, tc.want)
+			t.Errorf("numericOp(%v, %d, %d, opeval.NumKind{}) = (%v, %v), want (%d, true)", tc.op, tc.l, tc.r, got, ok, tc.want)
 		}
 	}
 }
@@ -330,10 +331,12 @@ func TestCompareOp_IntComparison(t *testing.T) {
 	}
 }
 
-func TestFloatModReturnsNil(t *testing.T) {
-	result, ok := numericOp(ast.BinMod, 3.5, 2.0)
-	if ok {
-		t.Errorf("expected float mod to not fold, but got %v", result)
+func TestFloatModFolds(t *testing.T) {
+	// Float modulo now folds via the shared opeval semantics (the interpreter
+	// always computed it with math.Mod; the folder used to bail, a divergence).
+	result, ok := numericOp(ast.BinMod, 3.5, 2.0, opeval.NumKind{})
+	if !ok || result != 1.5 {
+		t.Errorf("numericOp(BinMod, 3.5, 2.0, opeval.NumKind{}) = (%v, %v); want (1.5, true)", result, ok)
 	}
 }
 

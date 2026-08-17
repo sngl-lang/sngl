@@ -1,0 +1,24 @@
+// Sized floating-point types. float64 behaves like the default float;
+// float32 carries single-precision rounding.
+component floats {
+    var f32 float32 = 0.1
+    var f64 float64 = 0.1
+}
+
+func testFloat64IsDefault(t Test, c floats) {
+    t.assert(c.f64 + 0.2 == 0.30000000000000004)
+}
+
+func testFloat32Rounding(t Test, c floats) {
+    // 0.1 stored as float32 is a different value than the float64 0.1.
+    // Adding at float32 width keeps single-precision rounding.
+    t.assert(c.f32 + float32(0.2) == float32(0.3))
+    // The float32 representation of 0.1, widened back to float64, is not the
+    // float64 0.1.
+    t.assert(float64(c.f32) != 0.1)
+}
+
+func testFloatConstFold(t Test, c floats) {
+    var x = 1.5 + 2.5
+    t.assert(x == 4.0)
+}

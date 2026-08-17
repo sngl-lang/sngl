@@ -521,6 +521,30 @@ func (kc *KtIRContext) receiverIsComponent(name string) bool {
 	return false
 }
 
+// ktIntConvMethod returns the Kotlin conversion method for an integer target
+// width (e.g. .toByte(), .toULong()). Plain int uses .toInt().
+func ktIntConvMethod(t *ir.Type) string {
+	switch {
+	case t.Bits == 8 && t.Unsigned:
+		return "toUByte()"
+	case t.Bits == 8:
+		return "toByte()"
+	case t.Bits == 16 && t.Unsigned:
+		return "toUShort()"
+	case t.Bits == 16:
+		return "toShort()"
+	case t.Bits == 32 && t.Unsigned:
+		return "toUInt()"
+	case t.Bits == 32:
+		return "toInt()"
+	case t.Bits == 64 && t.Unsigned:
+		return "toULong()"
+	case t.Bits == 64:
+		return "toLong()"
+	}
+	return "toInt()"
+}
+
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if isNullToFuncConvKt(n) {
 		return nullFuncStubKt(n.Type)
@@ -529,8 +553,11 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt:
-			return operand + ".toInt()"
+			return operand + "." + ktIntConvMethod(n.Type)
 		case ir.TypeFloat:
+			if n.Type.Bits == 32 {
+				return operand + ".toFloat()"
+			}
 			return operand + ".toDouble()"
 		case ir.TypeString:
 			return operand + ".toString()"
@@ -645,6 +672,30 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 // --- IR type → Kotlin type ---
 
 // IRTypeToKt converts an IR type to a Kotlin type string.
+// ktIntType maps a (possibly sized) integer type to its Kotlin type name.
+// Unsigned widths use Kotlin's U-prefixed types; plain int stays Int.
+func ktIntType(t *ir.Type) string {
+	switch {
+	case t.Bits == 8 && t.Unsigned:
+		return "UByte"
+	case t.Bits == 8:
+		return "Byte"
+	case t.Bits == 16 && t.Unsigned:
+		return "UShort"
+	case t.Bits == 16:
+		return "Short"
+	case t.Bits == 32 && t.Unsigned:
+		return "UInt"
+	case t.Bits == 32:
+		return "Int"
+	case t.Bits == 64 && t.Unsigned:
+		return "ULong"
+	case t.Bits == 64:
+		return "Long"
+	}
+	return "Int"
+}
+
 func IRTypeToKt(t *ir.Type) string {
 	if t == nil {
 		return "Any"
@@ -653,8 +704,11 @@ func IRTypeToKt(t *ir.Type) string {
 	case ir.TypeBool:
 		return "Boolean"
 	case ir.TypeInt:
-		return "Int"
+		return ktIntType(t)
 	case ir.TypeFloat:
+		if t.Bits == 32 {
+			return "Float"
+		}
 		return "Double"
 	case ir.TypeString, ir.TypeColor:
 		return "String"

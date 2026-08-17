@@ -67,13 +67,32 @@ func FormatType(te ast.TypeExpr) string {
 
 // Convert builds a fresh AST Document from a type-checked IR Package,
 // without referencing any embedded AST pointers.
-func Convert(pkg *ir.Package) *ast.Document {
+//
+// Like the rest of the pipeline boundary, a panic on partial/unexpected IR is
+// contained (returns nil) so an embedding host — LSP, doc tooling — degrades
+// instead of crashing.
+func Convert(pkg *ir.Package) (doc *ast.Document) {
+	defer func() {
+		if p := recover(); p != nil {
+			doc = nil
+		}
+	}()
 	return ir.Convert(pkg)
 }
 
 // Check type-checks a parsed SNGL document. dir is the directory of the source
 // file, used to resolve relative import paths.
-func Check(doc *ast.Document, dir string) (*ir.Package, []ir.Diagnostic) {
+//
+// The checker (and the many `panic("unhandled %T")` guards it can reach)
+// panicking on malformed-but-parseable input is converted to an internal-error
+// diagnostic so hosts never crash — mirroring Parse.
+func Check(doc *ast.Document, dir string) (pkg *ir.Package, diags []ir.Diagnostic) {
+	defer func() {
+		if p := recover(); p != nil {
+			pkg = nil
+			diags = []ir.Diagnostic{{Severity: ir.Error, Msg: fmt.Sprintf("internal checker error: %v", p)}}
+		}
+	}()
 	return checker.Check(doc, &checker.Config{
 		FS:     os.DirFS(dir),
 		Dir:    dir,
@@ -88,6 +107,15 @@ type Caps = lower.Caps
 // Lower runs the lowering pipeline on a checked + optimized IR Package.
 // caps comes from merging the target platform's and language's
 // Capabilities(). Mutates pkg in place.
-func Lower(pkg *ir.Package, caps Caps) error {
+//
+// The lowering passes carry 60+ `panic("unhandled %T")` guards; a panic on an
+// unexpected node is converted to an error so the CLI/LSP report an internal
+// error rather than crashing.
+func Lower(pkg *ir.Package, caps Caps) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("internal lowering error: %v", p)
+		}
+	}()
 	return lower.Lower(pkg, caps, lower.Options{})
 }

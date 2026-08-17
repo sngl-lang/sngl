@@ -45,13 +45,21 @@ func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
 
 func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
-		return "Math.trunc(" + left + " / " + right + ")"
+		// BigInt division truncates toward zero natively; Number division needs
+		// an explicit Math.trunc to match integer semantics.
+		if jsIsBigInt(n.Type) {
+			return jsWrapArith("("+left+" / "+right+")", n.Type)
+		}
+		return jsWrapArith("Math.trunc("+left+" / "+right+")", n.Type)
 	}
-	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+	return jsWrapArith("("+left+" "+binaryOpStr(n.Op)+" "+right+")", n.Type)
 }
 func (jc *JsIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
 		return "!" + operand
+	}
+	if n.Type != nil && n.Type.IsSized() {
+		return jsWrapArith("(-"+operand+")", n.Type)
 	}
 	return "-" + operand
 }
@@ -298,35 +306,11 @@ func jsIsRaiseFunc(fn *ir.Func) bool {
 	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
+// evalLiteral renders an ir.Literal to JS. The rendering lives in the package-
+// level translateIRLiteral so the IRContext path and the lang-translator path
+// (TranslateIRLiteral) stay identical.
 func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
-	if n.Type == nil {
-		return n.Raw
-	}
-	switch n.Type.Kind {
-	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Raw)
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return n.Raw
-	case ir.TypeNull:
-		return "null"
-	case ir.TypeColor, ir.TypeDuration:
-		return fmt.Sprintf("%q", n.Raw)
-	case ir.TypeStruct:
-		// color/date/time/dateTime are string-representable stdlib structs;
-		// emit their canonical form as a quoted JS string.
-		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Raw)
-		}
-		if n.Suffix != "" {
-			return fmt.Sprintf("%q", n.Raw+n.Suffix)
-		}
-		return n.Raw
-	default:
-		if n.Suffix != "" {
-			return fmt.Sprintf("%q", n.Raw+n.Suffix)
-		}
-		return n.Raw
-	}
+	return translateIRLiteral(n)
 }
 
 func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
@@ -630,10 +614,8 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 	operand := jc.EvalExpr(n.Operand)
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			return "Math.trunc(" + operand + ")"
-		case ir.TypeFloat:
-			return "parseFloat(" + operand + ")"
+		case ir.TypeInt, ir.TypeFloat:
+			return jsConvert(operand, n.Operand.ExprType(), n.Type)
 		case ir.TypeString:
 			// Flag the String() helper for emission, mirroring legacy
 			// translateIRConversion. The plain-call string(x) path flags it

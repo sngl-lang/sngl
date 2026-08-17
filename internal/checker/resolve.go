@@ -57,8 +57,28 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return TypBool
 	case "int":
 		return TypInt
+	case "int8":
+		return ir.TypInt8
+	case "int16":
+		return ir.TypInt16
+	case "int32":
+		return ir.TypInt32
+	case "int64":
+		return ir.TypInt64
+	case "uint8":
+		return ir.TypUint8
+	case "uint16":
+		return ir.TypUint16
+	case "uint32":
+		return ir.TypUint32
+	case "uint64":
+		return ir.TypUint64
 	case "float":
 		return TypFloat
+	case "float32":
+		return ir.TypFloat32
+	case "float64":
+		return ir.TypFloat64
 	case "string":
 		return TypString
 	case "dyn":
