@@ -18,25 +18,15 @@ deletions, and §2.1 (the lower-walker unification). §0.2 (a suspected Kotlin
 
 ## Remaining: REDUNDANT / DUPLICATED — consolidate (follow-up)
 
-Deliberately deferred out of the removal PR: these introduce cross-package
-coupling / call-site churn for modest LOC, so they belong in a focused follow-up.
+**§2.2, §2.3, and the identical-helper parts of §2.5 landed in MR !11**
+(`codegen/langshared.go` + `codegen/lang/golang/irhelpers.go`): the triplicated
+Go-desktop helpers (`irFuncReturnType`/`irVarGoType`/`identBareName`/
+`modelFieldRef`), the three-language IR predicates (`isNullToFuncConv`,
+`isRaiseFunc`, `i18nConstString`), and `stmtIRPos`/`firstSentence` are now
+single-sourced. `isLocalRef` (fyne/gtk4) was intentionally left — it's a method
+differing only in receiver type, so unifying adds more indirection than it saves.
 
-### §2.2 Byte-identical helpers triplicated across the Go desktop generators (~90 LOC)
-
-- `irFuncReturnType` — fyne/compiler_ir.go, gtk4, bubbletea (identical).
-- `irVarGoType` — fyne/compiler_ir.go, gtk4, bubbletea (identical).
-- `identBareName` — fyne/intrinsic_translator.go, gtk4 (html's copy was dead and is removed).
-- `modelFieldRef` — fyne/intrinsic_translator.go, gtk4 (identical).
-- `isLocalRef` — fyne/gtk4 intrinsic_translator.go (differ only in receiver type).
-
-Candidates for a shared `codegen/lang/golang` helper (already imported by all three).
-
-### §2.3 Identical IR-level predicates copy-pasted across the 3 language translators (~50 LOC)
-
-Pure-IR (no language-specific output), byte-identical — hoist into shared codegen:
-- `isNullToFuncConv{,JS,Kt}` — golang, js, kotlin.
-- `is{Go}RaiseFunc`/`jsIsRaiseFunc`/`ktIsRaiseFunc` — golang, js, kotlin.
-- `jsI18nConstString` / `kotlinI18nConstString` — identical (golang's `i18nPluralKeyGoName` intentionally differs).
+What remains:
 
 ### §2.4 ~10 hand-rolled `ir.Stmt` traversal switches → `ir.WalkStmts` (architectural)
 
@@ -50,14 +40,12 @@ canonical `ir.WalkStmts`/`WalkExprs` (`ir/walkexprs.go`) is used in only 2 place
 a missed one panics. Not a mechanical delete — the copies carry slightly
 different per-node side effects, so this is a careful, deliberate pass.
 
-### §2.5 Minor overlaps (LOW)
+### §2.5 Minor overlaps (LOW) — remaining
 
 - `codegen/platform/html/html.go` `literalToJS` keeps its own scalar-literal
   switch overlapping `javascript.translateIRLiteral` — a second source of truth
-  (drift risk), while `exprToJS` already delegates to `TranslateIRLiteral`.
-- `codegen/lang/{golang,javascript}/stmtpos.go` `stmtIRPos` — byte-identical
-  (only package + comment differ); hoistable to a shared helper.
-- `docs/docs.go` `firstSentence` duplicates `docs/lookup/lookup.go` `FirstSentence` — delegate to the exported one.
+  (drift risk), while `exprToJS` already delegates to `TranslateIRLiteral`. Not
+  identical, so it needs a careful look rather than a mechanical hoist.
 - `ir/convert.go` `formatFloat` vs `optimize/consteval.go` `floatToStr` — different quirks, not trivially unifiable.
 
 ---
