@@ -81,10 +81,10 @@ func parse(t *testing.T, src string) *ir.Package {
 }
 
 func TestTernaryNumericPromotion(t *testing.T) {
-	// A ternary mixing int and float branches must type as float, promoting
-	// the int branch via an explicit Conversion — mirroring binary arithmetic.
-	// Regression: `cond ? 0 : x + 0.01` previously typed as int, so the float
-	// branch failed to assign to the int-typed lowered temp.
+	// A ternary mixing an int and a float constant branch types as float: the
+	// untyped int constant `0` adopts the float type of the other branch. This
+	// is constant representability, not a value-level int→float conversion —
+	// the branch becomes a float literal rather than being wrapped in a cast.
 	pkg := parse(t, `
 component main {
 	func pick(b bool) => b ? 0 : 1.5
@@ -115,8 +115,9 @@ component main {
 	if tern.Type == nil || tern.Type.Kind != ir.TypeFloat {
 		t.Errorf("ternary type = %v, want float", tern.Type)
 	}
-	if _, ok := tern.Then.(*ir.Conversion); !ok {
-		t.Errorf("then-branch = %T, want *ir.Conversion (int 0 promoted to float)", tern.Then)
+	then := tern.Then.ExprType()
+	if then == nil || then.Kind != ir.TypeFloat {
+		t.Errorf("then-branch type = %v, want float (int 0 adopted the float branch's type)", then)
 	}
 }
 

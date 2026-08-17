@@ -478,3 +478,32 @@ func TestJsEvalIdent_ElementRefStaysBare(t *testing.T) {
 		t.Errorf("local element-ref: got %q, want bare parent", got)
 	}
 }
+
+func TestJsSizedNumericEmission(t *testing.T) {
+	ctx := codegen.NewExprCtx(&ir.Package{})
+	jc := NewIRContext(ctx)
+	i8 := func(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt8, Raw: raw} }
+	cases := []struct {
+		name string
+		expr ir.Expr
+		want string
+	}{
+		{"int8 add masks", &ir.Binary{Type: ir.TypInt8, Op: ast.BinAdd, Left: i8("100"), Right: i8("100")}, "(((100 + 100)) << 24 >> 24)"},
+		{"uint8 sub masks", &ir.Binary{Type: ir.TypUint8, Op: ast.BinSub, Left: &ir.Literal{Type: ir.TypUint8, Raw: "0"}, Right: &ir.Literal{Type: ir.TypUint8, Raw: "1"}}, "(((0 - 1)) & 0xFF)"},
+		{"uint32 add masks", &ir.Binary{Type: ir.TypUint32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint32, Raw: "1"}, Right: &ir.Literal{Type: ir.TypUint32, Raw: "2"}}, "(((1 + 2)) >>> 0)"},
+		{"int64 literal is bigint", i8Bit64("5"), "5n"},
+		{"uint64 add wraps via asUintN", &ir.Binary{Type: ir.TypUint64, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint64, Raw: "1"}, Right: &ir.Literal{Type: ir.TypUint64, Raw: "2"}}, "BigInt.asUintN(64, (1n + 2n))"},
+		{"float32 literal frounds", &ir.Literal{Type: ir.TypFloat32, Raw: "0.1"}, "Math.fround(0.1)"},
+		{"float32 add frounds", &ir.Binary{Type: ir.TypFloat32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypFloat32, Raw: "0.1"}, Right: &ir.Literal{Type: ir.TypFloat32, Raw: "0.2"}}, "Math.fround((Math.fround(0.1) + Math.fround(0.2)))"},
+		{"conv to int8 masks", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt, Raw: "300"}}, "((300) << 24 >> 24)"},
+		{"conv int64 to int8 bridges", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt64, Raw: "5000000000"}}, "((Number(5000000000n)) << 24 >> 24)"},
+		{"conv number to uint64 lifts", &ir.Conversion{Type: ir.TypUint64, Operand: &ir.Literal{Type: ir.TypInt, Raw: "5"}}, "BigInt.asUintN(64, BigInt(Math.trunc(5)))"},
+	}
+	for _, tc := range cases {
+		if got := jc.EvalExpr(tc.expr); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func i8Bit64(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt64, Raw: raw} }

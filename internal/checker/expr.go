@@ -146,16 +146,12 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	var typ *ir.Type
 	switch x.Kind {
 	case ast.LiteralInt:
-		typ = TypInt
-		// Detect literals outside int64 range. A leading '-' is a separate
-		// UnaryExpr, so Raw is always the unsigned magnitude here.
-		if _, err := strconv.ParseInt(x.Raw, 0, 64); err != nil {
-			if ne, ok := err.(*strconv.NumError); ok && ne.Err == strconv.ErrRange {
-				c.error(x.Pos, "integer literal %s overflows int (max %d)", x.Raw, int64(^uint64(0)>>1))
-			}
-		}
+		// A leading '-' is a separate UnaryExpr, so Raw is the unsigned
+		// magnitude here. The expected type steers a bare literal toward a
+		// sized width (range-checked); otherwise it stays plain int.
+		typ = c.typeIntLiteral(x.Pos, x.Raw, false, c.expected)
 	case ast.LiteralFloat:
-		typ = TypFloat
+		typ = c.typeFloatLiteral(c.expected)
 	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
 		typ = TypString
 	case ast.LiteralBool:
@@ -445,7 +441,10 @@ func comparableEq(left, right *ir.Type) bool {
 		return true
 	}
 	if left.IsNumeric() && right.IsNumeric() {
-		return true
+		// Numerics compare only at the same width and signedness; a mixed
+		// pair needs an explicit conversion (untyped literals are already
+		// adapted to the other operand's type before this check).
+		return left.Equal(right)
 	}
 	if left.Kind == right.Kind {
 		return true
@@ -473,6 +472,16 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		right = ret
 	}
 
+	// Unify numeric operands: an untyped numeric literal adapts to the other
+	// operand's concrete type so arithmetic and comparison run at one width.
+	// Two concrete-but-different numeric types are left as-is and rejected by
+	// the per-operator checks below (the user must add an explicit cast).
+	if left.IsNumeric() && right.IsNumeric() && !left.Equal(right) {
+		leftExpr, rightExpr = c.unifyNumericOperands(leftExpr, rightExpr, x.Pos)
+		left = exprType(leftExpr)
+		right = exprType(rightExpr)
+	}
+
 	skip := left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn
 
 	var typ *ir.Type
@@ -491,7 +500,10 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
-				// int/float comparisons always OK
+				// Numeric comparisons require the same width and signedness.
+				if !left.Equal(right) {
+					c.error(x.Pos, "operator %s not defined for %s and %s (add an explicit conversion)", binOpStr(x.Op), left, right)
+				}
 			case left.Kind == ir.TypeString && right.Kind == ir.TypeString:
 				// string comparisons OK
 			case left.SameUnitType(right) && left.IsSingleBaseUnit():
@@ -527,13 +539,13 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
 				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
 			}
-			typ = c.narrowNumeric(left, right)
+			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinMul:
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
-				typ = c.narrowNumeric(left, right)
+				typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 			case left.Kind == ir.TypeUnit && right.IsNumeric():
 				typ = left // unit * scalar
 			case left.IsNumeric() && right.Kind == ir.TypeUnit:
@@ -543,13 +555,13 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 				typ = TypDyn
 			}
 		} else {
-			typ = c.narrowNumeric(left, right)
+			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinDiv:
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
-				typ = c.narrowNumeric(left, right)
+				typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 			case left.Kind == ir.TypeUnit && right.IsNumeric():
 				typ = left // unit / scalar
 			case left.SameUnitType(right):
@@ -559,13 +571,13 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 				typ = TypDyn
 			}
 		} else {
-			typ = c.narrowNumeric(left, right)
+			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinMod:
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
-				typ = c.narrowNumeric(left, right)
+				typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 			case left.Kind == ir.TypeUnit && right.IsNumeric():
 				typ = left // unit % scalar
 			default:
@@ -573,21 +585,10 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 				typ = TypDyn
 			}
 		} else {
-			typ = c.narrowNumeric(left, right)
+			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	default:
 		typ = TypDyn
-	}
-	// Materialize numeric promotion so both operands of ir.Binary share the
-	// result type. Codegen no longer needs to know that int+float promotes to
-	// float — the IR already carries the conversion.
-	if typ != nil && typ.IsNumeric() {
-		if lt := exprType(leftExpr); lt.IsNumeric() && lt.Kind != typ.Kind {
-			leftExpr = &ir.Conversion{Type: typ, Operand: leftExpr}
-		}
-		if rt := exprType(rightExpr); rt.IsNumeric() && rt.Kind != typ.Kind {
-			rightExpr = &ir.Conversion{Type: typ, Operand: rightExpr}
-		}
 	}
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
@@ -625,24 +626,50 @@ func binOpStr(op ast.BinaryOp) string {
 	return "?"
 }
 
-// narrowNumeric returns the wider of two numeric types.
-func (c *checker) narrowNumeric(left, right *ir.Type) *ir.Type {
-	if left.Kind == ir.TypeFloat || right.Kind == ir.TypeFloat {
-		return TypFloat
+// unifyNumeric returns the common type of two numeric binary operands. Operands
+// must already share a width and signedness (untyped literals are adapted to
+// the other operand up front); a mismatch is an error requiring an explicit
+// conversion. Dyn on either side flows through without an error.
+func (c *checker) unifyNumeric(left, right *ir.Type, pos ast.Pos, op ast.BinaryOp) *ir.Type {
+	if left.Kind == ir.TypeDyn {
+		return right
 	}
-	if left.Kind == ir.TypeInt || right.Kind == ir.TypeInt {
-		return TypInt
+	if right.Kind == ir.TypeDyn {
+		return left
 	}
+	if left.Equal(right) {
+		return left
+	}
+	// Unit operands keep their prior lenient behavior: a unit combined with a
+	// bare scalar yields the unit type (unit * / % scalar is handled by the
+	// caller's dedicated branches; this path only sees the fallthrough).
 	if left.Kind == ir.TypeUnit {
 		return left
 	}
 	if right.Kind == ir.TypeUnit {
 		return right
 	}
-	return TypDyn
+	c.error(pos, "operator %s not defined for %s and %s (add an explicit conversion)", binOpStr(op), left, right)
+	return left
 }
 
 func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
+	// Negation of a bare numeric literal in a sized-numeric context folds into
+	// a single signed literal so the width's range check sees the true value
+	// (e.g. `int8 = -128` is in range even though +128 is not) and codegen
+	// emits a valid typed constant rather than -(int8(128)).
+	if x.Op == ast.UnaryNeg && c.expected.IsSized() {
+		if lit, ok := x.Operand.(*ast.LiteralExpr); ok {
+			switch lit.Kind {
+			case ast.LiteralInt:
+				typ := c.typeIntLiteral(x.Pos, lit.Raw, true, c.expected)
+				return &ir.Literal{AST: lit, Type: typ, Raw: "-" + lit.Raw}
+			case ast.LiteralFloat:
+				typ := c.typeFloatLiteral(c.expected)
+				return &ir.Literal{AST: lit, Type: typ, Raw: "-" + lit.Raw}
+			}
+		}
+	}
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
 	skip := operand.Kind == ir.TypeDyn
@@ -709,19 +736,15 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	thenExpr := c.checkExprExpecting(x.Then, c.expected)
 	elseExpr := c.checkExprExpecting(x.Else, c.expected)
 	typ := exprType(thenExpr)
-	// Numeric promotion: a ternary mixing int and float yields float, with an
-	// explicit Conversion materialized on the narrower branch — mirroring the
-	// binary-arithmetic promotion in inferBinary so codegen sees both arms (and
-	// the result) at a single type. Without this, `cond ? 0 : x + 0.01` typed
-	// as int and the float branch failed to assign to the int-typed temp.
+	// Both ternary arms must share a numeric type. An untyped literal arm
+	// adapts to the other arm's concrete type; two concrete-but-different
+	// numeric arms need an explicit conversion (no implicit promotion).
 	tt, et := exprType(thenExpr), exprType(elseExpr)
-	if tt != nil && et != nil && tt.IsNumeric() && et.IsNumeric() && tt.Kind != et.Kind {
-		typ = c.narrowNumeric(tt, et)
-		if tt.Kind != typ.Kind {
-			thenExpr = &ir.Conversion{Type: typ, Operand: thenExpr}
-		}
-		if et.Kind != typ.Kind {
-			elseExpr = &ir.Conversion{Type: typ, Operand: elseExpr}
+	if tt != nil && et != nil && tt.IsNumeric() && et.IsNumeric() && !tt.Equal(et) {
+		thenExpr, elseExpr = c.unifyNumericOperands(thenExpr, elseExpr, x.Pos)
+		typ = exprType(thenExpr)
+		if tt2, et2 := exprType(thenExpr), exprType(elseExpr); !tt2.Equal(et2) {
+			c.error(x.Pos, "ternary branches have mismatched types %s and %s (add an explicit conversion)", tt2, et2)
 		}
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
@@ -741,8 +764,28 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		switch ident.Name {
 		case "int":
 			return c.inferBuiltinConversion(x, TypInt, ident.Name)
+		case "int8":
+			return c.inferBuiltinConversion(x, ir.TypInt8, ident.Name)
+		case "int16":
+			return c.inferBuiltinConversion(x, ir.TypInt16, ident.Name)
+		case "int32":
+			return c.inferBuiltinConversion(x, ir.TypInt32, ident.Name)
+		case "int64":
+			return c.inferBuiltinConversion(x, ir.TypInt64, ident.Name)
+		case "uint8":
+			return c.inferBuiltinConversion(x, ir.TypUint8, ident.Name)
+		case "uint16":
+			return c.inferBuiltinConversion(x, ir.TypUint16, ident.Name)
+		case "uint32":
+			return c.inferBuiltinConversion(x, ir.TypUint32, ident.Name)
+		case "uint64":
+			return c.inferBuiltinConversion(x, ir.TypUint64, ident.Name)
 		case "float":
 			return c.inferBuiltinConversion(x, TypFloat, ident.Name)
+		case "float32":
+			return c.inferBuiltinConversion(x, ir.TypFloat32, ident.Name)
+		case "float64":
+			return c.inferBuiltinConversion(x, ir.TypFloat64, ident.Name)
 		case "string":
 			return c.inferBuiltinConversion(x, TypString, ident.Name)
 		case "bool":

@@ -170,7 +170,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val)
+		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val, target.ExprType())
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if m, ok := obj.(map[string]any); ok {
-			nv, err := ApplyOp(s.Op, m[target.Field], val)
+			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
 			if err != nil {
 				return err
 			}
@@ -207,7 +207,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			if i < 0 || i >= len(list) {
 				return fmt.Errorf("index %d out of range (len %d)", i, len(list))
 			}
-			nv, err := ApplyOp(s.Op, list[i], val)
+			nv, err := ApplyOp(s.Op, list[i], val, target.ExprType())
 			if err != nil {
 				return err
 			}
@@ -224,7 +224,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			if ref, ok := obj.(*listRef); ok {
-				nv, err := ApplyOp(s.Op, ref.get(), val)
+				nv, err := ApplyOp(s.Op, ref.get(), val, target.ExprType())
 				if err != nil {
 					return err
 				}
@@ -347,7 +347,15 @@ func (env *Env) execFor(s *ir.For) error {
 	return nil
 }
 
-func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
+func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {
+	// The declared target type drives the width so sized-integer compound
+	// assignment wraps at the right width. When the target type is unavailable
+	// or dyn (e.g. a dynamically-typed field in a test context), fall back to
+	// inferring from the current runtime carrier.
+	kind := numKindOf(targetType)
+	if kind == (opeval.NumKind{}) {
+		kind = numKindOfValue(cur)
+	}
 	switch op {
 	case ast.AssignSet:
 		return val, nil
@@ -355,15 +363,28 @@ func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
 		if s, ok := cur.(string); ok {
 			return s + fmt.Sprintf("%v", val), nil
 		}
-		return opeval.Arith(ast.BinAdd, cur, val)
+		return opeval.Arith(ast.BinAdd, cur, val, kind)
 	case ast.AssignSub:
-		return opeval.Arith(ast.BinSub, cur, val)
+		return opeval.Arith(ast.BinSub, cur, val, kind)
 	case ast.AssignMul:
-		return opeval.Arith(ast.BinMul, cur, val)
+		return opeval.Arith(ast.BinMul, cur, val, kind)
 	case ast.AssignDiv:
-		return opeval.Arith(ast.BinDiv, cur, val)
+		return opeval.Arith(ast.BinDiv, cur, val, kind)
 	case ast.AssignMod:
-		return opeval.Arith(ast.BinMod, cur, val)
+		return opeval.Arith(ast.BinMod, cur, val, kind)
 	}
 	return val, nil
+}
+
+// numKindOfValue infers an opeval width descriptor from a runtime value's Go
+// carrier type. Only used where the static IR type is unavailable (compound
+// assignment).
+func numKindOfValue(v any) opeval.NumKind {
+	switch v.(type) {
+	case uint64:
+		return opeval.NumKind{Bits: 64, Unsigned: true}
+	case float64:
+		return opeval.NumKind{Float: true}
+	}
+	return opeval.NumKind{}
 }

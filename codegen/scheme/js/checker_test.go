@@ -45,7 +45,7 @@ func TestCheckerAcceptsJSImport(t *testing.T) {
 	src := `
 import lib "js://./simple"
 
-func wrap(a int, b int) => lib.add(a, b)
+func wrap(a float, b float) => lib.add(a, b)
 `
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {

@@ -152,13 +152,13 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if !lok || !rok {
 			return nil, false
 		}
-		return evalBinaryOp(x.Op, left, right)
+		return evalBinaryOp(x.Op, left, right, numKindOf(x.Type))
 	case *ir.Unary:
 		operand, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
-		return evalUnaryOp(x.Op, operand)
+		return evalUnaryOp(x.Op, operand, numKindOf(x.Type))
 	case *ir.Ternary:
 		cond, ok := evalExpr(x.Cond, ctx)
 		if !ok {
@@ -388,30 +388,31 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	case ir.TypeString:
 		return fmt.Sprintf("%v", operand), true
 	case ir.TypeInt:
-		switch v := operand.(type) {
-		case int:
-			return v, true
-		case float64:
-			return int(v), true
-		case string:
-			i, err := strconv.Atoi(v)
+		// Numeric operands go through the shared width-aware converter so a
+		// folded int8(x)/uint64(x) matches the interpreter exactly. String
+		// operands parse first, then apply the target width.
+		if r, ok := opeval.ConvertInt(operand, conv.Type.Bits, conv.Type.Unsigned); ok {
+			return r, true
+		}
+		if s, ok := operand.(string); ok {
+			i, err := strconv.Atoi(s)
 			if err != nil {
 				return nil, false
 			}
-			return i, true
+			r, _ := opeval.ConvertInt(i, conv.Type.Bits, conv.Type.Unsigned)
+			return r, true
 		}
 	case ir.TypeFloat:
-		switch v := operand.(type) {
-		case float64:
-			return v, true
-		case int:
-			return float64(v), true
-		case string:
-			f, err := strconv.ParseFloat(v, 64)
+		if r, ok := opeval.ConvertFloat(operand, conv.Type.Bits); ok {
+			return r, true
+		}
+		if s, ok := operand.(string); ok {
+			f, err := strconv.ParseFloat(s, 64)
 			if err != nil {
 				return nil, false
 			}
-			return f, true
+			r, _ := opeval.ConvertFloat(f, conv.Type.Bits)
+			return r, true
 		}
 	case ir.TypeBool:
 		if b, ok := operand.(bool); ok {
@@ -460,9 +461,11 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	case string:
 		return &ir.Literal{Type: ir.TypString, Raw: v}
 	case int:
-		return &ir.Literal{Type: ir.TypInt, Raw: intToStr(v)}
+		return &ir.Literal{Type: intLitType(typ), Raw: intToStr(v)}
+	case uint64:
+		return &ir.Literal{Type: intLitType(typ), Raw: strconv.FormatUint(v, 10)}
 	case float64:
-		return &ir.Literal{Type: ir.TypFloat, Raw: floatToStr(v)}
+		return &ir.Literal{Type: floatLitType(typ), Raw: floatToStr(v)}
 	case bool:
 		raw := "false"
 		if v {
@@ -473,6 +476,24 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
 	}
 	return nil
+}
+
+// intLitType returns typ when it is an integer type (preserving a sized
+// width/signedness), else plain int. Keeps folded constants at the width the
+// checker assigned so codegen still emits e.g. a BigInt literal for uint64.
+func intLitType(typ *ir.Type) *ir.Type {
+	if typ != nil && typ.Kind == ir.TypeInt {
+		return typ
+	}
+	return ir.TypInt
+}
+
+// floatLitType mirrors intLitType for float widths.
+func floatLitType(typ *ir.Type) *ir.Type {
+	if typ != nil && typ.Kind == ir.TypeFloat {
+		return typ
+	}
+	return ir.TypFloat
 }
 
 // numericOrNativeEq compares two folded constants. When both sides are
@@ -490,7 +511,16 @@ func numericOrNativeEq(left, right any) bool {
 
 // --- Arithmetic and comparison helpers (operate on Go values) ---
 
-func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
+// numKindOf maps a result type to the opeval width descriptor. A nil or
+// non-numeric type yields the zero NumKind (default int semantics).
+func numKindOf(t *ir.Type) opeval.NumKind {
+	if t == nil || !t.IsNumeric() {
+		return opeval.NumKind{}
+	}
+	return opeval.NumKind{Bits: t.Bits, Unsigned: t.Unsigned, Float: t.Kind == ir.TypeFloat}
+}
+
+func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
 	switch op {
 	case ast.BinEq:
 		return numericOrNativeEq(left, right), true
@@ -514,20 +544,20 @@ func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
 				return ls + rs, true
 			}
 		}
-		return numericOp(op, left, right)
+		return numericOp(op, left, right, kind)
 	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
-		return numericOp(op, left, right)
+		return numericOp(op, left, right, kind)
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
 		return compareOp(op, left, right)
 	}
 	return nil, false
 }
 
-func numericOp(op ast.BinaryOp, left, right any) (any, bool) {
+func numericOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
 	// Arithmetic semantics live in internal/opeval, shared with the
 	// interpreter so folded and interpreted results can't diverge (#8/#10).
 	// A non-nil error (div/mod by zero, non-numeric) means "not foldable".
-	v, err := opeval.Arith(op, left, right)
+	v, err := opeval.Arith(op, left, right, kind)
 	if err != nil {
 		return nil, false
 	}
@@ -579,19 +609,20 @@ func compareOp(op ast.BinaryOp, left, right any) (any, bool) {
 	return nil, false
 }
 
-func evalUnaryOp(op ast.UnaryOp, operand any) (any, bool) {
+func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 	switch op {
 	case ast.UnaryNot:
 		if b, ok := operand.(bool); ok {
 			return !b, true
 		}
 	case ast.UnaryNeg:
-		if i, ok := operand.(int); ok {
-			return -i, true
+		// Negation is 0 - operand at the result width, shared with the
+		// interpreter so sized-integer wrap folds identically.
+		v, err := opeval.Arith(ast.BinSub, 0, operand, kind)
+		if err != nil {
+			return nil, false
 		}
-		if f, ok := operand.(float64); ok {
-			return -f, true
-		}
+		return v, true
 	}
 	return nil, false
 }

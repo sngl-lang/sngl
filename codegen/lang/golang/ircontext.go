@@ -1227,8 +1227,17 @@ func IRTypeToGo(t *ir.Type) string {
 	case ir.TypeBool:
 		return "bool"
 	case ir.TypeInt:
+		if t.Bits != 0 {
+			if t.Unsigned {
+				return fmt.Sprintf("uint%d", t.Bits)
+			}
+			return fmt.Sprintf("int%d", t.Bits)
+		}
 		return "int"
 	case ir.TypeFloat:
+		if t.Bits != 0 {
+			return fmt.Sprintf("float%d", t.Bits)
+		}
 		return "float64"
 	case ir.TypeString, ir.TypeColor:
 		return "string"

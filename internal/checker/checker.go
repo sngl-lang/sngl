@@ -1641,9 +1641,6 @@ func typeAssignable(src, dst *ir.Type) bool {
 	if src.Kind == ir.TypeDyn || dst.Kind == ir.TypeDyn {
 		return true
 	}
-	if src.Kind == ir.TypeInt && dst.Kind == ir.TypeFloat {
-		return true
-	}
 	return false
 }
 
