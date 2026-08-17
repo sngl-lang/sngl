@@ -348,6 +348,11 @@ func (env *Env) execFor(s *ir.For) error {
 }
 
 func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
+	// Width is inferred from the current runtime carrier: uint64 → unsigned
+	// 64-bit, float64 → float, otherwise default int. Sized-int compound
+	// assignment does not carry its declared width at runtime, so it wraps at
+	// 64 bits rather than the narrower declared width — a known model gap.
+	kind := numKindOfValue(cur)
 	switch op {
 	case ast.AssignSet:
 		return val, nil
@@ -355,15 +360,28 @@ func ApplyOp(op ast.AssignOp, cur, val any) (any, error) {
 		if s, ok := cur.(string); ok {
 			return s + fmt.Sprintf("%v", val), nil
 		}
-		return opeval.Arith(ast.BinAdd, cur, val)
+		return opeval.Arith(ast.BinAdd, cur, val, kind)
 	case ast.AssignSub:
-		return opeval.Arith(ast.BinSub, cur, val)
+		return opeval.Arith(ast.BinSub, cur, val, kind)
 	case ast.AssignMul:
-		return opeval.Arith(ast.BinMul, cur, val)
+		return opeval.Arith(ast.BinMul, cur, val, kind)
 	case ast.AssignDiv:
-		return opeval.Arith(ast.BinDiv, cur, val)
+		return opeval.Arith(ast.BinDiv, cur, val, kind)
 	case ast.AssignMod:
-		return opeval.Arith(ast.BinMod, cur, val)
+		return opeval.Arith(ast.BinMod, cur, val, kind)
 	}
 	return val, nil
+}
+
+// numKindOfValue infers an opeval width descriptor from a runtime value's Go
+// carrier type. Only used where the static IR type is unavailable (compound
+// assignment).
+func numKindOfValue(v any) opeval.NumKind {
+	switch v.(type) {
+	case uint64:
+		return opeval.NumKind{Bits: 64, Unsigned: true}
+	case float64:
+		return opeval.NumKind{Float: true}
+	}
+	return opeval.NumKind{}
 }

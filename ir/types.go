@@ -43,6 +43,13 @@ type Type struct {
 	ParamName string   // generic type param name ("T")
 	Package   string   // import origin for qualified types
 	Meta      any      // importer-provided side-channel (e.g. Go types.Type) read by language codegen
+
+	// Bits is the explicit width of a sized numeric type (TypeInt: 8/16/32/64;
+	// TypeFloat: 32/64). Bits==0 means unspecified width — the default int/
+	// float, where the compiler picks the width and the interpreter does
+	// 64-bit math. Unsigned is meaningful only for TypeInt with Bits!=0.
+	Bits     uint8
+	Unsigned bool
 }
 
 // Predefined singleton types for primitives.
@@ -57,6 +64,25 @@ var (
 	TypVoid     = &Type{Kind: TypeVoid}
 	TypShape    = &Type{Kind: TypeShape}
 )
+
+// Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
+var (
+	TypInt8    = &Type{Kind: TypeInt, Bits: 8}
+	TypInt16   = &Type{Kind: TypeInt, Bits: 16}
+	TypInt32   = &Type{Kind: TypeInt, Bits: 32}
+	TypInt64   = &Type{Kind: TypeInt, Bits: 64}
+	TypUint8   = &Type{Kind: TypeInt, Bits: 8, Unsigned: true}
+	TypUint16  = &Type{Kind: TypeInt, Bits: 16, Unsigned: true}
+	TypUint32  = &Type{Kind: TypeInt, Bits: 32, Unsigned: true}
+	TypUint64  = &Type{Kind: TypeInt, Bits: 64, Unsigned: true}
+	TypFloat32 = &Type{Kind: TypeFloat, Bits: 32}
+	TypFloat64 = &Type{Kind: TypeFloat, Bits: 64}
+)
+
+// IsSized reports whether t is an explicitly-sized numeric type (Bits!=0).
+func (t *Type) IsSized() bool {
+	return t != nil && (t.Kind == TypeInt || t.Kind == TypeFloat) && t.Bits != 0
+}
 
 // ListOf returns a list type with the given element type.
 func ListOf(elem *Type) *Type {
@@ -95,8 +121,17 @@ func (t *Type) String() string {
 	case TypeBool:
 		return "bool"
 	case TypeInt:
+		if t.Bits != 0 {
+			if t.Unsigned {
+				return fmt.Sprintf("uint%d", t.Bits)
+			}
+			return fmt.Sprintf("int%d", t.Bits)
+		}
 		return "int"
 	case TypeFloat:
+		if t.Bits != 0 {
+			return fmt.Sprintf("float%d", t.Bits)
+		}
 		return "float"
 	case TypeString:
 		return "string"
@@ -273,6 +308,10 @@ func (t *Type) Equal(other *Type) bool {
 		return false
 	}
 	switch t.Kind {
+	case TypeInt, TypeFloat:
+		// Width and signedness distinguish sized numerics; Bits==0 (plain
+		// int/float) is a distinct type from any sized width.
+		return t.Bits == other.Bits && t.Unsigned == other.Unsigned
 	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter:
 		if len(t.Elems) != len(other.Elems) {
 			return false
@@ -324,9 +363,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if t.Kind == TypeNull && target.Kind == TypeFunc {
-		return true
-	}
-	if t.Kind == TypeInt && target.Kind == TypeFloat {
 		return true
 	}
 	if t.Kind == TypeString && isStringDomain(target.Kind) {

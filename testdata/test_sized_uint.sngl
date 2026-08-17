@@ -1,0 +1,38 @@
+// Unsigned integer types, including full-range uint64 fidelity in the
+// interpreter/const-folder (values above 2^63 are modeled exactly, not as
+// two's-complement Go int). Operands are concrete-typed locals so the
+// arithmetic runs at the declared width.
+component uints {
+    var dummy = 0
+}
+
+func testUnsignedHoldValues(t Test, c uints) {
+    var u8 uint8 = 255
+    var u32 uint32 = 4000000000
+    var big uint64 = 18000000000000000000
+    t.assert(u8 == 255)
+    t.assert(u32 == 4000000000)
+    t.assert(big == 18000000000000000000)
+}
+
+func testUnsignedWrap(t Test, c uints) {
+    var u8 uint8 = 255
+    var u32 uint32 = 4000000000
+    // 255 + 1 wraps to 0 at uint8 width.
+    t.assert(u8 + 1 == 0)
+    // uint32: 4e9 + 4e9 = 8e9, wraps modulo 2^32 => 3705032704
+    t.assert(u32 + u32 == 3705032704)
+}
+
+func testUint64TopRange(t Test, c uints) {
+    var big uint64 = 18000000000000000000
+    // Comparison and arithmetic stay correct above 2^63.
+    t.assert(big > uint64(9223372036854775807)) // > int64 max
+    t.assert(big + 1 == 18000000000000000001)
+}
+
+func testUnsignedSubtractWrap(t Test, c uints) {
+    var z uint8 = 0
+    // 0 - 1 wraps to 255 at uint8 width.
+    t.assert(z - 1 == 255)
+}

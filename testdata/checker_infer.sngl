@@ -8,7 +8,7 @@ component main {
     func doubled() => count * 2
     func greeting() => "hi {name}"
     func isPositive() => count > 0
-    func sum() => count + price
+    func sum() => float(count) + price
     func label() => name + " " + string(count)
     func negated() => -count
     func notActive() => !active

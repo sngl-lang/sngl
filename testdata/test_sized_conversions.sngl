@@ -1,0 +1,39 @@
+// Explicit conversions between numeric types. Every cross-type numeric
+// conversion is written explicitly as T(x); the checker materializes each as
+// an ir.Conversion. There is no implicit widening, narrowing, or signedness
+// change between numeric types.
+component conv {
+    var small int8 = 10
+    var big int64 = 5000000000
+    var f float32 = 1.5
+    var plain int = 7
+}
+
+func testWiden(t Test, c conv) {
+    // int8 -> int32 is explicit even though it is a safe widening.
+    t.assert(int32(c.small) == 10)
+    // int8 -> int64, then arithmetic at int64 width.
+    t.assert(int64(c.small) + c.big == 5000000010)
+}
+
+func testNarrow(t Test, c conv) {
+    // int64 -> int8 truncates to the low 8 bits: 5000000000 mod 256 = 0.
+    t.assert(int8(c.big) == 0)
+}
+
+func testSignednessChange(t Test, c conv) {
+    var neg int8 = -1
+    // int8(-1) reinterpreted as uint8 is 255.
+    t.assert(uint8(neg) == 255)
+}
+
+func testIntFloatBridge(t Test, c conv) {
+    // Default int <-> sized float still requires an explicit cast.
+    t.assert(float32(c.plain) == 7.0)
+    t.assert(int(c.f) == 1)
+}
+
+func testDefaultToSized(t Test, c conv) {
+    // A plain int value converts to a sized type only via an explicit cast.
+    t.assert(int16(c.plain) == 7)
+}

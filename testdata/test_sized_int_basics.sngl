@@ -1,0 +1,27 @@
+// Sized signed-integer types: declaration, literal fit, and arithmetic.
+// Plain `int` stays unspecified-width; these are the opt-in fixed widths.
+component sizedints {
+    var a int8 = 100
+    var b int16 = 30000
+    var c int32 = 2000000000
+    var d int64 = 9000000000000000000
+
+    // In-range constant arithmetic folds to a plain literal.
+    var sum = 3 + 4  // FOLD 7
+
+    text(value=a)
+}
+
+func testWidthsHoldValues(t Test, c sizedints) {
+    t.assert(c.a == 100)
+    t.assert(c.b == 30000)
+    t.assert(c.c == 2000000000)
+    t.assert(c.d == 9000000000000000000)
+}
+
+func testSameWidthArithmetic(t Test, c sizedints) {
+    // int16 + int16 stays int16, no wrap while in range.
+    t.assert(c.b - 1 == 29999)
+    t.assert(c.a / 4 == 25)
+    t.assert(c.a % 7 == 2)
+}

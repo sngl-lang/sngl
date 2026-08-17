@@ -152,13 +152,13 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if !lok || !rok {
 			return nil, false
 		}
-		return evalBinaryOp(x.Op, left, right)
+		return evalBinaryOp(x.Op, left, right, numKindOf(x.Type))
 	case *ir.Unary:
 		operand, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
 		}
-		return evalUnaryOp(x.Op, operand)
+		return evalUnaryOp(x.Op, operand, numKindOf(x.Type))
 	case *ir.Ternary:
 		cond, ok := evalExpr(x.Cond, ctx)
 		if !ok {
@@ -490,7 +490,16 @@ func numericOrNativeEq(left, right any) bool {
 
 // --- Arithmetic and comparison helpers (operate on Go values) ---
 
-func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
+// numKindOf maps a result type to the opeval width descriptor. A nil or
+// non-numeric type yields the zero NumKind (default int semantics).
+func numKindOf(t *ir.Type) opeval.NumKind {
+	if t == nil || !t.IsNumeric() {
+		return opeval.NumKind{}
+	}
+	return opeval.NumKind{Bits: t.Bits, Unsigned: t.Unsigned, Float: t.Kind == ir.TypeFloat}
+}
+
+func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
 	switch op {
 	case ast.BinEq:
 		return numericOrNativeEq(left, right), true
@@ -514,20 +523,20 @@ func evalBinaryOp(op ast.BinaryOp, left, right any) (any, bool) {
 				return ls + rs, true
 			}
 		}
-		return numericOp(op, left, right)
+		return numericOp(op, left, right, kind)
 	case ast.BinSub, ast.BinMul, ast.BinDiv, ast.BinMod:
-		return numericOp(op, left, right)
+		return numericOp(op, left, right, kind)
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
 		return compareOp(op, left, right)
 	}
 	return nil, false
 }
 
-func numericOp(op ast.BinaryOp, left, right any) (any, bool) {
+func numericOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
 	// Arithmetic semantics live in internal/opeval, shared with the
 	// interpreter so folded and interpreted results can't diverge (#8/#10).
 	// A non-nil error (div/mod by zero, non-numeric) means "not foldable".
-	v, err := opeval.Arith(op, left, right)
+	v, err := opeval.Arith(op, left, right, kind)
 	if err != nil {
 		return nil, false
 	}
@@ -579,19 +588,20 @@ func compareOp(op ast.BinaryOp, left, right any) (any, bool) {
 	return nil, false
 }
 
-func evalUnaryOp(op ast.UnaryOp, operand any) (any, bool) {
+func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 	switch op {
 	case ast.UnaryNot:
 		if b, ok := operand.(bool); ok {
 			return !b, true
 		}
 	case ast.UnaryNeg:
-		if i, ok := operand.(int); ok {
-			return -i, true
+		// Negation is 0 - operand at the result width, shared with the
+		// interpreter so sized-integer wrap folds identically.
+		v, err := opeval.Arith(ast.BinSub, 0, operand, kind)
+		if err != nil {
+			return nil, false
 		}
-		if f, ok := operand.(float64); ok {
-			return -f, true
-		}
+		return v, true
 	}
 	return nil, false
 }

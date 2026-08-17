@@ -28,7 +28,7 @@ func TestArithIntVsFloat(t *testing.T) {
 		{"non-numeric", ast.BinAdd, true, 1, nil, true},
 	}
 	for _, c := range cases {
-		got, err := Arith(c.op, c.l, c.r)
+		got, err := Arith(c.op, c.l, c.r, NumKind{})
 		if c.wantErr {
 			if err == nil {
 				t.Errorf("%s: want error, got %v", c.name, got)

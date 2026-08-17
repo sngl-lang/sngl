@@ -168,39 +168,18 @@ component main {
 	}
 }
 
-func TestIRWrapsBinaryNumericPromotion(t *testing.T) {
-	doc, err := parser.Parse("test.sngl", []byte(`
+func TestMixedTypedNumericArithmeticRejected(t *testing.T) {
+	// Adding a typed int value and a typed float value is no longer an implicit
+	// promotion; it requires an explicit conversion. (Untyped constants still
+	// unify — that is covered elsewhere.)
+	expectError(t, `
 component main {
     var a int = 3
     var b float = 1.5
     var c = a + b
     text(value="hi")
 }
-`))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if pkg == nil || len(pkg.Components) == 0 {
-		t.Fatal("no components")
-	}
-	var cVar *ir.Var
-	for _, v := range pkg.Components[0].Vars {
-		if v.Name == "c" {
-			cVar = v
-			break
-		}
-	}
-	if cVar == nil {
-		t.Fatal("var c not found")
-	}
-	bin, ok := cVar.Init.(*ir.Binary)
-	if !ok {
-		t.Fatalf("expected ir.Binary, got %T", cVar.Init)
-	}
-	if _, ok := bin.Left.(*ir.Conversion); !ok {
-		t.Errorf("expected Left to be ir.Conversion (int→float), got %T", bin.Left)
-	}
+`, "not defined for int and float")
 }
 
 // --- Explicit conversion allow-list (continued) ---
@@ -453,60 +432,38 @@ component main {
 
 // --- Numeric promotion in arithmetic + comparisons ---
 
-func TestIRWrapsMul(t *testing.T) {
-	doc, _ := parser.Parse("test.sngl", []byte(`
+func TestMixedTypedMulRejected(t *testing.T) {
+	expectError(t, `
 component main {
     var a int = 3
     var b float = 1.5
     var c = a * b
     text(value="hi")
 }
-`))
-	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	var cVar *ir.Var
-	for _, v := range pkg.Components[0].Vars {
-		if v.Name == "c" {
-			cVar = v
-			break
-		}
-	}
-	bin := cVar.Init.(*ir.Binary)
-	if _, ok := bin.Left.(*ir.Conversion); !ok {
-		t.Errorf("int*float: expected Left Conversion, got %T", bin.Left)
-	}
+`, "not defined for int and float")
 }
 
-func TestIRWrapsDiv(t *testing.T) {
-	doc, _ := parser.Parse("test.sngl", []byte(`
+func TestMixedTypedDivRejected(t *testing.T) {
+	expectError(t, `
 component main {
     var a int = 3
     var b float = 1.5
     var c = a / b
     text(value="hi")
 }
-`))
-	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	var cVar *ir.Var
-	for _, v := range pkg.Components[0].Vars {
-		if v.Name == "c" {
-			cVar = v
-			break
-		}
-	}
-	bin := cVar.Init.(*ir.Binary)
-	if _, ok := bin.Left.(*ir.Conversion); !ok {
-		t.Errorf("int/float: expected Left Conversion, got %T", bin.Left)
-	}
+`, "not defined for int and float")
 }
 
-func TestNumericComparisonMixedOK(t *testing.T) {
-	expectNoErrors(t, `
+func TestNumericComparisonMixedRejected(t *testing.T) {
+	// Comparing a typed int value with a typed float value requires an explicit
+	// conversion — the same rule as arithmetic.
+	expectError(t, `
 func test() {
     var a int = 3
     var b float = 1.5
     var r = a < b
 }
-`)
+`, "not defined for int and float")
 }
 
 // --- Explicit cast appears as ir.Conversion in IR ---
