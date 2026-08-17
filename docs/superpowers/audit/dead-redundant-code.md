@@ -39,17 +39,39 @@ receiver type, so unifying adds more indirection than it saves.
 
 What remains:
 
-### §2.4 ~10 hand-rolled `ir.Stmt` traversal switches → `ir.WalkStmts` (architectural)
+### §2.4 hand-rolled `ir.Stmt` traversal switches → the shared IR visitor (in progress)
 
-At least ten independent `switch s.(type)` copies over `ir.Stmt` each re-list the
-statement variants and end in `panic("unhandled stmt %T")`: `iterate.go`,
-`html/rendermodel.go`, `html/placement.go`, `checker/pointsto.go`,
-`checker/purity.go`, `optimize/interpret.go`, `optimize/shake.go`,
-`lower/lambda.go`, `lower/normalize_method_calls.go`, `fuzz_test.go`. The
-canonical `ir.WalkStmts`/`WalkExprs` (`ir/walkexprs.go`) is used in only 2 places.
-**Real hazard:** each copy must be updated when a new `ir.Stmt` variant is added;
-a missed one panics. Not a mechanical delete — the copies carry slightly
-different per-node side effects, so this is a careful, deliberate pass.
+Investigation showed this is **not** a mechanical repoint: the canonical walker
+was package-rooted, read-only, and stop-all, while the ~10 hand-rolled copies
+variously need subtree roots, per-branch pruning, mutation, enclosing-function
+context, or type traversal. Doing it as a project instead:
+
+**Done — visitor generalized + read-only consumers migrated:**
+- `ir/walkexprs.go`: added `WalkAction { Continue, SkipChildren, Stop }` (prune
+  vs. stop, which the old `bool` conflated) and subtree entry points
+  `InspectPackage`/`InspectFunc`/`InspectStmts`/`InspectExpr` over the one
+  scaffold. Old `Walk`/`WalkExprs`/`WalkStmts` kept as bool adapters.
+- Migrated: `html/placement.go` (prune semantics → `SkipChildren`),
+  `html/rendermodel.go` `exprIsReactive`, `iterate.go` `collectWindows`,
+  `checker/purity.go` `analyzeEffects` (also fixes a latent bug — it had no
+  default case and silently skipped unknown stmt kinds).
+
+**Deliberately left custom (the visitor can't serve these without changing
+behaviour):**
+- `checker/pointsto.go` — context-*sensitive*: binds `SlotReturnKey(w.fn)`, which
+  needs the enclosing function the context-free visitor doesn't expose.
+- `optimize/shake.go` — also walks `ir.Type` (not just stmts/exprs) to collect
+  symbols for DCE; the visitor doesn't traverse types, and a wrong result
+  silently drops live code.
+- `html/rendermodel.go` `renderBuilder.walkStmt` (threads a `path`),
+  `iterate.go` `walkVisual` (threads `depth`) — state-threading builders, not
+  queries.
+- `optimize/interpret.go` — an interpreter dispatch, not a traversal.
+
+**Phase 2 (follow-up):** `lower/lambda.go` and `lower/normalize_method_calls.go`
+*mutate* the tree (and propagate `error`); the read-only visitor can't absorb
+them. They need a separate rewrite/mutation walker (the private
+`rewriteStmtExprs` in `internal/lower/walk.go` is a start).
 
 ### §2.5 Minor overlaps (LOW) — remaining
 
