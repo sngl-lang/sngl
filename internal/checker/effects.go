@@ -175,7 +175,7 @@ func callIsFallible(call *ir.Call) bool {
 	if call == nil || call.Func == nil {
 		return false
 	}
-	if isRaiseFunc(call.Func) {
+	if ir.IsErrorRaiseFunc(call.Func) {
 		return true
 	}
 	if call.Func.HasErrorReturn {
@@ -185,18 +185,6 @@ func callIsFallible(call *ir.Call) bool {
 }
 
 // isRaiseFunc identifies the stdlib error.raise function. Stdlib wrapper
-// bodies are not type-checked (see registerStdlibFunc), so Intrinsic is
-// never populated on the wrapper — the receiver+name pair is the stable
-// identifier.
-func isRaiseFunc(fn *ir.Func) bool {
-	if fn == nil {
-		return false
-	}
-	if fn.Intrinsic == "ErrorRaise" {
-		return true
-	}
-	return fn.Receiver == "error" && fn.Name == "raise"
-}
 
 // walkVisualErrors traverses a visual subtree (window body / component body)
 // maintaining a scope stack of error handlers. For each event handler

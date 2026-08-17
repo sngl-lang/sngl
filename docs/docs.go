@@ -12,6 +12,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/docs/lookup"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
@@ -544,17 +545,7 @@ func compilePreview(source string) string {
 // firstSentence trims a doc to its first sentence (". " boundary) or first
 // line. Used for one-line blurbs on index/card lists.
 func firstSentence(doc string) string {
-	doc = strings.TrimSpace(doc)
-	if doc == "" {
-		return ""
-	}
-	if i := strings.Index(doc, ". "); i > 0 {
-		return doc[:i+1]
-	}
-	if i := strings.IndexByte(doc, '\n'); i > 0 {
-		return strings.TrimSpace(doc[:i])
-	}
-	return doc
+	return lookup.FirstSentence(doc)
 }
 
 func autoTitle(name string) string {

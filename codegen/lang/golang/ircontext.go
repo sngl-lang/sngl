@@ -410,7 +410,7 @@ func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !gc.EmitLineDirectives {
 		return nil
 	}
-	pos := stmtIRPos(s)
+	pos := ir.StmtPos(s)
 	if !pos.IsValid() || pos.File == "" {
 		return nil
 	}
@@ -904,7 +904,7 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !isGoRaiseFunc(call.Func) {
+	if !ir.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -969,18 +969,6 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	return lines
 }
 
-// isGoRaiseFunc recognises the stdlib error.raise function as the special
-// user-raise primitive. Kept in sync with checker.isRaiseFunc.
-func isGoRaiseFunc(fn *ir.Func) bool {
-	if fn == nil {
-		return false
-	}
-	if fn.Intrinsic == "ErrorRaise" {
-		return true
-	}
-	return fn.Receiver == "error" && fn.Name == "raise"
-}
-
 func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 	if gc.AlertFunc != nil {
 		return strings.Join(gc.AlertFunc(gc, method, args), "; ")
@@ -1004,7 +992,7 @@ func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 }
 
 func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
-	if isNullToFuncConv(n) {
+	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubGo(n.Type)
 	}
 	if n.Type != nil && n.Type.Kind == ir.TypeNative {
@@ -1055,17 +1043,6 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		return "(" + goType + ")(" + operand + ")"
 	}
 	return goType + "(" + operand + ")"
-}
-
-// isNullToFuncConv reports whether conv wraps a null literal with a func
-// target type. This is the shape the checker emits for `var f func() T = null`
-// and similar null-flowing-into-a-func slots.
-func isNullToFuncConv(n *ir.Conversion) bool {
-	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
-		return false
-	}
-	lit, ok := n.Operand.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 // nullFuncStubGo renders a Go function literal whose body returns the zero
@@ -1357,7 +1334,7 @@ func IRLiteralToGo(e ir.Expr) string {
 		// null → func: emit a zero-value callable lambda so calling through
 		// the var at runtime returns the declared return type's zero instead
 		// of panicking on a nil func value.
-		if isNullToFuncConv(n) {
+		if ir.IsNullToFuncConv(n) {
 			return nullFuncStubGo(n.Type)
 		}
 		return IRLiteralToGo(n.Operand)
