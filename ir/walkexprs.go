@@ -68,15 +68,35 @@ func InspectExpr(e Expr, in Inspector) {
 // fn returns true to stop the walk early (short-circuit). Thin bool adapter
 // over InspectPackage; new code that needs subtree roots or per-branch pruning
 // should use the Inspect* family with WalkAction directly.
+//
+// Deprecated: use InspectPackage with an Inspector. The //go:fix directive lets
+// `go fix` rewrite call sites automatically.
+//
+//go:fix inline
 func WalkExprs(pkg *Package, fn func(Expr) bool) {
-	InspectPackage(pkg, Inspector{Expr: boolExpr(fn)})
+	InspectPackage(pkg, Inspector{Expr: func(e Expr) WalkAction {
+		if fn(e) {
+			return Stop
+		}
+		return Continue
+	}})
 }
 
 // WalkStmts visits every statement reachable from pkg in pre-order, calling fn
 // for each; fn returns true to stop early. Thin bool adapter over
 // InspectPackage.
+//
+// Deprecated: use InspectPackage with an Inspector. The //go:fix directive lets
+// `go fix` rewrite call sites automatically.
+//
+//go:fix inline
 func WalkStmts(pkg *Package, fn func(Stmt) bool) {
-	InspectPackage(pkg, Inspector{Stmt: boolStmt(fn)})
+	InspectPackage(pkg, Inspector{Stmt: func(s Stmt) WalkAction {
+		if fn(s) {
+			return Stop
+		}
+		return Continue
+	}})
 }
 
 // VisitorFuncs is the bool-returning form of Inspector (true == stop the whole
