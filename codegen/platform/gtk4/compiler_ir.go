@@ -232,7 +232,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				if tv.comp != nil {
 					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
 				}
-				ctxGoType := irVarGoType(v)
+				ctxGoType := golang.VarGoType(v)
 				if strings.HasPrefix(ctxGoType, "time.") {
 					gc.RequireImport("time")
 				}
@@ -260,7 +260,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if tv.comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
 		}
-		goType := irVarGoType(v)
+		goType := golang.VarGoType(v)
 		initVal := irVarInit(v, varGC)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
@@ -281,7 +281,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
 				name:   f.Name,
-				goType: irFuncReturnType(f),
+				goType: golang.FuncReturnGoType(f),
 				fn:     f,
 			})
 		}
@@ -1237,34 +1237,8 @@ func emitGTK4Main(b *strings.Builder, cfg Config) {
 
 // --- helpers ---
 
-func irVarGoType(v *ir.Var) string {
-	if v.Type != nil {
-		return golang.IRTypeToGo(v.Type)
-	}
-	if v.Init != nil {
-		if t := v.Init.ExprType(); t != nil {
-			return golang.IRTypeToGo(t)
-		}
-	}
-	return "any"
-}
-
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	return golang.LowerVarInit(v, gc)
-}
-
-func irFuncReturnType(f *ir.Func) string {
-	if f.Return != nil && f.Return.Kind != ir.TypeDyn {
-		return golang.IRTypeToGo(f.Return)
-	}
-	if len(f.Block) == 1 {
-		if ret, ok := f.Block[0].(*ir.Return); ok && ret.Value != nil {
-			if t := ret.Value.ExprType(); t != nil {
-				return golang.IRTypeToGo(t)
-			}
-		}
-	}
-	return ""
 }
 
 // gtk4IRAlertFunc lowers Alert.* calls on gtk4. The platform has no

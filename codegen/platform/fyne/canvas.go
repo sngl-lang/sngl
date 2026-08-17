@@ -109,8 +109,8 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
-	dcField := modelFieldRef(canvasCtxField(m.ID))
-	imgField := modelFieldRef(m.ID)
+	dcField := golang.ModelFieldRef(canvasCtxField(m.ID))
+	imgField := golang.ModelFieldRef(m.ID)
 	w, h := canvasDims(m)
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
@@ -190,8 +190,8 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	}
 
 	w, h := canvasDims(m)
-	dcField := modelFieldRef(canvasCtxField(id))
-	imgField := modelFieldRef(id)
+	dcField := golang.ModelFieldRef(canvasCtxField(id))
+	imgField := golang.ModelFieldRef(id)
 
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,

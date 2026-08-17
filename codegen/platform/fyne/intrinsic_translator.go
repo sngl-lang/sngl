@@ -83,18 +83,6 @@ func platformBlueprints() map[string]*fyneBlueprint {
 	return loadBlueprints()
 }
 
-// modelFieldRef returns an *ir.Select that gc.EvalExpr renders as
-// `m.<name>` — a reference to a Model struct field. Widget fields
-// aren't registered in the type-checker scope, so we synthesize the
-// `m.` qualifier here rather than relying on Resolve.
-func modelFieldRef(name string) ir.Expr {
-	return &ir.Select{
-		Operand: &ir.Ident{Name: "m"},
-		Field:   name,
-		Type:    ir.TypDyn,
-	}
-}
-
 // fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
 // (in blueprint goFn/goType and the view's literal fallbacks) to its full Go
 // import path. It is the single source of truth for resolving a selector to a
@@ -210,7 +198,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(id),
+		Target: golang.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
 	}}
@@ -230,7 +218,7 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "fyne.CanvasObject")
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(id),
+		Target: golang.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -274,7 +262,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to .Content instead. Detected via parent's tag → blueprint.
-	parentTag := t.idTags[identBareName(parent)]
+	parentTag := t.idTags[golang.IdentBareName(parent)]
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	if bp, ok := t.blueprints[parentTag]; ok && bp.Constructor != nil && isSingleChildContainerGoFn(bp.Constructor.GoFn) {
@@ -320,7 +308,7 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 		// window/component bodies need an `m.` qualifier; slot Funcs use
 		// the typed `container` param instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return modelFieldRef(id.Name)
+			return golang.ModelFieldRef(id.Name)
 		}
 	}
 	return e
@@ -335,14 +323,14 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 			return localElementRef(id.Name)
 		}
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return modelFieldRef(id.Name)
+			return golang.ModelFieldRef(id.Name)
 		}
 	}
 	return e
 }
 
 func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	bareID := identBareName(node)
+	bareID := golang.IdentBareName(node)
 	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
@@ -382,7 +370,7 @@ func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {
 	if t.isLocalRef(bareID) {
 		return localElementRef(bareID)
 	}
-	return modelFieldRef(bareID)
+	return golang.ModelFieldRef(bareID)
 }
 
 // qualifyHandlerNode produces a ref for a node id (local or Model-field).
@@ -402,14 +390,14 @@ func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
 			return e
 		}
 		if strings.HasPrefix(name, "__") {
-			return modelFieldRef(name)
+			return golang.ModelFieldRef(name)
 		}
 	}
 	return e
 }
 
 func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	bareID := identBareName(node)
+	bareID := golang.IdentBareName(node)
 	tag, ok := t.idTags[bareID]
 	if !ok {
 		return nil
@@ -437,29 +425,20 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}
 }
 
-// identBareName returns the unqualified name of an Ident, stripping
-// any "m." prefix that came pre-qualified.
-func identBareName(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		return strings.TrimPrefix(id.Name, "m.")
-	}
-	return ""
-}
-
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(slot.Name),
+		Target: golang.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := modelFieldRef(slot.Name)
+	slotRef := golang.ModelFieldRef(slot.Name)
 	child = t.qualifyChildExpr(child)
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(slot.Name),
+		Target: golang.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendExpr,
 	}}
@@ -467,7 +446,7 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return modelFieldRef(id.Name)
+		return golang.ModelFieldRef(id.Name)
 	}
 	return iter
 }

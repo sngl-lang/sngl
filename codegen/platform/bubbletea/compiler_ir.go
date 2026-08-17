@@ -246,7 +246,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		// and component-method bodies via `m.<name>`. Top-level consts
 		// also get a file-scope `var` emission earlier in the file so
 		// top-level free funcs (not Model methods) can reach them.
-		goType := irVarGoType(v)
+		goType := golang.VarGoType(v)
 		initVal := irVarInit(v, gc)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
@@ -273,7 +273,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		seenFn[f] = true
 		if codegen.IsComputed(f) {
-			goType := irFuncReturnType(f)
+			goType := golang.FuncReturnGoType(f)
 			info.computeds = append(info.computeds, irComputed{
 				name:   f.Name,
 				goType: goType,
@@ -1306,31 +1306,8 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 
 // --- helpers ---
 
-func irVarGoType(v *ir.Var) string {
-	if v.Type != nil {
-		return golang.IRTypeToGo(v.Type)
-	}
-	if v.Init != nil {
-		return irExprGoType(v.Init)
-	}
-	return "any"
-}
-
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	return golang.LowerVarInit(v, gc)
-}
-
-func irFuncReturnType(f *ir.Func) string {
-	if f.Return != nil {
-		return golang.IRTypeToGo(f.Return)
-	}
-	// Infer from expression body (single-return functions)
-	if len(f.Block) == 1 {
-		if ret, ok := f.Block[0].(*ir.Return); ok && ret.Value != nil {
-			return irExprGoType(ret.Value)
-		}
-	}
-	return ""
 }
 
 func irExprGoType(e ir.Expr) string {

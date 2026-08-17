@@ -69,7 +69,7 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	// Predeclared i18n.PluralKey constants lower to JS string literals.
 	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := jsI18nConstString("i18n." + n.Field); s != "" {
+		if s := codegen.PluralKeyConstString("i18n." + n.Field); s != "" {
 			return s
 		}
 	}
@@ -226,7 +226,7 @@ func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !jc.EmitPositionMarkers {
 		return nil
 	}
-	pos := stmtIRPos(s)
+	pos := codegen.StmtIRPos(s)
 	if !pos.IsValid() || pos.File == "" {
 		return nil
 	}
@@ -243,7 +243,7 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !jsIsRaiseFunc(call.Func) {
+	if !codegen.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -294,16 +294,6 @@ func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	}
 	lines = append(lines, "}")
 	return lines
-}
-
-func jsIsRaiseFunc(fn *ir.Func) bool {
-	if fn == nil {
-		return false
-	}
-	if fn.Intrinsic == "ErrorRaise" {
-		return true
-	}
-	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
 // evalLiteral renders an ir.Literal to JS. The rendering lives in the package-
@@ -608,7 +598,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 }
 
 func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
-	if isNullToFuncConvJS(n) {
+	if codegen.IsNullToFuncConv(n) {
 		return nullFuncStubJS(n.Type)
 	}
 	operand := jc.EvalExpr(n.Operand)
@@ -630,14 +620,6 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		}
 	}
 	return operand
-}
-
-func isNullToFuncConvJS(n *ir.Conversion) bool {
-	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
-		return false
-	}
-	lit, ok := n.Operand.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 func nullFuncStubJS(t *ir.Type) string {
@@ -857,26 +839,6 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "i18n.defaultLocale()"
-	}
-	return ""
-}
-
-// jsI18nConstString returns the JS string literal for a predeclared
-// i18n.PluralKey constant. Returns "" for non-matches.
-func jsI18nConstString(qual string) string {
-	switch qual {
-	case "i18n.zero":
-		return `"zero"`
-	case "i18n.one":
-		return `"one"`
-	case "i18n.two":
-		return `"two"`
-	case "i18n.few":
-		return `"few"`
-	case "i18n.many":
-		return `"many"`
-	case "i18n.other":
-		return `"other"`
 	}
 	return ""
 }

@@ -77,7 +77,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// with an exported accessor (APP_NAME field + APP_NAME() method).
 			info.binds = append(info.binds, irBind{
 				name:        v.Name,
-				goType:      irVarGoType(v),
+				goType:      golang.VarGoType(v),
 				init:        v.Init,
 				noAccessors: true,
 			})
@@ -110,7 +110,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if strings.HasPrefix(v.Name, "__ctx_") {
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
-					goType:      irVarGoType(v),
+					goType:      golang.VarGoType(v),
 					init:        v.Init,
 					noAccessors: true,
 				})
@@ -129,7 +129,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			})
 			continue
 		}
-		goType := irVarGoType(v)
+		goType := golang.VarGoType(v)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
@@ -150,7 +150,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
 				name:   f.Name,
-				goType: irFuncReturnType(f),
+				goType: golang.FuncReturnGoType(f),
 				fn:     f,
 			})
 		}
@@ -789,32 +789,6 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 }
 
 // --- helpers ---
-
-func irVarGoType(v *ir.Var) string {
-	if v.Type != nil {
-		return golang.IRTypeToGo(v.Type)
-	}
-	if v.Init != nil {
-		if t := v.Init.ExprType(); t != nil {
-			return golang.IRTypeToGo(t)
-		}
-	}
-	return "any"
-}
-
-func irFuncReturnType(f *ir.Func) string {
-	if f.Return != nil && f.Return.Kind != ir.TypeDyn {
-		return golang.IRTypeToGo(f.Return)
-	}
-	if len(f.Block) == 1 {
-		if ret, ok := f.Block[0].(*ir.Return); ok && ret.Value != nil {
-			if t := ret.Value.ExprType(); t != nil {
-				return golang.IRTypeToGo(t)
-			}
-		}
-	}
-	return ""
-}
 
 // elementRef builds an ir.Ident for a widget field name. The
 // IsElementRef+Synthesized flags route through evalIdent's m.<name>

@@ -97,7 +97,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	// string category exclusively. Mirrors golang/JS IRContext and the legacy
 	// kotlin translateIRExpr Select case.
 	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := kotlinI18nConstString("i18n." + n.Field); s != "" {
+		if s := codegen.PluralKeyConstString("i18n." + n.Field); s != "" {
 			return s
 		}
 	}
@@ -408,7 +408,7 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
 	}
-	if !ktIsRaiseFunc(call.Func) {
+	if !codegen.IsErrorRaiseFunc(call.Func) {
 		return nil
 	}
 	msg := `""`
@@ -454,16 +454,6 @@ func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	}
 	lines = append(lines, "}")
 	return lines
-}
-
-func ktIsRaiseFunc(fn *ir.Func) bool {
-	if fn == nil {
-		return false
-	}
-	if fn.Intrinsic == "ErrorRaise" {
-		return true
-	}
-	return fn.Receiver == "error" && fn.Name == "raise"
 }
 
 func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
@@ -546,7 +536,7 @@ func ktIntConvMethod(t *ir.Type) string {
 }
 
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
-	if isNullToFuncConvKt(n) {
+	if codegen.IsNullToFuncConv(n) {
 		return nullFuncStubKt(n.Type)
 	}
 	operand := kc.EvalExpr(n.Operand)
@@ -566,14 +556,6 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 		}
 	}
 	return operand
-}
-
-func isNullToFuncConvKt(n *ir.Conversion) bool {
-	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeFunc {
-		return false
-	}
-	lit, ok := n.Operand.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 func nullFuncStubKt(t *ir.Type) string {
@@ -983,26 +965,6 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "I18n.defaultLocale()"
-	}
-	return ""
-}
-
-// kotlinI18nConstString returns the Kotlin string literal for a predeclared
-// i18n.PluralKey constant. Returns "" for non-matches.
-func kotlinI18nConstString(qual string) string {
-	switch qual {
-	case "i18n.zero":
-		return `"zero"`
-	case "i18n.one":
-		return `"one"`
-	case "i18n.two":
-		return `"two"`
-	case "i18n.few":
-		return `"few"`
-	case "i18n.many":
-		return `"many"`
-	case "i18n.other":
-		return `"other"`
 	}
 	return ""
 }

@@ -174,18 +174,6 @@ func (t *gtk4Translator) lookupNativeByCType(cType string) (*ir.Component, *gtk4
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
-// modelFieldRef returns an ir.Expr that gc.EvalExpr/evalMutTarget
-// render as `m.<name>` — a reference to a Model struct field. Widget
-// fields aren't registered in the type-checker scope, so we synthesize
-// the `m.` qualifier rather than relying on Resolve.
-func modelFieldRef(name string) ir.Expr {
-	return &ir.Select{
-		Operand: &ir.Ident{Name: "m"},
-		Field:   name,
-		Type:    ir.TypDyn,
-	}
-}
-
 // nativeFunc constructs an *ir.Func with NativePkg="C" /
 // NativeName=<bare-C-identifier> so gc.EvalExpr's namespace-call branch
 // emits the cgo source `C.<NativeName>` (the renderer adds the "C."
@@ -336,7 +324,7 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "GtkWidget")
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(id),
+		Target: golang.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -360,7 +348,7 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}
 	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(id),
+		Target: golang.ModelFieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  cgoCast(cType, ctor),
 	}}
@@ -395,7 +383,7 @@ func (t *gtk4Translator) parentCType(e ir.Expr) string {
 		if id.Name == "container" || id.Name == "parent" {
 			return "GtkBox"
 		}
-		return t.idCTypes[identBareName(e)]
+		return t.idCTypes[golang.IdentBareName(e)]
 	}
 	return ""
 }
@@ -474,10 +462,10 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
 		if strings.HasPrefix(id.Name, "__n") {
-			return modelFieldRef(id.Name)
+			return golang.ModelFieldRef(id.Name)
 		}
 		if id.IsElementRef && id.Synthesized {
-			return modelFieldRef(id.Name)
+			return golang.ModelFieldRef(id.Name)
 		}
 	}
 	return e
@@ -487,7 +475,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isSkipped(node) {
 		return nil
 	}
-	bare := identBareName(node)
+	bare := golang.IdentBareName(node)
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
@@ -610,15 +598,6 @@ func girEnumConstant(enumType, value string) string {
 	return ""
 }
 
-// identBareName returns the unqualified name of an Ident, stripping any
-// "m." prefix that came pre-qualified.
-func identBareName(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		return strings.TrimPrefix(id.Name, "m.")
-	}
-	return ""
-}
-
 // gtk4SignalFor maps a SNGL event name on a given C type to the
 // corresponding GTK signal name (no "g_signal_connect_" prefix).
 func gtk4SignalFor(cType, event string) string {
@@ -643,7 +622,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if t.isSkipped(node) {
 		return nil
 	}
-	bare := identBareName(node)
+	bare := golang.IdentBareName(node)
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
 	if signal == "" {
@@ -698,14 +677,14 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(slot.Name),
+		Target: golang.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := modelFieldRef(slot.Name)
+	slotRef := golang.ModelFieldRef(slot.Name)
 	castChild := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	appendCall := &ir.Call{
 		Type: slot.Type,
@@ -716,7 +695,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: modelFieldRef(slot.Name),
+		Target: golang.ModelFieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}}
@@ -724,7 +703,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return modelFieldRef(id.Name)
+		return golang.ModelFieldRef(id.Name)
 	}
 	return iter
 }
