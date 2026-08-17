@@ -68,10 +68,23 @@ behaviour):**
   queries.
 - `optimize/interpret.go` — an interpreter dispatch, not a traversal.
 
-**Phase 2 (follow-up):** `lower/lambda.go` and `lower/normalize_method_calls.go`
-*mutate* the tree (and propagate `error`); the read-only visitor can't absorb
-them. They need a separate rewrite/mutation walker (the private
-`rewriteStmtExprs` in `internal/lower/walk.go` is a start).
+**Phase 2 — done, with a finding:** a separate "mutation walker" abstraction
+turned out **not** to be warranted.
+- `lower/normalize_method_calls.go` — migrated. Its only mutation is injecting a
+  receiver into a Call *in place* (not node replacement), so it uses the existing
+  visitor with a mutating Expr callback; `error` is captured in state and
+  surfaced via `Stop`. Also dropped two dead struct fields (`pkg`, `currentComp`).
+- `lower/lambda.go` — left as-is. Its statement traversal already routes through
+  `walkPackage`; what remains hand-rolled (`liftLambdas`/`rewriteExpr`) is
+  context-dependent node *replacement* (pushing capture frames as it descends).
+  A generic rewrite walker wouldn't remove that complexity — the hard part is the
+  frame/capture management, not the traversal — so forcing it through one would
+  add indirection at real risk to closure correctness. `analyzeCaptures` (a
+  read-only capture analysis) is a lower-value candidate that could migrate later.
+
+**Also:** `ir.WalkExprs`/`WalkStmts` are marked `//go:fix inline` (Deprecated) so
+`go fix` can rewrite the remaining bool-adapter call sites to the `Inspect*` API
+automatically.
 
 ### §2.5 Minor overlaps (LOW) — remaining
 
