@@ -257,11 +257,11 @@ func TestHTMLTagForFallback(t *testing.T) {
 
 func exprReadsVar(e ir.Expr, name string) bool {
 	found := false
-	walkExpr(e, func(x ir.Expr) bool {
+	ir.WalkExprs(e, func(x ir.Expr) error {
 		if id, ok := x.(*ir.Ident); ok && id.Name == name && !id.IsElementRef {
 			found = true
 		}
-		return false
+		return nil
 	})
 	return found
 }

@@ -34,37 +34,38 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &noImplicitRecvState{pkg: pkg}
+	// Walk the same selective root set as before: component bodies/funcs/timer
+	// handlers, package funcs, window bodies/funcs (not var/const inits). A
+	// callback's error (an injection failure) bubbles straight out of Inspect.
+	walk := func(stmts []ir.Stmt) error { return ir.Walk(stmts, recvVisit) }
 	for _, comp := range pkg.Components {
-		st.currentComp = comp
-		if err := st.walkStmts(comp.Body); err != nil {
+		if err := walk(comp.Body); err != nil {
 			return err
 		}
 		for _, fn := range comp.Funcs {
-			if err := st.walkStmts(fn.Block); err != nil {
+			if err := walk(fn.Block); err != nil {
 				return err
 			}
 		}
 		for _, t := range comp.Timers {
 			if t.Handler != nil {
-				if err := st.walkStmts(t.Handler.Block); err != nil {
+				if err := walk(t.Handler.Block); err != nil {
 					return err
 				}
 			}
 		}
 	}
-	st.currentComp = nil
 	for _, fn := range pkg.Funcs {
-		if err := st.walkStmts(fn.Block); err != nil {
+		if err := walk(fn.Block); err != nil {
 			return err
 		}
 	}
 	for _, w := range pkg.Windows {
-		if err := st.walkStmts(w.Body); err != nil {
+		if err := walk(w.Body); err != nil {
 			return err
 		}
 		for _, fn := range w.Funcs {
-			if err := st.walkStmts(fn.Block); err != nil {
+			if err := walk(fn.Block); err != nil {
 				return err
 			}
 		}
@@ -72,176 +73,27 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 	return nil
 }
 
-type noImplicitRecvState struct {
-	pkg         *ir.Package
-	currentComp *ir.Component
-}
-
-func (st *noImplicitRecvState) walkStmts(stmts []ir.Stmt) error {
-	for _, s := range stmts {
-		if err := st.walkStmt(s); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (st *noImplicitRecvState) walkStmt(s ir.Stmt) error {
-	switch n := s.(type) {
+// recvVisit is the shared-visitor callback. It injects the implicit receiver
+// into every method Call (the walker descends into args and receiver for us) and
+// returns any injection error to bubble out. It preserves the original quirk
+// that an Assign's target is not visited — only its value.
+func recvVisit(n ir.Node) error {
+	switch x := n.(type) {
 	case *ir.Assign:
-		return st.walkExpr(n.Value)
-	case *ir.Toggle:
-		return st.walkExpr(n.Target)
-	case *ir.Return:
-		return st.walkExpr(n.Value)
-	case *ir.LocalVar:
-		return st.walkExpr(n.Init)
-	case *ir.If:
-		if err := st.walkExpr(n.Cond); err != nil {
+		if err := ir.Walk(x.Value, recvVisit); err != nil {
 			return err
 		}
-		if err := st.walkStmts(n.Body); err != nil {
-			return err
-		}
-		return st.walkStmts(n.Else)
-	case *ir.For:
-		if err := st.walkExpr(n.Iter); err != nil {
-			return err
-		}
-		if err := st.walkStmts(n.Body); err != nil {
-			return err
-		}
-		return st.walkStmts(n.Else)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			if err := st.walkExpr(a.Value); err != nil {
-				return err
-			}
-		}
-	case *ir.CallStmt:
-		return st.walkCall(n.Call)
-	case *ir.NodeInst:
-		for _, p := range n.Props {
-			if err := st.walkExpr(p.Value); err != nil {
-				return err
-			}
-		}
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				if err := st.walkStmts(h.Func.Block); err != nil {
-					return err
-				}
-			}
-		}
-		return st.walkStmts(n.Children)
-	case *ir.SlotInst:
-		return st.walkStmts(n.Children)
-	case *ir.ErrorBoundary:
-		if err := st.walkStmts(n.Children); err != nil {
-			return err
-		}
-		if n.Handler != nil && n.Handler.Func != nil {
-			return st.walkStmts(n.Handler.Func.Block)
-		}
-	case *ir.PlatformFilter:
-		return st.walkStmts(n.Body)
-	case *ir.Window:
-		if err := st.walkExpr(n.Href); err != nil {
-			return err
-		}
-		if err := st.walkExpr(n.Title); err != nil {
-			return err
-		}
-		if err := st.walkExpr(n.Favicon); err != nil {
-			return err
-		}
-		return st.walkStmts(n.Body)
-	case *ir.ContextProvider:
-		if err := st.walkExpr(n.Value); err != nil {
-			return err
-		}
-		return st.walkStmts(n.Children)
-	}
-	return nil
-}
-
-func (st *noImplicitRecvState) walkExpr(e ir.Expr) error {
-	if e == nil {
-		return nil
-	}
-	switch n := e.(type) {
+		return ir.SkipDir
 	case *ir.Call:
-		return st.walkCall(n)
-	case *ir.Binary:
-		if err := st.walkExpr(n.Left); err != nil {
-			return err
-		}
-		return st.walkExpr(n.Right)
-	case *ir.Unary:
-		return st.walkExpr(n.Operand)
-	case *ir.Ternary:
-		if err := st.walkExpr(n.Cond); err != nil {
-			return err
-		}
-		if err := st.walkExpr(n.Then); err != nil {
-			return err
-		}
-		return st.walkExpr(n.Else)
-	case *ir.Conversion:
-		return st.walkExpr(n.Operand)
-	case *ir.Select:
-		return st.walkExpr(n.Operand)
-	case *ir.Index:
-		if err := st.walkExpr(n.Operand); err != nil {
-			return err
-		}
-		return st.walkExpr(n.Idx)
-	case *ir.ListLit:
-		for _, el := range n.Elems {
-			if err := st.walkExpr(el); err != nil {
-				return err
-			}
-		}
-	case *ir.StructLit:
-		for _, f := range n.Fields {
-			if err := st.walkExpr(f.Value); err != nil {
-				return err
-			}
-		}
-	case *ir.MapLitIR:
-		for _, en := range n.Entries {
-			if err := st.walkExpr(en.Key); err != nil {
-				return err
-			}
-			if err := st.walkExpr(en.Value); err != nil {
-				return err
-			}
-		}
-	case *ir.Spread:
-		return st.walkExpr(n.Operand)
-	case *ir.Lambda:
-		if n.Func != nil {
-			return st.walkStmts(n.Func.Block)
-		}
-	case *ir.Closure:
-		if n.Func != nil {
-			return st.walkStmts(n.Func.Block)
-		}
+		return injectRecv(x)
 	}
 	return nil
 }
 
-func (st *noImplicitRecvState) walkCall(c *ir.Call) error {
-	for _, a := range c.Args {
-		if err := st.walkExpr(a.Value); err != nil {
-			return err
-		}
-	}
-	if c.Receiver != nil {
-		if err := st.walkExpr(c.Receiver); err != nil {
-			return err
-		}
-	}
+// injectRecv prepends the synthesized receiver to a Pattern-A method call. A
+// call that already carries its receiver (Args covers the params), a non-method
+// call, or a receiverless func is left unchanged.
+func injectRecv(c *ir.Call) error {
 	if c.Func == nil || c.Func.Receiver == "" {
 		return nil
 	}
@@ -255,7 +107,7 @@ func (st *noImplicitRecvState) walkCall(c *ir.Call) error {
 	if recvType == nil {
 		return nil
 	}
-	recv, err := st.synthRecv(recvType, c.Func.Receiver)
+	recv, err := synthRecv(recvType, c.Func.Receiver)
 	if err != nil {
 		return err
 	}
@@ -269,7 +121,7 @@ func (st *noImplicitRecvState) walkCall(c *ir.Call) error {
 // *ir.Component (codegen translates this to per-target state).
 //
 // Struct and enum receivers should never reach this path.
-func (st *noImplicitRecvState) synthRecv(recvType *ir.Type, receiverName string) (ir.Expr, error) {
+func synthRecv(recvType *ir.Type, receiverName string) (ir.Expr, error) {
 	switch d := recvType.Decl.(type) {
 	case *ir.Component:
 		return &ir.Ident{

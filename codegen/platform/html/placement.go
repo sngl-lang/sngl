@@ -81,23 +81,23 @@ func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
 // subtree, so we do not descend into it for the default rule).
 func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 	found := false
-	walkExpr(e, func(x ir.Expr) bool {
+	ir.WalkExprs(e, func(x ir.Expr) error {
 		c, ok := x.(*ir.Call)
 		if !ok {
-			return false
+			return nil
 		}
 		if c.Func != nil {
 			switch c.Func.Intrinsic {
 			case htmlFrontendIntrinsic, htmlBackendIntrinsic:
 				// Directive wrapper pins its subtree; skip descent.
-				return true
+				return ir.SkipDir
 			}
 			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
 				found = true
-				return true // short-circuit
+				return ir.SkipDir
 			}
 		}
-		return false
+		return nil
 	})
 	return found
 }
@@ -109,7 +109,7 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 		return Frontend
 	}
 	backend := false
-	walkStmts(fn.Block, func(e ir.Expr) bool {
+	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
 		// exprPlacement already considers e's whole subtree (and honors
 		// directive-wrapper pinning), so classify e and prune its children:
 		// descending further would re-inspect the inside of a directive
@@ -117,7 +117,7 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 		if exprPlacement(pkg, e) == Backend {
 			backend = true
 		}
-		return true // prune subtree: e was classified as a whole
+		return ir.SkipDir // prune subtree: e was classified as a whole
 	})
 	if backend {
 		return Backend
@@ -145,11 +145,12 @@ func checkPlacementDirectives(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
-	var err error
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+	// The callback returns its build error directly; InspectPackage stops the
+	// walk and surfaces it (a non-sentinel error).
+	return ir.WalkExprs(pkg, func(e ir.Expr) error {
 		c, ok := e.(*ir.Call)
 		if !ok || c.Func == nil || len(c.Args) == 0 {
-			return false
+			return nil
 		}
 		arg := c.Args[0].Value
 		switch c.Func.Intrinsic {
@@ -157,32 +158,29 @@ func checkPlacementDirectives(pkg *ir.Package) error {
 			// A func value → HTTP route (supported). Anything else is a
 			// constant/data expression: const→file backend, not implemented.
 			if !isFuncValue(arg) {
-				err = fmt.Errorf("html: html.backend(...) wrapping a constant expression compiles to a lazy-loaded static file, which is not yet implemented — only html.backend of a func/handler (an HTTP route) is supported")
-				return true
+				return fmt.Errorf("html: html.backend(...) wrapping a constant expression compiles to a lazy-loaded static file, which is not yet implemented — only html.backend of a func/handler (an HTTP route) is supported")
 			}
 		case htmlFrontendIntrinsic:
 			// A value explicitly pinned server-side (nested html.backend)
 			// cannot also be forced client-side.
 			if wrapsBackendDirective(arg) {
-				err = fmt.Errorf("html: html.frontend(...) wraps a value pinned to the server with html.backend(...) — a value cannot run both client-side and server-side; remove one of the directives")
-				return true
+				return fmt.Errorf("html: html.frontend(...) wraps a value pinned to the server with html.backend(...) — a value cannot run both client-side and server-side; remove one of the directives")
 			}
 		}
-		return false
+		return nil
 	})
-	return err
 }
 
 // wrapsBackendDirective reports whether e (or any subexpression) is an
 // html.backend(...) call — i.e. a value explicitly pinned server-side.
 func wrapsBackendDirective(e ir.Expr) bool {
 	found := false
-	walkExpr(e, func(x ir.Expr) bool {
+	ir.WalkExprs(e, func(x ir.Expr) error {
 		if c, ok := x.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlBackendIntrinsic {
 			found = true
-			return true
+			return ir.SkipDir
 		}
-		return false
+		return nil
 	})
 	return found
 }
@@ -220,146 +218,30 @@ func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
 		return out
 	}
 	collect := func(sub ir.Expr) {
-		walkExpr(sub, func(x ir.Expr) bool {
+		ir.WalkExprs(sub, func(x ir.Expr) error {
 			c, ok := x.(*ir.Call)
 			if !ok || c.Func == nil {
-				return false
+				return nil
 			}
 			// A nested directive re-pins its own subtree; stop here and let
 			// the top-level scan reach it independently.
 			switch c.Func.Intrinsic {
 			case htmlFrontendIntrinsic, htmlBackendIntrinsic:
-				return true
+				return ir.SkipDir
 			}
 			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
 				out[nativeFuncKey{importPath: c.Func.NativePkg, name: c.Func.Name}] = true
 			}
-			return false
+			return nil
 		})
 	}
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
 		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlFrontendIntrinsic {
 			for _, a := range c.Args {
 				collect(a.Value)
 			}
 		}
-		return false // never short-circuit: scan the whole package
+		return nil // never short-circuit: scan the whole package
 	})
 	return out
-}
-
-// walkExpr visits e and each of its sub-expressions, calling fn on each.
-// fn returns true to prune the subtree at that node (stop descending into its
-// children) — used to honor directive-wrapper pinning and to short-circuit.
-func walkExpr(e ir.Expr, fn func(ir.Expr) bool) {
-	if e == nil {
-		return
-	}
-	if fn(e) {
-		return
-	}
-	switch x := e.(type) {
-	case *ir.Binary:
-		walkExpr(x.Left, fn)
-		walkExpr(x.Right, fn)
-	case *ir.Unary:
-		walkExpr(x.Operand, fn)
-	case *ir.Ternary:
-		walkExpr(x.Cond, fn)
-		walkExpr(x.Then, fn)
-		walkExpr(x.Else, fn)
-	case *ir.Call:
-		walkExpr(x.Receiver, fn)
-		walkExpr(x.Callee, fn)
-		for _, a := range x.Args {
-			walkExpr(a.Value, fn)
-		}
-	case *ir.Conversion:
-		walkExpr(x.Operand, fn)
-	case *ir.Select:
-		walkExpr(x.Operand, fn)
-	case *ir.Index:
-		walkExpr(x.Operand, fn)
-		walkExpr(x.Idx, fn)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			walkExpr(el, fn)
-		}
-	case *ir.MapLitIR:
-		for _, kv := range x.Entries {
-			walkExpr(kv.Key, fn)
-			walkExpr(kv.Value, fn)
-		}
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			walkExpr(f.Value, fn)
-		}
-	case *ir.Lambda:
-		if x.Func != nil {
-			walkStmts(x.Func.Block, fn)
-		}
-	case *ir.Closure:
-		if x.Func != nil {
-			walkStmts(x.Func.Block, fn)
-		}
-	case *ir.Spread:
-		walkExpr(x.Operand, fn)
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
-		// Leaf — no sub-expressions.
-	}
-}
-
-// walkStmts visits every expression reachable from stmts via walkExpr.
-func walkStmts(stmts []ir.Stmt, fn func(ir.Expr) bool) {
-	for _, s := range stmts {
-		walkStmt(s, fn)
-	}
-}
-
-func walkStmt(s ir.Stmt, fn func(ir.Expr) bool) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		for _, p := range n.Props {
-			walkExpr(p.Value, fn)
-		}
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				walkStmts(h.Func.Block, fn)
-			}
-		}
-		walkStmts(n.Children, fn)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			walkExpr(n.Call, fn)
-		}
-	case *ir.Assign:
-		walkExpr(n.Target, fn)
-		walkExpr(n.Value, fn)
-	case *ir.Toggle:
-		walkExpr(n.Target, fn)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			walkExpr(a.Value, fn)
-		}
-	case *ir.LocalVar:
-		walkExpr(n.Init, fn)
-	case *ir.Return:
-		walkExpr(n.Value, fn)
-	case *ir.If:
-		walkExpr(n.Cond, fn)
-		walkStmts(n.Body, fn)
-		walkStmts(n.Else, fn)
-	case *ir.For:
-		walkExpr(n.Iter, fn)
-		walkStmts(n.Body, fn)
-		walkStmts(n.Else, fn)
-	case *ir.SlotInst:
-		walkStmts(n.Children, fn)
-	case *ir.PlatformFilter:
-		walkStmts(n.Body, fn)
-	case *ir.ErrorBoundary:
-		walkStmts(n.Children, fn)
-	case *ir.ContextProvider:
-		walkStmts(n.Children, fn)
-	}
 }

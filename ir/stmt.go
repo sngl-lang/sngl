@@ -9,6 +9,7 @@ import "git.duckfam.us/jonathan/sngl/ast"
 
 // Stmt is a type-checked statement node.
 type Stmt interface {
+	Node
 	stmtNode()
 }
 
