@@ -18,11 +18,11 @@
 // mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
 // differences without writing), and SNGL_FMT_DOCS is not set for tests.
 //
-// The -full flag sets SNGL_TESTS_FULL=1 for the test step (opting in the
-// slow/heavy platform tests that gate on it, e.g. the android fixtures) and
-// raises the go test timeout to 20m. Without it those tests skip themselves.
+// verify runs the full (non-short) test suite: slow/heavy platform tests
+// (android fixtures, Robolectric round-trips) run by default. For a fast local
+// loop, run `go test -short ./...` directly, which skips them via testing.Short.
 //
-// Usage: go tool verify [-v] [-dry] [-full]
+// Usage: go tool verify [-v] [-dry]
 package main
 
 import (
@@ -95,7 +95,6 @@ func (r pkgResult) coverage() float64 {
 func main() {
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
-	full := flag.Bool("full", false, "run the full suite incl. slow/heavy platform tests (sets SNGL_TESTS_FULL=1; raises the go test timeout to 20m)")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -166,7 +165,7 @@ func main() {
 	}
 
 	// Step 7: go test with coverage
-	runTests(*verbose, !*dry, *full)
+	runTests(*verbose, !*dry)
 
 	// Step 8: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
@@ -231,7 +230,7 @@ func runCheckStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose, fmtDocs, full bool) {
+func runTests(verbose, fmtDocs bool) {
 	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
 	if err != nil {
 		log.Fatalf("create coverprofile: %v", err)
@@ -240,11 +239,10 @@ func runTests(verbose, fmtDocs, full bool) {
 	defer os.Remove(profile.Name())
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
-	// Always raise the per-package timeout above Go's 10m default. Even
-	// without SNGL_TESTS_FULL, the heavy cgo GUI packages run close to the
-	// wall: the fyne suite alone takes ~560s, so on a loaded CI runner the
-	// default 10m flakes into a timeout with no margin. --full adds still
-	// more (android fixtures) but the default set needs headroom too.
+	// Raise the per-package timeout above Go's 10m default: the heavy cgo GUI
+	// packages run close to the wall (the fyne suite alone ~560s), and the
+	// full (non-short) run also builds the android fixtures + Robolectric, so
+	// on a loaded runner the default 10m would flake into a timeout.
 	args = append(args, "-timeout=20m")
 	if verbose {
 		args = append(args, "-v")
@@ -261,9 +259,6 @@ func runTests(verbose, fmtDocs, full bool) {
 	cmd.Env = append(os.Environ(), extraEnv...)
 	if fmtDocs {
 		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
-	}
-	if full {
-		cmd.Env = append(cmd.Env, "SNGL_TESTS_FULL=1")
 	}
 	cmd.Stderr = os.Stderr
 
