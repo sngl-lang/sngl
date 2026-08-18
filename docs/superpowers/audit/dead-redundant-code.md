@@ -47,14 +47,17 @@ variously need subtree roots, per-branch pruning, mutation, enclosing-function
 context, or type traversal. Doing it as a project instead:
 
 **Done — visitor generalized + read-only consumers migrated:**
-- `ir/walkexprs.go`: added `WalkAction { Continue, SkipChildren, Stop }` (prune
-  vs. stop, which the old `bool` conflated) and subtree entry points
-  `InspectPackage`/`InspectFunc`/`InspectStmts`/`InspectExpr` over the one
-  scaffold. Old `Walk`/`WalkExprs`/`WalkStmts` kept as bool adapters.
-- Migrated: `html/placement.go` (prune semantics → `SkipChildren`),
+- `ir/walkexprs.go`: an `fs.WalkDir`-style error contract — a callback returns
+  `nil` (descend), `ir.SkipDir` (prune this node's children, continue siblings),
+  `ir.SkipAll` (stop; swallowed), or any other error (stop and bubble it out).
+  Subtree entry points `InspectPackage`/`InspectFunc`/`InspectStmts`/
+  `InspectExpr` over the one scaffold. The old bool `Walk`/`WalkExprs`/
+  `WalkStmts`/`VisitorFuncs` were removed and every caller hand-migrated.
+- Migrated: `html/placement.go` (prune semantics → `SkipDir`; and its directive
+  check now returns its build error straight through the walker),
   `html/rendermodel.go` `exprIsReactive`, `iterate.go` `collectWindows`,
   `checker/purity.go` `analyzeEffects` (also fixes a latent bug — it had no
-  default case and silently skipped unknown stmt kinds).
+  default case and silently skipped unknown stmt kinds), and `ir/validate.go`.
 
 **Deliberately left custom (the visitor can't serve these without changing
 behaviour):**
@@ -72,8 +75,9 @@ behaviour):**
 turned out **not** to be warranted.
 - `lower/normalize_method_calls.go` — migrated. Its only mutation is injecting a
   receiver into a Call *in place* (not node replacement), so it uses the existing
-  visitor with a mutating Expr callback; `error` is captured in state and
-  surfaced via `Stop`. Also dropped two dead struct fields (`pkg`, `currentComp`).
+  visitor with a mutating Expr callback that returns its error directly (the
+  error contract made the whole state struct — `err`, plus the dead `pkg`/
+  `currentComp` — go away; it's now free functions).
 - `lower/lambda.go` — left as-is. Its statement traversal already routes through
   `walkPackage`; what remains hand-rolled (`liftLambdas`/`rewriteExpr`) is
   context-dependent node *replacement* (pushing capture frames as it descends).
@@ -82,9 +86,9 @@ turned out **not** to be warranted.
   add indirection at real risk to closure correctness. `analyzeCaptures` (a
   read-only capture analysis) is a lower-value candidate that could migrate later.
 
-**Also:** `ir.WalkExprs`/`WalkStmts` are marked `//go:fix inline` (Deprecated) so
-`go fix` can rewrite the remaining bool-adapter call sites to the `Inspect*` API
-automatically.
+**Also:** the bool `Walk`/`WalkExprs`/`WalkStmts`/`VisitorFuncs` wrappers were
+removed outright and all ~12 call sites hand-migrated to the `Inspect*` +
+error-sentinel API — no deprecated surface left behind.
 
 ### §2.5 Minor overlaps (LOW) — remaining
 

@@ -23,8 +23,8 @@ func Validate(pkg *Package) []error {
 		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
-	Walk(pkg, VisitorFuncs{
-		Expr: func(e Expr) bool {
+	InspectPackage(pkg, Inspector{
+		Expr: func(e Expr) error {
 			switch x := e.(type) {
 			case *Ident:
 				// A user-level identifier must resolve to a symbol. Excluded:
@@ -60,9 +60,9 @@ func Validate(pkg *Package) []error {
 					add("index expression has nil operand or index")
 				}
 			}
-			return false
+			return nil
 		},
-		Stmt: func(s Stmt) bool {
+		Stmt: func(s Stmt) error {
 			switch n := s.(type) {
 			case *Assign:
 				if n.Target == nil || n.Value == nil {
@@ -83,7 +83,7 @@ func Validate(pkg *Package) []error {
 			case *NodeInst:
 				checkNoNilStmts(add, "node children", n.Children)
 			}
-			return false
+			return nil
 		},
 	})
 	return errs

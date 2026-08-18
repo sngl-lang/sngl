@@ -34,81 +34,66 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &noImplicitRecvState{}
-	// walk the same selective root set as before: component bodies/funcs/timer
-	// handlers, package funcs, window bodies/funcs (not var/const inits). The
-	// shared visitor descends each; the mutation happens in the Expr callback.
-	walk := func(stmts []ir.Stmt) bool {
-		if st.err == nil {
-			ir.InspectStmts(stmts, st.inspector())
-		}
-		return st.err != nil
-	}
+	// Walk the same selective root set as before: component bodies/funcs/timer
+	// handlers, package funcs, window bodies/funcs (not var/const inits). A
+	// callback's error (an injection failure) bubbles straight out of Inspect.
+	walk := func(stmts []ir.Stmt) error { return ir.InspectStmts(stmts, recvInspector()) }
 	for _, comp := range pkg.Components {
-		if walk(comp.Body) {
-			return st.err
+		if err := walk(comp.Body); err != nil {
+			return err
 		}
 		for _, fn := range comp.Funcs {
-			if walk(fn.Block) {
-				return st.err
+			if err := walk(fn.Block); err != nil {
+				return err
 			}
 		}
 		for _, t := range comp.Timers {
-			if t.Handler != nil && walk(t.Handler.Block) {
-				return st.err
+			if t.Handler != nil {
+				if err := walk(t.Handler.Block); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	for _, fn := range pkg.Funcs {
-		if walk(fn.Block) {
-			return st.err
+		if err := walk(fn.Block); err != nil {
+			return err
 		}
 	}
 	for _, w := range pkg.Windows {
-		if walk(w.Body) {
-			return st.err
+		if err := walk(w.Body); err != nil {
+			return err
 		}
 		for _, fn := range w.Funcs {
-			if walk(fn.Block) {
-				return st.err
+			if err := walk(fn.Block); err != nil {
+				return err
 			}
 		}
 	}
-	return st.err
+	return nil
 }
 
-type noImplicitRecvState struct {
-	err error
-}
-
-// inspector returns the shared-visitor callbacks. The Expr callback injects the
-// implicit receiver into every method Call (the visitor descends into args and
-// receiver for us); the Stmt callback preserves the original quirk that an
-// Assign's target is not visited — only its value. Errors are captured in
-// st.err and reported by returning Stop.
-func (st *noImplicitRecvState) inspector() ir.Inspector {
+// recvInspector returns the shared-visitor callbacks. The Expr callback injects
+// the implicit receiver into every method Call (the visitor descends into args
+// and receiver for us) and returns any injection error to bubble out. The Stmt
+// callback preserves the original quirk that an Assign's target is not visited —
+// only its value.
+func recvInspector() ir.Inspector {
 	return ir.Inspector{
-		Stmt: func(s ir.Stmt) ir.WalkAction {
-			if st.err != nil {
-				return ir.Stop
-			}
+		Stmt: func(s ir.Stmt) error {
 			if a, ok := s.(*ir.Assign); ok {
-				ir.InspectExpr(a.Value, st.inspector())
-				return ir.SkipChildren
-			}
-			return ir.Continue
-		},
-		Expr: func(e ir.Expr) ir.WalkAction {
-			if st.err != nil {
-				return ir.Stop
-			}
-			if c, ok := e.(*ir.Call); ok {
-				if err := st.injectRecv(c); err != nil {
-					st.err = err
-					return ir.Stop
+				if err := ir.InspectExpr(a.Value, recvInspector()); err != nil {
+					return err
 				}
+				return ir.SkipDir
 			}
-			return ir.Continue
+			return nil
+		},
+		Expr: func(e ir.Expr) error {
+			if c, ok := e.(*ir.Call); ok {
+				return injectRecv(c)
+			}
+			return nil
 		},
 	}
 }
@@ -116,7 +101,7 @@ func (st *noImplicitRecvState) inspector() ir.Inspector {
 // injectRecv prepends the synthesized receiver to a Pattern-A method call. A
 // call that already carries its receiver (Args covers the params), a non-method
 // call, or a receiverless func is left unchanged.
-func (st *noImplicitRecvState) injectRecv(c *ir.Call) error {
+func injectRecv(c *ir.Call) error {
 	if c.Func == nil || c.Func.Receiver == "" {
 		return nil
 	}
@@ -130,7 +115,7 @@ func (st *noImplicitRecvState) injectRecv(c *ir.Call) error {
 	if recvType == nil {
 		return nil
 	}
-	recv, err := st.synthRecv(recvType, c.Func.Receiver)
+	recv, err := synthRecv(recvType, c.Func.Receiver)
 	if err != nil {
 		return err
 	}
@@ -144,7 +129,7 @@ func (st *noImplicitRecvState) injectRecv(c *ir.Call) error {
 // *ir.Component (codegen translates this to per-target state).
 //
 // Struct and enum receivers should never reach this path.
-func (st *noImplicitRecvState) synthRecv(recvType *ir.Type, receiverName string) (ir.Expr, error) {
+func synthRecv(recvType *ir.Type, receiverName string) (ir.Expr, error) {
 	switch d := recvType.Decl.(type) {
 	case *ir.Component:
 		return &ir.Ident{

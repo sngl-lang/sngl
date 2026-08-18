@@ -53,13 +53,13 @@ component main {
 		t.Fatalf("lower: %v", err)
 	}
 	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
 		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == "HtmlFrontend" {
 			found = true
-			return true
+			return ir.SkipAll
 		}
-		return false
-	})
+		return nil
+	}})
 	if !found {
 		t.Fatal("html.frontend call was erased; must survive as an intrinsic for placement analysis")
 	}

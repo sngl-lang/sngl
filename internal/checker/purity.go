@@ -73,27 +73,27 @@ func (w *effectWalker) externalVar(e ir.Expr) *ir.Var {
 // timer, and lambda/closure bodies.
 func (w *effectWalker) inspector() ir.Inspector {
 	return ir.Inspector{
-		Expr: func(e ir.Expr) ir.WalkAction {
+		Expr: func(e ir.Expr) error {
 			if v := w.externalVar(e); v != nil {
 				w.reads[v] = struct{}{}
 			}
-			return ir.Continue
+			return nil
 		},
-		Stmt: func(s ir.Stmt) ir.WalkAction {
+		Stmt: func(s ir.Stmt) error {
 			switch n := s.(type) {
 			case *ir.Assign:
 				w.recordWrite(n.Target)
 				ir.InspectExpr(n.Value, w.inspector())
-				return ir.SkipChildren
+				return ir.SkipDir
 			case *ir.Toggle:
 				w.recordWrite(n.Target)
-				return ir.SkipChildren
+				return ir.SkipDir
 			case *ir.Emit:
 				// Emitting an event fires parent handlers — an observable
 				// side effect. Args are read; the walker descends into them.
 				w.mutates = true
 			}
-			return ir.Continue
+			return nil
 		},
 	}
 }

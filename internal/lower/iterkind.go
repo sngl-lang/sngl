@@ -19,11 +19,11 @@ var passIterKind = pass{
 }
 
 func stampIterKind(pkg *ir.Package, _ Caps, _ Options) error {
-	ir.WalkStmts(pkg, func(s ir.Stmt) bool {
+	ir.InspectPackage(pkg, ir.Inspector{Stmt: func(s ir.Stmt) error {
 		if f, ok := s.(*ir.For); ok {
 			f.IterKind = ir.DeriveIterKind(f)
 		}
-		return false
-	})
+		return nil
+	}})
 	return nil
 }

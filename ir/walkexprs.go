@@ -1,28 +1,29 @@
 package ir
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-// WalkAction is returned by an Inspector callback to steer the traversal.
-type WalkAction int
-
-const (
-	// Continue descends into the visited node's children (the default).
-	Continue WalkAction = iota
-	// SkipChildren does not descend into this node's children but continues
-	// with its siblings — a per-branch prune. Use this when a node has been
-	// handled "as a whole" and its interior should not be visited.
-	SkipChildren
-	// Stop ends the entire traversal immediately — a short-circuit for
-	// "does this contain X?" queries.
-	Stop
+// SkipDir and SkipAll are sentinel errors an Inspector callback returns to
+// steer the traversal, mirroring fs.WalkDir:
+//
+//   - return nil        — descend into the visited node's children (default).
+//   - return SkipDir    — do not descend into this node's children, but continue
+//     with its siblings (a per-branch prune).
+//   - return SkipAll    — stop the whole walk; the Inspect* call returns nil.
+//   - return other err  — stop the whole walk; the Inspect* call returns err.
+var (
+	SkipDir = errors.New("ir: skip this node's children")
+	SkipAll = errors.New("ir: skip everything and stop the walk")
 )
 
 // Inspector holds the optional per-node callbacks for the Inspect* family.
-// Either field may be nil; the corresponding node kind is still descended
-// into. Each callback returns a WalkAction (Continue / SkipChildren / Stop).
+// Either field may be nil; the corresponding node kind is still descended into.
+// Each callback returns an error per the SkipDir/SkipAll contract above.
 type Inspector struct {
-	Stmt func(Stmt) WalkAction
-	Expr func(Expr) WalkAction
+	Stmt func(Stmt) error
+	Expr func(Expr) error
 }
 
 // InspectPackage walks every statement and expression reachable from pkg in a
@@ -31,122 +32,72 @@ type Inspector struct {
 // handlers), funcs, components (vars + funcs + timers + body), package timers,
 // and windows. Container statements — If/For/PlatformFilter/SlotInst/
 // ErrorBoundary/Window/ContextProvider — and lambda/closure bodies are
-// descended into. Panics on an unknown node kind, so every new IR shape extends
-// this one scaffold and all consumers stay in lockstep.
-func InspectPackage(pkg *Package, in Inspector) {
+// descended into. Returns the first non-sentinel error a callback produced, or
+// nil (SkipAll is swallowed). Panics on an unknown node kind, so every new IR
+// shape extends this one scaffold and all consumers stay in lockstep.
+func InspectPackage(pkg *Package, in Inspector) error {
 	if pkg == nil {
-		return
+		return nil
 	}
 	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
 	w.run(pkg)
+	return w.err
 }
 
 // InspectFunc walks the statements/expressions of a single function subtree
 // (its param defaults and body), not a whole package.
-func InspectFunc(fn *Func, in Inspector) {
+func InspectFunc(fn *Func, in Inspector) error {
 	if fn == nil {
-		return
+		return nil
 	}
 	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
 	w.visitFunc(fn)
+	return w.err
 }
 
 // InspectStmts walks a statement slice (a subtree), not a whole package.
-func InspectStmts(stmts []Stmt, in Inspector) {
+func InspectStmts(stmts []Stmt, in Inspector) error {
 	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
 	w.visitStmts(stmts)
+	return w.err
 }
 
 // InspectExpr walks a single expression subtree (the expression and its
 // descendants), not a whole package.
-func InspectExpr(e Expr, in Inspector) {
+func InspectExpr(e Expr, in Inspector) error {
 	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
 	w.visitExpr(e)
+	return w.err
 }
 
-// WalkExprs visits every expression reachable from pkg, calling fn for each.
-// fn returns true to stop the walk early (short-circuit). Thin bool adapter
-// over InspectPackage; new code that needs subtree roots or per-branch pruning
-// should use the Inspect* family with WalkAction directly.
-//
-// Deprecated: use InspectPackage with an Inspector. The //go:fix directive lets
-// `go fix` rewrite call sites automatically.
-//
-//go:fix inline
-func WalkExprs(pkg *Package, fn func(Expr) bool) {
-	InspectPackage(pkg, Inspector{Expr: func(e Expr) WalkAction {
-		if fn(e) {
-			return Stop
-		}
-		return Continue
-	}})
-}
-
-// WalkStmts visits every statement reachable from pkg in pre-order, calling fn
-// for each; fn returns true to stop early. Thin bool adapter over
-// InspectPackage.
-//
-// Deprecated: use InspectPackage with an Inspector. The //go:fix directive lets
-// `go fix` rewrite call sites automatically.
-//
-//go:fix inline
-func WalkStmts(pkg *Package, fn func(Stmt) bool) {
-	InspectPackage(pkg, Inspector{Stmt: func(s Stmt) WalkAction {
-		if fn(s) {
-			return Stop
-		}
-		return Continue
-	}})
-}
-
-// VisitorFuncs is the bool-returning form of Inspector (true == stop the whole
-// walk). Retained for existing Walk callers; prefer Inspector/WalkAction for
-// new code.
-type VisitorFuncs struct {
-	Stmt func(Stmt) bool
-	Expr func(Expr) bool
-}
-
-// Walk visits every statement and expression reachable from pkg, stopping the
-// whole walk when either callback returns true. Thin bool adapter over
-// InspectPackage.
-func Walk(pkg *Package, v VisitorFuncs) {
-	InspectPackage(pkg, Inspector{Stmt: boolStmt(v.Stmt), Expr: boolExpr(v.Expr)})
-}
-
-// boolStmt/boolExpr adapt a bool "true == stop" callback to a WalkAction one.
-func boolStmt(fn func(Stmt) bool) func(Stmt) WalkAction {
-	if fn == nil {
-		return nil
-	}
-	return func(s Stmt) WalkAction {
-		if fn(s) {
-			return Stop
-		}
-		return Continue
-	}
-}
-
-func boolExpr(fn func(Expr) bool) func(Expr) WalkAction {
-	if fn == nil {
-		return nil
-	}
-	return func(e Expr) WalkAction {
-		if fn(e) {
-			return Stop
-		}
-		return Continue
-	}
-}
-
-// walker is the single IR traversal scaffold backing every Inspect*/Walk*
-// entry point. exprFn and/or stmtFn may be nil; the corresponding nodes are
-// still descended into (so e.g. a stmt-only walk still reaches statements
-// buried inside lambda bodies).
+// walker is the single IR traversal scaffold backing every Inspect* entry
+// point. exprFn and/or stmtFn may be nil; the corresponding nodes are still
+// descended into (so e.g. a stmt-only walk still reaches statements buried
+// inside lambda bodies). done halts the walk (set by SkipAll or a real error);
+// err holds the real error to surface (nil for SkipAll).
 type walker struct {
-	exprFn func(Expr) WalkAction
-	stmtFn func(Stmt) WalkAction
+	exprFn func(Expr) error
+	stmtFn func(Stmt) error
 	done   bool
+	err    error
+}
+
+// gate applies a callback's returned error to the walk state and reports
+// whether to descend into the current node's children.
+func (w *walker) gate(err error) (descend bool) {
+	switch {
+	case err == nil:
+		return true
+	case err == SkipDir:
+		return false
+	case err == SkipAll:
+		w.done = true
+		return false
+	default:
+		w.err = err
+		w.done = true
+		return false
+	}
 }
 
 func (w *walker) visitExpr(e Expr) {
@@ -154,11 +105,7 @@ func (w *walker) visitExpr(e Expr) {
 		return
 	}
 	if w.exprFn != nil {
-		switch w.exprFn(e) {
-		case Stop:
-			w.done = true
-			return
-		case SkipChildren:
+		if !w.gate(w.exprFn(e)) {
 			return
 		}
 	}
@@ -222,11 +169,7 @@ func (w *walker) visitStmt(s Stmt) {
 		return
 	}
 	if w.stmtFn != nil {
-		switch w.stmtFn(s) {
-		case Stop:
-			w.done = true
-			return
-		case SkipChildren:
+		if !w.gate(w.stmtFn(s)) {
 			return
 		}
 	}
@@ -245,11 +188,7 @@ func (w *walker) visitStmt(s Stmt) {
 			// callers that key off "any *Call" detect it at the stmt
 			// boundary as well as via expression descent.
 			if w.exprFn != nil {
-				switch w.exprFn(n.Call) {
-				case Stop:
-					w.done = true
-					return
-				case SkipChildren:
+				if !w.gate(w.exprFn(n.Call)) {
 					return
 				}
 			}

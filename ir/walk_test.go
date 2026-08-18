@@ -1,6 +1,7 @@
 package ir_test
 
 import (
+	"errors"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -33,9 +34,9 @@ func TestWalkVisitsStmtsAndExprs(t *testing.T) {
 	pkg := buildWalkPkg()
 
 	var stmts, exprs int
-	ir.Walk(pkg, ir.VisitorFuncs{
-		Stmt: func(ir.Stmt) bool { stmts++; return false },
-		Expr: func(ir.Expr) bool { exprs++; return false },
+	ir.InspectPackage(pkg, ir.Inspector{
+		Stmt: func(ir.Stmt) error { stmts++; return nil },
+		Expr: func(ir.Expr) error { exprs++; return nil },
 	})
 
 	// Statements: If, Assign, CallStmt = 3.
@@ -54,8 +55,8 @@ func TestWalkEarlyStop(t *testing.T) {
 	pkg := buildWalkPkg()
 
 	var seen int
-	ir.Walk(pkg, ir.VisitorFuncs{
-		Expr: func(ir.Expr) bool { seen++; return true }, // stop on first
+	ir.InspectPackage(pkg, ir.Inspector{
+		Expr: func(ir.Expr) error { seen++; return ir.SkipAll }, // stop on first
 	})
 	if seen != 1 {
 		t.Errorf("early-stop visited %d exprs, want 1", seen)
@@ -64,7 +65,7 @@ func TestWalkEarlyStop(t *testing.T) {
 
 func TestWalkNilPackage(t *testing.T) {
 	// Must not panic.
-	ir.Walk(nil, ir.VisitorFuncs{Stmt: func(ir.Stmt) bool { return false }})
+	ir.InspectPackage(nil, ir.Inspector{Stmt: func(ir.Stmt) error { return nil }})
 }
 
 func TestInspectFuncSubtree(t *testing.T) {
@@ -73,8 +74,8 @@ func TestInspectFuncSubtree(t *testing.T) {
 
 	var stmts, exprs int
 	ir.InspectFunc(fn, ir.Inspector{
-		Stmt: func(ir.Stmt) ir.WalkAction { stmts++; return ir.Continue },
-		Expr: func(ir.Expr) ir.WalkAction { exprs++; return ir.Continue },
+		Stmt: func(ir.Stmt) error { stmts++; return nil },
+		Expr: func(ir.Expr) error { exprs++; return nil },
 	})
 	// Only the func body: If, Assign, CallStmt = 3 stmts. Exprs: If.Cond
 	// Ident (1), Assign target Ident + value Literal (2), CallStmt.Call (1) = 4.
@@ -92,7 +93,7 @@ func TestInspectStmtsSubtree(t *testing.T) {
 
 	var stmts int
 	ir.InspectStmts(pkg.Funcs[0].Block, ir.Inspector{
-		Stmt: func(ir.Stmt) ir.WalkAction { stmts++; return ir.Continue },
+		Stmt: func(ir.Stmt) error { stmts++; return nil },
 	})
 	if stmts != 3 {
 		t.Errorf("InspectStmts stmt visits = %d, want 3", stmts)
@@ -106,17 +107,17 @@ func TestInspectSkipChildrenPrunesButContinuesSiblings(t *testing.T) {
 	// (the CallStmt). Expect: If + CallStmt visited = 2, Assign skipped.
 	var seen []string
 	ir.InspectFunc(pkg.Funcs[0], ir.Inspector{
-		Stmt: func(s ir.Stmt) ir.WalkAction {
+		Stmt: func(s ir.Stmt) error {
 			switch s.(type) {
 			case *ir.If:
 				seen = append(seen, "if")
-				return ir.SkipChildren
+				return ir.SkipDir
 			case *ir.Assign:
 				seen = append(seen, "assign")
 			case *ir.CallStmt:
 				seen = append(seen, "call")
 			}
-			return ir.Continue
+			return nil
 		},
 	})
 	if len(seen) != 2 || seen[0] != "if" || seen[1] != "call" {
@@ -128,7 +129,7 @@ func TestInspectStopHaltsWholeWalk(t *testing.T) {
 	pkg := buildWalkPkg()
 	var seen int
 	ir.InspectFunc(pkg.Funcs[0], ir.Inspector{
-		Stmt: func(ir.Stmt) ir.WalkAction { seen++; return ir.Stop },
+		Stmt: func(ir.Stmt) error { seen++; return ir.SkipAll },
 	})
 	if seen != 1 {
 		t.Errorf("Stop visited %d stmts, want 1", seen)
@@ -143,7 +144,7 @@ func TestInspectExprSubtree(t *testing.T) {
 	root := &ir.Binary{Left: inner, Right: &ir.Ident{Name: "x"}}
 	var lits, idents, bins int
 	ir.InspectExpr(root, ir.Inspector{
-		Expr: func(e ir.Expr) ir.WalkAction {
+		Expr: func(e ir.Expr) error {
 			switch e.(type) {
 			case *ir.Literal:
 				lits++
@@ -152,13 +153,34 @@ func TestInspectExprSubtree(t *testing.T) {
 			case *ir.Binary:
 				bins++
 				if e == inner {
-					return ir.SkipChildren // prune the inner Add's literals
+					return ir.SkipDir // prune the inner Add's literals
 				}
 			}
-			return ir.Continue
+			return nil
 		},
 	})
 	if bins != 2 || idents != 1 || lits != 0 {
 		t.Errorf("InspectExpr prune: bins=%d idents=%d lits=%d, want 2/1/0", bins, idents, lits)
+	}
+}
+
+func TestInspectBubblesRealError(t *testing.T) {
+	pkg := buildWalkPkg()
+	sentinel := errors.New("boom")
+	got := ir.InspectPackage(pkg, ir.Inspector{
+		Expr: func(ir.Expr) error { return sentinel },
+	})
+	if got != sentinel {
+		t.Errorf("InspectPackage returned %v, want the callback's error", got)
+	}
+}
+
+func TestInspectSkipAllSwallowed(t *testing.T) {
+	pkg := buildWalkPkg()
+	got := ir.InspectPackage(pkg, ir.Inspector{
+		Expr: func(ir.Expr) error { return ir.SkipAll },
+	})
+	if got != nil {
+		t.Errorf("InspectPackage returned %v, want nil (SkipAll swallowed)", got)
 	}
 }

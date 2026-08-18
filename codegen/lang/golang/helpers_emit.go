@@ -56,15 +56,15 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 	// synthesized as an inlined widget's zero-value default, like the bubbletea
 	// datepicker's `mustParseDate("0001-01-01")`. Sweep every expression in the
 	// package so such literals still flag their parse helper.
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
 		switch n := e.(type) {
 		case *ir.Literal:
 			recordTypeHelpers(&h, n.Type)
 		case *ir.Conversion:
 			recordTypeHelpers(&h, n.Type)
 		}
-		return false
-	})
+		return nil
+	}})
 	return h
 }
 

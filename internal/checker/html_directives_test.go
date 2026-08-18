@@ -67,12 +67,12 @@ func checkOptimizeLower(t *testing.T, src string) *ir.Package {
 // to a func with the given Intrinsic id.
 func pkgHasIntrinsicCall(pkg *ir.Package, id string) bool {
 	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) bool {
+	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
 		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == id {
 			found = true
-			return true
+			return ir.SkipAll
 		}
-		return false
-	})
+		return nil
+	}})
 	return found
 }

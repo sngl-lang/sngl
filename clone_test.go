@@ -48,12 +48,12 @@ func clearAnalysisTables(pkg *ir.Package) {
 
 func callFuncPtrs(pkg *ir.Package) map[*ir.Func]bool {
 	m := map[*ir.Func]bool{}
-	ir.Walk(pkg, ir.VisitorFuncs{
-		Expr: func(e ir.Expr) bool {
+	ir.InspectPackage(pkg, ir.Inspector{
+		Expr: func(e ir.Expr) error {
 			if c, ok := e.(*ir.Call); ok && c.Func != nil {
 				m[c.Func] = true
 			}
-			return false
+			return nil
 		},
 	})
 	return m
