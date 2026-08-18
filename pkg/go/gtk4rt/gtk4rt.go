@@ -127,6 +127,7 @@ import "C"
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"unsafe"
 
@@ -356,11 +357,26 @@ func Run(build func(app Handle) Handle) int {
 	return int(C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil))
 }
 
+// Init initializes GTK. It is idempotent (gtk_init may be called repeatedly)
+// and is used by the test-agent harness to materialise widgets outside a
+// running application (e.g. to fire event invokers against real GTK objects).
+func Init() { C.gtk_init() }
+
 // SnapshotModel builds a widget tree via build, presents it, waits for layout,
 // and writes a width×height PNG of the top-level window to outPath. It requires
-// an X11/Wayland display. Used by the gtk4 snapshot/test harness; the GTK
-// bindings it needs are compiled once here rather than per generated program.
+// an X11/Wayland display.
 func SnapshotModel(build func(app Handle) Handle, width, height int, outPath string) error {
+	data, err := SnapshotModelBytes(build, width, height)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outPath, data, 0o644)
+}
+
+// SnapshotModelBytes is SnapshotModel returning the PNG as bytes rather than
+// writing a file. Used by the test-agent snapshot bridge. The GTK bindings it
+// needs are compiled once here rather than per generated program.
+func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byte, error) {
 	runtime.LockOSThread()
 	C.gtk_init()
 
@@ -376,21 +392,28 @@ func SnapshotModel(build func(app Handle) Handle, width, height int, outPath str
 		if gerr != nil {
 			C.g_error_free(gerr)
 		}
-		return fmt.Errorf("g_application_register failed")
+		return nil, fmt.Errorf("g_application_register failed")
 	}
 
 	win := build(Handle(unsafe.Pointer(app)))
 	if win == nil {
-		return fmt.Errorf("build returned nil window")
+		return nil, fmt.Errorf("build returned nil window")
 	}
 	C.gtk_window_set_default_size((*C.GtkWindow)(p(win)), C.int(width), C.int(height))
 	C.gtk_window_present((*C.GtkWindow)(p(win)))
 	C.sngl_pump_until_mapped(widget(win), 1000)
 
-	cPath, freePath := cstr(outPath)
+	f, err := os.CreateTemp("", "sngl-snap-*.png")
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	defer os.Remove(f.Name())
+
+	cPath, freePath := cstr(f.Name())
 	defer freePath()
 	if rc := C.sngl_snapshot(widget(win), C.int(width), C.int(height), cPath); rc != 0 {
-		return fmt.Errorf("sngl_snapshot rc=%d", int(rc))
+		return nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
 	}
-	return nil
+	return os.ReadFile(f.Name())
 }

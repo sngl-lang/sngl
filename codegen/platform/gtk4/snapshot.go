@@ -35,14 +35,13 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		Pkg:  pkg,
 		Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{
-			"package":    "main",
-			"gtk4NoWrap": true,
+			"package": "main",
 		}),
 	}, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generating gtk4 code: %w", err)
 	}
 
-	if err := writeGtk4SnapshotHarness(tmpDir, false); err != nil {
+	if err := writeGtk4SnapshotHarness(tmpDir, dirIsWrapped(tmpDir)); err != nil {
 		return nil, err
 	}
 	if err := writeGtk4GoMod(tmpDir, ""); err != nil {
@@ -155,7 +154,55 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	return results, nil
 }
 
-func writeGtk4SnapshotHarness(dir string, _ bool) error {
+// dirIsWrapped reports whether the gtk4 code generated into dir is wrapped-mode
+// (no inline cgo). It keys off model.go lacking an `import "C"`, so the snapshot
+// harness can match the model's BuildUI signature (gtk4rt.Handle vs cgo).
+func dirIsWrapped(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, "model.go"))
+	if err != nil {
+		return false
+	}
+	return !bytes.Contains(data, []byte(`import "C"`))
+}
+
+func writeGtk4SnapshotHarness(dir string, wrapped bool) error {
+	if wrapped {
+		harness := `package main
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+)
+
+func main() {
+	if len(os.Args) < 4 {
+		fmt.Fprintln(os.Stderr, "usage: snapshot <out.png> <width> <height>")
+		os.Exit(1)
+	}
+	outPath := os.Args[1]
+	w, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad width: %v\n", err)
+		os.Exit(1)
+	}
+	h, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad height: %v\n", err)
+		os.Exit(1)
+	}
+	if err := gtk4rt.SnapshotModel(func(app gtk4rt.Handle) gtk4rt.Handle {
+		return New().BuildUI(app)
+	}, w, h, outPath); err != nil {
+		fmt.Fprintln(os.Stderr, "snapshot failed:", err)
+		os.Exit(1)
+	}
+}
+`
+		return os.WriteFile(filepath.Join(dir, "snapshot_main.go"), []byte(harness), 0o644)
+	}
 	harness := `package main
 
 ` + gtk4SnapshotCgo + `

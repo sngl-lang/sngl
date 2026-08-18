@@ -250,6 +250,83 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 	b.WriteString("}\n\n")
 }
 
+// agentMainBytes returns the agent-mode agent_main.go. In wrapped mode it is
+// cgo-free (gtk_init → gtk4rt.Init); otherwise it returns the caller's cgo
+// source unchanged.
+func agentMainBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
+	if !wrapped {
+		return cgoSrc
+	}
+	return []byte(`package ` + pkg + `
+
+import (
+	"sync"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+)
+
+var gtkInit sync.Once
+
+var currentModel *Model
+
+func setCurrentTestModel(m *Model) { currentModel = m }
+
+func newTestComponent() *Model {
+	gtkInit.Do(func() { gtk4rt.Init() })
+	m := New()
+	m.buildWidgetTree()
+	return m
+}
+
+// Stdlib event payload structs — surfaced for test bodies that construct
+// InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
+type InputEvent struct{ Value string }
+type ChangeEvent struct{ Value string }
+type SubmitEvent struct{ Value string }
+
+func main() { testagent.Main() }
+`)
+}
+
+// agentSnapshotBytes returns the agent-mode snapshot.go. In wrapped mode the
+// snapshot goes through gtk4rt (cgo-free); otherwise the caller's cgo source.
+func agentSnapshotBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
+	if !wrapped {
+		return cgoSrc
+	}
+	return []byte(`package ` + pkg + `
+
+import (
+	"fmt"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+)
+
+func currentTestModel() *Model { return currentModel }
+
+func snapshotBytesGtk(m *Model) (string, []byte, error) {
+	if m == nil {
+		return "", nil, fmt.Errorf("no current model registered")
+	}
+	data, err := gtk4rt.SnapshotModelBytes(func(app gtk4rt.Handle) gtk4rt.Handle {
+		return m.BuildUI(app)
+	}, 800, 600)
+	if err != nil {
+		return "", nil, err
+	}
+	return "image/png", data, nil
+}
+
+func init() {
+	testagent.RegisterSnapshot(func() (string, []byte, error) {
+		return snapshotBytesGtk(currentTestModel())
+	})
+}
+`)
+}
+
 // emitGTK4MainWrapped emits the wrapped-mode program entry point. All GTK
 // bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free.
 func emitGTK4MainWrapped(b *strings.Builder) {
