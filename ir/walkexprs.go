@@ -5,327 +5,364 @@ import (
 	"fmt"
 )
 
-// SkipDir and SkipAll are sentinel errors an Inspector callback returns to
-// steer the traversal, mirroring fs.WalkDir:
+// SkipDir and SkipAll are sentinel errors a visit callback returns to steer the
+// traversal, mirroring fs.WalkDir:
 //
 //   - return nil        — descend into the visited node's children (default).
 //   - return SkipDir    — do not descend into this node's children, but continue
 //     with its siblings (a per-branch prune).
-//   - return SkipAll    — stop the whole walk; the Inspect* call returns nil.
-//   - return other err  — stop the whole walk; the Inspect* call returns err.
+//   - return SkipAll    — stop the whole walk; the entry point returns nil.
+//   - return other err  — stop the whole walk; the entry point returns err.
 var (
 	SkipDir = errors.New("ir: skip this node's children")
 	SkipAll = errors.New("ir: skip everything and stop the walk")
 )
 
-// Inspector holds the optional per-node callbacks for the Inspect* family.
-// Either field may be nil; the corresponding node kind is still descended into.
-// Each callback returns an error per the SkipDir/SkipAll contract above.
-type Inspector struct {
-	Stmt func(Stmt) error
-	Expr func(Expr) error
+// Rewrite is the base traversal. It visits every node reachable from root in a
+// single pre-order pass; visit returns the (possibly replaced) node plus a
+// control error. The returned node is written back into its parent slot, so a
+// callback that returns its input unchanged is a read-only visit (that is what
+// Walk is). A replacement MUST be the same kind as the input — an Expr for an
+// expression slot, a Stmt for a statement slot — or the walk panics writing it
+// back.
+//
+// root may be a *Package, *Func, []Stmt, Stmt, or Expr (panics otherwise). For a
+// container root (*Package/*Func/[]Stmt) replacements land in the container; for
+// a bare Stmt/Expr root, replacing the root node itself is not observable (the
+// root is passed by value) — rewrite its children, or use a container root.
+//
+// Panics on an unknown node kind, so every new IR shape extends this one
+// scaffold and all consumers stay in lockstep.
+func Rewrite(root any, visit func(Node) (Node, error)) error {
+	w := rewriter{visit: visit}
+	w.root(root)
+	return w.err
 }
 
-// InspectPackage walks every statement and expression reachable from pkg in a
-// single pre-order traversal, invoking in.Stmt / in.Expr on each. This is the
-// general read-only visitor; the roots covered are package consts, vars (init +
-// handlers), funcs, components (vars + funcs + timers + body), package timers,
-// and windows. Container statements — If/For/PlatformFilter/SlotInst/
-// ErrorBoundary/Window/ContextProvider — and lambda/closure bodies are
-// descended into. Returns the first non-sentinel error a callback produced, or
-// nil (SkipAll is swallowed). Panics on an unknown node kind, so every new IR
-// shape extends this one scaffold and all consumers stay in lockstep.
-func InspectPackage(pkg *Package, in Inspector) error {
-	if pkg == nil {
+// Walk visits every node reachable from root in pre-order (read-only): the
+// callback cannot replace nodes. A convenience over Rewrite with an identity
+// replacement.
+func Walk(root any, visit func(Node) error) error {
+	return Rewrite(root, func(n Node) (Node, error) { return n, visit(n) })
+}
+
+// WalkStmts is a read-only walk whose callback fires only on statements.
+func WalkStmts(root any, fn func(Stmt) error) error {
+	return Walk(root, func(n Node) error {
+		if s, ok := n.(Stmt); ok {
+			return fn(s)
+		}
 		return nil
-	}
-	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
-	w.run(pkg)
-	return w.err
+	})
 }
 
-// InspectFunc walks the statements/expressions of a single function subtree
-// (its param defaults and body), not a whole package.
-func InspectFunc(fn *Func, in Inspector) error {
-	if fn == nil {
+// WalkExprs is a read-only walk whose callback fires only on expressions.
+func WalkExprs(root any, fn func(Expr) error) error {
+	return Walk(root, func(n Node) error {
+		if e, ok := n.(Expr); ok {
+			return fn(e)
+		}
 		return nil
-	}
-	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
-	w.visitFunc(fn)
-	return w.err
+	})
 }
 
-// InspectStmts walks a statement slice (a subtree), not a whole package.
-func InspectStmts(stmts []Stmt, in Inspector) error {
-	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
-	w.visitStmts(stmts)
-	return w.err
+// RewriteStmts rewrites only statements; expressions pass through unchanged.
+func RewriteStmts(root any, fn func(Stmt) (Stmt, error)) error {
+	return Rewrite(root, func(n Node) (Node, error) {
+		if s, ok := n.(Stmt); ok {
+			return fn(s)
+		}
+		return n, nil
+	})
 }
 
-// InspectExpr walks a single expression subtree (the expression and its
-// descendants), not a whole package.
-func InspectExpr(e Expr, in Inspector) error {
-	w := walker{exprFn: in.Expr, stmtFn: in.Stmt}
-	w.visitExpr(e)
-	return w.err
+// RewriteExprs rewrites only expressions; statements pass through unchanged.
+func RewriteExprs(root any, fn func(Expr) (Expr, error)) error {
+	return Rewrite(root, func(n Node) (Node, error) {
+		if e, ok := n.(Expr); ok {
+			return fn(e)
+		}
+		return n, nil
+	})
 }
 
-// walker is the single IR traversal scaffold backing every Inspect* entry
-// point. exprFn and/or stmtFn may be nil; the corresponding nodes are still
-// descended into (so e.g. a stmt-only walk still reaches statements buried
-// inside lambda bodies). done halts the walk (set by SkipAll or a real error);
-// err holds the real error to surface (nil for SkipAll).
-type walker struct {
-	exprFn func(Expr) error
-	stmtFn func(Stmt) error
-	done   bool
-	err    error
+// rewriter is the single IR traversal scaffold. visit is invoked on every node;
+// done halts the walk (set by SkipAll or a real error) and err holds the real
+// error to surface (nil for SkipAll).
+type rewriter struct {
+	visit func(Node) (Node, error)
+	done  bool
+	err   error
 }
 
-// gate applies a callback's returned error to the walk state and reports
-// whether to descend into the current node's children.
-func (w *walker) gate(err error) (descend bool) {
+// step invokes visit on n and reports the replacement plus whether to descend
+// into its children.
+func (w *rewriter) step(n Node) (repl Node, descend bool) {
+	nn, err := w.visit(n)
 	switch {
 	case err == nil:
-		return true
+		return nn, true
 	case err == SkipDir:
-		return false
+		return nn, false
 	case err == SkipAll:
 		w.done = true
-		return false
+		return nn, false
 	default:
 		w.err = err
 		w.done = true
-		return false
+		return nn, false
 	}
 }
 
-func (w *walker) visitExpr(e Expr) {
+func (w *rewriter) expr(e Expr) Expr {
 	if w.done || e == nil {
-		return
+		return e
 	}
-	if w.exprFn != nil {
-		if !w.gate(w.exprFn(e)) {
-			return
-		}
+	nn, descend := w.step(e)
+	e = nn.(Expr)
+	if !descend {
+		return e
 	}
 	switch x := e.(type) {
 	case *Binary:
-		w.visitExpr(x.Left)
-		w.visitExpr(x.Right)
+		x.Left = w.expr(x.Left)
+		x.Right = w.expr(x.Right)
 	case *Unary:
-		w.visitExpr(x.Operand)
+		x.Operand = w.expr(x.Operand)
 	case *Ternary:
-		w.visitExpr(x.Cond)
-		w.visitExpr(x.Then)
-		w.visitExpr(x.Else)
+		x.Cond = w.expr(x.Cond)
+		x.Then = w.expr(x.Then)
+		x.Else = w.expr(x.Else)
 	case *Call:
-		w.visitExpr(x.Receiver)
-		w.visitExpr(x.Callee)
-		for _, a := range x.Args {
-			w.visitExpr(a.Value)
+		x.Receiver = w.expr(x.Receiver)
+		x.Callee = w.expr(x.Callee)
+		for i := range x.Args {
+			x.Args[i].Value = w.expr(x.Args[i].Value)
 		}
 	case *Conversion:
-		w.visitExpr(x.Operand)
+		x.Operand = w.expr(x.Operand)
 	case *Select:
-		w.visitExpr(x.Operand)
+		x.Operand = w.expr(x.Operand)
 	case *Index:
-		w.visitExpr(x.Operand)
-		w.visitExpr(x.Idx)
+		x.Operand = w.expr(x.Operand)
+		x.Idx = w.expr(x.Idx)
 	case *ListLit:
-		for _, el := range x.Elems {
-			w.visitExpr(el)
+		for i := range x.Elems {
+			x.Elems[i] = w.expr(x.Elems[i])
 		}
 	case *MapLitIR:
-		for _, kv := range x.Entries {
-			w.visitExpr(kv.Key)
-			w.visitExpr(kv.Value)
+		for i := range x.Entries {
+			x.Entries[i].Key = w.expr(x.Entries[i].Key)
+			x.Entries[i].Value = w.expr(x.Entries[i].Value)
 		}
 	case *StructLit:
-		for _, f := range x.Fields {
-			w.visitExpr(f.Value)
+		for i := range x.Fields {
+			x.Fields[i].Value = w.expr(x.Fields[i].Value)
 		}
 	case *Lambda:
 		if x.Func != nil {
-			w.visitFunc(x.Func)
+			w.fn(x.Func)
 		}
 	case *Spread:
-		w.visitExpr(x.Operand)
-	case *Literal, *Ident:
-		// Leaf — no sub-expressions.
+		x.Operand = w.expr(x.Operand)
 	case *Closure:
 		if x.Func != nil {
-			w.visitFunc(x.Func)
+			w.fn(x.Func)
 		}
-	case *ContextRead:
-		// Leaf reference — no sub-expressions.
+	case *Literal, *Ident, *ContextRead:
+		// Leaf — no sub-expressions.
 	default:
-		panic(fmt.Sprintf("ir.WalkExprs: unhandled ir.Expr %T", x))
+		panic(fmt.Sprintf("ir.Rewrite: unhandled ir.Expr %T", x))
 	}
+	return e
 }
 
-func (w *walker) visitStmt(s Stmt) {
+func (w *rewriter) stmt(s Stmt) Stmt {
 	if w.done || s == nil {
-		return
+		return s
 	}
-	if w.stmtFn != nil {
-		if !w.gate(w.stmtFn(s)) {
-			return
-		}
+	nn, descend := w.step(s)
+	s = nn.(Stmt)
+	if !descend {
+		return s
 	}
 	switch n := s.(type) {
 	case *NodeInst:
-		for _, p := range n.Props {
-			w.visitExpr(p.Value)
+		for i := range n.Props {
+			n.Props[i].Value = w.expr(n.Props[i].Value)
 		}
 		for _, h := range n.Handlers {
-			w.visitFunc(h.Func)
+			if h.Func != nil {
+				w.fn(h.Func)
+			}
 		}
-		w.visitStmts(n.Children)
+		n.Children = w.stmts(n.Children)
 	case *CallStmt:
 		if n.Call != nil {
-			// The Call itself is an expression — feed it through exprFn so
-			// callers that key off "any *Call" detect it at the stmt
-			// boundary as well as via expression descent.
-			if w.exprFn != nil {
-				if !w.gate(w.exprFn(n.Call)) {
-					return
-				}
-			}
-			w.visitExpr(n.Call.Receiver)
-			w.visitExpr(n.Call.Callee)
-			for _, a := range n.Call.Args {
-				w.visitExpr(a.Value)
+			// The Call is an expression slot — visiting it descends into its
+			// receiver/callee/args and keeps it detectable at the stmt boundary.
+			if c, ok := w.expr(n.Call).(*Call); ok {
+				n.Call = c
 			}
 		}
 	case *Assign:
-		w.visitExpr(n.Target)
-		w.visitExpr(n.Value)
+		n.Target = w.expr(n.Target)
+		n.Value = w.expr(n.Value)
 	case *Toggle:
-		w.visitExpr(n.Target)
+		n.Target = w.expr(n.Target)
 	case *Emit:
-		for _, a := range n.Args {
-			w.visitExpr(a.Value)
+		for i := range n.Args {
+			n.Args[i].Value = w.expr(n.Args[i].Value)
 		}
 	case *LocalVar:
-		w.visitExpr(n.Init)
+		n.Init = w.expr(n.Init)
 	case *Return:
-		w.visitExpr(n.Value)
+		n.Value = w.expr(n.Value)
 	case *If:
-		w.visitExpr(n.Cond)
-		w.visitStmts(n.Body)
-		w.visitStmts(n.Else)
+		n.Cond = w.expr(n.Cond)
+		n.Body = w.stmts(n.Body)
+		n.Else = w.stmts(n.Else)
 	case *For:
-		w.visitExpr(n.Iter)
-		w.visitStmts(n.Body)
-		w.visitStmts(n.Else)
+		n.Iter = w.expr(n.Iter)
+		n.Body = w.stmts(n.Body)
+		n.Else = w.stmts(n.Else)
 	case *SlotInst:
-		w.visitStmts(n.Children)
+		n.Children = w.stmts(n.Children)
 	case *PlatformFilter:
-		w.visitStmts(n.Body)
+		n.Body = w.stmts(n.Body)
 	case *ErrorBoundary:
-		w.visitStmts(n.Children)
+		n.Children = w.stmts(n.Children)
 	case *Window:
-		w.visitExpr(n.Href)
-		w.visitExpr(n.Title)
-		w.visitExpr(n.Favicon)
+		n.Href = w.expr(n.Href)
+		n.Title = w.expr(n.Title)
+		n.Favicon = w.expr(n.Favicon)
 		for _, v := range n.Vars {
-			w.visitVar(v)
+			w.varDecl(v)
 		}
 		for _, f := range n.Funcs {
-			w.visitFunc(f)
+			w.fn(f)
 		}
-		w.visitStmts(n.Body)
+		n.Body = w.stmts(n.Body)
 	case *ContextProvider:
-		w.visitStmts(n.Children)
+		n.Value = w.expr(n.Value)
+		n.Children = w.stmts(n.Children)
 	case *CanvasRedrawStmt:
 		// No expressions to walk.
 	default:
-		panic(fmt.Sprintf("ir.WalkExprs: unhandled ir.Stmt %T", n))
+		panic(fmt.Sprintf("ir.Rewrite: unhandled ir.Stmt %T", n))
 	}
+	return s
 }
 
-func (w *walker) visitStmts(stmts []Stmt) {
-	for _, s := range stmts {
+func (w *rewriter) stmts(stmts []Stmt) []Stmt {
+	for i := range stmts {
 		if w.done {
-			return
+			break
 		}
-		w.visitStmt(s)
+		stmts[i] = w.stmt(stmts[i])
 	}
+	return stmts
 }
 
-func (w *walker) visitFunc(f *Func) {
+func (w *rewriter) fn(f *Func) {
 	if w.done || f == nil {
 		return
 	}
 	for _, p := range f.Params {
 		if p.Default != nil {
-			w.visitExpr(p.Default)
+			p.Default = w.expr(p.Default)
 		}
 	}
-	w.visitStmts(f.Block)
+	f.Block = w.stmts(f.Block)
 }
 
-func (w *walker) visitVar(v *Var) {
+func (w *rewriter) varDecl(v *Var) {
 	if w.done || v == nil {
 		return
 	}
-	w.visitExpr(v.Init)
+	v.Init = w.expr(v.Init)
 	for _, h := range v.Handlers {
-		w.visitFunc(h.Func)
+		if h.Func != nil {
+			w.fn(h.Func)
+		}
 	}
 }
 
-func (w *walker) run(pkg *Package) {
+func (w *rewriter) timer(t *Timer) {
+	if w.done || t == nil {
+		return
+	}
+	if t.Interval != nil {
+		t.Interval = w.expr(t.Interval)
+	}
+	if t.Enabled != nil {
+		t.Enabled = w.expr(t.Enabled)
+	}
+	w.fn(t.Handler)
+}
+
+func (w *rewriter) pkg(pkg *Package) {
+	if pkg == nil {
+		return
+	}
 	for _, v := range pkg.Consts {
-		w.visitExpr(v.Init)
+		if v.Init != nil {
+			v.Init = w.expr(v.Init)
+		}
 	}
 	for _, v := range pkg.Vars {
-		w.visitVar(v)
+		w.varDecl(v)
 	}
 	for _, f := range pkg.Funcs {
-		w.visitFunc(f)
+		w.fn(f)
 	}
 	for _, c := range pkg.Components {
 		for _, v := range c.Vars {
-			w.visitVar(v)
+			w.varDecl(v)
 		}
 		for _, f := range c.Funcs {
-			w.visitFunc(f)
+			w.fn(f)
 		}
 		for _, t := range c.Timers {
-			if t.Interval != nil {
-				w.visitExpr(t.Interval)
-			}
-			if t.Enabled != nil {
-				w.visitExpr(t.Enabled)
-			}
-			w.visitFunc(t.Handler)
+			w.timer(t)
 		}
-		w.visitStmts(c.Body)
+		c.Body = w.stmts(c.Body)
 	}
 	for _, t := range pkg.Timers {
-		if t.Interval != nil {
-			w.visitExpr(t.Interval)
-		}
-		if t.Enabled != nil {
-			w.visitExpr(t.Enabled)
-		}
-		w.visitFunc(t.Handler)
+		w.timer(t)
 	}
 	for _, win := range pkg.Windows {
-		w.visitExpr(win.Href)
-		w.visitExpr(win.Title)
-		w.visitExpr(win.Favicon)
+		win.Href = w.expr(win.Href)
+		win.Title = w.expr(win.Title)
+		win.Favicon = w.expr(win.Favicon)
 		for _, v := range win.Vars {
-			w.visitVar(v)
+			w.varDecl(v)
 		}
 		for _, f := range win.Funcs {
-			w.visitFunc(f)
+			w.fn(f)
 		}
 		if win.ErrorHandler != nil {
-			w.visitFunc(win.ErrorHandler.Func)
+			w.fn(win.ErrorHandler.Func)
 		}
-		w.visitStmts(win.Body)
+		win.Body = w.stmts(win.Body)
+	}
+}
+
+func (w *rewriter) root(root any) {
+	switch r := root.(type) {
+	case nil:
+		// no-op
+	case *Package:
+		w.pkg(r)
+	case *Func:
+		w.fn(r)
+	case []Stmt:
+		w.stmts(r)
+	case Stmt:
+		w.stmt(r)
+	case Expr:
+		w.expr(r)
+	default:
+		panic(fmt.Sprintf("ir.Rewrite: unsupported root %T", root))
 	}
 }

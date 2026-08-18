@@ -37,7 +37,7 @@ func stampUsage(pkg *ir.Package, _ Caps, _ Options) error {
 // the Go backend already used, now shared by every backend.
 func pkgUsesI18n(pkg *ir.Package) bool {
 	found := false
-	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
 		switch n := e.(type) {
 		case *ir.Call:
 			if ir.IsI18nCall(n) {
@@ -51,7 +51,7 @@ func pkgUsesI18n(pkg *ir.Package) bool {
 			}
 		}
 		return nil
-	}})
+	})
 	return found
 }
 
@@ -59,13 +59,13 @@ func pkgUsesI18n(pkg *ir.Package) bool {
 // (Alert.toast/info/warn/error).
 func pkgUsesAlert(pkg *ir.Package) bool {
 	found := false
-	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
 		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Receiver == "Alert" {
 			found = true
 			return ir.SkipAll
 		}
 		return nil
-	}})
+	})
 	return found
 }
 

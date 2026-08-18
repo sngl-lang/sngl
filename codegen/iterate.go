@@ -83,7 +83,7 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 // at the top level or inside expanded for-loops, if-blocks, and platform filters.
 func collectWindows(stmts []ir.Stmt) []*ir.Window {
 	var windows []*ir.Window
-	ir.InspectStmts(stmts, ir.Inspector{Stmt: func(s ir.Stmt) error {
+	ir.WalkStmts(stmts, func(s ir.Stmt) error {
 		if w, ok := s.(*ir.Window); ok {
 			windows = append(windows, w)
 			// A window is a leaf here: its own body is a separate root, and
@@ -91,7 +91,7 @@ func collectWindows(stmts []ir.Stmt) []*ir.Window {
 			return ir.SkipDir
 		}
 		return nil
-	}})
+	})
 	return windows
 }
 

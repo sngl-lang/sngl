@@ -37,7 +37,7 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 	// Walk the same selective root set as before: component bodies/funcs/timer
 	// handlers, package funcs, window bodies/funcs (not var/const inits). A
 	// callback's error (an injection failure) bubbles straight out of Inspect.
-	walk := func(stmts []ir.Stmt) error { return ir.InspectStmts(stmts, recvInspector()) }
+	walk := func(stmts []ir.Stmt) error { return ir.Walk(stmts, recvVisit) }
 	for _, comp := range pkg.Components {
 		if err := walk(comp.Body); err != nil {
 			return err
@@ -73,29 +73,21 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 	return nil
 }
 
-// recvInspector returns the shared-visitor callbacks. The Expr callback injects
-// the implicit receiver into every method Call (the visitor descends into args
-// and receiver for us) and returns any injection error to bubble out. The Stmt
-// callback preserves the original quirk that an Assign's target is not visited —
-// only its value.
-func recvInspector() ir.Inspector {
-	return ir.Inspector{
-		Stmt: func(s ir.Stmt) error {
-			if a, ok := s.(*ir.Assign); ok {
-				if err := ir.InspectExpr(a.Value, recvInspector()); err != nil {
-					return err
-				}
-				return ir.SkipDir
-			}
-			return nil
-		},
-		Expr: func(e ir.Expr) error {
-			if c, ok := e.(*ir.Call); ok {
-				return injectRecv(c)
-			}
-			return nil
-		},
+// recvVisit is the shared-visitor callback. It injects the implicit receiver
+// into every method Call (the walker descends into args and receiver for us) and
+// returns any injection error to bubble out. It preserves the original quirk
+// that an Assign's target is not visited — only its value.
+func recvVisit(n ir.Node) error {
+	switch x := n.(type) {
+	case *ir.Assign:
+		if err := ir.Walk(x.Value, recvVisit); err != nil {
+			return err
+		}
+		return ir.SkipDir
+	case *ir.Call:
+		return injectRecv(x)
 	}
+	return nil
 }
 
 // injectRecv prepends the synthesized receiver to a Pattern-A method call. A

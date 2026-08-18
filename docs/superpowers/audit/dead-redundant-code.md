@@ -47,12 +47,19 @@ variously need subtree roots, per-branch pruning, mutation, enclosing-function
 context, or type traversal. Doing it as a project instead:
 
 **Done — visitor generalized + read-only consumers migrated:**
-- `ir/walkexprs.go`: an `fs.WalkDir`-style error contract — a callback returns
-  `nil` (descend), `ir.SkipDir` (prune this node's children, continue siblings),
-  `ir.SkipAll` (stop; swallowed), or any other error (stop and bubble it out).
-  Subtree entry points `InspectPackage`/`InspectFunc`/`InspectStmts`/
-  `InspectExpr` over the one scaffold. The old bool `Walk`/`WalkExprs`/
-  `WalkStmts`/`VisitorFuncs` were removed and every caller hand-migrated.
+- `ir/node.go`: a common `Node` marker interface, embedded by both `Stmt` and
+  `Expr`, so the visitor presents a single `func(Node)` callback (like
+  `go/ast`).
+- `ir/walkexprs.go`: one **rewrite** engine with an `fs.WalkDir`-style error
+  contract — a callback returns `nil` (descend), `ir.SkipDir` (prune this node's
+  children, continue siblings), `ir.SkipAll` (stop; swallowed), or any other
+  error (stop and bubble it out). `Rewrite(root, func(Node)(Node,error))` is the
+  base (the returned node is written back into its parent slot); `Walk` is a
+  read-only identity rewrite; `WalkStmts`/`WalkExprs` and `RewriteStmts`/
+  `RewriteExprs` are kind-filtered conveniences. `root` is a `*Package`, `*Func`,
+  `[]Stmt`, `Stmt`, or `Expr`. In-place mutation needs no special path (the
+  callback holds a pointer — that's how `NoImplicitRecv` injects receivers);
+  node *replacement* is the `Rewrite*` family.
 - Migrated: `html/placement.go` (prune semantics → `SkipDir`; and its directive
   check now returns its build error straight through the walker),
   `html/rendermodel.go` `exprIsReactive`, `iterate.go` `collectWindows`,
@@ -71,24 +78,20 @@ behaviour):**
   queries.
 - `optimize/interpret.go` — an interpreter dispatch, not a traversal.
 
-**Phase 2 — done, with a finding:** a separate "mutation walker" abstraction
-turned out **not** to be warranted.
+**Phase 2:**
 - `lower/normalize_method_calls.go` — migrated. Its only mutation is injecting a
-  receiver into a Call *in place* (not node replacement), so it uses the existing
-  visitor with a mutating Expr callback that returns its error directly (the
-  error contract made the whole state struct — `err`, plus the dead `pkg`/
-  `currentComp` — go away; it's now free functions).
-- `lower/lambda.go` — left as-is. Its statement traversal already routes through
-  `walkPackage`; what remains hand-rolled (`liftLambdas`/`rewriteExpr`) is
-  context-dependent node *replacement* (pushing capture frames as it descends).
-  A generic rewrite walker wouldn't remove that complexity — the hard part is the
-  frame/capture management, not the traversal — so forcing it through one would
-  add indirection at real risk to closure correctness. `analyzeCaptures` (a
-  read-only capture analysis) is a lower-value candidate that could migrate later.
-
-**Also:** the bool `Walk`/`WalkExprs`/`WalkStmts`/`VisitorFuncs` wrappers were
-removed outright and all ~12 call sites hand-migrated to the `Inspect*` +
-error-sentinel API — no deprecated surface left behind.
+  receiver into a Call *in place* (not node replacement), so it uses `Walk` with
+  a mutating callback that returns its error directly (the error contract made
+  the whole state struct — `err`, plus the dead `pkg`/`currentComp` — go away;
+  it's now free functions).
+- The base `Rewrite` engine now exists (node replacement, `Rewrite*` family), so
+  the "no mutation walker" framing is superseded: in-place mutation uses `Walk`,
+  replacement uses `Rewrite`. `lower/lambda.go` is still left custom — not for
+  lack of a rewrite walker, but because its lifter is context-dependent (pushes
+  capture frames as it descends), which a generic post-order rewrite doesn't
+  model; forcing it through `Rewrite` would risk closure correctness for no real
+  simplification. `analyzeCaptures` (a read-only capture analysis) is a
+  lower-value `Walk` candidate that could migrate later.
 
 ### §2.5 Minor overlaps (LOW) — remaining
 

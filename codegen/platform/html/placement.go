@@ -81,7 +81,7 @@ func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
 // subtree, so we do not descend into it for the default rule).
 func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 	found := false
-	ir.InspectExpr(e, ir.Inspector{Expr: func(x ir.Expr) error {
+	ir.WalkExprs(e, func(x ir.Expr) error {
 		c, ok := x.(*ir.Call)
 		if !ok {
 			return nil
@@ -98,7 +98,7 @@ func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 			}
 		}
 		return nil
-	}})
+	})
 	return found
 }
 
@@ -109,7 +109,7 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 		return Frontend
 	}
 	backend := false
-	ir.InspectStmts(fn.Block, ir.Inspector{Expr: func(e ir.Expr) error {
+	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
 		// exprPlacement already considers e's whole subtree (and honors
 		// directive-wrapper pinning), so classify e and prune its children:
 		// descending further would re-inspect the inside of a directive
@@ -118,7 +118,7 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 			backend = true
 		}
 		return ir.SkipDir // prune subtree: e was classified as a whole
-	}})
+	})
 	if backend {
 		return Backend
 	}
@@ -147,7 +147,7 @@ func checkPlacementDirectives(pkg *ir.Package) error {
 	}
 	// The callback returns its build error directly; InspectPackage stops the
 	// walk and surfaces it (a non-sentinel error).
-	return ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
+	return ir.WalkExprs(pkg, func(e ir.Expr) error {
 		c, ok := e.(*ir.Call)
 		if !ok || c.Func == nil || len(c.Args) == 0 {
 			return nil
@@ -168,20 +168,20 @@ func checkPlacementDirectives(pkg *ir.Package) error {
 			}
 		}
 		return nil
-	}})
+	})
 }
 
 // wrapsBackendDirective reports whether e (or any subexpression) is an
 // html.backend(...) call — i.e. a value explicitly pinned server-side.
 func wrapsBackendDirective(e ir.Expr) bool {
 	found := false
-	ir.InspectExpr(e, ir.Inspector{Expr: func(x ir.Expr) error {
+	ir.WalkExprs(e, func(x ir.Expr) error {
 		if c, ok := x.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlBackendIntrinsic {
 			found = true
 			return ir.SkipDir
 		}
 		return nil
-	}})
+	})
 	return found
 }
 
@@ -218,7 +218,7 @@ func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
 		return out
 	}
 	collect := func(sub ir.Expr) {
-		ir.InspectExpr(sub, ir.Inspector{Expr: func(x ir.Expr) error {
+		ir.WalkExprs(sub, func(x ir.Expr) error {
 			c, ok := x.(*ir.Call)
 			if !ok || c.Func == nil {
 				return nil
@@ -233,15 +233,15 @@ func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
 				out[nativeFuncKey{importPath: c.Func.NativePkg, name: c.Func.Name}] = true
 			}
 			return nil
-		}})
+		})
 	}
-	ir.InspectPackage(pkg, ir.Inspector{Expr: func(e ir.Expr) error {
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
 		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlFrontendIntrinsic {
 			for _, a := range c.Args {
 				collect(a.Value)
 			}
 		}
 		return nil // never short-circuit: scan the whole package
-	}})
+	})
 	return out
 }

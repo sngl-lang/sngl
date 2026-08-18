@@ -18,7 +18,7 @@ func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
 		reads:  make(map[*ir.Var]struct{}),
 		writes: make(map[*ir.Var]struct{}),
 	}
-	ir.InspectStmts(f.Block, w.inspector())
+	ir.Walk(f.Block, w.visit)
 
 	if w.mutates {
 		f.Purity = ir.PurityMutates
@@ -63,39 +63,32 @@ func (w *effectWalker) externalVar(e ir.Expr) *ir.Var {
 	return nil
 }
 
-// inspector returns the shared-visitor callbacks for the effect analysis. The
-// Expr callback records reads of external reactive vars. The Stmt callback
-// handles the write side: an Assign/Toggle target is a write (via recordWrite),
-// not a read, so those nodes are pruned (SkipChildren) and their read-bearing
-// operands walked explicitly; an Emit is an observable side effect. Every other
-// statement is descended into by the shared walker, which visits its
-// expressions (recording reads) and reaches statements nested inside handler,
-// timer, and lambda/closure bodies.
-func (w *effectWalker) inspector() ir.Inspector {
-	return ir.Inspector{
-		Expr: func(e ir.Expr) error {
-			if v := w.externalVar(e); v != nil {
-				w.reads[v] = struct{}{}
-			}
-			return nil
-		},
-		Stmt: func(s ir.Stmt) error {
-			switch n := s.(type) {
-			case *ir.Assign:
-				w.recordWrite(n.Target)
-				ir.InspectExpr(n.Value, w.inspector())
-				return ir.SkipDir
-			case *ir.Toggle:
-				w.recordWrite(n.Target)
-				return ir.SkipDir
-			case *ir.Emit:
-				// Emitting an event fires parent handlers — an observable
-				// side effect. Args are read; the walker descends into them.
-				w.mutates = true
-			}
-			return nil
-		},
+// visit is the shared-visitor callback for the effect analysis. An Assign/Toggle
+// target is a write (via recordWrite), not a read, so those nodes are pruned
+// (SkipDir) and their read-bearing operands walked explicitly; an Emit is an
+// observable side effect; every other expression records a read of an external
+// reactive var. Every other statement is descended into by the walker, which
+// visits its expressions (recording reads) and reaches statements nested inside
+// handler, timer, and lambda/closure bodies.
+func (w *effectWalker) visit(n ir.Node) error {
+	switch x := n.(type) {
+	case *ir.Assign:
+		w.recordWrite(x.Target)
+		ir.Walk(x.Value, w.visit)
+		return ir.SkipDir
+	case *ir.Toggle:
+		w.recordWrite(x.Target)
+		return ir.SkipDir
+	case *ir.Emit:
+		// Emitting an event fires parent handlers — an observable side
+		// effect. Args are read; the walker descends into them.
+		w.mutates = true
+	case ir.Expr:
+		if v := w.externalVar(x); v != nil {
+			w.reads[v] = struct{}{}
+		}
 	}
+	return nil
 }
 
 // recordWrite classifies an assignment/toggle target. A plain identifier bound
@@ -116,5 +109,5 @@ func (w *effectWalker) recordWrite(target ir.Expr) {
 	// Field/index/deref target: conservatively a side effect. The target is
 	// still walked for the reads it performs (e.g. `m[k] = v` reads m and k).
 	w.mutates = true
-	ir.InspectExpr(target, w.inspector())
+	ir.Walk(target, w.visit)
 }

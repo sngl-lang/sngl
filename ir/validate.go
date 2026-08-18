@@ -23,68 +23,59 @@ func Validate(pkg *Package) []error {
 		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
-	InspectPackage(pkg, Inspector{
-		Expr: func(e Expr) error {
-			switch x := e.(type) {
-			case *Ident:
-				// A user-level identifier must resolve to a symbol. Excluded:
-				// pass-synthesized refs (Synthesized), element refs (#id),
-				// bare enum members (carry Member instead of Sym), and the
-				// magic platform-gate identifiers (PLATFORM/LANGUAGE) which
-				// the checker resolves without a symbol.
-				if x.Sym == nil && !x.Synthesized && !x.IsElementRef && x.Member == "" && !isMagicIdent(x.Name) {
-					add("unresolved identifier %q (nil Sym)", x.Name)
-				}
-			case *Call:
-				if x.Type == nil {
-					add("call %s has nil return Type", callDesc(x))
-				}
-				if x.Func == nil && x.Callee == nil && x.Receiver == nil {
-					add("call %s has no Func, Callee, or Receiver", callDesc(x))
-				}
-				for i, a := range x.Args {
-					if a.Value == nil {
-						add("call %s arg %d has nil Value", callDesc(x), i)
-					}
-				}
-			case *Binary:
-				if x.Left == nil || x.Right == nil {
-					add("binary %v has nil operand", x.Op)
-				}
-			case *Unary:
-				if x.Operand == nil {
-					add("unary %v has nil operand", x.Op)
-				}
-			case *Index:
-				if x.Operand == nil || x.Idx == nil {
-					add("index expression has nil operand or index")
+	Walk(pkg, func(n Node) error {
+		switch x := n.(type) {
+		case *Ident:
+			// A user-level identifier must resolve to a symbol. Excluded:
+			// pass-synthesized refs (Synthesized), element refs (#id),
+			// bare enum members (carry Member instead of Sym), and the
+			// magic platform-gate identifiers (PLATFORM/LANGUAGE) which
+			// the checker resolves without a symbol.
+			if x.Sym == nil && !x.Synthesized && !x.IsElementRef && x.Member == "" && !isMagicIdent(x.Name) {
+				add("unresolved identifier %q (nil Sym)", x.Name)
+			}
+		case *Call:
+			if x.Type == nil {
+				add("call %s has nil return Type", callDesc(x))
+			}
+			if x.Func == nil && x.Callee == nil && x.Receiver == nil {
+				add("call %s has no Func, Callee, or Receiver", callDesc(x))
+			}
+			for i, a := range x.Args {
+				if a.Value == nil {
+					add("call %s arg %d has nil Value", callDesc(x), i)
 				}
 			}
-			return nil
-		},
-		Stmt: func(s Stmt) error {
-			switch n := s.(type) {
-			case *Assign:
-				if n.Target == nil || n.Value == nil {
-					add("assign statement has nil Target or Value")
-				}
-			case *If:
-				if n.Cond == nil {
-					// A folded always-true If legitimately carries Cond == nil
-					// (see optimize.foldIfStmt); accept it.
-				}
-				checkNoNilStmts(add, "if body", n.Body)
-				checkNoNilStmts(add, "if else", n.Else)
-			case *For:
-				if n.Iter == nil {
-					add("for statement has nil Iter")
-				}
-				checkNoNilStmts(add, "for body", n.Body)
-			case *NodeInst:
-				checkNoNilStmts(add, "node children", n.Children)
+		case *Binary:
+			if x.Left == nil || x.Right == nil {
+				add("binary %v has nil operand", x.Op)
 			}
-			return nil
-		},
+		case *Unary:
+			if x.Operand == nil {
+				add("unary %v has nil operand", x.Op)
+			}
+		case *Index:
+			if x.Operand == nil || x.Idx == nil {
+				add("index expression has nil operand or index")
+			}
+		case *Assign:
+			if x.Target == nil || x.Value == nil {
+				add("assign statement has nil Target or Value")
+			}
+		case *If:
+			// A folded always-true If legitimately carries Cond == nil
+			// (see optimize.foldIfStmt); accept it.
+			checkNoNilStmts(add, "if body", x.Body)
+			checkNoNilStmts(add, "if else", x.Else)
+		case *For:
+			if x.Iter == nil {
+				add("for statement has nil Iter")
+			}
+			checkNoNilStmts(add, "for body", x.Body)
+		case *NodeInst:
+			checkNoNilStmts(add, "node children", x.Children)
+		}
+		return nil
 	})
 	return errs
 }
