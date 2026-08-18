@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func hasDisplay() bool {
@@ -49,8 +51,8 @@ func TestSnapshotRender(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping real-render snapshot in -short mode")
 	}
-	if !hasDisplay() {
-		t.Skip("gtk4 snapshot needs an X11/Wayland display")
+	if r := testutil.GUIRenderSkipReason(); r != "" {
+		t.Skip(r)
 	}
 
 	build := func(app Handle) Handle {

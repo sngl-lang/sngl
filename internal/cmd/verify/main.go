@@ -59,7 +59,11 @@ var headlessCompositor = func() string {
 // force the wlroots headless backend (no DRM/real output) and a software
 // renderer so the compositor works without a GPU. The GTK4 client renders via
 // GskCairoRenderer (software) so it needs no GL context of its own.
-var headlessEnv = []string{"WLR_BACKENDS=headless", "WLR_RENDERER=pixman"}
+//
+// SNGL_CAGE_ACTIVE marks descendants as already inside a headless compositor,
+// so test binaries whose TestMain self-wraps in cage (see
+// testutil.MaybeReexecUnderCage) don't double-wrap under verify's outer cage.
+var headlessEnv = []string{"WLR_BACKENDS=headless", "WLR_RENDERER=pixman", "SNGL_CAGE_ACTIVE=1"}
 
 // wrapHeadless rewrites (command, args) to run under cage when it is available
 // and a Wayland/X11 session is present (so windows would otherwise pop up). It
