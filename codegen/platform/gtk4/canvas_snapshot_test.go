@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"image"
 	"image/png"
-	"os"
 	"os/exec"
 	"testing"
 
@@ -16,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -31,8 +31,10 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("go toolchain not available")
 	}
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("no display available for gtk4 snapshot")
+	// Presents a real GtkWindow — only safe inside a headless compositor.
+	// Skips (rather than flashing) when cage is unavailable; see TestMain.
+	if r := testutil.GUIRenderSkipReason(); r != "" {
+		t.Skip(r)
 	}
 	// Legitimately skip only when the GTK4 dev libraries are absent (cgo
 	// could not link). If pkg-config reports gtk4 present, the environment
