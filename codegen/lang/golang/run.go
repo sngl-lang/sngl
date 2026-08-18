@@ -52,7 +52,7 @@ func (t *Translator) RunDir(dir, goVersion, goModExtra string, args []string) er
 		return fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	runArgs := append([]string{"run", "."}, args...)
+	runArgs := append([]string{"run", "-trimpath", "."}, args...)
 	slog.Info("exec", "cmd", "go run .", "dir", dir)
 	run := exec.Command(goPath, runArgs...)
 	run.Dir = dir

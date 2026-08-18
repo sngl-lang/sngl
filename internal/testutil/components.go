@@ -352,7 +352,7 @@ func runGoTest(dir string) error {
 		}
 		return fmt.Errorf("go mod tidy: %v\n%s", err, out)
 	}
-	test := exec.Command("go", "test", "./...")
+	test := exec.Command("go", "test", "-trimpath", "./...")
 	test.Dir = dir
 	if out, err := test.CombinedOutput(); err != nil {
 		if reason, ok := skipReasonFromOutput(string(out)); ok {

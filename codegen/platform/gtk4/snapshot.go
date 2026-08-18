@@ -56,7 +56,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	}
 
 	outPath := filepath.Join(tmpDir, "out.png")
-	run := exec.Command(goPath, "run", ".", outPath,
+	run := exec.Command(goPath, "run", "-trimpath", ".", outPath,
 		fmt.Sprintf("%d", width), fmt.Sprintf("%d", height))
 	run.Dir = tmpDir
 	run.Stderr = os.Stderr
@@ -127,7 +127,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	}
 
 	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-o", binPath, ".")
+	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

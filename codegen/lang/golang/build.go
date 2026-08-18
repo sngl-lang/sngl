@@ -48,7 +48,7 @@ func (t *Translator) Build(dir string, opts *ir.StructLit) (string, error) {
 
 	artifact := filepath.Join(dir, "app")
 	slog.Info("exec", "cmd", "go build -o app .", "dir", dir)
-	bld := exec.Command(goPath, "build", "-o", artifact, ".")
+	bld := exec.Command(goPath, "build", "-trimpath", "-o", artifact, ".")
 	bld.Dir = dir
 	bld.Stdout = os.Stderr
 	bld.Stderr = os.Stderr

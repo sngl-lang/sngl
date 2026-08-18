@@ -48,7 +48,7 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 	binPath := filepath.Join(dir, "testagent_bin")
 	slog.Info("exec", "cmd", "go build", "dir", dir, "out", binPath)
 	var buildOut bytes.Buffer
-	bld := exec.CommandContext(ctx, goPath, "build", "-o", binPath, ".")
+	bld := exec.CommandContext(ctx, goPath, "build", "-trimpath", "-o", binPath, ".")
 	bld.Dir = dir
 	bld.Stdout = &buildOut
 	bld.Stderr = &buildOut

@@ -113,7 +113,7 @@ func main() {
 		return nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	run := exec.Command(goPath, "run", ".")
+	run := exec.Command(goPath, "run", "-trimpath", ".")
 	run.Dir = tmpDir
 	var stdout bytes.Buffer
 	run.Stdout = &stdout
@@ -233,7 +233,7 @@ func main() {
 	}
 
 	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-o", binPath, ".")
+	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
