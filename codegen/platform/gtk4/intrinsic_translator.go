@@ -30,10 +30,15 @@ type gtk4Translator struct {
 	// declaration rather than a shared Model field, and qualifyNodeExpr
 	// renders the bare local name rather than `m.__nN`. Escaping ids (not
 	// in this set) keep the Model-field behavior. nil → every id is a field.
-	localRefs     map[string]bool
-	idCTypes      map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
-	skipped       map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel      []string
+	localRefs map[string]bool
+	idCTypes  map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
+	skipped   map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
+	topLevel  []string
+	// wrapped selects wrapped-mode emission: widget ops become pkg/go/gtk4rt
+	// calls over gtk4rt.Handle instead of inline cgo. Unmapped ops fall through
+	// to the cgo emission (leaving a `C.` that triggers the whole-program
+	// fallback in emitIR). See wrapped.go.
+	wrapped       bool
 	tagComponent  map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
 	boolToIntUsed *bool                    // points to compilation.needsBoolToInt; set when boolToGoInt is called
 
@@ -84,6 +89,12 @@ func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
 // boolToGoInt is called, so the caller knows to emit the boolToInt helper.
 func (t *gtk4Translator) withBoolToIntFlag(flag *bool) *gtk4Translator {
 	t.boolToIntUsed = flag
+	return t
+}
+
+// withWrapped selects wrapped-mode emission (pkg/go/gtk4rt calls) when on.
+func (t *gtk4Translator) withWrapped(on bool) *gtk4Translator {
+	t.wrapped = on
 	return t
 }
 
@@ -258,13 +269,24 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// special-case so it gets the `app` parameter passed into
 	// BuildUI rather than nil.
 	if nm.Constructor == "gtk_application_window_new" {
-		ctor := nativeCall("gtk_application_window_new", &ir.Ident{Name: "app", Type: ir.TypDyn})
-		return t.emitConstructorAssign(id, nm.CType, ctor)
+		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
+		if t.wrapped {
+			return t.emitConstructorAssign(id, nm.CType, rtCall("ApplicationWindowNew", appRef))
+		}
+		return t.emitConstructorAssign(id, nm.CType, nativeCall("gtk_application_window_new", appRef))
+	}
+	_ = comp
+	// Wrapped mode: emit a gtk4rt constructor when the widget is in the
+	// bounded surface. Unmapped widgets fall through to the cgo ctor below,
+	// leaving a `C.` that triggers the whole-program fallback.
+	if t.wrapped {
+		if ctor, ok := rtCtorForCType(nm.CType); ok {
+			return t.emitConstructorAssign(id, nm.CType, ctor)
+		}
 	}
 	// Pass a typed-zero value for each required constructor parameter
 	// so the cgo call type-checks. OnPropAssign immediately rewrites
 	// any user-supplied prop values via the dedicated setter.
-	_ = comp
 	args := []ir.Expr{}
 	for _, p := range nm.CtorParams {
 		args = append(args, ctorZeroArg(p.GIRType, p.IRType))
@@ -335,22 +357,28 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = cType
 	t.topLevel = append(t.topLevel, id)
+	// Wrapped mode: ctor already yields a gtk4rt.Handle — no cgo cast, and the
+	// field/local is Handle-typed (LocalVar renders `id := ctor`, ignoring the
+	// type; the field goType is set to gtk4rt.Handle by the fieldSink closure).
+	initVal := ctor
+	if !t.wrapped {
+		initVal = cgoCast(cType, ctor)
+	}
 	if t.isLocalRef(id) {
-		// Non-escaping: declare a function-local `__nN := (*C.<cType>)(...)`
-		// rather than registering a shared Model field. Each call frame gets
-		// its own widget temp — required for recursive component render
-		// methods, where a shared field would be clobbered on recursion.
+		// Non-escaping: declare a function-local `__nN := ...` rather than a
+		// shared Model field. Each call frame gets its own widget temp —
+		// required for recursive component render methods.
 		return []ir.Stmt{&ir.LocalVar{
 			Name: id,
 			Type: ir.NativePointerOf(cType),
-			Init: cgoCast(cType, ctor),
+			Init: initVal,
 		}}
 	}
 	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
 		Target: codegen.ModelFieldRef(id),
 		Op:     ast.AssignSet,
-		Value:  cgoCast(cType, ctor),
+		Value:  initVal,
 	}}
 }
 
@@ -420,6 +448,11 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
 				break
 			}
+		}
+	}
+	if t.wrapped {
+		if stmt, ok := rtChildAppendCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
+			return []ir.Stmt{stmt}
 		}
 	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
@@ -519,6 +552,15 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if setter == "" {
 		return nil
+	}
+	// Wrapped mode: emit a gtk4rt setter over the Handle with the raw
+	// Go-native value. Unmapped setters/values fall through to cgo (→ fallback).
+	if t.wrapped {
+		if rt, ok := rtSetterTable[setter]; ok {
+			if arg, ok := rtSetterValue(rt.kind, value); ok {
+				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, t.qualifyNodeExpr(node), arg)}}
+			}
+		}
 	}
 	valArg := t.coerceSetterValue(setter, value, valType)
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
@@ -638,6 +680,12 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	if signal == "" {
 		return nil
+	}
+	// Wrapped mode: gtk4rt.Connect registers the handler in cbind and wires the
+	// GTK signal in one call — no per-program snglCallbacks slice or cgo.
+	if t.wrapped {
+		sigLit := &ir.Literal{Type: ir.TypString, Raw: signal}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", t.qualifyNodeExpr(node), sigLit, handler)}}
 	}
 	// snglCallbacks = append(snglCallbacks, handler)
 	cbList := &ir.Ident{Name: "snglCallbacks", Type: ir.TypDyn}

@@ -1,4 +1,10 @@
 package {{.Package}}
+{{- if .Wrapped}}
+{{- if .Main}}
+
+import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+{{- end}}
+{{- else}}
 
 /*
 #include <gtk/gtk.h>
@@ -50,4 +56,5 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t) {
 		snglDrawFuncs[int(idx)](cr)
 	}
 }
+{{- end}}
 {{- end}}

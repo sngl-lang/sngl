@@ -35,7 +35,8 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		Pkg:  pkg,
 		Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{
-			"package": "main",
+			"package":    "main",
+			"gtk4NoWrap": true,
 		}),
 	}, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generating gtk4 code: %w", err)
@@ -102,7 +103,8 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 			Pkg:  d.Pkg,
 			Lang: d.Lang,
 			Options: codegen.OptionsFromMap(map[string]any{
-				"package": pkgName,
+				"package":    pkgName,
+				"gtk4NoWrap": true,
 			}),
 		}, codegen.NewDirSink(pkgDir)); err != nil {
 			return nil, fmt.Errorf("generating gtk4 code for %s: %w", d.ID, err)

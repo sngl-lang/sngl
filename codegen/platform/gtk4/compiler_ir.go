@@ -52,6 +52,14 @@ type compilation struct {
 	cfg            Config
 	registry       *gir.TypeRegistry
 	needsBoolToInt bool // set when any translator calls boolToGoInt
+	wrapped        bool // emitIRMode(true): target pkg/go/gtk4rt instead of inline cgo
+	// disableWrapped forces the inline-cgo path even for wrappable programs.
+	// Set when an external cgo harness will call the generated Model.BuildUI
+	// (agent-mode test build; Snapshot/BatchSnapshot): those harnesses expect
+	// BuildUI's cgo `*C.GtkApplication`/`*C.GtkWidget` signature, which wrapped
+	// mode replaces with gtk4rt.Handle. Wrapping those harnesses too is a
+	// follow-up; until then they pin the model to cgo.
+	disableWrapped bool
 }
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
@@ -291,7 +299,37 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 }
 
 // emitIR generates the Go source for both model.go and callbacks.go.
+// emitIR emits the gtk4 model.go + callbacks.go. It first attempts wrapped
+// mode (targeting pkg/go/gtk4rt so the generated package carries no cgo); if
+// the result still contains any cgo — because some widget/op wasn't covered by
+// the wrapped surface — it discards that attempt and re-emits in the legacy
+// inline-cgo mode. So a program either fully sheds `import "C"` (fast, cached
+// build) or keeps the proven cgo path; it is never half-wrapped.
 func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error) {
+	if !c.disableWrapped {
+		if m, cb, werr := c.emitIRMode(true); werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
+			return m, cb, nil
+		}
+	}
+	return c.emitIRMode(false)
+}
+
+// widgetFieldSink returns the fieldSink closure a translator uses to register
+// Model widget fields. In wrapped mode every widget field is a gtk4rt.Handle;
+// otherwise it is the per-widget cgo pointer type.
+func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType string) {
+	return func(name, cType string) {
+		goType := "*C." + cType
+		if c.wrapped {
+			goType = gtk4rtHandleType
+		}
+		*fields = append(*fields, widgetField{name: name, goType: goType})
+	}
+}
+
+func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
+	c.wrapped = wrapped
+	c.needsBoolToInt = false
 	exprCtx := c.ctx.ExprCtx
 	if main := c.ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -329,9 +367,9 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	var topLevelRefs []string
 	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {
-		tr := newGtk4Translator(gc, func(name, cType string) {
-			widgetFields = append(widgetFields, widgetField{name: name, goType: "*C." + cType})
-		}).withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt).withLocalRefs(mainComponentLocalRefs(c.ctx))
+		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
+			withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt).
+			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped)
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
@@ -388,7 +426,11 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 			}
 		}
 		if !hasRoot {
-			widgetFields = append(widgetFields, widgetField{name: "__root", goType: "*C.GtkBox"})
+			rootType := "*C.GtkBox"
+			if c.wrapped {
+				rootType = gtk4rtHandleType
+			}
+			widgetFields = append(widgetFields, widgetField{name: "__root", goType: rootType})
 		}
 	}
 
@@ -396,7 +438,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	// calls from EvalExpr (e.g. for unsafe.Pointer casts) are captured before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc)
+	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped)
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 {
@@ -442,7 +484,7 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 	// --- Phase 6: Append main() to callbacks.go (NOT model.go — cgo //export
 	// directives can't coexist with the model.go preamble's static defs). ---
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg)
+		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped)
 	}
 
 	modelSrc = []byte(modelBuf.String())
@@ -456,6 +498,12 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		FunctionCode:   functionCode,
 		Imports:        map[string]bool{},
 		NeedsBoolToInt: c.needsBoolToInt,
+		Wrapped:        c.wrapped,
+	}
+	if c.wrapped {
+		// Widget fields are gtk4rt.Handle; ensure the import is present even if
+		// (unusually) no gtk4rt call was emitted into this file.
+		td.Imports[gtk4rtPkg] = true
 	}
 	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
@@ -993,7 +1041,11 @@ func isWindowClass(cType string) bool {
 // GtkApplicationWindow/GtkWindow at the root so there's no need for the
 // synthetic m.__root wrapper or a freshly-constructed
 // gtk_application_window_new.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool) {
+	if wrapped {
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType)
+		return
+	}
 	// Empty component: no tree to build; BuildUI just creates a window.
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
 		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
@@ -1211,7 +1263,11 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go.
 // Goes in callbacks.go (not model.go) so the //export snglActivate directive
 // can coexist with the file's preamble (which has only declarations).
-func emitGTK4Main(b *strings.Builder, cfg Config) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool) {
+	if wrapped {
+		emitGTK4MainWrapped(b)
+		return
+	}
 	b.WriteString("\n//export snglActivate\n")
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")

@@ -1,0 +1,223 @@
+package gtk4
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// This file implements "wrapped mode" gtk4 codegen: instead of emitting inline
+// cgo (`C.gtk_*` calls behind an `import "C"` preamble in every generated
+// program), it emits calls to the shared pkg/go/gtk4rt runtime over an opaque
+// gtk4rt.Handle. The GTK cgo bindings then compile once (in gtk4rt) and Go's
+// build cache reuses them, instead of recompiling the gtk.h preamble per
+// program.
+//
+// Wrapped mode covers only the bounded stdlib widget surface. The translator
+// and scaffolding emit wrapped calls for the mapped subset and fall through to
+// the legacy cgo emission for anything else; emitIR then scans the output and,
+// if any residual `C.` remains, discards the wrapped attempt and re-emits in
+// cgo mode. So an unmapped widget cleanly degrades a whole program to the
+// legacy path rather than producing half-wrapped (uncompilable) code.
+
+// gtk4rtPkg is the import path of the shared GTK4 runtime. Emitting an
+// ir.Func with this NativePkg auto-registers the import via the golang IR
+// context (see evalNamespaceCall).
+const gtk4rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+
+// gtk4rtHandleType is the Go type wrapped-mode code uses for every widget
+// field/local, replacing the per-widget *C.GtkX pointer types.
+const gtk4rtHandleType = "gtk4rt.Handle"
+
+// rtCall builds a `gtk4rt.<name>(args...)` call. The non-"C" NativePkg makes
+// evalNamespaceCall register the gtk4rt import and emit the NativeName verbatim.
+func rtCall(name string, args ...ir.Expr) *ir.Call {
+	ca := make([]ir.CallArg, len(args))
+	for i, a := range args {
+		ca[i] = ir.CallArg{Value: a}
+	}
+	return &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "gtk4rt"},
+		Func:     &ir.Func{NativePkg: gtk4rtPkg, NativeName: "gtk4rt." + name},
+		Args:     ca,
+	}
+}
+
+// rtConst references an exported gtk4rt identifier (e.g. a constant). The
+// gtk4rt import is registered by the rtCall(s) the same file always emits.
+func rtConst(name string) *ir.Ident {
+	return &ir.Ident{Name: "gtk4rt." + name, Type: ir.TypDyn}
+}
+
+func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Raw: v} }
+
+// cgoRefRE matches a residual cgo reference: a `C.`-qualified identifier (e.g.
+// `C.gtk_box_new`, `*C.GtkWidget`) or any of the inline-cgo helper symbols that
+// only exist in the legacy callbacks.go (gtkPost, snglCallbacks, ...). Any of
+// these in a wrapped-mode emission means the wrapping didn't fully cover the
+// program, so it must fall back to the inline-cgo path.
+var cgoRefRE = regexp.MustCompile(`(^|[^A-Za-z0-9_])(C\.[A-Za-z_]|gtkPost|snglCallbacks|snglDrawFuncs|snglGoDispatch|sngl_[a-z])`)
+
+// bytesUseCgo reports whether src still depends on the inline-cgo machinery.
+func bytesUseCgo(src []byte) bool { return cgoRefRE.Match(src) }
+
+// rtCtorForCType returns the gtk4rt constructor call for a freshly created
+// widget of the given C type, and ok=false if the widget is outside the
+// wrapped surface. Widgets take typed-zero initial args here; any user-set
+// props are applied afterwards by OnPropAssign, mirroring the cgo path.
+func rtCtorForCType(cType string) (ir.Expr, bool) {
+	switch cType {
+	case "GtkBox":
+		return rtCall("BoxNew", rtConst("OrientationHorizontal"), intLit("0")), true
+	case "GtkLabel":
+		return rtCall("LabelNew", &ir.Literal{Type: ir.TypString, Raw: ""}), true
+	case "GtkButton":
+		return rtCall("ButtonNew"), true
+	case "GtkCheckButton":
+		return rtCall("CheckButtonNew"), true
+	case "GtkEntry":
+		return rtCall("EntryNew"), true
+	case "GtkImage":
+		return rtCall("ImageNew"), true
+	case "GtkScrolledWindow":
+		return rtCall("ScrolledWindowNew"), true
+	}
+	return nil, false
+}
+
+// rtSetterKind classifies how a C setter's value argument is adapted for the
+// wrapped API (which takes Go-native types rather than cgo-coerced ones).
+type rtSetterKind int
+
+const (
+	rtStr rtSetterKind = iota
+	rtBool
+	rtInt
+	rtOrient
+)
+
+// rtSetterTable maps a resolved GTK setter name to its gtk4rt wrapper and the
+// value-argument kind. Setters absent here trigger fallback.
+var rtSetterTable = map[string]struct {
+	fn   string
+	kind rtSetterKind
+}{
+	"gtk_label_set_text":             {"LabelSetText", rtStr},
+	"gtk_button_set_label":           {"ButtonSetLabel", rtStr},
+	"gtk_check_button_set_label":     {"CheckButtonSetLabel", rtStr},
+	"gtk_check_button_set_active":    {"CheckButtonSetActive", rtBool},
+	"gtk_editable_set_text":          {"EditableSetText", rtStr},
+	"gtk_image_set_from_file":        {"ImageSetFromFile", rtStr},
+	"gtk_box_set_spacing":            {"BoxSetSpacing", rtInt},
+	"gtk_orientable_set_orientation": {"OrientableSetOrientation", rtOrient},
+}
+
+// rtSetterValue adapts an OnPropAssign value expression to the wrapped setter's
+// Go-native argument. String/bool/int values pass through unchanged (the golang
+// IR context renders them as Go string/bool/int); orientation maps a string
+// literal to the gtk4rt constant. ok=false → not adaptable, fall back.
+func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
+	switch kind {
+	case rtStr, rtBool, rtInt:
+		return value, true
+	case rtOrient:
+		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+			return rtOrientationConst(lit.Raw)
+		}
+	}
+	return nil, false
+}
+
+// rtChildAppendCall returns the gtk4rt container call for adding child to a
+// parent of the given C type, and ok=false if unmapped.
+func rtChildAppendCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
+	var fn string
+	switch parentCType {
+	case "GtkBox":
+		fn = "BoxAppend"
+	case "GtkScrolledWindow":
+		fn = "ScrolledWindowSetChild"
+	case "GtkWindow", "GtkApplicationWindow":
+		fn = "WindowSetChild"
+	default:
+		return nil, false
+	}
+	return &ir.CallStmt{Call: rtCall(fn, parent, child)}, true
+}
+
+// rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
+// constant ident, and ok=false for anything unrecognised.
+func rtOrientationConst(value string) (ir.Expr, bool) {
+	switch value {
+	case "vertical":
+		return rtConst("OrientationVertical"), true
+	case "horizontal":
+		return rtConst("OrientationHorizontal"), true
+	}
+	return nil, false
+}
+
+// emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the
+// buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
+// widget-tree body (buildBuf) was already emitted in wrapped mode by the
+// translator, so only the surrounding scaffolding is produced here.
+func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) {
+	mref := func(ref string) string { return "m." + ref }
+
+	// Empty component: BuildUI just creates a window.
+	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
+		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
+		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
+		b.WriteString("\treturn gtk4rt.ApplicationWindowNew(app)\n")
+		b.WriteString("}\n\n")
+		return
+	}
+	// Window-class passthrough: sole top-level is a window widget.
+	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+		b.WriteString("func (m *Model) buildWidgetTree() {\n")
+		b.WriteString(buildBuf.String())
+		b.WriteString("}\n\n")
+		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
+		b.WriteString("\tm.buildWidgetTree()\n")
+		fmt.Fprintf(b, "\treturn %s\n", mref(topLevelRefs[0]))
+		b.WriteString("}\n\n")
+		return
+	}
+	// General case: wrap top-level children in a synthetic __root box.
+	b.WriteString("func (m *Model) buildWidgetTree() {\n")
+	b.WriteString("\tif m.__root != nil {\n\t\treturn\n\t}\n")
+	b.WriteString("\tm.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
+	b.WriteString(buildBuf.String())
+	for _, ref := range topLevelRefs {
+		fmt.Fprintf(b, "\tgtk4rt.BoxAppend(m.__root, %s)\n", mref(ref))
+	}
+	b.WriteString("}\n\n")
+	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
+	b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
+	b.WriteString("\tm.buildWidgetTree()\n")
+	b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
+	b.WriteString("\tgtk4rt.WindowSetDefaultSize(win, 480, 640)\n")
+	b.WriteString("\tgtk4rt.WindowSetChild(win, m.__root)\n")
+	b.WriteString("\treturn win\n")
+	b.WriteString("}\n\n")
+}
+
+// emitGTK4MainWrapped emits the wrapped-mode program entry point. All GTK
+// bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free.
+func emitGTK4MainWrapped(b *strings.Builder) {
+	b.WriteString("\nfunc main() {\n")
+	b.WriteString("\tgtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {\n")
+	b.WriteString("\t\treturn New().BuildUI(app)\n")
+	b.WriteString("\t})\n")
+	b.WriteString("}\n")
+}
+
+// Note: widget read-back in promoted handlers (gtk4EventGetterExpr) is not yet
+// wrapped. Fixtures whose handlers read widget state keep the cgo getter, which
+// leaves a `C.` in the output and triggers the whole-program fallback. Wrapping
+// those getters is a follow-up that widens wrapped-mode coverage.

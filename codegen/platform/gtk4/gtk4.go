@@ -189,6 +189,10 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	c := &compilation{gen: g}
+	// Agent-mode and Snapshot builds append a cgo harness that calls the
+	// generated Model.BuildUI with cgo pointer types, so the model must stay
+	// on the inline-cgo path (BuildUI's wrapped signature takes gtk4rt.Handle).
+	c.disableWrapped = agentMode || codegen.OptionBool(req.Options, "gtk4NoWrap")
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err
