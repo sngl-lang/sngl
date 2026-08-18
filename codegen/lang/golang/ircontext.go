@@ -1313,6 +1313,9 @@ func IRTypeToGo(t *ir.Type) string {
 		return "any"
 	case ir.TypeNative:
 		if ref, ok := t.Meta.(ir.NativeTypeRef); ok {
+			if ref.Bare {
+				return ref.Name
+			}
 			if ref.CgoC {
 				return "*C." + ref.Name
 			}

@@ -121,7 +121,7 @@ func main() {
 		return "", fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	run := exec.Command(goPath, "run", ".")
+	run := exec.Command(goPath, "run", "-trimpath", ".")
 	run.Dir = tmpDir
 	run.Env = append(os.Environ(), "COLORTERM=truecolor", "TERM=xterm-256color")
 	var stdout bytes.Buffer
@@ -276,7 +276,7 @@ func main() {
 	}
 
 	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-o", binPath, ".")
+	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

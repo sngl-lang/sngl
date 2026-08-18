@@ -189,6 +189,12 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	c := &compilation{gen: g}
+	// gtk4NoWrap is a manual escape hatch that pins the inline-cgo path. Agent
+	// and Snapshot builds no longer force it: they emit a harness that matches
+	// the model's chosen mode (wrapped harnesses call BuildUI over gtk4rt.Handle
+	// and snapshot via gtk4rt). After EmitFromMutation, c.wrapped reflects the
+	// model's actual mode (the emitIR scan sets it), so the harness can match.
+	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap")
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err
@@ -250,7 +256,7 @@ type SubmitEvent struct{ Value string }
 
 func main() { testagent.Main() }
 `)
-				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
+				if err := writeRawFile(sink, "agent_main.go", agentMainBytes(c.cfg.Package, c.wrapped, mainSrc)); err != nil {
 					return err
 				}
 				// snapshot.go: reuses the gtk4SnapshotCgo preamble.
@@ -327,7 +333,7 @@ func init() {
 	})
 }
 `)
-				if err := writeRawFile(sink, "snapshot.go", snapshotSrc); err != nil {
+				if err := writeRawFile(sink, "snapshot.go", agentSnapshotBytes(c.cfg.Package, c.wrapped, snapshotSrc)); err != nil {
 					return err
 				}
 			}
