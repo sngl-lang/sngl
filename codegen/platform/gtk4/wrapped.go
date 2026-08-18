@@ -54,6 +54,27 @@ func rtConst(name string) *ir.Ident {
 
 func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Raw: v} }
 
+// gtk4rtHandleIRType is an ir.Type that renders as the bare gtk4rt.Handle.
+func gtk4rtHandleIRType() *ir.Type { return ir.NativeGoNamed(gtk4rtHandleType) }
+
+// slotParentType is the IR type of a __renderSlot's `parent` param:
+// gtk4rt.Handle in wrapped mode, else *C.GtkBox.
+func slotParentType(wrapped bool) *ir.Type {
+	if wrapped {
+		return gtk4rtHandleIRType()
+	}
+	return ir.NativePointerOf("GtkBox")
+}
+
+// widgetFieldGoType returns the Go type for a Model widget field: gtk4rt.Handle
+// in wrapped mode, else the per-widget cgo pointer type.
+func widgetFieldGoType(cType string, wrapped bool) string {
+	if wrapped {
+		return gtk4rtHandleType
+	}
+	return "*C." + cType
+}
+
 // cgoRefRE matches a residual cgo reference: a `C.`-qualified identifier (e.g.
 // `C.gtk_box_new`, `*C.GtkWidget`) or any of the inline-cgo helper symbols that
 // only exist in the legacy callbacks.go (gtkPost, snglCallbacks, ...). Any of
@@ -148,6 +169,28 @@ func rtChildAppendCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 	return &ir.CallStmt{Call: rtCall(fn, parent, child)}, true
 }
 
+// rtChildRemoveCall returns the gtk4rt call for removing child from a parent of
+// the given C type, and ok=false if unmapped.
+func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
+	if parentCType == "GtkBox" {
+		return &ir.CallStmt{Call: rtCall("BoxRemove", parent, child)}, true
+	}
+	return nil, false
+}
+
+// rtEventGetterExpr is the wrapped-mode analogue of gtk4EventGetterExpr: it
+// reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
+// the widget's read-back isn't wrapped (→ fallback).
+func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
+	switch cType {
+	case "GtkEntry":
+		return rtCall("EditableGetText", widgetRef)
+	case "GtkCheckButton":
+		return rtCall("CheckButtonGetActive", widgetRef)
+	}
+	return nil
+}
+
 // rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
 // constant ident, and ok=false for anything unrecognised.
 func rtOrientationConst(value string) (ir.Expr, bool) {
@@ -216,8 +259,3 @@ func emitGTK4MainWrapped(b *strings.Builder) {
 	b.WriteString("\t})\n")
 	b.WriteString("}\n")
 }
-
-// Note: widget read-back in promoted handlers (gtk4EventGetterExpr) is not yet
-// wrapped. Fixtures whose handlers read widget state keep the cgo getter, which
-// leaves a `C.` in the output and triggers the whole-program fallback. Wrapping
-// those getters is a follow-up that widens wrapped-mode coverage.

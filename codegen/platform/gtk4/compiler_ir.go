@@ -394,14 +394,14 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc, c.wrapped)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc, c.wrapped)
 			continue
 		}
-		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, canvasByFunc)
+		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, canvasByFunc, c.wrapped)
 	}
 
 	// --- Phase 2b: render<Comp> methods for non-inlinable (recursive)
@@ -409,7 +409,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
 		if createTargets[cc.Component] {
-			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt)
+			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, c.wrapped)
 		}
 	}
 
@@ -531,9 +531,22 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	// already injected into handler bodies as ir.Assign by passReactivity
 	// and lowered through WalkLowered — setters don't need extra dispatch.
 	for _, bind := range c.info.binds {
+		goType := bind.goType
+		if c.wrapped {
+			// analyzeIR runs before the wrapped/cgo choice, so its synthesized
+			// widget binds carry cgo pointer types; remap them to the opaque
+			// handle: `*C.GtkBox` (__root) → gtk4rt.Handle, `[]*C.GtkWidget`
+			// (slot teardown lists) → []gtk4rt.Handle.
+			switch {
+			case goType == "[]*C.GtkWidget":
+				goType = "[]" + gtk4rtHandleType
+			case strings.HasPrefix(goType, "*C."):
+				goType = gtk4rtHandleType
+			}
+		}
 		td.Binds = append(td.Binds, bindData{
 			Name:        bind.name,
-			GoType:      bind.goType,
+			GoType:      goType,
 			InitVal:     bind.init,
 			Getter:      golang.ExportName(bind.name),
 			NoAccessors: bind.noAccessors,
@@ -611,10 +624,10 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
 // into ir.Stmt fragments; we then synthesize a new *ir.Func and feed
 // it through gc.EmitFuncDef.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
-		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs)
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
@@ -627,7 +640,7 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		// slot body references it by that name, so renaming it here would
 		// leave those refs dangling (and gc would mis-qualify them as a
 		// Model field `m.Parent`).
-		Params: []*ir.Param{{Name: "parent", Type: ir.NativePointerOf("GtkBox")}},
+		Params: []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}},
 		Return: ir.TypVoid,
 		Block:  bodyStmts,
 	}
@@ -684,8 +697,13 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 // node-attached handler into a top-level Func: the trampoline calls
 // the handler with no args, so any reference to `e` must be replaced
 // with a direct widget getter.
-func gtk4EventGetterExpr(cType, nodeID string) ir.Expr {
+func gtk4EventGetterExpr(cType, nodeID string, wrapped bool) ir.Expr {
 	widgetRef := &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true}
+	if wrapped {
+		// Wrapped mode: read through gtk4rt over the Handle. A qualifyNodeExpr
+		// is not needed — the ref renders as m.<nodeID> via ModelFieldRef.
+		return rtEventGetterExpr(cType, codegen.ModelFieldRef(nodeID))
+	}
 	switch cType {
 	case "GtkEntry":
 		// GTK4: GtkEntry implements GtkEditable; text accessor moved
@@ -863,12 +881,12 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // splices that follow flow through codegen.WalkLowered into the gtk4
 // translator so `__nN.value = expr` shapes get rewritten via
 // OnPropAssign into `C.gtk_*_set_*(...)` calls.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
-		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs)
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
@@ -901,7 +919,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 					if cType == "" {
 						cType = sig.CType
 					}
-					getter := gtk4EventGetterExpr(cType, nodeID)
+					getter := gtk4EventGetterExpr(cType, nodeID, wrapped)
 					if getter != nil {
 						prelude = []ir.Stmt{&ir.Assign{
 							Target: &ir.Ident{Name: target.Name},
@@ -984,11 +1002,11 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 // CanvasRedrawStmt (a state mutation that a canvas draw func reads) is
 // translated into a gtk_widget_queue_draw call; plain statements pass
 // through untouched.
-func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	if len(fn.Block) == 0 {
 		return
 	}
-	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg)
+	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
@@ -1149,7 +1167,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 // return its single top-level widget (or a fresh vbox wrapping several)
 // as *C.GtkWidget. The CreateComponent call site emits
 // `m.<id> = m.render<Comp>(props...)` (see OnCreateComponent).
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool) {
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, wrapped bool) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	compGC := gc.ForComponent(cc.Component)
@@ -1160,8 +1178,8 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	}
 
 	tr := newGtk4Translator(compGC, func(name, cType string) {
-		*widgetFields = append(*widgetFields, widgetField{name: name, goType: "*C." + cType})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(cc.Component.LocalRefs)
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(cc.Component.LocalRefs).withWrapped(wrapped)
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 
@@ -1175,13 +1193,29 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	}
 
 	var trailer string
-	switch tops := tr.topLevel; len(tops) {
-	case 0:
+	switch tops := tr.topLevel; {
+	case len(tops) == 0 && wrapped:
+		trailer = "\treturn gtk4rt.LabelNew(\"\")\n"
+	case len(tops) == 0:
 		trailer = "\treturn C.gtk_label_new(nil)\n"
-	case 1:
+	case len(tops) == 1 && wrapped:
+		// Handle-typed: return the field ref directly, no cgo cast.
+		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
+		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(ref))
+	case len(tops) == 1:
 		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
 		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: ref}
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(retExpr))
+	case wrapped:
+		// Multiple top-levels: wrap in a gtk4rt box.
+		var tb strings.Builder
+		tb.WriteString("\t__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
+		for _, ref := range tops {
+			childRef := tr.qualifyNodeExpr(&ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})
+			fmt.Fprintf(&tb, "\tgtk4rt.BoxAppend(__box, %s)\n", compGC.EvalExpr(childRef))
+		}
+		tb.WriteString("\treturn __box\n")
+		trailer = tb.String()
 	default:
 		var tb strings.Builder
 		boxCtorCall := &ir.Call{
@@ -1216,6 +1250,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		trailer = tb.String()
 	}
 
+	retType := "*C.GtkWidget"
+	if wrapped {
+		retType = gtk4rtHandleType
+	}
 	b.WriteString("func (m *Model) " + methodName + "(")
 	for i, p := range params {
 		if i > 0 {
@@ -1223,7 +1261,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		}
 		b.WriteString(p.Name + " " + golang.IRTypeToGo(p.Type))
 	}
-	b.WriteString(") *C.GtkWidget {\n")
+	b.WriteString(") " + retType + " {\n")
 	b.WriteString(bodyBuf.String())
 	b.WriteString(trailer)
 	b.WriteString("}\n\n")

@@ -472,6 +472,11 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	if fn == "" {
 		return nil
 	}
+	if t.wrapped {
+		if stmt, ok := rtChildRemoveCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
+			return []ir.Stmt{stmt}
+		}
+	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
@@ -733,13 +738,18 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
 	slotRef := codegen.ModelFieldRef(slot.Name)
-	castChild := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
+	// Wrapped mode: the slot holds []gtk4rt.Handle, so append the handle
+	// directly with no cgo cast.
+	childArg := ir.Expr(cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+	if t.wrapped {
+		childArg = t.qualifyNodeExpr(child)
+	}
 	appendCall := &ir.Call{
 		Type: slot.Type,
 		Func: &ir.Func{Name: "append"},
 		Args: []ir.CallArg{
 			{Value: slotRef},
-			{Value: castChild},
+			{Value: childArg},
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
