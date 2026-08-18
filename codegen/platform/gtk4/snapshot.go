@@ -94,25 +94,54 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	}
 	defer os.RemoveAll(tmpDir)
 
-	var pkgs []gtk4DocPkg
-	for i, d := range docs {
+	genDoc := func(i int, d codegen.BatchDoc, noWrap bool) (gtk4DocPkg, error) {
 		pkgName := fmt.Sprintf("doc%d", i)
 		pkgDir := filepath.Join(tmpDir, pkgName)
-		if err := g.Generate(&codegen.Request{
-			Pkg:  d.Pkg,
-			Lang: d.Lang,
-			Options: codegen.OptionsFromMap(map[string]any{
-				"package":    pkgName,
-				"gtk4NoWrap": true,
-			}),
-		}, codegen.NewDirSink(pkgDir)); err != nil {
-			return nil, fmt.Errorf("generating gtk4 code for %s: %w", d.ID, err)
+		opts := map[string]any{"package": pkgName}
+		if noWrap {
+			opts["gtk4NoWrap"] = true
 		}
-		pkgs = append(pkgs, gtk4DocPkg{id: d.ID, pkgName: pkgName})
+		if err := g.Generate(&codegen.Request{
+			Pkg:     d.Pkg,
+			Lang:    d.Lang,
+			Options: codegen.OptionsFromMap(opts),
+		}, codegen.NewDirSink(pkgDir)); err != nil {
+			return gtk4DocPkg{}, fmt.Errorf("generating gtk4 code for %s: %w", d.ID, err)
+		}
+		return gtk4DocPkg{id: d.ID, pkgName: pkgName}, nil
 	}
 
-	if err := writeGtk4BatchHarness(tmpDir, pkgs); err != nil {
-		return nil, err
+	var pkgs []gtk4DocPkg
+	allWrapped := true
+	for i, d := range docs {
+		p, err := genDoc(i, d, false)
+		if err != nil {
+			return nil, err
+		}
+		if !dirIsWrapped(filepath.Join(tmpDir, p.pkgName)) {
+			allWrapped = false
+		}
+		pkgs = append(pkgs, p)
+	}
+
+	// The batch dispatcher harness must speak a single ABI to every doc's
+	// BuildUI. When every doc wrapped (the norm — docs use only stdlib
+	// widgets), emit a cgo-free harness over gtk4rt. If any doc fell back to
+	// inline cgo (a raw gtk4.* widget), regenerate them all in cgo mode so the
+	// cgo harness's *C.GtkApplication/*C.GtkWidget signatures line up.
+	if allWrapped {
+		if err := writeGtk4BatchHarnessWrapped(tmpDir, pkgs); err != nil {
+			return nil, err
+		}
+	} else {
+		for i, d := range docs {
+			if _, err := genDoc(i, d, true); err != nil {
+				return nil, err
+			}
+		}
+		if err := writeGtk4BatchHarness(tmpDir, pkgs); err != nil {
+			return nil, err
+		}
 	}
 	if err := writeGtk4GoMod(tmpDir, ""); err != nil {
 		return nil, err
@@ -257,6 +286,62 @@ func main() {
 type gtk4DocPkg struct {
 	id      string
 	pkgName string
+}
+
+// writeGtk4BatchHarnessWrapped is the cgo-free batch dispatcher for when every
+// doc generated in wrapped mode. Each doc's BuildUI takes/returns gtk4rt.Handle
+// and the render goes through gtk4rt.SnapshotModel, so the harness compiles
+// once against the cached gtk4rt cgo rather than recompiling gtk.h per build.
+func writeGtk4BatchHarnessWrapped(dir string, pkgs []gtk4DocPkg) error {
+	var imports, cases strings.Builder
+	for _, p := range pkgs {
+		fmt.Fprintf(&imports, "\t%s \"sngltest/%s\"\n", p.pkgName, p.pkgName)
+		fmt.Fprintf(&cases, "\tcase %q:\n\t\tbuild = func(app gtk4rt.Handle) gtk4rt.Handle { return %s.New().BuildUI(app) }\n", p.pkgName, p.pkgName)
+	}
+
+	harness := `package main
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+
+` + imports.String() + `)
+
+func main() {
+	if len(os.Args) < 5 {
+		fmt.Fprintln(os.Stderr, "usage: snapshot <pkg> <out.png> <width> <height>")
+		os.Exit(1)
+	}
+	pkg := os.Args[1]
+	outPath := os.Args[2]
+	width, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad width: %v\n", err)
+		os.Exit(1)
+	}
+	height, err := strconv.Atoi(os.Args[4])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad height: %v\n", err)
+		os.Exit(1)
+	}
+
+	var build func(app gtk4rt.Handle) gtk4rt.Handle
+	switch pkg {
+` + cases.String() + `	default:
+		fmt.Fprintf(os.Stderr, "unknown doc: %s\n", pkg)
+		os.Exit(1)
+	}
+
+	if err := gtk4rt.SnapshotModel(build, width, height, outPath); err != nil {
+		fmt.Fprintln(os.Stderr, "snapshot failed:", err)
+		os.Exit(1)
+	}
+}
+`
+	return os.WriteFile(filepath.Join(dir, "main.go"), []byte(harness), 0o644)
 }
 
 func writeGtk4BatchHarness(dir string, pkgs []gtk4DocPkg) error {
