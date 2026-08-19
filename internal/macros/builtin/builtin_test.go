@@ -73,6 +73,24 @@ component foo {}`
 	}
 }
 
+func TestPrimitiveMacro(t *testing.T) {
+	src := `#[builtin.primitive("int")]
+struct int {}`
+	stmt, diags := expandOne(t, src)
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diagnostic: %s", d.Msg)
+		}
+	}
+	sd, ok := stmt.(*ast.StructDef)
+	if !ok {
+		t.Fatalf("expected *ast.StructDef, got %T", stmt)
+	}
+	if sd.Builtin != ast.BuiltinInt {
+		t.Errorf("Builtin = %q, want %q", sd.Builtin, ast.BuiltinInt)
+	}
+}
+
 func TestGenericMacro(t *testing.T) {
 	src := `#[builtin.generic("list")]
 struct list<T> {}`

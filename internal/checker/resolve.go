@@ -94,6 +94,20 @@ func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) 
 	return TypDyn
 }
 
+// userShadowsBuiltin reports whether name resolves in scope to a user struct
+// declaration that shadows a built-in of the same name. The built-in's own
+// #[builtin.*]-marked decl is not a shadow, and non-struct bindings (the base
+// scope's scalar TypeSyms, the `duration` unit) are the built-in itself, not a
+// shadow.
+func (c *checker) userShadowsBuiltin(name string) bool {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
+	}
+	sd, ok := sym.(*ir.StructDef)
+	return ok && sd.Builtin == ast.BuiltinNone
+}
+
 // resolveNamedType resolves a named type reference to an IR *Type.
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
@@ -103,8 +117,11 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 
 	// Builtin scalar primitives — resolved from the shared registry
 	// (ir/builtins.go) so this site can't drift from the base scope /
-	// conversion switches.
-	if b, ok := ir.LookupBuiltinScalar(t.Name); ok {
+	// conversion switches. A user struct declaration of the same name shadows
+	// the built-in (D3); the built-in's own #[builtin.primitive] decl does not,
+	// and neither does the `duration` unit that shares the name. When shadowed,
+	// fall through to the user-type resolution below.
+	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
 		return b.Type
 	}
 	switch t.Name {

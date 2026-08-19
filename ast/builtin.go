@@ -10,6 +10,14 @@ type BuiltinKind string
 const (
 	BuiltinNone BuiltinKind = ""
 
+	// Scalar primitives (#[builtin.primitive]). Only the names with a stdlib
+	// struct decl are marked; the mark distinguishes the built-in's own decl
+	// from a user declaration that shadows the name. The concrete singleton is
+	// held by the compiler (ir.BuiltinScalar), keyed by these names.
+	BuiltinInt    BuiltinKind = "int"
+	BuiltinFloat  BuiltinKind = "float"
+	BuiltinString BuiltinKind = "string"
+
 	// String-representable value types (#[builtin.stringrepr]).
 	BuiltinColor    BuiltinKind = "color"
 	BuiltinDate     BuiltinKind = "date"
@@ -23,6 +31,15 @@ const (
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 )
+
+// IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
+func (b BuiltinKind) IsPrimitive() bool {
+	switch b {
+	case BuiltinInt, BuiltinFloat, BuiltinString:
+		return true
+	}
+	return false
+}
 
 // IsStringRepr reports whether the kind is a string-representable value type
 // (color/date/time/dateTime).

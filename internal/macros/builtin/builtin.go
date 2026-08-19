@@ -16,10 +16,29 @@ import (
 )
 
 func init() {
+	expand.RegisterPre("builtin", "primitive",
+		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, primitiveHandler)
 	expand.RegisterPre("builtin", "stringrepr",
 		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, stringReprHandler)
 	expand.RegisterPre("builtin", "generic",
 		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, genericHandler)
+}
+
+// primitiveHandler implements #[builtin.primitive("kind")], marking a struct as
+// a scalar primitive (int/float/string). The mark distinguishes the built-in's
+// own decl from a user struct that shadows the name; resolveNamedType returns
+// the canonical singleton for the marked decl and the user type otherwise.
+func primitiveHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
+	s, ok := decl.(*ast.StructDef)
+	if !ok {
+		return decl, errors.New("primitive macro requires a struct declaration")
+	}
+	kind := ast.BuiltinKind(args.String("kind"))
+	if !kind.IsPrimitive() {
+		return decl, fmt.Errorf("unknown primitive kind %q", args.String("kind"))
+	}
+	s.Builtin = kind
+	return s, nil
 }
 
 // genericHandler implements #[builtin.generic("id")], marking a struct as a

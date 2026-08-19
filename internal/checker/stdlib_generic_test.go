@@ -86,6 +86,35 @@ var y int = xs.first`
 	noErrors(t, diags)
 }
 
+// TestBuiltinScalarShadowable verifies that a user declaration of a built-in
+// scalar name (here `int`) shadows the built-in: `int` resolves to the user
+// struct, so its field is accessible. Under the registry-first resolver this
+// errored (built-in int has no fields).
+func TestBuiltinScalarShadowable(t *testing.T) {
+	src := `struct int { tag string }
+var v int
+var s string = v.tag`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	noErrors(t, diags)
+}
+
+// TestBuiltinScalarNotShadowed verifies the built-in scalar still resolves
+// normally when not shadowed (the marked stdlib decl is not a shadow).
+func TestBuiltinScalarNotShadowed(t *testing.T) {
+	src := `var n int = 3
+var d int = n.abs()`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	noErrors(t, diags)
+}
+
 // TestUserDefinedGenericStructTwoParams verifies a two-parameter generic struct.
 func TestUserDefinedGenericStructTwoParams(t *testing.T) {
 	src := `

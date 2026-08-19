@@ -96,5 +96,33 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 		decl = result
 	}
 
+	// Carry the attribute block's start position onto the unwrapped decl so a
+	// doc comment written above the #[...] attributes still reads as adjacent to
+	// the declaration (the attribute lines would otherwise leave a gap that
+	// breaks doc-comment association after the AttrDecl is replaced).
+	inheritPos(decl, ad.Pos)
+
 	return decl, diags
+}
+
+// inheritPos moves a declaration's start position to pos (the attribute block's
+// position). Only the decl kinds that can carry #[...] attributes and have doc
+// comments are handled.
+func inheritPos(decl ast.Stmt, pos ast.Pos) {
+	switch d := decl.(type) {
+	case *ast.StructDef:
+		d.Pos = pos
+	case *ast.ComponentDecl:
+		d.Pos = pos
+	case *ast.EnumDef:
+		d.Pos = pos
+	case *ast.FuncDef:
+		d.Pos = pos
+	case *ast.VarDecl:
+		d.Pos = pos
+	case *ast.ConstDecl:
+		d.Pos = pos
+	case *ast.UnitDef:
+		d.Pos = pos
+	}
 }
