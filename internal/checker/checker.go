@@ -900,12 +900,14 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 // than tripping on a hand-maintained short list that drifts as new numeric
 // types are added.
 func isBuiltinTypeName(name string) bool {
+	// Scalar casts come from the shared registry (ir/builtins.go); the
+	// struct-backed casts and generic constructors are still enumerated here
+	// until they move into the declared built-ins package.
+	if b, ok := ir.LookupBuiltinScalar(name); ok && b.Convertible {
+		return true
+	}
 	switch name {
-	case "int", "int8", "int16", "int32", "int64",
-		"uint8", "uint16", "uint32", "uint64",
-		"float", "float32", "float64",
-		"string", "bool", "duration",
-		"color", "date", "time", "dateTime", "datetime",
+	case "color", "date", "time", "dateTime", "datetime",
 		"list", "map", "iter", "ref":
 		return true
 	}

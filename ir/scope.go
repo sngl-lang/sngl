@@ -73,22 +73,25 @@ func (t *TypeSym) SymType() *Type  { return t.Type }
 // Fresh instances are created each call to avoid mutating shared state.
 func NewBaseScope() *Scope {
 	s := &Scope{Symbols: make(map[string]Symbol)}
+	// Scalar universe names come from the shared built-in registry (builtins.go)
+	// so this table can't drift from the type resolver / conversion switches.
+	for _, b := range BuiltinScalars() {
+		if b.Universe {
+			s.Symbols[b.Name] = &TypeSym{Name: b.Name, Type: b.Type}
+		}
+	}
+	// The bare generic constructors are predeclared as dyn-parameterized
+	// defaults. "color", "date", "time", and "dateTime" are intentionally
+	// absent — they are provided exclusively as stdlib StructDefs
+	// (lib/types.sngl). The stdlib scope sits between this base scope and user
+	// code, so resolution finds the StructDef. Pre-stdlib lookups for these
+	// names will fail, which is the correct behaviour.
 	for _, entry := range []struct {
 		name string
 		typ  *Type
 	}{
-		{"bool", TypBool},
-		{"int", TypInt},
-		{"float", TypFloat},
-		{"string", TypString},
-		// "color", "date", "time", and "dateTime" are intentionally absent
-		// here — they are provided exclusively as stdlib StructDefs
-		// (lib/types.sngl). The stdlib scope sits between this base scope and
-		// user code, so resolution finds the StructDef. Pre-stdlib lookups for
-		// these names will fail, which is the correct behaviour.
 		{"list", ListOf(TypDyn)},
 		{"option", OptionOf(TypDyn)},
-		{"duration", TypDuration},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}
