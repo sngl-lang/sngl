@@ -20,6 +20,21 @@ func init() {
 	expand.RegisterPre("builtin", "generic", genericHandler)
 }
 
+// stringArg reads a single string-literal macro argument. Macro arguments are
+// constant expressions; these compiler tags are string constants (not name
+// references), so they are written as `"color"` / `"list"`, not bare idents.
+func stringArg(attr ast.MacroAttr) (string, error) {
+	if len(attr.Args) != 1 {
+		return "", errors.New("expected exactly one string argument")
+	}
+	lit, ok := attr.Args[0].(*ast.LiteralExpr)
+	if !ok || lit.Kind != ast.LiteralStringQuoted {
+		return "", errors.New(`argument must be a quoted string literal, e.g. ("color")`)
+	}
+	// LiteralExpr.Raw holds the already-unquoted string content.
+	return lit.Raw, nil
+}
+
 // genericHandler implements #[builtin.generic(id)], marking a struct as a
 // built-in generic type constructor (list/map/iter/ref/option). The checker
 // resolves references to the marked name through scope and dispatches the
@@ -30,18 +45,15 @@ func genericHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
 	if !ok {
 		return decl, errors.New("generic macro requires a struct declaration")
 	}
-	if len(attr.Args) != 1 {
-		return decl, errors.New("generic requires exactly one id argument, e.g. #[builtin.generic(list)]")
+	id, err := stringArg(attr)
+	if err != nil {
+		return decl, fmt.Errorf("builtin.generic: %w", err)
 	}
-	id, ok := attr.Args[0].(*ast.IdentExpr)
-	if !ok {
-		return decl, errors.New("generic id must be a bare identifier (list/map/iter/ref/option)")
-	}
-	switch id.Name {
+	switch id {
 	case "list", "map", "iter", "ref", "option":
-		s.BuiltinGeneric = id.Name
+		s.BuiltinGeneric = id
 	default:
-		return decl, fmt.Errorf("unknown generic id %q", id.Name)
+		return decl, fmt.Errorf("unknown generic id %q", id)
 	}
 	return s, nil
 }
@@ -55,18 +67,15 @@ func stringReprHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
 	if !ok {
 		return decl, errors.New("stringrepr macro requires a struct declaration")
 	}
-	if len(attr.Args) != 1 {
-		return decl, errors.New("stringrepr requires exactly one kind argument, e.g. #[builtin.stringrepr(color)]")
+	kind, err := stringArg(attr)
+	if err != nil {
+		return decl, fmt.Errorf("builtin.stringrepr: %w", err)
 	}
-	id, ok := attr.Args[0].(*ast.IdentExpr)
-	if !ok {
-		return decl, errors.New("stringrepr kind must be a bare identifier (color/date/time/dateTime)")
-	}
-	switch id.Name {
+	switch kind {
 	case "color", "date", "time", "dateTime":
-		s.StringRepr = id.Name
+		s.StringRepr = kind
 	default:
-		return decl, fmt.Errorf("unknown stringrepr kind %q", id.Name)
+		return decl, fmt.Errorf("unknown stringrepr kind %q", kind)
 	}
 	return s, nil
 }

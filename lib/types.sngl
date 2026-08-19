@@ -21,7 +21,7 @@ struct string {}
 // (`length`, `push`, `filter`, `map`, …) cover the common operations and
 // are all pure — they return new lists rather than mutating in place.
 // T is the element type.
-#[builtin.generic(list)]
+#[builtin.generic("list")]
 struct list<T> {}
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
@@ -34,7 +34,7 @@ struct list<T> {}
 // `#ff0000`).
 // Derived colors (lighten, darken, opacity-adjust) are available via
 // the functions on the `color` receiver.
-#[builtin.stringrepr(color)]
+#[builtin.stringrepr("color")]
 struct color {
     r int = 0
     g int = 0
@@ -46,19 +46,19 @@ struct color {
 // string-representable: a string literal in the canonical form coerces to
 // `date` and a `date` coerces back to its string form. Platform codegen
 // maps it to the native date/time type (Go `time.Time`, JS/Kotlin string).
-#[builtin.stringrepr(date)]
+#[builtin.stringrepr("date")]
 struct date {}
 
 // Wall-clock time in "HH:MM" or "HH:MM:SS" form. String-representable like
 // `date`; coerces to/from its canonical string form. Platform codegen maps
 // it to the native date/time type.
-#[builtin.stringrepr(time)]
+#[builtin.stringrepr("time")]
 struct time {}
 
 // ISO-8601 date-time. String-representable like `date`/`time`; coerces
 // to/from its canonical string form. Platform codegen maps it to the
 // native date/time type (Go `time.Time`, JS/Kotlin string).
-#[builtin.stringrepr(dateTime)]
+#[builtin.stringrepr("dateTime")]
 struct dateTime {}
 
 // Receiver type for test-only helpers. Used by the stdlib test runner:
@@ -343,7 +343,7 @@ struct error {}
 // Equality on K determines membership; non-comparable key types are
 // rejected at type-check time.
 // K is the key type (must be comparable); V is the value type.
-#[builtin.generic(map)]
+#[builtin.generic("map")]
 struct map<K, V> {}
 
 // Window is the type of `window #id(...)` declarations. Reading
@@ -358,15 +358,15 @@ struct Window {
 // to a context expecting iter<T> (or iter<(K, V)> for map). For-loops
 // bind elements when iterating over an iter<T>. The type is opaque —
 // no methods, no fields.
-#[builtin.generic(iter)]
+#[builtin.generic("iter")]
 struct iter<T> {}
 
 // Optional value: `option<T>` is either a `T` or absent. Constructed by the
 // compiler; T is the wrapped type.
-#[builtin.generic(option)]
+#[builtin.generic("option")]
 struct option<T> {}
 
 // Mutable reference cell: `ref<T>` is a write-through handle to a `T`.
 // Used by NoLambda lowering for mutable captures; T is the referent type.
-#[builtin.generic(ref)]
+#[builtin.generic("ref")]
 struct ref<T> {}

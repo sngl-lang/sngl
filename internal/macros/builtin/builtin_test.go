@@ -26,7 +26,7 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 
 func TestStringReprMacro(t *testing.T) {
 	// No import: #[builtin.*] macros resolve ambiently.
-	src := `#[builtin.stringrepr(color)]
+	src := `#[builtin.stringrepr("color")]
 struct color { r int = 0 }`
 	stmt, diags := expandOne(t, src)
 	for _, d := range diags {
@@ -44,7 +44,7 @@ struct color { r int = 0 }`
 }
 
 func TestStringReprMacroRejectsUnknownKind(t *testing.T) {
-	src := `#[builtin.stringrepr(bogus)]
+	src := `#[builtin.stringrepr("bogus")]
 struct x {}`
 	_, diags := expandOne(t, src)
 	found := false
@@ -59,7 +59,7 @@ struct x {}`
 }
 
 func TestStringReprMacroRejectsNonStruct(t *testing.T) {
-	src := `#[builtin.stringrepr(color)]
+	src := `#[builtin.stringrepr("color")]
 component foo {}`
 	_, diags := expandOne(t, src)
 	found := false
@@ -70,5 +70,40 @@ component foo {}`
 	}
 	if !found {
 		t.Errorf("expected an error diagnostic when stringrepr targets a non-struct")
+	}
+}
+
+func TestGenericMacro(t *testing.T) {
+	src := `#[builtin.generic("list")]
+struct list<T> {}`
+	stmt, diags := expandOne(t, src)
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diagnostic: %s", d.Msg)
+		}
+	}
+	sd, ok := stmt.(*ast.StructDef)
+	if !ok {
+		t.Fatalf("expected *ast.StructDef, got %T", stmt)
+	}
+	if sd.BuiltinGeneric != "list" {
+		t.Errorf("BuiltinGeneric = %q, want %q", sd.BuiltinGeneric, "list")
+	}
+}
+
+func TestGenericMacroRejectsBareIdent(t *testing.T) {
+	// A bare identifier is a name reference, not a constant — must be rejected
+	// in favor of a string literal.
+	src := `#[builtin.generic(list)]
+struct list<T> {}`
+	_, diags := expandOne(t, src)
+	found := false
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected an error diagnostic for a bare-ident macro argument")
 	}
 }
