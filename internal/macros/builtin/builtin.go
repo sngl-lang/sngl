@@ -20,19 +20,15 @@ func init() {
 	expand.RegisterPre("builtin", "generic", genericHandler)
 }
 
-// stringArg reads a single string-literal macro argument. Macro arguments are
-// constant expressions; these compiler tags are string constants (not name
-// references), so they are written as `"color"` / `"list"`, not bare idents.
+// stringArg reads a single constant-string macro argument. Macro arguments are
+// constant expressions evaluated before type checking; these compiler tags are
+// string constants (not name references), so they are written as `"color"` /
+// `"list"`, not bare idents. Evaluation is delegated to ast.EvalString.
 func stringArg(attr ast.MacroAttr) (string, error) {
 	if len(attr.Args) != 1 {
 		return "", errors.New("expected exactly one string argument")
 	}
-	lit, ok := attr.Args[0].(*ast.LiteralExpr)
-	if !ok || lit.Kind != ast.LiteralStringQuoted {
-		return "", errors.New(`argument must be a quoted string literal, e.g. ("color")`)
-	}
-	// LiteralExpr.Raw holds the already-unquoted string content.
-	return lit.Raw, nil
+	return ast.EvalString(attr.Args[0])
 }
 
 // genericHandler implements #[builtin.generic(id)], marking a struct as a
