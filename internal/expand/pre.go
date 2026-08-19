@@ -54,7 +54,7 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 			uri = attr.Alias
 		}
 
-		handler, found := lookupPre(uri, attr.Name)
+		macro, found := lookupPre(uri, attr.Name)
 		if !found {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
@@ -64,7 +64,17 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 			continue
 		}
 
-		result, err := handler(attr, decl)
+		args, err := evalArgs(macro.params, attr.Args)
+		if err != nil {
+			diags = append(diags, ir.Diagnostic{
+				Pos:      attr.Pos,
+				Msg:      fmt.Sprintf("macro %s.%s: %s", attr.Alias, attr.Name, err),
+				Severity: ir.Error,
+			})
+			continue
+		}
+
+		result, err := macro.handler(args, decl)
 		if err != nil {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,

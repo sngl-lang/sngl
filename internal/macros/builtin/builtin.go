@@ -16,30 +16,43 @@ import (
 )
 
 func init() {
-	expand.RegisterPre("builtin", "stringrepr", stringReprHandler)
+	expand.RegisterPre("builtin", "stringrepr",
+		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, stringReprHandler)
+	expand.RegisterPre("builtin", "generic",
+		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, genericHandler)
 }
 
-// stringReprHandler implements #[builtin.stringrepr(kind)], marking a struct as
-// a string-representable value type (color/date/time/dateTime). Downstream code
-// reads ir.StructDef.StringRepr rather than the struct's name, so the coercion
-// behaviour travels with the type.
-func stringReprHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
+// genericHandler implements #[builtin.generic("id")], marking a struct as a
+// built-in generic type constructor (list/map/iter/ref/option). The checker
+// resolves references to the marked name through scope and dispatches the
+// type-argument construction by id, so the name is shadowable like any other
+// declaration while the construction logic stays in the compiler.
+func genericHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
+	s, ok := decl.(*ast.StructDef)
+	if !ok {
+		return decl, errors.New("generic macro requires a struct declaration")
+	}
+	id := ast.BuiltinKind(args.String("id"))
+	if !id.IsGeneric() {
+		return decl, fmt.Errorf("unknown generic id %q", args.String("id"))
+	}
+	s.Builtin = id
+	return s, nil
+}
+
+// stringReprHandler implements #[builtin.stringrepr("kind")], marking a struct
+// as a string-representable value type (color/date/time/dateTime). Downstream
+// code reads ir.StructDef.StringRepr rather than the struct's name, so the
+// coercion behaviour travels with the type.
+func stringReprHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	s, ok := decl.(*ast.StructDef)
 	if !ok {
 		return decl, errors.New("stringrepr macro requires a struct declaration")
 	}
-	if len(attr.Args) != 1 {
-		return decl, errors.New("stringrepr requires exactly one kind argument, e.g. #[builtin.stringrepr(color)]")
+	kind := ast.BuiltinKind(args.String("kind"))
+	if !kind.IsStringRepr() {
+		return decl, fmt.Errorf("unknown stringrepr kind %q", args.String("kind"))
 	}
-	id, ok := attr.Args[0].(*ast.IdentExpr)
-	if !ok {
-		return decl, errors.New("stringrepr kind must be a bare identifier (color/date/time/dateTime)")
-	}
-	switch id.Name {
-	case "color", "date", "time", "dateTime":
-		s.StringRepr = id.Name
-	default:
-		return decl, fmt.Errorf("unknown stringrepr kind %q", id.Name)
-	}
+	s.Builtin = kind
 	return s, nil
 }

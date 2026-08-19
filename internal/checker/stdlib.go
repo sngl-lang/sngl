@@ -1,8 +1,8 @@
 package checker
 
 import (
+	"fmt"
 	"io/fs"
-	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -39,9 +39,14 @@ func StdlibDocs() []*ast.Document {
 // touching this code.
 func parseStdlibDocs() []*ast.Document {
 	stdlibOnce.Do(func() {
+		// The stdlib is embedded and compiler-controlled: any read/parse/expand
+		// failure is a build invariant violation, not a runtime condition.
+		// Failing loudly here surfaces the real cause immediately, instead of
+		// leaving a partial stdlib that produces confusing "undefined
+		// component/func" errors downstream (bugs.md #20).
 		entries, err := lib.FS.ReadDir(".")
 		if err != nil {
-			return
+			panic(fmt.Sprintf("sngl: reading embedded stdlib: %v", err))
 		}
 		for _, e := range entries {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
@@ -49,27 +54,25 @@ func parseStdlibDocs() []*ast.Document {
 			}
 			data, err := fs.ReadFile(lib.FS, e.Name())
 			if err != nil {
-				slog.Error("stdlib read failed", "file", e.Name(), "err", err)
-				continue
+				panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", e.Name(), err))
 			}
 			doc, err := parser.Parse(e.Name(), data)
 			if err != nil {
-				// A silently-skipped stdlib file leaves the checker with a
-				// partial stdlib, so downstream "undefined component/func"
-				// errors look unrelated. Surface it (bugs.md #20).
-				slog.Error("stdlib parse failed", "file", e.Name(), "err", err)
-				continue
+				panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", e.Name(), err))
 			}
 			stdlibDocs = append(stdlibDocs, doc)
 		}
 		// Run pre-check macro expansion over the stdlib source so #[builtin.*]
 		// marks (e.g. stringrepr on color/date/time) are applied before the
-		// checker registers these declarations. A malformed stdlib attribute is
-		// our bug, so surface it loudly rather than failing silently.
+		// checker registers these declarations.
+		var expandErrs []string
 		for _, d := range expand.ExpandPre(stdlibDocs) {
 			if d.Severity == ir.Error {
-				slog.Error("stdlib macro expansion failed", "msg", d.Msg)
+				expandErrs = append(expandErrs, fmt.Sprintf("%s: %s", d.Pos, d.Msg))
 			}
+		}
+		if len(expandErrs) > 0 {
+			panic("sngl: expanding stdlib macros:\n  " + strings.Join(expandErrs, "\n  "))
 		}
 	})
 	return stdlibDocs
@@ -306,28 +309,12 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 	return pkg
 }
 
-// stringReprKind maps the AST string-repr tag (set by #[builtin.stringrepr])
-// to its ir.StringReprKind. Empty (untagged) yields StringReprNone.
-func stringReprKind(tag string) ir.StringReprKind {
-	switch tag {
-	case "color":
-		return ir.StringReprColor
-	case "date":
-		return ir.StringReprDate
-	case "time":
-		return ir.StringReprTime
-	case "dateTime":
-		return ir.StringReprDateTime
-	}
-	return ir.StringReprNone
-}
-
 // declareStdlibStruct registers a struct name (without fields) so other
 // declarations can reference it while we are still processing the stdlib.
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, StringRepr: stringReprKind(s.StringRepr)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)
@@ -337,12 +324,12 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	pkg.Symbols.Root.Declare(sd)
 	// Publish the canonical date/time/dateTime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
-	switch sd.StringRepr {
-	case ir.StringReprDate:
+	switch sd.Builtin {
+	case ast.BuiltinDate:
 		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ir.StringReprTime:
+	case ast.BuiltinTime:
 		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ir.StringReprDateTime:
+	case ast.BuiltinDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
 	return sd

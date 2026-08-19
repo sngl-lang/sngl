@@ -44,6 +44,56 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 	return c.resolveType(te)
 }
 
+// constructBuiltinGeneric applies a generic built-in constructor (identified by
+// its #[builtin.generic] kind) to the type arguments of t. The construction
+// logic stays in the compiler; only the name→kind binding lives in scope.
+func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
+	switch id {
+	case ast.BuiltinList:
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
+			return ListOf(TypDyn)
+		}
+		// list<shape> is the only valid use of the shape type.
+		if named, ok := t.TypeArgs[0].(*ast.NamedType); ok && named.Name == "shape" {
+			return ListOf(ir.TypShape)
+		}
+		return ListOf(c.resolveType(t.TypeArgs[0]))
+	case ast.BuiltinOption:
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
+			return OptionOf(TypDyn)
+		}
+		return OptionOf(c.resolveType(t.TypeArgs[0]))
+	case ast.BuiltinMap:
+		if len(t.TypeArgs) != 2 {
+			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
+			return TypDyn
+		}
+		k := c.resolveType(t.TypeArgs[0])
+		v := c.resolveType(t.TypeArgs[1])
+		if !isComparable(k) {
+			c.error(t.Pos, "map key type %s is not comparable", k)
+			return TypDyn
+		}
+		return ir.MapOf(k, v)
+	case ast.BuiltinIter:
+		if len(t.TypeArgs) != 1 {
+			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
+			return TypDyn
+		}
+		return IterOf(c.resolveType(t.TypeArgs[0]))
+	case ast.BuiltinRef:
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
+			return ir.RefOf(TypDyn)
+		}
+		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
+	}
+	// Unknown kind would be a compiler bug (macro validates the id set).
+	return TypDyn
+}
+
 // resolveNamedType resolves a named type reference to an IR *Type.
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
@@ -70,48 +120,18 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return TypDyn
 	}
 
-	// Generic builtins with type argument.
+	// Generic built-in constructors resolve through scope: a #[builtin.generic]
+	// StructDef (lib/types.sngl) carries the constructor id, and the compiler
+	// applies the type arguments. Because this goes through the scope chain, a
+	// user declaration of the same name shadows the built-in like any other.
+	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
+			return c.constructBuiltinGeneric(sd.Builtin, t)
+		}
+	}
+	// component/shape have no `<T>` decl to carry a marker: `component` is a
+	// bare kind and `shape` is only valid inside `list<shape>`.
 	switch t.Name {
-	case "list":
-		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
-			return ListOf(TypDyn)
-		}
-		// list<shape> is the only valid use of the shape type.
-		if named, ok := t.TypeArgs[0].(*ast.NamedType); ok && named.Name == "shape" {
-			return ListOf(ir.TypShape)
-		}
-		return ListOf(c.resolveType(t.TypeArgs[0]))
-	case "option":
-		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
-			return OptionOf(TypDyn)
-		}
-		return OptionOf(c.resolveType(t.TypeArgs[0]))
-	case "map":
-		if len(t.TypeArgs) != 2 {
-			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
-			return TypDyn
-		}
-		k := c.resolveType(t.TypeArgs[0])
-		v := c.resolveType(t.TypeArgs[1])
-		if !isComparable(k) {
-			c.error(t.Pos, "map key type %s is not comparable", k)
-			return TypDyn
-		}
-		return ir.MapOf(k, v)
-	case "iter":
-		if len(t.TypeArgs) != 1 {
-			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
-			return TypDyn
-		}
-		return IterOf(c.resolveType(t.TypeArgs[0]))
-	case "ref":
-		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
-			return ir.RefOf(TypDyn)
-		}
-		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
 	case "shape":
