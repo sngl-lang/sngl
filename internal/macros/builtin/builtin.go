@@ -17,6 +17,33 @@ import (
 
 func init() {
 	expand.RegisterPre("builtin", "stringrepr", stringReprHandler)
+	expand.RegisterPre("builtin", "generic", genericHandler)
+}
+
+// genericHandler implements #[builtin.generic(id)], marking a struct as a
+// built-in generic type constructor (list/map/iter/ref/option). The checker
+// resolves references to the marked name through scope and dispatches the
+// type-argument construction by id, so the name is shadowable like any other
+// declaration while the construction logic stays in the compiler.
+func genericHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
+	s, ok := decl.(*ast.StructDef)
+	if !ok {
+		return decl, errors.New("generic macro requires a struct declaration")
+	}
+	if len(attr.Args) != 1 {
+		return decl, errors.New("generic requires exactly one id argument, e.g. #[builtin.generic(list)]")
+	}
+	id, ok := attr.Args[0].(*ast.IdentExpr)
+	if !ok {
+		return decl, errors.New("generic id must be a bare identifier (list/map/iter/ref/option)")
+	}
+	switch id.Name {
+	case "list", "map", "iter", "ref", "option":
+		s.BuiltinGeneric = id.Name
+	default:
+		return decl, fmt.Errorf("unknown generic id %q", id.Name)
+	}
+	return s, nil
 }
 
 // stringReprHandler implements #[builtin.stringrepr(kind)], marking a struct as

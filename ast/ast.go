@@ -131,6 +131,9 @@ type StructDef struct {
 	Body        []StructBodyItem
 	IsMultiline bool
 	StringRepr  string // "color"/"date"/"time"/"dateTime" when tagged by #[builtin.stringrepr]; "" otherwise
+	// BuiltinGeneric is the constructor id ("list"/"map"/"iter"/"ref"/"option")
+	// when tagged by #[builtin.generic]; "" otherwise.
+	BuiltinGeneric string
 }
 
 // Fields returns just the *StructField items from Body, in source order.

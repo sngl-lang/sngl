@@ -327,7 +327,7 @@ func stringReprKind(tag string) ir.StringReprKind {
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, StringRepr: stringReprKind(s.StringRepr)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, StringRepr: stringReprKind(s.StringRepr), BuiltinGeneric: s.BuiltinGeneric}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)

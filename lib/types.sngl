@@ -21,6 +21,7 @@ struct string {}
 // (`length`, `push`, `filter`, `map`, …) cover the common operations and
 // are all pure — they return new lists rather than mutating in place.
 // T is the element type.
+#[builtin.generic(list)]
 struct list<T> {}
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
@@ -342,6 +343,7 @@ struct error {}
 // Equality on K determines membership; non-comparable key types are
 // rejected at type-check time.
 // K is the key type (must be comparable); V is the value type.
+#[builtin.generic(map)]
 struct map<K, V> {}
 
 // Window is the type of `window #id(...)` declarations. Reading
@@ -356,4 +358,15 @@ struct Window {
 // to a context expecting iter<T> (or iter<(K, V)> for map). For-loops
 // bind elements when iterating over an iter<T>. The type is opaque —
 // no methods, no fields.
+#[builtin.generic(iter)]
 struct iter<T> {}
+
+// Optional value: `option<T>` is either a `T` or absent. Constructed by the
+// compiler; T is the wrapped type.
+#[builtin.generic(option)]
+struct option<T> {}
+
+// Mutable reference cell: `ref<T>` is a write-through handle to a `T`.
+// Used by NoLambda lowering for mutable captures; T is the referent type.
+#[builtin.generic(ref)]
+struct ref<T> {}

@@ -385,6 +385,10 @@ type StructDef struct {
 	Native     string         // qualified native-language name (e.g. "ast.File"); empty for user-defined
 	Doc        string         // doc comment for scheme-imported decls; empty for SNGL-sourced
 	StringRepr StringReprKind // string-representable value type (color/date/time/dateTime); set by #[builtin.stringrepr]
+	// BuiltinGeneric is the constructor id ("list"/"map"/"iter"/"ref"/"option")
+	// when this struct is a built-in generic type; "" for ordinary structs.
+	// resolveNamedType dispatches type-argument construction by this id.
+	BuiltinGeneric string
 }
 
 func (s *StructDef) SymName() string { return s.Name }
