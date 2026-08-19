@@ -2,18 +2,21 @@
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
 // `float` with `float(x)` before doing fractional math.
+#[builtin.primitive("int")]
 struct int {}
 
 // 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
 // trailing `.0` distinguishes it from `int`). Methods on the `float`
 // receiver expose the standard math library (`floor`, `round`, `pow`,
 // trigonometric functions, etc.).
+#[builtin.primitive("float")]
 struct float {}
 
 // UTF-8 string. Strings are immutable; methods on the `string` receiver
 // return new values rather than mutating in place. Use `+` for
 // concatenation and the `string.*` helpers (`length`, `upper`, `split`,
 // `replace`, …) for everything else.
+#[builtin.primitive("string")]
 struct string {}
 
 // Heterogeneous list. `list<T>` is the parameterized form; element type
