@@ -39,24 +39,26 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 	for _, attr := range ad.Attrs {
 		ref, aliasKnown := aliases[attr.Alias]
 
-		if !aliasKnown {
-			diags = append(diags, ir.Diagnostic{
-				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("unresolved import alias %q in macro attribute", attr.Alias),
-				Severity: ir.Error,
-			})
+		// Resolve the macro package. An explicit internal:// import maps the
+		// alias to a package URI; a non-internal import alias is not a macro
+		// and is left untouched. When the alias is not imported at all, it is
+		// treated as an ambient macro-package name so registered macros (e.g.
+		// builtin, canvas) work without an internal:// import.
+		var uri string
+		switch {
+		case aliasKnown && ref.Scheme == "internal":
+			uri = ref.URI
+		case aliasKnown:
 			continue
+		default:
+			uri = attr.Alias
 		}
 
-		if ref.Scheme != "internal" {
-			continue
-		}
-
-		handler, found := lookupPre(ref.URI, attr.Name)
+		handler, found := lookupPre(uri, attr.Name)
 		if !found {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("unknown macro %q in package %q", attr.Name, ref.URI),
+				Msg:      fmt.Sprintf("unknown macro %q in package %q", attr.Name, uri),
 				Severity: ir.Error,
 			})
 			continue

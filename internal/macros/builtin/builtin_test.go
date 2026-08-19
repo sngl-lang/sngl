@@ -25,8 +25,8 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 }
 
 func TestStringReprMacro(t *testing.T) {
-	src := `import "internal://builtin"
-#[builtin.stringrepr(color)]
+	// No import: #[builtin.*] macros resolve ambiently.
+	src := `#[builtin.stringrepr(color)]
 struct color { r int = 0 }`
 	stmt, diags := expandOne(t, src)
 	for _, d := range diags {
@@ -44,8 +44,7 @@ struct color { r int = 0 }`
 }
 
 func TestStringReprMacroRejectsUnknownKind(t *testing.T) {
-	src := `import "internal://builtin"
-#[builtin.stringrepr(bogus)]
+	src := `#[builtin.stringrepr(bogus)]
 struct x {}`
 	_, diags := expandOne(t, src)
 	found := false
@@ -60,8 +59,7 @@ struct x {}`
 }
 
 func TestStringReprMacroRejectsNonStruct(t *testing.T) {
-	src := `import "internal://builtin"
-#[builtin.stringrepr(color)]
+	src := `#[builtin.stringrepr(color)]
 component foo {}`
 	_, diags := expandOne(t, src)
 	found := false

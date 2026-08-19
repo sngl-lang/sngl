@@ -399,10 +399,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
 		case "lower":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
-		case "canvas", "builtin":
-			// Macro-only packages: provide no IR symbols at runtime.
-			// The expand pass handles #[canvas.*] / #[builtin.*] attributes
-			// before type-checking.
+		case "canvas":
+			// Macro-only package: provides no IR symbols at runtime.
+			// The expand pass handles #[canvas.*] attributes before type-checking.
 			irImport.Pkg = &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
