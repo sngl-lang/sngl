@@ -761,37 +761,12 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// user method and be called as `x.string()` etc. — the cast form never
 	// dispatches to user methods.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
+		// Scalar-primitive casts are dispatched from the shared registry
+		// (ir/builtins.go); struct-backed casts (color/date/time) follow.
+		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
+			return c.inferBuiltinConversion(x, b.Type, ident.Name)
+		}
 		switch ident.Name {
-		case "int":
-			return c.inferBuiltinConversion(x, TypInt, ident.Name)
-		case "int8":
-			return c.inferBuiltinConversion(x, ir.TypInt8, ident.Name)
-		case "int16":
-			return c.inferBuiltinConversion(x, ir.TypInt16, ident.Name)
-		case "int32":
-			return c.inferBuiltinConversion(x, ir.TypInt32, ident.Name)
-		case "int64":
-			return c.inferBuiltinConversion(x, ir.TypInt64, ident.Name)
-		case "uint8":
-			return c.inferBuiltinConversion(x, ir.TypUint8, ident.Name)
-		case "uint16":
-			return c.inferBuiltinConversion(x, ir.TypUint16, ident.Name)
-		case "uint32":
-			return c.inferBuiltinConversion(x, ir.TypUint32, ident.Name)
-		case "uint64":
-			return c.inferBuiltinConversion(x, ir.TypUint64, ident.Name)
-		case "float":
-			return c.inferBuiltinConversion(x, TypFloat, ident.Name)
-		case "float32":
-			return c.inferBuiltinConversion(x, ir.TypFloat32, ident.Name)
-		case "float64":
-			return c.inferBuiltinConversion(x, ir.TypFloat64, ident.Name)
-		case "string":
-			return c.inferBuiltinConversion(x, TypString, ident.Name)
-		case "bool":
-			return c.inferBuiltinConversion(x, TypBool, ident.Name)
-		case "duration":
-			return c.inferBuiltinConversion(x, TypDuration, ident.Name)
 		case "color", "date", "time", "datetime", "dateTime":
 			// These are stdlib StructDef-backed types, not primitives, so the
 			// cast form is just convert-to-struct. Look up the StructDef type

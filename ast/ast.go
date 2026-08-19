@@ -130,6 +130,7 @@ type StructDef struct {
 	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
 	Body        []StructBodyItem
 	IsMultiline bool
+	StringRepr  string // "color"/"date"/"time"/"dateTime" when tagged by #[builtin.stringrepr]; "" otherwise
 }
 
 // Fields returns just the *StructField items from Body, in source order.

@@ -415,50 +415,48 @@ func isStringDomain(k TypeKind) bool {
 	return false
 }
 
-// IsColorStruct reports whether t is a TypeStruct whose Decl is the stdlib
-// "color" StructDef. The color value type is now uniformly carried as a
-// TypeStruct backed by the stdlib StructDef (no separate TypeColor kind
-// is produced); call this to detect the shape.
-func IsColorStruct(t *Type) bool {
-	if t == nil || t.Kind != TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*StructDef)
-	return ok && sd.Name == "color"
-}
+// StringReprKind classifies a struct that has a canonical string form and
+// coerces to/from string. It is stamped onto the declaration by the
+// #[builtin.stringrepr(...)] macro (internal/macros/builtin) and read here
+// instead of matching the struct's surface name, so the string-repr behaviour
+// travels with the type rather than with a hardcoded name.
+type StringReprKind uint8
 
-// StringReprStruct reports whether t is a stdlib struct with a canonical
-// string form (coerces to/from string): color, date, time, dateTime.
-func StringReprStruct(t *Type) bool {
+const (
+	StringReprNone StringReprKind = iota
+	StringReprColor
+	StringReprDate
+	StringReprTime
+	StringReprDateTime
+)
+
+func stringReprOf(t *Type) StringReprKind {
 	if t == nil || t.Kind != TypeStruct {
-		return false
+		return StringReprNone
 	}
 	sd, ok := t.Decl.(*StructDef)
 	if !ok {
-		return false
+		return StringReprNone
 	}
-	switch sd.Name {
-	case "color", "date", "time", "dateTime":
-		return true
-	}
-	return false
+	return sd.StringRepr
 }
 
-// IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the stdlib
-// "date"/"time"/"dateTime" StructDef. These three were formerly the TypeDate/
-// TypeTime/TypeDateTime kinds; they are now carried uniformly as TypeStruct
-// backed by the stdlib StructDef (like color). Detect by name.
-func IsDateStruct(t *Type) bool     { return isStdlibStruct(t, "date") }
-func IsTimeStruct(t *Type) bool     { return isStdlibStruct(t, "time") }
-func IsDateTimeStruct(t *Type) bool { return isStdlibStruct(t, "dateTime") }
+// IsColorStruct reports whether t is the color value type. The color value is
+// carried uniformly as a TypeStruct backed by its StructDef (no separate
+// TypeColor kind is produced); call this to detect the shape.
+func IsColorStruct(t *Type) bool { return stringReprOf(t) == StringReprColor }
 
-func isStdlibStruct(t *Type, name string) bool {
-	if t == nil || t.Kind != TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*StructDef)
-	return ok && sd.Name == name
-}
+// StringReprStruct reports whether t is a struct with a canonical string form
+// (coerces to/from string): color, date, time, dateTime.
+func StringReprStruct(t *Type) bool { return stringReprOf(t) != StringReprNone }
+
+// IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the date/
+// time/dateTime value type. These three were formerly the TypeDate/TypeTime/
+// TypeDateTime kinds; they are now carried uniformly as TypeStruct backed by
+// the StructDef (like color).
+func IsDateStruct(t *Type) bool     { return stringReprOf(t) == StringReprDate }
+func IsTimeStruct(t *Type) bool     { return stringReprOf(t) == StringReprTime }
+func IsDateTimeStruct(t *Type) bool { return stringReprOf(t) == StringReprDateTime }
 
 // Registered stdlib dateTime struct type. Populated by the checker once
 // lib/types.sngl is parsed, so non-checker phases (foreign-type importers,

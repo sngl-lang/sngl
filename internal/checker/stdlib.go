@@ -8,9 +8,14 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
+
+	// Registers the #[builtin.*] macros. The stdlib source is macro-expanded
+	// below, so the handlers must be present whenever the checker runs.
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/builtin"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -56,6 +61,15 @@ func parseStdlibDocs() []*ast.Document {
 				continue
 			}
 			stdlibDocs = append(stdlibDocs, doc)
+		}
+		// Run pre-check macro expansion over the stdlib source so #[builtin.*]
+		// marks (e.g. stringrepr on color/date/time) are applied before the
+		// checker registers these declarations. A malformed stdlib attribute is
+		// our bug, so surface it loudly rather than failing silently.
+		for _, d := range expand.ExpandPre(stdlibDocs) {
+			if d.Severity == ir.Error {
+				slog.Error("stdlib macro expansion failed", "msg", d.Msg)
+			}
 		}
 	})
 	return stdlibDocs
@@ -292,12 +306,28 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 	return pkg
 }
 
+// stringReprKind maps the AST string-repr tag (set by #[builtin.stringrepr])
+// to its ir.StringReprKind. Empty (untagged) yields StringReprNone.
+func stringReprKind(tag string) ir.StringReprKind {
+	switch tag {
+	case "color":
+		return ir.StringReprColor
+	case "date":
+		return ir.StringReprDate
+	case "time":
+		return ir.StringReprTime
+	case "dateTime":
+		return ir.StringReprDateTime
+	}
+	return ir.StringReprNone
+}
+
 // declareStdlibStruct registers a struct name (without fields) so other
 // declarations can reference it while we are still processing the stdlib.
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name}
+	sd := &ir.StructDef{AST: s, Name: s.Name, StringRepr: stringReprKind(s.StringRepr)}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)
@@ -307,12 +337,12 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	pkg.Symbols.Root.Declare(sd)
 	// Publish the canonical date/time/dateTime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
-	switch sd.Name {
-	case "date":
+	switch sd.StringRepr {
+	case ir.StringReprDate:
 		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case "time":
+	case ir.StringReprTime:
 		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case "dateTime":
+	case ir.StringReprDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
 	return sd

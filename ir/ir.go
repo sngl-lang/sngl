@@ -382,8 +382,9 @@ type StructDef struct {
 	Name       string
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
-	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	Doc        string // doc comment for scheme-imported decls; empty for SNGL-sourced
+	Native     string         // qualified native-language name (e.g. "ast.File"); empty for user-defined
+	Doc        string         // doc comment for scheme-imported decls; empty for SNGL-sourced
+	StringRepr StringReprKind // string-representable value type (color/date/time/dateTime); set by #[builtin.stringrepr]
 }
 
 func (s *StructDef) SymName() string { return s.Name }
