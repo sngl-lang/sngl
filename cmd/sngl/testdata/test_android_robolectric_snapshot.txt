@@ -1,5 +1,6 @@
 # Robolectric snapshot round-trip. Goldens land under robolectric/ subdir.
 
+[short] skip 'slow Robolectric round-trip; skipped in -short'
 [!exec:java] skip 'JDK required'
 
 env SNGL_UPDATE_SNAPSHOTS=1

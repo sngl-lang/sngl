@@ -158,6 +158,9 @@ func bodyOuterHTMLInBrowser(t *testing.T, html string) string {
 	engine := webtest.New(mux)
 	defer engine.Close()
 
+	if testing.Short() {
+		t.Skip("skipping browser test in -short mode")
+	}
 	browser, err := engine.StartHeadless(1280, 720)
 	if err != nil {
 		t.Skipf("browser unavailable: %v", err)

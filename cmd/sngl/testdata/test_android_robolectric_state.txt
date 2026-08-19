@@ -2,6 +2,7 @@
 # android --opt testRunner=robolectric. Skips cleanly when JDK/gradle/
 # pkg/kotlin/testagent's mavenLocal entry are unavailable.
 
+[short] skip 'slow Robolectric round-trip; skipped in -short'
 [!exec:java] skip 'JDK required'
 
 sngl test --platform=android --opt testRunner=robolectric app.sngl

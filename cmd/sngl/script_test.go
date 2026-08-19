@@ -52,6 +52,13 @@ func TestScript(t *testing.T) {
 		"running under GitLab CI",
 		os.Getenv("GITLAB_CI") == "true" || os.Getenv("CI") == "true",
 	)
+	// `short` is true under `go test -short`. Slow scripts (e.g. the Robolectric
+	// round-trips, ~2.5min combined) guard with `[short] skip` so the fast local
+	// loop stays quick; the full run (and `go tool verify`) still exercises them.
+	conds["short"] = script.BoolCondition(
+		"go test -short is set",
+		testing.Short(),
+	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
 		Conds: conds,

@@ -18,9 +18,11 @@
 // mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
 // differences without writing), and SNGL_FMT_DOCS is not set for tests.
 //
-// The -full flag sets SNGL_TESTS_FULL=1 for the test step (opting in the
-// slow/heavy platform tests that gate on it, e.g. the android fixtures) and
-// raises the go test timeout to 20m. Without it those tests skip themselves.
+// By default the test step runs with -short, skipping the slow/heavy tests
+// (android fixtures, Robolectric round-trips) so routine and background runs
+// stay light. The -full flag drops -short to run the complete suite (and keeps
+// the raised 20m timeout for it). The gating itself lives in the tests
+// (testing.Short() / the `[short]` scripttest cond).
 //
 // Usage: go tool verify [-v] [-dry] [-full]
 package main
@@ -99,7 +101,7 @@ func (r pkgResult) coverage() float64 {
 func main() {
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
-	full := flag.Bool("full", false, "run the full suite incl. slow/heavy platform tests (sets SNGL_TESTS_FULL=1; raises the go test timeout to 20m)")
+	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric); default passes -short to skip them")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -244,11 +246,17 @@ func runTests(verbose, fmtDocs, full bool) {
 	defer os.Remove(profile.Name())
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
-	// Always raise the per-package timeout above Go's 10m default. Even
-	// without SNGL_TESTS_FULL, the heavy cgo GUI packages run close to the
-	// wall: the fyne suite alone takes ~560s, so on a loaded CI runner the
-	// default 10m flakes into a timeout with no margin. --full adds still
-	// more (android fixtures) but the default set needs headroom too.
+	// Default to -short so the routine run (and background sessions) skips the
+	// slow/heavy tests (android fixtures, Robolectric). `-full` opts into the
+	// complete suite. testing.Short() / the `[short]` scripttest cond do the
+	// actual gating; this just drives them.
+	if !full {
+		args = append(args, "-short")
+	}
+	// Raise the per-package timeout above Go's 10m default: under -full the cgo
+	// GUI packages run close to the wall (the fyne suite alone ~560s) plus the
+	// android fixtures + Robolectric, so on a loaded runner the default 10m
+	// would flake into a timeout.
 	args = append(args, "-timeout=20m")
 	if verbose {
 		args = append(args, "-v")
@@ -265,9 +273,6 @@ func runTests(verbose, fmtDocs, full bool) {
 	cmd.Env = append(os.Environ(), extraEnv...)
 	if fmtDocs {
 		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
-	}
-	if full {
-		cmd.Env = append(cmd.Env, "SNGL_TESTS_FULL=1")
 	}
 	cmd.Stderr = os.Stderr
 
