@@ -45,11 +45,11 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 }
 
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
-// its #[builtin.generic] id) to the type arguments of t. The construction logic
-// stays in the compiler; only the name→id binding lives in scope.
-func (c *checker) constructBuiltinGeneric(id string, t *ast.NamedType) *ir.Type {
+// its #[builtin.generic] kind) to the type arguments of t. The construction
+// logic stays in the compiler; only the name→kind binding lives in scope.
+func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
 	switch id {
-	case "list":
+	case ast.BuiltinList:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
 			return ListOf(TypDyn)
@@ -59,13 +59,13 @@ func (c *checker) constructBuiltinGeneric(id string, t *ast.NamedType) *ir.Type 
 			return ListOf(ir.TypShape)
 		}
 		return ListOf(c.resolveType(t.TypeArgs[0]))
-	case "option":
+	case ast.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
 			return OptionOf(TypDyn)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
-	case "map":
+	case ast.BuiltinMap:
 		if len(t.TypeArgs) != 2 {
 			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
 			return TypDyn
@@ -77,20 +77,20 @@ func (c *checker) constructBuiltinGeneric(id string, t *ast.NamedType) *ir.Type 
 			return TypDyn
 		}
 		return ir.MapOf(k, v)
-	case "iter":
+	case ast.BuiltinIter:
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
 			return TypDyn
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
-	case "ref":
+	case ast.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	}
-	// Unknown id would be a compiler bug (macro validates the id set).
+	// Unknown kind would be a compiler bug (macro validates the id set).
 	return TypDyn
 }
 
@@ -125,8 +125,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// applies the type arguments. Because this goes through the scope chain, a
 	// user declaration of the same name shadows the built-in like any other.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
-		if sd, ok := sym.(*ir.StructDef); ok && sd.BuiltinGeneric != "" {
-			return c.constructBuiltinGeneric(sd.BuiltinGeneric, t)
+		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
+			return c.constructBuiltinGeneric(sd.Builtin, t)
 		}
 	}
 	// component/shape have no `<T>` decl to carry a marker: `component` is a

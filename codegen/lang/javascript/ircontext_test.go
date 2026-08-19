@@ -153,14 +153,14 @@ func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 		}
 	}
 	// Struct-backed string-representable types (color/date/time/dateTime).
-	// String-repr is now flag-driven (ir.StructDef.StringRepr), not name-driven.
-	for name, kind := range map[string]ir.StringReprKind{
-		"color":    ir.StringReprColor,
-		"date":     ir.StringReprDate,
-		"time":     ir.StringReprTime,
-		"dateTime": ir.StringReprDateTime,
+	// String-repr is now flag-driven (ir.StructDef.Builtin), not name-driven.
+	for name, kind := range map[string]ast.BuiltinKind{
+		"color":    ast.BuiltinColor,
+		"date":     ast.BuiltinDate,
+		"time":     ast.BuiltinTime,
+		"dateTime": ast.BuiltinDateTime,
 	} {
-		typ := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: name, StringRepr: kind}}
+		typ := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: name, Builtin: kind}}
 		lit := &ir.Literal{Type: typ, Raw: "val"}
 		got := jc.evalLiteral(lit)
 		if got != `"val"` {

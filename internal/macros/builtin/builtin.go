@@ -32,13 +32,11 @@ func genericHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	if !ok {
 		return decl, errors.New("generic macro requires a struct declaration")
 	}
-	id := args.String("id")
-	switch id {
-	case "list", "map", "iter", "ref", "option":
-		s.BuiltinGeneric = id
-	default:
-		return decl, fmt.Errorf("unknown generic id %q", id)
+	id := ast.BuiltinKind(args.String("id"))
+	if !id.IsGeneric() {
+		return decl, fmt.Errorf("unknown generic id %q", args.String("id"))
 	}
+	s.Builtin = id
 	return s, nil
 }
 
@@ -51,12 +49,10 @@ func stringReprHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	if !ok {
 		return decl, errors.New("stringrepr macro requires a struct declaration")
 	}
-	kind := args.String("kind")
-	switch kind {
-	case "color", "date", "time", "dateTime":
-		s.StringRepr = kind
-	default:
-		return decl, fmt.Errorf("unknown stringrepr kind %q", kind)
+	kind := ast.BuiltinKind(args.String("kind"))
+	if !kind.IsStringRepr() {
+		return decl, fmt.Errorf("unknown stringrepr kind %q", args.String("kind"))
 	}
+	s.Builtin = kind
 	return s, nil
 }

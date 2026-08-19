@@ -38,8 +38,8 @@ struct color { r int = 0 }`
 	if !ok {
 		t.Fatalf("expected *ast.StructDef, got %T", stmt)
 	}
-	if sd.StringRepr != "color" {
-		t.Errorf("StringRepr = %q, want %q", sd.StringRepr, "color")
+	if sd.Builtin != ast.BuiltinColor {
+		t.Errorf("Builtin = %q, want %q", sd.Builtin, ast.BuiltinColor)
 	}
 }
 
@@ -86,8 +86,8 @@ struct list<T> {}`
 	if !ok {
 		t.Fatalf("expected *ast.StructDef, got %T", stmt)
 	}
-	if sd.BuiltinGeneric != "list" {
-		t.Errorf("BuiltinGeneric = %q, want %q", sd.BuiltinGeneric, "list")
+	if sd.Builtin != ast.BuiltinList {
+		t.Errorf("Builtin = %q, want %q", sd.Builtin, ast.BuiltinList)
 	}
 }
 

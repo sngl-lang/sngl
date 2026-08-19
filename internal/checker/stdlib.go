@@ -309,28 +309,12 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 	return pkg
 }
 
-// stringReprKind maps the AST string-repr tag (set by #[builtin.stringrepr])
-// to its ir.StringReprKind. Empty (untagged) yields StringReprNone.
-func stringReprKind(tag string) ir.StringReprKind {
-	switch tag {
-	case "color":
-		return ir.StringReprColor
-	case "date":
-		return ir.StringReprDate
-	case "time":
-		return ir.StringReprTime
-	case "dateTime":
-		return ir.StringReprDateTime
-	}
-	return ir.StringReprNone
-}
-
 // declareStdlibStruct registers a struct name (without fields) so other
 // declarations can reference it while we are still processing the stdlib.
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, StringRepr: stringReprKind(s.StringRepr), BuiltinGeneric: s.BuiltinGeneric}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
 	c.scope.Declare(sd)
@@ -340,12 +324,12 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	pkg.Symbols.Root.Declare(sd)
 	// Publish the canonical date/time/dateTime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
-	switch sd.StringRepr {
-	case ir.StringReprDate:
+	switch sd.Builtin {
+	case ast.BuiltinDate:
 		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ir.StringReprTime:
+	case ast.BuiltinTime:
 		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ir.StringReprDateTime:
+	case ast.BuiltinDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
 	return sd
