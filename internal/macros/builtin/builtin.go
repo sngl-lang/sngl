@@ -16,35 +16,23 @@ import (
 )
 
 func init() {
-	expand.RegisterPre("builtin", "stringrepr", stringReprHandler)
-	expand.RegisterPre("builtin", "generic", genericHandler)
+	expand.RegisterPre("builtin", "stringrepr",
+		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, stringReprHandler)
+	expand.RegisterPre("builtin", "generic",
+		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, genericHandler)
 }
 
-// stringArg reads a single constant-string macro argument. Macro arguments are
-// constant expressions evaluated before type checking; these compiler tags are
-// string constants (not name references), so they are written as `"color"` /
-// `"list"`, not bare idents. Evaluation is delegated to ast.EvalString.
-func stringArg(attr ast.MacroAttr) (string, error) {
-	if len(attr.Args) != 1 {
-		return "", errors.New("expected exactly one string argument")
-	}
-	return ast.EvalString(attr.Args[0])
-}
-
-// genericHandler implements #[builtin.generic(id)], marking a struct as a
+// genericHandler implements #[builtin.generic("id")], marking a struct as a
 // built-in generic type constructor (list/map/iter/ref/option). The checker
 // resolves references to the marked name through scope and dispatches the
 // type-argument construction by id, so the name is shadowable like any other
 // declaration while the construction logic stays in the compiler.
-func genericHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
+func genericHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	s, ok := decl.(*ast.StructDef)
 	if !ok {
 		return decl, errors.New("generic macro requires a struct declaration")
 	}
-	id, err := stringArg(attr)
-	if err != nil {
-		return decl, fmt.Errorf("builtin.generic: %w", err)
-	}
+	id := args.String("id")
 	switch id {
 	case "list", "map", "iter", "ref", "option":
 		s.BuiltinGeneric = id
@@ -54,19 +42,16 @@ func genericHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
 	return s, nil
 }
 
-// stringReprHandler implements #[builtin.stringrepr(kind)], marking a struct as
-// a string-representable value type (color/date/time/dateTime). Downstream code
-// reads ir.StructDef.StringRepr rather than the struct's name, so the coercion
-// behaviour travels with the type.
-func stringReprHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
+// stringReprHandler implements #[builtin.stringrepr("kind")], marking a struct
+// as a string-representable value type (color/date/time/dateTime). Downstream
+// code reads ir.StructDef.StringRepr rather than the struct's name, so the
+// coercion behaviour travels with the type.
+func stringReprHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	s, ok := decl.(*ast.StructDef)
 	if !ok {
 		return decl, errors.New("stringrepr macro requires a struct declaration")
 	}
-	kind, err := stringArg(attr)
-	if err != nil {
-		return decl, fmt.Errorf("builtin.stringrepr: %w", err)
-	}
+	kind := args.String("kind")
 	switch kind {
 	case "color", "date", "time", "dateTime":
 		s.StringRepr = kind

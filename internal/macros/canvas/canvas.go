@@ -8,10 +8,10 @@ import (
 )
 
 func init() {
-	expand.RegisterPre("canvas", "shape", shapeHandler)
+	expand.RegisterPre("canvas", "shape", nil, shapeHandler)
 }
 
-func shapeHandler(attr ast.MacroAttr, decl ast.Stmt) (ast.Stmt, error) {
+func shapeHandler(_ expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	comp, ok := decl.(*ast.ComponentDecl)
 	if !ok {
 		return decl, errors.New("shape macro requires a component declaration")
