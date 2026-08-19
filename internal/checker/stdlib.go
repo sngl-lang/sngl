@@ -1,8 +1,8 @@
 package checker
 
 import (
+	"fmt"
 	"io/fs"
-	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -39,9 +39,14 @@ func StdlibDocs() []*ast.Document {
 // touching this code.
 func parseStdlibDocs() []*ast.Document {
 	stdlibOnce.Do(func() {
+		// The stdlib is embedded and compiler-controlled: any read/parse/expand
+		// failure is a build invariant violation, not a runtime condition.
+		// Failing loudly here surfaces the real cause immediately, instead of
+		// leaving a partial stdlib that produces confusing "undefined
+		// component/func" errors downstream (bugs.md #20).
 		entries, err := lib.FS.ReadDir(".")
 		if err != nil {
-			return
+			panic(fmt.Sprintf("sngl: reading embedded stdlib: %v", err))
 		}
 		for _, e := range entries {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
@@ -49,27 +54,25 @@ func parseStdlibDocs() []*ast.Document {
 			}
 			data, err := fs.ReadFile(lib.FS, e.Name())
 			if err != nil {
-				slog.Error("stdlib read failed", "file", e.Name(), "err", err)
-				continue
+				panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", e.Name(), err))
 			}
 			doc, err := parser.Parse(e.Name(), data)
 			if err != nil {
-				// A silently-skipped stdlib file leaves the checker with a
-				// partial stdlib, so downstream "undefined component/func"
-				// errors look unrelated. Surface it (bugs.md #20).
-				slog.Error("stdlib parse failed", "file", e.Name(), "err", err)
-				continue
+				panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", e.Name(), err))
 			}
 			stdlibDocs = append(stdlibDocs, doc)
 		}
 		// Run pre-check macro expansion over the stdlib source so #[builtin.*]
 		// marks (e.g. stringrepr on color/date/time) are applied before the
-		// checker registers these declarations. A malformed stdlib attribute is
-		// our bug, so surface it loudly rather than failing silently.
+		// checker registers these declarations.
+		var expandErrs []string
 		for _, d := range expand.ExpandPre(stdlibDocs) {
 			if d.Severity == ir.Error {
-				slog.Error("stdlib macro expansion failed", "msg", d.Msg)
+				expandErrs = append(expandErrs, fmt.Sprintf("%s: %s", d.Pos, d.Msg))
 			}
+		}
+		if len(expandErrs) > 0 {
+			panic("sngl: expanding stdlib macros:\n  " + strings.Join(expandErrs, "\n  "))
 		}
 	})
 	return stdlibDocs
