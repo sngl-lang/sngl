@@ -123,6 +123,9 @@ component main {
 	engine := webtest.New(mux)
 	defer engine.Close()
 
+	if testing.Short() {
+		t.Skip("skipping browser test in -short mode")
+	}
 	browser, err := engine.StartHeadless(1280, 720)
 	if err != nil {
 		// Chrome not available in this environment — skip rather than fail.

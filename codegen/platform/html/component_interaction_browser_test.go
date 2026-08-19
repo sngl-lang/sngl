@@ -34,6 +34,9 @@ func startComponent(t *testing.T, src string) *webtest.Browser {
 	engine := webtest.New(mux)
 	t.Cleanup(engine.Close)
 
+	if testing.Short() {
+		t.Skip("skipping browser test in -short mode")
+	}
 	browser, err := engine.StartHeadless(1280, 720)
 	if err != nil {
 		t.Skipf("browser unavailable: %v", err)
