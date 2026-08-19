@@ -70,6 +70,22 @@ var b Box<int>
 	noErrors(t, diags)
 }
 
+// TestBuiltinGenericShadowable verifies that a user declaration of a built-in
+// generic name (here `list`) shadows the built-in: `list<int>` resolves to the
+// user struct, so its declared field is accessible. Under the old hardcoded
+// switch this errored (built-in list has no fields).
+func TestBuiltinGenericShadowable(t *testing.T) {
+	src := `struct list<T> { first T }
+var xs list<int>
+var y int = xs.first`
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	noErrors(t, diags)
+}
+
 // TestUserDefinedGenericStructTwoParams verifies a two-parameter generic struct.
 func TestUserDefinedGenericStructTwoParams(t *testing.T) {
 	src := `

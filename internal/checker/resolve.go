@@ -44,34 +44,11 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 	return c.resolveType(te)
 }
 
-// resolveNamedType resolves a named type reference to an IR *Type.
-func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
-	// Qualified type: pkg.Type
-	if t.Package != "" {
-		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArgs)
-	}
-
-	// Builtin scalar primitives — resolved from the shared registry
-	// (ir/builtins.go) so this site can't drift from the base scope /
-	// conversion switches.
-	if b, ok := ir.LookupBuiltinScalar(t.Name); ok {
-		return b.Type
-	}
-	switch t.Name {
-	case "color", "date", "time", "dateTime":
-		// These are uniformly carried as TypeStructs backed by their stdlib
-		// StructDefs (lib/types.sngl). Look up via the scope chain.
-		if sym, ok := c.scope.Lookup(t.Name); ok {
-			if typ := sym.SymType(); typ != nil {
-				return typ
-			}
-		}
-		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
-		return TypDyn
-	}
-
-	// Generic builtins with type argument.
-	switch t.Name {
+// constructBuiltinGeneric applies a generic built-in constructor (identified by
+// its #[builtin.generic] id) to the type arguments of t. The construction logic
+// stays in the compiler; only the name→id binding lives in scope.
+func (c *checker) constructBuiltinGeneric(id string, t *ast.NamedType) *ir.Type {
+	switch id {
 	case "list":
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
@@ -112,6 +89,49 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
+	}
+	// Unknown id would be a compiler bug (macro validates the id set).
+	return TypDyn
+}
+
+// resolveNamedType resolves a named type reference to an IR *Type.
+func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
+	// Qualified type: pkg.Type
+	if t.Package != "" {
+		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArgs)
+	}
+
+	// Builtin scalar primitives — resolved from the shared registry
+	// (ir/builtins.go) so this site can't drift from the base scope /
+	// conversion switches.
+	if b, ok := ir.LookupBuiltinScalar(t.Name); ok {
+		return b.Type
+	}
+	switch t.Name {
+	case "color", "date", "time", "dateTime":
+		// These are uniformly carried as TypeStructs backed by their stdlib
+		// StructDefs (lib/types.sngl). Look up via the scope chain.
+		if sym, ok := c.scope.Lookup(t.Name); ok {
+			if typ := sym.SymType(); typ != nil {
+				return typ
+			}
+		}
+		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
+		return TypDyn
+	}
+
+	// Generic built-in constructors resolve through scope: a #[builtin.generic]
+	// StructDef (lib/types.sngl) carries the constructor id, and the compiler
+	// applies the type arguments. Because this goes through the scope chain, a
+	// user declaration of the same name shadows the built-in like any other.
+	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if sd, ok := sym.(*ir.StructDef); ok && sd.BuiltinGeneric != "" {
+			return c.constructBuiltinGeneric(sd.BuiltinGeneric, t)
+		}
+	}
+	// component/shape have no `<T>` decl to carry a marker: `component` is a
+	// bare kind and `shape` is only valid inside `list<shape>`.
+	switch t.Name {
 	case "component":
 		return &ir.Type{Kind: ir.TypeComponent}
 	case "shape":
