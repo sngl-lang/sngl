@@ -44,7 +44,7 @@ func TestStructDeclsInSync(t *testing.T) {
 			t.Fatalf("parse lib/%s: %v", file, err)
 		}
 		for _, stmt := range doc.Stmts {
-			sd, ok := stmt.(*ast.StructDef)
+			sd, ok := structDefOf(stmt)
 			if !ok {
 				continue
 			}
@@ -98,7 +98,7 @@ func TestColorFieldsInSync(t *testing.T) {
 	}
 	var got []string
 	for _, stmt := range doc.Stmts {
-		sd, ok := stmt.(*ast.StructDef)
+		sd, ok := structDefOf(stmt)
 		if !ok || sd.Name != "color" {
 			continue
 		}
@@ -111,4 +111,16 @@ func TestColorFieldsInSync(t *testing.T) {
 		t.Errorf("lib color fields = %v, want %v — update pkg/go/snglcolor.Color (ColorGoType %q) to match",
 			got, want, ColorGoType)
 	}
+}
+
+// structDefOf returns the *ast.StructDef carried by stmt, unwrapping a
+// #[builtin.*] macro attribute wrapper (*ast.AttrDecl) when present. These
+// tests scan raw lib source, which is not run through the pre-check expand
+// pass that would otherwise remove the wrapper.
+func structDefOf(stmt ast.Stmt) (*ast.StructDef, bool) {
+	if ad, ok := stmt.(*ast.AttrDecl); ok {
+		stmt = ad.Inner
+	}
+	sd, ok := stmt.(*ast.StructDef)
+	return sd, ok
 }

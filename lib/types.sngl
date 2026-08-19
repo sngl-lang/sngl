@@ -1,3 +1,7 @@
+// Compiler built-in markers (#[builtin.*]). Applied to the string-representable
+// value types below; the checker expands these before type-checking.
+import "internal://builtin"
+
 // 64-bit signed integer. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
@@ -33,6 +37,7 @@ struct list<T> {}
 // `#ff0000`).
 // Derived colors (lighten, darken, opacity-adjust) are available via
 // the functions on the `color` receiver.
+#[builtin.stringrepr(color)]
 struct color {
     r int = 0
     g int = 0
@@ -44,16 +49,19 @@ struct color {
 // string-representable: a string literal in the canonical form coerces to
 // `date` and a `date` coerces back to its string form. Platform codegen
 // maps it to the native date/time type (Go `time.Time`, JS/Kotlin string).
+#[builtin.stringrepr(date)]
 struct date {}
 
 // Wall-clock time in "HH:MM" or "HH:MM:SS" form. String-representable like
 // `date`; coerces to/from its canonical string form. Platform codegen maps
 // it to the native date/time type.
+#[builtin.stringrepr(time)]
 struct time {}
 
 // ISO-8601 date-time. String-representable like `date`/`time`; coerces
 // to/from its canonical string form. Platform codegen maps it to the
 // native date/time type (Go `time.Time`, JS/Kotlin string).
+#[builtin.stringrepr(dateTime)]
 struct dateTime {}
 
 // Receiver type for test-only helpers. Used by the stdlib test runner:
