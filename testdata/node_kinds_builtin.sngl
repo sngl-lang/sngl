@@ -1,0 +1,14 @@
+// The built-in visual nodes, unshadowed: each dispatches to its own compiler
+// construct off the #[builtin] mark rather than off the literal name.
+component main {
+    timer(interval=1s, @tick() {})
+    errorBoundary(@error(e) {}) {
+        text(value="guarded")
+    }
+}
+
+component wrapper() list<component> {
+    vbox {
+        slot()
+    }
+}

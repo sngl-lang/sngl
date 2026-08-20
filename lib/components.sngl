@@ -134,7 +134,6 @@ component checkbox(
 // When a user of the component passes children to it, the `slot`
 // position is where those children render. A component with no
 // `slot` drops any children passed by the caller.
-#[builtin("slot")]
 component slot() {}
 
 // Catches errors raised in children's event handlers and expressions.

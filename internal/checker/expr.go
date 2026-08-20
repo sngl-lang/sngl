@@ -3002,14 +3002,20 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case ast.BuiltinSlot:
-		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children}
 	case ast.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
 	}
-	// `output` is not a component (see registerRootVisualNode), so it stays a
-	// literal-name match rather than resolving through scope.
+	// `slot` and `output` stay literal-name matches rather than resolving
+	// through scope. `output` is not a component at all. `slot` is one, but
+	// platform-extension source references it (52 sites in android.sngl) and
+	// those bodies are checked with user symbols visible, so making it
+	// shadowable would let a user `component slot` break the compiler's own
+	// source. Lifting that needs extension bodies to resolve built-ins in
+	// stdlib scope; until then slot is matched by name.
+	if name == "slot" {
+		children := c.checkBlockIR(&vn.Block)
+		return &ir.SlotInst{AST: vn, Children: children}
+	}
 	if name == "output" {
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
