@@ -73,7 +73,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
-- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata loaded from GIR XML files (`codegen/platform/gtk4/gir/`). Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
+- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from the system-installed `Gtk-4.0.gir` (probed under `/usr/share/gir-1.0/` etc., or `--opt gir=PATH`); no GIR XML is vendored — `codegen/platform/gtk4/gir/` holds only the parser. With no GIR available the platform withdraws its `Package()` docs and reports `Unavailable()`, so unrelated compiles are unaffected; targeting gtk4 explicitly then fails with one actionable error. Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages
