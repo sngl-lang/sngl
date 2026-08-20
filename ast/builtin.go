@@ -30,6 +30,12 @@ const (
 	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
+
+	// Built-in visual nodes (#[builtin.node]). Unlike the type marks above,
+	// these annotate a component declaration: the checker dispatches a visual
+	// node to the matching compiler construct (ir.Window) when its target
+	// resolves to the marked component, rather than matching a literal name.
+	BuiltinWindow BuiltinKind = "window"
 )
 
 // IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
@@ -59,4 +65,10 @@ func (b BuiltinKind) IsGeneric() bool {
 		return true
 	}
 	return false
+}
+
+// IsNode reports whether the kind marks a built-in visual node (window). Node
+// kinds are stamped on component declarations, not structs.
+func (b BuiltinKind) IsNode() bool {
+	return b == BuiltinWindow
 }

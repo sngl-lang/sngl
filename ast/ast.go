@@ -285,7 +285,8 @@ type ComponentDecl struct {
 	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr
 	Body         StmtBlock
-	IsShape      bool // set by #[canvas.shape] macro
+	IsShape      bool        // set by #[canvas.shape] macro
+	Builtin      BuiltinKind // set by #[builtin.node]; BuiltinNone otherwise
 }
 
 // PropList is the parameter list of a component declaration.

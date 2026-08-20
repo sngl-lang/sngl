@@ -2480,8 +2480,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// dispatch through the VisualNode special-cases so they register
 		// on package/component instead of becoming a generic node instance.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
+			isRootish := c.isWindowNode(id.Name)
 			switch id.Name {
-			case "timer", "window", "output", "errorBoundary":
+			case "timer", "output", "errorBoundary":
+				isRootish = true
+			}
+			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
 					Target: id,
@@ -2985,8 +2989,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
 
 	// Special root-ish nodes — registered on package, not returned as IR stmts.
-	switch name {
-	case "window":
+	if c.isWindowNode(name) {
 		w := c.buildWindow(vn)
 		if w.Name != "" {
 			c.scope.Declare(w)
@@ -2994,6 +2997,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
+	}
+	switch name {
 	case "timer":
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
@@ -3639,7 +3644,7 @@ func componentHasEvent(comp *ir.Component, name string) bool {
 // of unrolled windows; inside the loop body, the same id remains a scalar
 // Window (declared per-iteration during normal body checking).
 func (c *checker) hoistForLoopWindowIDs(block *ast.StmtBlock) []*ir.Var {
-	if block == nil || !block.IsDefined() || c.windowType == nil {
+	if block == nil || !block.IsDefined() {
 		return nil
 	}
 	seen := map[string]bool{}
@@ -3660,7 +3665,7 @@ func (c *checker) collectForLoopWindowIDs(block *ast.StmtBlock, seen map[string]
 func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, vars *[]*ir.Var) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		if visualNodeTarget(n) == "window" && n.ID != "" {
+		if c.isWindowNode(visualNodeTarget(n)) && n.ID != "" {
 			if !seen[n.ID] {
 				seen[n.ID] = true
 				// Skip if a symbol with this name already exists in the

@@ -22,6 +22,8 @@ func init() {
 		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, stringReprHandler)
 	expand.RegisterPre("builtin", "generic",
 		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, genericHandler)
+	expand.RegisterPre("builtin", "node",
+		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, nodeHandler)
 }
 
 // primitiveHandler implements #[builtin.primitive("kind")], marking a struct as
@@ -74,4 +76,22 @@ func stringReprHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	}
 	s.Builtin = kind
 	return s, nil
+}
+
+// nodeHandler implements #[builtin.node("id")], marking a component as a
+// built-in visual node. The checker dispatches a visual node whose target
+// resolves to the marked component to the corresponding compiler construct
+// (BuiltinWindow -> ir.Window). Resolution goes through scope, so a user
+// component of the same name shadows the built-in like any other declaration.
+func nodeHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
+	comp, ok := decl.(*ast.ComponentDecl)
+	if !ok {
+		return decl, errors.New("node macro requires a component declaration")
+	}
+	id := ast.BuiltinKind(args.String("id"))
+	if !id.IsNode() {
+		return decl, fmt.Errorf("unknown builtin node id %q", args.String("id"))
+	}
+	comp.Builtin = id
+	return comp, nil
 }

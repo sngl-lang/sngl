@@ -1012,9 +1012,10 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
 	irComp := &ir.Component{
-		AST:    comp,
-		Name:   comp.Name,
-		Stdlib: true,
+		AST:     comp,
+		Name:    comp.Name,
+		Stdlib:  true,
+		Builtin: comp.Builtin,
 	}
 
 	for _, p := range comp.Props.Props {

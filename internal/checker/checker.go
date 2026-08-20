@@ -125,8 +125,12 @@ type checker struct {
 	stdlibOptions    *ir.StructDef
 	stdlibOptionsSet bool
 
-	// Stdlib Window struct type, used to type window symbols so `home.href`
-	// resolves through the regular struct-field machinery.
+	// The #[builtin.node("window")] component, and its instance type. Window
+	// symbols are typed with the component's own type, so `home.href` resolves
+	// through the regular component-member machinery against its props.
+	// windowComp is what makes window dispatch tag-based rather than a check
+	// against the literal name "window".
+	windowComp *ir.Component
 	windowType *ir.Type
 
 	// Cached platform scopes built from Platform.Package() docs.
@@ -183,9 +187,14 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.loadStdlib()
-	if sd, ok := c.symtab.Types["Window"].(*ir.StructDef); ok {
-		c.windowType = sd.SymType()
+	c.windowComp = findBuiltinNode(c.symtab.Comps, ast.BuiltinWindow)
+	if c.windowComp == nil {
+		// The stdlib is embedded and compiler-controlled; a missing window
+		// declaration would silently turn every `window #id` into "unexpected
+		// root-level visual node". Fail loudly, as parseStdlibDocs does.
+		panic("sngl: embedded stdlib declares no #[builtin.node(\"window\")] component")
 	}
+	c.windowType = c.windowComp.SymType()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -1261,6 +1270,15 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	name := visualNodeTarget(vn)
+	if c.isWindowNode(name) {
+		w := c.buildWindow(vn)
+		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
+		c.pkg.Windows = append(c.pkg.Windows, w)
+		if w.Name != "" {
+			c.scope.Declare(w)
+		}
+		return
+	}
 	switch name {
 	case "output":
 		if !c.cfg.IsMain {
@@ -1268,19 +1286,45 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 			return
 		}
 		c.buildOutputs(vn)
-	case "window":
-		w := c.buildWindow(vn)
-		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
-		c.pkg.Windows = append(c.pkg.Windows, w)
-		if w.Name != "" {
-			c.scope.Declare(w)
-		}
 	case "timer":
 		t := c.buildTimer(vn)
 		c.pkg.Timers = append(c.pkg.Timers, t)
 	default:
 		c.error(vn.Pos, "unexpected root-level visual node %q", name)
 	}
+}
+
+// findBuiltinNode returns the component in comps carrying the given
+// #[builtin.node] mark, or nil. Stdlib registration order is not significant,
+// so the lookup is by tag rather than by position.
+func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Component {
+	for _, sym := range comps {
+		if comp, ok := sym.(*ir.Component); ok && comp.Builtin == kind {
+			return comp
+		}
+	}
+	return nil
+}
+
+// isWindowNode reports whether name resolves, through the current scope, to the
+// #[builtin.node("window")] component — i.e. whether a visual node with this
+// target is a window declaration rather than an ordinary node instance.
+//
+// Going through the scope chain rather than comparing against the literal
+// "window" is what makes the built-in shadowable (design doc D3): a user
+// `component window` resolves first and is treated as an ordinary component.
+// Qualified targets (`sngl.window`) are not window declarations, matching the
+// bare-name-only behaviour this replaces.
+func (c *checker) isWindowNode(name string) bool {
+	if name == "" || strings.Contains(name, ".") {
+		return false
+	}
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
+	}
+	comp, ok := sym.(*ir.Component)
+	return ok && comp.Builtin == ast.BuiltinWindow
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.
@@ -2233,7 +2277,7 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt) {
 		c.declareNodeID(n.ID)
 		// Descend into the node's own children, but not into a nested
 		// window — a window has its own scope and hoists its ids itself.
-		if visualNodeTarget(n) != "window" {
+		if !c.isWindowNode(visualNodeTarget(n)) {
 			c.declareNodeIDs(&n.Block)
 		}
 	case *ast.CallStmt:
