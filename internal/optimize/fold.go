@@ -88,6 +88,11 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Operand = foldExpr(x.Operand, ctx)
 		if id, ok := x.Operand.(*ir.Ident); ok {
 			if win, ok := id.Sym.(*ir.Window); ok {
+				// Every prop of the #[builtin.node("window")] component is
+				// readable off a window symbol, so all three must fold here —
+				// a Select left standing reaches codegen as a dangling
+				// reference. Keep in step with windowStructValue (expand.go),
+				// which does the same for the unrolled-list case.
 				switch x.Field {
 				case "href":
 					if win.Href != nil {
@@ -96,6 +101,10 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 				case "title":
 					if win.Title != nil {
 						return win.Title
+					}
+				case "favicon":
+					if win.Favicon != nil {
+						return win.Favicon
 					}
 				}
 			}

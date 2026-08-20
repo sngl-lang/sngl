@@ -349,14 +349,6 @@ struct error {}
 #[builtin.generic("map")]
 struct map<K, V> {}
 
-// Window is the type of `window #id(...)` declarations. Reading
-// `name.href` / `name.title` lets links survive a window's path change
-// without copying the path string.
-struct Window {
-    href string
-    title string
-}
-
 // Generic iterator. list<T> and map<K, V> implicitly convert when passed
 // to a context expecting iter<T> (or iter<(K, V)> for map). For-loops
 // bind elements when iterating over an iter<T>. The type is opaque —
