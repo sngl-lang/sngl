@@ -1,10 +1,17 @@
 package ast
 
-// BuiltinKind marks a struct declaration as a compiler built-in type. It is set
+// BuiltinKind marks a declaration as one of the compiler's built-ins. It is set
 // by the #[builtin] macro before type-checking and read by the checker and IR;
-// BuiltinNone ("") is an ordinary struct. A struct is at most one kind of
-// built-in, so a single field carries both the string-repr value types and the
-// generic constructors. The value doubles as the generic-constructor id.
+// BuiltinNone ("") is an ordinary declaration.
+//
+// Type kinds (primitive, string-repr, generic) mark a struct; node kinds mark a
+// component. A declaration is at most one kind, so a single field carries them
+// all, and the value doubles as the generic-constructor id.
+//
+// The kind classifies one declaration — it does not make two declarations the
+// same type. Type identity is per-declaration (ir.Type.Equal compares Decl), so
+// two structs sharing a mark would be two incompatible types, not aliases; the
+// checker rejects a duplicated node mark outright.
 type BuiltinKind string
 
 const (
@@ -33,11 +40,12 @@ const (
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
-	// matching compiler construct (ir.Window, ir.Timer, ir.ErrorBoundary) when
-	// its target resolves to the marked component, rather than matching a
-	// literal name.
+	// matching compiler construct (ir.Window, ir.Timer, ir.SlotInst,
+	// ir.ErrorBoundary) when its target resolves to the marked component,
+	// rather than matching a literal name.
 	BuiltinWindow        BuiltinKind = "window"
 	BuiltinTimer         BuiltinKind = "timer"
+	BuiltinSlot          BuiltinKind = "slot"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 )
 
@@ -74,7 +82,7 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary:
+	case BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary:
 		return true
 	}
 	return false
@@ -86,7 +94,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinInt, BuiltinFloat, BuiltinString,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
-		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary,
+		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary,
 	}
 }
 

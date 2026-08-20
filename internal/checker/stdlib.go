@@ -736,7 +736,14 @@ func (c *checker) checkPendingExtensions() {
 		}
 		byPlatform[pe.platform] = append(byPlatform[pe.platform], pe)
 	}
+	// Check against the stdlib scope, not the user root: these bodies are
+	// compiler-internal source, and resolving them where user declarations are
+	// visible lets a user component capture a name the platform source depends
+	// on (e.g. android.sngl's 52 bare `slot` references).
+	savedScope := c.scope
+	defer func() { c.scope = savedScope }()
 	for _, platform := range order {
+		c.scope = c.stdlibScope
 		c.pushScope()
 		c.registerPlatformExtensionTypes(platform)
 		for _, pe := range byPlatform[platform] {
