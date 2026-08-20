@@ -22,9 +22,16 @@ grep 'MINE' out/index.html
 sngl check std.sngl
 stdout 'std.sngl: ok'
 
-# Bare `import "std"` is rejected — the stdlib has no namespace form.
+# Bare `import "std"` is rejected: the namespace form would only duplicate the
+# predeclared `sngl` namespace, which qualifies the same declarations with no
+# import at all. The diagnostic says so.
 ! sngl check stdbare.sngl
 stderr 'must be a dot import'
+stderr 'sngl.X'
+
+# The predeclared namespace it points at really does work, unimported.
+sngl check stdqualified.sngl
+stdout 'stdqualified.sngl: ok'
 
 -- widgets/lib.sngl --
 struct Card {
@@ -80,4 +87,8 @@ import "std"
 
 component main {
     text(value="x")
+}
+-- stdqualified.sngl --
+component main {
+    sngl.text(value="x")
 }
