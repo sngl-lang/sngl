@@ -429,16 +429,37 @@ func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
 	}
 }
 
+// optionElem unwraps a well-formed option<T> to T; other types (including a
+// malformed option with no element) pass through unchanged, so callers can
+// treat `T` and `option<T>` uniformly.
+func optionElem(t *ir.Type) *ir.Type {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		return t.Elems[0]
+	}
+	return t
+}
+
 // comparableEq reports whether two operand types can be compared with == / !=.
-// Strict "like types" rule: same kind, numeric-to-numeric, or one side is null
-// (option/nullable). Cross-kind comparisons like string == color, which used to
-// silently return false at runtime, become check-time errors.
+// Strict "like types" rule: same kind, numeric-to-numeric, one side is null, or
+// an option<T> against T / option<T>. Cross-kind comparisons like string ==
+// color, which used to silently return false at runtime, become check-time
+// errors.
 func comparableEq(left, right *ir.Type) bool {
 	if left == nil || right == nil {
 		return true
 	}
+	if left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn {
+		return true
+	}
 	if left.Kind == ir.TypeNull || right.Kind == ir.TypeNull {
 		return true
+	}
+	// An option<T> compares against another option<T>, a bare T, or null
+	// (handled above). Unwrap the option(s) and compare the element types, so
+	// `opt == value` means "present and equal" and `option<int> ==
+	// option<string>` is still rejected.
+	if left.Kind == ir.TypeOption || right.Kind == ir.TypeOption {
+		return comparableEq(optionElem(left), optionElem(right))
 	}
 	if left.IsNumeric() && right.IsNumeric() {
 		// Numerics compare only at the same width and signedness; a mixed
@@ -1413,34 +1434,66 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
-		// Component instance member access via `this` (inside a nested
-		// component method): resolve to a component var/prop/func. Limited
-		// to `this.<name>` to preserve the historical Dyn fallback for
-		// out-of-component access patterns like `c.name == "x"` which
-		// type-checking has long permitted via Dyn promotion.
+		// Component-instance member access: resolve the field against the
+		// component's vars, props, and methods, typed. Applies to any
+		// component-typed operand — `this.<name>` inside a method and
+		// `c.<name>` on a component-typed param/var in ordinary code or a
+		// test alike — so the feature is orthogonal to context. Names that
+		// match no member (e.g. element-ref ids, resolved separately for
+		// @event calls) fall through to the Dyn result below.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
-			isThis := false
-			if ident, ok := x.Operand.(*ast.IdentExpr); ok && ident.Name == ir.ReceiverParam {
-				isThis = true
-			}
-			if isThis {
-				if comp, ok := operand.Decl.(*ir.Component); ok {
-					for _, v := range comp.Vars {
-						if v.Name == x.Field {
-							return &ir.Select{AST: x, Type: v.Type, Operand: operandExpr, Field: x.Field}
-						}
-					}
-					for _, p := range comp.Props {
-						if p.Name == x.Field {
-							return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
-						}
-					}
-					for _, fn := range comp.Funcs {
-						if fn.Receiver == "" && fn.Name == x.Field {
-							return &ir.Select{AST: x, Type: fn.SymType(), Operand: operandExpr, Field: x.Field}
-						}
+			if comp, ok := operand.Decl.(*ir.Component); ok {
+				for _, v := range comp.Vars {
+					if v.Name == x.Field {
+						return &ir.Select{AST: x, Type: v.Type, Operand: operandExpr, Field: x.Field}
 					}
 				}
+				for _, p := range comp.Props {
+					if p.Name == x.Field {
+						return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
+					}
+				}
+				// Nested component methods live in the symtab method table keyed
+				// by component name (not comp.Funcs). A zero-user-arg computed
+				// (`c.total`) reads as its return value — the Select IR is what
+				// interp/codegen already evaluate as a computed read, so type it
+				// with the return type directly rather than routing through the
+				// implicit-call machinery (whose result type would be lost when
+				// the method's return is not yet inferred). A method that takes
+				// arguments, referenced bare, is a method value (func type with
+				// the synthetic receiver stripped); `c.foo(...)` calls resolve
+				// via inferMethodCall.
+				if fn, ok := c.symtab.LookupMethod(comp.Name, x.Field); ok {
+					params := fn.Params
+					if len(params) > 0 && params[0].Receiver {
+						params = params[1:]
+					}
+					if len(params) == 0 {
+						ret := fn.Return
+						if ret == nil {
+							ret = TypDyn
+						}
+						return &ir.Select{AST: x, Type: ret, Operand: operandExpr, Field: x.Field}
+					}
+					funcType := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{
+						Params:     params,
+						Return:     fn.Return,
+						TypeParams: fn.TypeParams,
+						Purity:     fn.Purity,
+					}}
+					return &ir.Select{AST: x, Type: funcType, Operand: operandExpr, Field: x.Field}
+				}
+				// Element-ref id inside the component body (e.g. `c.btn` for a
+				// `c.btn.@click()` event trigger): its value type is the host
+				// element's component type.
+				if host := c.elementHostComponent(x); host != nil {
+					return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
+				}
+				// Anything else — `children`, cross-component element refs,
+				// rendered-node props — is the test-runner's dynamic render-tree
+				// introspection surface, which has no static type today: fall
+				// through to the Dyn result below. (See MR discussion; typed
+				// introspection is separate future work.)
 			}
 		}
 
