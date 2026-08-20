@@ -1320,8 +1320,12 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
 
-	// User-defined type-method.
-	if fn, ok := env.Funcs[qualName]; ok {
+	// User-defined type-method. Empty-bodied stdlib intrinsic declarations
+	// (e.g. `func map<K,V>.length() int {}`, `func list<T>.filter(...) {}`)
+	// are registered here too, but their behaviour lives in the native
+	// dispatch below — running the empty body would return null. Only invoke
+	// a method that actually has a body.
+	if fn, ok := env.Funcs[qualName]; ok && len(fn.Block) > 0 {
 		return env.EvalUserFuncCallArgs(fn, call.Args)
 	}
 
