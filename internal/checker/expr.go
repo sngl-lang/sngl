@@ -788,18 +788,13 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, b.Type, ident.Name)
 		}
 		switch ident.Name {
-		case "color", "date", "time", "datetime", "dateTime":
+		case "color", "date", "time", "dateTime":
 			// These are stdlib StructDef-backed types, not primitives, so the
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
-			// diagnostic comes from the regular path. The legacy `datetime`
-			// spelling resolves to the `dateTime` StructDef.
-			lookup := ident.Name
-			if lookup == "datetime" {
-				lookup = "dateTime"
-			}
+			// diagnostic comes from the regular path.
 			structTyp := TypDyn
-			if sym, ok := c.scope.Lookup(lookup); ok {
+			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if t := sym.SymType(); t != nil {
 					structTyp = t
 				}

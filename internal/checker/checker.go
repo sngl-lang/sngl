@@ -917,7 +917,7 @@ func isBuiltinTypeName(name string) bool {
 		return true
 	}
 	switch name {
-	case "color", "date", "time", "dateTime", "datetime",
+	case "color", "date", "time", "dateTime",
 		"list", "map", "iter", "ref":
 		return true
 	}

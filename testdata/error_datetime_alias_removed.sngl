@@ -1,0 +1,8 @@
+// `datetime` was the original spelling of `dateTime`, kept as a back-compat
+// alias when the type was renamed. Nothing used it, so the alias is gone and
+// the name resolves like any other undeclared identifier.
+component main {
+    var d = datetime("2020-01-01T00:00:00") // ERROR(check) "undefined: datetime"
+    var ok dateTime = dateTime("2020-01-01T00:00:00")
+    text(value="x")
+}
