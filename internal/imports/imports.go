@@ -43,7 +43,7 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 	for _, doc := range docs {
 		for _, stmt := range doc.Stmts {
 			imp, ok := stmt.(*ast.Import)
-			if !ok || imp.Replace == "" || imp.Alias != "" || imp.Dot {
+			if !ok || imp.Replace == "" || imp.Alias != "" {
 				continue
 			}
 			replaces[imp.Path] = imp.Replace
@@ -59,14 +59,14 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 				continue
 			}
 			// Skip pure redirect declarations; they don't introduce a namespace.
-			if imp.Replace != "" && imp.Alias == "" && !imp.Dot {
+			if imp.Replace != "" && imp.Alias == "" {
 				continue
 			}
 			// A dot import flattens the package into the current scope and binds
 			// no namespace, so it contributes no macro alias. Deriving one from
 			// the path would let #[<pkg>.macro] resolve against a name that is
 			// not in scope.
-			if imp.Dot {
+			if imp.IsDot() {
 				continue
 			}
 			// Resolve the effective target path through the redirects map.

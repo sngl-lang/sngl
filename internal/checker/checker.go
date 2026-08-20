@@ -394,7 +394,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// programs can adopt the explicit form before the flip, rather than having
 	// to migrate syntax and semantics in one change.
 	if scheme, _ := ParseScheme(target); scheme == "" && imp.Path == "std" {
-		if !imp.Dot {
+		if !imp.IsDot() {
 			c.error(imp.Pos, `import "std" must be a dot import: import . "std"`)
 			return
 		}
@@ -403,6 +403,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	scheme, uri := ParseScheme(target)
+	// A dot import keeps "." here rather than deriving a namespace name it
+	// never binds: consumers match ir.Import.Alias against a namespace they
+	// are resolving, and a derived name would make those matches succeed.
 	alias := imp.Alias
 	if alias == "" {
 		alias = NamespaceFromPath(imp.Path)
@@ -562,7 +565,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	// A dot import flattens the package's symbols into this scope instead of
 	// binding a namespace, so its declarations are referenced unqualified.
-	if imp.Dot {
+	if imp.IsDot() {
 		c.flattenDotImport(imp, irImport)
 		return
 	}

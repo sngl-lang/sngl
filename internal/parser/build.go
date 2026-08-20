@@ -288,7 +288,7 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 		imp.Alias = it.shift().Literal
 	case !it.done() && !it.isNonTerminal() && it.tokenType() == DOT:
 		it.skip()
-		imp.Dot = true
+		imp.Alias = "."
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == STR_FULL {
 		imp.Path = stripQuotes(it.shift().Literal)

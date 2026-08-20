@@ -214,12 +214,20 @@ type VarDecl struct {
 
 // Import declares a module import, optionally aliased and/or replaced.
 type Import struct {
-	Pos     Pos
-	Path    string // local import path (LHS of =>, or the bare string)
-	Alias   string // explicit ident alias, "" if none
-	Dot     bool   // `import . "p"` — flatten the package's symbols into this scope
+	Pos  Pos
+	Path string // local import path (LHS of =>, or the bare string)
+	// Alias holds the import's namespace slot: an explicit ident alias, "."
+	// for a dot import, or "" for neither. The grammar makes ident and dot
+	// alternatives of one optional slot, so one field is what there is to
+	// represent — a separate Dot bool would admit `Alias: "x", Dot: true`.
+	Alias   string
 	Replace string // replacement URL (RHS of =>), "" if no replace
 }
+
+// IsDot reports whether this is a dot import (`import . "p"`), which flattens
+// the package's symbols into the importing scope instead of binding a
+// namespace. "." is not a legal identifier, so it cannot collide with an alias.
+func (i *Import) IsDot() bool { return i.Alias == "." }
 
 // --- Parameters ---
 
