@@ -1279,23 +1279,29 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		}
 		return
 	}
+	if c.builtinNodeKind(name) == ast.BuiltinTimer {
+		t := c.buildTimer(vn)
+		c.pkg.Timers = append(c.pkg.Timers, t)
+		return
+	}
 	switch name {
+	// `output` stays a literal name. It parses as a visual node but is a build
+	// directive with its own data structure, not a component — it is only not a
+	// parser-level construct so that `output` need not be a keyword. There is
+	// nothing in scope for it to resolve to.
 	case "output":
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 			return
 		}
 		c.buildOutputs(vn)
-	case "timer":
-		t := c.buildTimer(vn)
-		c.pkg.Timers = append(c.pkg.Timers, t)
 	default:
 		c.error(vn.Pos, "unexpected root-level visual node %q", name)
 	}
 }
 
 // findBuiltinNode returns the component in comps carrying the given
-// #[builtin("window")] mark, or nil. Stdlib registration order is not significant,
+// #[builtin] node mark, or nil. Stdlib registration order is not significant,
 // so the lookup is by tag rather than by position.
 func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Component {
 	for _, sym := range comps {
@@ -1306,25 +1312,36 @@ func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Compo
 	return nil
 }
 
-// isWindowNode reports whether name resolves, through the current scope, to the
-// #[builtin("window")] component — i.e. whether a visual node with this
-// target is a window declaration rather than an ordinary node instance.
+// builtinNodeKind resolves name, through the current scope, to the #[builtin]
+// node kind it denotes — i.e. whether a visual node with this target is one of
+// the compiler's own constructs (window/timer/slot/errorBoundary) rather than an
+// ordinary node instance. Returns BuiltinNone for anything else.
 //
-// Going through the scope chain rather than comparing against the literal
-// "window" is what makes the built-in shadowable (design doc D3): a user
-// `component window` resolves first and is treated as an ordinary component.
-// Qualified targets (`sngl.window`) are not window declarations, matching the
+// Going through the scope chain rather than comparing against literal names is
+// what makes these built-ins shadowable (design doc D3): a user
+// `component timer` resolves first and is treated as an ordinary component.
+// Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
-func (c *checker) isWindowNode(name string) bool {
+func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
 	if name == "" || strings.Contains(name, ".") {
-		return false
+		return ast.BuiltinNone
 	}
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
-		return false
+		return ast.BuiltinNone
 	}
 	comp, ok := sym.(*ir.Component)
-	return ok && comp.Builtin == ast.BuiltinWindow
+	if !ok || !comp.Builtin.IsNode() {
+		return ast.BuiltinNone
+	}
+	return comp.Builtin
+}
+
+// isWindowNode reports whether name denotes the built-in window component
+// specifically. Window is the only node kind that owns a lexical scope and
+// hoists its own element ids, so a few sites care about it by name.
+func (c *checker) isWindowNode(name string) bool {
+	return c.builtinNodeKind(name) == ast.BuiltinWindow
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.

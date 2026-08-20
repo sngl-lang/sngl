@@ -2480,11 +2480,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// dispatch through the VisualNode special-cases so they register
 		// on package/component instead of becoming a generic node instance.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
-			isRootish := c.isWindowNode(id.Name)
-			switch id.Name {
-			case "timer", "output", "errorBoundary":
-				isRootish = true
-			}
+			// `output` is matched by name: it is a build directive with its
+			// own data structure, not a component, so nothing in scope
+			// resolves to it (see registerRootVisualNode).
+			isRootish := c.builtinNodeKind(id.Name) != ast.BuiltinNone || id.Name == "output"
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -2988,8 +2987,11 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
 
-	// Special root-ish nodes — registered on package, not returned as IR stmts.
-	if c.isWindowNode(name) {
+	// Built-in nodes — the compiler's own constructs, dispatched on the
+	// #[builtin] mark of whatever the target resolves to rather than on the
+	// literal name, so a user component of the same name shadows them (D3).
+	switch c.builtinNodeKind(name) {
+	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
 		if w.Name != "" {
 			c.scope.Declare(w)
@@ -2997,9 +2999,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
-	}
-	switch name {
-	case "timer":
+	case ast.BuiltinTimer:
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
@@ -3007,17 +3007,20 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case "output":
+	case ast.BuiltinSlot:
+		children := c.checkBlockIR(&vn.Block)
+		return &ir.SlotInst{AST: vn, Children: children}
+	case ast.BuiltinErrorBoundary:
+		return c.buildErrorBoundary(vn)
+	}
+	// `output` is not a component (see registerRootVisualNode), so it stays a
+	// literal-name match rather than resolving through scope.
+	if name == "output" {
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 		}
 		c.buildOutputs(vn)
 		return nil
-	case "slot":
-		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children}
-	case "errorBoundary":
-		return c.buildErrorBoundary(vn)
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
