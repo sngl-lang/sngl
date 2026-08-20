@@ -322,7 +322,7 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	pkg.Structs = append(pkg.Structs, sd)
 	pkg.Symbols.Types[sd.Name] = sd
 	pkg.Symbols.Root.Declare(sd)
-	// Publish the canonical date/time/dateTime struct types so non-checker
+	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
 	switch sd.Builtin {
 	case ast.BuiltinDate:

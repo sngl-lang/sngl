@@ -187,7 +187,8 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.loadStdlib()
-	c.windowComp = findBuiltinNode(c.symtab.Comps, ast.BuiltinWindow)
+	nodes := builtinNodeComps(c.symtab.Comps)
+	c.windowComp = nodes[ast.BuiltinWindow]
 	if c.windowComp == nil {
 		// The stdlib is embedded and compiler-controlled; a missing window
 		// declaration would silently turn every `window #id` into "unexpected
@@ -899,29 +900,33 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 	return ""
 }
 
-// nonConstCallRef checks whether a call expression is const-safe.
 // isBuiltinTypeName reports whether name is a builtin type/conversion namespace
 // (int, sized numerics, float, string, bool, duration, the string-repr structs,
-// and the generic containers). Kept in sync with the conversion dispatch in
-// expr.go (inferBuiltinConversion) and resolve.go (resolveType). Used by
-// nonConstCallRef so a const initialized with any builtin cast — e.g.
-// int32(5), float64(x), duration(1000) — is recognized as const-safe rather
-// than tripping on a hand-maintained short list that drifts as new numeric
-// types are added.
-func isBuiltinTypeName(name string) bool {
-	// Scalar casts come from the shared registry (ir/builtins.go); the
-	// struct-backed casts and generic constructors are still enumerated here
-	// until they move into the declared built-ins package.
+// and the generic containers). Used by nonConstCallRef so a const initialized
+// with any builtin cast — e.g. int32(5), float64(x), duration(1000) — or a
+// type-namespace method — map.keys(m), string.length(s) — is recognized as
+// const-safe.
+//
+// Neither half is a hand-maintained list: scalars come from the shared registry
+// (ir/builtins.go), and the struct-backed types carry a #[builtin] mark on their
+// stdlib declaration. Resolving the mark through scope also makes the check
+// respect shadowing, so a user `struct color` is not a builtin conversion (D3).
+func (c *checker) isBuiltinTypeName(name string) bool {
 	if b, ok := ir.LookupBuiltinScalar(name); ok && b.Convertible {
 		return true
 	}
-	switch name {
-	case "color", "date", "time", "dateTime", "datetime",
-		"list", "map", "iter", "ref":
-		return true
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
 	}
-	return false
+	sd, ok := sym.(*ir.StructDef)
+	if !ok {
+		return false
+	}
+	return sd.Builtin.IsStringRepr() || sd.Builtin.IsGeneric()
 }
+
+// nonConstCallRef checks whether a call expression is const-safe.
 
 func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 	checkArgs := func() string {
@@ -939,13 +944,13 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 	case *ast.IdentExpr:
 		// A builtin conversion like int32(5) or duration(1000) stays const when
 		// its arguments are const — checkArgs recurses into them.
-		if isBuiltinTypeName(fn.Name) {
+		if c.isBuiltinTypeName(fn.Name) {
 			return checkArgs()
 		}
 	case *ast.SelectExpr:
 		if ident, ok := fn.Operand.(*ast.IdentExpr); ok {
 			// Type-namespace methods (e.g., string.length("hi"), map.keys(m)).
-			if isBuiltinTypeName(ident.Name) {
+			if c.isBuiltinTypeName(ident.Name) {
 				return checkArgs()
 			}
 			// Namespace function calls (e.g., docs.Pages()).
@@ -1279,52 +1284,84 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		}
 		return
 	}
+	if c.builtinNodeKind(name) == ast.BuiltinTimer {
+		t := c.buildTimer(vn)
+		c.pkg.Timers = append(c.pkg.Timers, t)
+		return
+	}
 	switch name {
+	// `output` stays a literal name. It parses as a visual node but is a build
+	// directive with its own data structure, not a component — it is only not a
+	// parser-level construct so that `output` need not be a keyword. There is
+	// nothing in scope for it to resolve to.
 	case "output":
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 			return
 		}
 		c.buildOutputs(vn)
-	case "timer":
-		t := c.buildTimer(vn)
-		c.pkg.Timers = append(c.pkg.Timers, t)
 	default:
 		c.error(vn.Pos, "unexpected root-level visual node %q", name)
 	}
 }
 
-// findBuiltinNode returns the component in comps carrying the given
-// #[builtin("window")] mark, or nil. Stdlib registration order is not significant,
-// so the lookup is by tag rather than by position.
-func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Component {
+// builtinNodeComps indexes the components in comps by their #[builtin] node
+// mark. Stdlib registration order is not significant, so the lookup is by tag
+// rather than by position.
+//
+// Two declarations sharing a node kind is a stdlib authoring error, and it
+// panics rather than resolving arbitrarily: comps is a map, so picking "the"
+// component for a duplicated kind would depend on iteration order and the same
+// source would compile differently run to run. Note that a duplicate mark could
+// not be an alias even if we tolerated it — struct/component type identity is
+// per-declaration (ir.Type.Equal compares Decl), so the mark classifies a
+// declaration, it does not make two of them the same type.
+func builtinNodeComps(comps map[string]ir.Symbol) map[ast.BuiltinKind]*ir.Component {
+	out := map[ast.BuiltinKind]*ir.Component{}
 	for _, sym := range comps {
-		if comp, ok := sym.(*ir.Component); ok && comp.Builtin == kind {
-			return comp
+		comp, ok := sym.(*ir.Component)
+		if !ok || !comp.Builtin.IsNode() {
+			continue
 		}
+		if prev, dup := out[comp.Builtin]; dup {
+			panic(fmt.Sprintf("sngl: components %q and %q both carry #[builtin(%q)]",
+				prev.Name, comp.Name, comp.Builtin))
+		}
+		out[comp.Builtin] = comp
 	}
-	return nil
+	return out
 }
 
-// isWindowNode reports whether name resolves, through the current scope, to the
-// #[builtin("window")] component — i.e. whether a visual node with this
-// target is a window declaration rather than an ordinary node instance.
+// builtinNodeKind resolves name, through the current scope, to the #[builtin]
+// node kind it denotes — i.e. whether a visual node with this target is one of
+// the compiler's own constructs (window/timer/slot/errorBoundary) rather than an
+// ordinary node instance. Returns BuiltinNone for anything else.
 //
-// Going through the scope chain rather than comparing against the literal
-// "window" is what makes the built-in shadowable (design doc D3): a user
-// `component window` resolves first and is treated as an ordinary component.
-// Qualified targets (`sngl.window`) are not window declarations, matching the
+// Going through the scope chain rather than comparing against literal names is
+// what makes these built-ins shadowable (design doc D3): a user
+// `component timer` resolves first and is treated as an ordinary component.
+// Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
-func (c *checker) isWindowNode(name string) bool {
+func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
 	if name == "" || strings.Contains(name, ".") {
-		return false
+		return ast.BuiltinNone
 	}
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
-		return false
+		return ast.BuiltinNone
 	}
 	comp, ok := sym.(*ir.Component)
-	return ok && comp.Builtin == ast.BuiltinWindow
+	if !ok || !comp.Builtin.IsNode() {
+		return ast.BuiltinNone
+	}
+	return comp.Builtin
+}
+
+// isWindowNode reports whether name denotes the built-in window component
+// specifically. Window is the only node kind that owns a lexical scope and
+// hoists its own element ids, so a few sites care about it by name.
+func (c *checker) isWindowNode(name string) bool {
+	return c.builtinNodeKind(name) == ast.BuiltinWindow
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.
@@ -2376,7 +2413,7 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	}
 	val := lit.Raw
 
-	// color/date/time/dateTime are StructDef-backed; detect by name and apply
+	// color/date/time/datetime are StructDef-backed; detect by name and apply
 	// the same canonical-form validation that the kind-based types use below.
 	switch {
 	case ir.IsColorStruct(typ):
@@ -2396,7 +2433,7 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		return
 	case ir.IsDateTimeStruct(typ):
 		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}`).MatchString(val) {
-			c.error(pos, "invalid dateTime literal %q", val)
+			c.error(pos, "invalid datetime literal %q", val)
 		}
 		return
 	}

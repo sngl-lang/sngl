@@ -788,18 +788,13 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, b.Type, ident.Name)
 		}
 		switch ident.Name {
-		case "color", "date", "time", "datetime", "dateTime":
+		case "color", "date", "time", "datetime":
 			// These are stdlib StructDef-backed types, not primitives, so the
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
-			// diagnostic comes from the regular path. The legacy `datetime`
-			// spelling resolves to the `dateTime` StructDef.
-			lookup := ident.Name
-			if lookup == "datetime" {
-				lookup = "dateTime"
-			}
+			// diagnostic comes from the regular path.
 			structTyp := TypDyn
-			if sym, ok := c.scope.Lookup(lookup); ok {
+			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if t := sym.SymType(); t != nil {
 					structTyp = t
 				}
@@ -926,7 +921,7 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		fromKind := ir.TypeInvalid
 		if from != nil {
 			fromKind = from.Kind
-			// color/date/time/dateTime values are TypeStruct-backed by their
+			// color/date/time/datetime values are TypeStruct-backed by their
 			// stdlib StructDefs. For the explicit-cast primitiveConvertible
 			// check (e.g. `string(c)`, `string(d)`), substitute the string-
 			// domain TypeColor kind so the string-domain cast rules apply.
@@ -1825,7 +1820,7 @@ func interpPartPrimitive(t *ir.Type) bool {
 	if t == nil {
 		return false
 	}
-	// color/date/time/dateTime are StructDef-backed but still stringify like
+	// color/date/time/datetime are StructDef-backed but still stringify like
 	// string-domain primitives in interpolation.
 	if ir.StringReprStruct(t) {
 		return true
@@ -2480,11 +2475,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// dispatch through the VisualNode special-cases so they register
 		// on package/component instead of becoming a generic node instance.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
-			isRootish := c.isWindowNode(id.Name)
-			switch id.Name {
-			case "timer", "output", "errorBoundary":
-				isRootish = true
-			}
+			// `output` is matched by name: it is a build directive with its
+			// own data structure, not a component, so nothing in scope
+			// resolves to it (see registerRootVisualNode).
+			isRootish := c.builtinNodeKind(id.Name) != ast.BuiltinNone || id.Name == "output"
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -2988,8 +2982,11 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
 
-	// Special root-ish nodes — registered on package, not returned as IR stmts.
-	if c.isWindowNode(name) {
+	// Built-in nodes — the compiler's own constructs, dispatched on the
+	// #[builtin] mark of whatever the target resolves to rather than on the
+	// literal name, so a user component of the same name shadows them (D3).
+	switch c.builtinNodeKind(name) {
+	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
 		if w.Name != "" {
 			c.scope.Declare(w)
@@ -2997,9 +2994,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
-	}
-	switch name {
-	case "timer":
+	case ast.BuiltinTimer:
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
@@ -3007,17 +3002,26 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case "output":
+	case ast.BuiltinErrorBoundary:
+		return c.buildErrorBoundary(vn)
+	}
+	// `slot` and `output` stay literal-name matches rather than resolving
+	// through scope. `output` is not a component at all. `slot` is one, but
+	// platform-extension source references it (52 sites in android.sngl) and
+	// those bodies are checked with user symbols visible, so making it
+	// shadowable would let a user `component slot` break the compiler's own
+	// source. Lifting that needs extension bodies to resolve built-ins in
+	// stdlib scope; until then slot is matched by name.
+	if name == "slot" {
+		children := c.checkBlockIR(&vn.Block)
+		return &ir.SlotInst{AST: vn, Children: children}
+	}
+	if name == "output" {
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
 		}
 		c.buildOutputs(vn)
 		return nil
-	case "slot":
-		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children}
-	case "errorBoundary":
-		return c.buildErrorBoundary(vn)
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.

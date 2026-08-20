@@ -1,0 +1,20 @@
+// The built-in visual nodes are shadowable (design doc D3). A user component
+// resolves before the #[builtin] declaration, so each of these instantiates as
+// an ordinary node instance rather than as the compiler's own construct — no
+// package timer is registered, no error boundary is installed.
+//
+// `slot` is deliberately not shadowable: platform-extension source references
+// it and those bodies are checked with user symbols visible, so shadowing it
+// would break the compiler's own source. See checkVisualNodeIR.
+component timer(label string) list<component> {
+    text(value=label)
+}
+
+component errorBoundary(label string) list<component> {
+    text(value=label)
+}
+
+component main {
+    timer(label="ordinary")
+    errorBoundary(label="ordinary")
+}

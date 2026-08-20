@@ -34,7 +34,7 @@ func translateIRLiteral(n *ir.Literal) string {
 			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeStruct:
-			// color/date/time/dateTime: string-representable stdlib structs.
+			// color/date/time/datetime: string-representable stdlib structs.
 			if ir.StringReprStruct(n.Type) {
 				return fmt.Sprintf("%q", n.Raw)
 			}

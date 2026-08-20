@@ -84,7 +84,7 @@ func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
 		// expression that holds the canonical form). They also accept
 		// themselves — `date(d)` is identity. The runtime parse/
 		// validate happens at platform-codegen time. Note: date/time/
-		// dateTime structs are normalized to the TypeColor kind by the
+		// datetime structs are normalized to the TypeColor kind by the
 		// cast site (inferBuiltinConversion) before reaching here.
 		switch fromKind {
 		case ir.TypeString, targetKind:

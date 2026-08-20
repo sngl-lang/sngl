@@ -61,8 +61,8 @@ struct time {}
 // ISO-8601 date-time. String-representable like `date`/`time`; coerces
 // to/from its canonical string form. Platform codegen maps it to the
 // native date/time type (Go `time.Time`, JS/Kotlin string).
-#[builtin("dateTime")]
-struct dateTime {}
+#[builtin("datetime")]
+struct datetime {}
 
 // Receiver type for test-only helpers. Used by the stdlib test runner:
 // each test function declares `t Test` as its first parameter and the

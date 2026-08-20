@@ -4,7 +4,7 @@ component main {
         timeout = 5s
         birthday date = "2026-03-12"
         noon time = "12:00"
-        event_time dateTime = "2026-03-12T10:00:00Z"
+        event_time datetime = "2026-03-12T10:00:00Z"
     )
 
     text(value=bg)

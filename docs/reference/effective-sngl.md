@@ -84,7 +84,7 @@ Every package that produces an executable must have exactly one `component main`
 
 ### Special types
 
-The standard library provides `color`, `date`, `time`, `dateTime`, `duration`, and `measurement`. Each is *string-representable*: it converts to and from `string`, so a validated string literal is a valid value (`var d date = "2024-01-15"`). `color` has hex literal syntax (`#ff0000`); `duration` and `measurement` have unit-literal syntax (`5s`, `12px`).
+The standard library provides `color`, `date`, `time`, `datetime`, `duration`, and `measurement`. Each is *string-representable*: it converts to and from `string`, so a validated string literal is a valid value (`var d date = "2024-01-15"`). `color` has hex literal syntax (`#ff0000`); `duration` and `measurement` have unit-literal syntax (`5s`, `12px`).
 
 ### Collections
 

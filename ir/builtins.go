@@ -11,7 +11,7 @@ package ir
 // capability flags below.
 //
 // Generic constructors (list, map, iter, ref, option, component, shape) and
-// the string-repr structs (color, date, time, dateTime) are intentionally NOT
+// the string-repr structs (color, date, time, datetime) are intentionally NOT
 // here: the former carry bespoke arity/error logic, the latter are stdlib
 // StructDef-backed and resolved through scope. Both are folded into the
 // declared built-ins package in a later phase (see

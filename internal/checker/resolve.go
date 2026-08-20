@@ -125,7 +125,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return b.Type
 	}
 	switch t.Name {
-	case "color", "date", "time", "dateTime":
+	case "color", "date", "time", "datetime":
 		// These are uniformly carried as TypeStructs backed by their stdlib
 		// StructDefs (lib/types.sngl). Look up via the scope chain.
 		if sym, ok := c.scope.Lookup(t.Name); ok {
@@ -586,7 +586,7 @@ func isComparable(t *ir.Type) bool {
 		// Conservative: accept any named struct as comparable. Refine
 		// in a follow-up if we want to actually check field types. This
 		// also covers the string-representable structs (color/date/time/
-		// dateTime).
+		// datetime).
 		return t.Decl != nil
 	case ir.TypeEnum, ir.TypeUnit:
 		return true

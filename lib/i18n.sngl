@@ -47,7 +47,7 @@ func i18n.numberFloat(n float, style string) => intl.NumberFloat(locale, n, styl
 // Style: "short", "medium" (default), "long", "full".
 func i18n.date(d date, style string) => intl.Date(locale, d, style)
 func i18n.time(t time, style string) => intl.Time(locale, t, style)
-func i18n.datetime(dt dateTime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
+func i18n.datetime(dt datetime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
 
 // --- Direct selectors ---
 

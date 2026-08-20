@@ -711,8 +711,8 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
-		// color/date/time/dateTime are string-representable stdlib structs;
-		// the Kotlin runtime carries them as String (date/time/dateTime are
+		// color/date/time/datetime are string-representable stdlib structs;
+		// the Kotlin runtime carries them as String (date/time/datetime are
 		// quoted ISO strings, matching their literal emission).
 		if ir.StringReprStruct(t) {
 			return "String"

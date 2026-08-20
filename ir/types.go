@@ -375,7 +375,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if isStringDomain(t.Kind) && target.Kind == TypeString {
 		return true
 	}
-	// The color/date/time/dateTime value types are carried as stdlib-
+	// The color/date/time/datetime value types are carried as stdlib-
 	// StructDef-backed TypeStructs with a canonical string form. They
 	// participate in string<->string implicit conversion just like the
 	// kind-backed string-domain types above.
@@ -439,24 +439,24 @@ func builtinOf(t *Type) ast.BuiltinKind {
 func IsColorStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinColor }
 
 // StringReprStruct reports whether t is a struct with a canonical string form
-// (coerces to/from string): color, date, time, dateTime.
+// (coerces to/from string): color, date, time, datetime.
 func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
 
 // IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the date/
-// time/dateTime value type. These three were formerly the TypeDate/TypeTime/
+// time/datetime value type. These three were formerly the TypeDate/TypeTime/
 // TypeDateTime kinds; they are now carried uniformly as TypeStruct backed by
 // the StructDef (like color).
 func IsDateStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinDateTime }
 
-// Registered stdlib dateTime struct type. Populated by the checker once
+// Registered stdlib datetime struct type. Populated by the checker once
 // lib/types.sngl is parsed, so non-checker phases (foreign-type importers,
-// etc.) can synthesize a canonical dateTime value type without their own scope
+// etc.) can synthesize a canonical datetime value type without their own scope
 // access. Nil before registration; the accessor falls back to TypDyn.
 var stdlibDateTimeType *Type
 
-// RegisterStringReprStructs records the resolved stdlib dateTime struct type so
+// RegisterStringReprStructs records the resolved stdlib datetime struct type so
 // the DateTimeType accessor can hand it out. Idempotent.
 func RegisterStringReprStructs(date, time, dateTime *Type) {
 	if dateTime != nil {

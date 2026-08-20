@@ -141,6 +141,7 @@ component slot() {}
 // the boundary swallows the error and invokes `@error` with an
 // `ErrorEvent` carrying the message and kind. Without a surrounding
 // boundary, errors propagate to the platform's default handler.
+#[builtin("errorBoundary")]
 component errorBoundary(
     @error ErrorEvent,
 ) list<component> {}
@@ -166,6 +167,7 @@ component window(
 // is true. Toggling `enabled` is the idiomatic way to start and stop
 // the timer; the timer is automatically cleaned up when the component
 // unmounts. Intervals below the platform's frame budget may coalesce.
+#[builtin("timer")]
 component timer(
     interval duration,
     enabled bool,
