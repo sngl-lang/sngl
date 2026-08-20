@@ -144,7 +144,9 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
 
-**A `testdata/*.sngl` fixture cannot test anything platform-related.** The checker's own harness builds `checker.Config{IsMain: true}` with **no** registered platforms, so it never resolves platform elements, never splices `component sngl.X` extensions, and never checks their bodies. A fixture exercising any of that passes whether the code works or not. Use a txtar test — it runs the real CLI with every platform registered. (A user component named `Widget` silently broke every `sngl check` for exactly this reason: 300+ fixtures could not see it.)
+**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags or generated output, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI.
+
+`internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
