@@ -900,29 +900,33 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 	return ""
 }
 
-// nonConstCallRef checks whether a call expression is const-safe.
 // isBuiltinTypeName reports whether name is a builtin type/conversion namespace
 // (int, sized numerics, float, string, bool, duration, the string-repr structs,
-// and the generic containers). Kept in sync with the conversion dispatch in
-// expr.go (inferBuiltinConversion) and resolve.go (resolveType). Used by
-// nonConstCallRef so a const initialized with any builtin cast — e.g.
-// int32(5), float64(x), duration(1000) — is recognized as const-safe rather
-// than tripping on a hand-maintained short list that drifts as new numeric
-// types are added.
-func isBuiltinTypeName(name string) bool {
-	// Scalar casts come from the shared registry (ir/builtins.go); the
-	// struct-backed casts and generic constructors are still enumerated here
-	// until they move into the declared built-ins package.
+// and the generic containers). Used by nonConstCallRef so a const initialized
+// with any builtin cast — e.g. int32(5), float64(x), duration(1000) — or a
+// type-namespace method — map.keys(m), string.length(s) — is recognized as
+// const-safe.
+//
+// Neither half is a hand-maintained list: scalars come from the shared registry
+// (ir/builtins.go), and the struct-backed types carry a #[builtin] mark on their
+// stdlib declaration. Resolving the mark through scope also makes the check
+// respect shadowing, so a user `struct color` is not a builtin conversion (D3).
+func (c *checker) isBuiltinTypeName(name string) bool {
 	if b, ok := ir.LookupBuiltinScalar(name); ok && b.Convertible {
 		return true
 	}
-	switch name {
-	case "color", "date", "time", "datetime",
-		"list", "map", "iter", "ref":
-		return true
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
 	}
-	return false
+	sd, ok := sym.(*ir.StructDef)
+	if !ok {
+		return false
+	}
+	return sd.Builtin.IsStringRepr() || sd.Builtin.IsGeneric()
 }
+
+// nonConstCallRef checks whether a call expression is const-safe.
 
 func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 	checkArgs := func() string {
@@ -940,13 +944,13 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 	case *ast.IdentExpr:
 		// A builtin conversion like int32(5) or duration(1000) stays const when
 		// its arguments are const — checkArgs recurses into them.
-		if isBuiltinTypeName(fn.Name) {
+		if c.isBuiltinTypeName(fn.Name) {
 			return checkArgs()
 		}
 	case *ast.SelectExpr:
 		if ident, ok := fn.Operand.(*ast.IdentExpr); ok {
 			// Type-namespace methods (e.g., string.length("hi"), map.keys(m)).
-			if isBuiltinTypeName(ident.Name) {
+			if c.isBuiltinTypeName(ident.Name) {
 				return checkArgs()
 			}
 			// Namespace function calls (e.g., docs.Pages()).
