@@ -1,0 +1,11 @@
+// Built-ins are shadowable (design doc D3). A user `component window`
+// resolves before the #[builtin.node("window")] declaration, so this
+// instantiates as an ordinary node instance rather than registering a
+// package window.
+component window(label string) list<component> {
+	text(value=label)
+}
+
+component main {
+	window(label="ordinary node")
+}

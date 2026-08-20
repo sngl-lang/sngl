@@ -1,0 +1,9 @@
+// A window's readable members are the builtin-node component's props;
+// anything else is a hard error, not a silent dyn.
+window #home(title="Home", href="/index.html") {
+	text(value="Home")
+}
+
+window #about(href="/about.html") {
+	text(value=home.nope) // ERROR(check) "no member \"nope\" on component window"
+}
