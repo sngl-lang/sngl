@@ -723,18 +723,85 @@ func (c *checker) checkPendingExtensions() {
 	if len(c.pendingExtensions) == 0 {
 		return
 	}
+	// Group by platform so each platform's blueprint types (the enums/structs/
+	// units declared at the top level of its Package() docs — e.g. bubbletea's
+	// JoinDir/Model) are in scope while its extension bodies are checked. They
+	// must be scoped per platform: several platforms each declare a distinct
+	// `struct Options`.
+	var order []string
+	byPlatform := map[string][]pendingExtension{}
 	for _, pe := range c.pendingExtensions {
-		savedAST := pe.comp.AST.Body
-		savedBody := pe.comp.Body
-		savedPlatform := c.currentPlatform
-		pe.comp.AST.Body = pe.body
-		pe.comp.Body = nil
-		c.currentPlatform = pe.platform
-		c.checkComponentBody(pe.comp)
-		c.currentPlatform = savedPlatform
-		pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
-		pe.comp.AST.Body = savedAST
-		pe.comp.Body = savedBody
+		if _, seen := byPlatform[pe.platform]; !seen {
+			order = append(order, pe.platform)
+		}
+		byPlatform[pe.platform] = append(byPlatform[pe.platform], pe)
+	}
+	for _, platform := range order {
+		c.pushScope()
+		c.registerPlatformExtensionTypes(platform)
+		for _, pe := range byPlatform[platform] {
+			savedAST := pe.comp.AST.Body
+			savedBody := pe.comp.Body
+			savedPlatform := c.currentPlatform
+			pe.comp.AST.Body = pe.body
+			pe.comp.Body = nil
+			c.currentPlatform = pe.platform
+			c.checkComponentBody(pe.comp)
+			c.currentPlatform = savedPlatform
+			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+			pe.comp.AST.Body = savedAST
+			pe.comp.Body = savedBody
+		}
+		c.popScope()
+	}
+}
+
+// registerPlatformExtensionTypes declares the blueprint enum/struct/unit types
+// from the named platform's Package() docs into the current (pushed) scope, so
+// platform-extension bodies resolve them as real types rather than falling to
+// the platform's component resolver. Scope-local by design — these names are
+// not globally visible and do not collide across platforms.
+func (c *checker) registerPlatformExtensionTypes(platform string) {
+	var p ir.Platform
+	for _, pl := range c.cfg.Platforms {
+		if pl.PlatformIdentifier() == platform {
+			p = pl
+			break
+		}
+	}
+	if p == nil {
+		return
+	}
+	var enums []*ast.EnumDef
+	var structs []*ast.StructDef
+	var units []*ast.UnitDef
+	for _, doc := range p.Package() {
+		for _, s := range doc.Stmts {
+			switch d := s.(type) {
+			case *ast.EnumDef:
+				enums = append(enums, d)
+			case *ast.StructDef:
+				structs = append(structs, d)
+			case *ast.UnitDef:
+				units = append(units, d)
+			}
+		}
+	}
+	for _, u := range units {
+		c.scope.Declare(c.buildUnitDef(u))
+	}
+	for _, e := range enums {
+		c.scope.Declare(c.buildEnumDef(e))
+	}
+	// Declare struct names first so fields can reference sibling types.
+	stubs := make([]*ir.StructDef, len(structs))
+	for i, s := range structs {
+		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
+		c.scope.Declare(sd)
+		stubs[i] = sd
+	}
+	for i, s := range structs {
+		stubs[i].Fields = c.buildStructDef(s).Fields
 	}
 }
 
