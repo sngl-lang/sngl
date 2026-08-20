@@ -48,6 +48,20 @@ func TestFormatImport(t *testing.T) {
 		`import "widgets" => "git://example.com/widgets@v1#-"`,
 		`import "widgets" => "git://example.com/widgets@v1#-"`)
 
+	// The dot occupies the alias slot, so it round-trips through the same
+	// prefix path as an identifier alias — including with a replace clause.
+	assertFormat(t,
+		`import . "std"`,
+		`import . "std"`)
+
+	assertFormat(t,
+		`import . "widgets"`,
+		`import . "widgets"`)
+
+	assertFormat(t,
+		`import . "widgets" => "git://example.com/widgets@v1#-"`,
+		`import . "widgets" => "git://example.com/widgets@v1#-"`)
+
 	assertFormat(t,
 		`import w "widgets" => "git://example.com/widgets@v1#-"`,
 		`import w "widgets" => "git://example.com/widgets@v1#-"`)

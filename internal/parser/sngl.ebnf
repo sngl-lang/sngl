@@ -244,7 +244,7 @@ StmtBlock = lbrace { [ slashdash ] { MacroAttr } Stmt [ semi ] } rbrace .
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
-ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
+ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 

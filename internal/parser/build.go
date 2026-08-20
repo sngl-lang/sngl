@@ -280,11 +280,15 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 // --- Imports ---
 
 func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
-	// ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
+	// ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 	pos := b.posFromToken(it.shift()) // kw_import
 	imp := &ast.Import{Pos: pos}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+	switch {
+	case !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT:
 		imp.Alias = it.shift().Literal
+	case !it.done() && !it.isNonTerminal() && it.tokenType() == DOT:
+		it.skip()
+		imp.Dot = true
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == STR_FULL {
 		imp.Path = stripQuotes(it.shift().Literal)

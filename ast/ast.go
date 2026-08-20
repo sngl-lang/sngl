@@ -217,6 +217,7 @@ type Import struct {
 	Pos     Pos
 	Path    string // local import path (LHS of =>, or the bare string)
 	Alias   string // explicit ident alias, "" if none
+	Dot     bool   // `import . "p"` — flatten the package's symbols into this scope
 	Replace string // replacement URL (RHS of =>), "" if no replace
 }
 

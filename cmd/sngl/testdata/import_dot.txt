@@ -1,0 +1,83 @@
+# Dot import flattens a package's exported declarations into the importing
+# scope, so they are referenced unqualified. Needs the real CLI: directory
+# import resolution is not available to the checker's own testdata harness.
+sngl check main.sngl
+stdout 'main.sngl: ok'
+
+# Without the dot the same names are only reachable qualified.
+! sngl check plain.sngl
+stderr 'unknown type "Card"'
+
+# Unexported (underscore-prefixed) declarations are not lifted.
+! sngl check unexported.sngl
+stderr 'undefined: _helper'
+
+# A user declaration shadows a dot-imported one of the same name: imports are
+# processed first, so the later user declaration wins in the same scope.
+sngl generate --out out shadow.sngl
+grep 'MINE' out/index.html
+! grep 'hello ' out/index.html
+
+# `import . "std"` is accepted and redundant while the stdlib is still lifted.
+sngl check std.sngl
+stdout 'std.sngl: ok'
+
+# Bare `import "std"` is rejected — the stdlib has no namespace form.
+! sngl check stdbare.sngl
+stderr 'must be a dot import'
+
+-- widgets/lib.sngl --
+struct Card {
+    title string = ""
+}
+
+func Greet(who string) => "hello " + who
+
+func _helper() => "internal"
+
+-- main.sngl --
+import . "widgets"
+
+component main {
+    var c Card = {title = "t"}
+    var g = Greet("world")
+    text(value=c.title + g)
+}
+-- plain.sngl --
+import "widgets"
+
+component main {
+    var c Card = {title = "t"}
+    text(value=c.title)
+}
+-- unexported.sngl --
+import . "widgets"
+
+component main {
+    var h = _helper()
+    text(value=h)
+}
+-- shadow.sngl --
+output { none { html } }
+
+import . "widgets"
+
+func Greet(who string) => "MINE " + who
+
+component main {
+    window #w(href="/index.html") {
+        text(value=Greet("x"))
+    }
+}
+-- std.sngl --
+import . "std"
+
+component main {
+    text(value="x")
+}
+-- stdbare.sngl --
+import "std"
+
+component main {
+    text(value="x")
+}

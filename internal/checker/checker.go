@@ -386,6 +386,22 @@ func (c *checker) registerImport(imp *ast.Import) {
 		target = mapped
 	}
 
+	// `std` names the standard library. Phase 4 accepts it and treats it as
+	// redundant: loadStdlib still lifts the stdlib into every package
+	// unconditionally, so the symbols a dot import would bind are already in
+	// scope. Phase 5 gates that lift, at which point this becomes the actual
+	// mechanism — a flattenDotImport over StdlibDocs(). Declared here so
+	// programs can adopt the explicit form before the flip, rather than having
+	// to migrate syntax and semantics in one change.
+	if scheme, _ := ParseScheme(target); scheme == "" && imp.Path == "std" {
+		if !imp.Dot {
+			c.error(imp.Pos, `import "std" must be a dot import: import . "std"`)
+			return
+		}
+		c.pkg.Imports = append(c.pkg.Imports, &ir.Import{AST: imp, Path: imp.Path})
+		return
+	}
+
 	scheme, uri := ParseScheme(target)
 	alias := imp.Alias
 	if alias == "" {
@@ -542,6 +558,13 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if _, hasMain := irImport.Pkg.Symbols.LookupComponent("main"); hasMain {
 			c.error(imp.Pos, "component main can only be defined in the main package")
 		}
+	}
+
+	// A dot import flattens the package's symbols into this scope instead of
+	// binding a namespace, so its declarations are referenced unqualified.
+	if imp.Dot {
+		c.flattenDotImport(imp, irImport)
+		return
 	}
 
 	// Declare namespace in scope.
@@ -2488,5 +2511,57 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
 			c.popScope()
 		}
+	}
+}
+
+// flattenDotImport lifts an imported package's exported declarations into the
+// current scope, so `import . "p"` makes them available unqualified — the same
+// shape loadStdlib gives the stdlib, reached by an explicit import instead.
+//
+// Imports are processed first in pass1, so anything the user declares afterwards
+// lands in the same scope and overwrites the dot-imported binding of that name.
+// That is what preserves override semantics: a user declaration shadows a
+// dot-imported one exactly as it shadows a lifted stdlib one.
+//
+// Unexported names are skipped, matching qualified access (see rejectUnexported).
+func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
+	if irImport.Pkg == nil {
+		// Macro-only or unresolved package — nothing to lift. Not an error: the
+		// import may exist purely to enable a macro (e.g. internal://canvas).
+		return
+	}
+	pkg := irImport.Pkg
+	for name, sym := range pkg.Symbols.Types {
+		if exported(sym) {
+			c.symtab.Types[name] = sym
+			c.scope.Declare(sym)
+		}
+	}
+	for name, sym := range pkg.Symbols.Comps {
+		if exported(sym) {
+			c.symtab.Comps[name] = sym
+			c.scope.Declare(sym)
+		}
+	}
+	for typeName, methods := range pkg.Symbols.Methods {
+		for methodName, fn := range methods {
+			if c.symtab.Methods[typeName] == nil {
+				c.symtab.Methods[typeName] = map[string]*ir.Func{}
+			}
+			if _, exists := c.symtab.Methods[typeName][methodName]; !exists {
+				c.symtab.Methods[typeName][methodName] = fn
+			}
+		}
+	}
+	for _, sym := range pkg.Symbols.Root.Symbols {
+		if !exported(sym) {
+			continue
+		}
+		// Don't re-bind a namespace the imported package itself imported; dot
+		// import lifts the package's own declarations, not its import graph.
+		if _, isNS := sym.(*ir.Namespace); isNS {
+			continue
+		}
+		c.scope.Declare(sym)
 	}
 }
