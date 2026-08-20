@@ -1,5 +1,5 @@
 // Direct calls to the i18n stdlib package, with the canonical names
-// (date/time/dateTime/select — not the dateStr/timeStr/etc workarounds).
+// (date/time/datetime/select — not the dateStr/timeStr/etc workarounds).
 // Note: the "i18n" namespace is predeclared; no import statement needed.
 
 func test() {
@@ -19,7 +19,7 @@ func test() {
     var dateLabel = i18n.date(d, "short")
     var t time
     var timeLabel = i18n.time(t, "medium")
-    var dt dateTime
+    var dt datetime
     var dtLabel = i18n.datetime(dt, "short", "short")
 
     // Direct selectors.

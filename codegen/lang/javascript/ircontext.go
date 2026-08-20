@@ -823,7 +823,7 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		// Args: t time, style string.
 		return "i18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
 	case "i18n.datetime":
-		// Args: dt dateTime, dateStyle string, timeStyle string.
+		// Args: dt datetime, dateStyle string, timeStyle string.
 		return "i18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.select":
 		// Args: value string, cases map.

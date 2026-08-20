@@ -917,7 +917,7 @@ func isBuiltinTypeName(name string) bool {
 		return true
 	}
 	switch name {
-	case "color", "date", "time", "dateTime",
+	case "color", "date", "time", "datetime",
 		"list", "map", "iter", "ref":
 		return true
 	}
@@ -2409,7 +2409,7 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	}
 	val := lit.Raw
 
-	// color/date/time/dateTime are StructDef-backed; detect by name and apply
+	// color/date/time/datetime are StructDef-backed; detect by name and apply
 	// the same canonical-form validation that the kind-based types use below.
 	switch {
 	case ir.IsColorStruct(typ):
@@ -2429,7 +2429,7 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		return
 	case ir.IsDateTimeStruct(typ):
 		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}`).MatchString(val) {
-			c.error(pos, "invalid dateTime literal %q", val)
+			c.error(pos, "invalid datetime literal %q", val)
 		}
 		return
 	}

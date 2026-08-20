@@ -16,6 +16,6 @@ func widget.time() string {
     return "now"
 }
 
-func widget.dateTime() string {
+func widget.datetime() string {
     return "now"
 }

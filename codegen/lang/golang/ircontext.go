@@ -438,7 +438,7 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 		}
 		return n.Raw
 	case ir.TypeStruct:
-		// date/time/dateTime literals lower to mustParse* helper calls
+		// date/time/datetime literals lower to mustParse* helper calls
 		// (time.Time-valued); other string-repr structs (color) emit quoted.
 		if out, ok := LowerTimeLiteralGo(n); ok {
 			return out
@@ -1241,7 +1241,7 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "*any"
 	case ir.TypeStruct:
-		// date/time/dateTime are string-representable stdlib structs that map
+		// date/time/datetime are string-representable stdlib structs that map
 		// to time.Time in Go (formerly the TypeDate/TypeTime/TypeDateTime
 		// kinds). Detect by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {

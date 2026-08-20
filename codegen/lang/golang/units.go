@@ -202,7 +202,7 @@ func unitSuffixByName(u *ir.UnitDef, name string) *ir.UnitSuffix {
 	return nil
 }
 
-// LowerTimeLiteralGo lowers a date / time / dateTime literal to a call
+// LowerTimeLiteralGo lowers a date / time / datetime literal to a call
 // against the platform-emitted helpers (mustParseDate, mustParseTime,
 // mustParseDateTime). Returns ("", false) for any other literal shape.
 // Platforms that emit time-typed binds are responsible for declaring

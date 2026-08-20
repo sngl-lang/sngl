@@ -80,7 +80,7 @@ func TypeHintToGo(hint string) string {
 		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
 		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
 		return "string"
-	case "date", "time", "dateTime":
+	case "date", "time", "datetime":
 		return "time.Time"
 	case "duration":
 		return "time.Duration"

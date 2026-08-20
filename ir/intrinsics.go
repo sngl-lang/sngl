@@ -158,7 +158,7 @@ var I18nIntrinsics = []IntrinsicDef{
 		{Name: "n", Type: TypFloat},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
-	// The date/time/dateTime params accept the stdlib date/time/dateTime
+	// The date/time/datetime params accept the stdlib date/time/datetime
 	// structs. This intrinsic list is built at package init — before the
 	// stdlib is parsed — so the params are typed dyn to stay independent of
 	// stdlib registration order. The wrapping stdlib funcs (i18n.date, etc.)

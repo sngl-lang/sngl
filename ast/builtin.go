@@ -22,7 +22,7 @@ const (
 	BuiltinColor    BuiltinKind = "color"
 	BuiltinDate     BuiltinKind = "date"
 	BuiltinTime     BuiltinKind = "time"
-	BuiltinDateTime BuiltinKind = "dateTime"
+	BuiltinDateTime BuiltinKind = "datetime"
 
 	// Generic constructors.
 	BuiltinList   BuiltinKind = "list"
@@ -52,7 +52,7 @@ func (b BuiltinKind) IsPrimitive() bool {
 }
 
 // IsStringRepr reports whether the kind is a string-representable value type
-// (color/date/time/dateTime).
+// (color/date/time/datetime).
 func (b BuiltinKind) IsStringRepr() bool {
 	switch b {
 	case BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime:

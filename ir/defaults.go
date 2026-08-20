@@ -25,7 +25,7 @@ func ZeroExpr(t *Type) Expr {
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
 	case TypeStruct:
-		// date/time/dateTime are string-representable stdlib structs (like
+		// date/time/datetime are string-representable stdlib structs (like
 		// color); their zero value is a canonical-form string literal rather
 		// than an empty struct literal.
 		switch {

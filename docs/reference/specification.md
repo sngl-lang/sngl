@@ -398,7 +398,7 @@ A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
 such as `"2026-03-12"` is therefore a valid value for one). This is a property a
 type opts into rather than a fixed set of built-in names. The standard library's
-`color`, `date`, `time`, and `dateTime` are string-representable types; the
+`color`, `date`, `time`, and `datetime` are string-representable types; the
 library also supplies the `measurement` and `duration` units used by `Style` and
 `timer`. None of these are core types — they are defined in SNGL under `lib/`.
 
@@ -511,7 +511,7 @@ following holds:
 3. `A` is `null` and `B` is an `option` type or a function type.
 4. `A` is `int` and `B` is `float`.
 5. one of `A` and `B` is `string` and the other is a string-representable type
-   (a standard-library type such as `color`, `date`, `time`, or `dateTime`).
+   (a standard-library type such as `color`, `date`, `time`, or `datetime`).
 6. `A` is `list<S>`, `B` is `list<T>`, and `S` is assignable to `T` (lists are
    covariant in their element type).
 7. `A` is `list<S>` and `B` is `iter<T>` with `S` assignable to `T` (the

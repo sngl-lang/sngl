@@ -788,7 +788,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			return c.inferBuiltinConversion(x, b.Type, ident.Name)
 		}
 		switch ident.Name {
-		case "color", "date", "time", "dateTime":
+		case "color", "date", "time", "datetime":
 			// These are stdlib StructDef-backed types, not primitives, so the
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
@@ -921,7 +921,7 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		fromKind := ir.TypeInvalid
 		if from != nil {
 			fromKind = from.Kind
-			// color/date/time/dateTime values are TypeStruct-backed by their
+			// color/date/time/datetime values are TypeStruct-backed by their
 			// stdlib StructDefs. For the explicit-cast primitiveConvertible
 			// check (e.g. `string(c)`, `string(d)`), substitute the string-
 			// domain TypeColor kind so the string-domain cast rules apply.
@@ -1820,7 +1820,7 @@ func interpPartPrimitive(t *ir.Type) bool {
 	if t == nil {
 		return false
 	}
-	// color/date/time/dateTime are StructDef-backed but still stringify like
+	// color/date/time/datetime are StructDef-backed but still stringify like
 	// string-domain primitives in interpolation.
 	if ir.StringReprStruct(t) {
 		return true

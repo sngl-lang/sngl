@@ -81,7 +81,7 @@ func NewBaseScope() *Scope {
 		}
 	}
 	// The bare generic constructors are predeclared as dyn-parameterized
-	// defaults. "color", "date", "time", and "dateTime" are intentionally
+	// defaults. "color", "date", "time", and "datetime" are intentionally
 	// absent — they are provided exclusively as stdlib StructDefs
 	// (lib/types.sngl). The stdlib scope sits between this base scope and user
 	// code, so resolution finds the StructDef. Pre-stdlib lookups for these
