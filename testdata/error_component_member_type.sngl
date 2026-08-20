@@ -16,3 +16,8 @@ func testTypedVar(t Test, c counter) {
 func testTypedComputed(t Test, c counter) {
     t.assert(c.doubled == "no") // ERROR(check) "operator == not defined for int and string"
 }
+
+func testMissingMember(t Test, c counter) {
+    // No var, prop, method, or element ref named "nope": a hard error, not dyn.
+    t.assert(c.nope == 0) // ERROR(check) "no member \"nope\" on component counter"
+}

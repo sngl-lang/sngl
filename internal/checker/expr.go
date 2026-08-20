@@ -1285,6 +1285,9 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
 				return comp
 			}
+			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
+				return comp
+			}
 		case *ast.PlatformStmt:
 			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
 				return comp
@@ -1292,6 +1295,72 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 		}
 	}
 	return nil
+}
+
+// findDescendantHost searches the components instantiated within comp's body
+// (transitively, with cycle detection) for an element ref named id, returning
+// its host component. A ref living inside a child component is collected across
+// the whole rendered subtree, so callers type it as list<host>. Recursion is
+// bounded by `visited` — a self-instantiating component (e.g. a recursive tree
+// view) is searched once. Returns nil if no descendant declares the id.
+func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[string]bool) *ir.Component {
+	if comp == nil || comp.AST == nil || visited[comp.Name] {
+		return nil
+	}
+	visited[comp.Name] = true
+	for _, child := range c.childComponents(comp.AST.Body.Stmts) {
+		if host := c.findHostComponentAST(child.AST.Body.Stmts, id); host != nil {
+			return host
+		}
+		if host := c.findDescendantHost(child, id, visited); host != nil {
+			return host
+		}
+	}
+	return nil
+}
+
+// childComponents returns the user components instantiated directly in stmts
+// (descending through if/for/platform branches and nested node blocks, but not
+// into the instantiated components' own definitions — that is findDescendantHost's
+// job). Both `Comp()` call-statement and `Comp { }` visual-node forms count.
+func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
+	var out []*ir.Component
+	lookup := func(name string) {
+		if name == "" {
+			return
+		}
+		if sym, ok := c.scope.Lookup(name); ok {
+			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
+				out = append(out, comp)
+			}
+		}
+	}
+	var walk func(stmts []ast.Stmt)
+	walk = func(stmts []ast.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ast.VisualNode:
+				lookup(visualNodeTarget(n))
+				walk(n.Block.Stmts)
+			case *ast.CallStmt:
+				if name, _, isElem := elementRefCallInfo(n.Call); isElem {
+					lookup(name)
+				} else if id, ok := n.Call.Func.(*ast.IdentExpr); ok {
+					lookup(id.Name)
+				}
+			case *ast.IfStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			case *ast.ForStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			case *ast.PlatformStmt:
+				walk(n.Body.Stmts)
+			}
+		}
+	}
+	walk(stmts)
+	return out
 }
 
 // isPrimitiveMethodReceiver reports whether a method-call receiver type's full
@@ -1435,12 +1504,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		}
 
 		// Component-instance member access: resolve the field against the
-		// component's vars, props, and methods, typed. Applies to any
-		// component-typed operand — `this.<name>` inside a method and
-		// `c.<name>` on a component-typed param/var in ordinary code or a
-		// test alike — so the feature is orthogonal to context. Names that
-		// match no member (e.g. element-ref ids, resolved separately for
-		// @event calls) fall through to the Dyn result below.
+		// component's vars, props, methods, and element refs (its own body and,
+		// as list<host>, its descendant components), fully typed. Applies to any
+		// component-typed operand — `this.<name>` inside a method and `c.<name>`
+		// on a component-typed param/var in ordinary code or a test alike — so
+		// the feature is orthogonal to context. A name matching none of these is
+		// a hard error, not a silent `dyn`.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
 			if comp, ok := operand.Decl.(*ir.Component); ok {
 				for _, v := range comp.Vars {
@@ -1483,17 +1552,23 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}}
 					return &ir.Select{AST: x, Type: funcType, Operand: operandExpr, Field: x.Field}
 				}
-				// Element-ref id inside the component body (e.g. `c.btn` for a
-				// `c.btn.@click()` event trigger): its value type is the host
-				// element's component type.
-				if host := c.elementHostComponent(x); host != nil {
-					return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
+				// Element-ref id declared in the component body (e.g. `c.btn`
+				// for a `c.btn.@click()` event trigger, or `c.m.it` chained):
+				// its value type is the host element's component type. Resolve
+				// against the operand's already-known component type so inline
+				// chains work, not just bare-ident operands.
+				if comp.AST != nil {
+					if host := c.findHostComponentAST(comp.AST.Body.Stmts, x.Field); host != nil {
+						return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
+					}
+					// A ref declared inside a child component is collected across
+					// the rendered subtree, so it reads as list<host> (e.g.
+					// `c.lbl[0]`, or `c.val[i]` from a recursive view).
+					if host := c.findDescendantHost(comp, x.Field, map[string]bool{}); host != nil {
+						return &ir.Select{AST: x, Type: ir.ListOf(host.SymType()), Operand: operandExpr, Field: x.Field}
+					}
 				}
-				// Anything else — `children`, cross-component element refs,
-				// rendered-node props — is the test-runner's dynamic render-tree
-				// introspection surface, which has no static type today: fall
-				// through to the Dyn result below. (See MR discussion; typed
-				// introspection is separate future work.)
+				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
 			}
 		}
 
