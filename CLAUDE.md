@@ -89,6 +89,21 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). `internal/checker/stdlib.go` reads from that FS and parses the files at startup, returning components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
 
+**Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
+a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
+name — so every built-in is shadowable by a user declaration of the same name.
+Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
+node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
+checker dispatches a visual node to the matching IR construct off the mark. The
+macro lives in `internal/macros/builtin`; kinds are `ast.BuiltinKind`.
+
+Two consequences worth knowing: a kind classifies *one* declaration and does not
+alias two — type identity is per-declaration, so two structs sharing a mark
+would be two incompatible types (the checker rejects a duplicated node mark).
+And `output` is deliberately *not* a built-in node: it parses as a visual node
+but is a build directive with its own data structure, matched by name so that
+`output` need not become a keyword.
+
 Notable stdlib packages:
 
 - **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
@@ -127,7 +142,11 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 - Test runners resolve testdata via relative paths from their package directory
 - Error directive comments in test files (e.g., `// ERROR(check) "invalid color literal"` — phase is `parse`, `check`, etc.) drive expected-failure assertions via `internal/testutil`
 
-**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, and `!` for assertions.
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
+
+**A `testdata/*.sngl` fixture cannot test anything platform-related.** The checker's own harness builds `checker.Config{IsMain: true}` with **no** registered platforms, so it never resolves platform elements, never splices `component sngl.X` extensions, and never checks their bodies. A fixture exercising any of that passes whether the code works or not. Use a txtar test — it runs the real CLI with every platform registered. (A user component named `Widget` silently broke every `sngl check` for exactly this reason: 300+ fixtures could not see it.)
+
+When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 ### Debugging
 
@@ -140,8 +159,13 @@ Structured logging via `slog` at three levels controlled by CLI flags:
 Dump commands inspect each compiler phase:
 
 ```bash
-sngl dump parsed [file|dir]                              # after parse + merge
-sngl dump checked [file|dir]                             # after type check
-sngl dump optimized --lang js --platform html [file|dir] # after optimization
-sngl dump analysis --lang js --platform html [file|dir]  # CommonAnalysis as JSON
+sngl dump --stage parsed  [file|dir]                              # after parse + merge
+sngl dump --stage checked [file|dir]                              # after type check
+sngl dump --stage optimized --lang js --platform html [file|dir]  # after optimization
+sngl dump --stage analysis --lang js --platform html [file|dir]   # CommonAnalysis as JSON
+sngl dump --stage lowered --after none [file|dir]                 # pre-lower IR
 ```
+
+The stage is a **flag**, not a positional argument — `sngl dump checked f.sngl`
+fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
+`spew`, or `json`; `--omit AST,Pos` trims noise.
