@@ -130,7 +130,7 @@ type StructDef struct {
 	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
 	Body        []StructBodyItem
 	IsMultiline bool
-	Builtin     BuiltinKind // set by #[builtin.stringrepr]/#[builtin.generic]; BuiltinNone otherwise
+	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
 }
 
 // Fields returns just the *StructField items from Body, in source order.
@@ -286,7 +286,7 @@ type ComponentDecl struct {
 	ChildrenType TypeExpr
 	Body         StmtBlock
 	IsShape      bool        // set by #[canvas.shape] macro
-	Builtin      BuiltinKind // set by #[builtin.node]; BuiltinNone otherwise
+	Builtin      BuiltinKind // set by #[builtin("window")]; BuiltinNone otherwise
 }
 
 // PropList is the parameter list of a component declaration.

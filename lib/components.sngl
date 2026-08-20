@@ -152,9 +152,9 @@ component errorBoundary(
 //
 // Reading `name.href` / `name.title` off a `window #name` declaration
 // lets links survive a window's path change without copying the path
-// string. The #[builtin.node] mark is how the checker recognises a
+// string. The #[builtin("window")] mark is how the checker recognises a
 // window declaration — by tag, not by matching the name "window".
-#[builtin.node("window")]
+#[builtin("window")]
 component window(
     title string,
     href string,

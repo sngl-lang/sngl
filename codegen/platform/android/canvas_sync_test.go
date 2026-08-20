@@ -52,7 +52,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 			t.Fatalf("parse lib/%s: %v", file, err)
 		}
 		for _, stmt := range doc.Stmts {
-			// Unwrap a #[builtin.*] macro attribute wrapper: raw lib source is
+			// Unwrap a #[builtin] macro attribute wrapper: raw lib source is
 			// not run through the pre-check expand pass here.
 			if ad, ok := stmt.(*ast.AttrDecl); ok {
 				stmt = ad.Inner

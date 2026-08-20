@@ -234,7 +234,7 @@ type Component struct {
 	// optional (rendered as zero-values by the platform); only user-defined
 	// component props without defaults are required at call sites.
 	Stdlib bool
-	// Builtin carries the #[builtin.node] mark from the declaration, so the
+	// Builtin carries the #[builtin("window")] mark from the declaration, so the
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin      ast.BuiltinKind
@@ -321,7 +321,7 @@ type EventHandler struct {
 type Window struct {
 	AST          *ast.VisualNode
 	Name         string
-	Typ          *Type // instance type of the #[builtin.node("window")] component; nil if unresolved
+	Typ          *Type // instance type of the #[builtin("window")] component; nil if unresolved
 	Href         Expr  // checked href expression (folded during optimization)
 	Title        Expr  // checked title expression
 	Favicon      Expr  // checked favicon expression

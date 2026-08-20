@@ -58,7 +58,7 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 		if !found {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("unknown macro %q in package %q", attr.Name, uri),
+				Msg:      unknownMacroMsg(attr.Name, uri),
 				Severity: ir.Error,
 			})
 			continue
@@ -68,7 +68,7 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 		if err != nil {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("macro %s.%s: %s", attr.Alias, attr.Name, err),
+				Msg:      fmt.Sprintf("macro %s: %s", macroName(attr), err),
 				Severity: ir.Error,
 			})
 			continue
@@ -87,7 +87,7 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 		if fmt.Sprintf("%T", result) != fmt.Sprintf("%T", decl) {
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("macro %s.%s changed declaration kind from %T to %T", attr.Alias, attr.Name, decl, result),
+				Msg:      fmt.Sprintf("macro %s changed declaration kind from %T to %T", macroName(attr), decl, result),
 				Severity: ir.Error,
 			})
 			continue
@@ -103,6 +103,23 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef) (ast.Stm
 	inheritPos(decl, ad.Pos)
 
 	return decl, diags
+}
+
+// macroName renders an attribute for diagnostics. A bare macro (no package
+// segment, e.g. #[builtin]) has an empty alias, so the dotted form would print
+// as ".builtin".
+func macroName(attr ast.MacroAttr) string {
+	if attr.Alias == "" {
+		return attr.Name
+	}
+	return attr.Alias + "." + attr.Name
+}
+
+func unknownMacroMsg(name, uri string) string {
+	if uri == "" {
+		return fmt.Sprintf("unknown macro %q", name)
+	}
+	return fmt.Sprintf("unknown macro %q in package %q", name, uri)
 }
 
 // inheritPos moves a declaration's start position to pos (the attribute block's

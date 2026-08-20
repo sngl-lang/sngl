@@ -1,8 +1,8 @@
 package ast
 
 // BuiltinKind marks a struct declaration as a compiler built-in type. It is set
-// by the #[builtin.*] macros before type-checking and read by the checker and
-// IR; BuiltinNone ("") is an ordinary struct. A struct is at most one kind of
+// by the #[builtin] macro before type-checking and read by the checker and IR;
+// BuiltinNone ("") is an ordinary struct. A struct is at most one kind of
 // built-in, so a single field carries both the string-repr value types and the
 // generic constructors. The value doubles as the generic-constructor id.
 type BuiltinKind string
@@ -10,31 +10,31 @@ type BuiltinKind string
 const (
 	BuiltinNone BuiltinKind = ""
 
-	// Scalar primitives (#[builtin.primitive]). Only the names with a stdlib
-	// struct decl are marked; the mark distinguishes the built-in's own decl
-	// from a user declaration that shadows the name. The concrete singleton is
-	// held by the compiler (ir.BuiltinScalar), keyed by these names.
+	// Scalar primitives. Only the names with a stdlib struct decl are marked;
+	// the mark distinguishes the built-in's own decl from a user declaration
+	// that shadows the name. The concrete singleton is held by the compiler
+	// (ir.BuiltinScalar), keyed by these names.
 	BuiltinInt    BuiltinKind = "int"
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
 
-	// String-representable value types (#[builtin.stringrepr]).
+	// String-representable value types.
 	BuiltinColor    BuiltinKind = "color"
 	BuiltinDate     BuiltinKind = "date"
 	BuiltinTime     BuiltinKind = "time"
 	BuiltinDateTime BuiltinKind = "dateTime"
 
-	// Generic constructors (#[builtin.generic]).
+	// Generic constructors.
 	BuiltinList   BuiltinKind = "list"
 	BuiltinMap    BuiltinKind = "map"
 	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 
-	// Built-in visual nodes (#[builtin.node]). Unlike the type marks above,
-	// these annotate a component declaration: the checker dispatches a visual
-	// node to the matching compiler construct (ir.Window) when its target
-	// resolves to the marked component, rather than matching a literal name.
+	// Built-in visual nodes. Unlike the type marks above, these annotate a
+	// component declaration: the checker dispatches a visual node to the
+	// matching compiler construct (ir.Window) when its target resolves to the
+	// marked component, rather than matching a literal name.
 	BuiltinWindow BuiltinKind = "window"
 )
 
@@ -71,4 +71,20 @@ func (b BuiltinKind) IsGeneric() bool {
 // kinds are stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	return b == BuiltinWindow
+}
+
+// AllBuiltinKinds returns every valid kind, in declaration order.
+func AllBuiltinKinds() []BuiltinKind {
+	return []BuiltinKind{
+		BuiltinInt, BuiltinFloat, BuiltinString,
+		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
+		BuiltinWindow,
+	}
+}
+
+// Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
+// not an unrecognised string).
+func (b BuiltinKind) Valid() bool {
+	return b.IsPrimitive() || b.IsStringRepr() || b.IsGeneric() || b.IsNode()
 }

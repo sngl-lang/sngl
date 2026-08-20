@@ -125,7 +125,7 @@ type checker struct {
 	stdlibOptions    *ir.StructDef
 	stdlibOptionsSet bool
 
-	// The #[builtin.node("window")] component, and its instance type. Window
+	// The #[builtin("window")] component, and its instance type. Window
 	// symbols are typed with the component's own type, so `home.href` resolves
 	// through the regular component-member machinery against its props.
 	// windowComp is what makes window dispatch tag-based rather than a check
@@ -192,7 +192,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		// The stdlib is embedded and compiler-controlled; a missing window
 		// declaration would silently turn every `window #id` into "unexpected
 		// root-level visual node". Fail loudly, as parseStdlibDocs does.
-		panic("sngl: embedded stdlib declares no #[builtin.node(\"window\")] component")
+		panic("sngl: embedded stdlib declares no #[builtin(\"window\")] component")
 	}
 	c.windowType = c.windowComp.SymType()
 	symtab.Root.Parent = stdlibScope
@@ -1295,7 +1295,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 }
 
 // findBuiltinNode returns the component in comps carrying the given
-// #[builtin.node] mark, or nil. Stdlib registration order is not significant,
+// #[builtin("window")] mark, or nil. Stdlib registration order is not significant,
 // so the lookup is by tag rather than by position.
 func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Component {
 	for _, sym := range comps {
@@ -1307,7 +1307,7 @@ func findBuiltinNode(comps map[string]ir.Symbol, kind ast.BuiltinKind) *ir.Compo
 }
 
 // isWindowNode reports whether name resolves, through the current scope, to the
-// #[builtin.node("window")] component — i.e. whether a visual node with this
+// #[builtin("window")] component — i.e. whether a visual node with this
 // target is a window declaration rather than an ordinary node instance.
 //
 // Going through the scope chain rather than comparing against the literal

@@ -114,7 +114,7 @@ func TestColorFieldsInSync(t *testing.T) {
 }
 
 // structDefOf returns the *ast.StructDef carried by stmt, unwrapping a
-// #[builtin.*] macro attribute wrapper (*ast.AttrDecl) when present. These
+// #[builtin] macro attribute wrapper (*ast.AttrDecl) when present. These
 // tests scan raw lib source, which is not run through the pre-check expand
 // pass that would otherwise remove the wrapper.
 func structDefOf(stmt ast.Stmt) (*ast.StructDef, bool) {

@@ -25,14 +25,12 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 }
 
 func TestStringReprMacro(t *testing.T) {
-	// No import: #[builtin.*] macros resolve ambiently.
-	src := `#[builtin.stringrepr("color")]
+	// No import: the #[builtin] macro resolves ambiently.
+	src := `#[builtin("color")]
 struct color { r int = 0 }`
 	stmt, diags := expandOne(t, src)
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("unexpected diagnostic: %s", d.Msg)
-		}
+	if hasError(diags) {
+		t.Fatalf("unexpected diagnostic: %s", firstError(diags))
 	}
 	sd, ok := stmt.(*ast.StructDef)
 	if !ok {
@@ -43,44 +41,12 @@ struct color { r int = 0 }`
 	}
 }
 
-func TestStringReprMacroRejectsUnknownKind(t *testing.T) {
-	src := `#[builtin.stringrepr("bogus")]
-struct x {}`
-	_, diags := expandOne(t, src)
-	found := false
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected an error diagnostic for unknown stringrepr kind")
-	}
-}
-
-func TestStringReprMacroRejectsNonStruct(t *testing.T) {
-	src := `#[builtin.stringrepr("color")]
-component foo {}`
-	_, diags := expandOne(t, src)
-	found := false
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected an error diagnostic when stringrepr targets a non-struct")
-	}
-}
-
 func TestPrimitiveMacro(t *testing.T) {
-	src := `#[builtin.primitive("int")]
+	src := `#[builtin("int")]
 struct int {}`
 	stmt, diags := expandOne(t, src)
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("unexpected diagnostic: %s", d.Msg)
-		}
+	if hasError(diags) {
+		t.Fatalf("unexpected diagnostic: %s", firstError(diags))
 	}
 	sd, ok := stmt.(*ast.StructDef)
 	if !ok {
@@ -92,13 +58,11 @@ struct int {}`
 }
 
 func TestGenericMacro(t *testing.T) {
-	src := `#[builtin.generic("list")]
+	src := `#[builtin("list")]
 struct list<T> {}`
 	stmt, diags := expandOne(t, src)
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("unexpected diagnostic: %s", d.Msg)
-		}
+	if hasError(diags) {
+		t.Fatalf("unexpected diagnostic: %s", firstError(diags))
 	}
 	sd, ok := stmt.(*ast.StructDef)
 	if !ok {
@@ -109,31 +73,12 @@ struct list<T> {}`
 	}
 }
 
-func TestGenericMacroRejectsBareIdent(t *testing.T) {
-	// A bare identifier is a name reference, not a constant — must be rejected
-	// in favor of a string literal.
-	src := `#[builtin.generic(list)]
-struct list<T> {}`
-	_, diags := expandOne(t, src)
-	found := false
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected an error diagnostic for a bare-ident macro argument")
-	}
-}
-
 func TestNodeMacro(t *testing.T) {
-	src := `#[builtin.node("window")]
+	src := `#[builtin("window")]
 component window(title string) list<component> {}`
 	stmt, diags := expandOne(t, src)
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("unexpected diagnostic: %s", d.Msg)
-		}
+	if hasError(diags) {
+		t.Fatalf("unexpected diagnostic: %s", firstError(diags))
 	}
 	comp, ok := stmt.(*ast.ComponentDecl)
 	if !ok {
@@ -144,22 +89,43 @@ component window(title string) list<component> {}`
 	}
 }
 
-func TestNodeMacroRejectsUnknownID(t *testing.T) {
-	src := `#[builtin.node("bogus")]
-component bogus() {}`
+func TestMacroRejectsUnknownKind(t *testing.T) {
+	src := `#[builtin("bogus")]
+struct x {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for unknown builtin node id")
+		t.Errorf("expected an error diagnostic for an unknown builtin kind")
 	}
 }
 
-// A node mark on a struct is a category error: node kinds annotate components.
-func TestNodeMacroRejectsStruct(t *testing.T) {
-	src := `#[builtin.node("window")]
+// A type kind annotates a struct; a component is a category error.
+func TestMacroRejectsTypeKindOnComponent(t *testing.T) {
+	src := `#[builtin("color")]
+component foo {}`
+	_, diags := expandOne(t, src)
+	if !hasError(diags) {
+		t.Errorf("expected an error diagnostic for a type kind on a component")
+	}
+}
+
+// A node kind annotates a component; a struct is a category error.
+func TestMacroRejectsNodeKindOnStruct(t *testing.T) {
+	src := `#[builtin("window")]
 struct window {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for #[builtin.node] on a struct")
+		t.Errorf("expected an error diagnostic for a node kind on a struct")
+	}
+}
+
+func TestMacroRejectsBareIdent(t *testing.T) {
+	// A bare identifier is a name reference, not a constant — must be rejected
+	// in favor of a string literal.
+	src := `#[builtin(list)]
+struct list<T> {}`
+	_, diags := expandOne(t, src)
+	if !hasError(diags) {
+		t.Errorf("expected an error diagnostic for a bare-ident macro argument")
 	}
 }
 
@@ -170,4 +136,13 @@ func hasError(diags []ir.Diagnostic) bool {
 		}
 	}
 	return false
+}
+
+func firstError(diags []ir.Diagnostic) string {
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			return d.Msg
+		}
+	}
+	return ""
 }

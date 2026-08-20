@@ -1,6 +1,6 @@
-// Package builtin registers the #[builtin.*] macros that mark ordinary SNGL
+// Package builtin registers the #[builtin] macro that marks ordinary SNGL
 // declarations as compiler built-ins. Unlike user-facing macros (e.g.
-// #[canvas.shape]), these annotate declarations in the built-ins/stdlib source
+// #[canvas.shape]), it annotates declarations in the built-ins/stdlib source
 // itself; the checker runs the pre-expand pass over that source so the marks
 // are in place before type-checking.
 //
@@ -8,90 +8,59 @@
 package builtin
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/expand"
 )
 
 func init() {
-	expand.RegisterPre("builtin", "primitive",
-		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, primitiveHandler)
-	expand.RegisterPre("builtin", "stringrepr",
-		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, stringReprHandler)
-	expand.RegisterPre("builtin", "generic",
-		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, genericHandler)
-	expand.RegisterPre("builtin", "node",
-		[]expand.Param{{Name: "id", Kind: expand.ArgString}}, nodeHandler)
+	// Empty internal URI: #[builtin("...")] is written bare, with no package
+	// segment, so applyAttrs resolves it under the empty alias.
+	expand.RegisterPre("", "builtin",
+		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, builtinHandler)
 }
 
-// primitiveHandler implements #[builtin.primitive("kind")], marking a struct as
-// a scalar primitive (int/float/string). The mark distinguishes the built-in's
-// own decl from a user struct that shadows the name; resolveNamedType returns
-// the canonical singleton for the marked decl and the user type otherwise.
-func primitiveHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
+// builtinHandler implements #[builtin("kind")], stamping the built-in kind onto
+// the declaration it annotates. Node kinds mark a component; every other kind
+// marks a struct.
+//
+// The mark, rather than the declaration's name, is what the compiler keys on:
+// resolveNamedType returns the canonical singleton (or runs the generic
+// construction) for the marked decl and the plain user type otherwise, so a
+// user declaration shadows a built-in like any other name. For node kinds the
+// checker dispatches a visual node whose target resolves to the marked
+// component to the matching compiler construct (window -> ir.Window).
+func builtinHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
+	raw := args.String("kind")
+	kind := ast.BuiltinKind(raw)
+	if !kind.Valid() {
+		return decl, fmt.Errorf("unknown builtin kind %q (valid: %s)", raw, strings.Join(kindNames(), ", "))
+	}
+
+	if kind.IsNode() {
+		comp, ok := decl.(*ast.ComponentDecl)
+		if !ok {
+			return decl, fmt.Errorf("#[builtin(%q)] requires a component declaration", raw)
+		}
+		comp.Builtin = kind
+		return comp, nil
+	}
+
 	s, ok := decl.(*ast.StructDef)
 	if !ok {
-		return decl, errors.New("primitive macro requires a struct declaration")
-	}
-	kind := ast.BuiltinKind(args.String("kind"))
-	if !kind.IsPrimitive() {
-		return decl, fmt.Errorf("unknown primitive kind %q", args.String("kind"))
+		return decl, fmt.Errorf("#[builtin(%q)] requires a struct declaration", raw)
 	}
 	s.Builtin = kind
 	return s, nil
 }
 
-// genericHandler implements #[builtin.generic("id")], marking a struct as a
-// built-in generic type constructor (list/map/iter/ref/option). The checker
-// resolves references to the marked name through scope and dispatches the
-// type-argument construction by id, so the name is shadowable like any other
-// declaration while the construction logic stays in the compiler.
-func genericHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
-	s, ok := decl.(*ast.StructDef)
-	if !ok {
-		return decl, errors.New("generic macro requires a struct declaration")
+func kindNames() []string {
+	all := ast.AllBuiltinKinds()
+	names := make([]string, len(all))
+	for i, k := range all {
+		names[i] = string(k)
 	}
-	id := ast.BuiltinKind(args.String("id"))
-	if !id.IsGeneric() {
-		return decl, fmt.Errorf("unknown generic id %q", args.String("id"))
-	}
-	s.Builtin = id
-	return s, nil
-}
-
-// stringReprHandler implements #[builtin.stringrepr("kind")], marking a struct
-// as a string-representable value type (color/date/time/dateTime). Downstream
-// code reads ir.StructDef.StringRepr rather than the struct's name, so the
-// coercion behaviour travels with the type.
-func stringReprHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
-	s, ok := decl.(*ast.StructDef)
-	if !ok {
-		return decl, errors.New("stringrepr macro requires a struct declaration")
-	}
-	kind := ast.BuiltinKind(args.String("kind"))
-	if !kind.IsStringRepr() {
-		return decl, fmt.Errorf("unknown stringrepr kind %q", args.String("kind"))
-	}
-	s.Builtin = kind
-	return s, nil
-}
-
-// nodeHandler implements #[builtin.node("id")], marking a component as a
-// built-in visual node. The checker dispatches a visual node whose target
-// resolves to the marked component to the corresponding compiler construct
-// (BuiltinWindow -> ir.Window). Resolution goes through scope, so a user
-// component of the same name shadows the built-in like any other declaration.
-func nodeHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
-	comp, ok := decl.(*ast.ComponentDecl)
-	if !ok {
-		return decl, errors.New("node macro requires a component declaration")
-	}
-	id := ast.BuiltinKind(args.String("id"))
-	if !id.IsNode() {
-		return decl, fmt.Errorf("unknown builtin node id %q", args.String("id"))
-	}
-	comp.Builtin = id
-	return comp, nil
+	return names
 }
