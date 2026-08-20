@@ -5,32 +5,32 @@ component promo {
 }
 
 func testIntPlusFloat(t Test, c promo) {
-    t.assert(c.i + c.f == 4.5)
+    t.assert(float(c.i) + c.f == 4.5)
 }
 
 func testFloatPlusInt(t Test, c promo) {
-    t.assert(c.f + c.i == 4.5)
+    t.assert(c.f + float(c.i) == 4.5)
 }
 
 func testIntMulFloat(t Test, c promo) {
-    t.assert(c.i * c.f == 4.5)
+    t.assert(float(c.i) * c.f == 4.5)
 }
 
 func testIntDivFloat(t Test, c promo) {
-    t.assert(c.i / c.f == 2.0)
+    t.assert(float(c.i) / c.f == 2.0)
 }
 
 func testMixedComparison(t Test, c promo) {
-    t.assert(c.i > c.f)
-    t.assert(c.f < c.i)
-    t.assert(c.i >= 3.0)
+    t.assert(float(c.i) > c.f)
+    t.assert(c.f < float(c.i))
+    t.assert(float(c.i) >= 3.0)
     t.assert(c.f <= 2.0)
 }
 
 func testMixedEquality(t Test, c promo) {
     t.assert(3 == 3.0)
     t.assert(3.0 == 3)
-    t.assert(c.i == 3.0)
+    t.assert(float(c.i) == 3.0)
 }
 
 func testExplicitCastRoundTrip(t Test, c promo) {

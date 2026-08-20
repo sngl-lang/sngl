@@ -71,12 +71,12 @@ func TestChildrenLiveAcrossMutations(t *testing.T) {
 	text #o(value=string(n))
 }
 component main {
-	counter()
-	counter()
+	counter #l()
+	counter #r()
 }
 func testIsolation(t Test, c main) {
-	var l = c.children[0]
-	var r = c.children[1]
+	var l = c.l
+	var r = c.r
 	t.assert(l.o.value == "0")
 	l.b.click()
 	t.assert(l.o.value == "1")

@@ -341,6 +341,12 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	if v, ok := cv.Consts[field]; ok {
 		return v, nil
 	}
+	// A user-component instance addressed by #id (`main #m()` reached as
+	// `c.m`) yields its live component wrapper, so `c.m.<member>` resolves
+	// against the child's own vars/props/methods/refs.
+	if w := cv.childComponentByID(cv.body, field); w != nil {
+		return w, nil
+	}
 	// Element-ref takes precedence over a parameterless method of the same
 	// name — `c.bump` should yield the element map even when `bump()` is
 	// also defined. Try element resolution first; only fall through to
@@ -550,6 +556,57 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 // body as a slice in source order. User-component NodeInsts become
 // *componentValue wrappers sharing the parent env's cached child envs;
 // native elements become element-map dicts.
+// childComponentByID returns the live componentValue wrapper for a user
+// component instantiated in stmts with element id == id (e.g. `main #m()`
+// reached as `c.m`), or nil. Mirrors walkChildren's wrapper construction but
+// selects a single instance by id. Descends if/platform branches; for-loops
+// are out of scope (per-iteration envs), matching walkChildren.
+func (cv *componentValue) childComponentByID(stmts []ir.Stmt, id string) *componentValue {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.ID == id && n.Component != nil && isUserComponent(n.Component) {
+				childEnv := cv.Env.ComponentEnv(n.Component, n)
+				return &componentValue{
+					Env: childEnv, Vars: childEnv.Vars, Consts: childEnv.Consts,
+					Funcs: childEnv.Funcs, compName: n.Component.Name, body: n.Component.Body,
+				}
+			}
+		case *ir.CallStmt:
+			if n.Call != nil && n.Call.AST != nil && n.Call.AST.ID == id && cv.Env.Pkg != nil {
+				if name := interp.CallStmtElemName(n); name != "" {
+					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
+						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
+						return &componentValue{
+							Env: childEnv, Vars: childEnv.Vars, Consts: childEnv.Consts,
+							Funcs: childEnv.Funcs, compName: comp.Name, body: comp.Body,
+						}
+					}
+				}
+			}
+		case *ir.If:
+			cond, err := cv.Env.Eval(n.Cond)
+			if err != nil {
+				continue
+			}
+			branch := n.Body
+			if b, _ := cond.(bool); !b {
+				branch = n.Else
+			}
+			if w := cv.childComponentByID(branch, id); w != nil {
+				return w
+			}
+		case *ir.PlatformFilter:
+			if n.Platform == "" || n.Platform == "none" {
+				if w := cv.childComponentByID(n.Body, id); w != nil {
+					return w
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 	var out []any
 	for _, s := range stmts {

@@ -6,11 +6,11 @@ component card {
 
 component main {
     button #toggle(text="toggle", @click { theme = "dark" })
-    card()
+    card #cd()
 }
 
 func testGlobalVarReactivity(t Test, c main) {
-    var cd = c.children[1]
+    var cd = c.cd
     t.assert(cd.out.value == "light")
     c.toggle.click()
     t.assert(cd.out.value == "dark")

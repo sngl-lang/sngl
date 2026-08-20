@@ -5,10 +5,10 @@ component main {
 func main.double(this main) => this.x * 2
 
 component root {
-    main()
+    main #m()
 }
 
 func testReactiveExtensionRead(t Test, c root) {
-    var cm = c.children[0]
+    var cm = c.m
     t.assert(cm.double() == 10)
 }

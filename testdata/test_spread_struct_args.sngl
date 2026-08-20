@@ -24,11 +24,11 @@ component main {
 }
 
 component root {
-    main()
+    main #m()
 }
 
 func testStructSpreadVarInit(t Test, c root) {
-    var cm = c.children[0]
+    var cm = c.m
     t.assert(cm.result == "hi, world")
     t.assert(cm.sum == 7)
 }
@@ -40,7 +40,7 @@ func testStructSpreadComponentMethod(t Test, c root) {
 }
 
 func testStructSpreadComponentProps(t Test, c root) {
-    var item = c.children[0].it
+    var item = c.m.it
     t.assert(item.label == "hello")
     t.assert(item.count == 5)
 }
