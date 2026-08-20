@@ -420,7 +420,7 @@ func isStringDomain(k TypeKind) bool {
 }
 
 // builtinOf returns the ast.BuiltinKind of t's backing StructDef, or
-// BuiltinNone. The mark is stamped by the #[builtin.*] macros, so string-repr
+// BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
 // and generic behaviour travel with the type rather than with a hardcoded name.
 func builtinOf(t *Type) ast.BuiltinKind {
 	if t == nil || t.Kind != TypeStruct {

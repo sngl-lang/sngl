@@ -1,5 +1,5 @@
 // Window props are read off the window symbol and folded to their literals
-// by the optimizer. All three of the #[builtin.node("window")] component's
+// by the optimizer. All three of the #[builtin("window")] component's
 // props must fold; a surviving Select would reach codegen as a dangling ref.
 window #home(title="Home", href="/index.html", favicon="/favicon.ico") {
 	text(value="Home")

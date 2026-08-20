@@ -13,7 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
 
-	// Registers the #[builtin.*] macros. The stdlib source is macro-expanded
+	// Registers the #[builtin] macro. The stdlib source is macro-expanded
 	// below, so the handlers must be present whenever the checker runs.
 	_ "git.duckfam.us/jonathan/sngl/internal/macros/builtin"
 )
@@ -62,7 +62,7 @@ func parseStdlibDocs() []*ast.Document {
 			}
 			stdlibDocs = append(stdlibDocs, doc)
 		}
-		// Run pre-check macro expansion over the stdlib source so #[builtin.*]
+		// Run pre-check macro expansion over the stdlib source so #[builtin]
 		// marks (e.g. stringrepr on color/date/time) are applied before the
 		// checker registers these declarations.
 		var expandErrs []string

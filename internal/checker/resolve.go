@@ -45,8 +45,8 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 }
 
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
-// its #[builtin.generic] kind) to the type arguments of t. The construction
-// logic stays in the compiler; only the name→kind binding lives in scope.
+// its #[builtin] kind) to the type arguments of t. The construction logic stays
+// in the compiler; only the name→kind binding lives in scope.
 func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
 	switch id {
 	case ast.BuiltinList:
@@ -96,7 +96,7 @@ func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) 
 
 // userShadowsBuiltin reports whether name resolves in scope to a user struct
 // declaration that shadows a built-in of the same name. The built-in's own
-// #[builtin.*]-marked decl is not a shadow, and non-struct bindings (the base
+// #[builtin]-marked decl is not a shadow, and non-struct bindings (the base
 // scope's scalar TypeSyms, the `duration` unit) are the built-in itself, not a
 // shadow.
 func (c *checker) userShadowsBuiltin(name string) bool {
@@ -118,9 +118,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Builtin scalar primitives — resolved from the shared registry
 	// (ir/builtins.go) so this site can't drift from the base scope /
 	// conversion switches. A user struct declaration of the same name shadows
-	// the built-in (D3); the built-in's own #[builtin.primitive] decl does not,
-	// and neither does the `duration` unit that shares the name. When shadowed,
-	// fall through to the user-type resolution below.
+	// the built-in (D3); the built-in's own #[builtin] decl does not, and
+	// neither does the `duration` unit that shares the name. When shadowed, fall
+	// through to the user-type resolution below.
 	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
 		return b.Type
 	}
@@ -137,7 +137,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return TypDyn
 	}
 
-	// Generic built-in constructors resolve through scope: a #[builtin.generic]
+	// Generic built-in constructors resolve through scope: a #[builtin]-marked
 	// StructDef (lib/types.sngl) carries the constructor id, and the compiler
 	// applies the type arguments. Because this goes through the scope chain, a
 	// user declaration of the same name shadows the built-in like any other.
