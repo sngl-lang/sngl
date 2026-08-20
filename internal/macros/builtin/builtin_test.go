@@ -125,3 +125,49 @@ struct list<T> {}`
 		t.Errorf("expected an error diagnostic for a bare-ident macro argument")
 	}
 }
+
+func TestNodeMacro(t *testing.T) {
+	src := `#[builtin.node("window")]
+component window(title string) list<component> {}`
+	stmt, diags := expandOne(t, src)
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diagnostic: %s", d.Msg)
+		}
+	}
+	comp, ok := stmt.(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected *ast.ComponentDecl, got %T", stmt)
+	}
+	if comp.Builtin != ast.BuiltinWindow {
+		t.Errorf("Builtin = %q, want %q", comp.Builtin, ast.BuiltinWindow)
+	}
+}
+
+func TestNodeMacroRejectsUnknownID(t *testing.T) {
+	src := `#[builtin.node("bogus")]
+component bogus() {}`
+	_, diags := expandOne(t, src)
+	if !hasError(diags) {
+		t.Errorf("expected an error diagnostic for unknown builtin node id")
+	}
+}
+
+// A node mark on a struct is a category error: node kinds annotate components.
+func TestNodeMacroRejectsStruct(t *testing.T) {
+	src := `#[builtin.node("window")]
+struct window {}`
+	_, diags := expandOne(t, src)
+	if !hasError(diags) {
+		t.Errorf("expected an error diagnostic for #[builtin.node] on a struct")
+	}
+}
+
+func hasError(diags []ir.Diagnostic) bool {
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			return true
+		}
+	}
+	return false
+}
