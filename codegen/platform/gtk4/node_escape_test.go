@@ -95,6 +95,7 @@ func renderTreeViewBody(t *testing.T, src string) string {
 // itself. Before the escape-analysis fix this method used m.__nX fields,
 // causing the recursion self-append GTK hang.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
+	skipWithoutGIR(t)
 	model := generateGTK4Model(t, recursiveTreeSrc)
 	body := renderTreeViewBody(t, model)
 

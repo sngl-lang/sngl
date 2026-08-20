@@ -182,6 +182,37 @@ type OptionConfigurable interface {
 	Configure(opts map[string]string) error
 }
 
+// PlatformAvailability is optionally implemented by PlatformGenerators whose
+// component vocabulary depends on files outside this repository — today only
+// gtk4, which reads widget metadata from the GTK 4 GIR file installed with the
+// GTK development package.
+//
+// A platform that reports itself unavailable must also stop contributing
+// Package() docs, so a compile for any *other* platform is unaffected: the
+// checker merges every registered platform's stdlib overrides regardless of
+// the build target, and overrides referencing types the platform cannot
+// resolve would otherwise fail every compile in the process.
+type PlatformAvailability interface {
+	// Unavailable returns nil when the platform can be used here, or an error
+	// naming what is missing and how to supply it.
+	Unavailable() error
+}
+
+// PlatformUnavailable reports why the named platform cannot be used in this
+// environment, or nil when it can (including for platforms that do not
+// implement PlatformAvailability, which are always usable). An unregistered
+// name is reported as unavailable.
+func PlatformUnavailable(name string) error {
+	p := LookupPlatform(name)
+	if p == nil {
+		return fmt.Errorf("unknown platform %q", name)
+	}
+	if a, ok := p.(PlatformAvailability); ok {
+		return a.Unavailable()
+	}
+	return nil
+}
+
 // TestRunner is optionally implemented by PlatformGenerators that provide
 // their own test execution (e.g., browser-based testing for HTML).
 //

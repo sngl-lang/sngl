@@ -18,6 +18,7 @@ import (
 // the import set was sampled, so the sample has to happen last. Without the
 // fix the generated file uses fmt.Sprint but never imports fmt.
 func TestIntegration_ComputedBodyImportCollected(t *testing.T) {
+	skipWithoutGIR(t)
 	src := `
 component main {
     var n = 3

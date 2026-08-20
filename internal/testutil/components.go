@@ -267,6 +267,9 @@ func nativeSkipReason(platform string) string {
 		if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
 			return "gtk4 dev libraries not installed (pkg-config)"
 		}
+		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
+			return err.Error()
+		}
 		// gtk4's native test presents real GtkWindows via the snapshot
 		// harness — skip when not inside a headless compositor so it doesn't
 		// flash the desktop (see TestMain / MaybeReexecUnderCage).
@@ -305,6 +308,9 @@ func agentSkipReason(platform string) string {
 		}
 		if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
 			return "gtk4 dev libraries not installed (pkg-config)"
+		}
+		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
+			return err.Error()
 		}
 		// Agent mode runs `sngl test --platform=gtk4`, which presents a real
 		// GtkWindow for the snapshot — skip when not headless (see TestMain).
