@@ -1,0 +1,21 @@
+// A cast to a type that has no cast is an error, not a silent dyn. Casting is
+// one value to one type; the paren form here is the struct-literal syntax the
+// parser stopped needing, so it now names a cast that does not exist.
+struct Point {
+    x float = 0.0
+    y float = 0.0
+}
+
+enum Mode { fast, slow }
+
+unit px { suffix = "px" }
+
+component main {
+    var a = Point(1.0, 2.0) // ERROR(check) "cannot cast to struct Point"
+    var b = Mode("fast")    // ERROR(check) "cannot cast to enum Mode"
+    var c = px(5)           // ERROR(check) "cannot cast to unit px"
+    var d = option(5)       // ERROR(check) "cannot cast to option"
+    var n = 5
+    var e = n()             // ERROR(check) "int is not a function"
+    text(value="x")
+}
