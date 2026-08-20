@@ -1,0 +1,19 @@
+// A user component may take a name that a platform's own source uses for a
+// blueprint component. `Widget` is bubbletea's textinput/viewport blueprint,
+// referenced bare inside its `component sngl.input` extension body.
+//
+// Bare component names resolve through the scope chain, and extension bodies
+// are checked against the stdlib scope, so the two never collide: the user's
+// Widget is visible only to user code, and the blueprint only to the platform's
+// own source. Resolving through the flat symtab map instead let this file break
+// the compiler's own platform source with `unknown prop "model" on component
+// Widget`.
+component Widget(title string) list<component> {
+    text(value=title)
+}
+
+component main {
+    var name = ""
+    Widget(title="user widget")
+    input(value=name)
+}

@@ -1,0 +1,31 @@
+# A user component may reuse a name that a platform's own source uses for a
+# blueprint. `Widget` is bubbletea's textinput/viewport blueprint, referenced
+# bare inside its `component sngl.input` extension body.
+#
+# This needs the real CLI, with every platform registered: the checker's own
+# testdata harness registers no platforms, so it never checks extension bodies
+# and cannot catch the regression. Resolving bare component names through the
+# flat symtab map instead of the scope chain made this fail with
+# `bubbletea.sngl: unknown prop "model" on component Widget`.
+sngl check app.sngl
+stdout 'app.sngl: ok'
+
+# The blueprint still drives input on bubbletea, and the user's Widget is
+# emitted alongside it.
+sngl generate --platform bubbletea --lang go --out out app.sngl
+exists out/model.go
+grep 'textinput' out/model.go
+grep 'user widget' out/model.go
+
+-- app.sngl --
+output { none { html } }
+
+component Widget(title string) list<component> {
+    text(value=title)
+}
+
+component main {
+    var name = ""
+    Widget(title="user widget")
+    input(value=name)
+}

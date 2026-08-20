@@ -3067,7 +3067,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				}
 			}
 		}
-	} else if sym, ok := c.symtab.LookupComponent(name); ok {
+	} else if sym, ok := c.lookupComponentInScope(name); ok {
 		if c.rejectUnexported(vn.Pos, sym) {
 			return nil
 		}
@@ -3733,4 +3733,21 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 	default:
 		c.error(x.Pos, "%s is not a function", t)
 	}
+}
+
+// lookupComponentInScope resolves a bare component name through the scope chain
+// rather than the flat symtab.Comps map. Both stdlib and user components are
+// declared into scope, so the map adds nothing except the ability to see names
+// that are not lexically visible — which is exactly the bug: platform-extension
+// bodies, checked against the stdlib scope, would otherwise pick up a
+// same-named user component and shadow the platform's own blueprint.
+func (c *checker) lookupComponentInScope(name string) (ir.Symbol, bool) {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return nil, false
+	}
+	if _, isComp := sym.(*ir.Component); !isComp {
+		return nil, false
+	}
+	return sym, true
 }
