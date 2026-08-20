@@ -856,6 +856,21 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		sig = calleeType.Sig
 	}
 
+	// Anything still not func-typed here is not callable: the conversion
+	// (cast) forms above have already claimed the castable types, and
+	// components were handled as instantiation. Reaching this point with a
+	// type name means a cast to a type that has no cast, and with a value
+	// means calling a non-function. Both used to fall through to a dyn-typed
+	// ir.Call, silently accepting nonsense — the call-side counterpart of the
+	// member-access dyn fallback removed in !21.
+	//
+	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
+	// it stays permissive.
+	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeDyn {
+		c.errorNotCallable(x, calleeExpr, calleeType)
+		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
+	}
+
 	// Infer generic type params from arguments.
 	if sig != nil && len(sig.TypeParams) > 0 {
 		sig = c.inferTypeParams(sig, x.Args)
@@ -3002,20 +3017,14 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
+	case ast.BuiltinSlot:
+		children := c.checkBlockIR(&vn.Block)
+		return &ir.SlotInst{AST: vn, Children: children}
 	case ast.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
 	}
-	// `slot` and `output` stay literal-name matches rather than resolving
-	// through scope. `output` is not a component at all. `slot` is one, but
-	// platform-extension source references it (52 sites in android.sngl) and
-	// those bodies are checked with user symbols visible, so making it
-	// shadowable would let a user `component slot` break the compiler's own
-	// source. Lifting that needs extension bodies to resolve built-ins in
-	// stdlib scope; until then slot is matched by name.
-	if name == "slot" {
-		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children}
-	}
+	// `output` is not a component (see registerRootVisualNode), so it stays a
+	// literal-name match rather than resolving through scope.
 	if name == "output" {
 		if !c.cfg.IsMain {
 			c.error(vn.Pos, "output declarations only permitted in main file")
@@ -3695,5 +3704,33 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 		// Inner for-loops hoist their own ids; don't double-declare here.
 	case *ast.PlatformStmt:
 		c.collectForLoopWindowIDs(&n.Body, seen, vars)
+	}
+}
+
+// errorNotCallable reports a call whose callee is neither a function nor a
+// castable type. The message distinguishes a cast to a non-castable type from a
+// call on an ordinary value, because the fix differs: use the type's literal
+// syntax versus call the right thing.
+func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) {
+	id, ok := callee.(*ir.Ident)
+	if !ok {
+		c.error(x.Pos, "%s is not a function", t)
+		return
+	}
+	switch sym := id.Sym.(type) {
+	case *ir.StructDef:
+		// The built-in generics are struct-backed but have no literal form of
+		// their own, so the struct-literal hint would be wrong for them.
+		if sym.Builtin.IsGeneric() {
+			c.error(x.Pos, "cannot cast to %s", t)
+			return
+		}
+		c.error(x.Pos, "cannot cast to struct %s (use a struct literal: {field = value})", t)
+	case *ir.EnumDef:
+		c.error(x.Pos, "cannot cast to enum %s (use one of its members)", t)
+	case *ir.UnitDef:
+		c.error(x.Pos, "cannot cast to unit %s (use a unit literal, e.g. 5%s)", t, t)
+	default:
+		c.error(x.Pos, "%s is not a function", t)
 	}
 }

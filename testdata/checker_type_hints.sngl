@@ -8,7 +8,7 @@ struct Point {
 component main {
     var mode enum { light, dark } = light
     var dir Direction = up
-    var pt Point = Point(1.0, 2.0)
+    var pt Point = {x = 1.0, y = 2.0}
 
     text(value=mode)
 }

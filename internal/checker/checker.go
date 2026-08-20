@@ -130,6 +130,11 @@ type checker struct {
 	// through the regular component-member machinery against its props.
 	// windowComp is what makes window dispatch tag-based rather than a check
 	// against the literal name "window".
+	// stdlibScope is the scope holding stdlib declarations, between the base
+	// scope and the user root. Platform-extension bodies are checked against it
+	// so compiler-internal source cannot be captured by user declarations.
+	stdlibScope *ir.Scope
+
 	windowComp *ir.Component
 	windowType *ir.Type
 
@@ -188,6 +193,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.scope = stdlibScope
 	c.loadStdlib()
 	nodes := builtinNodeComps(c.symtab.Comps)
+	c.stdlibScope = stdlibScope
 	c.windowComp = nodes[ast.BuiltinWindow]
 	if c.windowComp == nil {
 		// The stdlib is embedded and compiler-controlled; a missing window
