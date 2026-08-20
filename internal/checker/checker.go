@@ -395,7 +395,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// to migrate syntax and semantics in one change.
 	if scheme, _ := ParseScheme(target); scheme == "" && imp.Path == "std" {
 		if !imp.IsDot() {
-			c.error(imp.Pos, `import "std" must be a dot import: import . "std" (for qualified access use sngl.X, which needs no import)`)
+			c.error(imp.Pos, `import "std" must be a dot import: import . "std" (qualified access is spelled sngl.X)`)
 			return
 		}
 		c.pkg.Imports = append(c.pkg.Imports, &ir.Import{AST: imp, Path: imp.Path})

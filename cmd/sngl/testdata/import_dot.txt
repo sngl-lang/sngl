@@ -22,14 +22,17 @@ grep 'MINE' out/index.html
 sngl check std.sngl
 stdout 'std.sngl: ok'
 
-# Bare `import "std"` is rejected: the namespace form would only duplicate the
-# predeclared `sngl` namespace, which qualifies the same declarations with no
-# import at all. The diagnostic says so.
+# Bare `import "std"` is rejected: a namespace-only form of the stdlib does not
+# exist, and qualified access is spelled sngl.X either way. The diagnostic says
+# so rather than leaving the reader to find it.
 ! sngl check stdbare.sngl
 stderr 'must be a dot import'
 stderr 'sngl.X'
 
-# The predeclared namespace it points at really does work, unimported.
+# Phase-dependent, deliberately pinned: `sngl` is predeclared today because the
+# stdlib is lifted unconditionally. Phase 5 makes that namespace conditional on
+# `import . "std"` (design §8 item 5), at which point this case must move into
+# std.sngl instead of failing quietly.
 sngl check stdqualified.sngl
 stdout 'stdqualified.sngl: ok'
 
