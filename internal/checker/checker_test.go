@@ -16,6 +16,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/expand"
 	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -1221,7 +1222,8 @@ func TestCheckTestdata(t *testing.T) {
 			if parseErr != nil {
 				t.Fatalf("parse: %v", parseErr)
 			}
-			cfg := &checker.Config{IsMain: true}
+			langs, plats := testtargets.Targets()
+			cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats}
 			for _, s := range doc.Stmts {
 				if _, ok := s.(*ast.Import); ok {
 					cfg.Resolver = newTestResolver()
@@ -1435,7 +1437,8 @@ func TestCheckProjectTestdata(t *testing.T) {
 			if s.ExpectsError("expand") {
 				return // expansion errors; skip type-check
 			}
-			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			langs, plats := testtargets.Targets()
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
 			// directives which may not match v2 checker messages.
 			for _, d := range diags {
