@@ -1555,10 +1555,7 @@ func builtinNodeComps(comps map[string]ir.Symbol) map[ast.BuiltinKind]*ir.Compon
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
 func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
-	if name == "" || strings.Contains(name, ".") {
-		return ast.BuiltinNone
-	}
-	sym, ok := c.scope.Lookup(name)
+	sym, ok := c.resolveComponentSymbol(name)
 	if !ok {
 		return ast.BuiltinNone
 	}
@@ -1567,6 +1564,31 @@ func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
 		return ast.BuiltinNone
 	}
 	return comp.Builtin
+}
+
+// resolveComponentSymbol resolves a visual-node target — bare "Foo" or
+// qualified "ns.Foo" — to the symbol it was declared as. A namespace's
+// platform Resolve fallback is deliberately not consulted: it synthesises
+// elements on demand, and a synthesised element never carries a #[builtin]
+// mark, so consulting it could only ever produce a false negative at extra
+// cost.
+func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
+	if name == "" {
+		return nil, false
+	}
+	nsName, field, qualified := strings.Cut(name, ".")
+	if !qualified {
+		return c.scope.Lookup(name)
+	}
+	sym, ok := c.scope.Lookup(nsName)
+	if !ok {
+		return nil, false
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil {
+		return nil, false
+	}
+	return ns.Pkg.Symbols.LookupComponent(field)
 }
 
 // isWindowNode reports whether name denotes the built-in window component
