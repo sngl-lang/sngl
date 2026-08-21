@@ -1,0 +1,54 @@
+# Macros are not ambient: a macro resolves through an imported macro package,
+# the same as any other qualified or dot-imported name. Nothing else covered
+# this, so both halves could be reverted to the old ambient lookup with a green
+# suite.
+
+# A qualified macro needs its package imported.
+! sngl check no_import.sngl
+stderr 'unknown macro package "canvas": import it with import "internal://canvas"'
+
+sngl check qualified.sngl
+stdout 'qualified.sngl: ok'
+
+# An unqualified macro resolves against dot-imported macro packages only.
+! sngl check bare_builtin.sngl
+stderr 'unknown macro "builtin": no dot-imported macro package declares it'
+
+# `canvas` is a stdlib component as well as a macro package, so the default
+# alias collides once the stdlib is dot-imported. An alias is the way out, and
+# the diagnostic says so.
+! sngl check collide.sngl
+stderr 'import it under a different alias'
+
+sngl check aliased.sngl
+stdout 'aliased.sngl: ok'
+
+-- no_import.sngl --
+#[canvas.shape]
+component blob(x int, y int) {}
+-- qualified.sngl --
+import "internal://canvas"
+
+#[canvas.shape]
+component blob(x int, y int) {}
+-- bare_builtin.sngl --
+#[builtin("int")]
+struct Fake {
+    v int
+}
+-- collide.sngl --
+import . "sngl://std"
+import "internal://canvas"
+
+#[canvas.shape]
+component blob(x int, y int) {}
+-- aliased.sngl --
+import . "sngl://std"
+import cv "internal://canvas"
+
+#[cv.shape]
+component blob(x int, y int) {}
+
+component main {
+    text(value="x")
+}

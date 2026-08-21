@@ -419,6 +419,17 @@ func (c *checker) enumMember(pos ast.Pos, ed *ir.EnumDef, name string) bool {
 	return false
 }
 
+// suggestAlias proposes a short alias for a package whose default name is
+// taken, so the diagnostic can show a working import line.
+func suggestAlias(name string) string {
+	for n := 2; n <= len(name); n++ {
+		if candidate := name[:n]; candidate != name {
+			return candidate
+		}
+	}
+	return name + "pkg"
+}
+
 func isExportedMemberName(name string) bool {
 	return name != "" && name[0] != '_'
 }
@@ -453,6 +464,11 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 			path, name, prev.path)
 	case kind == bindDecl && prev.kind == bindDecl:
 		c.error(pos, "%q redeclared in this file (previous declaration at %s)", name, prev.pos)
+	case kind == bindAlias:
+		// An import whose alias is already taken. The alias is the caller's to
+		// choose, so naming the way out is more useful than naming the clash.
+		c.error(pos, "%q is already bound at file scope by %s (at %s); import it under a different alias, e.g. import %s %q",
+			name, prev.kind, prev.pos, suggestAlias(name), path)
 	default:
 		c.error(pos, "%q is already bound at file scope by %s (at %s)", name, prev.kind, prev.pos)
 	}

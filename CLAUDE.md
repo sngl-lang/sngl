@@ -114,6 +114,13 @@ is a macro package: it contributes macros to the expand pass and no runtime
 symbols, and is validated against the macro registry rather than the `lib/`
 layout.
 
+The macro alias is an ordinary file-scope binding, so it obeys the one-name
+rule below. `canvas` is both a std component and a macro package, which means
+`import "internal://canvas"` collides in any file that dot-imports the stdlib;
+alias it (`import cv "internal://canvas"` + `#[cv.shape]`). The two canvas
+fixtures in `testdata/` predate `sngl://std` and import neither, so they use
+the unaliased form.
+
 **One name, one meaning at file scope.** Two declarations of a name, two
 imports claiming it as an alias, two dot imports lifting it, or a declaration
 taking a name an import alias binds are all errors (`claimTopLevel` in
