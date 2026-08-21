@@ -394,6 +394,31 @@ func (c *checker) rejectForeignUnexported(pos ast.Pos, owner ir.Symbol, ownerNam
 	return true
 }
 
+// structField resolves a field on sd by name, enforcing that an unexported
+// field stays private to the package declaring sd. Every by-name field lookup
+// goes through here rather than ranging over sd.Fields, so a new access path
+// cannot reach a private field by forgetting a check.
+func (c *checker) structField(pos ast.Pos, sd *ir.StructDef, name string) *ir.StructField {
+	if sd == nil || c.rejectForeignUnexported(pos, sd, sd.Name, name) {
+		return nil
+	}
+	return findField(sd, name)
+}
+
+// enumMember reports whether ed declares name, under the same visibility rule
+// as structField.
+func (c *checker) enumMember(pos ast.Pos, ed *ir.EnumDef, name string) bool {
+	if ed == nil || c.rejectForeignUnexported(pos, ed, ed.Name, name) {
+		return false
+	}
+	for _, m := range ed.Members {
+		if m.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func isExportedMemberName(name string) bool {
 	return name != "" && name[0] != '_'
 }

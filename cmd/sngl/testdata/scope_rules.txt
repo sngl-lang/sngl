@@ -64,6 +64,30 @@ stderr 'k is already declared in this scope'
 sngl check restate_intrinsic.sngl
 stdout 'restate_intrinsic.sngl: ok'
 
+# Visibility is enforced where a member is resolved by name, not at each access
+# site: a struct literal, an enum member reached either way, and a call through
+# a func-typed field all name a member and all used to reach a private one.
+! sngl check private_literal.sngl
+stderr 'Box._hidden is unexported'
+
+! sngl check private_enum_member.sngl
+stderr 'Mode._B is unexported'
+
+! sngl check private_enum_bare.sngl
+stderr 'Mode._B is unexported'
+
+! sngl check private_field_call.sngl
+stderr 'Box._run is unexported'
+
+# An unknown exported field still reports as unknown rather than as private.
+! sngl check unknown_field.sngl
+stderr 'unknown field "nope" on struct Box'
+
+# The declaring package reaches its own private members by every one of those
+# paths.
+sngl check private_same_package.sngl
+stdout 'private_same_package.sngl: ok'
+
 -- w/lib.sngl --
 import . "sngl://std"
 
@@ -244,3 +268,57 @@ component main {
     text(value="x")
 }
 
+-- boxes/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int
+    _hidden int
+    _run func() int
+}
+
+enum Mode { A, _B }
+-- private_literal.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Box{v = 1, _hidden = 2}.v
+-- private_enum_member.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Mode._B
+-- private_enum_bare.sngl --
+import . "sngl://std"
+import b "boxes"
+
+var m b.Mode = _B
+-- private_field_call.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f(x b.Box) => x._run()
+-- unknown_field.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Box{nope = 1}.v
+-- private_same_package.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int
+    _hidden int
+}
+
+enum Mode { A, _B }
+
+func f() => Box{v = 1, _hidden = 2}._hidden
+
+func g() => Mode._B
+
+var m Mode = _B
+
+component main {
+    text(value="x")
+}

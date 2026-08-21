@@ -295,10 +295,8 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// When expected type is an enum, resolve bare member names.
 		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
 			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
-				for _, m := range ed.Members {
-					if m.Name == x.Name {
-						return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
-					}
+				if c.enumMember(x.Pos, ed, x.Name) {
+					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
 				}
 			}
 		}
@@ -1157,8 +1155,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// identify it as a SlotField slot.
 	if receiver.Kind == ir.TypeStruct {
 		if sd, ok := receiver.Decl.(*ir.StructDef); ok {
-			for _, sf := range sd.Fields {
-				if sf.Name == sel.Field && sf.Type != nil && sf.Type.Kind == ir.TypeFunc {
+			if sf := c.structField(sel.Pos, sd, sel.Field); sf != nil {
+				if sf.Type != nil && sf.Type.Kind == ir.TypeFunc {
 					var sig *ir.FuncSig
 					if sf.Type.Sig != nil {
 						sig = sf.Type.Sig
@@ -1484,12 +1482,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// EnumType.member select that the target language doesn't define.
 		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
-				for _, m := range ed.Members {
-					if m.Name == x.Field {
-						return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
-					}
+				if c.enumMember(x.Pos, ed, x.Field) {
+					return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
 				}
-				c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
+				if isExportedMemberName(x.Field) {
+					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
+				}
 			}
 		}
 
@@ -1683,12 +1681,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			continue
 		}
 		var expected *ir.Type
-		if sd != nil {
-			expected = structFieldType(sd, f.Name)
+		field := c.structField(f.NamePos, sd, f.Name)
+		if field != nil {
+			expected = field.Type
 		}
 		val := c.checkExprExpecting(f.Value, expected)
-		// Validate field exists on struct.
-		if sd != nil && !structHasField(sd, f.Name) {
+		// Validate field exists on struct. An unexported field of another
+		// package is already reported by structField.
+		if sd != nil && field == nil && isExportedMemberName(f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
 		fields = append(fields, ir.FieldInit{Name: f.Name, NamePos: f.NamePos, Value: val})
