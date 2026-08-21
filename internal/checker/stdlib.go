@@ -109,13 +109,37 @@ func parseStdlibDocs() []*ast.Document {
 // then components — so the file a declaration lives in does not affect
 // resolution.
 func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
-	// sngl://builtin is ambient — the one implicit import. sngl://std loads
-	// into its own package and reaches scope only through an explicit import,
-	// so it registers against a detached symtab/scope chained to the builtins
-	// it is written against.
+	// sngl://builtin is ambient — the one implicit import. Every other lib
+	// package loads into its own package and reaches scope only through an
+	// explicit import, so it registers against a detached symtab/scope chained
+	// to the builtins it is written against.
 	builtinPkg = c.loadStdlibPackage("builtin", true)
-	stdPkg = c.loadStdlibPackage("std", false)
-	return builtinPkg, stdPkg
+	return builtinPkg, c.libPkg("std")
+}
+
+// libPkg returns the loaded sngl://<name> package, loading it on first use.
+// Loading is lazy and memoized rather than a pass over lib.Packages() because
+// lib packages import each other (sngl://draw is written against sngl://std),
+// and the import has to resolve to the same instance the user sees.
+func (c *checker) libPkg(name string) *ir.Package {
+	if pkg, ok := c.libPkgs[name]; ok {
+		return pkg
+	}
+	if c.libLoading[name] {
+		// An import cycle inside lib/ is a compiler bug, not user input.
+		panic("sngl: import cycle in embedded library at sngl://" + name)
+	}
+	if c.libLoading == nil {
+		c.libLoading = map[string]bool{}
+	}
+	c.libLoading[name] = true
+	pkg := c.loadStdlibPackage(name, false)
+	delete(c.libLoading, name)
+	if c.libPkgs == nil {
+		c.libPkgs = map[string]*ir.Package{}
+	}
+	c.libPkgs[name] = pkg
+	return pkg
 }
 
 func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {

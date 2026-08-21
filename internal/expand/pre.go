@@ -6,6 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // ExpandPre runs pre-check macro expansion on docs, replacing AttrDecl nodes
@@ -40,15 +41,27 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 	for _, attr := range ad.Attrs {
 		ref, aliasKnown := aliases[attr.Alias]
 
-		// Resolve the macro package. Only an internal:// import maps an alias
-		// to a macro package; a non-internal alias is not a macro and is left
-		// untouched. An alias that names nothing imported is an error rather
-		// than an ambient lookup — a macro package is a dependency, and
-		// resolving it from the bare name would make `#[canvas.shape]` mean
+		// Resolve the macro package. Only an internal:// or sngl:// import maps
+		// an alias to a macro package; any other alias is not a macro and is
+		// left untouched. An alias that names nothing imported is an error
+		// rather than an ambient lookup — a macro package is a dependency, and
+		// resolving it from the bare name would make `#[draw.shape]` mean
 		// something different depending on what happened to be registered.
+		//
+		// A lib package may carry macros alongside its declarations, which is
+		// why sngl:// is not restricted to the internal/ prefix: sngl://draw
+		// ships the `shape` mark next to the components it applies to.
 		var uri string
 		switch {
-		case aliasKnown && ref.Scheme == "internal":
+		case aliasKnown && (ref.Scheme == "internal" || ref.Scheme == "sngl"):
+			if !HasPackage(ref.URI) {
+				diags = append(diags, ir.Diagnostic{
+					Pos:      attr.Pos,
+					Msg:      fmt.Sprintf("package %q declares no macros", ref.Scheme+"://"+ref.URI),
+					Severity: ir.Error,
+				})
+				continue
+			}
 			uri = ref.URI
 		case aliasKnown:
 			continue
@@ -71,9 +84,15 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 				continue
 			}
 		default:
+			// Name the scheme the package actually lives under, so the
+			// suggestion is a line the user can paste.
+			suggest := "internal://" + attr.Alias
+			if lib.HasPackage(attr.Alias) {
+				suggest = "sngl://" + attr.Alias
+			}
 			diags = append(diags, ir.Diagnostic{
 				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("unknown macro package %q: import it with import %q", attr.Alias, "internal://"+attr.Alias),
+				Msg:      fmt.Sprintf("unknown macro package %q: import it with import %q", attr.Alias, suggest),
 				Severity: ir.Error,
 			})
 			continue

@@ -15,5 +15,5 @@ func withStd(src string) string {
 	if strings.Contains(src, "sngl://") {
 		return src
 	}
-	return "import . \"sngl://std\"\n" + src
+	return "import . \"sngl://std\"\nimport . \"sngl://draw\"\n" + src
 }

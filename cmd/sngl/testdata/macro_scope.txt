@@ -5,7 +5,7 @@
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
-stderr 'unknown macro package "canvas": import it with import "internal://canvas"'
+stderr 'unknown macro package "draw": import it with import "sngl://draw"'
 
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
@@ -14,41 +14,60 @@ stdout 'qualified.sngl: ok'
 ! sngl check bare_builtin.sngl
 stderr 'unknown macro "builtin": no dot-imported macro package declares it'
 
-# `canvas` is a stdlib component as well as a macro package, so the default
-# alias collides once the stdlib is dot-imported. An alias is the way out, and
-# the diagnostic says so.
-! sngl check collide.sngl
-stderr 'import it under a different alias'
+# A lib package carries its macros alongside its declarations, so importing
+# sngl://draw brings both the shape components and the mark that declares new
+# ones. Nothing collides: the canvas components live in draw, not std.
+sngl check with_std.sngl
+stdout 'with_std.sngl: ok'
 
+# The alias is the caller's, and the macro follows it.
 sngl check aliased.sngl
 stdout 'aliased.sngl: ok'
 
--- no_import.sngl --
-#[canvas.shape]
-component blob(x int, y int) {}
--- qualified.sngl --
-import "internal://canvas"
+# A lib package that declares no macros says so, rather than reporting the
+# mark as an unknown package.
+! sngl check no_macros.sngl
+stderr 'package "sngl://std" declares no macros'
 
-#[canvas.shape]
-component blob(x int, y int) {}
+-- no_import.sngl --
+#[draw.shape]
+component blob(x float, y float) {}
+-- qualified.sngl --
+import "sngl://draw"
+
+#[draw.shape]
+component blob(x float, y float) {}
 -- bare_builtin.sngl --
 #[builtin("int")]
 struct Fake {
     v int
 }
--- collide.sngl --
+-- with_std.sngl --
 import . "sngl://std"
-import "internal://canvas"
+import "sngl://draw"
 
-#[canvas.shape]
-component blob(x int, y int) {}
--- aliased.sngl --
-import . "sngl://std"
-import cv "internal://canvas"
-
-#[cv.shape]
-component blob(x int, y int) {}
+#[draw.shape]
+component blob(x float, y float) {}
 
 component main {
-    text(value="x")
+    draw.canvas(width=100px, height=100px) {
+        blob(x=1.0, y=2.0)
+    }
 }
+-- aliased.sngl --
+import . "sngl://std"
+import d "sngl://draw"
+
+#[d.shape]
+component blob(x float, y float) {}
+
+component main {
+    d.canvas(width=100px, height=100px) {
+        blob(x=1.0, y=2.0)
+    }
+}
+-- no_macros.sngl --
+import std "sngl://std"
+
+#[std.shape]
+component blob(x float, y float) {}

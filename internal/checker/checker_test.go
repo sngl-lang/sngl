@@ -14,7 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/expand"
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"

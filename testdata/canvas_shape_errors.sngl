@@ -1,4 +1,5 @@
 import . "sngl://std"
+import . "sngl://draw"
 
 component notAShape {}
 

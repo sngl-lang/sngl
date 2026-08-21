@@ -36,6 +36,23 @@ stdout 'rawelem.sngl: ok'
 ! sngl check private.sngl
 stderr 'unknown component "helper" in package w'
 
+# The shapes are their own package. std no longer declares them, so a name an
+# application wants for itself -- rect, line, path -- is free unless the file
+# asks for sngl://draw.
+! sngl check draw_unimported.sngl
+stderr 'unknown component "canvas"; sngl://draw declares it'
+
+sngl check draw_imported.sngl
+stdout 'draw_imported.sngl: ok'
+
+# std and draw dot-imported together do not collide.
+sngl check draw_both_dotted.sngl
+stdout 'draw_both_dotted.sngl: ok'
+
+# Without draw, the names are the file's own to use.
+sngl check draw_names_free.sngl
+stdout 'draw_names_free.sngl: ok'
+
 -- nostd.sngl --
 component main {
     text(value="x")
@@ -96,4 +113,38 @@ import ui "sngl://std"
 
 component main {
     ui.text(value="x")
+}
+-- draw_unimported.sngl --
+import . "sngl://std"
+
+component main {
+    canvas(width=100px, height=100px) {}
+}
+-- draw_imported.sngl --
+import . "sngl://std"
+import d "sngl://draw"
+
+component main {
+    d.canvas(width=100px, height=100px) {
+        d.circle(cx=5.0, cy=5.0, r=2.0)
+    }
+}
+-- draw_both_dotted.sngl --
+import . "sngl://std"
+import . "sngl://draw"
+
+component main {
+    canvas(width=100px, height=100px) {
+        circle(cx=5.0, cy=5.0, r=2.0)
+    }
+}
+-- draw_names_free.sngl --
+import . "sngl://std"
+
+component rect(label string) {
+    text(value=label)
+}
+
+component main {
+    rect(label="mine")
 }

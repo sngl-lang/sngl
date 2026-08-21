@@ -5,6 +5,7 @@
 // Nothing enumerates them in Go — add a directory and it exists.
 //
 //	builtin/  ambient built-ins, dot-imported into every file implicitly
+//	draw/     2D shapes and the canvas, plus the `shape` mark
 //	std/      the standard library, brought in by an explicit import
 package lib
 
@@ -13,13 +14,11 @@ import (
 	"sort"
 )
 
-//go:embed builtin/*.sngl std/*.sngl
+//go:embed builtin/*.sngl draw/*.sngl std/*.sngl
 var FS embed.FS
 
-// Packages returns the embedded package paths, sorted. "builtin" sorting ahead
-// of "std" also happens to be load order, though loadStdlib groups
-// declarations by kind before registering them, so file order is not
-// significant.
+// Packages returns the embedded package paths, sorted. Order is not load
+// order: packages import each other and are loaded on demand.
 func Packages() []string {
 	entries, err := FS.ReadDir(".")
 	if err != nil {
@@ -33,4 +32,14 @@ func Packages() []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// HasPackage reports whether name is an embedded package directory.
+func HasPackage(name string) bool {
+	for _, p := range Packages() {
+		if p == name {
+			return true
+		}
+	}
+	return false
 }

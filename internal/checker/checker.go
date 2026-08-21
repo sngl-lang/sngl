@@ -144,6 +144,10 @@ type checker struct {
 	// stdlibPkg is the loaded standard library, bound as a namespace by an
 	// `import <alias> "sngl://std"` and flattened by the dot form.
 	stdlibPkg *ir.Package
+	// libPkgs memoizes loaded sngl://<name> packages; libLoading guards
+	// against a cycle among them.
+	libPkgs    map[string]*ir.Package
+	libLoading map[string]bool
 
 	// builtinPkg is sngl://builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -648,7 +652,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.error(imp.Pos, "sngl://builtin is always in scope; remove the import")
 			return
 		}
-		irImport.Pkg = c.stdlibPkg
+		irImport.Pkg = c.libPkg(uri)
 	} else if scheme == "internal" {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
@@ -662,10 +666,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
 		case "lower":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
-		case "canvas":
-			// Macro-only package: provides no IR symbols at runtime.
-			// The expand pass handles #[canvas.*] attributes before type-checking.
-			irImport.Pkg = &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
 		}
@@ -1413,22 +1413,33 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 // declares. Missing that one import is the most common way a file fails to
 // check, and "unknown component \"vbox\"" on its own does not say so.
 func (c *checker) stdlibHint(name string) string {
-	if c.stdlibPkg == nil || c.pkg == nil {
+	if c.pkg == nil {
 		return ""
 	}
-	if _, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); !ok {
-		return ""
-	}
-	// Already imported under an alias: the name is reachable, just not bare.
-	for _, imp := range c.pkg.Imports {
-		if imp.Pkg == c.stdlibPkg {
-			if imp.Alias == "." {
-				return ""
-			}
-			return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
+	// Search every lib package, not just std: the shapes moved to sngl://draw,
+	// and naming the wrong package is worse than saying nothing. Loading here
+	// is on an error path only.
+	for _, libName := range lib.Packages() {
+		if libName == "builtin" {
+			continue // ambient; a miss here is not a missing import
 		}
+		pkg := c.libPkg(libName)
+		if _, ok := pkg.Symbols.Root.LookupLocal(name); !ok {
+			continue
+		}
+		path := "sngl://" + libName
+		// Already imported under an alias: the name is reachable, just not bare.
+		for _, imp := range c.pkg.Imports {
+			if imp.Pkg == pkg {
+				if imp.Alias == "." {
+					return ""
+				}
+				return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
+			}
+		}
+		return fmt.Sprintf("; %s declares it, add import . %q", path, path)
 	}
-	return fmt.Sprintf("; sngl://std declares it, add import . %q", "sngl://std")
+	return ""
 }
 
 // isStdlibNamespace reports whether name is in scope as a namespace bound to
@@ -2831,7 +2842,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	if irImport.Pkg == nil {
 		// Macro-only or unresolved package — nothing to lift. Not an error: the
-		// import may exist purely to enable a macro (e.g. internal://canvas).
+		// import may exist purely to enable a macro.
 		return
 	}
 	pkg := irImport.Pkg

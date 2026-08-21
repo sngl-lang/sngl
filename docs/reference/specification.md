@@ -622,6 +622,13 @@ special meaning.
 Both tiers register beneath the package scope, so a top-level declaration
 named like a library entity takes precedence over it within the package.
 
+The library is not limited to those two packages. `sngl://draw` holds `canvas`
+and the 2D shapes it hosts, and is imported the same way — the shapes are a
+separate package because `rect`, `line` and `path` are names an application
+usually wants for itself. A library package may also carry macros next to the
+declarations they apply to: `import "sngl://draw"` brings both the shape
+components and the `#[draw.shape]` mark that declares new ones.
+
 ### Exported and unexported names
 
 A name is **unexported** if it begins with an underscore (`_`), and **exported**
@@ -665,7 +672,7 @@ including a built-in. This is what lets a package define its own `text` or
 The rule covers every kind of declaration a file scope holds — types,
 components, free functions, constants and variables alike — and the alias an
 import binds. Where a name is genuinely taken, an alias resolves it: an import
-chooses its own alias, so `import cv "internal://canvas"` reaches a package
+chooses its own alias, so `import d "sngl://draw"` reaches a package
 whose default name a dot import already claimed.
 
 Two bindings that mean the same package are a restatement, not a conflict. The

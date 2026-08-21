@@ -24,8 +24,8 @@ import (
 // field is added/renamed in the .sngl but not in StructDecls, this fails.
 func TestStructDeclsInSync(t *testing.T) {
 	want := map[string]string{
-		"CanvasStyle": "std/canvas.sngl",
-		"PathCmd":     "std/canvas.sngl",
+		"CanvasStyle": "draw/draw.sngl",
+		"PathCmd":     "draw/draw.sngl",
 	}
 
 	files := map[string][]string{}

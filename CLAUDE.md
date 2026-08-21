@@ -89,10 +89,13 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
 
-Two packages exist, and the split is the whole point of the tier system:
+Three packages exist, and the split is the whole point of the tier system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
+- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. Split out of `std` because `canvas`, `rect`, `line` and `path` are names an application wants for itself, and because a package that ships a mark alongside the declarations it applies to is the pattern for a macro-carrying library.
+
+Packages import each other — `lib/draw` is written against `lib/std` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
 
@@ -107,19 +110,17 @@ checker dispatches a visual node to the matching IR construct off the mark. The
 macro lives in `internal/macros/builtin`; kinds are `ast.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[canvas.shape]` needs `import "internal://canvas"`, and the unqualified
+`#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
 `#[builtin("...")]` needs `import . "sngl://internal/builtin"` — which is why
-the two `lib/` files carrying builtin marks declare it. `sngl://internal/<name>`
-is a macro package: it contributes macros to the expand pass and no runtime
-symbols, and is validated against the macro registry rather than the `lib/`
-layout.
+the two `lib/` files carrying builtin marks declare it. The alias is an
+ordinary file-scope binding, so the mark follows it: `import d "sngl://draw"`
+means `#[d.shape]`.
 
-The macro alias is an ordinary file-scope binding, so it obeys the one-name
-rule below. `canvas` is both a std component and a macro package, which means
-`import "internal://canvas"` collides in any file that dot-imports the stdlib;
-alias it (`import cv "internal://canvas"` + `#[cv.shape]`). The two canvas
-fixtures in `testdata/` predate `sngl://std` and import neither, so they use
-the unaliased form.
+A lib package may carry macros alongside its declarations — `sngl://draw`
+ships the `shape` mark next to the shape components it applies to — so the
+`sngl` scheme is checked against both the `lib/` layout and the macro
+registry. `sngl://internal/<name>` is the macro-only form: it contributes
+macros and no runtime symbols, and is validated against the registry alone.
 
 **One name, one meaning at file scope.** Two declarations of a name, two
 imports claiming it as an alias, two dot imports lifting it, or a declaration

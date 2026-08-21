@@ -22,6 +22,10 @@ sngl check examples/canvas/app.sngl
 
 ## Canvas API used
 
+Everything below comes from `sngl://draw`, which the app dot-imports alongside
+`sngl://std`. Shapes live in their own package because `rect`, `line` and
+`path` are names an application usually wants for itself.
+
 - `canvas(width, height)` — the container; accepts `list<shape>` children
 - `rect(x, y, w, h, style)` — filled/stroked rectangle
 - `circle(cx, cy, r, style)` — filled/stroked circle
