@@ -166,6 +166,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		units      []*ast.UnitDef
 		structs    []*ast.StructDef
 		enums      []*ast.EnumDef
+		consts     []*ast.ConstDecl
 		funcs      []*ast.FuncDef
 		components []*ast.ComponentDecl
 		contexts   []*ast.CallStmt
@@ -181,6 +182,8 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 				structs = append(structs, s)
 			case *ast.EnumDef:
 				enums = append(enums, s)
+			case *ast.ConstDecl:
+				consts = append(consts, s)
 			case *ast.FuncDef:
 				funcs = append(funcs, s)
 			case *ast.ComponentDecl:
@@ -221,6 +224,9 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 				sd.Native = "i18n.PluralKey"
 			}
 		}
+	}
+	for _, s := range consts {
+		c.registerStdlibConst(s, stdlibPkg)
 	}
 	// Phase 1: register stdlib func signatures (no body checking yet) so
 	// later phases — context default expressions, context-reading wrapper
@@ -433,6 +439,36 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
 	pkg.Symbols.Types[ud.Name] = ud
+}
+
+// registerStdlibConst registers a library const. The #[builtin] mark travels
+// from the declaration onto every name it declares, so collectBuiltins can
+// find the predeclared constants; for an unmarked const this is an ordinary
+// registration.
+func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		var init ir.Expr
+		if spec.Default != nil {
+			init = c.checkExprExpecting(spec.Default, typ)
+			if typ.Kind == ir.TypeDyn {
+				typ = exprType(init)
+			}
+		}
+		for _, name := range spec.Names {
+			v := &ir.Var{
+				AST:     decl,
+				Name:    name,
+				Type:    typ,
+				Init:    init,
+				IsConst: true,
+				Builtin: decl.Builtin,
+			}
+			pkg.Consts = append(pkg.Consts, v)
+			c.scope.Replace(v)
+			pkg.Symbols.Root.Replace(v)
+		}
+	}
 }
 
 func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {

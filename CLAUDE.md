@@ -112,6 +112,16 @@ A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to,
 
 `internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
+The `#[builtin]` macro only stamps the kind: it asserts `ast.BuiltinTaggable`
+and lets the AST say which declaration forms can carry a mark. What a kind then
+*requires* — that a node kind names a component, that a const kind names a
+const — is checked by `collectBuiltins` (`internal/checker/builtins.go`), where
+the compiler stores the reference, because that is where the requirement comes
+from. A duplicate mark is an error there rather than a silent overwrite.
+
+`true`, `false` and `null` are **not** declarations: the parser turns them into
+literals (`internal/parser/build.go`), so they never reach name resolution.
+
 **Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.

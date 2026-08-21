@@ -201,6 +201,8 @@ type ConstDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
+	// Builtin is set by the #[builtin] macro on a predeclared constant.
+	Builtin BuiltinKind
 }
 
 // VarDecl declares one or more variables.

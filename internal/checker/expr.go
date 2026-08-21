@@ -280,14 +280,6 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 }
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
-	// Builtin constants.
-	switch x.Name {
-	case "PLATFORM", "LANGUAGE":
-		return &ir.Ident{AST: x, Type: TypString, Name: x.Name}
-	case "null":
-		return &ir.Ident{AST: x, Type: TypNull, Name: x.Name}
-	}
-
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
 		// When expected type is an enum, resolve bare member names.

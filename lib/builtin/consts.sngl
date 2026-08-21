@@ -1,10 +1,23 @@
-// The predeclared constants.
+// The predeclared constants the compiler supplies.
 //
-// Declarations rather than names the checker recognises, so they resolve and
-// shadow like anything else. Neither has a literal to be written as, so each
-// is the smallest comparison that denotes it.
+// `true`, `false` and `null` are not here: the parser turns those three into
+// literals before any name resolution happens (LiteralBool, LiteralNull), so a
+// declaration of them would never be consulted.
+import . "sngl://internal/builtin"
 
-const (
-    true = 0 == 0
-    false = 0 != 0
-)
+// The platform this build targets, by name: "html", "bubbletea", "fyne",
+// "gtk4", "android", "none". Compare it against a literal to gate code on the
+// target; the comparison folds at build time and the branch not taken is
+// removed.
+//
+// The written value is a placeholder. The real one is not known until a build
+// picks a target, so the compiler supplies it, keyed off the #[builtin] mark
+// rather than the name -- a declaration of your own named PLATFORM is an
+// ordinary constant and shadows this one.
+#[builtin("platform")]
+const PLATFORM = ""
+
+// The language this build emits, by name: "go", "js", "kotlin", "none".
+// Behaves like PLATFORM in every respect.
+#[builtin("language")]
+const LANGUAGE = ""

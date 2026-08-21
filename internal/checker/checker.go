@@ -160,6 +160,13 @@ type checker struct {
 	windowComp *ir.Component
 	windowType *ir.Type
 
+	// The predeclared constants, bound by collectBuiltins. Held so a second
+	// declaration of the same kind is an error rather than a silent
+	// overwrite; resolution itself goes through the scope chain like any
+	// other name.
+	platformConst *ir.Var
+	languageConst *ir.Var
+
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
 
@@ -214,12 +221,11 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.builtinPkg, c.stdlibPkg = c.loadStdlib()
-	// Builtin node kinds live in sngl://std with the other components: the
-	// #[builtin] mark says which IR construct a node dispatches to, not which
-	// tier declares it.
-	nodes := builtinNodeComps(c.stdlibPkg.Symbols.Comps)
+	// Both packages, because a mark says which construct a declaration is, not
+	// which package declares it: the predeclared constants are in
+	// sngl://builtin and the visual nodes are in sngl://std.
+	c.collectBuiltins(c.builtinPkg, c.stdlibPkg)
 	c.stdlibScope = stdlibScope
-	c.windowComp = nodes[ast.BuiltinWindow]
 	if c.windowComp == nil {
 		// The stdlib is embedded and compiler-controlled; a missing window
 		// declaration would silently turn every `window #id` into "unexpected
@@ -1113,11 +1119,6 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 	case *ast.LiteralExpr, *ast.UnitLiteral:
 		return ""
 	case *ast.IdentExpr:
-		// Builtin constants are fine.
-		switch x.Name {
-		case "null", "PLATFORM", "LANGUAGE":
-			return ""
-		}
 		if sym, ok := c.scope.Lookup(x.Name); ok {
 			if v, ok := sym.(*ir.Var); ok && v.IsConst {
 				return ""

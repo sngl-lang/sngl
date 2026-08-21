@@ -108,27 +108,37 @@ struct x {}`
 	}
 }
 
-// A type kind annotates a struct; a component is a category error.
-func TestMacroRejectsTypeKindOnComponent(t *testing.T) {
+// The macro stamps the kind on whatever declaration form can carry one; which
+// kinds belong on which form is checked where the compiler stores the
+// reference, so a category error is not the macro's to report.
+func TestMacroStampsWithoutJudgingTheKind(t *testing.T) {
 	src := `import . "sngl://internal/builtin"
 
 #[builtin("color")]
 component foo {}`
-	_, diags := expandOne(t, src)
-	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for a type kind on a component")
+	stmts, diags := expandOne(t, src)
+	if hasError(diags) {
+		t.Fatalf("macro should stamp and defer judgement, got %v", diags)
+	}
+	comp, ok := stmts.(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected a ComponentDecl, got %T", stmts)
+	}
+	if comp.Builtin != ast.BuiltinColor {
+		t.Errorf("Builtin = %q, want %q", comp.Builtin, ast.BuiltinColor)
 	}
 }
 
-// A node kind annotates a component; a struct is a category error.
-func TestMacroRejectsNodeKindOnStruct(t *testing.T) {
+// A declaration form that cannot carry a mark is the macro's to reject,
+// because that is a property of the AST rather than of the kind.
+func TestMacroRejectsUntaggableDeclaration(t *testing.T) {
 	src := `import . "sngl://internal/builtin"
 
-#[builtin("window")]
-struct window {}`
+#[builtin("color")]
+var x = 1`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for a node kind on a struct")
+		t.Errorf("expected an error diagnostic for a declaration that cannot carry a mark")
 	}
 }
 
