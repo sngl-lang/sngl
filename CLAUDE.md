@@ -87,7 +87,16 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Stdlib
 
-Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). `internal/checker/stdlib.go` reads from that FS and parses the files at startup, returning components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
+Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
+
+Two packages exist, and the split is the whole point of the tier system:
+
+- **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
+
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
+
+`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
 **Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
