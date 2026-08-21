@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -312,4 +313,67 @@ func TestFrontPageExamplesCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestGettingStartedSnippetsCheck type-checks the SNGL snippets embedded in
+// the Getting Started page. The page is a .sngl program whose prose and code
+// are `docui.CodeBlock` arguments, so the markdown harness never saw it and
+// nothing checked the code it teaches: every snippet was missing the stdlib
+// import, and it taught `list.push(xs, v)`, `@effect(...)` and `--main=false`,
+// none of which exist.
+//
+// A snippet is skipped only when it says so itself: `// ...` marks elided
+// code, and a non-sngl scheme import names a package the reader supplies.
+func TestGettingStartedSnippetsCheck(t *testing.T) {
+	const page = "internal/learn/getting_started.sngl"
+	src, err := os.ReadFile(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := regexp.MustCompile("(?s)docui\\.CodeBlock\\(code=`(.*?)`,\\s*language=\"sngl\"\\)")
+	matches := re.FindAllStringSubmatch(string(src), -1)
+	if len(matches) == 0 {
+		t.Fatalf("%s: no sngl CodeBlocks found — did the call shape change?", page)
+	}
+	langs, plats := testtargets.Targets()
+	var checked int
+	for i, m := range matches {
+		snippet := m[1]
+		if strings.Contains(snippet, "// ...") || importsForeignScheme(snippet) {
+			continue
+		}
+		checked++
+		t.Run(fmt.Sprintf("snippet%d", i+1), func(t *testing.T) {
+			doc, err := parser.Parse(page, []byte(snippet))
+			if err != nil {
+				t.Fatalf("parse: %v\n%s", err, snippet)
+			}
+			_, diags := checker.Check(doc, &checker.Config{
+				IsMain: true, Languages: langs, Platforms: plats,
+			})
+			for _, d := range diags {
+				if d.Severity == ir.Error {
+					t.Errorf("%s: %s\n%s", d.Pos, d.Msg, snippet)
+				}
+			}
+		})
+	}
+	if checked == 0 {
+		t.Fatal("every snippet was skipped; the skip conditions are too broad")
+	}
+}
+
+// importsForeignScheme reports whether src imports under a scheme other than
+// sngl://, which means it names a package the reader supplies.
+func importsForeignScheme(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "import ") {
+			continue
+		}
+		if strings.Contains(line, "://") && !strings.Contains(line, "sngl://") {
+			return true
+		}
+	}
+	return false
 }
