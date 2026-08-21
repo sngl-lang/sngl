@@ -18,8 +18,7 @@ sngl generate --out out shadow.sngl
 grep 'MINE' out/index.html
 ! grep 'hello ' out/index.html
 
-# `import . "sngl://std"` is accepted and redundant while the stdlib is still
-# lifted unconditionally.
+# The dot form flattens the standard library into the file.
 sngl check std.sngl
 stdout 'std.sngl: ok'
 
@@ -36,6 +35,15 @@ stdout 'stdalias.sngl: ok'
 # implicit global.
 ! sngl check stdunimported.sngl
 stderr 'undefined: sngl'
+
+# Two dot imports lifting the same name is an error. Taking the last silently
+# would make which package a bare name refers to depend on import order.
+! sngl check ambiguous.sngl
+stderr 'already lifted by dot import of'
+
+# Qualifying one of them resolves it.
+sngl check disambiguated.sngl
+stdout 'disambiguated.sngl: ok'
 
 # A local directory named std is reachable as itself; the stdlib scheme cannot
 # shadow it.
@@ -151,6 +159,31 @@ component notstd.text {
 
 component main {
     text(value="x")
+}
+-- other/lib.sngl --
+import . "sngl://std"
+
+struct Card {
+    subtitle string = ""
+}
+-- ambiguous.sngl --
+import . "sngl://std"
+import . "widgets"
+import . "other"
+
+component main {
+    var c Card = {title = "t"}
+    text(value=c.title)
+}
+-- disambiguated.sngl --
+import . "sngl://std"
+import . "widgets"
+import o "other"
+
+component main {
+    var c Card = {title = "t"}
+    var d o.Card = {subtitle = "s"}
+    text(value=c.title + d.subtitle)
 }
 -- stdunknown.sngl --
 import . "sngl://std"

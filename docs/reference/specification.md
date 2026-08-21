@@ -596,14 +596,31 @@ error. Methods attached to a type (`func Type.m`) occupy that type's method set
 rather than a value scope, so a user method may override a standard-library
 method of the same name on the same type.
 
-### Predeclared identifiers and the prelude
+### Predeclared identifiers and the two library tiers
 
-The built-in type names and `true`/`false`/`null` are always in scope. The
-standard library is parsed and registered beneath the package scope as a
-prelude, and is additionally reachable through the `sngl` namespace
-(`sngl.text`). Because the package scope sits closer than the prelude, a
-top-level declaration named like a library entity takes precedence over it
-within the package.
+`true`/`false`/`null` are always in scope, as is everything declared by
+`sngl://builtin` — the scalar and collection types (`int`, `float`, `string`,
+`list`, `map`, `option`, `ref`, `iter`, `color`, `date`, `time`, `datetime`)
+together with their methods. That package is dot-imported into every file
+implicitly and cannot be imported explicitly; it is the only implicit import
+in the language.
+
+Everything else the standard library provides — components, event payload
+types, style enums, `Style`, and the `i18n` and `html` namespaces — belongs to
+`sngl://std` and must be imported:
+
+```sngl
+import . "sngl://std"
+import sngl "sngl://std"
+```
+
+The dot form flattens the package's declarations into the file, so they are
+written unqualified (`text(...)`). The alias form binds a namespace instead
+(`sngl.text(...)`); the alias is the importer's choice, and `sngl` carries no
+special meaning.
+
+Both tiers register beneath the package scope, so a top-level declaration
+named like a library entity takes precedence over it within the package.
 
 ### Exported and unexported names
 
@@ -1235,7 +1252,7 @@ within a package is an error.
 <!-- BEGIN GENERATED: grammar-imports -->
 
 ```ebnf
-ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
+ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 
 ```
 
@@ -1354,7 +1371,7 @@ IncDecOp = "++" | "--"
 ```
 
 ```ebnf
-ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
+ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 
 ```
 

@@ -99,9 +99,10 @@ func parseStdlibDocs() []*ast.Document {
 	return stdlibDocs
 }
 
-// loadStdlib builds the stdlib Package, registers all stdlib declarations into
-// the checker's scope and symbol table for unqualified access, and declares
-// the "sngl" namespace for qualified access (sngl.text, sngl.Color, etc.).
+// loadStdlib builds the two library packages. sngl://builtin registers into
+// the checker's scope and symbol table for unqualified access everywhere;
+// sngl://std registers into its own package and reaches user scope only
+// through an import.
 //
 // Declarations are grouped by kind across all stdlib files and registered in a
 // fixed order — imports, then types (units, structs, enums), then functions,

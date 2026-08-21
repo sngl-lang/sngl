@@ -86,6 +86,11 @@ type checker struct {
 	// Import cycle detection.
 	visited map[string]bool
 
+	// dotImported maps a name lifted by a dot import to the import path that
+	// lifted it, so a second dot import of the same name is an error rather
+	// than an order-dependent overwrite.
+	dotImported map[string]string
+
 	// Effective replace map for this package: outer overrides layered over
 	// this package's own `import "p" => "url"` declarations. Populated at the
 	// start of pass1 before any import is resolved.
@@ -223,16 +228,22 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// placement directives), preserve its Pkg and attach the Resolve fallback
 	// to the same namespace so named directives resolve via Pkg first and raw
 	// elements fall through to Resolve.
-	// The stdlib's own namespace of that name may live in either tier's scope,
-	// so check both before declaring a new one — a duplicate would shadow the
-	// stdlib Pkg with a Resolve-only namespace and lose html.frontend et al.
+	// Raw element access is ambient for every platform, so the Resolve-bearing
+	// namespace always goes in the ambient scope. The standard library may also
+	// declare a namespace of the same name (lib/std/html.sngl declares `html`
+	// for the html.frontend/html.backend directives); attach Resolve to that
+	// one too, so importing std keeps raw elements working rather than
+	// shadowing them with a directives-only namespace.
 	declareNS := func(name string, resolve func(string) ir.Symbol) {
-		for _, sc := range []*ir.Scope{stdlibScope, c.stdlibPkg.Symbols.Root} {
-			if existing, ok := sc.LookupLocal(name); ok {
-				if ns, ok := existing.(*ir.Namespace); ok {
-					ns.Resolve = resolve
-					return
-				}
+		if existing, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); ok {
+			if ns, ok := existing.(*ir.Namespace); ok {
+				ns.Resolve = resolve
+			}
+		}
+		if existing, ok := stdlibScope.LookupLocal(name); ok {
+			if ns, ok := existing.(*ir.Namespace); ok {
+				ns.Resolve = resolve
+				return
 			}
 		}
 		stdlibScope.Declare(&ir.Namespace{Name: name, Resolve: resolve})
@@ -2553,6 +2564,9 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 // dot-imported one exactly as it shadows a lifted stdlib one.
 //
 // Unexported names are skipped, matching qualified access (see rejectUnexported).
+//
+// Two dot imports lifting the same name is an error. Silently taking the last
+// one would make which package a bare name refers to depend on import order.
 func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	if irImport.Pkg == nil {
 		// Macro-only or unresolved package — nothing to lift. Not an error: the
@@ -2560,23 +2574,44 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		return
 	}
 	pkg := irImport.Pkg
+	if c.dotImported == nil {
+		c.dotImported = map[string]string{}
+	}
+	claim := func(name string) bool {
+		if prev, dup := c.dotImported[name]; dup && prev != imp.Path {
+			c.error(imp.Pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
+				imp.Path, name, prev)
+			return false
+		}
+		c.dotImported[name] = imp.Path
+		return true
+	}
 	for name, sym := range pkg.Symbols.Types {
-		if exported(sym) {
+		if exported(sym) && claim(name) {
 			c.symtab.Types[name] = sym
 			c.scope.Declare(sym)
 		}
 	}
 	for name, sym := range pkg.Symbols.Comps {
-		if exported(sym) {
+		if exported(sym) && claim(name) {
 			c.symtab.Comps[name] = sym
 			c.scope.Declare(sym)
 		}
 	}
 	for typeName, methods := range pkg.Symbols.Methods {
 		for methodName, fn := range methods {
+			// Gated like the Types and Comps loops above; this loop had no
+			// check, contradicting the doc comment. (An unexported method is
+			// still reachable through its receiver on a qualified import —
+			// a separate, pre-existing visibility hole.)
+			if !exported(fn) {
+				continue
+			}
 			if c.symtab.Methods[typeName] == nil {
 				c.symtab.Methods[typeName] = map[string]*ir.Func{}
 			}
+			// First lift wins: a receiver's own methods are already registered
+			// when the stdlib loads, and a dot import must not replace them.
 			if _, exists := c.symtab.Methods[typeName][methodName]; !exists {
 				c.symtab.Methods[typeName][methodName] = fn
 			}

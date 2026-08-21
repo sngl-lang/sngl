@@ -19,6 +19,23 @@ stderr 'always in scope'
 sngl check aliased.sngl
 stdout 'aliased.sngl: ok'
 
+# Lowercase stdlib components stay reachable through the alias in expression
+# position too. The private-component filter that rejects lowercase names in an
+# imported package must recognise the stdlib by package identity — keying it on
+# the name "sngl" rejects every other alias here.
+sngl check aliased_expr.sngl
+stdout 'aliased_expr.sngl: ok'
+
+# Raw platform elements are ambient for every platform alike. html is the one
+# whose name the stdlib also declares (for html.frontend/html.backend), and it
+# must not become the only platform whose elements need an import.
+sngl check rawelem.sngl
+stdout 'rawelem.sngl: ok'
+
+# That filter still applies to a real user package.
+! sngl check private.sngl
+stderr 'unknown component "helper" in package w'
+
 -- nostd.sngl --
 component main {
     text(value="x")
@@ -42,6 +59,37 @@ import . "sngl://builtin"
 
 component main {
     var n int = 1
+}
+-- rawelem.sngl --
+component Foo() {
+    html.marquee() {}
+}
+
+component Bar() {
+    gtk4.GtkLabel(label="x") {}
+}
+-- aliased_expr.sngl --
+import ui "sngl://std"
+
+func render() => ui.text(value="x")
+
+component main {
+    ui.text(value="y")
+}
+-- private.sngl --
+import . "sngl://std"
+import w "widgets"
+
+func render() => w.helper()
+
+component main {
+    text(value="x")
+}
+-- widgets/widgets.sngl --
+import . "sngl://std"
+
+component helper() {
+    text(value="private")
 }
 -- aliased.sngl --
 import ui "sngl://std"
