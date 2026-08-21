@@ -126,7 +126,26 @@ func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) Package() []*ast.Document { return pkgDocs }
+
+// Package implements ir.Platform. With no GIR file to read, none of the
+// gtk4.Gtk* widget types gtk4.sngl builds its stdlib overrides from can be
+// resolved, so the platform contributes nothing at all rather than handing the
+// checker overrides it must reject. The checker merges every registered
+// platform's overrides irrespective of the build target, so contributing
+// unresolvable ones would turn a missing optional dependency into an
+// "unknown component" error on every compile, for every platform.
+func (g *Generator) Package() []*ast.Document {
+	if _, err := g.gir(); err != nil {
+		return nil
+	}
+	return pkgDocs
+}
+
+// Unavailable implements codegen.PlatformAvailability.
+func (g *Generator) Unavailable() error {
+	_, err := g.gir()
+	return err
+}
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
@@ -148,10 +167,9 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	return f
 }
 
-// Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
-// It lazy-loads the GIR file on first call. Returns nil if the GIR file is
-// not available on this machine or the identifier is not a known widget.
-func (g *Generator) Resolve(identifier string) ir.Symbol {
+// gir lazy-loads the widget registry, caching both the registry and the
+// failure. Configure resets the cache when --opt gir= changes.
+func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	g.once.Do(func() {
 		p, err := resolveGIRPath(g.girOpt)
 		if err != nil {
@@ -160,12 +178,21 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 		}
 		g.registry, g.initErr = gir.ParseGIR(p)
 	})
-	if g.initErr != nil {
-		// GIR unavailable — caller gets nil, checker will report unknown identifier.
+	return g.registry, g.initErr
+}
+
+// Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
+// It lazy-loads the GIR file on first call. Returns nil if the GIR file is
+// not available on this machine or the identifier is not a known widget.
+func (g *Generator) Resolve(identifier string) ir.Symbol {
+	reg, err := g.gir()
+	if err != nil {
+		// GIR unavailable — caller gets nil. Package() withholds the gtk4
+		// overrides in this state, so nothing should be asking.
 		return nil
 	}
 	name := stripGtkPrefix(identifier)
-	info, ok := g.registry.Classes[name]
+	info, ok := reg.Classes[name]
 	if !ok {
 		return nil
 	}
@@ -175,6 +202,12 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 // Generate writes gtk4 source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// Targeting gtk4 without the GIR file is the one case that must be loud:
+	// Package() withheld the widget overrides, so generation would otherwise
+	// silently emit an empty UI.
+	if _, err := g.gir(); err != nil {
+		return fmt.Errorf("platform gtk4 is unavailable here: %w", err)
+	}
 	// Agent-mode test build: suppress the user's main() loop and force
 	// the package name to "main" so the agent's func main() compiles
 	// alongside it. The launcher's `go build .` step expects a main
@@ -363,7 +396,7 @@ func writeRawFile(sink codegen.Sink, name string, content []byte) error {
 func resolveGIRPath(girPath string) (string, error) {
 	if girPath != "" {
 		if _, err := os.Stat(girPath); err != nil {
-			return "", err
+			return "", fmt.Errorf("--opt gir=%s: %w", girPath, err)
 		}
 		return girPath, nil
 	}
@@ -372,7 +405,11 @@ func resolveGIRPath(girPath string) (string, error) {
 			return p, nil
 		}
 	}
-	return "", errors.New("gtk4 GIR file not found — set --opt gir=/path/to/Gtk-4.0.gir or install libgtk-4-dev")
+	return "", errors.New("GTK 4 introspection data (Gtk-4.0.gir) not found in " +
+		strings.Join(girAutoPaths, ", ") +
+		" — install the GTK 4 development package (Debian/Ubuntu: libgtk-4-dev, " +
+		"Fedora: gtk4-devel, Arch: gtk4, macOS: brew install gtk4) " +
+		"or point at the file with --opt gir=/path/to/Gtk-4.0.gir")
 }
 
 // stripGtkPrefix removes the "Gtk" prefix so "GtkButton" → "Button".

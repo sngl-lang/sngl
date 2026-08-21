@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/txtar"
@@ -41,9 +42,13 @@ func TestScript(t *testing.T) {
 	// generated cgo can be compiled. The gtk4 build script uses it to compile
 	// generated gtk4 code in CI (no display needed) even though the render-based
 	// snapshot script skips there.
+	// The GIR check matters independently of pkg-config: distributions can ship
+	// the libraries without the introspection data, and without the .gir file
+	// the platform reports itself unavailable and refuses to generate.
 	conds["gtk4"] = script.BoolCondition(
-		"gtk4 development libraries are available",
-		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil,
+		"gtk4 development libraries and introspection data are available",
+		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil &&
+			codegen.PlatformUnavailable("gtk4") == nil,
 	)
 	// `ci` is true under GitLab CI. Used to quarantine a script that fails only
 	// in the CI environment while it's being investigated, without losing the

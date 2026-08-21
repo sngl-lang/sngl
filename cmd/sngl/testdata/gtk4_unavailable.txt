@@ -1,0 +1,20 @@
+# An unusable gtk4 platform must not affect compiles for other platforms, and
+# must fail with one actionable message when it is the target. `--opt
+# gir=<missing>` reproduces a machine with no GTK 4 introspection data
+# regardless of what is installed here.
+
+# Compiling for html is completely unaffected: no gtk4 diagnostics.
+sngl generate --lang=none --platform=html --opt gir=/nonexistent/Gtk-4.0.gir --out=out app.sngl
+exists out/index.html
+! stderr 'gtk4'
+
+# Targeting gtk4 itself names the missing file and how to supply it.
+! sngl generate --platform=gtk4 --lang=go --opt gir=/nonexistent/Gtk-4.0.gir --out=g app.sngl
+stderr 'platform gtk4 is unavailable'
+stderr '--opt gir='
+
+-- app.sngl --
+component main {
+    var name = "world"
+    text(value=name)
+}
