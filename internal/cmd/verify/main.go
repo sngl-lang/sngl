@@ -52,17 +52,26 @@ var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 // test binaries that self-wrap in TestMain.
 func wrapHeadless(command string, args []string) (string, []string, []string) {
 	cmd, wrapped, env, cleanup := headless.Wrap(command, args)
-	cageRuntimeCleanup = cleanup
+	cageCleanups = append(cageCleanups, cleanup)
 	return cmd, wrapped, env
 }
 
-// cageRuntimeCleanup removes the compositor's private runtime dir, if one was
-// created. os.Exit skips defers, so every exit path goes through exit().
-var cageRuntimeCleanup = func() {}
+// cageCleanups removes each compositor's private runtime dir. wrapHeadless is
+// called once per wrapped step, so these accumulate; os.Exit skips defers, so
+// every exit path goes through exit().
+var cageCleanups []func()
+
+// cleanupCage removes every compositor runtime dir this run created.
+func cleanupCage() {
+	for _, c := range cageCleanups {
+		c()
+	}
+	cageCleanups = nil
+}
 
 // exit terminates verify, removing anything it created on the way out.
 func exit(code int) {
-	cageRuntimeCleanup()
+	cleanupCage()
 	os.Exit(code)
 }
 
@@ -179,6 +188,7 @@ func main() {
 	if !runStepEnv("sngl-test", senv, sc, sargs...) {
 		exit(1)
 	}
+	cleanupCage()
 }
 
 func runStep(name string, command string, args ...string) bool {

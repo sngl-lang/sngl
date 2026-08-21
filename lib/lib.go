@@ -11,6 +11,7 @@ package lib
 
 import (
 	"embed"
+	"slices"
 	"sort"
 )
 
@@ -36,10 +37,5 @@ func Packages() []string {
 
 // HasPackage reports whether name is an embedded package directory.
 func HasPackage(name string) bool {
-	for _, p := range Packages() {
-		if p == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(Packages(), name)
 }

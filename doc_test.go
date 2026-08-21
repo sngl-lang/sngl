@@ -295,11 +295,10 @@ func TestFrontPageExamplesCheck(t *testing.T) {
 				t.Fatalf("%s has no ```sngl block", file)
 			}
 			rest := string(src)[i+len(fence):]
-			end := strings.Index(rest, "\n```")
-			if end < 0 {
+			program, _, ok := strings.Cut(rest, "\n```")
+			if !ok {
 				t.Fatalf("%s sngl block is unterminated", file)
 			}
-			program := rest[:end]
 
 			doc, err := parser.Parse(file, []byte(program))
 			if err != nil {
@@ -366,7 +365,7 @@ func TestGettingStartedSnippetsCheck(t *testing.T) {
 // importsForeignScheme reports whether src imports under a scheme other than
 // sngl://, which means it names a package the reader supplies.
 func importsForeignScheme(src string) bool {
-	for _, line := range strings.Split(src, "\n") {
+	for line := range strings.SplitSeq(src, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "import ") {
 			continue
