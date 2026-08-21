@@ -30,22 +30,20 @@ struct Todo {
 }
 
 component main {
-    var (
-        newTodo = ""
-        todos list<Todo> = []
-    )
+    var (newTodo = "", todos list<Todo> = [])
     func status() => "Todo List ({todos.length()} items)"
-    vbox(style={gap = 12, padding = 16}) {
-        text(value=status, style={fontWeight = "bold", fontSize = 24})
-        hbox(style={gap = 8, alignItems = "center"}) {
-            input(@input { newTodo = event.value }, placeholder="Buy eggs", style={flexGrow = 1})
-            button(@click {
+
+    vbox(style={gap=12, padding=16}) {
+        text(value=status, style={fontWeight="bold", fontSize=24})
+        hbox(style={gap=8, alignItems="center"}) {
+            input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
+            button(text="Add", @click {
                 todos.push(Todo{text = newTodo, done = false})
                 newTodo = ""
-            }, text="Add")
+            })
         }
-        vbox(style={gap = 4}) {
-            for item, index = todos {
+        vbox(style={gap=4}) {
+            for index, item = todos {
                 checkbox(checked=item.done, key=index, label=item.text, @change { todos[index].done!! })
             }
         }

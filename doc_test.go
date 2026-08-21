@@ -256,36 +256,41 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 	}
 }
 
-// TestReadmeExampleChecks type-checks the README's front-page program. Unlike
+// TestFrontPageExamplesCheck type-checks the two front-page programs. Unlike
 // the doc-block tests above, which log rot rather than fail because snippets
-// are fragments that lag the grammar, this one is a complete program and is
-// the first SNGL most readers see -- it stayed broken through a migration and
-// three syntax changes because nothing walked README.md at all.
-func TestReadmeExampleChecks(t *testing.T) {
-	src, err := os.ReadFile("README.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	const fence = "```sngl\n"
-	i := strings.Index(string(src), fence)
-	if i < 0 {
-		t.Fatal("README.md has no ```sngl block")
-	}
-	rest := string(src)[i+len(fence):]
-	end := strings.Index(rest, "\n```")
-	if end < 0 {
-		t.Fatal("README.md sngl block is unterminated")
-	}
-	program := rest[:end]
+// are fragments that lag the grammar, these are complete programs and the
+// first SNGL most readers see. Both stayed broken through a migration and
+// three syntax changes: nothing walked README.md at all, and the site's copy
+// was only ever parsed, never checked.
+func TestFrontPageExamplesCheck(t *testing.T) {
+	for _, file := range []string{"README.md", "docs/index.md"} {
+		t.Run(file, func(t *testing.T) {
+			src, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			const fence = "```sngl\n"
+			i := strings.Index(string(src), fence)
+			if i < 0 {
+				t.Fatalf("%s has no ```sngl block", file)
+			}
+			rest := string(src)[i+len(fence):]
+			end := strings.Index(rest, "\n```")
+			if end < 0 {
+				t.Fatalf("%s sngl block is unterminated", file)
+			}
+			program := rest[:end]
 
-	doc, err := parser.Parse("README.md", []byte(program))
-	if err != nil {
-		t.Fatalf("parse: %v\n%s", err, program)
-	}
-	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Errorf("%s: %s", d.Pos, d.Msg)
-		}
+			doc, err := parser.Parse(file, []byte(program))
+			if err != nil {
+				t.Fatalf("parse: %v\n%s", err, program)
+			}
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			for _, d := range diags {
+				if d.Severity == ir.Error {
+					t.Errorf("%s: %s", d.Pos, d.Msg)
+				}
+			}
+		})
 	}
 }
