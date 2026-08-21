@@ -18,23 +18,39 @@ sngl generate --out out shadow.sngl
 grep 'MINE' out/index.html
 ! grep 'hello ' out/index.html
 
-# `import . "std"` is accepted and redundant while the stdlib is still lifted.
+# `import . "sngl://std"` is accepted and redundant while the stdlib is still
+# lifted unconditionally.
 sngl check std.sngl
 stdout 'std.sngl: ok'
 
-# Bare `import "std"` is rejected: a namespace-only form of the stdlib does not
-# exist, and qualified access is spelled sngl.X either way. The diagnostic says
-# so rather than leaving the reader to find it.
-! sngl check stdbare.sngl
-stderr 'must be a dot import'
-stderr 'sngl.X'
+# The namespace form binds the stdlib under an alias. Both forms are valid —
+# the scheme means neither can collide with a local package directory.
+sngl check stdbare.sngl
+stdout 'stdbare.sngl: ok'
 
-# Phase-dependent, deliberately pinned: `sngl` is predeclared today because the
-# stdlib is lifted unconditionally. Phase 5 makes that namespace conditional on
-# `import . "std"` (design §8 item 5), at which point this case must move into
-# std.sngl instead of failing quietly.
-sngl check stdqualified.sngl
-stdout 'stdqualified.sngl: ok'
+# The alias is the caller's choice, and it is what qualifies the stdlib.
+sngl check stdalias.sngl
+stdout 'stdalias.sngl: ok'
+
+# Without the import there is no such namespace: `sngl` is no longer an
+# implicit global.
+! sngl check stdunimported.sngl
+stderr 'undefined: sngl'
+
+# A local directory named std is reachable as itself; the stdlib scheme cannot
+# shadow it.
+sngl check localstd.sngl
+stdout 'localstd.sngl: ok'
+
+# An extension against a namespace that is not the imported stdlib is an error,
+# not a skip. Silently ignoring it would drop every override the file declares
+# and still produce a successful build with unstyled output.
+! sngl check badext.sngl
+stderr 'extension namespace "notstd" is not the standard library'
+
+# Only sngl://std exists so far.
+! sngl check stdunknown.sngl
+stderr 'unknown stdlib package "widgets"'
 
 -- widgets/lib.sngl --
 struct Card {
@@ -80,18 +96,53 @@ component main {
     }
 }
 -- std.sngl --
-import . "std"
+import . "sngl://std"
 
 component main {
     text(value="x")
 }
 -- stdbare.sngl --
+import "sngl://std"
+
+component main {
+    std.text(value="x")
+}
+-- stdalias.sngl --
+import lib "sngl://std"
+
+component text() {}
+
+component main {
+    lib.text(value="stdlib, not the shadow")
+    text()
+}
+-- stdunimported.sngl --
+component main {
+    sngl.text(value="x")
+}
+-- localstd.sngl --
 import "std"
+
+component main {
+    text(value=std.greet())
+}
+-- std/helper.sngl --
+func greet() => "local package named std"
+-- badext.sngl --
+import sngl "sngl://std"
+
+component notstd.text {
+    platform html {
+        span(textContent=value) {}
+    }
+}
 
 component main {
     text(value="x")
 }
--- stdqualified.sngl --
+-- stdunknown.sngl --
+import "sngl://widgets"
+
 component main {
-    sngl.text(value="x")
+    text(value="x")
 }

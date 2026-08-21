@@ -1,4 +1,4 @@
-component foo.bar { // ERROR(check) "extension namespace \"foo\" not supported"
+component foo.bar { // ERROR(check) "extension namespace \"foo\" is not the standard library"
     platform html {
         span() {}
     }

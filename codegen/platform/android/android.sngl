@@ -6,6 +6,8 @@
 // Compose-native implementation. Props are inherited from the stdlib
 // definition and available as local variables in the body.
 
+import sngl "sngl://std"
+
 struct Options {
     // Kotlin package / Android application ID.
     package string

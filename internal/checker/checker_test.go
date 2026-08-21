@@ -1036,8 +1036,11 @@ component main {
 }
 
 func TestStdlibQualifiedAccess(t *testing.T) {
-	// sngl.text resolves to stdlib text even when user shadows it.
+	// A stdlib import's alias qualifies the stdlib even when the user shadows
+	// the same name unqualified.
 	expectNoErrors(t, `
+import sngl "sngl://std"
+
 component text() {}
 component main {
 	sngl.text(value="stdlib text")

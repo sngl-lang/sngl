@@ -41,6 +41,8 @@ func (p extStubPlatform) Package() []*ast.Document {
 // stdlib component. User code uses bare `text(...)` and must type-check.
 func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
+import sngl "sngl://std"
+
 component sngl.text {
     platform extstub {
         image(src=value)

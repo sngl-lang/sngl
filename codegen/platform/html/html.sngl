@@ -11,6 +11,8 @@
 // stdlib abstract components of the same name (which are themselves
 // body-bearing under Plan H).
 
+import sngl "sngl://std"
+
 struct Options {
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
     preview bool

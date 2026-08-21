@@ -176,12 +176,6 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	// Register "sngl" namespace for qualified access to stdlib.
-	c.scope.Declare(&ir.Namespace{
-		Name: "sngl",
-		Pkg:  stdlibPkg,
-	})
-
 	// Register "i18n" namespace so that i18n.plural(...), i18n.one, etc.
 	// resolve without requiring an explicit import statement. The package
 	// exposes every i18n.* receiver method as a free function, plus the
@@ -651,6 +645,10 @@ func (c *checker) mergePlatformExtensions() {
 	}
 	for _, p := range c.cfg.Platforms {
 		for _, doc := range p.Package() {
+			// The extension prefix is whatever alias this document imported the
+			// stdlib under. Platform docs are not registered into the checker's
+			// scope, so resolve it from the document's own imports.
+			prefix := stdlibImportAlias(doc)
 			for _, stmt := range doc.Stmts {
 				decl, ok := stmt.(*ast.ComponentDecl)
 				if !ok {
@@ -660,10 +658,18 @@ func (c *checker) mergePlatformExtensions() {
 					// Legacy form — skip until Phase C rewrites.
 					continue
 				}
-				if !strings.HasPrefix(decl.Name, "sngl.") {
+				dot := strings.IndexByte(decl.Name, '.')
+				if dot <= 0 {
 					continue
 				}
-				local := strings.TrimPrefix(decl.Name, "sngl.")
+				// An unmatched prefix is an error, not a skip: silently
+				// ignoring these drops every override the file declares and
+				// still produces a successful build with unstyled output.
+				if ns := decl.Name[:dot]; ns != prefix {
+					c.error(decl.Pos, "extension namespace %q is not the standard library; import it, e.g. import %s \"sngl://std\"", ns, ns)
+					continue
+				}
+				local := decl.Name[dot+1:]
 				stdSym, ok := c.symtab.Comps[local]
 				if !ok {
 					c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
@@ -685,7 +691,7 @@ func (c *checker) mergePlatformExtensions() {
 						stdComp.PlatformBodies = map[string][]ir.Stmt{}
 					}
 					if _, dup := stdComp.PlatformBodies[pl.Platform]; dup {
-						c.error(pl.Pos, "component sngl.%s has duplicate platform block for %q", local, pl.Platform)
+						c.error(pl.Pos, "component %s.%s has duplicate platform block for %q", prefix, local, pl.Platform)
 						continue
 					}
 					// Reserve the key first so duplicate-detection works even
@@ -1061,4 +1067,29 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 	pkg.Components = append(pkg.Components, irComp)
 	pkg.Symbols.Comps[irComp.Name] = irComp
 	pkg.Symbols.Root.Declare(irComp)
+}
+
+// stdlibImportAlias returns the alias a document binds the standard library
+// under, or "" if it does not import it. Platform sources use this alias as
+// the `component <alias>.X` extension prefix.
+func stdlibImportAlias(doc *ast.Document) string {
+	for _, stmt := range doc.Stmts {
+		imp, ok := stmt.(*ast.Import)
+		if !ok {
+			continue
+		}
+		if scheme, _ := ParseScheme(imp.Path); scheme != "sngl" {
+			continue
+		}
+		if imp.IsDot() {
+			// Flattened: the components are unqualified, so there is no
+			// prefix to declare an extension against.
+			continue
+		}
+		if imp.Alias != "" {
+			return imp.Alias
+		}
+		return NamespaceFromPath(imp.Path)
+	}
+	return ""
 }

@@ -130,6 +130,10 @@ type checker struct {
 	// through the regular component-member machinery against its props.
 	// windowComp is what makes window dispatch tag-based rather than a check
 	// against the literal name "window".
+	// stdlibPkg is the loaded standard library, bound as a namespace by an
+	// `import <alias> "sngl://std"` and flattened by the dot form.
+	stdlibPkg *ir.Package
+
 	// stdlibScope is the scope holding stdlib declarations, between the base
 	// scope and the user root. Platform-extension bodies are checked against it
 	// so compiler-internal source cannot be captured by user declarations.
@@ -191,7 +195,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
-	c.loadStdlib()
+	c.stdlibPkg = c.loadStdlib()
 	nodes := builtinNodeComps(c.symtab.Comps)
 	c.stdlibScope = stdlibScope
 	c.windowComp = nodes[ast.BuiltinWindow]
@@ -386,22 +390,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 		target = mapped
 	}
 
-	// `std` names the standard library. Phase 4 accepts it and treats it as
-	// redundant: loadStdlib still lifts the stdlib into every package
-	// unconditionally, so the symbols a dot import would bind are already in
-	// scope. Phase 5 gates that lift, at which point this becomes the actual
-	// mechanism — a flattenDotImport over StdlibDocs(). Declared here so
-	// programs can adopt the explicit form before the flip, rather than having
-	// to migrate syntax and semantics in one change.
-	if scheme, _ := ParseScheme(target); scheme == "" && imp.Path == "std" {
-		if !imp.IsDot() {
-			c.error(imp.Pos, `import "std" must be a dot import: import . "std" (qualified access is spelled sngl.X)`)
-			return
-		}
-		c.pkg.Imports = append(c.pkg.Imports, &ir.Import{AST: imp, Path: imp.Path})
-		return
-	}
-
 	scheme, uri := ParseScheme(target)
 	// A dot import keeps "." here rather than deriving a namespace name it
 	// never binds: consumers match ir.Import.Alias against a namespace they
@@ -421,7 +409,24 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// Optional Resolve fallback for platform/language namespace imports.
 	var nsResolve func(string) ir.Symbol
 
-	if scheme == "internal" {
+	if scheme == "sngl" {
+		// The standard library. A scheme keeps it from colliding with a local
+		// package directory of any name — the collision a reserved bare path
+		// like "std" would reintroduce.
+		if uri != "std" {
+			c.error(imp.Pos, "unknown stdlib package %q (only \"sngl://std\" exists)", uri)
+			return
+		}
+		irImport.Pkg = c.stdlibPkg
+		// Phase 4: loadStdlib still lifts the stdlib into every package
+		// unconditionally, so a dot import binds what is already in scope and
+		// is accepted as redundant. Phase 5 gates that lift, at which point
+		// flattenDotImport becomes the mechanism.
+		if imp.IsDot() {
+			c.pkg.Imports = append(c.pkg.Imports, irImport)
+			return
+		}
+	} else if scheme == "internal" {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
 		case "stdlib":
@@ -1169,6 +1174,19 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	}
 }
 
+// isStdlibNamespace reports whether name is in scope as a namespace bound to
+// the standard library. Extension declarations (`component <ns>.X`) resolve
+// their prefix this way rather than matching a fixed name, so the prefix is
+// whatever alias the file imported the stdlib under.
+func (c *checker) isStdlibNamespace(name string) bool {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
+	}
+	ns, ok := sym.(*ir.Namespace)
+	return ok && ns.Pkg != nil && ns.Pkg == c.stdlibPkg
+}
+
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Component extensions: `component sngl.X { platform <name> { ... } }`.
 	// Validate qualified names. Tolerate the legacy `component sngl.X() { body }`
@@ -1177,8 +1195,8 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	legacyForm := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !legacyForm {
 		namespace := comp.Name[:dot]
-		if namespace != "sngl" {
-			c.error(comp.Pos, "extension namespace %q not supported (only \"sngl\" is valid)", namespace)
+		if !c.isStdlibNamespace(namespace) {
+			c.error(comp.Pos, "extension namespace %q is not the standard library; import it, e.g. import %s \"sngl://std\"", namespace, namespace)
 			return
 		}
 		if len(comp.Props.Props) > 0 {
