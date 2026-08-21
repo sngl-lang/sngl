@@ -292,6 +292,22 @@ func varPos(v *ir.Var) ast.Pos {
 	return ast.Pos{}
 }
 
+// funcDeclPos and compDeclPos are the source positions of a func or component
+// declaration, or the zero position for one the checker synthesized.
+func funcDeclPos(fn *ir.Func) ast.Pos {
+	if fn != nil && fn.AST != nil {
+		return fn.AST.Pos
+	}
+	return ast.Pos{}
+}
+
+func compDeclPos(comp *ir.Component) ast.Pos {
+	if comp != nil && comp.AST != nil {
+		return comp.AST.Pos
+	}
+	return ast.Pos{}
+}
+
 // bindVar binds a var or const from a registration path that serves both file
 // scope and a component or window body. At file scope the one-name rule
 // applies, so shadowing a lifted name stays legal; inside a body any name
@@ -1442,17 +1458,27 @@ func (c *checker) stdlibHint(name string) string {
 	return ""
 }
 
-// isStdlibNamespace reports whether name is in scope as a namespace bound to
-// the standard library. Extension declarations (`component <ns>.X`) resolve
-// their prefix this way rather than matching a fixed name, so the prefix is
-// whatever alias the file imported the stdlib under.
-func (c *checker) isStdlibNamespace(name string) bool {
+// isLibraryNamespace reports whether name is in scope as a namespace bound to
+// a package of the embedded library. Extension declarations (`component
+// <ns>.X`) resolve their prefix this way rather than matching a fixed name, so
+// the prefix is whatever alias the file imported the package under — and any
+// library package can be extended, not only sngl://std. A platform needs to
+// style `draw.canvas` as much as it needs to style `std.vbox`.
+func (c *checker) isLibraryNamespace(name string) bool {
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
 		return false
 	}
 	ns, ok := sym.(*ir.Namespace)
-	return ok && ns.Pkg != nil && ns.Pkg == c.stdlibPkg
+	if !ok || ns.Pkg == nil {
+		return false
+	}
+	for _, pkg := range c.libPkgs {
+		if ns.Pkg == pkg {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
@@ -1463,8 +1489,8 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	legacyForm := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !legacyForm {
 		namespace := comp.Name[:dot]
-		if !c.isStdlibNamespace(namespace) {
-			c.error(comp.Pos, "extension namespace %q is not the standard library; import it, e.g. import %s \"sngl://std\"", namespace, namespace)
+		if !c.isLibraryNamespace(namespace) {
+			c.error(comp.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", namespace, namespace, "sngl://std")
 			return
 		}
 		if len(comp.Props.Props) > 0 {
@@ -2144,7 +2170,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	c.pushScope()
 	defer c.popScope()
 	for _, v := range w.Vars {
-		c.scope.Replace(v)
+		c.declare(vn.Pos, v)
 	}
 	named := resolvePositionalArgs(vn.Args, []string{"title", "href", "favicon"})
 	if e, ok := named["href"]; ok {
@@ -2351,7 +2377,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 	}
 	for _, p := range fn.Params {
-		c.scope.Replace(p)
+		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprExpecting(ap.Default, p.Type)
 		}
@@ -2463,7 +2489,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	for _, p := range comp.Props {
-		c.scope.Replace(&ir.Param{Name: p.Name, Type: p.Type})
+		c.declare(compDeclPos(comp), &ir.Param{Name: p.Name, Type: p.Type})
 	}
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -2519,7 +2545,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare props as params now that any default-driven type inference has
 	// finalized prop.Type.
 	for _, p := range comp.Props {
-		c.scope.Replace(&ir.Param{
+		c.declare(compDeclPos(comp), &ir.Param{
 			Name: p.Name,
 			Type: p.Type,
 		})
@@ -2618,10 +2644,10 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	for _, v := range w.Vars {
-		c.scope.Replace(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range w.Funcs {
-		c.scope.Replace(fn)
+		c.declare(funcDeclPos(fn), fn)
 	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
@@ -2814,7 +2840,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			}
 			c.pushScope()
 			for _, p := range h.Func.Params {
-				c.scope.Replace(p)
+				c.declare(varPos(v), p)
 			}
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
 			c.popScope()

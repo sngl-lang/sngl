@@ -18,6 +18,7 @@ import (
 // platform's init-write path but never updated.
 func TestRawPlatformElementReactiveAttrUpdates(t *testing.T) {
 	src := `
+import . "sngl://std"
 import "platform://html"
 output { none { html() } }
 component main {

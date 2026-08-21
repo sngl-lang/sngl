@@ -63,16 +63,18 @@ func TestBuildDocPlansCollision(t *testing.T) {
 // without involving adb / kotlinc. It's the closest we can get to an
 // end-to-end check without a connected device.
 func TestBatchCodegen(t *testing.T) {
-	const src1 = `output { android }
+	const src1 = `import . "sngl://std"
+output { android }
 ` + "`" + `Hello A` + "`" + `
 `
-	const src2 = `output { android }
+	const src2 = `import . "sngl://std"
+output { android }
 ` + "`" + `Hello B` + "`" + `
 `
 
 	check := func(name, body string) *codegen.BatchDoc {
 		t.Helper()
-		doc, err := parser.Parse(name, []byte(withStdSrc(body)))
+		doc, err := parser.Parse(name, []byte(body))
 		if err != nil {
 			t.Fatalf("parse %s: %v", name, err)
 		}

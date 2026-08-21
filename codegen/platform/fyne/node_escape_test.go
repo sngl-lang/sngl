@@ -14,6 +14,7 @@ import (
 )
 
 const recursiveTreeSrc = `
+import . "sngl://std"
 struct TreeNode {
     value int = 0
     left dyn = null
@@ -38,7 +39,7 @@ component main {
 
 func generateFyneModel(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

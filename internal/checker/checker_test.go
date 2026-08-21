@@ -562,7 +562,7 @@ var y = const math.Square(4)
 
 func TestImportIdentAlias(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
+		"widgets": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import w "widgets"
@@ -586,7 +586,7 @@ func TestImportReplaceRoutesToReplacementURL(t *testing.T) {
 	// Replace routes resolution to the replacement path. Original path "widgets"
 	// resolves via "widgets_v2" (no scheme so the directory resolver is used).
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets_v2": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
+		"widgets_v2": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "widgets" => "widgets_v2"
@@ -617,7 +617,7 @@ component Wrapped(label = "") {
     widgets.Counter(label=label)
 }
 `,
-		"widgets_v2": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
+		"widgets_v2": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "shim"
@@ -644,7 +644,7 @@ func TestImportSchemeFSDispatch(t *testing.T) {
 	// "not my scheme" (nil docs).
 	r := &schemeFSResolver{
 		fsPkgs: map[string]string{
-			"git://example.com/widgets@v1#-": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
+			"git://example.com/widgets@v1#-": counterPkg,
 		},
 	}
 	doc, err := parser.Parse("test.sngl", []byte(`
@@ -686,10 +686,19 @@ func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Docume
 	return []*ast.Document{doc}, nil, nil
 }
 
+// counterPkg is the stock imported package for the resolver tests: one
+// exported component, nothing else. Shared so a test's own body shows only
+// what it is actually testing.
+const counterPkg = `import . "sngl://std"
+
+component Counter(label = "") {
+    text(value=label)
+}`
+
 func TestImportReplaceDuplicate(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets_v2": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
-		"widgets_v3": "import . \"sngl://std\"\ncomponent Counter(label = \"\") { text(value=label) }",
+		"widgets_v2": counterPkg,
+		"widgets_v3": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "widgets" => "widgets_v2"

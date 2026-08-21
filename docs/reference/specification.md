@@ -618,19 +618,24 @@ import sngl "sngl://std"
 ```
 
 The dot form flattens the package's declarations into the file, so they are
-written unqualified (`text(...)`). The alias form binds a namespace instead
-(`sngl.text(...)`); the alias is the importer's choice, and `sngl` carries no
-special meaning.
+written unqualified (`text(...)`). The alias form binds a namespace instead,
+under whatever name the importer chooses (`sngl.text(...)`).
 
-Both tiers register beneath the package scope, so a top-level declaration
+Both packages register beneath the package scope, so a top-level declaration
 named like a library entity takes precedence over it within the package.
 
 The library is not limited to those two packages. `sngl://draw` holds `canvas`
-and the 2D shapes it hosts, and is imported the same way — the shapes are a
-separate package because `rect`, `line` and `path` are names an application
-usually wants for itself. A library package may also carry macros next to the
-declarations they apply to: `import "sngl://draw"` brings both the shape
-components and the `#[draw.shape]` mark that declares new ones.
+and the 2D shapes it hosts, and is imported the same way. A library package may
+also carry macros next to the declarations they apply to: `import "sngl://draw"` brings both the shape components and the `#[draw.shape]` mark
+that declares new ones.
+
+### Package comments
+
+A run of line comments at the top of a file, separated from what follows by a
+blank line, documents the package rather than the declaration below it. The
+text is markdown. Where several of a package's files carry one, they are
+concatenated in load order, separated by blank lines; that order is
+unspecified, so prose whose sequence matters belongs in one file.
 
 ### Exported and unexported names
 

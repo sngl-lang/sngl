@@ -16,7 +16,7 @@ import (
 func buildSnapshotPkg(t *testing.T, dir, base, src string) (results func() error) {
 	t.Helper()
 	fixture := filepath.Join(dir, base)
-	doc, err := parser.Parse(fixture, []byte(withStdSrc(src)))
+	doc, err := parser.Parse(fixture, []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -40,7 +40,8 @@ type runFail struct{ desc, msg string }
 
 func (e *runFail) Error() string { return e.desc + ": " + e.msg }
 
-const snapshotSrc = `component counter {
+const snapshotSrc = `import . "sngl://std"
+component counter {
 	var count = 0
 	vbox {
 		text(value="Count: {count}")

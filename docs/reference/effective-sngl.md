@@ -481,8 +481,7 @@ func labels() => todos.map(func(t) => t.text)
 
 ### Lambdas
 
-Inline functions for filtering and mapping. A lambda is written `func(x) =>
-expr`. The `func` keyword is required -- a bare `(x) => expr` does not parse --
+Inline functions for filtering and mapping. A lambda is written `func(x) => expr`. The `func` keyword is required -- a bare `(x) => expr` does not parse --
 but the parameter type is inferred from the function type the position
 expects, so `filter` binds `t` to the list's element type:
 

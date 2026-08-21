@@ -50,11 +50,16 @@ stdout 'disambiguated.sngl: ok'
 sngl check localstd.sngl
 stdout 'localstd.sngl: ok'
 
-# An extension against a namespace that is not the imported stdlib is an error,
-# not a skip. Silently ignoring it would drop every override the file declares
-# and still produce a successful build with unstyled output.
+# An extension against a namespace that is not an imported library package is
+# an error, not a skip. Silently ignoring it would drop every override the file
+# declares and still produce a successful build with unstyled output.
 ! sngl check badext.sngl
-stderr 'extension namespace "notstd" is not the standard library'
+stderr 'extension namespace "notstd" is not an imported library package'
+
+# Any library package can be extended, not just std: a platform needs to style
+# draw.canvas as much as std.vbox.
+sngl check extdraw.sngl
+stdout 'extdraw.sngl: ok'
 
 # Only sngl://std exists so far.
 ! sngl check stdunknown.sngl
@@ -191,4 +196,13 @@ import "sngl://widgets"
 
 component main {
     text(value="x")
+}
+-- extdraw.sngl --
+import s "sngl://std"
+import d "sngl://draw"
+
+component d.canvas {
+    platform html {
+        s.text(value="styled")
+    }
 }

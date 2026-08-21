@@ -93,14 +93,18 @@ Three packages exist, and the split is the whole point of the tier system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. Split out of `std` because `canvas`, `rect`, `line` and `path` are names an application wants for itself, and because a package that ships a mark alongside the declarations it applies to is the pattern for a macro-carrying library.
+- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
 
 A library package documents itself with a **package comment**: a run of line
 comments at the top of a file, separated from what follows by a blank line
-(without the blank line it documents the declaration below it instead).
-`sngl doc` renders it as the package description, so adding a `lib/` directory
-with a package comment needs no code change. When several files in a package
-carry one, the first wins — put it in the alphabetically first file.
+(without the blank line it documents the declaration below it instead). The
+text is markdown, and `sngl doc` renders it as the package description — so
+adding a `lib/` directory with a package comment needs no code change.
+
+Go's semantics apply when several files carry one: they are concatenated,
+blank-line separated, in load order. That order is not guaranteed, so prose
+that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
+by convention, as `lib/std/doc.sngl` does.
 
 Packages import each other — `lib/draw` is written against `lib/std` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 

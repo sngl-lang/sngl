@@ -1,15 +1,3 @@
-// The standard library: the components an application is built from, the
-// event payloads they emit, and the supporting types -- `Style`, the style
-// enums, `Alert`, `File`, `Test`, `error`, and the `i18n` and `html`
-// namespaces.
-//
-// Nothing here is in scope until it is imported. `import . "sngl://std"`
-// writes its declarations unqualified; `import <alias> "sngl://std"` qualifies
-// them, and is also how a platform overrides a component (`component
-// <alias>.vbox`).
-
-// --- Core ---
-
 // Vertical box layout container. Children are stacked top to bottom and
 // laid out along the cross axis via `style.alignItems`. Enable `scroll`
 // to make overflow scrollable; set `refreshing` alongside `@refresh`

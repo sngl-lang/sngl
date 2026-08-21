@@ -47,6 +47,8 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	}
 
 	src := `
+import . "sngl://std"
+import . "sngl://draw"
 component main {
     var radius = 60.0
     canvas(width=200px, height=200px) {
@@ -55,7 +57,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

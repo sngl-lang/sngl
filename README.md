@@ -52,18 +52,13 @@ component main {
 
 ## Platforms
 
-| Target   | Language   | Platform  | Status |
-|----------|------------|-----------|--------|
-| Web      | JavaScript | html      | Stable |
-| Terminal | Go         | bubbletea | Stable |
-| Desktop  | Go         | fyne      | Stable |
+| Target   | Language   | Platform  | Status            |
+|----------|------------|-----------|-------------------|
+| Web      | JavaScript | html      | Stable            |
+| Terminal | Go         | bubbletea | Stable            |
+| Desktop  | Go         | fyne      | Stable            |
 | Desktop  | Go         | gtk4      | Needs system GTK4 |
-| Android  | Kotlin     | android   | Stable |
-
-`gtk4` reads widget metadata from the GTK4 introspection data installed on the
-build machine. Without it the platform reports itself unavailable, and
-targeting it explicitly fails with one actionable error; other platforms are
-unaffected.
+| Android  | Kotlin     | android   | Stable            |
 
 ## Install
 

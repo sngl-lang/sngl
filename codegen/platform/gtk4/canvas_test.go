@@ -18,6 +18,8 @@ import (
 func TestCanvas_EmitsCairoDrawAndRedraw(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
+import . "sngl://std"
+import . "sngl://draw"
 component main {
     var radius = 50.0
     canvas(width=400px, height=280px) {
@@ -27,7 +29,7 @@ component main {
     button(text="Grow", @click { radius = radius + 10.0 })
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -118,13 +120,15 @@ component main {
 func TestCanvas_EllipseUsesBezierPath(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
+import . "sngl://std"
+import . "sngl://draw"
 component main {
     canvas(width=200px, height=120px) {
         ellipse(cx=100.0, cy=60.0, rx=60.0, ry=35.0, style=CanvasStyle{fill=color{r=52, g=211, b=153, a=255}, stroke=color{r=5, g=150, b=105, a=255}, strokeWidth=2.0}) {}
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

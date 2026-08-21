@@ -232,7 +232,7 @@ component main { w.Counter(count = 1) }
 	if refs[0].Kind != lookup.PackageCurrent {
 		t.Errorf("first entry should be current, got %+v", refs[0])
 	}
-	if refs[1].Kind != lookup.PackageStdlib || refs[1].Path != "sngl" {
+	if refs[1].Kind != lookup.PackageLibrary || refs[1].Path != "sngl" {
 		t.Errorf("second entry should be stdlib, got %+v", refs[1])
 	}
 	var widgets *lookup.PackageRef

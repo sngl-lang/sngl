@@ -17,6 +17,7 @@ import (
 
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
 component main {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
@@ -25,7 +26,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

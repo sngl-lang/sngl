@@ -23,7 +23,7 @@ import (
 // exercises the platform body at all.
 func compileBubbletea(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -53,7 +53,8 @@ func compileBubbletea(t *testing.T, src string) string {
 //
 // called as text(value="HELLO") must render the caller's argument, not "".
 func TestNewFormTextBindsValue(t *testing.T) {
-	src := `output { go { bubbletea } }
+	src := `import . "sngl://std"
+output { go { bubbletea } }
 component main {
     text(value="HELLO")
 }`

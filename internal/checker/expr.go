@@ -1957,7 +1957,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	// Type-check the lambda body in a child scope.
 	c.pushScope()
 	for _, p := range fn.Params {
-		c.scope.Replace(p)
+		c.declare(x.Pos, p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -2246,7 +2246,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				// Inline event handler — check body.
 				c.pushScope()
 				for _, p := range arg.Params.Params {
-					c.scope.Replace(&ir.Param{
+					c.declare(p.Pos, &ir.Param{
 						Name: p.Name,
 						Type: c.resolveType(p.Type),
 					})
@@ -2963,7 +2963,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	fn := &ir.Func{Params: params}
 	c.pushScope()
 	for _, p := range params {
-		c.scope.Replace(p)
+		c.declare(eh.Pos, p)
 	}
 	fn.Block = c.checkBlockIR(&eh.Body)
 	c.popScope()
@@ -3434,7 +3434,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// Check the handler body in a scoped context.
 			c.pushScope()
 			for _, p := range params {
-				c.scope.Replace(p)
+				c.declare(arg.Pos, p)
 			}
 			fn.Block = c.checkBlockIR(&arg.Body)
 			c.popScope()
@@ -3591,7 +3591,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 						typ = et
 					}
 				}
-				c.scope.Replace(&ir.Param{Name: p.Name, Type: typ})
+				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()

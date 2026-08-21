@@ -11,6 +11,7 @@ import (
 
 func TestKotlinLowerTestFile_agentModeEmitsRegisterAll(t *testing.T) {
 	src := `
+import . "sngl://std"
 component box {
     var count = 0
     text(value="x")
@@ -20,7 +21,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -60,6 +61,7 @@ func testFoo(t Test, c box) {
 
 func TestKotlinLowerTestFile_nativeModeEmitsJUnitClass(t *testing.T) {
 	src := `
+import . "sngl://std"
 component box {
     var count = 0
     text(value="x")
@@ -69,7 +71,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -107,6 +109,7 @@ func testFoo(t Test, c box) {
 
 func TestKotlinLowerTestFile_nativeDeviceUsesAndroidJUnit4(t *testing.T) {
 	src := `
+import . "sngl://std"
 component box {
     var count = 0
     text(value="x")
@@ -116,7 +119,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

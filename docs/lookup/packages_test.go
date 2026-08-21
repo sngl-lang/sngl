@@ -42,8 +42,8 @@ func TestStdlibPackages(t *testing.T) {
 	if len(pkgs) == 0 {
 		t.Fatal("StdlibPackages returned empty list")
 	}
-	if pkgs[0].Path != "sngl" || pkgs[0].Kind != "stdlib" {
-		t.Errorf("first entry: got %+v, want sngl/stdlib", pkgs[0])
+	if pkgs[0].Path != "sngl" || pkgs[0].Kind != "library" {
+		t.Errorf("first entry: got %+v, want sngl/library", pkgs[0])
 	}
 	var seenAndroid bool
 	for _, p := range pkgs {

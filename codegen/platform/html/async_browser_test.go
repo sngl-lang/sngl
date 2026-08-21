@@ -75,7 +75,7 @@ func (r *asyncBrowserResolver) ResolveSchemeFS(_, _, _ string) ([]*ast.Document,
 func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 	t.Helper()
 
-	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("app.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -149,6 +149,7 @@ func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
 	// via domWriteFor → textContent.  If the button comes first the fall-through
 	// path produces __n0.value (a custom expando) instead of __n0.textContent.
 	const snglSrc = `
+import . "sngl://std"
 import api "js://./api"
 
 component main {

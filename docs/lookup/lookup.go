@@ -160,7 +160,7 @@ type PackageKind int
 
 const (
 	PackageCurrent PackageKind = iota + 1 // cwd's own package
-	PackageStdlib                         // built-in "sngl"
+	PackageLibrary                        // the embedded SNGL library, addressed as "sngl"
 	PackageLocal                          // ./subdir, ../other
 	PackageScheme                         // go://…, file://…, etc.
 )
@@ -255,7 +255,7 @@ func IndexIn(cwd string) []PackageRef {
 func indexInUncached(cwd string) []PackageRef {
 	refs := []PackageRef{
 		{Title: filepath.Base(mustAbs(cwd)), Path: ".", Kind: PackageCurrent},
-		{Title: "sngl", Path: "sngl", Kind: PackageStdlib},
+		{Title: "sngl", Path: "sngl", Kind: PackageLibrary},
 	}
 	doc, err := parseDir(cwd)
 	if err != nil {
@@ -310,10 +310,13 @@ type target struct {
 func resolveTarget(cwd, path string) (*target, error) {
 	scheme, uri := checker.ParseScheme(path)
 
-	// Bare `sngl` is everything a file can see without naming a package: the
-	// implicitly dot-imported built-ins plus the standard library. The
-	// per-package paths address one tier each.
-	if path == "sngl" || (scheme == "internal" && uri == "stdlib") {
+	// Bare `sngl` is every library package merged into one listing. The
+	// per-package paths address one of them each.
+	//
+	// internal://stdlib is deliberately not an alias for this: despite the
+	// name it is the compiler's intrinsics package, which has nothing to do
+	// with sngl://std.
+	if path == "sngl" {
 		pd, stmts := stdlibPackageDocs(lib.Packages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
@@ -793,8 +796,14 @@ func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	}
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)
-		if merged.Doc == "" {
-			merged.Doc = pd.Doc
+		if pd.Doc != "" {
+			// go doc semantics: every file's package comment counts, joined in
+			// load order. That order is not guaranteed, so a package wanting
+			// prose in a fixed sequence should keep it in one file.
+			if merged.Doc != "" {
+				merged.Doc += "\n\n"
+			}
+			merged.Doc += pd.Doc
 		}
 		merged.Components = append(merged.Components, pd.Components...)
 		merged.Structs = append(merged.Structs, pd.Structs...)

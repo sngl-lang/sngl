@@ -20,13 +20,14 @@ import (
 // survive optimize+lower carrying Func.Intrinsic == "HtmlFrontend".
 func TestHtmlDirectiveSurvivesWithPlatformActive(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { js { html } }
 component main {
     var n = 0
     text(value="x {html.frontend(n)}")
     html.div { text(value="raw element still works") }
 }`
-	doc, err := parser.Parse("main.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

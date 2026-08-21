@@ -15,6 +15,7 @@ import (
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
+import . "sngl://std"
 component main {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
@@ -23,7 +24,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -95,6 +96,7 @@ component main {
 func TestIntegration_StdlibComponentsWrapWithoutCgo(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
+import . "sngl://std"
 component main {
     var name string = ""
     var on bool = false
@@ -114,7 +116,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

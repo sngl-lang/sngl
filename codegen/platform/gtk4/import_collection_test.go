@@ -20,6 +20,7 @@ import (
 func TestIntegration_ComputedBodyImportCollected(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
+import . "sngl://std"
 component main {
     var n = 3
     func double() => n * 2
@@ -30,7 +31,7 @@ component main {
     text(value=summary)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

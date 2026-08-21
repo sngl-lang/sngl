@@ -29,34 +29,53 @@ type componentDOMCase struct {
 }
 
 var componentDOMCases = []componentDOMCase{
-	{"text", `component main { text(value="HELLO") }`, []string{"<span", "HELLO"}},
-	{"vbox", `component main { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
+	{"text", `import . "sngl://std"
+component main { text(value="HELLO") }`, []string{"<span", "HELLO"}},
+	{"vbox", `import . "sngl://std"
+component main { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
 	// Caller `style` on a stdlib wrapper must merge onto the wrapper's root
 	// element alongside its structural style (forwardStyle in lower), and a
 	// `#hex` color literal must render as a CSS color (colorStructToCSS).
-	{"vbox-style", `component main { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+	{"vbox-style", `import . "sngl://std"
+component main { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
 		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
-	{"text-color", `component main { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
-	{"hbox", `component main { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
-	{"button", `component main { button(text="CLICK") }`, []string{"<button", "CLICK"}},
-	{"input", `component main { var n = "Bob" input(:value=n) }`, []string{"<input"}},
-	{"checkbox", `component main { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
-	{"image", `component main { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
-	{"link", `component main { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
-	{"select", `component main { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
+	{"text-color", `import . "sngl://std"
+component main { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
+	{"hbox", `import . "sngl://std"
+component main { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
+	{"button", `import . "sngl://std"
+component main { button(text="CLICK") }`, []string{"<button", "CLICK"}},
+	{"input", `import . "sngl://std"
+component main { var n = "Bob" input(:value=n) }`, []string{"<input"}},
+	{"checkbox", `import . "sngl://std"
+component main { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
+	{"image", `import . "sngl://std"
+component main { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+	{"link", `import . "sngl://std"
+component main { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
+	{"select", `import . "sngl://std"
+component main { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
 		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
-	{"radio", `component main { var r = "y" radio(options=["x","y"], :value=r) }`,
+	{"radio", `import . "sngl://std"
+component main { var r = "y" radio(options=["x","y"], :value=r) }`,
 		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
-	{"textarea", `component main { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
-	{"tabs", `component main { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
+	{"textarea", `import . "sngl://std"
+component main { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
+	{"tabs", `import . "sngl://std"
+component main { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
-	{"table", `component main { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
+	{"table", `import . "sngl://std"
+component main { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
 		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
-	{"tree", `component main { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
-	{"modal", `component main { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
+	{"tree", `import . "sngl://std"
+component main { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
+	{"modal", `import . "sngl://std"
+component main { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
 		[]string{"Dialog", "body"}},
-	{"divider", `component main { divider() }`, []string{"<hr"}},
-	{"badge", `component main { badge(value="3") }`, []string{"3"}},
+	{"divider", `import . "sngl://std"
+component main { divider() }`, []string{"<hr"}},
+	{"badge", `import . "sngl://std"
+component main { badge(value="3") }`, []string{"3"}},
 }
 
 func TestComponentDOM(t *testing.T) {
@@ -82,7 +101,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 
 	fsys := fstest.MapFS{}
 
-	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(fullSrc)))
+	doc, err := parser.Parse("app.sngl", []byte(fullSrc))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

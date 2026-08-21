@@ -14,7 +14,7 @@ import (
 // CompileTestIR (test mode), returning the generated MainScreen.kt source.
 func compileSrc(t *testing.T, src string, testMode bool) string {
 	t.Helper()
-	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("app.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -45,7 +45,8 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 // placeholder carries no value), producing a syntax error; a `null` default
 // rendered empty. Regression for the struct-default fix.
 func TestStructFieldDefaults(t *testing.T) {
-	src := `struct User {
+	src := `import . "sngl://std"
+struct User {
     name string = ""
     age int = 0
     admin bool = false
@@ -82,7 +83,8 @@ component main {
 // typed mutableStateOf so Kotlin can infer the type. Regression for the
 // null-state fix.
 func TestNullStateTyped(t *testing.T) {
-	src := `struct User { name string = "" }
+	src := `import . "sngl://std"
+struct User { name string = "" }
 component main {
     var nickname option<string> = null
     var picked option<User> = null
@@ -101,7 +103,8 @@ component main {
 // constructor with 0..255 channels, never android.graphics.Color.parseColor of
 // a Color struct. Regression for the color-conversion fix.
 func TestColorToComposeColor(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     vbox {
         text(value="hi", style={color="#216"})
     }
@@ -118,7 +121,8 @@ func TestColorToComposeColor(t *testing.T) {
 // TestAlertToast guards that Alert.toast maps to Android Toast, not a bogus
 // String.toast extension. Regression for the toast fix.
 func TestAlertToast(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     vbox { button(text="go", @click { Alert.toast("done", "success") }) }
 }`
 	out := compileSrc(t, src, false)
@@ -136,7 +140,8 @@ func TestAlertToast(t *testing.T) {
 // exprs reference siblings bare (not via the out-of-scope `state` param); and
 // timer active-var references route through state.
 func TestTestModeStateHoisting(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     var count = 0
     var nick option<string> = null
     func doubled() => count * 2
@@ -163,7 +168,8 @@ func TestTestModeStateHoisting(t *testing.T) {
 // datepicker components render real Compose widgets (not the old TODO stubs /
 // bare Text). select must write its two-way :value on selection.
 func TestSelectRadioDatepickerWidgets(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     var fruit = ""
     var size = "medium"
     var dob date = date("2000-01-01")

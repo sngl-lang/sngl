@@ -65,7 +65,8 @@ func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool 
 }
 
 func TestChildrenLiveAcrossMutations(t *testing.T) {
-	src := `component counter {
+	src := `import . "sngl://std"
+component counter {
 	var n = 0
 	button #b(text="+", @click { n += 1 })
 	text #o(value=string(n))
@@ -83,7 +84,7 @@ func testIsolation(t Test, c main) {
 	t.assert(r.o.value == "0")
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

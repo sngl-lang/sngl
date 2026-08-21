@@ -38,6 +38,17 @@ stdout 'shadows_dot.sngl: ok'
 sngl check shadows_builtin.sngl
 stdout 'shadows_builtin.sngl: ok'
 
+# All three built-in resolution paths, because they are three different paths:
+# a struct built-in resolves through scope, a scalar is matched in the registry
+# before scope is consulted, and a generic is constructed from its mark. If any
+# of them ignored the lift, adding a built-in would break every package that
+# already exported that name.
+sngl check shadows_builtin_scalar.sngl
+stdout 'shadows_builtin_scalar.sngl: ok'
+
+sngl check shadows_builtin_generic.sngl
+stdout 'shadows_builtin_generic.sngl: ok'
+
 
 # The one-name rule reaches free functions, consts and vars, not just types and
 # components. These live in the package's root symbol table rather than its
@@ -199,6 +210,32 @@ func f() => color{tag="x"}.tag
 
 component main {
     text(value=f())
+}
+-- shadowers/lib.sngl --
+import . "sngl://std"
+
+struct int {
+    n string = ""
+}
+
+enum option { first, second }
+-- shadows_builtin_scalar.sngl --
+import . "sngl://std"
+import . "shadowers"
+
+func f() => int{n = "mine"}.n
+
+component main {
+    text(value=f())
+}
+-- shadows_builtin_generic.sngl --
+import . "sngl://std"
+import . "shadowers"
+
+var picked option = first
+
+component main {
+    text(value="x")
 }
 -- pa/lib.sngl --
 import . "sngl://std"

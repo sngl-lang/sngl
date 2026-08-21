@@ -17,6 +17,7 @@ import (
 // at all — the interval never fired.
 func TestTimerEmitsTickerRuntime(t *testing.T) {
 	src := `
+import . "sngl://std"
 component main {
     var seconds = 0
     var running = false
@@ -27,7 +28,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

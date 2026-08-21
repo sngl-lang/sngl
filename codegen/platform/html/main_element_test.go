@@ -23,6 +23,7 @@ import (
 // the sidebar but lost every page body, which lived inside <main>.
 func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     window(title="Home", href="/index.html") {
@@ -49,7 +50,7 @@ component main {
 // the generated index page.
 func generateMainPage(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

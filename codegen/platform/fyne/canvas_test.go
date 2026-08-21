@@ -24,6 +24,8 @@ import (
 // Refreshes on a state-mutating handler.
 func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 	src := `
+import . "sngl://std"
+import . "sngl://draw"
 output { none { html } }
 component main {
     var radius = 50.0
@@ -34,7 +36,7 @@ component main {
     button(text="Grow", @click { radius = radius + 10.0 })
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -136,6 +138,8 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	}
 
 	src := `
+import . "sngl://std"
+import . "sngl://draw"
 output { none { html } }
 component main {
     var radius = 60.0
@@ -145,7 +149,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
+	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
