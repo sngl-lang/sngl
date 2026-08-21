@@ -153,13 +153,25 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 					checkFS = mapFS
 				}
 
+				// A wrapped fragment's imports have to end up at file scope.
+				// A doc snippet shows its imports at the top of the block, and
+				// wrapping that in `component main { ... }` would bury them
+				// inside the component, where they bind nothing.
+				body := block.Source
+				if block.Annotation == "component" || block.Annotation == "expression" {
+					var hoisted string
+					hoisted, body = hoistImports(body)
+					src += hoisted
+				}
+				src = libImports(src) + src
+
 				switch block.Annotation {
 				case "component":
-					src += "component main {\n" + block.Source + "\n}"
+					src += "component main {\n" + body + "\n}"
 				case "expression":
-					src += "component main {\n  computed _x = " + strings.TrimSpace(block.Source) + "\n}"
+					src += "component main {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
 				default:
-					src += block.Source
+					src += body
 				}
 
 				for _, r := range replacements {
@@ -280,4 +292,36 @@ func (e *docEditor) flush(t testing.TB) {
 		}
 		os.WriteFile(path, []byte(out.String()), 0o644)
 	}
+}
+
+// libImports returns the library imports a doc snippet needs but did not
+// write, so a fragment about `list<T>` need not open with boilerplate. Both
+// packages are dot-imported: a snippet writes `text(...)` and `circle(...)`
+// unqualified. Nothing is added when the snippet imports for itself, so a
+// snippet demonstrating the alias form keeps its own spelling.
+func libImports(src string) string {
+	if strings.Contains(src, "sngl://") {
+		return ""
+	}
+	return "import . \"sngl://std\"\nimport . \"sngl://draw\"\n"
+}
+
+// hoistImports splits the leading run of import declarations off a block body.
+// Returns the imports and the remaining body.
+func hoistImports(body string) (imports, rest string) {
+	lines := strings.Split(body, "\n")
+	cut := 0
+	for i, ln := range lines {
+		t := strings.TrimSpace(ln)
+		if t == "" || strings.HasPrefix(t, "//") {
+			continue
+		}
+		if !strings.HasPrefix(t, "import ") {
+			cut = i
+			break
+		}
+		imports += t + "\n"
+		cut = i + 1
+	}
+	return imports, strings.Join(lines[cut:], "\n")
 }

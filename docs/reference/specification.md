@@ -110,11 +110,13 @@ so it must be syntactically well-formed — and is then dropped from the program
 It is the way to comment out a statement, a declaration, or a visual node
 (including its nested body) without deleting the text:
 
+<!-- SNGL-component -->
+
 ```sngl
 vbox {
-    text(value = "shown")
-    /- text(value = "hidden")
-    /- button(label = "also gone") { onClick { … } }
+    text(value="shown")
+    /- text(value="hidden")
+    /- button(text="also gone", @click {})
 }
 ```
 

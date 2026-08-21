@@ -110,12 +110,11 @@ var scores = [100, 95, 87]
 `option<T>` wraps a value of type `T` that may be null. `null` is the default value for option types and is **only** valid for option types (not bare structs or primitives):
 
 <!-- SNGL-component
-struct Todo { text string = "" done bool = false }
+struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
 import . "sngl://std"
-
 var name option<string>
 var count option<int> = 5
 var todo option<Todo> = null
@@ -137,14 +136,13 @@ struct Todo {
 ```
 
 <!-- SNGL-component
-struct Todo { text string = "" done bool = false }
+struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
 import . "sngl://std"
-
 var todo Todo
-var todo2 = Todo{text="Buy eggs", done=false}
+var todo2 = Todo{text = "Buy eggs", done = false}
 ```
 
 Accessing and mutating fields uses dot notation: `todo.text`, `todo.done = true`.
@@ -165,10 +163,10 @@ Inline enums skip the top-level declaration when you need a one-off constraint:
 
 ```sngl
 import . "sngl://std"
-var mode enum { light, dark } = "light"
+var mode enum { light, dark } = light
 ```
 
-At runtime, enum values are strings. The compiler validates assignments against declared variants.
+A member is written bare where the expected type makes it unambiguous, and qualified as `Status.active` otherwise. A string is not an enum value: `= "light"` is a type error.
 
 ### Unit types
 
@@ -188,22 +186,21 @@ Same-base additions normalize automatically (`1s + 500ms` becomes `1500ms`). Dif
 Types are inferred from initializers. Explicit types are needed when the initializer is ambiguous or absent:
 
 <!-- SNGL-component
-struct Todo { text string = "" done bool = false }
+struct Todo { text string = ""; done bool = false }
 enum Status { active, inactive, pending }
 -->
 
 ```sngl
 import . "sngl://std"
-
 var count = 0
 var name = "World"
 var bg = #ff0000
-var timeout duration = "5s"
+var timeout = 5s
 var todos list<Todo> = []
-var status Status = "active"
+var status Status = active
 ```
 
-The rule: if the right side is an empty list, a zero-value struct, an enum string, or a unit literal (which could match multiple unit types), annotate the type. Otherwise, let inference do its job.
+The rule: if the right side is an empty list, a zero-value struct, or a bare enum member, annotate the type so the member resolves. Otherwise, let inference do its job.
 
 ### Function types
 
@@ -355,10 +352,13 @@ Zero-arg functions are auto-invoked when referenced without `()`: `text(value=la
 
 Data events let you react to variable changes with inline statement blocks:
 
-<!-- SNGL-component -->
+<!-- SNGL-component
+struct Todo { text string = ""; done bool = false }
+func saveTodos(items list<Todo>) {}
+func loadCount() {}
+-->
 
 ```sngl
-import . "sngl://std"
 var todos list<Todo> @change {
     saveTodos(todos)
 }
@@ -432,10 +432,12 @@ func string.shout(s string) => "{s}!"
 
 Call with either syntax:
 
-<!-- SNGL-component -->
+<!-- SNGL-component
+func int.double(x int) => x * 2
+func string.shout(s string) => "{s}!"
+-->
 
 ```sngl
-import . "sngl://std"
 func _a() => int.double(5)
 func _b() => 5.double()
 func _c() => "hello".shout()
@@ -447,52 +449,47 @@ Type methods work on primitives (`int`, `float`, `string`, `bool`, `color`, `lis
 
 Type parameters go after the function name inside angle brackets. All stdlib list functions use generics:
 
-<!-- SNGL-top
--- ... --
-return l
--- ... --
-return l
--- ... --
-return -1
--->
+Generic collection functions are declared as methods on the receiver, so the
+element type binds from the value they are called on:
+
+<!-- SNGL-nocheck -->
 
 ```sngl
-import . "sngl://std"
-
-func list.push<T>(l list<T>, item T) list<T> { ... }
-func list.reverse<T>(l list<T>) list<T> { ... }
-func list.indexOf<T>(l list<T>, item T) { ... }
+func list<T>.push(item T)
+func list<T>.reverse() list<T>
+func list<T>.indexOf(item T) int
+func list<T>.filter(pred func(T) bool) list<T>
+func list<T>.map<U>(fn func(T) U) list<U>
 ```
 
-Type parameters are inferred at call sites -- you never write `<T>` explicitly when calling a generic function:
+Type parameters are inferred at call sites -- you never write `<T>` explicitly
+when calling a generic method. A method-level parameter such as `map`'s `<U>`
+is inferred from the lambda's return type:
 
 <!-- SNGL-component
-struct Todo { text string = "" done bool = false }
+struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-import . "sngl://std"
-
-var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
-func active() => list.filter(todos, (t) => !t.done)
-func labels() => list.map(todos, (t) => t.text)
+var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
+func active() => todos.filter(func(t Todo) => !t.done)
+func labels() => todos.map(func(t Todo) => t.text)
 ```
 
 ### Lambdas
 
-Inline functions for filtering and mapping:
+Inline functions for filtering and mapping. A lambda is written `func(x T) =>
+expr`; the parameter type is explicit:
 
-<!-- SNGL-component -->
+<!-- SNGL-component
+struct Todo { text string = ""; done bool = false }
+-->
 
 ```sngl
-import . "sngl://std"
-
-var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
-func active() => list.filter(todos, (t) => !t.done)
-func labels() => list.map(todos, (t) => t.text)
+var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
+func active() => todos.filter(func(t Todo) => !t.done)
+func labels() => todos.map(func(t Todo) => t.text)
 ```
-
-Lambda parameter types are inferred from context.
 
 ### Gotchas
 
@@ -527,7 +524,7 @@ Params are the component's public API. They are declared in parentheses after th
 ```sngl
 import . "sngl://std"
 
-component MyWidget(label = "default", count int, size enum { small, medium, large } = "medium") {
+component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) {
     text(value=label)
 }
 ```
@@ -587,7 +584,10 @@ vbox { text(value="Hi") }
 
 Params are typed values defined by the component's declaration. The compiler validates param names and types:
 
-<!-- SNGL-component -->
+<!-- SNGL-component
+var count = 0
+var name = ""
+-->
 
 ```sngl
 button(text="Submit", disabled=count <= 0)
@@ -602,18 +602,19 @@ Events use the `@` prefix and contain mutation statements:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
 var count = 0
+var name = ""
 button(text="+", @click { count += 1 })
-input(value=name, @input { name = event.value })
+input(value=name, @input(e) { name = e.value })
 ```
 
 Multi-statement events separate with semicolons:
 
-<!-- SNGL-component -->
+<!-- SNGL-component
+struct Todo { text string = ""; done bool = false }
+-->
 
 ```sngl
-import . "sngl://std"
 var (
     newTodo = ""
     todos list<Todo> = []
@@ -624,7 +625,7 @@ button(text="Add", @click {
 })
 ```
 
-Available events depend on the component (check the stdlib definition). Use `event.value` to access the event payload in input handlers.
+Available events depend on the component (check the stdlib definition). A handler names its payload parameter to read it: `@input(e) { ... e.value }`. There is no ambient `event` identifier.
 
 ### Bidirectional Bindings
 
@@ -632,18 +633,18 @@ Input components like `input` and `checkbox` support **bidirectional bindings** 
 
 Instead of manually wiring an event:
 
-```sngl
-import . "sngl://std"
+<!-- SNGL-component -->
 
+```sngl
 var name = ""
-input(value=name, @input { name = event.value })
+input(value=name, @input(e) { name = e.value })
 ```
 
 Use a bidirectional binding:
 
-```sngl
-import . "sngl://std"
+<!-- SNGL-component -->
 
+```sngl
 var name = ""
 input(:value=name)
 ```
@@ -803,14 +804,21 @@ button(text="go", @click {
 
 ### Emit
 
-Fire a component event to notify the parent:
-
-<!-- SNGL-component -->
+Fire a component event to notify the parent. The event is declared on the
+component with `@name`, and firing it is an ordinary call on that name:
 
 ```sngl
 import . "sngl://std"
-var data = "saved"
-button(text="Save", @click { save(data) })
+
+component SaveButton(label = "Save", @save) {
+    button(text=label, @click { save() })
+}
+
+component main {
+    var status = ""
+    SaveButton(@save { status = "saved" })
+    text(value=status)
+}
 ```
 
 ### Gotchas
@@ -863,28 +871,19 @@ button(text="go", style={margin = 4, background = #ff0000, padding = 8})
 
 ### Named styles
 
-Declare reusable styles at the top level and apply them with `class`:
+There is no `style` declaration and no `class` prop. A reusable style is a
+`Style` constant, applied through the same `style=` prop as an inline one:
 
 ```sngl
 import . "sngl://std"
 
-style
-primary {
-    color = #0000ff
-    fontWeight = "bold"
-    fontSize = 16
-}
-
-style
-secondary {
-    color = #777777
-    fontStyle = "italic"
-}
+const primary Style = Style{color = #0000ff, fontWeight = "bold", fontSize = 16}
+const secondary Style = Style{color = #777777, fontStyle = "italic"}
 
 component main {
     vbox {
-        text(value="hello", class="primary")
-        text(value="world", class="secondary")
+        text(value="hello", style=primary)
+        text(value="world", style=secondary)
     }
 }
 ```
@@ -1020,13 +1019,13 @@ component main {
     )
     vbox(style={padding = 16, gap = 8}) {
         hbox(style={gap = 8}) {
-            input(value=newTodo, placeholder="New todo", @input { newTodo = event.value })
+            input(value=newTodo, placeholder="New todo", @input(e) { newTodo = e.value })
             button(text="Add", disabled=newTodo == "", @click {
                 todos.push(Todo{text = newTodo, done = false})
                 newTodo = ""
             })
         }
-        for todo, idx = todos {
+        for idx, todo = todos {
             hbox(key=idx, style={gap = 8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
@@ -1046,7 +1045,7 @@ component main {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
     vbox(style={padding = 16, gap = 8}) {
-        input(value=email, placeholder="Email", type="email", @input { email = event.value })
+        input(value=email, placeholder="Email", type="email", @input(e) { email = e.value })
         if !valid {
             text(value="Enter a valid email", style={color = #CC0000, fontSize = 12})
         }
@@ -1107,13 +1106,12 @@ struct Todo {
 }
 
 component main {
-    var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
-    func active() => list.filter(todos, (t) => !t.done)
-    func activeCount() => list.length(active)
-
-    vbox(style={padding=16, gap=8}) {
+    var todos = [Todo{text = "Write docs", done = true}, Todo{text = "Fix bug", done = false}]
+    func active() => todos.filter(func(t Todo) => !t.done)
+    func activeCount() => active().length()
+    vbox(style={padding = 16, gap = 8}) {
         text(value="{activeCount} remaining")
-        for todo, idx = todos {
+        for idx, todo = todos {
             checkbox(key=idx, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }

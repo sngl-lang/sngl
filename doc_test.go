@@ -9,6 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 
@@ -26,24 +27,42 @@ func hasErrorDiags(diags []ir.Diagnostic) bool {
 	return false
 }
 
-// TestDocSNGLBlocks finds all ```sngl code blocks in markdown files and
-// verifies they parse correctly and the formatted output re-parses.
-// Doc-rot parse failures are logged (not errored) since snippets lag the
-// grammar and type-checking is not enforced here either.
+// TestDocSNGLBlocks type-checks every ```sngl block in the docs, and checks
+// that the formatted output re-parses.
+//
+// These used to log rot rather than fail, which meant a snippet could stop
+// compiling and nothing said so — the docs accumulated an ambient `event`
+// identifier, string-valued enums, a lambda form and a `style` declaration
+// that the language does not have. A block that cannot be checked as written
+// carries an annotation saying so: SNGL-component and SNGL-expression wrap a
+// fragment, an annotation may carry a prelude of supporting declarations, and
+// SNGL-nocheck opts out entirely (for signatures and other non-programs).
 func TestDocSNGLBlocks(t *testing.T) {
+	langs, plats := testtargets.Targets()
 	for s := range testutil.DocSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
 			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {
-				t.Logf("parse error at %s (doc rot):\n%s\n---\n%v", s.Name, s.Source, err)
-				return
+				t.Fatalf("parse error:\n%s\n---\n%v", s.Source, err)
+			}
+
+			_, diags := checker.Check(doc, &checker.Config{
+				IsMain: true, FS: s.FS, Dir: s.Dir,
+				Languages: langs, Platforms: plats,
+			})
+			for _, d := range diags {
+				if d.Severity == ir.Error {
+					t.Errorf("%s: %s", d.Pos, d.Msg)
+				}
+			}
+			if t.Failed() {
+				t.Logf("source:\n%s", s.Source)
 			}
 
 			// Round-trip format check
 			formatted := parser.Format(doc)
-			_, err = parser.Parse(s.Filename+".fmt", []byte(withStdSrc(formatted)))
-			if err != nil {
-				t.Logf("formatted output doesn't re-parse at %s (doc rot):\n%s\n---\n%v", s.Name, formatted, err)
+			if _, err := parser.Parse(s.Filename+".fmt", []byte(withStdSrc(formatted))); err != nil {
+				t.Errorf("formatted output doesn't re-parse:\n%s\n---\n%v", formatted, err)
 			}
 		})
 	}
