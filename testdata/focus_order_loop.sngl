@@ -1,0 +1,17 @@
+// A for-loop of focusable nodes occupies one focus slot: tab moves a cursor
+// within the loop before advancing past it. Exercises the loop-slot branch of
+// the FocusOrder lowering pass, which the static-slot fixtures do not reach.
+
+import . "sngl://std"
+
+const labels list<string> = ["one", "two", "three"]
+
+component focusLoop {
+    vbox {
+        button(text="before", focusable=true)
+        for l = labels {
+            button(text=l, focusable=true)
+        }
+        button(text="after", focusable=true)
+    }
+}

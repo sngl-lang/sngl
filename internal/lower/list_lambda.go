@@ -356,6 +356,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	itemName := st.freshItem()
 
 	// var __list<N> list<T> = []
+	tempSym := &ir.Var{Name: tempName, Type: outListT, Synthesized: true}
 	declStmt := &ir.LocalVar{
 		Name: tempName,
 		Type: outListT,
@@ -363,7 +364,8 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	}
 
 	// Ident{__item<N>} typed as elemT for use in lambda call + push.
-	itemIdent := &ir.Ident{Name: itemName, Type: elemT}
+	itemSym := &ir.LoopVar{Name: itemName, Type: elemT}
+	itemIdent := &ir.Ident{Name: itemName, Type: elemT, Sym: itemSym, Synthesized: true}
 
 	// Call to the user's lambda: (f)(item<N>)
 	lambdaCall := &ir.Call{
@@ -377,7 +379,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	// statement, so we let that form do the work rather than wrapping
 	// the call in an Assign (which would double-emit the `=`).
 	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "ListPush"}
-	tempIdent := &ir.Ident{Name: tempName, Type: outListT}
+	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 
 	pushStmt := func(pushed ir.Expr) ir.Stmt {
 		return &ir.CallStmt{

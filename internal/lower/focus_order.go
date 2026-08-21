@@ -312,12 +312,15 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 			}
 
 			// var __focusLen int = ListLength(iter)
+			lenSym := &ir.Var{Name: "__focusLen", Type: ir.TypInt, Synthesized: true}
 			lenVar := &ir.LocalVar{
 				Name: "__focusLen",
 				Type: ir.TypInt,
 				Init: callListLength(ls.forStmt.Iter),
 			}
-			lenIdent := func() *ir.Ident { return &ir.Ident{Name: "__focusLen", Type: ir.TypInt} }
+			lenIdent := func() *ir.Ident {
+				return &ir.Ident{Name: "__focusLen", Type: ir.TypInt, Sym: lenSym, Synthesized: true}
+			}
 
 			var innerCond ir.Expr
 			var innerAdvance ir.Stmt
@@ -441,6 +444,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 		}
 	}
 	// Enter at cursor = ListLength(iter) - 1.
+	lenSym := &ir.Var{Name: "__focusLen", Type: ir.TypInt, Synthesized: true}
 	lenVar := &ir.LocalVar{
 		Name: "__focusLen",
 		Type: ir.TypInt,
@@ -455,7 +459,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 			Value: &ir.Binary{
 				Type:  ir.TypInt,
 				Op:    ast.BinSub,
-				Left:  &ir.Ident{Name: "__focusLen", Type: ir.TypInt},
+				Left:  &ir.Ident{Name: "__focusLen", Type: ir.TypInt, Sym: lenSym, Synthesized: true},
 				Right: intLiteralLit(1),
 			},
 		},

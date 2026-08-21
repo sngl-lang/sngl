@@ -403,6 +403,17 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 	return v
 }
 
+// slotIdent returns a fresh reference to the per-slot `__slotN` Var,
+// creating the Var if this is the first reference.
+func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
+	return &ir.Ident{
+		Name:        slotID,
+		Type:        ir.ListOf(ir.TypDyn),
+		Sym:         st.synthesizeSlotVar(slotID),
+		Synthesized: true,
+	}
+}
+
 // synthesizeRootVar creates the `__root dyn` Var on the current owner
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it.
@@ -1192,9 +1203,10 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 1. Teardown: for __entry = __slotN { lower.RemoveChild(parent, __entry) }
 	entryVar := "__entry"
+	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
 	teardown := &ir.For{
 		Key:  entryVar,
-		Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+		Iter: st.slotIdent(slotID),
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
@@ -1202,7 +1214,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 				Func:     st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
-					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn}},
+					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Sym: entrySym, Synthesized: true}},
 				},
 			}},
 		},
@@ -1210,7 +1222,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 2. Reset: __slotN = []
 	reset := &ir.Assign{
-		Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+		Target: st.slotIdent(slotID),
 		Op:     ast.AssignSet,
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
@@ -1252,14 +1264,14 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	}
 	pushToSlot := func(nodeID string) ir.Stmt {
 		return &ir.Assign{
-			Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+			Target: st.slotIdent(slotID),
 			Op:     ast.AssignSet,
 			Value: &ir.Call{
 				Type:     ir.ListOf(ir.TypDyn),
-				Receiver: &ir.Ident{Name: "stdlib"},
+				Receiver: &ir.Ident{Name: "stdlib", Sym: stdlibNS, Synthesized: true},
 				Func:     listPushFn,
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true}},
+					{Value: st.slotIdent(slotID)},
 					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},
