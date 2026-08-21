@@ -28,7 +28,6 @@ const (
 	TypeComponent // Decl set
 	TypeShape     // virtual; IsShape components satisfy it
 	TypeColor
-	TypeDuration
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
@@ -58,15 +57,14 @@ type Type struct {
 
 // Predefined singleton types for primitives.
 var (
-	TypDyn      = &Type{Kind: TypeDyn}
-	TypBool     = &Type{Kind: TypeBool}
-	TypInt      = &Type{Kind: TypeInt}
-	TypFloat    = &Type{Kind: TypeFloat}
-	TypString   = &Type{Kind: TypeString}
-	TypNull     = &Type{Kind: TypeNull}
-	TypDuration = &Type{Kind: TypeDuration}
-	TypVoid     = &Type{Kind: TypeVoid}
-	TypShape    = &Type{Kind: TypeShape}
+	TypDyn    = &Type{Kind: TypeDyn}
+	TypBool   = &Type{Kind: TypeBool}
+	TypInt    = &Type{Kind: TypeInt}
+	TypFloat  = &Type{Kind: TypeFloat}
+	TypString = &Type{Kind: TypeString}
+	TypNull   = &Type{Kind: TypeNull}
+	TypVoid   = &Type{Kind: TypeVoid}
+	TypShape  = &Type{Kind: TypeShape}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -190,8 +188,6 @@ func (t *Type) String() string {
 		return "shape"
 	case TypeColor:
 		return "color"
-	case TypeDuration:
-		return "duration"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:
@@ -412,11 +408,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 }
 
 func isStringDomain(k TypeKind) bool {
-	switch k {
-	case TypeColor, TypeDuration:
-		return true
-	}
-	return false
+	return k == TypeColor
 }
 
 // builtinOf returns the ast.BuiltinKind of t's backing StructDef, or

@@ -79,7 +79,7 @@ func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
 		case ir.TypeBool, ir.TypeString:
 			return true
 		}
-	case ir.TypeDuration, ir.TypeColor:
+	case ir.TypeColor:
 		// String-domain types accept a string operand (the literal /
 		// expression that holds the canonical form). They also accept
 		// themselves — `date(d)` is identity. The runtime parse/
@@ -98,7 +98,7 @@ func isConvertiblePrimitive(k ir.TypeKind) bool {
 	switch k {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
 		return true
-	case ir.TypeColor, ir.TypeDuration:
+	case ir.TypeColor:
 		return true
 	}
 	return false

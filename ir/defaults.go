@@ -16,8 +16,6 @@ func ZeroExpr(t *Type) Expr {
 	case TypeString,
 		TypeColor:
 		return &Literal{Type: t, Raw: ""}
-	case TypeDuration:
-		return &Literal{Type: t, Raw: "0ns", Suffix: "ns"}
 	case TypeNull:
 		return &Literal{Type: TypNull, Raw: "null"}
 	case TypeOption:

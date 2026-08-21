@@ -24,18 +24,17 @@ func _() {
 	_ = x[TypeComponent-13]
 	_ = x[TypeShape-14]
 	_ = x[TypeColor-15]
-	_ = x[TypeDuration-16]
-	_ = x[TypeNull-17]
-	_ = x[TypeTypeParam-18]
-	_ = x[TypeVoid-19]
-	_ = x[TypeRef-20]
-	_ = x[TypeIter-21]
-	_ = x[TypeNative-22]
+	_ = x[TypeNull-16]
+	_ = x[TypeTypeParam-17]
+	_ = x[TypeVoid-18]
+	_ = x[TypeRef-19]
+	_ = x[TypeIter-20]
+	_ = x[TypeNative-21]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentShapeColorDurationNullTypeParamVoidRefIterNative"
+const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentShapeColorNullTypeParamVoidRefIterNative"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 78, 86, 90, 99, 103, 106, 110, 116}
+var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 73, 78, 82, 91, 95, 98, 102, 108}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

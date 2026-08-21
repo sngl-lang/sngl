@@ -280,7 +280,7 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Raw
 	case ir.TypeNull:
 		return "null"
-	case ir.TypeColor, ir.TypeDuration:
+	case ir.TypeColor:
 		return fmt.Sprintf("%q", n.Raw)
 	case ir.TypeStruct:
 		if ir.StringReprStruct(n.Type) {
@@ -772,7 +772,7 @@ func IRLiteralToKt(e ir.Expr) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "null"
-		case ir.TypeColor, ir.TypeDuration:
+		case ir.TypeColor:
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeStruct:
 			if ir.StringReprStruct(n.Type) {

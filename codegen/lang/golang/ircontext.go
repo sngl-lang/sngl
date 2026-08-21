@@ -1218,8 +1218,6 @@ func IRTypeToGo(t *ir.Type) string {
 		return "float64"
 	case ir.TypeString, ir.TypeColor:
 		return "string"
-	case ir.TypeDuration:
-		return "time.Duration"
 	case ir.TypeList:
 		if len(t.Elems) > 0 {
 			return "[]" + IRTypeToGo(t.Elems[0])

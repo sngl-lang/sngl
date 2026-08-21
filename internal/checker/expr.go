@@ -1854,7 +1854,7 @@ func interpPartPrimitive(t *ir.Type) bool {
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
 		ir.TypeEnum, ir.TypeUnit, ir.TypeNull,
-		ir.TypeColor, ir.TypeDuration:
+		ir.TypeColor:
 		return true
 	}
 	return false

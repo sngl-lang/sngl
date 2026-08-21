@@ -2784,10 +2784,6 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		if !isValidColor(val) {
 			c.error(pos, "invalid color literal %q", val)
 		}
-	case ir.TypeDuration:
-		if !regexp.MustCompile(`^P`).MatchString(val) {
-			c.error(pos, "invalid duration literal %q", val)
-		}
 	}
 }
 
