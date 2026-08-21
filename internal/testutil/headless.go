@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/internal/headless"
 )
@@ -21,7 +22,7 @@ import (
 // When it does re-exec, it runs the child to completion and exits with the
 // child's status — it does not return.
 func MaybeReexecUnderCage() {
-	if headless.Active() {
+	if headless.Active() || shortMode() {
 		return
 	}
 	if headless.Compositor() == "" {
@@ -51,4 +52,23 @@ func MaybeReexecUnderCage() {
 
 // GUIRenderSkipReason returns a non-empty skip reason when a test that presents
 // real windows must not run in the current environment.
-func GUIRenderSkipReason() string { return headless.SkipReason() }
+func GUIRenderSkipReason() string {
+	if shortMode() {
+		return "GUI test skipped in -short mode"
+	}
+	return headless.SkipReason()
+}
+
+// shortMode reports whether -test.short was requested. TestMain runs before
+// flag.Parse, so testing.Short() is not yet answerable; every window-presenting
+// test skips itself in short mode anyway, so starting a compositor for them
+// would be pure cost.
+func shortMode() bool {
+	for _, a := range os.Args[1:] {
+		if a == "-test.short" || a == "--test.short" ||
+			strings.HasPrefix(a, "-test.short=") || strings.HasPrefix(a, "--test.short=") {
+			return !strings.HasSuffix(a, "=false") && !strings.HasSuffix(a, "=0")
+		}
+	}
+	return false
+}
