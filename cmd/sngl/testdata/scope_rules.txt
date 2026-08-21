@@ -38,6 +38,32 @@ stdout 'shadows_dot.sngl: ok'
 sngl check shadows_builtin.sngl
 stdout 'shadows_builtin.sngl: ok'
 
+
+# The one-name rule reaches free functions, consts and vars, not just types and
+# components. These live in the package's root symbol table rather than its
+# type or component maps, and lifting them unclaimed made which package a bare
+# name referred to depend on the order the imports were written in.
+! sngl check dup_dot_func.sngl
+stderr 'lifts "Greet", already lifted by dot import of'
+
+! sngl check dup_dot_const.sngl
+stderr 'lifts "LIMIT", already lifted by dot import of'
+
+# Duplicate bindings that used to be silently last-wins.
+! sngl check dup_const.sngl
+stderr '"K" redeclared in this file'
+
+! sngl check dup_component_var.sngl
+stderr 'y is already declared in this scope'
+
+! sngl check dup_loop_var.sngl
+stderr 'k is already declared in this scope'
+
+# A namespace the stdlib exposes may still be imported by name: both bindings
+# denote the same package, so this is a restated name, not an ambiguous one.
+sngl check restate_intrinsic.sngl
+stdout 'restate_intrinsic.sngl: ok'
+
 -- w/lib.sngl --
 import . "sngl://std"
 
@@ -150,3 +176,71 @@ func f() => color{tag="x"}.tag
 component main {
     text(value=f())
 }
+-- pa/lib.sngl --
+import . "sngl://std"
+
+func Greet() => "from A"
+-- pb/lib.sngl --
+import . "sngl://std"
+
+func Greet() => "from B"
+-- pc/lib.sngl --
+import . "sngl://std"
+
+const LIMIT = 1
+-- pd/lib.sngl --
+import . "sngl://std"
+
+const LIMIT = 2
+-- dup_dot_func.sngl --
+import . "sngl://std"
+import . "pa"
+import . "pb"
+
+component main {
+    text(value=Greet())
+}
+-- dup_dot_const.sngl --
+import . "sngl://std"
+import . "pc"
+import . "pd"
+
+component main {
+    text(value="{LIMIT}")
+}
+-- dup_const.sngl --
+import . "sngl://std"
+
+const K = 1
+const K = 2
+
+component main {
+    text(value="x")
+}
+-- dup_component_var.sngl --
+import . "sngl://std"
+
+component main {
+    var y int = 1
+    var y int = 2
+    text(value="x")
+}
+-- dup_loop_var.sngl --
+import . "sngl://std"
+
+component main {
+    var m map<string, string> = {}
+    for k, k = m {
+        text(value=k)
+    }
+}
+-- restate_intrinsic.sngl --
+import . "sngl://std"
+import "internal://lower"
+
+func make() => lower.CreateNode("text")
+
+component main {
+    text(value="x")
+}
+

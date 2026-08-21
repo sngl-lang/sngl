@@ -1957,7 +1957,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	// Type-check the lambda body in a child scope.
 	c.pushScope()
 	for _, p := range fn.Params {
-		c.scope.Declare(p)
+		c.scope.Replace(p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -2246,7 +2246,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				// Inline event handler — check body.
 				c.pushScope()
 				for _, p := range arg.Params.Params {
-					c.scope.Declare(&ir.Param{
+					c.scope.Replace(&ir.Param{
 						Name: p.Name,
 						Type: c.resolveType(p.Type),
 					})
@@ -2358,7 +2358,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 		}
 		for _, name := range spec.Names {
-			c.scope.Declare(&ir.Var{
+			c.declare(decl.Pos, &ir.Var{
 				AST:  decl,
 				Name: name,
 				Type: typ,
@@ -2466,7 +2466,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				typ = initType
 			}
 		}
-		c.scope.Declare(&ir.Var{
+		c.declare(x.Pos, &ir.Var{
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
@@ -2708,11 +2708,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = list: key is index (int), value is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
 			} else {
 				// for item = list: item is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
 			}
 		case ir.TypeIter:
 			if len(iter.Elems) > 0 {
@@ -2720,35 +2720,35 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = iter: key is index (int), value is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemType})
 			} else {
 				// for item = iter: item is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemType})
 			}
 		case ir.TypeMap:
 			if x.Value == "" {
 				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
 			} else if len(iter.Elems) == 2 {
 				// for k, v = map: k is key type, v is value type.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
 				elemType = iter.Elems[1]
 			}
 		case ir.TypeDyn:
 			if x.Value != "" {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
 			} else {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
 			} else {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
 			}
 		}
 		body := c.checkBlockIR(&x.Body)
@@ -2770,7 +2770,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		return nil
 	case *ast.FuncDef:
 		fn := c.buildFunc(x)
-		c.scope.Declare(fn)
+		c.declare(x.Pos, fn)
 		c.checkFuncBody(fn)
 		// When a `func` is declared inside a nested block (provider children,
 		// if/for body), it would otherwise be built and scoped but never
@@ -2819,7 +2819,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	scope.Declare(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	scope.Replace(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -2963,7 +2963,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	fn := &ir.Func{Params: params}
 	c.pushScope()
 	for _, p := range params {
-		c.scope.Declare(p)
+		c.scope.Replace(p)
 	}
 	fn.Block = c.checkBlockIR(&eh.Body)
 	c.popScope()
@@ -3015,7 +3015,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
 		if w.Name != "" {
-			c.scope.Declare(w)
+			c.scope.Replace(w)
 		}
 		c.checkWindowBody(w)
 		w.Checked = true
@@ -3434,7 +3434,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// Check the handler body in a scoped context.
 			c.pushScope()
 			for _, p := range params {
-				c.scope.Declare(p)
+				c.scope.Replace(p)
 			}
 			fn.Block = c.checkBlockIR(&arg.Body)
 			c.popScope()
@@ -3591,7 +3591,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 						typ = et
 					}
 				}
-				c.scope.Declare(&ir.Param{Name: p.Name, Type: typ})
+				c.scope.Replace(&ir.Param{Name: p.Name, Type: typ})
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
@@ -3701,7 +3701,7 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 						Type:    ir.ListOf(c.windowType),
 						IsConst: true,
 					}
-					c.scope.Declare(v)
+					c.scope.Replace(v)
 					*vars = append(*vars, v)
 				}
 			}

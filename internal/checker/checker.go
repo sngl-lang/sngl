@@ -251,7 +251,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 				return
 			}
 		}
-		stdlibScope.Declare(&ir.Namespace{Name: name, Resolve: resolve})
+		stdlibScope.Replace(&ir.Namespace{Name: name, Resolve: resolve})
 	}
 	for _, p := range cfg.Platforms {
 		declareNS(p.PlatformIdentifier(), p.Resolve)
@@ -267,6 +267,38 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.mergePlatformExtensions()
 
 	return c
+}
+
+// declare binds sym in the current scope, reporting a name already bound there
+// instead of letting the later binding silently win.
+func (c *checker) declare(pos ast.Pos, sym ir.Symbol) {
+	if err := c.scope.Declare(sym); err != nil {
+		c.error(pos, "%s is already declared in this scope", sym.SymName())
+	}
+}
+
+// varPos is the source position of a var's declaration, or the zero position
+// for a synthesized var that has no AST.
+func varPos(v *ir.Var) ast.Pos {
+	if v.AST != nil {
+		if p := v.AST.StmtPos(); p != nil {
+			return *p
+		}
+	}
+	return ast.Pos{}
+}
+
+// bindVar binds a var or const from a registration path that serves both file
+// scope and a component or window body. At file scope the one-name rule
+// applies, so shadowing a lifted name stays legal; inside a body any name
+// already bound in the same scope is a duplicate.
+func (c *checker) bindVar(pos ast.Pos, v *ir.Var) {
+	if c.scope == c.symtab.Root {
+		c.claimTopLevel(v.Name, pos, bindDecl, "")
+		c.scope.Replace(v)
+		return
+	}
+	c.declare(pos, v)
 }
 
 func (c *checker) error(pos ast.Pos, format string, args ...any) {
@@ -672,10 +704,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 					nsPkg.Symbols.Types[e.Name] = e
 				}
 				for _, f := range native.Funcs {
-					nsPkg.Symbols.Root.Declare(f)
+					nsPkg.Symbols.Root.Replace(f)
 				}
 				for _, v := range native.Vars {
-					nsPkg.Symbols.Root.Declare(v)
+					nsPkg.Symbols.Root.Replace(v)
 				}
 				irImport.Pkg = nsPkg
 			}
@@ -745,7 +777,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 	c.markForeign(irImport.Pkg)
 	c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
-	c.scope.Declare(ns)
+	c.scope.Replace(ns)
 }
 
 // buildPkgFromDocs type-checks a set of .sngl documents (typically from a
@@ -779,29 +811,29 @@ func mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
-		dst.Symbols.Root.Declare(sd)
+		dst.Symbols.Root.Replace(sd)
 		dst.Symbols.Types[sd.Name] = sd
 	}
 	for _, ed := range src.Enums {
-		dst.Symbols.Root.Declare(ed)
+		dst.Symbols.Root.Replace(ed)
 		dst.Symbols.Types[ed.Name] = ed
 	}
 	for _, ud := range src.Units {
-		dst.Symbols.Root.Declare(ud)
+		dst.Symbols.Root.Replace(ud)
 		dst.Symbols.Types[ud.Name] = ud
 	}
 	for _, fn := range src.Funcs {
-		dst.Symbols.Root.Declare(fn)
+		dst.Symbols.Root.Replace(fn)
 	}
 	for _, comp := range src.Components {
-		dst.Symbols.Root.Declare(comp)
+		dst.Symbols.Root.Replace(comp)
 		dst.Symbols.Comps[comp.Name] = comp
 	}
 	for _, v := range src.Vars {
-		dst.Symbols.Root.Declare(v)
+		dst.Symbols.Root.Replace(v)
 	}
 	for _, v := range src.Consts {
-		dst.Symbols.Root.Declare(v)
+		dst.Symbols.Root.Replace(v)
 	}
 }
 
@@ -810,7 +842,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	ed := c.buildEnumDef(e)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
 	c.symtab.Types[ed.Name] = ed
-	c.scope.Declare(ed)
+	c.scope.Replace(ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
@@ -818,7 +850,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
-	c.scope.Declare(sd)
+	c.scope.Replace(sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
 
@@ -831,7 +863,7 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
-	c.scope.Declare(sd)
+	c.scope.Replace(sd)
 	return sd
 }
 
@@ -845,7 +877,7 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.symtab.Types[ud.Name] = ud
-	c.scope.Declare(ud)
+	c.scope.Replace(ud)
 	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
@@ -901,7 +933,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				IsConst: true,
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 		}
 	}
 }
@@ -929,7 +961,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
 			c.pkg.Consts = append(c.pkg.Consts, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
 		}
 		c.pendingConstInits = append(c.pendingConstInits, pendingConstInit{
@@ -1215,7 +1247,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				v.Handlers = append(v.Handlers, handler)
 			}
 			c.pkg.Vars = append(c.pkg.Vars, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 		}
 	}
 }
@@ -1331,7 +1363,7 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 		// Type-attached method.
 		c.symtab.RegisterMethod(fn.Receiver, fn)
 	} else {
-		c.scope.Declare(fn)
+		c.scope.Replace(fn)
 	}
 }
 
@@ -1480,7 +1512,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
-	c.scope.Declare(irComp)
+	c.scope.Replace(irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
@@ -1492,7 +1524,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
 		if w.Name != "" {
-			c.scope.Declare(w)
+			c.scope.Replace(w)
 		}
 		return
 	}
@@ -2037,7 +2069,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	c.pushScope()
 	defer c.popScope()
 	for _, v := range w.Vars {
-		c.scope.Declare(v)
+		c.scope.Replace(v)
 	}
 	named := resolvePositionalArgs(vn.Args, []string{"title", "href", "favicon"})
 	if e, ok := named["href"]; ok {
@@ -2244,7 +2276,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 	}
 	for _, p := range fn.Params {
-		c.scope.Declare(p)
+		c.scope.Replace(p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprExpecting(ap.Default, p.Type)
 		}
@@ -2356,14 +2388,14 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	for _, p := range comp.Props {
-		c.scope.Declare(&ir.Param{Name: p.Name, Type: p.Type})
+		c.scope.Replace(&ir.Param{Name: p.Name, Type: p.Type})
 	}
 	for _, v := range comp.Vars {
-		c.scope.Declare(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Declare(fn)
+			c.scope.Replace(fn)
 		}
 	}
 
@@ -2412,7 +2444,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare props as params now that any default-driven type inference has
 	// finalized prop.Type.
 	for _, p := range comp.Props {
-		c.scope.Declare(&ir.Param{
+		c.scope.Replace(&ir.Param{
 			Name: p.Name,
 			Type: p.Type,
 		})
@@ -2420,11 +2452,11 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Declare component-level vars and funcs.
 	for _, v := range comp.Vars {
-		c.scope.Declare(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Declare(fn)
+			c.scope.Replace(fn)
 		} else {
 			// Type-attached method registered on the symbol table so method
 			// lookup at call sites finds it. Nested funcs on this component
@@ -2511,10 +2543,10 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	for _, v := range w.Vars {
-		c.scope.Declare(v)
+		c.scope.Replace(v)
 	}
 	for _, fn := range w.Funcs {
-		c.scope.Declare(fn)
+		c.scope.Replace(fn)
 	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
@@ -2577,7 +2609,7 @@ func (c *checker) declareNodeID(id string) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
-	c.scope.Declare(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
+	c.scope.Replace(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a
@@ -2711,7 +2743,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			}
 			c.pushScope()
 			for _, p := range h.Func.Params {
-				c.scope.Declare(p)
+				c.scope.Replace(p)
 			}
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
 			c.popScope()
@@ -2740,19 +2772,27 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 	pkg := irImport.Pkg
 	c.markForeign(pkg)
+	// Types and Comps are also present in Root.Symbols, so the loop below
+	// would re-claim a name this import already lifted and report it as a
+	// collision with itself.
+	lifted := map[string]bool{}
 	claim := func(name string) bool {
-		return c.claimTopLevel(name, imp.Pos, bindDot, imp.Path)
+		if !c.claimTopLevel(name, imp.Pos, bindDot, imp.Path) {
+			return false
+		}
+		lifted[name] = true
+		return true
 	}
 	for name, sym := range pkg.Symbols.Types {
 		if exported(sym) && claim(name) {
 			c.symtab.Types[name] = sym
-			c.scope.Declare(sym)
+			c.scope.Replace(sym)
 		}
 	}
 	for name, sym := range pkg.Symbols.Comps {
 		if exported(sym) && claim(name) {
 			c.symtab.Comps[name] = sym
-			c.scope.Declare(sym)
+			c.scope.Replace(sym)
 		}
 	}
 	for typeName, methods := range pkg.Symbols.Methods {
@@ -2775,16 +2815,29 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 	}
 	for _, sym := range pkg.Symbols.Root.Symbols {
-		if !exported(sym) {
+		if !exported(sym) || lifted[sym.SymName()] {
 			continue
 		}
 		// Don't re-bind a namespace the imported package itself imported; dot
 		// import lifts the package's own declarations, not its import graph.
-		// The stdlib is the exception: `i18n` and `html` are namespaces it
-		// declares as part of its own surface, not packages it imported.
-		if _, isNS := sym.(*ir.Namespace); isNS && pkg != c.stdlibPkg {
+		// The stdlib is the exception: `i18n`, `html` and `lower` are
+		// namespaces it declares as part of its own surface.
+		if _, isNS := sym.(*ir.Namespace); isNS {
+			if pkg != c.stdlibPkg {
+				continue
+			}
+			// Deliberately unclaimed. A lifted namespace names a package, and
+			// a file may name that same package itself — `import
+			// "internal://lower"` alongside the stdlib that already exposes
+			// it. Both bindings mean the same package, so this is a restated
+			// name rather than an ambiguous one. Only the stdlib lifts
+			// namespaces, so no second dot import can disagree about one.
+			c.scope.Replace(sym)
 			continue
 		}
-		c.scope.Declare(sym)
+		if !claim(sym.SymName()) {
+			continue
+		}
+		c.scope.Replace(sym)
 	}
 }

@@ -38,8 +38,32 @@ func NewScope(parent *Scope) *Scope {
 	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
 }
 
-// Declare adds a symbol to this scope.
-func (s *Scope) Declare(sym Symbol) {
+// RedeclaredError reports that a name was already bound in the same scope.
+// Prev is the binding that was already there.
+type RedeclaredError struct {
+	Name string
+	Prev Symbol
+}
+
+func (e *RedeclaredError) Error() string { return "redeclared: " + e.Name }
+
+// Declare binds a symbol in this scope, refusing to overwrite an existing
+// binding of the same name. Callers that mean to rebind must say so with
+// Replace: a silent overwrite makes which declaration a name refers to depend
+// on the order the checker happened to visit them in.
+func (s *Scope) Declare(sym Symbol) error {
+	name := sym.SymName()
+	if prev, ok := s.Symbols[name]; ok {
+		return &RedeclaredError{Name: name, Prev: prev}
+	}
+	s.Symbols[name] = sym
+	return nil
+}
+
+// Replace binds a symbol, overwriting any existing binding of the same name.
+// For the places where rebinding is the intent — shadowing a dot-imported
+// name, splicing a platform override over the stdlib declaration it extends.
+func (s *Scope) Replace(sym Symbol) {
 	s.Symbols[sym.SymName()] = sym
 }
 
