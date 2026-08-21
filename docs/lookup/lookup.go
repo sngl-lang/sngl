@@ -25,6 +25,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // Kind tags which of Result's pointer fields is populated.
@@ -295,18 +296,37 @@ type target struct {
 	stmts    []ast.Stmt
 	native   *ir.NativeImport
 	isStdlib bool
+	// builtinsOnly selects the ambient built-in tier of the stdlib source
+	// instead of the importable standard library.
+	builtinsOnly bool
+	// allPackages is the merged view: everything a file can see without
+	// naming a package.
+	allPackages bool
 }
 
 func resolveTarget(cwd, path string) (*target, error) {
-	if path == "sngl" {
-		path = "internal://stdlib"
-	}
-
 	scheme, uri := checker.ParseScheme(path)
 
-	if scheme == "internal" && uri == "stdlib" {
-		pd, stmts := stdlibPackageDocs()
-		return &target{title: "sngl", pd: pd, stmts: stmts, isStdlib: true}, nil
+	// Bare `sngl` is everything a file can see without naming a package: the
+	// implicitly dot-imported built-ins plus the standard library. The
+	// per-package paths address one tier each.
+	if path == "sngl" || (scheme == "internal" && uri == "stdlib") {
+		pd, stmts := stdlibPackageDocs(lib.Packages()...)
+		return &target{title: "sngl", pd: pd, stmts: stmts, isStdlib: true, allPackages: true}, nil
+	}
+
+	if scheme == "sngl" {
+		if !checker.HasPackage(uri) {
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
+		}
+		pd, stmts := stdlibPackageDocs(uri)
+		return &target{
+			title:        "sngl://" + uri,
+			pd:           pd,
+			stmts:        stmts,
+			isStdlib:     true,
+			builtinsOnly: uri == "builtin",
+		}, nil
 	}
 
 	if scheme != "" {
@@ -413,8 +433,13 @@ func mergeDocsTarget(title string, docs []*ast.Document) *target {
 
 func buildIndex(tgt *target) *DeclIndex {
 	idx := &DeclIndex{Title: tgt.title, IsStdlib: tgt.isStdlib, Native: tgt.native}
-	if tgt.isStdlib {
-		idx.Description = "Built-in components, types, and functions available without import."
+	switch {
+	case tgt.allPackages:
+		idx.Description = "Everything in scope without naming a package: the ambient built-ins (`sngl://builtin`) plus the standard library (`sngl://std`)."
+	case tgt.builtinsOnly:
+		idx.Description = "Ambient built-ins: always in scope, and never imported. Every one is shadowable by a declaration of the same name."
+	case tgt.isStdlib:
+		idx.Description = `The standard library. Bring it into scope with ` + "`import . \"sngl://std\"`" + `, or qualify it with an alias: ` + "`import sngl \"sngl://std\"`" + `.`
 	}
 	if tgt.native != nil {
 		populateNativeIndex(idx, tgt.native)
@@ -750,10 +775,17 @@ func FirstSentence(doc string) string {
 	return doc
 }
 
-func stdlibPackageDocs() (*checker.PackageDocs, []ast.Stmt) {
+// stdlibPackageDocs returns the declarations of the named embedded packages,
+// merged. Packages are directories on disk, so this reads the layout rather
+// than filtering a merged set.
+func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
-	for _, doc := range checker.StdlibDocs() {
+	var docs []*ast.Document
+	for _, pkg := range pkgs {
+		docs = append(docs, checker.PackageDocsFor(pkg)...)
+	}
+	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)
 		merged.Components = append(merged.Components, pd.Components...)
 		merged.Structs = append(merged.Structs, pd.Structs...)

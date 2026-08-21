@@ -1,6 +1,4 @@
 import "internal://stdlib"
-import "internal://alert"
-import "internal://file"
 
 // --- int ---
 
@@ -218,44 +216,6 @@ func color.darken(c color, pct float) color {
     return ret
 }
 
-// --- Alert ---
-
-// Shows a short transient toast tagged with variant ("info",
-// "success", "warning", "error") appropriate to the platform. The
-// toast dismisses automatically after the platform's default
-// duration.
-func Alert.toast(message string, variant string) => alert.Toast(message, variant)
-
-// Shows an informational alert. Equivalent to `Alert.toast(message,
-// "info")` on platforms that render toasts, or a modeless info
-// dialog on desktop platforms.
-func Alert.info(message string) => alert.Info(message)
-
-// Shows a warning alert. The rendering elevates severity compared
-// to `Alert.info` — a colored toast or a dismissible warning
-// dialog depending on the platform.
-func Alert.warn(message string) => alert.Warn(message)
-
-// Shows an error alert. Rendered with the platform's error styling
-// and typically stays visible until dismissed.
-func Alert.error(message string) => alert.Error(message)
-
-// Prompts the user to confirm or cancel. Blocks until a choice is
-// made and returns true on confirm, false on cancel. On platforms
-// without a native confirm dialog, falls back to a modal overlay.
-func Alert.confirm(message string) => alert.Confirm(message)
-
-// --- File ---
-
-// Opens a file-picker dialog and returns the chosen path, or an
-// empty string if cancelled. The dialog style (native, in-app) is
-// platform-defined. Not all platforms expose a file system — web
-// platforms may return a synthetic handle.
-func File.pick() => file.Pick()
-
-// Opens a folder-picker dialog and returns the chosen path, or an
-// empty string if cancelled. Same platform caveats as `File.pick`.
-func File.pickFolder() => file.PickFolder()
 
 // --- map ---
 
@@ -276,12 +236,3 @@ func map<K, V>.contains(key K) bool {}
 // declared value type.
 func map<K, V>.get(key K, default V) V {}
 
-// --- error ---
-
-// Raises a runtime error. The error propagates to the nearest
-// enclosing `errorBoundary` ancestor, whose `@error` handler
-// receives an `ErrorEvent{message, kind}`. Without a boundary the
-// error terminates the containing evaluation with a platform-default
-// handler. `kind` lets handlers dispatch programmatically (e.g.
-// "network", "validation", "internal").
-func error.raise(message string, kind string) => stdlib.ErrorRaise(message, kind)

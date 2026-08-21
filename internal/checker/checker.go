@@ -9,6 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // Config holds checker configuration.
@@ -413,8 +414,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// The standard library. A scheme keeps it from colliding with a local
 		// package directory of any name — the collision a reserved bare path
 		// like "std" would reintroduce.
-		if uri != "std" {
-			c.error(imp.Pos, "unknown stdlib package %q (only \"sngl://std\" exists)", uri)
+		if !HasPackage(uri) {
+			c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
 			return
 		}
 		irImport.Pkg = c.stdlibPkg

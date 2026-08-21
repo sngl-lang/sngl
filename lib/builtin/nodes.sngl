@@ -1,0 +1,47 @@
+// Built-in visual nodes. Each carries a #[builtin("...")] mark that the
+// checker dispatches on to the matching IR construct.
+
+// Placeholder for projected content in custom component definitions.
+// When a user of the component passes children to it, the `slot`
+// position is where those children render. A component with no
+// `slot` drops any children passed by the caller.
+#[builtin("slot")]
+component slot() {}
+
+// Catches errors raised in children's event handlers and expressions.
+// When a descendant calls `error.raise` or throws during evaluation,
+// the boundary swallows the error and invokes `@error` with an
+// `ErrorEvent` carrying the message and kind. Without a surrounding
+// boundary, errors propagate to the platform's default handler.
+#[builtin("errorBoundary")]
+component errorBoundary(
+    @error ErrorEvent,
+) list<component> {}
+
+// A top-level window — the entry point of a UI. `href` is the route the
+// window is served at (URL template params like `{name}` bind as string
+// vars in scope for the body); `title` names it; `favicon` is its icon.
+// `@error` is the window's outermost error boundary.
+//
+// Reading `name.href` / `name.title` off a `window #name` declaration
+// lets links survive a window's path change without copying the path
+// string. The #[builtin("window")] mark is how the checker recognises a
+// window declaration — by tag, not by matching the name "window".
+#[builtin("window")]
+component window(
+    title string,
+    href string,
+    favicon string,
+    @error ErrorEvent,
+) list<component> {}
+
+// Periodic callback. Fires `@tick` every `interval` while `enabled`
+// is true. Toggling `enabled` is the idiomatic way to start and stop
+// the timer; the timer is automatically cleaned up when the component
+// unmounts. Intervals below the platform's frame budget may coalesce.
+#[builtin("timer")]
+component timer(
+    interval duration,
+    enabled bool,
+    @tick,
+) {}

@@ -20,11 +20,27 @@ import (
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
 var (
-	stdlibOnce sync.Once
-	stdlibDocs []*ast.Document
+	stdlibOnce     sync.Once
+	stdlibDocs     []*ast.Document
+	stdlibTierDocs map[string][]*ast.Document
 )
 
-// StdlibDocs returns the parsed stdlib documents.
+// PackageDocsFor returns the parsed documents of the embedded package
+// `sngl://<name>`. Packages are directories on disk, so the set follows the
+// layout rather than a list maintained in Go.
+func PackageDocsFor(name string) []*ast.Document {
+	parseStdlibDocs()
+	return slices.Clone(stdlibTierDocs[name])
+}
+
+// HasPackage reports whether `sngl://<name>` names an embedded package.
+func HasPackage(name string) bool {
+	parseStdlibDocs()
+	_, ok := stdlibTierDocs[name]
+	return ok
+}
+
+// StdlibDocs returns the parsed stdlib documents, every tier merged.
 // The results are cached after the first call.
 //
 // Returns a copy of the cached slice so a caller that appends can't write into
@@ -44,23 +60,28 @@ func parseStdlibDocs() []*ast.Document {
 		// Failing loudly here surfaces the real cause immediately, instead of
 		// leaving a partial stdlib that produces confusing "undefined
 		// component/func" errors downstream (bugs.md #20).
-		entries, err := lib.FS.ReadDir(".")
-		if err != nil {
-			panic(fmt.Sprintf("sngl: reading embedded stdlib: %v", err))
-		}
-		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-				continue
-			}
-			data, err := fs.ReadFile(lib.FS, e.Name())
+		stdlibTierDocs = map[string][]*ast.Document{}
+		for _, tier := range lib.Packages() {
+			entries, err := lib.FS.ReadDir(tier)
 			if err != nil {
-				panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", e.Name(), err))
+				panic(fmt.Sprintf("sngl: reading embedded stdlib tier %q: %v", tier, err))
 			}
-			doc, err := parser.Parse(e.Name(), data)
-			if err != nil {
-				panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", e.Name(), err))
+			for _, e := range entries {
+				if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+					continue
+				}
+				name := tier + "/" + e.Name()
+				data, err := fs.ReadFile(lib.FS, name)
+				if err != nil {
+					panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", name, err))
+				}
+				doc, err := parser.Parse(e.Name(), data)
+				if err != nil {
+					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
+				}
+				stdlibDocs = append(stdlibDocs, doc)
+				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)
 			}
-			stdlibDocs = append(stdlibDocs, doc)
 		}
 		// Run pre-check macro expansion over the stdlib source so #[builtin]
 		// marks (e.g. stringrepr on color/date/time) are applied before the

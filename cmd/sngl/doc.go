@@ -333,7 +333,7 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 func renderIndexMD(idx *lookup.DeclIndex) string {
 	var sb strings.Builder
 	if idx.IsStdlib {
-		sb.WriteString("# Standard Library (sngl)\n\n")
+		sb.WriteString(fmt.Sprintf("# %s\n\n", idx.Title))
 	} else if idx.Native != nil {
 		sb.WriteString(fmt.Sprintf("# %s\n\n", idx.Title))
 		if idx.Native.ImportPath != "" && idx.Native.ImportPath != idx.Title {
