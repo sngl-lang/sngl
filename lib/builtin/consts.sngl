@@ -1,0 +1,10 @@
+// The predeclared constants.
+//
+// Declarations rather than names the checker recognises, so they resolve and
+// shadow like anything else. Neither has a literal to be written as, so each
+// is the smallest comparison that denotes it.
+
+const (
+    true = 0 == 0
+    false = 0 != 0
+)

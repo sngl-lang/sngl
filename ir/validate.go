@@ -81,10 +81,11 @@ func Validate(pkg *Package) []error {
 }
 
 // isMagicIdent reports whether name is a compiler-recognized identifier that
-// legitimately resolves to no Symbol (platform/language build-gate literals).
+// legitimately resolves to no Symbol. true and false are not among them any
+// more: they are declared in lib/builtin and resolve like anything else.
 func isMagicIdent(name string) bool {
 	switch name {
-	case "PLATFORM", "LANGUAGE", "true", "false", "null":
+	case "PLATFORM", "LANGUAGE", "null":
 		return true
 	}
 	return false

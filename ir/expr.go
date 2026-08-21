@@ -259,7 +259,7 @@ func IsConst(e Expr) bool {
 			return true
 		}
 		switch x.Name {
-		case "PLATFORM", "LANGUAGE", "true", "false", "null":
+		case "PLATFORM", "LANGUAGE", "null":
 			return true
 		}
 		if v, ok := x.Sym.(*Var); ok && v.IsConst {

@@ -284,8 +284,6 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	switch x.Name {
 	case "PLATFORM", "LANGUAGE":
 		return &ir.Ident{AST: x, Type: TypString, Name: x.Name}
-	case "true", "false":
-		return &ir.Ident{AST: x, Type: TypBool, Name: x.Name}
 	case "null":
 		return &ir.Ident{AST: x, Type: TypNull, Name: x.Name}
 	}

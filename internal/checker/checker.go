@@ -1115,7 +1115,7 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 	case *ast.IdentExpr:
 		// Builtin constants are fine.
 		switch x.Name {
-		case "true", "false", "null", "PLATFORM", "LANGUAGE":
+		case "null", "PLATFORM", "LANGUAGE":
 			return ""
 		}
 		if sym, ok := c.scope.Lookup(x.Name); ok {
