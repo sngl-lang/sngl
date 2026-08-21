@@ -14,6 +14,8 @@
 // =====================================================================
 
 
+import . "sngl://std"
+
 // ----- 1. Output -----------------------------------------------------
 // `output` declares which (language, platform) pairs this file builds
 // for. Each pair gets its own generated artifact.

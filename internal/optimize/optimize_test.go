@@ -18,7 +18,7 @@ import (
 // checkAndOptimize is a test helper: parse → check → optimize → convert.
 func checkAndOptimize(t *testing.T, source, platform, lang string) (*ir.Package, *ast.Document) {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(source))
+	doc, err := parser.Parse("test.sngl", []byte(withStdSrc(source)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -619,7 +619,7 @@ func TestFoldsTestdata(t *testing.T) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(s.Source))
+			doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}

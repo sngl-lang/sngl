@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Runtime two's-complement wraparound at each signed width. The operands are
 // concrete-typed locals, so the arithmetic runs in the interpreter/opeval at
 // the declared width and the result wraps (no compile-time range check).

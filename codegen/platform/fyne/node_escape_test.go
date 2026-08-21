@@ -38,7 +38,7 @@ component main {
 
 func generateFyneModel(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

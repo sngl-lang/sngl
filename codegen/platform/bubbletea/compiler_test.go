@@ -71,7 +71,7 @@ func TestFixtures(t *testing.T) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(s.Source))
+			doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
@@ -97,7 +97,7 @@ component main {
     )
 }
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

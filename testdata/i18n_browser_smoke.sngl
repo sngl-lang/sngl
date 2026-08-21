@@ -5,6 +5,8 @@
 // Initial label is a literal to avoid state-initializer self-reference; the
 // click handler re-computes it via $"..." so the i18n runtime is exercised.
 
+import . "sngl://std"
+
 component main {
     var count int = 1
     var label string = "You have 1 item"

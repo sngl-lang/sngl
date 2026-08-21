@@ -135,6 +135,9 @@ type checker struct {
 	// `import <alias> "sngl://std"` and flattened by the dot form.
 	stdlibPkg *ir.Package
 
+	// builtinPkg is sngl://builtin, registered ambiently into every file.
+	builtinPkg *ir.Package
+
 	// stdlibScope is the scope holding stdlib declarations, between the base
 	// scope and the user root. Platform-extension bodies are checked against it
 	// so compiler-internal source cannot be captured by user declarations.
@@ -196,8 +199,11 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
-	c.stdlibPkg = c.loadStdlib()
-	nodes := builtinNodeComps(c.symtab.Comps)
+	c.builtinPkg, c.stdlibPkg = c.loadStdlib()
+	// Builtin node kinds live in sngl://std with the other components: the
+	// #[builtin] mark says which IR construct a node dispatches to, not which
+	// tier declares it.
+	nodes := builtinNodeComps(c.stdlibPkg.Symbols.Comps)
 	c.stdlibScope = stdlibScope
 	c.windowComp = nodes[ast.BuiltinWindow]
 	if c.windowComp == nil {
@@ -217,11 +223,16 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// placement directives), preserve its Pkg and attach the Resolve fallback
 	// to the same namespace so named directives resolve via Pkg first and raw
 	// elements fall through to Resolve.
+	// The stdlib's own namespace of that name may live in either tier's scope,
+	// so check both before declaring a new one — a duplicate would shadow the
+	// stdlib Pkg with a Resolve-only namespace and lose html.frontend et al.
 	declareNS := func(name string, resolve func(string) ir.Symbol) {
-		if existing, ok := stdlibScope.LookupLocal(name); ok {
-			if ns, ok := existing.(*ir.Namespace); ok {
-				ns.Resolve = resolve
-				return
+		for _, sc := range []*ir.Scope{stdlibScope, c.stdlibPkg.Symbols.Root} {
+			if existing, ok := sc.LookupLocal(name); ok {
+				if ns, ok := existing.(*ir.Namespace); ok {
+					ns.Resolve = resolve
+					return
+				}
 			}
 		}
 		stdlibScope.Declare(&ir.Namespace{Name: name, Resolve: resolve})
@@ -418,15 +429,11 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
 			return
 		}
-		irImport.Pkg = c.stdlibPkg
-		// Phase 4: loadStdlib still lifts the stdlib into every package
-		// unconditionally, so a dot import binds what is already in scope and
-		// is accepted as redundant. Phase 5 gates that lift, at which point
-		// flattenDotImport becomes the mechanism.
-		if imp.IsDot() {
-			c.pkg.Imports = append(c.pkg.Imports, irImport)
+		if uri == "builtin" {
+			c.error(imp.Pos, "sngl://builtin is always in scope; remove the import")
 			return
 		}
+		irImport.Pkg = c.stdlibPkg
 	} else if scheme == "internal" {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
@@ -2581,7 +2588,9 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 		// Don't re-bind a namespace the imported package itself imported; dot
 		// import lifts the package's own declarations, not its import graph.
-		if _, isNS := sym.(*ir.Namespace); isNS {
+		// The stdlib is the exception: `i18n` and `html` are namespaces it
+		// declares as part of its own surface, not packages it imported.
+		if _, isNS := sym.(*ir.Namespace); isNS && pkg != c.stdlibPkg {
 			continue
 		}
 		c.scope.Declare(sym)

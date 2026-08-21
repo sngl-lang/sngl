@@ -23,7 +23,7 @@ func (extStubPlatform) Description() string        { return "extension-merge tes
 func (extStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 func (p extStubPlatform) Package() []*ast.Document {
-	doc, err := parser.Parse("extstub.sngl", []byte(p.source))
+	doc, err := parser.Parse("extstub.sngl", []byte(withStd(p.source)))
 	if err != nil {
 		panic("extstub parse: " + err.Error())
 	}
@@ -54,7 +54,7 @@ component main {
     text(value="hi")
 }
 `
-	doc, err := parser.Parse("main.sngl", []byte(userSource))
+	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

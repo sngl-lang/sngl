@@ -1,3 +1,4 @@
+import . "sngl://std"
 import "internal://canvas"
 
 #[canvas.shape] // ERROR(expand) "shape macro requires a component declaration"

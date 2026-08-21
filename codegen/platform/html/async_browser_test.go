@@ -75,7 +75,7 @@ func (r *asyncBrowserResolver) ResolveSchemeFS(_, _, _ string) ([]*ast.Document,
 func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 	t.Helper()
 
-	doc, err := parser.Parse("app.sngl", []byte(src))
+	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

@@ -16,7 +16,7 @@ window #home(title="Home", href="/") {
     text(value="hello world")
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -42,7 +42,7 @@ window #home(title="Home", href="/") {
 
 func TestRenderDocAsHTML_UnknownWindow(t *testing.T) {
 	src := `window #home(title="x", href="/") { text(value="hi") }`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	dir, _ := filepath.Abs("../../testdata/lsp")
 	pkg, _ := sngl.Check(doc, dir)
 	_, err := renderDocAsHTML(pkg, "notreal")
@@ -56,7 +56,7 @@ func TestRenderDocAsHTML_UnknownWindow(t *testing.T) {
 
 func TestRenderDocAsHTML_InjectsReloadScript(t *testing.T) {
 	src := `window #home(title="x", href="/") { text(value="hi") }`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	dir, _ := filepath.Abs("../../testdata/lsp")
 	pkg, _ := sngl.Check(doc, dir)
 	html, err := renderDocAsHTML(pkg, "home")

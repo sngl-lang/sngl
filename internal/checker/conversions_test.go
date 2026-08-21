@@ -491,6 +491,8 @@ component main {
 
 func TestIRInterpolationEmitsConversion(t *testing.T) {
 	doc, _ := parser.Parse("test.sngl", []byte(`
+import . "sngl://std"
+
 component main {
     var n = 42
     text(value="n={n}")

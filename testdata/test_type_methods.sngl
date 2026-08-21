@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 func testTypeQualifiedCalls(t Test, c main) {
     t.assert(int.double(5) == 10)
     t.assert(int.abs(-3) == 3)

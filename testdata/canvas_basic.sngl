@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component myWidget {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0) {}

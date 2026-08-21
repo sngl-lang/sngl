@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var hex = int.parse("FF", 16)
     var oct = int.parse("77", 8)

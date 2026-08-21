@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // modal: state-binding fixture — toggling the bound `open` var
 // opens/closes the dialog.
 component main {

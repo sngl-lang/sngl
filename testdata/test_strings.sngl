@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component greeting {
     var name = "world"
     var msg = "hello"

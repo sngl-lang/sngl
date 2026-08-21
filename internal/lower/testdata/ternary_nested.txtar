@@ -1,5 +1,7 @@
 caps: NoTernary
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var a bool = true
     var b bool = false
@@ -10,6 +12,7 @@ component main {
     })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var a bool = true
     var b bool = false

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // GettingStarted is the "Your First App" tutorial. Built as a single SNGL
 // component (not markdown) so it renders on every platform website.sngl
 // targets — html today, android / fyne / bubbletea later. All language- and

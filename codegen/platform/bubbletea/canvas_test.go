@@ -17,7 +17,7 @@ func TestBubbleteaCanvasEmission(t *testing.T) {
         rect(x=0.0, y=0.0, w=40.0, h=20.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
     }
 }`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatal(err)
 	}

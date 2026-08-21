@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component counter {
     var count = 0
     text(value=string(count))

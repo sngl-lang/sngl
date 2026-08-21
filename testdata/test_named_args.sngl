@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     func add(a int, b int) => a + b
     func sub(a int, b int) => a - b

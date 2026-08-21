@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // table: state-binding fixture — mutating the bound `selected`
 // index changes the chosen row.
 component main {

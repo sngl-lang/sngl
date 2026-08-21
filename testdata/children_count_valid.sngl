@@ -1,5 +1,7 @@
 // Valid children counts for all three child-type forms.
 
+import . "sngl://std"
+
 component RequiresOne() component {
     vbox { slot }
 }

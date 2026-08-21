@@ -1,5 +1,7 @@
 caps:
 -- input.sngl --
+import . "sngl://std"
+
 component clicker(@click) {
     button(text="click", @click { click() })
 }
@@ -9,6 +11,7 @@ component main {
     clicker(@click { count = count + 1 })
 }
 -- expected.sngl --
+import . "sngl://std"
 component clicker(@click dyn) {
     button(text="click", @click {
         click()

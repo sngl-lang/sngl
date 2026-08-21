@@ -72,7 +72,7 @@ func TestBatchCodegen(t *testing.T) {
 
 	check := func(name, body string) *codegen.BatchDoc {
 		t.Helper()
-		doc, err := parser.Parse(name, []byte(body))
+		doc, err := parser.Parse(name, []byte(withStdSrc(body)))
 		if err != nil {
 			t.Fatalf("parse %s: %v", name, err)
 		}

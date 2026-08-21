@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Const initializers may forward-reference a const declared later in the file.
 // Pass1 registers every top-level const as a name shell before checking any
 // initializer (checkPendingConstInits), so declaration order does not matter.

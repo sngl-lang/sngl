@@ -1,5 +1,7 @@
 // i18n.sngl — exercises $"..." translatable strings with ICU plural forms.
 
+import . "sngl://std"
+
 component main {
     var count int = 1
 

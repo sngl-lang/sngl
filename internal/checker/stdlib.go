@@ -107,11 +107,27 @@ func parseStdlibDocs() []*ast.Document {
 // fixed order — imports, then types (units, structs, enums), then functions,
 // then components — so the file a declaration lives in does not affect
 // resolution.
-func (c *checker) loadStdlib() *ir.Package {
+func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
+	// sngl://builtin is ambient — the one implicit import. sngl://std loads
+	// into its own package and reaches scope only through an explicit import,
+	// so it registers against a detached symtab/scope chained to the builtins
+	// it is written against.
+	builtinPkg = c.loadStdlibPackage("builtin", true)
+	stdPkg = c.loadStdlibPackage("std", false)
+	return builtinPkg, stdPkg
+}
+
+func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
+	}
+	if !ambient {
+		savedSymtab, savedScope := c.symtab, c.scope
+		stdlibPkg.Symbols.Root.Parent = savedScope
+		c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
+		defer func() { c.symtab, c.scope = savedSymtab, savedScope }()
 	}
 
 	var (
@@ -123,7 +139,7 @@ func (c *checker) loadStdlib() *ir.Package {
 		components []*ast.ComponentDecl
 		contexts   []*ast.CallStmt
 	)
-	for _, doc := range parseStdlibDocs() {
+	for _, doc := range PackageDocsFor(pkgName) {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.Import:
@@ -197,23 +213,27 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	// Register "i18n" namespace so that i18n.plural(...), i18n.one, etc.
-	// resolve without requiring an explicit import statement. The package
-	// exposes every i18n.* receiver method as a free function, plus the
-	// predeclared PluralKey constants (zero, one, two, few, many, other).
-	c.scope.Declare(&ir.Namespace{
-		Name: "i18n",
-		Pkg:  c.buildI18nNamespacePkg(structDefs),
-	})
-
-	// Register "html" namespace so the placement directives html.frontend(...) /
-	// html.backend(...) (GitLab #27) resolve as free-function calls without an
-	// explicit import. The directives are declared as methods on receiver
-	// "html" in lib/html.sngl; expose them here as namespace functions.
-	c.scope.Declare(&ir.Namespace{
-		Name: "html",
-		Pkg:  c.buildHtmlNamespacePkg(),
-	})
+	// The i18n and html namespaces describe std's own declarations, so they
+	// belong to that tier only. Declaring them from the builtin pass as well
+	// put an empty `html` namespace in the ambient scope, which shadowed the
+	// real one and lost the platform Resolve fallback attached to it.
+	if !ambient {
+		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
+		// exposes every i18n.* receiver method as a free function, plus the
+		// predeclared PluralKey constants (zero, one, two, few, many, other).
+		c.scope.Declare(&ir.Namespace{
+			Name: "i18n",
+			Pkg:  c.buildI18nNamespacePkg(structDefs),
+		})
+		// html so the placement directives html.frontend(...) /
+		// html.backend(...) (GitLab #27) resolve as free-function calls. The
+		// directives are declared as methods on receiver "html" in
+		// lib/std/html.sngl; expose them here as namespace functions.
+		c.scope.Declare(&ir.Namespace{
+			Name: "html",
+			Pkg:  c.buildHtmlNamespacePkg(),
+		})
+	}
 
 	// Register stdlib context declarations last — after the "i18n" namespace is
 	// in scope — so that default-value expressions like `i18n.defaultLocale()`
@@ -691,7 +711,10 @@ func (c *checker) mergePlatformExtensions() {
 					continue
 				}
 				local := decl.Name[dot+1:]
-				stdSym, ok := c.symtab.Comps[local]
+				// The stdlib package, not the user symtab: std reaches user
+				// scope only through an import, but a platform extension
+				// targets the stdlib declaration either way.
+				stdSym, ok := c.stdlibPkg.Symbols.Comps[local]
 				if !ok {
 					c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
 					continue
@@ -770,7 +793,11 @@ func (c *checker) checkPendingExtensions() {
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
 	for _, platform := range order {
-		c.scope = c.stdlibScope
+		// Platform bodies are written against the standard library they
+		// extend (bare `slot`, `text`, …), which reaches user scope only by
+		// import. Resolve them in the std package's own scope, which chains
+		// to the ambient builtins.
+		c.scope = c.stdlibPkg.Symbols.Root
 		c.pushScope()
 		c.registerPlatformExtensionTypes(platform)
 		for _, pe := range byPlatform[platform] {

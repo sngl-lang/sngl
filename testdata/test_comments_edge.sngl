@@ -1,5 +1,7 @@
 // leading top-level line comment
 
+import . "sngl://std"
+
 /* leading top-level block comment */
 
 component main {

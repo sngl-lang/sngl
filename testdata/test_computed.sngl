@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component pricing {
     var price = 100
     var quantity = 2

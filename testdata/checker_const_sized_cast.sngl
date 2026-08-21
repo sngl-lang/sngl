@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Regression: component/block-level consts initialized with a sized-numeric or
 // temporal conversion must be accepted. Previously nonConstCallRef hardcoded
 // only int/float/string/bool as const-safe cast names, so int32(..)/float32(..)

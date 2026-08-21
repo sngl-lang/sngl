@@ -102,7 +102,7 @@ func TestContextInferredType(t *testing.T) {
 // checkSrc parses inline source and returns error-severity diagnostics.
 func checkSrc(t *testing.T, src string) []ir.Diagnostic {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

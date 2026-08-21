@@ -23,7 +23,7 @@ import (
 // exercises the platform body at all.
 func compileBubbletea(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

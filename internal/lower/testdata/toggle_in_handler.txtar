@@ -1,5 +1,7 @@
 caps: NoToggle
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var on bool = true
     var ready bool = false
@@ -12,6 +14,7 @@ component main {
     button(@click { toggleBoth() })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var on bool = true
     var ready bool = false

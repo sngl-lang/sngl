@@ -1,5 +1,7 @@
 // Comments inside i18n placeholders should not break case-body detection.
 
+import . "sngl://std"
+
 var count = 5
 
 var msg1 = $"{count, plural,

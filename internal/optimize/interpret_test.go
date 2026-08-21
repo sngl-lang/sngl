@@ -84,7 +84,7 @@ func TestInterpretFunc_SimplePureFunc(t *testing.T) {
 func double(x int) => x * 2
 const C = double(21)
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -135,7 +135,7 @@ component main {
     text(value=string(B.r))
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -169,7 +169,7 @@ component main {
 	text(value=string(C.a))
 }
 `
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -204,7 +204,7 @@ component main {
 	text(value=string(C.a))
 }
 `
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
 	if err := Optimize(pkg, &Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
@@ -234,7 +234,7 @@ component main {
 	text(value=string(C.a))
 }
 `
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
 	if err := Optimize(pkg, &Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)

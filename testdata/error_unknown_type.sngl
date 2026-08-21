@@ -1,1 +1,3 @@
+import . "sngl://std"
+
 var x Nonexistent // ERROR(check) "unknown type"

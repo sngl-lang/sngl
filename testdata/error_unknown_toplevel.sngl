@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 foobar something // ERROR(parse) "expected"
 
 component main {

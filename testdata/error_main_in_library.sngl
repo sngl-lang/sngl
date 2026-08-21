@@ -1,3 +1,4 @@
+import . "sngl://std"
 import "badlib" // ERROR(check) "component main can only be defined in the main package"
 
 component main {

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component NavItem(href = "", text = "", active = false) {
     link(text=text, href=href, style={
         fontWeight=active ? "bold" : "normal",

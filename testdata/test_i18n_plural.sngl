@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Plural form with =N exact match, CLDR keyword, and # for the bound count.
 component i18nPlural {
     var count = 5

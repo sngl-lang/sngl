@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var d date = "not-a-date"        // ERROR(check) "invalid date"
     var t time = "not-a-time"        // ERROR(check) "invalid time"

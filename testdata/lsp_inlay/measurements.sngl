@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // INLAY(16em) "(256px)"
 // INLAY(1rem) "(16px)"
 // INLAY(50vw) "(640px)"

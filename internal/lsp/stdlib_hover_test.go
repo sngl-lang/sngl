@@ -12,7 +12,7 @@ import (
 
 func checkSource(t *testing.T, src string) *ir.Package {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

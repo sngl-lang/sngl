@@ -82,7 +82,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 
 	fsys := fstest.MapFS{}
 
-	doc, err := parser.Parse("app.sngl", []byte(fullSrc))
+	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(fullSrc)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component flags {
     var active = true
     var hidden = false

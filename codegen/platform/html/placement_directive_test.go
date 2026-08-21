@@ -26,7 +26,7 @@ component main {
     text(value="x {html.frontend(n)}")
     html.div { text(value="raw element still works") }
 }`
-	doc, err := parser.Parse("main.sngl", []byte(src))
+	doc, err := parser.Parse("main.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

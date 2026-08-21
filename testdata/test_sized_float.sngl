@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Sized floating-point types. float64 behaves like the default float;
 // float32 carries single-precision rounding.
 component floats {

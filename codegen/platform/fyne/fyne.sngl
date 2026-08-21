@@ -31,6 +31,8 @@
 //   condProp          wrap render in `if <prop> { ... }` (modal)
 //   transient=true    skip Model storage; assign to caller's resultVar inline
 
+import . "sngl://std"
+
 struct Options {
     package string
     main bool

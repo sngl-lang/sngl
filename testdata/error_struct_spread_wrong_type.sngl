@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: struct literal spread `...x` skips type compatibility check.
 // Per audit (internal/checker/expr.go:815-820): spread fields are added
 // without verifying the source type matches the target struct's fields.

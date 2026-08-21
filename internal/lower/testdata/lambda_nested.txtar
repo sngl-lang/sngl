@@ -1,5 +1,7 @@
 caps: NoLambda
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     var outer func() func() = func() {
@@ -7,6 +9,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __lambda0_caps {
     n ref<int>
 }

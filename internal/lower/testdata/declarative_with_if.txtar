@@ -1,5 +1,7 @@
 caps: NoDeclarative
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     if n > 0 {
@@ -9,6 +11,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n int = 0
     if n > 0 {

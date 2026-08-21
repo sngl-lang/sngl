@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Sized signed-integer types: declaration, literal fit, and arithmetic.
 // Plain `int` stays unspecified-width; these are the opt-in fixed widths.
 component sizedints {

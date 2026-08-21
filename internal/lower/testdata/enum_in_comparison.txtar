@@ -1,5 +1,7 @@
 caps: NoEnum
 -- input.sngl --
+import . "sngl://std"
+
 enum Color {
     red
     green
@@ -16,6 +18,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 enum Color {
     red
     green

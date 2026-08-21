@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Regression: a bare zero-arg computed used in an expression must be
 // implicitly called. `count > 0` previously failed typecheck with
 // "operator > not defined for func and int" instead of calling count()

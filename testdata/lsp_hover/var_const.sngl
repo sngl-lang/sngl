@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // HOVER(PI) "const PI"
 // HOVER(PI) "3.14"
 const PI = 3.14

@@ -24,7 +24,7 @@ component main {
     var seed = 10
     text(value=string(fib(seed)))
 }`
-	doc, err := parser.Parse("app.sngl", []byte(src))
+	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

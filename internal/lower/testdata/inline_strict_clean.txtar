@@ -1,11 +1,14 @@
 caps: NoStdlibWrappers
 -- input.sngl --
+import . "sngl://std"
+
 import "platform://teststub"
 
 component main {
     teststub.Cleanwrap(value="hi")
 }
 -- expected.sngl --
+import . "sngl://std"
 import teststub "platform://teststub"
 component main {
     text(value="hi")

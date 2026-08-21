@@ -20,7 +20,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -69,7 +69,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -116,7 +116,7 @@ func testFoo(t Test, c box) {
     t.assert(c.count == 0)
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

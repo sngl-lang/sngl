@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // HOVER(time) "unit time"
 // HOVER(time) "ms"
 // HOVER(time) "s"

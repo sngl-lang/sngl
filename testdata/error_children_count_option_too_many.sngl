@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Component declares optional child (option<T>).
 // Two children: error.
 component OptionalOne() option<component> {

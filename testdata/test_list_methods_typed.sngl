@@ -1,6 +1,8 @@
 // list<T> methods preserve T through their signatures, returning concrete
 // list<T> / list<U> rather than list<dyn>.
 
+import . "sngl://std"
+
 component listMethods {
     var xs list<int> = [1, 2, 3, 4, 5]
     text(value="{xs.length()}")

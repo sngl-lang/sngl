@@ -1,5 +1,7 @@
 caps: NoUnit
 -- input.sngl --
+import . "sngl://std"
+
 unit length { px, em = 16px }
 
 struct Box {
@@ -11,6 +13,7 @@ component main {
     var b Box = Box{width=100px, height=50px}
 }
 -- expected.sngl --
+import . "sngl://std"
 struct Box {
     width length = 0
     height length = 0

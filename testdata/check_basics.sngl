@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 var count int
 var name string = "hello"
 var active bool

@@ -2,6 +2,8 @@
 // Over a computed list, a const list, or a non-list iterable it is rejected
 // at check time: there is no live element to write back to.
 
+import . "sngl://std"
+
 component main {
     const frozen list<int> = [1, 2, 3]
     var xs list<int> = [1, 2, 3]

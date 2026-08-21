@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bare `text(...)` user calls bind to the stdlib `text` component.
 // When a platform ships `component sngl.text { platform <p> { ... } }`,
 // the extension merge splices that body into stdlib text before

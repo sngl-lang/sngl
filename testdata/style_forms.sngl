@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     vbox(style={padding=8, gap=4}) {
         text(value="styled", style={fontWeight="bold", color=#007700, fontSize=24})

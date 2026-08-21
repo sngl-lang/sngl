@@ -1,11 +1,14 @@
 caps: NoDeclarative, NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     text(value=string(n))
     button(text="+", @click { n = n + 1 })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n int = 0
     func __n1_click_handler() {

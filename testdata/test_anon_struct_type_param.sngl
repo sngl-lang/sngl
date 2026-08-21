@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 func sumPair(p struct { a int; b int; }) => p.a + p.b
 
 component main {

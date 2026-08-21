@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Built-ins are shadowable (design doc D3). A user `component window`
 // resolves before the #[builtin("window")] declaration, so this
 // instantiates as an ordinary node instance rather than registering a

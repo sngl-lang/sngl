@@ -19,7 +19,7 @@ func Box<T>.identity() Box<T> { }
 var b Box<int>
 var b2 Box<int> = b.identity()
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -42,7 +42,7 @@ func Box<T>.identity() Box<T> { }
 var b Box<int>
 var n int = b.identity().value
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -65,7 +65,7 @@ func Box<T>.identity() Box<T> { }
 var b Box<int>
 var b2 Box<string> = b.identity()
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -92,7 +92,7 @@ func Box<T>.size() int { }
 var b Box<string>
 var n int = b.size()
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -116,7 +116,7 @@ func Pair<A, B>.swap() Pair<B, A> { }
 var p Pair<int, string>
 var q Pair<string, int> = p.swap()
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestListMapSameType(t *testing.T) {
 	src := `func list<T>.map<U>(f func(T) U) list<U> {}
 var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.map(func(x int) => x * 2)`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestListMapDifferentType(t *testing.T) {
 	src := `func list<T>.map<U>(f func(T) U) list<U> {}
 var xs list<int> = [1, 2, 3]
 var ys list<string> = xs.map(func(x int) => "{x}")`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestListMapTypeMismatch(t *testing.T) {
 	src := `func list<T>.map<U>(f func(T) U) list<U> {}
 var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.map(func(x int) => "{x}")`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -196,7 +196,7 @@ struct Box<T> {
 var b Box<int>
 var n int = b.value
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

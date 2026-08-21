@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     text(value="hello", style={nonexistent=5}) // ERROR(check) "unknown field"
 }

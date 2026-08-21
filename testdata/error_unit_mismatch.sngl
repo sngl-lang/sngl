@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 unit duration { ms, s = 1000ms }
 unit distance { mm, cm = 10mm, m = 100cm }
 

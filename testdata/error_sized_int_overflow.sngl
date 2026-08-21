@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // A constant that does not fit its sized target is a compile-time error,
 // following the untyped-constant model: literals adopt the annotated type,
 // but only if they fit. (Runtime *values* wrap; compile-time *constants*

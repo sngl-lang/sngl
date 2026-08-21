@@ -14,7 +14,7 @@ import "internal://lower"
 
 func test() => lower.CreateNode("text")
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestLowerNamespaceAutoImported(t *testing.T) {
 	// should still resolve `lower.CreateNode` because the stdlib
 	// brings the import in transitively via lib/lower.sngl.
 	src := `func test() => lower.CreateNode("text")`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

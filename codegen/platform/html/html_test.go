@@ -18,7 +18,7 @@ import (
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	t.Helper()
-	doc, err := parser.Parse(s.Filename, []byte(s.Source))
+	doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestLoweredReactivityWiring(t *testing.T) {
     text(value=string(n))
     button(text="+", @click { n = n + 1 })
 }`
-	doc, err := parser.Parse("counter.sngl", []byte(src))
+	doc, err := parser.Parse("counter.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

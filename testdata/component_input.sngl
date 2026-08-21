@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // input: two-way state-binding fixture — the `:value` binding wires a
 // widget→state writeback handler in addition to the state→widget sync.
 // Every native platform must compile that synthesized writeback (regression

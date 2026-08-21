@@ -1,5 +1,7 @@
 caps: NoEnum
 -- input.sngl --
+import . "sngl://std"
+
 enum Status {
     active
     inactive
@@ -11,6 +13,7 @@ component main {
     text(value=string(s))
 }
 -- expected.sngl --
+import . "sngl://std"
 enum Status {
     active
     inactive

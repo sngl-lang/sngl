@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: unknown field on float typechecks silently.
 component main {
     var f = 3.14

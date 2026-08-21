@@ -33,7 +33,7 @@ func hasErrorDiags(diags []ir.Diagnostic) bool {
 func TestDocSNGLBlocks(t *testing.T) {
 	for s := range testutil.DocSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(s.Source))
+			doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
 			if err != nil {
 				t.Logf("parse error at %s (doc rot):\n%s\n---\n%v", s.Name, s.Source, err)
 				return
@@ -41,7 +41,7 @@ func TestDocSNGLBlocks(t *testing.T) {
 
 			// Round-trip format check
 			formatted := parser.Format(doc)
-			_, err = parser.Parse(s.Filename+".fmt", []byte(formatted))
+			_, err = parser.Parse(s.Filename+".fmt", []byte(withStdSrc(formatted)))
 			if err != nil {
 				t.Logf("formatted output doesn't re-parse at %s (doc rot):\n%s\n---\n%v", s.Name, formatted, err)
 			}
@@ -96,7 +96,7 @@ func TestDocSNGLFormat(t *testing.T) {
 					src += block.Source
 				}
 
-				doc, err := parser.Parse(name, []byte(src))
+				doc, err := parser.Parse(name, []byte(withStdSrc(src)))
 				if err != nil {
 					return // parse errors caught by TestDocSNGLBlocks
 				}
@@ -110,7 +110,7 @@ func TestDocSNGLFormat(t *testing.T) {
 					snippet = testutil.UnwrapComponent(formatted, block.Prelude)
 				default:
 					if block.Prelude != "" {
-						preDoc, perr := parser.Parse("prelude", []byte(block.Prelude))
+						preDoc, perr := parser.Parse("prelude", []byte(withStdSrc(block.Prelude)))
 						if perr == nil {
 							fmtPre := parser.Format(preDoc)
 							formatted = strings.TrimPrefix(formatted, fmtPre)
@@ -245,7 +245,7 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.platform, func(t *testing.T) {
 			src := "output {\n    " + tt.lang + " {\n        " + tt.platform + "\n    }\n}\n\ncomponent main {\n    text(value=\"hi\")\n}\n"
-			doc, err := parser.Parse("test.sngl", []byte(src))
+			doc, err := parser.Parse("test.sngl", []byte(withStdSrc(src)))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}

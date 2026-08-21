@@ -1,5 +1,7 @@
 caps: NoInlineComponents
 -- input.sngl --
+import . "sngl://std"
+
 component LabeledCounter(start = 0, @changed) {
     var n = start
     button(text=string(n), @click {
@@ -12,6 +14,7 @@ component main {
     LabeledCounter(start=0, @changed(c) { clicks = c })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var clicks int = 0
     var n__inst0 int = 0

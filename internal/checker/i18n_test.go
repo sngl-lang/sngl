@@ -10,7 +10,7 @@ import (
 
 func TestI18nValidNoWarning(t *testing.T) {
 	src := `var name = "world"; var x = $"Hello {name}!"`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestI18nValidNoWarning(t *testing.T) {
 
 func TestI18nNoStaticTextWarn(t *testing.T) {
 	src := `var n = 5; var x = $"{n}"`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestI18nNoStaticTextWarn(t *testing.T) {
 
 func TestI18nPluralValid(t *testing.T) {
 	src := `var c = 5; var x = $"You have {c, plural, one{msg} other{msgs}}"`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -56,7 +56,7 @@ func TestI18nPluralValid(t *testing.T) {
 
 func TestI18nPluralRejectsNonNumeric(t *testing.T) {
 	src := `var c = "x"; var x = $"{c, plural, one{a} other{b}}"`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	found := false
 	for _, d := range diags {
@@ -71,7 +71,7 @@ func TestI18nPluralRejectsNonNumeric(t *testing.T) {
 
 func TestI18nUnknownType(t *testing.T) {
 	src := `var c = 5; var x = $"{c, frobble, one{a}}"`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	found := false
 	for _, d := range diags {
@@ -86,7 +86,7 @@ func TestI18nUnknownType(t *testing.T) {
 
 func TestI18nInvalidPluralSelector(t *testing.T) {
 	src := `var c = 5; var x = $"{c, plural, frobble{a} other{b}}"`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	found := false
 	for _, d := range diags {
@@ -101,7 +101,7 @@ func TestI18nInvalidPluralSelector(t *testing.T) {
 
 func TestI18nEqSelectorValid(t *testing.T) {
 	src := `var c = 5; var x = $"{c, plural, =0{none} other{some}}"`
-	doc, _ := parser.Parse("t.sngl", []byte(src))
+	doc, _ := parser.Parse("t.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -112,7 +112,7 @@ func TestI18nEqSelectorValid(t *testing.T) {
 
 func TestI18nLowersToTrCall(t *testing.T) {
 	src := `var name = "world"; var x = $"Hello {name}!"`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

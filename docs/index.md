@@ -22,6 +22,8 @@ It combines the reactivity of Svelte, the ergonomics of Vue, with a language and
 ## Quick Example
 
 ```sngl
+import . "sngl://std"
+
 struct Todo {
     text string = ""
     done bool = false

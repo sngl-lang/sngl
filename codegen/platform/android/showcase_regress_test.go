@@ -14,7 +14,7 @@ import (
 // CompileTestIR (test mode), returning the generated MainScreen.kt source.
 func compileSrc(t *testing.T, src string, testMode bool) string {
 	t.Helper()
-	doc, err := parser.Parse("app.sngl", []byte(src))
+	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

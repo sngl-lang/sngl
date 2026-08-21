@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var doubler = func(x int) => x * 2
     var addBlock = func(x int) int { return x + 100 }

@@ -1,5 +1,7 @@
 caps: NoComputed
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 5
 
@@ -8,6 +10,7 @@ component main {
     text(value=string(double()))
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n int = 5
     text(value=string(n * 2))

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 enum Theme { light, dark, system }
 
 struct Config {

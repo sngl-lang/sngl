@@ -2,6 +2,8 @@
 // take the parameter's expected type from context. No type annotation
 // needed at the call site.
 
+import . "sngl://std"
+
 func takesMap(m map<string, int>) int {
     return m.length()
 }

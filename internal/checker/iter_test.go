@@ -10,7 +10,7 @@ import (
 
 func TestIterTypeResolves(t *testing.T) {
 	src := `func count(xs iter<int>) int { return 0 }`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestIterTypeResolves(t *testing.T) {
 
 func TestIterWrongArity(t *testing.T) {
 	src := `func count(xs iter<int, string>) int { return 0 }`
-	doc, _ := parser.Parse("test.sngl", []byte(src))
+	doc, _ := parser.Parse("test.sngl", []byte(withStd(src)))
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
 	found := false
 	for _, d := range diags {
@@ -41,7 +41,7 @@ func TestListAssignableToIter(t *testing.T) {
 	src := `func count(xs iter<int>) int { return 0 }
 var lst list<int> = [1, 2, 3]
 var n = count(lst)`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestForLoopOnIter(t *testing.T) {
     for x = xs { n = n + x }
     return n
 }`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -80,7 +80,7 @@ func test() int {
     }
     return total
 }`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestForLoopOnMapSingleVarErrors(t *testing.T) {
 func test() {
     for k = m {}
 }`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

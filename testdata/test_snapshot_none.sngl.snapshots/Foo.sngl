@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 vbox() {
     text(value="Count: 3")
     button(text="+", @click)

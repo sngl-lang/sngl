@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.
 component Table() list<component> {

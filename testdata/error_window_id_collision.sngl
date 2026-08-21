@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 window #home(title="A", href="/a.html") {
 	text(value="A")
 }

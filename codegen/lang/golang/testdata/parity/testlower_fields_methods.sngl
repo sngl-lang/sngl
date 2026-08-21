@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Exercises the golang test-lowering legacy surface:
 //   - reading c.<field> raw (RawFieldAccess: component-typed param lowers
 //     state reads as direct unexported field access, e.g. `c.count`)

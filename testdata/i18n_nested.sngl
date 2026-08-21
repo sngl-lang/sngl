@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Nested placeholders inside case bodies.
 var name = "Alice"
 var count = 5

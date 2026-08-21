@@ -26,7 +26,7 @@ import (
 func compileI18nHTML(t *testing.T, src string) []byte {
 	t.Helper()
 
-	doc, err := parser.Parse("app.sngl", []byte(src))
+	doc, err := parser.Parse("app.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

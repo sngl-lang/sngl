@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: unknown method on list typechecks silently.
 component main {
     var L = [1, 2, 3]

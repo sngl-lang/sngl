@@ -1,5 +1,7 @@
 # caps: NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var visible bool = true
     vbox(style={gap=4}) {
@@ -10,6 +12,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var visible bool = true
     var __root dyn

@@ -986,8 +986,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						}
 						// Component in namespace — validate visibility and props.
 						if comp, ok := fsym.(*ir.Component); ok {
-							// Private component filter: only for imported user packages (not stdlib/sngl).
-							if ns.Name != "sngl" && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+							// Private component filter: only for imported user
+							// packages. Identity, not name — the stdlib is
+							// bound under whatever alias the file chose.
+							if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
 								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
 								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 							}

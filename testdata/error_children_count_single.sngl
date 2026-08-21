@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Component declares exactly one child (bare type T).
 // Zero children: error.
 component RequiresOne() component {

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 context #s("hello")
 context #n(42)
 context #b(true)
