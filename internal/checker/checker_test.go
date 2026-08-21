@@ -14,8 +14,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/expand"
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -48,6 +49,8 @@ func (m *mockResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document
 func newTestResolver() *mockResolver {
 	return &mockResolver{pkgs: map[string]string{
 		"widgets": `
+import . "sngl://std"
+
 component Counter(label = "") {
     var count = 0
     text(value=label)
@@ -67,7 +70,7 @@ component main {
 
 func parse(t *testing.T, src string) *ir.Package {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -278,7 +281,7 @@ func pure(a int, b int) => a + b
 
 func TestDiagnosticUnknownType(t *testing.T) {
 	src := `var x Nonexistent`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -298,7 +301,7 @@ func TestDiagnosticUnknownType(t *testing.T) {
 // contains the given substring.
 func expectError(t *testing.T, src, substr string) {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -318,7 +321,7 @@ func expectError(t *testing.T, src, substr string) {
 // expectNoErrors parses src, runs Check, and asserts no error diagnostics.
 func expectNoErrors(t *testing.T, src string) {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -497,7 +500,7 @@ func (r *importResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport,
 // checkWithImports runs the checker with a resolver that supplies native
 // imports keyed by "scheme://uri".
 func checkWithImports(src string, native map[string]*ir.NativeImport) []ir.Diagnostic {
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		return []ir.Diagnostic{{Severity: ir.Error, Msg: err.Error()}}
 	}
@@ -559,7 +562,7 @@ var y = const math.Square(4)
 
 func TestImportIdentAlias(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets": `component Counter(label = "") { text(value=label) }`,
+		"widgets": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import w "widgets"
@@ -583,7 +586,7 @@ func TestImportReplaceRoutesToReplacementURL(t *testing.T) {
 	// Replace routes resolution to the replacement path. Original path "widgets"
 	// resolves via "widgets_v2" (no scheme so the directory resolver is used).
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
+		"widgets_v2": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "widgets" => "widgets_v2"
@@ -614,7 +617,7 @@ component Wrapped(label = "") {
     widgets.Counter(label=label)
 }
 `,
-		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
+		"widgets_v2": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "shim"
@@ -641,7 +644,7 @@ func TestImportSchemeFSDispatch(t *testing.T) {
 	// "not my scheme" (nil docs).
 	r := &schemeFSResolver{
 		fsPkgs: map[string]string{
-			"git://example.com/widgets@v1#-": `component Counter(label = "") { text(value=label) }`,
+			"git://example.com/widgets@v1#-": counterPkg,
 		},
 	}
 	doc, err := parser.Parse("test.sngl", []byte(`
@@ -683,10 +686,19 @@ func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Docume
 	return []*ast.Document{doc}, nil, nil
 }
 
+// counterPkg is the stock imported package for the resolver tests: one
+// exported component, nothing else. Shared so a test's own body shows only
+// what it is actually testing.
+const counterPkg = `import . "sngl://std"
+
+component Counter(label = "") {
+    text(value=label)
+}`
+
 func TestImportReplaceDuplicate(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
-		"widgets_v2": `component Counter(label = "") { text(value=label) }`,
-		"widgets_v3": `component Counter(label = "") { text(value=label) }`,
+		"widgets_v2": counterPkg,
+		"widgets_v3": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "widgets" => "widgets_v2"
@@ -1035,8 +1047,11 @@ component main {
 }
 
 func TestStdlibQualifiedAccess(t *testing.T) {
-	// sngl.text resolves to stdlib text even when user shadows it.
+	// A stdlib import's alias qualifies the stdlib even when the user shadows
+	// the same name unqualified.
 	expectNoErrors(t, `
+import sngl "sngl://std"
+
 component text() {}
 component main {
 	sngl.text(value="stdlib text")
@@ -1221,7 +1236,8 @@ func TestCheckTestdata(t *testing.T) {
 			if parseErr != nil {
 				t.Fatalf("parse: %v", parseErr)
 			}
-			cfg := &checker.Config{IsMain: true}
+			langs, plats := testtargets.Targets()
+			cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats}
 			for _, s := range doc.Stmts {
 				if _, ok := s.(*ast.Import); ok {
 					cfg.Resolver = newTestResolver()
@@ -1435,7 +1451,8 @@ func TestCheckProjectTestdata(t *testing.T) {
 			if s.ExpectsError("expand") {
 				return // expansion errors; skip type-check
 			}
-			_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+			langs, plats := testtargets.Targets()
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
 			// directives which may not match v2 checker messages.
 			for _, d := range diags {
@@ -1475,7 +1492,6 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 func TestCheckShapeType(t *testing.T) {
 	// canvas and rect both have list<shape> ChildrenType — rect used inside canvas.
 	expectNoErrors(t, `
-import "internal://canvas"
 component canvas(width float, height float) list<shape> {}
 component rect(x float, y float, w float, h float) list<shape> {}
 component myWidget() {
@@ -1488,7 +1504,6 @@ component myWidget() {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
-import "internal://canvas"
 component canvas(width float, height float) list<shape> {}
 component notAShape() {}
 component myWidget() {

@@ -1,14 +1,16 @@
 caps: NoToggle
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var on bool = false
     button(@click { on!! })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var on bool = false
     button(@click {
         on = !on
     })
 }
-context #locale(i18n.defaultLocale())

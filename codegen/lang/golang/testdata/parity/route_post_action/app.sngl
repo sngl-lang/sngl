@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // HTTP route window whose @click calls a go:// native func (api.Persist),
 // exercising html route mode (--lang go) end-to-end through the golang
 // HTTP-compiler path. NOTE: this parity harness's optimize+lower inlines the

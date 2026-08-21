@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component Counter(label = "", start = 0) {
     var count = start
 

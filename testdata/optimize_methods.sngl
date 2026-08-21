@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component methodfold {
     // int methods (qualified)
     var imin = int.min(3, 7) // FOLD 3

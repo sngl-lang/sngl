@@ -20,11 +20,27 @@ import (
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
 var (
-	stdlibOnce sync.Once
-	stdlibDocs []*ast.Document
+	stdlibOnce     sync.Once
+	stdlibDocs     []*ast.Document
+	stdlibTierDocs map[string][]*ast.Document
 )
 
-// StdlibDocs returns the parsed stdlib documents.
+// PackageDocsFor returns the parsed documents of the embedded package
+// `sngl://<name>`. Packages are directories on disk, so the set follows the
+// layout rather than a list maintained in Go.
+func PackageDocsFor(name string) []*ast.Document {
+	parseStdlibDocs()
+	return slices.Clone(stdlibTierDocs[name])
+}
+
+// HasPackage reports whether `sngl://<name>` names an embedded package.
+func HasPackage(name string) bool {
+	parseStdlibDocs()
+	_, ok := stdlibTierDocs[name]
+	return ok
+}
+
+// StdlibDocs returns the parsed stdlib documents, every tier merged.
 // The results are cached after the first call.
 //
 // Returns a copy of the cached slice so a caller that appends can't write into
@@ -44,23 +60,28 @@ func parseStdlibDocs() []*ast.Document {
 		// Failing loudly here surfaces the real cause immediately, instead of
 		// leaving a partial stdlib that produces confusing "undefined
 		// component/func" errors downstream (bugs.md #20).
-		entries, err := lib.FS.ReadDir(".")
-		if err != nil {
-			panic(fmt.Sprintf("sngl: reading embedded stdlib: %v", err))
-		}
-		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-				continue
-			}
-			data, err := fs.ReadFile(lib.FS, e.Name())
+		stdlibTierDocs = map[string][]*ast.Document{}
+		for _, tier := range lib.Packages() {
+			entries, err := lib.FS.ReadDir(tier)
 			if err != nil {
-				panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", e.Name(), err))
+				panic(fmt.Sprintf("sngl: reading embedded stdlib tier %q: %v", tier, err))
 			}
-			doc, err := parser.Parse(e.Name(), data)
-			if err != nil {
-				panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", e.Name(), err))
+			for _, e := range entries {
+				if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+					continue
+				}
+				name := tier + "/" + e.Name()
+				data, err := fs.ReadFile(lib.FS, name)
+				if err != nil {
+					panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", name, err))
+				}
+				doc, err := parser.Parse(e.Name(), data)
+				if err != nil {
+					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
+				}
+				stdlibDocs = append(stdlibDocs, doc)
+				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)
 			}
-			stdlibDocs = append(stdlibDocs, doc)
 		}
 		// Run pre-check macro expansion over the stdlib source so #[builtin]
 		// marks (e.g. stringrepr on color/date/time) are applied before the
@@ -78,19 +99,66 @@ func parseStdlibDocs() []*ast.Document {
 	return stdlibDocs
 }
 
-// loadStdlib builds the stdlib Package, registers all stdlib declarations into
-// the checker's scope and symbol table for unqualified access, and declares
-// the "sngl" namespace for qualified access (sngl.text, sngl.Color, etc.).
+// loadStdlib builds the packages every check needs up front: sngl://builtin,
+// which registers into the checker's scope and symbol table for unqualified
+// access everywhere, and sngl://std, which the checker itself reads to find
+// the #[builtin]-marked window/timer/slot/errorBoundary components. Any other
+// library package loads on first import (libPkg).
 //
-// Declarations are grouped by kind across all stdlib files and registered in a
-// fixed order — imports, then types (units, structs, enums), then functions,
+// Being ambient is the only way sngl://builtin is special. sngl://std is
+// eager rather than special: it is loaded here because the checker needs its
+// node components to build ir.Window and ir.Timer at all, not because user
+// code sees it differently from sngl://draw.
+//
+// Declarations are grouped by kind across a package's files and registered in
+// a fixed order — imports, then types (units, structs, enums), then functions,
 // then components — so the file a declaration lives in does not affect
 // resolution.
-func (c *checker) loadStdlib() *ir.Package {
+func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
+	// sngl://builtin is ambient — the one implicit import. Every other lib
+	// package loads into its own package and reaches scope only through an
+	// explicit import, so it registers against a detached symtab/scope chained
+	// to the builtins it is written against.
+	builtinPkg = c.loadStdlibPackage("builtin", true)
+	return builtinPkg, c.libPkg("std")
+}
+
+// libPkg returns the loaded sngl://<name> package, loading it on first use.
+// Loading is lazy and memoized rather than a pass over lib.Packages() because
+// lib packages import each other (sngl://draw is written against sngl://std),
+// and the import has to resolve to the same instance the user sees.
+func (c *checker) libPkg(name string) *ir.Package {
+	if pkg, ok := c.libPkgs[name]; ok {
+		return pkg
+	}
+	if c.libLoading[name] {
+		// An import cycle inside lib/ is a compiler bug, not user input.
+		panic("sngl: import cycle in embedded library at sngl://" + name)
+	}
+	if c.libLoading == nil {
+		c.libLoading = map[string]bool{}
+	}
+	c.libLoading[name] = true
+	pkg := c.loadStdlibPackage(name, false)
+	delete(c.libLoading, name)
+	if c.libPkgs == nil {
+		c.libPkgs = map[string]*ir.Package{}
+	}
+	c.libPkgs[name] = pkg
+	return pkg
+}
+
+func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
+	}
+	if !ambient {
+		savedSymtab, savedScope := c.symtab, c.scope
+		stdlibPkg.Symbols.Root.Parent = savedScope
+		c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
+		defer func() { c.symtab, c.scope = savedSymtab, savedScope }()
 	}
 
 	var (
@@ -98,11 +166,12 @@ func (c *checker) loadStdlib() *ir.Package {
 		units      []*ast.UnitDef
 		structs    []*ast.StructDef
 		enums      []*ast.EnumDef
+		consts     []*ast.ConstDecl
 		funcs      []*ast.FuncDef
 		components []*ast.ComponentDecl
 		contexts   []*ast.CallStmt
 	)
-	for _, doc := range parseStdlibDocs() {
+	for _, doc := range PackageDocsFor(pkgName) {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.Import:
@@ -113,6 +182,8 @@ func (c *checker) loadStdlib() *ir.Package {
 				structs = append(structs, s)
 			case *ast.EnumDef:
 				enums = append(enums, s)
+			case *ast.ConstDecl:
+				consts = append(consts, s)
 			case *ast.FuncDef:
 				funcs = append(funcs, s)
 			case *ast.ComponentDecl:
@@ -154,6 +225,9 @@ func (c *checker) loadStdlib() *ir.Package {
 			}
 		}
 	}
+	for _, s := range consts {
+		c.registerStdlibConst(s, stdlibPkg)
+	}
 	// Phase 1: register stdlib func signatures (no body checking yet) so
 	// later phases — context default expressions, context-reading wrapper
 	// bodies — can resolve names against fully-populated symbol tables.
@@ -176,29 +250,27 @@ func (c *checker) loadStdlib() *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	// Register "sngl" namespace for qualified access to stdlib.
-	c.scope.Declare(&ir.Namespace{
-		Name: "sngl",
-		Pkg:  stdlibPkg,
-	})
-
-	// Register "i18n" namespace so that i18n.plural(...), i18n.one, etc.
-	// resolve without requiring an explicit import statement. The package
-	// exposes every i18n.* receiver method as a free function, plus the
-	// predeclared PluralKey constants (zero, one, two, few, many, other).
-	c.scope.Declare(&ir.Namespace{
-		Name: "i18n",
-		Pkg:  c.buildI18nNamespacePkg(structDefs),
-	})
-
-	// Register "html" namespace so the placement directives html.frontend(...) /
-	// html.backend(...) (GitLab #27) resolve as free-function calls without an
-	// explicit import. The directives are declared as methods on receiver
-	// "html" in lib/html.sngl; expose them here as namespace functions.
-	c.scope.Declare(&ir.Namespace{
-		Name: "html",
-		Pkg:  c.buildHtmlNamespacePkg(),
-	})
+	// The i18n and html namespaces describe std's own declarations, so they
+	// belong to that tier only. Declaring them from the builtin pass as well
+	// put an empty `html` namespace in the ambient scope, which shadowed the
+	// real one and lost the platform Resolve fallback attached to it.
+	if !ambient {
+		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
+		// exposes every i18n.* receiver method as a free function, plus the
+		// predeclared PluralKey constants (zero, one, two, few, many, other).
+		c.scope.Replace(&ir.Namespace{
+			Name: "i18n",
+			Pkg:  c.buildI18nNamespacePkg(structDefs),
+		})
+		// html so the placement directives html.frontend(...) /
+		// html.backend(...) (GitLab #27) resolve as free-function calls. The
+		// directives are declared as methods on receiver "html" in
+		// lib/std/html.sngl; expose them here as namespace functions.
+		c.scope.Replace(&ir.Namespace{
+			Name: "html",
+			Pkg:  c.buildHtmlNamespacePkg(),
+		})
+	}
 
 	// Register stdlib context declarations last — after the "i18n" namespace is
 	// in scope — so that default-value expressions like `i18n.defaultLocale()`
@@ -264,7 +336,7 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 	// Expose all i18n.* receiver methods as free functions in the namespace.
 	for _, fn := range c.symtab.Methods["i18n"] {
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Declare(fn)
+		pkg.Symbols.Root.Replace(fn)
 	}
 
 	// Locate the PluralKey struct so we can type the predeclared vars.
@@ -286,7 +358,7 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
 		v := &ir.Var{Name: name, Type: pluralKeyType, IsConst: true}
 		pkg.Vars = append(pkg.Vars, v)
-		pkg.Symbols.Root.Declare(v)
+		pkg.Symbols.Root.Replace(v)
 	}
 
 	return pkg
@@ -304,7 +376,7 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 	}
 	for _, fn := range c.symtab.Methods["html"] {
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Declare(fn)
+		pkg.Symbols.Root.Replace(fn)
 	}
 	return pkg
 }
@@ -317,11 +389,15 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[sd.Name] = sd
-	c.scope.Declare(sd)
+	// The loader binds every declaration into the ambient scope and into the
+	// package's own root, which for an ambient package are the same scope.
+	// Rebinding is the norm here, not a mistake; duplicates inside lib/ are
+	// caught by the one-name rule in the register* paths.
+	c.scope.Replace(sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)
 	pkg.Symbols.Types[sd.Name] = sd
-	pkg.Symbols.Root.Declare(sd)
+	pkg.Symbols.Root.Replace(sd)
 	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
 	switch sd.Builtin {
@@ -346,23 +422,53 @@ func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
 	c.symtab.Types[ed.Name] = ed
-	c.scope.Declare(ed)
+	c.scope.Replace(ed)
 	pkg.Enums = append(pkg.Enums, ed)
 	pkg.Symbols.Types[ed.Name] = ed
-	pkg.Symbols.Root.Declare(ed)
+	pkg.Symbols.Root.Replace(ed)
 }
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
 	// Main symtab + scope for unqualified access.
 	c.symtab.Types[ud.Name] = ud
-	c.scope.Declare(ud)
+	c.scope.Replace(ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
 	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
 	pkg.Symbols.Types[ud.Name] = ud
+}
+
+// registerStdlibConst registers a library const. The #[builtin] mark travels
+// from the declaration onto every name it declares, so collectBuiltins can
+// find the predeclared constants; for an unmarked const this is an ordinary
+// registration.
+func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
+	for _, spec := range decl.Specs {
+		typ := c.resolveType(spec.Type)
+		var init ir.Expr
+		if spec.Default != nil {
+			init = c.checkExprExpecting(spec.Default, typ)
+			if typ.Kind == ir.TypeDyn {
+				typ = exprType(init)
+			}
+		}
+		for _, name := range spec.Names {
+			v := &ir.Var{
+				AST:     decl,
+				Name:    name,
+				Type:    typ,
+				Init:    init,
+				IsConst: true,
+				Builtin: decl.Builtin,
+			}
+			pkg.Consts = append(pkg.Consts, v)
+			c.scope.Replace(v)
+			pkg.Symbols.Root.Replace(v)
+		}
+	}
 }
 
 func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
@@ -402,9 +508,9 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 		c.symtab.RegisterMethod(fn.Receiver, fn)
 	} else {
 		// Free function — available both qualified and unqualified.
-		c.scope.Declare(fn)
+		c.scope.Replace(fn)
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Declare(fn)
+		pkg.Symbols.Root.Replace(fn)
 	}
 	return fn
 }
@@ -429,7 +535,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 	for _, p := range fn.Params {
-		c.scope.Declare(p)
+		c.scope.Replace(p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -453,7 +559,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// abstract key type parameter.
 	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
 		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.scope.Declare(&ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+			c.scope.Replace(&ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
 		}
 	}
 
@@ -623,7 +729,7 @@ func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 			fn.Purity = ir.PurityPure
 		}
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Declare(fn)
+		pkg.Symbols.Root.Replace(fn)
 	}
 	return pkg
 }
@@ -651,6 +757,10 @@ func (c *checker) mergePlatformExtensions() {
 	}
 	for _, p := range c.cfg.Platforms {
 		for _, doc := range p.Package() {
+			// The extension prefix is whatever alias this document imported the
+			// stdlib under. Platform docs are not registered into the checker's
+			// scope, so resolve it from the document's own imports.
+			aliases := libImportAliases(doc)
 			for _, stmt := range doc.Stmts {
 				decl, ok := stmt.(*ast.ComponentDecl)
 				if !ok {
@@ -660,13 +770,31 @@ func (c *checker) mergePlatformExtensions() {
 					// Legacy form — skip until Phase C rewrites.
 					continue
 				}
-				if !strings.HasPrefix(decl.Name, "sngl.") {
+				dot := strings.IndexByte(decl.Name, '.')
+				if dot <= 0 {
 					continue
 				}
-				local := strings.TrimPrefix(decl.Name, "sngl.")
-				stdSym, ok := c.symtab.Comps[local]
+				// An unmatched prefix is an error, not a skip: silently
+				// ignoring these drops every override the file declares and
+				// still produces a successful build with unstyled output.
+				ns := decl.Name[:dot]
+				pkgName, ok := aliases[ns]
 				if !ok {
-					c.error(decl.Pos, "extension %q references unknown stdlib component %q", decl.Name, local)
+					// An unmatched prefix is an error, not a skip: silently
+					// ignoring these drops every override the file declares
+					// and still produces a successful build with unstyled
+					// output.
+					c.error(decl.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", ns, ns, "sngl://std")
+					continue
+				}
+				local := decl.Name[dot+1:]
+				// The library package, not the user symtab: a library package
+				// reaches user scope only through an import, but a platform
+				// extension targets its declaration either way.
+				target := c.libPkg(pkgName)
+				stdSym, ok := target.Symbols.Comps[local]
+				if !ok {
+					c.error(decl.Pos, "extension %q references unknown component %q in sngl://%s", decl.Name, local, pkgName)
 					continue
 				}
 				stdComp, ok := stdSym.(*ir.Component)
@@ -685,7 +813,7 @@ func (c *checker) mergePlatformExtensions() {
 						stdComp.PlatformBodies = map[string][]ir.Stmt{}
 					}
 					if _, dup := stdComp.PlatformBodies[pl.Platform]; dup {
-						c.error(pl.Pos, "component sngl.%s has duplicate platform block for %q", local, pl.Platform)
+						c.error(pl.Pos, "component %s.%s has duplicate platform block for %q", ns, local, pl.Platform)
 						continue
 					}
 					// Reserve the key first so duplicate-detection works even
@@ -743,7 +871,11 @@ func (c *checker) checkPendingExtensions() {
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
 	for _, platform := range order {
-		c.scope = c.stdlibScope
+		// Platform bodies are written against the standard library they
+		// extend (bare `slot`, `text`, …), which reaches user scope only by
+		// import. Resolve them in the std package's own scope, which chains
+		// to the ambient builtins.
+		c.scope = c.stdlibPkg.Symbols.Root
 		c.pushScope()
 		c.registerPlatformExtensionTypes(platform)
 		for _, pe := range byPlatform[platform] {
@@ -795,16 +927,16 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 		}
 	}
 	for _, u := range units {
-		c.scope.Declare(c.buildUnitDef(u))
+		c.scope.Replace(c.buildUnitDef(u))
 	}
 	for _, e := range enums {
-		c.scope.Declare(c.buildEnumDef(e))
+		c.scope.Replace(c.buildEnumDef(e))
 	}
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
 		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
-		c.scope.Declare(sd)
+		c.scope.Replace(sd)
 		stubs[i] = sd
 	}
 	for i, s := range structs {
@@ -983,7 +1115,7 @@ func isPrimitiveTypeKind(k ir.TypeKind) bool {
 // interpreter and codegen discover it alongside user-declared contexts.
 func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 	name := s.Call.ID
-	ctx := &ir.Context{AST: s, Name: name}
+	ctx := &ir.Context{AST: s, Name: name, Stdlib: true}
 	if name == "" {
 		c.error(s.Pos, "stdlib context decl requires #identifier")
 		return
@@ -996,14 +1128,14 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 	if len(args) != 1 {
 		c.error(s.Pos, "stdlib context decl requires exactly one default value")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Declare(ctx)
+		c.scope.Replace(ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
 		c.error(s.Pos, "stdlib context default must be positional, not named")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Declare(ctx)
+		c.scope.Replace(ctx)
 		return
 	}
 	// A context default is an initializer expression (see registerContextDecl),
@@ -1014,7 +1146,7 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 		ctx.Typ = def.ExprType()
 	}
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-	c.scope.Declare(ctx)
+	c.scope.Replace(ctx)
 }
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
@@ -1056,9 +1188,37 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 
 	// Main symtab + scope for unqualified access.
 	c.symtab.Comps[irComp.Name] = irComp
-	c.scope.Declare(irComp)
+	c.scope.Replace(irComp)
 	// Stdlib package for qualified sngl.Component access.
 	pkg.Components = append(pkg.Components, irComp)
 	pkg.Symbols.Comps[irComp.Name] = irComp
-	pkg.Symbols.Root.Declare(irComp)
+	pkg.Symbols.Root.Replace(irComp)
+}
+
+// stdlibImportAlias returns the alias a document binds the standard library
+// under, or "" if it does not import it. Platform sources use this alias as
+// the `component <alias>.X` extension prefix.
+func libImportAliases(doc *ast.Document) map[string]string {
+	out := map[string]string{}
+	for _, stmt := range doc.Stmts {
+		imp, ok := stmt.(*ast.Import)
+		if !ok {
+			continue
+		}
+		scheme, uri := ParseScheme(imp.Path)
+		if scheme != "sngl" {
+			continue
+		}
+		if imp.IsDot() {
+			// Flattened: the components are unqualified, so there is no
+			// prefix to declare an extension against.
+			continue
+		}
+		alias := imp.Alias
+		if alias == "" {
+			alias = NamespaceFromPath(imp.Path)
+		}
+		out[alias] = uri
+	}
+	return out
 }

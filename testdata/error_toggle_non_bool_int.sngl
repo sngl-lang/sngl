@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: toggle (`!!`) accepts non-bool targets.
 // Per audit (internal/checker/expr.go ToggleStmt): no check that target is bool;
 // codegen would emit `!x` on whatever type slipped through.

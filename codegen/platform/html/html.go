@@ -3248,7 +3248,7 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 				return "null"
 			case ir.TypeUnit:
 				return fmt.Sprintf("%q", lit.Raw)
-			case ir.TypeColor, ir.TypeDuration:
+			case ir.TypeColor:
 				return fmt.Sprintf("%q", lit.Raw)
 			case ir.TypeStruct:
 				if ir.StringReprStruct(lit.Type) {

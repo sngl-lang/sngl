@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // tabs: state-binding fixture — mutating the bound `selected`
 // index changes the active tab.
 component main {

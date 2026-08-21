@@ -21,6 +21,8 @@ grep '"Hello, \{user\}!"' out/model.go
 grep '"user":' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

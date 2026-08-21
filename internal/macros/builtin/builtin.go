@@ -16,44 +16,37 @@ import (
 )
 
 func init() {
-	// Empty internal URI: #[builtin("...")] is written bare, with no package
-	// segment, so applyAttrs resolves it under the empty alias.
-	expand.RegisterPre("", "builtin",
+	// #[builtin("...")] is written bare, with no package segment, so it
+	// resolves only in a file that dot-imports this package.
+	expand.RegisterPre("internal/builtin", "builtin",
 		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, builtinHandler)
 }
 
 // builtinHandler implements #[builtin("kind")], stamping the built-in kind onto
-// the declaration it annotates. Node kinds mark a component; every other kind
-// marks a struct.
+// the declaration it annotates.
+//
+// It does not know which kinds go on which declaration forms: it asserts
+// ast.BuiltinTaggable and lets the AST say what can carry a mark. What a given
+// kind then requires — that a node kind names a component, that a const kind
+// names a const — is checked where the compiler stores the reference, because
+// that is where the requirement comes from.
 //
 // The mark, rather than the declaration's name, is what the compiler keys on:
 // resolveNamedType returns the canonical singleton (or runs the generic
 // construction) for the marked decl and the plain user type otherwise, so a
-// user declaration shadows a built-in like any other name. For node kinds the
-// checker dispatches a visual node whose target resolves to the marked
-// component to the matching compiler construct (window -> ir.Window).
+// user declaration shadows a built-in like any other name.
 func builtinHandler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
 	raw := args.String("kind")
 	kind := ast.BuiltinKind(raw)
 	if !kind.Valid() {
 		return decl, fmt.Errorf("unknown builtin kind %q (valid: %s)", raw, strings.Join(kindNames(), ", "))
 	}
-
-	if kind.IsNode() {
-		comp, ok := decl.(*ast.ComponentDecl)
-		if !ok {
-			return decl, fmt.Errorf("#[builtin(%q)] requires a component declaration", raw)
-		}
-		comp.Builtin = kind
-		return comp, nil
-	}
-
-	s, ok := decl.(*ast.StructDef)
+	taggable, ok := decl.(ast.BuiltinTaggable)
 	if !ok {
-		return decl, fmt.Errorf("#[builtin(%q)] requires a struct declaration", raw)
+		return decl, fmt.Errorf("#[builtin(%q)] cannot mark %T", raw, decl)
 	}
-	s.Builtin = kind
-	return s, nil
+	taggable.SetBuiltin(kind)
+	return decl, nil
 }
 
 func kindNames() []string {

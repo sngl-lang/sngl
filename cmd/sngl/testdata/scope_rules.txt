@@ -1,0 +1,409 @@
+# One name, one meaning at file scope.
+
+# Unexported members are private to their declaring package. Only the type name
+# is gated on import, so without this its unexported members came along.
+! sngl check private_field.sngl
+stderr '_hidden is unexported'
+
+! sngl check private_method.sngl
+stderr '_secret is unexported'
+
+# Exported members through the same import are fine, and a package reaches its
+# own unexported members.
+sngl check exported_ok.sngl
+stdout 'exported_ok.sngl: ok'
+
+sngl check own_package.sngl
+stdout 'own_package.sngl: ok'
+
+# Two declarations of one name.
+! sngl check redeclared.sngl
+stderr 'redeclared in this file'
+
+# Two imports claiming one alias.
+! sngl check dup_alias.sngl
+stderr 'already bound at file scope by an import alias'
+
+# A declaration may not take a name an import alias already binds — every
+# qualified reference through that alias would break.
+! sngl check decl_vs_alias.sngl
+stderr 'already bound at file scope by an import alias'
+
+# A declaration may shadow a dot-imported name: only one of the two is written
+# here, so there is no ambiguity. This is the stdlib override story.
+sngl check shadows_dot.sngl
+stdout 'shadows_dot.sngl: ok'
+
+# A dot import may shadow a built-in for the same reason.
+sngl check shadows_builtin.sngl
+stdout 'shadows_builtin.sngl: ok'
+
+# All three built-in resolution paths, because they are three different paths:
+# a struct built-in resolves through scope, a scalar is matched in the registry
+# before scope is consulted, and a generic is constructed from its mark. If any
+# of them ignored the lift, adding a built-in would break every package that
+# already exported that name.
+sngl check shadows_builtin_scalar.sngl
+stdout 'shadows_builtin_scalar.sngl: ok'
+
+sngl check shadows_builtin_generic.sngl
+stdout 'shadows_builtin_generic.sngl: ok'
+
+
+# The one-name rule reaches free functions, consts and vars, not just types and
+# components. These live in the package's root symbol table rather than its
+# type or component maps, and lifting them unclaimed made which package a bare
+# name referred to depend on the order the imports were written in.
+! sngl check dup_dot_func.sngl
+stderr 'lifts "Greet", already lifted by dot import of'
+
+! sngl check dup_dot_const.sngl
+stderr 'lifts "LIMIT", already lifted by dot import of'
+
+# Duplicate bindings that used to be silently last-wins.
+! sngl check dup_const.sngl
+stderr '"K" redeclared in this file'
+
+! sngl check dup_component_var.sngl
+stderr 'y is already declared in this scope'
+
+! sngl check dup_loop_var.sngl
+stderr 'k is already declared in this scope'
+
+# A namespace the stdlib exposes may still be imported by name: both bindings
+# denote the same package, so this is a restated name, not an ambiguous one.
+sngl check restate_intrinsic.sngl
+stdout 'restate_intrinsic.sngl: ok'
+
+# Visibility is enforced where a member is resolved by name, not at each access
+# site: a struct literal, an enum member reached either way, and a call through
+# a func-typed field all name a member and all used to reach a private one.
+! sngl check private_literal.sngl
+stderr 'Box._hidden is unexported'
+
+! sngl check private_enum_member.sngl
+stderr 'Mode._B is unexported'
+
+! sngl check private_enum_bare.sngl
+stderr 'Mode._B is unexported'
+
+! sngl check private_field_call.sngl
+stderr 'Box._run is unexported'
+
+# An unknown exported field still reports as unknown rather than as private.
+! sngl check unknown_field.sngl
+stderr 'unknown field "nope" on struct Box'
+
+# The declaring package reaches its own private members by every one of those
+# paths.
+sngl check private_same_package.sngl
+stdout 'private_same_package.sngl: ok'
+
+# true, false and null are declarations in sngl://builtin, not names the parser
+# knows, so a declaration of your own shadows them like any other name. While
+# the parser recognised them they could not be shadowed at all.
+sngl check shadows_true.sngl
+stdout 'shadows_true.sngl: ok'
+
+sngl check shadows_null.sngl
+stdout 'shadows_null.sngl: ok'
+
+# PLATFORM is supplied by the compiler off its #[builtin] mark, so a constant
+# of your own by that name is an ordinary constant and wins.
+sngl generate --out platout shadow_platform.sngl
+grep 'SHADOWED' platout/index.html
+! grep 'TARGET' platout/index.html
+
+-- w/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int = 0
+    _hidden int = 0
+}
+
+func Box._secret() => 42
+
+func Box.Shown() => 1
+-- other/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    other int = 0
+}
+-- mycolor/lib.sngl --
+struct color {
+    tag string = "mine"
+}
+-- private_field.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b._hidden
+
+component main {
+    text(value="x")
+}
+-- private_method.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b._secret()
+
+component main {
+    text(value="x")
+}
+-- exported_ok.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b.Shown()
+
+func g(b w.Box) => b.v
+
+component main {
+    text(value="x")
+}
+-- own_package.sngl --
+import . "sngl://std"
+
+struct Local {
+    _p int = 0
+}
+
+func Local._m() => 1
+
+func use(l Local) => l._m() + l._p
+
+component main {
+    text(value="x")
+}
+-- redeclared.sngl --
+import . "sngl://std"
+
+func dup() => 1
+
+func dup() => 2
+
+component main {
+    text(value="x")
+}
+-- dup_alias.sngl --
+import . "sngl://std"
+import x "w"
+import x "other"
+
+component main {
+    text(value="x")
+}
+-- decl_vs_alias.sngl --
+import . "sngl://std"
+import helper "w"
+
+component helper() {
+    text(value="x")
+}
+
+component main {
+    text(value="y")
+}
+-- shadows_dot.sngl --
+import . "sngl://std"
+
+component text(value string) {
+    button(text=value)
+}
+
+component main {
+    text(value="mine")
+}
+-- shadows_builtin.sngl --
+import . "sngl://std"
+import . "mycolor"
+
+func f() => color{tag="x"}.tag
+
+component main {
+    text(value=f())
+}
+-- shadowers/lib.sngl --
+import . "sngl://std"
+
+struct int {
+    n string = ""
+}
+
+enum option { first, second }
+-- shadows_builtin_scalar.sngl --
+import . "sngl://std"
+import . "shadowers"
+
+func f() => int{n = "mine"}.n
+
+component main {
+    text(value=f())
+}
+-- shadows_builtin_generic.sngl --
+import . "sngl://std"
+import . "shadowers"
+
+var picked option = first
+
+component main {
+    text(value="x")
+}
+-- pa/lib.sngl --
+import . "sngl://std"
+
+func Greet() => "from A"
+-- pb/lib.sngl --
+import . "sngl://std"
+
+func Greet() => "from B"
+-- pc/lib.sngl --
+import . "sngl://std"
+
+const LIMIT = 1
+-- pd/lib.sngl --
+import . "sngl://std"
+
+const LIMIT = 2
+-- dup_dot_func.sngl --
+import . "sngl://std"
+import . "pa"
+import . "pb"
+
+component main {
+    text(value=Greet())
+}
+-- dup_dot_const.sngl --
+import . "sngl://std"
+import . "pc"
+import . "pd"
+
+component main {
+    text(value="{LIMIT}")
+}
+-- dup_const.sngl --
+import . "sngl://std"
+
+const K = 1
+const K = 2
+
+component main {
+    text(value="x")
+}
+-- dup_component_var.sngl --
+import . "sngl://std"
+
+component main {
+    var y int = 1
+    var y int = 2
+    text(value="x")
+}
+-- dup_loop_var.sngl --
+import . "sngl://std"
+
+component main {
+    var m map<string, string> = {}
+    for k, k = m {
+        text(value=k)
+    }
+}
+-- restate_intrinsic.sngl --
+import . "sngl://std"
+import "internal://lower"
+
+func make() => lower.CreateNode("text")
+
+component main {
+    text(value="x")
+}
+
+-- boxes/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int
+    _hidden int
+    _run func() int
+}
+
+enum Mode { A, _B }
+-- private_literal.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Box{v = 1, _hidden = 2}.v
+-- private_enum_member.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Mode._B
+-- private_enum_bare.sngl --
+import . "sngl://std"
+import b "boxes"
+
+var m b.Mode = _B
+-- private_field_call.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f(x b.Box) => x._run()
+-- unknown_field.sngl --
+import . "sngl://std"
+import b "boxes"
+
+func f() => b.Box{nope = 1}.v
+-- private_same_package.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int
+    _hidden int
+}
+
+enum Mode { A, _B }
+
+func f() => Box{v = 1, _hidden = 2}._hidden
+
+func g() => Mode._B
+
+var m Mode = _B
+
+component main {
+    text(value="x")
+}
+-- shadows_true.sngl --
+import . "sngl://std"
+
+const true = 0 != 0
+
+component main {
+    text(value="{true}")
+}
+-- shadows_null.sngl --
+import . "sngl://std"
+
+const null = "nothing"
+
+component main {
+    text(value=null)
+}
+-- shadow_platform.sngl --
+import . "sngl://std"
+
+output { none { html } }
+
+const PLATFORM = "zzz"
+
+component main {
+    window #w(href="/index.html") {
+        if PLATFORM == "html" {
+            text(value="TARGET")
+        }
+        if PLATFORM == "zzz" {
+            text(value="SHADOWED")
+        }
+    }
+}

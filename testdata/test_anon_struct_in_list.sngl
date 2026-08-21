@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 struct Item {
     id int = 0
     name string = ""

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // View components for SNGL documentation. Each takes a plain-struct prop from
 // the lookup façade and renders it across bubbletea/html — no data fetching
 // inside the components themselves.

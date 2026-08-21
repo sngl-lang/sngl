@@ -215,7 +215,8 @@ func TestFullFixture(t *testing.T) {
 }
 
 func TestLoweredReactivityWiring(t *testing.T) {
-	const src = `component main {
+	const src = `import . "sngl://std"
+component main {
     var n int = 0
     text(value=string(n))
     button(text="+", @click { n = n + 1 })

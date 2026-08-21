@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 var mutable = 5
 
 const BAD = mutable + 1 // ERROR(check) "non-const"

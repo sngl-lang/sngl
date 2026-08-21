@@ -38,7 +38,6 @@ const (
 	//go:fix inline
 	TypeColor = ir.TypeColor
 	//go:fix inline
-	TypeDuration = ir.TypeDuration
 	//go:fix inline
 	TypeNull = ir.TypeNull
 	//go:fix inline
@@ -86,7 +85,6 @@ var TypString = ir.TypString
 var TypNull = ir.TypNull
 
 //go:fix inline
-var TypDuration = ir.TypDuration
 
 //go:fix inline
 var TypVoid = ir.TypVoid

@@ -85,7 +85,8 @@ func TestFixtures(t *testing.T) {
 }
 
 func TestGettersSetters(t *testing.T) {
-	src := `struct Todo {
+	src := `import . "sngl://std"
+struct Todo {
     text string
     done bool
 }
@@ -130,7 +131,8 @@ component main {
 // the topmost open overlay (setting its open var false), and overlay-content
 // activation handlers stay unguarded.
 func TestOverlayFocusCapture(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     var (
         showModal = false
         showDrawer = false

@@ -13,6 +13,8 @@
 ! sngl run --lang=js --platform=none app.sngl
 
 -- app.sngl --
+import . "sngl://std"
+
 component main {
     var count = 0
     button(text="+", @click { count += 1 })

@@ -1,3 +1,4 @@
+import . "sngl://std"
 import "widgets"
 
 component main {

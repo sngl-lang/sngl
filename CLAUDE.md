@@ -87,7 +87,72 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Stdlib
 
-Stdlib source lives in `lib/*.sngl` and is embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). `internal/checker/stdlib.go` reads from that FS and parses the files at startup, returning components, functions, structs, units, and style properties. The checker prepends stdlib functions/structs to user definitions (user can override). Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name.
+Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
+
+Three packages exist, and the split is the whole point of the tier system:
+
+- **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
+- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+
+A library package documents itself with a **package comment**: a run of line
+comments at the top of a file, separated from what follows by a blank line
+(without the blank line it documents the declaration below it instead). The
+text is markdown, and `sngl doc` renders it as the package description — so
+adding a `lib/` directory with a package comment needs no code change.
+
+Go's semantics apply when several files carry one: they are concatenated,
+blank-line separated, in load order. That order is not guaranteed, so prose
+that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
+by convention, as `lib/std/doc.sngl` does.
+
+Packages import each other — `lib/draw` is written against `lib/std` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
+
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
+
+`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
+
+The `#[builtin]` macro only stamps the kind: it asserts `ast.BuiltinTaggable`
+and lets the AST say which declaration forms can carry a mark. What a kind then
+*requires* — that a node kind names a component, that a const kind names a
+const — is checked by `collectBuiltins` (`internal/checker/builtins.go`), where
+the compiler stores the reference, because that is where the requirement comes
+from. A duplicate mark is an error there rather than a silent overwrite.
+
+**Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
+a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
+name — so every built-in is shadowable by a user declaration of the same name.
+Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
+node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
+checker dispatches a visual node to the matching IR construct off the mark. The
+macro lives in `internal/macros/builtin`; kinds are `ast.BuiltinKind`.
+
+**Macros are not ambient.** A macro package is imported like any other:
+`#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
+`#[builtin("...")]` needs `import . "sngl://internal/builtin"` — which is why
+the two `lib/` files carrying builtin marks declare it. The alias is an
+ordinary file-scope binding, so the mark follows it: `import d "sngl://draw"`
+means `#[d.shape]`.
+
+A lib package may carry macros alongside its declarations — `sngl://draw`
+ships the `shape` mark next to the shape components it applies to — so the
+`sngl` scheme is checked against both the `lib/` layout and the macro
+registry. `sngl://internal/<name>` is the macro-only form: it contributes
+macros and no runtime symbols, and is validated against the registry alone.
+
+**One name, one meaning at file scope.** Two declarations of a name, two
+imports claiming it as an alias, two dot imports lifting it, or a declaration
+taking a name an import alias binds are all errors (`claimTopLevel` in
+`internal/checker/checker.go`). The one exception is shadowing, where only one
+of the two is written in this file: a declaration may shadow a dot-imported
+name, including a built-in.
+
+Two consequences worth knowing: a kind classifies *one* declaration and does not
+alias two — type identity is per-declaration, so two structs sharing a mark
+would be two incompatible types (the checker rejects a duplicated node mark).
+And `output` is deliberately *not* a built-in node: it parses as a visual node
+but is a build directive with its own data structure, matched by name so that
+`output` need not become a keyword.
 
 Notable stdlib packages:
 
@@ -127,7 +192,13 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 - Test runners resolve testdata via relative paths from their package directory
 - Error directive comments in test files (e.g., `// ERROR(check) "invalid color literal"` — phase is `parse`, `check`, etc.) drive expected-failure assertions via `internal/testutil`
 
-**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, and `!` for assertions.
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
+
+**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags or generated output, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI.
+
+`internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
+
+When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 ### Debugging
 
@@ -140,8 +211,13 @@ Structured logging via `slog` at three levels controlled by CLI flags:
 Dump commands inspect each compiler phase:
 
 ```bash
-sngl dump parsed [file|dir]                              # after parse + merge
-sngl dump checked [file|dir]                             # after type check
-sngl dump optimized --lang js --platform html [file|dir] # after optimization
-sngl dump analysis --lang js --platform html [file|dir]  # CommonAnalysis as JSON
+sngl dump --stage parsed  [file|dir]                              # after parse + merge
+sngl dump --stage checked [file|dir]                              # after type check
+sngl dump --stage optimized --lang js --platform html [file|dir]  # after optimization
+sngl dump --stage analysis --lang js --platform html [file|dir]   # CommonAnalysis as JSON
+sngl dump --stage lowered --after none [file|dir]                 # pre-lower IR
 ```
+
+The stage is a **flag**, not a positional argument — `sngl dump checked f.sngl`
+fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
+`spew`, or `json`; `--omit AST,Pos` trims noise.

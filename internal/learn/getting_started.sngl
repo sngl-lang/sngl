@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // GettingStarted is the "Your First App" tutorial. Built as a single SNGL
 // component (not markdown) so it renders on every platform website.sngl
 // targets — html today, android / fyne / bubbletea later. All language- and
@@ -13,11 +15,13 @@ component GettingStarted() {
     vbox(style={gap=8, padding=8, maxWidth=820}) {
 
         docui.Heading1(value="Your First App")
-        docui.Paragraph(value="This tutorial walks through building a SNGL app from a one-line Hello World up to a full todo list with persistence and code embedding. Every snippet is real SNGL — copy it into a file and run.")
+        docui.Paragraph(value="This tutorial walks through building a SNGL app from a one-line Hello World up to a full todo list with persistence and code embedding. Every snippet is real SNGL and type-checks; copy one into a file and run it. The only exceptions are marked: a `// ...` elides code shown earlier, and the persistence example imports a Go package you supply.")
 
         docui.Heading2(value="Hello, World")
         docui.Paragraph(value="A SNGL app is a tree of components rooted at one called `main`. The smallest app is a single text node:")
-        docui.CodeBlock(code=`component main {
+        docui.CodeBlock(code=`import . "sngl://std"
+
+component main {
     text(value="Hello, World!")
 }`, language="sngl")
         docui.Paragraph(value="Save it as `hello.sngl` and run:")
@@ -25,7 +29,9 @@ component GettingStarted() {
 
         docui.Heading2(value="Reactive state and binding")
         docui.Paragraph(value="State is declared with `var` (mutable) or zero-arg `func` (derived). The `:value` prefix on a prop is two-way binding: changes flow both ways.")
-        docui.CodeBlock(code=`component main {
+        docui.CodeBlock(code=`import . "sngl://std"
+
+component main {
     var name = "World"
     func greeting() => "Hello, {name}!"
     vbox(style={gap=8, padding=16}) {
@@ -91,7 +97,9 @@ component GettingStarted() {
 
         docui.Heading2(value="Build a todo app")
         docui.Paragraph(value="Now the full thing: a list of todos with an input field, an add button, and a checkbox per item. Walk through it section by section — every line is part of the running app.")
-        docui.CodeBlock(code=`struct Todo {
+        docui.CodeBlock(code=`import . "sngl://std"
+
+struct Todo {
     text string = ""
     done bool = false
 }
@@ -108,12 +116,12 @@ component main {
         hbox(style={gap=8, alignItems="center"}) {
             input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             button(text="Add", @click {
-                list.push(todos, Todo{text=newTodo, done=false})
+                todos.push(Todo{text=newTodo, done=false})
                 newTodo = ""
             })
         }
         vbox(style={gap=4}) {
-            for item, index = todos {
+            for index, item = todos {
                 checkbox(checked=item.done, label=item.text,
                     @change { todos[index].done!! })
             }
@@ -121,24 +129,20 @@ component main {
     }
 }`, language="sngl")
         docui.Paragraph(value="`struct Todo` is the data shape. `var todos list<Todo> = []` starts empty and is what the UI iterates. `func status()` is derived — the count updates whenever `todos` changes.")
-        docui.Paragraph(value="`@click` is an event handler running a statement block; `list.push` mutates the bound list, which triggers a rerender. The trailing `done!!` in the checkbox is the toggle operator — flips a bool in place.")
+        docui.Paragraph(value="`@click` is an event handler running a statement block; `todos.push(...)` mutates the bound list, which triggers a rerender. The trailing `done!!` in the checkbox is the toggle operator — flips a bool in place.")
 
         docui.Heading2(value="Persist state with a Go import")
         docui.Paragraph(value="The Todo list lives in memory. To save it across runs, import a Go package — any type-safe Go function becomes a SNGL function with the same signature.")
-        docui.CodeBlock(code=`import "go://encoding/json"
-import "go://os"
-
-const todosPath = "todos.json"
+        docui.CodeBlock(code=`import . "sngl://std"
+import "go://myapp/store"
 
 component main {
-    var todos list<Todo> = json.unmarshal(os.readFile(todosPath))
-
-    @effect(todos) {
-        os.writeFile(todosPath, json.marshal(todos))
+    var todos list<Todo> = store.Load() @change {
+        store.Save(todos)
     }
     // ... rest of UI as before
 }`, language="sngl")
-        docui.Paragraph(value="`@effect(todos)` re-runs whenever `todos` changes. It only compiles when the host language is Go; on other platforms, swap in a platform-appropriate persistence import.")
+        docui.Paragraph(value="`@change` is a data event on the variable: it re-runs whenever `todos` changes. Any exported Go function becomes a SNGL function with the same signature, so `store.Load` and `store.Save` are ordinary calls. The import only compiles when the host language is Go; on other platforms, swap in a platform-appropriate persistence package.")
 
         docui.Heading2(value="Embed generated code in a host app")
         docui.Paragraph(value="The generator can omit a `main()` so the output is a library, not an app. Pick a host language:")
@@ -147,7 +151,7 @@ component main {
             button(text="Kotlin (Android)", @click { embedLang = "kotlin" })
         }
         if embedLang == "go" {
-            docui.CodeBlock(code="sngl generate todo.sngl --lang go --platform html --main=false -o ./generated", language="bash")
+            docui.CodeBlock(code="sngl generate todo.sngl --lang go --platform html --opt main=false -o ./generated", language="bash")
             docui.Paragraph(value="Then write your own `main` that mounts the handler:")
             docui.CodeBlock(code=`package main
 
@@ -163,7 +167,7 @@ func main() {
 }`, language="go")
         }
         if embedLang == "kotlin" {
-            docui.CodeBlock(code="sngl generate todo.sngl --lang kotlin --platform android --main=false -o ./app/src/main/sngl", language="bash")
+            docui.CodeBlock(code="sngl generate todo.sngl --lang kotlin --platform android --opt main=false -o ./app/src/main/sngl", language="bash")
             docui.Paragraph(value="Then attach the generated `Root` composable in your existing Android `Application`:")
             docui.CodeBlock(code=`package com.example.todo
 

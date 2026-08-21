@@ -22,7 +22,7 @@ func noErrors(t *testing.T, diags []ir.Diagnostic) {
 // and that the stdlib list StructDef carries TypeParams = ["T"].
 func TestStdlibListHasTypeParam(t *testing.T) {
 	src := `var xs list<int> = [1, 2, 3]`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestStdlibListHasTypeParam(t *testing.T) {
 // that the stdlib map StructDef carries TypeParams = ["K", "V"].
 func TestStdlibMapHasTypeParams(t *testing.T) {
 	src := `var m map<string, int> = {a = 1, b = 2}`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -62,7 +62,7 @@ struct Box<T> {
 }
 var b Box<int>
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestBuiltinGenericShadowable(t *testing.T) {
 	src := `struct list<T> { first T }
 var xs list<int>
 var y int = xs.first`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestBuiltinScalarShadowable(t *testing.T) {
 	src := `struct int { tag string }
 var v int
 var s string = v.tag`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -107,7 +107,7 @@ var s string = v.tag`
 func TestBuiltinScalarNotShadowed(t *testing.T) {
 	src := `var n int = 3
 var d int = n.abs()`
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -124,7 +124,7 @@ struct Pair<A, B> {
 }
 var p Pair<int, string>
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -141,7 +141,7 @@ struct Box<T> {
 }
 var b Box
 `
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

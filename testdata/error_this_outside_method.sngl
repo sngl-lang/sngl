@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 func main_helper() => this // ERROR(check) "undefined: this"
 
 component main {

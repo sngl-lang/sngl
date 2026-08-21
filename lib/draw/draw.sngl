@@ -1,4 +1,14 @@
-import "internal://canvas"
+// 2D shapes and the canvas that hosts them. Importing this package brings both
+// the shape components and the `#[draw.shape]` mark that declares new ones.
+//
+// The shapes live here rather than in `sngl://std` because `canvas`, `rect`,
+// `line` and `path` are names an application usually wants for itself.
+
+// std is qualified rather than dot-imported: a lib package is loaded into the
+// checker's own symbol table, so names it lifts become indistinguishable from
+// names it declares and would be re-lifted by `import . "sngl://draw"`. User
+// packages do not re-export a dot import, and neither should this one.
+import std "sngl://std"
 
 struct CanvasStyle {
     fill        color  = color{a=0}
@@ -21,7 +31,7 @@ struct PathCmd {
     r   float = 0.0
 }
 
-component canvas(width measurement, height measurement, style CanvasStyle, @click ClickEvent) list<shape> {}
+component canvas(width std.measurement, height std.measurement, style CanvasStyle, @click std.ClickEvent) list<shape> {}
 
 component rect(x float, y float, w float, h float, style CanvasStyle) list<shape> {}
 

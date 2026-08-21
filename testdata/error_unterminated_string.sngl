@@ -1,1 +1,3 @@
+import . "sngl://std"
+
 var x string = "hello // ERROR(parse) "expected"

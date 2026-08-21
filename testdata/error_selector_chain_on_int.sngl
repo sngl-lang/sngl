@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: chained selector on a primitive value typechecks silently.
 // Struct field access reaches an `int`, then a further `.zoo` is ignored —
 // the checker emits no diagnostic for the unknown selector on `int`.

@@ -205,12 +205,16 @@ func (f *Func) FuncSig() *FuncSig {
 // NativePkg/NativeName are set when the var originates from a scheme import.
 // Unusable is non-empty when the var's type cannot be modelled precisely.
 type Var struct {
-	AST         ast.Stmt // original ConstDecl or VarDecl
-	Name        string
-	Type        *Type
-	Init        Expr // checked initializer (nil if none)
-	IsConst     bool
-	Handlers    []*EventHandler
+	AST      ast.Stmt // original ConstDecl or VarDecl
+	Name     string
+	Type     *Type
+	Init     Expr // checked initializer (nil if none)
+	IsConst  bool
+	Handlers []*EventHandler
+	// Builtin is set by the #[builtin] macro on a predeclared constant
+	// (null, PLATFORM, LANGUAGE). The compiler supplies the type and value;
+	// the written ones are placeholders.
+	Builtin     ast.BuiltinKind
 	NativePkg   string
 	NativeName  string
 	Unusable    string

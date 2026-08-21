@@ -43,7 +43,7 @@ func TestSemanticTokens_ClassifiesIdentifiers(t *testing.T) {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestSemanticTokens_FallbackWithoutIR(t *testing.T) {
     var x = 1
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

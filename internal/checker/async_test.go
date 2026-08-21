@@ -28,7 +28,7 @@ func asyncNativeImport(scheme, name string) map[string]*ir.NativeImport {
 
 // checkPkgWithImports is like checkWithImports but returns the package too.
 func checkPkgWithImports(src string, native map[string]*ir.NativeImport) (*ir.Package, []ir.Diagnostic) {
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		return nil, []ir.Diagnostic{{Severity: ir.Error, Msg: err.Error()}}
 	}

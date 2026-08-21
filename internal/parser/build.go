@@ -280,11 +280,15 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 // --- Imports ---
 
 func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
-	// ImportDecl = kw_import [ ident ] str_full [ fat_arrow str_full ] .
+	// ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 	pos := b.posFromToken(it.shift()) // kw_import
 	imp := &ast.Import{Pos: pos}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+	switch {
+	case !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT:
 		imp.Alias = it.shift().Literal
+	case !it.done() && !it.isNonTerminal() && it.tokenType() == DOT:
+		it.skip()
+		imp.Alias = "."
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == STR_FULL {
 		imp.Path = stripQuotes(it.shift().Literal)
@@ -1353,13 +1357,9 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 			Suffix:      extractUnitSuffix(tok.Literal),
 		}
 	case IDENT:
-		// Check for bool/null literals
-		switch tok.Literal {
-		case "true", "false":
-			return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralBool, Raw: tok.Literal}
-		case "null":
-			return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralNull, Raw: tok.Literal}
-		}
+		// true, false and null are declarations in sngl://builtin, not names
+		// the parser knows. Recognising them here made them unshadowable and
+		// put three names in the grammar that the language does not reserve.
 		return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
 	case AT:
 		return &ast.EventRefExpr{Pos: ast.Pos(pos)}

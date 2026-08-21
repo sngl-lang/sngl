@@ -1,0 +1,208 @@
+# Dot import flattens a package's exported declarations into the importing
+# scope, so they are referenced unqualified. Needs the real CLI: directory
+# import resolution is not available to the checker's own testdata harness.
+sngl check main.sngl
+stdout 'main.sngl: ok'
+
+# Without the dot the same names are only reachable qualified.
+! sngl check plain.sngl
+stderr 'unknown type "Card"'
+
+# Unexported (underscore-prefixed) declarations are not lifted.
+! sngl check unexported.sngl
+stderr 'undefined: _helper'
+
+# A user declaration shadows a dot-imported one of the same name: imports are
+# processed first, so the later user declaration wins in the same scope.
+sngl generate --out out shadow.sngl
+grep 'MINE' out/index.html
+! grep 'hello ' out/index.html
+
+# The dot form flattens the standard library into the file.
+sngl check std.sngl
+stdout 'std.sngl: ok'
+
+# The namespace form binds the stdlib under an alias. Both forms are valid —
+# the scheme means neither can collide with a local package directory.
+sngl check stdbare.sngl
+stdout 'stdbare.sngl: ok'
+
+# The alias is the caller's choice, and it is what qualifies the stdlib.
+sngl check stdalias.sngl
+stdout 'stdalias.sngl: ok'
+
+# Without the import there is no such namespace: `sngl` is no longer an
+# implicit global.
+! sngl check stdunimported.sngl
+stderr 'undefined: sngl'
+
+# Two dot imports lifting the same name is an error. Taking the last silently
+# would make which package a bare name refers to depend on import order.
+! sngl check ambiguous.sngl
+stderr 'already lifted by dot import of'
+
+# Qualifying one of them resolves it.
+sngl check disambiguated.sngl
+stdout 'disambiguated.sngl: ok'
+
+# A local directory named std is reachable as itself; the stdlib scheme cannot
+# shadow it.
+sngl check localstd.sngl
+stdout 'localstd.sngl: ok'
+
+# An extension against a namespace that is not an imported library package is
+# an error, not a skip. Silently ignoring it would drop every override the file
+# declares and still produce a successful build with unstyled output.
+! sngl check badext.sngl
+stderr 'extension namespace "notstd" is not an imported library package'
+
+# Any library package can be extended, not just std: a platform needs to style
+# draw.canvas as much as std.vbox.
+sngl check extdraw.sngl
+stdout 'extdraw.sngl: ok'
+
+# Only sngl://std exists so far.
+! sngl check stdunknown.sngl
+stderr 'unknown stdlib package "widgets"'
+
+-- widgets/lib.sngl --
+import . "sngl://std"
+
+struct Card {
+    title string = ""
+}
+
+func Greet(who string) => "hello " + who
+
+func _helper() => "internal"
+
+-- main.sngl --
+import . "sngl://std"
+import . "widgets"
+
+component main {
+    var c Card = {title = "t"}
+    var g = Greet("world")
+    text(value=c.title + g)
+}
+-- plain.sngl --
+import . "sngl://std"
+import "widgets"
+
+component main {
+    var c Card = {title = "t"}
+    text(value=c.title)
+}
+-- unexported.sngl --
+import . "sngl://std"
+import . "widgets"
+
+component main {
+    var h = _helper()
+    text(value=h)
+}
+-- shadow.sngl --
+import . "sngl://std"
+
+output { none { html } }
+
+import . "widgets"
+
+func Greet(who string) => "MINE " + who
+
+component main {
+    window #w(href="/index.html") {
+        text(value=Greet("x"))
+    }
+}
+-- std.sngl --
+import . "sngl://std"
+
+component main {
+    text(value="x")
+}
+-- stdbare.sngl --
+import "sngl://std"
+
+component main {
+    std.text(value="x")
+}
+-- stdalias.sngl --
+import lib "sngl://std"
+
+component text() {}
+
+component main {
+    lib.text(value="stdlib, not the shadow")
+    text()
+}
+-- stdunimported.sngl --
+import . "sngl://std"
+
+component main {
+    sngl.text(value="x")
+}
+-- localstd.sngl --
+import . "sngl://std"
+import "std"
+
+component main {
+    text(value=std.greet())
+}
+-- std/helper.sngl --
+import . "sngl://std"
+
+func greet() => "local package named std"
+-- badext.sngl --
+import sngl "sngl://std"
+
+component notstd.text {
+    platform html {
+        span(textContent=value) {}
+    }
+}
+
+component main {
+    text(value="x")
+}
+-- other/lib.sngl --
+import . "sngl://std"
+
+struct Card {
+    subtitle string = ""
+}
+-- ambiguous.sngl --
+import . "sngl://std"
+import . "widgets"
+import . "other"
+
+component main {
+    var c Card = {title = "t"}
+    text(value=c.title)
+}
+-- disambiguated.sngl --
+import . "sngl://std"
+import . "widgets"
+import o "other"
+
+component main {
+    var c Card = {title = "t"}
+    var d o.Card = {subtitle = "s"}
+    text(value=c.title + d.subtitle)
+}
+-- stdunknown.sngl --
+import . "sngl://std"
+import "sngl://widgets"
+
+component main {
+    text(value="x")
+}
+-- extdraw.sngl --
+import s "sngl://std"
+import d "sngl://draw"
+
+component d.canvas {
+    platform html {
+        s.text(value="styled")
+    }
+}

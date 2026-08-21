@@ -38,6 +38,9 @@ type SchemaRegistry = map[string]*ComponentSchema
 
 // PackageDocs holds extracted documentation for all declarations in a package.
 type PackageDocs struct {
+	// Doc is the package comment, from the first file that carries one.
+	Doc string
+
 	Components []DeclInfo
 	Structs    []DeclInfo
 	Enums      []DeclInfo
@@ -231,7 +234,7 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 // callers never have to know or enforce the export rule themselves — it
 // lives on the IR decl types' IsExported methods.
 func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
-	pd := &PackageDocs{}
+	pd := &PackageDocs{Doc: PackageDoc(doc)}
 	stmts := doc.Stmts
 
 	for i, stmt := range stmts {
@@ -314,6 +317,39 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // group — so section headers like `// --- Core ---` or inner-struct comments
 // separated from a decl by a blank line are not folded into the decl's doc.
 // A declLine of 0 disables the adjacency check against the decl itself.
+// PackageDoc returns a document's package comment: a run of line comments
+// starting at the top of the file and separated from what follows by a blank
+// line. The blank line is what distinguishes it from a doc comment on the
+// first declaration, which DeclDoc claims instead.
+func PackageDoc(doc *ast.Document) string {
+	var lines []string
+	last := 0
+	i := 0
+	for ; i < len(doc.Stmts); i++ {
+		c, ok := doc.Stmts[i].(*ast.Comment)
+		if !ok || c.Block || c.Inline {
+			break
+		}
+		if last != 0 && c.Pos.Line != last+1 {
+			break // blank line: the run ends here
+		}
+		last = c.Pos.Line
+		text := strings.TrimPrefix(c.Text, "//")
+		lines = append(lines, strings.TrimPrefix(text, " "))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	// Whatever follows must be separated by a blank line. Without one the run
+	// is a doc comment on the declaration below it, which DeclDoc claims.
+	if i < len(doc.Stmts) {
+		if next := doc.Stmts[i].StmtPos(); next == nil || next.Line <= last+1 {
+			return ""
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, " "))
+}
+
 func DeclDoc(stmts []ast.Stmt, declLine int) string {
 	var lines []string
 	nextLine := declLine

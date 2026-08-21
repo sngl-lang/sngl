@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Server-action fixture for Phase 4. A @click handler calls a go:// native func
 // (api.Persist), so under --lang go the html placement pass classifies the
 // handler as backend and the golang HTTPCompiler emits a real server-side POST

@@ -1,5 +1,7 @@
 caps: NoToggle, NoEnum
 -- input.sngl --
+import . "sngl://std"
+
 enum Mode {
     off
     on
@@ -16,6 +18,7 @@ component main {
     button(@click { tick() })
 }
 -- expected.sngl --
+import . "sngl://std"
 enum Mode {
     off
     on
@@ -30,4 +33,3 @@ component main {
         main.tick()
     })
 }
-context #locale(i18n.defaultLocale())

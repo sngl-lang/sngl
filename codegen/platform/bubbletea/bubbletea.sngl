@@ -7,6 +7,8 @@
 // off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
 // primitive lowers to lipgloss / bubbles model code.
 
+import sngl "sngl://std"
+
 struct Options {
     // Go package name for the generated files.
     package string

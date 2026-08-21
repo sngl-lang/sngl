@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var newline = "line1\nline2"
     var tab = "col1\tcol2"

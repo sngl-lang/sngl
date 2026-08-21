@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component Foo(value) { // ERROR(check) "must have a type hint or a default value"
     text(value="test")
 }

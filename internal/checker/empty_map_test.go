@@ -12,7 +12,7 @@ import (
 func TestEmptyMapLiteralNonStringKey(t *testing.T) {
 	for _, mt := range []string{"map<float, int>", "map<int, string>", "map<string, int>"} {
 		src := "component main {\n    var m " + mt + " = {}\n    text(value=\"{m.length()}\")\n}\n"
-		doc, err := parser.Parse("test.sngl", []byte(src))
+		doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 		if err != nil {
 			t.Fatalf("%s: parse: %v", mt, err)
 		}

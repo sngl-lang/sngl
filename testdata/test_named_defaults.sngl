@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     // Named args let callers skip intermediate defaults.
     func connect(host string, port int = 8080, debug bool = false) => host + ":" + string(port)

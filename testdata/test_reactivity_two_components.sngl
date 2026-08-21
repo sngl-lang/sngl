@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Two components with the same-named var prove pointer-keyed deps
 // don't cross-subscribe.
 component left {

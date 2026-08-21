@@ -22,6 +22,8 @@ grep 'm\.__n0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
 grep 'm\.content = "after click"' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output {
     go { fyne }
 }

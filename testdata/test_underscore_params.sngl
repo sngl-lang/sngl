@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     // _-prefix params: usable in body, not targetable by name at call site.
     func parse(_input string, _index int) => _input

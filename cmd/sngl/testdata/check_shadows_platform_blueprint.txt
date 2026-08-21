@@ -18,6 +18,8 @@ grep 'textinput' out/model.go
 grep 'user widget' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component Widget(title string) list<component> {

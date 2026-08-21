@@ -311,10 +311,11 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	platformName := extractOutputPlatform(l)
 	langName := extractOutputLang(l)
 
-	var sources []*ast.Document
-	for _, doc := range checker.StdlibDocs() {
-		sources = append(sources, doc)
-	}
+	// Build options are directive surface, not declarations the file imports:
+	// `output { none { html(name="X") } }` checks with no import at all, so
+	// these are read from the package that declares them rather than from
+	// whatever the file has in scope.
+	sources := checker.PackageDocsFor("std")
 	if langName != "" {
 		if lang := codegen.LookupLang(langName); lang != nil {
 			sources = append(sources, lang.Package()...)

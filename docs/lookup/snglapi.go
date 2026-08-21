@@ -39,7 +39,7 @@ type PackageRefView struct {
 	Title string
 	Alias string
 	Path  string
-	Kind  string // "current", "stdlib", "local", "scheme"
+	Kind  string // "current", "library", "local", "scheme"
 }
 
 // PackageView is the sngl-facing shape of DeclIndex.
@@ -47,7 +47,7 @@ type PackageView struct {
 	Found            bool
 	Title            string
 	Description      string
-	IsStdlib         bool
+	Library          bool
 	IsNative         bool
 	NativeImportPath string
 	Components       []Summary
@@ -198,7 +198,7 @@ type Entry struct {
 type PackageEntry struct {
 	Path  string // "sngl", "android", "html", ...
 	Title string // display title, e.g. "Standard Library", "android"
-	Kind  string // "stdlib" | "platform" | "language"
+	Kind  string // "library" | "platform" | "language"
 }
 
 // DeclPage is one generated documentation page for a decl. Pkg + Kind + Name
@@ -241,7 +241,7 @@ func Packages() []PackageRefView {
 //
 //sngl:pure
 func StdlibPackages() []PackageEntry {
-	out := []PackageEntry{{Path: "sngl", Title: "Standard Library", Kind: "stdlib"}}
+	out := []PackageEntry{{Path: "sngl", Title: "SNGL Library", Kind: "library"}}
 	plats := codegen.Platforms()
 	sort.Strings(plats)
 	for _, name := range plats {
@@ -455,8 +455,8 @@ func packageKindName(k PackageKind) string {
 	switch k {
 	case PackageCurrent:
 		return "current"
-	case PackageStdlib:
-		return "stdlib"
+	case PackageLibrary:
+		return "library"
 	case PackageLocal:
 		return "local"
 	case PackageScheme:
@@ -473,7 +473,7 @@ func mapIndex(idx *DeclIndex) PackageView {
 		Found:         true,
 		Title:         idx.Title,
 		Description:   idx.Description,
-		IsStdlib:      idx.IsStdlib,
+		Library:       idx.Library,
 		Components:    mapSummaries(idx.Components),
 		Enums:         mapSummaries(idx.Enums),
 		Constants:     mapSummaries(idx.Constants),

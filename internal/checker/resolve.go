@@ -177,7 +177,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 
-	c.error(t.Pos, "unknown type %q", t.Name)
+	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHint(t.Name))
 	return TypDyn
 }
 
@@ -580,7 +580,7 @@ func isComparable(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeDuration, ir.TypeColor:
+		ir.TypeColor:
 		return true
 	case ir.TypeStruct:
 		// Conservative: accept any named struct as comparable. Refine

@@ -41,46 +41,38 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/internal/headless"
 )
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 
-// headlessCompositor holds the resolved `cage` path (empty if unavailable).
-// gtk4 snapshot / RunTests present real GtkWindows via cgo; running the test
-// steps inside cage's wlroots headless backend keeps those windows off the
-// user's desktop. Fyne uses its offscreen test driver and needs no display.
-var headlessCompositor = func() string {
-	p, err := exec.LookPath("cage")
-	if err != nil {
-		return ""
-	}
-	return p
-}()
-
-// headlessEnv is appended to the environment of any command wrapped with cage:
-// force the wlroots headless backend (no DRM/real output) and a software
-// renderer so the compositor works without a GPU. The GTK4 client renders via
-// GskCairoRenderer (software) so it needs no GL context of its own.
-//
-// SNGL_CAGE_ACTIVE marks descendants as already inside a headless compositor,
-// so test binaries whose TestMain self-wraps in cage (see
-// testutil.MaybeReexecUnderCage) don't double-wrap under verify's outer cage.
-var headlessEnv = []string{"WLR_BACKENDS=headless", "WLR_RENDERER=pixman", "SNGL_CAGE_ACTIVE=1"}
-
-// wrapHeadless rewrites (command, args) to run under cage when it is available
-// and a Wayland/X11 session is present (so windows would otherwise pop up). It
-// returns the possibly-rewritten command plus the extra env cage needs. When
-// cage is absent it returns the command unchanged and warns once.
+// wrapHeadless rewrites (command, args) to run under a headless compositor.
+// The knowledge of how to do that lives in internal/headless, shared with the
+// test binaries that self-wrap in TestMain.
 func wrapHeadless(command string, args []string) (string, []string, []string) {
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		// No session → gtk4 tests skip themselves; nothing to isolate.
-		return command, args, nil
+	cmd, wrapped, env, cleanup := headless.Wrap(command, args)
+	cageCleanups = append(cageCleanups, cleanup)
+	return cmd, wrapped, env
+}
+
+// cageCleanups removes each compositor's private runtime dir. wrapHeadless is
+// called once per wrapped step, so these accumulate; os.Exit skips defers, so
+// every exit path goes through exit().
+var cageCleanups []func()
+
+// cleanupCage removes every compositor runtime dir this run created.
+func cleanupCage() {
+	for _, c := range cageCleanups {
+		c()
 	}
-	if headlessCompositor == "" {
-		return command, args, nil
-	}
-	wrapped := append([]string{"--", command}, args...)
-	return headlessCompositor, wrapped, headlessEnv
+	cageCleanups = nil
+}
+
+// exit terminates verify, removing anything it created on the way out.
+func exit(code int) {
+	cleanupCage()
+	os.Exit(code)
 }
 
 type pkgResult struct {
@@ -106,36 +98,39 @@ func main() {
 
 	log.SetFlags(0)
 
-	if headlessCompositor == "" && (os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != "") {
-		log.Printf("note: cage not found; gtk4 snapshot tests will present windows on your desktop. Install it (pacman -S cage) to run the test steps headlessly.")
+	// gtk4 presents real GtkWindows via cgo; the test steps run inside cage's
+	// wlroots headless backend so they render without a desktop and never
+	// reach the user's. Fyne uses its offscreen driver and needs no display.
+	if headless.Compositor() == "" {
+		log.Printf("note: cage not found; gtk4 GUI tests will skip. Install it (pacman -S cage) to run them headlessly.")
 	}
 
 	// Step 1: go generate (skip in dry mode)
 	if !*dry {
 		if !runStep("generate", "go", "generate", "./...") {
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
 	// Step 2: go mod tidy
 	if *dry {
 		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
-			os.Exit(1)
+			exit(1)
 		}
 	} else {
 		if !runStep("mod-tidy", "go", "mod", "tidy") {
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
 	// Step 3: go fmt
 	if *dry {
 		if !runCheckStep("fmt", "gofmt", "-l", ".") {
-			os.Exit(1)
+			exit(1)
 		}
 	} else {
 		if !runStep("fmt", "go", "fmt", "./...") {
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
@@ -151,24 +146,24 @@ func main() {
 		}
 		mdArgs = append(mdArgs, mdFiles...)
 		if !runStep("mdox-fmt", "go", mdArgs...) {
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
 	// Step 5: go fix
 	if *dry {
 		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
-			os.Exit(1)
+			exit(1)
 		}
 	} else {
 		if !runStep("fix", "go", "fix", "./...") {
-			os.Exit(1)
+			exit(1)
 		}
 	}
 
 	// Step 6: go vet
 	if !runStep("vet", "go", "vet", "./...") {
-		os.Exit(1)
+		exit(1)
 	}
 
 	// Step 7: go test with coverage
@@ -191,8 +186,9 @@ func main() {
 	sc, sargs, senv := wrapHeadless("go", []string{"tool", "sngl", "test",
 		"--platform=all", "--opt", "goModExtra=" + replaceDirective, "./..."})
 	if !runStepEnv("sngl-test", senv, sc, sargs...) {
-		os.Exit(1)
+		exit(1)
 	}
+	cleanupCage()
 }
 
 func runStep(name string, command string, args ...string) bool {
@@ -342,7 +338,7 @@ func runTests(verbose, fmtDocs, full bool) {
 	}
 
 	if cmdErr != nil {
-		os.Exit(1)
+		exit(1)
 	}
 }
 

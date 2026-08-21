@@ -18,6 +18,7 @@ import (
 // render method recurses, the child overwrites the parent's m.__nX, so the
 // parent appends a box to itself → GTK parent-child cycle → infinite layout.
 const recursiveTreeSrc = `
+import . "sngl://std"
 struct TreeNode {
     value int = 0
     left dyn = null

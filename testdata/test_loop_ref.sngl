@@ -4,6 +4,8 @@
 // (enforced for compiled targets; the headless interpreter models structs
 // as references, so only the &-write-through behaviour is asserted here).
 
+import . "sngl://std"
+
 struct Task { label string = ""; done bool = false }
 
 component main {

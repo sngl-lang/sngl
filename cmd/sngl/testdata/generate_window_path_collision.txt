@@ -4,6 +4,8 @@
 stderr 'window output path collision'
 
 -- site.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

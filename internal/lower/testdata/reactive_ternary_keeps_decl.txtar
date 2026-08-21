@@ -6,6 +6,8 @@
 # longer alias the same Ternary node).
 caps: NoTernary NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var dark = false
     vbox {
@@ -14,6 +16,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var dark bool = false
     vbox {
@@ -36,4 +39,3 @@ component main {
         text #__n0(value=__lt1)
     }
 }
-context #locale(i18n.defaultLocale())

@@ -1,4 +1,6 @@
-component foo.bar { // ERROR(check) "extension namespace \"foo\" not supported"
+import . "sngl://std"
+
+component foo.bar { // ERROR(check) "extension namespace \"foo\" is not an imported library package"
     platform html {
         span() {}
     }

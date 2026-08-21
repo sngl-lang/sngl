@@ -13,19 +13,27 @@ sngl fmt -q copy.sngl
 cmp copy.sngl expected.sngl
 
 -- dir/messy.sngl --
+import . "sngl://std"
+
 component widget  {
     var   x  =  0
     text(value="{x}")
 }
 -- dir/expected.sngl --
+import . "sngl://std"
+
 component widget {
     var x = 0
     text(value="{x}")
 }
 -- messy.sngl --
+import . "sngl://std"
+
 component main  {
 }
 -- expected.sngl --
+import . "sngl://std"
+
 component main {
 }
 -- empty/.gitkeep --

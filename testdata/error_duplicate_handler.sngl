@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     button(@click { foo() }, @click { bar() }) // ERROR(check) "duplicate event handler"
 }

@@ -32,7 +32,7 @@ The core language is deliberately small. Two bodies of functionality live
 - **The standard library** — components (`text`, `button`, `vbox`, …), types
   (`color`, `Style`, the event payload structs, the `measurement` and
   `duration` units), and functions, all written in SNGL and distributed as
-  source under `lib/*.sngl`. A conforming implementation parses and checks the
+  source under `lib/<package>/*.sngl`, one directory per importable package. A conforming implementation parses and checks the
   standard library with the same front end it applies to user code; the
   library is not privileged by the grammar. This manual references standard
   library entities by example but does not define them.
@@ -110,11 +110,13 @@ so it must be syntactically well-formed — and is then dropped from the program
 It is the way to comment out a statement, a declaration, or a visual node
 (including its nested body) without deleting the text:
 
+<!-- SNGL-component -->
+
 ```sngl
 vbox {
-    text(value = "shown")
-    /- text(value = "hidden")
-    /- button(label = "also gone") { onClick { … } }
+    text(value="shown")
+    /- text(value="hidden")
+    /- button(text="also gone", @click {})
 }
 ```
 
@@ -578,8 +580,9 @@ Scopes nest from the innermost outward:
 
 - the **predeclared scope**, holding the built-in type names and the
   predeclared identifiers `true`, `false`, `null`;
-- the **standard-library scope**, holding everything declared in `lib/`;
-- the **package scope**, holding the user program's top-level declarations;
+- the **built-in scope**, holding the ambient declarations of `sngl://builtin`;
+- the **package scope**, holding the user program's top-level declarations and
+  the names its dot imports lift;
 - a **component scope** for each component, holding its parameters, variables,
   nested functions, and nested types;
 - a **function scope** for each function or method body, holding its
@@ -590,29 +593,114 @@ Scopes nest from the innermost outward:
 
 Lookup proceeds outward through the enclosing scopes. A name declared in an
 inner scope **shadows** the same name in an outer scope; package declarations
-shadow standard-library declarations of the same name, which is how user code
-overrides a library entity. Declaring the same name twice in one scope is an
+shadow built-in and imported declarations of the same name, which is how user
+code overrides a library entity. Declaring the same name twice in one scope is an
 error. Methods attached to a type (`func Type.m`) occupy that type's method set
 rather than a value scope, so a user method may override a standard-library
 method of the same name on the same type.
 
-### Predeclared identifiers and the prelude
+### Predeclared identifiers and the two library tiers
 
-The built-in type names and `true`/`false`/`null` are always in scope. The
-standard library is parsed and registered beneath the package scope as a
-prelude, and is additionally reachable through the `sngl` namespace
-(`sngl.text`). Because the package scope sits closer than the prelude, a
-top-level declaration named like a library entity takes precedence over it
-within the package.
+Everything predeclared is an ordinary declaration in `sngl://builtin` —
+the scalar and collection types (`int`, `float`, `string`, `list`, `map`,
+`option`, `ref`, `iter`, `color`, `date`, `time`, `datetime`) with their
+methods, and the constants `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`.
+That package is
+dot-imported into every file implicitly and cannot be imported explicitly; it
+is the only implicit import in the language.
+
+`PLATFORM` and `LANGUAGE` name the target a build is producing — `"html"`,
+`"go"`, and so on. Comparing one against a literal gates code on the target:
+the comparison folds at build time and the branch not taken is removed. The
+compiler supplies their values, so a declaration of your own by either name is
+an ordinary constant and shadows the predeclared one.
+
+Nothing here is a keyword. `true`, `false` and `null` resolve through the scope
+chain like every other name, and a declaration of your own by one of those
+names shadows it — the grammar reserves none of them.
+
+Everything else the standard library provides — components, event payload
+types, style enums, `Style`, and the `i18n` and `html` namespaces — belongs to
+`sngl://std` and must be imported:
+
+```sngl
+import . "sngl://std"
+import sngl "sngl://std"
+```
+
+The dot form flattens the package's declarations into the file, so they are
+written unqualified (`text(...)`). The alias form binds a namespace instead,
+under whatever name the importer chooses (`sngl.text(...)`).
+
+Both packages register beneath the package scope, so a top-level declaration
+named like a library entity takes precedence over it within the package.
+
+The library is not limited to those two packages. `sngl://draw` holds `canvas`
+and the 2D shapes it hosts, and is imported the same way. A library package may
+also carry macros next to the declarations they apply to: `import "sngl://draw"` brings both the shape components and the `#[draw.shape]` mark
+that declares new ones.
+
+### Package comments
+
+A run of line comments at the top of a file, separated from what follows by a
+blank line, documents the package rather than the declaration below it. The
+text is markdown. Where several of a package's files carry one, they are
+concatenated in load order, separated by blank lines; that order is
+unspecified, so prose whose sequence matters belongs in one file.
 
 ### Exported and unexported names
 
 A name is **unexported** if it begins with an underscore (`_`), and **exported**
 otherwise. The distinction governs cross-package access only: an unexported
 name is freely referenced anywhere within the package that declares it, but is
-not reachable through an import namespace (`ns.name`). Referencing another
-package's unexported name — whether qualified, or resolved bare from the
-stdlib prelude — is an error.
+not reachable from another package. That covers three routes — a qualified
+reference (`ns.name`), a name lifted by a dot import, and a **member reached
+through an imported declaration**: importing a type does not carry its
+unexported fields or methods with it.
+
+<!-- SNGL-nocheck -->
+
+```sngl
+// package w
+struct Box {
+    v       int = 0
+    _hidden int = 0
+}
+
+func Box._secret() => 42
+```
+
+Given `import w "w"`, a value of `w.Box` exposes `v` but neither `_hidden` nor
+`_secret`. The rule holds wherever a member is named, not only on a field read:
+a struct literal (`w.Box{_hidden = 2}`), a method call, an enum member reached
+through its type (`w.Mode._B`) or resolved bare against an expected enum type,
+and an assignment target are all rejected alike.
+
+### One name, one meaning at file scope
+
+A name may be bound once at file scope. Two declarations of it, two imports
+claiming it as an alias, two dot imports lifting it, or a declaration taking a
+name an import alias already binds are all errors — none of them has a
+tiebreak, so resolving by source order would make meaning depend on ordering.
+
+The single exception is shadowing, where exactly one of the two bindings is
+written in this file: a declaration may shadow a name that a dot import lifted,
+including a built-in. This is what lets a package define its own `text` or
+`color` over the library's.
+
+The rule covers every kind of declaration a file scope holds — types,
+components, free functions, constants and variables alike — and the alias an
+import binds. Where a name is genuinely taken, an alias resolves it: an import
+chooses its own alias, so `import d "sngl://draw"` reaches a package
+whose default name a dot import already claimed.
+
+Two bindings that mean the same package are a restatement, not a conflict. The
+standard library exposes the intrinsic namespaces it imports, so a file may
+also import one of them by name without colliding.
+
+Inside a body the same principle applies to a narrower scope: a duplicate
+local constant, a duplicate component-level variable, and a `for` loop binding
+one name to both of its variables are all errors.
 
 ## Constants and variables
 
@@ -1235,7 +1323,7 @@ within a package is an error.
 <!-- BEGIN GENERATED: grammar-imports -->
 
 ```ebnf
-ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
+ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 
 ```
 
@@ -1354,7 +1442,7 @@ IncDecOp = "++" | "--"
 ```
 
 ```ebnf
-ImportDecl = "import" [ IDENT ] STRING [ "=>" STRING ]
+ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 
 ```
 

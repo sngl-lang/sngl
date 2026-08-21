@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     text(value="hello") { // ERROR(check) "does not accept children"
         vbox {

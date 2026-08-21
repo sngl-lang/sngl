@@ -1,5 +1,7 @@
 caps: NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var items list<int> = [1, 2, 3]
     button(text="add", @click { items = items.push(4) })
@@ -8,6 +10,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var items list<int> = [1, 2, 3]
     var __root dyn
@@ -30,4 +33,3 @@ component main {
     })
     __renderSlot0(__root)
 }
-context #locale(i18n.defaultLocale())

@@ -47,6 +47,13 @@ const (
 	BuiltinTimer         BuiltinKind = "timer"
 	BuiltinSlot          BuiltinKind = "slot"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
+
+	// Predeclared constants. These annotate a const declaration whose written
+	// value is a placeholder: the real one is not known until a build picks a
+	// target, so the compiler supplies it.
+	BuiltinNull     BuiltinKind = "null"
+	BuiltinPlatform BuiltinKind = "platform"
+	BuiltinLanguage BuiltinKind = "language"
 )
 
 // IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
@@ -88,6 +95,17 @@ func (b BuiltinKind) IsNode() bool {
 	return false
 }
 
+// IsConst reports whether the kind marks a predeclared constant. Const kinds
+// are stamped on const declarations, and the compiler replaces the declared
+// type and value.
+func (b BuiltinKind) IsConst() bool {
+	switch b {
+	case BuiltinNull, BuiltinPlatform, BuiltinLanguage:
+		return true
+	}
+	return false
+}
+
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
@@ -95,11 +113,23 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
 		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary,
+		BuiltinNull, BuiltinPlatform, BuiltinLanguage,
 	}
 }
 
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b.IsPrimitive() || b.IsStringRepr() || b.IsGeneric() || b.IsNode()
+	return b.IsPrimitive() || b.IsStringRepr() || b.IsGeneric() || b.IsNode() || b.IsConst()
 }
+
+// SetBuiltin stamps the mark onto a declaration. The #[builtin] macro asserts
+// this interface rather than switching on the kind, so which declaration forms
+// can carry a mark is a property of the AST, not knowledge the macro holds.
+type BuiltinTaggable interface {
+	SetBuiltin(BuiltinKind)
+}
+
+func (c *ComponentDecl) SetBuiltin(k BuiltinKind) { c.Builtin = k }
+func (s *StructDef) SetBuiltin(k BuiltinKind)     { s.Builtin = k }
+func (c *ConstDecl) SetBuiltin(k BuiltinKind)     { c.Builtin = k }

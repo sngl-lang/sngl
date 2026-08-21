@@ -1,11 +1,14 @@
 caps: NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     text(value=string(n))
     button(text="+", @click { n = n + 1 })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n int = 0
     text #__n0(value=string(n))
@@ -14,4 +17,3 @@ component main {
         __n0.value = string(n)
     })
 }
-context #locale(i18n.defaultLocale())

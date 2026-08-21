@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Date placeholder with style argument.
 // Demonstrates the {<expr>, <type>, <style>} 3-arg form where the third
 // position is a style identifier (short/medium/long/full), not a body.

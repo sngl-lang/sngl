@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component interpfold {
     // Unary float negation
     var fneg = -3.14 // FOLD -3.14

@@ -25,6 +25,8 @@ package api
 
 func Fetch(q string) ([]string, error) { return []string{q}, nil }
 -- app.sngl --
+import . "sngl://std"
+
 output { go { fyne } }
 
 import "go://example.com/native-err/api"

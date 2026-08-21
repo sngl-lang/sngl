@@ -1,10 +1,13 @@
 caps: NoLambda
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     var inc func() = func() { n = n + 1 }
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __lambda0_caps {
     n ref<int>
 }
@@ -15,4 +18,3 @@ component main {
     var n int = 0
     var inc func() = __closure(__lambda0, __lambda0_caps{n = &n})
 }
-context #locale(i18n.defaultLocale())

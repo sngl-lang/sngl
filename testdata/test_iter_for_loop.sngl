@@ -1,6 +1,8 @@
 // for ... = expr binds to an iter<T>; list<T> implicitly converts.
 // Map iteration yields iter<(K, V)> with key+value loop variables.
 
+import . "sngl://std"
+
 component iterLoop {
     var nums list<int> = [1, 2, 3, 4, 5]
     var scores map<string, int> = {alice = 10, bob = 20}

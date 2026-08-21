@@ -1,5 +1,7 @@
 caps:
 -- input.sngl --
+import . "sngl://std"
+
 component counter() {
     var count int = 0
     button(text=string(count), @click { count = count + 1 })
@@ -9,6 +11,7 @@ component main {
     counter()
 }
 -- expected.sngl --
+import . "sngl://std"
 component counter {
     var count int = 0
     button(text=string(count), @click {
@@ -18,4 +21,3 @@ component counter {
 component main {
     counter
 }
-context #locale(i18n.defaultLocale())

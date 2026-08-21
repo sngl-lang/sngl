@@ -53,7 +53,8 @@ func compileBubbletea(t *testing.T, src string) string {
 //
 // called as text(value="HELLO") must render the caller's argument, not "".
 func TestNewFormTextBindsValue(t *testing.T) {
-	src := `output { go { bubbletea } }
+	src := `import . "sngl://std"
+output { go { bubbletea } }
 component main {
     text(value="HELLO")
 }`

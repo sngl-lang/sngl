@@ -21,7 +21,7 @@ func unwrapConv(e ir.Expr) ir.Expr {
 
 func TestHexColorLowersToStructLit(t *testing.T) {
 	src := `const C color = #ff8040`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestHexColorShortForms(t *testing.T) {
 
 func TestHexColorEightDigitIncludesAlpha(t *testing.T) {
 	src := `const C color = #11223344`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

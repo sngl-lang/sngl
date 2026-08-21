@@ -1,5 +1,7 @@
 caps:
 -- input.sngl --
+import . "sngl://std"
+
 component foo() {
     foo()
 }
@@ -8,10 +10,10 @@ component main {
     foo()
 }
 -- expected.sngl --
+import . "sngl://std"
 component foo {
     foo
 }
 component main {
     foo
 }
-context #locale(i18n.defaultLocale())

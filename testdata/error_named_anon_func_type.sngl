@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     // Anonymous func type: no param names in the type, named calls rejected.
     var f func(int, int) int = func(a int, b int) => a + b

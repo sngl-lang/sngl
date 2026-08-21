@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var items list = []  // ERROR(check) "list requires a type argument"
     text(value="x")

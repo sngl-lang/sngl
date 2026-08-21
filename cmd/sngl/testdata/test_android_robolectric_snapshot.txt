@@ -13,6 +13,8 @@ sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout 'PASS'
 
 -- app.sngl --
+import . "sngl://std"
+
 output { kotlin { android } }
 
 component greeter {

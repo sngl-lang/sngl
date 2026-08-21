@@ -12,6 +12,8 @@ sngl build --platform=gtk4 --lang=go app.sngl -o out
 exists out/app
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { gtk4 } }
 
 component greeter {

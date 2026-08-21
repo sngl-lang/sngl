@@ -1,6 +1,8 @@
 caps: NoStdlibWrappers
 expected_error: platform stdlib wrapper "Statefulwrap" must be pure (declares var "count")
 -- input.sngl --
+import . "sngl://std"
+
 import "platform://teststub"
 
 component main {

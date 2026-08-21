@@ -52,6 +52,16 @@ func RegisterPre(internalURI, name string, params []Param, h PreHandler) {
 	preRegs[internalURI][name] = preMacro{params: params, handler: h}
 }
 
+// HasPackage reports whether any macro is registered under the given package
+// URI. Lets the checker validate a macro-package import without knowing what
+// the package contains.
+func HasPackage(uri string) bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	_, ok := preRegs[uri]
+	return ok
+}
+
 func lookupPre(uri, name string) (preMacro, bool) {
 	mu.RLock()
 	defer mu.RUnlock()

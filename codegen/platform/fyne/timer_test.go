@@ -17,6 +17,7 @@ import (
 // at all — the interval never fired.
 func TestTimerEmitsTickerRuntime(t *testing.T) {
 	src := `
+import . "sngl://std"
 component main {
     var seconds = 0
     var running = false

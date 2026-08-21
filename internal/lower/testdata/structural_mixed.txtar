@@ -1,5 +1,7 @@
 caps: NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var visible bool = true
     var name string = "World"
@@ -10,6 +12,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var visible bool = true
     var name string = "World"
@@ -34,4 +37,3 @@ component main {
     text #__n0(value="Hello, " + name + "!")
     __renderSlot0(__root)
 }
-context #locale(i18n.defaultLocale())

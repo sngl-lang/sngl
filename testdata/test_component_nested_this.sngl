@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Component funcs use closure semantics (pre-T7), not desugared methods.
 // Bare field access works; explicit `this.` is reserved for struct/enum
 // nested methods. Calling a component func from outside the component is

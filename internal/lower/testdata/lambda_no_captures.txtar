@@ -1,9 +1,12 @@
 caps: NoLambda
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var doubler func(int) int = func(x int) => x * 2
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __lambda0_caps {}
 func __lambda0(state __lambda0_caps, x int) int {
     return x * 2
@@ -11,4 +14,3 @@ func __lambda0(state __lambda0_caps, x int) int {
 component main {
     var doubler func(int) int = __closure(__lambda0, __lambda0_caps{})
 }
-context #locale(i18n.defaultLocale())

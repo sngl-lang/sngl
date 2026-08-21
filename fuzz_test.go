@@ -56,7 +56,7 @@ func FuzzDocument(f *testing.F) {
 
 		// 2. Format → reparse → recheck → strip-compare.
 		formatted := parser.Format(doc1)
-		fmtDoc, err := parser.Parse("fuzz.fmt.sngl", []byte(formatted))
+		fmtDoc, err := parser.Parse("fuzz.fmt.sngl", []byte(withStdSrc(formatted)))
 		if err != nil {
 			t.Fatalf("formatter output failed to parse: %v\n--- formatted ---\n%s", err, formatted)
 		}
@@ -73,7 +73,7 @@ func FuzzDocument(f *testing.F) {
 		// 3. IR.Convert → format → reparse → recheck → strip-compare.
 		convDoc := ir.Convert(pkg1)
 		convSrc := parser.Format(convDoc)
-		convReparsed, err := parser.Parse("fuzz.conv.sngl", []byte(convSrc))
+		convReparsed, err := parser.Parse("fuzz.conv.sngl", []byte(withStdSrc(convSrc)))
 		if err != nil {
 			t.Fatalf("ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}
@@ -214,7 +214,7 @@ func safeParseDoc(src string) (doc *ast.Document, ok bool) {
 			ok = false
 		}
 	}()
-	d, err := parser.Parse("fuzz.sngl", []byte(src))
+	d, err := parser.Parse("fuzz.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		return nil, false
 	}
@@ -659,7 +659,7 @@ func (v *irValidator) walkExpr(e ir.Expr) {
 // --- expression eval helpers ---
 
 func evalWrapped(src string, caps lower.Caps) (any, error) {
-	doc, err := parser.Parse("fuzz_eval.sngl", []byte(src))
+	doc, err := parser.Parse("fuzz_eval.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
@@ -746,7 +746,7 @@ func FuzzLoweredDocument(f *testing.F) {
 		}
 		convDoc := ir.Convert(pkg1)
 		convSrc := parser.Format(convDoc)
-		convReparsed, err := parser.Parse("fuzz.lower.sngl", []byte(convSrc))
+		convReparsed, err := parser.Parse("fuzz.lower.sngl", []byte(withStdSrc(convSrc)))
 		if err != nil {
 			t.Fatalf("lowered ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}

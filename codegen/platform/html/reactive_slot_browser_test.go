@@ -17,6 +17,7 @@ import (
 // pointed at the wrong parent node.
 func TestReactiveSlot_TimerRefiresIntoAnchor(t *testing.T) {
 	src := `
+import . "sngl://std"
 component Car() {
     var a = 0
     timer(interval=1000ms, @tick { a = (a + 1) % 2 })
@@ -51,6 +52,7 @@ component main { window(title="H", href="/index.html") { Car() } }
 // so a hidden/removed branch must not appear.
 func TestReactiveSlot_CarouselShowsOneAtATime(t *testing.T) {
 	src := `
+import . "sngl://std"
 component Car() {
     var a = 0
     button(text="next", @click { a = (a + 1) % 2 })
@@ -89,6 +91,7 @@ component main { window(title="H", href="/index.html") { Car() } }
 // Top-level reactive `if` (direct child of the component body, no enclosing element).
 func TestReactiveSlot_TopLevelToggle(t *testing.T) {
 	src := `
+import . "sngl://std"
 component main {
     var on = true
     button(text="t", @click { on = !on })

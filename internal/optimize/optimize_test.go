@@ -18,7 +18,7 @@ import (
 // checkAndOptimize is a test helper: parse → check → optimize → convert.
 func checkAndOptimize(t *testing.T, source, platform, lang string) (*ir.Package, *ast.Document) {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(source))
+	doc, err := parser.Parse("test.sngl", []byte(withStdSrc(source)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -542,6 +542,8 @@ component main {
 }
 `)},
 		"lib/widgets.sngl": &fstest.MapFile{Data: []byte(`
+import . "sngl://std"
+
 const tags = ["x", "y"]
 component List() {
 	for t = tags {

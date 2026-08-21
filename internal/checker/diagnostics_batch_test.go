@@ -12,7 +12,7 @@ import (
 // message contains substr.
 func expectCheckError(t *testing.T, src, substr string) {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

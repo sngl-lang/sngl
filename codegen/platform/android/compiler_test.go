@@ -63,7 +63,8 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 // twice, producing "Conflicting declarations" in Kotlin. See codegen/iterate.go
 // AllFuncs — all platforms must dedup funcs by pointer.
 func TestComputedNotDoubleEmitted(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     var count = 0
     func doubled() => count * 2
     text(value=doubled)

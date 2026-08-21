@@ -65,7 +65,8 @@ func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool 
 }
 
 func TestChildrenLiveAcrossMutations(t *testing.T) {
-	src := `component counter {
+	src := `import . "sngl://std"
+component counter {
 	var n = 0
 	button #b(text="+", @click { n += 1 })
 	text #o(value=string(n))

@@ -26,7 +26,7 @@ func findCompFunc(t *testing.T, pkg *ir.Package, comp, fn string) *ir.Func {
 
 func checkMainOK(t *testing.T, src string) *ir.Package {
 	t.Helper()
-	doc, err := parser.Parse("test.sngl", []byte(src))
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

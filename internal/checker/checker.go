@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // Config holds checker configuration.
@@ -85,6 +87,15 @@ type checker struct {
 	// Import cycle detection.
 	visited map[string]bool
 
+	// foreign marks declarations that arrived from another package, so their
+	// unexported members stay private to it.
+	foreign map[ir.Symbol]bool
+
+	// topLevel records every name bound at file scope and how it got there,
+	// so two bindings of one name are reported instead of silently resolving
+	// by declaration order.
+	topLevel map[string]topLevelBinding
+
 	// Effective replace map for this package: outer overrides layered over
 	// this package's own `import "p" => "url"` declarations. Populated at the
 	// start of pass1 before any import is resolved.
@@ -130,6 +141,17 @@ type checker struct {
 	// through the regular component-member machinery against its props.
 	// windowComp is what makes window dispatch tag-based rather than a check
 	// against the literal name "window".
+	// stdlibPkg is the loaded standard library, bound as a namespace by an
+	// `import <alias> "sngl://std"` and flattened by the dot form.
+	stdlibPkg *ir.Package
+	// libPkgs memoizes loaded sngl://<name> packages; libLoading guards
+	// against a cycle among them.
+	libPkgs    map[string]*ir.Package
+	libLoading map[string]bool
+
+	// builtinPkg is sngl://builtin, registered ambiently into every file.
+	builtinPkg *ir.Package
+
 	// stdlibScope is the scope holding stdlib declarations, between the base
 	// scope and the user root. Platform-extension bodies are checked against it
 	// so compiler-internal source cannot be captured by user declarations.
@@ -137,6 +159,14 @@ type checker struct {
 
 	windowComp *ir.Component
 	windowType *ir.Type
+
+	// The predeclared constants, bound by collectBuiltins. Held so a second
+	// declaration of the same kind is an error rather than a silent
+	// overwrite; resolution itself goes through the scope chain like any
+	// other name.
+	nullConst     *ir.Var
+	platformConst *ir.Var
+	languageConst *ir.Var
 
 	// Cached platform scopes built from Platform.Package() docs.
 	platformScopeCache map[string]*ir.Scope
@@ -191,10 +221,12 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
-	c.loadStdlib()
-	nodes := builtinNodeComps(c.symtab.Comps)
+	c.builtinPkg, c.stdlibPkg = c.loadStdlib()
+	// Both packages, because a mark says which construct a declaration is, not
+	// which package declares it: the predeclared constants are in
+	// sngl://builtin and the visual nodes are in sngl://std.
+	c.collectBuiltins(c.builtinPkg, c.stdlibPkg)
 	c.stdlibScope = stdlibScope
-	c.windowComp = nodes[ast.BuiltinWindow]
 	if c.windowComp == nil {
 		// The stdlib is embedded and compiler-controlled; a missing window
 		// declaration would silently turn every `window #id` into "unexpected
@@ -212,14 +244,25 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// placement directives), preserve its Pkg and attach the Resolve fallback
 	// to the same namespace so named directives resolve via Pkg first and raw
 	// elements fall through to Resolve.
+	// Raw element access is ambient for every platform, so the Resolve-bearing
+	// namespace always goes in the ambient scope. The standard library may also
+	// declare a namespace of the same name (lib/std/html.sngl declares `html`
+	// for the html.frontend/html.backend directives); attach Resolve to that
+	// one too, so importing std keeps raw elements working rather than
+	// shadowing them with a directives-only namespace.
 	declareNS := func(name string, resolve func(string) ir.Symbol) {
+		if existing, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); ok {
+			if ns, ok := existing.(*ir.Namespace); ok {
+				ns.Resolve = resolve
+			}
+		}
 		if existing, ok := stdlibScope.LookupLocal(name); ok {
 			if ns, ok := existing.(*ir.Namespace); ok {
 				ns.Resolve = resolve
 				return
 			}
 		}
-		stdlibScope.Declare(&ir.Namespace{Name: name, Resolve: resolve})
+		stdlibScope.Replace(&ir.Namespace{Name: name, Resolve: resolve})
 	}
 	for _, p := range cfg.Platforms {
 		declareNS(p.PlatformIdentifier(), p.Resolve)
@@ -235,6 +278,54 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.mergePlatformExtensions()
 
 	return c
+}
+
+// declare binds sym in the current scope, reporting a name already bound there
+// instead of letting the later binding silently win.
+func (c *checker) declare(pos ast.Pos, sym ir.Symbol) {
+	if err := c.scope.Declare(sym); err != nil {
+		c.error(pos, "%s is already declared in this scope", sym.SymName())
+	}
+}
+
+// varPos is the source position of a var's declaration, or the zero position
+// for a synthesized var that has no AST.
+func varPos(v *ir.Var) ast.Pos {
+	if v.AST != nil {
+		if p := v.AST.StmtPos(); p != nil {
+			return *p
+		}
+	}
+	return ast.Pos{}
+}
+
+// funcDeclPos and compDeclPos are the source positions of a func or component
+// declaration, or the zero position for one the checker synthesized.
+func funcDeclPos(fn *ir.Func) ast.Pos {
+	if fn != nil && fn.AST != nil {
+		return fn.AST.Pos
+	}
+	return ast.Pos{}
+}
+
+func compDeclPos(comp *ir.Component) ast.Pos {
+	if comp != nil && comp.AST != nil {
+		return comp.AST.Pos
+	}
+	return ast.Pos{}
+}
+
+// bindVar binds a var or const from a registration path that serves both file
+// scope and a component or window body. At file scope the one-name rule
+// applies, so shadowing a lifted name stays legal; inside a body any name
+// already bound in the same scope is a duplicate.
+func (c *checker) bindVar(pos ast.Pos, v *ir.Var) {
+	if c.scope == c.symtab.Root {
+		c.claimTopLevel(v.Name, pos, bindDecl, "")
+		c.scope.Replace(v)
+		return
+	}
+	c.declare(pos, v)
 }
 
 func (c *checker) error(pos ast.Pos, format string, args ...any) {
@@ -265,7 +356,158 @@ func (c *checker) popScope() {
 
 // --- pass1: declaration registration ---
 
+// topLevelKind distinguishes how a file-scope name was bound. Only a
+// declaration written in the file may shadow an imported name; every other
+// pairing is ambiguous.
+type topLevelKind int
+
+const (
+	bindDecl  topLevelKind = iota // declared in this file
+	bindAlias                     // an import's namespace alias
+	bindDot                       // lifted by a dot import
+)
+
+func (k topLevelKind) String() string {
+	switch k {
+	case bindAlias:
+		return "an import alias"
+	case bindDot:
+		return "a dot import"
+	default:
+		return "a declaration"
+	}
+}
+
+type topLevelBinding struct {
+	kind topLevelKind
+	path string // import path, for the two import kinds
+	pos  ast.Pos
+}
+
+// claimTopLevel records name as bound at file scope and reports a conflict
+// with an existing binding. Returns false when the caller should skip binding.
+//
+// A declaration written in the file wins over a dot-imported name — that is the
+// documented override story, and it is unambiguous because only one of the two
+// is written here. Everything else (two declarations, two aliases, two dot
+// imports of one name, an alias against a declaration) has no tiebreak, so it
+// is an error rather than a silent last-wins.
+// markForeign records every declaration an import contributes, so member
+// access can tell a type declared here from one that merely arrived here.
+func (c *checker) markForeign(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	if c.foreign == nil {
+		c.foreign = map[ir.Symbol]bool{}
+	}
+	for _, sym := range pkg.Symbols.Types {
+		c.foreign[sym] = true
+	}
+	for _, sym := range pkg.Symbols.Comps {
+		c.foreign[sym] = true
+	}
+}
+
+// rejectForeignUnexported reports an unexported member read through a
+// declaration that belongs to another package. Unexported names are private to
+// their declaring package; without this they were reachable from anywhere the
+// type itself was, since only the type name is gated on import.
+func (c *checker) rejectForeignUnexported(pos ast.Pos, owner ir.Symbol, ownerName, member string) bool {
+	if !c.foreign[owner] || isExportedMemberName(member) {
+		return false
+	}
+	c.error(pos, "%s.%s is unexported and cannot be used outside its package", ownerName, member)
+	return true
+}
+
+// structField resolves a field on sd by name, enforcing that an unexported
+// field stays private to the package declaring sd. Every by-name field lookup
+// goes through here rather than ranging over sd.Fields, so a new access path
+// cannot reach a private field by forgetting a check.
+func (c *checker) structField(pos ast.Pos, sd *ir.StructDef, name string) *ir.StructField {
+	if sd == nil || c.rejectForeignUnexported(pos, sd, sd.Name, name) {
+		return nil
+	}
+	return findField(sd, name)
+}
+
+// enumMember reports whether ed declares name, under the same visibility rule
+// as structField.
+func (c *checker) enumMember(pos ast.Pos, ed *ir.EnumDef, name string) bool {
+	if ed == nil || c.rejectForeignUnexported(pos, ed, ed.Name, name) {
+		return false
+	}
+	for _, m := range ed.Members {
+		if m.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// suggestAlias proposes a short alias for a package whose default name is
+// taken, so the diagnostic can show a working import line.
+func suggestAlias(name string) string {
+	for n := 2; n <= len(name); n++ {
+		if candidate := name[:n]; candidate != name {
+			return candidate
+		}
+	}
+	return name + "pkg"
+}
+
+func isExportedMemberName(name string) bool {
+	return name != "" && name[0] != '_'
+}
+
+func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
+	if name == "" || name == "_" {
+		return true
+	}
+	if c.topLevel == nil {
+		c.topLevel = map[string]topLevelBinding{}
+	}
+	prev, exists := c.topLevel[name]
+	if !exists {
+		c.topLevel[name] = topLevelBinding{kind: kind, path: path, pos: pos}
+		return true
+	}
+	// A declaration shadows a dot-imported name — that is the documented
+	// override story, and it is unambiguous because only one of the two is
+	// written here. It does not shadow an alias: the alias names a package,
+	// and silently rebinding it would break every qualified reference to it.
+	if kind == bindDecl && prev.kind == bindDot {
+		c.topLevel[name] = topLevelBinding{kind: kind, pos: pos}
+		return true
+	}
+	// Re-binding the same name from the same import is not a conflict.
+	if kind == prev.kind && kind != bindDecl && path == prev.path {
+		return true
+	}
+	switch {
+	case kind == bindDot && prev.kind == bindDot:
+		c.error(pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
+			path, name, prev.path)
+	case kind == bindDecl && prev.kind == bindDecl:
+		c.error(pos, "%q redeclared in this file (previous declaration at %s)", name, prev.pos)
+	case kind == bindAlias:
+		// An import whose alias is already taken. The alias is the caller's to
+		// choose, so naming the way out is more useful than naming the clash.
+		c.error(pos, "%q is already bound at file scope by %s (at %s); import it under a different alias, e.g. import %s %q",
+			name, prev.kind, prev.pos, suggestAlias(name), path)
+	default:
+		c.error(pos, "%q is already bound at file scope by %s (at %s)", name, prev.kind, prev.pos)
+	}
+	return false
+}
+
 func (c *checker) pass1() {
+	// File-scope name tracking covers this document only. Loading the library
+	// runs through the same register paths with its own scopes, and its names
+	// reach the user by import, where flattenDotImport claims them.
+	c.topLevel = nil
+
 	// Collect replace map for this package before any import is resolved, so
 	// declaration order of `import "p" => "url"` relative to bare `import "p"`
 	// does not matter. Outer (cfg.Replaces) wins over this package's own.
@@ -387,6 +629,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	scheme, uri := ParseScheme(target)
+	// A dot import keeps "." here rather than deriving a namespace name it
+	// never binds: consumers match ir.Import.Alias against a namespace they
+	// are resolving, and a derived name would make those matches succeed.
 	alias := imp.Alias
 	if alias == "" {
 		alias = NamespaceFromPath(imp.Path)
@@ -402,7 +647,36 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// Optional Resolve fallback for platform/language namespace imports.
 	var nsResolve func(string) ir.Symbol
 
-	if scheme == "internal" {
+	if scheme == "sngl" {
+		// The standard library. A scheme keeps it from colliding with a local
+		// package directory of any name — the collision a reserved bare path
+		// like "std" would reintroduce.
+		// sngl://internal/<name> is a macro package: it contributes macros to
+		// the expand pass and no runtime symbols, so it resolves against the
+		// macro registry rather than the lib/ layout.
+		if strings.HasPrefix(uri, "internal/") {
+			if !expand.HasPackage(uri) {
+				c.error(imp.Pos, "unknown macro package %q", uri)
+				return
+			}
+			irImport.Pkg = &ir.Package{
+				Symbols:        NewSymbolTable(),
+				LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+				AddressedVars:  map[*ir.Var]bool{},
+			}
+			c.pkg.Imports = append(c.pkg.Imports, irImport)
+			return
+		}
+		if !HasPackage(uri) {
+			c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
+			return
+		}
+		if uri == "builtin" {
+			c.error(imp.Pos, "sngl://builtin is always in scope; remove the import")
+			return
+		}
+		irImport.Pkg = c.libPkg(uri)
+	} else if scheme == "internal" {
 		// Built-in internal packages — no resolver needed.
 		switch uri {
 		case "stdlib":
@@ -415,10 +689,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
 		case "lower":
 			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
-		case "canvas":
-			// Macro-only package: provides no IR symbols at runtime.
-			// The expand pass handles #[canvas.*] attributes before type-checking.
-			irImport.Pkg = &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 		default:
 			c.error(imp.Pos, "unknown internal package: %q", uri)
 		}
@@ -498,10 +768,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 					nsPkg.Symbols.Types[e.Name] = e
 				}
 				for _, f := range native.Funcs {
-					nsPkg.Symbols.Root.Declare(f)
+					nsPkg.Symbols.Root.Replace(f)
 				}
 				for _, v := range native.Vars {
-					nsPkg.Symbols.Root.Declare(v)
+					nsPkg.Symbols.Root.Replace(v)
 				}
 				irImport.Pkg = nsPkg
 			}
@@ -544,6 +814,13 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 
+	// A dot import flattens the package's symbols into this scope instead of
+	// binding a namespace, so its declarations are referenced unqualified.
+	if imp.IsDot() {
+		c.flattenDotImport(imp, irImport)
+		return
+	}
+
 	// Declare namespace in scope.
 	// If the new namespace is inert (nil pkg and no resolver) and a namespace
 	// with the same alias already exists in scope with a non-nil package (e.g.
@@ -562,7 +839,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 		}
 	}
-	c.scope.Declare(ns)
+	c.markForeign(irImport.Pkg)
+	c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
+	c.scope.Replace(ns)
 }
 
 // buildPkgFromDocs type-checks a set of .sngl documents (typically from a
@@ -596,37 +875,38 @@ func mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
-		dst.Symbols.Root.Declare(sd)
+		dst.Symbols.Root.Replace(sd)
 		dst.Symbols.Types[sd.Name] = sd
 	}
 	for _, ed := range src.Enums {
-		dst.Symbols.Root.Declare(ed)
+		dst.Symbols.Root.Replace(ed)
 		dst.Symbols.Types[ed.Name] = ed
 	}
 	for _, ud := range src.Units {
-		dst.Symbols.Root.Declare(ud)
+		dst.Symbols.Root.Replace(ud)
 		dst.Symbols.Types[ud.Name] = ud
 	}
 	for _, fn := range src.Funcs {
-		dst.Symbols.Root.Declare(fn)
+		dst.Symbols.Root.Replace(fn)
 	}
 	for _, comp := range src.Components {
-		dst.Symbols.Root.Declare(comp)
+		dst.Symbols.Root.Replace(comp)
 		dst.Symbols.Comps[comp.Name] = comp
 	}
 	for _, v := range src.Vars {
-		dst.Symbols.Root.Declare(v)
+		dst.Symbols.Root.Replace(v)
 	}
 	for _, v := range src.Consts {
-		dst.Symbols.Root.Declare(v)
+		dst.Symbols.Root.Replace(v)
 	}
 }
 
 func (c *checker) registerEnum(e *ast.EnumDef) {
+	c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
 	c.symtab.Types[ed.Name] = ed
-	c.scope.Declare(ed)
+	c.scope.Replace(ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
@@ -634,7 +914,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
-	c.scope.Declare(sd)
+	c.scope.Replace(sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
 
@@ -643,10 +923,11 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // recursive references. resolveStructBody fills in the fields (and nested
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
+	c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
-	c.scope.Declare(sd)
+	c.scope.Replace(sd)
 	return sd
 }
 
@@ -656,10 +937,11 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
+	c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.symtab.Types[ud.Name] = ud
-	c.scope.Declare(ud)
+	c.scope.Replace(ud)
 	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
@@ -715,7 +997,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				IsConst: true,
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 		}
 	}
 }
@@ -743,7 +1025,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
 			c.pkg.Consts = append(c.pkg.Consts, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
 		}
 		c.pendingConstInits = append(c.pendingConstInits, pendingConstInit{
@@ -838,11 +1120,6 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 	case *ast.LiteralExpr, *ast.UnitLiteral:
 		return ""
 	case *ast.IdentExpr:
-		// Builtin constants are fine.
-		switch x.Name {
-		case "true", "false", "null", "PLATFORM", "LANGUAGE":
-			return ""
-		}
 		if sym, ok := c.scope.Lookup(x.Name); ok {
 			if v, ok := sym.(*ir.Var); ok && v.IsConst {
 				return ""
@@ -1029,7 +1306,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				v.Handlers = append(v.Handlers, handler)
 			}
 			c.pkg.Vars = append(c.pkg.Vars, v)
-			c.scope.Declare(v)
+			c.bindVar(decl.Pos, v)
 		}
 	}
 }
@@ -1122,6 +1399,12 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
 
+	// Only free functions bind a file-scope name; a method's name lives under
+	// its receiver and is checked against userMethods below.
+	if fn.Receiver == "" {
+		c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
+	}
+
 	if fn.Receiver != "" {
 		// Reject duplicate method against another user-registered method
 		// (nested or top-level). Stdlib methods may be overridden by user.
@@ -1139,8 +1422,65 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 		// Type-attached method.
 		c.symtab.RegisterMethod(fn.Receiver, fn)
 	} else {
-		c.scope.Declare(fn)
+		c.scope.Replace(fn)
 	}
+}
+
+// stdlibHint returns a suffix naming the import that would bring name into
+// scope, for a name the file did not resolve but the standard library
+// declares. Missing that one import is the most common way a file fails to
+// check, and "unknown component \"vbox\"" on its own does not say so.
+func (c *checker) stdlibHint(name string) string {
+	if c.pkg == nil {
+		return ""
+	}
+	// Search every lib package, not just std: the shapes moved to sngl://draw,
+	// and naming the wrong package is worse than saying nothing. Loading here
+	// is on an error path only.
+	for _, libName := range lib.Packages() {
+		if libName == "builtin" {
+			continue // ambient; a miss here is not a missing import
+		}
+		pkg := c.libPkg(libName)
+		if _, ok := pkg.Symbols.Root.LookupLocal(name); !ok {
+			continue
+		}
+		path := "sngl://" + libName
+		// Already imported under an alias: the name is reachable, just not bare.
+		for _, imp := range c.pkg.Imports {
+			if imp.Pkg == pkg {
+				if imp.Alias == "." {
+					return ""
+				}
+				return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
+			}
+		}
+		return fmt.Sprintf("; %s declares it, add import . %q", path, path)
+	}
+	return ""
+}
+
+// isLibraryNamespace reports whether name is in scope as a namespace bound to
+// a package of the embedded library. Extension declarations (`component
+// <ns>.X`) resolve their prefix this way rather than matching a fixed name, so
+// the prefix is whatever alias the file imported the package under — and any
+// library package can be extended, not only sngl://std. A platform needs to
+// style `draw.canvas` as much as it needs to style `std.vbox`.
+func (c *checker) isLibraryNamespace(name string) bool {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return false
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil {
+		return false
+	}
+	for _, pkg := range c.libPkgs {
+		if ns.Pkg == pkg {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
@@ -1151,8 +1491,8 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	legacyForm := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !legacyForm {
 		namespace := comp.Name[:dot]
-		if namespace != "sngl" {
-			c.error(comp.Pos, "extension namespace %q not supported (only \"sngl\" is valid)", namespace)
+		if !c.isLibraryNamespace(namespace) {
+			c.error(comp.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", namespace, namespace, "sngl://std")
 			return
 		}
 		if len(comp.Props.Props) > 0 {
@@ -1272,9 +1612,10 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
+	c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
-	c.scope.Declare(irComp)
+	c.scope.Replace(irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
@@ -1286,7 +1627,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
 		if w.Name != "" {
-			c.scope.Declare(w)
+			c.scope.Replace(w)
 		}
 		return
 	}
@@ -1349,10 +1690,7 @@ func builtinNodeComps(comps map[string]ir.Symbol) map[ast.BuiltinKind]*ir.Compon
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
 func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
-	if name == "" || strings.Contains(name, ".") {
-		return ast.BuiltinNone
-	}
-	sym, ok := c.scope.Lookup(name)
+	sym, ok := c.resolveComponentSymbol(name)
 	if !ok {
 		return ast.BuiltinNone
 	}
@@ -1361,6 +1699,31 @@ func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
 		return ast.BuiltinNone
 	}
 	return comp.Builtin
+}
+
+// resolveComponentSymbol resolves a visual-node target — bare "Foo" or
+// qualified "ns.Foo" — to the symbol it was declared as. A namespace's
+// platform Resolve fallback is deliberately not consulted: it synthesises
+// elements on demand, and a synthesised element never carries a #[builtin]
+// mark, so consulting it could only ever produce a false negative at extra
+// cost.
+func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
+	if name == "" {
+		return nil, false
+	}
+	nsName, field, qualified := strings.Cut(name, ".")
+	if !qualified {
+		return c.scope.Lookup(name)
+	}
+	sym, ok := c.scope.Lookup(nsName)
+	if !ok {
+		return nil, false
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil {
+		return nil, false
+	}
+	return ns.Pkg.Symbols.LookupComponent(field)
 }
 
 // isWindowNode reports whether name denotes the built-in window component
@@ -1809,7 +2172,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	c.pushScope()
 	defer c.popScope()
 	for _, v := range w.Vars {
-		c.scope.Declare(v)
+		c.declare(vn.Pos, v)
 	}
 	named := resolvePositionalArgs(vn.Args, []string{"title", "href", "favicon"})
 	if e, ok := named["href"]; ok {
@@ -2016,7 +2379,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 	}
 	for _, p := range fn.Params {
-		c.scope.Declare(p)
+		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprExpecting(ap.Default, p.Type)
 		}
@@ -2128,14 +2491,14 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	for _, p := range comp.Props {
-		c.scope.Declare(&ir.Param{Name: p.Name, Type: p.Type})
+		c.declare(compDeclPos(comp), &ir.Param{Name: p.Name, Type: p.Type})
 	}
 	for _, v := range comp.Vars {
-		c.scope.Declare(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Declare(fn)
+			c.scope.Replace(fn)
 		}
 	}
 
@@ -2184,7 +2547,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare props as params now that any default-driven type inference has
 	// finalized prop.Type.
 	for _, p := range comp.Props {
-		c.scope.Declare(&ir.Param{
+		c.declare(compDeclPos(comp), &ir.Param{
 			Name: p.Name,
 			Type: p.Type,
 		})
@@ -2192,11 +2555,11 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Declare component-level vars and funcs.
 	for _, v := range comp.Vars {
-		c.scope.Declare(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Declare(fn)
+			c.scope.Replace(fn)
 		} else {
 			// Type-attached method registered on the symbol table so method
 			// lookup at call sites finds it. Nested funcs on this component
@@ -2283,10 +2646,10 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	for _, v := range w.Vars {
-		c.scope.Declare(v)
+		c.declare(varPos(v), v)
 	}
 	for _, fn := range w.Funcs {
-		c.scope.Declare(fn)
+		c.declare(funcDeclPos(fn), fn)
 	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
@@ -2349,7 +2712,7 @@ func (c *checker) declareNodeID(id string) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
-	c.scope.Declare(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
+	c.scope.Replace(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a
@@ -2449,10 +2812,6 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		if !isValidColor(val) {
 			c.error(pos, "invalid color literal %q", val)
 		}
-	case ir.TypeDuration:
-		if !regexp.MustCompile(`^P`).MatchString(val) {
-			c.error(pos, "invalid duration literal %q", val)
-		}
 	}
 }
 
@@ -2483,10 +2842,101 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			}
 			c.pushScope()
 			for _, p := range h.Func.Params {
-				c.scope.Declare(p)
+				c.declare(varPos(v), p)
 			}
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
 			c.popScope()
 		}
+	}
+}
+
+// flattenDotImport lifts an imported package's exported declarations into the
+// current scope, so `import . "p"` makes them available unqualified — the same
+// shape loadStdlib gives the stdlib, reached by an explicit import instead.
+//
+// Imports are processed first in pass1, so anything the user declares afterwards
+// lands in the same scope and overwrites the dot-imported binding of that name.
+// That is what preserves override semantics: a user declaration shadows a
+// dot-imported one exactly as it shadows a lifted stdlib one.
+//
+// Unexported names are skipped, matching qualified access (see rejectUnexported).
+//
+// Two dot imports lifting the same name is an error. Silently taking the last
+// one would make which package a bare name refers to depend on import order.
+func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
+	if irImport.Pkg == nil {
+		// Macro-only or unresolved package — nothing to lift. Not an error: the
+		// import may exist purely to enable a macro.
+		return
+	}
+	pkg := irImport.Pkg
+	c.markForeign(pkg)
+	// Types and Comps are also present in Root.Symbols, so the loop below
+	// would re-claim a name this import already lifted and report it as a
+	// collision with itself.
+	lifted := map[string]bool{}
+	claim := func(name string) bool {
+		if !c.claimTopLevel(name, imp.Pos, bindDot, imp.Path) {
+			return false
+		}
+		lifted[name] = true
+		return true
+	}
+	for name, sym := range pkg.Symbols.Types {
+		if exported(sym) && claim(name) {
+			c.symtab.Types[name] = sym
+			c.scope.Replace(sym)
+		}
+	}
+	for name, sym := range pkg.Symbols.Comps {
+		if exported(sym) && claim(name) {
+			c.symtab.Comps[name] = sym
+			c.scope.Replace(sym)
+		}
+	}
+	for typeName, methods := range pkg.Symbols.Methods {
+		for methodName, fn := range methods {
+			// Gated like the Types and Comps loops above; this loop had no
+			// check, contradicting the doc comment. (An unexported method is
+			// still reachable through its receiver on a qualified import —
+			// a separate, pre-existing visibility hole.)
+			if !exported(fn) {
+				continue
+			}
+			if c.symtab.Methods[typeName] == nil {
+				c.symtab.Methods[typeName] = map[string]*ir.Func{}
+			}
+			// First lift wins: a receiver's own methods are already registered
+			// when the stdlib loads, and a dot import must not replace them.
+			if _, exists := c.symtab.Methods[typeName][methodName]; !exists {
+				c.symtab.Methods[typeName][methodName] = fn
+			}
+		}
+	}
+	for _, sym := range pkg.Symbols.Root.Symbols {
+		if !exported(sym) || lifted[sym.SymName()] {
+			continue
+		}
+		// Don't re-bind a namespace the imported package itself imported; dot
+		// import lifts the package's own declarations, not its import graph.
+		// The stdlib is the exception: `i18n`, `html` and `lower` are
+		// namespaces it declares as part of its own surface.
+		if _, isNS := sym.(*ir.Namespace); isNS {
+			if pkg != c.stdlibPkg {
+				continue
+			}
+			// Deliberately unclaimed. A lifted namespace names a package, and
+			// a file may name that same package itself — `import
+			// "internal://lower"` alongside the stdlib that already exposes
+			// it. Both bindings mean the same package, so this is a restated
+			// name rather than an ambiguous one. Only the stdlib lifts
+			// namespaces, so no second dot import can disagree about one.
+			c.scope.Replace(sym)
+			continue
+		}
+		if !claim(sym.SymName()) {
+			continue
+		}
+		c.scope.Replace(sym)
 	}
 }

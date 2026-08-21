@@ -6,6 +6,8 @@ exists out/model.go
 exists out/model_test.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

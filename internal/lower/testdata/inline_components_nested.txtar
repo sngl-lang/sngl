@@ -1,5 +1,7 @@
 caps: NoInlineComponents
 -- input.sngl --
+import . "sngl://std"
+
 component Counter(start = 0) {
     var n = start
     text(value=string(n))
@@ -12,10 +14,10 @@ component main {
     Page(initial=1)
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n__inst0 int = 1
     var n__inst1 int = 1 + 10
     text(value=string(n__inst0))
     text(value=string(n__inst1))
 }
-context #locale(i18n.defaultLocale())

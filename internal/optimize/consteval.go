@@ -27,10 +27,6 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Literal:
 		return true
 	case *ir.Ident:
-		switch x.Name {
-		case "PLATFORM", "LANGUAGE":
-			return true
-		}
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
@@ -231,14 +227,17 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 }
 
 func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
-	switch x.Name {
-	case "PLATFORM":
-		return ctx.platform, true
-	case "LANGUAGE":
-		return ctx.language, true
-	}
-	// Const variable — evaluate its initializer.
+	// Const variable — evaluate its initializer, except where the compiler
+	// supplies the value. The build target is keyed off the #[builtin] mark
+	// rather than the name, so a declaration shadowing PLATFORM is an
+	// ordinary const and folds to whatever it was declared as.
 	if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
+		switch v.Builtin {
+		case ast.BuiltinPlatform:
+			return ctx.platform, true
+		case ast.BuiltinLanguage:
+			return ctx.language, true
+		}
 		if val, found := ctx.values[v]; found {
 			return val, true
 		}

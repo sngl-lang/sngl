@@ -11,6 +11,7 @@ module example.com/ctest
 go 1.21
 
 -- main.sngl --
+import . "sngl://std"
 import lib "c://pkg:nonexistent-lib-xyz-9999"
 
 component main {

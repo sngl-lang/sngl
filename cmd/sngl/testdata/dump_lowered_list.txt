@@ -29,6 +29,8 @@ stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → Re
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl
 
 -- main.sngl --
+import . "sngl://std"
+
 component main {
     text(value="hello")
 }

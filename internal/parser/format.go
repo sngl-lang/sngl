@@ -250,13 +250,15 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 // --- imports ---
 
 func (f *formatter) writeImport(imp *ast.Import) {
+	// The alias slot already holds either an identifier or the dot.
+	prefix := imp.Alias
 	switch {
-	case imp.Replace != "" && imp.Alias != "":
-		f.writef("import %s %q => %q", imp.Alias, imp.Path, imp.Replace)
+	case imp.Replace != "" && prefix != "":
+		f.writef("import %s %q => %q", prefix, imp.Path, imp.Replace)
 	case imp.Replace != "":
 		f.writef("import %q => %q", imp.Path, imp.Replace)
-	case imp.Alias != "":
-		f.writef("import %s %q", imp.Alias, imp.Path)
+	case prefix != "":
+		f.writef("import %s %q", prefix, imp.Path)
 	default:
 		f.writef("import %q", imp.Path)
 	}

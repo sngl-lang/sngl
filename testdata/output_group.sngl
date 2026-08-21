@@ -1,6 +1,8 @@
+import . "sngl://std"
+
 output {
     js {
-        html(entry="app")
+        html(minify=true)
     }
     go {
         bubbletea

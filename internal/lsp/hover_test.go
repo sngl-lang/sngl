@@ -35,7 +35,7 @@ func TestWordAtPosition(t *testing.T) {
 
 func hoverOf(t *testing.T, src, word string) string {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

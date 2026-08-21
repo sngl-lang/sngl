@@ -1,5 +1,7 @@
 caps: NoTernary
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var label string = ""
     var on bool = true
@@ -9,6 +11,7 @@ component main {
     })
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var label string = ""
     var on bool = true
@@ -22,4 +25,3 @@ component main {
         label = __lt0
     })
 }
-context #locale(i18n.defaultLocale())

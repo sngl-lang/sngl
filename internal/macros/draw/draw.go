@@ -1,4 +1,4 @@
-package canvas
+package draw
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	expand.RegisterPre("canvas", "shape", nil, shapeHandler)
+	expand.RegisterPre("draw", "shape", nil, shapeHandler)
 }
 
 func shapeHandler(_ expand.Args, decl ast.Stmt) (ast.Stmt, error) {

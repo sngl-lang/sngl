@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Client-only HTTP route window: the @click handler mutates SNGL state only
 // (no go:// native call), so it stays pure client-side JS. This fixture is the
 // no-backend route parity baseline (Phase 0): its server.go output must remain

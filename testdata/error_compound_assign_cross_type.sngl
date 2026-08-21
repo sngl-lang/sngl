@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: compound assignment `+=` of float into int passes typecheck.
 // Per audit (internal/checker/expr.go:1270-1278): compound assignment checks
 // numeric-or-string but never wraps in ir.Conversion. Result: a Binary IR node

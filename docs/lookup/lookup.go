@@ -25,6 +25,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // Kind tags which of Result's pointer fields is populated.
@@ -68,8 +69,9 @@ type DeclIndex struct {
 	Functions     []DeclSummary // free functions (no receiver)
 	Overrides     []DeclSummary // sngl.* platform overrides
 	PlatformTypes []DeclSummary // "Options"-style platform structs
-	IsStdlib      bool
-	Native        *ir.NativeImport // non-nil for scheme-native packages
+	// Library is true for a package of the embedded SNGL library.
+	Library bool
+	Native  *ir.NativeImport // non-nil for scheme-native packages
 }
 
 // DeclSummary is a name + doc pair. Callers call FirstSentence on Doc if they
@@ -158,7 +160,7 @@ type PackageKind int
 
 const (
 	PackageCurrent PackageKind = iota + 1 // cwd's own package
-	PackageStdlib                         // built-in "sngl"
+	PackageLibrary                        // the embedded SNGL library, addressed as "sngl"
 	PackageLocal                          // ./subdir, ../other
 	PackageScheme                         // go://…, file://…, etc.
 )
@@ -253,7 +255,7 @@ func IndexIn(cwd string) []PackageRef {
 func indexInUncached(cwd string) []PackageRef {
 	refs := []PackageRef{
 		{Title: filepath.Base(mustAbs(cwd)), Path: ".", Kind: PackageCurrent},
-		{Title: "sngl", Path: "sngl", Kind: PackageStdlib},
+		{Title: "sngl", Path: "sngl", Kind: PackageLibrary},
 	}
 	doc, err := parseDir(cwd)
 	if err != nil {
@@ -274,7 +276,9 @@ func indexInUncached(cwd string) []PackageRef {
 		}
 		seen[path] = true
 		alias := imp.Alias
-		if alias == "" {
+		// A dot import binds no name, so "." is not a title. Fall back to the
+		// path-derived name, same as an import with no alias at all.
+		if alias == "" || alias == "." {
 			alias = checker.NamespaceFromPath(path)
 		}
 		kind := PackageLocal
@@ -290,23 +294,44 @@ func indexInUncached(cwd string) []PackageRef {
 
 // target bundles the resolved package. Exactly one of (pd, native) is non-nil.
 type target struct {
-	title    string
-	pd       *checker.PackageDocs
-	stmts    []ast.Stmt
-	native   *ir.NativeImport
-	isStdlib bool
+	title  string
+	pd     *checker.PackageDocs
+	stmts  []ast.Stmt
+	native *ir.NativeImport
+	// library marks a package of the embedded SNGL library, addressed by the
+	// sngl scheme. It affects how the title renders, nothing else: there is no
+	// "the standard library" any more, only packages under one scheme.
+	library bool
+	// allPackages is the merged view: everything a file can see without
+	// naming a package.
+	allPackages bool
 }
 
 func resolveTarget(cwd, path string) (*target, error) {
-	if path == "sngl" {
-		path = "internal://stdlib"
-	}
-
 	scheme, uri := checker.ParseScheme(path)
 
-	if scheme == "internal" && uri == "stdlib" {
-		pd, stmts := stdlibPackageDocs()
-		return &target{title: "sngl", pd: pd, stmts: stmts, isStdlib: true}, nil
+	// Bare `sngl` is every library package merged into one listing. The
+	// per-package paths address one of them each.
+	//
+	// internal://stdlib is deliberately not an alias for this: despite the
+	// name it is the compiler's intrinsics package, which has nothing to do
+	// with sngl://std.
+	if path == "sngl" {
+		pd, stmts := stdlibPackageDocs(lib.Packages()...)
+		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
+	}
+
+	if scheme == "sngl" {
+		if !checker.HasPackage(uri) {
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
+		}
+		pd, stmts := stdlibPackageDocs(uri)
+		return &target{
+			title:   "sngl://" + uri,
+			pd:      pd,
+			stmts:   stmts,
+			library: true,
+		}, nil
 	}
 
 	if scheme != "" {
@@ -412,9 +437,18 @@ func mergeDocsTarget(title string, docs []*ast.Document) *target {
 // --- Index building ---
 
 func buildIndex(tgt *target) *DeclIndex {
-	idx := &DeclIndex{Title: tgt.title, IsStdlib: tgt.isStdlib, Native: tgt.native}
-	if tgt.isStdlib {
-		idx.Description = "Built-in components, types, and functions available without import."
+	idx := &DeclIndex{Title: tgt.title, Library: tgt.library, Native: tgt.native}
+	switch {
+	case tgt.allPackages:
+		idx.Description = "Every package of the embedded library merged into one listing (" +
+			strings.Join(libraryPaths(), ", ") + "). Only `sngl://builtin` is in scope without an import."
+	case tgt.library && tgt.pd != nil && tgt.pd.Doc != "":
+		idx.Description = tgt.pd.Doc
+	case tgt.library:
+		// No package comment in lib/<name>/. Say how to import it, which is
+		// the one thing true of every library package.
+		idx.Description = "Import it to bring its declarations into scope: `import . " + quote(tgt.title) +
+			"` to write them unqualified, or `import <alias> " + quote(tgt.title) + "` to qualify them."
 	}
 	if tgt.native != nil {
 		populateNativeIndex(idx, tgt.native)
@@ -750,11 +784,27 @@ func FirstSentence(doc string) string {
 	return doc
 }
 
-func stdlibPackageDocs() (*checker.PackageDocs, []ast.Stmt) {
+// stdlibPackageDocs returns the declarations of the named embedded packages,
+// merged. Packages are directories on disk, so this reads the layout rather
+// than filtering a merged set.
+func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
-	for _, doc := range checker.StdlibDocs() {
+	var docs []*ast.Document
+	for _, pkg := range pkgs {
+		docs = append(docs, checker.PackageDocsFor(pkg)...)
+	}
+	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)
+		if pd.Doc != "" {
+			// go doc semantics: every file's package comment counts, joined in
+			// load order. That order is not guaranteed, so a package wanting
+			// prose in a fixed sequence should keep it in one file.
+			if merged.Doc != "" {
+				merged.Doc += "\n\n"
+			}
+			merged.Doc += pd.Doc
+		}
 		merged.Components = append(merged.Components, pd.Components...)
 		merged.Structs = append(merged.Structs, pd.Structs...)
 		merged.Enums = append(merged.Enums, pd.Enums...)
@@ -836,3 +886,14 @@ func mustAbs(p string) string {
 func sortByName(xs []DeclSummary) {
 	sort.Slice(xs, func(i, j int) bool { return xs[i].Name < xs[j].Name })
 }
+
+// libraryPaths returns the embedded library packages as import paths.
+func libraryPaths() []string {
+	out := make([]string, 0, len(lib.Packages()))
+	for _, p := range lib.Packages() {
+		out = append(out, "`sngl://"+p+"`")
+	}
+	return out
+}
+
+func quote(s string) string { return "\"" + s + "\"" }

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // A window's readable members are the builtin-node component's props;
 // anything else is a hard error, not a silent dyn.
 window #home(title="Home", href="/index.html") {

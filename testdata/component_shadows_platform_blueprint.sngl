@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // A user component may take a name that a platform's own source uses for a
 // blueprint component. `Widget` is bubbletea's textinput/viewport blueprint,
 // referenced bare inside its `component sngl.input` extension body.

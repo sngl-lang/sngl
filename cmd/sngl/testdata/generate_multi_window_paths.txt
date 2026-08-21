@@ -8,6 +8,8 @@ exists out/docs/intro.html
 ! exists out/window_L1.html
 
 -- site.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

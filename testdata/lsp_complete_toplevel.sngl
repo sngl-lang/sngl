@@ -1,4 +1,6 @@
 //@ complete("", "component", "struct", "enum", "import", "!var", "!param")
 
+import . "sngl://std"
+
 component main {
 }

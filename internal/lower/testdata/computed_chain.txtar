@@ -1,5 +1,7 @@
 caps: NoComputed
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 3
 
@@ -9,8 +11,8 @@ component main {
     text(value=string(b()))
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var n int = 3
     text(value=string((n + 1) * 2))
 }
-context #locale(i18n.defaultLocale())

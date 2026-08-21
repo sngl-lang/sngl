@@ -38,6 +38,14 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
 
 	for _, imp := range pkg.Imports {
+		// Macro-package imports are injected by the library load, not written
+		// by this package's source, and the checker re-injects them on every
+		// check. Emitting them would put compiler-internal imports in
+		// user-facing output — where they also collide with the names the
+		// standard-library import lifts.
+		if strings.HasPrefix(imp.Path, "internal://") || strings.HasPrefix(imp.Path, "sngl://internal/") {
+			continue
+		}
 		stmts = append(stmts, c.convertImport(imp))
 	}
 	for _, s := range pkg.Structs {
@@ -83,6 +91,11 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertTimer(t))
 	}
 	for _, ctx := range pkg.Contexts {
+		// Standard-library contexts arrive with the import, not from this
+		// package's source; emitting them would redeclare the name.
+		if ctx.Stdlib {
+			continue
+		}
 		stmts = append(stmts, c.convertContext(ctx))
 	}
 	if len(pkg.Outputs) > 0 {

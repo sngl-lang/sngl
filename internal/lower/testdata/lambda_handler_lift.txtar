@@ -1,5 +1,7 @@
 caps: NoLambda, NoDeclarative
 -- input.sngl --
+import . "sngl://std"
+
 component counter {
     var count int = 0
     button(@click {
@@ -7,6 +9,7 @@ component counter {
     })
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __lambda0_caps {
     count ref<int>
 }
@@ -18,4 +21,3 @@ component counter {
     var __n0 button = lower.CreateNode("button")
     lower.AttachHandler(__n0, "click", __closure(__lambda0, __lambda0_caps{count = &count}))
 }
-context #locale(i18n.defaultLocale())

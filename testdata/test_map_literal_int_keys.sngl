@@ -1,5 +1,7 @@
 // Int-keyed map. Non-ident keys force the literal to be a map literal.
 
+import . "sngl://std"
+
 component mapIntKeys {
     var grades map<int, string> = {
         1 = "one",

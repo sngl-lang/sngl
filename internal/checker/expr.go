@@ -280,25 +280,13 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 }
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
-	// Builtin constants.
-	switch x.Name {
-	case "PLATFORM", "LANGUAGE":
-		return &ir.Ident{AST: x, Type: TypString, Name: x.Name}
-	case "true", "false":
-		return &ir.Ident{AST: x, Type: TypBool, Name: x.Name}
-	case "null":
-		return &ir.Ident{AST: x, Type: TypNull, Name: x.Name}
-	}
-
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
 		// When expected type is an enum, resolve bare member names.
 		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
 			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
-				for _, m := range ed.Members {
-					if m.Name == x.Name {
-						return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
-					}
+				if c.enumMember(x.Pos, ed, x.Name) {
+					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
 				}
 			}
 		}
@@ -341,7 +329,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
 		}
-		c.error(x.Pos, "undefined: %s", x.Name)
+		c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -986,8 +974,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						}
 						// Component in namespace — validate visibility and props.
 						if comp, ok := fsym.(*ir.Component); ok {
-							// Private component filter: only for imported user packages (not stdlib/sngl).
-							if ns.Name != "sngl" && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+							// Private component filter: only for imported user
+							// packages. Identity, not name — the stdlib is
+							// bound under whatever alias the file chose.
+							if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
 								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
 								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 							}
@@ -1041,6 +1031,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 	// Type-attached method call.
 	typeName := receiver.String()
+	if receiver.Decl != nil {
+		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
+			c.rejectForeignUnexported(sel.Pos, owner, typeName, sel.Field) {
+			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+		}
+	}
 	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
 	// Fallback for generic types: list<int> → "list", option<int> → "option",
 	// map<K,V> → "map".
@@ -1149,8 +1145,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// identify it as a SlotField slot.
 	if receiver.Kind == ir.TypeStruct {
 		if sd, ok := receiver.Decl.(*ir.StructDef); ok {
-			for _, sf := range sd.Fields {
-				if sf.Name == sel.Field && sf.Type != nil && sf.Type.Kind == ir.TypeFunc {
+			if sf := c.structField(sel.Pos, sd, sel.Field); sf != nil {
+				if sf.Type != nil && sf.Type.Kind == ir.TypeFunc {
 					var sig *ir.FuncSig
 					if sf.Type.Sig != nil {
 						sig = sf.Type.Sig
@@ -1476,12 +1472,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// EnumType.member select that the target language doesn't define.
 		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
-				for _, m := range ed.Members {
-					if m.Name == x.Field {
-						return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
-					}
+				if c.enumMember(x.Pos, ed, x.Field) {
+					return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
 				}
-				c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
+				if isExportedMemberName(x.Field) {
+					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
+				}
 			}
 		}
 
@@ -1496,6 +1492,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					for i, name := range sd.TypeParams {
 						typeArgBindings[name] = operand.Elems[i]
 					}
+				}
+				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
+					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
@@ -1672,12 +1671,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			continue
 		}
 		var expected *ir.Type
-		if sd != nil {
-			expected = structFieldType(sd, f.Name)
+		field := c.structField(f.NamePos, sd, f.Name)
+		if field != nil {
+			expected = field.Type
 		}
 		val := c.checkExprExpecting(f.Value, expected)
-		// Validate field exists on struct.
-		if sd != nil && !structHasField(sd, f.Name) {
+		// Validate field exists on struct. An unexported field of another
+		// package is already reported by structField.
+		if sd != nil && field == nil && isExportedMemberName(f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
 		fields = append(fields, ir.FieldInit{Name: f.Name, NamePos: f.NamePos, Value: val})
@@ -1715,18 +1716,29 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 	if len(x.Fields) == 0 {
 		return &ir.MapLitIR{Type: mapType, Entries: nil}
 	}
-	if keyT.Kind != ir.TypeString {
-		c.error(x.Pos, "ident-keyed literal does not match map<%s, ...> with non-string key type", keyT)
-		return &ir.MapLitIR{Type: mapType, Entries: nil}
-	}
 	var entries []ir.MapEntry
 	for _, f := range x.Fields {
 		if f.Spread {
 			c.error(x.Pos, "spread not supported in map literal")
 			continue
 		}
-		keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
-		keyIR := &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		var keyIR ir.Expr
+		if keyT.Kind == ir.TypeString {
+			keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
+			keyIR = &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		} else {
+			// A non-string key type means the name is not a name: it is an
+			// expression written where a field name would go, and it has to
+			// resolve to the key type. `{true = "yes"}` for a
+			// map<bool, string> is the case that matters, now that true is a
+			// declaration rather than something the parser recognises.
+			key := c.checkExprExpecting(&ast.IdentExpr{Pos: x.Pos, Name: f.Name}, keyT)
+			if kt := exprType(key); !kt.IsAssignableTo(keyT) {
+				c.error(x.Pos, "map key %q is %s, not the key type %s", f.Name, kt, keyT)
+				continue
+			}
+			keyIR = key
+		}
 		val := c.checkExprExpecting(f.Value, valT)
 		entries = append(entries, ir.MapEntry{Key: keyIR, Value: val})
 	}
@@ -1843,7 +1855,7 @@ func interpPartPrimitive(t *ir.Type) bool {
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
 		ir.TypeEnum, ir.TypeUnit, ir.TypeNull,
-		ir.TypeColor, ir.TypeDuration:
+		ir.TypeColor:
 		return true
 	}
 	return false
@@ -1946,7 +1958,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	// Type-check the lambda body in a child scope.
 	c.pushScope()
 	for _, p := range fn.Params {
-		c.scope.Declare(p)
+		c.declare(x.Pos, p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -2235,7 +2247,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				// Inline event handler — check body.
 				c.pushScope()
 				for _, p := range arg.Params.Params {
-					c.scope.Declare(&ir.Param{
+					c.declare(p.Pos, &ir.Param{
 						Name: p.Name,
 						Type: c.resolveType(p.Type),
 					})
@@ -2347,7 +2359,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 		}
 		for _, name := range spec.Names {
-			c.scope.Declare(&ir.Var{
+			c.declare(decl.Pos, &ir.Var{
 				AST:  decl,
 				Name: name,
 				Type: typ,
@@ -2455,7 +2467,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				typ = initType
 			}
 		}
-		c.scope.Declare(&ir.Var{
+		c.declare(x.Pos, &ir.Var{
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
@@ -2697,11 +2709,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = list: key is index (int), value is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
 			} else {
 				// for item = list: item is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
 			}
 		case ir.TypeIter:
 			if len(iter.Elems) > 0 {
@@ -2709,35 +2721,35 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = iter: key is index (int), value is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: elemType})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemType})
 			} else {
 				// for item = iter: item is element.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: elemType})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemType})
 			}
 		case ir.TypeMap:
 			if x.Value == "" {
 				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
 			} else if len(iter.Elems) == 2 {
 				// for k, v = map: k is key type, v is value type.
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
 				elemType = iter.Elems[1]
 			}
 		case ir.TypeDyn:
 			if x.Value != "" {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
 			} else {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.scope.Declare(&ir.LoopVar{Name: x.Value, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
 			} else {
-				c.scope.Declare(&ir.LoopVar{Name: x.Key, Type: TypDyn})
+				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
 			}
 		}
 		body := c.checkBlockIR(&x.Body)
@@ -2759,7 +2771,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		return nil
 	case *ast.FuncDef:
 		fn := c.buildFunc(x)
-		c.scope.Declare(fn)
+		c.declare(x.Pos, fn)
 		c.checkFuncBody(fn)
 		// When a `func` is declared inside a nested block (provider children,
 		// if/for body), it would otherwise be built and scoped but never
@@ -2808,7 +2820,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	scope.Declare(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	scope.Replace(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -2952,7 +2964,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	fn := &ir.Func{Params: params}
 	c.pushScope()
 	for _, p := range params {
-		c.scope.Declare(p)
+		c.declare(eh.Pos, p)
 	}
 	fn.Block = c.checkBlockIR(&eh.Body)
 	c.popScope()
@@ -3004,7 +3016,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
 		if w.Name != "" {
-			c.scope.Declare(w)
+			c.scope.Replace(w)
 		}
 		c.checkWindowBody(w)
 		w.Checked = true
@@ -3115,7 +3127,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 					comp = co
 				}
 			} else {
-				c.error(vn.Pos, "unknown component %q", name)
+				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHint(name))
 			}
 		}
 	}
@@ -3423,7 +3435,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// Check the handler body in a scoped context.
 			c.pushScope()
 			for _, p := range params {
-				c.scope.Declare(p)
+				c.declare(arg.Pos, p)
 			}
 			fn.Block = c.checkBlockIR(&arg.Body)
 			c.popScope()
@@ -3580,7 +3592,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 						typ = et
 					}
 				}
-				c.scope.Declare(&ir.Param{Name: p.Name, Type: typ})
+				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
@@ -3690,7 +3702,7 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 						Type:    ir.ListOf(c.windowType),
 						IsConst: true,
 					}
-					c.scope.Declare(v)
+					c.scope.Replace(v)
 					*vars = append(*vars, v)
 				}
 			}

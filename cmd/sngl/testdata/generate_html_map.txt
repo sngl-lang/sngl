@@ -16,6 +16,8 @@ grep '\.has\(' out/index.html
 grep '\.get\(' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Number placeholder with style argument.
 var amount = 1234
 var price = $"Total: {amount, number, currency}"

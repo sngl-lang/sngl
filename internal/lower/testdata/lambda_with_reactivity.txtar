@@ -1,11 +1,14 @@
 caps: NoLambda, NoReactivity
 -- input.sngl --
+import . "sngl://std"
+
 component counter {
     var count int = 0
     var inc func() = func() { count = count + 1 }
     text(value="Count: " + string(count))
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __lambda0_caps {
     count ref<int>
 }
@@ -18,4 +21,3 @@ component counter {
     var inc func() = __closure(__lambda0, __lambda0_caps{count = &count})
     text #__n0(value="Count: " + string(count))
 }
-context #locale(i18n.defaultLocale())

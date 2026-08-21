@@ -253,7 +253,7 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 			return fmt.Sprintf("%q", n.Raw)
 		}
 		switch n.Type.Kind {
-		case ir.TypeString, ir.TypeDuration:
+		case ir.TypeString:
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeNull:
 			return "null"

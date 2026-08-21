@@ -23,7 +23,7 @@ func TestReactiveLoweredRoundTrip(t *testing.T) {
     text(value=string(n))
     button(text="+", @click { n = n + 1 })
 }`
-	doc, err := parser.Parse("rt.sngl", []byte(src))
+	doc, err := parser.Parse("rt.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestReactiveLoweredRoundTrip(t *testing.T) {
 		t.Fatalf("expected a bare __n0 node reference in lowered output, got:\n%s", out)
 	}
 
-	reparsed, err := parser.Parse("rt.lowered.sngl", []byte(out))
+	reparsed, err := parser.Parse("rt.lowered.sngl", []byte(withStdSrc(out)))
 	if err != nil {
 		t.Fatalf("reparse lowered output failed: %v\n--- output ---\n%s", err, out)
 	}

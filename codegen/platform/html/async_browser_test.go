@@ -149,6 +149,7 @@ func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
 	// via domWriteFor → textContent.  If the button comes first the fall-through
 	// path produces __n0.value (a custom expando) instead of __n0.textContent.
 	const snglSrc = `
+import . "sngl://std"
 import api "js://./api"
 
 component main {

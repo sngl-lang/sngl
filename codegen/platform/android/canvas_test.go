@@ -35,7 +35,9 @@ func compileCanvasSrc(t *testing.T, src string) string {
 	return string(out)
 }
 
-const canvasReactiveSrc = `output {
+const canvasReactiveSrc = `import . "sngl://std"
+import . "sngl://draw"
+output {
     none { html }
 }
 
@@ -103,7 +105,9 @@ func TestCanvasComposeEmission(t *testing.T) {
 // real text (via the native canvas) rather than emitting a "not yet supported"
 // no-op.
 func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+import . "sngl://draw"
+component main {
     canvas(width=200px, height=80px) {
         canvasText(x=10.0, y=40.0, content="hi", style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
     }
@@ -122,7 +126,9 @@ func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
 // TestCanvasImageRenders guards that a canvasImage shape decodes + draws a
 // bitmap (best-effort, local file path) rather than being a silent no-op.
 func TestCanvasImageRenders(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+import . "sngl://draw"
+component main {
     canvas(width=100px, height=100px) {
         canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
     }

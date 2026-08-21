@@ -1,14 +1,16 @@
 caps: NoDeclarative
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     text(value="hello")
     button(text="+")
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var __n0 text = lower.CreateNode("text")
     __n0.value = "hello"
     var __n1 button = lower.CreateNode("button")
     __n1.text = "+"
 }
-context #locale(i18n.defaultLocale())

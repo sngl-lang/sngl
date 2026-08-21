@@ -1,5 +1,7 @@
 caps: NoComputed
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var first string = "Hello"
     var last string = "World"
@@ -9,9 +11,9 @@ component main {
     text(value=full())
 }
 -- expected.sngl --
+import . "sngl://std"
 component main {
     var first string = "Hello"
     var last string = "World"
     text(value=first + " " + last)
 }
-context #locale(i18n.defaultLocale())

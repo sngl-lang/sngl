@@ -11,6 +11,7 @@ grep 'addEventListener.*async function' out/index.html
 grep 'await state\.h\.run()' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
 import api "js://./api"
 
 struct Handler {

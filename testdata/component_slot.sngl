@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // slot: A-tier — Wrapper uses slot{} to project children from main.
 component Wrapper() list<component> {
     vbox {

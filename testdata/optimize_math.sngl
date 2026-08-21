@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component mathfold {
     // Trig functions
     var fsin = float.sin(0.0)          // FOLD 0.0

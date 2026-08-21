@@ -7,6 +7,8 @@ exists out/MainScreen.kt
 grep 'for .* in ' out/MainScreen.kt
 
 -- app.sngl --
+import . "sngl://std"
+
 output { kotlin { android } }
 
 component main {

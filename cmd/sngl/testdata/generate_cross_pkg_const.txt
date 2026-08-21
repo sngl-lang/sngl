@@ -14,6 +14,7 @@ grep 'b</span>' out/index.html
 ! grep 'for (' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
 import "widgets"
 
 const items = ["a", "b"]
@@ -23,6 +24,8 @@ component main {
 }
 
 -- widgets/row.sngl --
+import . "sngl://std"
+
 component Row(entries list<string> = []) {
     for x = entries {
         text(value=x)

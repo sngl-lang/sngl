@@ -1,7 +1,7 @@
-import "internal://canvas"
+import "sngl://draw"
 
-#[canvas.shape]
+#[draw.shape]
 component rect(x int, y int, w int, h int) {}
 
-#[canvas.shape]
+#[draw.shape]
 component circle(cx int, cy int, r int) {}

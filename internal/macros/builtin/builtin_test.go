@@ -26,7 +26,9 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 
 func TestStringReprMacro(t *testing.T) {
 	// No import: the #[builtin] macro resolves ambiently.
-	src := `#[builtin("color")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("color")]
 struct color { r int = 0 }`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -42,7 +44,9 @@ struct color { r int = 0 }`
 }
 
 func TestPrimitiveMacro(t *testing.T) {
-	src := `#[builtin("int")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("int")]
 struct int {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -58,7 +62,9 @@ struct int {}`
 }
 
 func TestGenericMacro(t *testing.T) {
-	src := `#[builtin("list")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("list")]
 struct list<T> {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -74,7 +80,9 @@ struct list<T> {}`
 }
 
 func TestNodeMacro(t *testing.T) {
-	src := `#[builtin("window")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("window")]
 component window(title string) list<component> {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -90,7 +98,9 @@ component window(title string) list<component> {}`
 }
 
 func TestMacroRejectsUnknownKind(t *testing.T) {
-	src := `#[builtin("bogus")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("bogus")]
 struct x {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
@@ -98,30 +108,46 @@ struct x {}`
 	}
 }
 
-// A type kind annotates a struct; a component is a category error.
-func TestMacroRejectsTypeKindOnComponent(t *testing.T) {
-	src := `#[builtin("color")]
+// The macro stamps the kind on whatever declaration form can carry one; which
+// kinds belong on which form is checked where the compiler stores the
+// reference, so a category error is not the macro's to report.
+func TestMacroStampsWithoutJudgingTheKind(t *testing.T) {
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("color")]
 component foo {}`
-	_, diags := expandOne(t, src)
-	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for a type kind on a component")
+	stmts, diags := expandOne(t, src)
+	if hasError(diags) {
+		t.Fatalf("macro should stamp and defer judgement, got %v", diags)
+	}
+	comp, ok := stmts.(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected a ComponentDecl, got %T", stmts)
+	}
+	if comp.Builtin != ast.BuiltinColor {
+		t.Errorf("Builtin = %q, want %q", comp.Builtin, ast.BuiltinColor)
 	}
 }
 
-// A node kind annotates a component; a struct is a category error.
-func TestMacroRejectsNodeKindOnStruct(t *testing.T) {
-	src := `#[builtin("window")]
-struct window {}`
+// A declaration form that cannot carry a mark is the macro's to reject,
+// because that is a property of the AST rather than of the kind.
+func TestMacroRejectsUntaggableDeclaration(t *testing.T) {
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("color")]
+var x = 1`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
-		t.Errorf("expected an error diagnostic for a node kind on a struct")
+		t.Errorf("expected an error diagnostic for a declaration that cannot carry a mark")
 	}
 }
 
 func TestMacroRejectsBareIdent(t *testing.T) {
 	// A bare identifier is a name reference, not a constant — must be rejected
 	// in favor of a string literal.
-	src := `#[builtin(list)]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin(list)]
 struct list<T> {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Exercises the kotlin test-lowering legacy surface (testlower.go's
 // translateIRExpr fallback at lines ~320/325 routes calls and i18n shapes
 // through the legacy KtIRContext-less path):

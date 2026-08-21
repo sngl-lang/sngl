@@ -19,6 +19,8 @@ grep 'charm.land/bubbletea' out/model.go
 grep 'sngl \(bubbletea\)' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output {
     none { html }
     go { bubbletea }

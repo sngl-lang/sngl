@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 var x int = "hello" // ERROR(check) "cannot initialize int with string"
 
 func foo() {

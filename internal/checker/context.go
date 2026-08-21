@@ -79,6 +79,6 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	}
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
 	if name != "" {
-		c.scope.Declare(ctx)
+		c.scope.Replace(ctx)
 	}
 }

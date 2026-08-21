@@ -1,3 +1,4 @@
+import . "sngl://std"
 import "go://git.duckfam.us/jonathan/sngl/docs"
 
 component Gallery(hrefPrefix = "/", hrefSuffix = "") {

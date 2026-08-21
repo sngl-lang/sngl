@@ -1,1 +1,3 @@
+import . "sngl://std"
+
 foobar blah // ERROR(parse) "unexpected" //@ diag("unexpected")

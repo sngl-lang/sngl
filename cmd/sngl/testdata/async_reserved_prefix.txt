@@ -5,4 +5,6 @@
 stderr 'uses reserved prefix'
 
 -- app.sngl --
+import . "sngl://std"
+
 func __async_foo() => "hello"

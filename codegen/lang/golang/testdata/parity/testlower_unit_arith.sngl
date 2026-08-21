@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Exercises multi-base-unit struct arithmetic in test bodies. `measurement`
 // has multiple base components (px, em, vw, vh, pct — rem converts to em), so
 // `+`/`-`/`*`/`/` and `==` lower component-wise over each base field. This is

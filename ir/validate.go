@@ -81,14 +81,11 @@ func Validate(pkg *Package) []error {
 }
 
 // isMagicIdent reports whether name is a compiler-recognized identifier that
-// legitimately resolves to no Symbol (platform/language build-gate literals).
-func isMagicIdent(name string) bool {
-	switch name {
-	case "PLATFORM", "LANGUAGE", "true", "false", "null":
-		return true
-	}
-	return false
-}
+// legitimately resolves to no Symbol. There are none left: every predeclared
+// name is declared in lib/builtin and carries a Symbol like anything else.
+// Kept as the seam for the next one rather than removed, so the validator does
+// not have to grow the concept back.
+func isMagicIdent(string) bool { return false }
 
 func checkNoNilStmts(add func(string, ...any), where string, stmts []Stmt) {
 	for i, s := range stmts {

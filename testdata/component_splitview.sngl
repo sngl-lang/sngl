@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // splitview: A-tier — declaration validates parse + check.
 component main {
     splitview(direction="horizontal", position=0.5) {

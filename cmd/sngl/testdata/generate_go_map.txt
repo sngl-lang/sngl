@@ -17,6 +17,8 @@ grep 'len\(m\.scores\)' out/model.go
 grep 'func\(\) any' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

@@ -5,7 +5,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/expand"
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/canvas"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
@@ -39,7 +39,7 @@ component foo() {}`)
 }
 
 func TestExpandPre_KnownInternal_UnknownName(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
+	doc := parseDoc(t, `import "sngl://draw"
 #[canvas.notarealname]
 component foo() {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
@@ -49,8 +49,8 @@ component foo() {}`)
 }
 
 func TestExpandPre_CanvasShape_ValidComponent(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 component rect(x int, y int, w int, h int) {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) != 0 {
@@ -66,8 +66,8 @@ component rect(x int, y int, w int, h int) {}`)
 }
 
 func TestExpandPre_CanvasShape_RejectsVar(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 var bad = 5`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) == 0 {
@@ -85,8 +85,8 @@ var bad = 5`)
 }
 
 func TestExpandPre_CanvasShape_RejectsEvent(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 component badShape(@click) {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) == 0 {
@@ -104,8 +104,8 @@ component badShape(@click) {}`)
 }
 
 func TestExpandPre_CanvasShape_RewritesListComponent(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 component myShape(x int) list<component> {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) != 0 {
@@ -120,8 +120,8 @@ component myShape(x int) list<component> {}`)
 }
 
 func TestExpandPre_CanvasShape_RejectsListOtherType(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 component myShape(x int) list<string> {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) == 0 {
@@ -130,8 +130,8 @@ component myShape(x int) list<string> {}`)
 }
 
 func TestExpandPre_CanvasShape_SetsChildrenType(t *testing.T) {
-	doc := parseDoc(t, `import "internal://canvas"
-#[canvas.shape]
+	doc := parseDoc(t, `import "sngl://draw"
+#[draw.shape]
 component myShape(x int) {}`)
 	diags := expand.ExpandPre([]*ast.Document{doc})
 	if len(diags) != 0 {

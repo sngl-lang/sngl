@@ -45,7 +45,6 @@ var builtinScalars = []BuiltinScalar{
 	{Name: "float32", Type: TypFloat32, Convertible: true},
 	{Name: "float64", Type: TypFloat64, Convertible: true},
 	{Name: "string", Type: TypString, Universe: true, Convertible: true},
-	{Name: "duration", Type: TypDuration, Universe: true, Convertible: true},
 	// Resolvable in type position but neither predeclared as a value nor a
 	// conversion target.
 	{Name: "dyn", Type: TypDyn},

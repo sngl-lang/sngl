@@ -33,7 +33,7 @@ func ClonePackage(pkg *Package) *Package {
 	c := &cloner{seen: map[uintptr]reflect.Value{}}
 	// Keep the immutable global primitive Type singletons shared: map each
 	// to itself so any pointer to one clones back to the same value.
-	for _, t := range []*Type{TypDyn, TypBool, TypInt, TypFloat, TypString, TypNull, TypDuration, TypVoid, TypShape} {
+	for _, t := range []*Type{TypDyn, TypBool, TypInt, TypFloat, TypString, TypNull, TypVoid, TypShape} {
 		rv := reflect.ValueOf(t)
 		c.seen[rv.Pointer()] = rv
 	}

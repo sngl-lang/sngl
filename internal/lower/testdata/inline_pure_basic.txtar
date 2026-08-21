@@ -1,5 +1,7 @@
 caps:
 -- input.sngl --
+import . "sngl://std"
+
 component greet(name string) {
     text(value=$"Hello, {name}!")
 }
@@ -8,10 +10,10 @@ component main {
     greet(name="Alice")
 }
 -- expected.sngl --
+import . "sngl://std"
 component greet(name string = "") {
     text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name" = name}))
 }
 component main {
     text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name" = "Alice"}))
 }
-context #locale(i18n.defaultLocale())

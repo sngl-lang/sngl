@@ -22,6 +22,8 @@ It combines the reactivity of Svelte, the ergonomics of Vue, with a language and
 ## Quick Example
 
 ```sngl
+import . "sngl://std"
+
 struct Todo {
     text string = ""
     done bool = false
@@ -36,14 +38,14 @@ component main {
     vbox(style={gap = 12, padding = 16}) {
         text(value=status, style={fontWeight = "bold", fontSize = 24})
         hbox(style={gap = 8, alignItems = "center"}) {
-            input(@input { newTodo = event.value }, placeholder="Buy eggs", style={flexGrow = 1})
-            button(@click {
+            input(:value=newTodo, placeholder="Buy eggs", style={flex = 1})
+            button(text="Add", @click {
                 todos.push(Todo{text = newTodo, done = false})
                 newTodo = ""
-            }, text="Add")
+            })
         }
         vbox(style={gap = 4}) {
-            for item, index = todos {
+            for index, item = todos {
                 checkbox(checked=item.done, key=index, label=item.text, @change { todos[index].done!! })
             }
         }
@@ -60,12 +62,13 @@ component main {
 
 ## Platforms
 
-| Target   | Language   | Platform  | Status |
-|----------|------------|-----------|--------|
-| Web      | JavaScript | html      | Stable |
-| Terminal | Go         | bubbletea | Stable |
-| Desktop  | Go         | fyne      | Stable |
-| Android  | Kotlin     | android   | Stable |
+| Target   | Language   | Platform  | Status            |
+|----------|------------|-----------|-------------------|
+| Web      | JavaScript | html      | Stable            |
+| Terminal | Go         | bubbletea | Stable            |
+| Desktop  | Go         | fyne      | Stable            |
+| Desktop  | Go         | gtk4      | Needs system GTK4 |
+| Android  | Kotlin     | android   | Stable            |
 
 ## Next Steps
 

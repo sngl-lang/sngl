@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     // Tail-recursive factorial with accumulator
     func factorial(n int, acc int) int {

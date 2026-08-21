@@ -96,6 +96,7 @@ func TestBrowser_I18nPluralRendering(t *testing.T) {
 	// which would be a TDZ error). The click handler re-computes label via $"..."
 	// so the i18n runtime is exercised on every increment.
 	const snglSrc = `
+import . "sngl://std"
 component main {
     var count int = 1
     var label string = "You have 1 item"

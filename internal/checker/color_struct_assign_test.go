@@ -10,7 +10,7 @@ import (
 
 func TestColorStructLitAssignableToColor(t *testing.T) {
 	src := `const X color = color{r=255, g=255, b=255, a=255}`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestColorHexAssignableToColor(t *testing.T) {
 	// Baseline: the literal form already works. Pin it so the fix
 	// doesn't accidentally break it.
 	src := `const Y color = #ffffff`
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

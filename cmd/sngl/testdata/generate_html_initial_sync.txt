@@ -23,6 +23,8 @@ grep 'function __sngl_init' out/index.html
 grep '__sngl_init\(\);' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

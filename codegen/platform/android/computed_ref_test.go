@@ -10,7 +10,8 @@ import (
 // rather than the "/* unresolved method main.X */" marker that produced invalid
 // Kotlin. Regression for the kotlin evalTypeMethodCall component-self fix.
 func TestComputedReferenceResolves(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+component main {
     var count = 0
     func doubled() => count * 2
     vbox {

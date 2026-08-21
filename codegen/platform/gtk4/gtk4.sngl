@@ -14,6 +14,8 @@
 // VisualNode, reads its widget type and prop/event bindings, and emits the
 // corresponding GTK4 Go code.
 
+import sngl "sngl://std"
+
 struct Options {
     package string
     main bool

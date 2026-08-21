@@ -730,7 +730,25 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
-	return env.lookup(e.Name)
+	if v, err := env.lookup(e.Name); err == nil {
+		return v, nil
+	} else if !isUndefined(err) {
+		return nil, err
+	}
+	// A name the environment does not hold, but the checker resolved: a
+	// constant from a library package, which is not in this program's own
+	// const table. The Ident carries the declaration, so evaluate its value
+	// rather than requiring every library const to be copied in by name.
+	if v, ok := e.Sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
+		return env.Eval(v.Init)
+	}
+	return nil, fmt.Errorf("undefined variable %q", e.Name)
+}
+
+// isUndefined reports whether err is lookup's not-found error, as opposed to a
+// failure raised while auto-invoking a zero-arg function.
+func isUndefined(err error) bool {
+	return err != nil && strings.HasPrefix(err.Error(), "undefined variable ")
 }
 
 // findVarOwner returns the env in this parent chain that holds name in Vars,

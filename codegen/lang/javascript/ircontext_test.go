@@ -145,7 +145,7 @@ func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	// Kind-backed string-domain types.
-	for _, k := range []ir.TypeKind{ir.TypeColor, ir.TypeDuration} {
+	for _, k := range []ir.TypeKind{ir.TypeColor} {
 		lit := &ir.Literal{Type: &ir.Type{Kind: k}, Raw: "val"}
 		got := jc.evalLiteral(lit)
 		if got != `"val"` {

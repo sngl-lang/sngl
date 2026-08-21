@@ -2,6 +2,8 @@
 // components so the html platform can emit the correct semantic tag without
 // the codegen having to evaluate a reactive `level` param at compile time.
 
+import . "sngl://std"
+
 component Heading1(value = "") {
     text(value=value, style={fontWeight="bold", fontSize=28, paddingBottom=8})
 

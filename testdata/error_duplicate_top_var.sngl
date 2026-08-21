@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // Bug: duplicate top-level var declaration silently overwrites.
 // Per audit (ir/scope.go:42-44 Scope.Declare): no duplicate-decl diagnostic
 // for vars/consts/funcs/types in the same scope.

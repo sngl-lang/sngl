@@ -201,6 +201,8 @@ type ConstDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
+	// Builtin is set by the #[builtin] macro on a predeclared constant.
+	Builtin BuiltinKind
 }
 
 // VarDecl declares one or more variables.
@@ -216,9 +218,13 @@ type VarDecl struct {
 type Import struct {
 	Pos     Pos
 	Path    string // local import path (LHS of =>, or the bare string)
-	Alias   string // explicit ident alias, "" if none
+	Alias   string // Alias holds the identifier to reference the import. "." for imports that are spread into the file's scope.
 	Replace string // replacement URL (RHS of =>), "" if no replace
 }
+
+// IsDot reports whether this is a dot import (`import . "p"`). "." cannot
+// collide with a real alias because it is not a legal identifier.
+func (i *Import) IsDot() bool { return i.Alias == "." }
 
 // --- Parameters ---
 

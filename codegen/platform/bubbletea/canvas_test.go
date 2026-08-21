@@ -12,7 +12,9 @@ import (
 )
 
 func TestBubbleteaCanvasEmission(t *testing.T) {
-	src := `component main {
+	src := `import . "sngl://std"
+import . "sngl://draw"
+component main {
     canvas(width=40px, height=20px) {
         rect(x=0.0, y=0.0, w=40.0, h=20.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
     }

@@ -25,6 +25,8 @@ stdout '^logo\.svg$'
 stdout '^site\.css$'
 
 -- app.sngl --
+import . "sngl://std"
+
 output {
     none {
         html(stylesheet="site.css")

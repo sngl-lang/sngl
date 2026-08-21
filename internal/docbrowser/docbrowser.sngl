@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
 // renders the top-level main body; html route mode compiles the window
 // declarations inside the `platform html` guard. State (path + up to two

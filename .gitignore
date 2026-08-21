@@ -17,3 +17,10 @@ pkg/kotlin/testagent/build/
 
 # Smoke-test scratch dirs
 /out/
+
+# `go build ./internal/cmd/verify/` drops its binary here
+/verify
+
+# Platform test runners build in temp dirs beside their package
+codegen/platform/*/fyne-canvas-*/
+/.sngl-goexec-*/

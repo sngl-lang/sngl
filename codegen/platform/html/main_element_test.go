@@ -23,6 +23,7 @@ import (
 // the sidebar but lost every page body, which lived inside <main>.
 func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     window(title="Home", href="/index.html") {

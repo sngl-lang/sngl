@@ -1,7 +1,7 @@
-import "internal://canvas"
+import "sngl://draw"
 
-#[canvas.shape] // ERROR(expand) "shape macro requires a component declaration"
+#[draw.shape] // ERROR(expand) "shape macro requires a component declaration"
 var bad = 5
 
-#[canvas.shape] // ERROR(expand) "shape components do not support event declarations"
+#[draw.shape] // ERROR(expand) "shape components do not support event declarations"
 component badShape(@click) {}

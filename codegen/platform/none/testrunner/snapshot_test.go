@@ -40,7 +40,8 @@ type runFail struct{ desc, msg string }
 
 func (e *runFail) Error() string { return e.desc + ": " + e.msg }
 
-const snapshotSrc = `component counter {
+const snapshotSrc = `import . "sngl://std"
+component counter {
 	var count = 0
 	vbox {
 		text(value="Count: {count}")

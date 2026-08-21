@@ -14,6 +14,7 @@ import (
 // passPlatformFilter now resolves the override deterministically in lowering.
 func TestPlatformOverrideDropsDefault(t *testing.T) {
 	src := `
+import . "sngl://std"
 component Layout() list<component> {
     vbox { text(value="DEFAULT_BODY") }
     platform html {

@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 component main {
     var x = "test"
     const xl = x.length() // ERROR(check) "non-const"

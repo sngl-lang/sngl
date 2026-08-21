@@ -1,5 +1,7 @@
 caps: NoRef
 -- input.sngl --
+import . "sngl://std"
+
 component main {
     var n int = 0
     var p ref<int> = &n
@@ -11,6 +13,7 @@ component main {
     }
 }
 -- expected.sngl --
+import . "sngl://std"
 struct __ref_int {
     value int
 }
@@ -24,4 +27,3 @@ component main {
         n.value.value = x + p.value
     }
 }
-context #locale(i18n.defaultLocale())

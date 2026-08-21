@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 // textarea: state-binding fixture — mutating the bound `value`
 // var propagates to the textarea editor.
 component main {

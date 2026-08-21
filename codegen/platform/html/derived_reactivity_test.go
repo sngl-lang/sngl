@@ -16,6 +16,7 @@ import (
 //     even un-folded the slot had no dep on `name` and never re-fired.
 func TestDerivedFuncGatesReactiveSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     var name = "world"
@@ -51,6 +52,7 @@ component main {
 // slot condition calls a func that calls another func that reads the var.
 func TestDerivedFuncChainGatesReactiveSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     var name = "world"
@@ -79,6 +81,7 @@ component main {
 // *ir.Assign, not *ir.Toggle.
 func TestToggleSplicesReactiveUpdaters(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     var enabled = true
@@ -106,6 +109,7 @@ component main {
 // dependent updater was spliced.
 func TestStructFieldMutationSplicesUpdaters(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 struct User {
     name string = "anon"
@@ -137,6 +141,7 @@ component main {
 // text nor the `for t = tasks` loop refreshed when the Add button pushed.
 func TestListPushSplicesUpdatersAndRefiresSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 struct Task {
     label string = ""
@@ -176,6 +181,7 @@ component main {
 // call instead of `.toUpperCase()`.
 func TestStringIntrinsicEmitsNativeAfterInlining(t *testing.T) {
 	src := `
+import . "sngl://std"
 output { none { html() } }
 component main {
     var s = "hi"

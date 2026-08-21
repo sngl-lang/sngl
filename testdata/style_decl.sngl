@@ -1,3 +1,5 @@
+import . "sngl://std"
+
 const primary = Style{
     color = #0000ff,
     fontWeight = "bold",
