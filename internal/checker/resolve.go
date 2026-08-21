@@ -177,7 +177,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 
-	c.error(t.Pos, "unknown type %q", t.Name)
+	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHint(t.Name))
 	return TypDyn
 }
 

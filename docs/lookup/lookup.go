@@ -275,7 +275,9 @@ func indexInUncached(cwd string) []PackageRef {
 		}
 		seen[path] = true
 		alias := imp.Alias
-		if alias == "" {
+		// A dot import binds no name, so "." is not a title. Fall back to the
+		// path-derived name, same as an import with no alias at all.
+		if alias == "" || alias == "." {
 			alias = checker.NamespaceFromPath(path)
 		}
 		kind := PackageLocal

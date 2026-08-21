@@ -255,3 +255,37 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 		})
 	}
 }
+
+// TestReadmeExampleChecks type-checks the README's front-page program. Unlike
+// the doc-block tests above, which log rot rather than fail because snippets
+// are fragments that lag the grammar, this one is a complete program and is
+// the first SNGL most readers see -- it stayed broken through a migration and
+// three syntax changes because nothing walked README.md at all.
+func TestReadmeExampleChecks(t *testing.T) {
+	src, err := os.ReadFile("README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const fence = "```sngl\n"
+	i := strings.Index(string(src), fence)
+	if i < 0 {
+		t.Fatal("README.md has no ```sngl block")
+	}
+	rest := string(src)[i+len(fence):]
+	end := strings.Index(rest, "\n```")
+	if end < 0 {
+		t.Fatal("README.md sngl block is unterminated")
+	}
+	program := rest[:end]
+
+	doc, err := parser.Parse("README.md", []byte(program))
+	if err != nil {
+		t.Fatalf("parse: %v\n%s", err, program)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("%s: %s", d.Pos, d.Msg)
+		}
+	}
+}

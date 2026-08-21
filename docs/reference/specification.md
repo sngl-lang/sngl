@@ -645,7 +645,10 @@ func Box._secret() => 42
 ```
 
 Given `import w "w"`, a value of `w.Box` exposes `v` but neither `_hidden` nor
-`_secret`.
+`_secret`. The rule holds wherever a member is named, not only on a field read:
+a struct literal (`w.Box{_hidden = 2}`), a method call, an enum member reached
+through its type (`w.Mode._B`) or resolved bare against an expected enum type,
+and an assignment target are all rejected alike.
 
 ### One name, one meaning at file scope
 
@@ -658,6 +661,20 @@ The single exception is shadowing, where exactly one of the two bindings is
 written in this file: a declaration may shadow a name that a dot import lifted,
 including a built-in. This is what lets a package define its own `text` or
 `color` over the library's.
+
+The rule covers every kind of declaration a file scope holds — types,
+components, free functions, constants and variables alike — and the alias an
+import binds. Where a name is genuinely taken, an alias resolves it: an import
+chooses its own alias, so `import cv "internal://canvas"` reaches a package
+whose default name a dot import already claimed.
+
+Two bindings that mean the same package are a restatement, not a conflict. The
+standard library exposes the intrinsic namespaces it imports, so a file may
+also import one of them by name without colliding.
+
+Inside a body the same principle applies to a narrower scope: a duplicate
+local constant, a duplicate component-level variable, and a `for` loop binding
+one name to both of its variables are all errors.
 
 ## Constants and variables
 

@@ -1408,6 +1408,29 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	}
 }
 
+// stdlibHint returns a suffix naming the import that would bring name into
+// scope, for a name the file did not resolve but the standard library
+// declares. Missing that one import is the most common way a file fails to
+// check, and "unknown component \"vbox\"" on its own does not say so.
+func (c *checker) stdlibHint(name string) string {
+	if c.stdlibPkg == nil || c.pkg == nil {
+		return ""
+	}
+	if _, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); !ok {
+		return ""
+	}
+	// Already imported under an alias: the name is reachable, just not bare.
+	for _, imp := range c.pkg.Imports {
+		if imp.Pkg == c.stdlibPkg {
+			if imp.Alias == "." {
+				return ""
+			}
+			return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
+		}
+	}
+	return fmt.Sprintf("; sngl://std declares it, add import . %q", "sngl://std")
+}
+
 // isStdlibNamespace reports whether name is in scope as a namespace bound to
 // the standard library. Extension declarations (`component <ns>.X`) resolve
 // their prefix this way rather than matching a fixed name, so the prefix is

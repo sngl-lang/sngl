@@ -339,7 +339,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
 		}
-		c.error(x.Pos, "undefined: %s", x.Name)
+		c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -3126,7 +3126,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 					comp = co
 				}
 			} else {
-				c.error(vn.Pos, "unknown component %q", name)
+				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHint(name))
 			}
 		}
 	}
