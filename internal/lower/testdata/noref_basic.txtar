@@ -27,4 +27,3 @@ component main {
         n.value.value = x + p.value
     }
 }
-context #locale(i18n.defaultLocale())

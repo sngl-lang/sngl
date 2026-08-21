@@ -33,4 +33,3 @@ component main {
     })
     __renderSlot0(__root)
 }
-context #locale(i18n.defaultLocale())

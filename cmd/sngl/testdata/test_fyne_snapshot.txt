@@ -12,6 +12,8 @@ sngl test --platform=fyne app.sngl
 stdout 'PASS'
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { fyne } }
 
 component greeter {

@@ -16,6 +16,8 @@ func TestCompileTxtarJSImport(t *testing.T) {
 
 import lib "js://./lib"
 
+import . "sngl://std"
+
 component main {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
@@ -48,7 +50,8 @@ export function add(a: number, b: number): number {
 // TestCompileBareSource is the degenerate case: no `-- name --` markers,
 // the editor buffer is one SNGL file. Must still compile.
 func TestCompileBareSource(t *testing.T) {
-	const source = `component main {
+	const source = `import . "sngl://std"
+component main {
     text(value="hello")
 }
 `

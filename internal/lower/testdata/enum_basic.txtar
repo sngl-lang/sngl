@@ -23,4 +23,3 @@ component main {
     var s Status = 1
     text(value=string(s))
 }
-context #locale(i18n.defaultLocale())

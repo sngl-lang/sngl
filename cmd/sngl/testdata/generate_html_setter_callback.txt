@@ -34,6 +34,8 @@ grep 'function __sngl_init' out/index.html
 grep 'main_update\(state, "Hello", 5\)' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

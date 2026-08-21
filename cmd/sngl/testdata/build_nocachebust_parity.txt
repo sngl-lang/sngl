@@ -8,6 +8,8 @@ sngl generate --lang=none --platform=html --out=gen2 --opt noCacheBust=true app.
 exists gen2/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 component main {
     text(value="x")
 }

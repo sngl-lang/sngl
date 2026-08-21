@@ -14,6 +14,8 @@ stderr 'platform gtk4 is unavailable'
 stderr '--opt gir='
 
 -- app.sngl --
+import . "sngl://std"
+
 component main {
     var name = "world"
     text(value=name)

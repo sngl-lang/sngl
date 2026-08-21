@@ -16,6 +16,8 @@ exists out2/index.html
 ! grep 'sourceMappingURL=data:application/json' out2/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 component main {
     var count = 0
     text(value=string(count))

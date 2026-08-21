@@ -17,4 +17,3 @@ component main {
     var n__inst0 int = 5
     text(value=string(n__inst0))
 }
-context #locale(i18n.defaultLocale())

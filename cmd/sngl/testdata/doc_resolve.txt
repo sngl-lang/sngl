@@ -34,11 +34,14 @@ stdout 'Counter'
 ! sngl doc bogus://nope
 
 -- app.sngl --
+import . "sngl://std"
 import w "./widgets"
 component main {
     w.Counter(count = 1)
 }
 -- widgets/widgets.sngl --
+import . "sngl://std"
+
 component Counter(count int) {
     text { value = "count: ${count}" }
 }

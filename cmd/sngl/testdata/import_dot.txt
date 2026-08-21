@@ -53,6 +53,8 @@ stderr 'extension namespace "notstd" is not the standard library'
 stderr 'unknown stdlib package "widgets"'
 
 -- widgets/lib.sngl --
+import . "sngl://std"
+
 struct Card {
     title string = ""
 }
@@ -62,6 +64,7 @@ func Greet(who string) => "hello " + who
 func _helper() => "internal"
 
 -- main.sngl --
+import . "sngl://std"
 import . "widgets"
 
 component main {
@@ -70,6 +73,7 @@ component main {
     text(value=c.title + g)
 }
 -- plain.sngl --
+import . "sngl://std"
 import "widgets"
 
 component main {
@@ -77,6 +81,7 @@ component main {
     text(value=c.title)
 }
 -- unexported.sngl --
+import . "sngl://std"
 import . "widgets"
 
 component main {
@@ -84,6 +89,8 @@ component main {
     text(value=h)
 }
 -- shadow.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 import . "widgets"
@@ -117,16 +124,21 @@ component main {
     text()
 }
 -- stdunimported.sngl --
+import . "sngl://std"
+
 component main {
     sngl.text(value="x")
 }
 -- localstd.sngl --
+import . "sngl://std"
 import "std"
 
 component main {
     text(value=std.greet())
 }
 -- std/helper.sngl --
+import . "sngl://std"
+
 func greet() => "local package named std"
 -- badext.sngl --
 import sngl "sngl://std"
@@ -141,6 +153,7 @@ component main {
     text(value="x")
 }
 -- stdunknown.sngl --
+import . "sngl://std"
 import "sngl://widgets"
 
 component main {

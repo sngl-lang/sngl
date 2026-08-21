@@ -17,4 +17,3 @@ component foo {
 component main {
     foo
 }
-context #locale(i18n.defaultLocale())

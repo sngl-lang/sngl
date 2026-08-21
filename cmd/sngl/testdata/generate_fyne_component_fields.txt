@@ -23,6 +23,8 @@ grep 'm\.current\.Status' out/model.go
 grep 'm\.current\.Assignee' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { fyne } }
 
 struct Issue {

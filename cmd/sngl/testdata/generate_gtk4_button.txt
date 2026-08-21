@@ -149,6 +149,8 @@ grep 'snglActivate' out/callbacks.go
 </repository>
 
 -- main.sngl --
+import . "sngl://std"
+
 component main {
     var count int
 

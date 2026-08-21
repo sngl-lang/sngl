@@ -14,6 +14,10 @@ type Context struct {
 	Name    string
 	Typ     *Type
 	Default Expr
+	// Stdlib marks a context declared by the standard library rather than by
+	// the package's own source. Convert omits these: an importer gets them
+	// back from the import, and emitting them would redeclare the name.
+	Stdlib bool
 }
 
 func (c *Context) SymName() string { return c.Name }

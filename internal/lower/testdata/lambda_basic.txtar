@@ -18,4 +18,3 @@ component main {
     var k int = 5
     var addK func(int) int = __closure(__lambda0, __lambda0_caps{k = k})
 }
-context #locale(i18n.defaultLocale())

@@ -1,0 +1,51 @@
+# The standard library must be imported. Built-ins are the one exception: they
+# are dot-imported into every file implicitly, which is the only such magic.
+! sngl check nostd.sngl
+stderr 'undefined: text'
+
+sngl check withstd.sngl
+stdout 'withstd.sngl: ok'
+
+# Built-ins need no import — types, their methods, and literals all resolve.
+sngl check builtins.sngl
+stdout 'builtins.sngl: ok'
+
+# And cannot be imported: naming an ambient package would imply it were
+# optional.
+! sngl check importbuiltin.sngl
+stderr 'always in scope'
+
+# The alias form binds the same package under a name of the caller's choosing.
+sngl check aliased.sngl
+stdout 'aliased.sngl: ok'
+
+-- nostd.sngl --
+component main {
+    text(value="x")
+}
+-- withstd.sngl --
+import . "sngl://std"
+
+component main {
+    text(value="x")
+}
+-- builtins.sngl --
+component main {
+    var n int = int.max(1, 2)
+    var f float = float.sqrt(2.0)
+    var s string = string.upper("hi")
+    var c color = color.rgb(1, 2, 3)
+    var d date = "2026-08-21"
+}
+-- importbuiltin.sngl --
+import . "sngl://builtin"
+
+component main {
+    var n int = 1
+}
+-- aliased.sngl --
+import ui "sngl://std"
+
+component main {
+    ui.text(value="x")
+}

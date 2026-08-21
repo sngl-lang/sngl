@@ -16,6 +16,8 @@ grep 'I18n\.numberInt\("es-MX",' out/app/src/main/java/test/sngl/app/MainScreen.
 grep 'price' out/app/src/main/java/test/sngl/app/MainScreen.kt
 
 -- app.sngl --
+import . "sngl://std"
+
 output { kotlin { android } }
 
 component main {

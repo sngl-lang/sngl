@@ -41,6 +41,8 @@ grep '__renderSlot0\(' out/index.html
 grep 'state.items = state.items.push\("new"\)' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

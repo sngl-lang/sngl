@@ -26,4 +26,3 @@ component main {
         main.bump()
     })
 }
-context #locale(i18n.defaultLocale())

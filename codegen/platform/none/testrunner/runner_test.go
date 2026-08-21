@@ -19,7 +19,7 @@ func TestRunFixtures(t *testing.T) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(s.Source))
+			doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
@@ -83,7 +83,7 @@ func testIsolation(t Test, c main) {
 	t.assert(r.o.value == "0")
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
+	doc, err := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

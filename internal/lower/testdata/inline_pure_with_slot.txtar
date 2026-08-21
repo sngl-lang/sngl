@@ -25,4 +25,3 @@ component main {
         text(value="hello")
     }
 }
-context #locale(i18n.defaultLocale())

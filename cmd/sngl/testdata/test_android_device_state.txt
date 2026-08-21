@@ -8,6 +8,8 @@ sngl test --platform=android --opt testRunner=device app.sngl
 stdout 'PASS'
 
 -- app.sngl --
+import . "sngl://std"
+
 output { kotlin { android } }
 
 component counter {

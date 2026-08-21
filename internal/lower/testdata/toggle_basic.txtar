@@ -14,4 +14,3 @@ component main {
         on = !on
     })
 }
-context #locale(i18n.defaultLocale())

@@ -16,7 +16,7 @@ import (
 func buildSnapshotPkg(t *testing.T, dir, base, src string) (results func() error) {
 	t.Helper()
 	fixture := filepath.Join(dir, base)
-	doc, err := parser.Parse(fixture, []byte(src))
+	doc, err := parser.Parse(fixture, []byte(withStdSrc(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

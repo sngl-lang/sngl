@@ -22,4 +22,3 @@ component main {
         __n1.value = "small"
     }
 }
-context #locale(i18n.defaultLocale())

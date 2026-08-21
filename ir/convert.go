@@ -83,6 +83,11 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertTimer(t))
 	}
 	for _, ctx := range pkg.Contexts {
+		// Standard-library contexts arrive with the import, not from this
+		// package's source; emitting them would redeclare the name.
+		if ctx.Stdlib {
+			continue
+		}
 		stmts = append(stmts, c.convertContext(ctx))
 	}
 	if len(pkg.Outputs) > 0 {

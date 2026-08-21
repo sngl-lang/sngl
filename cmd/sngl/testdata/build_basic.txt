@@ -7,6 +7,8 @@ sngl build --lang=go --platform=bubbletea --opt name=myapp app.sngl
 exists myapp
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

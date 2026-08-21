@@ -14,6 +14,8 @@ exists out2/model.go
 ! grep '//line app.sngl:' out2/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

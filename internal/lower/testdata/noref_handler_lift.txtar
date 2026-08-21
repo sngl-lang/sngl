@@ -24,4 +24,3 @@ component counter {
     var __n0 button = lower.CreateNode("button")
     lower.AttachHandler(__n0, "click", __closure(__lambda0, __lambda0_caps{count = count}))
 }
-context #locale(i18n.defaultLocale())

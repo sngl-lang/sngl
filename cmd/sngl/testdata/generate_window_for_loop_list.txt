@@ -4,6 +4,8 @@ exists out/two.html
 exists out/index.html
 
 -- site.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 struct Item {

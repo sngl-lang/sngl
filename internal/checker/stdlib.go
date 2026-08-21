@@ -1037,7 +1037,7 @@ func isPrimitiveTypeKind(k ir.TypeKind) bool {
 // interpreter and codegen discover it alongside user-declared contexts.
 func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 	name := s.Call.ID
-	ctx := &ir.Context{AST: s, Name: name}
+	ctx := &ir.Context{AST: s, Name: name, Stdlib: true}
 	if name == "" {
 		c.error(s.Pos, "stdlib context decl requires #identifier")
 		return

@@ -8,10 +8,14 @@ sngl build --lang=go --platform=bubbletea --opt test=true --opt name=tapp bt.sng
 exists tapp
 
 -- app.sngl --
+import . "sngl://std"
+
 component main {
     text(value="hi")
 }
 -- bt.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {

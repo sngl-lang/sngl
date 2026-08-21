@@ -14,4 +14,3 @@ func __lambda0(state __lambda0_caps, x int) int {
 component main {
     var doubler func(int) int = __closure(__lambda0, __lambda0_caps{})
 }
-context #locale(i18n.defaultLocale())

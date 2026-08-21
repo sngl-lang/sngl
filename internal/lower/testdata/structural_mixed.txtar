@@ -37,4 +37,3 @@ component main {
     text #__n0(value="Hello, " + name + "!")
     __renderSlot0(__root)
 }
-context #locale(i18n.defaultLocale())

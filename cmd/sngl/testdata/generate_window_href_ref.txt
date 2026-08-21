@@ -3,6 +3,8 @@ exists out/index.html
 exists out/about.html
 
 -- site.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

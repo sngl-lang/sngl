@@ -33,4 +33,3 @@ component main {
         main.tick()
     })
 }
-context #locale(i18n.defaultLocale())

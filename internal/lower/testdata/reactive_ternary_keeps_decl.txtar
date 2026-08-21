@@ -39,4 +39,3 @@ component main {
         text #__n0(value=__lt1)
     }
 }
-context #locale(i18n.defaultLocale())

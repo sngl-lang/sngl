@@ -265,7 +265,7 @@ func TestServer_ExecuteCommandOpenPreview(t *testing.T) {
 	}
 
 	// didOpen with a window
-	go send(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/x.sngl","languageId":"sngl","version":1,"text":"window #home(title=\"Home\", href=\"/\") {\n  text(value=\"hi\")\n}\n"}}}`)
+	go send(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/x.sngl","languageId":"sngl","version":1,"text":"import . \"sngl://std\"\nwindow #home(title=\"Home\", href=\"/\") {\n  text(value=\"hi\")\n}\n"}}}`)
 	// Drain diagnostics notification.
 	line, _ := br.ReadString('\n')
 	ln := 0
@@ -275,7 +275,7 @@ func TestServer_ExecuteCommandOpenPreview(t *testing.T) {
 	io.ReadFull(br, buf)
 
 	// executeCommand sngl.openPreview
-	go send(`{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand","params":{"command":"sngl.openPreview","arguments":[{"uri":"file:///tmp/x.sngl","position":{"line":0,"character":0}}]}}`)
+	go send(`{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand","params":{"command":"sngl.openPreview","arguments":[{"uri":"file:///tmp/x.sngl","position":{"line":1,"character":0}}]}}`)
 	line, _ = br.ReadString('\n')
 	fmt.Sscanf(strings.TrimSpace(line), "Content-Length: %d", &ln)
 	br.ReadString('\n')

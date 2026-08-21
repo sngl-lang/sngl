@@ -15,10 +15,16 @@ stdout 'dir/a.sngl: ok'
 ! sngl check nosuch.sngl
 
 -- good.sngl --
+import . "sngl://std"
+
 component main {
 }
 -- bad.sngl --
+import . "sngl://std"
+
 not valid sngl
 -- dir/a.sngl --
+import . "sngl://std"
+
 component main {
 }

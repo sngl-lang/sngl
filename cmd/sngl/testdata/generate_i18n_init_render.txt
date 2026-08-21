@@ -16,6 +16,8 @@ grep 'function __sngl_init' out/index.html
 ! grep 'state\.__ctx_locale' out/index.html
 
 -- app.sngl --
+import . "sngl://std"
+
 component Cart(count = 0) {
     text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
 }

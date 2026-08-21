@@ -15,13 +15,12 @@ Every `.sngl` file is a flat list of top-level declarations. Order does not matt
 The `output` block declares which language and platform combinations the file targets:
 
 <!-- SNGL-top
+import . "sngl://std"
+
 component main { text(value="") }
 -->
 
 ```sngl
-
-import . "sngl://std"
-
 output {
     js { html }
     go { bubbletea(package="main") }

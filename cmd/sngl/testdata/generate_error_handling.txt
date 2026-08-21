@@ -17,6 +17,8 @@ sngl generate --lang=none --platform=html --out=htmlout unhandled.sngl
 grep 'throw Object.assign' htmlout/index.html
 
 -- boundary.sngl --
+import . "sngl://std"
+
 output {
     go() {
         bubbletea
@@ -34,6 +36,8 @@ component main {
     }
 }
 -- unhandled.sngl --
+import . "sngl://std"
+
 output {
     go() {
         bubbletea

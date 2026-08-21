@@ -28,4 +28,3 @@ component main {
         height = 50,
     }
 }
-context #locale(i18n.defaultLocale())

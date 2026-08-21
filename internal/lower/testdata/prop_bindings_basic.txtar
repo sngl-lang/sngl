@@ -34,4 +34,3 @@ component main {
     text(value=string(steps))
     text(value="steps=" + string(steps))
 }
-context #locale(i18n.defaultLocale())

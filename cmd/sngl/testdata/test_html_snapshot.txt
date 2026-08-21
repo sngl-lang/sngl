@@ -16,6 +16,8 @@ sngl test --platform=html app.sngl
 stdout 'PASS'
 
 -- app.sngl --
+import . "sngl://std"
+
 output { none { html } }
 
 component main {

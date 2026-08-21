@@ -18,4 +18,3 @@ component Tree(name string = "leaf") {
 component main {
     Tree(name="root")
 }
-context #locale(i18n.defaultLocale())

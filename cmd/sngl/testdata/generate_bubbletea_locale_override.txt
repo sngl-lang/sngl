@@ -16,6 +16,8 @@ grep 'i18n.NumberInt\("es-MX",' out/model.go
 grep 'price' out/model.go
 
 -- app.sngl --
+import . "sngl://std"
+
 output { go { bubbletea } }
 
 component main {
