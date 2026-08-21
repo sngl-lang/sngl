@@ -31,5 +31,7 @@ Everything below comes from `sngl://draw`, which the app dot-imports alongside
 - `circle(cx, cy, r, style)` — filled/stroked circle
 - `ellipse(cx, cy, rx, ry, style)` — filled/stroked ellipse
 - `line(x1, y1, x2, y2, style)` — stroked line
+- `path(cmds, style)` — a path built from a `list<PathCmd>`
 - `canvasText(x, y, content, style)` — drawn text
+- `canvasImage(x, y, w, h, src)` — a drawn image
 - `CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `fontSize`, `fontFamily`

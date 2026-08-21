@@ -56,7 +56,7 @@ component main {
 }
 ```
 
-The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `style`, `const`, `var`, `func`, components (PascalCase names), `timer`, and `test`.
+The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `func`, components, and `timer`. There is no `style` or `test` declaration: a reusable style is a `Style` constant, and a test is an ordinary function taking a `Test` receiver.
 
 A complete minimal file needs only a `component main`:
 
@@ -466,7 +466,8 @@ func list<T>.map<U>(fn func(T) U) list<U>
 
 Type parameters are inferred at call sites -- you never write `<T>` explicitly
 when calling a generic method. A method-level parameter such as `map`'s `<U>`
-is inferred from the lambda's return type:
+is inferred from the lambda's return type, and the lambda's own parameter type
+is inferred from the receiver's element type:
 
 <!-- SNGL-component
 struct Todo { text string = ""; done bool = false }
@@ -474,14 +475,16 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
-func active() => todos.filter(func(t Todo) => !t.done)
-func labels() => todos.map(func(t Todo) => t.text)
+func active() => todos.filter(func(t) => !t.done)
+func labels() => todos.map(func(t) => t.text)
 ```
 
 ### Lambdas
 
-Inline functions for filtering and mapping. A lambda is written `func(x T) =>
-expr`; the parameter type is explicit:
+Inline functions for filtering and mapping. A lambda is written `func(x) =>
+expr`. The `func` keyword is required -- a bare `(x) => expr` does not parse --
+but the parameter type is inferred from the function type the position
+expects, so `filter` binds `t` to the list's element type:
 
 <!-- SNGL-component
 struct Todo { text string = ""; done bool = false }
@@ -489,8 +492,21 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
-func active() => todos.filter(func(t Todo) => !t.done)
-func labels() => todos.map(func(t Todo) => t.text)
+func active() => todos.filter(func(t) => !t.done)
+func labels() => todos.map(func(t) => t.text)
+```
+
+A declared function type is a position like any other, so the same inference
+applies when a lambda is assigned to one. Write the parameter type explicitly
+where there is nothing to infer from, or where it reads better:
+
+<!-- SNGL-component
+struct Todo { text string = ""; done bool = false }
+-->
+
+```sngl
+var byDone func(t Todo) bool = func(t) => t.done
+var isEmpty = func(s string) => s == ""
 ```
 
 ### Gotchas
@@ -1109,7 +1125,7 @@ struct Todo {
 
 component main {
     var todos = [Todo{text = "Write docs", done = true}, Todo{text = "Fix bug", done = false}]
-    func active() => todos.filter(func(t Todo) => !t.done)
+    func active() => todos.filter(func(t) => !t.done)
     func activeCount() => active().length()
     vbox(style={padding = 16, gap = 8}) {
         text(value="{activeCount} remaining")

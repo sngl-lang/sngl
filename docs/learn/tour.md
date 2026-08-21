@@ -525,12 +525,14 @@ component main {
 
 ## Importing External Code
 
-The `import` statement pulls in code from outside the current file. Four schemes cover the common cases:
+The `import` statement pulls in code from outside the current file. A bare path names another directory inside your project (`import "widgets"`); everything else is addressed by scheme:
 
-- `import "widgets"` — another directory inside your project.
+- `import . "sngl://std"` — a package of the SNGL library. This is the one every lesson here opens with: the components, types and events an app is built from. `sngl://draw` holds the canvas and its shapes. Only `sngl://builtin` is in scope without being imported.
 - `import "platform://html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
 - `import "go://go/ast"` — a Go package; its types and pure functions become usable in SNGL. Non-pure calls compile into the Go target.
 - `import "file://public"` — a directory of static files; referenced paths are bundled into the build output.
+
+The leading `.` is a dot import: it writes the package's declarations into this file so you use them unqualified (`text(...)`). Without it you get a namespace instead, and name it (`import s "sngl://std"` → `s.text(...)`).
 
 The playground compiles to HTML, so this lesson imports the `html` platform and reaches for an `<a>` element directly.
 

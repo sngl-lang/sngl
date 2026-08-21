@@ -32,7 +32,7 @@ The core language is deliberately small. Two bodies of functionality live
 - **The standard library** — components (`text`, `button`, `vbox`, …), types
   (`color`, `Style`, the event payload structs, the `measurement` and
   `duration` units), and functions, all written in SNGL and distributed as
-  source under `lib/*.sngl`. A conforming implementation parses and checks the
+  source under `lib/<package>/*.sngl`, one directory per importable package. A conforming implementation parses and checks the
   standard library with the same front end it applies to user code; the
   library is not privileged by the grammar. This manual references standard
   library entities by example but does not define them.
@@ -580,8 +580,9 @@ Scopes nest from the innermost outward:
 
 - the **predeclared scope**, holding the built-in type names and the
   predeclared identifiers `true`, `false`, `null`;
-- the **standard-library scope**, holding everything declared in `lib/`;
-- the **package scope**, holding the user program's top-level declarations;
+- the **built-in scope**, holding the ambient declarations of `sngl://builtin`;
+- the **package scope**, holding the user program's top-level declarations and
+  the names its dot imports lift;
 - a **component scope** for each component, holding its parameters, variables,
   nested functions, and nested types;
 - a **function scope** for each function or method body, holding its
@@ -592,8 +593,8 @@ Scopes nest from the innermost outward:
 
 Lookup proceeds outward through the enclosing scopes. A name declared in an
 inner scope **shadows** the same name in an outer scope; package declarations
-shadow standard-library declarations of the same name, which is how user code
-overrides a library entity. Declaring the same name twice in one scope is an
+shadow built-in and imported declarations of the same name, which is how user
+code overrides a library entity. Declaring the same name twice in one scope is an
 error. Methods attached to a type (`func Type.m`) occupy that type's method set
 rather than a value scope, so a user method may override a standard-library
 method of the same name on the same type.
