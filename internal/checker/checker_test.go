@@ -1483,7 +1483,6 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 func TestCheckShapeType(t *testing.T) {
 	// canvas and rect both have list<shape> ChildrenType — rect used inside canvas.
 	expectNoErrors(t, `
-import "internal://canvas"
 component canvas(width float, height float) list<shape> {}
 component rect(x float, y float, w float, h float) list<shape> {}
 component myWidget() {
@@ -1496,7 +1495,6 @@ component myWidget() {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
-import "internal://canvas"
 component canvas(width float, height float) list<shape> {}
 component notAShape() {}
 component myWidget() {

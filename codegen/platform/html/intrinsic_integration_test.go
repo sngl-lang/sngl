@@ -18,6 +18,8 @@ import (
 // intrinsics leaking through.
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
+
 component main {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
@@ -64,6 +66,8 @@ component main {
 // slot accumulator for teardown on the next render.
 func TestIntegration_ReactiveForEmitsRenderSlot(t *testing.T) {
 	src := `
+import . "sngl://std"
+
 component main {
     var items list<string> = ["a", "b"]
     button(text="add", @click { items = items.push("c") })

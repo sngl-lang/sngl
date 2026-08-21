@@ -26,7 +26,9 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 
 func TestStringReprMacro(t *testing.T) {
 	// No import: the #[builtin] macro resolves ambiently.
-	src := `#[builtin("color")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("color")]
 struct color { r int = 0 }`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -42,7 +44,9 @@ struct color { r int = 0 }`
 }
 
 func TestPrimitiveMacro(t *testing.T) {
-	src := `#[builtin("int")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("int")]
 struct int {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -58,7 +62,9 @@ struct int {}`
 }
 
 func TestGenericMacro(t *testing.T) {
-	src := `#[builtin("list")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("list")]
 struct list<T> {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -74,7 +80,9 @@ struct list<T> {}`
 }
 
 func TestNodeMacro(t *testing.T) {
-	src := `#[builtin("window")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("window")]
 component window(title string) list<component> {}`
 	stmt, diags := expandOne(t, src)
 	if hasError(diags) {
@@ -90,7 +98,9 @@ component window(title string) list<component> {}`
 }
 
 func TestMacroRejectsUnknownKind(t *testing.T) {
-	src := `#[builtin("bogus")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("bogus")]
 struct x {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
@@ -100,7 +110,9 @@ struct x {}`
 
 // A type kind annotates a struct; a component is a category error.
 func TestMacroRejectsTypeKindOnComponent(t *testing.T) {
-	src := `#[builtin("color")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("color")]
 component foo {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
@@ -110,7 +122,9 @@ component foo {}`
 
 // A node kind annotates a component; a struct is a category error.
 func TestMacroRejectsNodeKindOnStruct(t *testing.T) {
-	src := `#[builtin("window")]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin("window")]
 struct window {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {
@@ -121,7 +135,9 @@ struct window {}`
 func TestMacroRejectsBareIdent(t *testing.T) {
 	// A bare identifier is a name reference, not a constant — must be rejected
 	// in favor of a string literal.
-	src := `#[builtin(list)]
+	src := `import . "sngl://internal/builtin"
+
+#[builtin(list)]
 struct list<T> {}`
 	_, diags := expandOne(t, src)
 	if !hasError(diags) {

@@ -1,4 +1,3 @@
-import . "sngl://std"
 import "internal://canvas"
 
 #[canvas.shape]

@@ -627,9 +627,37 @@ named like a library entity takes precedence over it within the package.
 A name is **unexported** if it begins with an underscore (`_`), and **exported**
 otherwise. The distinction governs cross-package access only: an unexported
 name is freely referenced anywhere within the package that declares it, but is
-not reachable through an import namespace (`ns.name`). Referencing another
-package's unexported name — whether qualified, or resolved bare from the
-stdlib prelude — is an error.
+not reachable from another package. That covers three routes — a qualified
+reference (`ns.name`), a name lifted by a dot import, and a **member reached
+through an imported declaration**: importing a type does not carry its
+unexported fields or methods with it.
+
+<!-- SNGL-nocheck -->
+
+```sngl
+// package w
+struct Box {
+    v       int = 0
+    _hidden int = 0
+}
+
+func Box._secret() => 42
+```
+
+Given `import w "w"`, a value of `w.Box` exposes `v` but neither `_hidden` nor
+`_secret`.
+
+### One name, one meaning at file scope
+
+A name may be bound once at file scope. Two declarations of it, two imports
+claiming it as an alias, two dot imports lifting it, or a declaration taking a
+name an import alias already binds are all errors — none of them has a
+tiebreak, so resolving by source order would make meaning depend on ordering.
+
+The single exception is shadowing, where exactly one of the two bindings is
+written in this file: a declaration may shadow a name that a dot import lifted,
+including a built-in. This is what lets a package define its own `text` or
+`color` over the library's.
 
 ## Constants and variables
 

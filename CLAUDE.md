@@ -106,6 +106,21 @@ node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and th
 checker dispatches a visual node to the matching IR construct off the mark. The
 macro lives in `internal/macros/builtin`; kinds are `ast.BuiltinKind`.
 
+**Macros are not ambient.** A macro package is imported like any other:
+`#[canvas.shape]` needs `import "internal://canvas"`, and the unqualified
+`#[builtin("...")]` needs `import . "sngl://internal/builtin"` — which is why
+the two `lib/` files carrying builtin marks declare it. `sngl://internal/<name>`
+is a macro package: it contributes macros to the expand pass and no runtime
+symbols, and is validated against the macro registry rather than the `lib/`
+layout.
+
+**One name, one meaning at file scope.** Two declarations of a name, two
+imports claiming it as an alias, two dot imports lifting it, or a declaration
+taking a name an import alias binds are all errors (`claimTopLevel` in
+`internal/checker/checker.go`). The one exception is shadowing, where only one
+of the two is written in this file: a declaration may shadow a dot-imported
+name, including a built-in.
+
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).

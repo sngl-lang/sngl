@@ -33,7 +33,7 @@ func hasErrorDiags(diags []ir.Diagnostic) bool {
 func TestDocSNGLBlocks(t *testing.T) {
 	for s := range testutil.DocSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
+			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {
 				t.Logf("parse error at %s (doc rot):\n%s\n---\n%v", s.Name, s.Source, err)
 				return

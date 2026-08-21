@@ -1,0 +1,152 @@
+# One name, one meaning at file scope.
+
+# Unexported members are private to their declaring package. Only the type name
+# is gated on import, so without this its unexported members came along.
+! sngl check private_field.sngl
+stderr '_hidden is unexported'
+
+! sngl check private_method.sngl
+stderr '_secret is unexported'
+
+# Exported members through the same import are fine, and a package reaches its
+# own unexported members.
+sngl check exported_ok.sngl
+stdout 'exported_ok.sngl: ok'
+
+sngl check own_package.sngl
+stdout 'own_package.sngl: ok'
+
+# Two declarations of one name.
+! sngl check redeclared.sngl
+stderr 'redeclared in this file'
+
+# Two imports claiming one alias.
+! sngl check dup_alias.sngl
+stderr 'already bound at file scope by an import alias'
+
+# A declaration may not take a name an import alias already binds — every
+# qualified reference through that alias would break.
+! sngl check decl_vs_alias.sngl
+stderr 'already bound at file scope by an import alias'
+
+# A declaration may shadow a dot-imported name: only one of the two is written
+# here, so there is no ambiguity. This is the stdlib override story.
+sngl check shadows_dot.sngl
+stdout 'shadows_dot.sngl: ok'
+
+# A dot import may shadow a built-in for the same reason.
+sngl check shadows_builtin.sngl
+stdout 'shadows_builtin.sngl: ok'
+
+-- w/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    v int = 0
+    _hidden int = 0
+}
+
+func Box._secret() => 42
+
+func Box.Shown() => 1
+-- other/lib.sngl --
+import . "sngl://std"
+
+struct Box {
+    other int = 0
+}
+-- mycolor/lib.sngl --
+struct color {
+    tag string = "mine"
+}
+-- private_field.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b._hidden
+
+component main {
+    text(value="x")
+}
+-- private_method.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b._secret()
+
+component main {
+    text(value="x")
+}
+-- exported_ok.sngl --
+import . "sngl://std"
+import w "w"
+
+func f(b w.Box) => b.Shown()
+
+func g(b w.Box) => b.v
+
+component main {
+    text(value="x")
+}
+-- own_package.sngl --
+import . "sngl://std"
+
+struct Local {
+    _p int = 0
+}
+
+func Local._m() => 1
+
+func use(l Local) => l._m() + l._p
+
+component main {
+    text(value="x")
+}
+-- redeclared.sngl --
+import . "sngl://std"
+
+func dup() => 1
+
+func dup() => 2
+
+component main {
+    text(value="x")
+}
+-- dup_alias.sngl --
+import . "sngl://std"
+import x "w"
+import x "other"
+
+component main {
+    text(value="x")
+}
+-- decl_vs_alias.sngl --
+import . "sngl://std"
+import helper "w"
+
+component helper() {
+    text(value="x")
+}
+
+component main {
+    text(value="y")
+}
+-- shadows_dot.sngl --
+import . "sngl://std"
+
+component text(value string) {
+    button(text=value)
+}
+
+component main {
+    text(value="mine")
+}
+-- shadows_builtin.sngl --
+import . "sngl://std"
+import . "mycolor"
+
+func f() => color{tag="x"}.tag
+
+component main {
+    text(value=f())
+}

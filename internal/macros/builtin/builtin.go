@@ -16,9 +16,9 @@ import (
 )
 
 func init() {
-	// Empty internal URI: #[builtin("...")] is written bare, with no package
-	// segment, so applyAttrs resolves it under the empty alias.
-	expand.RegisterPre("", "builtin",
+	// #[builtin("...")] is written bare, with no package segment, so it
+	// resolves only in a file that dot-imports this package.
+	expand.RegisterPre("internal/builtin", "builtin",
 		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, builtinHandler)
 }
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
 )
@@ -86,10 +87,14 @@ type checker struct {
 	// Import cycle detection.
 	visited map[string]bool
 
-	// dotImported maps a name lifted by a dot import to the import path that
-	// lifted it, so a second dot import of the same name is an error rather
-	// than an order-dependent overwrite.
-	dotImported map[string]string
+	// foreign marks declarations that arrived from another package, so their
+	// unexported members stay private to it.
+	foreign map[ir.Symbol]bool
+
+	// topLevel records every name bound at file scope and how it got there,
+	// so two bindings of one name are reported instead of silently resolving
+	// by declaration order.
+	topLevel map[string]topLevelBinding
 
 	// Effective replace map for this package: outer overrides layered over
 	// this package's own `import "p" => "url"` declarations. Populated at the
@@ -292,7 +297,117 @@ func (c *checker) popScope() {
 
 // --- pass1: declaration registration ---
 
+// topLevelKind distinguishes how a file-scope name was bound. Only a
+// declaration written in the file may shadow an imported name; every other
+// pairing is ambiguous.
+type topLevelKind int
+
+const (
+	bindDecl  topLevelKind = iota // declared in this file
+	bindAlias                     // an import's namespace alias
+	bindDot                       // lifted by a dot import
+)
+
+func (k topLevelKind) String() string {
+	switch k {
+	case bindAlias:
+		return "an import alias"
+	case bindDot:
+		return "a dot import"
+	default:
+		return "a declaration"
+	}
+}
+
+type topLevelBinding struct {
+	kind topLevelKind
+	path string // import path, for the two import kinds
+	pos  ast.Pos
+}
+
+// claimTopLevel records name as bound at file scope and reports a conflict
+// with an existing binding. Returns false when the caller should skip binding.
+//
+// A declaration written in the file wins over a dot-imported name — that is the
+// documented override story, and it is unambiguous because only one of the two
+// is written here. Everything else (two declarations, two aliases, two dot
+// imports of one name, an alias against a declaration) has no tiebreak, so it
+// is an error rather than a silent last-wins.
+// markForeign records every declaration an import contributes, so member
+// access can tell a type declared here from one that merely arrived here.
+func (c *checker) markForeign(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	if c.foreign == nil {
+		c.foreign = map[ir.Symbol]bool{}
+	}
+	for _, sym := range pkg.Symbols.Types {
+		c.foreign[sym] = true
+	}
+	for _, sym := range pkg.Symbols.Comps {
+		c.foreign[sym] = true
+	}
+}
+
+// rejectForeignUnexported reports an unexported member read through a
+// declaration that belongs to another package. Unexported names are private to
+// their declaring package; without this they were reachable from anywhere the
+// type itself was, since only the type name is gated on import.
+func (c *checker) rejectForeignUnexported(pos ast.Pos, owner ir.Symbol, ownerName, member string) bool {
+	if !c.foreign[owner] || isExportedMemberName(member) {
+		return false
+	}
+	c.error(pos, "%s.%s is unexported and cannot be used outside its package", ownerName, member)
+	return true
+}
+
+func isExportedMemberName(name string) bool {
+	return name != "" && name[0] != '_'
+}
+
+func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
+	if name == "" || name == "_" {
+		return true
+	}
+	if c.topLevel == nil {
+		c.topLevel = map[string]topLevelBinding{}
+	}
+	prev, exists := c.topLevel[name]
+	if !exists {
+		c.topLevel[name] = topLevelBinding{kind: kind, path: path, pos: pos}
+		return true
+	}
+	// A declaration shadows a dot-imported name — that is the documented
+	// override story, and it is unambiguous because only one of the two is
+	// written here. It does not shadow an alias: the alias names a package,
+	// and silently rebinding it would break every qualified reference to it.
+	if kind == bindDecl && prev.kind == bindDot {
+		c.topLevel[name] = topLevelBinding{kind: kind, pos: pos}
+		return true
+	}
+	// Re-binding the same name from the same import is not a conflict.
+	if kind == prev.kind && kind != bindDecl && path == prev.path {
+		return true
+	}
+	switch {
+	case kind == bindDot && prev.kind == bindDot:
+		c.error(pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
+			path, name, prev.path)
+	case kind == bindDecl && prev.kind == bindDecl:
+		c.error(pos, "%q redeclared in this file (previous declaration at %s)", name, prev.pos)
+	default:
+		c.error(pos, "%q is already bound at file scope by %s (at %s)", name, prev.kind, prev.pos)
+	}
+	return false
+}
+
 func (c *checker) pass1() {
+	// File-scope name tracking covers this document only. Loading the library
+	// runs through the same register paths with its own scopes, and its names
+	// reach the user by import, where flattenDotImport claims them.
+	c.topLevel = nil
+
 	// Collect replace map for this package before any import is resolved, so
 	// declaration order of `import "p" => "url"` relative to bare `import "p"`
 	// does not matter. Outer (cfg.Replaces) wins over this package's own.
@@ -436,6 +551,22 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// The standard library. A scheme keeps it from colliding with a local
 		// package directory of any name — the collision a reserved bare path
 		// like "std" would reintroduce.
+		// sngl://internal/<name> is a macro package: it contributes macros to
+		// the expand pass and no runtime symbols, so it resolves against the
+		// macro registry rather than the lib/ layout.
+		if strings.HasPrefix(uri, "internal/") {
+			if !expand.HasPackage(uri) {
+				c.error(imp.Pos, "unknown macro package %q", uri)
+				return
+			}
+			irImport.Pkg = &ir.Package{
+				Symbols:        NewSymbolTable(),
+				LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
+				AddressedVars:  map[*ir.Var]bool{},
+			}
+			c.pkg.Imports = append(c.pkg.Imports, irImport)
+			return
+		}
 		if !HasPackage(uri) {
 			c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
 			return
@@ -612,6 +743,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 		}
 	}
+	c.markForeign(irImport.Pkg)
+	c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
 	c.scope.Declare(ns)
 }
 
@@ -673,6 +806,7 @@ func mergePkgInto(dst, src *ir.Package) {
 }
 
 func (c *checker) registerEnum(e *ast.EnumDef) {
+	c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
 	c.symtab.Types[ed.Name] = ed
@@ -693,6 +827,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // recursive references. resolveStructBody fills in the fields (and nested
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
+	c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.symtab.Types[sd.Name] = sd
@@ -706,6 +841,7 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
+	c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.symtab.Types[ud.Name] = ud
@@ -1172,6 +1308,12 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
 
+	// Only free functions bind a file-scope name; a method's name lives under
+	// its receiver and is checked against userMethods below.
+	if fn.Receiver == "" {
+		c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
+	}
+
 	if fn.Receiver != "" {
 		// Reject duplicate method against another user-registered method
 		// (nested or top-level). Stdlib methods may be overridden by user.
@@ -1335,6 +1477,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
+	c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
 	c.pkg.Components = append(c.pkg.Components, irComp)
 	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Declare(irComp)
@@ -2574,17 +2717,9 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		return
 	}
 	pkg := irImport.Pkg
-	if c.dotImported == nil {
-		c.dotImported = map[string]string{}
-	}
+	c.markForeign(pkg)
 	claim := func(name string) bool {
-		if prev, dup := c.dotImported[name]; dup && prev != imp.Path {
-			c.error(imp.Pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
-				imp.Path, name, prev)
-			return false
-		}
-		c.dotImported[name] = imp.Path
-		return true
+		return c.claimTopLevel(name, imp.Pos, bindDot, imp.Path)
 	}
 	for name, sym := range pkg.Symbols.Types {
 		if exported(sym) && claim(name) {

@@ -1,3 +1,5 @@
+import . "sngl://internal/builtin"
+
 // 64-bit signed integer. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to

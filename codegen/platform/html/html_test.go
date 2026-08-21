@@ -18,7 +18,7 @@ import (
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	t.Helper()
-	doc, err := parser.Parse(s.Filename, []byte(withStdSrc(s.Source)))
+	doc, err := parser.Parse(s.Filename, []byte(s.Source))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

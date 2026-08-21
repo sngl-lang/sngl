@@ -65,7 +65,8 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 			// A dot import flattens the package into the current scope and binds
 			// no namespace, so it contributes no macro alias. Deriving one from
 			// the path would let #[<pkg>.macro] resolve against a name that is
-			// not in scope.
+			// not in scope. Its macros are reachable unqualified instead — see
+			// DotMacroPackages.
 			if imp.IsDot() {
 				continue
 			}
@@ -86,6 +87,25 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 				continue
 			}
 			out[alias] = ImportRef{Scheme: scheme, URI: uri}
+		}
+	}
+	return out
+}
+
+// DotMacroPackages returns the package URIs dot-imported by these documents,
+// in source order. A macro in one of them is written unqualified — the dot
+// import is what brings `#[builtin(...)]` into a file.
+func DotMacroPackages(docs []*ast.Document) []string {
+	var out []string
+	for _, doc := range docs {
+		for _, stmt := range doc.Stmts {
+			imp, ok := stmt.(*ast.Import)
+			if !ok || !imp.IsDot() {
+				continue
+			}
+			if _, uri := ParseScheme(imp.Path); uri != "" {
+				out = append(out, uri)
+			}
 		}
 	}
 	return out

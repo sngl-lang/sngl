@@ -1043,6 +1043,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 	// Type-attached method call.
 	typeName := receiver.String()
+	if receiver.Decl != nil {
+		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
+			c.rejectForeignUnexported(sel.Pos, owner, typeName, sel.Field) {
+			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+		}
+	}
 	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
 	// Fallback for generic types: list<int> → "list", option<int> → "option",
 	// map<K,V> → "map".
@@ -1498,6 +1504,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					for i, name := range sd.TypeParams {
 						typeArgBindings[name] = operand.Elems[i]
 					}
+				}
+				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
+					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
