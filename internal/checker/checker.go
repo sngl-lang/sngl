@@ -164,6 +164,7 @@ type checker struct {
 	// declaration of the same kind is an error rather than a silent
 	// overwrite; resolution itself goes through the scope chain like any
 	// other name.
+	nullConst     *ir.Var
 	platformConst *ir.Var
 	languageConst *ir.Var
 

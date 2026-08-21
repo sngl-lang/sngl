@@ -119,9 +119,6 @@ const — is checked by `collectBuiltins` (`internal/checker/builtins.go`), wher
 the compiler stores the reference, because that is where the requirement comes
 from. A duplicate mark is an error there rather than a silent overwrite.
 
-`true`, `false` and `null` are **not** declarations: the parser turns them into
-literals (`internal/parser/build.go`), so they never reach name resolution.
-
 **Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.

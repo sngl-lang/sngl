@@ -601,13 +601,11 @@ method of the same name on the same type.
 
 ### Predeclared identifiers and the two library tiers
 
-`true`, `false` and `null` are literals, not names: the parser recognises them
-directly, so they are never resolved and never shadowed.
-
-Everything else predeclared is an ordinary declaration in `sngl://builtin` —
+Everything predeclared is an ordinary declaration in `sngl://builtin` —
 the scalar and collection types (`int`, `float`, `string`, `list`, `map`,
 `option`, `ref`, `iter`, `color`, `date`, `time`, `datetime`) with their
-methods, and the constants `PLATFORM` and `LANGUAGE`. That package is
+methods, and the constants `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`.
+That package is
 dot-imported into every file implicitly and cannot be imported explicitly; it
 is the only implicit import in the language.
 
@@ -615,7 +613,11 @@ is the only implicit import in the language.
 `"go"`, and so on. Comparing one against a literal gates code on the target:
 the comparison folds at build time and the branch not taken is removed. The
 compiler supplies their values, so a declaration of your own by either name is
-an ordinary constant and shadows the predeclared one, like any other name.
+an ordinary constant and shadows the predeclared one.
+
+Nothing here is a keyword. `true`, `false` and `null` resolve through the scope
+chain like every other name, and a declaration of your own by one of those
+names shadows it — the grammar reserves none of them.
 
 Everything else the standard library provides — components, event payload
 types, style enums, `Style`, and the `i18n` and `html` namespaces — belongs to

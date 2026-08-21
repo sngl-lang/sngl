@@ -1,19 +1,27 @@
-// The predeclared constants the compiler supplies.
+// The predeclared constants.
 //
-// `true`, `false` and `null` are not here: the parser turns those three into
-// literals before any name resolution happens (LiteralBool, LiteralNull), so a
-// declaration of them would never be consulted.
+// Declarations rather than names the parser knows, so they resolve through the
+// scope chain and a declaration of your own by any of these names shadows
+// them, like any other name.
 import . "sngl://internal/builtin"
+
+const (
+    true = 0 == 0
+    false = 0 != 0
+)
+
+// The absence of a value. Assignable to any `option<T>`, and what a bare
+// `option<T>` holds until one is given.
+//
+// The written value is a placeholder the compiler replaces: `null` has no
+// literal to be declared with, and its type is not one that can be spelled.
+#[builtin("null")]
+const null = 0
 
 // The platform this build targets, by name: "html", "bubbletea", "fyne",
 // "gtk4", "android", "none". Compare it against a literal to gate code on the
 // target; the comparison folds at build time and the branch not taken is
-// removed.
-//
-// The written value is a placeholder. The real one is not known until a build
-// picks a target, so the compiler supplies it, keyed off the #[builtin] mark
-// rather than the name -- a declaration of your own named PLATFORM is an
-// ordinary constant and shadows this one.
+// removed. The compiler supplies the value.
 #[builtin("platform")]
 const PLATFORM = ""
 

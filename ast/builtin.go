@@ -51,6 +51,7 @@ const (
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
 	// target, so the compiler supplies it.
+	BuiltinNull     BuiltinKind = "null"
 	BuiltinPlatform BuiltinKind = "platform"
 	BuiltinLanguage BuiltinKind = "language"
 )
@@ -99,7 +100,7 @@ func (b BuiltinKind) IsNode() bool {
 // type and value.
 func (b BuiltinKind) IsConst() bool {
 	switch b {
-	case BuiltinPlatform, BuiltinLanguage:
+	case BuiltinNull, BuiltinPlatform, BuiltinLanguage:
 		return true
 	}
 	return false
@@ -112,7 +113,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
 		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary,
-		BuiltinPlatform, BuiltinLanguage,
+		BuiltinNull, BuiltinPlatform, BuiltinLanguage,
 	}
 }
 

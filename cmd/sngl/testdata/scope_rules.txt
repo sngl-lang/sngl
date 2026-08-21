@@ -99,6 +99,21 @@ stderr 'unknown field "nope" on struct Box'
 sngl check private_same_package.sngl
 stdout 'private_same_package.sngl: ok'
 
+# true, false and null are declarations in sngl://builtin, not names the parser
+# knows, so a declaration of your own shadows them like any other name. While
+# the parser recognised them they could not be shadowed at all.
+sngl check shadows_true.sngl
+stdout 'shadows_true.sngl: ok'
+
+sngl check shadows_null.sngl
+stdout 'shadows_null.sngl: ok'
+
+# PLATFORM is supplied by the compiler off its #[builtin] mark, so a constant
+# of your own by that name is an ordinary constant and wins.
+sngl generate --out platout shadow_platform.sngl
+grep 'SHADOWED' platout/index.html
+! grep 'TARGET' platout/index.html
+
 -- w/lib.sngl --
 import . "sngl://std"
 
@@ -358,4 +373,37 @@ var m Mode = _B
 
 component main {
     text(value="x")
+}
+-- shadows_true.sngl --
+import . "sngl://std"
+
+const true = 0 != 0
+
+component main {
+    text(value="{true}")
+}
+-- shadows_null.sngl --
+import . "sngl://std"
+
+const null = "nothing"
+
+component main {
+    text(value=null)
+}
+-- shadow_platform.sngl --
+import . "sngl://std"
+
+output { none { html } }
+
+const PLATFORM = "zzz"
+
+component main {
+    window #w(href="/index.html") {
+        if PLATFORM == "html" {
+            text(value="TARGET")
+        }
+        if PLATFORM == "zzz" {
+            text(value="SHADOWED")
+        }
+    }
 }

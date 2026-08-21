@@ -1716,18 +1716,29 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 	if len(x.Fields) == 0 {
 		return &ir.MapLitIR{Type: mapType, Entries: nil}
 	}
-	if keyT.Kind != ir.TypeString {
-		c.error(x.Pos, "ident-keyed literal does not match map<%s, ...> with non-string key type", keyT)
-		return &ir.MapLitIR{Type: mapType, Entries: nil}
-	}
 	var entries []ir.MapEntry
 	for _, f := range x.Fields {
 		if f.Spread {
 			c.error(x.Pos, "spread not supported in map literal")
 			continue
 		}
-		keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
-		keyIR := &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		var keyIR ir.Expr
+		if keyT.Kind == ir.TypeString {
+			keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
+			keyIR = &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+		} else {
+			// A non-string key type means the name is not a name: it is an
+			// expression written where a field name would go, and it has to
+			// resolve to the key type. `{true = "yes"}` for a
+			// map<bool, string> is the case that matters, now that true is a
+			// declaration rather than something the parser recognises.
+			key := c.checkExprExpecting(&ast.IdentExpr{Pos: x.Pos, Name: f.Name}, keyT)
+			if kt := exprType(key); !kt.IsAssignableTo(keyT) {
+				c.error(x.Pos, "map key %q is %s, not the key type %s", f.Name, kt, keyT)
+				continue
+			}
+			keyIR = key
+		}
 		val := c.checkExprExpecting(f.Value, valT)
 		entries = append(entries, ir.MapEntry{Key: keyIR, Value: val})
 	}

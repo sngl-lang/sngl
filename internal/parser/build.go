@@ -1357,13 +1357,9 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 			Suffix:      extractUnitSuffix(tok.Literal),
 		}
 	case IDENT:
-		// Check for bool/null literals
-		switch tok.Literal {
-		case "true", "false":
-			return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralBool, Raw: tok.Literal}
-		case "null":
-			return &ast.LiteralExpr{Pos: ast.Pos(pos), Kind: ast.LiteralNull, Raw: tok.Literal}
-		}
+		// true, false and null are declarations in sngl://builtin, not names
+		// the parser knows. Recognising them here made them unshadowable and
+		// put three names in the grammar that the language does not reserve.
 		return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
 	case AT:
 		return &ast.EventRefExpr{Pos: ast.Pos(pos)}

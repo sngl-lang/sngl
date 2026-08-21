@@ -27,6 +27,13 @@ func (c *checker) collectBuiltins(pkgs ...*ir.Package) {
 			switch kind := symBuiltin(sym); kind {
 			case ast.BuiltinWindow:
 				bindBuiltin(c, &c.windowComp, kind, sym)
+			case ast.BuiltinNull:
+				if v := bindBuiltin(c, &c.nullConst, kind, sym); v != nil {
+					// Neither the type nor the value can be spelled, so the
+					// written ones are placeholders the compiler replaces.
+					v.Type = TypNull
+					v.Init = &ir.Literal{Type: TypNull, Raw: "null"}
+				}
 			case ast.BuiltinPlatform:
 				if v := bindBuiltin(c, &c.platformConst, kind, sym); v != nil {
 					// No initializer: the value arrives when a build picks a
