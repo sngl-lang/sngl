@@ -17,8 +17,8 @@ func TestLookupStdlibIndex(t *testing.T) {
 	if res.Kind != lookup.KindIndex {
 		t.Fatalf("kind: got %v, want KindIndex", res.Kind)
 	}
-	if !res.Index.IsStdlib {
-		t.Error("IsStdlib should be true")
+	if !res.Index.Library {
+		t.Error("Library should be true")
 	}
 	if res.Index.Title != "sngl" {
 		t.Errorf("Title: got %q", res.Index.Title)

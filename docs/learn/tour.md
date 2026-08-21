@@ -27,10 +27,10 @@ component main {
 Build and run it with the CLI:
 
 ```bash
-sngl run example.sngl --target html
+sngl run example.sngl --platform html
 ```
 
-That starts a static server on `http://localhost:8080`. Change `--target` to `bubbletea`, `fyne`, or `android` and the same source renders as a terminal UI, a desktop app, or a mobile app. The playground on the right compiles to HTML and shows the live result.
+That starts a static server on `http://localhost:8080`. Change `--platform` to `bubbletea`, `fyne`, or `android` and the same source renders as a terminal UI, a desktop app, or a mobile app. The playground on the right compiles to HTML and shows the live result.
 
 ```sngl
 import . "sngl://std"

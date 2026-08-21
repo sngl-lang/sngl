@@ -47,7 +47,7 @@ type PackageView struct {
 	Found            bool
 	Title            string
 	Description      string
-	IsStdlib         bool
+	Library          bool
 	IsNative         bool
 	NativeImportPath string
 	Components       []Summary
@@ -473,7 +473,7 @@ func mapIndex(idx *DeclIndex) PackageView {
 		Found:         true,
 		Title:         idx.Title,
 		Description:   idx.Description,
-		IsStdlib:      idx.IsStdlib,
+		Library:       idx.Library,
 		Components:    mapSummaries(idx.Components),
 		Enums:         mapSummaries(idx.Enums),
 		Constants:     mapSummaries(idx.Constants),

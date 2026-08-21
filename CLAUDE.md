@@ -95,6 +95,13 @@ Three packages exist, and the split is the whole point of the tier system:
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
 - **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. Split out of `std` because `canvas`, `rect`, `line` and `path` are names an application wants for itself, and because a package that ships a mark alongside the declarations it applies to is the pattern for a macro-carrying library.
 
+A library package documents itself with a **package comment**: a run of line
+comments at the top of a file, separated from what follows by a blank line
+(without the blank line it documents the declaration below it instead).
+`sngl doc` renders it as the package description, so adding a `lib/` directory
+with a package comment needs no code change. When several files in a package
+carry one, the first wins — put it in the alphabetically first file.
+
 Packages import each other — `lib/draw` is written against `lib/std` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.

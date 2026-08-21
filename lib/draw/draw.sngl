@@ -1,7 +1,9 @@
-// 2D shapes and the canvas that hosts them. The package also carries the
-// `shape` macro, so `import "sngl://draw"` brings both the components and the
-// mark that declares new ones.
+// 2D shapes and the canvas that hosts them. Importing this package brings both
+// the shape components and the `#[draw.shape]` mark that declares new ones.
 //
+// The shapes live here rather than in `sngl://std` because `canvas`, `rect`,
+// `line` and `path` are names an application usually wants for itself.
+
 // std is qualified rather than dot-imported: a lib package is loaded into the
 // checker's own symbol table, so names it lifts become indistinguishable from
 // names it declares and would be re-lifted by `import . "sngl://draw"`. User

@@ -332,7 +332,7 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 // renderIndexMD renders a lookup.DeclIndex as CLI markdown.
 func renderIndexMD(idx *lookup.DeclIndex) string {
 	var sb strings.Builder
-	if idx.IsStdlib {
+	if idx.Library {
 		sb.WriteString(fmt.Sprintf("# %s\n\n", idx.Title))
 	} else if idx.Native != nil {
 		sb.WriteString(fmt.Sprintf("# %s\n\n", idx.Title))
