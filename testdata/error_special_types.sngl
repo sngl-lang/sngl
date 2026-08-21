@@ -4,7 +4,9 @@ component main {
     var d date = "not-a-date"        // ERROR(check) "invalid date"
     var t time = "not-a-time"        // ERROR(check) "invalid time"
     var dt datetime = "not-a-stamp" // ERROR(check) "invalid datetime"
-    var dur duration = "not-dur"     // ERROR(check) "invalid duration"
+    // duration is a unit, not a string-domain type: a string is not a
+    // duration at all, rather than a badly-formatted one.
+    var dur duration = "not-dur"     // ERROR(check) "cannot initialize duration with string"
 
     text(value="test")
 }
