@@ -78,6 +78,9 @@ var Intrinsics = []IntrinsicDef{
 	// --- color ---
 	{Name: "ColorHex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 
+	// --- int ---
+	{Name: "IntParse", Params: []*Param{{Name: "s", Type: TypString}, {Name: "base", Type: TypInt}}, Return: TypInt},
+
 	// --- regex ---
 	{Name: "RegexMatches", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypBool},
 	{Name: "RegexFind", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypString},

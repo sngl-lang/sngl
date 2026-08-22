@@ -19,6 +19,11 @@ func int.abs(x int) => x < 0 ? -x : x
 // documented contract for malformed ranges.
 func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
 
+// Parse s in the given base (2, 8, 10, 16). No target other than the headless
+// interpreter implements this yet.
+#[intrinsic("IntParse")]
+func int.parse(s string, base int) int {}
+
 // --- float ---
 
 // Returns the smaller of two floats. NaN handling is platform-defined
@@ -152,6 +157,7 @@ func string.endsWith(s string, suffix string) => string.substring(s, string.leng
 // --- list ---
 
 // Number of items in l.
+#[intrinsic("ListLength")]
 func list<T>.length() int {}
 
 // Appends item to the receiver list (`this`) and returns it. push mutates the
@@ -171,17 +177,21 @@ func list<T>.remove(index int) => stdlib.ListRemove(this, index)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
+#[intrinsic("ListIndexOf")]
 func list<T>.indexOf(item T) int {}
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
+#[intrinsic("ListJoin")]
 func list<T>.join(sep string) string {}
 
 // Returns a copy of l with items in reverse order.
+#[intrinsic("ListReverse")]
 func list<T>.reverse() list<T> {}
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
+#[intrinsic("ListSlice")]
 func list<T>.slice(start int, end int) list<T> {}
 
 // Returns a new list containing the items of l for which pred returns
@@ -194,7 +204,7 @@ func list<T>.map<U>(fn func(T) U) list<U> {}
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
-func list<T>.contains(item T) bool {}
+func list<T>.contains(item T) => this.indexOf(item) >= 0
 
 // --- color ---
 

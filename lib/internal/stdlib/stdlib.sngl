@@ -112,6 +112,9 @@ func MapGet<K, V>(m map<K, V>, key dyn, def dyn) dyn {}
 #[intrinsic("ColorHex")]
 func ColorHex(c dyn) string {}
 
+#[intrinsic("IntParse")]
+func IntParse(s string, base int) int {}
+
 #[intrinsic("RegexMatches")]
 func RegexMatches(re string, s string) bool {}
 

@@ -1320,12 +1320,11 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	method := call.Func.Name
 	receiverName := call.Func.Receiver
-	qualName := receiverName + "." + method
 
-	// error.raise: construct an ErrorEvent payload and bubble a RaisedError
+	// ErrorRaise: construct an ErrorEvent payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then
 	// routes it into the resolved handler (or propagates).
-	if qualName == "error.raise" {
+	if call.Func.Intrinsic == "ErrorRaise" {
 		evt := map[string]any{"message": "", "kind": ""}
 		if len(call.Args) >= 1 {
 			if v, err := env.Eval(call.Args[0].Value); err == nil {
@@ -1340,18 +1339,19 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return nil, &RaisedError{Event: evt}
 	}
 
-	// Alert/File namespaces: static-only, receiver-less logging.
-	switch qualName {
-	case "Alert.toast":
+	// Alert and File have visible effects a headless run cannot perform, so
+	// the interpreter records them and answers with a fixed value.
+	switch call.Func.Intrinsic {
+	case "Toast":
 		return env.logAlertToast(call.Args)
-	case "Alert.info", "Alert.warn", "Alert.error":
+	case "Info", "Warn", "Error":
 		return env.logAlertSingle(method, call.Args)
-	case "Alert.confirm":
+	case "Confirm":
 		return env.logAlertConfirm(call.Args)
-	case "File.pick":
+	case "Pick":
 		env.Log = append(env.Log, "[File.pick]")
 		return "/mock/file.txt", nil
-	case "File.pickFolder":
+	case "PickFolder":
 		env.Log = append(env.Log, "[File.pickFolder]")
 		return "/mock/folder", nil
 	}
@@ -1373,10 +1373,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		}
 	}
 
-	if result, handled, err := nativeMethod(qualName, evalArgs); handled {
-		return result, err
-	}
-	if result, handled, err := nativeMethod("*."+method, evalArgs); handled {
+	if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
 		return result, err
 	}
 
@@ -1409,14 +1406,24 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// it from the receiver's name would fail for a type reached through an
 	// import alias, whose name here is not the name it was declared under.
 	if len(call.Func.Block) > 0 {
-		return env.EvalUserFuncCallArgs(call.Func, call.Args)
+		callEnv, args := env, call.Args
+		// A method on a generic receiver declares no receiver parameter and
+		// names the value `this`, so the leading argument the checker
+		// normalized in has nothing to bind to. Supply it the way a component
+		// method gets its receiver, in a scope of its own.
+		if len(call.Args) == len(call.Func.Params)+1 && len(evalArgs) > 0 {
+			callEnv = env.Snapshot()
+			callEnv.SetReceiver(evalArgs[0])
+			args = call.Args[1:]
+		}
+		return callEnv.EvalUserFuncCallArgs(call.Func, args)
 	}
 
 	// List/string higher-order and other built-in methods.
 	if len(evalArgs) >= 1 {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
-	return nil, fmt.Errorf("unknown method %q", qualName)
+	return nil, fmt.Errorf("unknown method %q", receiverName+"."+method)
 }
 
 func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
@@ -1445,18 +1452,19 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 			}
 
-			qualName := ident.Name + "." + method
-			evalArgs, err := env.evalCallArgs(call.Args)
-			if err == nil {
-				if result, handled, err := nativeMethod(qualName, evalArgs); handled {
-					return result, err
+			// Resolve the member once: its mark says whether this interpreter
+			// implements it, and its body says whether there is anything to
+			// run if it does not. A namespace's members include bodyless
+			// intrinsic declarations, and running one of those returns null.
+			if fn, ok := env.methodOn(ident.Name, method); ok {
+				if evalArgs, err := env.evalCallArgs(call.Args); err == nil {
+					if result, handled, err := runIntrinsic(fn.Intrinsic, evalArgs); handled {
+						return result, err
+					}
 				}
-			}
-			// A namespace's members include bodyless intrinsic declarations
-			// (stdlib.StringLength and friends); running one returns null.
-			// Only a func that carries a body is the answer here.
-			if fn, ok := env.methodOn(ident.Name, method); ok && len(fn.Block) > 0 {
-				return env.EvalUserFuncCallArgs(fn, call.Args)
+				if len(fn.Block) > 0 {
+					return env.EvalUserFuncCallArgs(fn, call.Args)
+				}
 			}
 		}
 	}
@@ -1503,7 +1511,6 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 			}
 			// Instance method on a primitive value: dispatch by runtime type.
-			qualName := runtimeTypeName(recv) + "." + method
 			evalArgs := make([]any, 0, len(call.Args)+1)
 			evalArgs = append(evalArgs, recv)
 			for _, a := range call.Args {
@@ -1513,25 +1520,37 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				}
 				evalArgs = append(evalArgs, v)
 			}
-			if result, handled, err := nativeMethod(qualName, evalArgs); handled {
-				return result, err
-			}
-			if result, handled, err := nativeMethod("*."+method, evalArgs); handled {
-				return result, err
+			// The receiver's runtime type names the declaration whose member
+			// this is; the member's mark says how to run it.
+			recvFn, recvOK := env.methodOn(runtimeTypeName(recv), method)
+			if recvOK {
+				if result, handled, err := runIntrinsic(recvFn.Intrinsic, evalArgs); handled {
+					return result, err
+				}
 			}
 			// Mutation methods on lists need a writeback; dispatch before
 			// user-defined stdlib bodies that delegate to intrinsics.
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn, ok := env.methodOn(runtimeTypeName(recv), method); ok {
-				// Prepend receiver expr so EvalUserFunc sees normalized form.
-				synth := make([]ir.Expr, 0, len(call.Args)+1)
-				synth = append(synth, call.Receiver)
+			if fn := recvFn; recvOK && len(fn.Block) > 0 {
+				// A method on a generic receiver (list<T>, map<K,V>) declares
+				// no receiver parameter and names the value `this`, so there
+				// is nothing in the argument list to bind it to. Supply it the
+				// way a component method gets its receiver, in a scope of its
+				// own so the binding does not outlive the call.
+				callEnv, synth := env, make([]ir.Expr, 0, len(call.Args)+1)
+				if len(fn.Params) == len(call.Args) {
+					callEnv = env.Snapshot()
+					callEnv.SetReceiver(recv)
+				} else {
+					// Prepend receiver expr so EvalUserFunc sees normalized form.
+					synth = append(synth, call.Receiver)
+				}
 				for _, a := range call.Args {
 					synth = append(synth, a.Value)
 				}
-				return env.EvalUserFunc(fn, synth)
+				return callEnv.EvalUserFunc(fn, synth)
 			}
 			// Enum value method fallback: when recv is a bare string and no
 			// dispatch succeeded, scan user-defined enums for a matching
