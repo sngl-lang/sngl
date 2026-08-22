@@ -60,6 +60,60 @@ func init() {
 		return a[0] + " = append(" + a[0] + "[:" + a[1] + "], " + a[0] + "[" + a[1] + "+1:]...)"
 	})
 
+	// --- int/float min, max, abs, clamp ---
+	// Their SNGL bodies are correct but spell the answer as a ternary, which
+	// Go has no expression form for; these are the reason the `usable` flag
+	// distinguishes "a backend may substitute" from "a backend must".
+	reg("IntMin", func(a []string) string { return "min(" + a[0] + ", " + a[1] + ")" })
+	reg("IntMax", func(a []string) string { return "max(" + a[0] + ", " + a[1] + ")" })
+	reg("IntAbs", func(a []string) string {
+		return "func(x int) int { if x < 0 { return -x }; return x }(" + a[0] + ")"
+	})
+	reg("IntClamp", func(a []string) string {
+		return "min(max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+	})
+	regImp("FloatMin", []string{"math"}, func(a []string) string { return "math.Min(" + a[0] + ", " + a[1] + ")" })
+	regImp("FloatMax", []string{"math"}, func(a []string) string { return "math.Max(" + a[0] + ", " + a[1] + ")" })
+	regImp("FloatAbs", []string{"math"}, func(a []string) string { return "math.Abs(" + a[0] + ")" })
+	regImp("FloatClamp", []string{"math"}, func(a []string) string {
+		return "math.Min(math.Max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+	})
+
+	// --- list and map ---
+	regImp("ListJoin", []string{"strings"}, func(a []string) string { return "strings.Join(" + a[0] + ", " + a[1] + ")" })
+	reg("ListFilter", func(a []string) string {
+		return "func() []any { var out []any; for _, item := range " + a[0] + " { if " + a[1] + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
+	})
+	reg("ListMap", func(a []string) string {
+		return "func() []any { out := make([]any, len(" + a[0] + ")); for i, item := range " + a[0] + " { out[i] = " + a[1] + ".(func(any) any)(item) }; return out }()"
+	})
+	reg("MapLength", func(a []string) string { return "len(" + a[0] + ")" })
+	reg("MapKeys", func(a []string) string {
+		return "func() []any { ks := make([]any, 0, len(" + a[0] + ")); for k := range " + a[0] + " { ks = append(ks, k) }; return ks }()"
+	})
+	reg("MapValues", func(a []string) string {
+		return "func() []any { vs := make([]any, 0, len(" + a[0] + ")); for _, v := range " + a[0] + " { vs = append(vs, v) }; return vs }()"
+	})
+	reg("MapContains", func(a []string) string {
+		return "func() bool { _, ok := " + a[0] + "[" + a[1] + "]; return ok }()"
+	})
+	reg("MapGet", func(a []string) string {
+		return "func() any { if v, ok := " + a[0] + "[" + a[1] + "]; ok { return v }; return " + a[2] + " }()"
+	})
+
+	// --- Alert and File ---
+	// Effects a generated Go program cannot perform without a UI; print the
+	// message and answer with a fixed value, as the interpreter does.
+	regImp("Toast", []string{"fmt"}, func(a []string) string {
+		return `fmt.Println("[" + ` + a[1] + ` + "] " + ` + a[0] + `)`
+	})
+	regImp("Info", []string{"fmt"}, func(a []string) string { return `fmt.Println("[info] " + ` + a[0] + `)` })
+	regImp("Warn", []string{"fmt"}, func(a []string) string { return `fmt.Println("[warn] " + ` + a[0] + `)` })
+	regImp("Error", []string{"fmt"}, func(a []string) string { return `fmt.Println("[error] " + ` + a[0] + `)` })
+	reg("Confirm", func(a []string) string { return "true" })
+	reg("Pick", func(a []string) string { return `""` })
+	reg("PickFolder", func(a []string) string { return `""` })
+
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the
 	// html platform's placement analysis; for any non-html target they emit as

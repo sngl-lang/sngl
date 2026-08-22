@@ -141,64 +141,10 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	}
 
 	switch qualName {
-	case "int.min", "*.min":
-		return "min(" + a(0) + ", " + a(1) + ")"
-	case "int.max", "*.max":
-		return "max(" + a(0) + ", " + a(1) + ")"
-	case "int.abs", "*.abs":
-		return "func(x int) int { if x < 0 { return -x }; return x }(" + a(0) + ")"
-	case "int.clamp", "*.clamp":
-		return "min(max(" + a(0) + ", " + a(1) + "), " + a(2) + ")"
-	case "float.min":
-		return "math.Min(" + a(0) + ", " + a(1) + ")"
-	case "float.max":
-		return "math.Max(" + a(0) + ", " + a(1) + ")"
-	case "float.abs":
-		return "math.Abs(" + a(0) + ")"
-	case "float.clamp":
-		return "math.Min(math.Max(" + a(0) + ", " + a(1) + "), " + a(2) + ")"
-	// string.* and float math (floor/ceil/round/sqrt/pow/trig) are
-	// intrinsic-backed and emitted by ID via the registry (intrinsics.go).
-	case "list.length":
-		return "len(" + a(0) + ")"
-	case "list.join", "*.join":
-		return "strings.Join(" + a(0) + ", " + a(1) + ")"
-	case "list.filter", "*.filter":
-		return "func() []any { var out []any; for _, item := range " + a(0) + " { if " + a(1) + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
-	case "list.map", "*.map":
-		return "func() []any { out := make([]any, len(" + a(0) + ")); for i, item := range " + a(0) + " { out[i] = " + a(1) + ".(func(any) any)(item) }; return out }()"
-	// map
-	case "map.length":
-		return "len(" + a(0) + ")"
-	case "map.keys":
-		return "func() []any { ks := make([]any, 0, len(" + a(0) + ")); for k := range " + a(0) + " { ks = append(ks, k) }; return ks }()"
-	case "map.values":
-		return "func() []any { vs := make([]any, 0, len(" + a(0) + ")); for _, v := range " + a(0) + " { vs = append(vs, v) }; return vs }()"
-	case "map.contains":
-		return "func() bool { _, ok := " + a(0) + "[" + a(1) + "]; return ok }()"
-	case "map.get":
-		return "func() any { if v, ok := " + a(0) + "[" + a(1) + "]; ok { return v }; return " + a(2) + " }()"
-	// regex
-	case "regex.matches":
-		return a(0) + ".MatchString(" + a(1) + ")"
-	case "regex.find", "*.find":
-		return a(0) + ".FindString(" + a(1) + ")"
-	// Alert
-	case "Alert.toast":
-		return `fmt.Println("[" + ` + a(1) + ` + "] " + ` + a(0) + `)`
-	case "Alert.info":
-		return `fmt.Println("[info] " + ` + a(0) + `)`
-	case "Alert.warn":
-		return `fmt.Println("[warn] " + ` + a(0) + `)`
-	case "Alert.error":
-		return `fmt.Println("[error] " + ` + a(0) + `)`
-	case "Alert.confirm":
-		return `true`
-	// File
-	case "File.pick":
-		return `""`
-	case "File.pickFolder":
-		return `""`
+	// Everything else is emitted by intrinsic id through the registry
+	// (intrinsics.go). What is left here is i18n, whose wrappers rearrange
+	// their arguments and so are not a pass-through of any single intrinsic.
+	//
 	// i18n — wrapper calls delegate to per-locale runtime entry points.
 	// NoContext threads __ctx_locale as the trailing arg; we lift it to the
 	// leading positional arg the runtime expects (i18n.<Foo>(locale, ...)).

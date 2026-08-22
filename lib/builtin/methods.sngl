@@ -5,18 +5,22 @@ import "sngl://internal/stdlib"
 
 // Returns the smaller of two integers. Ties return a (which equals b
 // for integers, so the distinction is vacuous).
+#[intrinsic("IntMin", usable)]
 func int.min(a int, b int) => a < b ? a : b
 
 // Returns the larger of two integers. Ties return a.
+#[intrinsic("IntMax", usable)]
 func int.max(a int, b int) => a > b ? a : b
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
+#[intrinsic("IntAbs", usable)]
 func int.abs(x int) => x < 0 ? -x : x
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the result
 // follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
 // documented contract for malformed ranges.
+#[intrinsic("IntClamp", usable)]
 func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
 
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
@@ -28,17 +32,21 @@ func int.parse(s string, base int) int {}
 
 // Returns the smaller of two floats. NaN handling is platform-defined
 // — prefer explicit NaN checks when either operand may be NaN.
+#[intrinsic("FloatMin", usable)]
 func float.min(a float, b float) => a < b ? a : b
 
 // Returns the larger of two floats. See `float.min` for NaN caveats.
+#[intrinsic("FloatMax", usable)]
 func float.max(a float, b float) => a > b ? a : b
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.
+#[intrinsic("FloatAbs", usable)]
 func float.abs(x float) => x < 0.0 ? -x : x
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
 // wins (see `int.clamp`).
+#[intrinsic("FloatClamp", usable)]
 func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
 
 // Largest integer value not greater than x, as a float. For negative
@@ -196,10 +204,12 @@ func list<T>.slice(start int, end int) list<T> {}
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
+#[intrinsic("ListFilter")]
 func list<T>.filter(pred func(T) bool) list<T> {}
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
+#[intrinsic("ListMap")]
 func list<T>.map<U>(fn func(T) U) list<U> {}
 
 // True if item appears in l (by equality). Equivalent to
@@ -254,19 +264,24 @@ func color.darken(c color, pct float) color {
 // --- map ---
 
 // Number of entries currently in m.
+#[intrinsic("MapLength")]
 func map<K, V>.length() int {}
 
 // List of keys in m in unspecified order.
+#[intrinsic("MapKeys")]
 func map<K, V>.keys() list<K> {}
 
 // List of values in m in unspecified order.
+#[intrinsic("MapValues")]
 func map<K, V>.values() list<V> {}
 
 // True iff key exists in m.
+#[intrinsic("MapContains")]
 func map<K, V>.contains(key K) bool {}
 
 // Lookup with default — returns the value if key is present in m,
 // otherwise returns the default value. Both are coerced to match the
 // declared value type.
+#[intrinsic("MapGet")]
 func map<K, V>.get(key K, default V) V {}
 

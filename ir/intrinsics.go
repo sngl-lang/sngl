@@ -79,6 +79,17 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "ColorHex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 
 	// --- int ---
+	// min/max/abs/clamp have SNGL bodies that compute the right answer; the id
+	// lets a backend emit its own form instead (Go has min/max builtins, and
+	// cannot spell the body's ternary as an expression at all).
+	{Name: "IntMin", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
+	{Name: "IntMax", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
+	{Name: "IntAbs", Params: []*Param{{Name: "x", Type: TypInt}}, Return: TypInt},
+	{Name: "IntClamp", Params: []*Param{{Name: "x", Type: TypInt}, {Name: "lo", Type: TypInt}, {Name: "hi", Type: TypInt}}, Return: TypInt},
+	{Name: "FloatMin", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
+	{Name: "FloatMax", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
+	{Name: "FloatAbs", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "FloatClamp", Params: []*Param{{Name: "x", Type: TypFloat}, {Name: "lo", Type: TypFloat}, {Name: "hi", Type: TypFloat}}, Return: TypFloat},
 	{Name: "IntParse", Params: []*Param{{Name: "s", Type: TypString}, {Name: "base", Type: TypInt}}, Return: TypInt},
 
 	// --- regex ---

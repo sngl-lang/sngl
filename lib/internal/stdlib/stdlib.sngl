@@ -112,6 +112,30 @@ func MapGet<K, V>(m map<K, V>, key dyn, def dyn) dyn {}
 #[intrinsic("ColorHex")]
 func ColorHex(c dyn) string {}
 
+#[intrinsic("IntMin")]
+func IntMin(a int, b int) int {}
+
+#[intrinsic("IntMax")]
+func IntMax(a int, b int) int {}
+
+#[intrinsic("IntAbs")]
+func IntAbs(x int) int {}
+
+#[intrinsic("IntClamp")]
+func IntClamp(x int, lo int, hi int) int {}
+
+#[intrinsic("FloatMin")]
+func FloatMin(a float, b float) float {}
+
+#[intrinsic("FloatMax")]
+func FloatMax(a float, b float) float {}
+
+#[intrinsic("FloatAbs")]
+func FloatAbs(x float) float {}
+
+#[intrinsic("FloatClamp")]
+func FloatClamp(x float, lo float, hi float) float {}
+
 #[intrinsic("IntParse")]
 func IntParse(s string, base int) int {}
 
