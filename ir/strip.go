@@ -160,6 +160,7 @@ func (s *stripper) stripComponent(c *Component) {
 	}
 	for _, p := range c.Props {
 		p.Type = nil
+		p.Sym = nil // cross-reference
 		s.stripExpr(p.Default)
 	}
 	for _, e := range c.Events {
@@ -261,6 +262,7 @@ func (s *stripper) stripStmt(st Stmt) {
 	case *LocalVar:
 		st.AST = nil
 		st.Type = nil
+		st.Sym = nil // cross-reference
 		s.stripExpr(st.Init)
 	case *Return:
 		st.AST = nil
@@ -274,6 +276,7 @@ func (s *stripper) stripStmt(st Stmt) {
 		st.AST = nil
 		s.stripExpr(st.Iter)
 		st.ElemType = nil
+		st.KeySym, st.ValueSym = nil, nil // cross-references
 		s.stripStmts(st.Body)
 		s.stripStmts(st.Else)
 	case *PlatformFilter:

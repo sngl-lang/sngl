@@ -1205,8 +1205,9 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	entryVar := "__entry"
 	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
 	teardown := &ir.For{
-		Key:  entryVar,
-		Iter: st.slotIdent(slotID),
+		Key:    entryVar,
+		KeySym: entrySym,
+		Iter:   st.slotIdent(slotID),
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
@@ -1330,6 +1331,8 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 				inner := &ir.For{
 					Key:      sx.Key,
 					Value:    sx.Value,
+					KeySym:   sx.KeySym,
+					ValueSym: sx.ValueSym,
 					Iter:     sx.Iter,
 					ElemType: sx.ElemType,
 					AST:      sx.AST,

@@ -44,14 +44,14 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	if pkg.Symbols != nil {
 		for typeName, methods := range pkg.Symbols.Methods {
 			for _, fn := range methods {
-				env.Funcs[typeName+"."+fn.Name] = fn
+				env.Methods[typeName+"."+fn.Name] = fn
 			}
 		}
 	}
 
 	if compName == "" {
 		for _, c := range pkg.Consts {
-			env.Consts[c.Name] = evalInit(env, c.Init)
+			env.Set(c, evalInit(env, c.Init))
 		}
 		return env, nil
 	}
@@ -60,10 +60,10 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	if comp == nil {
 		if compName == "main" {
 			for _, v := range pkg.Vars {
-				env.Vars[v.Name] = evalInit(env, v.Init)
+				env.Set(v, evalInit(env, v.Init))
 			}
 			for _, c := range pkg.Consts {
-				env.Consts[c.Name] = evalInit(env, c.Init)
+				env.Set(c, evalInit(env, c.Init))
 			}
 			return env, nil
 		}
@@ -71,24 +71,21 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	}
 
 	// Seed package-level vars and consts so component bodies and any nested
-	// child components can read/write global state. Component-local vars
-	// declared below shadow these by name.
+	// child components can read/write global state. A component-local
+	// declaration of the same name is a different symbol, so it binds
+	// separately rather than overwriting.
 	for _, v := range pkg.Vars {
-		env.Vars[v.Name] = evalInit(env, v.Init)
+		env.Set(v, evalInit(env, v.Init))
 	}
 	for _, c := range pkg.Consts {
-		env.Consts[c.Name] = evalInit(env, c.Init)
+		env.Set(c, evalInit(env, c.Init))
 	}
 
 	for _, v := range comp.Vars {
-		if v.IsConst {
-			env.Consts[v.Name] = evalInit(env, v.Init)
-		} else {
-			env.Vars[v.Name] = evalInit(env, v.Init)
-		}
+		env.Set(v, evalInit(env, v.Init))
 	}
 	for _, p := range comp.Props {
-		env.Vars[p.Name] = evalInit(env, p.Default)
+		env.Set(p.Sym, evalInit(env, p.Default))
 	}
 	for _, fn := range comp.Funcs {
 		env.SetFunc(fn)
@@ -144,6 +141,17 @@ func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
 		t.Conversions[s.Name] = s.Factor
 	}
 	return t
+}
+
+// propSym returns the symbol comp declares for the prop named name, or nil
+// when the component has no such prop.
+func propSym(comp *ir.Component, name string) ir.Symbol {
+	for _, p := range comp.Props {
+		if p.Name == name && p.Sym != nil {
+			return p.Sym
+		}
+	}
+	return nil
 }
 
 // FindComponent returns the named component or nil.

@@ -97,6 +97,9 @@ func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 		synthetic := fmt.Sprintf("__focusIdx%d", slotIdx)
 		ls.forStmt.Key = synthetic
 		ls.keyVar = &ir.LoopVar{Name: synthetic, Type: ir.TypInt}
+		ls.forStmt.KeySym = ls.keyVar
+	} else if ls.forStmt.KeySym != nil {
+		ls.keyVar = ls.forStmt.KeySym
 	} else {
 		ls.keyVar = &ir.LoopVar{Name: ls.forStmt.Key, Type: ir.TypInt}
 	}
@@ -317,6 +320,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 				Name: "__focusLen",
 				Type: ir.TypInt,
 				Init: callListLength(ls.forStmt.Iter),
+				Sym:  lenSym,
 			}
 			lenIdent := func() *ir.Ident {
 				return &ir.Ident{Name: "__focusLen", Type: ir.TypInt, Sym: lenSym, Synthesized: true}
@@ -449,6 +453,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 		Name: "__focusLen",
 		Type: ir.TypInt,
 		Init: callListLength(ls.forStmt.Iter),
+		Sym:  lenSym,
 	}
 	return []ir.Stmt{
 		lenVar,

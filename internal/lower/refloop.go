@@ -151,7 +151,9 @@ func (st *refLoopState) lowerFor(n *ir.For) {
 	// rewritten to iter[index]). Downstream reactivity and codegen treat this
 	// as a plain indexed loop; no ref-specific path remains.
 	n.Key = indexName
+	n.KeySym = idxSym
 	n.Value = "_"
+	n.ValueSym = nil
 	n.RefElem = false
 }
 

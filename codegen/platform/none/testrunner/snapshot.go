@@ -162,10 +162,8 @@ func (w *snapWriter) forStmt(env *interp.Env, n *ir.For, depth int) error {
 	}
 	for i, item := range list {
 		child := env.Snapshot()
-		child.Vars[n.Key] = item
-		if n.Value != "" {
-			child.Vars[n.Value] = i
-		}
+		child.Set(n.KeySym, item)
+		child.Set(n.ValueSym, i)
 		if err := w.stmts(child, n.Body, depth); err != nil {
 			return err
 		}

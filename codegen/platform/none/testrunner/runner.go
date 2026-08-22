@@ -47,36 +47,25 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		return r
 	}
 
-	testParams := map[string]bool{}
-	for _, p := range fn.Params {
-		testParams[p.Name] = true
-	}
-
 	var cVal *componentValue
 	if compName != "" && len(fn.Params) >= 2 {
 		cVal = &componentValue{
-			Env:        env,
-			Vars:       make(map[string]any),
-			Consts:     make(map[string]any),
-			Funcs:      make(map[string]*ir.Func),
-			compName:   compName,
-			testParams: testParams,
+			Env:      env,
+			Funcs:    make(map[string]*ir.Func),
+			comp:     findComponentByName(pkg, compName),
+			compName: compName,
 		}
-		maps.Copy(cVal.Vars, env.Vars)
-		maps.Copy(cVal.Consts, env.Consts)
-		maps.Copy(cVal.Funcs, env.Funcs)
-		if comp := findComponentByName(pkg, compName); comp != nil {
-			cVal.body = comp.Body
+		maps.Copy(cVal.Funcs, env.Methods)
+		if cVal.comp != nil {
+			cVal.body = cVal.comp.Body
 		}
-		env.Vars[fn.Params[1].Name] = cVal
+		env.Set(fn.Params[1], cVal)
 	}
 
 	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName}
-	tParamName := "t"
 	if len(fn.Params) >= 1 {
-		tParamName = fn.Params[0].Name
+		env.Set(fn.Params[0], tVal)
 	}
-	env.Vars[tParamName] = tVal
 
 	for _, stmt := range fn.Block {
 		if err := env.Exec(stmt); err != nil {
@@ -86,9 +75,6 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 				Fatal:   true,
 			})
 			break
-		}
-		if cVal != nil {
-			cVal.syncFromEnv(testParams)
 		}
 	}
 
@@ -128,15 +114,17 @@ type testingT struct {
 	contextOverrides map[*ir.Context]any
 }
 
-// componentValue wraps the test environment so that c.field accesses
-// resolve to component state.
+// componentValue is the runtime value of a test function's component
+// parameter. It holds no state of its own: `c.<field>` names a declaration on
+// the component, so a read or write resolves that declaration and goes
+// straight to the env's binding for it. The name-addressed step is the
+// boundary — a test writes `c.count`, and only the component knows which
+// declaration that is.
 type componentValue struct {
-	Env        *interp.Env
-	Vars       map[string]any
-	Consts     map[string]any
-	Funcs      map[string]*ir.Func
-	compName   string // e.g. "pricing"; used to look up receiver-qualified methods
-	testParams map[string]bool
+	Env      *interp.Env
+	Funcs    map[string]*ir.Func
+	comp     *ir.Component // resolves c.<field> to the declaration it names
+	compName string        // e.g. "pricing"; used to look up receiver-qualified methods
 
 	// body is the component's lowered body, captured at construction.
 	// Used by walkChildren to enumerate direct visual statements.

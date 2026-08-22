@@ -2491,7 +2491,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	for _, p := range comp.Props {
-		c.declare(compDeclPos(comp), &ir.Param{Name: p.Name, Type: p.Type})
+		c.declare(compDeclPos(comp), propParam(p))
 	}
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -2511,6 +2511,19 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		}
 	}
 	c.diags = c.diags[:diagMark]
+}
+
+// propParam returns the Param a prop is declared as inside its component's
+// body, minting it on first use. The checker walks a component's bodies more
+// than once (a pre-pass for method signatures, then the authoritative pass);
+// reusing one symbol keeps every Ident in every pass pointing at the same
+// declaration, which is what an evaluator keyed by declaration needs.
+func propParam(p *ir.Prop) *ir.Param {
+	if p.Sym == nil {
+		p.Sym = &ir.Param{Name: p.Name}
+	}
+	p.Sym.Type = p.Type
+	return p.Sym
 }
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
@@ -2547,10 +2560,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare props as params now that any default-driven type inference has
 	// finalized prop.Type.
 	for _, p := range comp.Props {
-		c.declare(compDeclPos(comp), &ir.Param{
-			Name: p.Name,
-			Type: p.Type,
-		})
+		c.declare(compDeclPos(comp), propParam(p))
 	}
 
 	// Declare component-level vars and funcs.

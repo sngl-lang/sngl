@@ -2359,15 +2359,17 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 		}
 		for _, name := range spec.Names {
-			c.declare(decl.Pos, &ir.Var{
+			sym := &ir.Var{
 				AST:  decl,
 				Name: name,
 				Type: typ,
-			})
+			}
+			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,
 				Type: typ,
 				Init: initExpr,
+				Sym:  sym,
 			})
 		}
 	}
@@ -2467,12 +2469,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				typ = initType
 			}
 		}
-		c.declare(x.Pos, &ir.Var{
+		sym := &ir.Var{
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
-		})
-		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr}
+		}
+		c.declare(x.Pos, sym)
+		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr, Sym: sym}
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
 		if x.Value != nil {
@@ -2700,7 +2703,17 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			return t
 		}
-		// Declare loop variables based on iterator type.
+		// Declare loop variables based on iterator type, keeping the symbols
+		// so the For statement carries what its body's Idents resolve to.
+		var keySym, valueSym *ir.LoopVar
+		declKey := func(t *ir.Type) {
+			keySym = &ir.LoopVar{Name: x.Key, Type: t}
+			c.declare(x.Pos, keySym)
+		}
+		declValue := func(t *ir.Type) {
+			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
+			c.declare(x.Pos, valueSym)
+		}
 		elemType := TypDyn
 		switch iter.Kind {
 		case ir.TypeList:
@@ -2709,11 +2722,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = list: key is index (int), value is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
+				declKey(TypInt)
+				declValue(elemDeclType(elemType))
 			} else {
 				// for item = list: item is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
+				declKey(elemDeclType(elemType))
 			}
 		case ir.TypeIter:
 			if len(iter.Elems) > 0 {
@@ -2721,35 +2734,35 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = iter: key is index (int), value is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemType})
+				declKey(TypInt)
+				declValue(elemType)
 			} else {
 				// for item = iter: item is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemType})
+				declKey(elemType)
 			}
 		case ir.TypeMap:
 			if x.Value == "" {
 				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
 			} else if len(iter.Elems) == 2 {
 				// for k, v = map: k is key type, v is value type.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				declKey(iter.Elems[0])
+				declValue(iter.Elems[1])
 				elemType = iter.Elems[1]
 			}
 		case ir.TypeDyn:
 			if x.Value != "" {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
+				declKey(TypDyn)
+				declValue(TypDyn)
 			} else {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				declKey(TypDyn)
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
+				declKey(TypDyn)
+				declValue(TypDyn)
 			} else {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				declKey(TypDyn)
 			}
 		}
 		body := c.checkBlockIR(&x.Body)
@@ -2758,7 +2771,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &ir.For{AST: x, Key: x.Key, Value: x.Value, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
+		return &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:

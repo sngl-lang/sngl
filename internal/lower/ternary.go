@@ -284,6 +284,7 @@ func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
 	tmpDecl := &ir.LocalVar{
 		Name: name,
 		Type: t.Type,
+		Sym:  tmpSym,
 	}
 	tmpIdent := func() *ir.Ident {
 		return &ir.Ident{Name: name, Type: t.Type, Sym: tmpSym, Synthesized: true}

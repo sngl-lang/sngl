@@ -30,7 +30,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 	child := lv.env.Snapshot()
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
-			child.Vars[p.Name] = args[i]
+			child.Set(p, args[i])
 		}
 	}
 	return child.execBlockForResult(lv.fn.Block)
@@ -40,7 +40,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.fn.Params {
 		if i < len(args) {
-			env.Vars[p.Name] = args[i]
+			env.Set(p, args[i])
 		}
 	}
 	return env.execBlockForResult(lv.fn.Block)
@@ -107,9 +107,24 @@ type unitTable struct {
 
 // Env holds the mutable state for test execution.
 type Env struct {
-	Vars        map[string]any
-	Consts      map[string]any
-	Funcs       map[string]*ir.Func
+	// vals holds this scope's bindings keyed by the declaration each came
+	// from — an *ir.Var, *ir.Param or *ir.LoopVar. Keying on the declaration
+	// rather than its name is what the checker already did when it resolved
+	// every Ident to a Symbol: shadowing is free because two declarations are
+	// two pointers, and a constant declared in a library package resolves
+	// like any other rather than having to be copied into a name table.
+	vals map[ir.Symbol]any
+	// ambient holds the compiler-injected names that no declaration
+	// introduces: the implicit component receiver (`this`) and the framework
+	// event object. A symbol cannot key these — the site that binds one and
+	// the site that reads it belong to different declarations.
+	ambient map[string]any
+	// Methods dispatches a method call by receiver name: "list.push",
+	// "Vec2.dot", "i18n.tr". It is a dispatch table, not a scope: the key
+	// comes from the receiver's runtime type, so there is no declaration to
+	// key on. Receiver-less entries are registered under the bare name for
+	// the namespace-call path.
+	Methods     map[string]*ir.Func
 	Units       map[string]*unitTable
 	Pkg         *ir.Package
 	Comp        *ir.Component
@@ -138,25 +153,69 @@ type Env struct {
 
 func NewEnv() *Env {
 	return &Env{
-		Vars:      map[string]any{},
-		Consts:    map[string]any{},
-		Funcs:     map[string]*ir.Func{},
+		vals:      map[ir.Symbol]any{},
+		ambient:   map[string]any{},
+		Methods:   map[string]*ir.Func{},
 		childEnvs: map[*ir.NodeInst]*Env{},
 	}
 }
 
-// SetFunc registers a user-defined function.
+// SetFunc registers a user-defined function in the method table.
 func (env *Env) SetFunc(fn *ir.Func) {
 	if fn.Receiver != "" {
-		env.Funcs[fn.Receiver+"."+fn.Name] = fn
+		env.Methods[fn.Receiver+"."+fn.Name] = fn
 		return
 	}
-	env.Funcs[fn.Name] = fn
+	env.Methods[fn.Name] = fn
 }
 
-// SetVar sets a variable in the environment.
-func (env *Env) SetVar(name string, val any) {
-	env.Vars[name] = val
+// Set binds sym to val in this env.
+func (env *Env) Set(sym ir.Symbol, val any) {
+	if sym == nil {
+		return
+	}
+	env.vals[sym] = val
+}
+
+// SetReceiver binds the implicit component receiver (`this`) for calls made
+// against this env. See Env.ambient.
+func (env *Env) SetReceiver(val any) {
+	env.ambient[ir.ReceiverParam] = val
+}
+
+// Value returns the value bound to sym in this env or an enclosing one.
+func (env *Env) Value(sym ir.Symbol) (any, bool) {
+	if owner := env.findVarOwner(sym); owner != nil {
+		return owner.vals[sym], true
+	}
+	return nil, false
+}
+
+// RebindFrom copies src's value for every symbol env already binds. A call
+// runs against a Snapshot, whose bindings are copies; this writes the
+// mutations back into the env the snapshot was taken from.
+func (env *Env) RebindFrom(src *Env) {
+	if src == nil {
+		return
+	}
+	for e := env; e != nil; e = e.parent {
+		for sym := range e.vals {
+			if v, ok := src.Value(sym); ok {
+				e.vals[sym] = v
+			}
+		}
+	}
+}
+
+// Values ranges over the values bound in this env, stopping when f returns
+// false. Used to find a binding by what it holds rather than what it is
+// called — the test harness locates the component under test this way.
+func (env *Env) Values(f func(val any) bool) {
+	for _, v := range env.vals {
+		if !f(v) {
+			return
+		}
+	}
 }
 
 // Snapshot returns a shallow copy of the env.
@@ -166,9 +225,9 @@ func (env *Env) Snapshot() *Env {
 		childEnvs = map[*ir.NodeInst]*Env{}
 	}
 	cp := &Env{
-		Vars:          make(map[string]any, len(env.Vars)),
-		Consts:        env.Consts,
-		Funcs:         env.Funcs,
+		vals:          make(map[ir.Symbol]any, len(env.vals)),
+		ambient:       make(map[string]any, len(env.ambient)),
+		Methods:       env.Methods,
 		Units:         env.Units,
 		Pkg:           env.Pkg,
 		Comp:          env.Comp,
@@ -181,7 +240,8 @@ func (env *Env) Snapshot() *Env {
 		callChildEnvs: env.callChildEnvs,
 		parent:        env.parent,
 	}
-	maps.Copy(cp.Vars, env.Vars)
+	maps.Copy(cp.vals, env.vals)
+	maps.Copy(cp.ambient, env.ambient)
 	return cp
 }
 
@@ -730,102 +790,95 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
-	if v, err := env.lookup(e.Name); err == nil {
-		return v, nil
-	} else if !isUndefined(err) {
-		return nil, err
+	if e.Sym != nil {
+		if v, ok := env.Value(e.Sym); ok {
+			return v, nil
+		}
 	}
-	// A name the environment does not hold, but the checker resolved: a
-	// constant from a library package, which is not in this program's own
-	// const table. The Ident carries the declaration, so evaluate its value
-	// rather than requiring every library const to be copied in by name.
-	if v, ok := e.Sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
-		return env.Eval(v.Init)
+	if name := ambientName(e); name != "" {
+		if v, ok := env.ambient[name]; ok {
+			return v, nil
+		}
+	}
+	if e.Sym != nil {
+		return env.lookup(e.Sym)
 	}
 	return nil, fmt.Errorf("undefined variable %q", e.Name)
 }
 
-// isUndefined reports whether err is lookup's not-found error, as opposed to a
-// failure raised while auto-invoking a zero-arg function.
-func isUndefined(err error) bool {
-	return err != nil && strings.HasPrefix(err.Error(), "undefined variable ")
+// ambientName returns the compiler-injected name e reads, or "" when e reads
+// an ordinary declaration. The implicit receiver is recognized by its param
+// flag — every method declares its own `this`, but the caller supplies the
+// value, so a method invoked without one reads it from the surrounding scope.
+func ambientName(e *ir.Ident) string {
+	if p, ok := e.Sym.(*ir.Param); ok && p.Receiver {
+		return ir.ReceiverParam
+	}
+	if e.Sym == nil && (e.Name == ir.ReceiverParam || e.Name == "event") {
+		return e.Name
+	}
+	return ""
 }
 
-// findVarOwner returns the env in this parent chain that holds name in Vars,
-// or nil if no env has it. Used by assignment/toggle so a write to a
-// package-level var defined in a parent env mutates the shared map.
-func (env *Env) findVarOwner(name string) *Env {
+// resolveCallableFunc resolves name to a function without invoking it, walking
+// the parent chain. Needed alongside the symbol on the callee: where a bare
+// name is both a #id node handle and a component function (`button #bump(…)`
+// next to `func bump()`), the checker resolves it to the handle's Var, so the
+// call has to find the function by name.
+func (env *Env) resolveCallableFunc(name string) *ir.Func {
 	for e := env; e != nil; e = e.parent {
-		if _, ok := e.Vars[name]; ok {
+		if fn, ok := e.Methods[name]; ok && fn.Receiver == "" {
+			return fn
+		}
+		if e.Comp != nil {
+			if fn, ok := e.Methods[e.Comp.Name+"."+name]; ok {
+				return fn
+			}
+		}
+	}
+	return nil
+}
+
+// findVarOwner returns the env in this parent chain that binds sym, or nil if
+// none does. Used by assignment/toggle so a write to a package-level var
+// declared in a parent env mutates the binding there.
+func (env *Env) findVarOwner(sym ir.Symbol) *Env {
+	for e := env; e != nil; e = e.parent {
+		if _, ok := e.vals[sym]; ok {
 			return e
 		}
 	}
 	return nil
 }
 
-// varInScope reports whether name binds a variable or constant in this env or
-// an enclosing one. Unlike lookup it never auto-invokes a zero-arg function, so
-// callers can distinguish a func-typed var from a named function.
-func (env *Env) varInScope(name string) bool {
-	if _, ok := env.Vars[name]; ok {
-		return true
-	}
-	if _, ok := env.Consts[name]; ok {
-		return true
-	}
-	if env.parent != nil {
-		return env.parent.varInScope(name)
-	}
-	return false
+// varInScope reports whether sym is bound in this env or an enclosing one.
+// Unlike lookup it never auto-invokes a zero-arg function, so callers can
+// distinguish a func-typed variable from a named function.
+func (env *Env) varInScope(sym ir.Symbol) bool {
+	return sym != nil && env.findVarOwner(sym) != nil
 }
 
-// resolveCallableFunc resolves name to a user function for an explicit call,
-// without invoking it. Mirrors lookup's function-resolution order (free/
-// receiver-less funcs, then the current component's methods) up the parent
-// chain, but returns the func so the caller can bind the call's arguments.
-func (env *Env) resolveCallableFunc(name string) *ir.Func {
-	if fn, ok := env.Funcs[name]; ok && fn.Receiver == "" {
-		return fn
+// lookup returns the value bound to sym. A zero-arg *ir.Func auto-invokes:
+// a computed field is read by naming it, and the symbol says it is a function
+// without a separate table having to.
+func (env *Env) lookup(sym ir.Symbol) (any, error) {
+	if owner := env.findVarOwner(sym); owner != nil {
+		return owner.vals[sym], nil
 	}
-	if env.Comp != nil {
-		if fn, ok := env.Funcs[env.Comp.Name+"."+name]; ok {
-			return fn
+	if fn, ok := sym.(*ir.Func); ok {
+		if effective := len(fn.Params); effective == 0 ||
+			(effective == 1 && fn.Params[0].Receiver) {
+			return env.EvalUserFunc(fn, nil)
 		}
+		return nil, fmt.Errorf("function %q requires arguments", fn.Name)
 	}
-	if env.parent != nil {
-		return env.parent.resolveCallableFunc(name)
+	// A declaration the environment never bound but that carries its own
+	// value: a constant from a library package, which is in no list this
+	// program walks. The symbol has the initializer, so evaluate it.
+	if v, ok := sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
+		return env.Eval(v.Init)
 	}
-	return nil
-}
-
-func (env *Env) lookup(name string) (any, error) {
-	if v, ok := env.Vars[name]; ok {
-		return v, nil
-	}
-	if v, ok := env.Consts[name]; ok {
-		return v, nil
-	}
-	// Zero-arg functions auto-invoke (computed fields)
-	if fn, ok := env.Funcs[name]; ok && len(fn.Params) == 0 && fn.Receiver == "" {
-		return env.EvalUserFunc(fn, nil)
-	}
-	// Receiver-qualified zero-arg method on the current component auto-invokes.
-	// `func name.f() => expr` inside the component's body is callable as `f`.
-	if env.Comp != nil {
-		if fn, ok := env.Funcs[env.Comp.Name+"."+name]; ok {
-			effective := len(fn.Params)
-			if effective > 0 && fn.Params[0].Receiver {
-				effective--
-			}
-			if effective == 0 {
-				return env.EvalUserFunc(fn, nil)
-			}
-		}
-	}
-	if env.parent != nil {
-		return env.parent.lookup(name)
-	}
-	return nil, fmt.Errorf("undefined variable %q", name)
+	return nil, fmt.Errorf("undefined variable %q", sym.SymName())
 }
 
 func (env *Env) evalSelect(e *ir.Select) (any, error) {
@@ -1192,7 +1245,10 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 		// honouring the call's args. This must precede Eval(callee): lookup()
 		// auto-invokes a zero-arg function when its name is *read*, which would
 		// fire the body as a side effect here and then discard the result.
-		if id, ok := call.Callee.(*ir.Ident); ok && !env.varInScope(id.Name) {
+		if id, ok := call.Callee.(*ir.Ident); ok && !env.varInScope(id.Sym) {
+			if fn, ok := id.Sym.(*ir.Func); ok {
+				return env.EvalUserFuncCallArgs(fn, call.Args)
+			}
 			if fn := env.resolveCallableFunc(id.Name); fn != nil {
 				return env.EvalUserFuncCallArgs(fn, call.Args)
 			}
@@ -1343,7 +1399,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// are registered here too, but their behaviour lives in the native
 	// dispatch below — running the empty body would return null. Only invoke
 	// a method that actually has a body.
-	if fn, ok := env.Funcs[qualName]; ok && len(fn.Block) > 0 {
+	if fn, ok := env.Methods[qualName]; ok && len(fn.Block) > 0 {
 		return env.EvalUserFuncCallArgs(fn, call.Args)
 	}
 
@@ -1360,7 +1416,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	// (component-scoped) the symbol table doesn't see. Dispatch by qualified
 	// name using env.Funcs.
 	if ident, ok := call.Receiver.(*ir.Ident); ok {
-		if _, lookupErr := env.lookup(ident.Name); lookupErr != nil {
+		if _, valErr := env.evalIdent(ident); valErr != nil {
 			method := methodNameFromCall(call)
 
 			// i18n namespace: dispatch via locale-aware translator before
@@ -1387,7 +1443,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					return result, err
 				}
 			}
-			if fn, ok := env.Funcs[qualName]; ok {
+			if fn, ok := env.Methods[qualName]; ok {
 				return env.EvalUserFuncCallArgs(fn, call.Args)
 			}
 		}
@@ -1416,10 +1472,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 						handlerEnv = oe
 					}
 					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
-						if handlerEnv.Vars == nil {
-							handlerEnv.Vars = map[string]any{}
-						}
-						handlerEnv.Vars[ir.ReceiverParam] = owner
+						handlerEnv.SetReceiver(owner)
 					}
 					return handlerEnv.runEventHandler(h, call.Args, event)
 				}
@@ -1459,7 +1512,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn, ok := env.Funcs[qualName]; ok {
+			if fn, ok := env.Methods[qualName]; ok {
 				// Prepend receiver expr so EvalUserFunc sees normalized form.
 				synth := make([]ir.Expr, 0, len(call.Args)+1)
 				synth = append(synth, call.Receiver)
@@ -1477,7 +1530,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				for _, ed := range env.Pkg.Enums {
 					for _, m := range ed.Members {
 						if m.Name == s {
-							if fn, ok := env.Funcs[ed.Name+"."+method]; ok {
+							if fn, ok := env.Methods[ed.Name+"."+method]; ok {
 								synth := make([]ir.Expr, 0, len(call.Args)+1)
 								synth = append(synth, call.Receiver)
 								for _, a := range call.Args {
@@ -1518,7 +1571,7 @@ func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string
 			if err != nil {
 				return nil, err
 			}
-			env.Vars[p.Name] = v
+			env.Set(p, v)
 		}
 	}
 	for _, s := range fn.Block {
@@ -1692,7 +1745,11 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 	switch t := target.(type) {
 	case *ir.Ident:
-		env.Vars[t.Name] = newList
+		if owner := env.findVarOwner(t.Sym); owner != nil {
+			owner.vals[t.Sym] = newList
+		} else {
+			env.Set(t.Sym, newList)
+		}
 	case *ir.Select:
 		obj, err := env.Eval(t.Operand)
 		if err != nil {
@@ -1775,7 +1832,7 @@ func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
-			child.Vars[p.Name] = args[i]
+			child.Set(p, args[i])
 		}
 	}
 	return child.execBlockForResult(fn.Block)
@@ -1887,25 +1944,25 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 		if len(fn.Params) > 0 && fn.Params[0].Receiver && len(args) == len(fn.Params)-1 {
 			argOffset = 1
 		}
-		savedVars := make(map[string]any)
-		paramNames := make([]string, len(fn.Params))
+		// A recursive call reuses the same Param symbols in the same env, so
+		// the previous frame's bindings still need saving and restoring.
+		savedVars := make(map[ir.Symbol]any, len(fn.Params))
 		for i, p := range fn.Params {
-			paramNames[i] = p.Name
-			if v, ok := execEnv.Vars[p.Name]; ok {
-				savedVars[p.Name] = v
+			if v, ok := execEnv.vals[p]; ok {
+				savedVars[p] = v
 			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
-				execEnv.Vars[p.Name] = args[argIdx]
+				execEnv.Set(p, args[argIdx])
 			}
 		}
 		restoreVoid := func() {
 			if !isPure {
-				for _, name := range paramNames {
-					if orig, ok := savedVars[name]; ok {
-						execEnv.Vars[name] = orig
+				for _, p := range fn.Params {
+					if orig, ok := savedVars[p]; ok {
+						execEnv.vals[p] = orig
 					} else {
-						delete(execEnv.Vars, name)
+						delete(execEnv.vals, p)
 					}
 				}
 			}
@@ -1913,7 +1970,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 		// Walk block looking for trailing Return. Execute preceding stmts.
 		var tailExpr ir.Expr
-		var localVars []string
+		var localVars []ir.Symbol
 		for i, stmt := range fn.Block {
 			if ret, ok := stmt.(*ir.Return); ok {
 				if i == len(fn.Block)-1 {
@@ -1930,8 +1987,8 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.Vars[lv.Name] = v
-					localVars = append(localVars, lv.Name)
+					execEnv.Set(lv.Sym, v)
+					localVars = append(localVars, lv.Sym)
 				}
 				continue
 			}
@@ -1943,16 +2000,16 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 		if tailExpr == nil {
 			restoreVoid()
-			for _, name := range localVars {
-				delete(execEnv.Vars, name)
+			for _, sym := range localVars {
+				delete(execEnv.vals, sym)
 			}
 			return nil, nil
 		}
 
 		if isPure {
 			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
-			for _, name := range localVars {
-				delete(execEnv.Vars, name)
+			for _, sym := range localVars {
+				delete(execEnv.vals, sym)
 			}
 			if err != nil {
 				return nil, err
@@ -1966,8 +2023,8 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 		result, err := execEnv.Eval(tailExpr)
 		restoreVoid()
-		for _, name := range localVars {
-			delete(execEnv.Vars, name)
+		for _, sym := range localVars {
+			delete(execEnv.vals, sym)
 		}
 		return result, err
 	}

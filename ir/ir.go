@@ -285,6 +285,11 @@ type Prop struct {
 	Type          *Type
 	Default       Expr // nil if no default
 	Bidirectional bool
+	// Sym is the Param that Idents referring to this prop inside the
+	// component body resolve to. A prop is declared into the body's scope as
+	// a parameter; the checker visits a component's bodies more than once, so
+	// the symbol is minted once here rather than per pass.
+	Sym *Param `json:"-"`
 	// NativeSetter is the platform-provided setter for this prop
 	// (e.g. "gtk_label_set_text" for GtkLabel.label). Empty for props
 	// without a platform binding. Opaque to the checker.

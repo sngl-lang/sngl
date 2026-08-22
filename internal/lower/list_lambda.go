@@ -361,6 +361,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 		Name: tempName,
 		Type: outListT,
 		Init: &ir.ListLit{Type: outListT},
+		Sym:  tempSym,
 	}
 
 	// Ident{__item<N>} typed as elemT for use in lambda call + push.
@@ -411,6 +412,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 
 	loop := &ir.For{
 		Key:      itemName,
+		KeySym:   itemSym,
 		Iter:     xs,
 		ElemType: elemT,
 		Body:     loopBody,
