@@ -125,20 +125,23 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
 checker dispatches a visual node to the matching IR construct off the mark. The
-macro lives in `internal/macros/builtin`; kinds are `ast.BuiltinKind`.
+macro lives in `internal/macros/marks`; kinds are `ast.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
 `#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
-`#[builtin("...")]` needs `import . "sngl://internal/builtin"` — which is why
-the two `lib/` files carrying builtin marks declare it. The alias is an
+`#[builtin("...")]` and `#[intrinsic("...")]` need
+`import . "sngl://internal/marks"` — which is why every `lib/` file carrying a
+mark declares it. The alias is an
 ordinary file-scope binding, so the mark follows it: `import d "sngl://draw"`
 means `#[d.shape]`.
 
 A lib package may carry macros alongside its declarations — `sngl://draw`
 ships the `shape` mark next to the shape components it applies to — so the
 `sngl` scheme is checked against both the `lib/` layout and the macro
-registry. `sngl://internal/<name>` is the macro-only form: it contributes
-macros and no runtime symbols, and is validated against the registry alone.
+registry. `sngl://internal/<name>` is the compiler's own tier: a package there
+may contribute macros, declarations, or both. `internal/marks` is macro-only
+and has no directory; `internal/lower` and `internal/canvas` are declarations
+of the primitives the lowering passes emit, which no program calls by hand.
 
 **One name, one meaning at file scope.** Two declarations of a name, two
 imports claiming it as an alias, two dot imports lifting it, or a declaration

@@ -1,4 +1,4 @@
-package builtin
+package marks
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestIntrinsicMarksFunc(t *testing.T) {
-	decl, diags := expandOne(t, `import . "sngl://internal/builtin"
+	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("StrUpper")]
 func string.upper(s string) => s
@@ -30,7 +30,7 @@ func string.upper(s string) => s
 }
 
 func TestIntrinsicUsableFlag(t *testing.T) {
-	decl, diags := expandOne(t, `import . "sngl://internal/builtin"
+	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("IntMin", usable)]
 func int.min(a int, b int) => a < b ? a : b
@@ -45,7 +45,7 @@ func int.min(a int, b int) => a < b ? a : b
 }
 
 func TestIntrinsicRejectsUnknownFlag(t *testing.T) {
-	_, diags := expandOne(t, `import . "sngl://internal/builtin"
+	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("IntMin", inlinable)]
 func int.min(a int, b int) => a
@@ -56,7 +56,7 @@ func int.min(a int, b int) => a
 }
 
 func TestIntrinsicTakesSeveralFlags(t *testing.T) {
-	decl, diags := expandOne(t, `import . "sngl://internal/builtin"
+	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("ListPush", usable, mutates, mutatesReceiver)]
 func list<T>.push(item T) => this
@@ -71,7 +71,7 @@ func list<T>.push(item T) => this
 }
 
 func TestIntrinsicRejectsContradictoryFlags(t *testing.T) {
-	_, diags := expandOne(t, `import . "sngl://internal/builtin"
+	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("Pick", mutates, readonly)]
 func File.pick() => ""
@@ -82,7 +82,7 @@ func File.pick() => ""
 }
 
 func TestIntrinsicRejectsRepeatedFlag(t *testing.T) {
-	_, diags := expandOne(t, `import . "sngl://internal/builtin"
+	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("Pick", readonly, readonly)]
 func File.pick() => ""
@@ -93,7 +93,7 @@ func File.pick() => ""
 }
 
 func TestIntrinsicCannotMarkAStruct(t *testing.T) {
-	_, diags := expandOne(t, `import . "sngl://internal/builtin"
+	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
 #[intrinsic("StrUpper")]
 struct S { x int = 0 }

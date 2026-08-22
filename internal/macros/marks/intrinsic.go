@@ -1,4 +1,4 @@
-package builtin
+package marks
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ var intrinsicFlags = []string{flagUsable, flagMutates, flagReadonly, flagMutates
 func init() {
 	// #[intrinsic("...")] lives in the same macro package as #[builtin], so a
 	// library file that marks compiler magic needs one import for all of it.
-	expand.RegisterPre("internal/builtin", "intrinsic", []expand.Param{
+	expand.RegisterPre("internal/marks", "intrinsic", []expand.Param{
 		{Name: "id", Kind: expand.ArgString},
 		{Name: "flags", Kind: expand.ArgIdent, Variadic: true, Enum: intrinsicFlags},
 	}, intrinsicHandler)

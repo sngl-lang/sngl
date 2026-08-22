@@ -9,7 +9,7 @@
 // `locale` read and adds the hidden `__ctx_locale` param + call-site
 // arg threading.
 
-import . "sngl://internal/builtin"
+import . "sngl://internal/marks"
 import "sngl://internal/intl"
 
 // --- Locale context ---

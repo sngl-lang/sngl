@@ -15,7 +15,7 @@ import (
 
 	// Registers the #[builtin] macro. The stdlib source is macro-expanded
 	// below, so the handlers must be present whenever the checker runs.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/builtin"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/marks"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.

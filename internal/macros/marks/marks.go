@@ -1,11 +1,18 @@
-// Package builtin registers the #[builtin] macro that marks ordinary SNGL
-// declarations as compiler built-ins. Unlike user-facing macros (e.g.
-// #[canvas.shape]), it annotates declarations in the built-ins/stdlib source
-// itself; the checker runs the pre-expand pass over that source so the marks
-// are in place before type-checking.
+// Package marks registers the marks that say what the compiler knows about a
+// declaration: #[builtin], which names the IR construct a declaration
+// dispatches to, and #[intrinsic], which names the native implementation that
+// may replace a function's body.
+//
+// Unlike user-facing macros (e.g. #[draw.shape]) these annotate declarations in
+// the library source itself; the checker runs the pre-expand pass over that
+// source so the marks are in place before type-checking.
+//
+// It is sngl://internal/marks rather than .../builtin because sngl://builtin is
+// a different thing — the ambient package of built-in types — and the two were
+// one letter apart at the import line.
 //
 // See docs/superpowers/specs/2026-08-18-builtins-stdlib-split-design.md.
-package builtin
+package marks
 
 import (
 	"fmt"
@@ -18,7 +25,7 @@ import (
 func init() {
 	// #[builtin("...")] is written bare, with no package segment, so it
 	// resolves only in a file that dot-imports this package.
-	expand.RegisterPre("internal/builtin", "builtin",
+	expand.RegisterPre("internal/marks", "builtin",
 		[]expand.Param{{Name: "kind", Kind: expand.ArgString}}, builtinHandler)
 }
 

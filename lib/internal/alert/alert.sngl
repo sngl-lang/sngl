@@ -4,7 +4,7 @@
 // by the target's native implementation of the marked id, so a backend that
 // does not implement one has nothing to fall back to.
 
-import . "sngl://internal/builtin"
+import . "sngl://internal/marks"
 
 #[intrinsic("Toast", mutates)]
 func Toast(message string, variant string) int {}
