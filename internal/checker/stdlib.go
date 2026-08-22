@@ -248,8 +248,8 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	if !ambient {
 		i18nNS = &ir.Namespace{Name: "i18n"}
 		htmlNS = &ir.Namespace{Name: "html"}
-		c.scope.Replace(i18nNS)
-		c.scope.Replace(htmlNS)
+		c.bindLib(ast.Pos{}, c.scope, i18nNS)
+		c.bindLib(ast.Pos{}, c.scope, htmlNS)
 	}
 
 	var pendingBodies []stdlibFuncBody
@@ -345,7 +345,7 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef, stdlibFuncs 
 	}
 
 	// Expose all i18n.* receiver methods as free functions in the namespace.
-	addReceiverFuncs(pkg, stdlibFuncs, "i18n")
+	c.addReceiverFuncs(pkg, stdlibFuncs, "i18n")
 
 	// Locate the PluralKey struct so we can type the predeclared vars.
 	var pluralKeyType *ir.Type
@@ -366,7 +366,7 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef, stdlibFuncs 
 	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
 		v := &ir.Var{Name: name, Type: pluralKeyType, IsConst: true}
 		pkg.Vars = append(pkg.Vars, v)
-		pkg.Symbols.Root.Replace(v)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, v)
 	}
 
 	return pkg
@@ -382,7 +382,7 @@ func (c *checker) buildHtmlNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}
-	addReceiverFuncs(pkg, stdlibFuncs, "html")
+	c.addReceiverFuncs(pkg, stdlibFuncs, "html")
 	return pkg
 }
 
@@ -390,13 +390,13 @@ func (c *checker) buildHtmlNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 // declaration of pkg. A namespace's members are its package's declarations, so
 // this is what makes `i18n.tr` resolve — the funcs themselves say which
 // receiver they belong to, so no index of them is needed.
-func addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv string) {
+func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv string) {
 	for _, fn := range funcs {
 		if fn.Receiver != recv {
 			continue
 		}
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, fn)
 	}
 }
 
@@ -411,10 +411,10 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	// package's own root, which for an ambient package are the same scope.
 	// Rebinding is the norm here, not a mistake; duplicates inside lib/ are
 	// caught by the one-name rule in the register* paths.
-	c.scope.Replace(sd)
+	c.bindLib(s.Pos, c.scope, sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)
-	pkg.Symbols.Root.Replace(sd)
+	c.bindLib(s.Pos, pkg.Symbols.Root, sd)
 	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
 	switch sd.Builtin {
@@ -438,20 +438,20 @@ func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) 
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
-	c.scope.Replace(ed)
+	c.bindLib(e.Pos, c.scope, ed)
 	pkg.Enums = append(pkg.Enums, ed)
-	pkg.Symbols.Root.Replace(ed)
+	c.bindLib(e.Pos, pkg.Symbols.Root, ed)
 }
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
-	c.scope.Replace(ud)
+	c.bindLib(u.Pos, c.scope, ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
 	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
-	pkg.Symbols.Root.Replace(ud)
+	c.bindLib(u.Pos, pkg.Symbols.Root, ud)
 }
 
 // registerStdlibConst registers a library const. The #[builtin] mark travels
@@ -478,8 +478,8 @@ func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
 				Builtin: decl.Builtin,
 			}
 			pkg.Consts = append(pkg.Consts, v)
-			c.scope.Replace(v)
-			pkg.Symbols.Root.Replace(v)
+			c.bindLib(decl.Pos, c.scope, v)
+			c.bindLib(decl.Pos, pkg.Symbols.Root, v)
 		}
 	}
 }
@@ -527,9 +527,9 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 		}
 	} else {
 		// Free function — available both qualified and unqualified.
-		c.scope.Replace(fn)
+		c.bindLib(f.Pos, c.scope, fn)
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
+		c.bindLib(f.Pos, pkg.Symbols.Root, fn)
 	}
 	return fn
 }
@@ -554,7 +554,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 	for _, p := range fn.Params {
-		c.scope.Replace(p)
+		c.declare(f.Pos, p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -578,7 +578,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// abstract key type parameter.
 	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
 		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.scope.Replace(&ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+			c.declare(f.Pos, &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
 		}
 	}
 
@@ -748,7 +748,7 @@ func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
 			fn.Purity = ir.PurityPure
 		}
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, fn)
 	}
 	return pkg
 }
@@ -946,16 +946,16 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 		}
 	}
 	for _, u := range units {
-		c.scope.Replace(c.buildUnitDef(u))
+		c.bindLib(u.Pos, c.scope, c.buildUnitDef(u))
 	}
 	for _, e := range enums {
-		c.scope.Replace(c.buildEnumDef(e))
+		c.bindLib(e.Pos, c.scope, c.buildEnumDef(e))
 	}
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
 		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
-		c.scope.Replace(sd)
+		c.bindLib(s.Pos, c.scope, sd)
 		stubs[i] = sd
 	}
 	for i, s := range structs {
@@ -1147,14 +1147,14 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 	if len(args) != 1 {
 		c.error(s.Pos, "stdlib context decl requires exactly one default value")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Replace(ctx)
+		c.bindLib(s.Pos, c.scope, ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
 		c.error(s.Pos, "stdlib context default must be positional, not named")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Replace(ctx)
+		c.bindLib(s.Pos, c.scope, ctx)
 		return
 	}
 	// A context default is an initializer expression (see registerContextDecl),
@@ -1165,7 +1165,7 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 		ctx.Typ = def.ExprType()
 	}
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-	c.scope.Replace(ctx)
+	c.bindLib(s.Pos, c.scope, ctx)
 }
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
@@ -1205,10 +1205,10 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	c.scope.Replace(irComp)
+	c.bindLib(comp.Pos, c.scope, irComp)
 	// Stdlib package for qualified sngl.Component access.
 	pkg.Components = append(pkg.Components, irComp)
-	pkg.Symbols.Root.Replace(irComp)
+	c.bindLib(comp.Pos, pkg.Symbols.Root, irComp)
 }
 
 // stdlibImportAlias returns the alias a document binds the standard library

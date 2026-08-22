@@ -2839,7 +2839,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	scope.Replace(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -3034,9 +3034,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	switch c.builtinNodeKind(name) {
 	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
-		if w.Name != "" {
-			c.scope.Replace(w)
-		}
+		c.bindWindow(vn.Pos, w)
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
@@ -3721,7 +3719,7 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 						Type:    ir.ListOf(c.windowType),
 						IsConst: true,
 					}
-					c.scope.Replace(v)
+					c.declare(n.Pos, v)
 					*vars = append(*vars, v)
 				}
 			}

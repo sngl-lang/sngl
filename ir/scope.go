@@ -55,7 +55,9 @@ func (e *RedeclaredError) Error() string { return "redeclared: " + e.Name }
 // on the order the checker happened to visit them in.
 func (s *Scope) Declare(sym Symbol) error {
 	name := sym.SymName()
-	if prev, ok := s.Symbols[name]; ok {
+	// Re-registering the same declaration is not a redeclaration. A checker
+	// pass may reach one declaration by more than one route.
+	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
 	s.Symbols[name] = sym

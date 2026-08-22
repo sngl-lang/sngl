@@ -79,3 +79,59 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	}
 	return prev
 }
+
+// bindLib binds a declaration the standard library makes. A collision here is
+// a duplicate inside lib/, which is a compiler bug rather than anything a
+// program did, so it is reported against the library's own position.
+func (c *checker) bindLib(pos ast.Pos, scope *ir.Scope, sym ir.Symbol) {
+	if err := scope.Declare(sym); err != nil {
+		c.error(pos, "stdlib declares %s twice", sym.SymName())
+	}
+}
+
+// bindDeclared binds a top-level declaration once claimTopLevel has ruled on
+// the name. That rule permits exactly one rebinding — a declaration shadowing
+// a name a dot import lifted into this same scope — so the write is a
+// deliberate replace, and a rejected claim binds nothing rather than
+// clobbering the name it just reported a conflict on.
+func (c *checker) bindDeclared(claimed bool, sym ir.Symbol) {
+	if !claimed {
+		return
+	}
+	c.scope.Replace(sym)
+}
+
+// mergeInto binds a declaration into a package's surface as the package's
+// files are merged. Two files of one package declaring the same name is a
+// duplicate; it used to be a silent overwrite, so which file's declaration
+// the package exposed depended on the order they were read in.
+func (c *checker) mergeInto(pos ast.Pos, dst *ir.Scope, sym ir.Symbol) {
+	if err := dst.Declare(sym); err != nil {
+		c.error(pos, "%s is declared in more than one file of this package", sym.SymName())
+	}
+}
+
+// declPos is the source position of any declaration that carries one.
+func declPos(sym ir.Symbol) ast.Pos {
+	switch d := sym.(type) {
+	case *ir.Var:
+		return varPos(d)
+	case *ir.Func:
+		return funcDeclPos(d)
+	case *ir.Component:
+		return compDeclPos(d)
+	case *ir.StructDef:
+		if d.AST != nil {
+			return d.AST.Pos
+		}
+	case *ir.EnumDef:
+		if d.AST != nil {
+			return d.AST.Pos
+		}
+	case *ir.UnitDef:
+		if d.AST != nil {
+			return d.AST.Pos
+		}
+	}
+	return ast.Pos{}
+}

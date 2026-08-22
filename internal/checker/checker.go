@@ -255,7 +255,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 				return
 			}
 		}
-		stdlibScope.Replace(&ir.Namespace{Name: name, Resolve: resolve})
+		c.bindLib(ast.Pos{}, stdlibScope, &ir.Namespace{Name: name, Resolve: resolve})
 	}
 	for _, p := range cfg.Platforms {
 		declareNS(p.PlatformIdentifier(), p.Resolve)
@@ -314,8 +314,7 @@ func compDeclPos(comp *ir.Component) ast.Pos {
 // already bound in the same scope is a duplicate.
 func (c *checker) bindVar(pos ast.Pos, v *ir.Var) {
 	if c.scope == c.symtab.Root {
-		c.claimTopLevel(v.Name, pos, bindDecl, "")
-		c.scope.Replace(v)
+		c.bindDeclared(c.claimTopLevel(v.Name, pos, bindDecl, ""), v)
 		return
 	}
 	c.declare(pos, v)
@@ -734,7 +733,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 					Replaces:  c.replaces,
 				})
 				c.diags = append(c.diags, diags...)
-				mergePkgInto(merged, pkg)
+				c.mergePkgInto(merged, pkg)
 			}
 			irImport.Pkg = merged
 		} else {
@@ -755,16 +754,16 @@ func (c *checker) registerImport(imp *ast.Import) {
 					AddressedVars:  map[*ir.Var]bool{},
 				}
 				for _, s := range native.Structs {
-					nsPkg.Symbols.Root.Replace(s)
+					c.bindLib(imp.Pos, nsPkg.Symbols.Root, s)
 				}
 				for _, e := range native.Enums {
-					nsPkg.Symbols.Root.Replace(e)
+					c.bindLib(imp.Pos, nsPkg.Symbols.Root, e)
 				}
 				for _, f := range native.Funcs {
-					nsPkg.Symbols.Root.Replace(f)
+					c.bindLib(imp.Pos, nsPkg.Symbols.Root, f)
 				}
 				for _, v := range native.Vars {
-					nsPkg.Symbols.Root.Replace(v)
+					c.bindLib(imp.Pos, nsPkg.Symbols.Root, v)
 				}
 				irImport.Pkg = nsPkg
 			}
@@ -791,7 +790,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 						Replaces:  c.replaces,
 					})
 					c.diags = append(c.diags, diags...)
-					mergePkgInto(merged, pkg)
+					c.mergePkgInto(merged, pkg)
 				}
 				irImport.Pkg = merged
 			}
@@ -833,8 +832,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 	c.markForeign(irImport.Pkg)
-	c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
-	c.scope.Replace(ns)
+	c.bindDeclared(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
 }
 
 // buildPkgFromDocs type-checks a set of .sngl documents (typically from a
@@ -849,13 +847,13 @@ func (c *checker) buildPkgFromDocs(docs []*ast.Document) *ir.Package {
 			Languages: c.cfg.Languages,
 			Platforms: c.cfg.Platforms,
 		})
-		mergePkgInto(merged, pkg)
+		c.mergePkgInto(merged, pkg)
 	}
 	return merged
 }
 
 // mergePkgInto merges all declarations from src into dst, registering symbols.
-func mergePkgInto(dst, src *ir.Package) {
+func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	if src == nil {
 		return
 	}
@@ -868,40 +866,40 @@ func mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
-		dst.Symbols.Root.Replace(sd)
+		c.mergeInto(declPos(sd), dst.Symbols.Root, sd)
 	}
 	for _, ed := range src.Enums {
-		dst.Symbols.Root.Replace(ed)
+		c.mergeInto(declPos(ed), dst.Symbols.Root, ed)
 	}
 	for _, ud := range src.Units {
-		dst.Symbols.Root.Replace(ud)
+		c.mergeInto(declPos(ud), dst.Symbols.Root, ud)
 	}
 	for _, fn := range src.Funcs {
-		dst.Symbols.Root.Replace(fn)
+		c.mergeInto(declPos(fn), dst.Symbols.Root, fn)
 	}
 	for _, comp := range src.Components {
-		dst.Symbols.Root.Replace(comp)
+		c.mergeInto(declPos(comp), dst.Symbols.Root, comp)
 	}
 	for _, v := range src.Vars {
-		dst.Symbols.Root.Replace(v)
+		c.mergeInto(declPos(v), dst.Symbols.Root, v)
 	}
 	for _, v := range src.Consts {
-		dst.Symbols.Root.Replace(v)
+		c.mergeInto(declPos(v), dst.Symbols.Root, v)
 	}
 }
 
 func (c *checker) registerEnum(e *ast.EnumDef) {
-	c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
+	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
-	c.scope.Replace(ed)
+	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
 func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
-	c.scope.Replace(sd)
+	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
 
@@ -910,10 +908,10 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // recursive references. resolveStructBody fills in the fields (and nested
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
-	c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
+	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
-	c.scope.Replace(sd)
+	c.bindDeclared(claimed, sd)
 	return sd
 }
 
@@ -923,10 +921,10 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
-	c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
+	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
-	c.scope.Replace(ud)
+	c.bindDeclared(claimed, ud)
 	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
@@ -1385,9 +1383,10 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
 
 	// Only free functions bind a file-scope name; a method's name lives under
-	// its receiver and is checked against userMethods below.
+	// its receiver, checked when it is attached there.
+	claimed := true
 	if fn.Receiver == "" {
-		c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
+		claimed = c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
 	}
 
 	if fn.Receiver != "" {
@@ -1402,7 +1401,7 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	}
 
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
-	c.scope.Replace(fn)
+	c.bindDeclared(claimed, fn)
 }
 
 // stdlibHint returns a suffix naming the import that would bring name into
@@ -1591,9 +1590,8 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
-	c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
 	c.pkg.Components = append(c.pkg.Components, irComp)
-	c.scope.Replace(irComp)
+	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
 }
@@ -1604,9 +1602,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		w := c.buildWindow(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
-		if w.Name != "" {
-			c.scope.Replace(w)
-		}
+		c.bindWindow(vn.Pos, w)
 		return
 	}
 	if c.builtinNodeKind(name) == ast.BuiltinTimer {
@@ -2140,8 +2136,17 @@ func resolvePositionalArgs(args ast.ArgList, order []string) map[string]ast.Expr
 	return result
 }
 
+// buildWindow fills in the window a `window #id` node declares. When the id
+// was hoisted by declareNodeIDs the shell it bound is the window's symbol
+// already, so this sets its fields rather than binding a second symbol over
+// the first — references made before the body is checked and after it resolve
+// to the same declaration.
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{AST: vn, Name: vn.ID, Typ: c.windowType}
+	w := c.hoistedWindow(vn.ID)
+	if w == nil {
+		w = &ir.Window{Name: vn.ID, Typ: c.windowType}
+	}
+	w.AST = vn
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body.
 	for _, name := range hrefPathParams(vn) {
@@ -2476,7 +2481,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Replace(fn)
+			c.declare(funcDeclPos(fn), fn)
 		}
 	}
 
@@ -2547,7 +2552,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			c.scope.Replace(fn)
+			c.declare(funcDeclPos(fn), fn)
 		} else {
 			// Type-attached method registered on the symbol table so method
 			// lookup at call sites finds it. Nested funcs on this component
@@ -2659,41 +2664,53 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
+	c.declareNodeIDsIn(block, false)
+}
+
+// declareNodeIDsIn hoists the node ids in block. inLoop marks a body that a
+// `for` repeats: a window id there names the list of windows the loop
+// produces, which collectForLoopWindowIDs binds, not a single window.
+func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
 	for _, s := range block.Stmts {
-		c.declareNodeIDsStmt(s)
+		c.declareNodeIDsStmt(s, inLoop)
 	}
 }
 
-func (c *checker) declareNodeIDsStmt(s ast.Stmt) {
+func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		c.declareNodeID(n.ID)
+		isWindow := c.isWindowNode(visualNodeTarget(n))
+		if isWindow && inLoop {
+			// The loop hoists this id as a list of windows.
+			return
+		}
+		c.declareNodeID(n.ID, isWindow)
 		// Descend into the node's own children, but not into a nested
 		// window — a window has its own scope and hoists its ids itself.
-		if !c.isWindowNode(visualNodeTarget(n)) {
-			c.declareNodeIDs(&n.Block)
+		if !isWindow {
+			c.declareNodeIDsIn(&n.Block, inLoop)
 		}
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if _, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id)
+			c.declareNodeID(id, false)
 		}
 	case *ast.IfStmt:
-		c.declareNodeIDs(&n.Body)
-		c.declareNodeIDs(&n.Else)
+		c.declareNodeIDsIn(&n.Body, inLoop)
+		c.declareNodeIDsIn(&n.Else, inLoop)
 	case *ast.ForStmt:
-		c.declareNodeIDs(&n.Body)
-		c.declareNodeIDs(&n.Else)
+		c.declareNodeIDsIn(&n.Body, true)
+		c.declareNodeIDsIn(&n.Else, true)
 	case *ast.PlatformStmt:
-		c.declareNodeIDs(&n.Body)
+		c.declareNodeIDsIn(&n.Body, inLoop)
 	}
 }
 
-func (c *checker) declareNodeID(id string) {
+func (c *checker) declareNodeID(id string, isWindow bool) {
 	if id == "" {
 		return
 	}
@@ -2702,7 +2719,42 @@ func (c *checker) declareNodeID(id string) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
-	c.scope.Replace(&ir.Var{Name: id, Type: ir.TypDyn, IsConst: true})
+	// A window's id names the window itself, so bind the window here and let
+	// buildWindow fill it in. Any other node id names a handle to a rendered
+	// node, which has no declaration of its own.
+	var sym ir.Symbol = &ir.Var{Name: id, Type: ir.TypDyn, IsConst: true}
+	if isWindow {
+		sym = &ir.Window{Name: id, Typ: c.windowType}
+	}
+	c.declare(ast.Pos{}, sym)
+}
+
+// hoistedWindow returns the window shell declareNodeIDs bound for id, or nil
+// when the id was not hoisted into the current scope.
+func (c *checker) hoistedWindow(id string) *ir.Window {
+	if id == "" {
+		return nil
+	}
+	sym, ok := c.scope.Lookup(id)
+	if !ok {
+		return nil
+	}
+	w, isWindow := sym.(*ir.Window)
+	if !isWindow || w.Checked {
+		return nil
+	}
+	return w
+}
+
+// bindWindow binds w under its own name when the hoist did not already.
+func (c *checker) bindWindow(pos ast.Pos, w *ir.Window) {
+	if w.Name == "" {
+		return
+	}
+	if prev, ok := c.scope.LookupLocal(w.Name); ok && prev == ir.Symbol(w) {
+		return
+	}
+	c.declare(pos, w)
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a
@@ -2884,12 +2936,12 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 			// it. Both bindings mean the same package, so this is a restated
 			// name rather than an ambiguous one. Only the stdlib lifts
 			// namespaces, so no second dot import can disagree about one.
-			c.scope.Replace(sym)
+			c.bindLib(imp.Pos, c.scope, sym)
 			continue
 		}
 		if !claim(sym.SymName()) {
 			continue
 		}
-		c.scope.Replace(sym)
+		c.bindLib(imp.Pos, c.scope, sym)
 	}
 }
