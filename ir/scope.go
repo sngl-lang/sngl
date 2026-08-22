@@ -124,18 +124,14 @@ func NewBaseScope() *Scope {
 
 // SymbolTable is the package-level symbol registry.
 type SymbolTable struct {
-	Root    *Scope
-	Methods map[string]map[string]*Func // typeName → methodName → Func
+	Root *Scope
 }
 
 func (SymbolTable) String() string { return "omitted" }
 
 // NewSymbolTable creates an empty symbol table.
 func NewSymbolTable() *SymbolTable {
-	return &SymbolTable{
-		Root:    NewScope(NewBaseScope()),
-		Methods: make(map[string]map[string]*Func),
-	}
+	return &SymbolTable{Root: NewScope(NewBaseScope())}
 }
 
 // EachSymbol ranges over every symbol reachable from the root scope, innermost
@@ -188,20 +184,92 @@ func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
 	return nil, false
 }
 
-// LookupMethod finds a type-attached method.
-func (st *SymbolTable) LookupMethod(typeName, method string) (*Func, bool) {
-	if methods, ok := st.Methods[typeName]; ok {
-		if f, ok := methods[method]; ok {
-			return f, true
+// methodTable returns the member table of the declaration sym, or nil when sym
+// is not a declaration methods can attach to. The pointer lets a caller create
+// the map on first write.
+func methodTable(sym Symbol) *map[string]*Func {
+	switch d := sym.(type) {
+	case *StructDef:
+		return &d.Methods
+	case *EnumDef:
+		return &d.Methods
+	case *UnitDef:
+		return &d.Methods
+	case *Component:
+		return &d.Methods
+	}
+	return nil
+}
+
+// LookupMethod finds a method on the declaration named recv, resolving recv
+// from the package root. A caller holding a narrower scope should use
+// LookupMethodIn with it, so a lookup answers with the same declaration
+// AttachMethod wrote to.
+func (st *SymbolTable) LookupMethod(recv, method string) (*Func, bool) {
+	return LookupMethodIn(st.Root, recv, method)
+}
+
+// LookupMethodIn finds the method named method on the declaration that recv
+// resolves to in scope. A namespace's members are the declarations of the
+// package it names, so a namespace receiver resolves through that package
+// rather than a table here.
+func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
+	sym, ok := scope.Lookup(recv)
+	if !ok {
+		return nil, false
+	}
+	if ns, isNS := sym.(*Namespace); isNS {
+		if ns.Pkg == nil || ns.Pkg.Symbols == nil {
+			return nil, false
 		}
+		member, found := ns.Pkg.Symbols.Root.LookupLocal(method)
+		if !found {
+			return nil, false
+		}
+		fn, isFunc := member.(*Func)
+		return fn, isFunc
+	}
+	if tbl := methodTable(sym); tbl != nil {
+		f, found := (*tbl)[method]
+		return f, found
 	}
 	return nil, false
 }
 
-// RegisterMethod registers a type-attached method.
-func (st *SymbolTable) RegisterMethod(typeName string, f *Func) {
-	if st.Methods[typeName] == nil {
-		st.Methods[typeName] = make(map[string]*Func)
+// AttachMethod attaches f to the declaration named recv as resolved from
+// scope, reporting whether there was one to attach it to. It takes the scope
+// rather than a SymbolTable because a declaration is registered before it is
+// reachable from the package root — the stdlib loads into a scope that only
+// later becomes the root's parent.
+func AttachMethod(scope *Scope, recv string, f *Func) bool {
+	sym, ok := scope.Lookup(recv)
+	if !ok {
+		return false
 	}
-	st.Methods[typeName][f.Name] = f
+	tbl := methodTable(sym)
+	if tbl == nil {
+		return false
+	}
+	if *tbl == nil {
+		*tbl = make(map[string]*Func)
+	}
+	(*tbl)[f.Name] = f
+	return true
+}
+
+// MethodOn returns the method named method already attached to the declaration
+// recv names in scope. Unlike LookupMethodIn it does not follow a namespace to
+// its package: it answers "does this declaration already carry this member",
+// which is what a duplicate check asks.
+func MethodOn(scope *Scope, recv, method string) (*Func, bool) {
+	sym, ok := scope.Lookup(recv)
+	if !ok {
+		return nil, false
+	}
+	tbl := methodTable(sym)
+	if tbl == nil {
+		return nil, false
+	}
+	f, found := (*tbl)[method]
+	return f, found
 }

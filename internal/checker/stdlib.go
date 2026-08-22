@@ -236,8 +236,12 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		fn  *ir.Func
 	}
 	var pendingBodies []stdlibFuncBody
+	var registeredFuncs []*ir.Func
 	for _, s := range funcs {
 		fn := c.registerStdlibFunc(s, stdlibPkg)
+		if fn != nil {
+			registeredFuncs = append(registeredFuncs, fn)
+		}
 		// Defer body check: expression-body funcs (=> expr) are lowered into
 		// ir.Block. Block-body stdlib funcs are also lowered for constant-folding
 		// support (e.g., color.lighten, color.darken). Bodyless signatures
@@ -260,7 +264,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		// predeclared PluralKey constants (zero, one, two, few, many, other).
 		c.scope.Replace(&ir.Namespace{
 			Name: "i18n",
-			Pkg:  c.buildI18nNamespacePkg(structDefs),
+			Pkg:  c.buildI18nNamespacePkg(structDefs, registeredFuncs),
 		})
 		// html so the placement directives html.frontend(...) /
 		// html.backend(...) (GitLab #27) resolve as free-function calls. The
@@ -268,7 +272,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		// lib/std/html.sngl; expose them here as namespace functions.
 		c.scope.Replace(&ir.Namespace{
 			Name: "html",
-			Pkg:  c.buildHtmlNamespacePkg(),
+			Pkg:  c.buildHtmlNamespacePkg(registeredFuncs),
 		})
 	}
 
@@ -326,7 +330,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 // buildI18nNamespacePkg constructs a synthetic ir.Package for the "i18n"
 // namespace, exposing i18n.* receiver methods as free functions and
 // predeclaring the CLDR PluralKey constants (zero/one/two/few/many/other).
-func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package {
+func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef, stdlibFuncs []*ir.Func) *ir.Package {
 	pkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
@@ -334,10 +338,7 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 	}
 
 	// Expose all i18n.* receiver methods as free functions in the namespace.
-	for _, fn := range c.symtab.Methods["i18n"] {
-		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
-	}
+	addReceiverFuncs(pkg, stdlibFuncs, "i18n")
 
 	// Locate the PluralKey struct so we can type the predeclared vars.
 	var pluralKeyType *ir.Type
@@ -368,17 +369,28 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package 
 // namespace, exposing the html.* placement directives (frontend/backend),
 // declared as methods on receiver "html", as free functions so calls like
 // html.frontend(v) resolve.
-func (c *checker) buildHtmlNamespacePkg() *ir.Package {
+func (c *checker) buildHtmlNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 	pkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}
-	for _, fn := range c.symtab.Methods["html"] {
+	addReceiverFuncs(pkg, stdlibFuncs, "html")
+	return pkg
+}
+
+// addReceiverFuncs publishes every func in funcs whose receiver is recv as a
+// declaration of pkg. A namespace's members are its package's declarations, so
+// this is what makes `i18n.tr` resolve — the funcs themselves say which
+// receiver they belong to, so no index of them is needed.
+func addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv string) {
+	for _, fn := range funcs {
+		if fn.Receiver != recv {
+			continue
+		}
 		pkg.Funcs = append(pkg.Funcs, fn)
 		pkg.Symbols.Root.Replace(fn)
 	}
-	return pkg
 }
 
 // declareStdlibStruct registers a struct name (without fields) so other
@@ -497,9 +509,13 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	if fn.Purity == ir.PurityUnknown {
 		fn.Purity = ir.PurityPure
 	}
+	fn.Stdlib = true
 	if fn.Receiver != "" {
-		// Type-attached method — registered in main symtab only.
-		c.symtab.RegisterMethod(fn.Receiver, fn)
+		// Type-attached method, hosted on the receiver's declaration. A
+		// receiver that names a namespace rather than a type (i18n, html) has
+		// no declaration to host it; those funcs become members of the
+		// namespace's own package, built from this same list below.
+		ir.AttachMethod(c.scope, fn.Receiver, fn)
 	} else {
 		// Free function — available both qualified and unqualified.
 		c.scope.Replace(fn)

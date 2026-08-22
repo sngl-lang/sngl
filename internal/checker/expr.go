@@ -310,7 +310,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// will treat it as a value the same way it did pre-T7, when these
 		// were closures registered on scope).
 		if c.currentComponent != nil {
-			if fn, ok := c.symtab.LookupMethod(c.currentComponent.Name, x.Name); ok {
+			if fn, ok := c.lookupMethod(c.currentComponent.Name, x.Name); ok {
 				// Bare reference to a sibling component-method. Expose a func
 				// type with the synthetic `this` stripped, so implicit-call
 				// paths (interpolation, prop binding) and explicit `name()`
@@ -798,7 +798,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		if _, inScope := c.scope.Lookup(ident.Name); !inScope {
 			if recv := c.currentRecvType(); recv != nil {
 				if name := recvTypeName(recv); name != "" {
-					if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+					if _, ok := c.lookupMethod(name, ident.Name); ok {
 						// Component sibling-method calls fall through to the
 						// regular path below: inferIdent resolves the bare name
 						// via the currentComponent path to a receiver-stripped
@@ -1037,17 +1037,17 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
-	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
+	fn, ok := c.lookupMethod(typeName, sel.Field)
 	// Fallback for generic types: list<int> → "list", option<int> → "option",
 	// map<K,V> → "map".
 	if !ok {
 		switch receiver.Kind {
 		case ir.TypeList:
-			fn, ok = c.symtab.LookupMethod("list", sel.Field)
+			fn, ok = c.lookupMethod("list", sel.Field)
 		case ir.TypeOption:
-			fn, ok = c.symtab.LookupMethod("option", sel.Field)
+			fn, ok = c.lookupMethod("option", sel.Field)
 		case ir.TypeMap:
-			fn, ok = c.symtab.LookupMethod("map", sel.Field)
+			fn, ok = c.lookupMethod("map", sel.Field)
 		}
 	}
 	if ok {
@@ -1541,7 +1541,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// arguments, referenced bare, is a method value (func type with
 				// the synthetic receiver stripped); `c.foo(...)` calls resolve
 				// via inferMethodCall.
-				if fn, ok := c.symtab.LookupMethod(comp.Name, x.Field); ok {
+				if fn, ok := c.lookupMethod(comp.Name, x.Field); ok {
 					params := fn.Params
 					if len(params) > 0 && params[0].Receiver {
 						params = params[1:]
@@ -1884,14 +1884,14 @@ func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.P
 	}
 	// User-defined or stdlib method lookup: `.string()` on the value's type.
 	typeName := t.String()
-	if fn, ok := c.symtab.LookupMethod(typeName, "string"); ok {
+	if fn, ok := c.lookupMethod(typeName, "string"); ok {
 		return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 	}
 	// Generic-type fallbacks so list/option implementations can register under
 	// their bare name and apply to any instantiation.
 	switch t.Kind {
 	case ir.TypeList:
-		if fn, ok := c.symtab.LookupMethod("list", "string"); ok {
+		if fn, ok := c.lookupMethod("list", "string"); ok {
 			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 		}
 		// No stdlib method yet — fall back to the generic stringify path so
@@ -1900,7 +1900,7 @@ func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.P
 		// formatter (fmt.Sprint / String() / toString()).
 		return &ir.Conversion{Type: TypString, Operand: expr}
 	case ir.TypeOption:
-		if fn, ok := c.symtab.LookupMethod("option", "string"); ok {
+		if fn, ok := c.lookupMethod("option", "string"); ok {
 			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 		}
 		return &ir.Conversion{Type: TypString, Operand: expr}

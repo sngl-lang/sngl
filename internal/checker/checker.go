@@ -114,12 +114,6 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
-	// userMethods tracks methods registered from user source (not stdlib),
-	// keyed by receiver+method name. Used to detect duplicates within the
-	// user's pass1 without conflicting with stdlib methods that the user
-	// may legitimately override.
-	userMethods map[string]bool
-
 	// Current platform block name (e.g., "html" inside `platform html { }`).
 	// Used to try platform Resolve() on unknown identifiers.
 	currentPlatform string
@@ -216,7 +210,6 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
 		pkgWindowIDs: make(map[string]bool),
-		userMethods:  make(map[string]bool),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
@@ -1398,21 +1391,19 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	}
 
 	if fn.Receiver != "" {
-		// Reject duplicate method against another user-registered method
-		// (nested or top-level). Stdlib methods may be overridden by user.
-		key := fn.Receiver + "." + fn.Name
-		if c.userMethods[key] {
+		// Reject a duplicate against another user-declared method on the same
+		// receiver. A stdlib method of that name may be shadowed.
+		if prev, exists := ir.MethodOn(c.scope, fn.Receiver, fn.Name); exists && !prev.Stdlib {
 			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 			return
 		}
-		c.userMethods[key] = true
 	}
 
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
 
 	if fn.Receiver != "" {
 		// Type-attached method.
-		c.symtab.RegisterMethod(fn.Receiver, fn)
+		ir.AttachMethod(c.scope, fn.Receiver, fn)
 	} else {
 		c.scope.Replace(fn)
 	}
@@ -2567,7 +2558,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// (desugared with Receiver = comp.Name) are *not* declared in
 			// scope by bare name; component-body references resolve through
 			// the currentComponent-aware path in inferIdent / inferCall.
-			c.symtab.RegisterMethod(fn.Receiver, fn)
+			ir.AttachMethod(c.scope, fn.Receiver, fn)
 		}
 	}
 
@@ -2875,25 +2866,8 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	claim := func(name string) bool {
 		return c.claimTopLevel(name, imp.Pos, bindDot, imp.Path)
 	}
-	for typeName, methods := range pkg.Symbols.Methods {
-		for methodName, fn := range methods {
-			// Gated like the Types and Comps loops above; this loop had no
-			// check, contradicting the doc comment. (An unexported method is
-			// still reachable through its receiver on a qualified import —
-			// a separate, pre-existing visibility hole.)
-			if !exported(fn) {
-				continue
-			}
-			if c.symtab.Methods[typeName] == nil {
-				c.symtab.Methods[typeName] = map[string]*ir.Func{}
-			}
-			// First lift wins: a receiver's own methods are already registered
-			// when the stdlib loads, and a dot import must not replace them.
-			if _, exists := c.symtab.Methods[typeName][methodName]; !exists {
-				c.symtab.Methods[typeName][methodName] = fn
-			}
-		}
-	}
+	// Methods need no lifting: they live on the receiver's declaration, so
+	// lifting the type lifts its members with it.
 	for _, sym := range pkg.Symbols.Root.Symbols {
 		if !exported(sym) {
 			continue

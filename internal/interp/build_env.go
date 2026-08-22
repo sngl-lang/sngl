@@ -34,21 +34,6 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 		}
 	}
 
-	// Register package-level functions (includes stdlib merged by the checker).
-	for _, fn := range pkg.Funcs {
-		if !fn.IsTest {
-			env.SetFunc(fn)
-		}
-	}
-	// Register type-attached stdlib methods (stored in the symbol table, not pkg.Funcs).
-	if pkg.Symbols != nil {
-		for typeName, methods := range pkg.Symbols.Methods {
-			for _, fn := range methods {
-				env.Methods[typeName+"."+fn.Name] = fn
-			}
-		}
-	}
-
 	if compName == "" {
 		for _, c := range pkg.Consts {
 			env.Set(c, evalInit(env, c.Init))
@@ -86,9 +71,6 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	}
 	for _, p := range comp.Props {
 		env.Set(p.Sym, evalInit(env, p.Default))
-	}
-	for _, fn := range comp.Funcs {
-		env.SetFunc(fn)
 	}
 	env.Comp = comp
 	env.BodyStmts = comp.Body

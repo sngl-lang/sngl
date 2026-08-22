@@ -114,17 +114,13 @@ type Env struct {
 	// two pointers, and a constant declared in a library package resolves
 	// like any other rather than having to be copied into a name table.
 	vals map[ir.Symbol]any
-	// ambient holds the compiler-injected names that no declaration
-	// introduces: the implicit component receiver (`this`) and the framework
-	// event object. A symbol cannot key these — the site that binds one and
-	// the site that reads it belong to different declarations.
-	ambient map[string]any
-	// Methods dispatches a method call by receiver name: "list.push",
-	// "Vec2.dot", "i18n.tr". It is a dispatch table, not a scope: the key
-	// comes from the receiver's runtime type, so there is no declaration to
-	// key on. Receiver-less entries are registered under the bare name for
-	// the namespace-call path.
-	Methods     map[string]*ir.Func
+	// recv is the implicit component receiver (`this`). Not a binding in vals
+	// because no symbol can key it: every method declares its own `this`
+	// param, but the caller supplies the value, so the site that binds it and
+	// the site that reads it belong to different declarations. hasRecv
+	// separates "bound to nil" from "not bound".
+	recv        any
+	hasRecv     bool
 	Units       map[string]*unitTable
 	Pkg         *ir.Package
 	Comp        *ir.Component
@@ -154,19 +150,8 @@ type Env struct {
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
-		ambient:   map[string]any{},
-		Methods:   map[string]*ir.Func{},
 		childEnvs: map[*ir.NodeInst]*Env{},
 	}
-}
-
-// SetFunc registers a user-defined function in the method table.
-func (env *Env) SetFunc(fn *ir.Func) {
-	if fn.Receiver != "" {
-		env.Methods[fn.Receiver+"."+fn.Name] = fn
-		return
-	}
-	env.Methods[fn.Name] = fn
 }
 
 // Set binds sym to val in this env.
@@ -178,9 +163,9 @@ func (env *Env) Set(sym ir.Symbol, val any) {
 }
 
 // SetReceiver binds the implicit component receiver (`this`) for calls made
-// against this env. See Env.ambient.
+// against this env. See Env.recv.
 func (env *Env) SetReceiver(val any) {
-	env.ambient[ir.ReceiverParam] = val
+	env.recv, env.hasRecv = val, true
 }
 
 // Value returns the value bound to sym in this env or an enclosing one.
@@ -226,8 +211,8 @@ func (env *Env) Snapshot() *Env {
 	}
 	cp := &Env{
 		vals:          make(map[ir.Symbol]any, len(env.vals)),
-		ambient:       make(map[string]any, len(env.ambient)),
-		Methods:       env.Methods,
+		recv:          env.recv,
+		hasRecv:       env.hasRecv,
 		Units:         env.Units,
 		Pkg:           env.Pkg,
 		Comp:          env.Comp,
@@ -241,7 +226,6 @@ func (env *Env) Snapshot() *Env {
 		parent:        env.parent,
 	}
 	maps.Copy(cp.vals, env.vals)
-	maps.Copy(cp.ambient, env.ambient)
 	return cp
 }
 
@@ -795,10 +779,8 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 			return v, nil
 		}
 	}
-	if name := ambientName(e); name != "" {
-		if v, ok := env.ambient[name]; ok {
-			return v, nil
-		}
+	if env.hasRecv && readsReceiver(e) {
+		return env.recv, nil
 	}
 	if e.Sym != nil {
 		return env.lookup(e.Sym)
@@ -806,18 +788,14 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	return nil, fmt.Errorf("undefined variable %q", e.Name)
 }
 
-// ambientName returns the compiler-injected name e reads, or "" when e reads
-// an ordinary declaration. The implicit receiver is recognized by its param
-// flag — every method declares its own `this`, but the caller supplies the
-// value, so a method invoked without one reads it from the surrounding scope.
-func ambientName(e *ir.Ident) string {
+// readsReceiver reports whether e reads the implicit component receiver: a
+// resolved `this` param, or the bare name for a reference the test harness
+// synthesized outside the checker and so without a symbol.
+func readsReceiver(e *ir.Ident) bool {
 	if p, ok := e.Sym.(*ir.Param); ok && p.Receiver {
-		return ir.ReceiverParam
+		return true
 	}
-	if e.Sym == nil && (e.Name == ir.ReceiverParam || e.Name == "event") {
-		return e.Name
-	}
-	return ""
+	return e.Sym == nil && e.Name == ir.ReceiverParam
 }
 
 // resolveCallableFunc resolves name to a function without invoking it, walking
@@ -827,16 +805,44 @@ func ambientName(e *ir.Ident) string {
 // call has to find the function by name.
 func (env *Env) resolveCallableFunc(name string) *ir.Func {
 	for e := env; e != nil; e = e.parent {
-		if fn, ok := e.Methods[name]; ok && fn.Receiver == "" {
-			return fn
-		}
 		if e.Comp != nil {
-			if fn, ok := e.Methods[e.Comp.Name+"."+name]; ok {
+			for _, fn := range e.Comp.Funcs {
+				if fn.Name == name && fn.Receiver == "" {
+					return fn
+				}
+			}
+			if fn, ok := e.Comp.Methods[name]; ok {
 				return fn
+			}
+		}
+		if e.Pkg != nil {
+			for _, fn := range e.Pkg.Funcs {
+				if fn.Name == name && fn.Receiver == "" {
+					return fn
+				}
 			}
 		}
 	}
 	return nil
+}
+
+// methodOn resolves the method named method on the receiver named recv. The
+// declaration named recv owns its members, so this is a scope lookup followed
+// by a member lookup rather than a table of qualified names.
+func (env *Env) methodOn(recv, method string) (*ir.Func, bool) {
+	if env.Comp != nil && env.Comp.Name == recv {
+		if fn, ok := env.Comp.Methods[method]; ok {
+			return fn, true
+		}
+	}
+	for e := env; e != nil; e = e.parent {
+		if e.Pkg != nil && e.Pkg.Symbols != nil {
+			if fn, ok := e.Pkg.Symbols.LookupMethod(recv, method); ok {
+				return fn, true
+			}
+		}
+	}
+	return nil, false
 }
 
 // findVarOwner returns the env in this parent chain that binds sym, or nil if
@@ -1399,7 +1405,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// are registered here too, but their behaviour lives in the native
 	// dispatch below — running the empty body would return null. Only invoke
 	// a method that actually has a body.
-	if fn, ok := env.Methods[qualName]; ok && len(fn.Block) > 0 {
+	if fn, ok := env.methodOn(receiverName, method); ok && len(fn.Block) > 0 {
 		return env.EvalUserFuncCallArgs(fn, call.Args)
 	}
 
@@ -1443,7 +1449,10 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					return result, err
 				}
 			}
-			if fn, ok := env.Methods[qualName]; ok {
+			// A namespace's members include bodyless intrinsic declarations
+			// (stdlib.StringLength and friends); running one returns null.
+			// Only a func that carries a body is the answer here.
+			if fn, ok := env.methodOn(ident.Name, method); ok && len(fn.Block) > 0 {
 				return env.EvalUserFuncCallArgs(fn, call.Args)
 			}
 		}
@@ -1512,7 +1521,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn, ok := env.Methods[qualName]; ok {
+			if fn, ok := env.methodOn(runtimeTypeName(recv), method); ok {
 				// Prepend receiver expr so EvalUserFunc sees normalized form.
 				synth := make([]ir.Expr, 0, len(call.Args)+1)
 				synth = append(synth, call.Receiver)
@@ -1530,7 +1539,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				for _, ed := range env.Pkg.Enums {
 					for _, m := range ed.Members {
 						if m.Name == s {
-							if fn, ok := env.Methods[ed.Name+"."+method]; ok {
+							if fn, ok := ed.Methods[method]; ok {
 								synth := make([]ir.Expr, 0, len(call.Args)+1)
 								synth = append(synth, call.Receiver)
 								for _, a := range call.Args {

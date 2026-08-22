@@ -283,7 +283,6 @@ func componentInEnv(env *interp.Env) *componentValue {
 func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValue {
 	return &componentValue{
 		Env:      childEnv,
-		Funcs:    childEnv.Methods,
 		comp:     comp,
 		compName: comp.Name,
 		body:     comp.Body,
@@ -317,51 +316,15 @@ func (cv *componentValue) GetField(field string) (any, error) {
 		stampOwner(v, cv)
 		return v, nil
 	}
-	// Direct func by bare name (legacy closure-style).
-	if fn, ok := cv.Funcs[field]; ok {
-		effective := len(fn.Params)
-		if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
-			effective--
+	// A parameterless func or method on the component reads as a value.
+	if fn := cv.funcNamed(field); fn != nil && effectiveArity(fn) == 0 {
+		compEnv := cv.compEnv()
+		var synth []ir.Expr
+		if len(fn.Params) > 0 && fn.Params[0].Receiver {
+			compEnv.SetReceiver(cv)
+			synth = []ir.Expr{&ir.Ident{Name: ir.ReceiverParam}}
 		}
-		if effective == 0 {
-			compEnv := cv.compEnv()
-			return compEnv.EvalUserFunc(fn, nil)
-		}
-	}
-	// Receiver-qualified component method (post-#75 desugaring): env.Funcs
-	// stores these under "<compName>.<method>". Auto-invoke when zero
-	// effective args.
-	if cv.compName != "" {
-		var fn *ir.Func
-		var ok bool
-		fn, ok = cv.Funcs[cv.compName+"."+field]
-		if !ok {
-			fn, ok = cv.Env.Methods[cv.compName+"."+field]
-		}
-		if !ok && cv.Env.Pkg != nil {
-			for _, f := range cv.Env.Pkg.Funcs {
-				if f.Receiver == cv.compName && f.Name == field {
-					fn = f
-					ok = true
-					break
-				}
-			}
-		}
-		if ok {
-			effective := len(fn.Params)
-			if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
-				effective--
-			}
-			if effective == 0 {
-				compEnv := cv.compEnv()
-				var synth []ir.Expr
-				if len(fn.Params) > 0 && fn.Params[0].Receiver {
-					compEnv.SetReceiver(cv)
-					synth = []ir.Expr{&ir.Ident{Name: ir.ReceiverParam}}
-				}
-				return compEnv.EvalUserFunc(fn, synth)
-			}
-		}
+		return compEnv.EvalUserFunc(fn, synth)
 	}
 	// Element ref lookup in the component body. Returns nil (not an error)
 	// when the ref exists in the body tree but is currently hidden by an
@@ -401,23 +364,8 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		// Event emission is a no-op in the interpreter.
 		return nil, true, nil
 	}
-	fn, ok := cv.Funcs[method]
-	if !ok && cv.compName != "" {
-		qual := cv.compName + "." + method
-		if extFn, extOK := cv.Env.Methods[qual]; extOK {
-			fn = extFn
-			ok = true
-		} else if cv.Env.Pkg != nil {
-			for _, f := range cv.Env.Pkg.Funcs {
-				if f.Receiver == cv.compName && f.Name == method {
-					fn = f
-					ok = true
-					break
-				}
-			}
-		}
-	}
-	if !ok {
+	fn := cv.funcNamed(method)
+	if fn == nil {
 		return nil, false, nil
 	}
 	// Evaluate args against the CALLER's env (env) so that intra-component
@@ -448,7 +396,7 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	}
 	// Build positional slice in param order, filling in defaults.
 	// Skip the receiver param (param[0] when Receiver==true) — it is bound
-	// via compEnv.Vars[ir.ReceiverParam] below, not through the arg slice.
+	// via compEnv.SetReceiver below, not through the arg slice.
 	// evalUserFuncCore's argOffset trick requires len(args)==len(fn.Params)-1
 	// for methods with a receiver.
 	compEnv := cv.compEnv()
@@ -629,6 +577,30 @@ func isUserComponent(comp *ir.Component) bool {
 
 func (cv *componentValue) compEnv() *interp.Env {
 	return cv.Env.Snapshot()
+}
+
+// funcNamed resolves a bare name on the component to the func it names: a
+// receiver-less func declared in the body, or a method on the component.
+// Members of a declaration are looked up on the declaration.
+func (cv *componentValue) funcNamed(name string) *ir.Func {
+	if cv.comp == nil {
+		return nil
+	}
+	for _, fn := range cv.comp.Funcs {
+		if fn.Name == name && fn.Receiver == "" {
+			return fn
+		}
+	}
+	return cv.comp.Methods[name]
+}
+
+// effectiveArity is fn's argument count excluding an implicit receiver.
+func effectiveArity(fn *ir.Func) int {
+	n := len(fn.Params)
+	if n > 0 && fn.Params[0].Receiver {
+		n--
+	}
+	return n
 }
 
 // fieldSym resolves c.<field> to the declaration it names: a var or prop on

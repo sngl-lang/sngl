@@ -298,7 +298,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 // library rather than ambiently, a file that uses $"..." without importing it
 // lands here, so the message names the fix rather than a compiler file.
 func (c *checker) lookupI18nTrInline(pos ast.Pos) *ir.Func {
-	fn, ok := c.symtab.LookupMethod("i18n", "trInline")
+	fn, ok := c.lookupMethod("i18n", "trInline")
 	if !ok {
 		c.error(pos, `$"..." needs the i18n package: add import . "sngl://std"`)
 		return nil

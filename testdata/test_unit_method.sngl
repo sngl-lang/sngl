@@ -1,0 +1,17 @@
+// A unit declaration hosts methods like any other named type: `func Len.x()`
+// attaches to the unit, and a unit-valued receiver dispatches to it.
+
+import . "sngl://std"
+
+unit Len { mm, cm = 10mm }
+
+func Len.doubled(v Len) => v + v
+
+component main {
+    var d = 5mm.doubled()
+    text(value=string(d))
+}
+
+func testUnitMethodDispatches(t Test, c main) {
+    t.assert(c.d == 10mm)
+}

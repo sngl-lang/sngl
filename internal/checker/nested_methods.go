@@ -98,7 +98,7 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	hit := isFieldOrMember(recv, ident.Name)
 	if !hit {
 		if name := recvTypeName(recv); name != "" {
-			if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+			if _, ok := c.lookupMethod(name, ident.Name); ok {
 				// A sibling method on a COMPONENT receiver must NOT desugar to a
 				// `this.method` selector: component methods are emitted as free
 				// functions (`main_foo(state)`) / Model methods (`m.foo()`), not
@@ -178,7 +178,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		if _, _, isMethod := ast.SplitMethodName(n.Name); isMethod {
 			fn := c.buildFunc(n)
 			c.pkg.Funcs = append(c.pkg.Funcs, fn)
-			c.symtab.RegisterMethod(fn.Receiver, fn)
+			ir.AttachMethod(c.scope, fn.Receiver, fn)
 			out = append(out, fn)
 			continue
 		}
@@ -195,7 +195,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			continue
 		}
 		// Collision check: already-registered method on the receiver type.
-		if c.userMethods[recvName+"."+n.Name] {
+		if prev, exists := ir.MethodOn(c.scope, recvName, n.Name); exists && !prev.Stdlib {
 			noun := "type"
 			if typeDecl != nil {
 				noun = typeKindNoun(typeDecl)
@@ -227,8 +227,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		}
 		fn := c.buildFunc(synthetic)
 		c.pkg.Funcs = append(c.pkg.Funcs, fn)
-		c.symtab.RegisterMethod(fn.Receiver, fn)
-		c.userMethods[recvName+"."+n.Name] = true
+		ir.AttachMethod(c.scope, fn.Receiver, fn)
 		out = append(out, fn)
 	}
 	return out

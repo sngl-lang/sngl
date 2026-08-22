@@ -129,9 +129,6 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}
-	for _, fn := range comp.Funcs {
-		child.SetFunc(fn)
-	}
 	child.BodyStmts = comp.Body
 	env.childEnvs[inst] = child
 	return child
@@ -275,9 +272,6 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	}
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
-	}
-	for _, fn := range comp.Funcs {
-		child.SetFunc(fn)
 	}
 	child.BodyStmts = comp.Body
 	return child

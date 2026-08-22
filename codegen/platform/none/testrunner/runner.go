@@ -1,7 +1,6 @@
 package testrunner
 
 import (
-	"maps"
 	"strings"
 	"time"
 
@@ -51,11 +50,9 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 	if compName != "" && len(fn.Params) >= 2 {
 		cVal = &componentValue{
 			Env:      env,
-			Funcs:    make(map[string]*ir.Func),
 			comp:     findComponentByName(pkg, compName),
 			compName: compName,
 		}
-		maps.Copy(cVal.Funcs, env.Methods)
 		if cVal.comp != nil {
 			cVal.body = cVal.comp.Body
 		}
@@ -122,8 +119,7 @@ type testingT struct {
 // declaration that is.
 type componentValue struct {
 	Env      *interp.Env
-	Funcs    map[string]*ir.Func
-	comp     *ir.Component // resolves c.<field> to the declaration it names
+	comp     *ir.Component // resolves c.<field> and c.<method> to what it names
 	compName string        // e.g. "pricing"; used to look up receiver-qualified methods
 
 	// body is the component's lowered body, captured at construction.
