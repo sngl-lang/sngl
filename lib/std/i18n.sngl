@@ -9,12 +9,14 @@
 // `locale` read and adds the hidden `__ctx_locale` param + call-site
 // arg threading.
 
+import . "sngl://internal/builtin"
 import "internal://intl"
 
 // --- Locale context ---
 
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
+#[intrinsic("DefaultLocale")]
 func i18n.defaultLocale() => intl.DefaultLocale()
 
 // Stdlib context: the active locale. Overridable per-subtree via

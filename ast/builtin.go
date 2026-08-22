@@ -130,6 +130,14 @@ type BuiltinTaggable interface {
 	SetBuiltin(BuiltinKind)
 }
 
+// IntrinsicTaggable is a declaration form that can carry #[intrinsic("...")].
+// Separate from BuiltinTaggable because the two marks answer different
+// questions: a builtin kind says which IR construct a declaration dispatches
+// to, an intrinsic id says which native implementation may replace its body.
+type IntrinsicTaggable interface {
+	SetIntrinsic(id string, bodyUsable bool)
+}
+
 func (c *ComponentDecl) SetBuiltin(k BuiltinKind) { c.Builtin = k }
 func (s *StructDef) SetBuiltin(k BuiltinKind)     { s.Builtin = k }
 func (c *ConstDecl) SetBuiltin(k BuiltinKind)     { c.Builtin = k }

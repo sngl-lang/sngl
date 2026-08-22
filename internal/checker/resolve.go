@@ -568,6 +568,10 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 			fn.Params[0].Receiver = true
 		}
 	}
+	// The #[intrinsic] mark says what this function is; nothing infers it from
+	// the shape of its body.
+	fn.Intrinsic = f.Intrinsic
+	fn.IntrinsicBodyUsable = f.IntrinsicBodyUsable
 	return fn
 }
 

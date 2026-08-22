@@ -23,12 +23,11 @@ type IntrinsicDef struct {
 // lowering passes read intrinsic metadata by ID rather than matching method
 // names.
 func IntrinsicByName(name string) (IntrinsicDef, bool) {
-	for _, d := range Intrinsics {
-		if d.Name == name {
-			return d, true
-		}
+	def := LookupIntrinsic(name)
+	if def == nil {
+		return IntrinsicDef{}, false
 	}
-	return IntrinsicDef{}, false
+	return *def, true
 }
 
 // Intrinsics is the canonical list of language-level intrinsic functions.

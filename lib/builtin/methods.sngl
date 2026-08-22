@@ -1,3 +1,4 @@
+import . "sngl://internal/builtin"
 import "internal://stdlib"
 
 // --- int ---
@@ -37,85 +38,105 @@ func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
 
 // Largest integer value not greater than x, as a float. For negative
 // non-integers this rounds away from zero (e.g. floor(-1.5) == -2.0).
+#[intrinsic("MathFloor")]
 func float.floor(x float) => stdlib.MathFloor(x)
 
 // Smallest integer value not less than x, as a float. For negative
 // non-integers this rounds toward zero (e.g. ceil(-1.5) == -1.0).
+#[intrinsic("MathCeil")]
 func float.ceil(x float) => stdlib.MathCeil(x)
 
 // Nearest integer value to x, as a float. Halves round away from zero
 // (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
 // and round(-0.5) == -1.0.
+#[intrinsic("MathRound")]
 func float.round(x float) => stdlib.MathRound(x)
 
 // Raises base to the power exp. Integer powers are exact up to float
 // precision; fractional powers of negative bases yield NaN.
+#[intrinsic("MathPow")]
 func float.pow(base float, exp float) => stdlib.MathPow(base, exp)
 
 // Non-negative square root of x. Returns NaN for negative x.
+#[intrinsic("MathSqrt")]
 func float.sqrt(x float) => stdlib.MathSqrt(x)
 
 // Sine of x, where x is in radians.
+#[intrinsic("MathSin")]
 func float.sin(x float) => stdlib.MathSin(x)
 
 // Cosine of x, where x is in radians.
+#[intrinsic("MathCos")]
 func float.cos(x float) => stdlib.MathCos(x)
 
 // Tangent of x, where x is in radians. Undefined (±Inf / large finite)
 // near odd multiples of π/2.
+#[intrinsic("MathTan")]
 func float.tan(x float) => stdlib.MathTan(x)
 
 // Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
 // |x| > 1.
+#[intrinsic("MathAsin")]
 func float.asin(x float) => stdlib.MathAsin(x)
 
 // Arccosine of x, result in radians within [0, π]. Returns NaN for
 // |x| > 1.
+#[intrinsic("MathAcos")]
 func float.acos(x float) => stdlib.MathAcos(x)
 
 // Arctangent of x, result in radians within [-π/2, π/2]. Use
 // `float.atan2` when you have separate y and x and need to recover
 // the quadrant.
+#[intrinsic("MathAtan")]
 func float.atan(x float) => stdlib.MathAtan(x)
 
 // Arctangent of y/x using signs of both arguments to pick the correct
 // quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
 // 0. This is the correct function for converting Cartesian (x, y)
 // into an angle.
+#[intrinsic("MathAtan2")]
 func float.atan2(y float, x float) => stdlib.MathAtan2(y, x)
 
 // --- string ---
 
 // Number of Unicode characters in s (not bytes).
+#[intrinsic("StrLength")]
 func string.length(s string) => stdlib.StrLength(s)
 
 // Index of the first occurrence of sub in s, or -1 if absent. The
 // index is a character index, matching `string.substring`.
+#[intrinsic("StrIndexOf")]
 func string.indexOf(s string, sub string) => stdlib.StrIndexOf(s, sub)
 
 // Substring of s from start (inclusive) to end (exclusive). Both
 // bounds are character indices; negative or out-of-range values are
 // clamped to [0, length(s)].
+#[intrinsic("StrSubstring")]
 func string.substring(s string, start int, end int) => stdlib.StrSubstring(s, start, end)
 
 // Uppercased copy of s using the platform's Unicode case mapping.
+#[intrinsic("StrUpper")]
 func string.upper(s string) => stdlib.StrUpper(s)
 
 // Lowercased copy of s using the platform's Unicode case mapping.
+#[intrinsic("StrLower")]
 func string.lower(s string) => stdlib.StrLower(s)
 
 // Copy of s with leading and trailing whitespace removed. Whitespace
 // follows the platform's Unicode whitespace definition.
+#[intrinsic("StrTrim")]
 func string.trim(s string) => stdlib.StrTrim(s)
 
 // Copy of s with every occurrence of old replaced by new. Replacement
 // is non-overlapping — after each match, scanning resumes after the
 // replacement (not after old).
+#[intrinsic("StrReplace")]
 func string.replace(s string, old string, new string) => stdlib.StrReplace(s, old, new)
 
 // Splits s on every occurrence of sep and returns the pieces. An
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
+#[intrinsic("StrSplit")]
 func string.split(s string, sep string) => stdlib.StrSplit(s, sep)
 
 // True if sub appears anywhere in s. Equivalent to
@@ -139,11 +160,13 @@ func list<T>.length() int {}
 // var would be. Backed by the ListPush intrinsic, which carries the
 // mutates-receiver semantics through to lowering and every backend (see
 // ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
+#[intrinsic("ListPush")]
 func list<T>.push(item T) => stdlib.ListPush(this, item)
 
 // Removes the item at index from the receiver list (`this`) in place and
 // returns it. Out-of-range indices leave the list unchanged. Backed by the
 // ListRemove intrinsic.
+#[intrinsic("ListRemove")]
 func list<T>.remove(index int) => stdlib.ListRemove(this, index)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
@@ -192,6 +215,7 @@ func color.opacity(c color, a int) => color{r=c.r, g=c.g, b=c.b, a=a}
 // Renders c as a `#RRGGBB` hex string. Alpha is not included in the
 // output; use `color.rgba` values directly when alpha must survive
 // round-tripping.
+#[intrinsic("ColorHex")]
 func color.hex(c color) => stdlib.ColorHex(c)
 
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,

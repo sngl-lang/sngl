@@ -495,17 +495,14 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	if fn.Return == nil && f.Body != nil {
 		fn.Return = TypDyn
 	}
-	if id := detectIntrinsicCall(fn); id != "" {
-		fn.Intrinsic = id
-		applyIntrinsicMetadata(fn, id)
-	} else if id := detectPlacementDirective(fn); id != "" {
-		// html.frontend/html.backend are identity expression-body funcs (=> v),
-		// not delegations to an intrinsic call, so detectIntrinsicCall does not
-		// match them. Assign their intrinsic id explicitly so they survive
-		// optimization as recognizable placement sentinels and emit pass-through
-		// for non-html targets.
-		fn.Intrinsic = id
-		applyIntrinsicMetadata(fn, id)
+	// buildFunc copied the #[intrinsic] mark; the effect metadata that goes
+	// with the id follows from it. An id no intrinsic answers to is a typo in
+	// the mark, and nothing downstream would notice it — the call would just
+	// never be recognized.
+	if fn.Intrinsic != "" {
+		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
+			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
+		}
 	}
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
@@ -544,9 +541,6 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 //   - If checking the body produces no return type (void), the func is left
 //     with Return == nil so existing dyn-fallback in registerStdlibFunc
 //     remains active.
-//   - detectIntrinsicCall is re-run on the now-populated Block so wrappers
-//     that are exact intrinsic pass-throughs (e.g. `float.floor` → MathFloor)
-//     get fn.Intrinsic set, matching the historical behaviour.
 func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	if f.Body == nil && !f.Block.IsDefined() {
 		return
@@ -618,15 +612,6 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 		fn.Block = c.checkBlockIR(&f.Block)
 	}
 
-	// Re-detect intrinsic pass-through with the populated body. Wrappers
-	// that prepend args (e.g. i18n.* threading `locale`) won't match —
-	// detectIntrinsicCall enforces strict positional pass-through.
-	if fn.Intrinsic == "" {
-		if id := detectIntrinsicCall(fn); id != "" {
-			fn.Intrinsic = id
-			applyIntrinsicMetadata(fn, id)
-		}
-	}
 }
 
 // applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
@@ -635,95 +620,15 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 // ListPush (mutates its receiver) — letting the optimizer fold or drop a real
 // mutation. Backends and reactivity read the mutation semantics back via
 // fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
-func applyIntrinsicMetadata(fn *ir.Func, id string) {
+func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 	def, ok := ir.IntrinsicByName(id)
 	if !ok {
-		return
+		return false
 	}
 	if def.Purity != ir.PurityUnknown {
 		fn.Purity = def.Purity
 	}
-}
-
-// detectPlacementDirective recognizes the html.frontend / html.backend
-// placement directives (GitLab #27) by their receiver+name and maps them to
-// the HtmlFrontend / HtmlBackend intrinsic ids. These are identity
-// expression-body funcs (=> v) — not delegations to an intrinsic call — so
-// detectIntrinsicCall cannot match them. Assigning an intrinsic id keeps the
-// call node alive through optimization (the funcs are also generic, which
-// InlinePure already refuses to inline) and lets the html placement pass and
-// the per-language pass-through emitters recognize them by id.
-func detectPlacementDirective(fn *ir.Func) string {
-	if fn.Receiver != "html" || len(fn.Params) != 1 {
-		return ""
-	}
-	switch fn.Name {
-	case "frontend":
-		return "HtmlFrontend"
-	case "backend":
-		return "HtmlBackend"
-	}
-	return ""
-}
-
-// detectIntrinsicCall checks if a function body is a single return of a call
-// to an intrinsic function whose arguments are a direct pass-through of the
-// wrapper's own params (e.g., `func error.raise(m, k) => stdlib.ErrorRaise(m, k)`).
-// Returns the intrinsic name or "".
-//
-// "Direct pass-through" means the call's arg list, in order, is exactly the
-// wrapper's param idents. Wrappers that rearrange or augment args (e.g. the
-// i18n wrappers which prepend `locale`) must keep their body so subsequent
-// lowering passes (notably NoContext) can rewrite reads inside.
-func detectIntrinsicCall(fn *ir.Func) string {
-	if len(fn.Block) != 1 {
-		return ""
-	}
-	ret, ok := fn.Block[0].(*ir.Return)
-	if !ok {
-		return ""
-	}
-	call, ok := ret.Value.(*ir.Call)
-	if !ok || call.Func == nil {
-		return ""
-	}
-	if call.Func.Intrinsic == "" {
-		return ""
-	}
-	// Require strict pass-through: each arg is an Ident referencing the
-	// corresponding expected name positionally. For an implicit-receiver
-	// method (generic receiver), the body threads `this` as the intrinsic's
-	// first (receiver) arg ahead of the wrapper's params:
-	//   func list<T>.push(item T) => stdlib.ListPush(this, item)
-	expected := make([]string, 0, len(fn.Params)+1)
-	if fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		expected = append(expected, ir.ReceiverParam)
-	}
-	for _, p := range fn.Params {
-		expected = append(expected, p.Name)
-	}
-	if len(call.Args) != len(expected) {
-		return ""
-	}
-	for i, a := range call.Args {
-		// Args may be implicitly converted to the intrinsic's parameter types
-		// — e.g. an implicit-receiver method threads `this : list<T>` into a
-		// list<dyn>-typed intrinsic param, materialized as an ir.Conversion.
-		// Unwrap conversions to recover the underlying pass-through ident.
-		v := a.Value
-		for {
-			conv, ok := v.(*ir.Conversion)
-			if !ok {
-				break
-			}
-			v = conv.Operand
-		}
-		id, ok := v.(*ir.Ident)
-		if !ok || id.Name != expected[i] {
-			return ""
-		}
-	}
-	return call.Func.Intrinsic
+	return true
 }
 
 // buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic

@@ -257,6 +257,21 @@ type FuncDef struct {
 	ReturnType     TypeExpr  // nil for void/action functions
 	Body           Expr      // single-expression form (=> expr)
 	Block          StmtBlock // block form ({ ... })
+	// Intrinsic is the id set by #[intrinsic("...")]: the name a backend
+	// recognizes to emit a native implementation in place of a call to this
+	// function. Empty for an ordinary function.
+	Intrinsic string
+	// IntrinsicBodyUsable is set by the `usable` flag on #[intrinsic]. It says
+	// this function's SNGL body computes the same result the native
+	// implementation would, so a backend that does not implement the id may
+	// emit the body instead. Without it the declaration is a signature only
+	// and a backend that cannot emit the id has nothing to fall back to.
+	IntrinsicBodyUsable bool
+}
+
+// SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
+func (f *FuncDef) SetIntrinsic(id string, bodyUsable bool) {
+	f.Intrinsic, f.IntrinsicBodyUsable = id, bodyUsable
 }
 
 // IsTest returns true if this function is a test function.

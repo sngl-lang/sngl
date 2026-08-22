@@ -164,6 +164,12 @@ type Func struct {
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
 	Stdlib bool
+	// IntrinsicBodyUsable says this function's SNGL body computes the same
+	// result the native implementation of Intrinsic would, so a backend that
+	// does not implement the id may emit the body. Without it the declaration
+	// is a signature only: a backend that cannot emit the id must say so
+	// rather than emit a call to something that does not exist.
+	IntrinsicBodyUsable bool
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms
