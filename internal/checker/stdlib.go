@@ -388,7 +388,6 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
 	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
 	// Main symtab + scope for unqualified access.
-	c.symtab.Types[sd.Name] = sd
 	// The loader binds every declaration into the ambient scope and into the
 	// package's own root, which for an ambient package are the same scope.
 	// Rebinding is the norm here, not a mistake; duplicates inside lib/ are
@@ -396,7 +395,6 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	c.scope.Replace(sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)
-	pkg.Symbols.Types[sd.Name] = sd
 	pkg.Symbols.Root.Replace(sd)
 	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
@@ -421,24 +419,20 @@ func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) 
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
-	c.symtab.Types[ed.Name] = ed
 	c.scope.Replace(ed)
 	pkg.Enums = append(pkg.Enums, ed)
-	pkg.Symbols.Types[ed.Name] = ed
 	pkg.Symbols.Root.Replace(ed)
 }
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
-	// Main symtab + scope for unqualified access.
-	c.symtab.Types[ud.Name] = ud
 	c.scope.Replace(ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
 	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
-	pkg.Symbols.Types[ud.Name] = ud
+	pkg.Symbols.Root.Replace(ud)
 }
 
 // registerStdlibConst registers a library const. The #[builtin] mark travels
@@ -792,7 +786,7 @@ func (c *checker) mergePlatformExtensions() {
 				// reaches user scope only through an import, but a platform
 				// extension targets its declaration either way.
 				target := c.libPkg(pkgName)
-				stdSym, ok := target.Symbols.Comps[local]
+				stdSym, ok := target.Symbols.LookupComponent(local)
 				if !ok {
 					c.error(decl.Pos, "extension %q references unknown component %q in sngl://%s", decl.Name, local, pkgName)
 					continue
@@ -1186,12 +1180,9 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	// Main symtab + scope for unqualified access.
-	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Replace(irComp)
 	// Stdlib package for qualified sngl.Component access.
 	pkg.Components = append(pkg.Components, irComp)
-	pkg.Symbols.Comps[irComp.Name] = irComp
 	pkg.Symbols.Root.Replace(irComp)
 }
 

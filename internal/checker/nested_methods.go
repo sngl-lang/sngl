@@ -184,9 +184,9 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		}
 
 		// Collision check: field/member/var on the receiver type.
-		typeDecl, ok := c.symtab.Types[recvName]
+		typeDecl, ok := c.symtab.LookupType(recvName)
 		if !ok {
-			if comp, ok2 := c.symtab.Comps[recvName]; ok2 {
+			if comp, ok2 := c.symtab.LookupComponent(recvName); ok2 {
 				typeDecl = comp
 			}
 		}

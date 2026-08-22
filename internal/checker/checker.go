@@ -401,12 +401,12 @@ func (c *checker) markForeign(pkg *ir.Package) {
 	if c.foreign == nil {
 		c.foreign = map[ir.Symbol]bool{}
 	}
-	for _, sym := range pkg.Symbols.Types {
-		c.foreign[sym] = true
-	}
-	for _, sym := range pkg.Symbols.Comps {
-		c.foreign[sym] = true
-	}
+	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
+		if _, isComp := sym.(*ir.Component); isComp || ir.IsTypeDecl(sym) {
+			c.foreign[sym] = true
+		}
+		return true
+	})
 }
 
 // rejectForeignUnexported reports an unexported member read through a
@@ -762,10 +762,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 					AddressedVars:  map[*ir.Var]bool{},
 				}
 				for _, s := range native.Structs {
-					nsPkg.Symbols.Types[s.Name] = s
+					nsPkg.Symbols.Root.Replace(s)
 				}
 				for _, e := range native.Enums {
-					nsPkg.Symbols.Types[e.Name] = e
+					nsPkg.Symbols.Root.Replace(e)
 				}
 				for _, f := range native.Funcs {
 					nsPkg.Symbols.Root.Replace(f)
@@ -876,22 +876,18 @@ func mergePkgInto(dst, src *ir.Package) {
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
 		dst.Symbols.Root.Replace(sd)
-		dst.Symbols.Types[sd.Name] = sd
 	}
 	for _, ed := range src.Enums {
 		dst.Symbols.Root.Replace(ed)
-		dst.Symbols.Types[ed.Name] = ed
 	}
 	for _, ud := range src.Units {
 		dst.Symbols.Root.Replace(ud)
-		dst.Symbols.Types[ud.Name] = ud
 	}
 	for _, fn := range src.Funcs {
 		dst.Symbols.Root.Replace(fn)
 	}
 	for _, comp := range src.Components {
 		dst.Symbols.Root.Replace(comp)
-		dst.Symbols.Comps[comp.Name] = comp
 	}
 	for _, v := range src.Vars {
 		dst.Symbols.Root.Replace(v)
@@ -905,7 +901,6 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
-	c.symtab.Types[ed.Name] = ed
 	c.scope.Replace(ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
@@ -913,7 +908,6 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
-	c.symtab.Types[sd.Name] = sd
 	c.scope.Replace(sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
@@ -926,7 +920,6 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
-	c.symtab.Types[sd.Name] = sd
 	c.scope.Replace(sd)
 	return sd
 }
@@ -940,7 +933,6 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
 	c.pkg.Units = append(c.pkg.Units, ud)
-	c.symtab.Types[ud.Name] = ud
 	c.scope.Replace(ud)
 	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
@@ -1614,7 +1606,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 
 	c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
 	c.pkg.Components = append(c.pkg.Components, irComp)
-	c.symtab.Comps[irComp.Name] = irComp
 	c.scope.Replace(irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
@@ -2881,28 +2872,8 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 	pkg := irImport.Pkg
 	c.markForeign(pkg)
-	// Types and Comps are also present in Root.Symbols, so the loop below
-	// would re-claim a name this import already lifted and report it as a
-	// collision with itself.
-	lifted := map[string]bool{}
 	claim := func(name string) bool {
-		if !c.claimTopLevel(name, imp.Pos, bindDot, imp.Path) {
-			return false
-		}
-		lifted[name] = true
-		return true
-	}
-	for name, sym := range pkg.Symbols.Types {
-		if exported(sym) && claim(name) {
-			c.symtab.Types[name] = sym
-			c.scope.Replace(sym)
-		}
-	}
-	for name, sym := range pkg.Symbols.Comps {
-		if exported(sym) && claim(name) {
-			c.symtab.Comps[name] = sym
-			c.scope.Replace(sym)
-		}
+		return c.claimTopLevel(name, imp.Pos, bindDot, imp.Path)
 	}
 	for typeName, methods := range pkg.Symbols.Methods {
 		for methodName, fn := range methods {
@@ -2924,7 +2895,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 	}
 	for _, sym := range pkg.Symbols.Root.Symbols {
-		if !exported(sym) || lifted[sym.SymName()] {
+		if !exported(sym) {
 			continue
 		}
 		// Don't re-bind a namespace the imported package itself imported; dot

@@ -2986,7 +2986,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 
 // errorEventType returns the resolved stdlib ErrorEvent type, or nil if unavailable.
 func (c *checker) errorEventType() *ir.Type {
-	if sd, ok := c.symtab.Types["ErrorEvent"].(*ir.StructDef); ok {
+	if sd := structDecl(c.symtab, "ErrorEvent"); sd != nil {
 		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
 	}
 	return nil

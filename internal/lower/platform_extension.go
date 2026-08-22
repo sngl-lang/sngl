@@ -44,20 +44,21 @@ func specializePkgBodies(pkg *ir.Package, platform string, seen map[*ir.Package]
 	}
 	seen[pkg] = struct{}{}
 
-	// PlatformBodies lives on stdlib *ir.Component pointers which are
-	// shared with pkg.Symbols.Comps but not stored in pkg.Components
-	// (that list holds only user-package components). Walk the symbol
-	// table so stdlib extensions get specialized too.
+	// PlatformBodies lives on stdlib *ir.Component pointers, which are in
+	// scope but not in pkg.Components (that list holds only user-package
+	// components). Walk the symbol table so stdlib extensions get
+	// specialized too.
 	if pkg.Symbols != nil {
-		for _, sym := range pkg.Symbols.Comps {
+		pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 			comp, ok := sym.(*ir.Component)
 			if !ok || comp == nil || comp.PlatformBodies == nil {
-				continue
+				return true
 			}
 			if body, ok := comp.PlatformBodies[platform]; ok {
 				comp.Body = body
 			}
-		}
+			return true
+		})
 	}
 	for _, comp := range pkg.Components {
 		if comp == nil || comp.PlatformBodies == nil {

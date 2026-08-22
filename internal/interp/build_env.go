@@ -118,7 +118,7 @@ func buildUnitTables(pkg *ir.Package) map[string]*unitTable {
 	}
 	add(pkg.Units)
 	if pkg.Symbols != nil {
-		for _, sym := range pkg.Symbols.Types {
+		pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 			if u, ok := sym.(*ir.UnitDef); ok {
 				t := buildUnitTableFromDef(u)
 				for suffix := range t.Conversions {
@@ -127,7 +127,8 @@ func buildUnitTables(pkg *ir.Package) map[string]*unitTable {
 					}
 				}
 			}
-		}
+			return true
+		})
 	}
 	return tables
 }

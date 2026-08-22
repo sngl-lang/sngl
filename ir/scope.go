@@ -125,8 +125,6 @@ func NewBaseScope() *Scope {
 // SymbolTable is the package-level symbol registry.
 type SymbolTable struct {
 	Root    *Scope
-	Types   map[string]Symbol           // struct, enum, unit names
-	Comps   map[string]Symbol           // component names
 	Methods map[string]map[string]*Func // typeName → methodName → Func
 }
 
@@ -136,22 +134,58 @@ func (SymbolTable) String() string { return "omitted" }
 func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
 		Root:    NewScope(NewBaseScope()),
-		Types:   make(map[string]Symbol),
-		Comps:   make(map[string]Symbol),
 		Methods: make(map[string]map[string]*Func),
 	}
 }
 
-// LookupType finds a type declaration by name.
-func (st *SymbolTable) LookupType(name string) (Symbol, bool) {
-	sym, ok := st.Types[name]
-	return sym, ok
+// EachSymbol ranges over every symbol reachable from the root scope, innermost
+// binding first, stopping when f returns false. A name bound in more than one
+// scope is yielded once, by its innermost binding — the one a lookup answers
+// with. Used by the passes that need every declaration in the build, including
+// the stdlib's, which lives in a scope outside the package's own root.
+func (st *SymbolTable) EachSymbol(f func(Symbol) bool) {
+	seen := make(map[string]bool)
+	for sc := st.Root; sc != nil; sc = sc.Parent {
+		for name, sym := range sc.Symbols {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			if !f(sym) {
+				return
+			}
+		}
+	}
 }
 
-// LookupComponent finds a component by name.
+// IsTypeDecl reports whether sym declares a named type — a struct, enum or
+// unit. The three are interchangeable wherever a type name is expected.
+func IsTypeDecl(sym Symbol) bool {
+	switch sym.(type) {
+	case *StructDef, *EnumDef, *UnitDef:
+		return true
+	}
+	return false
+}
+
+// LookupType finds a named type declaration — struct, enum or unit — from the
+// root scope outward. A predeclared universe name (TypeSym) is not a
+// declaration and does not answer here.
+func (st *SymbolTable) LookupType(name string) (Symbol, bool) {
+	if sym, ok := st.Root.Lookup(name); ok && IsTypeDecl(sym) {
+		return sym, true
+	}
+	return nil, false
+}
+
+// LookupComponent finds a component declaration from the root scope outward.
 func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
-	sym, ok := st.Comps[name]
-	return sym, ok
+	if sym, ok := st.Root.Lookup(name); ok {
+		if c, isComp := sym.(*Component); isComp {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 // LookupMethod finds a type-attached method.

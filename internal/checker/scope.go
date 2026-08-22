@@ -25,3 +25,14 @@ var NewScope = ir.NewScope
 
 //go:fix inline
 var NewSymbolTable = ir.NewSymbolTable
+
+// structDecl returns the struct declaration named name, or nil when the name
+// is unknown or names something other than a struct.
+func structDecl(st *SymbolTable, name string) *ir.StructDef {
+	if sym, ok := st.LookupType(name); ok {
+		if sd, isStruct := sym.(*ir.StructDef); isStruct {
+			return sd
+		}
+	}
+	return nil
+}
