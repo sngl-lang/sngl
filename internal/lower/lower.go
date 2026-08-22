@@ -174,3 +174,24 @@ func EnabledPasses(caps Caps) []string {
 	}
 	return out
 }
+
+// drawPkg is the library package that declares the canvas and the shapes it
+// hosts. A program that does not import it cannot contain a canvas.
+const drawPkg = "sngl://draw"
+
+// imports reports whether the program imports the named package. Library
+// packages the compiler loads for its own reasons are not in this list unless
+// the program reached them, so it answers "did this program ask for it",
+// which is what a pass needs before walking the whole tree looking for its
+// construct.
+func imports(pkg *ir.Package, path string) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, imp := range pkg.Imports {
+		if imp.Path == path {
+			return true
+		}
+	}
+	return false
+}
