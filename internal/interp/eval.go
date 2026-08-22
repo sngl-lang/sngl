@@ -1405,8 +1405,11 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// are registered here too, but their behaviour lives in the native
 	// dispatch below — running the empty body would return null. Only invoke
 	// a method that actually has a body.
-	if fn, ok := env.methodOn(receiverName, method); ok && len(fn.Block) > 0 {
-		return env.EvalUserFuncCallArgs(fn, call.Args)
+	// The checker already resolved which member this call names; re-deriving
+	// it from the receiver's name would fail for a type reached through an
+	// import alias, whose name here is not the name it was declared under.
+	if len(call.Func.Block) > 0 {
+		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
 
 	// List/string higher-order and other built-in methods.

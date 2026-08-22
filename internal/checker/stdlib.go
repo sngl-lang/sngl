@@ -235,6 +235,23 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		ast *ast.FuncDef
 		fn  *ir.Func
 	}
+	// The i18n and html namespaces describe std's own declarations, so they
+	// belong to that tier only. Declaring them from the builtin pass as well
+	// put an empty `html` namespace in the ambient scope, which shadowed the
+	// real one and lost the platform Resolve fallback attached to it.
+	//
+	// They are declared before the funcs whose receiver names them, so that
+	// `func i18n.tr(...)` finds a declaration to be a member of. Their
+	// packages are built from those same funcs, so the Pkg is filled in below
+	// once they exist.
+	var i18nNS, htmlNS *ir.Namespace
+	if !ambient {
+		i18nNS = &ir.Namespace{Name: "i18n"}
+		htmlNS = &ir.Namespace{Name: "html"}
+		c.scope.Replace(i18nNS)
+		c.scope.Replace(htmlNS)
+	}
+
 	var pendingBodies []stdlibFuncBody
 	var registeredFuncs []*ir.Func
 	for _, s := range funcs {
@@ -254,26 +271,16 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	// The i18n and html namespaces describe std's own declarations, so they
-	// belong to that tier only. Declaring them from the builtin pass as well
-	// put an empty `html` namespace in the ambient scope, which shadowed the
-	// real one and lost the platform Resolve fallback attached to it.
 	if !ambient {
 		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
 		// exposes every i18n.* receiver method as a free function, plus the
 		// predeclared PluralKey constants (zero, one, two, few, many, other).
-		c.scope.Replace(&ir.Namespace{
-			Name: "i18n",
-			Pkg:  c.buildI18nNamespacePkg(structDefs, registeredFuncs),
-		})
+		i18nNS.Pkg = c.buildI18nNamespacePkg(structDefs, registeredFuncs)
 		// html so the placement directives html.frontend(...) /
 		// html.backend(...) (GitLab #27) resolve as free-function calls. The
 		// directives are declared as methods on receiver "html" in
 		// lib/std/html.sngl; expose them here as namespace functions.
-		c.scope.Replace(&ir.Namespace{
-			Name: "html",
-			Pkg:  c.buildHtmlNamespacePkg(registeredFuncs),
-		})
+		htmlNS.Pkg = c.buildHtmlNamespacePkg(registeredFuncs)
 	}
 
 	// Register stdlib context declarations last — after the "i18n" namespace is
@@ -515,7 +522,9 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 		// receiver that names a namespace rather than a type (i18n, html) has
 		// no declaration to host it; those funcs become members of the
 		// namespace's own package, built from this same list below.
-		ir.AttachMethod(c.scope, fn.Receiver, fn)
+		if prev := c.declareMethod(f.Pos, fn); prev != nil {
+			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+		}
 	} else {
 		// Free function — available both qualified and unqualified.
 		c.scope.Replace(fn)

@@ -177,8 +177,11 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		// up by the normal top-level func path.
 		if _, _, isMethod := ast.SplitMethodName(n.Name); isMethod {
 			fn := c.buildFunc(n)
+			if prev := c.declareMethod(n.Pos, fn); prev != nil {
+				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+				continue
+			}
 			c.pkg.Funcs = append(c.pkg.Funcs, fn)
-			ir.AttachMethod(c.scope, fn.Receiver, fn)
 			out = append(out, fn)
 			continue
 		}
@@ -192,15 +195,6 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		}
 		if typeDecl != nil && hasMemberLikeName(typeDecl, n.Name) {
 			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, typeKindNoun(typeDecl), recvName)
-			continue
-		}
-		// Collision check: already-registered method on the receiver type.
-		if prev, exists := ir.MethodOn(c.scope, recvName, n.Name); exists && !prev.Stdlib {
-			noun := "type"
-			if typeDecl != nil {
-				noun = typeKindNoun(typeDecl)
-			}
-			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
 			continue
 		}
 
@@ -226,8 +220,15 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			Block:          n.Block,
 		}
 		fn := c.buildFunc(synthetic)
+		if prev := c.declareMethod(n.Pos, fn); prev != nil {
+			noun := "type"
+			if typeDecl != nil {
+				noun = typeKindNoun(typeDecl)
+			}
+			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
+			continue
+		}
 		c.pkg.Funcs = append(c.pkg.Funcs, fn)
-		ir.AttachMethod(c.scope, fn.Receiver, fn)
 		out = append(out, fn)
 	}
 	return out

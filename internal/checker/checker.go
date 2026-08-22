@@ -1391,22 +1391,18 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	}
 
 	if fn.Receiver != "" {
-		// Reject a duplicate against another user-declared method on the same
-		// receiver. A stdlib method of that name may be shadowed.
-		if prev, exists := ir.MethodOn(c.scope, fn.Receiver, fn.Name); exists && !prev.Stdlib {
+		// Attaching is a declaration: it fails on a member of that name
+		// already there, unless this one shadows a standard-library member.
+		if prev := c.declareMethod(f.Pos, fn); prev != nil {
 			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 			return
 		}
+		c.pkg.Funcs = append(c.pkg.Funcs, fn)
+		return
 	}
 
 	c.pkg.Funcs = append(c.pkg.Funcs, fn)
-
-	if fn.Receiver != "" {
-		// Type-attached method.
-		ir.AttachMethod(c.scope, fn.Receiver, fn)
-	} else {
-		c.scope.Replace(fn)
-	}
+	c.scope.Replace(fn)
 }
 
 // stdlibHint returns a suffix naming the import that would bring name into
@@ -2558,7 +2554,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// (desugared with Receiver = comp.Name) are *not* declared in
 			// scope by bare name; component-body references resolve through
 			// the currentComponent-aware path in inferIdent / inferCall.
-			ir.AttachMethod(c.scope, fn.Receiver, fn)
+			if prev := c.declareMethod(compDeclPos(comp), fn); prev != nil {
+				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.Receiver)
+			}
 		}
 	}
 

@@ -1,5 +1,7 @@
 package ir
 
+import "errors"
+
 // Symbol is a named entity in the program. Implemented by all IR
 // declaration types (Func, Var, Component, StructDef, EnumDef, UnitDef,
 // Import, Param) and small helper types (LoopVar, Namespace).
@@ -236,25 +238,83 @@ func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
 	return nil, false
 }
 
-// AttachMethod attaches f to the declaration named recv as resolved from
-// scope, reporting whether there was one to attach it to. It takes the scope
-// rather than a SymbolTable because a declaration is registered before it is
-// reachable from the package root — the stdlib loads into a scope that only
-// later becomes the root's parent.
-func AttachMethod(scope *Scope, recv string, f *Func) bool {
+var (
+	// ErrUnknownReceiver reports that a receiver name resolves to no
+	// declaration at all, so there is nothing for the method to be a member of.
+	ErrUnknownReceiver = errors.New("unknown receiver")
+	// ErrNoMethodHost reports that a receiver resolves to a declaration that
+	// carries no member list — a namespace, whose members are the declarations
+	// of the package it names.
+	ErrNoMethodHost = errors.New("receiver has no member list")
+)
+
+// AttachMethod makes f a member of the declaration recv names in scope,
+// refusing to overwrite a member already there. Attaching is a declaration
+// like any other: a silent overwrite would make which of two declarations a
+// member name refers to depend on the order the checker visited them in.
+// ReplaceMethod is the explicit rebind.
+//
+// It takes the scope rather than a SymbolTable because a declaration is
+// registered before it is reachable from the package root — the stdlib loads
+// into a scope that only later becomes the root's parent.
+func AttachMethod(scope *Scope, recv string, f *Func) error {
+	tbl, err := memberList(scope, recv)
+	if err != nil {
+		return err
+	}
+	// Re-registering the same declaration is not a redeclaration. The checker
+	// reaches a component's methods from more than one pass.
+	if prev, exists := (*tbl)[f.Name]; exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	(*tbl)[f.Name] = f
+	return nil
+}
+
+// ReplaceMethod makes f a member of the declaration recv names, overwriting
+// any member of the same name. For the one case where rebinding is the intent:
+// a declaration that shadows one the standard library made.
+func ReplaceMethod(scope *Scope, recv string, f *Func) error {
+	tbl, err := memberList(scope, recv)
+	if err != nil {
+		return err
+	}
+	(*tbl)[f.Name] = f
+	return nil
+}
+
+// memberList returns the member table of the declaration recv names, creating
+// it on first use.
+func memberList(scope *Scope, recv string) (*map[string]*Func, error) {
 	sym, ok := scope.Lookup(recv)
 	if !ok {
-		return false
+		return nil, ErrUnknownReceiver
 	}
 	tbl := methodTable(sym)
 	if tbl == nil {
-		return false
+		return nil, ErrNoMethodHost
 	}
 	if *tbl == nil {
 		*tbl = make(map[string]*Func)
 	}
-	(*tbl)[f.Name] = f
-	return true
+	return tbl, nil
+}
+
+// MemberOf returns the method named name declared on decl — the Decl carried
+// by a resolved *Type, or any declaration value. Going to the declaration
+// directly is what lets a member be found on a type reached through an import
+// alias, whose name at the use site is not the name it was declared under.
+func MemberOf(decl any, name string) (*Func, bool) {
+	sym, ok := decl.(Symbol)
+	if !ok {
+		return nil, false
+	}
+	tbl := methodTable(sym)
+	if tbl == nil {
+		return nil, false
+	}
+	f, found := (*tbl)[name]
+	return f, found
 }
 
 // MethodOn returns the method named method already attached to the declaration

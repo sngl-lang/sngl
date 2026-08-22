@@ -1,6 +1,11 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"errors"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 //go:fix inline
 type Symbol = ir.Symbol
@@ -42,4 +47,35 @@ func structDecl(st *ir.SymbolTable, name string) *ir.StructDef {
 // through, so the two always agree on which declaration a receiver name means.
 func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
 	return ir.LookupMethodIn(c.scope, recv, method)
+}
+
+// declareMethod makes fn a member of the declaration its receiver names,
+// reporting an unknown receiver at pos. Returns the member it collides with
+// when the caller must report a duplicate, and nil when the attach stands:
+// because it succeeded, because it deliberately shadows a standard-library
+// member (which user code may do), or because the receiver carries no member
+// list — a namespace, whose members are the declarations of its package.
+func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
+	err := ir.AttachMethod(c.scope, fn.Receiver, fn)
+	switch {
+	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
+		return nil
+	case errors.Is(err, ir.ErrUnknownReceiver):
+		// Without a receiver to attach to there is no member list to hold the
+		// method, so it could never be found again.
+		c.error(pos, "undefined: %s (no type to declare method %q on)", fn.Receiver, fn.Name)
+		return nil
+	}
+	var red *ir.RedeclaredError
+	if !errors.As(err, &red) {
+		return nil
+	}
+	prev, isFunc := red.Prev.(*ir.Func)
+	if isFunc && prev.Stdlib && !fn.Stdlib {
+		if err := ir.ReplaceMethod(c.scope, fn.Receiver, fn); err != nil {
+			return nil
+		}
+		return nil
+	}
+	return prev
 }

@@ -1037,7 +1037,13 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
-	fn, ok := c.lookupMethod(typeName, sel.Field)
+	// The receiver's declaration owns its members, so ask it directly. Only
+	// when the type has no declaration to ask — a builtin generic, whose
+	// members hang off the bare constructor name — does the name matter.
+	fn, ok := ir.MemberOf(receiver.Decl, sel.Field)
+	if !ok {
+		fn, ok = c.lookupMethod(typeName, sel.Field)
+	}
 	// Fallback for generic types: list<int> → "list", option<int> → "option",
 	// map<K,V> → "map".
 	if !ok {
