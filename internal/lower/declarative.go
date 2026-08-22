@@ -58,8 +58,8 @@ type declarativeState struct {
 
 func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 	st := &declarativeState{liftHandlers: caps.NoLambda, intrinsics: map[string]*ir.Func{}}
-	for _, def := range ir.LowerIntrinsics {
-		st.intrinsics[def.Name] = intrinsicFunc(def)
+	for _, op := range ir.NodeOps {
+		st.intrinsics[op] = nodeOpFunc(op)
 	}
 	if st.liftHandlers {
 		st.lifter = &lifter{pkg: pkg}
@@ -67,15 +67,11 @@ func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 	return st
 }
 
-// intrinsicFunc materializes an IntrinsicDef into the *ir.Func form
-// lowering uses when emitting calls.
-func intrinsicFunc(def ir.IntrinsicDef) *ir.Func {
-	return &ir.Func{
-		Name:      def.Name,
-		Intrinsic: def.Name,
-		Params:    def.Params,
-		Return:    def.Return,
-	}
+// nodeOpFunc is the callee a lowering pass hangs a node operation on. Only the
+// id travels: codegen.WalkLowered matches on it and reads the operands off the
+// call, so a signature here would be describing nobody's contract.
+func nodeOpFunc(op string) *ir.Func {
+	return &ir.Func{Name: op, Intrinsic: op}
 }
 
 // lowerNS and stdlibNS are the namespace symbols the intrinsic-call receivers

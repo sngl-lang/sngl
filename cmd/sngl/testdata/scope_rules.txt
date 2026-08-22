@@ -312,9 +312,9 @@ component main {
 }
 -- restate_intrinsic.sngl --
 import . "sngl://std"
-import "sngl://internal/lower"
+import "sngl://internal/stdlib"
 
-func make() => lower.CreateNode("text")
+func make() => stdlib.StrLength("x")
 
 component main {
     text(value="x")

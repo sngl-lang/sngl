@@ -196,16 +196,30 @@ var I18nIntrinsics = []IntrinsicDef{
 	}, Return: TypString},
 }
 
-// LowerIntrinsics are intrinsics emitted by lowering passes. They live in
-// the `lower` namespace (imported by the synthetic internal://lower
-// package). Every codegen backend that consumes lowered output must
-// provide native translations.
-var LowerIntrinsics = []IntrinsicDef{
-	{Name: "CreateNode", Params: []*Param{{Name: "tag", Type: TypString}}, Return: TypDyn},
-	{Name: "AppendChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "RemoveChild", Params: []*Param{{Name: "parent", Type: TypDyn}, {Name: "child", Type: TypDyn}}, Return: TypVoid},
-	{Name: "AttachHandler", Params: []*Param{{Name: "node", Type: TypDyn}, {Name: "event", Type: TypString}, {Name: "handler", Type: TypDyn}}, Return: TypVoid},
-	{Name: "CreateComponent", Params: []*Param{{Name: "comp", Type: TypDyn}, {Name: "props", Type: TypDyn}}, Return: TypDyn},
+// The node operations: the protocol between the lowering passes that flatten a
+// visual tree into imperative statements and the platforms that rebuild it.
+//
+// They are ids stamped on a synthesized Func rather than declarations in a
+// library package, because no program calls them. Nothing in SNGL can name
+// them, no language registers an emitter for them, and the only consumer is
+// codegen.WalkLowered, which matches on the id and dispatches to a method of
+// IntrinsicTranslator — a platform interface. A package declaring them would
+// be a costume worn by a Go-to-Go protocol.
+const (
+	NodeOpCreateNode      = "CreateNode"
+	NodeOpCreateComponent = "CreateComponent"
+	NodeOpAppendChild     = "AppendChild"
+	NodeOpRemoveChild     = "RemoveChild"
+	NodeOpAttachHandler   = "AttachHandler"
+)
+
+// NodeOps is every node operation, for the passes that build a call for each.
+var NodeOps = []string{
+	NodeOpCreateNode,
+	NodeOpCreateComponent,
+	NodeOpAppendChild,
+	NodeOpRemoveChild,
+	NodeOpAttachHandler,
 }
 
 // CanvasIntrinsics are platform-level intrinsics for Canvas2D drawing.
@@ -312,7 +326,7 @@ func IsI18nPluralKey(name string) bool {
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {
-	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, LowerIntrinsics, CanvasIntrinsics} {
+	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, CanvasIntrinsics} {
 		for i := range list {
 			if list[i].Name == name {
 				return &list[i]

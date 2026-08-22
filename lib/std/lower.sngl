@@ -1,5 +1,0 @@
-// Lowering intrinsics. The `lower` namespace is populated by the
-// checker from ir.LowerIntrinsics. Lowering passes emit calls into
-// this namespace; importing it here makes the namespace available
-// at recheck time via the standard stdlib merge.
-import "sngl://internal/lower"

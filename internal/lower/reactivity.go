@@ -122,13 +122,8 @@ func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		intrinsics:   make(map[string]*ir.Func),
 	}
-	for _, def := range ir.LowerIntrinsics {
-		st.intrinsics[def.Name] = &ir.Func{
-			Name:      def.Name,
-			Intrinsic: def.Name,
-			Params:    def.Params,
-			Return:    def.Return,
-		}
+	for _, op := range ir.NodeOps {
+		st.intrinsics[op] = nodeOpFunc(op)
 	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {

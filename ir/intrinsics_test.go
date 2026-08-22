@@ -2,10 +2,13 @@ package ir
 
 import "testing"
 
-func TestLookupLowerIntrinsic(t *testing.T) {
-	for _, name := range []string{"CreateNode", "AppendChild", "RemoveChild", "AttachHandler"} {
-		if def := LookupIntrinsic(name); def == nil {
-			t.Errorf("LookupIntrinsic(%q) returned nil; expected definition", name)
+// TestNodeOpsAreNotIntrinsicDefs pins the split: the node operations are ids a
+// lowering pass stamps on a synthesized call, matched by codegen.WalkLowered.
+// They carry no signature because no caller and no emitter reads one.
+func TestNodeOpsAreNotIntrinsicDefs(t *testing.T) {
+	for _, op := range NodeOps {
+		if def := LookupIntrinsic(op); def != nil {
+			t.Errorf("%s has an IntrinsicDef; node operations are ids, not declarations", op)
 		}
 	}
 }

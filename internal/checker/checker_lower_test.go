@@ -8,59 +8,45 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func TestInternalLowerNamespace(t *testing.T) {
-	src := `
-import "sngl://internal/lower"
-
-func test() => lower.CreateNode("text")
-`
-	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := Check(doc, &Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Errorf("unexpected diag: %s", d.Msg)
-		}
-	}
-	if pkg == nil {
-		t.Fatal("Check returned nil pkg")
-	}
-	var found bool
-	for _, imp := range pkg.Imports {
-		if strings.HasSuffix(imp.Path, "lower") && imp.Pkg != nil {
-			found = true
-			var hasCreateNode bool
-			for _, f := range imp.Pkg.Funcs {
-				if f.Name == "CreateNode" {
-					hasCreateNode = true
-					break
-				}
-			}
-			if !hasCreateNode {
-				t.Errorf("lower.CreateNode not registered on imported pkg")
-			}
-		}
-	}
-	if !found {
-		t.Errorf("sngl://internal/lower import not present in checked pkg")
-	}
-}
-
-func TestLowerNamespaceAutoImported(t *testing.T) {
-	// User source that DOES NOT explicitly import internal://lower
-	// should still resolve `lower.CreateNode` because the stdlib
-	// brings the import in transitively via lib/lower.sngl.
+// TestNodeOpsAreNotNameable pins the boundary the node operations sit on.
+// CreateNode and its siblings are a protocol between the lowering passes and
+// the platforms that rebuild the tree; a program cannot name them, and there
+// is no package to import that would let it. Until they were constants they
+// were a library package, and `lower.CreateNode("text")` type-checked.
+func TestNodeOpsAreNotNameable(t *testing.T) {
 	src := `func test() => lower.CreateNode("text")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	_, diags := Check(doc, &Config{IsMain: true})
+	var msgs []string
 	for _, d := range diags {
 		if d.Severity == ir.Error {
-			t.Errorf("unexpected diag: %s", d.Msg)
+			msgs = append(msgs, d.Msg)
 		}
 	}
+	if len(msgs) == 0 {
+		t.Fatal("lower.CreateNode resolved; the node operations are not a SNGL surface")
+	}
+	if !strings.Contains(strings.Join(msgs, "\n"), "lower") {
+		t.Errorf("want a diagnostic naming lower, got %v", msgs)
+	}
+}
+
+// TestNodeOpPackageIsGone guards against the package coming back by accident:
+// importing it should fail, not resolve to an empty macro package.
+func TestNodeOpPackageIsGone(t *testing.T) {
+	src := `import "sngl://internal/lower"` + "\n" + `func test() => 1`
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := Check(doc, &Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, "internal/lower") {
+			return
+		}
+	}
+	t.Error("importing sngl://internal/lower did not fail")
 }
