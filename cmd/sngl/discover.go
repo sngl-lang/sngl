@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -268,7 +269,10 @@ func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, e
 		abs := filepath.Clean(filepath.Join(r.rootDir, importPath))
 		return resolveImportFromDir(abs)
 	}
-	entries, err := fs.ReadDir(fsys, importPath)
+	// A sibling package is ordinarily written "./geom", which io/fs rejects:
+	// fs.ValidPath has no "./" prefix. Clean gives the form ReadDir accepts.
+	dir := path.Clean(importPath)
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
 	}
@@ -277,14 +281,14 @@ func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, e
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 			continue
 		}
-		path := importPath + "/" + e.Name()
-		data, err := fs.ReadFile(fsys, path)
+		p := path.Join(dir, e.Name())
+		data, err := fs.ReadFile(fsys, p)
 		if err != nil {
-			return nil, fmt.Errorf("reading %s: %w", path, err)
+			return nil, fmt.Errorf("reading %s: %w", p, err)
 		}
 		doc, err := parser.Parse(e.Name(), data)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", path, err)
+			return nil, fmt.Errorf("parsing %s: %w", p, err)
 		}
 		docs = append(docs, doc)
 	}
