@@ -140,8 +140,14 @@ ships the `shape` mark next to the shape components it applies to — so the
 `sngl` scheme is checked against both the `lib/` layout and the macro
 registry. `sngl://internal/<name>` is the compiler's own tier: a package there
 may contribute macros, declarations, or both. `internal/marks` is macro-only
-and has no directory; `internal/lower` and `internal/canvas` are declarations
-of the primitives the lowering passes emit, which no program calls by hand.
+and has no directory; `internal/draw` declares the drawing primitives
+passCanvas emits, the intrinsic half of `sngl://draw`.
+
+Not every compiler primitive is a package. The node operations a visual tree
+lowers to (CreateNode, AppendChild, …) are `ir.NodeOps` constants: no program
+can name them, no language registers an emitter for them, and their only
+consumer is `codegen.WalkLowered` dispatching to a platform's
+`IntrinsicTranslator`. A declaration would describe nobody's contract.
 
 **One name, one meaning at file scope.** Two declarations of a name, two
 imports claiming it as an alias, two dot imports lifting it, or a declaration

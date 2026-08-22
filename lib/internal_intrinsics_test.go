@@ -15,7 +15,7 @@ var intrinsicPackages = map[string][]ir.IntrinsicDef{
 	"internal/alert":  ir.AlertIntrinsics,
 	"internal/file":   ir.FileIntrinsics,
 	"internal/intl":   ir.I18nIntrinsics,
-	"internal/canvas": ir.CanvasIntrinsics,
+	"internal/draw":   ir.CanvasIntrinsics,
 }
 
 // TestInternalPackagesDeclareEveryIntrinsic pins the declarations against the
