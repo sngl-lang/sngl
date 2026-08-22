@@ -164,6 +164,10 @@ type Func struct {
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
 	Stdlib bool
+	// MutatesReceiver says a call writes through its first argument in place,
+	// so reactivity treats a statement-level call as a write to the receiver's
+	// variable and a backend emits an in-place mutation.
+	MutatesReceiver bool
 	// IntrinsicBodyUsable says this function's SNGL body computes the same
 	// result the native implementation of Intrinsic would, so a backend that
 	// does not implement the id may emit the body. Without it the declaration

@@ -160,13 +160,13 @@ func list<T>.length() int {}
 // var would be. Backed by the ListPush intrinsic, which carries the
 // mutates-receiver semantics through to lowering and every backend (see
 // ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
-#[intrinsic("ListPush")]
+#[intrinsic("ListPush", mutates, mutatesReceiver)]
 func list<T>.push(item T) => stdlib.ListPush(this, item)
 
 // Removes the item at index from the receiver list (`this`) in place and
 // returns it. Out-of-range indices leave the list unchanged. Backed by the
 // ListRemove intrinsic.
-#[intrinsic("ListRemove")]
+#[intrinsic("ListRemove", mutates, mutatesReceiver)]
 func list<T>.remove(index int) => stdlib.ListRemove(this, index)
 
 // Index of the first occurrence of item in l (by equality), or -1 if

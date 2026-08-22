@@ -8,30 +8,30 @@ import "internal://file"
 // "success", "warning", "error") appropriate to the platform. The
 // toast dismisses automatically after the platform's default
 // duration.
-#[intrinsic("Toast")]
+#[intrinsic("Toast", mutates)]
 func Alert.toast(message string, variant string) => alert.Toast(message, variant)
 
 // Shows an informational alert. Equivalent to `Alert.toast(message,
 // "info")` on platforms that render toasts, or a modeless info
 // dialog on desktop platforms.
-#[intrinsic("Info")]
+#[intrinsic("Info", mutates)]
 func Alert.info(message string) => alert.Info(message)
 
 // Shows a warning alert. The rendering elevates severity compared
 // to `Alert.info` — a colored toast or a dismissible warning
 // dialog depending on the platform.
-#[intrinsic("Warn")]
+#[intrinsic("Warn", mutates)]
 func Alert.warn(message string) => alert.Warn(message)
 
 // Shows an error alert. Rendered with the platform's error styling
 // and typically stays visible until dismissed.
-#[intrinsic("Error")]
+#[intrinsic("Error", mutates)]
 func Alert.error(message string) => alert.Error(message)
 
 // Prompts the user to confirm or cancel. Blocks until a choice is
 // made and returns true on confirm, false on cancel. On platforms
 // without a native confirm dialog, falls back to a modal overlay.
-#[intrinsic("Confirm")]
+#[intrinsic("Confirm", mutates)]
 func Alert.confirm(message string) => alert.Confirm(message)
 
 // --- File ---
@@ -40,12 +40,12 @@ func Alert.confirm(message string) => alert.Confirm(message)
 // empty string if cancelled. The dialog style (native, in-app) is
 // platform-defined. Not all platforms expose a file system — web
 // platforms may return a synthetic handle.
-#[intrinsic("Pick")]
+#[intrinsic("Pick", readonly)]
 func File.pick() => file.Pick()
 
 // Opens a folder-picker dialog and returns the chosen path, or an
 // empty string if cancelled. Same platform caveats as `File.pick`.
-#[intrinsic("PickFolder")]
+#[intrinsic("PickFolder", readonly)]
 func File.pickFolder() => file.PickFolder()
 
 

@@ -16,7 +16,7 @@ import "internal://intl"
 
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
-#[intrinsic("DefaultLocale")]
+#[intrinsic("DefaultLocale", readonly)]
 func i18n.defaultLocale() => intl.DefaultLocale()
 
 // Stdlib context: the active locale. Overridable per-subtree via

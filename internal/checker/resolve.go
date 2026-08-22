@@ -570,8 +570,15 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	}
 	// The #[intrinsic] mark says what this function is; nothing infers it from
 	// the shape of its body.
-	fn.Intrinsic = f.Intrinsic
-	fn.IntrinsicBodyUsable = f.IntrinsicBodyUsable
+	fn.Intrinsic = f.Intrinsic.ID
+	fn.IntrinsicBodyUsable = f.Intrinsic.BodyUsable
+	fn.MutatesReceiver = f.Intrinsic.MutatesReceiver
+	switch {
+	case f.Intrinsic.Mutates:
+		fn.Purity = ir.PurityMutates
+	case f.Intrinsic.Readonly:
+		fn.Purity = ir.PurityReadonly
+	}
 	return fn
 }
 

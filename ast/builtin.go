@@ -135,7 +135,23 @@ type BuiltinTaggable interface {
 // questions: a builtin kind says which IR construct a declaration dispatches
 // to, an intrinsic id says which native implementation may replace its body.
 type IntrinsicTaggable interface {
-	SetIntrinsic(id string, bodyUsable bool)
+	SetIntrinsic(IntrinsicMark)
+}
+
+// IntrinsicMark is what #[intrinsic("Id", flags...)] records: the id a backend
+// matches to emit a native implementation, plus the facts about the call that
+// have no other surface in SNGL. The zero value means "not an intrinsic".
+type IntrinsicMark struct {
+	ID string
+	// BodyUsable: the SNGL body computes the same result, so a backend that
+	// does not implement ID may emit the body instead.
+	BodyUsable bool
+	// Mutates: a call has an effect beyond its result.
+	Mutates bool
+	// Readonly: a call reads host state, so its result must not be folded.
+	Readonly bool
+	// MutatesReceiver: the first argument is written through in place.
+	MutatesReceiver bool
 }
 
 func (c *ComponentDecl) SetBuiltin(k BuiltinKind) { c.Builtin = k }
