@@ -313,7 +313,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Bare `sngl` is every library package merged into one listing. The
 	// per-package paths address one of them each.
 	//
-	// internal://stdlib is deliberately not an alias for this: despite the
+	// sngl://internal/stdlib is deliberately not an alias for this: despite the
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {

@@ -1,0 +1,128 @@
+// Package stdlib declares the language-level intrinsics: string, math, list, map, colour,
+// regex and error primitives every backend implements.
+//
+// Each declaration here is a signature with no body: the result is produced
+// by the target's native implementation of the marked id, so a backend that
+// does not implement one has nothing to fall back to.
+
+import . "sngl://internal/builtin"
+
+#[intrinsic("StrLength")]
+func StrLength(s string) int {}
+
+#[intrinsic("StrIndexOf")]
+func StrIndexOf(s string, sub string) int {}
+
+#[intrinsic("StrSubstring")]
+func StrSubstring(s string, start int, end int) string {}
+
+#[intrinsic("StrUpper")]
+func StrUpper(s string) string {}
+
+#[intrinsic("StrLower")]
+func StrLower(s string) string {}
+
+#[intrinsic("StrTrim")]
+func StrTrim(s string) string {}
+
+#[intrinsic("StrReplace")]
+func StrReplace(s string, old string, new string) string {}
+
+#[intrinsic("StrSplit")]
+func StrSplit(s string, sep string) list<string> {}
+
+#[intrinsic("MathFloor")]
+func MathFloor(x float) int {}
+
+#[intrinsic("MathCeil")]
+func MathCeil(x float) int {}
+
+#[intrinsic("MathRound")]
+func MathRound(x float) int {}
+
+#[intrinsic("MathPow")]
+func MathPow(base float, exp float) float {}
+
+#[intrinsic("MathSqrt")]
+func MathSqrt(x float) float {}
+
+#[intrinsic("MathSin")]
+func MathSin(x float) float {}
+
+#[intrinsic("MathCos")]
+func MathCos(x float) float {}
+
+#[intrinsic("MathTan")]
+func MathTan(x float) float {}
+
+#[intrinsic("MathAsin")]
+func MathAsin(x float) float {}
+
+#[intrinsic("MathAcos")]
+func MathAcos(x float) float {}
+
+#[intrinsic("MathAtan")]
+func MathAtan(x float) float {}
+
+#[intrinsic("MathAtan2")]
+func MathAtan2(y float, x float) float {}
+
+#[intrinsic("ListLength")]
+func ListLength(l list<dyn>) int {}
+
+#[intrinsic("ListPush", mutates, mutatesReceiver)]
+func ListPush(l list<dyn>, item dyn) list<dyn> {}
+
+#[intrinsic("ListRemove", mutates, mutatesReceiver)]
+func ListRemove(l list<dyn>, index int) list<dyn> {}
+
+#[intrinsic("ListIndexOf")]
+func ListIndexOf(l list<dyn>, item dyn) int {}
+
+#[intrinsic("ListJoin")]
+func ListJoin(l list<dyn>, sep string) string {}
+
+#[intrinsic("ListReverse")]
+func ListReverse(l list<dyn>) list<dyn> {}
+
+#[intrinsic("ListSlice")]
+func ListSlice(l list<dyn>, start int, end int) list<dyn> {}
+
+#[intrinsic("ListFilter")]
+func ListFilter(l list<dyn>, pred dyn) list<dyn> {}
+
+#[intrinsic("ListMap")]
+func ListMap(l list<dyn>, fn dyn) list<dyn> {}
+
+#[intrinsic("MapLength")]
+func MapLength<K, V>(m map<K, V>) int {}
+
+#[intrinsic("MapKeys")]
+func MapKeys<K, V>(m map<K, V>) list<dyn> {}
+
+#[intrinsic("MapValues")]
+func MapValues<K, V>(m map<K, V>) list<dyn> {}
+
+#[intrinsic("MapContains")]
+func MapContains<K, V>(m map<K, V>, key dyn) bool {}
+
+#[intrinsic("MapGet")]
+func MapGet<K, V>(m map<K, V>, key dyn, def dyn) dyn {}
+
+#[intrinsic("ColorHex")]
+func ColorHex(c dyn) string {}
+
+#[intrinsic("RegexMatches")]
+func RegexMatches(re string, s string) bool {}
+
+#[intrinsic("RegexFind")]
+func RegexFind(re string, s string) string {}
+
+#[intrinsic("ErrorRaise")]
+func ErrorRaise(message string, kind string) int {}
+
+#[intrinsic("HtmlFrontend")]
+func HtmlFrontend(v dyn) dyn {}
+
+#[intrinsic("HtmlBackend")]
+func HtmlBackend(v dyn) dyn {}

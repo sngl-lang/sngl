@@ -4,13 +4,13 @@
 // direct formatters callable from regular SNGL code.
 //
 // Each function below has an expression body that delegates to the
-// corresponding intrinsic in `internal://intl`, threading `locale` from
+// corresponding intrinsic in `sngl://internal/intl`, threading `locale` from
 // the active context. The wrapper body exists so NoContext sees the
 // `locale` read and adds the hidden `__ctx_locale` param + call-site
 // arg threading.
 
 import . "sngl://internal/builtin"
-import "internal://intl"
+import "sngl://internal/intl"
 
 // --- Locale context ---
 
@@ -58,21 +58,15 @@ func i18n.select(value string, cases map<string, string>) => intl.Select(locale,
 
 // --- Plural/ordinal selectors ---
 
-// PluralKey identifies a CLDR plural category or an exact numeric match.
-// Use the predeclared constants (i18n.zero, i18n.one, …, i18n.other) for
-// CLDR keyword categories, or i18n.exactly(n) for an exact match.
-struct PluralKey {
-    n int
-    exact bool
-}
-
-// Construct a PluralKey that matches exactly n.
-func i18n.exactly(n int) PluralKey {}
+// Construct a PluralKey that matches exactly n. The type is declared beside
+// the intl primitives that consume it; use the predeclared constants
+// (i18n.zero, i18n.one, …, i18n.other) for CLDR keyword categories.
+func i18n.exactly(n int) intl.PluralKey {}
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.plural(count int, forms map<PluralKey, string>) => intl.Plural(locale, count, forms)
+func i18n.plural(count int, forms map<intl.PluralKey, string>) => intl.Plural(locale, count, forms)
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.selectordinal(count int, forms map<PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)
+func i18n.selectordinal(count int, forms map<intl.PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)

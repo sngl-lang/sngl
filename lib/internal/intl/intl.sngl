@@ -1,0 +1,53 @@
+// Package intl declares the locale-aware formatting primitives backing sngl://std's i18n
+// wrappers.
+//
+// Each declaration here is a signature with no body: the result is produced
+// by the target's native implementation of the marked id, so a backend that
+// does not implement one has nothing to fall back to.
+
+import . "sngl://internal/builtin"
+
+#[intrinsic("DefaultLocale", readonly)]
+func DefaultLocale() string {}
+
+#[intrinsic("Translate")]
+func Translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string {}
+
+#[intrinsic("Format")]
+func Format(locale string, template string, args map<string, dyn>) string {}
+
+#[intrinsic("NumberInt")]
+func NumberInt(locale string, n int, style string) string {}
+
+#[intrinsic("NumberFloat")]
+func NumberFloat(locale string, n float, style string) string {}
+
+#[intrinsic("Date")]
+func Date(locale string, d dyn, style string) string {}
+
+#[intrinsic("Time")]
+func Time(locale string, t dyn, style string) string {}
+
+#[intrinsic("DateTime")]
+func DateTime(locale string, dt dyn, dateStyle string, timeStyle string) string {}
+
+#[intrinsic("Select")]
+func Select(locale string, value string, cases map<string, string>) string {}
+
+// PluralKey identifies a CLDR plural category or an exact numeric match. It
+// lives here, beside the primitives that take it, rather than in sngl://std —
+// std imports this package, so the type could not be named from here if it
+// were declared up there.
+//
+// Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
+// i18n.exactly(n); the fields are the runtime's business.
+struct PluralKey {
+    n int
+    exact bool
+}
+
+#[intrinsic("Plural")]
+func Plural(locale string, count int, forms map<PluralKey, string>) string {}
+
+#[intrinsic("SelectOrdinal")]
+func SelectOrdinal(locale string, count int, forms map<PluralKey, string>) string {}

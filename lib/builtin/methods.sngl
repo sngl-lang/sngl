@@ -1,5 +1,5 @@
 import . "sngl://internal/builtin"
-import "internal://stdlib"
+import "sngl://internal/stdlib"
 
 // --- int ---
 

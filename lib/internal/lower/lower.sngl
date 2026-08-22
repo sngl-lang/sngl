@@ -1,0 +1,23 @@
+// Package lower declares the node-tree primitives the lowering passes emit. No program calls
+// these by hand; passDeclarative and passReactivity synthesize them.
+//
+// Each declaration here is a signature with no body: the result is produced
+// by the target's native implementation of the marked id, so a backend that
+// does not implement one has nothing to fall back to.
+
+import . "sngl://internal/builtin"
+
+#[intrinsic("CreateNode")]
+func CreateNode(tag string) dyn {}
+
+#[intrinsic("AppendChild")]
+func AppendChild(parent dyn, child dyn) {}
+
+#[intrinsic("RemoveChild")]
+func RemoveChild(parent dyn, child dyn) {}
+
+#[intrinsic("AttachHandler")]
+func AttachHandler(node dyn, event string, handler dyn) {}
+
+#[intrinsic("CreateComponent")]
+func CreateComponent(comp dyn, props dyn) dyn {}

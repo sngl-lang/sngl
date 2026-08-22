@@ -120,6 +120,7 @@ func NewBaseScope() *Scope {
 	}{
 		{"list", ListOf(TypDyn)},
 		{"option", OptionOf(TypDyn)},
+		{"map", MapOf(TypDyn, TypDyn)},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}

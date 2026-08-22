@@ -643,12 +643,14 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// The standard library. A scheme keeps it from colliding with a local
 		// package directory of any name — the collision a reserved bare path
 		// like "std" would reintroduce.
-		// sngl://internal/<name> is a macro package: it contributes macros to
-		// the expand pass and no runtime symbols, so it resolves against the
-		// macro registry rather than the lib/ layout.
-		if strings.HasPrefix(uri, "internal/") {
+		// sngl://internal/<name> is the compiler's own tier. A package there
+		// may contribute macros to the expand pass, declarations to the
+		// program, or both, so it resolves against the macro registry and the
+		// lib/ layout together — a macro-only package has no directory, and a
+		// declarations package has no macros.
+		if strings.HasPrefix(uri, "internal/") && !HasPackage(uri) {
 			if !expand.HasPackage(uri) {
-				c.error(imp.Pos, "unknown macro package %q", uri)
+				c.error(imp.Pos, "unknown internal package %q", uri)
 				return
 			}
 			irImport.Pkg = &ir.Package{
@@ -668,22 +670,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 			return
 		}
 		irImport.Pkg = c.libPkg(uri)
-	} else if scheme == "internal" {
-		// Built-in internal packages — no resolver needed.
-		switch uri {
-		case "stdlib":
-			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.Intrinsics)
-		case "alert":
-			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.AlertIntrinsics)
-		case "file":
-			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.FileIntrinsics)
-		case "intl":
-			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.I18nIntrinsics)
-		case "lower":
-			irImport.Pkg = c.buildIntrinsicsPkgFrom(ir.LowerIntrinsics)
-		default:
-			c.error(imp.Pos, "unknown internal package: %q", uri)
-		}
 	} else if scheme == "platform" {
 		// Platform package import: import "platform://html"
 		var target ir.Platform
@@ -1412,12 +1398,21 @@ func (c *checker) stdlibHint(name string) string {
 	if c.pkg == nil {
 		return ""
 	}
+	// The hint is for user code. Loading the library to build one while the
+	// library is itself loading would re-enter a package mid-load, which
+	// libPkg reports as a cycle.
+	if len(c.libLoading) > 0 {
+		return ""
+	}
 	// Search every lib package, not just std: the shapes moved to sngl://draw,
 	// and naming the wrong package is worse than saying nothing. Loading here
 	// is on an error path only.
 	for _, libName := range lib.Packages() {
 		if libName == "builtin" {
 			continue // ambient; a miss here is not a missing import
+		}
+		if strings.HasPrefix(libName, "internal/") {
+			continue // the compiler's own tier is not something to suggest
 		}
 		pkg := c.libPkg(libName)
 		if _, ok := pkg.Symbols.Root.LookupLocal(name); !ok {
@@ -2932,7 +2927,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 			}
 			// Deliberately unclaimed. A lifted namespace names a package, and
 			// a file may name that same package itself — `import
-			// "internal://lower"` alongside the stdlib that already exposes
+			// "sngl://internal/lower"` alongside the stdlib that already exposes
 			// it. Both bindings mean the same package, so this is a restated
 			// name rather than an ambiguous one. Only the stdlib lifts
 			// namespaces, so no second dot import can disagree about one.

@@ -601,6 +601,12 @@ func isComparable(t *ir.Type) bool {
 		return t.Decl != nil
 	case ir.TypeEnum, ir.TypeUnit:
 		return true
+	case ir.TypeTypeParam:
+		// An unbound type parameter is not judgeable here; whether the key is
+		// comparable is decided where the parameter is bound to a concrete
+		// type. Rejecting it would make `map<K, V>` undeclarable as a
+		// parameter, which the map intrinsics need.
+		return true
 	}
 	return false
 }

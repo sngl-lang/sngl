@@ -10,7 +10,7 @@ import (
 
 func TestInternalLowerNamespace(t *testing.T) {
 	src := `
-import "internal://lower"
+import "sngl://internal/lower"
 
 func test() => lower.CreateNode("text")
 `
@@ -44,7 +44,7 @@ func test() => lower.CreateNode("text")
 		}
 	}
 	if !found {
-		t.Errorf("internal://lower import not present in checked pkg")
+		t.Errorf("sngl://internal/lower import not present in checked pkg")
 	}
 }
 

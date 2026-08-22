@@ -1,6 +1,6 @@
 import . "sngl://internal/builtin"
-import "internal://alert"
-import "internal://file"
+import "sngl://internal/alert"
+import "sngl://internal/file"
 
 // --- Alert ---
 

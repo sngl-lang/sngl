@@ -236,16 +236,19 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		fn  *ir.Func
 	}
 	// The i18n and html namespaces describe std's own declarations, so they
-	// belong to that tier only. Declaring them from the builtin pass as well
-	// put an empty `html` namespace in the ambient scope, which shadowed the
-	// real one and lost the platform Resolve fallback attached to it.
+	// belong to that package only. Declaring them from the builtin pass as
+	// well put an empty `html` namespace in the ambient scope, which shadowed
+	// the real one and lost the platform Resolve fallback attached to it; and
+	// building them while any other package loads would re-enter the package
+	// PluralKey lives in.
 	//
 	// They are declared before the funcs whose receiver names them, so that
 	// `func i18n.tr(...)` finds a declaration to be a member of. Their
 	// packages are built from those same funcs, so the Pkg is filled in below
 	// once they exist.
+	declaresI18n := pkgName == stdPkg
 	var i18nNS, htmlNS *ir.Namespace
-	if !ambient {
+	if declaresI18n {
 		i18nNS = &ir.Namespace{Name: "i18n"}
 		htmlNS = &ir.Namespace{Name: "html"}
 		c.bindLib(ast.Pos{}, c.scope, i18nNS)
@@ -271,11 +274,11 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	if !ambient {
+	if declaresI18n {
 		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
 		// exposes every i18n.* receiver method as a free function, plus the
 		// predeclared PluralKey constants (zero, one, two, few, many, other).
-		i18nNS.Pkg = c.buildI18nNamespacePkg(structDefs, registeredFuncs)
+		i18nNS.Pkg = c.buildI18nNamespacePkg(registeredFuncs)
 		// html so the placement directives html.frontend(...) /
 		// html.backend(...) (GitLab #27) resolve as free-function calls. The
 		// directives are declared as methods on receiver "html" in
@@ -334,10 +337,17 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	return stdlibPkg
 }
 
+// intlPkg is the library package declaring the locale-aware primitives and the
+// PluralKey they are keyed by.
+const intlPkg = "internal/intl"
+
+// stdPkg is the library package that declares the i18n and html namespaces.
+const stdPkg = "std"
+
 // buildI18nNamespacePkg constructs a synthetic ir.Package for the "i18n"
 // namespace, exposing i18n.* receiver methods as free functions and
 // predeclaring the CLDR PluralKey constants (zero/one/two/few/many/other).
-func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef, stdlibFuncs []*ir.Func) *ir.Package {
+func (c *checker) buildI18nNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 	pkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
@@ -347,12 +357,15 @@ func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef, stdlibFuncs 
 	// Expose all i18n.* receiver methods as free functions in the namespace.
 	c.addReceiverFuncs(pkg, stdlibFuncs, "i18n")
 
-	// Locate the PluralKey struct so we can type the predeclared vars.
+	// The constants are PluralKeys, and PluralKey is declared beside the intl
+	// primitives that consume it. std has already imported that package by the
+	// time this runs, so the lookup is a cache hit, not a load.
 	var pluralKeyType *ir.Type
-	for _, sd := range structDefs {
-		if sd.Name == "PluralKey" {
-			pluralKeyType = sd.SymType()
-			break
+	if intl := c.libPkg(intlPkg); intl != nil {
+		if sym, ok := intl.Symbols.Root.LookupLocal("PluralKey"); ok {
+			if sd, isStruct := sym.(*ir.StructDef); isStruct {
+				pluralKeyType = sd.SymType()
+			}
 		}
 	}
 	if pluralKeyType == nil {
@@ -629,33 +642,6 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 		fn.Purity = def.Purity
 	}
 	return true
-}
-
-// buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic
-// definitions. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
-func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
-	pkg := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-	for _, def := range defs {
-		params := make([]*ir.Param, len(def.Params))
-		for i, p := range def.Params {
-			params[i] = &ir.Param{Name: p.Name, Type: p.Type}
-		}
-		fn := &ir.Func{
-			Name:      def.Name,
-			Params:    params,
-			Return:    def.Return,
-			Intrinsic: def.Name,
-			Purity:    def.Purity,
-		}
-		// Default unset → Pure (most intrinsics are deterministic
-		// pure helpers; env-impure entries set Purity explicitly).
-		if fn.Purity == ir.PurityUnknown {
-			fn.Purity = ir.PurityPure
-		}
-		pkg.Funcs = append(pkg.Funcs, fn)
-		c.bindLib(ast.Pos{}, pkg.Symbols.Root, fn)
-	}
-	return pkg
 }
 
 // mergePlatformExtensions walks every registered platform's Package() docs

@@ -1,0 +1,22 @@
+// Package alert declares the dialog and toast primitives.
+//
+// Each declaration here is a signature with no body: the result is produced
+// by the target's native implementation of the marked id, so a backend that
+// does not implement one has nothing to fall back to.
+
+import . "sngl://internal/builtin"
+
+#[intrinsic("Toast", mutates)]
+func Toast(message string, variant string) int {}
+
+#[intrinsic("Info", mutates)]
+func Info(message string) int {}
+
+#[intrinsic("Warn", mutates)]
+func Warn(message string) int {}
+
+#[intrinsic("Error", mutates)]
+func Error(message string) int {}
+
+#[intrinsic("Confirm", mutates)]
+func Confirm(message string) bool {}
