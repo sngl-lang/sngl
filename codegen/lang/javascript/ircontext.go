@@ -588,6 +588,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 		}
 	}
 
+	codegen.RequireIntrinsicFallback(langJS, n.Func)
 	if len(args) >= 1 {
 		recv := args[0]
 		rest := args[1:]
@@ -730,68 +731,43 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	}
 
 	switch qualName {
-	case "int.min", "*.min":
+	case "*.min":
 		return "Math.min(" + a(0) + ", " + a(1) + ")"
-	case "int.max", "*.max":
+	case "*.max":
 		return "Math.max(" + a(0) + ", " + a(1) + ")"
-	case "int.abs", "*.abs":
+	case "*.abs":
 		return "Math.abs(" + a(0) + ")"
-	case "string.length", "*.length":
+	case "*.length":
 		return a(0) + ".length"
-	case "string.upper", "*.upper":
+	case "*.upper":
 		return a(0) + ".toUpperCase()"
-	case "string.lower", "*.lower":
+	case "*.lower":
 		return a(0) + ".toLowerCase()"
-	case "string.trim", "*.trim":
+	case "*.trim":
 		return a(0) + ".trim()"
-	case "string.replace", "*.replace":
+	case "*.replace":
 		return a(0) + ".replaceAll(" + a(1) + ", " + a(2) + ")"
-	case "string.indexOf", "*.indexOf":
+	case "*.indexOf":
 		return a(0) + ".indexOf(" + a(1) + ")"
-	case "string.substring", "*.substring":
+	case "*.substring":
 		return a(0) + ".substring(" + a(1) + ", " + a(2) + ")"
-	case "list.length":
-		return a(0) + ".length"
-	case "list.join", "*.join":
+	case "*.join":
 		return a(0) + ".join(" + a(1) + ")"
-	case "list.filter", "*.filter":
+	case "*.filter":
 		return a(0) + ".filter(" + a(1) + ")"
-	case "list.map", "*.map":
+	case "*.map":
 		return a(0) + ".map(" + a(1) + ")"
-	case "list.indexOf":
-		return a(0) + ".indexOf(" + a(1) + ")"
-	case "list.reverse", "*.reverse":
+	case "*.reverse":
 		return "[..." + a(0) + "].reverse()"
-	case "float.floor", "*.floor":
+	case "*.floor":
 		return "Math.floor(" + a(0) + ")"
-	case "float.ceil", "*.ceil":
+	case "*.ceil":
 		return "Math.ceil(" + a(0) + ")"
-	case "float.round", "*.round":
+	case "*.round":
 		return "Math.round(" + a(0) + ")"
-	case "float.sqrt", "*.sqrt":
+	case "*.sqrt":
 		return "Math.sqrt(" + a(0) + ")"
 	// map
-	case "map.length":
-		return a(0) + ".size"
-	case "map.keys":
-		return "Array.from(" + a(0) + ".keys())"
-	case "map.values":
-		return "Array.from(" + a(0) + ".values())"
-	case "map.contains":
-		return a(0) + ".has(" + a(1) + ")"
-	case "map.get":
-		return "(" + a(0) + ".has(" + a(1) + ") ? " + a(0) + ".get(" + a(1) + ") : " + a(2) + ")"
-	case "Alert.toast":
-		return `(function(){var d=document.createElement("div");d.textContent=` + a(0) + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
-	case "Alert.info":
-		return `alert(` + a(0) + `)`
-	case "Alert.warn":
-		return `alert("Warning: " + ` + a(0) + `)`
-	case "Alert.error":
-		return `alert("Error: " + ` + a(0) + `)`
-	case "Alert.confirm":
-		return `confirm(` + a(0) + `)`
-	// i18n — all calls delegate to i18n.getTranslator() from the JS runtime.
 	case "i18n.tr":
 		// Args from translateIRTypeMethodCall: a(0)=key, a(1)=argsMap.
 		// The JS runtime's Translator.tr(key, inlinedTemplate, args) takes three

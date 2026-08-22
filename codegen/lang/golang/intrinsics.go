@@ -87,26 +87,47 @@ func init() {
 	})
 
 	// --- list and map ---
+	// Go is statically typed, so these name the element type they build rather
+	// than falling back to []any: a list<int> is emitted as []int, and an []any
+	// result would not assign to it.
 	regImp("ListJoin", []string{"strings"}, func(a []string) string { return "strings.Join(" + a[0] + ", " + a[1] + ")" })
-	reg("ListFilter", func(a []string) string {
-		return "func() []any { var out []any; for _, item := range " + a[0] + " { if " + a[1] + ".(func(any) any)(item).(bool) { out = append(out, item) } }; return out }()"
+	regImp("ListIndexOf", []string{"slices"}, func(a []string) string { return "slices.Index(" + a[0] + ", " + a[1] + ")" })
+	reg("ListSlice", func(a []string) string { return "(" + a[0] + ")[" + a[1] + ":" + a[2] + "]" })
+	regTyped("ListReverse", nil, func(a []string, ts []*ir.Type) string {
+		el := goElem(ts[0])
+		return "func() []" + el + " { src := " + a[0] + "; out := make([]" + el + ", len(src)); for i, v := range src { out[len(src)-1-i] = v }; return out }()"
 	})
-	reg("ListMap", func(a []string) string {
-		return "func() []any { out := make([]any, len(" + a[0] + ")); for i, item := range " + a[0] + " { out[i] = " + a[1] + ".(func(any) any)(item) }; return out }()"
+	regTyped("ListFilter", nil, func(a []string, ts []*ir.Type) string {
+		el := goElem(ts[0])
+		return "func() []" + el + " { var out []" + el + "; for _, item := range " + a[0] + " { if " + a[1] + "(item) { out = append(out, item) } }; return out }()"
+	})
+	regTyped("ListMap", nil, func(a []string, ts []*ir.Type) string {
+		// The result element type is the mapper's return type, not the source's.
+		out := "any"
+		if len(ts) > 1 && ts[1] != nil && ts[1].Sig != nil && ts[1].Sig.Return != nil {
+			out = IRTypeToGo(ts[1].Sig.Return)
+		}
+		return "func() []" + out + " { out := make([]" + out + ", len(" + a[0] + ")); for i, item := range " + a[0] + " { out[i] = " + a[1] + "(item) }; return out }()"
 	})
 	reg("MapLength", func(a []string) string { return "len(" + a[0] + ")" })
-	reg("MapKeys", func(a []string) string {
-		return "func() []any { ks := make([]any, 0, len(" + a[0] + ")); for k := range " + a[0] + " { ks = append(ks, k) }; return ks }()"
+	regTyped("MapKeys", nil, func(a []string, ts []*ir.Type) string {
+		k := goKey(ts[0])
+		return "func() []" + k + " { ks := make([]" + k + ", 0, len(" + a[0] + ")); for k := range " + a[0] + " { ks = append(ks, k) }; return ks }()"
 	})
-	reg("MapValues", func(a []string) string {
-		return "func() []any { vs := make([]any, 0, len(" + a[0] + ")); for _, v := range " + a[0] + " { vs = append(vs, v) }; return vs }()"
+	regTyped("MapValues", nil, func(a []string, ts []*ir.Type) string {
+		v := goVal(ts[0])
+		return "func() []" + v + " { vs := make([]" + v + ", 0, len(" + a[0] + ")); for _, v := range " + a[0] + " { vs = append(vs, v) }; return vs }()"
 	})
 	reg("MapContains", func(a []string) string {
 		return "func() bool { _, ok := " + a[0] + "[" + a[1] + "]; return ok }()"
 	})
-	reg("MapGet", func(a []string) string {
-		return "func() any { if v, ok := " + a[0] + "[" + a[1] + "]; ok { return v }; return " + a[2] + " }()"
+	regTyped("MapGet", nil, func(a []string, ts []*ir.Type) string {
+		v := goVal(ts[0])
+		return "func() " + v + " { if v, ok := " + a[0] + "[" + a[1] + "]; ok { return v }; return " + a[2] + " }()"
 	})
+
+	// --- color ---
+	regImp("ColorHex", []string{colorImportPath}, func(a []string) string { return a[0] + ".Hex()" })
 
 	// --- Alert and File ---
 	// Effects a generated Go program cannot perform without a UI; print the
@@ -142,6 +163,42 @@ func init() {
 	// just the translated argument (pass-through).
 	reg("HtmlFrontend", func(a []string) string { return a[0] })
 	reg("HtmlBackend", func(a []string) string { return a[0] })
+}
+
+// regTyped registers an emitter that needs its arguments' types, not only
+// their emitted text. Go names every type it builds, so a list or map helper
+// has to spell the element type out.
+func regTyped(id string, imports []string, fn func(a []string, ts []*ir.Type) string) {
+	codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		a := make([]string, len(args))
+		ts := make([]*ir.Type, len(args))
+		for i, e := range args {
+			a[i] = tr(e)
+			if e != nil {
+				ts[i] = e.ExprType()
+			}
+		}
+		return fn(a, ts), imports
+	})
+}
+
+// goElem, goKey and goVal name a container's parts in Go. An unresolved type
+// degrades to any rather than emitting nothing: the result still compiles when
+// the surrounding context is itself dynamic.
+func goElem(t *ir.Type) string {
+	if t == nil || len(t.Elems) < 1 {
+		return "any"
+	}
+	return IRTypeToGo(t.Elems[0])
+}
+
+func goKey(t *ir.Type) string { return goElem(t) }
+
+func goVal(t *ir.Type) string {
+	if t == nil || len(t.Elems) < 2 {
+		return "any"
+	}
+	return IRTypeToGo(t.Elems[1])
 }
 
 // regImp registers an emitter that declares the given Go import paths.

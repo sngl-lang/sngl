@@ -58,6 +58,57 @@ func init() {
 	reg("MathAtan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list (in-place mutations) ---
+	// --- list and map ---
+	// A SNGL map is a JS Map, so these are its methods rather than object keys.
+	reg("ListLength", func(a []string) string { return a[0] + ".length" })
+	reg("ListIndexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
+	reg("ListJoin", func(a []string) string { return a[0] + ".join(" + a[1] + ")" })
+	reg("ListReverse", func(a []string) string { return "[..." + a[0] + "].reverse()" })
+	reg("ListSlice", func(a []string) string { return a[0] + ".slice(" + a[1] + ", " + a[2] + ")" })
+	reg("ListFilter", func(a []string) string { return a[0] + ".filter(" + a[1] + ")" })
+	reg("ListMap", func(a []string) string { return a[0] + ".map(" + a[1] + ")" })
+	reg("MapLength", func(a []string) string { return a[0] + ".size" })
+	reg("MapKeys", func(a []string) string { return "Array.from(" + a[0] + ".keys())" })
+	reg("MapValues", func(a []string) string { return "Array.from(" + a[0] + ".values())" })
+	reg("MapContains", func(a []string) string { return a[0] + ".has(" + a[1] + ")" })
+	reg("MapGet", func(a []string) string {
+		return "(" + a[0] + ".has(" + a[1] + ") ? " + a[0] + ".get(" + a[1] + ") : " + a[2] + ")"
+	})
+
+	// --- numeric ---
+	reg("IntMin", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
+	reg("IntMax", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
+	reg("IntAbs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
+	reg("IntClamp", func(a []string) string {
+		return "Math.min(Math.max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+	})
+	reg("FloatMin", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
+	reg("FloatMax", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
+	reg("FloatAbs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
+	reg("FloatClamp", func(a []string) string {
+		return "Math.min(Math.max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+	})
+
+	// --- color ---
+	// A SNGL color is a {r,g,b,a} object in JS, so hex has to format it. The
+	// arrow keeps the operand from being evaluated four times.
+	reg("ColorHex", func(a []string) string {
+		return `(c => "#" + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, "0")).join(""))(` + a[0] + ")"
+	})
+
+	// --- Alert and File ---
+	reg("Toast", func(a []string) string {
+		return `(function(){var d=document.createElement("div");d.textContent=` + a[0] + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
+	})
+	reg("Info", func(a []string) string { return "alert(" + a[0] + ")" })
+	reg("Warn", func(a []string) string { return `alert("Warning: " + ` + a[0] + ")" })
+	reg("Error", func(a []string) string { return `alert("Error: " + ` + a[0] + ")" })
+	reg("Confirm", func(a []string) string { return "confirm(" + a[0] + ")" })
+	// A file dialog has no synchronous form in a browser; answer as the Go
+	// backend does rather than emit something that cannot return a path.
+	reg("Pick", func(a []string) string { return `""` })
+	reg("PickFolder", func(a []string) string { return `""` })
+
 	reg("ListPush", func(a []string) string { return a[0] + ".push(" + a[1] + ")" })
 	reg("ListRemove", func(a []string) string { return a[0] + ".splice(" + a[1] + ", 1)" })
 

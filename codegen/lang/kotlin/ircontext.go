@@ -491,6 +491,7 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
+	codegen.RequireIntrinsicFallback(langKt, n.Func)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}
@@ -859,47 +860,24 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	// and the `val context = LocalContext.current` declaration on
 	// CommonAnalysis.NeedsToast, so `context` is in scope at the call site
 	// (toast calls live inside @Composable handler lambdas that capture it).
-	case "Alert.toast":
-		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_SHORT).show()"
-	case "Alert.info", "Alert.warn", "Alert.error":
-		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_LONG).show()"
-	case "Alert.confirm":
-		return "true"
-	case "int.min", "*.min":
+	case "*.min":
 		return "minOf(" + a(0) + ", " + a(1) + ")"
-	case "int.max", "*.max":
+	case "*.max":
 		return "maxOf(" + a(0) + ", " + a(1) + ")"
-	case "int.abs", "*.abs":
+	case "*.abs":
 		return "kotlin.math.abs(" + a(0) + ")"
 	// string.* and float math are intrinsic-backed and emitted by ID via the
 	// registry (intrinsics.go). string.contains stays: it is composed
 	// (indexOf >= 0), not an intrinsic.
 	case "string.contains":
 		return a(0) + ".contains(" + a(1) + ")"
-	case "list.length":
-		return a(0) + ".size"
-	case "list.join", "*.join":
+	case "*.join":
 		return a(0) + ".joinToString(" + a(1) + ")"
-	case "list.filter", "*.filter":
+	case "*.filter":
 		return a(0) + ".filter(" + a(1) + ")"
-	case "list.map", "*.map":
+	case "*.map":
 		return a(0) + ".map(" + a(1) + ")"
 	// map
-	case "map.length":
-		return a(0) + ".size"
-	case "map.keys":
-		return a(0) + ".keys.toList()"
-	case "map.values":
-		return a(0) + ".values.toList()"
-	case "map.contains":
-		return a(0) + ".containsKey(" + a(1) + ")"
-	case "map.get":
-		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
-	// i18n — wrapper calls delegate to per-locale runtime entry points.
-	// NoContext threads __ctx_locale as the trailing arg; we lift it to the
-	// leading positional arg the runtime expects (I18n.<foo>(locale, ...)).
-	// Falls back to I18n.getTranslator() (process-global) when no locale arg
-	// was threaded — e.g. legacy callers reached before NoContext runs.
 	case "i18n.tr":
 		// Wrapper params: (key, args, __ctx_locale).
 		if len(argExprs) >= 3 {

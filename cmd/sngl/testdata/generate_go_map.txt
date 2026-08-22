@@ -13,8 +13,9 @@ grep '"bob": 20' out/model.go
 # map.length() dispatches to len(m.scores) in the handler.
 grep 'len\(m\.scores\)' out/model.go
 
-# map.get() dispatches to an inline if-ok-idiom.
-grep 'func\(\) any' out/model.go
+# map.get() dispatches to an inline if-ok-idiom, typed by the map's value
+# type — `any` here would not assign to an int.
+grep 'func\(\) int' out/model.go
 
 -- app.sngl --
 import . "sngl://std"
