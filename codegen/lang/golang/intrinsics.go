@@ -129,16 +129,11 @@ func init() {
 	// --- color ---
 	regImp("ColorHex", []string{colorImportPath}, func(a []string) string { return a[0] + ".Hex()" })
 
-	// --- Alert and File ---
-	// Effects a generated Go program cannot perform without a UI; print the
-	// message and answer with a fixed value, as the interpreter does.
-	regImp("Toast", []string{"fmt"}, func(a []string) string {
-		return `fmt.Println("[" + ` + a[1] + ` + "] " + ` + a[0] + `)`
-	})
-	regImp("Info", []string{"fmt"}, func(a []string) string { return `fmt.Println("[info] " + ` + a[0] + `)` })
-	regImp("Warn", []string{"fmt"}, func(a []string) string { return `fmt.Println("[warn] " + ` + a[0] + `)` })
-	regImp("Error", []string{"fmt"}, func(a []string) string { return `fmt.Println("[error] " + ` + a[0] + `)` })
-	reg("Confirm", func(a []string) string { return "true" })
+	// --- File ---
+	// Alert.* is deliberately absent: GoIRContext.evalAlertCall owns it, so a
+	// platform can replace it (gtk4 writes to os.Stderr) and the default
+	// appends to m.toasts. An emitter here would win over both — the platform
+	// would keep declaring the "os" import for a call that no longer used it.
 	reg("Pick", func(a []string) string { return `""` })
 	reg("PickFolder", func(a []string) string { return `""` })
 
