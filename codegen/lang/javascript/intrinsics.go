@@ -1,6 +1,8 @@
 package javascript
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -30,6 +32,8 @@ func init() {
 	}
 
 	// --- string ---
+	reg("IntParse", func(a []string) string { return "parseInt(" + a[0] + ", " + a[1] + ")" })
+
 	reg("StrLength", func(a []string) string { return a[0] + ".length" })
 	reg("StrIndexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("StrSubstring", func(a []string) string { return a[0] + ".substring(" + a[1] + ", " + a[2] + ")" })
@@ -63,4 +67,24 @@ func init() {
 	// just the translated argument (pass-through).
 	reg("HtmlFrontend", func(a []string) string { return a[0] })
 	reg("HtmlBackend", func(a []string) string { return a[0] })
+
+	// --- intl (locale-aware formatting) ---
+	// Each maps to the same-named entry point in the javascript i18n runtime; the
+	// locale is already the leading argument by the time a call gets here.
+	for id, name := range map[string]string{
+		"Date":          "date",
+		"DateTime":      "datetime",
+		"DefaultLocale": "defaultLocale",
+		"Format":        "format",
+		"NumberFloat":   "numberFloat",
+		"NumberInt":     "numberInt",
+		"Plural":        "plural",
+		"Select":        "select",
+		"SelectOrdinal": "selectordinal",
+		"Time":          "time",
+		"Translate":     "translate",
+	} {
+		call := "i18n." + name
+		reg(id, func(a []string) string { return call + "(" + strings.Join(a, ", ") + ")" })
+	}
 }

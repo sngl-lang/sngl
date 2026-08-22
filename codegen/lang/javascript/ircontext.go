@@ -393,6 +393,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		if fname == "regex" && len(args) == 1 {
 			return "new RegExp(" + args[0] + ")"
 		}
+		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync {
 			call = "await " + call
@@ -502,9 +503,6 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// runtime entry points. After NoContext + InlinePure, i18n.*
 		// wrapper calls have been lowered to direct intl.* intrinsic
 		// calls with the locale threaded as the first arg.
-		if result := jsEvalIntlIntrinsic(n.Func, args); result != "" {
-			return result
-		}
 
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher

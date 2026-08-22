@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -97,4 +98,35 @@ func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) 
 		return out, imports, true
 	}
 	return "", nil, false
+}
+
+// RequireIntrinsicFallback stops a build that has nothing to emit. A
+// declaration marked #[intrinsic] with no body is a signature: the result
+// comes from the target's implementation of the id, so emitting a plain call
+// to it would name a function that does not exist. The `usable` flag is the
+// declaration saying its own body computes the same answer, which is what
+// makes emitting the SNGL body safe for the ones that carry it.
+//
+// Call this at the point a backend is about to emit a generic call, not when
+// the id-keyed registry declines: several ids are still served by a backend's
+// own name-keyed dispatch, and those calls never reach the generic path.
+func RequireIntrinsicFallback(lang string, fn *ir.Func) {
+	if fn == nil || fn.Intrinsic == "" {
+		return
+	}
+	if len(fn.Block) > 0 || fn.IntrinsicBodyUsable {
+		return
+	}
+	panic(fmt.Sprintf(
+		"codegen: %s has no implementation of intrinsic %q (called as %s), and the declaration has no body to emit instead; "+
+			"register an emitter for it, or mark the declaration `usable` if its SNGL body is a correct answer",
+		lang, fn.Intrinsic, callName(fn)))
+}
+
+// callName describes a func for a diagnostic, receiver included when it has one.
+func callName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "." + fn.Name
+	}
+	return fn.Name
 }

@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -26,6 +28,11 @@ func init() {
 	regImp("StrLength", []string{"unicode/utf8"}, func(a []string) string { return "utf8.RuneCountInString(" + a[0] + ")" })
 	regImp("StrIndexOf", []string{"strings"}, func(a []string) string { return "strings.Index(" + a[0] + ", " + a[1] + ")" })
 	reg("StrSubstring", func(a []string) string { return "string([]rune(" + a[0] + ")[" + a[1] + ":" + a[2] + "])" })
+	// strconv.ParseInt returns (int64, error) and int.parse returns an int, so
+	// there is no expression form without a func literal to drop the error.
+	regImp("IntParse", []string{"strconv"}, func(a []string) string {
+		return "func() int { v, _ := strconv.ParseInt(" + a[0] + ", " + a[1] + ", 64); return int(v) }()"
+	})
 	regImp("StrUpper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
 	regImp("StrLower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
 	regImp("StrTrim", []string{"strings"}, func(a []string) string { return "strings.TrimSpace(" + a[0] + ")" })
@@ -113,6 +120,21 @@ func init() {
 	reg("Confirm", func(a []string) string { return "true" })
 	reg("Pick", func(a []string) string { return `""` })
 	reg("PickFolder", func(a []string) string { return `""` })
+
+	// --- intl (locale-aware formatting) ---
+	// Each maps to the same-named entry point in the Go i18n runtime; the
+	// locale is already the leading argument by the time a call gets here.
+	for id, goName := range map[string]string{
+		"DefaultLocale": "DefaultLocale", "Translate": "Translate", "Format": "Format",
+		"NumberInt": "NumberInt", "NumberFloat": "NumberFloat", "Date": "Date",
+		"Time": "Time", "DateTime": "Datetime", "Select": "Select",
+		"Plural": "Plural", "SelectOrdinal": "Selectordinal",
+	} {
+		call := "i18n." + goName
+		regImp(id, []string{SnglI18nImportPath}, func(a []string) string {
+			return call + "(" + strings.Join(a, ", ") + ")"
+		})
+	}
 
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the

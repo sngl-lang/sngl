@@ -220,46 +220,6 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	return ""
 }
 
-// goEvalIntlIntrinsic emits Go source for an intl.* intrinsic call. After
-// NoContext + InlinePure, calls to i18n.* SNGL wrappers are inlined into
-// their intrinsic targets (intl.Translate, intl.NumberInt, …) with the
-// active locale threaded as the first argument. The emitted call targets
-// the per-locale entry points in pkg/go/i18n which route into a cached
-// locale-keyed Translator.
-//
-// Returns "" if fn isn't an intl intrinsic.
-func goEvalIntlIntrinsic(fn *ir.Func, args []string) string {
-	if fn == nil || fn.Intrinsic == "" {
-		return ""
-	}
-	join := func() string { return strings.Join(args, ", ") }
-	switch fn.Intrinsic {
-	case "DefaultLocale":
-		return "i18n.DefaultLocale()"
-	case "Translate":
-		return "i18n.Translate(" + join() + ")"
-	case "Format":
-		return "i18n.Format(" + join() + ")"
-	case "NumberInt":
-		return "i18n.NumberInt(" + join() + ")"
-	case "NumberFloat":
-		return "i18n.NumberFloat(" + join() + ")"
-	case "Date":
-		return "i18n.Date(" + join() + ")"
-	case "Time":
-		return "i18n.Time(" + join() + ")"
-	case "DateTime":
-		return "i18n.Datetime(" + join() + ")"
-	case "Select":
-		return "i18n.Select(" + join() + ")"
-	case "Plural":
-		return "i18n.Plural(" + join() + ")"
-	case "SelectOrdinal":
-		return "i18n.Selectordinal(" + join() + ")"
-	}
-	return ""
-}
-
 // i18nPluralKeyGoName maps a SNGL plural-category name (zero, one, …, other) to
 // the unqualified Go runtime constant name (PluralZero, PluralOne, …,
 // PluralOther). Returns "" for unknown names.

@@ -581,6 +581,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			return "m." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
 
+		codegen.RequireIntrinsicFallback(langGo, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
@@ -675,17 +676,6 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			}
 		}
 
-		// Intrinsic dispatch: stdlib intrinsics that map to per-locale runtime
-		// entry points. After NoContext + InlinePure, i18n.* wrapper calls
-		// have been lowered to direct intl.* intrinsic calls with the locale
-		// threaded as the first arg.
-		if result := goEvalIntlIntrinsic(n.Func, args); result != "" {
-			// i18n intrinsics emit `i18n.<Func>(...)` which references
-			// the sngl-i18n runtime package.
-			gc.RequireImport(SnglI18nImportPath)
-			return result
-		}
-
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher
 		// so that a(0) is the first semantic argument (matches type-method path).
@@ -703,6 +693,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			return result
 		}
 
+		codegen.RequireIntrinsicFallback(langGo, n.Func)
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
@@ -774,6 +765,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
+	codegen.RequireIntrinsicFallback(langGo, n.Func)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}

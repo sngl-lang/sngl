@@ -319,7 +319,10 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
-	if out, _, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+		for _, p := range imports {
+			kc.RequireImport(p)
+		}
 		return out
 	}
 	if n.Receiver != nil {
@@ -342,6 +345,7 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 				return rewritten + "(" + strings.Join(args, ", ") + ")"
 			}
 		}
+		codegen.RequireIntrinsicFallback(langKt, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
@@ -364,10 +368,6 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// runtime entry points. After NoContext + InlinePure, i18n.*
 		// wrapper calls have been lowered to direct intl.* intrinsic
 		// calls with the locale threaded as the first arg.
-		if result := kotlinEvalIntlIntrinsic(n.Func, args); result != "" {
-			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
-			return result
-		}
 
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher

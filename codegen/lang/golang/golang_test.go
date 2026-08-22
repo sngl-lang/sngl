@@ -127,3 +127,43 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 		t.Errorf("i18n.exactly: got %q, want Exactly(0)", got)
 	}
 }
+
+// A bodyless #[intrinsic] the Go backend has no emitter for must stop the
+// build rather than emit a call to a function that does not exist. The guard
+// sits on the generic-call paths, so this also pins that evalCall actually
+// reaches it — an id served by the name-keyed dispatch returns before it.
+func TestUnimplementedIntrinsicPanics(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call *ir.Call
+	}{
+		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
+		{"namespace call", &ir.Call{
+			Func:     &ir.Func{Name: "nope", Receiver: "stdlib", Intrinsic: "NoBackendHasThis"},
+			Receiver: &ir.Ident{Name: "stdlib"},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("no panic for an intrinsic no backend implements")
+				}
+				if !strings.Contains(r.(string), "NoBackendHasThis") {
+					t.Errorf("panic %v does not name the intrinsic", r)
+				}
+			}()
+			newMinimalIRCtx().EvalExpr(tc.call)
+		})
+	}
+}
+
+// The same shape with a body is fine: the body is what gets emitted.
+func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
+	call := &ir.Call{Func: &ir.Func{
+		Name: "ok", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+	}}
+	if got := newMinimalIRCtx().EvalExpr(call); got == "" {
+		t.Error("usable intrinsic emitted nothing")
+	}
+}
