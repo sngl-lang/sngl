@@ -3243,6 +3243,14 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 	return nil
 }
 
+// onComponent names the component in a diagnostic when there is one to name.
+func onComponent(comp *ir.Component) string {
+	if comp == nil {
+		return ""
+	}
+	return " on component " + comp.Name
+}
+
 // componentEventType returns the payload type of a named event on a component, or nil.
 func componentEventType(comp *ir.Component, name string) *ir.Type {
 	for _, e := range comp.Events {
@@ -3409,6 +3417,18 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 						} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
 							val = c.checkExpr(callExpr)
 						}
+					}
+					// Nothing adapted it, and wrapIfNeeded would mint a cast
+					// to a struct — which the language does not have, so the
+					// same expression written out (Style("hi")) is a checker
+					// error. Left alone it reached lowering as a panic when
+					// the spread pass tried to resolve the struct type.
+					if got := exprType(val); expected.Kind == ir.TypeStruct &&
+						got.Kind != ir.TypeStruct && got.Kind != ir.TypeDyn &&
+						!got.IsAssignableTo(expected) {
+						c.error(*arg.Value.ExprPos(), "cannot use %s as %s for prop %q%s",
+							got, expected, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
+						continue
 					}
 					if expected.Kind != ir.TypeDyn {
 						val = wrapIfNeeded(val, expected)
