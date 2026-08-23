@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -16,27 +15,28 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
-// snglBinary returns the path to a freshly-built `sngl` binary. The
-// binary is built once per process (sync.Once) into a temp dir so the
-// per-fixture subtests don't pay the build cost N times. Callers should
-// shell out to this path rather than rely on whatever `sngl` happens to
-// be on PATH — that way the tests exercise the code in the current
-// working tree, not whatever was last `go install`-ed.
-var snglBinary = sync.OnceValues(func() (string, error) {
-	root := projectRoot()
-	dir, err := os.MkdirTemp("", "sngl-bin-*")
-	if err != nil {
-		return "", err
-	}
-	bin := filepath.Join(dir, "sngl")
+// snglBinary builds `sngl` into a directory the test framework removes, and
+// returns its path. Callers shell out to it rather than to whatever `sngl` is
+// on PATH, so the tests exercise the working tree and not the last
+// `go install`.
+//
+// It built into os.MkdirTemp behind a sync.Once before, which leaked the
+// directory: one per test process, ~84MB, never removed. Five packages call
+// this, so a full `go test ./...` left five behind, and enough runs filled the
+// disk — which surfaced as unrelated GUI and website tests failing. There is
+// no build cost to giving it back: each process calls this once either way,
+// and the Go build cache makes the relink cheap.
+func snglBinary(t *testing.T) (string, error) {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "sngl")
 	cmd := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
-	cmd.Dir = root
+	cmd.Dir = projectRoot()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("build sngl: %v\n%s", err, out)
 	}
 	return bin, nil
-})
+}
 
 // RunComponentFixtures executes every testdata/component_*.sngl fixture
 // against the named platform in two modes:
@@ -56,7 +56,7 @@ var snglBinary = sync.OnceValues(func() (string, error) {
 func RunComponentFixtures(t *testing.T, platform string) {
 	t.Helper()
 
-	bin, err := snglBinary()
+	bin, err := snglBinary(t)
 	if err != nil {
 		t.Fatalf("build sngl: %v", err)
 	}
