@@ -152,7 +152,10 @@ type checker struct {
 	stdlibScope *ir.Scope
 
 	windowComp *ir.Component
-	windowType *ir.Type
+	// contextComp is the declaration `context #name(default)` names. Matching
+	// the mark rather than the word is what lets a program shadow `context`.
+	contextComp *ir.Component
+	windowType  *ir.Type
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -581,7 +584,7 @@ func (c *checker) pass1() {
 		case *ast.PlatformStmt:
 			c.pass1PlatformStmt(s)
 		case *ast.CallStmt:
-			if isContextDeclCallStmt(s) {
+			if c.isContextDeclCallStmt(s) {
 				c.registerRootContextDecl(s)
 			} else {
 				c.error(s.Pos, "unexpected top-level call statement")

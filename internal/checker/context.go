@@ -6,13 +6,28 @@ import (
 )
 
 // isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:
-// a call to the bare `context` identifier carrying an element-ref id.
-func isContextDeclCallStmt(s *ast.CallStmt) bool {
+// a call carrying an element-ref id whose callee names the declaration marked
+// #[builtin("context")]. The mark rather than the word, so a program that
+// declares its own `context` shadows the form as it would any other name.
+func (c *checker) isContextDeclCallStmt(s *ast.CallStmt) bool {
 	if s.Call.ID == "" {
 		return false
 	}
 	ident, ok := s.Call.Func.(*ast.IdentExpr)
-	return ok && ident.Name == "context"
+	if !ok {
+		return false
+	}
+	sym, found := c.scope.Lookup(ident.Name)
+	if !found {
+		return false
+	}
+	if c.contextComp != nil {
+		return sym == c.contextComp
+	}
+	// The stdlib's own load reaches here before the marks are collected, so
+	// read the mark off the declaration the name resolves to.
+	comp, isComp := sym.(*ir.Component)
+	return isComp && comp.Builtin == ast.BuiltinContext
 }
 
 // buildContextProvider checks `name(value) { children }` where name resolves

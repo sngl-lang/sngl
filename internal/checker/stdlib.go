@@ -192,7 +192,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 			case *ast.ComponentDecl:
 				components = append(components, s)
 			case *ast.CallStmt:
-				if isContextDeclCallStmt(s) {
+				if c.isContextDeclCallStmt(s) {
 					contexts = append(contexts, s)
 				}
 			}

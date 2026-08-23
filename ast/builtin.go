@@ -45,6 +45,7 @@ const (
 	// rather than matching a literal name.
 	BuiltinWindow        BuiltinKind = "window"
 	BuiltinTimer         BuiltinKind = "timer"
+	BuiltinContext       BuiltinKind = "context"
 	BuiltinSlot          BuiltinKind = "slot"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 
@@ -89,7 +90,7 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary:
+	case BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext:
 		return true
 	}
 	return false
@@ -112,7 +113,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinInt, BuiltinFloat, BuiltinString,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
-		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary,
+		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext,
 		BuiltinNull, BuiltinPlatform, BuiltinLanguage,
 	}
 }
