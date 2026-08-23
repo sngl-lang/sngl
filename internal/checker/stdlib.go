@@ -342,49 +342,8 @@ const intlPkg = "internal/intl"
 
 const i18nPkg = "i18n"
 
-// stdPkg is the library package that declares the i18n and html namespaces.
+// stdPkg is the library package that declares the html namespace.
 const stdPkg = "std"
-
-// buildI18nNamespacePkg constructs a synthetic ir.Package for the "i18n"
-// namespace, exposing i18n.* receiver methods as free functions and
-// predeclaring the CLDR PluralKey constants (zero/one/two/few/many/other).
-func (c *checker) buildI18nNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
-	pkg := &ir.Package{
-		Symbols:        NewSymbolTable(),
-		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-		AddressedVars:  map[*ir.Var]bool{},
-	}
-
-	// Expose all i18n.* receiver methods as free functions in the namespace.
-	c.addReceiverFuncs(pkg, stdlibFuncs, "i18n")
-
-	// The constants are PluralKeys, and PluralKey is declared beside the intl
-	// primitives that consume it. std has already imported that package by the
-	// time this runs, so the lookup is a cache hit, not a load.
-	var pluralKeyType *ir.Type
-	if intl := c.libPkg(intlPkg); intl != nil {
-		if sym, ok := intl.Symbols.Root.LookupLocal("PluralKey"); ok {
-			if sd, isStruct := sym.(*ir.StructDef); isStruct {
-				pluralKeyType = sd.SymType()
-			}
-		}
-	}
-	if pluralKeyType == nil {
-		// PluralKey not found; skip constant registration.
-		return pkg
-	}
-
-	// Register predeclared CLDR plural-category vars: zero, one, two, few,
-	// many, other. These are opaque sentinel values; their actual runtime
-	// values are supplied by the Go i18n runtime (PluralZero, PluralOne, …).
-	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
-		v := &ir.Var{Name: name, Type: pluralKeyType, IsConst: true}
-		pkg.Vars = append(pkg.Vars, v)
-		c.bindLib(ast.Pos{}, pkg.Symbols.Root, v)
-	}
-
-	return pkg
-}
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the
 // i18n package. They are opaque sentinels whose runtime values come from the

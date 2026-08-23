@@ -157,7 +157,7 @@ type Func struct {
 	IsTest         bool
 	Reads          []*Var // vars read (directly or via called functions)
 	Writes         []*Var // vars mutated (directly or via called functions)
-	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend may substitute its own
+	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
 	NativePkg      string // scheme-import package path (e.g. "fmt")
 	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
 	HasContextArg  bool

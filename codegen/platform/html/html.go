@@ -3039,9 +3039,6 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
-	if g.ctx.Renames == nil {
-		g.ctx.Renames = make(map[string]string)
-	}
 	// The parameter is a local; what it stands for is EventParam's job. This
 	// used to rename by name as well, which replaced any identifier spelled
 	// the same — a lambda parameter sharing the handler's name emitted

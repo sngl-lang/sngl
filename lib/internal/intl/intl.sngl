@@ -1,7 +1,7 @@
 // Package intl declares the locale-aware formatting primitives backing
 // sngl://i18n's wrappers.
 //
-// Each body here is a placeholder: the result comes from the target's own
+// Every body here is a placeholder: the result comes from the target's own
 // implementation of the marked id, and a backend that implements none of
 // them has nothing correct to fall back to.
 
@@ -50,4 +50,4 @@ struct PluralKey {
 func Plural(locale string, count int, forms map<PluralKey, string>) string { return "" }
 
 #[intrinsic("SelectOrdinal")]
-func SelectOrdinal(locale string, count int, forms map<PluralKey, string>) string {}
+func SelectOrdinal(locale string, count int, forms map<PluralKey, string>) string { return "" }

@@ -23,9 +23,8 @@ func TestHexHonoursAlpha(t *testing.T) {
 	}
 }
 
-// A zero Color is fully transparent, so a struct literal that omits alpha must
-// be completed with the declared default before it reaches here — the compiler
-// does that now, and this pins what happens if it stops.
+// A zero Color is fully transparent, which is why a struct literal that omits
+// alpha has to arrive here already completed with its declared default.
 func TestZeroColorIsTransparent(t *testing.T) {
 	if got := (Color{}).Hex(); got != "#00000000" {
 		t.Errorf("zero Color Hex() = %q; want %q", got, "#00000000")

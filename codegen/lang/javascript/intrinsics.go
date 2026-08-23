@@ -102,7 +102,7 @@ func init() {
 
 	// --- Alert and File ---
 	reg("Alert.toast", func(a []string) string {
-		return `(function(){var d=document.createElement("div");d.textContent=` + a[0] + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
+		return `(function(){var __d=document.createElement("div");__d.textContent=` + a[0] + `;__d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(__d);setTimeout(function(){__d.remove()},3000)})()`
 	})
 	reg("Alert.info", func(a []string) string { return "alert(" + a[0] + ")" })
 	reg("Alert.warn", func(a []string) string { return `alert("Warning: " + ` + a[0] + ")" })

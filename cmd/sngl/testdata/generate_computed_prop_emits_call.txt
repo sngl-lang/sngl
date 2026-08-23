@@ -4,7 +4,8 @@
 # emitted an empty span.
 
 sngl generate --lang=none --platform=html --out=out app.sngl
-grep 'doubled\(' out/index.html
+# The definition is emitted either way; what changed is that it is called.
+grep 'main_doubled\(state\)' out/index.html
 
 -- app.sngl --
 import . "sngl://std"

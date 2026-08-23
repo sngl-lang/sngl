@@ -230,9 +230,9 @@ func color.rgba(r int, g int, b int, a int) => color{r=r, g=g, b=b, a=a}
 // hue stable.
 func color.opacity(c color, a int) => color{r=c.r, g=c.g, b=c.b, a=a}
 
-// Renders c as a `#RRGGBB` hex string. Alpha is not included in the
-// output; use `color.rgba` values directly when alpha must survive
-// round-tripping.
+// Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
+// its complete value, and dropping alpha would print two different colours
+// the same.
 #[intrinsic("color.hex")]
 func color.hex(c color) string { return "" }
 

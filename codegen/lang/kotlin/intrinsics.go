@@ -98,9 +98,14 @@ func init() {
 	// --- color ---
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
-	// A colour is a String here (IRTypeToKt maps TypeColor to String), so it
-	// already is the hex form the other backends have to build.
-	reg("color.hex", func(a []string) string { return a[0] })
+	// The operand is the Color data class the android platform declares, not
+	// a String — IRTypeToKt maps TypeColor to String for an *annotation*
+	// while values emit as Color(r=…, g=…, b=…, a=…), which is a discrepancy
+	// of its own and the reason this looked like a String.
+	reg("color.hex", func(a []string) string {
+		return a[0] + `.let { if (it.a == 255) String.format("#%02x%02x%02x", it.r, it.g, it.b) ` +
+			`else String.format("#%02x%02x%02x%02x", it.r, it.g, it.b, it.a) }`
+	})
 
 	// --- Alert and File ---
 	// Alert.* is an Android Toast. `context` is in scope because the android
