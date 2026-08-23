@@ -474,12 +474,13 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 // callListLength builds a Call expression for the ListLength intrinsic.
 func callListLength(iter ir.Expr) *ir.Call {
 	var params []*ir.Param
-	if def := ir.LookupIntrinsic("ListLength"); def != nil {
+	if def := ir.LookupIntrinsic("list.length"); def != nil {
 		params = def.Params
 	}
 	fn := &ir.Func{
-		Name:      "ListLength",
-		Intrinsic: "ListLength",
+		Name:      "length",
+		Receiver:  "list",
+		Intrinsic: "list.length",
 		Return:    ir.TypInt,
 		Params:    params,
 	}

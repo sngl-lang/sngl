@@ -31,7 +31,7 @@ func jsCall(importPath string) *ir.Call {
 }
 
 // intrinsicCall wraps an argument expression in a call to a func carrying the
-// given intrinsic id (e.g. "HtmlFrontend"/"HtmlBackend").
+// given intrinsic id (e.g. "html.frontend"/"html.backend").
 func intrinsicCall(id string, arg ir.Expr) *ir.Call {
 	return &ir.Call{
 		Func: &ir.Func{Intrinsic: id},
@@ -98,14 +98,14 @@ func TestExprPlacement(t *testing.T) {
 	})
 	t.Run("html.frontend(go_call) -> frontend", func(t *testing.T) {
 		pkg := pkgWithImport("go", "example.com/api")
-		e := intrinsicCall("HtmlFrontend", goCall("example.com/api"))
+		e := intrinsicCall("html.frontend", goCall("example.com/api"))
 		if p := exprPlacement(pkg, e); p != Frontend {
 			t.Fatalf("got %v want Frontend", p)
 		}
 	})
 	t.Run("html.backend(sngl_expr) -> backend", func(t *testing.T) {
 		pkg := pkgWithImport("go", "example.com/api")
-		e := intrinsicCall("HtmlBackend", &ir.Ident{Name: "n"})
+		e := intrinsicCall("html.backend", &ir.Ident{Name: "n"})
 		if p := exprPlacement(pkg, e); p != Backend {
 			t.Fatalf("got %v want Backend", p)
 		}
@@ -142,7 +142,7 @@ func TestHandlerPlacement(t *testing.T) {
 		fn := &ir.Func{Block: []ir.Stmt{
 			&ir.Assign{
 				Target: &ir.Ident{Name: "count"},
-				Value:  intrinsicCall("HtmlFrontend", goCall("example.com/api")),
+				Value:  intrinsicCall("html.frontend", goCall("example.com/api")),
 			},
 		}}
 		if p := handlerPlacement(pkg, fn); p != Frontend {

@@ -1251,10 +1251,11 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
 func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
-	listPushDef := ir.LookupIntrinsic("ListPush")
+	listPushDef := ir.LookupIntrinsic("list.push")
 	listPushFn := &ir.Func{
-		Name:      "ListPush",
-		Intrinsic: "ListPush",
+		Name:      "push",
+		Receiver:  "list",
+		Intrinsic: "list.push",
 		Params:    listPushDef.Params,
 		Return:    listPushDef.Return,
 	}
@@ -1263,9 +1264,8 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			Target: st.slotIdent(slotID),
 			Op:     ast.AssignSet,
 			Value: &ir.Call{
-				Type:     ir.ListOf(ir.TypDyn),
-				Receiver: &ir.Ident{Name: "stdlib", Sym: stdlibNS, Synthesized: true},
-				Func:     listPushFn,
+				Type: ir.ListOf(ir.TypDyn),
+				Func: listPushFn,
 				Args: []ir.CallArg{
 					{Value: st.slotIdent(slotID)},
 					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},

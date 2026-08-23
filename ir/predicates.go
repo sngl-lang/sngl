@@ -19,13 +19,13 @@ func IsNullToFuncConv(n *Conversion) bool {
 }
 
 // IsErrorRaiseFunc reports whether fn is the error-raise intrinsic: either the
-// "ErrorRaise" intrinsic, or the stdlib error.raise method (whose wrapper does
+// "error.raise" intrinsic, or the stdlib error.raise method (whose wrapper does
 // not carry Intrinsic, so the receiver+name pair is the stable identifier).
 func IsErrorRaiseFunc(fn *Func) bool {
 	if fn == nil {
 		return false
 	}
-	if fn.Intrinsic == "ErrorRaise" {
+	if fn.Intrinsic == "error.raise" {
 		return true
 	}
 	return fn.Receiver == "error" && fn.Name == "raise"

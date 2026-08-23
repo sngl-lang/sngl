@@ -167,7 +167,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 
 func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 	gc := stubGC()
-	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
+	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
 	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
 	stmt := &ir.If{
 		Cond: &ir.Ident{Name: "visible"},
@@ -212,7 +212,7 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 
 func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 	gc := stubGC()
-	listPush := &ir.Func{Name: "ListPush", Intrinsic: "ListPush"}
+	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
 	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
 	stmt := &ir.Assign{
 		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},

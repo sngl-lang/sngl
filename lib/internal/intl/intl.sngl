@@ -8,31 +8,31 @@
 import . "sngl://internal/marks"
 
 #[intrinsic("DefaultLocale", readonly)]
-func DefaultLocale() string {}
+func DefaultLocale() string { return "" }
 
 #[intrinsic("Translate")]
-func Translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string {}
+func Translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string { return "" }
 
 #[intrinsic("Format")]
-func Format(locale string, template string, args map<string, dyn>) string {}
+func Format(locale string, template string, args map<string, dyn>) string { return "" }
 
 #[intrinsic("NumberInt")]
-func NumberInt(locale string, n int, style string) string {}
+func NumberInt(locale string, n int, style string) string { return "" }
 
 #[intrinsic("NumberFloat")]
-func NumberFloat(locale string, n float, style string) string {}
+func NumberFloat(locale string, n float, style string) string { return "" }
 
 #[intrinsic("Date")]
-func Date(locale string, d dyn, style string) string {}
+func Date(locale string, d dyn, style string) string { return "" }
 
 #[intrinsic("Time")]
-func Time(locale string, t dyn, style string) string {}
+func Time(locale string, t dyn, style string) string { return "" }
 
 #[intrinsic("DateTime")]
-func DateTime(locale string, dt dyn, dateStyle string, timeStyle string) string {}
+func DateTime(locale string, dt dyn, dateStyle string, timeStyle string) string { return "" }
 
 #[intrinsic("Select")]
-func Select(locale string, value string, cases map<string, string>) string {}
+func Select(locale string, value string, cases map<string, string>) string { return "" }
 
 // PluralKey identifies a CLDR plural category or an exact numeric match. It
 // lives here, beside the primitives that take it, rather than in sngl://std —
@@ -47,7 +47,7 @@ struct PluralKey {
 }
 
 #[intrinsic("Plural")]
-func Plural(locale string, count int, forms map<PluralKey, string>) string {}
+func Plural(locale string, count int, forms map<PluralKey, string>) string { return "" }
 
 #[intrinsic("SelectOrdinal")]
 func SelectOrdinal(locale string, count int, forms map<PluralKey, string>) string {}

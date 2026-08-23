@@ -10,7 +10,7 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // and ResolvedHandler on every fallible call site.
 //
 // Fallibility sources:
-//   - Intrinsic "ErrorRaise" (user raise).
+//   - Intrinsic "error.raise" (user raise).
 //   - Func.HasErrorReturn (native import returning (T, error)).
 //   - Call to any Func with CanError set.
 //

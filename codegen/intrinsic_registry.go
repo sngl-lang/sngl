@@ -32,7 +32,7 @@ var (
 )
 
 // RegisterIntrinsic registers an emitter for the given intrinsic ID (e.g.
-// "ListPush") in the given target language (e.g. "javascript"). Backends call
+// "list.push") in the given target language (e.g. "javascript"). Backends call
 // this from init(). Registering the same (lang, id) twice panics — intrinsic
 // emission must have a single owner.
 func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
@@ -114,12 +114,15 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 	if fn == nil || fn.Intrinsic == "" {
 		return
 	}
-	if len(fn.Block) > 0 || fn.IntrinsicBodyUsable {
+	// Having a body is not enough: every intrinsic carries one so it type
+	// checks like any other declaration, and most are placeholders. Only
+	// `usable` claims the body computes the same answer.
+	if fn.IntrinsicBodyUsable {
 		return
 	}
 	panic(fmt.Sprintf(
-		"codegen: %s has no implementation of intrinsic %q (called as %s), and the declaration has no body to emit instead; "+
-			"register an emitter for it, or mark the declaration `usable` if its SNGL body is a correct answer",
+		"codegen: %s has no implementation of intrinsic %q (called as %s), and its SNGL body is a placeholder, not an implementation; "+
+			"register an emitter for it, or mark the declaration `usable` if its body is a correct answer",
 		lang, fn.Intrinsic, callName(fn)))
 }
 

@@ -26,7 +26,7 @@ component main {
             var __n0 text = lower.CreateNode("text")
             __n0.value = "hi"
             lower.AppendChild(parent, __n0)
-            __slot0 = stdlib.ListPush(__slot0, __n0)
+            __slot0 = list.push(__slot0, __n0)
         }
     }
     vbox #__n1(style=Style{gap = 4}) {

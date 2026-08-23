@@ -174,7 +174,7 @@ component main {
     var size = "medium"
     var dob date = date("2000-01-01")
     vbox {
-        select(options=["Apple", "Banana"], placeholder="Pick", value=fruit)
+        select(options=["Apple", "Banana"], placeholder="File.pick", value=fruit)
         radio(direction="horizontal", options=["small", "medium", "large"], value=size)
         datepicker(placeholder="Birthday", value=dob)
     }

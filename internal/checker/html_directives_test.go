@@ -27,12 +27,12 @@ component main {
 
 // TestHtmlDirectiveIsPreservedIntrinsic verifies that after
 // parse→check→optimize→lower an html.frontend(...) call still exists carrying
-// Func.Intrinsic == "HtmlFrontend" — i.e. the identity directive is NOT folded
+// Func.Intrinsic == "html.frontend" — i.e. the identity directive is NOT folded
 // away by InlinePure, so the html placement analysis can still see it.
 func TestHtmlDirectiveIsPreservedIntrinsic(t *testing.T) {
 	src := `component main { var n = 0  text(value="x {html.frontend(n)}") }`
 	pkg := checkOptimizeLower(t, src)
-	if !pkgHasIntrinsicCall(pkg, "HtmlFrontend") {
+	if !pkgHasIntrinsicCall(pkg, "html.frontend") {
 		t.Fatal("html.frontend call was erased; must survive as an intrinsic for placement analysis")
 	}
 }

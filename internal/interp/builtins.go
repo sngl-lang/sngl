@@ -33,7 +33,7 @@ type nativeFunc func(args []any) (any, error)
 var intrinsics = map[string]nativeFunc{
 	// --- int ---
 	// --- float ---
-	"IntParse": func(args []any) (any, error) {
+	"int.parse": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		base := ToInt(args[1])
 		v, err := strconv.ParseInt(s, base, 64)
@@ -43,65 +43,65 @@ var intrinsics = map[string]nativeFunc{
 		return int(v), nil
 	},
 	// --- float math (accurate native implementations) ---
-	"MathFloor": func(args []any) (any, error) {
+	"float.floor": func(args []any) (any, error) {
 		return int(math.Floor(toFloat(args[0]))), nil
 	},
-	"MathCeil": func(args []any) (any, error) {
+	"float.ceil": func(args []any) (any, error) {
 		return int(math.Ceil(toFloat(args[0]))), nil
 	},
-	"MathRound": func(args []any) (any, error) {
+	"float.round": func(args []any) (any, error) {
 		return int(math.Round(toFloat(args[0]))), nil
 	},
-	"MathSqrt": func(args []any) (any, error) {
+	"float.sqrt": func(args []any) (any, error) {
 		return math.Sqrt(toFloat(args[0])), nil
 	},
-	"MathPow": func(args []any) (any, error) {
+	"float.pow": func(args []any) (any, error) {
 		return math.Pow(toFloat(args[0]), toFloat(args[1])), nil
 	},
-	"MathSin": func(args []any) (any, error) {
+	"float.sin": func(args []any) (any, error) {
 		return math.Sin(toFloat(args[0])), nil
 	},
-	"MathCos": func(args []any) (any, error) {
+	"float.cos": func(args []any) (any, error) {
 		return math.Cos(toFloat(args[0])), nil
 	},
-	"MathTan": func(args []any) (any, error) {
+	"float.tan": func(args []any) (any, error) {
 		return math.Tan(toFloat(args[0])), nil
 	},
-	"MathAsin": func(args []any) (any, error) {
+	"float.asin": func(args []any) (any, error) {
 		return math.Asin(toFloat(args[0])), nil
 	},
-	"MathAcos": func(args []any) (any, error) {
+	"float.acos": func(args []any) (any, error) {
 		return math.Acos(toFloat(args[0])), nil
 	},
-	"MathAtan": func(args []any) (any, error) {
+	"float.atan": func(args []any) (any, error) {
 		return math.Atan(toFloat(args[0])), nil
 	},
-	"MathAtan2": func(args []any) (any, error) {
+	"float.atan2": func(args []any) (any, error) {
 		return math.Atan2(toFloat(args[0]), toFloat(args[1])), nil
 	},
 
 	// --- string ---
-	"StrUpper": func(args []any) (any, error) {
+	"string.upper": func(args []any) (any, error) {
 		return strings.ToUpper(fmt.Sprintf("%v", args[0])), nil
 	},
-	"StrLower": func(args []any) (any, error) {
+	"string.lower": func(args []any) (any, error) {
 		return strings.ToLower(fmt.Sprintf("%v", args[0])), nil
 	},
-	"StrTrim": func(args []any) (any, error) {
+	"string.trim": func(args []any) (any, error) {
 		return strings.TrimSpace(fmt.Sprintf("%v", args[0])), nil
 	},
-	"StrReplace": func(args []any) (any, error) {
+	"string.replace": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		old := fmt.Sprintf("%v", args[1])
 		new := fmt.Sprintf("%v", args[2])
 		return strings.ReplaceAll(s, old, new), nil
 	},
-	"StrIndexOf": func(args []any) (any, error) {
+	"string.indexOf": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		sub := fmt.Sprintf("%v", args[1])
 		return strings.Index(s, sub), nil
 	},
-	"StrSplit": func(args []any) (any, error) {
+	"string.split": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		sep := fmt.Sprintf("%v", args[1])
 		parts := strings.Split(s, sep)
@@ -111,7 +111,7 @@ var intrinsics = map[string]nativeFunc{
 		}
 		return out, nil
 	},
-	"StrSubstring": func(args []any) (any, error) {
+	"string.substring": func(args []any) (any, error) {
 		// Rune (Unicode code point) semantics: indices count code points,
 		// not bytes, so a multi-byte rune is never split into invalid
 		// UTF-8. Matches SNGL's string-is-runes model (bugs.md #16).
@@ -131,11 +131,60 @@ var intrinsics = map[string]nativeFunc{
 	},
 
 	// --- string/list length (native, replaces size()) ---
-	"StrLength": func(args []any) (any, error) {
+	"string.length": func(args []any) (any, error) {
 		// Rune count, not byte count: `"é".length` is 1 (bugs.md #16).
 		return utf8.RuneCountInString(fmt.Sprintf("%v", args[0])), nil
 	},
-	"ListLength": func(args []any) (any, error) {
+	// A SNGL map is a map[string]any here, keyed by the string form of the
+	// key, which is what mapMethodResult already assumed.
+	"map.length": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("map.length: want a map, got %T", args[0])
+		}
+		return len(m), nil
+	},
+	"map.keys": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("map.keys: want a map, got %T", args[0])
+		}
+		out := make([]any, 0, len(m))
+		for k := range m {
+			out = append(out, k)
+		}
+		return out, nil
+	},
+	"map.values": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("map.values: want a map, got %T", args[0])
+		}
+		out := make([]any, 0, len(m))
+		for _, v := range m {
+			out = append(out, v)
+		}
+		return out, nil
+	},
+	"map.contains": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok || len(args) != 2 {
+			return nil, fmt.Errorf("map.contains: want (map, key), got (%T, %d args)", args[0], len(args))
+		}
+		_, found := m[fmt.Sprintf("%v", args[1])]
+		return found, nil
+	},
+	"map.get": func(args []any) (any, error) {
+		m, ok := args[0].(map[string]any)
+		if !ok || len(args) != 3 {
+			return nil, fmt.Errorf("map.get: want (map, key, default), got (%T, %d args)", args[0], len(args))
+		}
+		if v, found := m[fmt.Sprintf("%v", args[1])]; found {
+			return v, nil
+		}
+		return args[2], nil
+	},
+	"list.length": func(args []any) (any, error) {
 		if list, ok := args[0].([]any); ok {
 			return len(list), nil
 		}
@@ -145,7 +194,7 @@ var intrinsics = map[string]nativeFunc{
 	// --- regex ---
 
 	// --- color ---
-	"ColorHex": func(args []any) (any, error) {
+	"color.hex": func(args []any) (any, error) {
 		if m, ok := args[0].(map[string]any); ok {
 			r := clampByte(ToInt(m["r"]))
 			g := clampByte(ToInt(m["g"]))
@@ -160,7 +209,7 @@ var intrinsics = map[string]nativeFunc{
 	},
 
 	// --- list ---
-	"ListIndexOf": func(args []any) (any, error) {
+	"list.indexOf": func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok {
 			return -1, nil
@@ -173,7 +222,7 @@ var intrinsics = map[string]nativeFunc{
 		}
 		return -1, nil
 	},
-	"ListJoin": func(args []any) (any, error) {
+	"list.join": func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok {
 			return "", nil
@@ -185,7 +234,7 @@ var intrinsics = map[string]nativeFunc{
 		}
 		return strings.Join(parts, sep), nil
 	},
-	"ListReverse": func(args []any) (any, error) {
+	"list.reverse": func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok {
 			return args[0], nil
@@ -196,7 +245,7 @@ var intrinsics = map[string]nativeFunc{
 		}
 		return result, nil
 	},
-	"ListSlice": func(args []any) (any, error) {
+	"list.slice": func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok {
 			return args[0], nil
@@ -255,4 +304,50 @@ func hexToByte(s string) int {
 		}
 	}
 	return v
+}
+
+// filter and map are assigned here rather than in the literal above: they
+// call back into the interpreter through LambdaValue, and a composite literal
+// that references it is an initialization cycle.
+func init() {
+	intrinsics["list.filter"] = func(args []any) (any, error) {
+		list, ok := args[0].([]any)
+		if !ok || len(args) != 2 {
+			return nil, fmt.Errorf("filter: want (list, lambda), got (%T, %d args)", args[0], len(args))
+		}
+		lv, ok := args[1].(*LambdaValue)
+		if !ok {
+			return nil, fmt.Errorf("filter requires a lambda, got %T", args[1])
+		}
+		out := []any{}
+		for _, item := range list {
+			v, err := lv.Call([]any{item})
+			if err != nil {
+				return nil, err
+			}
+			if b, ok := v.(bool); ok && b {
+				out = append(out, item)
+			}
+		}
+		return out, nil
+	}
+	intrinsics["list.map"] = func(args []any) (any, error) {
+		list, ok := args[0].([]any)
+		if !ok || len(args) != 2 {
+			return nil, fmt.Errorf("map: want (list, lambda), got (%T, %d args)", args[0], len(args))
+		}
+		lv, ok := args[1].(*LambdaValue)
+		if !ok {
+			return nil, fmt.Errorf("map requires a lambda, got %T", args[1])
+		}
+		out := make([]any, len(list))
+		for i, item := range list {
+			v, err := lv.Call([]any{item})
+			if err != nil {
+				return nil, err
+			}
+			out[i] = v
+		}
+		return out, nil
+	}
 }

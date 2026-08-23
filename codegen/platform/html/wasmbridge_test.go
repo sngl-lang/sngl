@@ -102,7 +102,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	// the call funcs' NativePkg to the import path so frontendNativeFuncs
 	// recognizes them.
 	frontendUse := func(name string) ir.Stmt {
-		return &ir.CallStmt{Call: intrinsicCall("HtmlFrontend",
+		return &ir.CallStmt{Call: intrinsicCall("html.frontend",
 			&ir.Call{Func: &ir.Func{NativePkg: "example.com/refpkg", Name: name}})}
 	}
 	pkg := &ir.Package{
@@ -181,7 +181,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 		pkg := &ir.Package{
 			Imports: []*ir.Import{imp},
 			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
-				&ir.CallStmt{Call: intrinsicCall("HtmlFrontend", call())},
+				&ir.CallStmt{Call: intrinsicCall("html.frontend", call())},
 			}}},
 		}
 		got := collectWASMPackages(pkg, nil, ".")

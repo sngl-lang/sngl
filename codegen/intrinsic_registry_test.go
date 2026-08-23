@@ -66,10 +66,10 @@ func TestRequireIntrinsicFallback(t *testing.T) {
 		{"nil func", nil, false},
 		{"not an intrinsic", &ir.Func{Name: "plain"}, false},
 		{"bodyless with no emitter", &ir.Func{Name: "p", Intrinsic: "NoBackendHasThis"}, true},
-		{"body to fall back on", &ir.Func{
+		{"a body alone is not enough", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis",
 			Block: []ir.Stmt{&ir.Return{}},
-		}, false},
+		}, true},
 		{"declared usable", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
 		}, false},

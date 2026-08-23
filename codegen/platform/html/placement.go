@@ -25,8 +25,8 @@ const (
 // Intrinsic ids for the placement directives, preserved through inlining by
 // the checker (Phase 1) so the html platform can recognize them here.
 const (
-	htmlFrontendIntrinsic = "HtmlFrontend"
-	htmlBackendIntrinsic  = "HtmlBackend"
+	htmlFrontendIntrinsic = "html.frontend"
+	htmlBackendIntrinsic  = "html.backend"
 )
 
 // funcImportScheme returns the source scheme ("go", "js", …) of the import a

@@ -126,7 +126,7 @@ func TestLookupSnglOmitsInternalTier(t *testing.T) {
 	}
 	for _, f := range res.Index.Functions {
 		switch f.Name {
-		case "ColorHex", "CanvasApplyStyle", "Pick", "StrUpper":
+		case "CanvasApplyStyle", "CanvasDrawRect", "Translate":
 			t.Errorf("intrinsic %q from the internal tier is in the sngl index", f.Name)
 		}
 	}
@@ -134,12 +134,12 @@ func TestLookupSnglOmitsInternalTier(t *testing.T) {
 
 // Naming one still resolves, as an internal Go package does.
 func TestLookupInternalPackageByName(t *testing.T) {
-	res, err := lookup.Lookup("sngl://internal/stdlib")
+	res, err := lookup.Lookup("sngl://internal/draw")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.Index == nil || len(res.Index.Functions) == 0 {
-		t.Fatal("sngl://internal/stdlib resolved to nothing")
+		t.Fatal("sngl://internal/draw resolved to nothing")
 	}
 }
 

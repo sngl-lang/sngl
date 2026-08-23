@@ -4,7 +4,7 @@ package ir
 // codegen backends. The IR only tracks signatures — implementations are
 // registered by each language/platform via the codegen registry.
 type IntrinsicDef struct {
-	Name   string   // PascalCase identifier, e.g. "StrIndexOf"
+	Name   string   // PascalCase identifier, e.g. "string.indexOf"
 	Params []*Param // parameter signatures
 	Return *Type    // return type
 	// Purity, if non-zero, overrides the default PurityPure assumption.
@@ -19,7 +19,7 @@ type IntrinsicDef struct {
 }
 
 // IntrinsicByName returns the intrinsic definition with the given PascalCase
-// name (e.g. "ListPush"), or ok=false if none exists. Lets the checker and
+// name (e.g. "list.push"), or ok=false if none exists. Lets the checker and
 // lowering passes read intrinsic metadata by ID rather than matching method
 // names.
 func IntrinsicByName(name string) (IntrinsicDef, bool) {
@@ -34,67 +34,65 @@ func IntrinsicByName(name string) (IntrinsicDef, bool) {
 // Every language backend must provide a native implementation for each entry.
 var Intrinsics = []IntrinsicDef{
 	// --- string ---
-	{Name: "StrLength", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypInt},
-	{Name: "StrIndexOf", Params: []*Param{{Name: "s", Type: TypString}, {Name: "sub", Type: TypString}}, Return: TypInt},
-	{Name: "StrSubstring", Params: []*Param{{Name: "s", Type: TypString}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: TypString},
-	{Name: "StrUpper", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
-	{Name: "StrLower", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
-	{Name: "StrTrim", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
-	{Name: "StrReplace", Params: []*Param{{Name: "s", Type: TypString}, {Name: "old", Type: TypString}, {Name: "new", Type: TypString}}, Return: TypString},
-	{Name: "StrSplit", Params: []*Param{{Name: "s", Type: TypString}, {Name: "sep", Type: TypString}}, Return: ListOf(TypString)},
+	{Name: "string.length", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypInt},
+	{Name: "string.indexOf", Params: []*Param{{Name: "s", Type: TypString}, {Name: "sub", Type: TypString}}, Return: TypInt},
+	{Name: "string.substring", Params: []*Param{{Name: "s", Type: TypString}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: TypString},
+	{Name: "string.upper", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
+	{Name: "string.lower", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
+	{Name: "string.trim", Params: []*Param{{Name: "s", Type: TypString}}, Return: TypString},
+	{Name: "string.replace", Params: []*Param{{Name: "s", Type: TypString}, {Name: "old", Type: TypString}, {Name: "new", Type: TypString}}, Return: TypString},
+	{Name: "string.split", Params: []*Param{{Name: "s", Type: TypString}, {Name: "sep", Type: TypString}}, Return: ListOf(TypString)},
 
 	// --- float math ---
-	{Name: "MathFloor", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
-	{Name: "MathCeil", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
-	{Name: "MathRound", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
-	{Name: "MathPow", Params: []*Param{{Name: "base", Type: TypFloat}, {Name: "exp", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathSqrt", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathSin", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathCos", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathTan", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathAsin", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathAcos", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathAtan", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "MathAtan2", Params: []*Param{{Name: "y", Type: TypFloat}, {Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.floor", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
+	{Name: "float.ceil", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
+	{Name: "float.round", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
+	{Name: "float.pow", Params: []*Param{{Name: "base", Type: TypFloat}, {Name: "exp", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.sqrt", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.sin", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.cos", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.tan", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.asin", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.acos", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.atan", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.atan2", Params: []*Param{{Name: "y", Type: TypFloat}, {Name: "x", Type: TypFloat}}, Return: TypFloat},
 
 	// --- list ---
-	{Name: "ListLength", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: TypInt},
-	{Name: "ListPush", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
-	{Name: "ListRemove", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "index", Type: TypInt}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
-	{Name: "ListIndexOf", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: TypInt},
-	{Name: "ListJoin", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "sep", Type: TypString}}, Return: TypString},
-	{Name: "ListReverse", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "ListSlice", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: ListOf(TypDyn)},
-	{Name: "ListFilter", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "pred", Type: TypDyn}}, Return: ListOf(TypDyn)},
-	{Name: "ListMap", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "fn", Type: TypDyn}}, Return: ListOf(TypDyn)},
+	{Name: "list.length", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: TypInt},
+	{Name: "list.push", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
+	{Name: "list.remove", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "index", Type: TypInt}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
+	{Name: "list.indexOf", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: TypInt},
+	{Name: "list.join", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "sep", Type: TypString}}, Return: TypString},
+	{Name: "list.reverse", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: ListOf(TypDyn)},
+	{Name: "list.slice", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: ListOf(TypDyn)},
+	{Name: "list.filter", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "pred", Type: TypDyn}}, Return: ListOf(TypDyn)},
+	{Name: "list.map", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "fn", Type: TypDyn}}, Return: ListOf(TypDyn)},
 
 	// --- map ---
-	{Name: "MapLength", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: TypInt},
-	{Name: "MapKeys", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "MapValues", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "MapContains", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}}, Return: TypBool},
-	{Name: "MapGet", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}, {Name: "def", Type: TypDyn}}, Return: TypDyn},
+	{Name: "map.length", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: TypInt},
+	{Name: "map.keys", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
+	{Name: "map.values", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
+	{Name: "map.contains", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}}, Return: TypBool},
+	{Name: "map.get", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}, {Name: "def", Type: TypDyn}}, Return: TypDyn},
 
 	// --- color ---
-	{Name: "ColorHex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
+	{Name: "color.hex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 
 	// --- int ---
 	// min/max/abs/clamp have SNGL bodies that compute the right answer; the id
 	// lets a backend emit its own form instead (Go has min/max builtins, and
 	// cannot spell the body's ternary as an expression at all).
-	{Name: "IntMin", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
-	{Name: "IntMax", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
-	{Name: "IntAbs", Params: []*Param{{Name: "x", Type: TypInt}}, Return: TypInt},
-	{Name: "IntClamp", Params: []*Param{{Name: "x", Type: TypInt}, {Name: "lo", Type: TypInt}, {Name: "hi", Type: TypInt}}, Return: TypInt},
-	{Name: "FloatMin", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
-	{Name: "FloatMax", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
-	{Name: "FloatAbs", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
-	{Name: "FloatClamp", Params: []*Param{{Name: "x", Type: TypFloat}, {Name: "lo", Type: TypFloat}, {Name: "hi", Type: TypFloat}}, Return: TypFloat},
-	{Name: "IntParse", Params: []*Param{{Name: "s", Type: TypString}, {Name: "base", Type: TypInt}}, Return: TypInt},
+	{Name: "int.min", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
+	{Name: "int.max", Params: []*Param{{Name: "a", Type: TypInt}, {Name: "b", Type: TypInt}}, Return: TypInt},
+	{Name: "int.abs", Params: []*Param{{Name: "x", Type: TypInt}}, Return: TypInt},
+	{Name: "int.clamp", Params: []*Param{{Name: "x", Type: TypInt}, {Name: "lo", Type: TypInt}, {Name: "hi", Type: TypInt}}, Return: TypInt},
+	{Name: "float.min", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.max", Params: []*Param{{Name: "a", Type: TypFloat}, {Name: "b", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.abs", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.clamp", Params: []*Param{{Name: "x", Type: TypFloat}, {Name: "lo", Type: TypFloat}, {Name: "hi", Type: TypFloat}}, Return: TypFloat},
+	{Name: "int.parse", Params: []*Param{{Name: "s", Type: TypString}, {Name: "base", Type: TypInt}}, Return: TypInt},
 
 	// --- regex ---
-	{Name: "RegexMatches", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypBool},
-	{Name: "RegexFind", Params: []*Param{{Name: "re", Type: TypString}, {Name: "s", Type: TypString}}, Return: TypString},
 
 	// --- error ---
 	// ErrorRaise is recognised by effect analysis as the user-facing raise
@@ -102,7 +100,7 @@ var Intrinsics = []IntrinsicDef{
 	// a normal function call) — the intrinsic name is the sentinel. Returns
 	// int purely to satisfy the expression-body forwarding in stdlib; the
 	// value is never used because every target lowers the call to an abort.
-	{Name: "ErrorRaise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}, Return: TypInt},
+	{Name: "error.raise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}, Return: TypInt},
 
 	// --- html placement directives (GitLab #27) ---
 	// HtmlFrontend / HtmlBackend are identity intrinsics: they return their sole
@@ -113,8 +111,8 @@ var Intrinsics = []IntrinsicDef{
 	// they never block folding of their argument, but the call node itself is
 	// preserved because the wrapping stdlib funcs are generic (InlinePure skips
 	// generics) and carry a non-empty Intrinsic id.
-	{Name: "HtmlFrontend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
-	{Name: "HtmlBackend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
+	{Name: "html.frontend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
+	{Name: "html.backend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
 }
 
 // AlertIntrinsics are platform-level intrinsics for dialog/toast operations.
@@ -122,11 +120,11 @@ var Intrinsics = []IntrinsicDef{
 var AlertIntrinsics = []IntrinsicDef{
 	// Alerts cause visible UI side effects (dialogs/toasts); treat as Mutates
 	// so the optimizer never folds calls to them.
-	{Name: "Toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Info", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Warn", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Error", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Confirm", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypBool, Purity: PurityMutates},
+	{Name: "Alert.toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Alert.info", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Alert.warn", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Alert.error", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Alert.confirm", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypBool, Purity: PurityMutates},
 }
 
 // FileIntrinsics are platform-level intrinsics for file picker operations.
@@ -134,8 +132,8 @@ var AlertIntrinsics = []IntrinsicDef{
 // filesystem state (and can be triggered by user interaction); mark
 // PurityReadonly so they're never folded at compile time.
 var FileIntrinsics = []IntrinsicDef{
-	{Name: "Pick", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
-	{Name: "PickFolder", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
+	{Name: "File.pick", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
+	{Name: "File.pickFolder", Params: []*Param{}, Return: TypString, Purity: PurityReadonly},
 }
 
 // I18nIntrinsics are stdlib intrinsics for i18n / locale-aware formatting.

@@ -58,7 +58,7 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 func TestJsCall_HtmlPlacementDirectiveIsIdentity(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	for _, id := range []string{"HtmlFrontend", "HtmlBackend"} {
+	for _, id := range []string{"html.frontend", "html.backend"} {
 		call := &ir.Call{
 			Func: &ir.Func{Name: id, Intrinsic: id},
 			Args: []ir.CallArg{{Value: &ir.Ident{Name: "x"}}},

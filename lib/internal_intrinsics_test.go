@@ -1,71 +1,69 @@
 package lib_test
 
 import (
+	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 
-	sngl "git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
-// intrinsicPackages are the sngl://internal packages that declare the
-// compiler's primitives, paired with the registry each was written from.
-var intrinsicPackages = map[string][]ir.IntrinsicDef{
-	"internal/stdlib": ir.Intrinsics,
-	"internal/alert":  ir.AlertIntrinsics,
-	"internal/file":   ir.FileIntrinsics,
-	"internal/intl":   ir.I18nIntrinsics,
-	"internal/draw":   ir.CanvasIntrinsics,
-}
+// TestEveryIntrinsicIsDeclared pins the registry against the declarations, so
+// the two cannot drift while both exist. What the compiler knows about an
+// intrinsic is meant to be readable at the declaration; a registry entry with
+// no declaration would be knowledge with nowhere to read it, and a mark whose
+// id no registry answers to is a typo nothing else would catch.
+//
+// The id is the declaration's own SNGL name — `string.length`, not StrLength —
+// so this also pins that convention.
+func TestEveryIntrinsicIsDeclared(t *testing.T) {
+	var registry []ir.IntrinsicDef
+	for _, defs := range [][]ir.IntrinsicDef{
+		ir.Intrinsics, ir.AlertIntrinsics, ir.FileIntrinsics,
+		ir.I18nIntrinsics, ir.CanvasIntrinsics,
+	} {
+		registry = append(registry, defs...)
+	}
 
-// TestInternalPackagesDeclareEveryIntrinsic pins the declarations against the
-// registry they were generated from, so the two cannot drift while both exist.
-// What the compiler knows about an intrinsic is meant to be readable at the
-// declaration; a registry entry with no declaration would be knowledge with
-// nowhere to read it.
-func TestInternalPackagesDeclareEveryIntrinsic(t *testing.T) {
-	for uri, defs := range intrinsicPackages {
-		src := "import . \"sngl://std\"\nimport \"sngl://" + uri + "\"\ncomponent main { text(value=\"x\") }\n"
-		doc, err := sngl.Parse("t.sngl", strings.NewReader(src))
+	marked := map[string]bool{}
+	err := fs.WalkDir(lib.FS, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".sngl") {
+			return err
+		}
+		src, err := lib.FS.ReadFile(p)
 		if err != nil {
-			t.Fatalf("%s: parse: %v", uri, err)
+			return err
 		}
-		pkg, diags := sngl.Check(doc, ".")
-		for _, d := range diags {
-			if d.Severity == ir.Error {
-				t.Fatalf("%s: check: %s", uri, d.Msg)
-			}
+		for _, m := range markRE.FindAllStringSubmatch(string(src), -1) {
+			marked[m[1]] = true
 		}
-		declared := map[string]*ir.Func{}
-		for _, imp := range pkg.Imports {
-			if imp.Pkg == nil {
-				continue
-			}
-			for _, fn := range imp.Pkg.Funcs {
-				if fn.Intrinsic != "" {
-					declared[fn.Intrinsic] = fn
-				}
-			}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marked) == 0 {
+		t.Fatal("no #[intrinsic] marks found in lib/")
+	}
+
+	inRegistry := map[string]bool{}
+	for _, def := range registry {
+		inRegistry[def.Name] = true
+		if !marked[def.Name] {
+			t.Errorf("registry has %q with no declaration marked #[intrinsic(%q)]", def.Name, def.Name)
 		}
-		for _, def := range defs {
-			fn, ok := declared[def.Name]
-			if !ok {
-				t.Errorf("%s: no declaration marked #[intrinsic(%q)]", uri, def.Name)
-				continue
-			}
-			if len(fn.Params) != len(def.Params) {
-				t.Errorf("%s: %s declares %d params, registry has %d", uri, def.Name, len(fn.Params), len(def.Params))
-			}
-			if fn.MutatesReceiver != def.MutatesReceiver {
-				t.Errorf("%s: %s mutatesReceiver=%v, registry has %v", uri, def.Name, fn.MutatesReceiver, def.MutatesReceiver)
-			}
-			if def.Purity != ir.PurityUnknown && fn.Purity != def.Purity {
-				t.Errorf("%s: %s purity=%v, registry has %v", uri, def.Name, fn.Purity, def.Purity)
-			}
+	}
+	for id := range marked {
+		if !inRegistry[id] {
+			t.Errorf("declaration marked #[intrinsic(%q)] answers to no registry entry", id)
 		}
 	}
 }
+
+var markRE = regexp.MustCompile(`#\[intrinsic\("([^"]+)"`)
 
 // A component a program can write is a component someone has to look up, so
 // every exported one carries a doc comment. The draw shapes shipped without

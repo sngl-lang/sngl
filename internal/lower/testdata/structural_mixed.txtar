@@ -27,7 +27,7 @@ component main {
             var __n1 text = lower.CreateNode("text")
             __n1.value = "bye"
             lower.AppendChild(parent, __n1)
-            __slot0 = stdlib.ListPush(__slot0, __n1)
+            __slot0 = list.push(__slot0, __n1)
         }
     }
     button(text="toggle", @click {

@@ -11,7 +11,7 @@ import (
 func TestIntrinsicMarksFunc(t *testing.T) {
 	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("StrUpper")]
+#[intrinsic("string.upper")]
 func string.upper(s string) => s
 `)
 	if len(diags) != 0 {
@@ -21,7 +21,7 @@ func string.upper(s string) => s
 	if !ok {
 		t.Fatalf("got %T, want *ast.FuncDef", decl)
 	}
-	if fn.Intrinsic.ID != "StrUpper" {
+	if fn.Intrinsic.ID != "string.upper" {
 		t.Errorf("Intrinsic = %q, want StrUpper", fn.Intrinsic.ID)
 	}
 	if fn.Intrinsic.BodyUsable {
@@ -32,7 +32,7 @@ func string.upper(s string) => s
 func TestIntrinsicUsableFlag(t *testing.T) {
 	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("IntMin", usable)]
+#[intrinsic("int.min", usable)]
 func int.min(a int, b int) => a < b ? a : b
 `)
 	if len(diags) != 0 {
@@ -47,7 +47,7 @@ func int.min(a int, b int) => a < b ? a : b
 func TestIntrinsicRejectsUnknownFlag(t *testing.T) {
 	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("IntMin", inlinable)]
+#[intrinsic("int.min", inlinable)]
 func int.min(a int, b int) => a
 `)
 	if !hasDiag(diags, "unknown value \"inlinable\"") {
@@ -58,7 +58,7 @@ func int.min(a int, b int) => a
 func TestIntrinsicTakesSeveralFlags(t *testing.T) {
 	decl, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("ListPush", usable, mutates, mutatesReceiver)]
+#[intrinsic("list.push", usable, mutates, mutatesReceiver)]
 func list<T>.push(item T) => this
 `)
 	if len(diags) != 0 {
@@ -73,7 +73,7 @@ func list<T>.push(item T) => this
 func TestIntrinsicRejectsContradictoryFlags(t *testing.T) {
 	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("Pick", mutates, readonly)]
+#[intrinsic("File.pick", mutates, readonly)]
 func File.pick() => ""
 `)
 	if !hasDiag(diags, "either has an effect or only reads host state") {
@@ -84,7 +84,7 @@ func File.pick() => ""
 func TestIntrinsicRejectsRepeatedFlag(t *testing.T) {
 	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("Pick", readonly, readonly)]
+#[intrinsic("File.pick", readonly, readonly)]
 func File.pick() => ""
 `)
 	if !hasDiag(diags, "repeats flag readonly") {
@@ -95,7 +95,7 @@ func File.pick() => ""
 func TestIntrinsicCannotMarkAStruct(t *testing.T) {
 	_, diags := expandOne(t, `import . "sngl://internal/marks"
 
-#[intrinsic("StrUpper")]
+#[intrinsic("string.upper")]
 struct S { x int = 0 }
 `)
 	if !hasDiag(diags, "cannot mark") {

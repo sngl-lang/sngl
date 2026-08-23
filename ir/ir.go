@@ -157,7 +157,7 @@ type Func struct {
 	IsTest         bool
 	Reads          []*Var // vars read (directly or via called functions)
 	Writes         []*Var // vars mutated (directly or via called functions)
-	Intrinsic      string // non-empty = intrinsic ID (e.g. "StrIndexOf"); codegen must provide native impl
+	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); codegen must provide native impl
 	NativePkg      string // scheme-import package path (e.g. "fmt")
 	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
 	HasContextArg  bool

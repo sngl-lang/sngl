@@ -14,6 +14,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if f == nil || f.Purity != ir.PurityPure {
 		return nil
 	}
+	// A declaration marked #[intrinsic] keeps its call. The mark says a
+	// backend may substitute its own implementation at the call site, and
+	// inlining the SNGL body — which for most of them is a placeholder the
+	// backend is expected to replace — would erase the thing it substitutes
+	// for. Constant arguments still fold, through the intrinsic itself.
+	if f.Intrinsic != "" {
+		return nil
+	}
 	if len(f.TypeParams) > 0 {
 		return nil // skip generic functions
 	}

@@ -312,9 +312,9 @@ component main {
 }
 -- restate_intrinsic.sngl --
 import . "sngl://std"
-import "sngl://internal/stdlib"
+import "sngl://internal/intl"
 
-func make() => stdlib.StrLength("x")
+func make() => intl.DefaultLocale()
 
 component main {
     text(value="x")

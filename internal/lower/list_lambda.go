@@ -379,7 +379,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	// codegen lowers list.push into a self-reassigning `xs = append(xs, ...)`
 	// statement, so we let that form do the work rather than wrapping
 	// the call in an Assign (which would double-emit the `=`).
-	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "ListPush"}
+	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "list.push"}
 	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 
 	pushStmt := func(pushed ir.Expr) ir.Stmt {

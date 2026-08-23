@@ -10,7 +10,7 @@ import (
 
 // The flags #[intrinsic] accepts after the id. They are bare idents rather
 // than booleans so the mark reads as a list of claims about the declaration:
-// `#[intrinsic("ListPush", usable, mutates, mutatesReceiver)]`.
+// `#[intrinsic("list.push", usable, mutates, mutatesReceiver)]`.
 const (
 	// flagUsable says the SNGL body computes the same result the native
 	// implementation would, so a backend that does not implement the id may

@@ -1324,7 +1324,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// ErrorRaise: construct an ErrorEvent payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then
 	// routes it into the resolved handler (or propagates).
-	if call.Func.Intrinsic == "ErrorRaise" {
+	if call.Func.Intrinsic == "error.raise" {
 		evt := map[string]any{"message": "", "kind": ""}
 		if len(call.Args) >= 1 {
 			if v, err := env.Eval(call.Args[0].Value); err == nil {
@@ -1342,16 +1342,16 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// Alert and File have visible effects a headless run cannot perform, so
 	// the interpreter records them and answers with a fixed value.
 	switch call.Func.Intrinsic {
-	case "Toast":
+	case "Alert.toast":
 		return env.logAlertToast(call.Args)
-	case "Info", "Warn", "Error":
+	case "Alert.info", "Alert.warn", "Alert.error":
 		return env.logAlertSingle(method, call.Args)
-	case "Confirm":
+	case "Alert.confirm":
 		return env.logAlertConfirm(call.Args)
-	case "Pick":
+	case "File.pick":
 		env.Log = append(env.Log, "[File.pick]")
 		return "/mock/file.txt", nil
-	case "PickFolder":
+	case "File.pickFolder":
 		env.Log = append(env.Log, "[File.pickFolder]")
 		return "/mock/folder", nil
 	}

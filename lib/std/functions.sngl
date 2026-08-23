@@ -1,6 +1,4 @@
 import . "sngl://internal/marks"
-import "sngl://internal/alert"
-import "sngl://internal/file"
 
 // --- Alert ---
 
@@ -8,31 +6,31 @@ import "sngl://internal/file"
 // "success", "warning", "error") appropriate to the platform. The
 // toast dismisses automatically after the platform's default
 // duration.
-#[intrinsic("Toast", mutates)]
-func Alert.toast(message string, variant string) => alert.Toast(message, variant)
+#[intrinsic("Alert.toast", mutates)]
+func Alert.toast(message string, variant string) {}
 
 // Shows an informational alert. Equivalent to `Alert.toast(message,
 // "info")` on platforms that render toasts, or a modeless info
 // dialog on desktop platforms.
-#[intrinsic("Info", mutates)]
-func Alert.info(message string) => alert.Info(message)
+#[intrinsic("Alert.info", mutates)]
+func Alert.info(message string) {}
 
 // Shows a warning alert. The rendering elevates severity compared
 // to `Alert.info` — a colored toast or a dismissible warning
 // dialog depending on the platform.
-#[intrinsic("Warn", mutates)]
-func Alert.warn(message string) => alert.Warn(message)
+#[intrinsic("Alert.warn", mutates)]
+func Alert.warn(message string) {}
 
 // Shows an error alert. Rendered with the platform's error styling
 // and typically stays visible until dismissed.
-#[intrinsic("Error", mutates)]
-func Alert.error(message string) => alert.Error(message)
+#[intrinsic("Alert.error", mutates)]
+func Alert.error(message string) {}
 
 // Prompts the user to confirm or cancel. Blocks until a choice is
 // made and returns true on confirm, false on cancel. On platforms
 // without a native confirm dialog, falls back to a modal overlay.
-#[intrinsic("Confirm", mutates)]
-func Alert.confirm(message string) => alert.Confirm(message)
+#[intrinsic("Alert.confirm", mutates)]
+func Alert.confirm(message string) bool { return false }
 
 // --- File ---
 
@@ -40,13 +38,13 @@ func Alert.confirm(message string) => alert.Confirm(message)
 // empty string if cancelled. The dialog style (native, in-app) is
 // platform-defined. Not all platforms expose a file system — web
 // platforms may return a synthetic handle.
-#[intrinsic("Pick", readonly)]
-func File.pick() => file.Pick()
+#[intrinsic("File.pick", readonly)]
+func File.pick() string { return "" }
 
 // Opens a folder-picker dialog and returns the chosen path, or an
 // empty string if cancelled. Same platform caveats as `File.pick`.
-#[intrinsic("PickFolder", readonly)]
-func File.pickFolder() => file.PickFolder()
+#[intrinsic("File.pickFolder", readonly)]
+func File.pickFolder() string { return "" }
 
 
 // --- error ---
@@ -57,5 +55,5 @@ func File.pickFolder() => file.PickFolder()
 // error terminates the containing evaluation with a platform-default
 // handler. `kind` lets handlers dispatch programmatically (e.g.
 // "network", "validation", "internal").
-#[intrinsic("ErrorRaise")]
-func error.raise(message string, kind string) => stdlib.ErrorRaise(message, kind)
+#[intrinsic("error.raise")]
+func error.raise(message string, kind string) {}

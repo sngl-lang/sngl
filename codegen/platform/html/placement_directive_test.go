@@ -17,7 +17,7 @@ import (
 // Config.Platforms — the path the `sngl` CLI uses — so the platform's own
 // "html" raw-element namespace (html.div, …) coexists with the stdlib "html"
 // namespace that owns the directives. The directive must still resolve AND
-// survive optimize+lower carrying Func.Intrinsic == "HtmlFrontend".
+// survive optimize+lower carrying Func.Intrinsic == "html.frontend".
 func TestHtmlDirectiveSurvivesWithPlatformActive(t *testing.T) {
 	src := `
 import . "sngl://std"
@@ -55,7 +55,7 @@ component main {
 	}
 	found := false
 	ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == "HtmlFrontend" {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == "html.frontend" {
 			found = true
 			return ir.SkipAll
 		}
