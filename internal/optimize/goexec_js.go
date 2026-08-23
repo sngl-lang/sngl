@@ -5,6 +5,9 @@ package optimize
 import "fmt"
 
 // execPureGoFunc is a no-op in WASM builds.
-func execPureGoFunc(dir, importPath, nativeType string, paramTypes []string, returnType string, args []any) (any, error) {
+func execPureGoFunc(ctx *evalCtx, importPath, nativeType string, args []any) (any, error) {
 	return nil, fmt.Errorf("compile-time Go execution not available in WASM")
 }
+
+// CloseEvaluators is a no-op in WASM builds: nothing was ever started.
+func CloseEvaluators() {}

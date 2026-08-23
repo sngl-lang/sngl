@@ -350,11 +350,7 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 	if ctx.dir != "" {
 		for _, f := range ns.Funcs {
 			if f.Name == sel.Field && f.Purity == ir.PurityPure && f.NativePkg != "file" {
-				paramTypes := make([]string, len(f.Params))
-				for i, p := range f.Params {
-					paramTypes[i] = goTypeKindString(p.Type)
-				}
-				result, err := execPureGoFunc(ctx.dir, ns.ImportPath, f.NativeName, paramTypes, goTypeKindString(f.Return), args)
+				result, err := execPureGoFunc(ctx, ns.ImportPath, f.NativeName, args)
 				if err != nil {
 					// A failed compile-time evaluation can only be tolerated when
 					// the target can recompute the value at runtime instead. That
@@ -377,25 +373,6 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 	return nil, false
-}
-
-// goTypeKindString reduces an IR type to the primitive hint strings
-// execPureGoFunc understands for marshalling args and return values.
-func goTypeKindString(t *ir.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ir.TypeString:
-		return "string"
-	case ir.TypeInt:
-		return "int"
-	case ir.TypeFloat:
-		return "float"
-	case ir.TypeBool:
-		return "bool"
-	}
-	return ""
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
