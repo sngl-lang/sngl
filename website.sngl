@@ -118,6 +118,17 @@ component PageLayout(title = "", currentHref = "") list<component> {
 					html.h1(innerText=title)
 					slot
 				}
+				html.footer(class="site-footer") {
+					// docsgen replaces the year marker with the commit's year.
+					html.span(class="copyright",
+						innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.")
+					html.span(class="footer-meta") {
+						html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
+						// docsgen replaces the marker with the commit this site
+						// was generated from; plain `sngl generate` leaves it out.
+						html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")
+					}
+				}
 			}
 		}
 	}

@@ -418,3 +418,25 @@ article ul, article ol { padding-left: 2em; }
 :root[data-theme="dark"] .hl-chroma .hl-cm { color: #8b949e; font-style: italic }
 :root[data-theme="dark"] .hl-chroma .hl-p { color: #c9d1d9 }
 :root[data-theme="dark"] .hl-chroma .hl-w { color: transparent }
+
+/* Page footer */
+.site-footer {
+  max-width: var(--content-max);
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.site-footer .footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.site-footer .build-stamp { font-family: var(--font-mono); }
