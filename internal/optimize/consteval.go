@@ -296,11 +296,10 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 
-	// An intrinsic the folder does not implement. Its body is all there is,
-	// and only `usable` says that body computes the right answer — the rest
-	// are placeholders standing in for a backend's implementation, and
-	// folding one would bake a wrong constant into the program.
-	if canFoldBody(call.Func) && call.Func.Intrinsic != "" && call.Func.IntrinsicBodyUsable {
+	// An intrinsic the folder does not implement. A body it still has is one
+	// the declaration said computes the right answer; the placeholders were
+	// dropped after type checking.
+	if canFoldBody(call.Func) && call.Func.Intrinsic != "" {
 		ctx.interpDepth++
 		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
 		ctx.interpDepth--

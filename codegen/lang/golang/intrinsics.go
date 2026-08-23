@@ -146,14 +146,25 @@ func init() {
 	// Each maps to the same-named entry point in the Go i18n runtime; the
 	// locale is already the leading argument by the time a call gets here.
 	for id, goName := range map[string]string{
-		"DefaultLocale": "DefaultLocale", "Translate": "Translate", "Format": "Format",
-		"NumberInt": "NumberInt", "NumberFloat": "NumberFloat", "Date": "Date",
-		"Time": "Time", "DateTime": "Datetime", "Select": "Select",
-		"Plural": "Plural", "SelectOrdinal": "Selectordinal",
+		"i18n._defaultLocale": "i18n._defaultLocale", "i18n._translate": "i18n._translate", "i18n._format": "i18n._format",
+		"i18n._numberInt": "i18n._numberInt", "i18n._numberFloat": "i18n._numberFloat", "i18n._date": "i18n._date",
+		"i18n._time": "i18n._time", "i18n._dateTime": "Datetime", "i18n._select": "i18n._select",
+		"i18n._plural": "i18n._plural", "i18n._selectOrdinal": "Selectordinal",
 	} {
 		call := "i18n." + goName
 		regImp(id, []string{SnglI18nImportPath}, func(a []string) string {
 			return call + "(" + strings.Join(a, ", ") + ")"
+		})
+	}
+
+	// --- i18n entry points ---
+	// Dispatched by id: a package function carries no receiver, so the
+	// qualified name these were matched by is not there after lowering.
+	for _, name := range []string{"defaultLocale", "tr", "trInline", "format", "numberInt", "numberFloat", "date", "time", "datetime", "select", "plural", "selectordinal"} {
+		id := "i18n." + name
+		qual := id
+		regImp(id, []string{SnglI18nImportPath}, func(a []string) string {
+			return goBuiltinMethodFromArgs(qual, a)
 		})
 	}
 

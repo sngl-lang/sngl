@@ -1,7 +1,11 @@
-# int.parse is #[intrinsic("IntParse")] with no body: every backend must have
+# int.parse is #[intrinsic("int.parse")]: every backend must have
 # an emitter for it. Before these existed the Go path emitted a call to a
 # function that did not exist and nothing caught it, because no test compiled
 # the result — so the go case here builds rather than greps.
+#
+# It also pins that a placeholder body is dropped after type checking: while
+# int.parse's `return 0` survived, the const folder answered 0 and no call was
+# emitted at all.
 
 sngl generate --lang=none --platform=html --out=outjs app.sngl
 grep 'parseInt\("FF", 16\)' outjs/index.html

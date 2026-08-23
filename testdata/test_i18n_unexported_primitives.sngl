@@ -1,0 +1,15 @@
+import . "sngl://std"
+import "sngl://i18n"
+
+// The formatting primitives live in sngl://i18n as unexported members, so a
+// program reaches them only through the entry points that thread the active
+// locale. They used to be sngl://internal/intl, a package with one importer.
+component main {
+    var n int = 1234
+    text(value=i18n.numberInt(n, "decimal"))
+}
+
+func testEntryPointsWork(t Test, c main) {
+    t.assert(i18n.numberInt(1234, "decimal") != "")
+    t.assert(i18n.tr("hello", {}) == "hello")
+}

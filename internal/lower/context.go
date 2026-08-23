@@ -208,13 +208,15 @@ type callEdge struct {
 	shadowed map[*ir.Context]bool
 }
 
-// hasBody reports whether a func has a body that NoContext should walk.
-// Intrinsics and native imports have no SNGL body to inspect or rewrite.
+// hasBody reports whether a func has a body that NoContext should walk. A
+// native import has none, and an intrinsic keeps one only when it says the
+// body computes the right answer — which the i18n entry points do, and their
+// bodies read the active locale, so the hidden parameter has to reach them.
 func hasBody(f *ir.Func) bool {
 	if f == nil {
 		return false
 	}
-	if f.Intrinsic != "" || f.NativeName != "" || f.NativePkg != "" {
+	if f.NativeName != "" || f.NativePkg != "" {
 		return false
 	}
 	return len(f.Block) > 0

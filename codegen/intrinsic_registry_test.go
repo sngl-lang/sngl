@@ -66,10 +66,12 @@ func TestRequireIntrinsicFallback(t *testing.T) {
 		{"nil func", nil, false},
 		{"not an intrinsic", &ir.Func{Name: "plain"}, false},
 		{"bodyless with no emitter", &ir.Func{Name: "p", Intrinsic: "NoBackendHasThis"}, true},
-		{"a body alone is not enough", &ir.Func{
+		// A body that reached codegen is one the declaration claimed computes
+		// the right answer: the checker drops a placeholder after checking it.
+		{"a body that survived checking", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis",
 			Block: []ir.Stmt{&ir.Return{}},
-		}, true},
+		}, false},
 		{"declared usable", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
 		}, false},

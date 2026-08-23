@@ -336,28 +336,22 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	return stdlibPkg
 }
 
-// intlPkg is the library package declaring the locale-aware primitives and the
-// PluralKey they are keyed by.
-const intlPkg = "internal/intl"
-
+// i18nPkg declares the translation entry points, the locale-aware primitives
+// behind them, and the PluralKey those are keyed by.
 const i18nPkg = "i18n"
 
 // stdPkg is the library package that declares the html namespace.
 const stdPkg = "std"
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the
-// i18n package. They are opaque sentinels whose runtime values come from the
+// package that declares PluralKey. They are opaque sentinels whose runtime values come from the
 // target's i18n runtime, so there is no literal to declare them with — the
 // compiler supplies them, as it does for null and PLATFORM.
 func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	if pkg == nil {
 		return
 	}
-	intl := c.libPkg(intlPkg)
-	if intl == nil {
-		return
-	}
-	sym, ok := intl.Symbols.Root.LookupLocal("PluralKey")
+	sym, ok := pkg.Symbols.Root.LookupLocal("PluralKey")
 	if !ok {
 		return
 	}

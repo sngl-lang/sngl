@@ -1,0 +1,17 @@
+import . "sngl://std"
+
+// A placeholder body is type checked and then discarded, so nothing can run
+// it. int.parse's body is `return 0`; if it survived, the const folder would
+// answer 0 for every call it reached. The folder is what this protects, and
+// cmd/sngl/testdata/generate_int_parse.txt is where that is asserted — the
+// test runner does not optimize. What is left here is the evaluator half:
+// the interpreter answers from its own implementation.
+component main {
+    const parsed = int.parse("FF", 16)
+    text(value="{parsed}")
+}
+
+func testPlaceholderDoesNotFold(t Test, c main) {
+    t.assert(c.parsed == 255)
+    t.assert(int.parse("FF", 16) == 255)
+}

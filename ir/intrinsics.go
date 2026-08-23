@@ -145,27 +145,43 @@ var FileIntrinsics = []IntrinsicDef{
 // intrinsic doesn't need to know about that struct; it just receives the
 // runtime values.
 var I18nIntrinsics = []IntrinsicDef{
+	// The entry points a program calls. Their parameters vary with whether
+	// NoContext has threaded the locale in yet, so the table records the id and
+	// the result; the emitters read the arguments they were given.
+	{Name: "i18n.defaultLocale", Params: nil, Return: TypString},
+	{Name: "i18n.tr", Params: nil, Return: TypString},
+	{Name: "i18n.trInline", Params: nil, Return: TypString},
+	{Name: "i18n.format", Params: nil, Return: TypString},
+	{Name: "i18n.numberInt", Params: nil, Return: TypString},
+	{Name: "i18n.numberFloat", Params: nil, Return: TypString},
+	{Name: "i18n.date", Params: nil, Return: TypString},
+	{Name: "i18n.time", Params: nil, Return: TypString},
+	{Name: "i18n.datetime", Params: nil, Return: TypString},
+	{Name: "i18n.select", Params: nil, Return: TypString},
+	{Name: "i18n.plural", Params: nil, Return: TypString},
+	{Name: "i18n.selectordinal", Params: nil, Return: TypString},
+
 	{Name: "i18n.exactly", Params: []*Param{{Name: "n", Type: TypInt}}, Return: TypDyn, Purity: PurityPure},
 	// DefaultLocale reads host env vars ($LC_ALL/$LC_MESSAGES/$LANG);
 	// PurityReadonly prevents compile-time folding of i18n.defaultLocale().
-	{Name: "DefaultLocale", Params: nil, Return: TypString, Purity: PurityReadonly},
-	{Name: "Translate", Params: []*Param{
+	{Name: "i18n._defaultLocale", Params: nil, Return: TypString, Purity: PurityReadonly},
+	{Name: "i18n._translate", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "key", Type: TypString},
 		{Name: "inlinedTemplate", Type: TypString},
 		{Name: "args", Type: MapOf(TypString, TypDyn)},
 	}, Return: TypString},
-	{Name: "Format", Params: []*Param{
+	{Name: "i18n._format", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "template", Type: TypString},
 		{Name: "args", Type: MapOf(TypString, TypDyn)},
 	}, Return: TypString},
-	{Name: "NumberInt", Params: []*Param{
+	{Name: "i18n._numberInt", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "n", Type: TypInt},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
-	{Name: "NumberFloat", Params: []*Param{
+	{Name: "i18n._numberFloat", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "n", Type: TypFloat},
 		{Name: "style", Type: TypString},
@@ -176,33 +192,33 @@ var I18nIntrinsics = []IntrinsicDef{
 	// stdlib registration order. The wrapping stdlib funcs (i18n.date, etc.)
 	// carry the concrete struct types; codegen dispatches by intrinsic name,
 	// not by these param types.
-	{Name: "Date", Params: []*Param{
+	{Name: "i18n._date", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "d", Type: TypDyn},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
-	{Name: "Time", Params: []*Param{
+	{Name: "i18n._time", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "t", Type: TypDyn},
 		{Name: "style", Type: TypString},
 	}, Return: TypString},
-	{Name: "DateTime", Params: []*Param{
+	{Name: "i18n._dateTime", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "dt", Type: TypDyn},
 		{Name: "dateStyle", Type: TypString},
 		{Name: "timeStyle", Type: TypString},
 	}, Return: TypString},
-	{Name: "Select", Params: []*Param{
+	{Name: "i18n._select", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "value", Type: TypString},
 		{Name: "cases", Type: MapOf(TypString, TypString)},
 	}, Return: TypString},
-	{Name: "Plural", Params: []*Param{
+	{Name: "i18n._plural", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "count", Type: TypInt},
 		{Name: "forms", Type: MapOf(TypDyn, TypString)},
 	}, Return: TypString},
-	{Name: "SelectOrdinal", Params: []*Param{
+	{Name: "i18n._selectOrdinal", Params: []*Param{
 		{Name: "locale", Type: TypString},
 		{Name: "count", Type: TypInt},
 		{Name: "forms", Type: MapOf(TypDyn, TypString)},

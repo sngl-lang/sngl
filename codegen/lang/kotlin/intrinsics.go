@@ -95,6 +95,17 @@ func init() {
 
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
 
+	// --- i18n entry points ---
+	// Dispatched by id: a package function carries no receiver, so the
+	// qualified name these were matched by is not there after lowering.
+	for _, name := range []string{"defaultLocale", "tr", "trInline", "format", "numberInt", "numberFloat", "date", "time", "datetime", "select", "plural", "selectordinal"} {
+		id := "i18n." + name
+		qual := id
+		regImp(id, []string{SnglI18nKotlinPackage + ".I18n"}, func(a []string) string {
+			return kotlinBuiltinMethodFromArgs(qual, a)
+		})
+	}
+
 	// --- color ---
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
@@ -136,17 +147,17 @@ func init() {
 	// Each maps to the same-named entry point in the kotlin i18n runtime; the
 	// locale is already the leading argument by the time a call gets here.
 	for id, name := range map[string]string{
-		"Date":          "date",
-		"DateTime":      "datetime",
-		"DefaultLocale": "defaultLocale",
-		"Format":        "format",
-		"NumberFloat":   "numberFloat",
-		"NumberInt":     "numberInt",
-		"Plural":        "plural",
-		"Select":        "selectStr",
-		"SelectOrdinal": "selectordinal",
-		"Time":          "time",
-		"Translate":     "translate",
+		"i18n._date":          "date",
+		"i18n._dateTime":      "datetime",
+		"i18n._defaultLocale": "defaultLocale",
+		"i18n._format":        "format",
+		"i18n._numberFloat":   "numberFloat",
+		"i18n._numberInt":     "numberInt",
+		"i18n._plural":        "plural",
+		"i18n._select":        "selectStr",
+		"i18n._selectOrdinal": "selectordinal",
+		"i18n._time":          "time",
+		"i18n._translate":     "translate",
 	} {
 		call := "I18n." + name
 		regImp(id, []string{SnglI18nKotlinPackage + ".I18n"}, func(a []string) string {

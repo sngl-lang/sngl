@@ -284,7 +284,7 @@ func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
 // (result, handled, error); handled is false when the method is unknown.
 func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error) {
 	switch method {
-	case "DefaultLocale":
+	case "i18n._defaultLocale":
 		return goi18n.DefaultLocale(), true, nil
 	}
 
@@ -304,7 +304,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 	}
 
 	switch method {
-	case "Translate":
+	case "i18n._translate":
 		if len(args) < 4 {
 			return nil, true, fmt.Errorf("intl.Translate requires 4 arguments")
 		}
@@ -321,7 +321,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.Tr(fmt.Sprintf("%v", keyV), fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
-	case "Format":
+	case "i18n._format":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.Format requires 3 arguments")
 		}
@@ -334,7 +334,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.Format(fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
-	case "NumberInt":
+	case "i18n._numberInt":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.NumberInt requires 3 arguments")
 		}
@@ -347,7 +347,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.NumberInt(ToInt(nV), fmt.Sprintf("%v", sV)), true, nil
-	case "NumberFloat":
+	case "i18n._numberFloat":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.NumberFloat requires 3 arguments")
 		}
@@ -360,7 +360,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.NumberFloat(toFloat(nV), fmt.Sprintf("%v", sV)), true, nil
-	case "Date":
+	case "i18n._date":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.Date requires 3 arguments")
 		}
@@ -376,7 +376,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return tr.Date(tt, fmt.Sprintf("%v", sV)), true, nil
 		}
 		return fmt.Sprintf("%v", dV), true, nil
-	case "Time":
+	case "i18n._time":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.Time requires 3 arguments")
 		}
@@ -392,7 +392,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return tr.Time(tt, fmt.Sprintf("%v", sV)), true, nil
 		}
 		return fmt.Sprintf("%v", dV), true, nil
-	case "DateTime":
+	case "i18n._dateTime":
 		if len(args) < 4 {
 			return nil, true, fmt.Errorf("intl.DateTime requires 4 arguments")
 		}
@@ -412,7 +412,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return tr.Datetime(tt, fmt.Sprintf("%v", dsV), fmt.Sprintf("%v", tsV)), true, nil
 		}
 		return fmt.Sprintf("%v", dV), true, nil
-	case "Select":
+	case "i18n._select":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.Select requires 3 arguments")
 		}
@@ -425,7 +425,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.Select(fmt.Sprintf("%v", vV), toStringStringMap(cV)), true, nil
-	case "Plural":
+	case "i18n._plural":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.Plural requires 3 arguments")
 		}
@@ -438,7 +438,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 			return nil, true, err
 		}
 		return tr.Plural(ToInt(cV), forms), true, nil
-	case "SelectOrdinal":
+	case "i18n._selectOrdinal":
 		if len(args) < 3 {
 			return nil, true, fmt.Errorf("intl.SelectOrdinal requires 3 arguments")
 		}
@@ -1222,6 +1222,22 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	// i18n by the id, before the call shape is examined: an entry point may
+	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
+	// the wrapper is inlined. The placeholder bodies underneath would answer
+	// with an empty string.
+	if call.Func != nil {
+		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n.") {
+			if strings.HasPrefix(id, "i18n._") {
+				if result, handled, err := env.evalIntlCall(id, call.Args); handled {
+					return result, err
+				}
+			} else if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
+				return result, err
+			}
+		}
+	}
+
 	// Namespace call (ns.foo / html.div) — receiver preserved.
 	if call.Receiver != nil {
 		return env.evalNamespaceCall(call)
@@ -1371,20 +1387,6 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return result, err
 	}
 
-	// i18n namespace: dispatch via locale-aware translator.
-	if receiverName == "i18n" {
-		if result, handled, err := env.evalI18nCall(method, call.Args); handled {
-			return result, err
-		}
-	}
-	// intl namespace: locale-aware intrinsic dispatch. See evalNamespaceCall
-	// for the rationale.
-	if receiverName == "intl" {
-		if result, handled, err := env.evalIntlCall(method, call.Args); handled {
-			return result, err
-		}
-	}
-
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
 	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
@@ -1398,7 +1400,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// The checker already resolved which member this call names; re-deriving
 	// it from the receiver's name would fail for a type reached through an
 	// import alias, whose name here is not the name it was declared under.
-	if len(call.Func.Block) > 0 && (call.Func.Intrinsic == "" || call.Func.IntrinsicBodyUsable) {
+	if len(call.Func.Block) > 0 {
 		callEnv, args := env, call.Args
 		// A method on a generic receiver declares no receiver parameter and
 		// names the value `this`, so the leading argument the checker
@@ -1427,23 +1429,6 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	if ident, ok := call.Receiver.(*ir.Ident); ok {
 		if _, valErr := env.evalIdent(ident); valErr != nil {
 			method := methodNameFromCall(call)
-
-			// i18n namespace: dispatch via locale-aware translator before
-			// falling through to the empty-body user func.
-			if ident.Name == "i18n" {
-				if result, handled, err := env.evalI18nCall(method, call.Args); handled {
-					return result, err
-				}
-			}
-			// intl namespace: locale-aware intrinsic dispatch. The SNGL i18n
-			// stdlib wrappers delegate to intl.* with `locale` threaded as
-			// the first argument; the interpreter resolves those intrinsics
-			// here instead of looking up an empty user-func body.
-			if ident.Name == "intl" {
-				if result, handled, err := env.evalIntlCall(method, call.Args); handled {
-					return result, err
-				}
-			}
 
 			// Resolve the member once: its mark says whether this interpreter
 			// implements it, and its body says whether there is anything to
@@ -1526,7 +1511,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn := recvFn; recvOK && len(fn.Block) > 0 && (fn.Intrinsic == "" || fn.IntrinsicBodyUsable) {
+			if fn := recvFn; recvOK && len(fn.Block) > 0 {
 				// A method on a generic receiver (list<T>, map<K,V>) declares
 				// no receiver parameter and names the value `this`, so there
 				// is nothing in the argument list to bind it to. Supply it the

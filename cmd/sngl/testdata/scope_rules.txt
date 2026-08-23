@@ -70,8 +70,8 @@ stderr 'y is already declared in this scope'
 ! sngl check dup_loop_var.sngl
 stderr 'k is already declared in this scope'
 
-# A namespace the stdlib exposes may still be imported by name: both bindings
-# denote the same package, so this is a restated name, not an ambiguous one.
+# Importing a package the stdlib also imports is a restated name, not an
+# ambiguous one: both bindings denote the same package.
 sngl check restate_intrinsic.sngl
 stdout 'restate_intrinsic.sngl: ok'
 
@@ -312,9 +312,7 @@ component main {
 }
 -- restate_intrinsic.sngl --
 import . "sngl://std"
-import "sngl://internal/intl"
-
-func make() => intl.DefaultLocale()
+import "sngl://internal/marks"
 
 component main {
     text(value="x")

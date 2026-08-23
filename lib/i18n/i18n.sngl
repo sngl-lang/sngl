@@ -7,21 +7,19 @@
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
 //
-// Each function below has an expression body that delegates to the
-// corresponding intrinsic in `sngl://internal/intl`, threading `locale` from
-// the active context. The wrapper body exists so NoContext sees the
-// `locale` read and adds the hidden `__ctx_locale` param + call-site
-// arg threading.
+// Each entry point below threads `locale` from the active context into the
+// unexported primitive that does the formatting. The wrapper body exists so
+// NoContext sees the `locale` read and adds the hidden `__ctx_locale` param
+// and the call-site argument that fills it.
 
 import . "sngl://internal/marks"
-import "sngl://internal/intl"
 
 // --- Locale context ---
 
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
-#[intrinsic("DefaultLocale", readonly)]
-func defaultLocale() => intl.DefaultLocale()
+#[intrinsic("i18n.defaultLocale", usable)]
+func defaultLocale() => _defaultLocale()
 
 // The active locale. Overridable per-subtree with `i18n.locale("xx-YY") { ... }`
 // and per-test with `t.setContext(i18n.locale, ...)`; the default is the
@@ -33,32 +31,41 @@ context #locale(defaultLocale())
 // Translate `key` against the loaded manifest, formatting via ICU.
 // The lowering of $"..." passes the synthesized ICU template as `key`
 // and the placeholder values as `args`.
-func tr(key string, args map<string, dyn>) => intl.Translate(locale, key, "", args)
+#[intrinsic("i18n.tr", usable)]
+func tr(key string, args map<string, dyn>) => _translate(locale, key, "", args)
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
-func trInline(key string, inlinedTemplate string, args map<string, dyn>) => intl.Translate(locale, key, inlinedTemplate, args)
+#[intrinsic("i18n.trInline", usable)]
+func trInline(key string, inlinedTemplate string, args map<string, dyn>) => _translate(locale, key, inlinedTemplate, args)
 
 // Format an ICU template directly, no manifest lookup.
-func format(template string, args map<string, dyn>) => intl.Format(locale, template, args)
+#[intrinsic("i18n.format", usable)]
+func format(template string, args map<string, dyn>) => _format(locale, template, args)
 
 // --- Direct formatters ---
 
 // Style: "decimal" (default), "percent", "currency", "scientific".
-func numberInt(n int, style string) => intl.NumberInt(locale, n, style)
-func numberFloat(n float, style string) => intl.NumberFloat(locale, n, style)
+#[intrinsic("i18n.numberInt", usable)]
+func numberInt(n int, style string) => _numberInt(locale, n, style)
+#[intrinsic("i18n.numberFloat", usable)]
+func numberFloat(n float, style string) => _numberFloat(locale, n, style)
 
 // Style: "short", "medium" (default), "long", "full".
-func date(d date, style string) => intl.Date(locale, d, style)
-func time(t time, style string) => intl.Time(locale, t, style)
-func datetime(dt datetime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
+#[intrinsic("i18n.date", usable)]
+func date(d date, style string) => _date(locale, d, style)
+#[intrinsic("i18n.time", usable)]
+func time(t time, style string) => _time(locale, t, style)
+#[intrinsic("i18n.datetime", usable)]
+func datetime(dt datetime, dateStyle string, timeStyle string) => _dateTime(locale, dt, dateStyle, timeStyle)
 
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-func select(value string, cases map<string, string>) => intl.Select(locale, value, cases)
+#[intrinsic("i18n.select", usable)]
+func select(value string, cases map<string, string>) => _select(locale, value, cases)
 
 // --- Plural/ordinal selectors ---
 
@@ -66,12 +73,62 @@ func select(value string, cases map<string, string>) => intl.Select(locale, valu
 // the intl primitives that consume it; use the predeclared constants
 // (i18n.zero, i18n.one, …, i18n.other) for CLDR keyword categories.
 #[intrinsic("i18n.exactly")]
-func exactly(n int) intl.PluralKey { return {} }
+func exactly(n int) PluralKey { return {} }
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func plural(count int, forms map<intl.PluralKey, string>) => intl.Plural(locale, count, forms)
+#[intrinsic("i18n.plural", usable)]
+func plural(count int, forms map<PluralKey, string>) => _plural(locale, count, forms)
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func selectordinal(count int, forms map<intl.PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)
+#[intrinsic("i18n.selectordinal", usable)]
+func selectordinal(count int, forms map<PluralKey, string>) => _selectOrdinal(locale, count, forms)
+
+// --- Primitives ---
+//
+// The locale-aware formatting the wrappers above are written against. Every
+// body is a placeholder: the result comes from the target's own
+// implementation of the marked id. They are unexported because a program
+// reaches them through the wrappers, which thread the active locale.
+
+#[intrinsic("i18n._defaultLocale", readonly)]
+func _defaultLocale() string { return "" }
+
+#[intrinsic("i18n._translate")]
+func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string { return "" }
+
+#[intrinsic("i18n._format")]
+func _format(locale string, template string, args map<string, dyn>) string { return "" }
+
+#[intrinsic("i18n._numberInt")]
+func _numberInt(locale string, n int, style string) string { return "" }
+
+#[intrinsic("i18n._numberFloat")]
+func _numberFloat(locale string, n float, style string) string { return "" }
+
+#[intrinsic("i18n._date")]
+func _date(locale string, d dyn, style string) string { return "" }
+
+#[intrinsic("i18n._time")]
+func _time(locale string, t dyn, style string) string { return "" }
+
+#[intrinsic("i18n._dateTime")]
+func _dateTime(locale string, dt dyn, dateStyle string, timeStyle string) string { return "" }
+
+#[intrinsic("i18n._select")]
+func _select(locale string, value string, cases map<string, string>) string { return "" }
+
+// PluralKey identifies a CLDR plural category or an exact numeric match.
+// Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
+// i18n.exactly(n); the fields are the runtime's business.
+struct PluralKey {
+    n int
+    exact bool
+}
+
+#[intrinsic("i18n._plural")]
+func _plural(locale string, count int, forms map<PluralKey, string>) string { return "" }
+
+#[intrinsic("i18n._selectOrdinal")]
+func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string { return "" }

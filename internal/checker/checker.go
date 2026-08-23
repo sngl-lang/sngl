@@ -2408,6 +2408,69 @@ func (c *checker) pass2() {
 			c.error(a.pos, "const() operand is not a constant expression")
 		}
 	}
+
+	c.dropPlaceholderBodies()
+}
+
+// dropPlaceholderBodies discards the body of every intrinsic that did not
+// claim it computes the right answer. The body is there to be type checked
+// like any other — the mark does not excuse a declaration from that — but a
+// backend is meant to replace it, and `return 0` compiles and runs and is
+// wrong. Dropping it after checking means nothing downstream has to remember
+// to ask: an evaluator with no body cannot answer, and codegen with no body
+// and no emitter has nothing to fall through to.
+func (c *checker) dropPlaceholderBodies() {
+	drop := func(fn *ir.Func) {
+		if fn != nil && fn.Intrinsic != "" && !fn.IntrinsicBodyUsable {
+			fn.Block = nil
+		}
+	}
+	// A method lives on the declaration it is attached to rather than in
+	// pkg.Funcs, and the methods are where most of the marks are.
+	dropPkg := func(pkg *ir.Package) {
+		if pkg == nil {
+			return
+		}
+		for _, fn := range pkg.Funcs {
+			drop(fn)
+		}
+		for _, sd := range pkg.Structs {
+			for _, fn := range sd.Methods {
+				drop(fn)
+			}
+		}
+		for _, ed := range pkg.Enums {
+			for _, fn := range ed.Methods {
+				drop(fn)
+			}
+		}
+		for _, ud := range pkg.Units {
+			for _, fn := range ud.Methods {
+				drop(fn)
+			}
+		}
+		for _, comp := range pkg.Components {
+			for _, fn := range comp.Funcs {
+				drop(fn)
+			}
+			for _, fn := range comp.Methods {
+				drop(fn)
+			}
+		}
+	}
+	dropPkg(c.pkg)
+	for _, imp := range c.pkg.Imports {
+		if imp != nil {
+			dropPkg(imp.Pkg)
+		}
+	}
+	// sngl://builtin is ambient and appears in nobody's import list, and its
+	// methods carry the largest share of the marks.
+	for _, pkg := range c.libPkgs {
+		dropPkg(pkg)
+	}
+	dropPkg(c.builtinPkg)
+	dropPkg(c.stdlibPkg)
 }
 
 func (c *checker) checkFuncBody(fn *ir.Func) {

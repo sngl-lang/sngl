@@ -114,10 +114,10 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 	if fn == nil || fn.Intrinsic == "" {
 		return
 	}
-	// Having a body is not enough: every intrinsic carries one so it type
-	// checks like any other declaration, and most are placeholders. Only
-	// `usable` claims the body computes the same answer.
-	if fn.IntrinsicBodyUsable {
+	// A body that survived type checking is one the declaration claimed
+	// computes the right answer; a placeholder was dropped there, so there is
+	// nothing here to emit instead.
+	if len(fn.Block) > 0 || fn.IntrinsicBodyUsable {
 		return
 	}
 	panic(fmt.Sprintf(

@@ -92,6 +92,17 @@ func init() {
 
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
 
+	// --- i18n entry points ---
+	// Dispatched by id: a package function carries no receiver, so the
+	// qualified name these were matched by is not there after lowering.
+	for _, name := range []string{"defaultLocale", "tr", "trInline", "format", "numberInt", "numberFloat", "date", "time", "datetime", "select", "plural", "selectordinal"} {
+		id := "i18n." + name
+		qual := id
+		reg(id, func(a []string) string {
+			return jsBuiltinMethodFromArgs(qual, a)
+		})
+	}
+
 	// --- color ---
 	// A SNGL color is a {r,g,b,a} object in JS, so hex has to format it. The
 	// arrow keeps the operand from being evaluated four times.
@@ -127,17 +138,17 @@ func init() {
 	// Each maps to the same-named entry point in the javascript i18n runtime; the
 	// locale is already the leading argument by the time a call gets here.
 	for id, name := range map[string]string{
-		"Date":          "date",
-		"DateTime":      "datetime",
-		"DefaultLocale": "defaultLocale",
-		"Format":        "format",
-		"NumberFloat":   "numberFloat",
-		"NumberInt":     "numberInt",
-		"Plural":        "plural",
-		"Select":        "select",
-		"SelectOrdinal": "selectordinal",
-		"Time":          "time",
-		"Translate":     "translate",
+		"i18n._date":          "date",
+		"i18n._dateTime":      "datetime",
+		"i18n._defaultLocale": "defaultLocale",
+		"i18n._format":        "format",
+		"i18n._numberFloat":   "numberFloat",
+		"i18n._numberInt":     "numberInt",
+		"i18n._plural":        "plural",
+		"i18n._select":        "select",
+		"i18n._selectOrdinal": "selectordinal",
+		"i18n._time":          "time",
+		"i18n._translate":     "translate",
 	} {
 		call := "i18n." + name
 		reg(id, func(a []string) string { return call + "(" + strings.Join(a, ", ") + ")" })
