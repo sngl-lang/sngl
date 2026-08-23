@@ -11,7 +11,7 @@ func TestResolveAliases(t *testing.T) {
 	docs := []*ast.Document{
 		{Stmts: []ast.Stmt{
 			&ast.Import{Path: "sngl://internal/draw"},
-			&ast.Import{Path: "sngl://internal/intl", Alias: "store"},
+			&ast.Import{Path: "sngl://i18n", Alias: "store"},
 			&ast.Import{Path: "go://mypkg/widget"},
 		}},
 	}
@@ -20,7 +20,7 @@ func TestResolveAliases(t *testing.T) {
 	if got["draw"].Scheme != "sngl" || got["draw"].URI != "internal/draw" {
 		t.Errorf("draw: got %+v", got["draw"])
 	}
-	if got["store"].Scheme != "sngl" || got["store"].URI != "internal/intl" {
+	if got["store"].Scheme != "sngl" || got["store"].URI != "i18n" {
 		t.Errorf("store: got %+v", got["store"])
 	}
 	if got["widget"].Scheme != "go" || got["widget"].URI != "mypkg/widget" {
