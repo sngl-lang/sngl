@@ -80,14 +80,17 @@ func init() {
 	reg("int.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
 	reg("int.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
 	reg("int.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
+	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
+	// declaration documents and its own body computes.
+	// Not coerceIn, which throws when lo > hi rather than answering lo.
 	reg("int.clamp", func(a []string) string {
-		return a[0] + ".coerceIn(" + a[1] + ", " + a[2] + ")"
+		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
 	reg("float.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
 	reg("float.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
 	reg("float.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
 	reg("float.clamp", func(a []string) string {
-		return a[0] + ".coerceIn(" + a[1] + ", " + a[2] + ")"
+		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
 
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })

@@ -75,14 +75,16 @@ func init() {
 	reg("int.abs", func(a []string) string {
 		return "func(x int) int { if x < 0 { return -x }; return x }(" + a[0] + ")"
 	})
+	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
+	// declaration documents and its own body computes.
 	reg("int.clamp", func(a []string) string {
-		return "min(max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+		return "max(" + a[1] + ", min(" + a[0] + ", " + a[2] + "))"
 	})
 	regImp("float.min", []string{"math"}, func(a []string) string { return "math.Min(" + a[0] + ", " + a[1] + ")" })
 	regImp("float.max", []string{"math"}, func(a []string) string { return "math.Max(" + a[0] + ", " + a[1] + ")" })
 	regImp("float.abs", []string{"math"}, func(a []string) string { return "math.Abs(" + a[0] + ")" })
 	regImp("float.clamp", []string{"math"}, func(a []string) string {
-		return "math.Min(math.Max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+		return "math.Max(" + a[1] + ", math.Min(" + a[0] + ", " + a[2] + "))"
 	})
 
 	// --- list and map ---

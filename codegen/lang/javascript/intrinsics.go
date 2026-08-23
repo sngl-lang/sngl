@@ -78,14 +78,16 @@ func init() {
 	reg("int.min", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
 	reg("int.max", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
 	reg("int.abs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
+	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
+	// declaration documents and its own body computes.
 	reg("int.clamp", func(a []string) string {
-		return "Math.min(Math.max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+		return "Math.max(" + a[1] + ", Math.min(" + a[0] + ", " + a[2] + "))"
 	})
 	reg("float.min", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
 	reg("float.max", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
 	reg("float.abs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
 	reg("float.clamp", func(a []string) string {
-		return "Math.min(Math.max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
+		return "Math.max(" + a[1] + ", Math.min(" + a[0] + ", " + a[2] + "))"
 	})
 
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
