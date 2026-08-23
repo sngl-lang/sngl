@@ -1,6 +1,7 @@
 // Comments inside i18n placeholders should not break case-body detection.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 var count = 5
 

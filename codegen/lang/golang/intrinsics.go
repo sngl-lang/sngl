@@ -126,6 +126,10 @@ func init() {
 		return "func() " + v + " { if v, ok := " + a[0] + "[" + a[1] + "]; ok { return v }; return " + a[2] + " }()"
 	})
 
+	regImp("i18n.exactly", []string{SnglI18nImportPath}, func(a []string) string {
+		return "i18n.Exactly(" + a[0] + ")"
+	})
+
 	// --- color ---
 	regImp("color.hex", []string{colorImportPath}, func(a []string) string { return a[0] + ".Hex()" })
 

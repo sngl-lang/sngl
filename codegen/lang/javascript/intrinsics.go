@@ -88,6 +88,8 @@ func init() {
 		return "Math.min(Math.max(" + a[0] + ", " + a[1] + "), " + a[2] + ")"
 	})
 
+	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
+
 	// --- color ---
 	// A SNGL color is a {r,g,b,a} object in JS, so hex has to format it. The
 	// arrow keeps the operand from being evaluated four times.

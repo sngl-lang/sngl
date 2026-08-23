@@ -479,7 +479,15 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 
 	if n.Func != nil {
 		fname := n.Func.Name
+		// A package function called through its import has no receiver on the
+		// declaration — the namespace is the alias at the call site. Name it
+		// from there so a qualified call reads the same either way.
 		receiverName := n.Func.Receiver
+		if receiverName == "" {
+			if id, ok := n.Receiver.(*ir.Ident); ok {
+				receiverName = id.Name
+			}
+		}
 		qualName := receiverName + "." + fname
 
 		// lower.CreateComponent(comp, props) → __cf_<name>(props). Mirrors
@@ -822,9 +830,6 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.selectordinal":
 		// Args: count, forms. a(0)=count, a(1)=forms.
 		return "i18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
-	case "i18n.exactly":
-		// Args: n. a(0)=n.
-		return "(\"=\" + (" + a(0) + "))"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "i18n.defaultLocale()"

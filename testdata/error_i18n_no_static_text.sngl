@@ -2,6 +2,7 @@
 // to work with. Should produce a check-time warning, not an error.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 var n = 5
 var s = $"{n}" // ERROR(lint) "no static text"

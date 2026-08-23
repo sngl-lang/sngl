@@ -5,6 +5,7 @@ stdout 'app.sngl: ok'
 
 -- app.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { go { bubbletea } }
 

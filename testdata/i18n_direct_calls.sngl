@@ -3,6 +3,7 @@
 // Note: the "i18n" namespace is predeclared; no import statement needed.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 func test() {
     // Translation entry points.

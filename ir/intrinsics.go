@@ -145,6 +145,7 @@ var FileIntrinsics = []IntrinsicDef{
 // intrinsic doesn't need to know about that struct; it just receives the
 // runtime values.
 var I18nIntrinsics = []IntrinsicDef{
+	{Name: "i18n.exactly", Params: []*Param{{Name: "n", Type: TypInt}}, Return: TypDyn, Purity: PurityPure},
 	// DefaultLocale reads host env vars ($LC_ALL/$LC_MESSAGES/$LANG);
 	// PurityReadonly prevents compile-time folding of i18n.defaultLocale().
 	{Name: "DefaultLocale", Params: nil, Return: TypString, Purity: PurityReadonly},

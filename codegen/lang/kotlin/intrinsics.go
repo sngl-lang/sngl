@@ -89,6 +89,8 @@ func init() {
 		return a[0] + ".coerceIn(" + a[1] + ", " + a[2] + ")"
 	})
 
+	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
+
 	// --- color ---
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.

@@ -140,6 +140,9 @@ func (c *checker) libPkg(name string) *ir.Package {
 	}
 	c.libLoading[name] = true
 	pkg := c.loadStdlibPackage(name, false)
+	if name == i18nPkg {
+		c.declarePluralKeyConstants(pkg)
+	}
 	delete(c.libLoading, name)
 	if c.libPkgs == nil {
 		c.libPkgs = map[string]*ir.Package{}
@@ -341,6 +344,8 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 // PluralKey they are keyed by.
 const intlPkg = "internal/intl"
 
+const i18nPkg = "i18n"
+
 // stdPkg is the library package that declares the i18n and html namespaces.
 const stdPkg = "std"
 
@@ -383,6 +388,33 @@ func (c *checker) buildI18nNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 	}
 
 	return pkg
+}
+
+// declarePluralKeyConstants registers the six CLDR plural categories on the
+// i18n package. They are opaque sentinels whose runtime values come from the
+// target's i18n runtime, so there is no literal to declare them with — the
+// compiler supplies them, as it does for null and PLATFORM.
+func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	intl := c.libPkg(intlPkg)
+	if intl == nil {
+		return
+	}
+	sym, ok := intl.Symbols.Root.LookupLocal("PluralKey")
+	if !ok {
+		return
+	}
+	sd, isStruct := sym.(*ir.StructDef)
+	if !isStruct {
+		return
+	}
+	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
+		v := &ir.Var{Name: name, Type: sd.SymType(), IsConst: true}
+		pkg.Vars = append(pkg.Vars, v)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, v)
+	}
 }
 
 // buildHtmlNamespacePkg constructs a synthetic ir.Package for the "html"

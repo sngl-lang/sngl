@@ -17,6 +17,7 @@ grep 'i18n\.NumberInt\(l, m\.n, "decimal"\)' out/model.go
 
 -- app.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { go { bubbletea } }
 
@@ -24,7 +25,7 @@ component main {
     var locales = ["en-US", "fr-FR", "es-MX"]
     var n = 1234
     for l = locales {
-        locale(l) {
+        i18n.locale(l) {
             text(value=i18n.numberInt(n, "decimal"))
         }
     }

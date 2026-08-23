@@ -432,7 +432,7 @@ func TestJsEmitI18nExactly(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "exactly", Receiver: "i18n"},
+		Func:     &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Raw: "0", Type: ir.TypInt}},

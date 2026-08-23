@@ -1484,6 +1484,16 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+							// A context reached through its package is the
+							// same context: `i18n.locale` reads what `locale`
+							// reads where the name is in scope unqualified.
+							if ctx, isCtx := fsym.(*ir.Context); isCtx {
+								typ := ctx.Typ
+								if typ == nil {
+									typ = TypDyn
+								}
+								return &ir.ContextRead{Ref: ctx, Typ: typ}
+							}
 							t := fsym.SymType()
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
@@ -3136,7 +3146,15 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	// If not a component, check if it's a function or bare expression.
 	if comp == nil {
-		if sym, ok := c.scope.Lookup(name); ok {
+		sym, ok := c.scope.Lookup(name)
+		if !ok {
+			// A qualified name: the scope holds the alias, not the dotted
+			// string. A declaration reached through an import is reached the
+			// same way whatever it is, so `i18n.locale(...) { }` finds the
+			// context that `i18n.tr(...)` finds the function in.
+			sym, ok = c.lookupQualified(name)
+		}
+		if ok {
 			// Context name used as visual node → ContextProvider.
 			if ctx, ok := sym.(*ir.Context); ok {
 				return c.buildContextProvider(vn, ctx)
@@ -3270,6 +3288,24 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
 	return call, actual.Sig.Return
+}
+
+// lookupQualified resolves an `alias.member` name through the namespace the
+// alias binds.
+func (c *checker) lookupQualified(name string) (ir.Symbol, bool) {
+	alias, member, isQualified := strings.Cut(name, ".")
+	if !isQualified {
+		return nil, false
+	}
+	sym, ok := c.scope.Lookup(alias)
+	if !ok {
+		return nil, false
+	}
+	ns, isNS := sym.(*ir.Namespace)
+	if !isNS || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+		return nil, false
+	}
+	return ns.Pkg.Symbols.Root.LookupLocal(member)
 }
 
 // componentPropType returns the type of a named prop on a component, or nil.

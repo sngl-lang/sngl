@@ -361,7 +361,15 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 
 	if n.Func != nil {
 		fname := n.Func.Name
+		// A package function called through its import has no receiver on the
+		// declaration — the namespace is the alias at the call site. Name it
+		// from there so a qualified call reads the same either way.
 		receiverName := n.Func.Receiver
+		if receiverName == "" {
+			if id, ok := n.Receiver.(*ir.Ident); ok {
+				receiverName = id.Name
+			}
+		}
 		qualName := receiverName + "." + fname
 
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
@@ -948,9 +956,6 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 			return "I18n.selectordinal(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
 		}
 		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
-	case "i18n.exactly":
-		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
-		return "(\"=\" + (" + a(0) + "))"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "I18n.defaultLocale()"

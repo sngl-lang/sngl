@@ -715,6 +715,13 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
 				Field:   call.Func.Name,
 			}
+		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
+			// A package function called through its import: the namespace is
+			// the alias at the call site, not a receiver on the declaration.
+			funcExpr = &ast.SelectExpr{
+				Operand: &ast.IdentExpr{Name: id.Name},
+				Field:   call.Func.Name,
+			}
 		} else {
 			funcExpr = &ast.IdentExpr{Name: call.Func.Name}
 		}

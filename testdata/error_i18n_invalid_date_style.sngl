@@ -1,6 +1,7 @@
 // Date placeholders accept short/medium/long/full as styles.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 var d date
 var bad = $"Created on {d, date, frobble}" // ERROR(check) "invalid date/time style"

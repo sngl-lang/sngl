@@ -1,6 +1,7 @@
 caps:
 -- input.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 component greet(name string) {
     text(value=$"Hello, {name}!")
@@ -11,6 +12,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl://std"
+import i18n "sngl://i18n"
 component greet(name string = "") {
     text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name" = name}))
 }

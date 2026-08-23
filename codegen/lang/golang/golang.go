@@ -210,9 +210,6 @@ func goBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 			return "i18n.Selectordinal(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
 		}
 		return "i18n.GetTranslator().Selectordinal(" + a(0) + ", " + a(1) + ")"
-	case "i18n.exactly":
-		// Args: n. a(0)=n.
-		return "i18n.Exactly(" + a(0) + ")"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "i18n.DefaultLocale()"

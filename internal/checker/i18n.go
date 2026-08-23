@@ -282,6 +282,10 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	return &ir.Call{
 		Type: TypString,
 		Func: trFn,
+		// The namespace the call was reached through. trInline is a package
+		// function, so the alias at the call site is what names it — and a
+		// synthesized call has to carry what a written one would.
+		Receiver: &ir.Ident{Name: i18nNamespace, Sym: c.i18nNamespaceSym()},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
@@ -290,17 +294,29 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	}
 }
 
+// i18nNamespace is the name the i18n package binds by default.
+const i18nNamespace = "i18n"
+
+// i18nNamespaceSym returns the in-scope i18n namespace, or nil when the file
+// bound it under another alias — the reference still resolves by symbol.
+func (c *checker) i18nNamespaceSym() ir.Symbol {
+	if sym, ok := c.scope.Lookup(i18nNamespace); ok {
+		return sym
+	}
+	return nil
+}
+
 // lookupI18nTrInline resolves the i18n.trInline stdlib function — the
 // target of $"..." interpolation lowering. Returns nil and emits an error
 // diagnostic if not found.
 //
-// This used to be an internal invariant. Since i18n arrives with the standard
-// library rather than ambiently, a file that uses $"..." without importing it
-// lands here, so the message names the fix rather than a compiler file.
+// This used to be an internal invariant. i18n is an ordinary package, so a
+// file that writes $"..." without importing it lands here, and the message
+// names the import rather than a compiler file.
 func (c *checker) lookupI18nTrInline(pos ast.Pos) *ir.Func {
 	fn, ok := c.lookupMethod("i18n", "trInline")
 	if !ok {
-		c.error(pos, `$"..." needs the i18n package: add import . "sngl://std"`)
+		c.error(pos, `$"..." is a call to i18n.tr: add import "sngl://i18n"`)
 		return nil
 	}
 	return fn

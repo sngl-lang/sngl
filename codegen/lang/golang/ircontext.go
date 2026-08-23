@@ -633,7 +633,15 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		}
 
 		fname := n.Func.Name
+		// A package function called through its import has no receiver on the
+		// declaration — the namespace is the alias at the call site. Name it
+		// from there so a qualified call reads the same either way.
 		receiverName := n.Func.Receiver
+		if receiverName == "" {
+			if id, ok := n.Receiver.(*ir.Ident); ok {
+				receiverName = id.Name
+			}
+		}
 
 		qualName := receiverName + "." + fname
 

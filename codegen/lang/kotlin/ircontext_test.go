@@ -58,7 +58,7 @@ func TestKtIRContext_I18nPlural(t *testing.T) {
 // TestKtIRContext_I18nExactly ports TestEmitI18nExactly_Kotlin: i18n.exactly(n)
 // lowers to ("=" + (n)).
 func TestKtIRContext_I18nExactly(t *testing.T) {
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n"}
+	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
 	call := &ir.Call{

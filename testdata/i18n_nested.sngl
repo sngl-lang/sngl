@@ -1,4 +1,5 @@
 import . "sngl://std"
+import "sngl://i18n"
 
 // Nested placeholders inside case bodies.
 var name = "Alice"

@@ -31,6 +31,7 @@ exists out2/app/src/main/assets/i18n.manifest.json
 
 -- app.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { kotlin { android } }
 
@@ -46,6 +47,7 @@ component main {
 
 -- app_with_manifest.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { kotlin { android } }
 

@@ -6,6 +6,7 @@
 // not derived. See sngl_var_vs_func_semantics in memory.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 component SetCtxGreeting {
     func label() => $"Hello"
@@ -14,19 +15,19 @@ component SetCtxGreeting {
 
 // Default locale produces the expected English output.
 func testSetContextDefaultLocale(t Test, c SetCtxGreeting) {
-    t.setContext(locale, "en")
+    t.setContext(i18n.locale, "en")
     t.assert(c.label() == "Hello")
 }
 
 // Calling setContext is accepted and does not crash.
 func testSetContextCallAccepted(t Test, c SetCtxGreeting) {
-    t.setContext(locale, "es-MX")
+    t.setContext(i18n.locale, "es-MX")
     t.assert(true)
 }
 
 // Two sequential setContext calls: the second wins.
 func testSetContextLastWriteWins(t Test, c SetCtxGreeting) {
-    t.setContext(locale, "fr-FR")
-    t.setContext(locale, "en")
+    t.setContext(i18n.locale, "fr-FR")
+    t.setContext(i18n.locale, "en")
     t.assert(c.label() == "Hello")
 }

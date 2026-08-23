@@ -1,4 +1,8 @@
-// i18n provides translation and locale-aware formatting.
+// Translation and locale-aware formatting.
+//
+// This package is imported like any other — `import "sngl://i18n"` — and a
+// `$"..."` literal needs it in scope: the syntax lowers to a call to `tr`,
+// and nothing is ambient but sngl://builtin.
 //
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
@@ -17,56 +21,57 @@ import "sngl://internal/intl"
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
 #[intrinsic("DefaultLocale", readonly)]
-func i18n.defaultLocale() => intl.DefaultLocale()
+func defaultLocale() => intl.DefaultLocale()
 
-// Stdlib context: the active locale. Overridable per-subtree via
-// `locale("xx-YY") { ... }` and per-test via t.setContext(locale, ...).
-// Default is the process startup locale.
-context #locale(i18n.defaultLocale())
+// The active locale. Overridable per-subtree with `i18n.locale("xx-YY") { ... }`
+// and per-test with `t.setContext(i18n.locale, ...)`; the default is the
+// process startup locale.
+context #locale(defaultLocale())
 
 // --- Translation entry points ---
 
 // Translate `key` against the loaded manifest, formatting via ICU.
 // The lowering of $"..." passes the synthesized ICU template as `key`
 // and the placeholder values as `args`.
-func i18n.tr(key string, args map<string, dyn>) => intl.Translate(locale, key, "", args)
+func tr(key string, args map<string, dyn>) => intl.Translate(locale, key, "", args)
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
-func i18n.trInline(key string, inlinedTemplate string, args map<string, dyn>) => intl.Translate(locale, key, inlinedTemplate, args)
+func trInline(key string, inlinedTemplate string, args map<string, dyn>) => intl.Translate(locale, key, inlinedTemplate, args)
 
 // Format an ICU template directly, no manifest lookup.
-func i18n.format(template string, args map<string, dyn>) => intl.Format(locale, template, args)
+func format(template string, args map<string, dyn>) => intl.Format(locale, template, args)
 
 // --- Direct formatters ---
 
 // Style: "decimal" (default), "percent", "currency", "scientific".
-func i18n.numberInt(n int, style string) => intl.NumberInt(locale, n, style)
-func i18n.numberFloat(n float, style string) => intl.NumberFloat(locale, n, style)
+func numberInt(n int, style string) => intl.NumberInt(locale, n, style)
+func numberFloat(n float, style string) => intl.NumberFloat(locale, n, style)
 
 // Style: "short", "medium" (default), "long", "full".
-func i18n.date(d date, style string) => intl.Date(locale, d, style)
-func i18n.time(t time, style string) => intl.Time(locale, t, style)
-func i18n.datetime(dt datetime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
+func date(d date, style string) => intl.Date(locale, d, style)
+func time(t time, style string) => intl.Time(locale, t, style)
+func datetime(dt datetime, dateStyle string, timeStyle string) => intl.DateTime(locale, dt, dateStyle, timeStyle)
 
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-func i18n.select(value string, cases map<string, string>) => intl.Select(locale, value, cases)
+func select(value string, cases map<string, string>) => intl.Select(locale, value, cases)
 
 // --- Plural/ordinal selectors ---
 
 // Construct a PluralKey that matches exactly n. The type is declared beside
 // the intl primitives that consume it; use the predeclared constants
 // (i18n.zero, i18n.one, …, i18n.other) for CLDR keyword categories.
-func i18n.exactly(n int) intl.PluralKey {}
+#[intrinsic("i18n.exactly")]
+func exactly(n int) intl.PluralKey { return {} }
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.plural(count int, forms map<intl.PluralKey, string>) => intl.Plural(locale, count, forms)
+func plural(count int, forms map<intl.PluralKey, string>) => intl.Plural(locale, count, forms)
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-func i18n.selectordinal(count int, forms map<intl.PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)
+func selectordinal(count int, forms map<intl.PluralKey, string>) => intl.SelectOrdinal(locale, count, forms)

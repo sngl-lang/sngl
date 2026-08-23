@@ -103,7 +103,7 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// Verify the Phase 3 arg-index fix: i18n.exactly(0) via the namespace-call
 	// path must emit i18n.Exactly(0) — NOT i18n.Exactly("i18n").
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n"}
+	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
 	call := &ir.Call{

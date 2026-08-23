@@ -57,3 +57,4 @@ func File.pickFolder() string { return "" }
 // "network", "validation", "internal").
 #[intrinsic("error.raise")]
 func error.raise(message string, kind string) {}
+
