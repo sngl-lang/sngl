@@ -105,9 +105,13 @@ func mapStructType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir
 		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
 	}
 	// Create struct def with Native set to "C.Name" so IRTypeToGo emits the cgo type.
+	// NativePkg is "C" because C has one global type namespace: two files that
+	// each resolve a c:// header and get their own *StructDef for GtkWidget
+	// have the same type, and identity has to say so.
 	sd := &ir.StructDef{
-		Name:   name,
-		Native: "C." + name,
+		Name:      name,
+		Native:    "C." + name,
+		NativePkg: "C",
 	}
 	structs[name] = sd
 	// Map fields (best-effort; unmappable fields are skipped).
