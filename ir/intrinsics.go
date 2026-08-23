@@ -44,9 +44,9 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "string.split", Params: []*Param{{Name: "s", Type: TypString}, {Name: "sep", Type: TypString}}, Return: ListOf(TypString)},
 
 	// --- float math ---
-	{Name: "float.floor", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
-	{Name: "float.ceil", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
-	{Name: "float.round", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypInt},
+	{Name: "float.floor", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.ceil", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
+	{Name: "float.round", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
 	{Name: "float.pow", Params: []*Param{{Name: "base", Type: TypFloat}, {Name: "exp", Type: TypFloat}}, Return: TypFloat},
 	{Name: "float.sqrt", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},
 	{Name: "float.sin", Params: []*Param{{Name: "x", Type: TypFloat}}, Return: TypFloat},

@@ -15,7 +15,7 @@ func TestRecvTypeParamSubstitutionInReturn(t *testing.T) {
 struct Box<T> {
     value T
 }
-func Box<T>.identity() Box<T> { }
+func Box<T>.identity(b Box<T>) Box<T> { return b }
 var b Box<int>
 var b2 Box<int> = b.identity()
 `
@@ -38,7 +38,7 @@ func TestRecvTypeParamFieldAccess(t *testing.T) {
 struct Box<T> {
     value T
 }
-func Box<T>.identity() Box<T> { }
+func Box<T>.identity(b Box<T>) Box<T> { return b }
 var b Box<int>
 var n int = b.identity().value
 `
@@ -61,7 +61,7 @@ func TestRecvTypeParamWrongReturnType(t *testing.T) {
 struct Box<T> {
     value T
 }
-func Box<T>.identity() Box<T> { }
+func Box<T>.identity(b Box<T>) Box<T> { return b }
 var b Box<int>
 var b2 Box<string> = b.identity()
 `
@@ -88,7 +88,7 @@ func TestRecvTypeParamNonGenericReturn(t *testing.T) {
 struct Box<T> {
     value T
 }
-func Box<T>.size() int { }
+func Box<T>.size(b Box<T>) int { return 0 }
 var b Box<string>
 var n int = b.size()
 `
@@ -112,7 +112,7 @@ struct Pair<A, B> {
     first A
     second B
 }
-func Pair<A, B>.swap() Pair<B, A> { }
+func Pair<A, B>.swap(p Pair<A, B>) Pair<B, A> { return {first = p.second, second = p.first} }
 var p Pair<int, string>
 var q Pair<string, int> = p.swap()
 `
@@ -131,7 +131,7 @@ var q Pair<string, int> = p.swap()
 // TestListMapSameType verifies that list<T>.map<U> infers U=T when the lambda
 // returns the same type as the input.
 func TestListMapSameType(t *testing.T) {
-	src := `func list<T>.map<U>(f func(T) U) list<U> {}
+	src := `func list<T>.map<U>(l list<T>, f func(T) U) list<U> { return [] }
 var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.map(func(x int) => x * 2)`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -149,7 +149,7 @@ var ys list<int> = xs.map(func(x int) => x * 2)`
 // TestListMapDifferentType verifies that list<T>.map<U> correctly infers U
 // when the lambda returns a different type than the input.
 func TestListMapDifferentType(t *testing.T) {
-	src := `func list<T>.map<U>(f func(T) U) list<U> {}
+	src := `func list<T>.map<U>(l list<T>, f func(T) U) list<U> { return [] }
 var xs list<int> = [1, 2, 3]
 var ys list<string> = xs.map(func(x int) => "{x}")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -167,7 +167,7 @@ var ys list<string> = xs.map(func(x int) => "{x}")`
 // TestListMapTypeMismatch verifies that list<T>.map<U> produces a type error
 // when the inferred result type doesn't match the declared variable type.
 func TestListMapTypeMismatch(t *testing.T) {
-	src := `func list<T>.map<U>(f func(T) U) list<U> {}
+	src := `func list<T>.map<U>(l list<T>, f func(T) U) list<U> { return [] }
 var xs list<int> = [1, 2, 3]
 var ys list<int> = xs.map(func(x int) => "{x}")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))

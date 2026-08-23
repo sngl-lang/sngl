@@ -47,6 +47,20 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
 // its #[builtin] kind) to the type arguments of t. The construction logic stays
 // in the compiler; only the name→kind binding lives in scope.
+// namesType reports whether t is the type called name, ignoring any type
+// arguments: the receiver of a `list<T>` method is a `list<T>`, and of a
+// `Box<T>` method a `Box<T>`, whichever element types they carry.
+func namesType(t *ir.Type, name string) bool {
+	if t == nil || name == "" {
+		return false
+	}
+	s := t.String()
+	if i := strings.IndexByte(s, '<'); i >= 0 {
+		s = s[:i]
+	}
+	return s == name
+}
+
 func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
 	switch id {
 	case ast.BuiltinList:
@@ -560,14 +574,15 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	if isMethod {
 		fn.Receiver = typeName
 		fn.Name = methodName
-		// The receiver convention: a method's first param named `this` is the
-		// implicit receiver — whether prepended synthetically (bare component
-		// funcs) or written explicitly (`func T.m(this T)`). Mark it
-		// structurally here, the one place that owns the convention, so
-		// codegen/interp/lowering identify the receiver via Param.Receiver
-		// rather than re-matching the name (which a non-method param could
-		// coincidentally share).
-		if len(fn.Params) > 0 && fn.Params[0].Name == ir.ReceiverParam {
+		// The receiver convention: a method's first param is the receiver when
+		// it is named `this` — prepended synthetically for bare component
+		// funcs, or written out as `func T.m(this T)` — or when its type is
+		// the type the method is attached to, whatever it is called. The
+		// second form is what lets `func int.ident(n int)` be reached as
+		// `1.ident()` and as `int.ident(1)`. Mark it structurally here, the
+		// one place that owns the convention, so codegen/interp/lowering find
+		// the receiver by Param.Receiver rather than re-matching a name.
+		if len(fn.Params) > 0 && (fn.Params[0].Name == ir.ReceiverParam || namesType(fn.Params[0].Type, typeName)) {
 			fn.Params[0].Receiver = true
 		}
 	}

@@ -44,13 +44,13 @@ var intrinsics = map[string]nativeFunc{
 	},
 	// --- float math (accurate native implementations) ---
 	"float.floor": func(args []any) (any, error) {
-		return int(math.Floor(toFloat(args[0]))), nil
+		return math.Floor(toFloat(args[0])), nil
 	},
 	"float.ceil": func(args []any) (any, error) {
-		return int(math.Ceil(toFloat(args[0]))), nil
+		return math.Ceil(toFloat(args[0])), nil
 	},
 	"float.round": func(args []any) (any, error) {
-		return int(math.Round(toFloat(args[0]))), nil
+		return math.Round(toFloat(args[0])), nil
 	},
 	"float.sqrt": func(args []any) (any, error) {
 		return math.Sqrt(toFloat(args[0])), nil

@@ -44,9 +44,9 @@ func init() {
 	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
 
 	// --- float math --- (java.lang.Math; Floor/Ceil/Round return int)
-	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ").toInt()" })
-	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ").toInt()" })
-	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ").toInt()" })
+	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
+	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })
+	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ")" })
 	reg("float.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
 	reg("float.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
 	reg("float.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })

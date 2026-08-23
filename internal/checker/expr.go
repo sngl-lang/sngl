@@ -1113,7 +1113,26 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 					sig = sig.Substitute(bindings)
 				}
 			}
-			sig = c.inferTypeParams(sig, call.Args)
+			// Infer the rest against the parameters the call actually fills.
+			// For an instance call in the receiver-as-param form the receiver
+			// occupies param 0 and is not in call.Args, so inferring against
+			// the unshifted list matches argument 0 against the receiver's
+			// parameter and a method-level type param never binds.
+			inferSig := sig
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+				shifted := *sig
+				shifted.Params = sig.Params[1:]
+				inferSig = &shifted
+			}
+			inferred := c.inferTypeParams(inferSig, call.Args)
+			if inferSig != sig {
+				merged := *sig
+				merged.Params = append([]*ir.Param{sig.Params[0]}, inferred.Params...)
+				merged.Return = inferred.Return
+				sig = &merged
+			} else {
+				sig = inferred
+			}
 		}
 		var args []ir.CallArg
 		if isStatic {

@@ -2401,11 +2401,12 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
-		// A non-empty block-bodied func with a non-void return type must return
-		// on all paths. (Expression bodies always return; void funcs need no
-		// return; an empty `{}` body is a signature stub whose implementation
-		// lives elsewhere — e.g. stdlib/native generic-method declarations.)
-		if len(fn.Block) > 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
+		// A block-bodied func with a non-void return type must return on all
+		// paths. (Expression bodies always return; void funcs need no return.)
+		// An empty `{}` body used to be exempt, which made `func f() int {}`
+		// compile for anyone — the exemption was there for signature stubs,
+		// and those carry a real body now.
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}

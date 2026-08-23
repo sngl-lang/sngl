@@ -40,9 +40,9 @@ func init() {
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
 	// --- float math --- (Math{Floor,Ceil,Round} return int)
-	regImp("float.floor", []string{"math"}, func(a []string) string { return "int(math.Floor(" + a[0] + "))" })
-	regImp("float.ceil", []string{"math"}, func(a []string) string { return "int(math.Ceil(" + a[0] + "))" })
-	regImp("float.round", []string{"math"}, func(a []string) string { return "int(math.Round(" + a[0] + "))" })
+	regImp("float.floor", []string{"math"}, func(a []string) string { return "math.Floor(" + a[0] + ")" })
+	regImp("float.ceil", []string{"math"}, func(a []string) string { return "math.Ceil(" + a[0] + ")" })
+	regImp("float.round", []string{"math"}, func(a []string) string { return "math.Round(" + a[0] + ")" })
 	regImp("float.sqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
 	regImp("float.pow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
 	regImp("float.sin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
