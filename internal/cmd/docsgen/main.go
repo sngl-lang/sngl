@@ -70,6 +70,11 @@ func main() {
 		log.Printf("tutorial: %v", err)
 	}
 
+	// Stamp every page footer with the commit the site was built from.
+	if err := injectFooter(*outDir, resolveStamp()); err != nil {
+		log.Printf("footer: %v", err)
+	}
+
 	// Inject the theme-toggle bootstrap into every page. Must run after
 	// any other post-processing that rewrites HTML (playground, tutorial).
 	if err := injectThemeBootstrap(*outDir); err != nil {

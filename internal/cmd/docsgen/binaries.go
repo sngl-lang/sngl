@@ -61,8 +61,8 @@ func injectDownloads(outDir string, arts []artifact) error {
 	return nil
 }
 
-// resolveVersion derives build metadata from git, falling back to safe
-// defaults so the build still succeeds outside a checkout.
+// resolveVersion derives build metadata from git and the embedded VCS stamp,
+// falling back to safe defaults so the build still succeeds outside a checkout.
 func resolveVersion() (version, commit, date string) {
 	version, commit, date = "dev", "none", time.Now().UTC().Format(time.RFC3339)
 	if out, err := exec.Command("git", "describe", "--tags", "--always").Output(); err == nil {
@@ -70,10 +70,12 @@ func resolveVersion() (version, commit, date string) {
 			version = s
 		}
 	}
-	if out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output(); err == nil {
-		if s := strings.TrimSpace(string(out)); s != "" {
-			commit = s
-		}
+	st := resolveStamp()
+	if st.commit != "" {
+		commit = st.short()
+	}
+	if !st.when.IsZero() {
+		date = st.when.UTC().Format(time.RFC3339)
 	}
 	return version, commit, date
 }
