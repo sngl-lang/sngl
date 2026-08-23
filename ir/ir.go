@@ -44,6 +44,13 @@ type Package struct {
 	Contexts   []*Context
 	Symbols    *SymbolTable
 
+	// UsesShapes records that this package resolved a list<shape> children
+	// type. The canvas passes gate on it: an import of sngl://draw is neither
+	// necessary (list<shape> is resolved by the compiler, not by draw) nor
+	// sufficient (inlining flattens a canvas out of the package that imported
+	// it), so the construct is the only honest signal.
+	UsesShapes bool
+
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
 	// state-struct field name that aliases it. NoReactivity reads this

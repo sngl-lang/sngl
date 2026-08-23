@@ -56,6 +56,9 @@ func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) 
 		}
 		// list<shape> is the only valid use of the shape type.
 		if named, ok := t.TypeArgs[0].(*ast.NamedType); ok && named.Name == "shape" {
+			if c.pkg != nil {
+				c.pkg.UsesShapes = true
+			}
 			return ListOf(ir.TypShape)
 		}
 		return ListOf(c.resolveType(t.TypeArgs[0]))

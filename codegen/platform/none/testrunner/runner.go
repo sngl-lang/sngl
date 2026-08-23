@@ -59,7 +59,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		env.Set(fn.Params[1], cVal)
 	}
 
-	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName}
+	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName, comp: cVal}
 	if len(fn.Params) >= 1 {
 		env.Set(fn.Params[0], tVal)
 	}
@@ -103,6 +103,11 @@ type testingT struct {
 	result   *codegen.TestResult
 	pkg      *ir.Package
 	compName string
+	// comp is the test function's component parameter. Held rather than
+	// looked up: two componentValues are live inside a subtest — the
+	// enclosing test's and the subtest's own — and they are distinct
+	// bindings, so searching the env for one picks arbitrarily.
+	comp *componentValue
 	// locale is the BCP-47 locale set by t.setLocale() or t.setContext(locale,…).
 	// It overrides the env's default locale for i18n calls made within this test.
 	locale string

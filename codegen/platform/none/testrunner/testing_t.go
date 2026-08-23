@@ -43,7 +43,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		return nil, nil
 
 	case "tick":
-		if cv := componentInEnv(env); cv != nil {
+		if cv := tv.comp; cv != nil {
 			compEnv := cv.compEnv()
 			if err := fireTimers(tv.pkg, compEnv); err != nil {
 				return nil, err
@@ -71,7 +71,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		timeoutMs := interp.ToInt(timeoutVal)
 		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
-		cv := componentInEnv(env)
+		cv := tv.comp
 
 		for {
 			// Predicate runs in its captured env so c reads observe in-place
@@ -162,7 +162,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			return nil, fmt.Errorf("t.snapshot() argument must be a string, got %T", nameVal)
 		}
 		// Locate the component instance under test.
-		cv := componentInEnv(env)
+		cv := tv.comp
 		if cv == nil {
 			return nil, fmt.Errorf("t.snapshot() requires a component parameter")
 		}
@@ -222,16 +222,15 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides}
 
 		callArgs := []any{childT}
-		if tv.compName != "" {
+		if tv.compName != "" && tv.comp != nil {
 			// Re-point the parent componentValue at the subtest env: the
 			// subtest sees parent state at the time of the call (childEnv is a
 			// Snapshot, which copied it), and its writes land there rather
 			// than in the surrounding test's env.
-			if parentCV := componentInEnv(env); parentCV != nil {
-				childCV := *parentCV
-				childCV.Env = childEnv
-				callArgs = append(callArgs, &childCV)
-			}
+			childCV := *tv.comp
+			childCV.Env = childEnv
+			childT.comp = &childCV
+			callArgs = append(callArgs, &childCV)
 		}
 
 		_, callErr := lv.CallWithEnv(childEnv, callArgs)
@@ -239,7 +238,9 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			childResult.Error = callErr.Error()
 		}
 		childResult.Log = childEnv.Log
-		childResult.Passed = childResult.Error == "" && allPassed(childResult.Children)
+		// Its own failures count, as they do for a top-level test: a
+		// subtest whose assertion failed reported PASS without this.
+		childResult.Passed = childResult.Error == "" && len(childResult.Failures) == 0 && allPassed(childResult.Children)
 		childResult.Duration = time.Since(start)
 		tv.result.Children = append(tv.result.Children, childResult)
 		return nil, nil
@@ -263,19 +264,6 @@ func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 		Message: ae.Msg,
 		Fatal:   fatal,
 	})
-}
-
-// componentInEnv returns the component parameter's value bound in env, or nil.
-func componentInEnv(env *interp.Env) *componentValue {
-	var found *componentValue
-	env.Values(func(v any) bool {
-		if cv, ok := v.(*componentValue); ok {
-			found = cv
-			return false
-		}
-		return true
-	})
-	return found
 }
 
 // wrapChildComponent exposes a nested component instance as a value, backed
@@ -340,7 +328,10 @@ func (cv *componentValue) GetField(field string) (any, error) {
 
 // SetField handles c.field = value.
 func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error {
-	sym := cv.fieldSym(field)
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
+	}
 	if sym == nil {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
@@ -427,7 +418,10 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 
 // Toggle flips a bool field.
 func (cv *componentValue) Toggle(field string) error {
-	sym := cv.fieldSym(field)
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
+	}
 	if sym == nil {
 		return fmt.Errorf("cannot toggle undefined field %q", field)
 	}
@@ -443,7 +437,10 @@ func (cv *componentValue) Toggle(field string) error {
 // WriteBackList stores a (typically mutated-in-place) list back into a
 // component field.
 func (cv *componentValue) WriteBackList(field string, list []any) error {
-	sym := cv.fieldSym(field)
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
+	}
 	if sym == nil {
 		return fmt.Errorf("no component field %q to write back", field)
 	}
@@ -632,6 +629,20 @@ func (cv *componentValue) fieldSym(field string) ir.Symbol {
 		}
 	}
 	return nil
+}
+
+// writableFieldSym is fieldSym for the three writers. A const resolves for a
+// read but is not a place: the name/value split that used to keep it out of
+// SetField is gone, so the declaration has to be asked.
+func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
+	sym := cv.fieldSym(field)
+	if sym == nil {
+		return nil, nil
+	}
+	if v, ok := sym.(*ir.Var); ok && v.IsConst {
+		return nil, fmt.Errorf("cannot assign to const %q", field)
+	}
+	return sym, nil
 }
 
 // fireTimers runs each component timer's handler once, honoring the Enabled

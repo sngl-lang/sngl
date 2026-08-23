@@ -58,26 +58,39 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{mainComp},
-		// A package holding a canvas is one that imported the package the
-		// canvas is declared in; passCanvas skips a program that did not.
-		Imports: []*ir.Import{{Path: "sngl://draw"}},
+		UsesShapes: true,
 	}
 	return pkg, canvasInst
 }
 
-// TestPassCanvas_SkipsProgramsWithoutDraw pins the gate: the canvas and its
-// shapes are declared in sngl://draw, so a program that never imported it
-// cannot hold one and is not searched. Without the gate the pass walks every
-// component of every program a canvas-capable target builds.
-func TestPassCanvas_SkipsProgramsWithoutDraw(t *testing.T) {
+// A program with no list<shape> anywhere is not searched. Without the gate the
+// pass walks every component of every program a canvas-capable target builds.
+func TestPassCanvas_SkipsProgramsWithoutShapes(t *testing.T) {
+	pkg, canvasInst := buildCanvasPkg(t)
+	pkg.UsesShapes = false
+
+	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+		t.Fatalf("lower error: %v", err)
+	}
+	if canvasInst.CanvasDraw != nil {
+		t.Error("passCanvas ran on a program that declares no shapes")
+	}
+}
+
+// The gate is the construct, not the import. list<shape> is resolved by the
+// compiler rather than by sngl://draw, and inlining flattens a canvas out of
+// the package that imported it, so gating on the import list dropped canvases
+// on the floor: the shapes survived as ordinary widget nodes and the generated
+// program failed to build.
+func TestPassCanvas_RunsWithoutADrawImport(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.Imports = nil
 
 	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
-	if canvasInst.CanvasDraw != nil {
-		t.Error("passCanvas ran on a program that does not import sngl://draw")
+	if canvasInst.CanvasDraw == nil {
+		t.Error("passCanvas skipped a canvas because the package had no draw import")
 	}
 }
 

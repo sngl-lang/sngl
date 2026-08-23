@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil || !imports(pkg, drawPkg) {
+	if pkg == nil || !pkg.UsesShapes {
 		return nil
 	}
 	var counter int

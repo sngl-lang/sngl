@@ -393,12 +393,18 @@ func (c *checker) markForeign(pkg *ir.Package) {
 	if c.foreign == nil {
 		c.foreign = map[ir.Symbol]bool{}
 	}
-	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
+	// The package's own root only. EachSymbol would walk the parent chain,
+	// and an imported package's root parents whatever scope was current when
+	// it loaded — for an import inside a platform block, the importing file's
+	// own scope, whose declarations are not foreign to it.
+	if pkg.Symbols.Root == nil {
+		return
+	}
+	for _, sym := range pkg.Symbols.Root.Symbols {
 		if _, isComp := sym.(*ir.Component); isComp || ir.IsTypeDecl(sym) {
 			c.foreign[sym] = true
 		}
-		return true
-	})
+	}
 }
 
 // rejectForeignUnexported reports an unexported member read through a
@@ -846,6 +852,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Structs = append(dst.Structs, src.Structs...)
 	dst.Enums = append(dst.Enums, src.Enums...)
 	dst.Units = append(dst.Units, src.Units...)
+	dst.UsesShapes = dst.UsesShapes || src.UsesShapes
 	dst.Funcs = append(dst.Funcs, src.Funcs...)
 	dst.Components = append(dst.Components, src.Components...)
 	dst.Vars = append(dst.Vars, src.Vars...)
@@ -861,6 +868,12 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 		c.mergeInto(declPos(ud), dst.Symbols.Root, ud)
 	}
 	for _, fn := range src.Funcs {
+		// A method is reached through its receiver, not by a package-root
+		// name, so it never claims one — two types in one package may each
+		// declare a `get`.
+		if fn.Receiver != "" {
+			continue
+		}
 		c.mergeInto(declPos(fn), dst.Symbols.Root, fn)
 	}
 	for _, comp := range src.Components {
