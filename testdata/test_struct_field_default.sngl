@@ -1,0 +1,22 @@
+import . "sngl://std"
+
+// A field a literal omits takes its declared default. The checker installed a
+// placeholder at declaration time and nothing ever replaced it, so the default
+// was written down and never read: `P{}` had no x at all, and two values that
+// differed only in a field one of them omitted compared unequal.
+struct P {
+    x int = 7
+    y int = 0
+    tag string = "none"
+}
+
+component main { text(value="x") }
+
+func testOmittedFieldTakesItsDefault(t Test, c main) {
+    var p P = {y = 1}
+    t.assert(p.x == 7)
+    t.assert(p.tag == "none")
+
+    // Writing the default out gives the same value.
+    t.assert(p == P{x = 7, y = 1, tag = "none"})
+}

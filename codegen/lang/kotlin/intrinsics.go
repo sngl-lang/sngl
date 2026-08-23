@@ -93,7 +93,8 @@ func init() {
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
 	reg("color.hex", func(a []string) string {
-		return a[0] + `.let { String.format("#%02x%02x%02x", it.r, it.g, it.b) }`
+		return a[0] + `.let { if (it.a == 255) String.format("#%02x%02x%02x", it.r, it.g, it.b) ` +
+			`else String.format("#%02x%02x%02x%02x", it.r, it.g, it.b, it.a) }`
 	})
 
 	// --- Alert and File ---

@@ -358,14 +358,15 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			ktType := kotlin.IRTypeToKt(f.Type)
 			def := ""
 			if f.Default != nil {
-				// The checker stores a type-only placeholder for field
-				// defaults (the source value isn't carried on the IR), so
-				// IRLiteralToKt often yields an empty string. Fall back to
-				// the type's Kotlin zero value so the data class field gets
-				// a usable default (e.g. Int → 0, String → "", dyn → null).
-				lit := kotlin.IRLiteralToKt(f.Default)
-				if lit == "" {
-					lit = kotlin.KtZeroFor(f.Type)
+				// A literal default is emitted as written. Anything else is
+				// an expression a data class header cannot hold — `false` is
+				// a constant declaration whose own initializer is `0 != 0` —
+				// so the field takes the type's Kotlin zero.
+				lit := kotlin.KtZeroFor(f.Type)
+				if _, isLit := f.Default.(*ir.Literal); isLit {
+					if s := kotlin.IRLiteralToKt(f.Default); s != "" {
+						lit = s
+					}
 				}
 				def = " = " + lit
 			}

@@ -2239,6 +2239,42 @@ func literalString(e ast.Expr) string {
 	return ""
 }
 
+// checkStructFieldDefaults fills in each struct field's default now that the
+// scope holds everything a default may refer to. Declaration time installs a
+// placeholder, because a default can name a constant declared further down;
+// nothing replaced it, so `struct P { x int = 7 }` carried a default no
+// consumer could read and `P{}` had no x at all.
+func (c *checker) checkStructFieldDefaults() {
+	for _, sd := range c.pkg.Structs {
+		c.fillStructFieldDefaults(sd)
+	}
+}
+
+// fillStructFieldDefaults checks each declared default against its field type
+// and stores it, replacing the placeholder installed at declaration time.
+func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
+	if sd == nil || sd.AST == nil {
+		return
+	}
+	byName := make(map[string]*ir.StructField, len(sd.Fields))
+	for _, f := range sd.Fields {
+		byName[f.Name] = f
+	}
+	for _, f := range sd.AST.Fields() {
+		if f.Default == nil {
+			continue
+		}
+		for _, name := range f.Names {
+			// By name rather than by position: one AST group declares several
+			// names, and a rejected duplicate leaves the two lists a different
+			// length, which silently gave a field its neighbour's default.
+			if field, ok := byName[name]; ok {
+				field.Default = c.checkExprExpecting(f.Default, field.Type)
+			}
+		}
+	}
+}
+
 // --- pass2: type checking ---
 
 func (c *checker) pass2() {
@@ -2251,6 +2287,8 @@ func (c *checker) pass2() {
 	for _, comp := range c.pkg.Components {
 		c.preCheckComponentMethods(comp)
 	}
+
+	c.checkStructFieldDefaults()
 
 	// Check function bodies. Skip funcs whose body is checked inside
 	// checkComponentBody — that includes (a) plain nested funcs and methods

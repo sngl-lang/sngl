@@ -93,7 +93,8 @@ func init() {
 	// A SNGL color is a {r,g,b,a} object in JS, so hex has to format it. The
 	// arrow keeps the operand from being evaluated four times.
 	reg("color.hex", func(a []string) string {
-		return `(c => "#" + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, "0")).join(""))(` + a[0] + ")"
+		return `(c => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a])` +
+			`.map(v => v.toString(16).padStart(2, "0")).join(""))(` + a[0] + ")"
 	})
 
 	// --- Alert and File ---

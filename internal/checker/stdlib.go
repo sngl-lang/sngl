@@ -447,6 +447,9 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) {
 	built := c.buildStructDef(s)
 	sd.Fields = built.Fields
+	// Every stdlib type name is in scope by now, which is exactly the
+	// condition a default needs.
+	c.fillStructFieldDefaults(sd)
 }
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {

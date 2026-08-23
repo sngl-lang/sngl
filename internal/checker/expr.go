@@ -1102,6 +1102,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				recvParamStyle = true
 			}
 		}
+		// A static call names the receiver as its first argument, so the
+		// receiver's type params are inferable from the arguments like any
+		// other. Handing them to the same inference is what makes
+		// `Box.same(b)` mean what `b.same()` means.
+		if isStatic && len(sig.RecvTypeParams) > 0 {
+			merged := *sig
+			merged.TypeParams = append(append([]string(nil), sig.RecvTypeParams...), sig.TypeParams...)
+			merged.RecvTypeParams = nil
+			sig = &merged
+		}
 		if len(sig.TypeParams) > 0 {
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
@@ -3242,6 +3252,12 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	if expected == nil || actual.Kind != ir.TypeFunc || actual.Sig == nil {
 		return nil, actual
 	}
+	// Where a function is what is wanted, the function is the answer. Calling
+	// it would be the one reading of `var h func() string = api.fetchHello`
+	// that throws away what was asked for.
+	if expected.Kind == ir.TypeFunc {
+		return nil, actual
+	}
 	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
 		return nil, actual
 	}
@@ -3274,13 +3290,6 @@ func propTypeMismatch(got, expected *ir.Type) bool {
 		return false
 	}
 	if got.IsAssignableTo(expected) || primitiveConvertible(got.Kind, expected.Kind) {
-		return false
-	}
-	// Two types that print the same are the same type to a reader, and the
-	// only way to get here is the identity bug where each directory package
-	// holds its own copy of a declaration. Reporting it would blame the
-	// caller for something no edit of theirs can fix.
-	if got.String() == expected.String() {
 		return false
 	}
 	// An unresolved type parameter is the tail of an earlier error.
