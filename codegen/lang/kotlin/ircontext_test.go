@@ -78,13 +78,13 @@ func TestKtIRContext_I18nExactly(t *testing.T) {
 // TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map<i18n.PluralKey, string>
 // still lowers to mapOf(...) with string keys.
 func TestKtIRContext_PluralKeyMapLit(t *testing.T) {
-	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
-	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
-	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+	keyType := pluralKeyType()
+	mapType := ir.MapOf(keyType, ir.TypString)
 
 	keyExpr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "one",
+		Type:    keyType,
 	}
 	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
 
@@ -122,6 +122,7 @@ func TestKtIRContext_I18nPluralKeyConstants(t *testing.T) {
 		sel := &ir.Select{
 			Operand: &ir.Ident{Name: "i18n"},
 			Field:   tc.field,
+			Type:    pluralKeyType(),
 		}
 		got := ktTestCtx().EvalExpr(sel)
 		if got != tc.want {
@@ -156,4 +157,10 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 			ktTestCtx().EvalExpr(tc.call)
 		})
 	}
+}
+
+// A select on a predeclared PluralKey constant is identified by its type, so
+// a hand-built one has to carry it.
+func pluralKeyType() *ir.Type {
+	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
 }

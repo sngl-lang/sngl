@@ -1,0 +1,31 @@
+# A predeclared PluralKey constant is recognized by the select's type, not by
+# the operand's spelling. Keying off the name "i18n" read the constant only
+# when the import was unaliased; under `import t "sngl://i18n"` the JS backend
+# emitted the alias as a bare identifier, `{ [t.one]: ... }`, which is a
+# ReferenceError at runtime.
+
+sngl generate --platform html --lang none -o outalias alias.sngl
+grep '\["one"\]: "one item"' outalias/index.html
+grep '\["other"\]: "many items"' outalias/index.html
+! grep 't\.one' outalias/index.html
+
+# The unaliased spelling emits the same thing.
+sngl generate --platform html --lang none -o outplain plain.sngl
+grep '\["one"\]: "one item"' outplain/index.html
+
+-- alias.sngl --
+import . "sngl://std"
+import t "sngl://i18n"
+
+component main {
+    var n int = 2
+    text(value=t.plural(n, {t.one = "one item", t.other = "many items"}))
+}
+-- plain.sngl --
+import . "sngl://std"
+import "sngl://i18n"
+
+component main {
+    var n int = 2
+    text(value=i18n.plural(n, {i18n.one = "one item", i18n.other = "many items"}))
+}

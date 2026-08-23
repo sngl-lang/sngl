@@ -48,6 +48,7 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	expr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "other",
+		Type:    pluralKeyType(),
 	}
 	got := jc.EvalExpr(expr)
 	if got != `"other"` {
@@ -102,12 +103,12 @@ func TestJsConversion_Bool(t *testing.T) {
 func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
-	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
-	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+	keyType := pluralKeyType()
+	mapType := ir.MapOf(keyType, ir.TypString)
 	keyExpr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "one",
+		Type:    keyType,
 	}
 	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
 	m := &ir.MapLitIR{
@@ -541,4 +542,10 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 			NewIRContext(codegen.NewExprCtx(&ir.Package{})).EvalExpr(tc.call)
 		})
 	}
+}
+
+// A select on a predeclared PluralKey constant is identified by its type, so
+// a hand-built one has to carry it.
+func pluralKeyType() *ir.Type {
+	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
 }

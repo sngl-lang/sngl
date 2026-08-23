@@ -93,14 +93,9 @@ func (kc *KtIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(if (" + cond + ") " + then_ + " else " + else_ + ")"
 }
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
-	// Predeclared i18n.PluralKey constants (zero/one/two/few/many/other) lower
-	// to Kotlin string literals — the Kotlin i18n runtime keys plural forms by
-	// string category exclusively. Mirrors golang/JS IRContext and the legacy
-	// kotlin translateIRExpr Select case.
-	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
-			return s
-		}
+	// The Kotlin i18n runtime keys plural forms by string category exclusively.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
 	}
 	field := n.Field
 	if field == "length" {

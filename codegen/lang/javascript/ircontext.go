@@ -71,11 +71,9 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
-	// Predeclared i18n.PluralKey constants lower to JS string literals.
-	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
-			return s
-		}
+	// Predeclared PluralKey constants lower to JS string literals.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
 	}
 	// Native bundled namespace (js://): emit the esbuild alias and register
 	// the module so the platform emits the `import * as` prelude.

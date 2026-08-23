@@ -72,8 +72,13 @@ func TestRequireIntrinsicFallback(t *testing.T) {
 			Name: "p", Intrinsic: "NoBackendHasThis",
 			Block: []ir.Stmt{&ir.Return{}},
 		}, false},
-		{"declared usable", &ir.Func{
+		// `usable` says to keep the body, not that an absent one is an answer.
+		{"usable but bodyless", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		}, true},
+		{"usable with its body", &ir.Func{
+			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+			Block: []ir.Stmt{&ir.Return{}},
 		}, false},
 	}
 	for _, tc := range cases {

@@ -162,6 +162,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
 	call := &ir.Call{Func: &ir.Func{
 		Name: "ok", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		Block: []ir.Stmt{&ir.Return{}},
 	}}
 	if got := newMinimalIRCtx().EvalExpr(call); got == "" {
 		t.Error("usable intrinsic emitted nothing")

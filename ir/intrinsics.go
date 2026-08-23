@@ -337,16 +337,37 @@ func IsI18nIntrinsic(name string) bool {
 	return false
 }
 
-// IsI18nPluralKey reports whether name is a CLDR plural category (zero, one,
-// two, few, many, other). Plural-map literals carry these as bare i18n.<key>
-// Selects that survive lowering, so usage detection must recognize them.
-func IsI18nPluralKey(name string) bool {
-	switch name {
-	case "zero", "one", "two", "few", "many", "other":
-		return true
+// IsI18nPluralKey reports whether sel reads one of i18n's predeclared
+// PluralKey constants — a CLDR category (zero, one, two, few, many, other).
+// Plural-map literals carry these as bare Selects that survive lowering, so
+// both usage detection and the JS/Kotlin backends have to recognize them.
+//
+// The select's *type* is what identifies it. Matching the operand's spelling
+// instead read `i18n.one` and missed `t.one` under `import t "sngl://i18n"`,
+// which then emitted the alias as a bare identifier.
+func IsI18nPluralKey(sel *Select) bool {
+	if sel == nil {
+		return false
 	}
-	return false
+	switch sel.Field {
+	case "zero", "one", "two", "few", "many", "other":
+	default:
+		return false
+	}
+	return isPluralKeyType(sel.Type)
 }
+
+func isPluralKeyType(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == pluralKeyTypeName
+}
+
+// The one name left: PluralKey is a lib/i18n declaration, not something a
+// program spells, so it does not vary with how the import is written.
+const pluralKeyTypeName = "PluralKey"
 
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.

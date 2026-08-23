@@ -116,8 +116,10 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 	}
 	// A body that survived type checking is one the declaration claimed
 	// computes the right answer; a placeholder was dropped there, so there is
-	// nothing here to emit instead.
-	if len(fn.Block) > 0 || fn.IntrinsicBodyUsable {
+	// nothing here to emit instead. The body is the whole question — asking
+	// `usable` as well would let a `usable` intrinsic with an empty body
+	// through, which is the case with nothing to emit.
+	if len(fn.Block) > 0 {
 		return
 	}
 	panic(fmt.Sprintf(

@@ -8,34 +8,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// IsCall reports whether c targets an i18n stdlib entry point. Thin alias for
-// ir.IsI18nCall, kept so existing language/platform callers need no change; the
-// matching logic lives in ir so the lowering pass can share it.
+// IsCall reports whether c targets an i18n stdlib entry point.
 func IsCall(c *ir.Call) bool { return ir.IsI18nCall(c) }
 
-// IsIntrinsic reports whether name matches one of ir.I18nIntrinsics. Thin alias
-// for ir.IsI18nIntrinsic.
-func IsIntrinsic(name string) bool { return ir.IsI18nIntrinsic(name) }
-
-// PluralKeyConstString maps a predeclared i18n.PluralKey selector
-// ("i18n.zero".."i18n.other") to its quoted string-literal form, shared by the
-// JS and Kotlin backends which key plural forms by string category. Returns ""
-// for non-matches. (Go deliberately differs — it emits real i18n.Plural*
-// constants — so it does not use this.)
-func PluralKeyConstString(qual string) string {
-	switch qual {
-	case "i18n.zero":
-		return `"zero"`
-	case "i18n.one":
-		return `"one"`
-	case "i18n.two":
-		return `"two"`
-	case "i18n.few":
-		return `"few"`
-	case "i18n.many":
-		return `"many"`
-	case "i18n.other":
-		return `"other"`
+// PluralKeyConstString returns the quoted CLDR category a predeclared
+// PluralKey select denotes, or "" if sel is not one. The JS and Kotlin
+// runtimes key plural forms by string category; Go emits the runtime's own
+// i18n.Plural* constants instead and does not use this.
+func PluralKeyConstString(sel *ir.Select) string {
+	if !ir.IsI18nPluralKey(sel) {
+		return ""
 	}
-	return ""
+	return `"` + sel.Field + `"`
 }
