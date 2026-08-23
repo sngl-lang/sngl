@@ -897,3 +897,65 @@ func libraryPaths() []string {
 }
 
 func quote(s string) string { return "\"" + s + "\"" }
+
+// LibraryOrigin is a library package that declares a given name.
+type LibraryOrigin struct {
+	Pkg     string // package path, e.g. "sngl://draw"
+	Ambient bool   // in scope without an import
+	Kind    string // "component", "type", "func", …
+}
+
+// ImportLine is how a program brings this origin's declarations into scope,
+// or "" when it needs no import.
+func (o LibraryOrigin) ImportLine() string {
+	if o.Ambient {
+		return ""
+	}
+	return `import . ` + quote(o.Pkg)
+}
+
+// FindInLibrary reports every public library package declaring name. A bare
+// name is not a lookup path — only sngl://builtin is in scope without an
+// import — so a caller resolving one has to say which package it found and
+// what importing that package costs. Two packages may declare the same name;
+// the caller decides between them rather than being handed the first.
+func FindInLibrary(name string) []LibraryOrigin {
+	var out []LibraryOrigin
+	for _, pkg := range lib.PublicPackages() {
+		pd, _ := stdlibPackageDocs(pkg)
+		info := pd.FindDecl(name)
+		if info == nil {
+			continue
+		}
+		out = append(out, LibraryOrigin{
+			Pkg:     "sngl://" + pkg,
+			Ambient: pkg == "builtin",
+			Kind:    declKindName(pd, name),
+		})
+	}
+	return out
+}
+
+func declKindName(pd *checker.PackageDocs, name string) string {
+	for _, c := range pd.Components {
+		if c.Name == name {
+			return "component"
+		}
+	}
+	for _, s := range pd.Structs {
+		if s.Name == name {
+			return "type"
+		}
+	}
+	for _, e := range pd.Enums {
+		if e.Name == name {
+			return "enum"
+		}
+	}
+	for _, f := range pd.Functions {
+		if f.Name == name {
+			return "func"
+		}
+	}
+	return "declaration"
+}

@@ -142,3 +142,42 @@ func TestLookupInternalPackageByName(t *testing.T) {
 		t.Fatal("sngl://internal/stdlib resolved to nothing")
 	}
 }
+
+// A bare name is not a lookup path: everything outside sngl://builtin needs
+// an import before a program can write it, so resolving one has to report
+// the package it came from.
+func TestFindInLibrary(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pkg     string
+		ambient bool
+		kind    string
+	}{
+		{"circle", "sngl://draw", false, "component"},
+		{"button", "sngl://std", false, "component"},
+		{"Style", "sngl://std", false, "type"},
+		{"color", "sngl://builtin", true, "type"},
+	} {
+		got := lookup.FindInLibrary(tc.name)
+		if len(got) != 1 {
+			t.Errorf("%s: got %d origins, want 1 (%v)", tc.name, len(got), got)
+			continue
+		}
+		if got[0].Pkg != tc.pkg || got[0].Ambient != tc.ambient || got[0].Kind != tc.kind {
+			t.Errorf("%s: got %+v; want {%s %v %s}", tc.name, got[0], tc.pkg, tc.ambient, tc.kind)
+		}
+		wantImport := `import . "` + tc.pkg + `"`
+		if tc.ambient {
+			wantImport = ""
+		}
+		if got[0].ImportLine() != wantImport {
+			t.Errorf("%s: ImportLine = %q; want %q", tc.name, got[0].ImportLine(), wantImport)
+		}
+	}
+	if got := lookup.FindInLibrary("StrUpper"); len(got) != 0 {
+		t.Errorf("the compiler's own tier is reachable by bare name: %v", got)
+	}
+	if got := lookup.FindInLibrary("nosuchdeclaration"); len(got) != 0 {
+		t.Errorf("unknown name resolved to %v", got)
+	}
+}
