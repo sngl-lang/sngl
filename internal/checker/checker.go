@@ -26,6 +26,10 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
+	// libSource permits sngl://internal/ imports in the document itself, for
+	// the one caller that checks lib/ source as the document rather than
+	// loading it as a package. Unexported: no program is lib source.
+	libSource bool
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -142,6 +146,7 @@ type checker struct {
 	// against a cycle among them.
 	libPkgs    map[string]*ir.Package
 	libLoading map[string]bool
+	libDepth   int
 
 	// builtinPkg is sngl://builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -657,6 +662,12 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// program, or both, so it resolves against the macro registry and the
 		// lib/ layout together — a macro-only package has no directory, and a
 		// declarations package has no macros.
+		if strings.HasPrefix(uri, "internal/") {
+			if !c.inLibSource() {
+				c.error(imp.Pos, "%q is internal to the compiler and cannot be imported", target)
+				return
+			}
+		}
 		if strings.HasPrefix(uri, "internal/") && !HasPackage(uri) {
 			if !expand.HasPackage(uri) {
 				c.error(imp.Pos, "unknown internal package %q", uri)

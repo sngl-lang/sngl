@@ -151,7 +151,16 @@ func (c *checker) libPkg(name string) *ir.Package {
 	return pkg
 }
 
+// inLibSource reports whether the declarations being registered come from
+// lib/ rather than from a program. Every path into lib/ source runs through
+// loadStdlibPackage, including the nested loads an import inside lib/ starts,
+// so the counter covers transitive loads too.
+func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
+
 func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
+	c.libDepth++
+	defer func() { c.libDepth-- }()
+
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
