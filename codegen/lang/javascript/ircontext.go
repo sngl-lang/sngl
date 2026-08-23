@@ -517,8 +517,13 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		if result := jsBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
-			return result
+		// Only for a receiver whose type the checker could not resolve. With an id
+		// in hand the registry is the answer, and its absence has to reach
+		// RequireIntrinsicFallback rather than be hidden by a name match.
+		if n.Func == nil || n.Func.Intrinsic == "" {
+			if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
+				return result
+			}
 		}
 
 		// User-defined namespace-qualified function: emitted as a free
@@ -573,8 +578,13 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
-	if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
-		return result
+	// Only for a receiver whose type the checker could not resolve. With an id
+	// in hand the registry is the answer, and its absence has to reach
+	// RequireIntrinsicFallback rather than be hidden by a name match.
+	if n.Func == nil || n.Func.Intrinsic == "" {
+		if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
+			return result
+		}
 	}
 
 	// User-defined method on a user type: emitted as a free function

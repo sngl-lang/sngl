@@ -383,8 +383,13 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
-			return result
+		// Only for a receiver whose type the checker could not resolve. With an id
+		// in hand the registry is the answer, and its absence has to reach
+		// RequireIntrinsicFallback rather than be hidden by a name match.
+		if n.Func == nil || n.Func.Intrinsic == "" {
+			if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
+				return result
+			}
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
@@ -487,8 +492,13 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
-	if result := kotlinBuiltinMethodFromArgs("*."+method, args); result != "" {
-		return result
+	// Only for a receiver whose type the checker could not resolve. With an id
+	// in hand the registry is the answer, and its absence has to reach
+	// RequireIntrinsicFallback rather than be hidden by a name match.
+	if n.Func == nil || n.Func.Intrinsic == "" {
+		if result := kotlinBuiltinMethodFromArgs("*."+method, args); result != "" {
+			return result
+		}
 	}
 
 	codegen.RequireIntrinsicFallback(langKt, n.Func)
