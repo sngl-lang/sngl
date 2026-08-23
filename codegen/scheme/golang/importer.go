@@ -21,6 +21,14 @@ type GoImporter struct{}
 
 func (g *GoImporter) Scheme() string { return "go" }
 
+// goTypeID identifies a Go type by the package that declares it. Two files
+// that each resolve the package get their own *ir.StructDef; this is what says
+// they are the same type.
+type goTypeID struct {
+	Path string
+	Name string
+}
+
 func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	userPath := strings.TrimSpace(strings.TrimPrefix(uri, "go://"))
 	if userPath == "" {
@@ -121,10 +129,10 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 			continue
 		}
 		sd := &ir.StructDef{
-			Name:      tn.Name(),
-			Native:    pkgName + "." + tn.Name(),
-			NativePkg: pkgPath,
-			Doc:       typeDoc[tn.Name()],
+			Name:   tn.Name(),
+			Native: pkgName + "." + tn.Name(),
+			Origin: goTypeID{Path: pkgPath, Name: tn.Name()},
+			Doc:    typeDoc[tn.Name()],
 		}
 		structs[tn.Name()] = sd
 		ni.Structs = append(ni.Structs, sd)

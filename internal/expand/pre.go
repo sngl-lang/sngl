@@ -84,9 +84,11 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 				continue
 			}
 		default:
-			// Name the scheme the package actually lives under, so the
-			// suggestion is a line the user can paste.
-			suggest := "internal://" + attr.Alias
+			// Name the package the macro actually lives in, so the suggestion
+			// is a line the user can paste. A macro package is a library
+			// package like any other; the compiler's own live under
+			// internal/, which is where an unknown one most likely belongs.
+			suggest := "sngl://internal/" + attr.Alias
 			if lib.HasPackage(attr.Alias) {
 				suggest = "sngl://" + attr.Alias
 			}

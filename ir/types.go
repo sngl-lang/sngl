@@ -244,18 +244,16 @@ func (t *Type) SameUnitType(other *Type) bool {
 	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && t.Decl == other.Decl
 }
 
-// nativeIdentity names a declaration by the package it was read from and the
-// name it has there, which is stable across resolutions of that package. The
-// import path is required: a native name is qualified by the short package
-// name, which two packages can share, and one importer records no qualifier
-// at all. A declaration with no recorded path compares by pointer instead,
-// rather than matching too much.
-func nativeIdentity(sym Symbol) (string, bool) {
+// nativeIdentity returns the descriptor the importer recorded for a foreign
+// declaration. A declaration with none compares by pointer instead, so an
+// importer that has not been taught to record one matches nothing it should
+// not.
+func nativeIdentity(sym Symbol) (any, bool) {
 	d, ok := sym.(*StructDef)
-	if !ok || d.NativePkg == "" || d.Native == "" {
-		return "", false
+	if !ok || d.Origin == nil {
+		return nil, false
 	}
-	return d.NativePkg + "\x00" + d.Native, true
+	return d.Origin, true
 }
 
 // sameDecl reports whether two named types name the same declaration. The

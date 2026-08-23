@@ -285,7 +285,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// The namespace the call was reached through. trInline is a package
 		// function, so the alias at the call site is what names it — and a
 		// synthesized call has to carry what a written one would.
-		Receiver: &ir.Ident{Name: trNS, Sym: c.namespaceNamed(trNS)},
+		Receiver: i18nReceiver(c, trNS),
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
@@ -299,6 +299,15 @@ const i18nNamespace = "i18n"
 
 // i18nImportPath is the package $"..." lowers into a call on.
 const i18nImportPath = "sngl://i18n"
+
+// i18nReceiver names the namespace the call was reached through, or nil when
+// a dot import put the function in scope unqualified.
+func i18nReceiver(c *checker, ns string) ir.Expr {
+	if ns == "" {
+		return nil
+	}
+	return &ir.Ident{Name: ns, Sym: c.namespaceNamed(ns)}
+}
 
 // namespaceNamed returns the namespace symbol bound under name, or nil.
 func (c *checker) namespaceNamed(name string) ir.Symbol {
@@ -330,13 +339,19 @@ func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {
 		if !isFn {
 			continue
 		}
+		// A dot import lifts the name into the file, so the call has no
+		// namespace to qualify it with. "." is how that import records itself.
 		alias := imp.Alias
-		if alias == "" {
+		if alias == "." {
+			alias = ""
+		} else if alias == "" {
 			alias = i18nNamespace
 		}
 		return fn, alias
 	}
-	c.error(pos, `$"..." is a call to i18n.tr: add import %q`, i18nImportPath)
+	c.error(pos, `a $"..." string is a call to i18n.tr, and %s is not imported: `+
+		`add import %q, or import . %q to write tr unqualified`,
+		i18nImportPath, i18nImportPath, i18nImportPath)
 	return nil, ""
 }
 

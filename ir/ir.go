@@ -418,13 +418,15 @@ type StructDef struct {
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
 	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	// NativePkg is the import path the declaration was read from. It settles
-	// identity when two files each resolve the same package and get their own
-	// *StructDef: Native alone is qualified by the short package name, which
-	// two packages can share, and one importer records no qualifier at all.
-	NativePkg string
-	Doc       string          // doc comment for scheme-imported decls; empty for SNGL-sourced
-	Builtin   ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
+	// Origin identifies the foreign declaration this was read from, in a type
+	// the importer defines. Two files that each resolve the same package get
+	// their own *StructDef for one type, and comparing Origin is what makes
+	// them the same type again. The importer's own struct type is the key:
+	// two importers cannot collide however they spell a name, which a shared
+	// string could not promise. Must be comparable — it is compared with ==.
+	Origin  any
+	Doc     string          // doc comment for scheme-imported decls; empty for SNGL-sourced
+	Builtin ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.

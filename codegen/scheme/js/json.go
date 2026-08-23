@@ -84,6 +84,7 @@ func (g *jsonGen) inferType(v any, name string) *ir.Type {
 		sd := &ir.StructDef{
 			Name:   g.uniqueName(name),
 			Native: name,
+			Origin: jsTypeID{Module: g.path, Name: name},
 			AST:    &ast.StructDef{Pos: g.pos, Name: name},
 		}
 		g.structs = append(g.structs, sd)
