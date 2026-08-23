@@ -129,3 +129,31 @@ func TestKtIRContext_I18nPluralKeyConstants(t *testing.T) {
 		}
 	}
 }
+
+// Every path that emits a generic call refuses a bodyless #[intrinsic] this
+// backend has no emitter for. See the javascript twin.
+func TestUnimplementedIntrinsicPanics(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call *ir.Call
+	}{
+		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
+		{"method call", &ir.Call{
+			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("no panic for an intrinsic this backend does not implement")
+				}
+				if !strings.Contains(r.(string), "NoBackendHasThis") {
+					t.Errorf("panic %v does not name the intrinsic", r)
+				}
+			}()
+			ktTestCtx().EvalExpr(tc.call)
+		})
+	}
+}

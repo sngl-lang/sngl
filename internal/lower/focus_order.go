@@ -101,7 +101,12 @@ func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 	} else if ls.forStmt.KeySym != nil {
 		ls.keyVar = ls.forStmt.KeySym
 	} else {
+		// The checker sets KeySym whenever Key is named, so this is a loop
+		// some other pass built. Store the symbol as well as holding it: an
+		// identifier the pass emits below refers to this one, and a symbol
+		// the statement does not carry is a symbol nothing else can reach.
 		ls.keyVar = &ir.LoopVar{Name: ls.forStmt.Key, Type: ir.TypInt}
+		ls.forStmt.KeySym = ls.keyVar
 	}
 }
 
@@ -230,7 +235,7 @@ func walkInjectFocused(
 					Sym:         ls.cursorVar,
 					Synthesized: true,
 				}
-				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ir.TypInt, Sym: ls.keyVar}
+				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ls.keyVar.Type, Sym: ls.keyVar}
 				n.Props = append(n.Props, ir.Arg{
 					Name: "__focused",
 					Value: &ir.Binary{

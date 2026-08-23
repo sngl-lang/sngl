@@ -11,9 +11,15 @@ import "fmt"
 // to confirm the pass did not drop a cross-reference or leave a child
 // pointer nil. The invariants checked here hold on both post-check and
 // post-lower IR — cross-references that lowering legitimately synthesizes
-// without a resolved symbol are excluded via the Synthesized / IsElementRef
-// / Member predicates, so a clean package produces no violations at any
-// phase.
+// without a resolved symbol are excluded via the IsElementRef / Member
+// predicates, so a clean package produces no violations at any phase.
+//
+// The reach is checker through lower, and no further: nothing in the
+// pipeline calls this, only the tests do, so the identifiers a platform
+// builds after lowering are not covered. Several are Sym-less and correctly
+// so — gtk4, fyne and the html intrinsic translator render by name and never
+// resolve anything through a symbol. "Every Ident carries its Sym" is a
+// claim about the phases that still have symbols to carry.
 func Validate(pkg *Package) []error {
 	if pkg == nil {
 		return nil
@@ -34,7 +40,7 @@ func Validate(pkg *Package) []error {
 			// declaration; bare enum members (carry Member instead of
 			// Sym); and the magic identifiers the compiler injects with
 			// nothing to resolve to.
-			if x.Sym == nil && !x.IsElementRef && x.Member == "" && !isMagicIdent(x.Name) {
+			if x.Sym == nil && !x.IsElementRef && x.Member == "" {
 				add("unresolved identifier %q (nil Sym)", x.Name)
 			}
 		case *Call:
@@ -82,12 +88,6 @@ func Validate(pkg *Package) []error {
 	})
 	return errs
 }
-
-// isMagicIdent reports whether name is a compiler-recognized identifier that
-// legitimately resolves to no Symbol. `event` is the only one: it names the
-// framework event object inside a handler scope, which no declaration in the
-// program introduces — each target language maps it to its own event variable.
-func isMagicIdent(name string) bool { return name == "event" }
 
 func checkNoNilStmts(add func(string, ...any), where string, stmts []Stmt) {
 	for i, s := range stmts {

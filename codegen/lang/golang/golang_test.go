@@ -167,3 +167,18 @@ func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
 		t.Error("usable intrinsic emitted nothing")
 	}
 }
+
+// The method-call path, which the plain and namespace cases in
+// TestUnimplementedIntrinsicPanics do not reach.
+func TestUnimplementedIntrinsicPanicsOnMethodCall(t *testing.T) {
+	call := &ir.Call{
+		Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+		Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("no panic for an intrinsic this backend does not implement")
+		}
+	}()
+	newMinimalIRCtx().EvalExpr(call)
+}

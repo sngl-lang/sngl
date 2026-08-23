@@ -129,16 +129,23 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 func (st *refLoopState) lowerFor(n *ir.For) {
 	elemName := n.Key
 	indexName := ""
+	var idxSym *ir.LoopVar
 	if n.Value != "" {
-		// two-var `for i, &t`: Key is the index, Value the element.
+		// two-var `for i, &t`: Key is the index, Value the element. The
+		// index is the user's own binding, so it keeps the symbol the
+		// checker gave it — the body's references to `i` point at that one,
+		// and a fresh symbol here would leave them referring to nothing.
 		elemName = n.Value
 		indexName = n.Key
+		idxSym = n.KeySym
 	} else {
-		// single-var `for &t`: synthesize an index.
+		// single-var `for &t`: synthesize an index, and the symbol for it.
 		indexName = "__forIdx" + strconv.Itoa(st.idxCounter)
 		st.idxCounter++
 	}
-	idxSym := &ir.LoopVar{Name: indexName, Type: ir.TypInt}
+	if idxSym == nil {
+		idxSym = &ir.LoopVar{Name: indexName, Type: ir.TypInt}
+	}
 	r := &refLoopRewriter{elemName: elemName, iter: n.Iter, elemType: n.ElemType, idxSym: idxSym}
 	for i := range n.Body {
 		n.Body[i] = r.stmt(n.Body[i])

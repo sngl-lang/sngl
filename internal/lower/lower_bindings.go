@@ -225,7 +225,12 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 		if evtType == nil {
 			evtType = ir.TypDyn
 		}
-		eventIdent := &ir.Ident{Name: "event", Type: evtType}
+		// Carries the param it refers to, like the branch above and like
+		// inline_pure's own `event` ident: nothing declares this name in the
+		// program, so the pass that invents the reference invents the
+		// declaration it refers to.
+		evtParam := &ir.Param{Name: "event", Type: evtType}
+		eventIdent := &ir.Ident{Name: "event", Type: evtType, Sym: evtParam}
 		emitVal = &ir.Select{Operand: eventIdent, Field: "value", Type: ir.TypString}
 	}
 
