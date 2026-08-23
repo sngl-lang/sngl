@@ -277,20 +277,20 @@ func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
 	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
 }
 
-// evalIntlCall dispatches a call to an intl.* intrinsic. The intl namespace
-// is the SNGL surface for the runtime i18n primitives — every intrinsic
-// takes the active locale as its first argument (threaded by NoContext
-// from the i18n.* wrappers' implicit `locale` context read). Returns
-// (result, handled, error); handled is false when the method is unknown.
-func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error) {
+// evalI18nPrimitiveCall dispatches a call to one of the unexported i18n._*
+// primitives by its intrinsic id. Every one but _defaultLocale takes the
+// active locale as its first argument, threaded there by NoContext from the
+// `locale` context read in the wrapper that calls it. Returns (result,
+// handled, error); handled is false when the id is unknown.
+func (env *Env) evalI18nPrimitiveCall(method string, args []ir.CallArg) (any, bool, error) {
 	switch method {
 	case "i18n._defaultLocale":
 		return goi18n.DefaultLocale(), true, nil
 	}
 
-	// All other intl.* intrinsics carry locale as args[0].
+	// Every other primitive carries the locale as args[0].
 	if len(args) < 1 {
-		return nil, true, fmt.Errorf("intl.%s requires at least a locale argument", method)
+		return nil, true, fmt.Errorf("%s requires at least a locale argument", method)
 	}
 	locVal, err := env.Eval(args[0].Value)
 	if err != nil {
@@ -306,7 +306,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 	switch method {
 	case "i18n._translate":
 		if len(args) < 4 {
-			return nil, true, fmt.Errorf("intl.Translate requires 4 arguments")
+			return nil, true, fmt.Errorf("%s requires 4 arguments", method)
 		}
 		keyV, err := eval(1)
 		if err != nil {
@@ -323,7 +323,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.Tr(fmt.Sprintf("%v", keyV), fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
 	case "i18n._format":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.Format requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		tmplV, err := eval(1)
 		if err != nil {
@@ -336,7 +336,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.Format(fmt.Sprintf("%v", tmplV), toStringAnyMap(argsV)), true, nil
 	case "i18n._numberInt":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.NumberInt requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		nV, err := eval(1)
 		if err != nil {
@@ -349,7 +349,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.NumberInt(ToInt(nV), fmt.Sprintf("%v", sV)), true, nil
 	case "i18n._numberFloat":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.NumberFloat requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		nV, err := eval(1)
 		if err != nil {
@@ -362,7 +362,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.NumberFloat(toFloat(nV), fmt.Sprintf("%v", sV)), true, nil
 	case "i18n._date":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.Date requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		dV, err := eval(1)
 		if err != nil {
@@ -378,7 +378,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return fmt.Sprintf("%v", dV), true, nil
 	case "i18n._time":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.Time requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		dV, err := eval(1)
 		if err != nil {
@@ -394,7 +394,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return fmt.Sprintf("%v", dV), true, nil
 	case "i18n._dateTime":
 		if len(args) < 4 {
-			return nil, true, fmt.Errorf("intl.DateTime requires 4 arguments")
+			return nil, true, fmt.Errorf("%s requires 4 arguments", method)
 		}
 		dV, err := eval(1)
 		if err != nil {
@@ -414,7 +414,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return fmt.Sprintf("%v", dV), true, nil
 	case "i18n._select":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.Select requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		vV, err := eval(1)
 		if err != nil {
@@ -427,7 +427,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.Select(fmt.Sprintf("%v", vV), toStringStringMap(cV)), true, nil
 	case "i18n._plural":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.Plural requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		cV, err := eval(1)
 		if err != nil {
@@ -440,7 +440,7 @@ func (env *Env) evalIntlCall(method string, args []ir.CallArg) (any, bool, error
 		return tr.Plural(ToInt(cV), forms), true, nil
 	case "i18n._selectOrdinal":
 		if len(args) < 3 {
-			return nil, true, fmt.Errorf("intl.SelectOrdinal requires 3 arguments")
+			return nil, true, fmt.Errorf("%s requires 3 arguments", method)
 		}
 		cV, err := eval(1)
 		if err != nil {
@@ -1224,12 +1224,13 @@ func (r *listRef) set(v any) { r.list[r.idx] = v }
 func (env *Env) evalCall(call *ir.Call) (any, error) {
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
-	// the wrapper is inlined. The placeholder bodies underneath would answer
-	// with an empty string.
+	// the wrapper is inlined, so neither is reliably a namespace call by the
+	// time it gets here. The interpreter is the only implementation of these
+	// — the primitives' bodies were dropped as placeholders after checking.
 	if call.Func != nil {
 		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n.") {
 			if strings.HasPrefix(id, "i18n._") {
-				if result, handled, err := env.evalIntlCall(id, call.Args); handled {
+				if result, handled, err := env.evalI18nPrimitiveCall(id, call.Args); handled {
 					return result, err
 				}
 			} else if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
