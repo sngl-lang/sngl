@@ -1,0 +1,33 @@
+# Kotlin codegen for a list-typed var whose initializer is an expression
+# rather than a literal: the expression must survive into the state
+# declaration instead of being replaced by an empty list.
+
+sngl generate --platform=android --lang=kotlin --out=out app.sngl
+exists out/MainScreen.kt
+
+# A list literal still becomes mutableStateListOf varargs.
+grep 'val xs = remember \{ mutableStateListOf\(3, 1, 2\) \}' out/MainScreen.kt
+
+# A non-literal list init keeps its expression, converted to snapshot state.
+grep 'val rev = remember \{ xs\.reversed\(\)\.toMutableStateList\(\) \}' out/MainScreen.kt
+grep 'val evens = remember \{ xs\.filter\(\{ n -> \(\(n % 2\) == 0\) \}\)\.toMutableStateList\(\) \}' out/MainScreen.kt
+
+# An empty list is still typed explicitly, since Kotlin can't infer it.
+grep 'val empty = remember \{ mutableStateListOf<Int>\(\) \}' out/MainScreen.kt
+
+# Scalars are unaffected.
+grep 'var idx by remember \{ mutableStateOf\(xs\.indexOf\(2\)\) \}' out/MainScreen.kt
+
+-- app.sngl --
+import . "sngl://std"
+
+output { kotlin { android } }
+
+component main {
+    var xs list<int> = [3, 1, 2]
+    var rev list<int> = xs.reverse()
+    var evens list<int> = xs.filter(func(n int) => n % 2 == 0)
+    var empty list<int> = []
+    var idx int = xs.indexOf(2)
+    text(value=string(rev.length()) + string(evens.length()) + string(empty.length()) + string(idx))
+}

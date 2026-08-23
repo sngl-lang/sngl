@@ -893,6 +893,8 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return a(0) + ".filter(" + a(1) + ")"
 	case "*.map":
 		return a(0) + ".map(" + a(1) + ")"
+	case "*.reverse":
+		return a(0) + ".reversed()"
 	// map
 	case "i18n.tr":
 		// Wrapper params: (key, args, __ctx_locale).

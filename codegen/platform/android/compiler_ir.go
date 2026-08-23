@@ -181,6 +181,22 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 	return ""
 }
 
+// listStateInitKt renders the right-hand side of a list-typed state
+// declaration: a SnapshotStateList built from the var's initializer.
+func listStateInitKt(bind irAndroidBind, initVal string) string {
+	if bind.initEx != nil && strings.TrimSpace(initVal) != "" {
+		return initVal + ".toMutableStateList()"
+	}
+	elems := initVal
+	if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
+		elems = elems[len("listOf(") : len(elems)-1]
+	}
+	if elems == "" {
+		return "mutableStateListOf<" + listElementTypeKt(bind.ktType) + ">()"
+	}
+	return "mutableStateListOf(" + elems + ")"
+}
+
 // computedValueKt renders the Kotlin expression for a computed's derivedStateOf
 // body using the supplied context (which controls state-var prefixing).
 func computedValueKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext) string {
@@ -221,17 +237,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		ktType := kotlin.IRTypeToKt(v.Type)
 		initVal := irVarInitKt(v)
 		isList := v.Type != nil && v.Type.Kind == ir.TypeList
-		if isList && (initVal == `""` || initVal == "emptyList()") {
-			initVal = ""
-		}
 		// When the init is a non-literal expression (e.g. an i18n.tr call),
 		// IRLiteralToKt returns "" — store the raw expr so emitIR can
-		// re-evaluate it via kc.EvalExpr.
+		// re-evaluate it via kc.EvalExpr. This has to happen before the
+		// list blanking below, which erases the `""` this keys off.
 		var initEx ir.Expr
 		if initVal == `""` && v.Init != nil {
 			if _, isLit := v.Init.(*ir.Literal); !isLit {
 				initEx = v.Init
 			}
+		}
+		if isList && (initVal == `""` || initVal == "emptyList()") {
+			initVal = ""
 		}
 		info.binds = append(info.binds, irAndroidBind{
 			name:   v.Name,
@@ -445,16 +462,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = classKC.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				elemType := listElementTypeKt(bind.ktType)
-				elems := initVal
-				if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
-					elems = elems[len("listOf(") : len(elems)-1]
-				}
-				if elems != "" {
-					fmt.Fprintf(&body, "    val %s = mutableStateListOf(%s)\n", bind.name, elems)
-				} else {
-					fmt.Fprintf(&body, "    val %s = mutableStateListOf<%s>()\n", bind.name, elemType)
-				}
+				fmt.Fprintf(&body, "    val %s = %s\n", bind.name, listStateInitKt(bind, initVal))
 			} else {
 				fmt.Fprintf(&body, "    var %s by mutableStateOf%s(%s)\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
@@ -504,16 +512,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = kc.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				elemType := listElementTypeKt(bind.ktType)
-				elems := initVal
-				if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
-					elems = elems[len("listOf(") : len(elems)-1]
-				}
-				if elems != "" {
-					fmt.Fprintf(&body, "    val %s = remember { mutableStateListOf(%s) }\n", bind.name, elems)
-				} else {
-					fmt.Fprintf(&body, "    val %s = remember { mutableStateListOf<%s>() }\n", bind.name, elemType)
-				}
+				fmt.Fprintf(&body, "    val %s = remember { %s }\n", bind.name, listStateInitKt(bind, initVal))
 			} else {
 				fmt.Fprintf(&body, "    var %s by remember { mutableStateOf%s(%s) }\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
