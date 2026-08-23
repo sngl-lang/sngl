@@ -10,17 +10,17 @@ import (
 func TestResolveAliases(t *testing.T) {
 	docs := []*ast.Document{
 		{Stmts: []ast.Stmt{
-			&ast.Import{Path: "internal://canvas"},
-			&ast.Import{Path: "internal://storage", Alias: "store"},
+			&ast.Import{Path: "sngl://internal/draw"},
+			&ast.Import{Path: "sngl://internal/intl", Alias: "store"},
 			&ast.Import{Path: "go://mypkg/widget"},
 		}},
 	}
 	got := imports.ResolveAliases(docs)
 
-	if got["canvas"].Scheme != "internal" || got["canvas"].URI != "canvas" {
-		t.Errorf("canvas: got %+v", got["canvas"])
+	if got["draw"].Scheme != "sngl" || got["draw"].URI != "internal/draw" {
+		t.Errorf("draw: got %+v", got["draw"])
 	}
-	if got["store"].Scheme != "internal" || got["store"].URI != "storage" {
+	if got["store"].Scheme != "sngl" || got["store"].URI != "internal/intl" {
 		t.Errorf("store: got %+v", got["store"])
 	}
 	if got["widget"].Scheme != "go" || got["widget"].URI != "mypkg/widget" {
@@ -44,10 +44,10 @@ func TestResolveAliasesReplaceMap(t *testing.T) {
 	// imports of the same path to the replacement, not appear as a namespace itself.
 	docs := []*ast.Document{
 		{Stmts: []ast.Stmt{
-			// Pure redirect: "internal://canvas" => "my://canvas-override"
-			&ast.Import{Path: "internal://canvas", Replace: "my://canvas-override"},
+			// Pure redirect: "sngl://internal/draw" => "my://draw-override"
+			&ast.Import{Path: "sngl://internal/draw", Replace: "my://draw-override"},
 			// Regular import of the redirected path — should resolve via replace map.
-			&ast.Import{Path: "internal://canvas", Alias: "canvas"},
+			&ast.Import{Path: "sngl://internal/draw", Alias: "canvas"},
 		}},
 	}
 	got := imports.ResolveAliases(docs)
@@ -57,20 +57,20 @@ func TestResolveAliasesReplaceMap(t *testing.T) {
 		t.Fatal("expected alias 'canvas' from aliased import")
 	}
 	// The aliased import should have been redirected to my://canvas-override.
-	if got["canvas"].Scheme != "my" || got["canvas"].URI != "canvas-override" {
-		t.Errorf("canvas: expected {my canvas-override}, got %+v", got["canvas"])
+	if got["canvas"].Scheme != "my" || got["canvas"].URI != "draw-override" {
+		t.Errorf("canvas: expected {my draw-override}, got %+v", got["canvas"])
 	}
 
 	// A plain (no-alias) import of the redirected path should also be resolved.
 	docs2 := []*ast.Document{
 		{Stmts: []ast.Stmt{
-			&ast.Import{Path: "internal://canvas", Replace: "my://canvas-override"},
-			&ast.Import{Path: "internal://canvas"},
+			&ast.Import{Path: "sngl://internal/draw", Replace: "my://draw-override"},
+			&ast.Import{Path: "sngl://internal/draw"},
 		}},
 	}
 	got2 := imports.ResolveAliases(docs2)
-	if got2["canvas"].Scheme != "my" || got2["canvas"].URI != "canvas-override" {
-		t.Errorf("canvas (no alias): expected {my canvas-override}, got %+v", got2["canvas"])
+	if got2["draw"].Scheme != "my" || got2["draw"].URI != "draw-override" {
+		t.Errorf("draw (no alias): expected {my draw-override}, got %+v", got2["draw"])
 	}
 }
 
@@ -79,20 +79,20 @@ func TestResolveAliasesBlankAlias(t *testing.T) {
 	docs := []*ast.Document{
 		{Stmts: []ast.Stmt{
 			&ast.Import{Path: "go://"},
-			&ast.Import{Path: "internal://canvas"},
+			&ast.Import{Path: "sngl://internal/draw"},
 		}},
 	}
 	got := imports.ResolveAliases(docs)
 	if _, ok := got[""]; ok {
 		t.Error("blank alias must not appear in result map")
 	}
-	if got["canvas"].Scheme != "internal" {
-		t.Errorf("canvas: got %+v", got["canvas"])
+	if got["draw"].Scheme != "sngl" {
+		t.Errorf("draw: got %+v", got["draw"])
 	}
 }
 
 func TestNamespaceFromPath(t *testing.T) {
-	if got := imports.NamespaceFromPath("internal://canvas"); got != "canvas" {
+	if got := imports.NamespaceFromPath("sngl://internal/draw"); got != "draw" {
 		t.Errorf("got %q", got)
 	}
 	if got := imports.NamespaceFromPath("widgets/counter"); got != "counter" {

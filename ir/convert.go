@@ -43,7 +43,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		// check. Emitting them would put compiler-internal imports in
 		// user-facing output — where they also collide with the names the
 		// standard-library import lifts.
-		if strings.HasPrefix(imp.Path, "internal://") || strings.HasPrefix(imp.Path, "sngl://internal/") {
+		if strings.HasPrefix(imp.Path, "sngl://internal/") {
 			continue
 		}
 		stmts = append(stmts, c.convertImport(imp))

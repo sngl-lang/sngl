@@ -41,8 +41,8 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 	for _, attr := range ad.Attrs {
 		ref, aliasKnown := aliases[attr.Alias]
 
-		// Resolve the macro package. Only an internal:// or sngl:// import maps
-		// an alias to a macro package; any other alias is not a macro and is
+		// Resolve the macro package. Only a sngl:// import maps an alias to a
+		// macro package; any other alias is not a macro and is
 		// left untouched. An alias that names nothing imported is an error
 		// rather than an ambient lookup — a macro package is a dependency, and
 		// resolving it from the bare name would make `#[draw.shape]` mean
