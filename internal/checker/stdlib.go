@@ -451,11 +451,9 @@ func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv strin
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
 	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
-	// Main symtab + scope for unqualified access.
-	// The loader binds every declaration into the ambient scope and into the
-	// package's own root, which for an ambient package are the same scope.
-	// Rebinding is the norm here, not a mistake; duplicates inside lib/ are
-	// caught by the one-name rule in the register* paths.
+	// An ambient package's own root and the ambient scope are the same scope,
+	// so this binds the same symbol twice — which Declare tolerates, while
+	// still refusing a different symbol under a name already taken.
 	c.bindLib(s.Pos, c.scope, sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)

@@ -398,7 +398,7 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 	return v
 }
 
-// The Var is created on first reference.
+// slotIdent references the per-slot `__slotN` Var, creating it on first use.
 func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
 	return &ir.Ident{
 		Name:        slotID,

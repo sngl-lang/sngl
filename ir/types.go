@@ -244,14 +244,6 @@ func (t *Type) SameUnitType(other *Type) bool {
 	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && t.Decl == other.Decl
 }
 
-// Substitute replaces TypeTypeParam nodes with concrete types from bindings.
-// Returns t unchanged if no substitution is needed.
-// sameDecl reports whether two named types name the same declaration. The
-// pointer settles it when both came from the same load. They need not have:
-// two files importing one Go package each resolve it, so `SearchEntry` is a
-// different *StructDef on each side though it is one type — and a value of it
-// could not be passed where it was expected. Falling back to the package and
-// name is what makes those two the same type again.
 // nativeIdentity names a declaration by the package it was read from and the
 // name it has there, which is stable across resolutions of that package. The
 // import path is required: a native name is qualified by the short package
@@ -266,6 +258,12 @@ func nativeIdentity(sym Symbol) (string, bool) {
 	return d.NativePkg + "\x00" + d.Native, true
 }
 
+// sameDecl reports whether two named types name the same declaration. The
+// pointer settles it when both came from the same load. They need not have:
+// two files importing one Go package each resolve it, so `SearchEntry` is a
+// different *StructDef on each side though it is one type — and a value of it
+// could not be passed where it was expected. Falling back to the package and
+// name is what makes those two the same type again.
 func sameDecl(t, other *Type) bool {
 	if t.Decl == other.Decl {
 		return true
@@ -275,6 +273,8 @@ func sameDecl(t, other *Type) bool {
 	return aok && bok && a == b
 }
 
+// Substitute replaces TypeTypeParam nodes with concrete types from bindings.
+// Returns t unchanged if no substitution is needed.
 func (t *Type) Substitute(bindings map[string]*Type) *Type {
 	if t == nil {
 		return nil

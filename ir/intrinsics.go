@@ -225,6 +225,7 @@ const (
 	NodeOpAttachHandler   = "AttachHandler"
 )
 
+// NodeOps is every node operation, for the passes that build a call per op.
 var NodeOps = []string{
 	NodeOpCreateNode,
 	NodeOpCreateComponent,

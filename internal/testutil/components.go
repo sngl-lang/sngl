@@ -20,12 +20,8 @@ import (
 // on PATH, so the tests exercise the working tree and not the last
 // `go install`.
 //
-// It built into os.MkdirTemp behind a sync.Once before, which leaked the
-// directory: one per test process, ~84MB, never removed. Five packages call
-// this, so a full `go test ./...` left five behind, and enough runs filled the
-// disk — which surfaced as unrelated GUI and website tests failing. There is
-// no build cost to giving it back: each process calls this once either way,
-// and the Go build cache makes the relink cheap.
+// t.TempDir rather than os.MkdirTemp: the binary is ~84MB and this used to
+// leak one per test process.
 func snglBinary(t *testing.T) (string, error) {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "sngl")

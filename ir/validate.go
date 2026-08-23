@@ -37,9 +37,8 @@ func Validate(pkg *Package) []error {
 			// LoopVar that same pass created and can point at. Excluded:
 			// element refs (#id and the synthesized __nN node handles),
 			// which name a node in the emitted tree rather than a
-			// declaration; bare enum members (carry Member instead of
-			// Sym); and the magic identifiers the compiler injects with
-			// nothing to resolve to.
+			// declaration, and bare enum members, which carry Member
+			// instead of Sym.
 			if x.Sym == nil && !x.IsElementRef && x.Member == "" {
 				add("unresolved identifier %q (nil Sym)", x.Name)
 			}

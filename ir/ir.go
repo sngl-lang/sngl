@@ -157,7 +157,7 @@ type Func struct {
 	IsTest         bool
 	Reads          []*Var // vars read (directly or via called functions)
 	Writes         []*Var // vars mutated (directly or via called functions)
-	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); codegen must provide native impl
+	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend may substitute its own
 	NativePkg      string // scheme-import package path (e.g. "fmt")
 	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
 	HasContextArg  bool
@@ -290,11 +290,8 @@ type Component struct {
 	// as function-local variables rather than shared Model fields, so a
 	// recursive component's render method gets fresh locals per frame.
 	// nil when the pass did not run. See internal/lower/node_escape.go.
-	LocalRefs map[string]bool `json:"-"`
-	// Methods holds the methods declared on this component, by name —
-	// `func Comp.m()` attaches m here. Receiver-less funcs declared in the
-	// body stay in Funcs; these are the ones addressed through the receiver.
-	Methods map[string]*Func `json:"-"`
+	LocalRefs map[string]bool  `json:"-"`
+	Methods   map[string]*Func `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -428,9 +425,9 @@ type StructDef struct {
 	NativePkg string
 	Doc       string          // doc comment for scheme-imported decls; empty for SNGL-sourced
 	Builtin   ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
-	// Methods holds the methods declared on this struct, by name — `func Struct.m()`
-	// attaches m here. A declaration's members are looked up on the
-	// declaration, so this is the only place they live.
+	// A declaration's members are looked up on the declaration, so this is
+	// where every type's methods live — struct, enum, unit and component
+	// alike.
 	Methods map[string]*Func `json:"-"`
 }
 
@@ -465,10 +462,7 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
-	Doc     string // doc comment for scheme-imported decls
-	// Methods holds the methods declared on this enum, by name — `func Enum.m()`
-	// attaches m here. A declaration's members are looked up on the
-	// declaration, so this is the only place they live.
+	Doc     string           // doc comment for scheme-imported decls
 	Methods map[string]*Func `json:"-"`
 }
 
@@ -489,10 +483,7 @@ type UnitDef struct {
 	AST      *ast.UnitDef
 	Name     string
 	Suffixes []*UnitSuffix
-	// Methods holds the methods declared on this unit, by name — `func Unit.m()`
-	// attaches m here. A declaration's members are looked up on the
-	// declaration, so this is the only place they live.
-	Methods map[string]*Func `json:"-"`
+	Methods  map[string]*Func `json:"-"`
 }
 
 func (u *UnitDef) SymName() string { return u.Name }

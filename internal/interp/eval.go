@@ -1044,7 +1044,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		m[f.Name] = v
 	}
 	// Tag the value with its struct type name so method dispatch can find
-	// user-defined methods (`v.dot()` → env.Funcs["Vec2.dot"]). Anonymous
+	// user-defined methods (`v.dot()` finds Vec2.dot). Anonymous
 	// struct literals have Def == nil and remain untagged.
 	if e.Def != nil && e.Def.Name != "" {
 		m["__type"] = e.Def.Name
@@ -1391,11 +1391,10 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
 
-	// User-defined type-method. Empty-bodied stdlib intrinsic declarations
-	// (e.g. `func map<K,V>.length() int {}`, `func list<T>.filter(...) {}`)
-	// are registered here too, but their behaviour lives in the native
-	// dispatch below — running the empty body would return null. Only invoke
-	// a method that actually has a body.
+	// Reached only when the id above found no implementation. Every
+	// #[intrinsic] carries a body now, and most are placeholders standing in
+	// for a backend's — running one answers with a plausible wrong value
+	// rather than an error, which is why the id is tried first.
 	// The checker already resolved which member this call names; re-deriving
 	// it from the receiver's name would fail for a type reached through an
 	// import alias, whose name here is not the name it was declared under.
@@ -1424,7 +1423,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	// Static-form receiver: Type.method(args) where Type is a type name. The
 	// checker leaves Func nil when the method is a user-defined type method
 	// (component-scoped) the symbol table doesn't see. Dispatch by qualified
-	// name using env.Funcs.
+	// name through the declaration it names.
 	if ident, ok := call.Receiver.(*ir.Ident); ok {
 		if _, valErr := env.evalIdent(ident); valErr != nil {
 			method := methodNameFromCall(call)
@@ -1963,7 +1962,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 		// If the function declares a leading `this` receiver but the caller
 		// supplied one-fewer arguments (intra-component method calls compile
 		// as plain `foo(args)`), shift bindings so user args land in n,
-		// not in this. `this` is expected to already be in execEnv.Vars.
+		// not in this. `this` is expected to be bound in execEnv already.
 		argOffset := 0
 		if len(fn.Params) > 0 && fn.Params[0].Receiver && len(args) == len(fn.Params)-1 {
 			argOffset = 1
@@ -2249,7 +2248,7 @@ func runtimeTypeName(v any) string {
 	case map[string]any:
 		// Tagged struct value: prefer the declared type name so method
 		// dispatch reaches user-defined methods (`v.dot()` →
-		// env.Funcs["Vec2.dot"]). See evalStructLit.
+		// Vec2.dot). See evalStructLit.
 		if t, ok := x["__type"].(string); ok && t != "" {
 			return t
 		}

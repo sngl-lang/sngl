@@ -44,9 +44,6 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 	return c.resolveType(te)
 }
 
-// constructBuiltinGeneric applies a generic built-in constructor (identified by
-// its #[builtin] kind) to the type arguments of t. The construction logic stays
-// in the compiler; only the name→kind binding lives in scope.
 // namesType reports whether t is the type called name, ignoring any type
 // arguments: the receiver of a `list<T>` method is a `list<T>`, and of a
 // `Box<T>` method a `Box<T>`, whichever element types they carry.
@@ -61,6 +58,9 @@ func namesType(t *ir.Type, name string) bool {
 	return s == name
 }
 
+// constructBuiltinGeneric applies a generic built-in constructor (identified by
+// its #[builtin] kind) to the type arguments of t. The construction logic stays
+// in the compiler; only the name→kind binding lives in scope.
 func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
 	switch id {
 	case ast.BuiltinList:

@@ -13,8 +13,7 @@ const langGo = "go"
 // init registers the Go emitter for the intrinsics this backend implements,
 // dispatched by ID (see codegen.EmitIntrinsicCall). Emitters declare the
 // imports their native form needs ("strings"/"math"); GoIRContext applies them
-// via RequireImport. Emissions match what goBuiltinMethodFromArgs produced for
-// the corresponding method qualNames.
+// via RequireImport.
 func init() {
 	// reg registers an import-free emitter (builtins / slicing).
 	reg := func(id string, fn func(a []string) string) {
