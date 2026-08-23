@@ -319,20 +319,3 @@ func MemberOf(decl any, name string) (*Func, bool) {
 	f, found := (*tbl)[name]
 	return f, found
 }
-
-// MethodOn returns the method named method already attached to the declaration
-// recv names in scope. Unlike LookupMethodIn it does not follow a namespace to
-// its package: it answers "does this declaration already carry this member",
-// which is what a duplicate check asks.
-func MethodOn(scope *Scope, recv, method string) (*Func, bool) {
-	sym, ok := scope.Lookup(recv)
-	if !ok {
-		return nil, false
-	}
-	tbl := methodTable(sym)
-	if tbl == nil {
-		return nil, false
-	}
-	f, found := (*tbl)[method]
-	return f, found
-}

@@ -799,10 +799,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 		c.pkg.UsesShapes = true
 	}
 
-	// Check for component main in imported library packages.
-	if irImport.Pkg != nil {
-		if _, hasMain := irImport.Pkg.Symbols.LookupComponent("main"); hasMain {
-			c.error(imp.Pos, "component main can only be defined in the main package")
+	// Check for component main in imported library packages. The package's
+	// own root only: a lib package's root parents whatever scope was current
+	// when it loaded, so a lookup that walks the chain finds the importing
+	// file's own main and blames the import for it.
+	if irImport.Pkg != nil && irImport.Pkg.Symbols != nil && irImport.Pkg.Symbols.Root != nil {
+		if sym, ok := irImport.Pkg.Symbols.Root.LookupLocal("main"); ok {
+			if _, isComp := sym.(*ir.Component); isComp {
+				c.error(imp.Pos, "component main can only be defined in the main package")
+			}
 		}
 	}
 

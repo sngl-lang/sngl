@@ -74,14 +74,11 @@ func nodeOpFunc(op string) *ir.Func {
 	return &ir.Func{Name: op, Intrinsic: op}
 }
 
-// lowerNS and stdlibNS are the namespace symbols the intrinsic-call receivers
+// lowerNS is the namespace symbol the intrinsic-call receivers
 // lowering emits resolve to. Lowering carries its own rather than reading the
 // checker's: a pass emits an intrinsic call whether or not the source package
 // ever named the namespace, so there is not always one to borrow.
-var (
-	lowerNS  = &ir.Namespace{Name: "lower"}
-	stdlibNS = &ir.Namespace{Name: "stdlib"}
-)
+var lowerNS = &ir.Namespace{Name: "lower"}
 
 // lowerNSIdent returns a fresh Ident referring to the `lower` namespace.
 // Used as Call.Receiver so ir.Convert emits SelectExpr{Operand: Ident("lower"), Field: name}.

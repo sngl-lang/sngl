@@ -519,7 +519,7 @@ component _example_input {
 
 component _example_image {
     vbox(style={gap=8, padding=16}) {
-        image(src="https://placehold.co/200x100", alt="Placeholder image", fit="contain")
+        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
     }
 }
 

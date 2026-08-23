@@ -249,12 +249,13 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	// `func i18n.tr(...)` finds a declaration to be a member of. Their
 	// packages are built from those same funcs, so the Pkg is filled in below
 	// once they exist.
-	declaresI18n := pkgName == stdPkg
-	var i18nNS, htmlNS *ir.Namespace
-	if declaresI18n {
-		i18nNS = &ir.Namespace{Name: "i18n"}
+	// html's placement directives are declared as methods on a receiver named
+	// "html" in lib/std, so the namespace has to exist before they are
+	// registered. i18n has its own package and needs nothing here.
+	declaresHtml := pkgName == stdPkg
+	var htmlNS *ir.Namespace
+	if declaresHtml {
 		htmlNS = &ir.Namespace{Name: "html"}
-		c.bindLib(ast.Pos{}, c.scope, i18nNS)
 		c.bindLib(ast.Pos{}, c.scope, htmlNS)
 	}
 
@@ -277,15 +278,10 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	if declaresI18n {
-		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
-		// exposes every i18n.* receiver method as a free function, plus the
-		// predeclared PluralKey constants (zero, one, two, few, many, other).
-		i18nNS.Pkg = c.buildI18nNamespacePkg(registeredFuncs)
-		// html so the placement directives html.frontend(...) /
-		// html.backend(...) (GitLab #27) resolve as free-function calls. The
-		// directives are declared as methods on receiver "html" in
-		// lib/std/html.sngl; expose them here as namespace functions.
+	if declaresHtml {
+		// The directives html.frontend(...) / html.backend(...) (GitLab #27)
+		// are declared as methods on receiver "html"; expose them here as
+		// namespace functions so a call resolves.
 		htmlNS.Pkg = c.buildHtmlNamespacePkg(registeredFuncs)
 	}
 

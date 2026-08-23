@@ -720,18 +720,6 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 
 	args := gc.evalCallArgs(n.Args)
 
-	// Typed inline fallback for generic list methods that take a
-	// lambda. The proper fix is passNoListLambdas, which expands these
-	// calls into hoisted for-loops at the IR level. Callers that bypass
-	// Lower (the test runner does, today) still need *some* working
-	// emission, so fall back to a typed IIFE here when the IR retains
-	// the original filter/map Call shape.
-	if (method == "filter" || method == "map") && len(args) >= 2 {
-		if expr := gc.evalListLambdaCallFallback(n, method, args); expr != "" {
-			return expr
-		}
-	}
-
 	if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
@@ -778,39 +766,6 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
-}
-
-// evalListLambdaCallFallback emits a typed Go IIFE for `xs.filter(f)` /
-// `xs.map(f)` when the IR still carries the original method-call shape.
-// passNoListLambdas (a lowering pass enabled for Go targets) expands
-// these into explicit for-loops in the IR; this fallback exists for
-// code paths that don't run Lower (the in-process test runner).
-func (gc *GoIRContext) evalListLambdaCallFallback(n *ir.Call, method string, args []string) string {
-	xsExpr := args[0]
-	fnExpr := args[1]
-	var elemGo string
-	if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeList && len(t.Elems) > 0 {
-		elemGo = IRTypeToGo(t.Elems[0])
-	}
-	if elemGo == "" {
-		return ""
-	}
-	switch method {
-	case "filter":
-		return "func() []" + elemGo + " { var out []" + elemGo + "; for _, item := range " + xsExpr +
-			" { if (" + fnExpr + ")(item) { out = append(out, item) } }; return out }()"
-	case "map":
-		var outGo string
-		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-			outGo = IRTypeToGo(n.Type.Elems[0])
-		}
-		if outGo == "" {
-			return ""
-		}
-		return "func() []" + outGo + " { out := make([]" + outGo + ", len(" + xsExpr + ")); for i, item := range " + xsExpr +
-			" { out[i] = (" + fnExpr + ")(item) }; return out }()"
-	}
-	return ""
 }
 
 // rawFieldAccess reports whether e is an ident flagged in
