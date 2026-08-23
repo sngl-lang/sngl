@@ -252,22 +252,26 @@ func (t *Type) SameUnitType(other *Type) bool {
 // different *StructDef on each side though it is one type — and a value of it
 // could not be passed where it was expected. Falling back to the package and
 // name is what makes those two the same type again.
-// nativeName returns a declaration's qualified native-language name, which is
-// stable across resolutions of the package that declares it.
-func nativeName(sym Symbol) (string, bool) {
-	switch d := sym.(type) {
-	case *StructDef:
-		return d.Native, d.Native != ""
+// nativeIdentity names a declaration by the package it was read from and the
+// name it has there, which is stable across resolutions of that package. The
+// import path is required: a native name is qualified by the short package
+// name, which two packages can share, and one importer records no qualifier
+// at all. A declaration with no recorded path compares by pointer instead,
+// rather than matching too much.
+func nativeIdentity(sym Symbol) (string, bool) {
+	d, ok := sym.(*StructDef)
+	if !ok || d.NativePkg == "" || d.Native == "" {
+		return "", false
 	}
-	return "", false
+	return d.NativePkg + "\x00" + d.Native, true
 }
 
 func sameDecl(t, other *Type) bool {
 	if t.Decl == other.Decl {
 		return true
 	}
-	a, aok := nativeName(t.Decl)
-	b, bok := nativeName(other.Decl)
+	a, aok := nativeIdentity(t.Decl)
+	b, bok := nativeIdentity(other.Decl)
 	return aok && bok && a == b
 }
 

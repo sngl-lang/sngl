@@ -420,9 +420,14 @@ type StructDef struct {
 	Name       string
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
-	Native     string          // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	Doc        string          // doc comment for scheme-imported decls; empty for SNGL-sourced
-	Builtin    ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
+	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
+	// NativePkg is the import path the declaration was read from. It settles
+	// identity when two files each resolve the same package and get their own
+	// *StructDef: Native alone is qualified by the short package name, which
+	// two packages can share, and one importer records no qualifier at all.
+	NativePkg string
+	Doc       string          // doc comment for scheme-imported decls; empty for SNGL-sourced
+	Builtin   ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
 	// Methods holds the methods declared on this struct, by name — `func Struct.m()`
 	// attaches m here. A declaration's members are looked up on the
 	// declaration, so this is the only place they live.

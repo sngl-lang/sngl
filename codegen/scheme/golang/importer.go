@@ -121,9 +121,10 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 			continue
 		}
 		sd := &ir.StructDef{
-			Name:   tn.Name(),
-			Native: pkgName + "." + tn.Name(),
-			Doc:    typeDoc[tn.Name()],
+			Name:      tn.Name(),
+			Native:    pkgName + "." + tn.Name(),
+			NativePkg: userPath,
+			Doc:       typeDoc[tn.Name()],
 		}
 		structs[tn.Name()] = sd
 		ni.Structs = append(ni.Structs, sd)
