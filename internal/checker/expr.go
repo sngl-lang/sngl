@@ -1738,6 +1738,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
 		}
+		fields = withFieldDefaults(sd, fields)
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
 	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
@@ -3306,6 +3307,33 @@ func (c *checker) lookupQualified(name string) (ir.Symbol, bool) {
 		return nil, false
 	}
 	return ns.Pkg.Symbols.Root.LookupLocal(member)
+}
+
+// withFieldDefaults appends the declared default of every field the literal
+// omits, so the value is complete before anything reads it. Doing it here
+// rather than in each evaluator is what makes `color{r=255}` carry its alpha
+// in the interpreter, the const folder and all four backends alike — they had
+// disagreed, and the two that agreed were both wrong.
+func withFieldDefaults(sd *ir.StructDef, fields []ir.FieldInit) []ir.FieldInit {
+	if sd == nil {
+		return fields
+	}
+	written := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		if f.Spread {
+			// A spread supplies whatever the runtime value holds, so which
+			// fields it covers is not known here.
+			return fields
+		}
+		written[f.Name] = true
+	}
+	for _, f := range sd.Fields {
+		if f.Default == nil || written[f.Name] {
+			continue
+		}
+		fields = append(fields, ir.FieldInit{Name: f.Name, Value: f.Default})
+	}
+	return fields
 }
 
 // componentPropType returns the type of a named prop on a component, or nil.

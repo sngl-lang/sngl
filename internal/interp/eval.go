@@ -1043,23 +1043,6 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		m[f.Name] = v
 	}
-	// A field the literal omits takes its declared default, so the value is
-	// complete however it was written. Without this a `color{r=255}` had no
-	// alpha at all rather than the 255 its declaration gives it, and two
-	// colours that differ only in a field one of them omitted compared
-	// unequal. Codegen has always materialized these.
-	if e.Def != nil {
-		for _, f := range e.Def.Fields {
-			if _, written := m[f.Name]; written || f.Default == nil {
-				continue
-			}
-			v, err := env.Eval(f.Default)
-			if err != nil {
-				return nil, err
-			}
-			m[f.Name] = v
-		}
-	}
 	// Tag the value with its struct type name so method dispatch can find
 	// user-defined methods (`v.dot()` → env.Funcs["Vec2.dot"]). Anonymous
 	// struct literals have Def == nil and remain untagged.

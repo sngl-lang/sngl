@@ -51,6 +51,12 @@ sngl doc color
 stdout 'sngl://builtin \(ambient\)'
 ! stdout 'import'
 
+
+# $"..." lowers to a call on sngl://i18n, and the import names the package —
+# not one particular alias for it.
+sngl check aliased_i18n.sngl
+stdout 'aliased_i18n.sngl: ok'
+
 # The compiler's own tier is not reachable by a bare name.
 ! sngl doc StrUpper
 
@@ -65,4 +71,13 @@ import . "sngl://std"
 
 component Counter(count int) {
     text { value = "count: ${count}" }
+}
+
+-- aliased_i18n.sngl --
+import . "sngl://std"
+import tr "sngl://i18n"
+
+component main {
+    var n int = 1
+    text(value=$"hi {n}")
 }

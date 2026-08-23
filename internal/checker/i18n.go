@@ -257,7 +257,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	// G2: resolve i18n.trInline and emit ir.Call. trInline carries both
 	// the canonical key (= the synthesized template, for manifest lookup)
 	// and the inlined template (for fallback when the manifest misses).
-	trFn := c.lookupI18nTrInline(x.Pos)
+	trFn, trNS := c.lookupI18nTrInline(x.Pos)
 	if trFn == nil {
 		// Already errored; return a string-typed placeholder so type-checking
 		// can continue without cascading failures.
@@ -285,7 +285,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// The namespace the call was reached through. trInline is a package
 		// function, so the alias at the call site is what names it — and a
 		// synthesized call has to carry what a written one would.
-		Receiver: &ir.Ident{Name: i18nNamespace, Sym: c.i18nNamespaceSym()},
+		Receiver: &ir.Ident{Name: trNS, Sym: c.namespaceNamed(trNS)},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
 			{Value: &ir.Literal{Type: TypString, Raw: template}},
@@ -297,10 +297,12 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 // i18nNamespace is the name the i18n package binds by default.
 const i18nNamespace = "i18n"
 
-// i18nNamespaceSym returns the in-scope i18n namespace, or nil when the file
-// bound it under another alias — the reference still resolves by symbol.
-func (c *checker) i18nNamespaceSym() ir.Symbol {
-	if sym, ok := c.scope.Lookup(i18nNamespace); ok {
+// i18nImportPath is the package $"..." lowers into a call on.
+const i18nImportPath = "sngl://i18n"
+
+// namespaceNamed returns the namespace symbol bound under name, or nil.
+func (c *checker) namespaceNamed(name string) ir.Symbol {
+	if sym, ok := c.scope.Lookup(name); ok {
 		return sym
 	}
 	return nil
@@ -313,13 +315,29 @@ func (c *checker) i18nNamespaceSym() ir.Symbol {
 // This used to be an internal invariant. i18n is an ordinary package, so a
 // file that writes $"..." without importing it lands here, and the message
 // names the import rather than a compiler file.
-func (c *checker) lookupI18nTrInline(pos ast.Pos) *ir.Func {
-	fn, ok := c.lookupMethod("i18n", "trInline")
-	if !ok {
-		c.error(pos, `$"..." is a call to i18n.tr: add import "sngl://i18n"`)
-		return nil
+func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {
+	// By the path rather than the alias: the import names the package, and
+	// what the file chose to call it is its own business.
+	for _, imp := range c.pkg.Imports {
+		if imp == nil || imp.Path != i18nImportPath || imp.Pkg == nil {
+			continue
+		}
+		sym, ok := imp.Pkg.Symbols.Root.LookupLocal("trInline")
+		if !ok {
+			continue
+		}
+		fn, isFn := sym.(*ir.Func)
+		if !isFn {
+			continue
+		}
+		alias := imp.Alias
+		if alias == "" {
+			alias = i18nNamespace
+		}
+		return fn, alias
 	}
-	return fn
+	c.error(pos, `$"..." is a call to i18n.tr: add import %q`, i18nImportPath)
+	return nil, ""
 }
 
 // hasStaticText reports whether any part contains literal non-whitespace text,

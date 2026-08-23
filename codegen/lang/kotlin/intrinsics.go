@@ -43,10 +43,11 @@ func init() {
 	reg("string.replace", func(a []string) string { return a[0] + ".replace(" + a[1] + ", " + a[2] + ")" })
 	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
 
-	// --- float math --- (java.lang.Math; Floor/Ceil/Round return int)
+	// --- float math --- (java.lang.Math)
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })
-	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ")" })
+	// Math.round(Double) returns Long; float is Double.
+	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ").toDouble()" })
 	reg("float.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
 	reg("float.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
 	reg("float.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })
@@ -94,10 +95,9 @@ func init() {
 	// --- color ---
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
-	reg("color.hex", func(a []string) string {
-		return a[0] + `.let { if (it.a == 255) String.format("#%02x%02x%02x", it.r, it.g, it.b) ` +
-			`else String.format("#%02x%02x%02x%02x", it.r, it.g, it.b, it.a) }`
-	})
+	// A colour is a String here (IRTypeToKt maps TypeColor to String), so it
+	// already is the hex form the other backends have to build.
+	reg("color.hex", func(a []string) string { return a[0] })
 
 	// --- Alert and File ---
 	// Alert.* is an Android Toast. `context` is in scope because the android

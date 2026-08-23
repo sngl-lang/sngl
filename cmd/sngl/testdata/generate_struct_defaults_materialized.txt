@@ -1,0 +1,41 @@
+# A field a literal omits carries its declared default into every target, not
+# just the interpreter. The defaults were materialized in the interpreter only,
+# so `color{r=255}` reached Go with no alpha and an opaque red rendered as
+# #ff000000 once hex() started honouring alpha.
+
+sngl generate --lang=none --platform=html --out=outjs app.sngl
+grep 'x: 7' outjs/index.html
+grep 'a: 255' outjs/index.html
+
+[!exec:go] skip 'go toolchain required'
+sngl build --lang=go --platform=bubbletea --opt name=sd bt.sngl
+exists sd
+
+-- app.sngl --
+import . "sngl://std"
+
+struct P {
+    x int = 7
+    y int = 0
+}
+
+component main {
+    var p P = {y = 1}
+    var c color = color{r = 255, g = 0, b = 0}
+    text(value="{p.x}{c.hex()}")
+}
+-- bt.sngl --
+import . "sngl://std"
+
+output { go { bubbletea } }
+
+struct P {
+    x int = 7
+    y int = 0
+}
+
+component main {
+    var p P = {y = 1}
+    var c color = color{r = 255, g = 0, b = 0}
+    text(value="{p.x}{c.hex()}")
+}

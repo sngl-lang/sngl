@@ -1,0 +1,25 @@
+# A canvas that arrives through an import is still a canvas. The pass that
+# lowers one is gated on the package declaring a list<shape>, and the flag
+# recording that did not cross an import — so the shapes survived as ordinary
+# widget nodes and the generated program failed to build.
+
+sngl dump --stage lowered --lang go --platform gtk4 app.sngl
+stdout 'CanvasSave'
+stdout 'CanvasDrawRect'
+
+-- app.sngl --
+import . "sngl://std"
+import g "./geom"
+
+component main {
+    g.Chart()
+}
+-- geom/g.sngl --
+import . "sngl://std"
+import . "sngl://draw"
+
+component Chart() {
+    canvas(width=100px, height=100px) {
+        rect(x=1.0, y=2.0, w=3.0, h=4.0)
+    }
+}

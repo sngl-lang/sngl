@@ -31,7 +31,7 @@ func init() {
 	// strconv.ParseInt returns (int64, error) and int.parse returns an int, so
 	// there is no expression form without a func literal to drop the error.
 	regImp("int.parse", []string{"strconv"}, func(a []string) string {
-		return "func() int { v, _ := strconv.ParseInt(" + a[0] + ", " + a[1] + ", 64); return int(v) }()"
+		return "func() int { __v, _ := strconv.ParseInt(" + a[0] + ", " + a[1] + ", 64); return int(__v) }()"
 	})
 	regImp("string.upper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
 	regImp("string.lower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
@@ -95,11 +95,11 @@ func init() {
 	reg("list.slice", func(a []string) string { return "(" + a[0] + ")[" + a[1] + ":" + a[2] + "]" })
 	regTyped("list.reverse", nil, func(a []string, ts []*ir.Type) string {
 		el := goElem(ts[0])
-		return "func() []" + el + " { src := " + a[0] + "; out := make([]" + el + ", len(src)); for i, v := range src { out[len(src)-1-i] = v }; return out }()"
+		return "func() []" + el + " { __src := " + a[0] + "; __out := make([]" + el + ", len(__src)); for __i, __v := range __src { __out[len(__src)-1-__i] = __v }; return __out }()"
 	})
 	regTyped("list.filter", nil, func(a []string, ts []*ir.Type) string {
 		el := goElem(ts[0])
-		return "func() []" + el + " { var out []" + el + "; for _, item := range " + a[0] + " { if " + a[1] + "(item) { out = append(out, item) } }; return out }()"
+		return "func() []" + el + " { var __out []" + el + "; for _, __item := range " + a[0] + " { if " + a[1] + "(__item) { __out = append(__out, __item) } }; return __out }()"
 	})
 	regTyped("list.map", nil, func(a []string, ts []*ir.Type) string {
 		// The result element type is the mapper's return type, not the source's.
@@ -107,23 +107,23 @@ func init() {
 		if len(ts) > 1 && ts[1] != nil && ts[1].Sig != nil && ts[1].Sig.Return != nil {
 			out = IRTypeToGo(ts[1].Sig.Return)
 		}
-		return "func() []" + out + " { out := make([]" + out + ", len(" + a[0] + ")); for i, item := range " + a[0] + " { out[i] = " + a[1] + "(item) }; return out }()"
+		return "func() []" + out + " { __out := make([]" + out + ", len(" + a[0] + ")); for __i, __item := range " + a[0] + " { __out[__i] = " + a[1] + "(__item) }; return __out }()"
 	})
 	reg("map.length", func(a []string) string { return "len(" + a[0] + ")" })
 	regTyped("map.keys", nil, func(a []string, ts []*ir.Type) string {
 		k := goKey(ts[0])
-		return "func() []" + k + " { ks := make([]" + k + ", 0, len(" + a[0] + ")); for k := range " + a[0] + " { ks = append(ks, k) }; return ks }()"
+		return "func() []" + k + " { __ks := make([]" + k + ", 0, len(" + a[0] + ")); for __k := range " + a[0] + " { __ks = append(__ks, __k) }; return __ks }()"
 	})
 	regTyped("map.values", nil, func(a []string, ts []*ir.Type) string {
 		v := goVal(ts[0])
-		return "func() []" + v + " { vs := make([]" + v + ", 0, len(" + a[0] + ")); for _, v := range " + a[0] + " { vs = append(vs, v) }; return vs }()"
+		return "func() []" + v + " { __vs := make([]" + v + ", 0, len(" + a[0] + ")); for _, __v := range " + a[0] + " { __vs = append(__vs, __v) }; return __vs }()"
 	})
 	reg("map.contains", func(a []string) string {
-		return "func() bool { _, ok := " + a[0] + "[" + a[1] + "]; return ok }()"
+		return "func() bool { _, __ok := " + a[0] + "[" + a[1] + "]; return __ok }()"
 	})
 	regTyped("map.get", nil, func(a []string, ts []*ir.Type) string {
 		v := goVal(ts[0])
-		return "func() " + v + " { if v, ok := " + a[0] + "[" + a[1] + "]; ok { return v }; return " + a[2] + " }()"
+		return "func() " + v + " { if __v, __ok := " + a[0] + "[" + a[1] + "]; __ok { return __v }; return " + a[2] + " }()"
 	})
 
 	regImp("i18n.exactly", []string{SnglI18nImportPath}, func(a []string) string {

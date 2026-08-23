@@ -791,6 +791,14 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	c.pkg.Imports = append(c.pkg.Imports, irImport)
 
+	// A canvas reaches this package if any package it imports declares one:
+	// inlining will bring the shapes here, and the pass that lowers them runs
+	// on this package. The flag records the construct, and the construct is
+	// wherever it was resolved.
+	if irImport.Pkg != nil && irImport.Pkg.UsesShapes {
+		c.pkg.UsesShapes = true
+	}
+
 	// Check for component main in imported library packages.
 	if irImport.Pkg != nil {
 		if _, hasMain := irImport.Pkg.Symbols.LookupComponent("main"); hasMain {
