@@ -3610,6 +3610,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
+		// A prop the call omits is supplied here, so every consumer reads one
+		// list of arguments rather than each evaluating the declaration's
+		// defaults for itself. This is what a struct literal does with its
+		// field defaults.
+		for _, p := range comp.Props {
+			if p.Default == nil || boundProps[p.Name] {
+				continue
+			}
+			props = append(props, ir.Arg{Name: p.Name, Value: p.Default})
+		}
 	}
 
 	return c.extractBindings(comp, props, handlers)

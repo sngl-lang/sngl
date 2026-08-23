@@ -112,9 +112,6 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.Comp = comp
 	child.parent = env
 
-	for _, p := range comp.Props {
-		child.Set(p.Sym, evalInit(child, p.Default))
-	}
 	// Override with instance prop values. A call site names the prop, so the
 	// declaration it means is the component's, found by that name.
 	for _, arg := range inst.Props {
@@ -256,9 +253,6 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child.parent = env
 	child.parent = env
 
-	for _, p := range comp.Props {
-		child.Set(p.Sym, evalInit(child, p.Default))
-	}
 	// Override with named positional args from the call.
 	if call != nil {
 		for _, a := range call.Args {
