@@ -112,6 +112,12 @@ type checker struct {
 	// When set to an enum type, bare enum member names resolve automatically.
 	expected *ir.Type
 
+	// nativeValues checks encoded native-language values rather than SNGL
+	// source: a struct literal takes its declaration from the expected type
+	// and names its fields as the source language does. Set only by
+	// CheckNativeValue.
+	nativeValues bool
+
 	// Current component (for event validation).
 	currentComponent *ir.Component
 
@@ -435,7 +441,13 @@ func (c *checker) structField(pos ast.Pos, sd *ir.StructDef, name string) *ir.St
 	if sd == nil || c.rejectForeignUnexported(pos, sd, sd.Name, name) {
 		return nil
 	}
-	return findField(sd, name)
+	if f := findField(sd, name); f != nil {
+		return f
+	}
+	if c.nativeValues {
+		return findNativeField(sd, name)
+	}
+	return nil
 }
 
 // enumMember reports whether ed declares name, under the same visibility rule

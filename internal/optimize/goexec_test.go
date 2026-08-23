@@ -45,11 +45,10 @@ func purepkgFunc(name string, params []*ir.Param, ret *ir.Type) *ir.Func {
 }
 
 var (
-	fnDouble   = purepkgFunc("Double", []*ir.Param{{Name: "x", Type: ir.TypInt}}, ir.TypInt)
-	fnGreet    = purepkgFunc("Greet", []*ir.Param{{Name: "name", Type: ir.TypString}}, ir.TypString)
-	fnGetItems = purepkgFunc("GetItems", nil, &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypDyn}})
-	fnBoom     = purepkgFunc("Boom", nil, ir.TypString)
-	fnJoin     = purepkgFunc("Join", []*ir.Param{
+	fnDouble = purepkgFunc("Double", []*ir.Param{{Name: "x", Type: ir.TypInt}}, ir.TypInt)
+	fnGreet  = purepkgFunc("Greet", []*ir.Param{{Name: "name", Type: ir.TypString}}, ir.TypString)
+	fnBoom   = purepkgFunc("Boom", nil, ir.TypString)
+	fnJoin   = purepkgFunc("Join", []*ir.Param{
 		{Name: "parts", Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}}},
 		{Name: "sep", Type: ir.TypString},
 	}, ir.TypString)
@@ -63,7 +62,7 @@ func purepkgCtx(dir string) *evalCtx {
 		native: &nativeEval{},
 		nativeImports: map[string]*ir.NativeImport{"purepkg": {
 			ImportPath: purepkgPath,
-			Funcs:      []*ir.Func{fnDouble, fnGreet, fnGetItems, fnBoom, fnJoin, purepkgFunc("Nothing", nil, nil)},
+			Funcs:      []*ir.Func{fnDouble, fnGreet, fnBoom, fnJoin, purepkgFunc("Nothing", nil, nil)},
 		}},
 		nativeSchemes: map[string]string{"purepkg": "go"},
 	}
@@ -90,7 +89,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 		if state == nativePending {
 			t.Fatalf("%s still pending after its batch ran", c.fn.NativeName)
 		}
-		out[i] = constResult{val: v, err: err}
+		out[i] = constResult{expr: v, err: err}
 	}
 	return out
 }
@@ -107,45 +106,66 @@ func TestBatchEvaluation(t *testing.T) {
 	if dir == "" {
 		t.Skip("could not find project root")
 	}
+	// GetItems' return type comes from the real importer: the elements are a
+	// declared struct, and that declaration is what names their fields.
+	getItems := importedFunc(t, "GetItems")
 	ctx := purepkgCtx(dir)
 	got := evalNow(t, ctx,
 		call{fnDouble, []any{5}},
 		call{fnGreet, []any{"world"}},
-		call{fnGetItems, nil},
+		call{getItems, nil},
 		call{fnJoin, []any{[]any{"a", "b"}, "-"}},
 		call{fnBoom, nil},
 	)
 
-	if got[0].err != nil || got[0].val != 10 {
-		t.Errorf("Double(5) = %v, %v; want 10", got[0].val, got[0].err)
+	if got[0].err != nil || litRaw(got[0].expr) != "10" {
+		t.Errorf("Double(5) = %v, %v; want 10", got[0].expr, got[0].err)
 	}
-	if got[1].err != nil || got[1].val != "Hello, world!" {
-		t.Errorf("Greet(world) = %v, %v; want %q", got[1].val, got[1].err, "Hello, world!")
+	if got[1].err != nil || litRaw(got[1].expr) != "Hello, world!" {
+		t.Errorf("Greet(world) = %v, %v; want %q", got[1].expr, got[1].err, "Hello, world!")
 	}
-	if got[3].err != nil || got[3].val != "a-b" {
-		t.Errorf("Join([a b], -) = %v, %v; want %q", got[3].val, got[3].err, "a-b")
+	if got[3].err != nil || litRaw(got[3].expr) != "a-b" {
+		t.Errorf("Join([a b], -) = %v, %v; want %q", got[3].expr, got[3].err, "a-b")
 	}
 	if got[4].err == nil {
-		t.Errorf("Boom() = %v; want an error", got[4].val)
+		t.Errorf("Boom() = %v; want an error", got[4].expr)
 	}
 
-	items, ok := got[2].val.([]any)
+	items, ok := got[2].expr.(*ir.ListLit)
 	if !ok {
-		t.Fatalf("GetItems() = %T (%v), want []any", got[2].val, got[2].err)
+		t.Fatalf("GetItems() = %T (%v), want a list literal", got[2].expr, got[2].err)
 	}
-	if len(items) != 2 {
-		t.Fatalf("GetItems() returned %d items, want 2", len(items))
+	if len(items.Elems) != 2 {
+		t.Fatalf("GetItems() returned %d items, want 2", len(items.Elems))
 	}
-	first, ok := items[0].(map[string]any)
+	first, ok := items.Elems[0].(*ir.StructLit)
 	if !ok {
-		t.Fatalf("item = %T, want map[string]any", items[0])
+		t.Fatalf("item = %T, want a struct literal", items.Elems[0])
 	}
-	if first["name"] != "alpha" {
-		t.Errorf("item name = %v, want alpha", first["name"])
+	if got := fieldRaw(first, "name"); got != "alpha" {
+		t.Errorf("item name = %q, want alpha", got)
 	}
-	if first["value"] != 1 {
-		t.Errorf("item value = %v (%T), want int 1", first["value"], first["value"])
+	if got := fieldRaw(first, "value"); got != "1" {
+		t.Errorf("item value = %q, want 1", got)
 	}
+}
+
+// litRaw is the raw text of a literal expression, or "" for anything else.
+func litRaw(e ir.Expr) string {
+	if lit, ok := e.(*ir.Literal); ok {
+		return lit.Raw
+	}
+	return ""
+}
+
+// fieldRaw is the raw text of a named field's literal value.
+func fieldRaw(s *ir.StructLit, name string) string {
+	for _, f := range s.Fields {
+		if f.Name == name {
+			return litRaw(f.Value)
+		}
+	}
+	return ""
 }
 
 // A cached value is answered without a batch: the second request must resolve
@@ -162,7 +182,7 @@ func TestCachedCallNeedsNoBatch(t *testing.T) {
 	if state != nativeReady || err != nil {
 		t.Fatalf("cached call not ready: state=%v err=%v", state, err)
 	}
-	if v != "Hello, cache!" {
+	if litRaw(v) != "Hello, cache!" {
 		t.Errorf("got %v", v)
 	}
 	if len(ctx.native.order) != 0 {
@@ -271,7 +291,7 @@ func TestNestedCallTakesASecondRound(t *testing.T) {
 func TestConstEvalSource(t *testing.T) {
 	src := constEvalSource([]*nativeRequest{{
 		key: "cdead", importPath: purepkgPath, nativeType: "purepkg.Greet",
-		funcName: "Greet", args: []string{`"x"`}, hasResult: true,
+		funcName: "Greet", args: []string{`"x"`}, ret: ir.TypString,
 	}})
 	for _, want := range []string{
 		`p0 "` + purepkgPath + `"`,
@@ -296,8 +316,10 @@ func TestVoidCallFoldsToNull(t *testing.T) {
 	}
 	fn := purepkgFunc("Nothing", nil, nil)
 	got := evalNow(t, purepkgCtx(dir), call{fn, nil})
-	if got[0].err != nil || got[0].val != nil {
-		t.Errorf("Nothing() = %v, %v; want nil, nil", got[0].val, got[0].err)
+	// The encoder writes `null`, which checks to the same thing source `null`
+	// does: a reference to the predeclared const, whose type is null.
+	if got[0].err != nil || got[0].expr == nil || got[0].expr.ExprType().Kind != ir.TypeNull {
+		t.Errorf("Nothing() = %v, %v; want a null-typed expression", got[0].expr, got[0].err)
 	}
 }
 

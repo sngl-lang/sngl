@@ -28,11 +28,11 @@ import (
 // It must be generous — on a cold build cache the link dwarfs the calls.
 const evalTimeout = 120 * time.Second
 
-// constResult is a finished compile-time evaluation: a value, or the reason
-// there will never be one.
+// constResult is a finished compile-time evaluation: the checked IR of the
+// value, or the reason there will never be one.
 type constResult struct {
-	val any
-	err error
+	expr ir.Expr
+	err  error
 }
 
 // constCache memoizes results across rounds and across Optimize calls (the
@@ -60,7 +60,9 @@ type nativeRequest struct {
 	imports    []string // import paths the argument sources reference
 	ctxArg     bool
 	errReturn  bool
-	hasResult  bool // returns something other than an error
+	// ret is the declared return type: nil when the function returns nothing
+	// but an error, and otherwise the type the result is checked against.
+	ret *ir.Type
 }
 
 // nativeEval collects the requests one fold pass discovered.
@@ -88,7 +90,7 @@ func (n *nativeEval) add(req *nativeRequest) {
 // costs one build error naming the function, while wrongly rejecting one costs
 // every const that needed it (and the checker's own IR fixtures record no
 // Path at all).
-func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args []any) (any, nativeCallState, error) {
+func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args []any) (ir.Expr, nativeCallState, error) {
 	if scheme != "go" && scheme != "" {
 		return nil, nativeFailed, fmt.Errorf("%s:// functions cannot be evaluated at build time", scheme)
 	}
@@ -109,7 +111,7 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 		if res.err != nil {
 			return nil, nativeFailed, res.err
 		}
-		return res.val, nativeReady, nil
+		return res.expr, nativeReady, nil
 	}
 	req := &nativeRequest{
 		key:        key,
@@ -120,7 +122,7 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 		imports:    imports,
 		ctxArg:     f.HasContextArg,
 		errReturn:  f.HasErrorReturn,
-		hasResult:  f.Return != nil,
+		ret:        f.Return,
 	}
 	if ctx.native != nil {
 		ctx.native.add(req)
@@ -134,7 +136,7 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 	runNativeRequests(ctx.dir, []*nativeRequest{req})
 	res, _ := constCache.Load(key)
 	if r, ok := res.(constResult); ok && r.err == nil {
-		return r.val, nativeReady, nil
+		return r.expr, nativeReady, nil
 	} else if ok {
 		return nil, nativeFailed, r.err
 	}
@@ -203,14 +205,14 @@ func runNativeRequests(dir string, reqs []*nativeRequest) {
 			constCache.Store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
 			continue
 		}
-		constCache.Store(req.key, constResult{val: v})
+		constCache.Store(req.key, constResult{expr: v})
 		slog.Debug("const eval", "func", req.nativeType)
 	}
 }
 
 // execConstEval generates, builds and runs the batch program, returning the
 // values keyed by request key.
-func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
+func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error) {
 	if dir == "" {
 		return nil, fmt.Errorf("no project directory")
 	}
@@ -269,8 +271,12 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
+	want := make(map[string]*ir.Type, len(reqs))
+	for _, r := range reqs {
+		want[r.key] = r.ret
+	}
 	parseStart := time.Now()
-	values, err := parseConstResults(resultPath, results)
+	values, err := parseConstResults(resultPath, results, want)
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
 	return values, err
 }
@@ -563,11 +569,11 @@ import (
 		fmt.Fprintf(&b, "\nfunc eval%d() {\n\tconst key = %q\n", i, r.key)
 		b.WriteString("\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\tconsteval.Fail(key, fmt.Errorf(\"panic: %v\", r))\n\t\t}\n\t}()\n")
 		switch {
-		case !r.hasResult && !r.errReturn:
+		case r.ret == nil && !r.errReturn:
 			// A pure func with no result still runs — that is what the folder
 			// asked for — and folds to null.
 			fmt.Fprintf(&b, "\t%s\n\tconsteval.Emit(key, nil)\n}\n", call)
-		case r.errReturn && r.hasResult:
+		case r.errReturn && r.ret != nil:
 			fmt.Fprintf(&b, "\tv, err := %s\n\tif err != nil {\n\t\tconsteval.Fail(key, err)\n\t\treturn\n\t}\n\tconsteval.Emit(key, v)\n}\n", call)
 		case r.errReturn:
 			fmt.Fprintf(&b, "\tif err := %s; err != nil {\n\t\tconsteval.Fail(key, err)\n\t\treturn\n\t}\n\tconsteval.Emit(key, nil)\n}\n", call)

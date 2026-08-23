@@ -14,6 +14,18 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		return nil
 	}
 
+	// A pure go:// call folds to the checked IR of its result, not to a value
+	// rebuilt from one. The result document is SNGL source checked against the
+	// function's declared return type, so what lands here is checker output —
+	// a struct with its Def, a list with its element type, a float that stayed
+	// a float. Taken before evalExpr because that path can only hand back a
+	// value, and only the value's shape survives it.
+	if call, ok := e.(*ir.Call); ok {
+		if folded, ok := foldPureGoCall(call, ctx); ok {
+			return folded
+		}
+	}
+
 	// Try full constant evaluation — but NOT for composite literal nodes
 	// (struct/list/map). Round-tripping those through the runtime value
 	// representation loses concrete type info: irFromValue rebuilds a struct

@@ -1,6 +1,9 @@
 package purepkg
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 // Double returns x * 2.
 //
@@ -45,3 +48,62 @@ func Join(parts []string, sep string) string { return strings.Join(parts, sep) }
 //
 //sngl:pure
 func Nothing() {}
+
+// Whole returns a float whose value happens to be a whole number. On the JSON
+// results path such a value came back as an int and folded to an int literal;
+// the type says float and must stay float.
+//
+//sngl:pure
+func Whole() float64 { return 3.0 }
+
+// Wait returns a duration. SNGL models one as a unit value with a base of
+// milliseconds, so the fold must keep the unit rather than the bare magnitude.
+//
+//sngl:pure
+func Wait() time.Duration { return 250 * time.Millisecond }
+
+// Meta names its fields the way Go does and SNGL does not: an all-caps
+// initialism lowercases whole (URL, ID) while a leading one in a longer name
+// does not (HTTPStatus). Guessing the SNGL name from the Go name is what the
+// folder used to do; the correspondence is recorded on the imported
+// declaration instead.
+type Meta struct {
+	URL        string
+	ID         int
+	HTTPStatus int
+}
+
+// GetMeta returns a named struct directly, so the fold must produce a struct
+// literal carrying that declaration.
+//
+//sngl:pure
+func GetMeta() Meta { return Meta{URL: "/a", ID: 7, HTTPStatus: 404} }
+
+// Group holds a list of structs, so a value nests a struct inside a list
+// inside a struct.
+type Group struct {
+	Label string
+	Items []Item
+}
+
+// GetGroups returns groups of items.
+//
+//sngl:pure
+func GetGroups() []Group {
+	return []Group{
+		{Label: "first", Items: []Item{{Name: "alpha", Value: 1}}},
+		{Label: "second", Items: nil},
+	}
+}
+
+// Tally has Item's field shape under a different name, so a value of one where
+// the other is expected can only be caught by the type name.
+type Tally struct {
+	Name  string
+	Value int
+}
+
+// GetTally returns a Tally.
+//
+//sngl:pure
+func GetTally() Tally { return Tally{Name: "t", Value: 3} }
