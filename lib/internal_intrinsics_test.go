@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	sngl "git.duckfam.us/jonathan/sngl"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -62,6 +63,25 @@ func TestInternalPackagesDeclareEveryIntrinsic(t *testing.T) {
 			if def.Purity != ir.PurityUnknown && fn.Purity != def.Purity {
 				t.Errorf("%s: %s purity=%v, registry has %v", uri, def.Name, fn.Purity, def.Purity)
 			}
+		}
+	}
+}
+
+// A component a program can write is a component someone has to look up, so
+// every exported one carries a doc comment. The draw shapes shipped without
+// them and nothing noticed: `sngl doc` rendered a bare name and the website
+// rendered an empty card.
+func TestExportedComponentsAreDocumented(t *testing.T) {
+	reg, _, err := checker.LoadStdlib()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reg) == 0 {
+		t.Fatal("no components in the stdlib registry")
+	}
+	for name, schema := range reg {
+		if schema.Doc == "" {
+			t.Errorf("component %s has no doc comment", name)
 		}
 	}
 }

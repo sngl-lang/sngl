@@ -317,13 +317,13 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(lib.Packages()...)
+		pd, stmts := stdlibPackageDocs(lib.PublicPackages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
 		if !checker.HasPackage(uri) {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
@@ -889,8 +889,8 @@ func sortByName(xs []DeclSummary) {
 
 // libraryPaths returns the embedded library packages as import paths.
 func libraryPaths() []string {
-	out := make([]string, 0, len(lib.Packages()))
-	for _, p := range lib.Packages() {
+	out := make([]string, 0, len(lib.PublicPackages()))
+	for _, p := range lib.PublicPackages() {
 		out = append(out, "`sngl://"+p+"`")
 	}
 	return out

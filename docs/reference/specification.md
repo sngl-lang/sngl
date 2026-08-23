@@ -599,7 +599,7 @@ error. Methods attached to a type (`func Type.m`) occupy that type's method set
 rather than a value scope, so a user method may override a standard-library
 method of the same name on the same type.
 
-### Predeclared identifiers and the two library tiers
+### Predeclared identifiers and the library tiers
 
 Everything predeclared is an ordinary declaration in `sngl://builtin` —
 the scalar and collection types (`int`, `float`, `string`, `list`, `map`,
@@ -637,8 +637,16 @@ named like a library entity takes precedence over it within the package.
 
 The library is not limited to those two packages. `sngl://draw` holds `canvas`
 and the 2D shapes it hosts, and is imported the same way. A library package may
-also carry macros next to the declarations they apply to: `import "sngl://draw"` brings both the shape components and the `#[draw.shape]` mark
-that declares new ones.
+also carry macros next to the declarations they apply to: `import "sngl://draw"`
+brings both the shape components and the `#[draw.shape]` mark that declares new
+ones.
+
+Packages under `sngl://internal/` are the compiler's own tier. They declare the
+intrinsics a backend implements natively — the string, list, map and formatting
+primitives the packages above are written against — and the marks that identify
+them. A program may name one, as it may any package, but nothing there is part
+of the language a program is written in, and documentation indexes leave them
+out.
 
 ### Package comments
 

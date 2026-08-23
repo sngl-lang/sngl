@@ -50,6 +50,20 @@ func Packages() []string {
 	return out
 }
 
+// PublicPackages returns the packages a program is meant to import, dropping
+// the compiler's own tier under internal/. Documentation indexes them; name
+// one explicitly and it still resolves, as an internal Go package does.
+func PublicPackages() []string {
+	out := make([]string, 0, len(Packages()))
+	for _, p := range Packages() {
+		if p == "internal" || strings.HasPrefix(p, "internal/") {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
 // HasPackage reports whether name is an embedded package directory.
 func HasPackage(name string) bool {
 	return slices.Contains(Packages(), name)

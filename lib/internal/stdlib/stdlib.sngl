@@ -1,9 +1,14 @@
-// Package stdlib declares the language-level intrinsics: string, math, list, map, colour,
-// regex and error primitives every backend implements.
+// Package stdlib declares the language-level intrinsics: the string, math,
+// list, map, color and error primitives every backend implements.
 //
 // Each declaration here is a signature with no body: the result is produced
 // by the target's native implementation of the marked id, so a backend that
 // does not implement one has nothing to fall back to.
+//
+// RegexMatches and RegexFind are the exception — no backend implements them
+// and nothing in `sngl://std` or `sngl://builtin` reaches them. They are kept
+// as the shape the feature will take when it returns, with a subset every
+// platform can honour (issue #93).
 
 import . "sngl://internal/marks"
 

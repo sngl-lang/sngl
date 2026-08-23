@@ -108,3 +108,37 @@ func TestAllDeclPages(t *testing.T) {
 		t.Error("no android pages emitted")
 	}
 }
+
+// The compiler's own tier is reachable by name but is not part of the
+// language a program is written in, so the merged library index must not
+// advertise it — a reader looking up `sngl` should not meet ColorHex or
+// CanvasApplyStyle beside `button`.
+func TestLookupSnglOmitsInternalTier(t *testing.T) {
+	res, err := lookup.Lookup("sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Index == nil {
+		t.Fatal("no index for sngl")
+	}
+	if strings.Contains(res.Index.Description, "internal/") {
+		t.Errorf("description lists the internal tier: %q", res.Index.Description)
+	}
+	for _, f := range res.Index.Functions {
+		switch f.Name {
+		case "ColorHex", "CanvasApplyStyle", "Pick", "StrUpper":
+			t.Errorf("intrinsic %q from the internal tier is in the sngl index", f.Name)
+		}
+	}
+}
+
+// Naming one still resolves, as an internal Go package does.
+func TestLookupInternalPackageByName(t *testing.T) {
+	res, err := lookup.Lookup("sngl://internal/stdlib")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Index == nil || len(res.Index.Functions) == 0 {
+		t.Fatal("sngl://internal/stdlib resolved to nothing")
+	}
+}
