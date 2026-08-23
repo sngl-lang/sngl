@@ -4,7 +4,8 @@ import . "sngl://std"
 // It only worked when the return type already matched: `doubled` returns an
 // int and `value` wants a string, so the call was declined and the value was
 // wrapped in a conversion from func to string instead — which the html
-// backend emitted as an empty span.
+// backend emitted as an empty span. The emission is covered by
+// cmd/sngl/testdata; what this pins is that the call happens at all.
 component main {
     var count = 2
     func doubled() => count * 2
