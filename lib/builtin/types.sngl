@@ -49,10 +49,10 @@ struct list<T> {}
 // the functions on the `color` receiver.
 #[builtin("color")]
 struct color {
-    r int = 0
-    g int = 0
-    b int = 0
-    a int = 255
+    r uint8 = 0
+    g uint8 = 0
+    b uint8 = 0
+    a uint8 = 255
 }
 
 // Calendar date in canonical "YYYY-MM-DD" form. Like `color`, a date is
