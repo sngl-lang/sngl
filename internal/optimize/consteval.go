@@ -93,30 +93,39 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	}
 }
 
+// nativeCallTarget resolves a call written as `alias.name(...)` against the
+// package's native imports. It reads the AST because the checker leaves such a
+// call unresolved: there is no ir.Func to point at.
+func nativeCallTarget(call *ir.Call, ctx *evalCtx) (name string, ns *ir.NativeImport, ok bool) {
+	if call == nil || call.AST == nil {
+		return "", nil, false
+	}
+	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return "", nil, false
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return "", nil, false
+	}
+	ns, ok = ctx.getNativeImports()[ident.Name]
+	if !ok {
+		return "", nil, false
+	}
+	return sel.Field, ns, true
+}
+
 // isNativePureCall checks if an unresolved call is to a pure native function.
 func isNativePureCall(call *ir.Call, ctx *evalCtx) bool {
 	if call.Func != nil {
 		return false // already resolved
 	}
-	// Unresolved calls may be namespace.func() pattern — check via AST fallback.
-	if call.AST == nil {
-		return false
-	}
-	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	name, ns, ok := nativeCallTarget(call, ctx)
 	if !ok {
-		return false
-	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return false
-	}
-	nativeImports := ctx.getNativeImports()
-	ns, exists := nativeImports[ident.Name]
-	if !exists {
 		return false
 	}
 	for _, f := range ns.Funcs {
-		if f.Name == sel.Field && f.Purity == ir.PurityPure {
+		if f.Name == name && f.Purity == ir.PurityPure {
 			return true
 		}
 	}
@@ -318,27 +327,16 @@ func canFoldBody(f *ir.Func) bool {
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
-	if call.AST == nil {
-		return nil, false
-	}
-	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	name, ns, ok := nativeCallTarget(call, ctx)
 	if !ok {
 		return nil, false
 	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return nil, false
-	}
-	nativeImports := ctx.getNativeImports()
-	ns, exists := nativeImports[ident.Name]
-	if !exists {
-		return nil, false
-	}
-	qualName := ident.Name + "." + sel.Field
+	alias := call.AST.Func.(*ast.SelectExpr).Operand.(*ast.IdentExpr).Name
+	qualName := alias + "." + name
 
 	// Try file:// scheme functions.
 	for _, f := range ns.Funcs {
-		if f.Name == sel.Field && f.NativePkg == "file" {
+		if f.Name == name && f.NativePkg == "file" {
 			if len(args) == 1 {
 				if filename, ok := args[0].(string); ok {
 					return evalFileFunc(f.NativeName, ns.ImportPath, filename, ctx)
@@ -349,9 +347,16 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 
 	if ctx.dir != "" {
 		for _, f := range ns.Funcs {
-			if f.Name == sel.Field && f.Purity == ir.PurityPure && f.NativePkg != "file" {
-				result, err := execPureGoFunc(ctx, ns.ImportPath, f.NativeName, args)
-				if err != nil {
+			if f.Name == name && f.Purity == ir.PurityPure && f.NativePkg != "file" {
+				scheme := ctx.nativeSchemes[alias]
+				result, state, err := requestPureGoFunc(ctx, scheme, ns.ImportPath, f, args)
+				switch state {
+				case nativePending:
+					// Recorded for the next round; this pass leaves the call
+					// unfolded and the round loop starts over with the value
+					// in hand.
+					return nil, false
+				case nativeFailed:
 					// A failed compile-time evaluation can only be tolerated when
 					// the target can recompute the value at runtime instead. That
 					// requires the target language to call this scheme natively
@@ -359,7 +364,6 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 					// can't — html static/none, kotlin, js+go://, etc. — the const
 					// is unrecoverable, and silently dropping it renders pages with
 					// empty/broken content. Abort the build instead.
-					scheme := ctx.nativeSchemes[ident.Name]
 					if !schemeRunnableAtRuntime(scheme, ctx.language) && ctx.err == nil {
 						ctx.err = fmt.Errorf("%s:// import %q failed to evaluate at build time and the %q target cannot call it at runtime: %w", scheme, qualName, ctx.language, err)
 					} else {

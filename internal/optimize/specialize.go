@@ -2,7 +2,6 @@ package optimize
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -114,18 +113,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		bodyPkg = ctx.pkg
 	}
 
-	childCtx := &evalCtx{
-		platform:    ctx.platform,
-		language:    ctx.language,
-		dir:         ctx.dir,
-		noCacheBust: ctx.noCacheBust,
-		pkg:         bodyPkg,
-		fileAssets:  ctx.fileAssets,
-		values:      make(map[ir.Symbol]any, len(ctx.values)+len(propValues)),
-		inlining:    make(map[*ir.Component]int, len(ctx.inlining)+1),
-	}
-	maps.Copy(childCtx.values, ctx.values)
-	maps.Copy(childCtx.inlining, ctx.inlining)
+	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
 	for name, val := range propValues {
 		if sym, ok := paramSyms[name]; ok {

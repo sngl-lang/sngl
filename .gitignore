@@ -23,4 +23,4 @@ pkg/kotlin/testagent/build/
 
 # Platform test runners build in temp dirs beside their package
 codegen/platform/*/fyne-canvas-*/
-/.sngl-goexec-*/
+/.sngl-consteval-*/

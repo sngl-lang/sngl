@@ -3,12 +3,11 @@
 package optimize
 
 import (
-	"bufio"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -18,134 +17,139 @@ import (
 	"sync"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
 )
 
-var pureCache sync.Map // funcName+args → result
+// evalTimeout bounds one round: generating, building and running the batch.
+// It must be generous — on a cold build cache the link dwarfs the calls.
+const evalTimeout = 120 * time.Second
 
-// evalTimeout bounds a single compile-time evaluation. It must be generous:
-// the first request pays for building the evaluator, and on a cold cache
-// (fresh CI runner) that build dwarfs the call itself.
-const evalTimeout = 60 * time.Second
+// constResult is a finished compile-time evaluation: a value, or the reason
+// there will never be one.
+type constResult struct {
+	val any
+	err error
+}
 
-// execPureGoFunc evaluates a pure Go function at compile time.
+// constCache memoizes results across rounds and across Optimize calls (the
+// pipeline optimizes twice per target, and one docs build shares a process).
+// The key is derived from the function and its rendered arguments, so two
+// calls collide only when they really are the same call.
+var constCache sync.Map // string → constResult
+
+// nativeCallState is what a fold pass learned about one pure native call.
+type nativeCallState int
+
+const (
+	nativeReady   nativeCallState = iota // the value is in hand
+	nativePending                        // requested; a later round will have it
+	nativeFailed                         // no value will ever arrive
+)
+
+// nativeRequest is one call the next round must make.
+type nativeRequest struct {
+	key        string
+	importPath string   // Go import path of the package holding the function
+	nativeType string   // qualified native ref, e.g. "docs.Pages"
+	funcName   string   // exported Go identifier
+	args       []string // arguments as Go source
+	imports    []string // import paths the argument sources reference
+	ctxArg     bool
+	errReturn  bool
+	hasResult  bool // returns something other than an error
+}
+
+// nativeEval collects the requests one fold pass discovered.
+type nativeEval struct {
+	byKey map[string]*nativeRequest
+	order []*nativeRequest
+}
+
+func (n *nativeEval) add(req *nativeRequest) {
+	if n.byKey == nil {
+		n.byKey = map[string]*nativeRequest{}
+	}
+	if _, dup := n.byKey[req.key]; dup {
+		return
+	}
+	n.byKey[req.key] = req
+	n.order = append(n.order, req)
+}
+
+// requestPureGoFunc answers a pure go:// call from the cache, or records it as
+// pending so the round loop can batch it with every other pending call.
 //
-// Every pure function reachable from the package's go:// imports is compiled
-// once into a single evaluator binary that stays resident and answers calls
-// over a pipe. Building per call — the `go run` this replaced — cost a full
-// link each time: 33 calls, 33 seconds, for one docs-site build.
-func execPureGoFunc(ctx *evalCtx, importPath, nativeType string, args []any) (any, error) {
-	cacheKey := fmt.Sprintf("%s:%v", nativeType, args)
-	if cached, ok := pureCache.Load(cacheKey); ok {
-		return cached, nil
+// Only the go scheme can be linked into the generated program. An import with
+// no recorded scheme is accepted: a request that shouldn't have been made
+// costs one build error naming the function, while wrongly rejecting one costs
+// every const that needed it (and the checker's own IR fixtures record no
+// Path at all).
+func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args []any) (any, nativeCallState, error) {
+	if scheme != "go" && scheme != "" {
+		return nil, nativeFailed, fmt.Errorf("%s:// functions cannot be evaluated at build time", scheme)
 	}
-
-	ev, err := evaluatorFor(ctx)
+	if importPath == "" {
+		return nil, nativeFailed, fmt.Errorf("import has no Go import path")
+	}
+	_, funcName, ok := strings.Cut(f.NativeName, ".")
+	if !ok || funcName == "" || !isExported(funcName) {
+		return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.NativeName)
+	}
+	argSrc, imports, err := renderGoArgs(f, args)
 	if err != nil {
-		return nil, err
+		return nil, nativeFailed, err
 	}
-	_, funcName, _ := strings.Cut(nativeType, ".")
-	result, err := ev.call(importPath+"."+funcName, nativeType, args)
-	if err != nil {
-		return nil, err
+	key := requestKey(importPath, f.NativeName, argSrc)
+	if c, loaded := constCache.Load(key); loaded {
+		res := c.(constResult)
+		if res.err != nil {
+			return nil, nativeFailed, res.err
+		}
+		return res.val, nativeReady, nil
 	}
-	result = normalizeJSON(result)
-	pureCache.Store(cacheKey, result)
-	return result, nil
+	req := &nativeRequest{
+		key:        key,
+		importPath: importPath,
+		nativeType: f.NativeName,
+		funcName:   funcName,
+		args:       argSrc,
+		imports:    imports,
+		ctxArg:     f.HasContextArg,
+		errReturn:  f.HasErrorReturn,
+		hasResult:  f.Return != nil,
+	}
+	if ctx.native != nil {
+		ctx.native.add(req)
+		return nil, nativePending, nil
+	}
+
+	// No batch is open: the round loop was skipped because
+	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
+	// to be approximate precisely because of this branch — a call it missed is
+	// evaluated on its own here, costing one extra build rather than the value.
+	runNativeRequests(ctx.dir, []*nativeRequest{req})
+	res, _ := constCache.Load(key)
+	if r, ok := res.(constResult); ok && r.err == nil {
+		return r.val, nativeReady, nil
+	} else if ok {
+		return nil, nativeFailed, r.err
+	}
+	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.NativeName)
 }
 
-// evaluator is a resident child process holding every pure Go function the
-// package's go:// imports expose, addressed by "<import path>.<func>".
-type evaluator struct {
-	mu      sync.Mutex
-	dir     string
-	binPath string
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	results *bufio.Reader // child's fd 3, not its stdout
-	dead    error         // set once the child is no longer usable
-}
-
-var (
-	evaluatorsMu sync.Mutex
-	evaluators   = map[string]*evaluator{} // dir+function-set → evaluator
-)
-
-// evaluatorFor returns the evaluator covering ctx's go:// imports, building it
-// on first use. Keying on the function set (not just the directory) means a
-// package importing more go:// functions than an earlier one gets its own
-// evaluator instead of missing entries in a stale one.
-func evaluatorFor(ctx *evalCtx) (*evaluator, error) {
-	if ctx.dir == "" {
-		return nil, fmt.Errorf("no project directory")
+// requestKey identifies a call. The rendered arguments are Go source, so
+// distinct argument lists cannot render to the same key — unlike a %v of the
+// value slice, where []any{"a b"} and []any{"a","b"} both print "[a b]".
+func requestKey(importPath, nativeType string, args []string) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "%s\x00%s\x00%d\x00", importPath, nativeType, len(args))
+	for _, a := range args {
+		fmt.Fprintf(h, "%s\x00", a)
 	}
-	entries := pureGoFuncs(ctx)
-	if len(entries) == 0 {
-		return nil, fmt.Errorf("no pure go:// functions to evaluate")
-	}
-
-	key := ctx.dir + "\x00" + entriesKey(entries)
-	evaluatorsMu.Lock()
-	defer evaluatorsMu.Unlock()
-	if ev, ok := evaluators[key]; ok {
-		if ev.dead != nil {
-			return nil, ev.dead
-		}
-		return ev, nil
-	}
-
-	ev, err := startEvaluator(ctx.dir, entries)
-	if err != nil {
-		// Remember the failure: a build that failed once fails identically for
-		// every later call, so later calls report it without rebuilding.
-		evaluators[key] = &evaluator{dir: ctx.dir, dead: err}
-		return nil, err
-	}
-	evaluators[key] = ev
-	return ev, nil
-}
-
-// evalEntry is one function the evaluator exposes.
-type evalEntry struct {
-	importPath string // Go import path, e.g. "git.duckfam.us/jonathan/sngl/docs"
-	funcName   string // exported Go identifier, e.g. "Highlight"
-}
-
-func (e evalEntry) key() string { return e.importPath + "." + e.funcName }
-
-// pureGoFuncs collects every pure function of every go:// import. A known
-// non-go scheme is excluded — a js:// function is not Go source and cannot be
-// linked in — but an import with no recorded scheme is included: the evaluator
-// links all of these together, so wrongly excluding one costs every const in
-// the package, while wrongly including one costs a build error naming it.
-func pureGoFuncs(ctx *evalCtx) []evalEntry {
-	var entries []evalEntry
-	seen := map[string]bool{}
-	for alias, ns := range ctx.getNativeImports() {
-		if scheme := ctx.nativeSchemes[alias]; scheme != "go" && scheme != "" {
-			continue
-		}
-		if ns.ImportPath == "" {
-			continue
-		}
-		for _, f := range ns.Funcs {
-			if f.Purity != ir.PurityPure || f.NativePkg == "file" || f.Unusable != "" {
-				continue
-			}
-			_, name, ok := strings.Cut(f.NativeName, ".")
-			if !ok || name == "" || !isExported(name) {
-				continue
-			}
-			e := evalEntry{importPath: ns.ImportPath, funcName: name}
-			if seen[e.key()] {
-				continue
-			}
-			seen[e.key()] = true
-			entries = append(entries, e)
-		}
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].key() < entries[j].key() })
-	return entries
+	return fmt.Sprintf("c%x", h.Sum(nil)[:12])
 }
 
 func isExported(name string) bool {
@@ -153,381 +157,294 @@ func isExported(name string) bool {
 	return c >= 'A' && c <= 'Z'
 }
 
-func entriesKey(entries []evalEntry) string {
-	h := sha256.New()
-	for _, e := range entries {
-		fmt.Fprintln(h, e.key())
+// renderGoArgs turns folded argument values into Go source using the Go
+// language translator, so the generated call site spells a value exactly the
+// way generated code would. Returns the argument sources and the import paths
+// they reference.
+func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
+	if len(args) != len(f.Params) {
+		return nil, nil, fmt.Errorf("%s takes %d arguments, got %d", f.NativeName, len(f.Params), len(args))
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))
+	if len(args) == 0 {
+		return nil, nil, nil
+	}
+	gc := golang.NewIRContext(codegen.NewExprCtx(nil))
+	out := make([]string, len(args))
+	for i, a := range args {
+		e := irFromValue(a, f.Params[i].Type)
+		if e == nil {
+			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
+		}
+		src := gc.EvalExpr(e)
+		if strings.TrimSpace(src) == "" {
+			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.NativeName)
+		}
+		out[i] = src
+	}
+	return out, gc.Imports(), nil
 }
 
-// startEvaluator generates, builds, and launches the evaluator binary.
-func startEvaluator(dir string, entries []evalEntry) (*evaluator, error) {
+// runNativeRequests evaluates every pending request in one generated program:
+// one build, one run, one results document. Each request ends up in
+// constCache — with a value, or with the reason it has none, so a later round
+// neither re-requests it nor spins.
+func runNativeRequests(dir string, reqs []*nativeRequest) {
+	values, err := execConstEval(dir, reqs)
+	for _, req := range reqs {
+		if err != nil {
+			constCache.Store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, err)})
+			continue
+		}
+		v, ok := values[req.key]
+		if !ok {
+			// The generated program ran but produced nothing for this key:
+			// consteval.Fail was called, or the call never returned.
+			constCache.Store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
+			continue
+		}
+		constCache.Store(req.key, constResult{val: v})
+		slog.Debug("const eval", "func", req.nativeType)
+	}
+}
+
+// execConstEval generates, builds and runs the batch program, returning the
+// values keyed by request key.
+func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
+	if dir == "" {
+		return nil, fmt.Errorf("no project directory")
+	}
+
 	// The source must sit inside the project so the module resolves; the
 	// binary must not, or `go build ./...` in the project would pick it up.
-	srcDir, err := os.MkdirTemp(dir, ".sngl-goeval-*")
+	src := constEvalSource(reqs)
+	srcDir, err := constEvalSrcDir(dir, src)
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, err
 	}
 	defer os.RemoveAll(srcDir)
-	if err := os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(evaluatorSource(entries)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(src), 0o644); err != nil {
 		return nil, fmt.Errorf("writing evaluator source: %w", err)
 	}
 
-	binDir, err := os.MkdirTemp("", "sngl-goeval-*")
+	binPath, err := constEvalBinPath(filepath.Base(srcDir))
 	if err != nil {
-		return nil, fmt.Errorf("creating binary dir: %w", err)
+		return nil, err
 	}
-	binPath := filepath.Join(binDir, "eval")
+	runDir, err := os.MkdirTemp("", "sngl-consteval-*")
+	if err != nil {
+		return nil, fmt.Errorf("creating output dir: %w", err)
+	}
+	defer os.RemoveAll(runDir)
+	resultPath := filepath.Join(runDir, "results.sngl")
 
 	buildCtx, cancel := context.WithTimeout(context.Background(), evalTimeout)
 	defer cancel()
 	build := exec.CommandContext(buildCtx, "go", "build", "-o", binPath, "./"+filepath.Base(srcDir))
 	build.Dir = dir
-	slog.Info("exec", "cmd", "go build (const evaluator)", "dir", dir, "funcs", len(entries))
+	slog.Info("exec", "cmd", "go build (const evaluator)", "dir", dir, "pkg", filepath.Base(srcDir), "calls", len(reqs))
+	buildStart := time.Now()
 	if out, err := build.CombinedOutput(); err != nil {
-		os.RemoveAll(binDir)
 		return nil, fmt.Errorf("building const evaluator: %w: %s", err, out)
 	}
+	slog.Debug("consteval build", "duration", time.Since(buildStart))
+	// Mark the entry as used: pruning goes by mtime, and an unchanged program
+	// is never relinked, so its binary's own timestamp would go stale.
+	now := time.Now()
+	os.Chtimes(filepath.Dir(binPath), now, now)
 
-	// Results come back on fd 3, so anything the evaluated code prints to
-	// stdout cannot corrupt the protocol.
-	resultR, resultW, err := os.Pipe()
+	runCtx, cancelRun := context.WithTimeout(context.Background(), evalTimeout)
+	defer cancelRun()
+	run := exec.CommandContext(runCtx, binPath)
+	run.Dir = dir
+	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	// Anything an evaluated function prints goes to stderr: results travel in
+	// the file, so stdout carries nothing we need.
+	run.Stdout = os.Stderr
+	run.Stderr = os.Stderr
+	runStart := time.Now()
+	if err := run.Run(); err != nil {
+		return nil, fmt.Errorf("running const evaluator: %w", err)
+	}
+	slog.Debug("consteval run", "duration", time.Since(runStart))
+
+	results, err := os.ReadFile(resultPath)
 	if err != nil {
-		os.RemoveAll(binDir)
-		return nil, err
+		return nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	defer resultW.Close()
+	parseStart := time.Now()
+	values, err := parseConstResults(resultPath, results)
+	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
+	return values, err
+}
 
-	cmd := exec.Command(binPath)
-	cmd.Dir = dir
-	cmd.Stderr = os.Stderr
-	cmd.ExtraFiles = []*os.File{resultW}
-	stdin, err := cmd.StdinPipe()
+// constEvalSrcDir creates the directory to generate the program into, named
+// from a hash of the source.
+//
+// The name has to be stable: Go's build cache keys a package on its import
+// path, so a fresh random directory per invocation misses the cached link
+// every time — 1.1s against 0.1s in this repo. Hashing the source means the
+// same program lands on the same path (cache hit) while a different call set
+// lands on a different one, and Go still invalidates the entry by itself when
+// a dependency like docs/ changes. A cache of our own keyed on this hash would
+// not: it cannot see that docs.Highlight was edited.
+//
+// The dot prefix keeps the package out of `./...`.
+func constEvalSrcDir(dir, src string) (string, error) {
+	sum := sha256.Sum256([]byte(src))
+	name := fmt.Sprintf(".sngl-consteval-%x", sum[:8])
+	path := filepath.Join(dir, name)
+
+	// Mkdir is the lock: whoever creates the directory owns it until it is
+	// removed. A hard crash can leave one behind, but no live owner can
+	// outlast evalTimeout, so an older one is reclaimed rather than wedging
+	// every later compile into the slow path.
+	err := os.Mkdir(path, 0o755)
+	if errors.Is(err, fs.ErrExist) {
+		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) > evalTimeout {
+			os.RemoveAll(path)
+			err = os.Mkdir(path, 0o755)
+		}
+	}
+	if err == nil {
+		return path, nil
+	}
+	if !errors.Is(err, fs.ErrExist) {
+		return "", fmt.Errorf("creating evaluator dir: %w", err)
+	}
+
+	// Another compile is building this exact program right now. A unique
+	// directory is correct and only costs the cached link, which beats any
+	// wait that could deadlock.
+	unique, err := os.MkdirTemp(dir, name+"-*")
 	if err != nil {
-		os.RemoveAll(binDir)
-		return nil, err
+		return "", fmt.Errorf("creating evaluator dir: %w", err)
 	}
-	if err := cmd.Start(); err != nil {
-		os.RemoveAll(binDir)
-		return nil, fmt.Errorf("starting const evaluator: %w", err)
-	}
-
-	return &evaluator{
-		dir:     dir,
-		binPath: binPath,
-		cmd:     cmd,
-		stdin:   stdin,
-		results: bufio.NewReader(resultR),
-	}, nil
+	return unique, nil
 }
 
-// evalRequest and evalResponse are the wire format, one JSON object per line
-// in each direction.
-type evalRequest struct {
-	Func string `json:"func"`
-	Args []any  `json:"args"`
-}
-
-type evalResponse struct {
-	Value any    `json:"value"`
-	Error string `json:"error,omitempty"`
-}
-
-// call evaluates one function in the resident child. Requests are serialized:
-// the protocol is a single pipe pair, and evaluation is fast enough that
-// pipelining would buy less than it costs in complexity.
-func (ev *evaluator) call(key, nativeType string, args []any) (any, error) {
-	ev.mu.Lock()
-	defer ev.mu.Unlock()
-	if ev.dead != nil {
-		return nil, ev.dead
-	}
-	if args == nil {
-		args = []any{}
-	}
-
-	req, err := json.Marshal(evalRequest{Func: key, Args: args})
+// constEvalBinPath returns the path to build the evaluator binary at, named
+// after the generated package.
+//
+// The path has to be stable for the same program: `go build -o` relinks
+// whenever the output is missing (1.0s here against 0.1s when it is already
+// there and current), and that dominated a round. Reusing the path is not a
+// cache of our own — go decides whether the file is current by comparing its
+// build ID against the recomputed action ID, so editing docs/ relinks it and
+// the binary reflects the change. It lives outside the project so that a
+// 27 MB binary never lands in the tree.
+func constEvalBinPath(pkgName string) (string, error) {
+	root, err := os.UserCacheDir()
 	if err != nil {
-		return nil, err
+		root = os.TempDir()
 	}
-	if _, err := ev.stdin.Write(append(req, '\n')); err != nil {
-		return nil, ev.kill(fmt.Errorf("writing request for %s: %w", nativeType, err))
+	root = filepath.Join(root, "sngl", "consteval")
+	pruneConstEvalBins(root)
+	binDir := filepath.Join(root, strings.TrimPrefix(pkgName, "."))
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		return "", fmt.Errorf("creating evaluator cache dir: %w", err)
 	}
-
-	// A hung evaluation would otherwise block the compile forever: the child
-	// holds every subsequent call, so the timeout has to take the whole
-	// process down rather than abandon one request.
-	type readResult struct {
-		line []byte
-		err  error
-	}
-	done := make(chan readResult, 1)
-	go func() {
-		line, err := ev.results.ReadBytes('\n')
-		done <- readResult{line, err}
-	}()
-
-	select {
-	case <-time.After(evalTimeout):
-		return nil, ev.kill(fmt.Errorf("compile-time evaluation of %s timed out after %s", nativeType, evalTimeout))
-	case r := <-done:
-		if r.err != nil {
-			return nil, ev.kill(fmt.Errorf("compile-time evaluation of %s failed: evaluator exited: %w", nativeType, r.err))
-		}
-		var resp evalResponse
-		if err := json.Unmarshal(r.line, &resp); err != nil {
-			return nil, ev.kill(fmt.Errorf("parsing result of %s: %w", nativeType, err))
-		}
-		if resp.Error != "" {
-			// A per-call failure (panic, returned error) leaves the child
-			// healthy — only this value is lost.
-			return nil, fmt.Errorf("compile-time evaluation of %s failed: %s", nativeType, resp.Error)
-		}
-		slog.Debug("const eval", "func", nativeType)
-		return resp.Value, nil
-	}
+	return filepath.Join(binDir, "eval"), nil
 }
 
-// kill tears down a child that can no longer be trusted and records why, so
-// later calls fall back instead of hanging on a dead pipe. It returns cause
-// for the caller to propagate.
-func (ev *evaluator) kill(cause error) error {
-	ev.dead = cause
-	if ev.cmd != nil && ev.cmd.Process != nil {
-		ev.cmd.Process.Kill()
-		ev.cmd.Wait()
-	}
-	ev.cleanupBinary()
-	return cause
-}
+// binMaxAge bounds how long an unused evaluator binary is kept. Each one links
+// the whole compiler, so they are large and there is one per distinct call set.
+const binMaxAge = 7 * 24 * time.Hour
 
-func (ev *evaluator) cleanupBinary() {
-	if ev.binPath != "" {
-		os.RemoveAll(filepath.Dir(ev.binPath))
-		ev.binPath = ""
+func pruneConstEvalBins(root string) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return
 	}
-}
-
-// close shuts the child down and removes its binary.
-func (ev *evaluator) close() {
-	ev.mu.Lock()
-	defer ev.mu.Unlock()
-	if ev.dead == nil && ev.stdin != nil {
-		ev.stdin.Close() // EOF on stdin is the child's exit signal
-		if ev.cmd != nil {
-			ev.cmd.Wait()
-		}
-		ev.dead = fmt.Errorf("evaluator closed")
-	}
-	ev.cleanupBinary()
-}
-
-// CloseEvaluators shuts down every resident compile-time evaluator and
-// removes its binary. A command that compiles should call it before exiting;
-// leaving it uncalled leaks one binary per distinct import set into the
-// temp directory.
-func CloseEvaluators() {
-	evaluatorsMu.Lock()
-	defer evaluatorsMu.Unlock()
-	for key, ev := range evaluators {
-		ev.close()
-		delete(evaluators, key)
-	}
-}
-
-// evaluatorSource generates the evaluator program. Calls are dispatched
-// through reflection so the generated code never has to name a parameter or
-// result type: it only names the functions, which is all the IR gives us.
-func evaluatorSource(entries []evalEntry) string {
-	// One alias per import path, stable across runs so the build cache hits.
-	aliases := map[string]string{}
-	var paths []string
 	for _, e := range entries {
-		if _, ok := aliases[e.importPath]; ok {
+		info, err := e.Info()
+		if err != nil || time.Since(info.ModTime()) < binMaxAge {
 			continue
 		}
-		aliases[e.importPath] = fmt.Sprintf("p%d", len(aliases))
-		paths = append(paths, e.importPath)
+		os.RemoveAll(filepath.Join(root, e.Name()))
 	}
+}
+
+// constEvalSource generates the batch program. Each call sits in its own
+// function with a recover, so a panic costs one value rather than the round.
+func constEvalSource(reqs []*nativeRequest) string {
+	aliases := map[string]string{}
+	var paths []string
+	for _, r := range reqs {
+		if _, ok := aliases[r.importPath]; ok {
+			continue
+		}
+		aliases[r.importPath] = fmt.Sprintf("p%d", len(aliases))
+		paths = append(paths, r.importPath)
+	}
+	extra := map[string]bool{}
+	for _, r := range reqs {
+		for _, p := range r.imports {
+			if _, ok := aliases[p]; !ok {
+				extra[p] = true
+			}
+		}
+	}
+	var extraPaths []string
+	for p := range extra {
+		extraPaths = append(extraPaths, p)
+	}
+	sort.Strings(extraPaths)
 
 	var b strings.Builder
 	b.WriteString(`package main
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 
+	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+
+	// A pure func may reach into the codegen registries (docs.Targets()
+	// enumerates them); blank-import both so it sees what the compiler sees.
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 `)
-	// Blank-import the registries so a pure func reaching into
-	// codegen.Platforms() sees the same registrations the compiler has.
 	for _, p := range paths {
 		fmt.Fprintf(&b, "\n\t%s %q", aliases[p], p)
 	}
-	b.WriteString("\n)\n\nvar funcs = map[string]any{\n")
-	for _, e := range entries {
-		fmt.Fprintf(&b, "\t%q: %s.%s,\n", e.key(), aliases[e.importPath], e.funcName)
+	for _, p := range extraPaths {
+		fmt.Fprintf(&b, "\n\t%q", p)
 	}
-	b.WriteString("}\n")
-	b.WriteString(evaluatorRuntime)
+	// context is imported unconditionally because whether any call in the
+	// batch takes one is not known until the call sites are written.
+	b.WriteString("\n)\n\nvar _ = context.Background\n\nfunc main() {\n")
+	for i := range reqs {
+		fmt.Fprintf(&b, "\teval%d()\n", i)
+	}
+	b.WriteString(`	if err := consteval.Flush(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+`)
+	for i, r := range reqs {
+		var args []string
+		if r.ctxArg {
+			args = append(args, "context.Background()")
+		}
+		args = append(args, r.args...)
+		call := fmt.Sprintf("%s.%s(%s)", aliases[r.importPath], r.funcName, strings.Join(args, ", "))
+
+		fmt.Fprintf(&b, "\nfunc eval%d() {\n\tconst key = %q\n", i, r.key)
+		b.WriteString("\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\tconsteval.Fail(key, fmt.Errorf(\"panic: %v\", r))\n\t\t}\n\t}()\n")
+		switch {
+		case !r.hasResult && !r.errReturn:
+			// A pure func with no result still runs — that is what the folder
+			// asked for — and folds to null.
+			fmt.Fprintf(&b, "\t%s\n\tconsteval.Emit(key, nil)\n}\n", call)
+		case r.errReturn && r.hasResult:
+			fmt.Fprintf(&b, "\tv, err := %s\n\tif err != nil {\n\t\tconsteval.Fail(key, err)\n\t\treturn\n\t}\n\tconsteval.Emit(key, v)\n}\n", call)
+		case r.errReturn:
+			fmt.Fprintf(&b, "\tif err := %s; err != nil {\n\t\tconsteval.Fail(key, err)\n\t\treturn\n\t}\n\tconsteval.Emit(key, nil)\n}\n", call)
+		default:
+			fmt.Fprintf(&b, "\tconsteval.Emit(key, %s)\n}\n", call)
+		}
+	}
 	return b.String()
-}
-
-// evaluatorRuntime is the fixed half of the generated program: the request
-// loop and the reflective call. It is a plain string so the generated file
-// stays readable when a build of it fails.
-const evaluatorRuntime = `
-type request struct {
-	Func string            ` + "`json:\"func\"`" + `
-	Args []json.RawMessage ` + "`json:\"args\"`" + `
-}
-
-type response struct {
-	Value any    ` + "`json:\"value\"`" + `
-	Error string ` + "`json:\"error,omitempty\"`" + `
-}
-
-var (
-	ctxType = reflect.TypeOf((*context.Context)(nil)).Elem()
-	errType = reflect.TypeOf((*error)(nil)).Elem()
-)
-
-func main() {
-	// Results go to fd 3; stdout is redirected to stderr so a stray print
-	// inside an evaluated function cannot corrupt the protocol.
-	out := bufio.NewWriter(os.NewFile(3, "results"))
-	os.Stdout = os.Stderr
-
-	dec := json.NewDecoder(os.Stdin)
-	enc := json.NewEncoder(out)
-	for {
-		var req request
-		if err := dec.Decode(&req); err != nil {
-			return // EOF: the compiler is done with us
-		}
-		v, err := call(req)
-		resp := response{Value: v}
-		if err != nil {
-			resp = response{Error: err.Error()}
-		}
-		if err := enc.Encode(resp); err != nil {
-			return
-		}
-		if err := out.Flush(); err != nil {
-			return
-		}
-	}
-}
-
-// call invokes one function. A panic is contained here rather than taking the
-// process down: the compiler asked for one value, and only that value is lost.
-func call(req request) (result any, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			result, err = nil, fmt.Errorf("panic: %v", r)
-		}
-	}()
-
-	fn, ok := funcs[req.Func]
-	if !ok {
-		return nil, fmt.Errorf("unknown function %q", req.Func)
-	}
-	rv := reflect.ValueOf(fn)
-	rt := rv.Type()
-
-	var in []reflect.Value
-	next := 0
-	// The importer strips a leading context.Context from the SNGL signature,
-	// so the caller never supplies one.
-	if rt.NumIn() > 0 && rt.In(0) == ctxType {
-		in = append(in, reflect.ValueOf(context.Background()))
-		next = 1
-	}
-	for _, raw := range req.Args {
-		pt, err := paramType(rt, next)
-		if err != nil {
-			return nil, err
-		}
-		pv := reflect.New(pt)
-		if err := json.Unmarshal(raw, pv.Interface()); err != nil {
-			return nil, fmt.Errorf("argument %d: %w", next, err)
-		}
-		in = append(in, pv.Elem())
-		next++
-	}
-	if want := rt.NumIn(); !rt.IsVariadic() && len(in) != want {
-		return nil, fmt.Errorf("got %d arguments, want %d", len(in), want)
-	}
-
-	outs := rv.Call(in)
-
-	// A trailing error is unwrapped, matching the importer's adapter.
-	if n := rt.NumOut(); n > 0 && rt.Out(n-1) == errType {
-		if e := outs[n-1].Interface(); e != nil {
-			return nil, e.(error)
-		}
-		outs = outs[:n-1]
-	}
-	if len(outs) == 0 {
-		return nil, nil
-	}
-	return outs[0].Interface(), nil
-}
-
-// paramType is the declared type of parameter i, or the variadic element type
-// once i runs past the fixed parameters.
-func paramType(rt reflect.Type, i int) (reflect.Type, error) {
-	if i < rt.NumIn()-1 || (!rt.IsVariadic() && i < rt.NumIn()) {
-		return rt.In(i), nil
-	}
-	if rt.IsVariadic() && i >= rt.NumIn()-1 {
-		return rt.In(rt.NumIn() - 1).Elem(), nil
-	}
-	if i == rt.NumIn()-1 {
-		return rt.In(i), nil
-	}
-	return nil, fmt.Errorf("too many arguments: function takes %d", rt.NumIn())
-}
-`
-
-// lowerFirst lowercases the first letter of a string, matching SNGL field naming convention.
-func lowerFirst(s string) string {
-	if s == "" {
-		return s
-	}
-	if strings.ToUpper(s) == s {
-		return strings.ToLower(s)
-	}
-	return strings.ToLower(s[:1]) + s[1:]
-}
-
-// normalizeJSON converts JSON float64 numbers to int where they are whole numbers,
-// and recursively normalizes nested structures.
-func normalizeJSON(v any) any {
-	switch val := v.(type) {
-	case float64:
-		if val == float64(int(val)) {
-			return int(val)
-		}
-		return val
-	case []any:
-		for i, el := range val {
-			val[i] = normalizeJSON(el)
-		}
-		return val
-	case map[string]any:
-		normalized := make(map[string]any, len(val))
-		for k, el := range val {
-			normalized[lowerFirst(k)] = normalizeJSON(el)
-		}
-		return normalized
-	default:
-		return v
-	}
 }

@@ -1,5 +1,7 @@
 package purepkg
 
+import "strings"
+
 // Double returns x * 2.
 //
 //sngl:pure
@@ -32,3 +34,14 @@ func GetItems() []Item {
 //
 //sngl:pure
 func Boom() string { panic("boom") }
+
+// Join concatenates parts. Exercises a compile-time call whose argument is a
+// list, so the generated call site has to render a Go slice literal.
+//
+//sngl:pure
+func Join(parts []string, sep string) string { return strings.Join(parts, sep) }
+
+// Nothing returns nothing: a pure call the folder can only turn into null.
+//
+//sngl:pure
+func Nothing() {}
