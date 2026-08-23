@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -163,10 +164,21 @@ func (t *Type) String() string {
 		}
 		return "iter<?>"
 	case TypeStruct:
+		name := "struct"
 		if t.Decl != nil {
-			return t.Decl.SymName()
+			name = t.Decl.SymName()
 		}
-		return "struct"
+		// A generic instantiation prints its arguments: two Box types that
+		// differ only in them are different types, and a diagnostic that
+		// called both "Box" said nothing.
+		if len(t.Elems) > 0 {
+			args := make([]string, len(t.Elems))
+			for i, e := range t.Elems {
+				args[i] = e.String()
+			}
+			return name + "<" + strings.Join(args, ", ") + ">"
+		}
+		return name
 	case TypeEnum:
 		if t.Decl != nil {
 			return t.Decl.SymName()
@@ -230,6 +242,33 @@ func (t *Type) IsSingleBaseUnit() bool {
 // SameUnitType reports whether two unit types refer to the same UnitDef.
 func (t *Type) SameUnitType(other *Type) bool {
 	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && t.Decl == other.Decl
+}
+
+// nativeIdentity returns the descriptor the importer recorded for a foreign
+// declaration. A declaration with none compares by pointer instead, so an
+// importer that has not been taught to record one matches nothing it should
+// not.
+func nativeIdentity(sym Symbol) (any, bool) {
+	d, ok := sym.(*StructDef)
+	if !ok || d.Origin == nil {
+		return nil, false
+	}
+	return d.Origin, true
+}
+
+// sameDecl reports whether two named types name the same declaration. The
+// pointer settles it when both came from the same load. They need not have:
+// two files importing one Go package each resolve it, so `SearchEntry` is a
+// different *StructDef on each side though it is one type — and a value of it
+// could not be passed where it was expected. Falling back to the package and
+// name is what makes those two the same type again.
+func sameDecl(t, other *Type) bool {
+	if t.Decl == other.Decl {
+		return true
+	}
+	a, aok := nativeIdentity(t.Decl)
+	b, bok := nativeIdentity(other.Decl)
+	return aok && bok && a == b
 }
 
 // Substitute replaces TypeTypeParam nodes with concrete types from bindings.
@@ -327,7 +366,7 @@ func (t *Type) Equal(other *Type) bool {
 		// their type arguments (if any) are pairwise equal. This covers both
 		// non-generic structs (no Elems) and generic instantiations like Box<int>
 		// vs Box<string>.
-		if t.Decl != other.Decl {
+		if !sameDecl(t, other) {
 			return false
 		}
 		if len(t.Elems) != len(other.Elems) {
@@ -340,7 +379,7 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeEnum, TypeUnit, TypeComponent:
-		return t.Decl == other.Decl
+		return sameDecl(t, other)
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)
 	case TypeTypeParam:

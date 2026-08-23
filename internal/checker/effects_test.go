@@ -17,9 +17,9 @@ func findCallStmt(stmts []ir.Stmt, funcName string) *ir.Call {
 				if fn.Name == funcName || fn.Intrinsic == funcName {
 					return x.Call
 				}
-				// Allow looking up error.raise by the sentinel "ErrorRaise"
+				// Allow looking up error.raise by the sentinel "error.raise"
 				// even though the stdlib wrapper lacks Intrinsic set.
-				if funcName == "ErrorRaise" && fn.Receiver == "error" && fn.Name == "raise" {
+				if funcName == "error.raise" && fn.Receiver == "error" && fn.Name == "raise" {
 					return x.Call
 				}
 			}
@@ -89,7 +89,7 @@ window("App") {
 	if block == nil {
 		t.Fatal("no @click handler found")
 	}
-	call := findCallStmt(block, "ErrorRaise")
+	call := findCallStmt(block, "error.raise")
 	if call == nil {
 		t.Fatal("no ErrorRaise call found in handler")
 	}
@@ -116,7 +116,7 @@ window("App") {
 	if block == nil {
 		t.Fatal("no @click handler found")
 	}
-	call := findCallStmt(block, "ErrorRaise")
+	call := findCallStmt(block, "error.raise")
 	if call == nil {
 		t.Fatal("ErrorRaise not found")
 	}
@@ -141,7 +141,7 @@ window("App", @error(e) { }) {
 		t.Fatal("window missing @error handler")
 	}
 	block := firstClickHandlerBlock(w.Body)
-	call := findCallStmt(block, "ErrorRaise")
+	call := findCallStmt(block, "error.raise")
 	if call == nil {
 		t.Fatal("ErrorRaise not found")
 	}
@@ -165,7 +165,7 @@ window("App", @error(e) { }) {
 `)
 	eb := pkg.Windows[0].Body[0].(*ir.ErrorBoundary)
 	block := firstClickHandlerBlock(eb.Children)
-	call := findCallStmt(block, "ErrorRaise")
+	call := findCallStmt(block, "error.raise")
 	if call.ResolvedHandler != eb.Handler {
 		t.Error("inner boundary should win over window handler")
 	}

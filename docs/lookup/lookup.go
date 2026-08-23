@@ -313,17 +313,17 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Bare `sngl` is every library package merged into one listing. The
 	// per-package paths address one of them each.
 	//
-	// internal://stdlib is deliberately not an alias for this: despite the
+	// sngl://internal/stdlib is deliberately not an alias for this: despite the
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(lib.Packages()...)
+		pd, stmts := stdlibPackageDocs(lib.PublicPackages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
 		if !checker.HasPackage(uri) {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
@@ -889,11 +889,73 @@ func sortByName(xs []DeclSummary) {
 
 // libraryPaths returns the embedded library packages as import paths.
 func libraryPaths() []string {
-	out := make([]string, 0, len(lib.Packages()))
-	for _, p := range lib.Packages() {
+	out := make([]string, 0, len(lib.PublicPackages()))
+	for _, p := range lib.PublicPackages() {
 		out = append(out, "`sngl://"+p+"`")
 	}
 	return out
 }
 
 func quote(s string) string { return "\"" + s + "\"" }
+
+// LibraryOrigin is a library package that declares a given name.
+type LibraryOrigin struct {
+	Pkg     string // package path, e.g. "sngl://draw"
+	Ambient bool   // in scope without an import
+	Kind    string // "component", "type", "func", …
+}
+
+// ImportLine is how a program brings this origin's declarations into scope,
+// or "" when it needs no import.
+func (o LibraryOrigin) ImportLine() string {
+	if o.Ambient {
+		return ""
+	}
+	return `import . ` + quote(o.Pkg)
+}
+
+// FindInLibrary reports every public library package declaring name. A bare
+// name is not a lookup path — only sngl://builtin is in scope without an
+// import — so a caller resolving one has to say which package it found and
+// what importing that package costs. Two packages may declare the same name;
+// the caller decides between them rather than being handed the first.
+func FindInLibrary(name string) []LibraryOrigin {
+	var out []LibraryOrigin
+	for _, pkg := range lib.PublicPackages() {
+		pd, _ := stdlibPackageDocs(pkg)
+		info := pd.FindDecl(name)
+		if info == nil {
+			continue
+		}
+		out = append(out, LibraryOrigin{
+			Pkg:     "sngl://" + pkg,
+			Ambient: pkg == "builtin",
+			Kind:    declKindName(pd, name),
+		})
+	}
+	return out
+}
+
+func declKindName(pd *checker.PackageDocs, name string) string {
+	for _, c := range pd.Components {
+		if c.Name == name {
+			return "component"
+		}
+	}
+	for _, s := range pd.Structs {
+		if s.Name == name {
+			return "type"
+		}
+	}
+	for _, e := range pd.Enums {
+		if e.Name == name {
+			return "enum"
+		}
+	}
+	for _, f := range pd.Functions {
+		if f.Name == name {
+			return "func"
+		}
+	}
+	return "declaration"
+}

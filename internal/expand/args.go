@@ -2,6 +2,8 @@ package expand
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -13,11 +15,12 @@ type Args struct {
 }
 
 type argVal struct {
-	set   bool // false when an optional parameter was omitted
-	str   string
-	num   int64
-	ident string
-	expr  ast.Expr
+	set    bool // false when an optional parameter was omitted
+	str    string
+	num    int64
+	ident  string
+	idents []string // ArgIdent + Variadic
+	expr   ast.Expr
 }
 
 func (a Args) index(name string) int {
@@ -69,19 +72,40 @@ func (a Args) Expr(name string) ast.Expr {
 
 // evalArgs validates raw macro arguments against the declared parameters and
 // evaluates each to its kind. Arguments are positional; optional parameters
-// (which must come last) may be omitted from the tail.
+// (which must come last) may be omitted from the tail, and a trailing variadic
+// parameter takes however many remain.
 func evalArgs(params []Param, raw []ast.Expr) (Args, error) {
-	required := 0
-	for _, p := range params {
+	required, variadic := 0, false
+	for i, p := range params {
+		if p.Variadic {
+			if i != len(params)-1 {
+				return Args{}, fmt.Errorf("variadic parameter %q must be last", p.Name)
+			}
+			variadic = true
+			continue
+		}
 		if !p.Optional {
 			required++
 		}
 	}
-	if len(raw) < required || len(raw) > len(params) {
-		return Args{}, fmt.Errorf("expected %s, got %d", arityDesc(required, len(params)), len(raw))
+	if len(raw) < required || (!variadic && len(raw) > len(params)) {
+		return Args{}, fmt.Errorf("expected %s, got %d", arityDesc(required, len(params), variadic), len(raw))
 	}
 	vals := make([]argVal, len(params))
 	for i := range params {
+		if params[i].Variadic {
+			rest := raw[min(i, len(raw)):]
+			idents := make([]string, 0, len(rest))
+			for _, e := range rest {
+				v, err := evalArg(params[i], e)
+				if err != nil {
+					return Args{}, fmt.Errorf("argument %q: %w", params[i].Name, err)
+				}
+				idents = append(idents, v.ident)
+			}
+			vals[i] = argVal{set: true, idents: idents}
+			break
+		}
 		if i >= len(raw) {
 			break // remaining params are optional and omitted
 		}
@@ -113,6 +137,9 @@ func evalArg(p Param, e ast.Expr) (argVal, error) {
 		if !ok {
 			return argVal{}, fmt.Errorf("expected an identifier")
 		}
+		if len(p.Enum) > 0 && !slices.Contains(p.Enum, id.Name) {
+			return argVal{}, fmt.Errorf("unknown value %q (want one of: %s)", id.Name, strings.Join(p.Enum, ", "))
+		}
 		return argVal{set: true, ident: id.Name}, nil
 	case ArgExpr:
 		return argVal{set: true, expr: e}, nil
@@ -121,7 +148,13 @@ func evalArg(p Param, e ast.Expr) (argVal, error) {
 	}
 }
 
-func arityDesc(required, total int) string {
+func arityDesc(required, total int, variadic bool) string {
+	if variadic {
+		if required == 1 {
+			return "at least 1 argument"
+		}
+		return fmt.Sprintf("at least %d arguments", required)
+	}
 	if required == total {
 		if total == 1 {
 			return "1 argument"
@@ -129,4 +162,12 @@ func arityDesc(required, total int) string {
 		return fmt.Sprintf("%d arguments", total)
 	}
 	return fmt.Sprintf("%d to %d arguments", required, total)
+}
+
+// Empty when the mark supplied none.
+func (a Args) Idents(name string) []string {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].idents
+	}
+	return nil
 }

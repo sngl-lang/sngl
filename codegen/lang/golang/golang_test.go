@@ -103,7 +103,7 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// Verify the Phase 3 arg-index fix: i18n.exactly(0) via the namespace-call
 	// path must emit i18n.Exactly(0) — NOT i18n.Exactly("i18n").
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n"}
+	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
 	call := &ir.Call{
@@ -126,4 +126,60 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	if !strings.Contains(got, "Exactly(0)") {
 		t.Errorf("i18n.exactly: got %q, want Exactly(0)", got)
 	}
+}
+
+// A bodyless #[intrinsic] the Go backend has no emitter for must stop the
+// build rather than emit a call to a function that does not exist. The guard
+// sits on the generic-call paths, so this also pins that evalCall actually
+// reaches it — an id served by the name-keyed dispatch returns before it.
+func TestUnimplementedIntrinsicPanics(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call *ir.Call
+	}{
+		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
+		{"namespace call", &ir.Call{
+			Func:     &ir.Func{Name: "nope", Receiver: "stdlib", Intrinsic: "NoBackendHasThis"},
+			Receiver: &ir.Ident{Name: "stdlib"},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("no panic for an intrinsic no backend implements")
+				}
+				if !strings.Contains(r.(string), "NoBackendHasThis") {
+					t.Errorf("panic %v does not name the intrinsic", r)
+				}
+			}()
+			newMinimalIRCtx().EvalExpr(tc.call)
+		})
+	}
+}
+
+// The same shape with a body is fine: the body is what gets emitted.
+func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
+	call := &ir.Call{Func: &ir.Func{
+		Name: "ok", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		Block: []ir.Stmt{&ir.Return{}},
+	}}
+	if got := newMinimalIRCtx().EvalExpr(call); got == "" {
+		t.Error("usable intrinsic emitted nothing")
+	}
+}
+
+// The method-call path, which the plain and namespace cases in
+// TestUnimplementedIntrinsicPanics do not reach.
+func TestUnimplementedIntrinsicPanicsOnMethodCall(t *testing.T) {
+	call := &ir.Call{
+		Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+		Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
+	}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("no panic for an intrinsic this backend does not implement")
+		}
+	}()
+	newMinimalIRCtx().EvalExpr(call)
 }

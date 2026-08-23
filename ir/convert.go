@@ -43,7 +43,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		// check. Emitting them would put compiler-internal imports in
 		// user-facing output — where they also collide with the names the
 		// standard-library import lifts.
-		if strings.HasPrefix(imp.Path, "internal://") || strings.HasPrefix(imp.Path, "sngl://internal/") {
+		if strings.HasPrefix(imp.Path, "sngl://internal/") {
 			continue
 		}
 		stmts = append(stmts, c.convertImport(imp))
@@ -713,6 +713,13 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
+				Field:   call.Func.Name,
+			}
+		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
+			// A package function called through its import: the namespace is
+			// the alias at the call site, not a receiver on the declaration.
+			funcExpr = &ast.SelectExpr{
+				Operand: &ast.IdentExpr{Name: id.Name},
 				Field:   call.Func.Name,
 			}
 		} else {

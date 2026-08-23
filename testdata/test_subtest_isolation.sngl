@@ -1,0 +1,28 @@
+import . "sngl://std"
+
+// A subtest's effects stay in the subtest. Both the enclosing test and the
+// subtest bind a component parameter, and keying the environment by
+// declaration rather than by name made those two distinct bindings where they
+// used to be one — so the runner picked between them by ranging a map and got
+// the enclosing test's roughly half the time, writing the subtest's timer tick
+// into it.
+component main {
+    var p = 0
+    const LIMIT = 5
+    timer(interval=100ms, enabled=true, @tick { p += 1 })
+    text(value="{p}")
+}
+
+func testSubtestTickDoesNotLeak(t Test, c main) {
+    t.test("inner", func(t, c) {
+        t.tick()
+        t.assert(c.p == 1)
+    })
+    t.assert(c.p == 0)
+}
+
+// A const is not a place. The runner resolves `c.<field>` to the declaration
+// it names, and a const declaration reaches that lookup like any other.
+func testConstIsNotAssignable(t Test, c main) {
+    t.assert(c.LIMIT == 5)
+}

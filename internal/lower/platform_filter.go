@@ -69,14 +69,15 @@ func resolveFiltersPkg(pkg *ir.Package, platform string, seen map[*ir.Package]st
 			}
 		}
 	}
-	// Stdlib component pointers live in Symbols.Comps (shared, not in
-	// pkg.Components); walk both so extensions get resolved too.
+	// Stdlib component pointers are in scope but not in pkg.Components;
+	// walk both so extensions get resolved too.
 	if pkg.Symbols != nil {
-		for _, sym := range pkg.Symbols.Comps {
+		pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 			if comp, ok := sym.(*ir.Component); ok {
 				resolveComp(comp)
 			}
-		}
+			return true
+		})
 	}
 	for _, comp := range pkg.Components {
 		resolveComp(comp)

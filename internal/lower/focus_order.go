@@ -97,8 +97,16 @@ func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 		synthetic := fmt.Sprintf("__focusIdx%d", slotIdx)
 		ls.forStmt.Key = synthetic
 		ls.keyVar = &ir.LoopVar{Name: synthetic, Type: ir.TypInt}
+		ls.forStmt.KeySym = ls.keyVar
+	} else if ls.forStmt.KeySym != nil {
+		ls.keyVar = ls.forStmt.KeySym
 	} else {
+		// The checker sets KeySym whenever Key is named, so this is a loop
+		// some other pass built. Store the symbol as well as holding it: an
+		// identifier the pass emits below refers to this one, and a symbol
+		// the statement does not carry is a symbol nothing else can reach.
 		ls.keyVar = &ir.LoopVar{Name: ls.forStmt.Key, Type: ir.TypInt}
+		ls.forStmt.KeySym = ls.keyVar
 	}
 }
 
@@ -227,7 +235,7 @@ func walkInjectFocused(
 					Sym:         ls.cursorVar,
 					Synthesized: true,
 				}
-				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ir.TypInt, Sym: ls.keyVar}
+				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ls.keyVar.Type, Sym: ls.keyVar}
 				n.Props = append(n.Props, ir.Arg{
 					Name: "__focused",
 					Value: &ir.Binary{
@@ -312,12 +320,16 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 			}
 
 			// var __focusLen int = ListLength(iter)
+			lenSym := &ir.Var{Name: "__focusLen", Type: ir.TypInt, Synthesized: true}
 			lenVar := &ir.LocalVar{
 				Name: "__focusLen",
 				Type: ir.TypInt,
 				Init: callListLength(ls.forStmt.Iter),
+				Sym:  lenSym,
 			}
-			lenIdent := func() *ir.Ident { return &ir.Ident{Name: "__focusLen", Type: ir.TypInt} }
+			lenIdent := func() *ir.Ident {
+				return &ir.Ident{Name: "__focusLen", Type: ir.TypInt, Sym: lenSym, Synthesized: true}
+			}
 
 			var innerCond ir.Expr
 			var innerAdvance ir.Stmt
@@ -441,10 +453,12 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 		}
 	}
 	// Enter at cursor = ListLength(iter) - 1.
+	lenSym := &ir.Var{Name: "__focusLen", Type: ir.TypInt, Synthesized: true}
 	lenVar := &ir.LocalVar{
 		Name: "__focusLen",
 		Type: ir.TypInt,
 		Init: callListLength(ls.forStmt.Iter),
+		Sym:  lenSym,
 	}
 	return []ir.Stmt{
 		lenVar,
@@ -455,7 +469,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 			Value: &ir.Binary{
 				Type:  ir.TypInt,
 				Op:    ast.BinSub,
-				Left:  &ir.Ident{Name: "__focusLen", Type: ir.TypInt},
+				Left:  &ir.Ident{Name: "__focusLen", Type: ir.TypInt, Sym: lenSym, Synthesized: true},
 				Right: intLiteralLit(1),
 			},
 		},
@@ -465,12 +479,13 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 // callListLength builds a Call expression for the ListLength intrinsic.
 func callListLength(iter ir.Expr) *ir.Call {
 	var params []*ir.Param
-	if def := ir.LookupIntrinsic("ListLength"); def != nil {
+	if def := ir.LookupIntrinsic("list.length"); def != nil {
 		params = def.Params
 	}
 	fn := &ir.Func{
-		Name:      "ListLength",
-		Intrinsic: "ListLength",
+		Name:      "length",
+		Receiver:  "list",
+		Intrinsic: "list.length",
 		Return:    ir.TypInt,
 		Params:    params,
 	}

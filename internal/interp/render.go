@@ -56,10 +56,8 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 			}
 			for i, item := range list {
 				child := env.Snapshot()
-				child.Vars[n.Key] = item
-				if n.Value != "" {
-					child.Vars[n.Value] = i
-				}
+				child.Set(n.KeySym, item)
+				child.Set(n.ValueSym, i)
 				child.collectByStmts(n.Body, id, out)
 			}
 		case *ir.PlatformFilter:
@@ -114,28 +112,19 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.Comp = comp
 	child.parent = env
 
-	for _, p := range comp.Props {
-		child.Vars[p.Name] = evalInit(child, p.Default)
-	}
-	// Override with instance prop values.
+	// Override with instance prop values. A call site names the prop, so the
+	// declaration it means is the component's, found by that name.
 	for _, arg := range inst.Props {
 		if arg.Name == "" {
 			continue
 		}
 		v, err := env.Eval(arg.Value)
 		if err == nil {
-			child.Vars[arg.Name] = v
+			child.Set(propSym(comp, arg.Name), v)
 		}
 	}
 	for _, v := range comp.Vars {
-		if v.IsConst {
-			child.Consts[v.Name] = evalInit(child, v.Init)
-		} else {
-			child.Vars[v.Name] = evalInit(child, v.Init)
-		}
-	}
-	for _, fn := range comp.Funcs {
-		child.SetFunc(fn)
+		child.Set(v, evalInit(child, v.Init))
 	}
 	child.BodyStmts = comp.Body
 	env.childEnvs[inst] = child
@@ -264,9 +253,6 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child.parent = env
 	child.parent = env
 
-	for _, p := range comp.Props {
-		child.Vars[p.Name] = evalInit(child, p.Default)
-	}
 	// Override with named positional args from the call.
 	if call != nil {
 		for _, a := range call.Args {
@@ -274,19 +260,12 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 				continue
 			}
 			if v, err := env.Eval(a.Value); err == nil {
-				child.Vars[a.Name] = v
+				child.Set(propSym(comp, a.Name), v)
 			}
 		}
 	}
 	for _, v := range comp.Vars {
-		if v.IsConst {
-			child.Consts[v.Name] = evalInit(child, v.Init)
-		} else {
-			child.Vars[v.Name] = evalInit(child, v.Init)
-		}
-	}
-	for _, fn := range comp.Funcs {
-		child.SetFunc(fn)
+		child.Set(v, evalInit(child, v.Init))
 	}
 	child.BodyStmts = comp.Body
 	return child

@@ -71,6 +71,14 @@ func pickScriptKind(path string) snglts.ScriptKind {
 }
 
 // walker collects the IR symbols produced from a single SourceFile.
+// jsTypeID identifies a type by the module that declares it. A bare name is
+// not enough: every module has its own namespace, so two modules exporting
+// Config export two types.
+type jsTypeID struct {
+	Module string
+	Name   string
+}
+
 type walker struct {
 	sf         *snglts.SourceFile
 	filePath   string
@@ -104,7 +112,7 @@ func (w *walker) walk() {
 			if name == "" {
 				continue
 			}
-			sd := &ir.StructDef{Name: name, Native: name, AST: w.synthStructAST(name, s)}
+			sd := &ir.StructDef{Name: name, Native: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthStructAST(name, s)}
 			w.structs[name] = sd
 			w.outStructs = append(w.outStructs, sd)
 		case snglts.KindTypeAliasDeclaration:
@@ -114,7 +122,7 @@ func (w *walker) walk() {
 			}
 			// If the alias targets an object literal, treat it as a struct.
 			if t := s.Type(); t != nil && t.Kind == snglts.KindTypeLiteral {
-				sd := &ir.StructDef{Name: name, Native: name, AST: w.synthStructAST(name, s)}
+				sd := &ir.StructDef{Name: name, Native: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthStructAST(name, s)}
 				w.structs[name] = sd
 				w.outStructs = append(w.outStructs, sd)
 			}

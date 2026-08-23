@@ -735,12 +735,15 @@ component main {
 
 ## Translatable Strings
 
-Prefix a string literal with `$` to make it translatable. The synthesized translation key is the unsubstituted template; placeholder values fill in at runtime per the active locale. The active locale is the stdlib `locale` context (default: `i18n.defaultLocale()`, derived from `$LC_ALL`/`$LC_MESSAGES`/`$LANG`).
+Prefix a string literal with `$` to make it translatable. The synthesized translation key is the unsubstituted template; placeholder values fill in at runtime per the active locale.
 
-`i18n.numberInt`, `i18n.date`, `i18n.plural`, and friends format their input for the active locale. Wrap a subtree in `locale("xx-YY") { ... }` to override it for that subtree only — exactly the same mechanism as any other reactive context.
+Translation lives in `sngl://i18n`, an ordinary package you import. A `$"..."` literal lowers to a call to `i18n.tr`, so a file that uses one needs the import — nothing is in scope unimported except `sngl://builtin`.
+
+The active locale is the `i18n.locale` context, defaulting to `i18n.defaultLocale()` (derived from `$LC_ALL`/`$LC_MESSAGES`/`$LANG`). `i18n.numberInt`, `i18n.date`, `i18n.plural` and friends format their input for it. Wrap a subtree in `i18n.locale("xx-YY") { ... }` to override it there — the same mechanism as any other reactive context.
 
 ```sngl
 import . "sngl://std"
+import "sngl://i18n"
 
 component Cart(count = 0, price = 0) {
     vbox(style={gap = 4, padding = 8}) {
@@ -754,7 +757,7 @@ component main {
     var price = 1499
     vbox(style={gap = 12, padding = 16}) {
         Cart(count=count, price=price)
-        locale("es-MX") {
+        i18n.locale("es-MX") {
             Cart(count=count, price=price)
         }
         hbox(style={gap = 8}) {

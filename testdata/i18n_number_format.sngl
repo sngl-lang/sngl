@@ -1,4 +1,5 @@
 import . "sngl://std"
+import "sngl://i18n"
 
 // Number placeholder with style argument.
 var amount = 1234

@@ -6,6 +6,7 @@
 // click handler re-computes it via $"..." so the i18n runtime is exercised.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 component main {
     var count int = 1

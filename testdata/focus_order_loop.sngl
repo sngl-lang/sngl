@@ -1,0 +1,19 @@
+// A for-loop of focusable nodes reaches the loop-slot branch of the FocusOrder
+// lowering pass, which the static-slot fixtures do not. It asserts nothing
+// about focus behaviour itself: what it pins is that the pass produces valid
+// IR, through validate_calibration_test.go, which lowers it with FocusOrder
+// enabled and runs ir.Validate over the result.
+
+import . "sngl://std"
+
+const labels list<string> = ["one", "two", "three"]
+
+component focusLoop {
+    vbox {
+        button(text="before", focusable=true)
+        for l = labels {
+            button(text=l, focusable=true)
+        }
+        button(text="after", focusable=true)
+    }
+}

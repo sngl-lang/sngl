@@ -1,0 +1,60 @@
+# sngl://internal/ is the compiler's own tier: the URI set, what each package
+# holds, and whether a package exists at all are implementation details.
+#
+# Importable from a program, the marks package let user source stamp
+# #[intrinsic("...")] on its own function. That checked clean and then panicked
+# in codegen — RequireIntrinsicFallback, because no backend can implement a name
+# it has never heard of. This is a txtar rather than a fixture because the
+# checker's testdata harness reports only a fixture's own diagnostics.
+
+! sngl check marks.sngl
+stderr 'internal to the compiler and cannot be imported'
+! stderr 'unknown internal package'
+
+! sngl check draw.sngl
+stderr 'internal to the compiler and cannot be imported'
+
+# The panic this closes: with the import allowed, the intrinsic reached codegen.
+! sngl generate --platform html --lang none -o out intrinsic.sngl
+stderr 'internal to the compiler and cannot be imported'
+! stderr 'panic'
+
+# lib/ still reaches its own tier — draw is written against internal/draw, and
+# every lib file carrying a mark imports internal/marks.
+sngl check user_draw.sngl
+stdout 'ok'
+
+-- marks.sngl --
+import . "sngl://std"
+import . "sngl://internal/marks"
+
+component main {
+    text(value="hi")
+}
+-- draw.sngl --
+import . "sngl://std"
+import "sngl://internal/draw"
+
+component main {
+    text(value="hi")
+}
+-- intrinsic.sngl --
+import . "sngl://std"
+import . "sngl://internal/marks"
+
+#[intrinsic("my.thing")]
+func evil(x int) int { return 0 }
+
+component main {
+    var n int = 1
+    text(value="{evil(n)}")
+}
+-- user_draw.sngl --
+import . "sngl://std"
+import "sngl://draw"
+
+component main {
+    draw.canvas(width=100px, height=100px) {
+        draw.circle(cx=50, cy=50, r=20, style={fill=#f00})
+    }
+}

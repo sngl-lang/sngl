@@ -15,7 +15,7 @@ import (
 
 	// Registers the #[builtin] macro. The stdlib source is macro-expanded
 	// below, so the handlers must be present whenever the checker runs.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/builtin"
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/marks"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -140,6 +140,9 @@ func (c *checker) libPkg(name string) *ir.Package {
 	}
 	c.libLoading[name] = true
 	pkg := c.loadStdlibPackage(name, false)
+	if name == i18nPkg {
+		c.declarePluralKeyConstants(pkg)
+	}
 	delete(c.libLoading, name)
 	if c.libPkgs == nil {
 		c.libPkgs = map[string]*ir.Package{}
@@ -148,7 +151,16 @@ func (c *checker) libPkg(name string) *ir.Package {
 	return pkg
 }
 
+// inLibSource reports whether the declarations being registered come from
+// lib/ rather than from a program. Every path into lib/ source runs through
+// loadStdlibPackage, including the nested loads an import inside lib/ starts,
+// so the counter covers transitive loads too.
+func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
+
 func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
+	c.libDepth++
+	defer func() { c.libDepth-- }()
+
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
@@ -189,7 +201,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 			case *ast.ComponentDecl:
 				components = append(components, s)
 			case *ast.CallStmt:
-				if isContextDeclCallStmt(s) {
+				if c.isContextDeclCallStmt(s) {
 					contexts = append(contexts, s)
 				}
 			}
@@ -235,9 +247,34 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		ast *ast.FuncDef
 		fn  *ir.Func
 	}
+	// The i18n and html namespaces describe std's own declarations, so they
+	// belong to that package only. Declaring them from the builtin pass as
+	// well put an empty `html` namespace in the ambient scope, which shadowed
+	// the real one and lost the platform Resolve fallback attached to it; and
+	// building them while any other package loads would re-enter the package
+	// PluralKey lives in.
+	//
+	// They are declared before the funcs whose receiver names them, so that
+	// `func i18n.tr(...)` finds a declaration to be a member of. Their
+	// packages are built from those same funcs, so the Pkg is filled in below
+	// once they exist.
+	// html's placement directives are declared as methods on a receiver named
+	// "html" in lib/std, so the namespace has to exist before they are
+	// registered. i18n has its own package and needs nothing here.
+	declaresHtml := pkgName == stdPkg
+	var htmlNS *ir.Namespace
+	if declaresHtml {
+		htmlNS = &ir.Namespace{Name: "html"}
+		c.bindLib(ast.Pos{}, c.scope, htmlNS)
+	}
+
 	var pendingBodies []stdlibFuncBody
+	var registeredFuncs []*ir.Func
 	for _, s := range funcs {
 		fn := c.registerStdlibFunc(s, stdlibPkg)
+		if fn != nil {
+			registeredFuncs = append(registeredFuncs, fn)
+		}
 		// Defer body check: expression-body funcs (=> expr) are lowered into
 		// ir.Block. Block-body stdlib funcs are also lowered for constant-folding
 		// support (e.g., color.lighten, color.darken). Bodyless signatures
@@ -250,26 +287,11 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.registerStdlibComponent(s, stdlibPkg)
 	}
 
-	// The i18n and html namespaces describe std's own declarations, so they
-	// belong to that tier only. Declaring them from the builtin pass as well
-	// put an empty `html` namespace in the ambient scope, which shadowed the
-	// real one and lost the platform Resolve fallback attached to it.
-	if !ambient {
-		// i18n so that i18n.plural(...), i18n.one, etc. resolve: the package
-		// exposes every i18n.* receiver method as a free function, plus the
-		// predeclared PluralKey constants (zero, one, two, few, many, other).
-		c.scope.Replace(&ir.Namespace{
-			Name: "i18n",
-			Pkg:  c.buildI18nNamespacePkg(structDefs),
-		})
-		// html so the placement directives html.frontend(...) /
-		// html.backend(...) (GitLab #27) resolve as free-function calls. The
-		// directives are declared as methods on receiver "html" in
-		// lib/std/html.sngl; expose them here as namespace functions.
-		c.scope.Replace(&ir.Namespace{
-			Name: "html",
-			Pkg:  c.buildHtmlNamespacePkg(),
-		})
+	if declaresHtml {
+		// The directives html.frontend(...) / html.backend(...) (GitLab #27)
+		// are declared as methods on receiver "html"; expose them here as
+		// namespace functions so a call resolves.
+		htmlNS.Pkg = c.buildHtmlNamespacePkg(registeredFuncs)
 	}
 
 	// Register stdlib context declarations last — after the "i18n" namespace is
@@ -323,62 +345,63 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	return stdlibPkg
 }
 
-// buildI18nNamespacePkg constructs a synthetic ir.Package for the "i18n"
-// namespace, exposing i18n.* receiver methods as free functions and
-// predeclaring the CLDR PluralKey constants (zero/one/two/few/many/other).
-func (c *checker) buildI18nNamespacePkg(structDefs []*ir.StructDef) *ir.Package {
-	pkg := &ir.Package{
-		Symbols:        NewSymbolTable(),
-		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-		AddressedVars:  map[*ir.Var]bool{},
-	}
+// i18nPkg declares the translation entry points, the locale-aware primitives
+// behind them, and the PluralKey those are keyed by.
+const i18nPkg = "i18n"
 
-	// Expose all i18n.* receiver methods as free functions in the namespace.
-	for _, fn := range c.symtab.Methods["i18n"] {
-		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
-	}
+// stdPkg is the library package that declares the html namespace.
+const stdPkg = "std"
 
-	// Locate the PluralKey struct so we can type the predeclared vars.
-	var pluralKeyType *ir.Type
-	for _, sd := range structDefs {
-		if sd.Name == "PluralKey" {
-			pluralKeyType = sd.SymType()
-			break
-		}
+// declarePluralKeyConstants registers the six CLDR plural categories on the
+// package that declares PluralKey. They are opaque sentinels whose runtime
+// values come from the target's i18n runtime, so there is no literal to
+// declare them with — the compiler supplies them, as it does for null and
+// PLATFORM.
+func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
+	if pkg == nil {
+		return
 	}
-	if pluralKeyType == nil {
-		// PluralKey not found; skip constant registration.
-		return pkg
+	sym, ok := pkg.Symbols.Root.LookupLocal("PluralKey")
+	if !ok {
+		return
 	}
-
-	// Register predeclared CLDR plural-category vars: zero, one, two, few,
-	// many, other. These are opaque sentinel values; their actual runtime
-	// values are supplied by the Go i18n runtime (PluralZero, PluralOne, …).
+	sd, isStruct := sym.(*ir.StructDef)
+	if !isStruct {
+		return
+	}
 	for _, name := range []string{"zero", "one", "two", "few", "many", "other"} {
-		v := &ir.Var{Name: name, Type: pluralKeyType, IsConst: true}
+		v := &ir.Var{Name: name, Type: sd.SymType(), IsConst: true}
 		pkg.Vars = append(pkg.Vars, v)
-		pkg.Symbols.Root.Replace(v)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, v)
 	}
-
-	return pkg
 }
 
 // buildHtmlNamespacePkg constructs a synthetic ir.Package for the "html"
 // namespace, exposing the html.* placement directives (frontend/backend),
 // declared as methods on receiver "html", as free functions so calls like
 // html.frontend(v) resolve.
-func (c *checker) buildHtmlNamespacePkg() *ir.Package {
+func (c *checker) buildHtmlNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 	pkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}
-	for _, fn := range c.symtab.Methods["html"] {
-		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
-	}
+	c.addReceiverFuncs(pkg, stdlibFuncs, "html")
 	return pkg
+}
+
+// addReceiverFuncs publishes every func in funcs whose receiver is recv as a
+// declaration of pkg. A namespace's members are its package's declarations, so
+// this is what makes `i18n.tr` resolve — the funcs themselves say which
+// receiver they belong to, so no index of them is needed.
+func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv string) {
+	for _, fn := range funcs {
+		if fn.Receiver != recv {
+			continue
+		}
+		pkg.Funcs = append(pkg.Funcs, fn)
+		c.bindLib(ast.Pos{}, pkg.Symbols.Root, fn)
+	}
 }
 
 // declareStdlibStruct registers a struct name (without fields) so other
@@ -387,17 +410,13 @@ func (c *checker) buildHtmlNamespacePkg() *ir.Package {
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
 	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
-	// Main symtab + scope for unqualified access.
-	c.symtab.Types[sd.Name] = sd
-	// The loader binds every declaration into the ambient scope and into the
-	// package's own root, which for an ambient package are the same scope.
-	// Rebinding is the norm here, not a mistake; duplicates inside lib/ are
-	// caught by the one-name rule in the register* paths.
-	c.scope.Replace(sd)
+	// An ambient package's own root and the ambient scope are the same scope,
+	// so this binds the same symbol twice — which Declare tolerates, while
+	// still refusing a different symbol under a name already taken.
+	c.bindLib(s.Pos, c.scope, sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)
-	pkg.Symbols.Types[sd.Name] = sd
-	pkg.Symbols.Root.Replace(sd)
+	c.bindLib(s.Pos, pkg.Symbols.Root, sd)
 	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
 	switch sd.Builtin {
@@ -417,28 +436,27 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) {
 	built := c.buildStructDef(s)
 	sd.Fields = built.Fields
+	// Every stdlib type name is in scope by now, which is exactly the
+	// condition a default needs.
+	c.fillStructFieldDefaults(sd)
 }
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
-	c.symtab.Types[ed.Name] = ed
-	c.scope.Replace(ed)
+	c.bindLib(e.Pos, c.scope, ed)
 	pkg.Enums = append(pkg.Enums, ed)
-	pkg.Symbols.Types[ed.Name] = ed
-	pkg.Symbols.Root.Replace(ed)
+	c.bindLib(e.Pos, pkg.Symbols.Root, ed)
 }
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
-	// Main symtab + scope for unqualified access.
-	c.symtab.Types[ud.Name] = ud
-	c.scope.Replace(ud)
+	c.bindLib(u.Pos, c.scope, ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
 	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
-	pkg.Symbols.Types[ud.Name] = ud
+	c.bindLib(u.Pos, pkg.Symbols.Root, ud)
 }
 
 // registerStdlibConst registers a library const. The #[builtin] mark travels
@@ -465,8 +483,8 @@ func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
 				Builtin: decl.Builtin,
 			}
 			pkg.Consts = append(pkg.Consts, v)
-			c.scope.Replace(v)
-			pkg.Symbols.Root.Replace(v)
+			c.bindLib(decl.Pos, c.scope, v)
+			c.bindLib(decl.Pos, pkg.Symbols.Root, v)
 		}
 	}
 }
@@ -482,17 +500,14 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	if fn.Return == nil && f.Body != nil {
 		fn.Return = TypDyn
 	}
-	if id := detectIntrinsicCall(fn); id != "" {
-		fn.Intrinsic = id
-		applyIntrinsicMetadata(fn, id)
-	} else if id := detectPlacementDirective(fn); id != "" {
-		// html.frontend/html.backend are identity expression-body funcs (=> v),
-		// not delegations to an intrinsic call, so detectIntrinsicCall does not
-		// match them. Assign their intrinsic id explicitly so they survive
-		// optimization as recognizable placement sentinels and emit pass-through
-		// for non-html targets.
-		fn.Intrinsic = id
-		applyIntrinsicMetadata(fn, id)
+	// buildFunc copied the #[intrinsic] mark; the effect metadata that goes
+	// with the id follows from it. An id no intrinsic answers to is a typo in
+	// the mark, and nothing downstream would notice it — the call would just
+	// never be recognized.
+	if fn.Intrinsic != "" {
+		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
+			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
+		}
 	}
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
@@ -503,14 +518,20 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	if fn.Purity == ir.PurityUnknown {
 		fn.Purity = ir.PurityPure
 	}
+	fn.Stdlib = true
 	if fn.Receiver != "" {
-		// Type-attached method — registered in main symtab only.
-		c.symtab.RegisterMethod(fn.Receiver, fn)
+		// Type-attached method, hosted on the receiver's declaration. A
+		// receiver that names a namespace rather than a type (i18n, html) has
+		// no declaration to host it; those funcs become members of the
+		// namespace's own package, built from this same list below.
+		if prev := c.declareMethod(f.Pos, fn); prev != nil {
+			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+		}
 	} else {
 		// Free function — available both qualified and unqualified.
-		c.scope.Replace(fn)
+		c.bindLib(f.Pos, c.scope, fn)
 		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
+		c.bindLib(f.Pos, pkg.Symbols.Root, fn)
 	}
 	return fn
 }
@@ -525,9 +546,6 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 //   - If checking the body produces no return type (void), the func is left
 //     with Return == nil so existing dyn-fallback in registerStdlibFunc
 //     remains active.
-//   - detectIntrinsicCall is re-run on the now-populated Block so wrappers
-//     that are exact intrinsic pass-throughs (e.g. `float.floor` → MathFloor)
-//     get fn.Intrinsic set, matching the historical behaviour.
 func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	if f.Body == nil && !f.Block.IsDefined() {
 		return
@@ -535,7 +553,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 	for _, p := range fn.Params {
-		c.scope.Replace(p)
+		c.declare(f.Pos, p)
 	}
 	prevReturn := c.returnType
 	c.returnType = fn.Return
@@ -559,7 +577,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// abstract key type parameter.
 	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
 		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.scope.Replace(&ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+			c.declare(f.Pos, &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
 		}
 	}
 
@@ -599,15 +617,6 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 		fn.Block = c.checkBlockIR(&f.Block)
 	}
 
-	// Re-detect intrinsic pass-through with the populated body. Wrappers
-	// that prepend args (e.g. i18n.* threading `locale`) won't match —
-	// detectIntrinsicCall enforces strict positional pass-through.
-	if fn.Intrinsic == "" {
-		if id := detectIntrinsicCall(fn); id != "" {
-			fn.Intrinsic = id
-			applyIntrinsicMetadata(fn, id)
-		}
-	}
 }
 
 // applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
@@ -616,122 +625,15 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 // ListPush (mutates its receiver) — letting the optimizer fold or drop a real
 // mutation. Backends and reactivity read the mutation semantics back via
 // fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
-func applyIntrinsicMetadata(fn *ir.Func, id string) {
+func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 	def, ok := ir.IntrinsicByName(id)
 	if !ok {
-		return
+		return false
 	}
 	if def.Purity != ir.PurityUnknown {
 		fn.Purity = def.Purity
 	}
-}
-
-// detectPlacementDirective recognizes the html.frontend / html.backend
-// placement directives (GitLab #27) by their receiver+name and maps them to
-// the HtmlFrontend / HtmlBackend intrinsic ids. These are identity
-// expression-body funcs (=> v) — not delegations to an intrinsic call — so
-// detectIntrinsicCall cannot match them. Assigning an intrinsic id keeps the
-// call node alive through optimization (the funcs are also generic, which
-// InlinePure already refuses to inline) and lets the html placement pass and
-// the per-language pass-through emitters recognize them by id.
-func detectPlacementDirective(fn *ir.Func) string {
-	if fn.Receiver != "html" || len(fn.Params) != 1 {
-		return ""
-	}
-	switch fn.Name {
-	case "frontend":
-		return "HtmlFrontend"
-	case "backend":
-		return "HtmlBackend"
-	}
-	return ""
-}
-
-// detectIntrinsicCall checks if a function body is a single return of a call
-// to an intrinsic function whose arguments are a direct pass-through of the
-// wrapper's own params (e.g., `func error.raise(m, k) => stdlib.ErrorRaise(m, k)`).
-// Returns the intrinsic name or "".
-//
-// "Direct pass-through" means the call's arg list, in order, is exactly the
-// wrapper's param idents. Wrappers that rearrange or augment args (e.g. the
-// i18n wrappers which prepend `locale`) must keep their body so subsequent
-// lowering passes (notably NoContext) can rewrite reads inside.
-func detectIntrinsicCall(fn *ir.Func) string {
-	if len(fn.Block) != 1 {
-		return ""
-	}
-	ret, ok := fn.Block[0].(*ir.Return)
-	if !ok {
-		return ""
-	}
-	call, ok := ret.Value.(*ir.Call)
-	if !ok || call.Func == nil {
-		return ""
-	}
-	if call.Func.Intrinsic == "" {
-		return ""
-	}
-	// Require strict pass-through: each arg is an Ident referencing the
-	// corresponding expected name positionally. For an implicit-receiver
-	// method (generic receiver), the body threads `this` as the intrinsic's
-	// first (receiver) arg ahead of the wrapper's params:
-	//   func list<T>.push(item T) => stdlib.ListPush(this, item)
-	expected := make([]string, 0, len(fn.Params)+1)
-	if fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		expected = append(expected, ir.ReceiverParam)
-	}
-	for _, p := range fn.Params {
-		expected = append(expected, p.Name)
-	}
-	if len(call.Args) != len(expected) {
-		return ""
-	}
-	for i, a := range call.Args {
-		// Args may be implicitly converted to the intrinsic's parameter types
-		// — e.g. an implicit-receiver method threads `this : list<T>` into a
-		// list<dyn>-typed intrinsic param, materialized as an ir.Conversion.
-		// Unwrap conversions to recover the underlying pass-through ident.
-		v := a.Value
-		for {
-			conv, ok := v.(*ir.Conversion)
-			if !ok {
-				break
-			}
-			v = conv.Operand
-		}
-		id, ok := v.(*ir.Ident)
-		if !ok || id.Name != expected[i] {
-			return ""
-		}
-	}
-	return call.Func.Intrinsic
-}
-
-// buildIntrinsicsPkgFrom creates a synthetic package from a list of intrinsic
-// definitions. Each intrinsic becomes a bodyless ir.Func with Intrinsic set.
-func (c *checker) buildIntrinsicsPkgFrom(defs []ir.IntrinsicDef) *ir.Package {
-	pkg := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-	for _, def := range defs {
-		params := make([]*ir.Param, len(def.Params))
-		for i, p := range def.Params {
-			params[i] = &ir.Param{Name: p.Name, Type: p.Type}
-		}
-		fn := &ir.Func{
-			Name:      def.Name,
-			Params:    params,
-			Return:    def.Return,
-			Intrinsic: def.Name,
-			Purity:    def.Purity,
-		}
-		// Default unset → Pure (most intrinsics are deterministic
-		// pure helpers; env-impure entries set Purity explicitly).
-		if fn.Purity == ir.PurityUnknown {
-			fn.Purity = ir.PurityPure
-		}
-		pkg.Funcs = append(pkg.Funcs, fn)
-		pkg.Symbols.Root.Replace(fn)
-	}
-	return pkg
+	return true
 }
 
 // mergePlatformExtensions walks every registered platform's Package() docs
@@ -792,7 +694,7 @@ func (c *checker) mergePlatformExtensions() {
 				// reaches user scope only through an import, but a platform
 				// extension targets its declaration either way.
 				target := c.libPkg(pkgName)
-				stdSym, ok := target.Symbols.Comps[local]
+				stdSym, ok := target.Symbols.LookupComponent(local)
 				if !ok {
 					c.error(decl.Pos, "extension %q references unknown component %q in sngl://%s", decl.Name, local, pkgName)
 					continue
@@ -927,16 +829,16 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 		}
 	}
 	for _, u := range units {
-		c.scope.Replace(c.buildUnitDef(u))
+		c.bindLib(u.Pos, c.scope, c.buildUnitDef(u))
 	}
 	for _, e := range enums {
-		c.scope.Replace(c.buildEnumDef(e))
+		c.bindLib(e.Pos, c.scope, c.buildEnumDef(e))
 	}
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
 		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
-		c.scope.Replace(sd)
+		c.bindLib(s.Pos, c.scope, sd)
 		stubs[i] = sd
 	}
 	for i, s := range structs {
@@ -1128,14 +1030,14 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 	if len(args) != 1 {
 		c.error(s.Pos, "stdlib context decl requires exactly one default value")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Replace(ctx)
+		c.bindLib(s.Pos, c.scope, ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
 		c.error(s.Pos, "stdlib context default must be positional, not named")
 		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.scope.Replace(ctx)
+		c.bindLib(s.Pos, c.scope, ctx)
 		return
 	}
 	// A context default is an initializer expression (see registerContextDecl),
@@ -1146,7 +1048,7 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 		ctx.Typ = def.ExprType()
 	}
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-	c.scope.Replace(ctx)
+	c.bindLib(s.Pos, c.scope, ctx)
 }
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
@@ -1186,13 +1088,10 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	// Main symtab + scope for unqualified access.
-	c.symtab.Comps[irComp.Name] = irComp
-	c.scope.Replace(irComp)
+	c.bindLib(comp.Pos, c.scope, irComp)
 	// Stdlib package for qualified sngl.Component access.
 	pkg.Components = append(pkg.Components, irComp)
-	pkg.Symbols.Comps[irComp.Name] = irComp
-	pkg.Symbols.Root.Replace(irComp)
+	c.bindLib(comp.Pos, pkg.Symbols.Root, irComp)
 }
 
 // stdlibImportAlias returns the alias a document binds the standard library

@@ -280,22 +280,24 @@ func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
 	elsePre, elseExpr := st.transformExpr(t.Else)
 
 	name := st.freshName()
+	tmpSym := &ir.Var{Name: name, Type: t.Type, Synthesized: true}
 	tmpDecl := &ir.LocalVar{
 		Name: name,
 		Type: t.Type,
+		Sym:  tmpSym,
 	}
-	tmpRef := &ir.Ident{
-		Name: name,
-		Type: t.Type,
+	tmpIdent := func() *ir.Ident {
+		return &ir.Ident{Name: name, Type: t.Type, Sym: tmpSym, Synthesized: true}
 	}
+	tmpRef := tmpIdent()
 
 	body := append(thenPre, &ir.Assign{
-		Target: &ir.Ident{Name: name, Type: t.Type},
+		Target: tmpIdent(),
 		Op:     ast.AssignSet,
 		Value:  thenExpr,
 	})
 	elseBlock := append(elsePre, &ir.Assign{
-		Target: &ir.Ident{Name: name, Type: t.Type},
+		Target: tmpIdent(),
 		Op:     ast.AssignSet,
 		Value:  elseExpr,
 	})

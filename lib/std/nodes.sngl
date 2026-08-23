@@ -1,7 +1,7 @@
 // Built-in visual nodes. Each carries a #[builtin("...")] mark that the
 // checker dispatches on to the matching IR construct.
 
-import . "sngl://internal/builtin"
+import . "sngl://internal/marks"
 
 // Placeholder for projected content in custom component definitions.
 // When a user of the component passes children to it, the `slot`

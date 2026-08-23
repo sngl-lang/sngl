@@ -85,7 +85,7 @@ func directivePkg(binding ir.Expr) *ir.Package {
 // TestBackendConstExprErrors pins Task 6.2: html.backend wrapping a constant
 // (non-func) expression is a clear not-yet-implemented error.
 func TestBackendConstExprErrors(t *testing.T) {
-	binding := intrinsicCall("HtmlBackend", &ir.Literal{Raw: "42", Type: ir.TypInt})
+	binding := intrinsicCall("html.backend", &ir.Literal{Raw: "42", Type: ir.TypInt})
 	err := checkPlacementDirectives(directivePkg(binding))
 	if err == nil {
 		t.Fatal("expected error for html.backend(const), got nil")
@@ -99,8 +99,8 @@ func TestBackendConstExprErrors(t *testing.T) {
 // TestFrontendOnBackendValueErrors pins Task 6.3: html.frontend wrapping a
 // value explicitly pinned server-side (nested html.backend) is a clear error.
 func TestFrontendOnBackendValueErrors(t *testing.T) {
-	inner := intrinsicCall("HtmlBackend", &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc}})
-	binding := intrinsicCall("HtmlFrontend", inner)
+	inner := intrinsicCall("html.backend", &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc}})
+	binding := intrinsicCall("html.frontend", inner)
 	err := checkPlacementDirectives(directivePkg(binding))
 	if err == nil {
 		t.Fatal("expected error for html.frontend(html.backend(...)), got nil")
@@ -117,7 +117,7 @@ func TestFrontendGoCallAllowed(t *testing.T) {
 	pkg := pkgWithImport("go", "example.com/api")
 	pkg.Components = []*ir.Component{{Name: "main", Body: []ir.Stmt{
 		&ir.NodeInst{Name: "text", Props: []ir.Arg{{
-			Value: intrinsicCall("HtmlFrontend", goCall("example.com/api")),
+			Value: intrinsicCall("html.frontend", goCall("example.com/api")),
 		}}},
 	}}}
 	if err := checkPlacementDirectives(pkg); err != nil {

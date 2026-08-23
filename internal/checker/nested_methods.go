@@ -98,7 +98,7 @@ func (c *checker) elideThis(ident *ast.IdentExpr) *ast.SelectExpr {
 	hit := isFieldOrMember(recv, ident.Name)
 	if !hit {
 		if name := recvTypeName(recv); name != "" {
-			if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+			if _, ok := c.lookupMethod(name, ident.Name); ok {
 				// A sibling method on a COMPONENT receiver must NOT desugar to a
 				// `this.method` selector: component methods are emitted as free
 				// functions (`main_foo(state)`) / Model methods (`m.foo()`), not
@@ -177,30 +177,24 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		// up by the normal top-level func path.
 		if _, _, isMethod := ast.SplitMethodName(n.Name); isMethod {
 			fn := c.buildFunc(n)
+			if prev := c.declareMethod(n.Pos, fn); prev != nil {
+				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+				continue
+			}
 			c.pkg.Funcs = append(c.pkg.Funcs, fn)
-			c.symtab.RegisterMethod(fn.Receiver, fn)
 			out = append(out, fn)
 			continue
 		}
 
 		// Collision check: field/member/var on the receiver type.
-		typeDecl, ok := c.symtab.Types[recvName]
+		typeDecl, ok := c.symtab.LookupType(recvName)
 		if !ok {
-			if comp, ok2 := c.symtab.Comps[recvName]; ok2 {
+			if comp, ok2 := c.symtab.LookupComponent(recvName); ok2 {
 				typeDecl = comp
 			}
 		}
 		if typeDecl != nil && hasMemberLikeName(typeDecl, n.Name) {
 			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, typeKindNoun(typeDecl), recvName)
-			continue
-		}
-		// Collision check: already-registered method on the receiver type.
-		if c.userMethods[recvName+"."+n.Name] {
-			noun := "type"
-			if typeDecl != nil {
-				noun = typeKindNoun(typeDecl)
-			}
-			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
 			continue
 		}
 
@@ -226,9 +220,15 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			Block:          n.Block,
 		}
 		fn := c.buildFunc(synthetic)
+		if prev := c.declareMethod(n.Pos, fn); prev != nil {
+			noun := "type"
+			if typeDecl != nil {
+				noun = typeKindNoun(typeDecl)
+			}
+			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
+			continue
+		}
 		c.pkg.Funcs = append(c.pkg.Funcs, fn)
-		c.symtab.RegisterMethod(fn.Receiver, fn)
-		c.userMethods[recvName+"."+n.Name] = true
 		out = append(out, fn)
 	}
 	return out

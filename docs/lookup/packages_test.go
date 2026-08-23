@@ -108,3 +108,76 @@ func TestAllDeclPages(t *testing.T) {
 		t.Error("no android pages emitted")
 	}
 }
+
+// The compiler's own tier is reachable by name but is not part of the
+// language a program is written in, so the merged library index must not
+// advertise it — a reader looking up `sngl` should not meet ColorHex or
+// CanvasApplyStyle beside `button`.
+func TestLookupSnglOmitsInternalTier(t *testing.T) {
+	res, err := lookup.Lookup("sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Index == nil {
+		t.Fatal("no index for sngl")
+	}
+	if strings.Contains(res.Index.Description, "internal/") {
+		t.Errorf("description lists the internal tier: %q", res.Index.Description)
+	}
+	for _, f := range res.Index.Functions {
+		switch f.Name {
+		case "CanvasApplyStyle", "CanvasDrawRect", "Translate":
+			t.Errorf("intrinsic %q from the internal tier is in the sngl index", f.Name)
+		}
+	}
+}
+
+// Naming one still resolves, as an internal Go package does.
+func TestLookupInternalPackageByName(t *testing.T) {
+	res, err := lookup.Lookup("sngl://internal/draw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Index == nil || len(res.Index.Functions) == 0 {
+		t.Fatal("sngl://internal/draw resolved to nothing")
+	}
+}
+
+// A bare name is not a lookup path: everything outside sngl://builtin needs
+// an import before a program can write it, so resolving one has to report
+// the package it came from.
+func TestFindInLibrary(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pkg     string
+		ambient bool
+		kind    string
+	}{
+		{"circle", "sngl://draw", false, "component"},
+		{"button", "sngl://std", false, "component"},
+		{"Style", "sngl://std", false, "type"},
+		{"color", "sngl://builtin", true, "type"},
+	} {
+		got := lookup.FindInLibrary(tc.name)
+		if len(got) != 1 {
+			t.Errorf("%s: got %d origins, want 1 (%v)", tc.name, len(got), got)
+			continue
+		}
+		if got[0].Pkg != tc.pkg || got[0].Ambient != tc.ambient || got[0].Kind != tc.kind {
+			t.Errorf("%s: got %+v; want {%s %v %s}", tc.name, got[0], tc.pkg, tc.ambient, tc.kind)
+		}
+		wantImport := `import . "` + tc.pkg + `"`
+		if tc.ambient {
+			wantImport = ""
+		}
+		if got[0].ImportLine() != wantImport {
+			t.Errorf("%s: ImportLine = %q; want %q", tc.name, got[0].ImportLine(), wantImport)
+		}
+	}
+	if got := lookup.FindInLibrary("StrUpper"); len(got) != 0 {
+		t.Errorf("the compiler's own tier is reachable by bare name: %v", got)
+	}
+	if got := lookup.FindInLibrary("nosuchdeclaration"); len(got) != 0 {
+		t.Errorf("unknown name resolved to %v", got)
+	}
+}

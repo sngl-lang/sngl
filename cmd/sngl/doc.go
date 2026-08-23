@@ -137,11 +137,47 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		// A library declaration named without its package. Resolve it
+		// through the packages rather than a flat merged registry, so the
+		// answer can say where the name lives and what importing it costs.
+		if origins := lookup.FindInLibrary(first); len(origins) > 0 {
+			if len(origins) > 1 {
+				return ambiguousLibraryName(first, origins)
+			}
+			r, err := lookup.Lookup(origins[0].Pkg, first)
+			if err != nil {
+				return err
+			}
+			printOrigin(origins[0])
+			return renderResult(r)
+		}
+
 		// Stdlib component reference (fuzzy match)
 		return showComponentDoc(first)
 	}
 
 	return err
+}
+
+// printOrigin says which package a bare name resolved to, and how to reach
+// it. Only sngl://builtin needs no import, so for everything else the name
+// alone is not enough to write the program.
+func printOrigin(o lookup.LibraryOrigin) {
+	if imp := o.ImportLine(); imp != "" {
+		fmt.Printf("%s\n%s\n\n", o.Pkg, imp)
+		return
+	}
+	fmt.Printf("%s (ambient)\n\n", o.Pkg)
+}
+
+func ambiguousLibraryName(name string, origins []lookup.LibraryOrigin) error {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%q is declared by more than one package:\n", name)
+	for _, o := range origins {
+		fmt.Fprintf(&sb, "\t%s %s\t%s\n", o.Kind, o.Pkg, name)
+	}
+	fmt.Fprintf(&sb, "name the one you mean, e.g. sngl doc %s %s", origins[0].Pkg, name)
+	return errors.New(sb.String())
 }
 
 // renderResult dispatches a lookup.Result to the matching CLI renderer.

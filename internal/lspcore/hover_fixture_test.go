@@ -123,7 +123,7 @@ func findFixtureComponent(pkg *ir.Package, name string) *ir.Component {
 		return nil
 	}
 	if pkg.Symbols != nil {
-		if sym, ok := pkg.Symbols.Comps[name]; ok {
+		if sym, ok := pkg.Symbols.LookupComponent(name); ok {
 			if c, ok := sym.(*ir.Component); ok {
 				return c
 			}
@@ -152,7 +152,7 @@ func findFixtureStruct(pkg *ir.Package, name string) *ir.StructDef {
 		return nil
 	}
 	if pkg.Symbols != nil {
-		if sym, ok := pkg.Symbols.Types[name]; ok {
+		if sym, ok := pkg.Symbols.LookupType(name); ok {
 			if sd, ok := sym.(*ir.StructDef); ok {
 				return sd
 			}

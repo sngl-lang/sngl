@@ -65,25 +65,26 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 }
 
 // invokeHandler executes the handler body with the ErrorEvent bound to the
-// handler's param (or "e" if unnamed). Propagates any error raised by the
-// handler body itself to the caller.
+// handler's param. Propagates any error raised by the handler body itself to
+// the caller.
 func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {
 	if handler == nil || handler.Func == nil {
 		return nil
 	}
-	paramName := "e"
+	// A handler with no declared parameter has nothing that can name the
+	// event, so there is nothing to bind.
 	if len(handler.Func.Params) > 0 {
-		paramName = handler.Func.Params[0].Name
+		p := handler.Func.Params[0]
+		saved, existed := env.vals[p]
+		env.Set(p, event)
+		defer func() {
+			if existed {
+				env.vals[p] = saved
+			} else {
+				delete(env.vals, p)
+			}
+		}()
 	}
-	saved, existed := env.Vars[paramName]
-	env.Vars[paramName] = event
-	defer func() {
-		if existed {
-			env.Vars[paramName] = saved
-		} else {
-			delete(env.Vars, paramName)
-		}
-	}()
 	for _, stmt := range handler.Func.Block {
 		if err := env.Exec(stmt); err != nil {
 			return err
@@ -112,14 +113,14 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil // no-op in headless tests
 	case *ir.LocalVar:
 		if n.Init == nil {
-			env.Vars[n.Name] = nil
+			env.Set(n.Sym, nil)
 			return nil
 		}
 		v, err := env.Eval(n.Init)
 		if err != nil {
 			return err
 		}
-		env.Vars[n.Name] = v
+		env.Set(n.Sym, v)
 		return nil
 	case *ir.If:
 		return env.execIf(n)
@@ -166,15 +167,15 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	}
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		owner := env.findVarOwner(target.Name)
+		owner := env.findVarOwner(target.Sym)
 		if owner == nil {
 			return fmt.Errorf("cannot assign to undefined variable %q", target.Name)
 		}
-		nv, err := ApplyOp(s.Op, owner.Vars[target.Name], val, target.ExprType())
+		nv, err := ApplyOp(s.Op, owner.vals[target.Sym], val, target.ExprType())
 		if err != nil {
 			return err
 		}
-		owner.Vars[target.Name] = nv
+		owner.vals[target.Sym] = nv
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -240,15 +241,15 @@ func (env *Env) execAssign(s *ir.Assign) error {
 func (env *Env) execToggle(s *ir.Toggle) error {
 	switch target := s.Target.(type) {
 	case *ir.Ident:
-		owner := env.findVarOwner(target.Name)
+		owner := env.findVarOwner(target.Sym)
 		if owner == nil {
 			return fmt.Errorf("cannot toggle undefined variable %q", target.Name)
 		}
-		b, ok := owner.Vars[target.Name].(bool)
+		b, ok := owner.vals[target.Sym].(bool)
 		if !ok {
 			return fmt.Errorf("cannot toggle non-bool variable %q", target.Name)
 		}
-		owner.Vars[target.Name] = !b
+		owner.vals[target.Sym] = !b
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -296,20 +297,15 @@ func (env *Env) execFor(s *ir.For) error {
 			return nil
 		}
 		for k, val := range v {
-			env.Vars[s.Key] = k
-			if s.Value != "" {
-				env.Vars[s.Value] = val
-			}
+			env.Set(s.KeySym, k)
+			env.Set(s.ValueSym, val)
 			for _, st := range s.Body {
 				if err := env.Exec(st); err != nil {
 					return err
 				}
 			}
 		}
-		delete(env.Vars, s.Key)
-		if s.Value != "" {
-			delete(env.Vars, s.Value)
-		}
+		env.unbindLoopVars(s)
 	case []any:
 		// iter<T> at runtime is also []any (list passed as iter has no runtime wrapper).
 		if len(v) == 0 {
@@ -324,27 +320,33 @@ func (env *Env) execFor(s *ir.For) error {
 			if s.RefElem {
 				// &-bound element: bind a listRef so field/whole-element writes
 				// (through the checker's Unary{Deref}) update the list in place.
-				env.Vars[s.Key] = &listRef{list: v, idx: i}
+				env.Set(s.KeySym, &listRef{list: v, idx: i})
 			} else {
-				env.Vars[s.Key] = item
+				env.Set(s.KeySym, item)
 			}
-			if s.Value != "" {
-				env.Vars[s.Value] = i
-			}
+			env.Set(s.ValueSym, i)
 			for _, st := range s.Body {
 				if err := env.Exec(st); err != nil {
 					return err
 				}
 			}
 		}
-		delete(env.Vars, s.Key)
-		if s.Value != "" {
-			delete(env.Vars, s.Value)
-		}
+		env.unbindLoopVars(s)
 	default:
 		return fmt.Errorf("for iterator must be list or map, got %T", iter)
 	}
 	return nil
+}
+
+// unbindLoopVars drops the loop's bindings once the loop is done, so a read
+// after the loop resolves the same way it did before it.
+func (env *Env) unbindLoopVars(s *ir.For) {
+	if s.KeySym != nil {
+		delete(env.vals, s.KeySym)
+	}
+	if s.ValueSym != nil {
+		delete(env.vals, s.ValueSym)
+	}
 }
 
 func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {

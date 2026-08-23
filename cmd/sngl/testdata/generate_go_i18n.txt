@@ -20,8 +20,27 @@ grep 'map\[string\]any{}' out/model.go
 grep '"Hello, \{user\}!"' out/model.go
 grep '"user":' out/model.go
 
+# The alias a program imports i18n under is not part of the entry point's
+# identity: the mark on the declaration is. Detection keyed on a receiver
+# named "i18n" would leave this build with no runtime import and no manifest.
+sngl generate --platform=bubbletea --lang=go --out=outalias alias.sngl
+grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' outalias/model.go
+grep 'i18n.NumberInt\(m.__ctx_locale, ' outalias/model.go
+
+-- alias.sngl --
+import . "sngl://std"
+import t "sngl://i18n"
+
+output { go { bubbletea } }
+
+component main {
+    var n int = 1234
+    var s = t.numberInt(n, "decimal")
+    text(value=s)
+}
 -- app.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { go { bubbletea } }
 

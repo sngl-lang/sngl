@@ -58,8 +58,8 @@ type declarativeState struct {
 
 func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 	st := &declarativeState{liftHandlers: caps.NoLambda, intrinsics: map[string]*ir.Func{}}
-	for _, def := range ir.LowerIntrinsics {
-		st.intrinsics[def.Name] = intrinsicFunc(def)
+	for _, op := range ir.NodeOps {
+		st.intrinsics[op] = nodeOpFunc(op)
 	}
 	if st.liftHandlers {
 		st.lifter = &lifter{pkg: pkg}
@@ -67,21 +67,23 @@ func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 	return st
 }
 
-// intrinsicFunc materializes an IntrinsicDef into the *ir.Func form
-// lowering uses when emitting calls.
-func intrinsicFunc(def ir.IntrinsicDef) *ir.Func {
-	return &ir.Func{
-		Name:      def.Name,
-		Intrinsic: def.Name,
-		Params:    def.Params,
-		Return:    def.Return,
-	}
+// nodeOpFunc is the callee a lowering pass hangs a node operation on. Only the
+// id travels: codegen.WalkLowered matches on it and reads the operands off the
+// call, so a signature here would be describing nobody's contract.
+func nodeOpFunc(op string) *ir.Func {
+	return &ir.Func{Name: op, Intrinsic: op}
 }
+
+// lowerNS is the namespace symbol the intrinsic-call receivers
+// lowering emits resolve to. Lowering carries its own rather than reading the
+// checker's: a pass emits an intrinsic call whether or not the source package
+// ever named the namespace, so there is not always one to borrow.
+var lowerNS = &ir.Namespace{Name: "lower"}
 
 // lowerNSIdent returns a fresh Ident referring to the `lower` namespace.
 // Used as Call.Receiver so ir.Convert emits SelectExpr{Operand: Ident("lower"), Field: name}.
 func lowerNSIdent() *ir.Ident {
-	return &ir.Ident{Name: "lower", Type: ir.TypDyn}
+	return &ir.Ident{Name: "lower", Type: ir.TypDyn, Sym: lowerNS, Synthesized: true}
 }
 
 // seedCounter scans every NodeInst.ID matching __n<digits> and starts the

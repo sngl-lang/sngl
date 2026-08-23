@@ -1,0 +1,20 @@
+import . "sngl://std"
+
+// int.parse is an intrinsic whose declared body is the placeholder `return 0`,
+// and the interpreter answers it from its own implementation instead.
+//
+// This fixture does not assert the drop: the interpreter dispatches an
+// intrinsic by its id before it ever looks at a body, so it answers 255 with
+// the placeholder present or absent, and the test runner does not optimize.
+// The drop is asserted where it is observable —
+// cmd/sngl/testdata/generate_int_parse.txt, where the const folder had been
+// baking the placeholder's 0 into the output.
+component main {
+    const parsed = int.parse("FF", 16)
+    text(value="{parsed}")
+}
+
+func testPlaceholderDoesNotFold(t Test, c main) {
+    t.assert(c.parsed == 255)
+    t.assert(int.parse("FF", 16) == 255)
+}

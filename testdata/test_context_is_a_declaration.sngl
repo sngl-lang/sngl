@@ -1,0 +1,20 @@
+import . "sngl://std"
+import "sngl://i18n"
+
+// `context #name(default)` is recognised by the #[builtin("context")] mark on
+// the declaration in sngl://builtin, not by the word "context". Every other
+// built-in works that way; this one was matched by name.
+context #theme("light")
+
+component main {
+    text(value=theme)
+}
+
+func testContextReads(t Test, c main) {
+    t.assert(theme == "light")
+}
+
+func testContextOverride(t Test, c main) {
+    t.setContext(theme, "dark")
+    t.assert(theme == "dark")
+}

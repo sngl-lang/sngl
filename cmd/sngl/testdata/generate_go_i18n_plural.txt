@@ -24,6 +24,7 @@ grep 'i18n\.PluralFew' out/model.go
 
 -- app.sngl --
 import . "sngl://std"
+import "sngl://i18n"
 
 output { go { bubbletea } }
 

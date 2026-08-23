@@ -1,5 +1,6 @@
-# The bare stdlib keyword is the merged view: everything a file sees without
-# naming a package. `button` comes from sngl://std, `color` from sngl://builtin.
+# The bare stdlib keyword is every public package merged into one listing —
+# not what a file sees, since only sngl://builtin is in scope unimported.
+# `button` comes from sngl://std, `color` from sngl://builtin.
 sngl doc sngl
 stdout '# sngl'
 stdout 'button'
@@ -33,6 +34,32 @@ stdout 'Counter'
 # Unknown scheme surfaces an error (nonzero exit).
 ! sngl doc bogus://nope
 
+# A declaration named without its package resolves through the packages, and
+# says which one it found and what importing it costs — the name alone is not
+# enough to write the program.
+sngl doc circle
+stdout 'sngl://draw'
+stdout 'import \. "sngl://draw"'
+stdout '# circle'
+
+sngl doc button
+stdout 'sngl://std'
+stdout 'import \. "sngl://std"'
+
+# Except in sngl://builtin, which is the one package needing no import.
+sngl doc color
+stdout 'sngl://builtin \(ambient\)'
+! stdout 'import'
+
+
+# $"..." lowers to a call on sngl://i18n, and the import names the package —
+# not one particular alias for it.
+sngl check aliased_i18n.sngl
+stdout 'aliased_i18n.sngl: ok'
+
+# The compiler's own tier is not reachable by a bare name.
+! sngl doc StrUpper
+
 -- app.sngl --
 import . "sngl://std"
 import w "./widgets"
@@ -44,4 +71,13 @@ import . "sngl://std"
 
 component Counter(count int) {
     text { value = "count: ${count}" }
+}
+
+-- aliased_i18n.sngl --
+import . "sngl://std"
+import tr "sngl://i18n"
+
+component main {
+    var n int = 1
+    text(value=$"hi {n}")
 }

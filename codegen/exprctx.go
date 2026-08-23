@@ -32,8 +32,13 @@ type ExprCtx struct {
 	Component *ir.Component     // current component (nil for top-level)
 	Locals    map[string]bool   // for-loop vars, lambda params
 	Renames   map[string]string // original → unique name (component inlining)
-	EventVar  string            // what "event" maps to (e.g., "e.target")
-	Helpers   map[string]bool   // helper functions needed (populated during codegen)
+	EventVar  string            // what the handler's event parameter maps to (e.g., "e.target")
+	// EventParam is the handler parameter EventVar stands for. `event` was an
+	// ambient name once and is a declared parameter now, so the substitution
+	// is by declaration: a handler may call its parameter whatever it likes,
+	// and a local called "event" that is not one must not be swapped.
+	EventParam ir.Symbol
+	Helpers    map[string]bool // helper functions needed (populated during codegen)
 	// NativeImports collects module → set of imported names; populated as
 	// native calls are emitted.
 	NativeImports map[string]map[string]bool
@@ -180,6 +185,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Locals:        maps.Clone(ctx.Locals),
 		Renames:       maps.Clone(ctx.Renames),
 		EventVar:      ctx.EventVar,
+		EventParam:    ctx.EventParam,
 		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
 		NativeImports: ctx.NativeImports, // shared — accumulates across clones
 		Maps:          ctx.Maps,
@@ -199,10 +205,11 @@ func (ctx *ExprCtx) WithLocal(name string) *ExprCtx {
 	return c
 }
 
-// WithEvent returns a clone with EventVar set.
-func (ctx *ExprCtx) WithEvent(eventVar string) *ExprCtx {
+// WithEvent returns a clone bound to a handler's event parameter.
+func (ctx *ExprCtx) WithEvent(eventVar string, param ir.Symbol) *ExprCtx {
 	c := ctx.Clone()
 	c.EventVar = eventVar
+	c.EventParam = param
 	return c
 }
 

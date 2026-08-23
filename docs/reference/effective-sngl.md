@@ -609,7 +609,7 @@ var name = ""
 ```sngl
 button(text="Submit", disabled=count <= 0)
 input(value=name, placeholder="Enter name", type="email")
-image(src="photo.png", alt="Profile", fit="cover")
+image(src="photo.png", alt="Profile", fit=ObjectFit.cover)
 ```
 
 ### Events

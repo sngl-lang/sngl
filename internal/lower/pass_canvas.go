@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil {
+	if pkg == nil || !pkg.UsesShapes {
 		return nil
 	}
 	var counter int
@@ -63,11 +63,12 @@ func isShapeContainer(ni *ir.NodeInst) bool {
 
 // buildDrawFunc generates a draw function for a set of shape children.
 func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func {
+	ctx := &ir.Param{Name: "ctx", Type: ir.TypDyn}
 	var body []ir.Stmt
-	emitShapes(children, &body, funcs)
+	emitShapes(children, &body, funcs, ctx)
 	return &ir.Func{
 		Name:        name,
-		Params:      []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+		Params:      []*ir.Param{ctx},
 		Return:      ir.TypVoid,
 		Synthesized: true,
 		Block:       body,
@@ -75,23 +76,23 @@ func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func 
 }
 
 // emitShapes emits draw calls for each shape child.
-func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func) {
+func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
 	for _, s := range children {
 		ni, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue
 		}
-		emitShape(ni, body, funcs)
+		emitShape(ni, body, funcs, ctx)
 	}
 }
 
 // ctxExpr returns an Ident for the ctx draw-function parameter.
-func ctxExpr() *ir.Ident {
-	return &ir.Ident{Name: "ctx", Type: ir.TypDyn}
+func ctxExpr(ctx *ir.Param) *ir.Ident {
+	return &ir.Ident{Name: ctx.Name, Type: ctx.Type, Sym: ctx, Synthesized: true}
 }
 
 // canvasCall builds a CallStmt invoking a CanvasIntrinsic.
-func canvasCall(intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
+func canvasCall(ctx *ir.Param, intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
 	def := ir.LookupIntrinsic(intrinsicName)
 	if def == nil {
 		panic(fmt.Sprintf("passCanvas: unknown intrinsic %q", intrinsicName))
@@ -103,7 +104,7 @@ func canvasCall(intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
 		Return:    def.Return,
 	}
 	args := make([]ir.CallArg, 0, 1+len(extraArgs))
-	args = append(args, ir.CallArg{Name: "ctx", Value: ctxExpr()})
+	args = append(args, ir.CallArg{Name: "ctx", Value: ctxExpr(ctx)})
 	for _, a := range extraArgs {
 		args = append(args, ir.CallArg{Value: a})
 	}
@@ -137,40 +138,40 @@ func hasArg(ni *ir.NodeInst, name string) bool {
 }
 
 // emitShape emits save / applyStyle / primitive-draw / recurse / restore for one shape.
-func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func) {
-	*body = append(*body, canvasCall("CanvasSave"))
+func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
+	*body = append(*body, canvasCall(ctx, "CanvasSave"))
 
 	if hasArg(ni, "style") {
-		*body = append(*body, canvasCall("CanvasApplyStyle", argVal(ni, "style")))
+		*body = append(*body, canvasCall(ctx, "CanvasApplyStyle", argVal(ni, "style")))
 	}
 
 	switch ni.Name {
 	case "rect":
-		*body = append(*body, canvasCall("CanvasDrawRect",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawRect",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h")))
 	case "circle":
-		*body = append(*body, canvasCall("CanvasDrawCircle",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawCircle",
 			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "r")))
 	case "ellipse":
-		*body = append(*body, canvasCall("CanvasDrawEllipse",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawEllipse",
 			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "rx"), argVal(ni, "ry")))
 	case "line":
-		*body = append(*body, canvasCall("CanvasDrawLine",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawLine",
 			argVal(ni, "x1"), argVal(ni, "y1"), argVal(ni, "x2"), argVal(ni, "y2")))
 	case "path":
-		*body = append(*body, canvasCall("CanvasDrawPath", argVal(ni, "cmds")))
+		*body = append(*body, canvasCall(ctx, "CanvasDrawPath", argVal(ni, "cmds")))
 	case "canvasText":
-		*body = append(*body, canvasCall("CanvasDrawText",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawText",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "content")))
 	case "canvasImage":
-		*body = append(*body, canvasCall("CanvasDrawImage",
+		*body = append(*body, canvasCall(ctx, "CanvasDrawImage",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h"), argVal(ni, "src")))
 		// user-defined shapes: emit only save/restore (children handled by recursion below)
 	}
 
 	if len(ni.Children) > 0 {
-		emitShapes(ni.Children, body, funcs)
+		emitShapes(ni.Children, body, funcs, ctx)
 	}
 
-	*body = append(*body, canvasCall("CanvasRestore"))
+	*body = append(*body, canvasCall(ctx, "CanvasRestore"))
 }

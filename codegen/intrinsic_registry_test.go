@@ -56,3 +56,39 @@ func TestIntrinsicRegistryDuplicatePanics(t *testing.T) {
 	}()
 	RegisterIntrinsic(lang, "X", func([]ir.Expr, func(ir.Expr) string) (string, []string) { return "", nil })
 }
+
+func TestRequireIntrinsicFallback(t *testing.T) {
+	cases := []struct {
+		name  string
+		fn    *ir.Func
+		panic bool
+	}{
+		{"nil func", nil, false},
+		{"not an intrinsic", &ir.Func{Name: "plain"}, false},
+		{"bodyless with no emitter", &ir.Func{Name: "p", Intrinsic: "NoBackendHasThis"}, true},
+		// A body that reached codegen is one the declaration claimed computes
+		// the right answer: the checker drops a placeholder after checking it.
+		{"a body that survived checking", &ir.Func{
+			Name: "p", Intrinsic: "NoBackendHasThis",
+			Block: []ir.Stmt{&ir.Return{}},
+		}, false},
+		// `usable` says to keep the body, not that an absent one is an answer.
+		{"usable but bodyless", &ir.Func{
+			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		}, true},
+		{"usable with its body", &ir.Func{
+			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+			Block: []ir.Stmt{&ir.Return{}},
+		}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); (r != nil) != tc.panic {
+					t.Errorf("panicked = %v; want %v (%v)", r != nil, tc.panic, r)
+				}
+			}()
+			RequireIntrinsicFallback("some-lang", tc.fn)
+		})
+	}
+}

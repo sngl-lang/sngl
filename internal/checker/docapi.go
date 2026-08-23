@@ -119,7 +119,8 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 			merged.Stmts = append(merged.Stmts, d.Stmts...)
 		}
 
-		pkg, _ := Check(merged, &Config{})
+		// lib/ checked as the document, not loaded as a package.
+		pkg, _ := Check(merged, &Config{libSource: true})
 		stdlibIRPackage = pkg
 		stdlibSchemaRegistry = buildSchemaRegistry(pkg, docs)
 		stdlibStyleProps = map[string]StylePropSchema{}

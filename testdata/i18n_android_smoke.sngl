@@ -3,6 +3,7 @@
 // Used by cmd/sngl/testdata/compile_android_i18n.txt.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 component main {
     var count int = 1

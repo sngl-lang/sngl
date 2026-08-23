@@ -1,0 +1,19 @@
+# clamp is max(lo, min(x, hi)) in every backend, matching the declaration's own
+# body. Go and JS emitted the opposite composition and Kotlin used coerceIn,
+# which throws when lo > hi rather than answering lo.
+
+sngl generate --lang=none --platform=html --out=outjs app.sngl
+grep 'Math.max\(0, Math.min\(' outjs/index.html
+
+sngl generate --lang=kotlin --platform=android --opt=main=true --out=outkt app.sngl
+grep 'maxOf\(0, minOf\(' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
+! grep 'coerceIn' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
+
+-- app.sngl --
+import . "sngl://std"
+
+component main {
+    var raw int = 42
+    var v int = int.clamp(raw, 0, 10)
+    text(value="{v}")
+}

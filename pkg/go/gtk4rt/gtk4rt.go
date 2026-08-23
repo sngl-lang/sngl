@@ -110,15 +110,26 @@ static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *p
     return ok ? 0 : 6;
 }
 
-// Drain the default GLib main context until the widget is mapped and has a
-// non-zero allocated size, or maxIter is exhausted.
-static void sngl_pump_until_mapped(GtkWidget *widget, int maxIter) {
-    g_main_context_iteration(NULL, TRUE);
-    for (int i = 0; i < maxIter; i++) {
-        if (gtk_widget_get_mapped(widget) && gtk_widget_get_width(widget) > 0) break;
-        g_main_context_iteration(NULL, FALSE);
+// Waits for map *and* a non-zero allocation: the compositor sends the map
+// event before GTK has run size-allocate, and a zero-width widget snapshots to
+// an empty (NULL) render node.
+//
+// The wait is a wall-clock deadline over blocking iterations because a
+// non-blocking poll is not a wait at all — 1000 rounds of it returned in under
+// 2ms on a quiet socket, so under load the allocation had simply not arrived.
+// The tick source only keeps a blocking iteration from parking past the
+// deadline.
+static gboolean sngl_pump_tick(gpointer data) { return G_SOURCE_CONTINUE; }
+
+static void sngl_pump_until_mapped(GtkWidget *widget, int timeoutMs) {
+    gint64 deadline = g_get_monotonic_time() + (gint64)timeoutMs * 1000;
+    guint tick = g_timeout_add(5, sngl_pump_tick, NULL);
+    while (!(gtk_widget_get_mapped(widget) && gtk_widget_get_width(widget) > 0)) {
+        if (g_get_monotonic_time() >= deadline) break;
+        g_main_context_iteration(NULL, TRUE);
     }
-    for (int i = 0; i < maxIter; i++) {
+    g_source_remove(tick);
+    for (int i = 0; i < 1000; i++) {
         if (!g_main_context_iteration(NULL, FALSE)) break;
     }
 }

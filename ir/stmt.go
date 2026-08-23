@@ -112,6 +112,13 @@ type LocalVar struct {
 	Name string
 	Type *Type
 	Init Expr // resolved initializer (nil if none)
+	// Sym is the Var that Idents referring to this local resolve to. The
+	// statement and the symbol are separate objects because the checker binds
+	// the name in a scope while emitting the statement; an evaluator that
+	// keys values by declaration needs the link between the two. Nil for the
+	// node handles passDeclarative emits, which are addressed as element refs
+	// rather than by symbol.
+	Sym *Var
 	// CanvasDraw is set by passDeclarative when flattening a canvas
 	// NodeInst (whose own CanvasDraw was set by passCanvas) into a
 	// `lower.CreateNode("canvas")` LocalVar. It carries the synthesized
@@ -164,6 +171,11 @@ type For struct {
 	ElemType *Type
 	Body     []Stmt
 	Else     []Stmt
+	// KeySym and ValueSym are the symbols Idents in the body resolve to for
+	// Key and Value. ValueSym is nil in the single-var form, and both are nil
+	// for a name-only loop a codegen backend emits for itself.
+	KeySym   *LoopVar
+	ValueSym *LoopVar
 	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
 	// declared inside this loop's body. After optimizer expansion, the
 	// optimizer binds each symbol's value to the unrolled list of windows.

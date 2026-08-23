@@ -11,9 +11,15 @@ import "fmt"
 // to confirm the pass did not drop a cross-reference or leave a child
 // pointer nil. The invariants checked here hold on both post-check and
 // post-lower IR — cross-references that lowering legitimately synthesizes
-// without a resolved symbol are excluded via the Synthesized / IsElementRef
-// / Member predicates, so a clean package produces no violations at any
-// phase.
+// without a resolved symbol are excluded via the IsElementRef / Member
+// predicates, so a clean package produces no violations at any phase.
+//
+// The reach is checker through lower, and no further: nothing in the
+// pipeline calls this, only the tests do, so the identifiers a platform
+// builds after lowering are not covered. Several are Sym-less and correctly
+// so — gtk4, fyne and the html intrinsic translator render by name and never
+// resolve anything through a symbol. "Every Ident carries its Sym" is a
+// claim about the phases that still have symbols to carry.
 func Validate(pkg *Package) []error {
 	if pkg == nil {
 		return nil
@@ -26,12 +32,14 @@ func Validate(pkg *Package) []error {
 	Walk(pkg, func(n Node) error {
 		switch x := n.(type) {
 		case *Ident:
-			// A user-level identifier must resolve to a symbol. Excluded:
-			// pass-synthesized refs (Synthesized), element refs (#id),
-			// bare enum members (carry Member instead of Sym), and the
-			// magic platform-gate identifiers (PLATFORM/LANGUAGE) which
-			// the checker resolves without a symbol.
-			if x.Sym == nil && !x.Synthesized && !x.IsElementRef && x.Member == "" && !isMagicIdent(x.Name) {
+			// An identifier must resolve to a symbol — including one a
+			// lowering pass synthesized, which refers to a Var, Param or
+			// LoopVar that same pass created and can point at. Excluded:
+			// element refs (#id and the synthesized __nN node handles),
+			// which name a node in the emitted tree rather than a
+			// declaration, and bare enum members, which carry Member
+			// instead of Sym.
+			if x.Sym == nil && !x.IsElementRef && x.Member == "" {
 				add("unresolved identifier %q (nil Sym)", x.Name)
 			}
 		case *Call:
@@ -79,13 +87,6 @@ func Validate(pkg *Package) []error {
 	})
 	return errs
 }
-
-// isMagicIdent reports whether name is a compiler-recognized identifier that
-// legitimately resolves to no Symbol. There are none left: every predeclared
-// name is declared in lib/builtin and carries a Symbol like anything else.
-// Kept as the seam for the next one rather than removed, so the validator does
-// not have to grow the concept back.
-func isMagicIdent(string) bool { return false }
 
 func checkNoNilStmts(add func(string, ...any), where string, stmts []Stmt) {
 	for i, s := range stmts {

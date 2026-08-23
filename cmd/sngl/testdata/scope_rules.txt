@@ -70,10 +70,13 @@ stderr 'y is already declared in this scope'
 ! sngl check dup_loop_var.sngl
 stderr 'k is already declared in this scope'
 
-# A namespace the stdlib exposes may still be imported by name: both bindings
-# denote the same package, so this is a restated name, not an ambiguous one.
-sngl check restate_intrinsic.sngl
-stdout 'restate_intrinsic.sngl: ok'
+# Two bindings of one package is a restated name, not an ambiguous one: both
+# denote the same package. Two packages claiming one name still collide.
+sngl check restate_import.sngl
+stdout 'restate_import.sngl: ok'
+
+! sngl check ambiguous_alias.sngl
+stderr 'already bound at file scope by an import alias'
 
 # Visibility is enforced where a member is resolved by name, not at each access
 # site: a struct literal, an enum member reached either way, and a call through
@@ -310,11 +313,19 @@ component main {
         text(value=k)
     }
 }
--- restate_intrinsic.sngl --
+-- restate_import.sngl --
 import . "sngl://std"
-import "internal://lower"
+import "sngl://draw"
+import draw "sngl://draw"
 
-func make() => lower.CreateNode("text")
+component main {
+    text(value="x")
+}
+
+-- ambiguous_alias.sngl --
+import . "sngl://std"
+import x "sngl://draw"
+import x "sngl://i18n"
 
 component main {
     text(value="x")

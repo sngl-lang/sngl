@@ -1,122 +1,155 @@
-import "internal://stdlib"
+import . "sngl://internal/marks"
 
 // --- int ---
 
 // Returns the smaller of two integers. Ties return a (which equals b
 // for integers, so the distinction is vacuous).
+#[intrinsic("int.min", usable)]
 func int.min(a int, b int) => a < b ? a : b
 
 // Returns the larger of two integers. Ties return a.
+#[intrinsic("int.max", usable)]
 func int.max(a int, b int) => a > b ? a : b
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
+#[intrinsic("int.abs", usable)]
 func int.abs(x int) => x < 0 ? -x : x
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the result
 // follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
 // documented contract for malformed ranges.
+#[intrinsic("int.clamp", usable)]
 func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
+
+// Parse s in the given base (2, 8, 10, 16). No target other than the headless
+// interpreter implements this yet.
+#[intrinsic("int.parse")]
+func int.parse(s string, base int) int { return 0 }
 
 // --- float ---
 
 // Returns the smaller of two floats. NaN handling is platform-defined
 // — prefer explicit NaN checks when either operand may be NaN.
+#[intrinsic("float.min", usable)]
 func float.min(a float, b float) => a < b ? a : b
 
 // Returns the larger of two floats. See `float.min` for NaN caveats.
+#[intrinsic("float.max", usable)]
 func float.max(a float, b float) => a > b ? a : b
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.
+#[intrinsic("float.abs", usable)]
 func float.abs(x float) => x < 0.0 ? -x : x
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
 // wins (see `int.clamp`).
+#[intrinsic("float.clamp", usable)]
 func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
 
-// Largest integer value not greater than x, as a float. For negative
-// non-integers this rounds away from zero (e.g. floor(-1.5) == -2.0).
-func float.floor(x float) => stdlib.MathFloor(x)
+// Largest integer value not greater than x. For negative non-integers this
+// rounds away from zero (e.g. floor(-1.5) == -2).
+#[intrinsic("float.floor", usable)]
+func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
 
-// Smallest integer value not less than x, as a float. For negative
-// non-integers this rounds toward zero (e.g. ceil(-1.5) == -1.0).
-func float.ceil(x float) => stdlib.MathCeil(x)
+// Smallest integer value not less than x. For negative non-integers this
+// rounds toward zero (e.g. ceil(-1.5) == -1).
+#[intrinsic("float.ceil", usable)]
+func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
 
-// Nearest integer value to x, as a float. Halves round away from zero
+// Nearest integer value to x. Halves round away from zero
 // (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
 // and round(-0.5) == -1.0.
-func float.round(x float) => stdlib.MathRound(x)
+#[intrinsic("float.round", usable)]
+func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
 
 // Raises base to the power exp. Integer powers are exact up to float
 // precision; fractional powers of negative bases yield NaN.
-func float.pow(base float, exp float) => stdlib.MathPow(base, exp)
+#[intrinsic("float.pow")]
+func float.pow(base float, exp float) float { return 0.0 }
 
 // Non-negative square root of x. Returns NaN for negative x.
-func float.sqrt(x float) => stdlib.MathSqrt(x)
+#[intrinsic("float.sqrt")]
+func float.sqrt(x float) float { return 0.0 }
 
 // Sine of x, where x is in radians.
-func float.sin(x float) => stdlib.MathSin(x)
+#[intrinsic("float.sin")]
+func float.sin(x float) float { return 0.0 }
 
 // Cosine of x, where x is in radians.
-func float.cos(x float) => stdlib.MathCos(x)
+#[intrinsic("float.cos")]
+func float.cos(x float) float { return 0.0 }
 
 // Tangent of x, where x is in radians. Undefined (±Inf / large finite)
 // near odd multiples of π/2.
-func float.tan(x float) => stdlib.MathTan(x)
+#[intrinsic("float.tan")]
+func float.tan(x float) float { return 0.0 }
 
 // Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
 // |x| > 1.
-func float.asin(x float) => stdlib.MathAsin(x)
+#[intrinsic("float.asin")]
+func float.asin(x float) float { return 0.0 }
 
 // Arccosine of x, result in radians within [0, π]. Returns NaN for
 // |x| > 1.
-func float.acos(x float) => stdlib.MathAcos(x)
+#[intrinsic("float.acos")]
+func float.acos(x float) float { return 0.0 }
 
 // Arctangent of x, result in radians within [-π/2, π/2]. Use
 // `float.atan2` when you have separate y and x and need to recover
 // the quadrant.
-func float.atan(x float) => stdlib.MathAtan(x)
+#[intrinsic("float.atan")]
+func float.atan(x float) float { return 0.0 }
 
 // Arctangent of y/x using signs of both arguments to pick the correct
 // quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
 // 0. This is the correct function for converting Cartesian (x, y)
 // into an angle.
-func float.atan2(y float, x float) => stdlib.MathAtan2(y, x)
+#[intrinsic("float.atan2")]
+func float.atan2(y float, x float) float { return 0.0 }
 
 // --- string ---
 
 // Number of Unicode characters in s (not bytes).
-func string.length(s string) => stdlib.StrLength(s)
+#[intrinsic("string.length")]
+func string.length(s string) int { return 0 }
 
 // Index of the first occurrence of sub in s, or -1 if absent. The
 // index is a character index, matching `string.substring`.
-func string.indexOf(s string, sub string) => stdlib.StrIndexOf(s, sub)
+#[intrinsic("string.indexOf")]
+func string.indexOf(s string, sub string) int { return -1 }
 
 // Substring of s from start (inclusive) to end (exclusive). Both
 // bounds are character indices; negative or out-of-range values are
 // clamped to [0, length(s)].
-func string.substring(s string, start int, end int) => stdlib.StrSubstring(s, start, end)
+#[intrinsic("string.substring")]
+func string.substring(s string, start int, end int) string { return s }
 
 // Uppercased copy of s using the platform's Unicode case mapping.
-func string.upper(s string) => stdlib.StrUpper(s)
+#[intrinsic("string.upper")]
+func string.upper(s string) string { return s }
 
 // Lowercased copy of s using the platform's Unicode case mapping.
-func string.lower(s string) => stdlib.StrLower(s)
+#[intrinsic("string.lower")]
+func string.lower(s string) string { return s }
 
 // Copy of s with leading and trailing whitespace removed. Whitespace
 // follows the platform's Unicode whitespace definition.
-func string.trim(s string) => stdlib.StrTrim(s)
+#[intrinsic("string.trim")]
+func string.trim(s string) string { return s }
 
 // Copy of s with every occurrence of old replaced by new. Replacement
 // is non-overlapping — after each match, scanning resumes after the
 // replacement (not after old).
-func string.replace(s string, old string, new string) => stdlib.StrReplace(s, old, new)
+#[intrinsic("string.replace")]
+func string.replace(s string, old string, new string) string { return s }
 
 // Splits s on every occurrence of sep and returns the pieces. An
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
-func string.split(s string, sep string) => stdlib.StrSplit(s, sep)
+#[intrinsic("string.split")]
+func string.split(s string, sep string) list<string> { return [s] }
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.
@@ -131,7 +164,8 @@ func string.endsWith(s string, suffix string) => string.substring(s, string.leng
 // --- list ---
 
 // Number of items in l.
-func list<T>.length() int {}
+#[intrinsic("list.length")]
+func list<T>.length() int { return 0 }
 
 // Appends item to the receiver list (`this`) and returns it. push mutates the
 // list in place — index assignment (`l[i] = x`) and the mutating methods
@@ -139,39 +173,46 @@ func list<T>.length() int {}
 // var would be. Backed by the ListPush intrinsic, which carries the
 // mutates-receiver semantics through to lowering and every backend (see
 // ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
-func list<T>.push(item T) => stdlib.ListPush(this, item)
+#[intrinsic("list.push", mutates, mutatesReceiver)]
+func list<T>.push(item T) list<T> { return [] }
 
-// Removes the item at index from the receiver list (`this`) in place and
-// returns it. Out-of-range indices leave the list unchanged. Backed by the
-// ListRemove intrinsic.
-func list<T>.remove(index int) => stdlib.ListRemove(this, index)
+// Removes the item at index from the receiver list (`this`) in place.
+// Out-of-range indices leave the list unchanged.
+#[intrinsic("list.remove", mutates, mutatesReceiver)]
+func list<T>.remove(index int) list<T> { return [] }
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
-func list<T>.indexOf(item T) int {}
+#[intrinsic("list.indexOf")]
+func list<T>.indexOf(item T) int { return -1 }
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
-func list<T>.join(sep string) string {}
+#[intrinsic("list.join")]
+func list<T>.join(sep string) string { return "" }
 
 // Returns a copy of l with items in reverse order.
-func list<T>.reverse() list<T> {}
+#[intrinsic("list.reverse")]
+func list<T>.reverse() list<T> { return [] }
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
-func list<T>.slice(start int, end int) list<T> {}
+#[intrinsic("list.slice")]
+func list<T>.slice(start int, end int) list<T> { return [] }
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
-func list<T>.filter(pred func(T) bool) list<T> {}
+#[intrinsic("list.filter")]
+func list<T>.filter(pred func(T) bool) list<T> { return [] }
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
-func list<T>.map<U>(fn func(T) U) list<U> {}
+#[intrinsic("list.map")]
+func list<T>.map<U>(fn func(T) U) list<U> { return [] }
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
-func list<T>.contains(item T) bool {}
+func list<T>.contains(item T) => this.indexOf(item) >= 0
 
 // --- color ---
 
@@ -189,19 +230,20 @@ func color.rgba(r int, g int, b int, a int) => color{r=r, g=g, b=b, a=a}
 // hue stable.
 func color.opacity(c color, a int) => color{r=c.r, g=c.g, b=c.b, a=a}
 
-// Renders c as a `#RRGGBB` hex string. Alpha is not included in the
-// output; use `color.rgba` values directly when alpha must survive
-// round-tripping.
-func color.hex(c color) => stdlib.ColorHex(c)
+// Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
+// its complete value, and dropping alpha would print two different colours
+// the same.
+#[intrinsic("color.hex")]
+func color.hex(c color) string { return "" }
 
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,
 // preserving alpha. `lighten(c, 0.0)` returns c; `lighten(c, 1.0)`
 // returns opaque white at c's alpha.
 func color.lighten(c color, pct float) color {
     var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
-    ret.r = int.min(255, c.r + int(float(255 - c.r) * pct))
-    ret.g = int.min(255, c.g + int(float(255 - c.g) * pct))
-    ret.b = int.min(255, c.b + int(float(255 - c.b) * pct))
+    ret.r = uint8(int.min(255, int(c.r) + int(float(255 - int(c.r)) * pct)))
+    ret.g = uint8(int.min(255, int(c.g) + int(float(255 - int(c.g)) * pct)))
+    ret.b = uint8(int.min(255, int(c.b) + int(float(255 - int(c.b)) * pct)))
     return ret
 }
 
@@ -210,9 +252,9 @@ func color.lighten(c color, pct float) color {
 // returns black at c's alpha.
 func color.darken(c color, pct float) color {
     var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
-    ret.r = int(float(c.r) * (1.0 - pct))
-    ret.g = int(float(c.g) * (1.0 - pct))
-    ret.b = int(float(c.b) * (1.0 - pct))
+    ret.r = uint8(int(float(int(c.r)) * (1.0 - pct)))
+    ret.g = uint8(int(float(int(c.g)) * (1.0 - pct)))
+    ret.b = uint8(int(float(int(c.b)) * (1.0 - pct)))
     return ret
 }
 
@@ -220,19 +262,24 @@ func color.darken(c color, pct float) color {
 // --- map ---
 
 // Number of entries currently in m.
-func map<K, V>.length() int {}
+#[intrinsic("map.length")]
+func map<K, V>.length() int { return 0 }
 
 // List of keys in m in unspecified order.
-func map<K, V>.keys() list<K> {}
+#[intrinsic("map.keys")]
+func map<K, V>.keys() list<K> { return [] }
 
 // List of values in m in unspecified order.
-func map<K, V>.values() list<V> {}
+#[intrinsic("map.values")]
+func map<K, V>.values() list<V> { return [] }
 
 // True iff key exists in m.
-func map<K, V>.contains(key K) bool {}
+#[intrinsic("map.contains")]
+func map<K, V>.contains(key K) bool { return false }
 
 // Lookup with default — returns the value if key is present in m,
 // otherwise returns the default value. Both are coerced to match the
 // declared value type.
-func map<K, V>.get(key K, default V) V {}
+#[intrinsic("map.get")]
+func map<K, V>.get(key K, default V) V { return default }
 

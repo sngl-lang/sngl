@@ -24,6 +24,14 @@ type Param struct {
 	Name     string
 	Kind     ArgKind
 	Optional bool
+	// Variadic consumes every remaining argument. It must be the last
+	// parameter, and is implicitly optional — a variadic with no arguments is
+	// an empty list, not a missing one. Read with Args.Idents.
+	Variadic bool
+	// Enum, for ArgIdent, is the set of identifiers the argument may name.
+	// A mark that spells a flag wrong should say so with the alternatives
+	// rather than be silently ignored.
+	Enum []string
 }
 
 // PreHandler transforms a declaration before type-checking. It receives the

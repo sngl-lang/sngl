@@ -122,13 +122,8 @@ func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		intrinsics:   make(map[string]*ir.Func),
 	}
-	for _, def := range ir.LowerIntrinsics {
-		st.intrinsics[def.Name] = &ir.Func{
-			Name:      def.Name,
-			Intrinsic: def.Name,
-			Params:    def.Params,
-			Return:    def.Return,
-		}
+	for _, op := range ir.NodeOps {
+		st.intrinsics[op] = nodeOpFunc(op)
 	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
@@ -401,6 +396,16 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 	}
 	st.owner.addVar(v)
 	return v
+}
+
+// slotIdent references the per-slot `__slotN` Var, creating it on first use.
+func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
+	return &ir.Ident{
+		Name:        slotID,
+		Type:        ir.ListOf(ir.TypDyn),
+		Sym:         st.synthesizeSlotVar(slotID),
+		Synthesized: true,
+	}
 }
 
 // synthesizeRootVar creates the `__root dyn` Var on the current owner
@@ -1192,9 +1197,11 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 1. Teardown: for __entry = __slotN { lower.RemoveChild(parent, __entry) }
 	entryVar := "__entry"
+	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
 	teardown := &ir.For{
-		Key:  entryVar,
-		Iter: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+		Key:    entryVar,
+		KeySym: entrySym,
+		Iter:   st.slotIdent(slotID),
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
@@ -1202,7 +1209,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 				Func:     st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
-					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn}},
+					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Sym: entrySym, Synthesized: true}},
 				},
 			}},
 		},
@@ -1210,7 +1217,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 2. Reset: __slotN = []
 	reset := &ir.Assign{
-		Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+		Target: st.slotIdent(slotID),
 		Op:     ast.AssignSet,
 		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
 	}
@@ -1243,23 +1250,23 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
 func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
-	listPushDef := ir.LookupIntrinsic("ListPush")
+	listPushDef := ir.LookupIntrinsic("list.push")
 	listPushFn := &ir.Func{
-		Name:      "ListPush",
-		Intrinsic: "ListPush",
+		Name:      "push",
+		Receiver:  "list",
+		Intrinsic: "list.push",
 		Params:    listPushDef.Params,
 		Return:    listPushDef.Return,
 	}
 	pushToSlot := func(nodeID string) ir.Stmt {
 		return &ir.Assign{
-			Target: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+			Target: st.slotIdent(slotID),
 			Op:     ast.AssignSet,
 			Value: &ir.Call{
-				Type:     ir.ListOf(ir.TypDyn),
-				Receiver: &ir.Ident{Name: "stdlib"},
-				Func:     listPushFn,
+				Type: ir.ListOf(ir.TypDyn),
+				Func: listPushFn,
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: slotID, Type: ir.ListOf(ir.TypDyn), Synthesized: true}},
+					{Value: st.slotIdent(slotID)},
 					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},
@@ -1318,6 +1325,8 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 				inner := &ir.For{
 					Key:      sx.Key,
 					Value:    sx.Value,
+					KeySym:   sx.KeySym,
+					ValueSym: sx.ValueSym,
 					Iter:     sx.Iter,
 					ElemType: sx.ElemType,
 					AST:      sx.AST,

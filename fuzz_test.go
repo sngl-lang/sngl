@@ -696,7 +696,7 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 	for _, p := range fn.Params {
 		// Bind seed params to a deterministic dummy value so any code path
 		// that references them produces a stable result.
-		env.SetVar(p.Name, 0)
+		env.Set(p, 0)
 	}
 	for _, s := range fn.Block {
 		if r, ok := s.(*ir.Return); ok {

@@ -58,8 +58,40 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{mainComp},
+		UsesShapes: true,
 	}
 	return pkg, canvasInst
+}
+
+// A program with no list<shape> anywhere is not searched. Without the gate the
+// pass walks every component of every program a canvas-capable target builds.
+func TestPassCanvas_SkipsProgramsWithoutShapes(t *testing.T) {
+	pkg, canvasInst := buildCanvasPkg(t)
+	pkg.UsesShapes = false
+
+	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+		t.Fatalf("lower error: %v", err)
+	}
+	if canvasInst.CanvasDraw != nil {
+		t.Error("passCanvas ran on a program that declares no shapes")
+	}
+}
+
+// The gate is the construct, not the import. list<shape> is resolved by the
+// compiler rather than by sngl://draw, and inlining flattens a canvas out of
+// the package that imported it, so gating on the import list dropped canvases
+// on the floor: the shapes survived as ordinary widget nodes and the generated
+// program failed to build.
+func TestPassCanvas_RunsWithoutADrawImport(t *testing.T) {
+	pkg, canvasInst := buildCanvasPkg(t)
+	pkg.Imports = nil
+
+	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+		t.Fatalf("lower error: %v", err)
+	}
+	if canvasInst.CanvasDraw == nil {
+		t.Error("passCanvas skipped a canvas because the package had no draw import")
+	}
 }
 
 func TestPassCanvas_GeneratesDrawFunc(t *testing.T) {

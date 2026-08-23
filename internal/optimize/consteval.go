@@ -267,8 +267,11 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		args = append(args, v)
 	}
 
-	// Try the generic SNGL-body interpreter for pure user/stdlib funcs.
-	if call.Func != nil && len(call.Func.Block) > 0 && call.Func.Purity == ir.PurityPure {
+	// Try the generic SNGL-body interpreter for pure user/stdlib funcs. A
+	// declaration marked #[intrinsic] is skipped here and retried below: the
+	// folder has its own implementation of the id, and most of those bodies
+	// are placeholders a backend is expected to replace.
+	if canFoldBody(call.Func) && call.Func.Intrinsic == "" {
 		ctx.interpDepth++
 		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
 		ctx.interpDepth--
@@ -293,8 +296,25 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 
+	// An intrinsic the folder does not implement. A body it still has is one
+	// the declaration said computes the right answer; the placeholders were
+	// dropped after type checking.
+	if canFoldBody(call.Func) && call.Func.Intrinsic != "" {
+		ctx.interpDepth++
+		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
+		ctx.interpDepth--
+		if ok {
+			return v, true
+		}
+	}
+
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
+}
+
+// canFoldBody reports whether f has a SNGL body the folder may run.
+func canFoldBody(f *ir.Func) bool {
+	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {

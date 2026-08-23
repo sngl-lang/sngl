@@ -1,8 +1,9 @@
-// Observable end-to-end test: t.setContext(locale, ...) must change
+// Observable end-to-end test: t.setContext(i18n.locale, ...) must change
 // locale-dependent i18n output on every runner, not just compile cleanly.
 // "1,234" (en-US) vs "1.234" (de-DE) — the thousands separator differs.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 component Counter {
     var n = 1234
@@ -10,17 +11,17 @@ component Counter {
 }
 
 func testEnUsFormat(t Test, c Counter) {
-    t.setContext(locale, "en-US")
+    t.setContext(i18n.locale, "en-US")
     t.assert(c.formatted() == "1,234")
 }
 
 func testDeDeFormat(t Test, c Counter) {
-    t.setContext(locale, "de-DE")
+    t.setContext(i18n.locale, "de-DE")
     t.assert(c.formatted() == "1.234")
 }
 
 func testLastWriteWins(t Test, c Counter) {
-    t.setContext(locale, "de-DE")
-    t.setContext(locale, "en-US")
+    t.setContext(i18n.locale, "de-DE")
+    t.setContext(i18n.locale, "en-US")
     t.assert(c.formatted() == "1,234")
 }

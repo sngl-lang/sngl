@@ -1,0 +1,43 @@
+# `func T.m()` makes m a member of T, not a name of its own. The member list
+# lives on T's declaration, so a method declared in one package is reachable
+# through the type in another, and a second declaration of that member is a
+# duplicate no matter which package each was written in.
+
+# A method declared alongside its type is reachable through an import.
+sngl test .
+stdout 'ok'
+
+# Redeclaring a member of an imported type is a duplicate, not a shadow.
+cp dup.sngl.txt main.sngl
+! sngl check .
+stderr 'duplicate declaration of "shifted" on type Point'
+
+-- main.sngl --
+import . "sngl://std"
+import d "./geom"
+
+component main {
+    var p d.Point = d.Point{x = 1}
+    text #out(value=string(p.shifted()))
+}
+
+func testCrossPackageMethod(t Test, c main) {
+    t.assert(c.out.value == "2")
+}
+-- geom/geom.sngl --
+import . "sngl://std"
+
+struct Point {
+    x int = 0
+}
+
+func Point.shifted(p Point) => p.x + 1
+-- dup.sngl.txt --
+import . "sngl://std"
+import . "./geom"
+
+func Point.shifted(p Point) => p.x + 99
+
+component main {
+    text(value="x")
+}

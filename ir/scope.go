@@ -1,5 +1,7 @@
 package ir
 
+import "errors"
+
 // Symbol is a named entity in the program. Implemented by all IR
 // declaration types (Func, Var, Component, StructDef, EnumDef, UnitDef,
 // Import, Param) and small helper types (LoopVar, Namespace).
@@ -53,7 +55,9 @@ func (e *RedeclaredError) Error() string { return "redeclared: " + e.Name }
 // on the order the checker happened to visit them in.
 func (s *Scope) Declare(sym Symbol) error {
 	name := sym.SymName()
-	if prev, ok := s.Symbols[name]; ok {
+	// Re-registering the same declaration is not a redeclaration. A checker
+	// pass may reach one declaration by more than one route.
+	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
 	s.Symbols[name] = sym
@@ -116,6 +120,7 @@ func NewBaseScope() *Scope {
 	}{
 		{"list", ListOf(TypDyn)},
 		{"option", OptionOf(TypDyn)},
+		{"map", MapOf(TypDyn, TypDyn)},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}
@@ -124,50 +129,193 @@ func NewBaseScope() *Scope {
 
 // SymbolTable is the package-level symbol registry.
 type SymbolTable struct {
-	Root    *Scope
-	Types   map[string]Symbol           // struct, enum, unit names
-	Comps   map[string]Symbol           // component names
-	Methods map[string]map[string]*Func // typeName → methodName → Func
+	Root *Scope
 }
 
 func (SymbolTable) String() string { return "omitted" }
 
 // NewSymbolTable creates an empty symbol table.
 func NewSymbolTable() *SymbolTable {
-	return &SymbolTable{
-		Root:    NewScope(NewBaseScope()),
-		Types:   make(map[string]Symbol),
-		Comps:   make(map[string]Symbol),
-		Methods: make(map[string]map[string]*Func),
+	return &SymbolTable{Root: NewScope(NewBaseScope())}
+}
+
+// EachSymbol ranges over every symbol reachable from the root scope, innermost
+// binding first, stopping when f returns false. A name bound in more than one
+// scope is yielded once, by its innermost binding — the one a lookup answers
+// with. Used by the passes that need every declaration in the build, including
+// the stdlib's, which lives in a scope outside the package's own root.
+func (st *SymbolTable) EachSymbol(f func(Symbol) bool) {
+	seen := make(map[string]bool)
+	for sc := st.Root; sc != nil; sc = sc.Parent {
+		for name, sym := range sc.Symbols {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			if !f(sym) {
+				return
+			}
+		}
 	}
 }
 
-// LookupType finds a type declaration by name.
+// IsTypeDecl reports whether sym declares a named type — a struct, enum or
+// unit. The three are interchangeable wherever a type name is expected.
+func IsTypeDecl(sym Symbol) bool {
+	switch sym.(type) {
+	case *StructDef, *EnumDef, *UnitDef:
+		return true
+	}
+	return false
+}
+
+// LookupType finds a named type declaration — struct, enum or unit — from the
+// root scope outward. A predeclared universe name (TypeSym) is not a
+// declaration and does not answer here.
 func (st *SymbolTable) LookupType(name string) (Symbol, bool) {
-	sym, ok := st.Types[name]
-	return sym, ok
+	if sym, ok := st.Root.Lookup(name); ok && IsTypeDecl(sym) {
+		return sym, true
+	}
+	return nil, false
 }
 
-// LookupComponent finds a component by name.
+// LookupComponent finds a component declaration from the root scope outward.
 func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
-	sym, ok := st.Comps[name]
-	return sym, ok
-}
-
-// LookupMethod finds a type-attached method.
-func (st *SymbolTable) LookupMethod(typeName, method string) (*Func, bool) {
-	if methods, ok := st.Methods[typeName]; ok {
-		if f, ok := methods[method]; ok {
-			return f, true
+	if sym, ok := st.Root.Lookup(name); ok {
+		if c, isComp := sym.(*Component); isComp {
+			return c, true
 		}
 	}
 	return nil, false
 }
 
-// RegisterMethod registers a type-attached method.
-func (st *SymbolTable) RegisterMethod(typeName string, f *Func) {
-	if st.Methods[typeName] == nil {
-		st.Methods[typeName] = make(map[string]*Func)
+// methodTable returns the member table of the declaration sym, or nil when sym
+// is not a declaration methods can attach to. The pointer lets a caller create
+// the map on first write.
+func methodTable(sym Symbol) *map[string]*Func {
+	switch d := sym.(type) {
+	case *StructDef:
+		return &d.Methods
+	case *EnumDef:
+		return &d.Methods
+	case *UnitDef:
+		return &d.Methods
+	case *Component:
+		return &d.Methods
 	}
-	st.Methods[typeName][f.Name] = f
+	return nil
+}
+
+// LookupMethod finds a method on the declaration named recv, resolving recv
+// from the package root. A caller holding a narrower scope should use
+// LookupMethodIn with it, so a lookup answers with the same declaration
+// AttachMethod wrote to.
+func (st *SymbolTable) LookupMethod(recv, method string) (*Func, bool) {
+	return LookupMethodIn(st.Root, recv, method)
+}
+
+// LookupMethodIn finds the method named method on the declaration that recv
+// resolves to in scope. A namespace's members are the declarations of the
+// package it names, so a namespace receiver resolves through that package
+// rather than a table here.
+func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
+	sym, ok := scope.Lookup(recv)
+	if !ok {
+		return nil, false
+	}
+	if ns, isNS := sym.(*Namespace); isNS {
+		if ns.Pkg == nil || ns.Pkg.Symbols == nil {
+			return nil, false
+		}
+		member, found := ns.Pkg.Symbols.Root.LookupLocal(method)
+		if !found {
+			return nil, false
+		}
+		fn, isFunc := member.(*Func)
+		return fn, isFunc
+	}
+	if tbl := methodTable(sym); tbl != nil {
+		f, found := (*tbl)[method]
+		return f, found
+	}
+	return nil, false
+}
+
+var (
+	// ErrUnknownReceiver reports that a receiver name resolves to no
+	// declaration at all, so there is nothing for the method to be a member of.
+	ErrUnknownReceiver = errors.New("unknown receiver")
+	// ErrNoMethodHost reports that a receiver resolves to a declaration that
+	// carries no member list — a namespace, whose members are the declarations
+	// of the package it names.
+	ErrNoMethodHost = errors.New("receiver has no member list")
+)
+
+// AttachMethod makes f a member of the declaration recv names in scope,
+// refusing to overwrite a member already there. Attaching is a declaration
+// like any other: a silent overwrite would make which of two declarations a
+// member name refers to depend on the order the checker visited them in.
+// ReplaceMethod is the explicit rebind.
+//
+// It takes the scope rather than a SymbolTable because a declaration is
+// registered before it is reachable from the package root — the stdlib loads
+// into a scope that only later becomes the root's parent.
+func AttachMethod(scope *Scope, recv string, f *Func) error {
+	tbl, err := memberList(scope, recv)
+	if err != nil {
+		return err
+	}
+	// Re-registering the same declaration is not a redeclaration. The checker
+	// reaches a component's methods from more than one pass.
+	if prev, exists := (*tbl)[f.Name]; exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	(*tbl)[f.Name] = f
+	return nil
+}
+
+// ReplaceMethod makes f a member of the declaration recv names, overwriting
+// any member of the same name. For the one case where rebinding is the intent:
+// a declaration that shadows one the standard library made.
+func ReplaceMethod(scope *Scope, recv string, f *Func) error {
+	tbl, err := memberList(scope, recv)
+	if err != nil {
+		return err
+	}
+	(*tbl)[f.Name] = f
+	return nil
+}
+
+// memberList returns the member table of the declaration recv names, creating
+// it on first use.
+func memberList(scope *Scope, recv string) (*map[string]*Func, error) {
+	sym, ok := scope.Lookup(recv)
+	if !ok {
+		return nil, ErrUnknownReceiver
+	}
+	tbl := methodTable(sym)
+	if tbl == nil {
+		return nil, ErrNoMethodHost
+	}
+	if *tbl == nil {
+		*tbl = make(map[string]*Func)
+	}
+	return tbl, nil
+}
+
+// MemberOf returns the method named name declared on decl — the Decl carried
+// by a resolved *Type, or any declaration value. Going to the declaration
+// directly is what lets a member be found on a type reached through an import
+// alias, whose name at the use site is not the name it was declared under.
+func MemberOf(decl any, name string) (*Func, bool) {
+	sym, ok := decl.(Symbol)
+	if !ok {
+		return nil, false
+	}
+	tbl := methodTable(sym)
+	if tbl == nil {
+		return nil, false
+	}
+	f, found := (*tbl)[name]
+	return f, found
 }

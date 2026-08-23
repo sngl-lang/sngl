@@ -41,8 +41,8 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 	for _, attr := range ad.Attrs {
 		ref, aliasKnown := aliases[attr.Alias]
 
-		// Resolve the macro package. Only an internal:// or sngl:// import maps
-		// an alias to a macro package; any other alias is not a macro and is
+		// Resolve the macro package. Only a sngl:// import maps an alias to a
+		// macro package; any other alias is not a macro and is
 		// left untouched. An alias that names nothing imported is an error
 		// rather than an ambient lookup — a macro package is a dependency, and
 		// resolving it from the bare name would make `#[draw.shape]` mean
@@ -84,9 +84,11 @@ func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs 
 				continue
 			}
 		default:
-			// Name the scheme the package actually lives under, so the
-			// suggestion is a line the user can paste.
-			suggest := "internal://" + attr.Alias
+			// Name the package the macro actually lives in, so the suggestion
+			// is a line the user can paste. A macro package is a library
+			// package like any other; the compiler's own live under
+			// internal/, which is where an unknown one most likely belongs.
+			suggest := "sngl://internal/" + attr.Alias
 			if lib.HasPackage(attr.Alias) {
 				suggest = "sngl://" + attr.Alias
 			}

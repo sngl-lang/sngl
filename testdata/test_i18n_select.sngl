@@ -1,4 +1,5 @@
 import . "sngl://std"
+import "sngl://i18n"
 
 // String-keyed selection.
 component i18nSelect {

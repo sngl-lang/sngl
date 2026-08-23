@@ -1,0 +1,39 @@
+// Package draw declares the 2D drawing primitives passCanvas emits into the
+// draw function it extracts from a canvas. They are the intrinsic half of
+// sngl://draw, which declares the canvas and the shapes a program writes.
+//
+// Each declaration here is a signature with no body: the result is produced
+// by the target's native implementation of the marked id, so a backend that
+// does not implement one has nothing to fall back to.
+
+import . "sngl://internal/marks"
+
+#[intrinsic("CanvasSave", mutates)]
+func CanvasSave(ctx dyn) {}
+
+#[intrinsic("CanvasRestore", mutates)]
+func CanvasRestore(ctx dyn) {}
+
+#[intrinsic("CanvasApplyStyle", mutates)]
+func CanvasApplyStyle(ctx dyn, style dyn) {}
+
+#[intrinsic("CanvasDrawRect", mutates)]
+func CanvasDrawRect(ctx dyn, x float, y float, w float, h float) {}
+
+#[intrinsic("CanvasDrawCircle", mutates)]
+func CanvasDrawCircle(ctx dyn, cx float, cy float, r float) {}
+
+#[intrinsic("CanvasDrawEllipse", mutates)]
+func CanvasDrawEllipse(ctx dyn, cx float, cy float, rx float, ry float) {}
+
+#[intrinsic("CanvasDrawLine", mutates)]
+func CanvasDrawLine(ctx dyn, x1 float, y1 float, x2 float, y2 float) {}
+
+#[intrinsic("CanvasDrawPath", mutates)]
+func CanvasDrawPath(ctx dyn, cmds list<dyn>) {}
+
+#[intrinsic("CanvasDrawText", mutates)]
+func CanvasDrawText(ctx dyn, x float, y float, content string) {}
+
+#[intrinsic("CanvasDrawImage", mutates)]
+func CanvasDrawImage(ctx dyn, x float, y float, w float, h float, src string) {}

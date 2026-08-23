@@ -1,4 +1,4 @@
-package builtin
+package marks
 
 import (
 	"testing"
@@ -26,7 +26,7 @@ func expandOne(t *testing.T, src string) (ast.Stmt, []ir.Diagnostic) {
 
 func TestStringReprMacro(t *testing.T) {
 	// No import: the #[builtin] macro resolves ambiently.
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("color")]
 struct color { r int = 0 }`
@@ -44,7 +44,7 @@ struct color { r int = 0 }`
 }
 
 func TestPrimitiveMacro(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("int")]
 struct int {}`
@@ -62,7 +62,7 @@ struct int {}`
 }
 
 func TestGenericMacro(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("list")]
 struct list<T> {}`
@@ -80,7 +80,7 @@ struct list<T> {}`
 }
 
 func TestNodeMacro(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("window")]
 component window(title string) list<component> {}`
@@ -98,7 +98,7 @@ component window(title string) list<component> {}`
 }
 
 func TestMacroRejectsUnknownKind(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("bogus")]
 struct x {}`
@@ -112,7 +112,7 @@ struct x {}`
 // kinds belong on which form is checked where the compiler stores the
 // reference, so a category error is not the macro's to report.
 func TestMacroStampsWithoutJudgingTheKind(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("color")]
 component foo {}`
@@ -132,7 +132,7 @@ component foo {}`
 // A declaration form that cannot carry a mark is the macro's to reject,
 // because that is a property of the AST rather than of the kind.
 func TestMacroRejectsUntaggableDeclaration(t *testing.T) {
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin("color")]
 var x = 1`
@@ -145,7 +145,7 @@ var x = 1`
 func TestMacroRejectsBareIdent(t *testing.T) {
 	// A bare identifier is a name reference, not a constant — must be rejected
 	// in favor of a string literal.
-	src := `import . "sngl://internal/builtin"
+	src := `import . "sngl://internal/marks"
 
 #[builtin(list)]
 struct list<T> {}`

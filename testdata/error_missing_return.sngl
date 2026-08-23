@@ -1,0 +1,14 @@
+import . "sngl://std"
+
+// A block body must return on every path. An empty `{}` used to be exempt,
+// so a signature stub type checked — and so did anyone's unfinished function.
+// Intrinsics are the declarations that wanted the exemption, and they carry a
+// real body now.
+func unfinished(x int) int {} // ERROR(check) "missing return: \"unfinished\" must return int on all paths"
+
+// A void function needs no return, empty or not.
+func fine(x int) {}
+
+component main {
+    text(value="{fine(1)}")
+}

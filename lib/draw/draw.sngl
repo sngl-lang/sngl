@@ -10,6 +10,9 @@
 // packages do not re-export a dot import, and neither should this one.
 import std "sngl://std"
 
+// How a shape is painted. `fill` and `stroke` default to fully transparent,
+// so a shape draws nothing until one of them is set. `fontSize` and
+// `fontFamily` apply to `canvasText` only.
 struct CanvasStyle {
     fill        color  = color{a=0}
     stroke      color  = color{a=0}
@@ -20,6 +23,10 @@ struct CanvasStyle {
     fontFamily  string = "sans-serif"
 }
 
+// One step of a path. `op` is "moveTo", "lineTo", "bezierTo", "arcTo" or
+// "close", and each reads only the fields it needs: `bezierTo` both control
+// points and the end point, `arcTo` one control point, the end point and
+// the radius `r`. The rest keep their zero value.
 struct PathCmd {
     op  string
     x   float = 0.0
@@ -31,18 +38,32 @@ struct PathCmd {
     r   float = 0.0
 }
 
+// Immediate-mode drawing surface. Its children are the shapes to paint, in
+// declaration order — later shapes cover earlier ones. Coordinates are in
+// pixels from the top-left of the canvas, whatever measurement unit
+// `width` and `height` are given in.
 component canvas(width std.measurement, height std.measurement, style CanvasStyle, @click std.ClickEvent) list<shape> {}
 
+// Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) list<shape> {}
 
+// Circle of radius r centred at cx, cy.
 component circle(cx float, cy float, r float, style CanvasStyle) list<shape> {}
 
+// Ellipse centred at cx, cy with radii rx and ry.
 component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) list<shape> {}
 
+// Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
+// meaningless on a line and is ignored.
 component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) list<shape> {}
 
+// Arbitrary shape built from a list of PathCmd steps.
 component path(cmds list<PathCmd>, style CanvasStyle) list<shape> {}
 
+// Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
+// a program can import this package alongside `sngl://std`.
 component canvasText(x float, y float, content string, style CanvasStyle) list<shape> {}
 
+// Image drawn into the box at x, y sized w by h. `src` takes the same URL
+// or asset path as `std.image`.
 component canvasImage(x float, y float, w float, h float, src string) list<shape> {}

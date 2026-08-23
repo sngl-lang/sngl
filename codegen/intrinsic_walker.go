@@ -78,7 +78,7 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 					return t.OnSlotReset(ctx, v)
 				}
 			}
-			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "ListPush" && len(call.Args) == 2 {
+			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "list.push" && len(call.Args) == 2 {
 				if v := resolveSlotVar(id); v != nil {
 					return t.OnSlotAppend(ctx, v, call.Args[1].Value)
 				}

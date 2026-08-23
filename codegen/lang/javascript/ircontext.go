@@ -15,6 +15,9 @@ import (
 type JsIRContext struct {
 	Ctx      *codegen.ExprCtx
 	EventVar string
+	// EventParam is the handler parameter EventVar stands for; see
+	// codegen.ExprCtx.
+	EventParam ir.Symbol
 
 	// EmitPositionMarkers controls whether EvalStmt prepends inline
 	// `/*@SNGL:file:line@*/` markers at statement boundaries. Populated
@@ -68,11 +71,9 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
-	// Predeclared i18n.PluralKey constants lower to JS string literals.
-	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
-			return s
-		}
+	// Predeclared PluralKey constants lower to JS string literals.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
 	}
 	// Native bundled namespace (js://): emit the esbuild alias and register
 	// the module so the platform emits the `import * as` prelude.
@@ -330,7 +331,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		return "state"
 	}
 	name := n.Name
-	if name == "event" && jc.EventVar != "" {
+	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
 	}
 	sym, kind := jc.Ctx.Resolve(name)
@@ -393,6 +394,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		if fname == "regex" && len(args) == 1 {
 			return "new RegExp(" + args[0] + ")"
 		}
+		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync {
 			call = "await " + call
@@ -475,7 +477,15 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 
 	if n.Func != nil {
 		fname := n.Func.Name
+		// A package function called through its import has no receiver on the
+		// declaration — the namespace is the alias at the call site. Name it
+		// from there so a qualified call reads the same either way.
 		receiverName := n.Func.Receiver
+		if receiverName == "" {
+			if id, ok := n.Receiver.(*ir.Ident); ok {
+				receiverName = id.Name
+			}
+		}
 		qualName := receiverName + "." + fname
 
 		// lower.CreateComponent(comp, props) → __cf_<name>(props). Mirrors
@@ -502,9 +512,6 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// runtime entry points. After NoContext + InlinePure, i18n.*
 		// wrapper calls have been lowered to direct intl.* intrinsic
 		// calls with the locale threaded as the first arg.
-		if result := jsEvalIntlIntrinsic(n.Func, args); result != "" {
-			return result
-		}
 
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher
@@ -519,8 +526,13 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		if result := jsBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
-			return result
+		// Only for a receiver whose type the checker could not resolve. With an id
+		// in hand the registry is the answer, and its absence has to reach
+		// RequireIntrinsicFallback rather than be hidden by a name match.
+		if n.Func == nil || n.Func.Intrinsic == "" {
+			if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
+				return result
+			}
 		}
 
 		// User-defined namespace-qualified function: emitted as a free
@@ -529,6 +541,9 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// receiver expression plus the call args. Here the equivalent is a
 		// scan of Pkg.Funcs for a matching Receiver+Name (same source the
 		// type-method path uses).
+		// Nothing above recognised it, so this is the generic emission and
+		// the same guard the other paths carry applies.
+		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		var call string
 		if jc.Ctx != nil && jc.Ctx.Pkg != nil && jc.userFuncMatches(receiverName, fname) {
 			jsName := strings.ReplaceAll(qualName, ".", "_")
@@ -575,8 +590,13 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
-	if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
-		return result
+	// Only for a receiver whose type the checker could not resolve. With an id
+	// in hand the registry is the answer, and its absence has to reach
+	// RequireIntrinsicFallback rather than be hidden by a name match.
+	if n.Func == nil || n.Func.Intrinsic == "" {
+		if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
+			return result
+		}
 	}
 
 	// User-defined method on a user type: emitted as a free function
@@ -590,6 +610,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 		}
 	}
 
+	codegen.RequireIntrinsicFallback(langJS, n.Func)
 	if len(args) >= 1 {
 		recv := args[0]
 		rest := args[1:]
@@ -706,10 +727,11 @@ func (jc *JsIRContext) WithLocal(name string) *JsIRContext {
 }
 
 // WithEvent returns a clone with EventVar set.
-func (jc *JsIRContext) WithEvent(eventVar string) *JsIRContext {
+func (jc *JsIRContext) WithEvent(eventVar string, param ir.Symbol) *JsIRContext {
 	return &JsIRContext{
-		Ctx:      jc.Ctx.Clone(),
-		EventVar: eventVar,
+		Ctx:        jc.Ctx.Clone(),
+		EventVar:   eventVar,
+		EventParam: param,
 	}
 }
 
@@ -732,68 +754,43 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	}
 
 	switch qualName {
-	case "int.min", "*.min":
+	case "*.min":
 		return "Math.min(" + a(0) + ", " + a(1) + ")"
-	case "int.max", "*.max":
+	case "*.max":
 		return "Math.max(" + a(0) + ", " + a(1) + ")"
-	case "int.abs", "*.abs":
+	case "*.abs":
 		return "Math.abs(" + a(0) + ")"
-	case "string.length", "*.length":
+	case "*.length":
 		return a(0) + ".length"
-	case "string.upper", "*.upper":
+	case "*.upper":
 		return a(0) + ".toUpperCase()"
-	case "string.lower", "*.lower":
+	case "*.lower":
 		return a(0) + ".toLowerCase()"
-	case "string.trim", "*.trim":
+	case "*.trim":
 		return a(0) + ".trim()"
-	case "string.replace", "*.replace":
+	case "*.replace":
 		return a(0) + ".replaceAll(" + a(1) + ", " + a(2) + ")"
-	case "string.indexOf", "*.indexOf":
+	case "*.indexOf":
 		return a(0) + ".indexOf(" + a(1) + ")"
-	case "string.substring", "*.substring":
+	case "*.substring":
 		return a(0) + ".substring(" + a(1) + ", " + a(2) + ")"
-	case "list.length":
-		return a(0) + ".length"
-	case "list.join", "*.join":
+	case "*.join":
 		return a(0) + ".join(" + a(1) + ")"
-	case "list.filter", "*.filter":
+	case "*.filter":
 		return a(0) + ".filter(" + a(1) + ")"
-	case "list.map", "*.map":
+	case "*.map":
 		return a(0) + ".map(" + a(1) + ")"
-	case "list.indexOf":
-		return a(0) + ".indexOf(" + a(1) + ")"
-	case "list.reverse", "*.reverse":
+	case "*.reverse":
 		return "[..." + a(0) + "].reverse()"
-	case "float.floor", "*.floor":
+	case "*.floor":
 		return "Math.floor(" + a(0) + ")"
-	case "float.ceil", "*.ceil":
+	case "*.ceil":
 		return "Math.ceil(" + a(0) + ")"
-	case "float.round", "*.round":
+	case "*.round":
 		return "Math.round(" + a(0) + ")"
-	case "float.sqrt", "*.sqrt":
+	case "*.sqrt":
 		return "Math.sqrt(" + a(0) + ")"
 	// map
-	case "map.length":
-		return a(0) + ".size"
-	case "map.keys":
-		return "Array.from(" + a(0) + ".keys())"
-	case "map.values":
-		return "Array.from(" + a(0) + ".values())"
-	case "map.contains":
-		return a(0) + ".has(" + a(1) + ")"
-	case "map.get":
-		return "(" + a(0) + ".has(" + a(1) + ") ? " + a(0) + ".get(" + a(1) + ") : " + a(2) + ")"
-	case "Alert.toast":
-		return `(function(){var d=document.createElement("div");d.textContent=` + a(0) + `;d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;z-index:9999;background:#333";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)})()`
-	case "Alert.info":
-		return `alert(` + a(0) + `)`
-	case "Alert.warn":
-		return `alert("Warning: " + ` + a(0) + `)`
-	case "Alert.error":
-		return `alert("Error: " + ` + a(0) + `)`
-	case "Alert.confirm":
-		return `confirm(` + a(0) + `)`
-	// i18n — all calls delegate to i18n.getTranslator() from the JS runtime.
 	case "i18n.tr":
 		// Args from translateIRTypeMethodCall: a(0)=key, a(1)=argsMap.
 		// The JS runtime's Translator.tr(key, inlinedTemplate, args) takes three
@@ -834,9 +831,6 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "i18n.selectordinal":
 		// Args: count, forms. a(0)=count, a(1)=forms.
 		return "i18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
-	case "i18n.exactly":
-		// Args: n. a(0)=n.
-		return "(\"=\" + (" + a(0) + "))"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "i18n.defaultLocale()"

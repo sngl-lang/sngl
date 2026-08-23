@@ -1,0 +1,23 @@
+import . "sngl://std"
+
+// A prop value that is not assignable to a struct-typed prop is a type error,
+// not a cast. `text`'s first prop is `style Style`, so a positional string
+// lands on it — and the same expression written out, Style("hi"), is already
+// rejected. Before this check the prop path wrapped it in a Conversion the
+// language has no cast for, `sngl check` reported nothing, and the struct
+// spread pass panicked on it during lowering.
+component main {
+    text("hi") // ERROR(check) "cannot use string as Style for prop \"style\" on component text"
+
+    // Naming the prop reaches the same place by the named path.
+    text(style="hi") // ERROR(check) "cannot use string as Style for prop \"style\" on component text"
+
+    // Not only structs. A prop is checked like anything else now: an enum
+    // prop takes a member, not the string that spells one. This used to be
+    // accepted and the html backend dropped the attribute on the floor.
+    image(src="a.png", alt="x", fit="cover")       // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
+    image(src="a.png", alt="x", fit="notamember")  // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
+
+    // The member itself is fine.
+    image(src="a.png", alt="x", fit=ObjectFit.cover)
+}

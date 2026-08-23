@@ -33,12 +33,19 @@ func TestValidateCatchesUnresolvedIdentAndNilCallType(t *testing.T) {
 	}
 }
 
-func TestValidateAcceptsSynthesizedIdent(t *testing.T) {
+func TestValidateAcceptsSynthesizedIdentWithSym(t *testing.T) {
+	slot := &ir.Var{Name: "__slot0", Type: ir.ListOf(ir.TypDyn), Synthesized: true}
 	fn := &ir.Func{
 		Name: "f",
 		Block: []ir.Stmt{
 			&ir.Assign{
-				Target: &ir.Ident{Name: "__n0", Synthesized: true}, // ok: pass-synthesized
+				Target: &ir.Ident{Name: "__slot0", Sym: slot, Synthesized: true},
+				Value:  &ir.Literal{Raw: "1"},
+			},
+			// Element refs name a node in the emitted tree, not a
+			// declaration, so they carry no symbol.
+			&ir.Assign{
+				Target: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true},
 				Value:  &ir.Literal{Raw: "1"},
 			},
 		},
@@ -46,5 +53,22 @@ func TestValidateAcceptsSynthesizedIdent(t *testing.T) {
 	pkg := &ir.Package{Funcs: []*ir.Func{fn}}
 	if errs := ir.Validate(pkg); len(errs) != 0 {
 		t.Errorf("synthesized ident should not violate; got %v", errs)
+	}
+}
+
+func TestValidateCatchesSynthesizedIdentWithoutSym(t *testing.T) {
+	fn := &ir.Func{
+		Name: "f",
+		Block: []ir.Stmt{
+			&ir.Assign{
+				Target: &ir.Ident{Name: "__slot0", Synthesized: true},
+				Value:  &ir.Literal{Raw: "1"},
+			},
+		},
+	}
+	pkg := &ir.Package{Funcs: []*ir.Func{fn}}
+	errs := ir.Validate(pkg)
+	if len(errs) != 1 || !strings.Contains(errs[0].Error(), `unresolved identifier "__slot0"`) {
+		t.Errorf("a synthesized ident with no Sym must violate; got %v", errs)
 	}
 }

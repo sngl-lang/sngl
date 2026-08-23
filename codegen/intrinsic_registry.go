@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -31,7 +32,7 @@ var (
 )
 
 // RegisterIntrinsic registers an emitter for the given intrinsic ID (e.g.
-// "ListPush") in the given target language (e.g. "javascript"). Backends call
+// "list.push") in the given target language (e.g. "javascript"). Backends call
 // this from init(). Registering the same (lang, id) twice panics — intrinsic
 // emission must have a single owner.
 func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
@@ -97,4 +98,39 @@ func EmitIntrinsicCall(lang string, c *ir.Call, translate func(ir.Expr) string) 
 		return out, imports, true
 	}
 	return "", nil, false
+}
+
+// RequireIntrinsicFallback stops a build that has nothing to emit. A
+// declaration marked #[intrinsic] with no body is a signature: the result
+// comes from the target's implementation of the id, so emitting a plain call
+// to it would name a function that does not exist. The `usable` flag is the
+// declaration saying its own body computes the same answer, which is what
+// makes emitting the SNGL body safe for the ones that carry it.
+//
+// Call this at the point a backend is about to emit a generic call, not when
+// the id-keyed registry declines: several ids are still served by a backend's
+// own name-keyed dispatch, and those calls never reach the generic path.
+func RequireIntrinsicFallback(lang string, fn *ir.Func) {
+	if fn == nil || fn.Intrinsic == "" {
+		return
+	}
+	// A body that survived type checking is one the declaration claimed
+	// computes the right answer; a placeholder was dropped there, so there is
+	// nothing here to emit instead. The body is the whole question — asking
+	// `usable` as well would let a `usable` intrinsic with an empty body
+	// through, which is the case with nothing to emit.
+	if len(fn.Block) > 0 {
+		return
+	}
+	panic(fmt.Sprintf(
+		"codegen: %s has no implementation of intrinsic %q (called as %s), and its SNGL body is a placeholder, not an implementation; "+
+			"register an emitter for it, or mark the declaration `usable` if its body is a correct answer",
+		lang, fn.Intrinsic, callName(fn)))
+}
+
+func callName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "." + fn.Name
+	}
+	return fn.Name
 }

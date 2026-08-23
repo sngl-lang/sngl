@@ -48,6 +48,7 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	expr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "other",
+		Type:    pluralKeyType(),
 	}
 	got := jc.EvalExpr(expr)
 	if got != `"other"` {
@@ -58,7 +59,7 @@ func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 func TestJsCall_HtmlPlacementDirectiveIsIdentity(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	for _, id := range []string{"HtmlFrontend", "HtmlBackend"} {
+	for _, id := range []string{"html.frontend", "html.backend"} {
 		call := &ir.Call{
 			Func: &ir.Func{Name: id, Intrinsic: id},
 			Args: []ir.CallArg{{Value: &ir.Ident{Name: "x"}}},
@@ -102,12 +103,12 @@ func TestJsConversion_Bool(t *testing.T) {
 func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
-	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
-	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+	keyType := pluralKeyType()
+	mapType := ir.MapOf(keyType, ir.TypString)
 	keyExpr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "one",
+		Type:    keyType,
 	}
 	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
 	m := &ir.MapLitIR{
@@ -432,7 +433,7 @@ func TestJsEmitI18nExactly(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "exactly", Receiver: "i18n"},
+		Func:     &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Raw: "0", Type: ir.TypInt}},
@@ -513,3 +514,38 @@ func TestJsSizedNumericEmission(t *testing.T) {
 }
 
 func i8Bit64(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt64, Raw: raw} }
+
+// Every path that emits a generic call refuses a bodyless #[intrinsic] this
+// backend has no emitter for. Each is reached by a different call shape, and
+// the method-call path is the one the original int.parse gap came through.
+func TestUnimplementedIntrinsicPanics(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call *ir.Call
+	}{
+		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
+		{"method call", &ir.Call{
+			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("no panic for an intrinsic this backend does not implement")
+				}
+				if !strings.Contains(r.(string), "NoBackendHasThis") {
+					t.Errorf("panic %v does not name the intrinsic", r)
+				}
+			}()
+			NewIRContext(codegen.NewExprCtx(&ir.Package{})).EvalExpr(tc.call)
+		})
+	}
+}
+
+// A select on a predeclared PluralKey constant is identified by its type, so
+// a hand-built one has to carry it.
+func pluralKeyType() *ir.Type {
+	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
+}

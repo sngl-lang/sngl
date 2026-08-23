@@ -553,6 +553,15 @@ func substituteSlots(stmts []ir.Stmt, children []ir.Stmt) []ir.Stmt {
 // substituteEvents replaces every *ir.Emit whose Name matches a
 // user-provided event handler with the handler's body.
 func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
+	return substituteEventsIn(stmts, handlers, nil)
+}
+
+// substituteEventsIn carries the event parameter of the handler whose body is
+// being walked. A user handler that declared a parameter the wrapper passes no
+// argument for is naming that same event, so its references are bound to the
+// enclosing parameter rather than left pointing at a parameter that is about
+// to be inlined away.
+func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *ir.Func) []ir.Stmt {
 	byName := map[string]*ir.EventHandler{}
 	for i := range handlers {
 		h := &handlers[i]
@@ -562,7 +571,7 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 	for _, s := range stmts {
 		if emit, isEmit := s.(*ir.Emit); isEmit {
 			if h, ok := byName[emit.Name]; ok && h != nil && h.Func != nil {
-				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args)...)
+				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args, enclosing)...)
 				continue
 			}
 			// No matching handler — the caller never subscribed to this
@@ -577,7 +586,7 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.AST != nil {
 			if evRef, ok := cs.Call.AST.Func.(*ast.EventRefExpr); ok {
 				if h, ok := byName[evRef.Name]; ok && h != nil && h.Func != nil {
-					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args)...)
+					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args, enclosing)...)
 					continue
 				}
 				// No matching user handler — the caller never bound @<name>.
@@ -590,26 +599,27 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 		}
 		switch n := s.(type) {
 		case *ir.If:
-			n.Body = substituteEvents(n.Body, handlers)
-			n.Else = substituteEvents(n.Else, handlers)
+			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
+			n.Else = substituteEventsIn(n.Else, handlers, enclosing)
 		case *ir.For:
-			n.Body = substituteEvents(n.Body, handlers)
-			n.Else = substituteEvents(n.Else, handlers)
+			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
+			n.Else = substituteEventsIn(n.Else, handlers, enclosing)
 		case *ir.PlatformFilter:
-			n.Body = substituteEvents(n.Body, handlers)
+			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 		case *ir.NodeInst:
-			n.Children = substituteEvents(n.Children, handlers)
+			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
 			for _, h := range n.Handlers {
-				if h.Func != nil {
-					h.Func.Block = substituteEvents(h.Func.Block, handlers)
+				if h.Func == nil {
+					continue
 				}
+				h.Func.Block = substituteEventsIn(h.Func.Block, handlers, h.Func)
 			}
 		case *ir.SlotInst:
-			n.Children = substituteEvents(n.Children, handlers)
+			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
 		case *ir.ErrorBoundary:
-			n.Children = substituteEvents(n.Children, handlers)
+			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
 		case *ir.Window:
-			n.Body = substituteEvents(n.Body, handlers)
+			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider:
 			// Leaf/imperative — no nested Emit/EventRefExpr that this pass
 			// would substitute. (CallStmt with EventRefExpr handled above.)
@@ -625,13 +635,11 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 }
 
 // bindEventParams rebinds references to a user event handler's declared
-// params inside `stmts` to the arg expressions the wrapper passed. When
-// the wrapper passes zero args but the user handler declared params (the
-// common `@input { @input() }` shape in platform .sngl wrappers), the
-// params are renamed to "event" so the JS emitter's EventVar swap maps
-// `myEvent.value` → `e.target.value` the same way it did before the
-// wrapper was inlined.
-func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg) []ir.Stmt {
+// params inside `stmts` to the arg expressions the wrapper passed. A param
+// the wrapper passed no arg for (the common `@input { @input() }` shape in
+// platform .sngl wrappers) keeps referring to itself, and the backend maps
+// it to its own event variable by declaration.
+func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enclosing *ir.Func) []ir.Stmt {
 	if len(params) == 0 {
 		return stmts
 	}
@@ -644,10 +652,20 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg) []i
 			bindings[p.Name] = args[i].Value
 			continue
 		}
-		// No matching arg — wrapper invoked @event() with fewer args
-		// than the user handler declared. Rename the param to the
-		// canonical `event` ident so JS EventVar swap picks it up.
-		bindings[p.Name] = &ir.Ident{Name: "event", Type: p.Type, Sym: p}
+		// No matching arg — the wrapper invoked @event() with fewer args
+		// than the user handler declared. The parameter names the event the
+		// enclosing handler receives, so it becomes that handler's parameter:
+		// the wrapper is the one the platform installs, and a reference has
+		// to name something the surviving handler declares.
+		target := p
+		if enclosing != nil {
+			if len(enclosing.Params) == 0 {
+				enclosing.Params = []*ir.Param{p}
+			} else {
+				target = enclosing.Params[0]
+			}
+		}
+		bindings[p.Name] = &ir.Ident{Name: target.Name, Type: target.Type, Sym: target}
 	}
 	if len(bindings) == 0 {
 		return stmts

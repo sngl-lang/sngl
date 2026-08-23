@@ -45,7 +45,7 @@ func pkgUsesI18n(pkg *ir.Package) bool {
 				return ir.SkipAll
 			}
 		case *ir.Select:
-			if id, ok := n.Operand.(*ir.Ident); ok && id.Name == "i18n" && ir.IsI18nPluralKey(n.Field) {
+			if ir.IsI18nPluralKey(n) {
 				found = true
 				return ir.SkipAll
 			}

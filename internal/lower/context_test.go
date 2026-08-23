@@ -986,7 +986,7 @@ func TestFuncBodyContextReadRewritten(t *testing.T) {
 func TestIntrinsicFuncNotInReach(t *testing.T) {
 	ctx := makeContext("theme", "light")
 	// Intrinsic func — has no SNGL body. Should not be in Reach.
-	intr := &ir.Func{Name: "MathRound", Intrinsic: "MathRound"}
+	intr := &ir.Func{Name: "float.round", Intrinsic: "float.round"}
 	pkg := &ir.Package{
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{intr},

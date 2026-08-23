@@ -2,7 +2,6 @@ package testrunner
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"time"
@@ -44,26 +43,12 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		return nil, nil
 
 	case "tick":
-		var cv *componentValue
-		for _, v := range env.Vars {
-			if c, ok := v.(*componentValue); ok {
-				cv = c
-				break
-			}
-		}
-		if cv != nil {
+		if cv := tv.comp; cv != nil {
 			compEnv := cv.compEnv()
 			if err := fireTimers(tv.pkg, compEnv); err != nil {
 				return nil, err
 			}
-			for k := range cv.Vars {
-				if v, ok := compEnv.Vars[k]; ok {
-					cv.Vars[k] = v
-					if !cv.testParams[k] {
-						cv.Env.Vars[k] = v
-					}
-				}
-			}
+			cv.Env.RebindFrom(compEnv)
 		}
 		return nil, nil
 
@@ -86,13 +71,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		timeoutMs := interp.ToInt(timeoutVal)
 		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
-		var cv *componentValue
-		for _, v := range env.Vars {
-			if c, ok := v.(*componentValue); ok {
-				cv = c
-				break
-			}
-		}
+		cv := tv.comp
 
 		for {
 			// Predicate runs in its captured env so c reads observe in-place
@@ -114,14 +93,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			if err := fireTimers(tv.pkg, compEnv); err != nil {
 				return nil, err
 			}
-			for k := range cv.Vars {
-				if v, ok := compEnv.Vars[k]; ok {
-					cv.Vars[k] = v
-					if !cv.testParams[k] {
-						cv.Env.Vars[k] = v
-					}
-				}
-			}
+			cv.Env.RebindFrom(compEnv)
 		}
 
 	case "setContext":
@@ -153,15 +125,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 					if cr2, ok2 := v.Init.(*ir.ContextRead); ok2 && cr2.Ref == cr.Ref {
 						newVal, evalErr := env.Eval(v.Init)
 						if evalErr == nil {
-							env.Vars[v.Name] = newVal
-							// Also update any componentValue in scope.
-							for _, sv := range env.Vars {
-								if cv, ok3 := sv.(*componentValue); ok3 {
-									if _, exists := cv.Vars[v.Name]; exists {
-										cv.Vars[v.Name] = newVal
-									}
-								}
-							}
+							env.Set(v, newVal)
 						}
 					}
 				}
@@ -198,13 +162,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			return nil, fmt.Errorf("t.snapshot() argument must be a string, got %T", nameVal)
 		}
 		// Locate the component instance under test.
-		var cv *componentValue
-		for _, v := range env.Vars {
-			if c, ok := v.(*componentValue); ok {
-				cv = c
-				break
-			}
-		}
+		cv := tv.comp
 		if cv == nil {
 			return nil, fmt.Errorf("t.snapshot() requires a component parameter")
 		}
@@ -264,36 +222,15 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides}
 
 		callArgs := []any{childT}
-		if tv.compName != "" {
-			// Snapshot the parent componentValue: the subtest sees parent
-			// state at the time of the call, but mutations inside don't leak
-			// back to the surrounding test. Preserve compName/body/Funcs/
-			// testParams so method dispatch and element-ref walks behave the
-			// same as the parent.
-			var parentCV *componentValue
-			for _, v := range env.Vars {
-				if cv, ok := v.(*componentValue); ok {
-					parentCV = cv
-					break
-				}
-			}
-			if parentCV != nil {
-				childCV := &componentValue{
-					Env:        childEnv,
-					Vars:       make(map[string]any, len(parentCV.Vars)),
-					Consts:     parentCV.Consts,
-					Funcs:      parentCV.Funcs,
-					compName:   parentCV.compName,
-					testParams: parentCV.testParams,
-					body:       parentCV.body,
-				}
-				maps.Copy(childCV.Vars, parentCV.Vars)
-				// childEnv is a Snapshot() of env, which already has its own
-				// Vars copy — make sure the subtest's component-var writes
-				// land there (not in the parent env).
-				maps.Copy(childEnv.Vars, parentCV.Vars)
-				callArgs = append(callArgs, childCV)
-			}
+		if tv.compName != "" && tv.comp != nil {
+			// Re-point the parent componentValue at the subtest env: the
+			// subtest sees parent state at the time of the call (childEnv is a
+			// Snapshot, which copied it), and its writes land there rather
+			// than in the surrounding test's env.
+			childCV := *tv.comp
+			childCV.Env = childEnv
+			childT.comp = &childCV
+			callArgs = append(callArgs, &childCV)
 		}
 
 		_, callErr := lv.CallWithEnv(childEnv, callArgs)
@@ -301,7 +238,9 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			childResult.Error = callErr.Error()
 		}
 		childResult.Log = childEnv.Log
-		childResult.Passed = childResult.Error == "" && allPassed(childResult.Children)
+		// Its own failures count, as they do for a top-level test: a
+		// subtest whose assertion failed reported PASS without this.
+		childResult.Passed = childResult.Error == "" && len(childResult.Failures) == 0 && allPassed(childResult.Children)
 		childResult.Duration = time.Since(start)
 		tv.result.Children = append(tv.result.Children, childResult)
 		return nil, nil
@@ -327,6 +266,17 @@ func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 	})
 }
 
+// wrapChildComponent exposes a nested component instance as a value, backed
+// by the env its own state lives in.
+func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValue {
+	return &componentValue{
+		Env:      childEnv,
+		comp:     comp,
+		compName: comp.Name,
+		body:     comp.Body,
+	}
+}
+
 // GetField resolves c.field on a componentValue.
 func (cv *componentValue) GetField(field string) (any, error) {
 	if field == "children" {
@@ -335,11 +285,10 @@ func (cv *componentValue) GetField(field string) (any, error) {
 		}
 		return cv.children, nil
 	}
-	if v, ok := cv.Vars[field]; ok {
-		return v, nil
-	}
-	if v, ok := cv.Consts[field]; ok {
-		return v, nil
+	if sym := cv.fieldSym(field); sym != nil {
+		if v, ok := cv.Env.Value(sym); ok {
+			return v, nil
+		}
 	}
 	// A user-component instance addressed by #id (`main #m()` reached as
 	// `c.m`) yields its live component wrapper, so `c.m.<member>` resolves
@@ -355,51 +304,15 @@ func (cv *componentValue) GetField(field string) (any, error) {
 		stampOwner(v, cv)
 		return v, nil
 	}
-	// Direct func by bare name (legacy closure-style).
-	if fn, ok := cv.Funcs[field]; ok {
-		effective := len(fn.Params)
-		if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
-			effective--
+	// A parameterless func or method on the component reads as a value.
+	if fn := cv.funcNamed(field); fn != nil && effectiveArity(fn) == 0 {
+		compEnv := cv.compEnv()
+		var synth []ir.Expr
+		if len(fn.Params) > 0 && fn.Params[0].Receiver {
+			compEnv.SetReceiver(cv)
+			synth = []ir.Expr{&ir.Ident{Name: ir.ReceiverParam}}
 		}
-		if effective == 0 {
-			compEnv := cv.compEnv()
-			return compEnv.EvalUserFunc(fn, nil)
-		}
-	}
-	// Receiver-qualified component method (post-#75 desugaring): env.Funcs
-	// stores these under "<compName>.<method>". Auto-invoke when zero
-	// effective args.
-	if cv.compName != "" {
-		var fn *ir.Func
-		var ok bool
-		fn, ok = cv.Funcs[cv.compName+"."+field]
-		if !ok {
-			fn, ok = cv.Env.Funcs[cv.compName+"."+field]
-		}
-		if !ok && cv.Env.Pkg != nil {
-			for _, f := range cv.Env.Pkg.Funcs {
-				if f.Receiver == cv.compName && f.Name == field {
-					fn = f
-					ok = true
-					break
-				}
-			}
-		}
-		if ok {
-			effective := len(fn.Params)
-			if effective > 0 && fn.Receiver != "" && fn.Params[0].Receiver {
-				effective--
-			}
-			if effective == 0 {
-				compEnv := cv.compEnv()
-				var synth []ir.Expr
-				if len(fn.Params) > 0 && fn.Params[0].Receiver {
-					compEnv.Vars[ir.ReceiverParam] = cv
-					synth = []ir.Expr{&ir.Ident{Name: ir.ReceiverParam}}
-				}
-				return compEnv.EvalUserFunc(fn, synth)
-			}
-		}
+		return compEnv.EvalUserFunc(fn, synth)
 	}
 	// Element ref lookup in the component body. Returns nil (not an error)
 	// when the ref exists in the body tree but is currently hidden by an
@@ -415,10 +328,14 @@ func (cv *componentValue) GetField(field string) (any, error) {
 
 // SetField handles c.field = value.
 func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error {
-	cur, exists := cv.Vars[field]
-	if !exists {
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
+	}
+	if sym == nil {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
+	cur, _ := cv.Env.Value(sym)
 	// Component-field values are dynamically typed in the test harness, so the
 	// declared width is not available here; ApplyOp falls back to inferring the
 	// width from the runtime carrier.
@@ -426,10 +343,7 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if err != nil {
 		return err
 	}
-	cv.Vars[field] = nv
-	if !cv.testParams[field] {
-		cv.Env.Vars[field] = cv.Vars[field]
-	}
+	cv.Env.Set(sym, nv)
 	return nil
 }
 
@@ -441,23 +355,8 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		// Event emission is a no-op in the interpreter.
 		return nil, true, nil
 	}
-	fn, ok := cv.Funcs[method]
-	if !ok && cv.compName != "" {
-		qual := cv.compName + "." + method
-		if extFn, extOK := cv.Env.Funcs[qual]; extOK {
-			fn = extFn
-			ok = true
-		} else if cv.Env.Pkg != nil {
-			for _, f := range cv.Env.Pkg.Funcs {
-				if f.Receiver == cv.compName && f.Name == method {
-					fn = f
-					ok = true
-					break
-				}
-			}
-		}
-	}
-	if !ok {
+	fn := cv.funcNamed(method)
+	if fn == nil {
 		return nil, false, nil
 	}
 	// Evaluate args against the CALLER's env (env) so that intra-component
@@ -488,14 +387,14 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	}
 	// Build positional slice in param order, filling in defaults.
 	// Skip the receiver param (param[0] when Receiver==true) — it is bound
-	// via compEnv.Vars[ir.ReceiverParam] below, not through the arg slice.
+	// via compEnv.SetReceiver below, not through the arg slice.
 	// evalUserFuncCore's argOffset trick requires len(args)==len(fn.Params)-1
 	// for methods with a receiver.
 	compEnv := cv.compEnv()
 	nonReceiverParams := fn.Params
 	if len(fn.Params) > 0 && fn.Params[0].Receiver {
 		nonReceiverParams = fn.Params[1:]
-		compEnv.Vars[ir.ReceiverParam] = cv
+		compEnv.SetReceiver(cv)
 	}
 	evalArgs := make([]any, len(nonReceiverParams))
 	for i, p := range nonReceiverParams {
@@ -513,42 +412,36 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	interp.CopyDepth(env, compEnv)
 	result, err := compEnv.EvalUserFuncWithValues(fn, evalArgs)
 	interp.CopyDepth(compEnv, env)
-	for k := range cv.Vars {
-		if v, ok := compEnv.Vars[k]; ok {
-			cv.Vars[k] = v
-			if !cv.testParams[k] {
-				cv.Env.Vars[k] = v
-			}
-		}
-	}
+	cv.Env.RebindFrom(compEnv)
 	return result, true, err
 }
 
-// Toggle flips a bool field, propagating into the underlying env unless the
-// field is a test parameter (in which case the field is the canonical value).
 func (cv *componentValue) Toggle(field string) error {
-	cur, exists := cv.Vars[field]
-	if !exists {
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
+	}
+	if sym == nil {
 		return fmt.Errorf("cannot toggle undefined field %q", field)
 	}
+	cur, _ := cv.Env.Value(sym)
 	b, ok := cur.(bool)
 	if !ok {
 		return fmt.Errorf("cannot toggle non-bool field %q", field)
 	}
-	cv.Vars[field] = !b
-	if !cv.testParams[field] {
-		cv.Env.Vars[field] = !b
-	}
+	cv.Env.Set(sym, !b)
 	return nil
 }
 
-// WriteBackList stores a (typically mutated-in-place) list back into a
-// component field, propagating to env when the field is not a test parameter.
 func (cv *componentValue) WriteBackList(field string, list []any) error {
-	cv.Vars[field] = list
-	if !cv.testParams[field] {
-		cv.Env.Vars[field] = list
+	sym, err := cv.writableFieldSym(field)
+	if err != nil {
+		return err
 	}
+	if sym == nil {
+		return fmt.Errorf("no component field %q to write back", field)
+	}
+	cv.Env.Set(sym, list)
 	return nil
 }
 
@@ -567,20 +460,14 @@ func (cv *componentValue) childComponentByID(stmts []ir.Stmt, id string) *compon
 		case *ir.NodeInst:
 			if n.ID == id && n.Component != nil && isUserComponent(n.Component) {
 				childEnv := cv.Env.ComponentEnv(n.Component, n)
-				return &componentValue{
-					Env: childEnv, Vars: childEnv.Vars, Consts: childEnv.Consts,
-					Funcs: childEnv.Funcs, compName: n.Component.Name, body: n.Component.Body,
-				}
+				return wrapChildComponent(childEnv, n.Component)
 			}
 		case *ir.CallStmt:
 			if n.Call != nil && n.Call.AST != nil && n.Call.AST.ID == id && cv.Env.Pkg != nil {
 				if name := interp.CallStmtElemName(n); name != "" {
 					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
 						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
-						return &componentValue{
-							Env: childEnv, Vars: childEnv.Vars, Consts: childEnv.Consts,
-							Funcs: childEnv.Funcs, compName: comp.Name, body: comp.Body,
-						}
+						return wrapChildComponent(childEnv, comp)
 					}
 				}
 			}
@@ -614,14 +501,7 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 		case *ir.NodeInst:
 			if n.Component != nil && isUserComponent(n.Component) {
 				childEnv := cv.Env.ComponentEnv(n.Component, n)
-				wrapper := &componentValue{
-					Env:      childEnv,
-					Vars:     childEnv.Vars,
-					Consts:   childEnv.Consts,
-					Funcs:    childEnv.Funcs,
-					compName: n.Component.Name,
-					body:     n.Component.Body,
-				}
+				wrapper := wrapChildComponent(childEnv, n.Component)
 				out = append(out, wrapper)
 			} else {
 				out = append(out, cv.Env.RenderNodeProps(n))
@@ -634,14 +514,7 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 				if name != "" {
 					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
 						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
-						wrapper := &componentValue{
-							Env:      childEnv,
-							Vars:     childEnv.Vars,
-							Consts:   childEnv.Consts,
-							Funcs:    childEnv.Funcs,
-							compName: comp.Name,
-							body:     comp.Body,
-						}
+						wrapper := wrapChildComponent(childEnv, comp)
 						out = append(out, wrapper)
 						continue
 					}
@@ -697,19 +570,69 @@ func isUserComponent(comp *ir.Component) bool {
 }
 
 func (cv *componentValue) compEnv() *interp.Env {
-	env := cv.Env.Snapshot()
-	maps.Copy(env.Vars, cv.Vars)
-	return env
+	return cv.Env.Snapshot()
 }
 
-func (cv *componentValue) syncFromEnv(testParams map[string]bool) {
-	for k := range cv.Vars {
-		if !testParams[k] {
-			if v, ok := cv.Env.Vars[k]; ok {
-				cv.Vars[k] = v
+func (cv *componentValue) funcNamed(name string) *ir.Func {
+	if cv.comp == nil {
+		return nil
+	}
+	for _, fn := range cv.comp.Funcs {
+		if fn.Name == name && fn.Receiver == "" {
+			return fn
+		}
+	}
+	return cv.comp.Methods[name]
+}
+
+func effectiveArity(fn *ir.Func) int {
+	n := len(fn.Params)
+	if n > 0 && fn.Params[0].Receiver {
+		n--
+	}
+	return n
+}
+
+func (cv *componentValue) fieldSym(field string) ir.Symbol {
+	if cv.comp != nil {
+		for _, v := range cv.comp.Vars {
+			if v.Name == field {
+				return v
+			}
+		}
+		for _, p := range cv.comp.Props {
+			if p.Name == field && p.Sym != nil {
+				return p.Sym
 			}
 		}
 	}
+	if pkg := cv.Env.Pkg; pkg != nil {
+		for _, v := range pkg.Vars {
+			if v.Name == field {
+				return v
+			}
+		}
+		for _, c := range pkg.Consts {
+			if c.Name == field {
+				return c
+			}
+		}
+	}
+	return nil
+}
+
+// writableFieldSym is fieldSym for the three writers. A const resolves for a
+// read but is not a place: the name/value split that used to keep it out of
+// SetField is gone, so the declaration has to be asked.
+func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
+	sym := cv.fieldSym(field)
+	if sym == nil {
+		return nil, nil
+	}
+	if v, ok := sym.(*ir.Var); ok && v.IsConst {
+		return nil, fmt.Errorf("cannot assign to const %q", field)
+	}
+	return sym, nil
 }
 
 // fireTimers runs each component timer's handler once, honoring the Enabled

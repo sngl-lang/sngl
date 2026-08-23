@@ -1,0 +1,30 @@
+// A component var shadowing a package var is a second declaration, not a
+// second name: reads inside the component see the inner one and reads outside
+// it see the outer one, and a write to either leaves the other alone.
+
+import . "sngl://std"
+
+var total = 10
+
+func packageTotal() => total
+
+component shadowed {
+    var total = 1
+
+    func localTotal() => total
+
+    text #out(value="{total}")
+}
+
+func testShadowedVarsAreDistinct(t Test, c shadowed) {
+    t.assert(c.total == 1)
+    t.assert(c.localTotal() == 1)
+    t.assert(packageTotal() == 10)
+}
+
+func testWritingTheInnerVarLeavesTheOuterAlone(t Test, c shadowed) {
+    c.total = 7
+    t.assert(c.total == 7)
+    t.assert(c.localTotal() == 7)
+    t.assert(packageTotal() == 10)
+}

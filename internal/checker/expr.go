@@ -310,7 +310,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// will treat it as a value the same way it did pre-T7, when these
 		// were closures registered on scope).
 		if c.currentComponent != nil {
-			if fn, ok := c.symtab.LookupMethod(c.currentComponent.Name, x.Name); ok {
+			if fn, ok := c.lookupMethod(c.currentComponent.Name, x.Name); ok {
 				// Bare reference to a sibling component-method. Expose a func
 				// type with the synthetic `this` stripped, so implicit-call
 				// paths (interpolation, prop binding) and explicit `name()`
@@ -798,7 +798,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		if _, inScope := c.scope.Lookup(ident.Name); !inScope {
 			if recv := c.currentRecvType(); recv != nil {
 				if name := recvTypeName(recv); name != "" {
-					if _, ok := c.symtab.LookupMethod(name, ident.Name); ok {
+					if _, ok := c.lookupMethod(name, ident.Name); ok {
 						// Component sibling-method calls fall through to the
 						// regular path below: inferIdent resolves the bare name
 						// via the currentComponent path to a receiver-stripped
@@ -1037,17 +1037,23 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
-	fn, ok := c.symtab.LookupMethod(typeName, sel.Field)
+	// The receiver's declaration owns its members, so ask it directly. Only
+	// when the type has no declaration to ask — a builtin generic, whose
+	// members hang off the bare constructor name — does the name matter.
+	fn, ok := ir.MemberOf(receiver.Decl, sel.Field)
+	if !ok {
+		fn, ok = c.lookupMethod(typeName, sel.Field)
+	}
 	// Fallback for generic types: list<int> → "list", option<int> → "option",
 	// map<K,V> → "map".
 	if !ok {
 		switch receiver.Kind {
 		case ir.TypeList:
-			fn, ok = c.symtab.LookupMethod("list", sel.Field)
+			fn, ok = c.lookupMethod("list", sel.Field)
 		case ir.TypeOption:
-			fn, ok = c.symtab.LookupMethod("option", sel.Field)
+			fn, ok = c.lookupMethod("option", sel.Field)
 		case ir.TypeMap:
-			fn, ok = c.symtab.LookupMethod("map", sel.Field)
+			fn, ok = c.lookupMethod("map", sel.Field)
 		}
 	}
 	if ok {
@@ -1096,6 +1102,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				recvParamStyle = true
 			}
 		}
+		// A static call names the receiver as its first argument, so the
+		// receiver's type params are inferable from the arguments like any
+		// other. Handing them to the same inference is what makes
+		// `Box.same(b)` mean what `b.same()` means.
+		if isStatic && len(sig.RecvTypeParams) > 0 {
+			merged := *sig
+			merged.TypeParams = append(append([]string(nil), sig.RecvTypeParams...), sig.TypeParams...)
+			merged.RecvTypeParams = nil
+			sig = &merged
+		}
 		if len(sig.TypeParams) > 0 {
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
@@ -1107,7 +1123,26 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 					sig = sig.Substitute(bindings)
 				}
 			}
-			sig = c.inferTypeParams(sig, call.Args)
+			// Infer the rest against the parameters the call actually fills.
+			// For an instance call in the receiver-as-param form the receiver
+			// occupies param 0 and is not in call.Args, so inferring against
+			// the unshifted list matches argument 0 against the receiver's
+			// parameter and a method-level type param never binds.
+			inferSig := sig
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+				shifted := *sig
+				shifted.Params = sig.Params[1:]
+				inferSig = &shifted
+			}
+			inferred := c.inferTypeParams(inferSig, call.Args)
+			if inferSig != sig {
+				merged := *sig
+				merged.Params = append([]*ir.Param{sig.Params[0]}, inferred.Params...)
+				merged.Return = inferred.Return
+				sig = &merged
+			} else {
+				sig = inferred
+			}
 		}
 		var args []ir.CallArg
 		if isStatic {
@@ -1449,6 +1484,16 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+							// A context reached through its package is the
+							// same context: `i18n.locale` reads what `locale`
+							// reads where the name is in scope unqualified.
+							if ctx, isCtx := fsym.(*ir.Context); isCtx {
+								typ := ctx.Typ
+								if typ == nil {
+									typ = TypDyn
+								}
+								return &ir.ContextRead{Ref: ctx, Typ: typ}
+							}
 							t := fsym.SymType()
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
@@ -1541,7 +1586,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// arguments, referenced bare, is a method value (func type with
 				// the synthetic receiver stripped); `c.foo(...)` calls resolve
 				// via inferMethodCall.
-				if fn, ok := c.symtab.LookupMethod(comp.Name, x.Field); ok {
+				if fn, ok := c.lookupMethod(comp.Name, x.Field); ok {
 					params := fn.Params
 					if len(params) > 0 && params[0].Receiver {
 						params = params[1:]
@@ -1693,6 +1738,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
 		}
+		fields = withFieldDefaults(sd, fields)
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
 	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
@@ -1884,14 +1930,14 @@ func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.P
 	}
 	// User-defined or stdlib method lookup: `.string()` on the value's type.
 	typeName := t.String()
-	if fn, ok := c.symtab.LookupMethod(typeName, "string"); ok {
+	if fn, ok := c.lookupMethod(typeName, "string"); ok {
 		return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 	}
 	// Generic-type fallbacks so list/option implementations can register under
 	// their bare name and apply to any instantiation.
 	switch t.Kind {
 	case ir.TypeList:
-		if fn, ok := c.symtab.LookupMethod("list", "string"); ok {
+		if fn, ok := c.lookupMethod("list", "string"); ok {
 			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 		}
 		// No stdlib method yet — fall back to the generic stringify path so
@@ -1900,7 +1946,7 @@ func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.P
 		// formatter (fmt.Sprint / String() / toString()).
 		return &ir.Conversion{Type: TypString, Operand: expr}
 	case ir.TypeOption:
-		if fn, ok := c.symtab.LookupMethod("option", "string"); ok {
+		if fn, ok := c.lookupMethod("option", "string"); ok {
 			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
 		}
 		return &ir.Conversion{Type: TypString, Operand: expr}
@@ -2359,15 +2405,17 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 		}
 		for _, name := range spec.Names {
-			c.declare(decl.Pos, &ir.Var{
+			sym := &ir.Var{
 				AST:  decl,
 				Name: name,
 				Type: typ,
-			})
+			}
+			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,
 				Type: typ,
 				Init: initExpr,
+				Sym:  sym,
 			})
 		}
 	}
@@ -2467,12 +2515,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				typ = initType
 			}
 		}
-		c.declare(x.Pos, &ir.Var{
+		sym := &ir.Var{
 			AST:  x,
 			Name: x.Name,
 			Type: typ,
-		})
-		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr}
+		}
+		c.declare(x.Pos, sym)
+		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr, Sym: sym}
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
 		if x.Value != nil {
@@ -2493,7 +2542,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		return &ir.Return{AST: x, Value: valExpr}
 	case *ast.CallStmt:
 		// context #id(...) is only valid at file top level; reject it here.
-		if isContextDeclCallStmt(x) {
+		if c.isContextDeclCallStmt(x) {
 			c.error(x.Pos, "context decl only permitted at file top level")
 			return nil
 		}
@@ -2700,7 +2749,17 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			return t
 		}
-		// Declare loop variables based on iterator type.
+		// Declare loop variables based on iterator type, keeping the symbols
+		// so the For statement carries what its body's Idents resolve to.
+		var keySym, valueSym *ir.LoopVar
+		declKey := func(t *ir.Type) {
+			keySym = &ir.LoopVar{Name: x.Key, Type: t}
+			c.declare(x.Pos, keySym)
+		}
+		declValue := func(t *ir.Type) {
+			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
+			c.declare(x.Pos, valueSym)
+		}
 		elemType := TypDyn
 		switch iter.Kind {
 		case ir.TypeList:
@@ -2709,11 +2768,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = list: key is index (int), value is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemDeclType(elemType)})
+				declKey(TypInt)
+				declValue(elemDeclType(elemType))
 			} else {
 				// for item = list: item is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemDeclType(elemType)})
+				declKey(elemDeclType(elemType))
 			}
 		case ir.TypeIter:
 			if len(iter.Elems) > 0 {
@@ -2721,35 +2780,35 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 			if x.Value != "" {
 				// for key, value = iter: key is index (int), value is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypInt})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: elemType})
+				declKey(TypInt)
+				declValue(elemType)
 			} else {
 				// for item = iter: item is element.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: elemType})
+				declKey(elemType)
 			}
 		case ir.TypeMap:
 			if x.Value == "" {
 				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
 			} else if len(iter.Elems) == 2 {
 				// for k, v = map: k is key type, v is value type.
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: iter.Elems[0]})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: iter.Elems[1]})
+				declKey(iter.Elems[0])
+				declValue(iter.Elems[1])
 				elemType = iter.Elems[1]
 			}
 		case ir.TypeDyn:
 			if x.Value != "" {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
+				declKey(TypDyn)
+				declValue(TypDyn)
 			} else {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				declKey(TypDyn)
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Value, Type: TypDyn})
+				declKey(TypDyn)
+				declValue(TypDyn)
 			} else {
-				c.declare(x.Pos, &ir.LoopVar{Name: x.Key, Type: TypDyn})
+				declKey(TypDyn)
 			}
 		}
 		body := c.checkBlockIR(&x.Body)
@@ -2758,7 +2817,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
-		return &ir.For{AST: x, Key: x.Key, Value: x.Value, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
+		return &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
@@ -2820,7 +2879,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	scope.Replace(&ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -2973,7 +3032,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 
 // errorEventType returns the resolved stdlib ErrorEvent type, or nil if unavailable.
 func (c *checker) errorEventType() *ir.Type {
-	if sd, ok := c.symtab.Types["ErrorEvent"].(*ir.StructDef); ok {
+	if sd := structDecl(c.symtab, "ErrorEvent"); sd != nil {
 		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
 	}
 	return nil
@@ -3015,9 +3074,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	switch c.builtinNodeKind(name) {
 	case ast.BuiltinWindow:
 		w := c.buildWindow(vn)
-		if w.Name != "" {
-			c.scope.Replace(w)
-		}
+		c.bindWindow(vn.Pos, w)
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
@@ -3090,7 +3147,15 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 	// If not a component, check if it's a function or bare expression.
 	if comp == nil {
-		if sym, ok := c.scope.Lookup(name); ok {
+		sym, ok := c.scope.Lookup(name)
+		if !ok {
+			// A qualified name: the scope holds the alias, not the dotted
+			// string. A declaration reached through an import is reached the
+			// same way whatever it is, so `i18n.locale(...) { }` finds the
+			// context that `i18n.tr(...)` finds the function in.
+			sym, ok = c.lookupQualified(name)
+		}
+		if ok {
 			// Context name used as visual node → ContextProvider.
 			if ctx, ok := sym.(*ir.Context); ok {
 				return c.buildContextProvider(vn, ctx)
@@ -3206,14 +3271,69 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	if expected == nil || actual.Kind != ir.TypeFunc || actual.Sig == nil {
 		return nil, actual
 	}
+	// Where a function is what is wanted, the function is the answer. Calling
+	// it would be the one reading of `var h func() string = api.fetchHello`
+	// that throws away what was asked for.
+	if expected.Kind == ir.TypeFunc {
+		return nil, actual
+	}
 	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
 		return nil, actual
 	}
-	if !actual.Sig.Return.IsAssignableTo(expected) {
+	// The call is implied when its result can reach the expected type, not
+	// only when it already is that type: `text(value=doubled)` where doubled
+	// returns an int calls it and converts, as `text(value=doubled())` does.
+	if !actual.Sig.Return.IsAssignableTo(expected) &&
+		!primitiveConvertible(actual.Sig.Return.Kind, expected.Kind) {
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
 	return call, actual.Sig.Return
+}
+
+// lookupQualified resolves an `alias.member` name through the namespace the
+// alias binds.
+func (c *checker) lookupQualified(name string) (ir.Symbol, bool) {
+	alias, member, isQualified := strings.Cut(name, ".")
+	if !isQualified {
+		return nil, false
+	}
+	sym, ok := c.scope.Lookup(alias)
+	if !ok {
+		return nil, false
+	}
+	ns, isNS := sym.(*ir.Namespace)
+	if !isNS || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+		return nil, false
+	}
+	return ns.Pkg.Symbols.Root.LookupLocal(member)
+}
+
+// withFieldDefaults appends the declared default of every field the literal
+// omits, so the value is complete before anything reads it. Doing it here
+// rather than in each evaluator is what makes `color{r=255}` carry its alpha
+// in the interpreter, the const folder and all four backends alike — they had
+// disagreed, and the two that agreed were both wrong.
+func withFieldDefaults(sd *ir.StructDef, fields []ir.FieldInit) []ir.FieldInit {
+	if sd == nil {
+		return fields
+	}
+	written := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		if f.Spread {
+			// A spread supplies whatever the runtime value holds, so which
+			// fields it covers is not known here.
+			return fields
+		}
+		written[f.Name] = true
+	}
+	for _, f := range sd.Fields {
+		if f.Default == nil || written[f.Name] {
+			continue
+		}
+		fields = append(fields, ir.FieldInit{Name: f.Name, Value: f.Default})
+	}
+	return fields
 }
 
 // componentPropType returns the type of a named prop on a component, or nil.
@@ -3224,6 +3344,31 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 		}
 	}
 	return nil
+}
+
+// propTypeMismatch reports whether a prop value cannot reach its prop's type.
+// wrapIfNeeded would otherwise mint a Conversion for it, and the language has
+// no such cast: the same expression written out is a checker error.
+func propTypeMismatch(got, expected *ir.Type) bool {
+	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
+		return false
+	}
+	if got.IsAssignableTo(expected) || primitiveConvertible(got.Kind, expected.Kind) {
+		return false
+	}
+	// An unresolved type parameter is the tail of an earlier error.
+	if got.Kind == ir.TypeTypeParam || expected.Kind == ir.TypeTypeParam {
+		return false
+	}
+	return true
+}
+
+// onComponent names the component in a diagnostic when there is one to name.
+func onComponent(comp *ir.Component) string {
+	if comp == nil {
+		return ""
+	}
+	return " on component " + comp.Name
 }
 
 // componentEventType returns the payload type of a named event on a component, or nil.
@@ -3393,6 +3538,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 							val = c.checkExpr(callExpr)
 						}
 					}
+					// Nothing adapted it, and wrapIfNeeded would mint a cast
+					// to a struct — which the language does not have, so the
+					// same expression written out (Style("hi")) is a checker
+					// error. Left alone it reached lowering as a panic when
+					// the spread pass tried to resolve the struct type.
+					if got := exprType(val); propTypeMismatch(got, expected) {
+						c.error(*arg.Value.ExprPos(), "cannot use %s as %s for prop %q%s",
+							got, expected, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
+						continue
+					}
 					if expected.Kind != ir.TypeDyn {
 						val = wrapIfNeeded(val, expected)
 					}
@@ -3454,6 +3609,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
+		}
+		// A prop the call omits is supplied here, so every consumer reads one
+		// list of arguments rather than each evaluating the declaration's
+		// defaults for itself. This is what a struct literal does with its
+		// field defaults.
+		for _, p := range comp.Props {
+			if p.Default == nil || boundProps[p.Name] {
+				continue
+			}
+			props = append(props, ir.Arg{Name: p.Name, Value: p.Default})
 		}
 	}
 
@@ -3702,7 +3867,7 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 						Type:    ir.ListOf(c.windowType),
 						IsConst: true,
 					}
-					c.scope.Replace(v)
+					c.declare(n.Pos, v)
 					*vars = append(*vars, v)
 				}
 			}

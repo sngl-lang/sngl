@@ -1,6 +1,7 @@
 // Select requires a string-typed value.
 
 import . "sngl://std"
+import "sngl://i18n"
 
 var n = 5
 var bad = $"{n, select, a{x} other{y}}" // ERROR(check) "string"

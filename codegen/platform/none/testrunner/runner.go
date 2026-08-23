@@ -1,7 +1,6 @@
 package testrunner
 
 import (
-	"maps"
 	"strings"
 	"time"
 
@@ -47,36 +46,23 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		return r
 	}
 
-	testParams := map[string]bool{}
-	for _, p := range fn.Params {
-		testParams[p.Name] = true
-	}
-
 	var cVal *componentValue
 	if compName != "" && len(fn.Params) >= 2 {
 		cVal = &componentValue{
-			Env:        env,
-			Vars:       make(map[string]any),
-			Consts:     make(map[string]any),
-			Funcs:      make(map[string]*ir.Func),
-			compName:   compName,
-			testParams: testParams,
+			Env:      env,
+			comp:     findComponentByName(pkg, compName),
+			compName: compName,
 		}
-		maps.Copy(cVal.Vars, env.Vars)
-		maps.Copy(cVal.Consts, env.Consts)
-		maps.Copy(cVal.Funcs, env.Funcs)
-		if comp := findComponentByName(pkg, compName); comp != nil {
-			cVal.body = comp.Body
+		if cVal.comp != nil {
+			cVal.body = cVal.comp.Body
 		}
-		env.Vars[fn.Params[1].Name] = cVal
+		env.Set(fn.Params[1], cVal)
 	}
 
-	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName}
-	tParamName := "t"
+	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName, comp: cVal}
 	if len(fn.Params) >= 1 {
-		tParamName = fn.Params[0].Name
+		env.Set(fn.Params[0], tVal)
 	}
-	env.Vars[tParamName] = tVal
 
 	for _, stmt := range fn.Block {
 		if err := env.Exec(stmt); err != nil {
@@ -86,9 +72,6 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 				Fatal:   true,
 			})
 			break
-		}
-		if cVal != nil {
-			cVal.syncFromEnv(testParams)
 		}
 	}
 
@@ -120,6 +103,11 @@ type testingT struct {
 	result   *codegen.TestResult
 	pkg      *ir.Package
 	compName string
+	// comp is the test function's component parameter. Held rather than
+	// looked up: two componentValues are live inside a subtest — the
+	// enclosing test's and the subtest's own — and they are distinct
+	// bindings, so searching the env for one picks arbitrarily.
+	comp *componentValue
 	// locale is the BCP-47 locale set by t.setLocale() or t.setContext(locale,…).
 	// It overrides the env's default locale for i18n calls made within this test.
 	locale string
@@ -128,15 +116,16 @@ type testingT struct {
 	contextOverrides map[*ir.Context]any
 }
 
-// componentValue wraps the test environment so that c.field accesses
-// resolve to component state.
+// componentValue is the runtime value of a test function's component
+// parameter. It holds no state of its own: `c.<field>` names a declaration on
+// the component, so a read or write resolves that declaration and goes
+// straight to the env's binding for it. The name-addressed step is the
+// boundary — a test writes `c.count`, and only the component knows which
+// declaration that is.
 type componentValue struct {
-	Env        *interp.Env
-	Vars       map[string]any
-	Consts     map[string]any
-	Funcs      map[string]*ir.Func
-	compName   string // e.g. "pricing"; used to look up receiver-qualified methods
-	testParams map[string]bool
+	Env      *interp.Env
+	comp     *ir.Component // resolves c.<field> and c.<method> to what it names
+	compName string        // e.g. "pricing"; used to look up receiver-qualified methods
 
 	// body is the component's lowered body, captured at construction.
 	// Used by walkChildren to enumerate direct visual statements.

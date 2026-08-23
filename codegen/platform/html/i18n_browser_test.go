@@ -97,6 +97,7 @@ func TestBrowser_I18nPluralRendering(t *testing.T) {
 	// so the i18n runtime is exercised on every increment.
 	const snglSrc = `
 import . "sngl://std"
+import "sngl://i18n"
 component main {
     var count int = 1
     var label string = "You have 1 item"

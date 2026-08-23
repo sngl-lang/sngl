@@ -58,7 +58,7 @@ func TestKtIRContext_I18nPlural(t *testing.T) {
 // TestKtIRContext_I18nExactly ports TestEmitI18nExactly_Kotlin: i18n.exactly(n)
 // lowers to ("=" + (n)).
 func TestKtIRContext_I18nExactly(t *testing.T) {
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n"}
+	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
 	call := &ir.Call{
@@ -78,13 +78,13 @@ func TestKtIRContext_I18nExactly(t *testing.T) {
 // TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map<i18n.PluralKey, string>
 // still lowers to mapOf(...) with string keys.
 func TestKtIRContext_PluralKeyMapLit(t *testing.T) {
-	pluralKeyDecl := &ir.StructDef{Name: "PluralKey"}
-	pluralKeyType := &ir.Type{Kind: ir.TypeStruct, Decl: pluralKeyDecl}
-	mapType := ir.MapOf(pluralKeyType, ir.TypString)
+	keyType := pluralKeyType()
+	mapType := ir.MapOf(keyType, ir.TypString)
 
 	keyExpr := &ir.Select{
 		Operand: &ir.Ident{Name: "i18n"},
 		Field:   "one",
+		Type:    keyType,
 	}
 	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
 
@@ -122,10 +122,45 @@ func TestKtIRContext_I18nPluralKeyConstants(t *testing.T) {
 		sel := &ir.Select{
 			Operand: &ir.Ident{Name: "i18n"},
 			Field:   tc.field,
+			Type:    pluralKeyType(),
 		}
 		got := ktTestCtx().EvalExpr(sel)
 		if got != tc.want {
 			t.Errorf("i18n.%s: got %q, want %q", tc.field, got, tc.want)
 		}
 	}
+}
+
+// Every path that emits a generic call refuses a bodyless #[intrinsic] this
+// backend has no emitter for. See the javascript twin.
+func TestUnimplementedIntrinsicPanics(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call *ir.Call
+	}{
+		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
+		{"method call", &ir.Call{
+			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("no panic for an intrinsic this backend does not implement")
+				}
+				if !strings.Contains(r.(string), "NoBackendHasThis") {
+					t.Errorf("panic %v does not name the intrinsic", r)
+				}
+			}()
+			ktTestCtx().EvalExpr(tc.call)
+		})
+	}
+}
+
+// A select on a predeclared PluralKey constant is identified by its type, so
+// a hand-built one has to carry it.
+func pluralKeyType() *ir.Type {
+	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
 }

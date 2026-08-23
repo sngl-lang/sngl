@@ -257,7 +257,13 @@ type FuncDef struct {
 	ReturnType     TypeExpr  // nil for void/action functions
 	Body           Expr      // single-expression form (=> expr)
 	Block          StmtBlock // block form ({ ... })
+	// Intrinsic is the #[intrinsic("...")] mark, if any. Its zero value means
+	// an ordinary function.
+	Intrinsic IntrinsicMark
 }
+
+// SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
+func (f *FuncDef) SetIntrinsic(m IntrinsicMark) { f.Intrinsic = m }
 
 // IsTest returns true if this function is a test function.
 func (f *FuncDef) IsTest() bool { return strings.HasPrefix(f.Name, "test") }

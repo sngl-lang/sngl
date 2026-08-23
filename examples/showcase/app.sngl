@@ -15,6 +15,7 @@
 
 
 import . "sngl://std"
+import "sngl://i18n"
 
 // ----- 1. Output -----------------------------------------------------
 // `output` declares which (language, platform) pairs this file builds
@@ -194,7 +195,7 @@ component I18nDemo {
 // below update.
 //
 // The stdlib `locale` context (used by i18n above) follows the same
-// rules; `locale("xx-YY") { ... }` overrides the active locale for the
+// rules; `i18n.locale("xx-YY") { ... }` overrides the active locale for the
 // nested subtree only.
 
 context #theme("light")

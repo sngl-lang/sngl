@@ -35,7 +35,7 @@ func (s *ktImportSet) require(path string) {
 // KtIRContext translates IR expressions and statements into Kotlin code.
 type KtIRContext struct {
 	Ctx      *codegen.ExprCtx
-	EventVar string // what "event" maps to in current handler scope
+	EventVar string // what the handler event parameter maps to in this scope
 	// IdentRewrites remaps bare identifiers regardless of scope kind.
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
@@ -93,14 +93,9 @@ func (kc *KtIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(if (" + cond + ") " + then_ + " else " + else_ + ")"
 }
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
-	// Predeclared i18n.PluralKey constants (zero/one/two/few/many/other) lower
-	// to Kotlin string literals — the Kotlin i18n runtime keys plural forms by
-	// string category exclusively. Mirrors golang/JS IRContext and the legacy
-	// kotlin translateIRExpr Select case.
-	if ident, ok := n.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if s := snglI18n.PluralKeyConstString("i18n." + n.Field); s != "" {
-			return s
-		}
+	// The Kotlin i18n runtime keys plural forms by string category exclusively.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
 	}
 	field := n.Field
 	if field == "length" {
@@ -319,7 +314,10 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
-	if out, _, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+		for _, p := range imports {
+			kc.RequireImport(p)
+		}
 		return out
 	}
 	if n.Receiver != nil {
@@ -342,6 +340,7 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 				return rewritten + "(" + strings.Join(args, ", ") + ")"
 			}
 		}
+		codegen.RequireIntrinsicFallback(langKt, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
@@ -357,17 +356,21 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 
 	if n.Func != nil {
 		fname := n.Func.Name
+		// A package function called through its import has no receiver on the
+		// declaration — the namespace is the alias at the call site. Name it
+		// from there so a qualified call reads the same either way.
 		receiverName := n.Func.Receiver
+		if receiverName == "" {
+			if id, ok := n.Receiver.(*ir.Ident); ok {
+				receiverName = id.Name
+			}
+		}
 		qualName := receiverName + "." + fname
 
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
 		// runtime entry points. After NoContext + InlinePure, i18n.*
 		// wrapper calls have been lowered to direct intl.* intrinsic
 		// calls with the locale threaded as the first arg.
-		if result := kotlinEvalIntlIntrinsic(n.Func, args); result != "" {
-			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
-			return result
-		}
 
 		// For i18n.* calls the namespace receiver is the module object, not a
 		// value argument. Pass only the real call args to the builtin dispatcher
@@ -383,8 +386,13 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
 		}
-		if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
-			return result
+		// Only for a receiver whose type the checker could not resolve. With an id
+		// in hand the registry is the answer, and its absence has to reach
+		// RequireIntrinsicFallback rather than be hidden by a name match.
+		if n.Func == nil || n.Func.Intrinsic == "" {
+			if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
+				return result
+			}
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
@@ -395,6 +403,9 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	// `receiver(args)`.
 	if n.AST != nil {
 		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
+			// Nothing above recognised it, so this is the generic emission
+			// and the same guard the other paths carry applies.
+			codegen.RequireIntrinsicFallback(langKt, n.Func)
 			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
 		}
 	}
@@ -487,10 +498,16 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
-	if result := kotlinBuiltinMethodFromArgs("*."+method, args); result != "" {
-		return result
+	// Only for a receiver whose type the checker could not resolve. With an id
+	// in hand the registry is the answer, and its absence has to reach
+	// RequireIntrinsicFallback rather than be hidden by a name match.
+	if n.Func == nil || n.Func.Intrinsic == "" {
+		if result := kotlinBuiltinMethodFromArgs("*."+method, args); result != "" {
+			return result
+		}
 	}
 
+	codegen.RequireIntrinsicFallback(langKt, n.Func)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}
@@ -859,47 +876,26 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	// and the `val context = LocalContext.current` declaration on
 	// CommonAnalysis.NeedsToast, so `context` is in scope at the call site
 	// (toast calls live inside @Composable handler lambdas that capture it).
-	case "Alert.toast":
-		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_SHORT).show()"
-	case "Alert.info", "Alert.warn", "Alert.error":
-		return "Toast.makeText(context, " + a(0) + ", Toast.LENGTH_LONG).show()"
-	case "Alert.confirm":
-		return "true"
-	case "int.min", "*.min":
+	case "*.min":
 		return "minOf(" + a(0) + ", " + a(1) + ")"
-	case "int.max", "*.max":
+	case "*.max":
 		return "maxOf(" + a(0) + ", " + a(1) + ")"
-	case "int.abs", "*.abs":
+	case "*.abs":
 		return "kotlin.math.abs(" + a(0) + ")"
 	// string.* and float math are intrinsic-backed and emitted by ID via the
 	// registry (intrinsics.go). string.contains stays: it is composed
 	// (indexOf >= 0), not an intrinsic.
 	case "string.contains":
 		return a(0) + ".contains(" + a(1) + ")"
-	case "list.length":
-		return a(0) + ".size"
-	case "list.join", "*.join":
+	case "*.join":
 		return a(0) + ".joinToString(" + a(1) + ")"
-	case "list.filter", "*.filter":
+	case "*.filter":
 		return a(0) + ".filter(" + a(1) + ")"
-	case "list.map", "*.map":
+	case "*.map":
 		return a(0) + ".map(" + a(1) + ")"
+	case "*.reverse":
+		return a(0) + ".reversed()"
 	// map
-	case "map.length":
-		return a(0) + ".size"
-	case "map.keys":
-		return a(0) + ".keys.toList()"
-	case "map.values":
-		return a(0) + ".values.toList()"
-	case "map.contains":
-		return a(0) + ".containsKey(" + a(1) + ")"
-	case "map.get":
-		return a(0) + ".getOrDefault(" + a(1) + ", " + a(2) + ")"
-	// i18n — wrapper calls delegate to per-locale runtime entry points.
-	// NoContext threads __ctx_locale as the trailing arg; we lift it to the
-	// leading positional arg the runtime expects (I18n.<foo>(locale, ...)).
-	// Falls back to I18n.getTranslator() (process-global) when no locale arg
-	// was threaded — e.g. legacy callers reached before NoContext runs.
 	case "i18n.tr":
 		// Wrapper params: (key, args, __ctx_locale).
 		if len(argExprs) >= 3 {
@@ -960,9 +956,6 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 			return "I18n.selectordinal(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
 		}
 		return "I18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
-	case "i18n.exactly":
-		// Args: n. a(0)=n. Returns a PluralKey string like "=0".
-		return "(\"=\" + (" + a(0) + "))"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "I18n.defaultLocale()"
