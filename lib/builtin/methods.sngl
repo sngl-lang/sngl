@@ -50,18 +50,18 @@ func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
 
 // Largest integer value not greater than x. For negative non-integers this
 // rounds away from zero (e.g. floor(-1.5) == -2).
-#[intrinsic("float.floor")]
+#[intrinsic("float.floor", usable)]
 func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
 
 // Smallest integer value not less than x. For negative non-integers this
 // rounds toward zero (e.g. ceil(-1.5) == -1).
-#[intrinsic("float.ceil")]
+#[intrinsic("float.ceil", usable)]
 func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
 
 // Nearest integer value to x. Halves round away from zero
 // (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
 // and round(-0.5) == -1.0.
-#[intrinsic("float.round")]
+#[intrinsic("float.round", usable)]
 func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
 
 // Raises base to the power exp. Integer powers are exact up to float

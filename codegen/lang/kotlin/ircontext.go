@@ -408,6 +408,9 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	// `receiver(args)`.
 	if n.AST != nil {
 		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
+			// Nothing above recognised it, so this is the generic emission
+			// and the same guard the other paths carry applies.
+			codegen.RequireIntrinsicFallback(langKt, n.Func)
 			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
 		}
 	}

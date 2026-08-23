@@ -3042,12 +3042,11 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	if g.ctx.Renames == nil {
 		g.ctx.Renames = make(map[string]string)
 	}
+	// The parameter is a local; what it stands for is EventParam's job. This
+	// used to rename by name as well, which replaced any identifier spelled
+	// the same — a lambda parameter sharing the handler's name emitted
+	// `e2.target` where the lambda's own value was meant.
 	var savedLocal []string
-	var savedRename []struct {
-		name string
-		val  string
-		had  bool
-	}
 	for _, p := range fn.Params {
 		if p == nil || p.Name == "" {
 			continue
@@ -3056,13 +3055,6 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 			savedLocal = append(savedLocal, p.Name)
 			g.ctx.Locals[p.Name] = true
 		}
-		prev, had := g.ctx.Renames[p.Name]
-		savedRename = append(savedRename, struct {
-			name string
-			val  string
-			had  bool
-		}{p.Name, prev, had})
-		g.ctx.Renames[p.Name] = "e.target"
 	}
 	lines := g.translateBlockJC(fn.Block)
 	mutated := make(map[string]bool)
@@ -3075,13 +3067,6 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	g.ctx.EventParam = savedEventParam
 	for _, n := range savedLocal {
 		delete(g.ctx.Locals, n)
-	}
-	for _, r := range savedRename {
-		if r.had {
-			g.ctx.Renames[r.name] = r.val
-		} else {
-			delete(g.ctx.Renames, r.name)
-		}
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	g.handlers = append(g.handlers, eventHandler{

@@ -1398,7 +1398,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// The checker already resolved which member this call names; re-deriving
 	// it from the receiver's name would fail for a type reached through an
 	// import alias, whose name here is not the name it was declared under.
-	if len(call.Func.Block) > 0 {
+	if len(call.Func.Block) > 0 && (call.Func.Intrinsic == "" || call.Func.IntrinsicBodyUsable) {
 		callEnv, args := env, call.Args
 		// A method on a generic receiver declares no receiver parameter and
 		// names the value `this`, so the leading argument the checker
@@ -1526,7 +1526,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if method == "push" || method == "remove" || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
-			if fn := recvFn; recvOK && len(fn.Block) > 0 {
+			if fn := recvFn; recvOK && len(fn.Block) > 0 && (fn.Intrinsic == "" || fn.IntrinsicBodyUsable) {
 				// A method on a generic receiver (list<T>, map<K,V>) declares
 				// no receiver parameter and names the value `this`, so there
 				// is nothing in the argument list to bind it to. Supply it the

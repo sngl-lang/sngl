@@ -543,6 +543,9 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// receiver expression plus the call args. Here the equivalent is a
 		// scan of Pkg.Funcs for a matching Receiver+Name (same source the
 		// type-method path uses).
+		// Nothing above recognised it, so this is the generic emission and
+		// the same guard the other paths carry applies.
+		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		var call string
 		if jc.Ctx != nil && jc.Ctx.Pkg != nil && jc.userFuncMatches(receiverName, fname) {
 			jsName := strings.ReplaceAll(qualName, ".", "_")
