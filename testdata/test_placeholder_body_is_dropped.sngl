@@ -1,11 +1,14 @@
 import . "sngl://std"
 
-// A placeholder body is type checked and then discarded, so nothing can run
-// it. int.parse's body is `return 0`; if it survived, the const folder would
-// answer 0 for every call it reached. The folder is what this protects, and
-// cmd/sngl/testdata/generate_int_parse.txt is where that is asserted — the
-// test runner does not optimize. What is left here is the evaluator half:
-// the interpreter answers from its own implementation.
+// int.parse is an intrinsic whose declared body is the placeholder `return 0`,
+// and the interpreter answers it from its own implementation instead.
+//
+// This fixture does not assert the drop: the interpreter dispatches an
+// intrinsic by its id before it ever looks at a body, so it answers 255 with
+// the placeholder present or absent, and the test runner does not optimize.
+// The drop is asserted where it is observable —
+// cmd/sngl/testdata/generate_int_parse.txt, where the const folder had been
+// baking the placeholder's 0 into the output.
 component main {
     const parsed = int.parse("FF", 16)
     text(value="{parsed}")
