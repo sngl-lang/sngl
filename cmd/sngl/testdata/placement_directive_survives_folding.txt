@@ -1,0 +1,27 @@
+# html.frontend and html.backend are identity functions whose whole meaning is
+# that the call is there. Their `=> v` bodies are placeholders like any other
+# intrinsic's, so the checker must drop them — otherwise the const folder
+# inlines the identity, the call disappears, and the placement guard never sees
+# the directive it was written to reject.
+#
+# They are the one pair of marked declarations that lives in a namespace's
+# synthetic package rather than on a type, so a drop that walks only types and
+# packages misses them.
+! sngl generate --lang none --platform html -o out backend_const.sngl
+stderr 'html.backend'
+stderr 'not yet implemented'
+
+-- backend_const.sngl --
+import . "sngl://std"
+
+var v int = html.backend(42)
+
+component App {
+    vbox {
+        text(value="{v}")
+    }
+}
+
+window #main(title="t", href="/") {
+    App()
+}
