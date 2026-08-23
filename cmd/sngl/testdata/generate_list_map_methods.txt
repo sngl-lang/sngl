@@ -12,9 +12,8 @@ grep 'padStart' outjs/index.html
 
 sngl generate --lang=kotlin --platform=android --opt=main=true --out=outkt app.sngl
 grep '\.indexOf\(2\)' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
-# Not .reversed()/.filter() here: the android backend drops the initializer
-# of a list-typed var and emits an empty mutableStateListOf, so those calls
-# never reach the emitter on this platform.
+grep '\.reversed\(\)' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
+grep '\.filter\(' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 grep '\.getOrDefault\(' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 
 [!exec:go] skip 'go toolchain required'
