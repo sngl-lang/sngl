@@ -311,17 +311,14 @@ var CanvasIntrinsics = []IntrinsicDef{
 	}, Return: TypVoid, Purity: PurityMutates},
 }
 
-// IsI18nCall reports whether c targets an i18n stdlib entry point. Two shapes
-// match: the pre-inlining wrapper (c.Func.Receiver == "i18n", e.g. i18n.tr /
-// i18n.numberInt) and the post-inlining direct intrinsic (c.Func.Intrinsic in
-// I18nIntrinsics, after NoContext+InlinePure collapse the wrapper). Either
-// match keeps "package uses i18n" correct regardless of which passes have run.
+// IsI18nCall reports whether c targets an i18n stdlib entry point. The mark on
+// the declaration answers for both shapes — the wrapper a program writes and
+// the primitive left after NoContext and InlinePure collapse it — so "package
+// uses i18n" is correct whichever passes have run, and stays correct when the
+// program imports the package under an alias.
 func IsI18nCall(c *Call) bool {
 	if c == nil || c.Func == nil {
 		return false
-	}
-	if c.Func.Receiver == "i18n" {
-		return true
 	}
 	return IsI18nIntrinsic(c.Func.Intrinsic)
 }
