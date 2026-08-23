@@ -146,10 +146,10 @@ func init() {
 	// Each maps to the same-named entry point in the Go i18n runtime; the
 	// locale is already the leading argument by the time a call gets here.
 	for id, goName := range map[string]string{
-		"i18n._defaultLocale": "i18n._defaultLocale", "i18n._translate": "i18n._translate", "i18n._format": "i18n._format",
-		"i18n._numberInt": "i18n._numberInt", "i18n._numberFloat": "i18n._numberFloat", "i18n._date": "i18n._date",
-		"i18n._time": "i18n._time", "i18n._dateTime": "Datetime", "i18n._select": "i18n._select",
-		"i18n._plural": "i18n._plural", "i18n._selectOrdinal": "Selectordinal",
+		"i18n._defaultLocale": "DefaultLocale", "i18n._translate": "Translate", "i18n._format": "Format",
+		"i18n._numberInt": "NumberInt", "i18n._numberFloat": "NumberFloat", "i18n._date": "Date",
+		"i18n._time": "Time", "i18n._dateTime": "Datetime", "i18n._select": "Select",
+		"i18n._plural": "Plural", "i18n._selectOrdinal": "Selectordinal",
 	} {
 		call := "i18n." + goName
 		regImp(id, []string{SnglI18nImportPath}, func(a []string) string {

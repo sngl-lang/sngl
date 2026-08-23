@@ -353,9 +353,10 @@ const i18nPkg = "i18n"
 const stdPkg = "std"
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the
-// package that declares PluralKey. They are opaque sentinels whose runtime values come from the
-// target's i18n runtime, so there is no literal to declare them with — the
-// compiler supplies them, as it does for null and PLATFORM.
+// package that declares PluralKey. They are opaque sentinels whose runtime
+// values come from the target's i18n runtime, so there is no literal to
+// declare them with — the compiler supplies them, as it does for null and
+// PLATFORM.
 func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	if pkg == nil {
 		return

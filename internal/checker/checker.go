@@ -2438,9 +2438,23 @@ func (c *checker) dropPlaceholderBodies() {
 	}
 	// A method lives on the declaration it is attached to rather than in
 	// pkg.Funcs, and the methods are where most of the marks are.
-	dropPkg := func(pkg *ir.Package) {
-		if pkg == nil {
+	seen := map[*ir.Package]bool{}
+	var dropPkg func(pkg *ir.Package)
+	dropPkg = func(pkg *ir.Package) {
+		if pkg == nil || seen[pkg] {
 			return
+		}
+		seen[pkg] = true
+		// A receiver that names a namespace rather than a type has no
+		// declaration to host its methods, so they live in the synthetic
+		// package the namespace points at — html.frontend and html.backend
+		// are reachable from nowhere else.
+		if pkg.Symbols != nil && pkg.Symbols.Root != nil {
+			for _, sym := range pkg.Symbols.Root.Symbols {
+				if ns, ok := sym.(*ir.Namespace); ok {
+					dropPkg(ns.Pkg)
+				}
+			}
 		}
 		for _, fn := range pkg.Funcs {
 			drop(fn)
