@@ -3245,7 +3245,11 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
 		return nil, actual
 	}
-	if !actual.Sig.Return.IsAssignableTo(expected) {
+	// The call is implied when its result can reach the expected type, not
+	// only when it already is that type: `text(value=doubled)` where doubled
+	// returns an int calls it and converts, as `text(value=doubled())` does.
+	if !actual.Sig.Return.IsAssignableTo(expected) &&
+		!primitiveConvertible(actual.Sig.Return.Kind, expected.Kind) {
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
@@ -3260,6 +3264,30 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 		}
 	}
 	return nil
+}
+
+// propTypeMismatch reports whether a prop value cannot reach its prop's type.
+// wrapIfNeeded would otherwise mint a Conversion for it, and the language has
+// no such cast: the same expression written out is a checker error.
+func propTypeMismatch(got, expected *ir.Type) bool {
+	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
+		return false
+	}
+	if got.IsAssignableTo(expected) || primitiveConvertible(got.Kind, expected.Kind) {
+		return false
+	}
+	// Two types that print the same are the same type to a reader, and the
+	// only way to get here is the identity bug where each directory package
+	// holds its own copy of a declaration. Reporting it would blame the
+	// caller for something no edit of theirs can fix.
+	if got.String() == expected.String() {
+		return false
+	}
+	// An unresolved type parameter is the tail of an earlier error.
+	if got.Kind == ir.TypeTypeParam || expected.Kind == ir.TypeTypeParam {
+		return false
+	}
+	return true
 }
 
 // onComponent names the component in a diagnostic when there is one to name.
@@ -3442,9 +3470,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					// same expression written out (Style("hi")) is a checker
 					// error. Left alone it reached lowering as a panic when
 					// the spread pass tried to resolve the struct type.
-					if got := exprType(val); expected.Kind == ir.TypeStruct &&
-						got.Kind != ir.TypeStruct && got.Kind != ir.TypeDyn &&
-						!got.IsAssignableTo(expected) {
+					if got := exprType(val); propTypeMismatch(got, expected) {
 						c.error(*arg.Value.ExprPos(), "cannot use %s as %s for prop %q%s",
 							got, expected, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
 						continue

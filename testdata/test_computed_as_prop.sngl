@@ -1,0 +1,16 @@
+import . "sngl://std"
+
+// A zero-argument function named where its result is expected is called.
+// It only worked when the return type already matched: `doubled` returns an
+// int and `value` wants a string, so the call was declined and the value was
+// wrapped in a conversion from func to string instead — which the html
+// backend emitted as an empty span.
+component main {
+    var count = 2
+    func doubled() => count * 2
+    text(value=doubled)
+}
+
+func testComputedPropIsCalled(t Test, c main) {
+    t.assert(c.doubled() == 4)
+}
