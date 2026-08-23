@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -217,7 +218,7 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 	// The source must sit inside the project so the module resolves; the
 	// binary must not, or `go build ./...` in the project would pick it up.
 	src := constEvalSource(reqs)
-	srcDir, err := constEvalSrcDir(dir, src)
+	srcDir, canonical, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		return nil, err
 	}
@@ -226,10 +227,6 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 		return nil, fmt.Errorf("writing evaluator source: %w", err)
 	}
 
-	binPath, err := constEvalBinPath(filepath.Base(srcDir))
-	if err != nil {
-		return nil, err
-	}
 	runDir, err := os.MkdirTemp("", "sngl-consteval-*")
 	if err != nil {
 		return nil, fmt.Errorf("creating output dir: %w", err)
@@ -237,35 +234,36 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 	defer os.RemoveAll(runDir)
 	resultPath := filepath.Join(runDir, "results.sngl")
 
-	buildCtx, cancel := context.WithTimeout(context.Background(), evalTimeout)
-	defer cancel()
-	build := exec.CommandContext(buildCtx, "go", "build", "-o", binPath, "./"+filepath.Base(srcDir))
-	build.Dir = dir
-	slog.Info("exec", "cmd", "go build (const evaluator)", "dir", dir, "pkg", filepath.Base(srcDir), "calls", len(reqs))
-	buildStart := time.Now()
-	if out, err := build.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("building const evaluator: %w: %s", err, out)
+	// A fallback directory is uniquely named, so its binary could never be
+	// reused: keeping it would be dead weight in the cache until it aged out.
+	// It goes next to the results instead and dies with them.
+	binPath := filepath.Join(runDir, "eval")
+	if canonical {
+		if binPath, err = constEvalBinPath(filepath.Base(srcDir)); err != nil {
+			return nil, err
+		}
 	}
-	slog.Debug("consteval build", "duration", time.Since(buildStart))
-	// Mark the entry as used: pruning goes by mtime, and an unchanged program
-	// is never relinked, so its binary's own timestamp would go stale.
-	now := time.Now()
-	os.Chtimes(filepath.Dir(binPath), now, now)
 
-	runCtx, cancelRun := context.WithTimeout(context.Background(), evalTimeout)
-	defer cancelRun()
-	run := exec.CommandContext(runCtx, binPath)
-	run.Dir = dir
-	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
-	// Anything an evaluated function prints goes to stderr: results travel in
-	// the file, so stdout carries nothing we need.
-	run.Stdout = os.Stderr
-	run.Stderr = os.Stderr
-	runStart := time.Now()
-	if err := run.Run(); err != nil {
-		return nil, fmt.Errorf("running const evaluator: %w", err)
+	slog.Info("exec", "cmd", "go build (const evaluator)", "dir", dir, "pkg", filepath.Base(srcDir), "calls", len(reqs))
+	// Two attempts, because the binary is shared: another compile's cache
+	// eviction can delete it between this build and this exec, and the loser of
+	// that race has to rebuild rather than report a failure that would abort a
+	// build over a reclaimed cache entry. (binGrace makes the window very
+	// unlikely; this makes it harmless.)
+	for attempt := range 2 {
+		if err := buildConstEval(dir, srcDir, binPath); err != nil {
+			return nil, err
+		}
+		err := runConstEval(dir, binPath, resultPath)
+		if err == nil {
+			break
+		}
+		if attempt == 0 && errors.Is(err, fs.ErrNotExist) {
+			slog.Debug("consteval binary vanished before exec; rebuilding", "path", binPath)
+			continue
+		}
+		return nil, err
 	}
-	slog.Debug("consteval run", "duration", time.Since(runStart))
 
 	results, err := os.ReadFile(resultPath)
 	if err != nil {
@@ -277,8 +275,43 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 	return values, err
 }
 
+func buildConstEval(dir, srcDir, binPath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), evalTimeout)
+	defer cancel()
+	build := exec.CommandContext(ctx, "go", "build", "-o", binPath, "./"+filepath.Base(srcDir))
+	build.Dir = dir
+	start := time.Now()
+	if out, err := build.CombinedOutput(); err != nil {
+		return fmt.Errorf("building const evaluator: %w: %s", err, out)
+	}
+	slog.Debug("consteval build", "duration", time.Since(start))
+	return nil
+}
+
+func runConstEval(dir, binPath, resultPath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), evalTimeout)
+	defer cancel()
+	run := exec.CommandContext(ctx, binPath)
+	run.Dir = dir
+	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	// Anything an evaluated function prints goes to stderr: results travel in
+	// the file, so stdout carries nothing we need.
+	run.Stdout = os.Stderr
+	run.Stderr = os.Stderr
+	start := time.Now()
+	if err := run.Run(); err != nil {
+		// Wrapped, not reformatted: the caller checks for fs.ErrNotExist to
+		// tell "the binary is gone" from "the program failed".
+		return fmt.Errorf("running const evaluator: %w", err)
+	}
+	slog.Debug("consteval run", "duration", time.Since(start))
+	return nil
+}
+
 // constEvalSrcDir creates the directory to generate the program into, named
-// from a hash of the source.
+// from a hash of the source. The second result reports whether the directory
+// got that canonical name — false when another compile already held it and
+// this one had to fall back to a unique name.
 //
 // The name has to be stable: Go's build cache keys a package on its import
 // path, so a fresh random directory per invocation misses the cached link
@@ -289,16 +322,16 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]any, error) {
 // not: it cannot see that docs.Highlight was edited.
 //
 // The dot prefix keeps the package out of `./...`.
-func constEvalSrcDir(dir, src string) (string, error) {
+func constEvalSrcDir(dir, src string) (path string, canonical bool, err error) {
 	sum := sha256.Sum256([]byte(src))
 	name := fmt.Sprintf(".sngl-consteval-%x", sum[:8])
-	path := filepath.Join(dir, name)
+	path = filepath.Join(dir, name)
 
 	// Mkdir is the lock: whoever creates the directory owns it until it is
 	// removed. A hard crash can leave one behind, but no live owner can
 	// outlast evalTimeout, so an older one is reclaimed rather than wedging
 	// every later compile into the slow path.
-	err := os.Mkdir(path, 0o755)
+	err = os.Mkdir(path, 0o755)
 	if errors.Is(err, fs.ErrExist) {
 		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) > evalTimeout {
 			os.RemoveAll(path)
@@ -306,10 +339,10 @@ func constEvalSrcDir(dir, src string) (string, error) {
 		}
 	}
 	if err == nil {
-		return path, nil
+		return path, true, nil
 	}
 	if !errors.Is(err, fs.ErrExist) {
-		return "", fmt.Errorf("creating evaluator dir: %w", err)
+		return "", false, fmt.Errorf("creating evaluator dir: %w", err)
 	}
 
 	// Another compile is building this exact program right now. A unique
@@ -317,9 +350,9 @@ func constEvalSrcDir(dir, src string) (string, error) {
 	// wait that could deadlock.
 	unique, err := os.MkdirTemp(dir, name+"-*")
 	if err != nil {
-		return "", fmt.Errorf("creating evaluator dir: %w", err)
+		return "", false, fmt.Errorf("creating evaluator dir: %w", err)
 	}
-	return unique, nil
+	return unique, false, nil
 }
 
 // constEvalBinPath returns the path to build the evaluator binary at, named
@@ -333,35 +366,131 @@ func constEvalSrcDir(dir, src string) (string, error) {
 // the binary reflects the change. It lives outside the project so that a
 // 27 MB binary never lands in the tree.
 func constEvalBinPath(pkgName string) (string, error) {
-	root, err := os.UserCacheDir()
-	if err != nil {
-		root = os.TempDir()
+	root := os.Getenv(binCacheEnv)
+	if root == "" {
+		base, err := os.UserCacheDir()
+		if err != nil {
+			base = os.TempDir()
+		}
+		root = filepath.Join(base, "sngl", "consteval")
 	}
-	root = filepath.Join(root, "sngl", "consteval")
-	pruneConstEvalBins(root)
+	pruneConstEvalBins(root, binCacheBytes)
 	binDir := filepath.Join(root, strings.TrimPrefix(pkgName, "."))
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return "", fmt.Errorf("creating evaluator cache dir: %w", err)
 	}
+	// Touch on every use, hit included. Eviction is by mtime, and an unchanged
+	// program is never relinked, so its binary's own timestamp would age out
+	// from under the compile that keeps reusing it. Touching here rather than
+	// after the build also means the entry is already young while the build
+	// and the exec that follows it are in flight, which is what keeps another
+	// process's eviction off it.
+	now := time.Now()
+	os.Chtimes(binDir, now, now)
 	return filepath.Join(binDir, "eval"), nil
 }
 
-// binMaxAge bounds how long an unused evaluator binary is kept. Each one links
-// the whole compiler, so they are large and there is one per distinct call set.
-const binMaxAge = 7 * 24 * time.Hour
+// binCacheEnv overrides where evaluator binaries are cached. It exists
+// because the obvious way to relocate the cache — pointing XDG_CACHE_HOME at a
+// temp directory — also moves GOCACHE, so the child `go build` rebuilds the
+// entire Go build cache there: 600 MB and 35s for what should be a few links.
+// Tests set this; CI can point it at a workspace-local directory.
+const binCacheEnv = "SNGL_CONSTEVAL_CACHE"
 
-func pruneConstEvalBins(root string) {
+const (
+	// binCacheBytes bounds the evaluator binary cache.
+	//
+	// A byte budget, not an entry count: an entry here is 26 MB or 73 MB
+	// depending on which codegen registries the batch links, so a count would
+	// bound the cache to anywhere in a 3x range. What grows the cache is not
+	// time but argument changes — editing one prose line in a docs page gives
+	// docs.Highlight a new argument, which is a new program, which is a new
+	// entry — so a day of iterative work would otherwise leave several GB
+	// behind. A gigabyte holds a dozen of the largest entries, enough that an
+	// iterative session keeps reusing its recent programs.
+	binCacheBytes = 1 << 30
+
+	// binMaxAge is the floor under the budget: an entry nothing has used in a
+	// week goes whether the cache is over budget or not.
+	binMaxAge = 7 * 24 * time.Hour
+
+	// binGrace protects an entry another compile may be about to execute. A run
+	// touches its directory before building and cannot hold the binary for
+	// longer than evalTimeout, so anything younger than that may be live. Under
+	// budget pressure the cache may sit over budget for this long rather than
+	// delete a binary out from under a running compile.
+	binGrace = evalTimeout
+)
+
+// pruneConstEvalBins enforces binMaxAge and then the byte budget, evicting
+// least recently used first. Errors are ignored throughout: this is a cache,
+// and failing to reclaim it must never fail a build.
+func pruneConstEvalBins(root string, budget int64) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return
 	}
+
+	type cacheEntry struct {
+		name  string
+		used  time.Time
+		bytes int64
+	}
+	var live []cacheEntry
+	var total int64
 	for _, e := range entries {
-		info, err := e.Info()
-		if err != nil || time.Since(info.ModTime()) < binMaxAge {
+		if !e.IsDir() {
 			continue
 		}
-		os.RemoveAll(filepath.Join(root, e.Name()))
+		path := filepath.Join(root, e.Name())
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		age := time.Since(info.ModTime())
+		if age > binMaxAge {
+			os.RemoveAll(path)
+			continue
+		}
+		if age < binGrace {
+			// May be in use. Its bytes still count against the budget, so a
+			// burst of live entries does not silently raise the ceiling.
+			total += dirBytes(path)
+			continue
+		}
+		size := dirBytes(path)
+		total += size
+		live = append(live, cacheEntry{name: e.Name(), used: info.ModTime(), bytes: size})
 	}
+	if total <= budget {
+		return
+	}
+
+	slices.SortFunc(live, func(a, b cacheEntry) int { return a.used.Compare(b.used) })
+	for _, e := range live {
+		if total <= budget {
+			return
+		}
+		if err := os.RemoveAll(filepath.Join(root, e.name)); err != nil {
+			continue
+		}
+		total -= e.bytes
+		slog.Debug("consteval cache evict", "entry", e.name, "bytes", e.bytes)
+	}
+}
+
+func dirBytes(path string) int64 {
+	var total int64
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return 0
+	}
+	for _, e := range entries {
+		if info, err := e.Info(); err == nil {
+			total += info.Size()
+		}
+	}
+	return total
 }
 
 // constEvalSource generates the batch program. Each call sits in its own

@@ -3,6 +3,8 @@
 package optimize
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -306,23 +308,29 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	dir := t.TempDir()
 	const src = "package main\n"
 
-	first, err := constEvalSrcDir(dir, src)
+	first, canonical, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !canonical {
+		t.Error("the first caller did not get the canonical name")
+	}
 	// While the directory is held, a second caller must not use it: it would
 	// be building into someone else's package, and the owner deletes it.
-	held, err := constEvalSrcDir(dir, src)
+	held, canonical, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if held == first {
 		t.Error("a held directory was handed out twice")
 	}
+	if canonical {
+		t.Error("a fallback directory claimed the canonical name; its binary would be cached and never reused")
+	}
 	os.RemoveAll(held)
 	os.RemoveAll(first) // the owner removes it when the round is done
 
-	again, err := constEvalSrcDir(dir, src)
+	again, _, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +339,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	}
 	os.RemoveAll(again)
 
-	other, err := constEvalSrcDir(dir, src+"// different\n")
+	other, _, err := constEvalSrcDir(dir, src+"// different\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +354,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	dir := t.TempDir()
 	const src = "package main\n"
-	stale, err := constEvalSrcDir(dir, src)
+	stale, _, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +362,7 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	if err := os.Chtimes(stale, old, old); err != nil {
 		t.Fatal(err)
 	}
-	got, err := constEvalSrcDir(dir, src)
+	got, _, err := constEvalSrcDir(dir, src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,5 +413,117 @@ func TestUnresolvedNativeCallGate(t *testing.T) {
 	}
 	if hasUnresolvedNativeCall(pkg, cfg) {
 		t.Error("the call folded to a literal but the gate still reports work to do")
+	}
+}
+
+// mkCacheEntry writes a cache entry of the given size, last used the given
+// duration ago.
+func mkCacheEntry(t *testing.T, root, name string, size int, usedAgo time.Duration) string {
+	t.Helper()
+	dir := filepath.Join(root, name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "eval"), make([]byte, size), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	when := time.Now().Add(-usedAgo)
+	if err := os.Chtimes(dir, when, when); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// Each entry links the whole compiler, so the cache is bounded by bytes and
+// evicts least recently used. What grows it is argument changes, not time, so
+// the age floor alone cannot hold it down.
+func TestPruneConstEvalBinsEvictsLRU(t *testing.T) {
+	root := t.TempDir()
+	// Every entry is out of the grace window, so all are eviction candidates.
+	oldest := mkCacheEntry(t, root, "a", 400, 30*binGrace)
+	middle := mkCacheEntry(t, root, "b", 400, 20*binGrace)
+	newest := mkCacheEntry(t, root, "c", 400, 10*binGrace)
+	ancient := mkCacheEntry(t, root, "d", 1, 2*binMaxAge)
+
+	pruneConstEvalBins(root, 900)
+
+	if exists(ancient) {
+		t.Error("an entry past binMaxAge survived the age floor")
+	}
+	if exists(oldest) {
+		t.Error("the least recently used entry was not evicted")
+	}
+	if !exists(newest) {
+		t.Error("the most recently used entry was evicted")
+	}
+	if !exists(middle) {
+		t.Error("eviction went past the budget: 800 bytes of 900 is under it")
+	}
+}
+
+// An entry another compile may be executing right now is not evicted, even
+// when that leaves the cache over budget: deleting it would take the binary
+// out from under a running build.
+func TestPruneConstEvalBinsSparesLiveEntries(t *testing.T) {
+	root := t.TempDir()
+	live := mkCacheEntry(t, root, "live", 400, binGrace/2)
+	cold := mkCacheEntry(t, root, "cold", 400, 30*binGrace)
+
+	pruneConstEvalBins(root, 100)
+
+	if !exists(live) {
+		t.Error("an entry inside the grace window was evicted")
+	}
+	if exists(cold) {
+		t.Error("a cold entry survived while the cache was over budget")
+	}
+}
+
+// Every use touches the entry, a cache hit included — otherwise LRU evicts the
+// binary a repeated build keeps reusing, since an unchanged program is never
+// relinked and its file mtime never moves.
+func TestConstEvalBinPathTouchesOnUse(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	first, err := constEvalBinPath(".sngl-consteval-touchtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binDir := filepath.Dir(first)
+	old := time.Now().Add(-42 * time.Hour)
+	if err := os.Chtimes(binDir, old, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := constEvalBinPath(".sngl-consteval-touchtest"); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(binDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(info.ModTime()) > time.Minute {
+		t.Errorf("a cache hit did not mark the entry used: mtime is %s old", time.Since(info.ModTime()))
+	}
+	// The name is the generated package's, minus the dot that hides it inside
+	// the project. A fallback (EEXIST) run's directory carries a suffix and so
+	// lands in the same root under the same policy.
+	if filepath.Base(binDir) != "sngl-consteval-touchtest" {
+		t.Errorf("cache entry named %q", filepath.Base(binDir))
+	}
+}
+
+// The retry that covers the eviction race turns on telling a missing binary
+// from a program that ran and failed.
+func TestRunConstEvalMissingBinaryIsNotExist(t *testing.T) {
+	err := runConstEval(t.TempDir(), filepath.Join(t.TempDir(), "gone"), filepath.Join(t.TempDir(), "out.sngl"))
+	if err == nil {
+		t.Fatal("executing a missing binary succeeded")
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a missing binary reported %v, which the rebuild-once path cannot recognise", err)
 	}
 }
