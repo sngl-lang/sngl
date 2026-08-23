@@ -126,7 +126,6 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 		lang, fn.Intrinsic, callName(fn)))
 }
 
-// callName describes a func for a diagnostic, receiver included when it has one.
 func callName(fn *ir.Func) string {
 	if fn.Receiver != "" {
 		return fn.Receiver + "." + fn.Name

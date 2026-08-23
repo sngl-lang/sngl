@@ -35,7 +35,7 @@ func (s *ktImportSet) require(path string) {
 // KtIRContext translates IR expressions and statements into Kotlin code.
 type KtIRContext struct {
 	Ctx      *codegen.ExprCtx
-	EventVar string // what "event" maps to in current handler scope
+	EventVar string // what the handler event parameter maps to in this scope
 	// IdentRewrites remaps bare identifiers regardless of scope kind.
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).

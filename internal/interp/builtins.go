@@ -27,12 +27,10 @@ func runIntrinsic(id string, args []any) (any, bool, error) {
 
 type nativeFunc func(args []any) (any, error)
 
-// intrinsics maps an intrinsic id to this interpreter's implementation of it.
 // An id with no entry is one the interpreter cannot evaluate; whether that is
 // an error depends on whether the declaration carries a usable body.
 var intrinsics = map[string]nativeFunc{
 	// --- int ---
-	// --- float ---
 	"int.parse": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])
 		base := ToInt(args[1])
@@ -190,8 +188,6 @@ var intrinsics = map[string]nativeFunc{
 		}
 		return 0, nil
 	},
-
-	// --- regex ---
 
 	// --- color ---
 	"color.hex": func(args []any) (any, error) {

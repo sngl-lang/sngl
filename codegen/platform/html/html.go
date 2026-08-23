@@ -2826,6 +2826,7 @@ func (g *htmlGen) scopedJC() *javascript.JsIRContext {
 	c := g.ctx.Clone()
 	jc := javascript.NewIRContext(c)
 	jc.EventVar = c.EventVar
+	jc.EventParam = c.EventParam
 	return jc
 }
 
@@ -2839,6 +2840,7 @@ func (g *htmlGen) scopedJCFresh() *javascript.JsIRContext {
 	c.NativeImports = map[string]map[string]bool{}
 	jc := javascript.NewIRContext(c)
 	jc.EventVar = c.EventVar
+	jc.EventParam = c.EventParam
 	return jc
 }
 
@@ -3032,7 +3034,11 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 		return
 	}
 	savedEvent := g.ctx.EventVar
+	savedEventParam := g.ctx.EventParam
 	g.ctx.EventVar = "e.target"
+	if len(fn.Params) > 0 {
+		g.ctx.EventParam = fn.Params[0]
+	}
 	if g.ctx.Renames == nil {
 		g.ctx.Renames = make(map[string]string)
 	}
@@ -3066,6 +3072,7 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 		}
 	}
 	g.ctx.EventVar = savedEvent
+	g.ctx.EventParam = savedEventParam
 	for _, n := range savedLocal {
 		delete(g.ctx.Locals, n)
 	}

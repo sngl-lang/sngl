@@ -57,7 +57,6 @@ func init() {
 	reg("float.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
 	reg("float.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
 
-	// --- list (in-place mutations) ---
 	// --- list and map ---
 	// A SNGL map is a JS Map, so these are its methods rather than object keys.
 	reg("list.length", func(a []string) string { return a[0] + ".length" })

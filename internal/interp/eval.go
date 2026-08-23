@@ -107,12 +107,9 @@ type unitTable struct {
 
 // Env holds the mutable state for test execution.
 type Env struct {
-	// vals holds this scope's bindings keyed by the declaration each came
-	// from — an *ir.Var, *ir.Param or *ir.LoopVar. Keying on the declaration
-	// rather than its name is what the checker already did when it resolved
-	// every Ident to a Symbol: shadowing is free because two declarations are
-	// two pointers, and a constant declared in a library package resolves
-	// like any other rather than having to be copied into a name table.
+	// Keyed by the declaration rather than by name, so two declarations that
+	// share a name are two bindings and a library constant needs no copy into
+	// a name table.
 	vals map[ir.Symbol]any
 	// recv is the implicit component receiver (`this`). Not a binding in vals
 	// because no symbol can key it: every method declares its own `this`
@@ -154,7 +151,6 @@ func NewEnv() *Env {
 	}
 }
 
-// Set binds sym to val in this env.
 func (env *Env) Set(sym ir.Symbol, val any) {
 	if sym == nil {
 		return
@@ -168,7 +164,6 @@ func (env *Env) SetReceiver(val any) {
 	env.recv, env.hasRecv = val, true
 }
 
-// Value returns the value bound to sym in this env or an enclosing one.
 func (env *Env) Value(sym ir.Symbol) (any, bool) {
 	if owner := env.findVarOwner(sym); owner != nil {
 		return owner.vals[sym], true
@@ -845,9 +840,8 @@ func (env *Env) methodOn(recv, method string) (*ir.Func, bool) {
 	return nil, false
 }
 
-// findVarOwner returns the env in this parent chain that binds sym, or nil if
-// none does. Used by assignment/toggle so a write to a package-level var
-// declared in a parent env mutates the binding there.
+// A write to a package-level var declared in a parent env mutates the
+// binding there, so assignment and toggle resolve the owner first.
 func (env *Env) findVarOwner(sym ir.Symbol) *Env {
 	for e := env; e != nil; e = e.parent {
 		if _, ok := e.vals[sym]; ok {
@@ -1561,7 +1555,6 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					callEnv = env.Snapshot()
 					callEnv.SetReceiver(recv)
 				} else {
-					// Prepend receiver expr so EvalUserFunc sees normalized form.
 					synth = append(synth, call.Receiver)
 				}
 				for _, a := range call.Args {

@@ -8,11 +8,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// TestNodeOpsAreNotNameable pins the boundary the node operations sit on.
-// CreateNode and its siblings are a protocol between the lowering passes and
-// the platforms that rebuild the tree; a program cannot name them, and there
-// is no package to import that would let it. Until they were constants they
-// were a library package, and `lower.CreateNode("text")` type-checked.
+// A program cannot name a node operation: there is no package to import that
+// would let it.
 func TestNodeOpsAreNotNameable(t *testing.T) {
 	src := `func test() => lower.CreateNode("text")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))

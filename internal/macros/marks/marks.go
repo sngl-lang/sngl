@@ -7,10 +7,6 @@
 // the library source itself; the checker runs the pre-expand pass over that
 // source so the marks are in place before type-checking.
 //
-// It is sngl://internal/marks rather than .../builtin because sngl://builtin is
-// a different thing — the ambient package of built-in types — and the two were
-// one letter apart at the import line.
-//
 // See docs/superpowers/specs/2026-08-18-builtins-stdlib-split-design.md.
 package marks
 

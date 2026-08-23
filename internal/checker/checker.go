@@ -2776,8 +2776,6 @@ func (c *checker) declareNodeID(id string, isWindow bool) {
 	c.declare(ast.Pos{}, sym)
 }
 
-// hoistedWindow returns the window shell declareNodeIDs bound for id, or nil
-// when the id was not hoisted into the current scope.
 func (c *checker) hoistedWindow(id string) *ir.Window {
 	if id == "" {
 		return nil
@@ -2793,7 +2791,6 @@ func (c *checker) hoistedWindow(id string) *ir.Window {
 	return w
 }
 
-// bindWindow binds w under its own name when the hoist did not already.
 func (c *checker) bindWindow(pos ast.Pos, w *ir.Window) {
 	if w.Name == "" {
 		return

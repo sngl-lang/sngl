@@ -126,8 +126,6 @@ func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
 	return t
 }
 
-// propSym returns the symbol comp declares for the prop named name, or nil
-// when the component has no such prop.
 func propSym(comp *ir.Component, name string) ir.Symbol {
 	for _, p := range comp.Props {
 		if p.Name == name && p.Sym != nil {

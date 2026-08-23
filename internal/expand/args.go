@@ -164,7 +164,6 @@ func arityDesc(required, total int, variadic bool) string {
 	return fmt.Sprintf("%d to %d arguments", required, total)
 }
 
-// Idents returns a variadic ArgIdent parameter's values, in the order written.
 // Empty when the mark supplied none.
 func (a Args) Idents(name string) []string {
 	if i := a.index(name); i >= 0 {

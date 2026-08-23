@@ -15,6 +15,9 @@ import (
 type JsIRContext struct {
 	Ctx      *codegen.ExprCtx
 	EventVar string
+	// EventParam is the handler parameter EventVar stands for; see
+	// codegen.ExprCtx.
+	EventParam ir.Symbol
 
 	// EmitPositionMarkers controls whether EvalStmt prepends inline
 	// `/*@SNGL:file:line@*/` markers at statement boundaries. Populated
@@ -330,7 +333,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		return "state"
 	}
 	name := n.Name
-	if name == "event" && jc.EventVar != "" {
+	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
 	}
 	sym, kind := jc.Ctx.Resolve(name)
@@ -715,10 +718,11 @@ func (jc *JsIRContext) WithLocal(name string) *JsIRContext {
 }
 
 // WithEvent returns a clone with EventVar set.
-func (jc *JsIRContext) WithEvent(eventVar string) *JsIRContext {
+func (jc *JsIRContext) WithEvent(eventVar string, param ir.Symbol) *JsIRContext {
 	return &JsIRContext{
-		Ctx:      jc.Ctx.Clone(),
-		EventVar: eventVar,
+		Ctx:        jc.Ctx.Clone(),
+		EventVar:   eventVar,
+		EventParam: param,
 	}
 }
 

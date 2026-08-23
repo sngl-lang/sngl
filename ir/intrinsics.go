@@ -215,8 +215,7 @@ var I18nIntrinsics = []IntrinsicDef{
 // library package, because no program calls them. Nothing in SNGL can name
 // them, no language registers an emitter for them, and the only consumer is
 // codegen.WalkLowered, which matches on the id and dispatches to a method of
-// IntrinsicTranslator — a platform interface. A package declaring them would
-// be a costume worn by a Go-to-Go protocol.
+// IntrinsicTranslator — a platform interface.
 const (
 	NodeOpCreateNode      = "CreateNode"
 	NodeOpCreateComponent = "CreateComponent"
@@ -225,7 +224,6 @@ const (
 	NodeOpAttachHandler   = "AttachHandler"
 )
 
-// NodeOps is every node operation, for the passes that build a call for each.
 var NodeOps = []string{
 	NodeOpCreateNode,
 	NodeOpCreateComponent,

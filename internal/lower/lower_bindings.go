@@ -206,40 +206,22 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 			Operand: &ir.Ident{Name: propName, Type: prop.Type, Sym: synthParam},
 			Type:    prop.Type,
 		}
-	} else {
-		// event.value — read the new string value from the DOM event.
-		// "event" is the canonical event identifier; the JS emitter maps
-		// event.value → e.target.value inside input/change handler scopes.
-		var evtType *ir.Type
-		for _, ev := range comp.Events {
-			for _, c := range candidates {
-				if ev.Name == c && ev.Type != nil {
-					evtType = ev.Type
-					break
-				}
-			}
-			if evtType != nil {
-				break
-			}
-		}
-		if evtType == nil {
-			evtType = ir.TypDyn
-		}
-		// Carries the param it refers to, like the branch above and like
-		// inline_pure's own `event` ident: nothing declares this name in the
-		// program, so the pass that invents the reference invents the
-		// declaration it refers to.
-		evtParam := &ir.Param{Name: "event", Type: evtType}
-		eventIdent := &ir.Ident{Name: "event", Type: evtType, Sym: evtParam}
-		emitVal = &ir.Select{Operand: eventIdent, Field: "value", Type: ir.TypString}
 	}
+	// Otherwise the emit reads event.value, and which parameter `event` names
+	// is only known once the receiving handler is found — emitFor builds it.
 
-	emit := &ir.Emit{
-		Name: propName,
-		Args: []ir.CallArg{{Value: emitVal}},
+	injectEmitIntoHandlers(comp.Body, candidates, propName, eventPayloadType(comp, candidates), emitVal)
+}
+
+// eventPayloadType is the declared payload of whichever candidate event the
+// component declares, for a handler that has to be given a parameter.
+func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
+	for _, ev := range comp.Events {
+		if slices.Contains(candidates, ev.Name) && ev.Type != nil {
+			return ev.Type
+		}
 	}
-
-	injectEmitIntoHandlers(comp.Body, candidates, emit)
+	return ir.TypDyn
 }
 
 // handlerReportsValueChange reports whether h fires for one of the candidate
@@ -265,7 +247,31 @@ func handlerReportsValueChange(h *ir.EventHandler, candidates []string) bool {
 // one of them (gtk4: `@changed { input() }`, android: `@onValueChange { input() }`,
 // where the handler is named for the native signal). It prepends emit to that
 // handler's block. Returns true if the injection was performed.
-func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit) bool {
+// emitFor builds the statement to prepend to h. A nil value means the emit
+// reads the event, which is h's own parameter: the event was an ambient name
+// once and is a declared parameter now, so the reference names a declaration.
+// A handler written without one (`@input { }`) has nothing to name, and this
+// is the pass that needs it, so this is the pass that declares it.
+func emitFor(h *ir.EventHandler, propName string, evtType *ir.Type, value ir.Expr) *ir.Emit {
+	if value == nil {
+		if len(h.Func.Params) == 0 {
+			h.Func.Params = []*ir.Param{{Name: "__event", Type: evtType}}
+		}
+		p := h.Func.Params[0]
+		t := p.Type
+		if t == nil {
+			t = ir.TypDyn
+		}
+		value = &ir.Select{
+			Operand: &ir.Ident{Name: p.Name, Type: t, Sym: p},
+			Field:   "value",
+			Type:    ir.TypString,
+		}
+	}
+	return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: value}}}
+}
+
+func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
@@ -275,27 +281,27 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, emit *ir.Emit)
 					continue
 				}
 				if handlerReportsValueChange(h, candidates) {
-					h.Func.Block = append([]ir.Stmt{emit}, h.Func.Block...)
+					h.Func.Block = append([]ir.Stmt{emitFor(h, propName, evtType, value)}, h.Func.Block...)
 					return true
 				}
 			}
 			// Recurse into children.
-			if injectEmitIntoHandlers(n.Children, candidates, emit) {
+			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value) {
 				return true
 			}
 		case *ir.For:
-			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
 				return true
 			}
 		case *ir.If:
-			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
 				return true
 			}
-			if injectEmitIntoHandlers(n.Else, candidates, emit) {
+			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value) {
 				return true
 			}
 		case *ir.PlatformFilter:
-			if injectEmitIntoHandlers(n.Body, candidates, emit) {
+			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
 				return true
 			}
 		}

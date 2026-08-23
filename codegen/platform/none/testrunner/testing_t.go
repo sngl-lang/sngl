@@ -416,7 +416,6 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	return result, true, err
 }
 
-// Toggle flips a bool field.
 func (cv *componentValue) Toggle(field string) error {
 	sym, err := cv.writableFieldSym(field)
 	if err != nil {
@@ -434,8 +433,6 @@ func (cv *componentValue) Toggle(field string) error {
 	return nil
 }
 
-// WriteBackList stores a (typically mutated-in-place) list back into a
-// component field.
 func (cv *componentValue) WriteBackList(field string, list []any) error {
 	sym, err := cv.writableFieldSym(field)
 	if err != nil {
@@ -576,9 +573,6 @@ func (cv *componentValue) compEnv() *interp.Env {
 	return cv.Env.Snapshot()
 }
 
-// funcNamed resolves a bare name on the component to the func it names: a
-// receiver-less func declared in the body, or a method on the component.
-// Members of a declaration are looked up on the declaration.
 func (cv *componentValue) funcNamed(name string) *ir.Func {
 	if cv.comp == nil {
 		return nil
@@ -591,7 +585,6 @@ func (cv *componentValue) funcNamed(name string) *ir.Func {
 	return cv.comp.Methods[name]
 }
 
-// effectiveArity is fn's argument count excluding an implicit receiver.
 func effectiveArity(fn *ir.Func) int {
 	n := len(fn.Params)
 	if n > 0 && fn.Params[0].Receiver {
@@ -600,9 +593,6 @@ func effectiveArity(fn *ir.Func) int {
 	return n
 }
 
-// fieldSym resolves c.<field> to the declaration it names: a var or prop on
-// the component, else a package-level var or const. Returns nil when the
-// component has no such field.
 func (cv *componentValue) fieldSym(field string) ir.Symbol {
 	if cv.comp != nil {
 		for _, v := range cv.comp.Vars {
