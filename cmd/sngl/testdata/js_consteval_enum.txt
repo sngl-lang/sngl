@@ -6,6 +6,11 @@
 # thing that says which enum, and the member is the one whose declared value
 # equals the literal.
 #
+# The member goes back out the same way it came in: what the page carries is
+# the value the declaration gives it, not the SNGL member name, because the
+# value is what the module's own code compares against — `Color.Green` in
+# index.js is 1, and a page holding "Green" would agree with nothing.
+#
 # The enum lives in a .d.ts beside its .js, which is how a compiled package
 # ships one and also the only shape node can run: node executes TypeScript by
 # stripping types, and an enum is not a type — it emits an object.
@@ -15,10 +20,11 @@ env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
-# Naming the member is what proves the right one was picked: the value 1 could
-# only have come back as Green, and "warn" as Warn.
-grep 'var c = "Green"' out/index.html
-grep 'var l = "Warn"' out/index.html
+# The value is what proves the right member was picked: 1 could only have come
+# back as Green, and "warn" as Warn.
+grep 'var c = 1' out/index.html
+grep 'var l = "warn"' out/index.html
+! grep '"Green"' out/index.html
 ! grep 'pickColor' out/index.html
 ! grep 'pickLevel' out/index.html
 
@@ -54,6 +60,7 @@ export declare function pickColor(): Color;
 
 /** @sngl-pure */
 export declare function pickLevel(): Level;
+
 -- lib/index.js --
 export const Color = { 0: "Red", Red: 0, 1: "Green", Green: 1, 2: "Blue", Blue: 2 };
 export const Level = { Info: "info", Warn: "warn" };

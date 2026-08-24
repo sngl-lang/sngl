@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -91,6 +92,10 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
 		return operand + "." + n.Field + "()"
 	}
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeStruct {
+		sd, _ := t.Decl.(*ir.StructDef)
+		return operand + "." + jsFieldKey(sd, n.Field)
+	}
 	return operand + "." + n.Field
 }
 func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {
@@ -139,9 +144,26 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		if f.Spread {
 			panic("javascript: struct spread must be lowered by flatten_struct_spread")
 		}
-		parts[i] = f.Name + ": " + fieldStrs[i]
+		parts[i] = jsFieldKey(n.Def, f.Name) + ": " + fieldStrs[i]
 	}
 	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// jsFieldKey is the property name a field is written under in JavaScript. For
+// a struct a scheme importer built, that is the name the foreign declaration
+// used: the importer lowers a leading capital to reach a SNGL field name, so a
+// PascalCase TypeScript property is spelled one way in SNGL source and another
+// in the object the module reads.
+func jsFieldKey(sd *ir.StructDef, name string) string {
+	if sd == nil {
+		return name
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name && f.NativeName != "" {
+			return f.NativeName
+		}
+	}
+	return name
 }
 func (jc *JsIRContext) Spread(_ *ir.Spread, operand string) string { return "..." + operand }
 
@@ -307,6 +329,9 @@ func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
 
 func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
+		if src, ok := nativeEnumMemberJS(n.Type, n.Member); ok {
+			return src
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	// Synthesized refs from lowering passes (__nN widget refs,
@@ -359,10 +384,50 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		return name
 	default:
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
+			if src, ok := nativeEnumMemberJS(n.Type, name); ok {
+				return src
+			}
 			return fmt.Sprintf("%q", name)
 		}
 		return name
 	}
+}
+
+// nativeEnumMemberJS returns the JavaScript a member of t erases to in the
+// module that declared it, for an enum a scheme importer built.
+//
+// A SNGL enum member is its own name in generated JS; a TypeScript member is
+// the value its declaration gives it, and that value is what the module's own
+// code compares against. The two are told apart by the recorded value: the
+// checker fills a SNGL member's Value with a placeholder carrying no literal,
+// so only an importer that actually read a value leaves one here — the same
+// record CheckNativeValue matches an encoded value against, read from the
+// other end.
+func nativeEnumMemberJS(t *ir.Type, member string) (string, bool) {
+	if t == nil || t.Kind != ir.TypeEnum {
+		return "", false
+	}
+	ed, _ := t.Decl.(*ir.EnumDef)
+	if ed == nil {
+		return "", false
+	}
+	for _, m := range ed.Members {
+		if m.Name != member {
+			continue
+		}
+		lit, _ := m.Value.(*ir.Literal)
+		if lit == nil || lit.Raw == "" || lit.Type == nil {
+			return "", false
+		}
+		if lit.Type.Kind == ir.TypeString {
+			return fmt.Sprintf("%q", lit.Raw), true
+		}
+		if _, err := strconv.ParseFloat(lit.Raw, 64); err != nil {
+			return "", false
+		}
+		return lit.Raw, true
+	}
+	return "", false
 }
 
 func (jc *JsIRContext) evalCall(n *ir.Call) string {
