@@ -102,6 +102,10 @@ the Go toolchain and `js://` folding needs `node`. When the tool is missing,
 the value falls back to a runtime call on a target that can make one, and the
 build fails on a target that cannot.
 
+Any `node` will do. The compiler compiles the module and everything it imports
+itself, so TypeScript is already gone by the time node sees it — a `.ts` with
+an enum folds, and node's own type stripping never comes into it.
+
 The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `func`, components, and `timer`. There is no `style` or `test` declaration: a reusable style is a `Style` constant, and a test is an ordinary function taking a `Test` receiver.
 
 A complete minimal file needs only a `component main`:
