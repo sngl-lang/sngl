@@ -194,6 +194,12 @@ type windowShared struct {
 	bundles      map[bundleKey]bundleResult
 	i18nManifest string
 	i18nLoaded   bool
+	// usedComponents is the visual-tree scan AnalyzeCommon would otherwise
+	// repeat; prewalked is the __n* id map prewalkNodes would. Both describe
+	// the package, which no window changes.
+	usedComponents map[string]bool
+	prewalked      map[string]*ir.NodeInst
+	slotsRewritten bool
 }
 
 type bundleKey struct {
@@ -354,13 +360,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// callers can verify codegen at least succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
-		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts, c.sharedCache())
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
 		gen.projectFS = projectFS
-		gen.shared = c.sharedCache()
 		body, err := gen.generate()
 		if err != nil {
 			return nil, err
@@ -412,13 +417,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				seenPaths[name] = ast.Pos{}
 			}
 		}
-		gen := newHTMLGenFromCtx(ctx, jsLang, opts)
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts, c.sharedCache())
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
 		gen.projectFS = projectFS
-		gen.shared = c.sharedCache()
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
 		if win.Window != nil {
@@ -633,7 +637,18 @@ type timerDef struct {
 }
 
 func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
-	common := codegen.AnalyzeCommon(pkg)
+	return newHTMLGenShared(pkg, lang, opts, nil)
+}
+
+func newHTMLGenShared(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
+	var ao codegen.AnalyzeOpts
+	if shared != nil {
+		ao.UsedComponents = shared.usedComponents
+	}
+	common := codegen.AnalyzeCommonFor(pkg, ao)
+	if shared != nil && shared.usedComponents == nil {
+		shared.usedComponents = maps.Clone(common.UsedComponents)
+	}
 
 	g := &htmlGen{
 		pkg:            pkg,
@@ -645,6 +660,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 		idToNode:       make(map[string]*ir.NodeInst),
 		loweredRefs:    make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
+		shared:         shared,
 	}
 
 	g.dt = common.DepTracker()
@@ -671,8 +687,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *
 }
 
 // newHTMLGenFromCtx creates an htmlGen from CodegenCtx (IR-first path).
-func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
-	g := newHTMLGen(ctx.Pkg, lang, opts)
+func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
+	g := newHTMLGenShared(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
@@ -686,6 +702,37 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 		g.ctx.NativeImports = native
 	}
 	return g
+}
+
+// prewalkShared seeds idToNode from the cached package walk when there is one.
+// The walk finds every __n* id in the package, which is the same set for every
+// window; the $N ids allocated while rendering are not, so each window still
+// gets its own map to add them to.
+func (g *htmlGen) prewalkShared() {
+	if g.shared == nil {
+		g.prewalkNodes()
+		return
+	}
+	if g.shared.prewalked == nil {
+		g.prewalkNodes()
+		g.shared.prewalked = maps.Clone(g.idToNode)
+		return
+	}
+	maps.Copy(g.idToNode, g.shared.prewalked)
+}
+
+// rewriteSlotCallsOnce runs the slot retarget for the first window only. The
+// rewrite is a package-wide IR edit, so once done it holds for every window
+// that follows.
+func (g *htmlGen) rewriteSlotCallsOnce() {
+	if g.shared == nil {
+		g.rewriteSlotCallsToAnchors()
+		return
+	}
+	if !g.shared.slotsRewritten {
+		g.rewriteSlotCallsToAnchors()
+		g.shared.slotsRewritten = true
+	}
 }
 
 // sharedCache lazily allocates the per-compilation cache the window loop hands
@@ -992,12 +1039,12 @@ func (g *htmlGen) generate() (string, error) {
 	// the static walk than the destination text node fall through to the
 	// JS-default `el.value = …` path — wrong for spans, which need
 	// `el.textContent = …`.
-	g.prewalkNodes()
+	g.prewalkShared()
 
 	// Retarget every __renderSlotN(parentRef) call to render into the slot's
 	// own display:contents anchor (__slotAnchor_N). Must precede the body
 	// walk so handler/timer re-fire calls collected there are rewritten too.
-	g.rewriteSlotCallsToAnchors()
+	g.rewriteSlotCallsOnce()
 
 	var b strings.Builder
 
