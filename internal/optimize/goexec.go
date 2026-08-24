@@ -15,7 +15,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -33,19 +32,6 @@ const evalTimeout = 120 * time.Second
 // both once when the binary was reclaimed under it, and then parses the
 // results — so evalTimeout alone is nowhere near the bound.
 const ownerLifetime = 5 * evalTimeout
-
-// constResult is a finished compile-time evaluation: the checked IR of the
-// value, or the reason there will never be one.
-type constResult struct {
-	expr ir.Expr
-	err  error
-}
-
-// constCache memoizes results across rounds and across Optimize calls (the
-// pipeline optimizes twice per target, and one docs build shares a process).
-// The key is derived from the function and its rendered arguments, so two
-// calls collide only when they really are the same call.
-var constCache sync.Map // string → constResult
 
 // nativeCallState is what a fold pass learned about one pure native call.
 type nativeCallState int
@@ -112,8 +98,7 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 		return nil, nativeFailed, err
 	}
 	key := requestKey(importPath, f.NativeName, argSrc)
-	if c, loaded := constCache.Load(key); loaded {
-		res := c.(constResult)
+	if res, loaded := ctx.evalCache().load(key); loaded {
 		if res.err != nil {
 			return nil, nativeFailed, res.err
 		}
@@ -149,11 +134,10 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	if err := runNativeRequests(ctx.dir, []*nativeRequest{req}); err != nil {
+	if err := runNativeRequests(ctx.evalCache(), ctx.dir, []*nativeRequest{req}); err != nil {
 		return nil, nativeFailed, err
 	}
-	res, _ := constCache.Load(key)
-	if r, ok := res.(constResult); ok && r.err == nil {
+	if r, ok := ctx.evalCache().load(key); ok && r.err == nil {
 		return r.expr, nativeReady, nil
 	} else if ok {
 		return nil, nativeFailed, r.err
@@ -242,14 +226,14 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 }
 
 // runNativeRequests evaluates every pending request in one generated program:
-// one build, one run, one results document. Each request ends up in
-// constCache — with a value, or with the reason it has none, so a later round
-// neither re-requests it nor spins.
+// one build, one run, one results document. Each request ends up in cache —
+// with a value, or with the reason it has none, so a later round neither
+// re-requests it nor spins.
 //
 // Only a program outcome is cached. A returned error is a failure of the batch
 // as a whole (the build, the run, a corrupt results document), which says
-// nothing about any one call and must not become that call's permanent answer.
-func runNativeRequests(dir string, reqs []*nativeRequest) error {
+// nothing about any one call and must not become that call's answer.
+func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) error {
 	values, bad, err := execConstEval(dir, reqs)
 	if err != nil {
 		return err
@@ -257,13 +241,13 @@ func runNativeRequests(dir string, reqs []*nativeRequest) error {
 	for _, req := range reqs {
 		switch v, ok := values[req.key]; {
 		case bad[req.key] != nil:
-			constCache.Store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, bad[req.key])})
+			cache.store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, bad[req.key])})
 		case !ok:
 			// The generated program ran but produced nothing for this key:
 			// consteval.Fail was called, or the call never returned.
-			constCache.Store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
+			cache.store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
 		default:
-			constCache.Store(req.key, constResult{expr: v})
+			cache.store(req.key, constResult{expr: v})
 			slog.Debug("const eval", "func", req.nativeType)
 		}
 	}

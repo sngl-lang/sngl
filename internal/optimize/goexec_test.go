@@ -55,10 +55,12 @@ var (
 )
 
 // purepkgCtx is an evalCtx whose go:// import is the purepkg test package,
-// with a fresh request set.
+// with a fresh request set and a fresh cache — one test's evaluations are not
+// another's.
 func purepkgCtx(dir string) *evalCtx {
 	return &evalCtx{
 		dir:    dir,
+		cache:  NewEvalCache(),
 		native: &nativeEval{},
 		nativeImports: map[string]*ir.NativeImport{"purepkg": {
 			ImportPath: purepkgPath,
@@ -66,6 +68,15 @@ func purepkgCtx(dir string) *evalCtx {
 		}},
 		nativeSchemes: map[string]string{"purepkg": "go"},
 	}
+}
+
+// nextRound is the same compilation's next fold pass: a fresh request set over
+// the cache the previous pass filled. Two purepkgCtx calls are two
+// compilations, and a compilation's evaluated values are its own.
+func nextRound(ctx *evalCtx) *evalCtx {
+	c := *ctx
+	c.native = &nativeEval{}
+	return &c
 }
 
 // evalNow requests every call, runs the one batch they produce, and returns
@@ -81,7 +92,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 		}
 	}
 	if len(ctx.native.order) > 0 {
-		runNativeRequests(ctx.dir, ctx.native.order)
+		runNativeRequests(ctx.evalCache(), ctx.dir, ctx.native.order)
 	}
 	out := make([]constResult, len(calls))
 	for i, c := range calls {
@@ -175,9 +186,10 @@ func TestCachedCallNeedsNoBatch(t *testing.T) {
 	if dir == "" {
 		t.Skip("could not find project root")
 	}
-	evalNow(t, purepkgCtx(dir), call{fnGreet, []any{"cache"}})
+	first := purepkgCtx(dir)
+	evalNow(t, first, call{fnGreet, []any{"cache"}})
 
-	ctx := purepkgCtx(dir)
+	ctx := nextRound(first)
 	v, state, err := requestPureGoFunc(ctx, "go", purepkgPath, fnGreet, []any{"cache"})
 	if state != nativeReady || err != nil {
 		t.Fatalf("cached call not ready: state=%v err=%v", state, err)
@@ -633,11 +645,12 @@ func TestCachedValueIsNotShared(t *testing.T) {
 	if dir == "" {
 		t.Skip("could not find project root")
 	}
-	got := evalNow(t, purepkgCtx(dir), call{getItemsFn(t), nil})
+	ctx := purepkgCtx(dir)
+	got := evalNow(t, ctx, call{getItemsFn(t), nil})
 	if got[0].err != nil {
 		t.Fatalf("GetItems(): %v", got[0].err)
 	}
-	second, state, err := requestPureGoFunc(purepkgCtx(dir), "go", purepkgPath, getItemsFn(t), nil)
+	second, state, err := requestPureGoFunc(nextRound(ctx), "go", purepkgPath, getItemsFn(t), nil)
 	if state != nativeReady || err != nil {
 		t.Fatalf("second request: state=%v err=%v", state, err)
 	}
@@ -672,10 +685,11 @@ func TestBatchFailureIsNotCached(t *testing.T) {
 		args:       []string{`"x"`},
 		ret:        ir.TypString,
 	}
-	if err := runNativeRequests(t.TempDir(), []*nativeRequest{req}); err == nil {
+	cache := NewEvalCache()
+	if err := runNativeRequests(cache, t.TempDir(), []*nativeRequest{req}); err == nil {
 		t.Fatal("the evaluator built in a directory with no module")
 	}
-	if _, cached := constCache.Load(req.key); cached {
+	if _, cached := cache.load(req.key); cached {
 		t.Error("a build failure was cached as this call's final answer")
 	}
 }
@@ -766,5 +780,22 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 				t.Errorf("error does not name the call that failed: %v", err)
 			}
 		})
+	}
+}
+
+// A compilation's evaluated values are its own. The key records the function
+// and its rendered arguments but nothing about the Go body behind it, so a
+// value folded by one compilation must not answer the next — that is what lets
+// `sngl preview` see a pure func whose body was edited between reloads.
+func TestCachedValueDoesNotCrossCompilations(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	evalNow(t, purepkgCtx(dir), call{fnGreet, []any{"scope"}})
+
+	next := purepkgCtx(dir)
+	if _, state, err := requestPureGoFunc(next, "go", purepkgPath, fnGreet, []any{"scope"}); state != nativePending || err != nil {
+		t.Fatalf("a later compilation answered from the earlier one's cache: state=%v err=%v", state, err)
 	}
 }

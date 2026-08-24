@@ -44,6 +44,11 @@ type Config struct {
 	// copying to the output directory.
 	FileAssets []FileAsset
 
+	// Cache memoizes compile-time evaluation. Set it to share one across the
+	// targets of a build; left nil, Optimize allocates one for this Config,
+	// which is what confines a folded value to the compilation that folded it.
+	Cache *EvalCache
+
 	// nativeErr records that this build's round loop failed as a whole — a
 	// build error, a timeout — rather than for any one call. It is not cached
 	// with the calls: the next target's Config starts clean and retries.
@@ -80,6 +85,8 @@ type evalCtx struct {
 	// cache. Non-nil only during a probe pass (see evalNativeRounds); a pass
 	// over the real package runs with every needed value already cached.
 	native *nativeEval
+	// cache is Config.Cache: what this compilation has already evaluated.
+	cache *EvalCache
 	// nativeErr is Config.nativeErr: the batch failure this build already hit.
 	nativeErr     error
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
@@ -143,6 +150,9 @@ const maxEvalRounds = 10
 // (Phases 1+2 only) so that for-loops inside imported components can unroll
 // against their own package consts. Phases 3+4 run only on the root package.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	if cfg.Cache == nil {
+		cfg.Cache = NewEvalCache()
+	}
 	// A pure go:// call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with
@@ -180,7 +190,7 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		}
 		pending = ne.order
 		slog.Info("consteval round", "calls", len(pending))
-		if err := runNativeRequests(cfg.Dir, pending); err != nil {
+		if err := runNativeRequests(cfg.Cache, cfg.Dir, pending); err != nil {
 			// Nothing is cached for these calls, so retrying the identical
 			// batch would only repeat the failure. The fold reports it per
 			// call site, which is where the target's ability to call the
@@ -322,6 +332,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
+		cache:         r.cfg.Cache,
 		native:        r.native,
 		nativeErr:     r.cfg.nativeErr,
 		platform:      r.cfg.Platform,

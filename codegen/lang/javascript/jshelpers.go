@@ -4,7 +4,7 @@ package javascript
 // path and javascript.go. Relocated from the (now-deleted) translate_ir.go.
 
 import (
-	"fmt"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -19,7 +19,7 @@ func translateIRLiteral(n *ir.Literal) string {
 	}
 	// Unit literal (e.g. 500ms): emit as quoted string carrying the suffix.
 	if n.Suffix != "" {
-		return fmt.Sprintf("%q", n.Raw+n.Suffix)
+		return strconv.Quote(n.Raw + n.Suffix)
 	}
 	if s, ok := NumericLiteral(n); ok {
 		return s
@@ -32,11 +32,11 @@ func translateIRLiteral(n *ir.Literal) string {
 			return "null"
 		case ir.TypeString, ir.TypeColor:
 			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
-			return fmt.Sprintf("%q", n.Raw)
+			return strconv.Quote(n.Raw)
 		case ir.TypeStruct:
 			// color/date/time/datetime: string-representable stdlib structs.
 			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Raw)
+				return strconv.Quote(n.Raw)
 			}
 		}
 	}
