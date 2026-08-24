@@ -87,7 +87,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 }) []constResult {
 	t.Helper()
 	for _, c := range calls {
-		if _, state, err := requestPureGoFunc(ctx, "go", purepkgPath, c.fn, c.args); state == nativeReady || err != nil {
+		if _, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args); state == nativeReady || err != nil {
 			t.Logf("%s resolved before the batch ran: %v", c.fn.NativeName, err)
 		}
 	}
@@ -96,7 +96,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	}
 	out := make([]constResult, len(calls))
 	for i, c := range calls {
-		v, state, err := requestPureGoFunc(ctx, "go", purepkgPath, c.fn, c.args)
+		v, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args)
 		if state == nativePending {
 			t.Fatalf("%s still pending after its batch ran", c.fn.NativeName)
 		}
@@ -190,7 +190,7 @@ func TestCachedCallNeedsNoBatch(t *testing.T) {
 	evalNow(t, first, call{fnGreet, []any{"cache"}})
 
 	ctx := nextRound(first)
-	v, state, err := requestPureGoFunc(ctx, "go", purepkgPath, fnGreet, []any{"cache"})
+	v, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, fnGreet, []any{"cache"})
 	if state != nativeReady || err != nil {
 		t.Fatalf("cached call not ready: state=%v err=%v", state, err)
 	}
@@ -217,7 +217,7 @@ func TestRequestKeyDoesNotCollide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if k1, k2 := requestKey("p", "p.F", one), requestKey("p", "p.F", two); k1 == k2 {
+	if k1, k2 := requestKey("go", "p", "p.F", one), requestKey("go", "p", "p.F", two); k1 == k2 {
 		t.Errorf("[\"a b\"] and [\"a\",\"b\"] share key %s", k1)
 	}
 }
@@ -237,16 +237,16 @@ func TestRenderGoArgs(t *testing.T) {
 	}
 }
 
-// A scheme the generated program cannot link fails immediately instead of
-// poisoning the batch with a call site that will not compile.
-func TestNonGoSchemeFails(t *testing.T) {
+// A scheme no runner claims fails immediately instead of poisoning the batch
+// with a call site that will not compile.
+func TestUnrunnableSchemeFails(t *testing.T) {
 	ctx := purepkgCtx(projectDir())
-	_, state, err := requestPureGoFunc(ctx, "js", purepkgPath, fnGreet, []any{"x"})
+	_, state, err := requestPureNativeFunc(ctx, "c", purepkgPath, fnGreet, []any{"x"})
 	if state != nativeFailed || err == nil {
-		t.Fatalf("js:// call accepted: state=%v err=%v", state, err)
+		t.Fatalf("c:// call accepted: state=%v err=%v", state, err)
 	}
 	if len(ctx.native.order) != 0 {
-		t.Error("js:// call was added to the batch")
+		t.Error("c:// call was added to the batch")
 	}
 }
 
@@ -650,7 +650,7 @@ func TestCachedValueIsNotShared(t *testing.T) {
 	if got[0].err != nil {
 		t.Fatalf("GetItems(): %v", got[0].err)
 	}
-	second, state, err := requestPureGoFunc(nextRound(ctx), "go", purepkgPath, getItemsFn(t), nil)
+	second, state, err := requestPureNativeFunc(nextRound(ctx), "go", purepkgPath, getItemsFn(t), nil)
 	if state != nativeReady || err != nil {
 		t.Fatalf("second request: state=%v err=%v", state, err)
 	}
@@ -678,7 +678,8 @@ func getItemsFn(t *testing.T) *ir.Func {
 // succeed where this one could not.
 func TestBatchFailureIsNotCached(t *testing.T) {
 	req := &nativeRequest{
-		key:        requestKey("infra", "purepkg.Greet", []string{`"x"`}),
+		key:        requestKey("go", "infra", "purepkg.Greet", []string{`"x"`}),
+		scheme:     "go",
 		importPath: purepkgPath,
 		nativeType: "purepkg.Greet",
 		funcName:   "Greet",
@@ -795,7 +796,7 @@ func TestCachedValueDoesNotCrossCompilations(t *testing.T) {
 	evalNow(t, purepkgCtx(dir), call{fnGreet, []any{"scope"}})
 
 	next := purepkgCtx(dir)
-	if _, state, err := requestPureGoFunc(next, "go", purepkgPath, fnGreet, []any{"scope"}); state != nativePending || err != nil {
+	if _, state, err := requestPureNativeFunc(next, "go", purepkgPath, fnGreet, []any{"scope"}); state != nativePending || err != nil {
 		t.Fatalf("a later compilation answered from the earlier one's cache: state=%v err=%v", state, err)
 	}
 }

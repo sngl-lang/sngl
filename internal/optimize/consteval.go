@@ -391,7 +391,7 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 			continue
 		}
 		scheme := ctx.nativeSchemes[alias]
-		result, state, err := requestPureGoFunc(ctx, scheme, ns.ImportPath, f, args)
+		result, state, err := requestPureNativeFunc(ctx, scheme, ns.ImportPath, f, args)
 		switch state {
 		case nativePending:
 			// Recorded for the next round; this pass leaves the call

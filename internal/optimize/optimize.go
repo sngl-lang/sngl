@@ -59,7 +59,7 @@ type Config struct {
 	// Config (before and after lowering), and by the second call every value
 	// is cached — so the second must not clone a fully expanded IR just to
 	// discover nothing. Should lowering somehow produce a new foldable call,
-	// requestPureGoFunc evaluates it on its own: the same approximation
+	// requestPureNativeFunc evaluates it on its own: the same approximation
 	// hasUnresolvedNativeCall is allowed.
 	nativeSettled bool
 }
