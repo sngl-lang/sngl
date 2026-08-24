@@ -8,6 +8,27 @@
 //	js://foo          — node_modules: foo/package.json#types|main
 //	js://./foo        — directory: ./foo/index.{ts,tsx,d.ts,js,mjs,cjs}
 //	js://./foo.json   — JSON literal: shape-infer the parsed object
+//
+// # Purity
+//
+// A function whose doc comment carries one of the markers in pureMarkers is
+// run by the compiler, under node, while the program is being built; its
+// result is frozen into the output as a literal. Everything else is left as a
+// call for the target to make.
+//
+// The three ecosystem markers were defined to mean side-effect-free, which is
+// weaker than what folding needs, which is deterministic. Date.now(),
+// Math.random(), process.env.TZ and Intl.DateTimeFormat().resolvedOptions()
+// are all side-effect-free and none of them is deterministic. A library that
+// marks such a function @__NO_SIDE_EFFECTS__ is taken at its word, and the
+// result is a constant frozen at build time that nothing downstream can tell
+// apart from a correct one.
+//
+// They are accepted anyway because a library in node_modules cannot be edited:
+// honoring only our own marker would mean no third-party function could ever
+// fold, however it is annotated. @sngl-pure is the marker to reach for in code
+// you own, both because it says determinism rather than absence of effects and
+// because it changes nothing about how a bundler treats the declaration.
 package js
 
 import (

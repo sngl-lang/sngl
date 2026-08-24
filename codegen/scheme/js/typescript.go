@@ -33,6 +33,7 @@ func loadTypeScript(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error)
 
 	w := &walker{
 		sf:         sf,
+		src:        string(src),
 		filePath:   abs,
 		importPath: spec,
 		structs:    map[string]*ir.StructDef{},
@@ -81,6 +82,7 @@ type jsTypeID struct {
 
 type walker struct {
 	sf         *snglts.SourceFile
+	src        string
 	filePath   string
 	importPath string
 
@@ -180,6 +182,9 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 		NativePkg:  w.importPath,
 		NativeName: name,
 		Purity:     ir.PurityUnknown,
+	}
+	if isPureDoc(docComment(w.src, s.Pos())) {
+		f.Purity = ir.PurityPure
 	}
 	if s.ModifierFlags()&snglts.ModifierFlagsAsync != 0 {
 		f.IsAsync = true
