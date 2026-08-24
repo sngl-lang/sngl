@@ -1,0 +1,26 @@
+# A pure js:// function folds to a literal at build time: node runs it once
+# during the compile and the result is spliced in, so the shipped page carries
+# the answer rather than the call that computes it.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep 'HELLO WORLD' out/index.html
+! grep 'toUpperCase' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const greeting = lib.shout("hello world")
+
+component main {
+    text(value=greeting)
+}
+-- lib/index.ts --
+/** @sngl-pure */
+export function shout(s: string): string {
+    return s.toUpperCase();
+}

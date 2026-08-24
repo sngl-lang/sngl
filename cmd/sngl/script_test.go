@@ -50,6 +50,13 @@ func TestScript(t *testing.T) {
 		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil &&
 			codegen.PlatformUnavailable("gtk4") == nil,
 	)
+	// `node` is true when a node binary is on PATH. Compile-time evaluation of
+	// a pure js:// function shells out to it; the CI image ships chromium and
+	// GTK but no node, so those scripts guard with `[!node] skip`.
+	conds["node"] = script.BoolCondition(
+		"a node binary is available",
+		func() bool { _, err := exec.LookPath("node"); return err == nil }(),
+	)
 	// `ci` is true under GitLab CI. Used to quarantine a script that fails only
 	// in the CI environment while it's being investigated, without losing the
 	// coverage everywhere else.

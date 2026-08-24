@@ -1,0 +1,25 @@
+# Without the @sngl-pure tag a js:// function is not evaluated at build time.
+# The compiler has no way to know a foreign function is safe to run during a
+# build, so silence means no: the call survives into the page and runs in the
+# browser.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep 'toUpperCase' out/index.html
+! grep 'HELLO WORLD' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+component main {
+    var greeting = lib.shout("hello world")
+    text(value=greeting)
+}
+-- lib/index.ts --
+export function shout(s: string): string {
+    return s.toUpperCase();
+}
