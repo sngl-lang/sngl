@@ -397,13 +397,8 @@ func (w *walker) posFromOffset(offset int) ast.Pos {
 }
 
 // DeclaredHere reports whether a declaration's Origin says this importer read
-// it from a JavaScript module.
-//
-// A NativeName records the name the *source* language used, and only the
-// importer that wrote it can say which language that was. Generated JavaScript
-// must spell a js:// field the way the module does and a go:// field the way
-// SNGL does: the Go name means nothing to the JavaScript holding the value,
-// because no Go code is there to read it.
+// it from a JavaScript module — which is what says whether its NativeName is a
+// name generated JavaScript should spell.
 func DeclaredHere(origin any) bool {
 	_, ok := origin.(jsTypeID)
 	return ok

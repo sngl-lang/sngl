@@ -17,14 +17,6 @@ export const outEnv = "SNGL_CONSTEVAL_OUT";
 // marshalSymbol lets a value choose its own SNGL form. A method under this key
 // returns a SNGL *expression*, not a value: the compiler parses the string as
 // source.
-//
-// Go's Marshaler is an interface, which JS has no equivalent of. A well-known
-// symbol is the closest thing that behaves the same way: it is structural, it
-// cannot collide with a property the author meant for something else, and —
-// unlike a base class or a registration — a module can implement it without
-// importing anything from us, which matters because the module under
-// evaluation is the user's, not ours, and this runtime is written into a
-// scratch directory that has no stable specifier to import from.
 export const marshalSymbol = Symbol.for("sngl.marshal");
 
 const values = new Map();
@@ -34,16 +26,10 @@ const custom = new Map();
 // register installs an encoder for a type the caller does not own, keyed by
 // constructor. It is Go's generic Register: `reflect.Type` identifies a Go
 // type, and a constructor is what identifies a JS one.
-//
-// A module reaches it through globalThis (see below) for the same reason
-// marshalSymbol is a symbol — there is no import specifier for this file.
 export function register(ctor, fn) {
   custom.set(ctor, fn);
 }
 
-// The registry is published globally so a module being evaluated can add to it
-// without importing this file, matching how the html platform hands the JS
-// i18n runtime its manifest.
 globalThis.__SNGL_CONSTEVAL__ = { register, encode, emit, fail, flush };
 
 // maxDepth bounds nesting. A value that points at itself has no SNGL form, and
@@ -177,10 +163,7 @@ function encodeNumber(v) {
   if (Number.isNaN(v)) throw new Error("consteval: NaN has no SNGL form");
   if (!Number.isFinite(v)) throw new Error(`consteval: ${v} has no SNGL form`);
   const src = plainDecimal(v);
-  // The shortest round-tripping decimal is exact by construction, but the
-  // exponent expansion below is not obviously so; checking costs nothing and
-  // turns a formatting bug into this key's failure rather than a wrong number
-  // compiled into the program.
+  // A formatting bug must cost this key, not compile a wrong number.
   if (!Object.is(Number(src), v)) {
     throw new Error(`consteval: ${v} does not survive being written as ${src}`);
   }
@@ -257,10 +240,6 @@ function encodeMap(v, depth) {
 // struct type; a plain object is anonymous, because `Object` is not a type the
 // importer ever declared and the expected type is what says what shape the
 // value must have.
-//
-// Own enumerable properties only, in the order the language specifies for
-// them, so nothing here is unordered. A getter runs, and one that throws fails
-// this key with what it threw.
 function encodeObject(v, depth) {
   // A boxed primitive is an object whose own enumerable properties are none,
   // so it would otherwise encode as `Number{}`.

@@ -138,8 +138,7 @@ func TestUnrepresentable(t *testing.T) {
 }
 
 // A type can choose its own SNGL form, and a caller can choose one for a type
-// it does not own. Neither hook can be an import: this runtime is written into
-// a scratch directory with no stable specifier.
+// it does not own.
 func TestExtensionHooks(t *testing.T) {
 	doc, stderr := run(t, `
 class Money { constructor(c) { this.cents = c; }

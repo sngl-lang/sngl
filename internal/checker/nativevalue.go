@@ -98,10 +98,8 @@ func expectedEnumDef(t *ir.Type) *ir.EnumDef {
 // matching no member is this key's failure, because the alternative is a float
 // compiled in where an enum was declared.
 //
-// Two members with one value resolve to the first declared. TypeScript's own
-// reverse mapping answers with the last, but that mapping is an artifact of
-// how the enum object is built and the compiler never sees it; declaration
-// order is a rule readable off the source.
+// Two members with one value resolve to the first declared, which is a rule
+// readable off the source.
 func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 	// A negative value is a unary over a literal, not a literal. Declining the
 	// unary would not leave the value unclaimed: the expected type survives

@@ -1,14 +1,6 @@
 // Package jsbundle holds the parts of SNGL's esbuild integration that more
 // than one caller needs: how a file's extension picks a loader, and how a
 // build's messages become one Go error.
-//
-// The callers differ in the resolver they hand esbuild, which is why only
-// these two pieces are shared. The html platform bundles a page from an
-// in-memory tree through a plugin, because there is no directory to point at.
-// The const evaluator bundles a program that already sits on disk and lets
-// esbuild's own resolver find its imports, because that resolver is node's:
-// the checker's resolver answers with types — a `.d.ts` describes a module
-// without being one — and a program that has to run needs the code.
 package jsbundle
 
 import (
@@ -36,7 +28,7 @@ func LoaderFor(p string) api.Loader {
 }
 
 // Loaders is the extension-to-loader map for a build that resolves paths
-// itself, rather than through a plugin that calls LoaderFor per file.
+// itself.
 func Loaders() map[string]api.Loader {
 	return map[string]api.Loader{
 		".ts":   api.LoaderTS,
@@ -47,8 +39,7 @@ func Loaders() map[string]api.Loader {
 }
 
 // Err turns esbuild's messages into one error, keeping the first in full and
-// counting the rest. The first message is the one that names what could not be
-// resolved or parsed, which is what a person needs to act on.
+// counting the rest.
 func Err(errs []api.Message) error {
 	if len(errs) == 0 {
 		return nil
