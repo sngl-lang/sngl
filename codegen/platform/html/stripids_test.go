@@ -10,7 +10,7 @@ import (
 // stripUnreferencedIDsLoop is the implementation stripUnreferencedIDs
 // replaced, kept as the oracle its single scan is checked against.
 func stripUnreferencedIDsLoop(doc string, referenced map[string]bool, nextID int) string {
-	for i := 0; i < nextID; i++ {
+	for i := range nextID {
 		id := fmt.Sprintf("$%d", i)
 		if !referenced[id] {
 			doc = strings.Replace(doc, fmt.Sprintf(` id="%s"`, id), "", 1)
@@ -99,7 +99,7 @@ func TestStripUnreferencedIDsCases(t *testing.T) {
 func TestStripUnreferencedIDsMatchesTheLoop(t *testing.T) {
 	values := []string{"$0", "$1", "$2", "$3", "$7", "$00", "$01", "$x", "$", "$12", "__n0", "__n1", "0", ""}
 	rng := rand.New(rand.NewSource(1))
-	for iter := 0; iter < 20000; iter++ {
+	for range 20000 {
 		nextID := rng.Intn(6)
 		var b strings.Builder
 		for n := rng.Intn(6); n > 0; n-- {
