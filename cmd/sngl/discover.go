@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -258,9 +259,14 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 }
 
 // cliResolver implements checker.ImportResolver using registered codegen schemes.
+// One is built per check (see checkDoc), which is the lifetime any scheme
+// session it opens inherits.
 type cliResolver struct {
 	rootDir string
 	fsys    fs.FS
+
+	mu       sync.Mutex
+	sessions map[string]codegen.SchemeImporter
 }
 
 func (r *cliResolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error) {
@@ -320,8 +326,29 @@ func resolveImportFromDir(dir string) ([]*ast.Document, error) {
 	return docs, nil
 }
 
+// scheme returns the importer to resolve through: a session when the scheme
+// offers one, so that whatever it caches lives exactly as long as this check.
+func (r *cliResolver) scheme(name string) codegen.SchemeImporter {
+	imp := codegen.LookupScheme(name)
+	sess, ok := imp.(codegen.SchemeSession)
+	if !ok {
+		return imp
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.sessions == nil {
+		r.sessions = map[string]codegen.SchemeImporter{}
+	}
+	if got, ok := r.sessions[name]; ok {
+		return got
+	}
+	open := sess.NewSession()
+	r.sessions[name] = open
+	return open
+}
+
 func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, error) {
-	imp := codegen.LookupScheme(scheme)
+	imp := r.scheme(scheme)
 	if imp == nil {
 		return nil, fmt.Errorf("unknown import scheme %q", scheme)
 	}

@@ -29,6 +29,12 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 		return nil
 	}
 	frontend := frontendNativeFuncs(pkg)
+	if len(frontend) == 0 {
+		// Every package below is admitted only by a lookup in frontend, so an
+		// empty one admits nothing — and returning here spares the scan a
+		// scheme resolve per import, which for go:// is a Go package load.
+		return nil
+	}
 	var out []wasmPackage
 	for _, imp := range pkg.Imports {
 		if imp == nil || imp.Native == nil || imp.AST == nil {

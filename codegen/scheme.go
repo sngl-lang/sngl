@@ -26,6 +26,19 @@ type FSAwareScheme interface {
 	ResolveFS(uri string, fsys fs.FS, dir string) (*ir.NativeImport, error)
 }
 
+// SchemeSession is implemented by a SchemeImporter that can hand out a copy
+// scoped to one compilation. A registered importer is a process-wide singleton,
+// so anything it remembers outlives every compilation in the process — wrong
+// for a server that recompiles (sngl preview, sngl doc --browse), which must
+// see a Go file edited between two compilations. A caller that has a
+// compilation to scope to resolves through NewSession() and drops the result
+// with the compilation; a caller that does not gets the singleton, which
+// remembers nothing.
+type SchemeSession interface {
+	SchemeImporter
+	NewSession() SchemeImporter
+}
+
 // FSSchemeImporter resolves a scheme-based import to a filesystem of SNGL sources.
 // Used for remote SNGL libraries (git://, http://) that provide .sngl files
 // rather than native language declarations.

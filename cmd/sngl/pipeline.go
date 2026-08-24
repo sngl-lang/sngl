@@ -107,6 +107,12 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
 		}
 
+		// One cache for every target of this compilation: they fold the same
+		// source, so a value evaluated for one is the value for all. It is not
+		// shared any wider — a folded value has no record of the Go body that
+		// produced it, so it must not survive the compilation.
+		evalCache := optimize.NewEvalCache()
+
 		for _, target := range targets {
 			// Each target optimizes+lowers the IR in place, so with more than
 			// one target every target after the first must start from the
@@ -134,6 +140,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 				Language:    target.Lang,
 				Dir:         dir,
 				NoCacheBust: optionBool(target.Options, "noCacheBust"),
+				Cache:       evalCache,
 			}
 			start = time.Now()
 			if err := optimize.Optimize(tpkg, optCfg); err != nil {
