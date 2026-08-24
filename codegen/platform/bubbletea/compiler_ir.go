@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -893,8 +894,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if hasOverlays {
 		b.WriteString("\t\tcase msg.Code == tea.KeyEsc:\n")
 		b.WriteString("\t\t\tswitch {\n")
-		for i := len(info.overlays) - 1; i >= 0; i-- {
-			ov := info.overlays[i]
+		for _, ov := range slices.Backward(info.overlays) {
 			if ov.openExpr == "" {
 				continue
 			}

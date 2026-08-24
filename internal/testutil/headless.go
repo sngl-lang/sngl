@@ -40,8 +40,7 @@ func MaybeReexecUnderCage() {
 	// os.Exit skips defers, so cleanup is explicit on every path.
 	cleanup()
 	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			os.Exit(ee.ExitCode())
 		}
 		fmt.Fprintln(os.Stderr, "cage re-exec failed:", err)

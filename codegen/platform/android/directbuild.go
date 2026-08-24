@@ -538,7 +538,7 @@ func extractLibraryResources(tc *toolchain, dir string) {
 			relPath := f.Name[len("res/"):]
 			// Only extract base values/ (not versioned values-vNN which
 			// have cross-references to drawables/styles from other libraries).
-			resType := strings.SplitN(relPath, "/", 2)[0]
+			resType, _, _ := strings.Cut(relPath, "/")
 			if resType != "values" {
 				continue
 			}
