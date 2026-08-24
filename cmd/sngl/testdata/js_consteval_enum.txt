@@ -1,0 +1,67 @@
+# A pure js:// function returning a TS enum member folds to that member.
+#
+# At runtime the member is erased to its value — 1 for a numeric enum, "warn"
+# for a string one — so the encoder writes a bare number or string with nothing
+# on it naming the enum it came from. The declared return type is the only
+# thing that says which enum, and the member is the one whose declared value
+# equals the literal.
+#
+# The enum lives in a .d.ts beside its .js, which is how a compiled package
+# ships one and also the only shape node can run: node executes TypeScript by
+# stripping types, and an enum is not a type — it emits an object.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# Naming the member is what proves the right one was picked: the value 1 could
+# only have come back as Green, and "warn" as Warn.
+grep 'var c = "Green"' out/index.html
+grep 'var l = "Warn"' out/index.html
+! grep 'pickColor' out/index.html
+! grep 'pickLevel' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const c = lib.pickColor()
+const l = lib.pickLevel()
+
+component main {
+    if c == lib.Color.Green {
+        text(value="green wins")
+    }
+    if l == lib.Level.Warn {
+        text(value="warn wins")
+    }
+}
+-- lib/index.d.ts --
+export declare enum Color {
+    Red = 0,
+    Green = 1,
+    Blue = 2,
+}
+
+export declare enum Level {
+    Info = "info",
+    Warn = "warn",
+}
+
+/** @sngl-pure */
+export declare function pickColor(): Color;
+
+/** @sngl-pure */
+export declare function pickLevel(): Level;
+-- lib/index.js --
+export const Color = { 0: "Red", Red: 0, 1: "Green", Green: 1, 2: "Blue", Blue: 2 };
+export const Level = { Info: "info", Warn: "warn" };
+
+export function pickColor() {
+    return Color.Green;
+}
+
+export function pickLevel() {
+    return Level.Warn;
+}
