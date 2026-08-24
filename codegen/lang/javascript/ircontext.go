@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
+	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -150,12 +151,16 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 }
 
 // jsFieldKey is the property name a field is written under in JavaScript. For
-// a struct a scheme importer built, that is the name the foreign declaration
-// used: the importer lowers a leading capital to reach a SNGL field name, so a
-// PascalCase TypeScript property is spelled one way in SNGL source and another
-// in the object the module reads.
+// a struct read out of a JavaScript module, that is the name the module
+// declared: the importer lowers a leading capital to reach a SNGL field name,
+// so a PascalCase TypeScript property is spelled one way in SNGL source and
+// another in the object the module reads.
+//
+// Only that scheme's declarations. A go:// struct also records native names,
+// and they are Go's — nothing in a generated page reads them, so a page built
+// around a `go://` value must keep spelling its fields the SNGL way.
 func jsFieldKey(sd *ir.StructDef, name string) string {
-	if sd == nil {
+	if sd == nil || !jsscheme.DeclaredHere(sd.Origin) {
 		return name
 	}
 	for _, f := range sd.Fields {
