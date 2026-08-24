@@ -103,6 +103,11 @@ func TestEncodes(t *testing.T) {
 		{`"tab\there"`, `"tab\there"`},
 		{`"\u0001"`, `"\x01"`},
 		{`"héllo"`, `"héllo"`},
+		// A boxed primitive is an object with no own enumerable properties, so
+		// without unwrapping it would cross as an empty struct named Number.
+		{"new Number(5)", "5.0"},
+		{`new String("hi")`, `"hi"`},
+		{"new Boolean(true)", "true"},
 	} {
 		t.Run(tc.js, func(t *testing.T) { value(t, tc.js, tc.want) })
 	}

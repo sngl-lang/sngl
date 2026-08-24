@@ -134,7 +134,7 @@ func (w *walker) walk() {
 			if name == "" {
 				continue
 			}
-			ed := &ir.EnumDef{Name: name, AST: w.synthEnumAST(name, s)}
+			ed := &ir.EnumDef{Name: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthEnumAST(name, s)}
 			w.enums[name] = ed
 			w.outEnums = append(w.outEnums, ed)
 		}

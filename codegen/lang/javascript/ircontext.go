@@ -410,17 +410,14 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 //
 // A SNGL enum member is its own name in generated JS; a TypeScript member is
 // the value its declaration gives it, and that value is what the module's own
-// code compares against. The two are told apart by the recorded value: the
-// checker fills a SNGL member's Value with a placeholder carrying no literal,
-// so only an importer that actually read a value leaves one here — the same
-// record CheckNativeValue matches an encoded value against, read from the
-// other end.
+// code compares against. Which of the two applies is the scheme's answer, read
+// off Origin the way jsFieldKey reads it for a field.
 func nativeEnumMemberJS(t *ir.Type, member string) (string, bool) {
 	if t == nil || t.Kind != ir.TypeEnum {
 		return "", false
 	}
 	ed, _ := t.Decl.(*ir.EnumDef)
-	if ed == nil {
+	if ed == nil || !jsscheme.DeclaredHere(ed.Origin) {
 		return "", false
 	}
 	for _, m := range ed.Members {

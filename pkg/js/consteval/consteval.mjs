@@ -262,6 +262,11 @@ function encodeMap(v, depth) {
 // them, so nothing here is unordered. A getter runs, and one that throws fails
 // this key with what it threw.
 function encodeObject(v, depth) {
+  // A boxed primitive is an object whose own enumerable properties are none,
+  // so it would otherwise encode as `Number{}`.
+  if (v instanceof Boolean || v instanceof Number || v instanceof String) {
+    return encodeValue(v.valueOf(), depth);
+  }
   const ctor = v.constructor;
   let name = "";
   if (ctor !== undefined && ctor !== Object && typeof ctor.name === "string") {

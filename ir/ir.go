@@ -472,6 +472,7 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
+	Origin  any              // foreign declaration this was read from; see StructDef.Origin
 	Pkg     string           // declaring package URI; see StructDef.Pkg
 	Doc     string           // doc comment for scheme-imported decls
 	Methods map[string]*Func `json:"-"`
