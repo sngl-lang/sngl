@@ -161,8 +161,7 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 	}
 
 	if err := runNativeTarget(t, platform, tmp); err != nil {
-		var se *skipErr
-		if errors.As(err, &se) {
+		if se, ok := errors.AsType[*skipErr](err); ok {
 			t.Skip(se.reason)
 		}
 		t.Fatalf("native target test: %v", err)

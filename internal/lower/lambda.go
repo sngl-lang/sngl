@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -558,8 +559,8 @@ func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast
 // outerCaptureAccess returns the access expression an enclosing frame
 // already exposes for sym, or nil if no enclosing frame captures sym.
 func (l *lifter) outerCaptureAccess(sym ir.Symbol) ir.Expr {
-	for i := len(l.enclosing) - 1; i >= 0; i-- {
-		if access, ok := l.enclosing[i].captureField[sym]; ok {
+	for _, frame := range slices.Backward(l.enclosing) {
+		if access, ok := frame.captureField[sym]; ok {
 			return access
 		}
 	}
