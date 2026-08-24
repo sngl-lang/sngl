@@ -66,7 +66,10 @@ func TestEncode(t *testing.T) {
 		{"u", uint16(7), "7"},
 		{"f", 2.5, "2.5"},
 		{"f32", float32(0.1), "0.1"},
-		{"fwhole", 2.0, "2"},
+		// A float that lands on a whole number stays a float: written as `2`
+		// it reads as an int, which is the loss the checked-results path was
+		// built to stop.
+		{"fwhole", 2.0, "2.0"},
 		{"b", true, "true"},
 		{"nilptr", (*item)(nil), "null"},
 		{"nilslice", []string(nil), "null"},
@@ -189,5 +192,35 @@ func TestMarshalerBufferIsNotRetained(t *testing.T) {
 	}
 	if got := constLine(doc, "b"); got != `"two"` {
 		t.Errorf("second value = %s, want %q", got, `"two"`)
+	}
+}
+
+// SNGL has no exponent syntax, so a value Go would print as 1e+30 has to be
+// written out in full — and one that lands on a whole number still needs a
+// fractional part, or the literal reads as an int.
+func TestFloatsAvoidExponentSyntax(t *testing.T) {
+	for _, tc := range []struct {
+		v    any
+		want string
+	}{
+		{1e30, "1000000000000000000000000000000.0"},
+		{1e-9, "0.000000001"},
+		{0.1, "0.1"},
+		{float32(0.1), "0.1"},
+		{-2.5, "-2.5"},
+		{0.0, "0.0"},
+		{1e21, "1000000000000000000000.0"},
+	} {
+		got, err := Encode(tc.v)
+		if err != nil {
+			t.Errorf("Encode(%v): %v", tc.v, err)
+			continue
+		}
+		if string(got) != tc.want {
+			t.Errorf("Encode(%v) = %s, want %s", tc.v, got, tc.want)
+		}
+		if strings.ContainsAny(string(got), "eE") {
+			t.Errorf("Encode(%v) = %s, which SNGL cannot lex", tc.v, got)
+		}
 	}
 }
