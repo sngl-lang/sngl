@@ -379,6 +379,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	return &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
+		Builtin:  u.Builtin,
 		Suffixes: suffixes,
 	}
 }

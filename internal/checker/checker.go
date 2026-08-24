@@ -168,6 +168,10 @@ type checker struct {
 	contextComp *ir.Component
 	windowType  *ir.Type
 
+	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
+	// registered for phases that have no scope — see ir.DurationType.
+	durationUnit *ir.UnitDef
+
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
 	// overwrite; resolution itself goes through the scope chain like any

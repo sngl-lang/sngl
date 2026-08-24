@@ -7,7 +7,9 @@ import (
 	"sync"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -16,6 +18,13 @@ import (
 // come from there, so a fixture written against a hand-built *ir.Type would
 // only be asserting itself.
 var purepkgImport = sync.OnceValues(func() (*ir.NativeImport, error) {
+	// The importer maps time.Duration through ir.DurationType, which the
+	// #[builtin("duration")] declaration registers when the stdlib loads. The
+	// real pipeline loads it in newChecker, before any import resolves; a test
+	// resolving an import on its own has to say so.
+	if _, _, err := checker.LoadStdlib(); err != nil {
+		return nil, err
+	}
 	return (&golang.GoImporter{}).Resolve("go://"+purepkgPath, projectDir())
 })
 
@@ -86,11 +95,19 @@ func TestWholeFloatStaysFloat(t *testing.T) {
 	}
 }
 
-// A duration keeps its unit. The value model held only the magnitude, so the
-// literal reached codegen as a bare int.
+// A duration keeps its unit, end to end: the Go importer maps time.Duration to
+// the #[builtin("duration")] unit, and the encoded `250ms` checks against it.
+// Both halves had to move — the importer used to type a Duration by its
+// underlying int64, and the value model held only the magnitude.
 func TestDurationKeepsItsUnit(t *testing.T) {
-	// The Go importer models time.Duration by its underlying int64, so the
-	// declared type is int and the unit can only come from the value itself.
+	want := importedFunc(t, "Wait").Return
+	if want == nil || want.Kind != ir.TypeUnit {
+		t.Fatalf("time.Duration imported as %v, want a unit type", want)
+	}
+	if got := unitBuiltin(want); got != ast.BuiltinDuration {
+		t.Fatalf("time.Duration imported as a unit marked %q, want duration", got)
+	}
+
 	lit, ok := checkResults(t, "Wait", "250ms").(*ir.Literal)
 	if !ok {
 		t.Fatalf("got %T", checkResults(t, "Wait", "250ms"))
@@ -98,8 +115,34 @@ func TestDurationKeepsItsUnit(t *testing.T) {
 	if lit.Suffix != "ms" {
 		t.Errorf("Wait() folded to suffix %q, want ms", lit.Suffix)
 	}
-	if lit.Type == nil || lit.Type.Kind != ir.TypeUnit {
-		t.Errorf("Wait() typed %v, want a unit type", lit.Type)
+	if !lit.Type.IsAssignableTo(want) {
+		t.Errorf("Wait() folded to %v, which does not fit the declared %v", lit.Type, want)
+	}
+}
+
+// unitBuiltin is the #[builtin] mark on a unit type's declaration.
+func unitBuiltin(t *ir.Type) ast.BuiltinKind {
+	if t == nil || t.Kind != ir.TypeUnit {
+		return ast.BuiltinNone
+	}
+	ud, _ := t.Decl.(*ir.UnitDef)
+	if ud == nil {
+		return ast.BuiltinNone
+	}
+	return ud.Builtin
+}
+
+// An encoded value that does not fit its declared type means the encoder and
+// the importer disagree about the Go type, which must not reach codegen as a
+// well-formed literal of the wrong type.
+func TestParseConstResultsRejectsUnassignable(t *testing.T) {
+	f := importedFunc(t, "Greet") // returns string
+	_, err := parseConstResults("results.sngl", []byte("const x = 250ms\n"), map[string]*ir.Type{"x": f.Return})
+	if err == nil {
+		t.Fatal("a duration was accepted where a string was expected")
+	}
+	if !strings.Contains(err.Error(), "assignable") {
+		t.Errorf("error does not report the type mismatch: %v", err)
 	}
 }
 
@@ -164,6 +207,85 @@ func TestNestedStructKeepsItsDef(t *testing.T) {
 	item, ok := items.Elems[0].(*ir.StructLit)
 	if !ok || item.Def == nil || item.Def.Name != "Item" {
 		t.Fatalf("nested element is %T with Def %v, want an Item", items.Elems[0], item)
+	}
+}
+
+// An embedded struct survives end to end. The encoder used to promote its
+// fields into the outer literal, which spelled a shape the importer never
+// declared — `At`/`Seq` on a Record that has a `stamp` field — so the value
+// either mis-named a field or failed to check. Now both sides agree.
+func TestEmbeddedStructFoldsUnderItsOwnName(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	got := evalNow(t, purepkgCtx(dir), call{importedFunc(t, "GetRecord"), nil})
+	if got[0].err != nil {
+		t.Fatalf("GetRecord(): %v", got[0].err)
+	}
+	rec, ok := got[0].expr.(*ir.StructLit)
+	if !ok || rec.Def == nil || rec.Def.Name != "Record" {
+		t.Fatalf("GetRecord() = %T with Def %v, want a Record", got[0].expr, rec)
+	}
+	var stamp *ir.StructLit
+	for _, f := range rec.Fields {
+		if f.Name == "stamp" {
+			stamp, _ = f.Value.(*ir.StructLit)
+		}
+	}
+	if stamp == nil {
+		t.Fatalf("Record has no stamp field, only %v", litFieldNames(rec))
+	}
+	if stamp.Def == nil || stamp.Def.Name != "Stamp" {
+		t.Errorf("stamp Def = %v, want Stamp", stamp.Def)
+	}
+	if got := fieldRaw(stamp, "at"); got != "t0" {
+		t.Errorf("stamp.at = %q, want t0", got)
+	}
+	if got := fieldRaw(stamp, "seq"); got != "1" {
+		t.Errorf("stamp.seq = %q, want 1", got)
+	}
+}
+
+// litFieldNames lists the field names a struct literal actually carries.
+func litFieldNames(s *ir.StructLit) []string {
+	var out []string
+	for _, f := range s.Fields {
+		out = append(out, f.Name)
+	}
+	return out
+}
+
+// Where the declared type is dyn there is no declaration to map a field name
+// through, so the encoder's source-language names stand as written. Inventing
+// a SNGL name would put the naming rule back in the compiler, guessing at a
+// correspondence no declaration records.
+func TestDynFieldNamesAreNotMapped(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	f := importedFunc(t, "Anything") // []any
+	if f.Return == nil || f.Return.Elems[0].Kind != ir.TypeDyn {
+		t.Fatalf("Anything() returns %v, want a list of dyn", f.Return)
+	}
+	got := evalNow(t, purepkgCtx(dir), call{f, nil})
+	if got[0].err != nil {
+		t.Fatalf("Anything(): %v", got[0].err)
+	}
+	list, ok := got[0].expr.(*ir.ListLit)
+	if !ok {
+		t.Fatalf("Anything() = %T, want a list literal", got[0].expr)
+	}
+	item, ok := list.Elems[0].(*ir.StructLit)
+	if !ok {
+		t.Fatalf("element = %T, want a struct literal", list.Elems[0])
+	}
+	if item.Def != nil {
+		t.Errorf("a dyn element resolved a Def (%v); nothing declares one here", item.Def)
+	}
+	if got := litFieldNames(item); len(got) != 2 || got[0] != "Name" || got[1] != "Value" {
+		t.Errorf("dyn element fields = %v, want the Go names [Name Value]", got)
 	}
 }
 

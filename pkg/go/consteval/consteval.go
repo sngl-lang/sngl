@@ -245,52 +245,29 @@ func appendStruct(dst []byte, v reflect.Value) ([]byte, error) {
 	t := v.Type()
 	dst = append(dst, t.Name()...)
 	dst = append(dst, '{')
-	dst, _, err := appendFields(dst, v, t, false)
-	if err != nil {
-		return nil, err
-	}
-	return append(dst, '}'), nil
-}
-
-// appendFields appends "Name = expr" for each exported field, promoting an
-// embedded struct's fields into the outer literal. wrote reports whether any
-// field has been written yet, so the separator lands correctly across the
-// promotion.
-func appendFields(dst []byte, v reflect.Value, t reflect.Type, wrote bool) ([]byte, bool, error) {
+	wrote := false
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if !f.IsExported() {
 			continue
 		}
-		fv := v.Field(i)
-		if f.Anonymous {
-			inner, it := fv, f.Type
-			if it.Kind() == reflect.Pointer {
-				if inner.IsNil() {
-					continue
-				}
-				inner, it = inner.Elem(), it.Elem()
-			}
-			if it.Kind() == reflect.Struct {
-				var err error
-				if dst, wrote, err = appendFields(dst, inner, it, wrote); err != nil {
-					return nil, wrote, err
-				}
-				continue
-			}
-		}
 		if wrote {
 			dst = append(dst, ", "...)
 		}
 		wrote = true
+		// The Go field name, embedded fields included. Promoting an embedded
+		// struct's fields into the outer literal would spell a shape the
+		// compiler has no declaration for: the go:// importer declares an
+		// embedded field under its own name like any other, so the reader
+		// would see fields the struct does not have.
 		dst = append(dst, f.Name...)
 		dst = append(dst, " = "...)
 		var err error
-		if dst, err = appendValue(dst, fv); err != nil {
-			return nil, wrote, err
+		if dst, err = appendValue(dst, v.Field(i)); err != nil {
+			return nil, err
 		}
 	}
-	return dst, wrote, nil
+	return append(dst, '}'), nil
 }
 
 // AppendQuote appends s as a SNGL string literal. Braces are escaped because

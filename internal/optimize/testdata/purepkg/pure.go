@@ -107,3 +107,29 @@ type Tally struct {
 //
 //sngl:pure
 func GetTally() Tally { return Tally{Name: "t", Value: 3} }
+
+// Stamp is embedded in Record. The encoder writes an embedded field under its
+// own Go name rather than promoting its fields, because that is the shape the
+// go:// importer declares.
+type Stamp struct {
+	At  string
+	Seq int
+}
+
+// Record embeds Stamp.
+type Record struct {
+	Stamp
+	Note string
+}
+
+// GetRecord returns a struct with an embedded struct.
+//
+//sngl:pure
+func GetRecord() Record { return Record{Stamp: Stamp{At: "t0", Seq: 1}, Note: "n"} }
+
+// Anything returns structs through an interface slice, so the importer can only
+// type the elements as dyn — there is no declaration for the reader to map
+// field names through.
+//
+//sngl:pure
+func Anything() []any { return []any{Item{Name: "alpha", Value: 1}} }

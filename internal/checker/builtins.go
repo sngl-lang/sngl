@@ -36,6 +36,12 @@ func (c *checker) collectBuiltins(pkgs ...*ir.Package) {
 					v.Type = TypNull
 					v.Init = &ir.Literal{Type: TypNull, Raw: "null"}
 				}
+			case ast.BuiltinDuration:
+				if u := bindBuiltin(c, &c.durationUnit, kind, sym); u != nil {
+					// Handed to phases with no scope of their own; the Go
+					// importer maps time.Duration through it.
+					ir.RegisterDurationUnit(u.SymType())
+				}
 			case ast.BuiltinPlatform:
 				if v := bindBuiltin(c, &c.platformConst, kind, sym); v != nil {
 					// No initializer: the value arrives when a build picks a
@@ -84,6 +90,8 @@ func symBuiltin(sym ir.Symbol) ast.BuiltinKind {
 		return d.Builtin
 	case *ir.Var:
 		return d.Builtin
+	case *ir.UnitDef:
+		return d.Builtin
 	}
 	return ast.BuiltinNone
 }
@@ -101,6 +109,10 @@ func symPos(sym ir.Symbol) ast.Pos {
 		}
 	case *ir.Var:
 		return varPos(d)
+	case *ir.UnitDef:
+		if d.AST != nil {
+			return d.AST.Pos
+		}
 	}
 	return ast.Pos{}
 }

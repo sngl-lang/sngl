@@ -485,6 +485,7 @@ type UnitDef struct {
 	AST      *ast.UnitDef
 	Name     string
 	Suffixes []*UnitSuffix
+	Builtin  ast.BuiltinKind  // compiler built-in marker; BuiltinNone otherwise
 	Methods  map[string]*Func `json:"-"`
 }
 

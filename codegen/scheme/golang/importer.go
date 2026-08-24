@@ -323,6 +323,15 @@ func detectHiddenParam(t types.Type) string {
 // (TypDyn, false); callers use the bool to mark the enclosing declaration
 // Unusable.
 func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) (*ir.Type, bool) {
+	// A named type whose SNGL form is not its underlying one has to be matched
+	// before the switch below, which dispatches on Underlying(): time.Duration
+	// is an int64, and typing it as a bare int loses the unit — and disagrees
+	// with the `250ms` pkg/go/consteval writes for the same value.
+	if named, ok := t.(*types.Named); ok {
+		if pkg := named.Obj().Pkg(); pkg != nil && pkg.Path() == "time" && named.Obj().Name() == "Duration" {
+			return ir.DurationType(), true
+		}
+	}
 	switch u := t.Underlying().(type) {
 	case *types.Basic:
 		switch u.Kind() {

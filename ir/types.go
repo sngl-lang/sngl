@@ -420,6 +420,13 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if StringReprStruct(t) && target.Kind == TypeString {
 		return true
 	}
+	// Every Check builds its own stdlib, so one built-in unit has as many
+	// declarations as there are checkers in the process and Equal's pointer
+	// comparison separates them. For a marked unit the mark is the identity —
+	// the same reasoning StringReprStruct applies to the datetime struct.
+	if k := unitBuiltinOf(t); k != ast.BuiltinNone && k == unitBuiltinOf(target) {
+		return true
+	}
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
@@ -444,6 +451,19 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return t.IsAssignableTo(target.Elems[0])
 	}
 	return false
+}
+
+// unitBuiltinOf returns the #[builtin] kind of t's backing UnitDef, or
+// BuiltinNone.
+func unitBuiltinOf(t *Type) ast.BuiltinKind {
+	if t == nil || t.Kind != TypeUnit {
+		return ast.BuiltinNone
+	}
+	ud, ok := t.Decl.(*UnitDef)
+	if !ok {
+		return ast.BuiltinNone
+	}
+	return ud.Builtin
 }
 
 func isStringDomain(k TypeKind) bool {
@@ -502,6 +522,30 @@ func DateTimeType() *Type {
 		return stdlibDateTimeType
 	}
 	return TypDyn
+}
+
+// Registered stdlib duration unit type, populated by the checker from the
+// #[builtin("duration")] declaration for the same reason as the datetime one:
+// a foreign-type importer has a Go time.Duration to map and no scope to
+// resolve a name in.
+var stdlibDurationUnit *Type
+
+// RegisterDurationUnit records the resolved stdlib duration unit type so the
+// DurationType accessor can hand it out. Idempotent.
+func RegisterDurationUnit(duration *Type) {
+	if duration != nil {
+		stdlibDurationUnit = duration
+	}
+}
+
+// DurationType returns the registered stdlib duration unit type, falling back
+// to int when the stdlib has not been loaded yet — a duration's magnitude is
+// carried in its base unit, so int is the lossless fallback rather than dyn.
+func DurationType() *Type {
+	if stdlibDurationUnit != nil {
+		return stdlibDurationUnit
+	}
+	return TypInt
 }
 
 // FuncSig describes a function signature.

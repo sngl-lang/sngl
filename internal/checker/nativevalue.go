@@ -42,6 +42,15 @@ func CheckNativeValue(e ast.Expr, want *ir.Type) (ir.Expr, error) {
 	c := nativeValueChecker
 	c.diags = nil
 	out := c.checkExprExpecting(e, want)
+	if len(c.diags) == 0 && want != nil && out != nil {
+		// The encoder and the importer read the same Go type from opposite
+		// ends, so a value that does not fit its declared type means they
+		// disagree — a compiler bug, not a program error, and one that would
+		// otherwise reach codegen as a well-formed literal of the wrong type.
+		if got := out.ExprType(); got != nil && !got.IsAssignableTo(want) {
+			return nil, fmt.Errorf("encoded value has type %s, which is not assignable to the declared %s", got, want)
+		}
+	}
 	if len(c.diags) > 0 {
 		msgs := make([]string, 0, len(c.diags))
 		for _, d := range c.diags {
