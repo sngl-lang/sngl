@@ -103,6 +103,16 @@ func expectedEnumDef(t *ir.Type) *ir.EnumDef {
 // how the enum object is built and the compiler never sees it; declaration
 // order is a rule readable off the source.
 func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
+	// A negative value is a unary over a literal, not a literal. Declining the
+	// unary would not leave the value unclaimed: the expected type survives
+	// the recursion into the operand, so the magnitude would be claimed on its
+	// own and resolve to whichever member happens to hold the positive value.
+	neg := false
+	if u, ok := e.(*ast.UnaryExpr); ok && u.Op == ast.UnaryNeg {
+		if inner, ok := u.Operand.(*ast.LiteralExpr); ok && isNumericLiteralKind(inner.Kind) {
+			neg, e = true, inner
+		}
+	}
 	lit, ok := e.(*ast.LiteralExpr)
 	if !ok {
 		return nil, false
@@ -119,6 +129,9 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 			return nil, false
 		}
 		shown = lit.Raw
+		if neg {
+			n, shown = -n, "-"+shown
+		}
 		match = func(v *ir.Literal) bool {
 			if isStringLit(v) {
 				return false
@@ -148,6 +161,12 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 	}
 	c.error(lit.Pos, "encoded value %s is not the value of any member of %s", shown, ed.Name)
 	return &ir.Literal{Type: TypDyn}, true
+}
+
+// isNumericLiteralKind reports whether a literal kind carries a number, which
+// is the only domain a unary minus can be encoding over.
+func isNumericLiteralKind(k ast.LiteralKind) bool {
+	return k == ast.LiteralInt || k == ast.LiteralFloat
 }
 
 // isStringLit reports whether v holds text rather than a number, which decides

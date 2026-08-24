@@ -93,11 +93,18 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
 		return operand + "." + n.Field + "()"
 	}
+	return operand + "." + jc.fieldKey(n)
+}
+
+// fieldKey is the property a Select reaches, for reads and for assignment
+// targets alike: a write spelled the SNGL way would not fail, it would create
+// a second, lowercase property alongside the one the module declared.
+func (jc *JsIRContext) fieldKey(n *ir.Select) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeStruct {
 		sd, _ := t.Decl.(*ir.StructDef)
-		return operand + "." + jsFieldKey(sd, n.Field)
+		return jsFieldKey(sd, n.Field)
 	}
-	return operand + "." + n.Field
+	return n.Field
 }
 func (jc *JsIRContext) Index(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
@@ -249,7 +256,7 @@ func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
-func (jc *JsIRContext) MutTargetField(field string) string { return field }
+func (jc *JsIRContext) MutTargetField(n *ir.Select) string { return jc.fieldKey(n) }
 
 func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !jc.EmitPositionMarkers {
