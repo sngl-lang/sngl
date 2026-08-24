@@ -1168,19 +1168,58 @@ func (g *htmlGen) generate() (string, error) {
 
 	// Strip unreferenced IDs from HTML to reduce noise.
 	result := b.String()
-	referencedIDs := g.collectReferencedIDs()
 	refSet := map[string]bool{}
-	for _, id := range referencedIDs {
+	for _, id := range g.collectReferencedIDs() {
 		refSet[id] = true
 	}
-	for i := 0; i < g.nextID; i++ {
-		id := fmt.Sprintf("$%d", i)
-		if !refSet[id] {
-			result = strings.Replace(result, fmt.Sprintf(` id="%s"`, id), "", 1)
-		}
-	}
+	return stripUnreferencedIDs(result, refSet), nil
+}
 
-	return result, nil
+// stripUnreferencedIDs removes every ` id="$N"` attribute whose id no handler
+// or updater refers to. One scan of the document: the obvious loop over the
+// allocated ids does a whole-document strings.Replace per id, which is
+// quadratic in the page and was the largest single source of garbage in a
+// static build (219MB of 1.18GB for the docs site).
+//
+// Only the first occurrence of a given id is dropped, matching the
+// strings.Replace(…, 1) it replaces — ids are unique in practice, so this only
+// matters if that ever stops being true.
+func stripUnreferencedIDs(doc string, referenced map[string]bool) string {
+	const attr = ` id="$`
+	if !strings.Contains(doc, attr) {
+		return doc
+	}
+	var out strings.Builder
+	out.Grow(len(doc))
+	dropped := map[string]bool{}
+	rest := doc
+	for {
+		i := strings.Index(rest, attr)
+		if i < 0 {
+			out.WriteString(rest)
+			break
+		}
+		end := strings.IndexByte(rest[i+len(attr):], '"')
+		digits := ""
+		if end >= 0 {
+			digits = rest[i+len(attr) : i+len(attr)+end]
+		}
+		if end < 0 || digits == "" || strings.IndexFunc(digits, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			// Not an allocated id; copy the marker and carry on.
+			out.WriteString(rest[:i+len(attr)])
+			rest = rest[i+len(attr):]
+			continue
+		}
+		id := "$" + digits
+		out.WriteString(rest[:i])
+		if referenced[id] || dropped[id] {
+			out.WriteString(rest[i : i+len(attr)+end+1])
+		} else {
+			dropped[id] = true
+		}
+		rest = rest[i+len(attr)+end+1:]
+	}
+	return out.String()
 }
 
 // renderIRStmt is the IR-driven top-level dispatch. Structural statements
