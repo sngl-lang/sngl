@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -82,8 +83,8 @@ func (tc *toolchain) findAndroidJar() error {
 			return nil
 		}
 		entries, _ := os.ReadDir(filepath.Join(home, "platforms"))
-		for i := len(entries) - 1; i >= 0; i-- {
-			jar := filepath.Join(home, "platforms", entries[i].Name(), "android.jar")
+		for _, entry := range slices.Backward(entries) {
+			jar := filepath.Join(home, "platforms", entry.Name(), "android.jar")
 			if fileExists(jar) {
 				tc.AndroidJar = jar
 				return nil
@@ -109,8 +110,8 @@ func (tc *toolchain) findBuildTools() error {
 				return tc.setBuildTools(dir)
 			}
 		}
-		for i := len(entries) - 1; i >= 0; i-- {
-			dir := filepath.Join(btDir, entries[i].Name())
+		for _, entry := range slices.Backward(entries) {
+			dir := filepath.Join(btDir, entry.Name())
 			if dirExists(dir) {
 				return tc.setBuildTools(dir)
 			}
