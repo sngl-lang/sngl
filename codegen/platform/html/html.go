@@ -184,6 +184,27 @@ func rejectDynamicHrefs(req *codegen.Request) error {
 type compilation struct {
 	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
+	shared     *windowShared
+}
+
+// windowShared holds the results a window's codegen recomputes but that do not
+// vary by window. A static site emits one window per page — 420 for the docs
+// site — and everything here was being redone that many times.
+type windowShared struct {
+	bundles      map[bundleKey]bundleResult
+	i18nManifest string
+	i18nLoaded   bool
+}
+
+type bundleKey struct {
+	entry  string
+	minify bool
+	maps   bool
+}
+
+type bundleResult struct {
+	out string
+	err error
 }
 
 // htmlAssetFile is a resolved asset (name + bytes) accumulated during
@@ -339,6 +360,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
 		gen.projectFS = projectFS
+		gen.shared = c.sharedCache()
 		body, err := gen.generate()
 		if err != nil {
 			return nil, err
@@ -396,6 +418,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.projectDir = projectDir
 		gen.projectFS = projectFS
+		gen.shared = c.sharedCache()
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
 		if win.Window != nil {
@@ -504,6 +527,9 @@ type htmlGen struct {
 	// works for CLI (os.DirFS) and the in-memory playground.
 	projectDir string
 	projectFS  fs.FS
+	// shared caches the window-independent parts of codegen. nil in unit
+	// tests that build an htmlGen directly; every path then recomputes.
+	shared *windowShared
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
 	preview bool
@@ -660,6 +686,44 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 		g.ctx.NativeImports = native
 	}
 	return g
+}
+
+// sharedCache lazily allocates the per-compilation cache the window loop hands
+// to every htmlGen it builds.
+func (c *compilation) sharedCache() *windowShared {
+	if c.shared == nil {
+		c.shared = &windowShared{bundles: map[bundleKey]bundleResult{}}
+	}
+	return c.shared
+}
+
+// bundleScript runs the window's script through esbuild, memoized on the
+// script text. Every page of a static site shares the same runtime, so the
+// docs site's 420 windows produce three distinct entries.
+func (g *htmlGen) bundleScript(entry string) (string, error) {
+	if g.shared == nil {
+		return bundleNativeScript(entry, g.projectFS, g.minify, g.maps)
+	}
+	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps}
+	if got, ok := g.shared.bundles[key]; ok {
+		return got.out, got.err
+	}
+	out, err := bundleNativeScript(entry, g.projectFS, g.minify, g.maps)
+	g.shared.bundles[key] = bundleResult{out: out, err: err}
+	return out, err
+}
+
+// i18nManifest returns the inlined manifest, loaded from disk once per
+// compilation rather than once per window.
+func (g *htmlGen) i18nManifest() string {
+	if g.shared == nil {
+		return i18nManifestJS(g.projectDir, g.projectFS)
+	}
+	if !g.shared.i18nLoaded {
+		g.shared.i18nManifest = i18nManifestJS(g.projectDir, g.projectFS)
+		g.shared.i18nLoaded = true
+	}
+	return g.shared.i18nManifest
 }
 
 func (g *htmlGen) allocID() string {
@@ -1009,7 +1073,7 @@ func (g *htmlGen) generate() (string, error) {
 		}
 		var preamble strings.Builder
 		// Manifest init runs before getTranslator() is first called.
-		if manifestJS := i18nManifestJS(g.projectDir, g.projectFS); manifestJS != "" {
+		if manifestJS := g.i18nManifest(); manifestJS != "" {
 			preamble.WriteString(manifestJS)
 		}
 		preamble.WriteString(snippet)
@@ -1044,7 +1108,7 @@ func (g *htmlGen) generate() (string, error) {
 			}
 			preludeBuf.WriteString("\n")
 		}
-		bundled, err := bundleNativeScript(preludeBuf.String()+script, g.projectFS, g.minify, g.maps)
+		bundled, err := g.bundleScript(preludeBuf.String() + script)
 		if err != nil {
 			return "", err
 		}
