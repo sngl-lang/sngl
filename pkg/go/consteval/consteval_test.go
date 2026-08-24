@@ -30,7 +30,7 @@ func flush(t *testing.T, emit func()) string {
 // constLine returns the `const <key> = ...` right-hand side, or "" if the key
 // was omitted.
 func constLine(doc, key string) string {
-	for _, line := range strings.Split(doc, "\n") {
+	for line := range strings.SplitSeq(doc, "\n") {
 		if rest, ok := strings.CutPrefix(line, "const "+key+" = "); ok {
 			return rest
 		}
