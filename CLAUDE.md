@@ -207,6 +207,14 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
+**A Go type crossing into SNGL is tested with `sngltest/`.** A `go://` value
+crosses in two halves — `pkg/go/consteval` encodes it, `codegen/scheme/golang`
+types it — and nothing in the compiler forces them to agree.
+`sngltest.CheckMarshal(t, v)` runs both over one value and reports which half
+is wrong. It is a test helper, not a runtime package, which is why it sits
+beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
+code imports, and the compiler must not be in that graph.
+
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 ### Debugging
