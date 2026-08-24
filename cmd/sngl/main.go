@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 	"syscall"
 
@@ -152,10 +154,56 @@ func proxyToGoTool() {
 	}
 }
 
+// startProfiling honours SNGL_CPUPROFILE and SNGL_MEMPROFILE. Both name a
+// file to write; the returned func must run before the process exits.
+// Profiling is env-driven rather than a flag so it can be turned on for a
+// build driven by another tool (docsgen, go tool sngl) without threading a
+// flag through it.
+func startProfiling() func() {
+	var stop []func()
+	if path := os.Getenv("SNGL_CPUPROFILE"); path != "" {
+		f, err := os.Create(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "sngl: cpuprofile: %v\n", err)
+		} else if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "sngl: cpuprofile: %v\n", err)
+			f.Close()
+		} else {
+			stop = append(stop, func() {
+				pprof.StopCPUProfile()
+				f.Close()
+			})
+		}
+	}
+	if path := os.Getenv("SNGL_MEMPROFILE"); path != "" {
+		stop = append(stop, func() {
+			f, err := os.Create(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "sngl: memprofile: %v\n", err)
+				return
+			}
+			defer f.Close()
+			runtime.GC()
+			if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+				fmt.Fprintf(os.Stderr, "sngl: memprofile: %v\n", err)
+			}
+		})
+	}
+	return func() {
+		for _, fn := range stop {
+			fn()
+		}
+	}
+}
+
 func main() {
 	proxyToGoTool()
 
+	stopProfiling := startProfiling()
+	defer stopProfiling()
+
 	if err := rootCmd.Execute(); err != nil {
+		stopProfiling()
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

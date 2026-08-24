@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -324,6 +325,10 @@ func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, 
 	if imp == nil {
 		return nil, fmt.Errorf("unknown import scheme %q", scheme)
 	}
+	// A native import can be the slowest single thing in a check (go:// runs
+	// the Go loader), and its cost is invisible in the "check" phase timing.
+	start := time.Now()
+	defer func() { slog.Info("resolve scheme", "uri", uri, "duration", time.Since(start)) }()
 	if fsa, ok := imp.(codegen.FSAwareScheme); ok && r.fsys != nil {
 		return fsa.ResolveFS(uri, r.fsys, dir)
 	}
