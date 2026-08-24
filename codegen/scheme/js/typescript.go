@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -33,6 +34,7 @@ func loadTypeScript(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error)
 
 	w := &walker{
 		sf:         sf,
+		src:        string(src),
 		filePath:   abs,
 		importPath: spec,
 		structs:    map[string]*ir.StructDef{},
@@ -81,6 +83,7 @@ type jsTypeID struct {
 
 type walker struct {
 	sf         *snglts.SourceFile
+	src        string
 	filePath   string
 	importPath string
 
@@ -181,6 +184,9 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 		NativeName: name,
 		Purity:     ir.PurityUnknown,
 	}
+	if isPureDoc(docComment(w.src, s.Pos())) {
+		f.Purity = ir.PurityPure
+	}
 	if s.ModifierFlags()&snglts.ModifierFlagsAsync != 0 {
 		f.IsAsync = true
 	}
@@ -255,8 +261,41 @@ func (w *walker) populateEnumMembers(ed *ir.EnumDef, s *snglts.Node) {
 		if name == "" {
 			continue
 		}
-		ed.Members = append(ed.Members, &ir.EnumMember{Name: name})
+		ed.Members = append(ed.Members, &ir.EnumMember{Name: name, Value: w.enumMemberValue(m.Initializer())})
 	}
+}
+
+// enumMemberValue records what a member is spelled as, which is what a member
+// erases to at runtime: a folded call returns the value with nothing on it
+// naming the member, so this is the only way back.
+//
+// An initializer that is not plainly a string or a number — a computed member,
+// or an ambient one with no initializer at all — is left unrecorded rather
+// than guessed at. TypeScript's implicit numbering is deliberately not
+// reconstructed: it would put a value on a member the declaration does not
+// give one, and a wrong guess resolves silently to the wrong member.
+func (w *walker) enumMemberValue(init *snglts.Node) ir.Expr {
+	if init == nil {
+		return nil
+	}
+	raw := strings.TrimSpace(w.src[init.Pos():init.End()])
+	if raw == "" {
+		return nil
+	}
+	// snglts does not re-export the literal node kinds, so how the initializer
+	// is spelled is what classifies it: a closing quote ends a string, and
+	// anything else counts only if it reads as a number.
+	if q := raw[len(raw)-1]; q == '"' || q == '\'' || q == '`' {
+		return &ir.Literal{Type: ir.TypString, Raw: init.Text()}
+	}
+	if _, err := strconv.ParseFloat(raw, 64); err == nil {
+		return &ir.Literal{Type: ir.TypFloat, Raw: raw}
+	}
+	// 0x/0o/0b forms are numbers TypeScript accepts and ParseFloat does not.
+	if n, err := strconv.ParseInt(raw, 0, 64); err == nil {
+		return &ir.Literal{Type: ir.TypFloat, Raw: strconv.FormatInt(n, 10)}
+	}
+	return nil
 }
 
 func (w *walker) varStmtToVars(s *snglts.Node) []*ir.Var {
@@ -355,4 +394,17 @@ func (w *walker) synthEnumAST(name string, n *snglts.Node) *ast.EnumDef {
 func (w *walker) posFromOffset(offset int) ast.Pos {
 	line, col := snglts.GetECMALineAndUTF16CharacterOfPosition(w.sf, offset)
 	return ast.Pos{File: w.filePath, Line: line + 1, Column: int(col) + 1}
+}
+
+// DeclaredHere reports whether a declaration's Origin says this importer read
+// it from a JavaScript module.
+//
+// A NativeName records the name the *source* language used, and only the
+// importer that wrote it can say which language that was. Generated JavaScript
+// must spell a js:// field the way the module does and a go:// field the way
+// SNGL does: the Go name means nothing to the JavaScript holding the value,
+// because no Go code is there to read it.
+func DeclaredHere(origin any) bool {
+	_, ok := origin.(jsTypeID)
+	return ok
 }

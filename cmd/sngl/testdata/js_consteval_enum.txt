@@ -1,0 +1,67 @@
+# A pure js:// function returning a TS enum member folds to that member.
+#
+# At runtime the member is erased to its value — 1 for a numeric enum, "warn"
+# for a string one — so the encoder writes a bare number or string with nothing
+# on it naming the enum it came from. The declared return type is the only
+# thing that says which enum, and the member is the one whose declared value
+# equals the literal.
+#
+# The member goes back out the same way it came in: what the page carries is
+# the value the declaration gives it, not the SNGL member name, because the
+# value is what the module's own code compares against. A page holding "Green"
+# would agree with nothing the module produces.
+#
+# An ordinary .ts is the whole module here. Node cannot run one — it strips
+# types, and an enum is not a type, so it emits an object — but nothing hands
+# node the .ts: esbuild compiles the enum away first. js_consteval_enum_bare
+# covers the .d.ts-beside-.js shape a compiled package ships.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The value is what proves the right member was picked: 1 could only have come
+# back as Green, and "warn" as Warn.
+grep 'var c = 1' out/index.html
+grep 'var l = "warn"' out/index.html
+! grep '"Green"' out/index.html
+! grep 'pickColor' out/index.html
+! grep 'pickLevel' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const c = lib.pickColor()
+const l = lib.pickLevel()
+
+component main {
+    if c == lib.Color.Green {
+        text(value="green wins")
+    }
+    if l == lib.Level.Warn {
+        text(value="warn wins")
+    }
+}
+-- lib/index.ts --
+export enum Color {
+    Red = 0,
+    Green = 1,
+    Blue = 2,
+}
+
+export enum Level {
+    Info = "info",
+    Warn = "warn",
+}
+
+/** @sngl-pure */
+export function pickColor(): Color {
+    return Color.Green;
+}
+
+/** @sngl-pure */
+export function pickLevel(): Level {
+    return Level.Warn;
+}

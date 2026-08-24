@@ -45,16 +45,28 @@ const (
 // nativeRequest is one call the next round must make.
 type nativeRequest struct {
 	key        string
-	importPath string   // Go import path of the package holding the function
+	scheme     string   // "go", "js" — decides which runner evaluates the batch
+	importPath string   // import path or module specifier of the declaring package
 	nativeType string   // qualified native ref, e.g. "docs.Pages"
-	funcName   string   // exported Go identifier
-	args       []string // arguments as Go source
-	imports    []string // import paths the argument sources reference
+	funcName   string   // the identifier the generated program calls
+	args       []string // arguments as source in the scheme's language
+	imports    []string // import paths the argument sources reference (go only)
 	ctxArg     bool
 	errReturn  bool
 	// ret is the declared return type: nil when the function returns nothing
 	// but an error, and otherwise the type the result is checked against.
 	ret *ir.Type
+}
+
+// wantTypes keys the declared return types the way the results document keys
+// its consts, which is the form parseConstResults checks values against. Every
+// runner builds it the same way from its own batch.
+func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
+	want := make(map[string]*ir.Type, len(reqs))
+	for _, r := range reqs {
+		want[r.key] = r.ret
+	}
+	return want
 }
 
 // nativeEval collects the requests one fold pass discovered.
@@ -74,30 +86,52 @@ func (n *nativeEval) add(req *nativeRequest) {
 	n.order = append(n.order, req)
 }
 
-// requestPureGoFunc answers a pure go:// call from the cache, or records it as
-// pending so the round loop can batch it with every other pending call.
+// requestPureNativeFunc answers a pure scheme-import call from the cache, or
+// records it as pending so the round loop can batch it with every other
+// pending call.
 //
-// Only the go scheme can be linked into the generated program. An import with
-// no recorded scheme is accepted: a request that shouldn't have been made
-// costs one build error naming the function, while wrongly rejecting one costs
-// every const that needed it (and the checker's own IR fixtures record no
-// Path at all).
-func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args []any) (ir.Expr, nativeCallState, error) {
-	if scheme != "go" && scheme != "" {
-		return nil, nativeFailed, fmt.Errorf("%s:// functions cannot be evaluated at build time", scheme)
+// The scheme decides which runner evaluates the batch and which language the
+// arguments are rendered in. An import with no recorded scheme is read as go:
+// a request that shouldn't have been made costs one build error naming the
+// function, while wrongly rejecting one costs every const that needed it (and
+// the checker's own IR fixtures record no Path at all).
+func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args []any) (ir.Expr, nativeCallState, error) {
+	if scheme == "" {
+		scheme = "go"
 	}
 	if importPath == "" {
-		return nil, nativeFailed, fmt.Errorf("import has no Go import path")
+		return nil, nativeFailed, fmt.Errorf("import has no path")
 	}
-	_, funcName, ok := strings.Cut(f.NativeName, ".")
-	if !ok || funcName == "" || !isExported(funcName) {
-		return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.NativeName)
+	var (
+		funcName string
+		argSrc   []string
+		imports  []string
+		err      error
+	)
+	switch scheme {
+	case "go":
+		var ok bool
+		_, funcName, ok = strings.Cut(f.NativeName, ".")
+		if !ok || funcName == "" || !isExported(funcName) {
+			return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.NativeName)
+		}
+		argSrc, imports, err = renderGoArgs(f, args)
+	case "js":
+		// A JS export is named by its binding alone: there is no package
+		// qualifier to strip, and the importer only ever recorded a
+		// declaration that carried an `export`.
+		funcName = f.NativeName
+		if funcName == "" {
+			return nil, nativeFailed, fmt.Errorf("native function has no name")
+		}
+		argSrc, err = renderJSArgs(f, args)
+	default:
+		return nil, nativeFailed, fmt.Errorf("%s:// functions cannot be evaluated at build time", scheme)
 	}
-	argSrc, imports, err := renderGoArgs(f, args)
 	if err != nil {
 		return nil, nativeFailed, err
 	}
-	key := requestKey(importPath, f.NativeName, argSrc)
+	key := requestKey(scheme, importPath, f.NativeName, argSrc)
 	if res, loaded := ctx.evalCache().load(key); loaded {
 		if res.err != nil {
 			return nil, nativeFailed, res.err
@@ -109,6 +143,7 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 	}
 	req := &nativeRequest{
 		key:        key,
+		scheme:     scheme,
 		importPath: importPath,
 		nativeType: f.NativeName,
 		funcName:   funcName,
@@ -145,12 +180,14 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.NativeName)
 }
 
-// requestKey identifies a call. The rendered arguments are Go source, so
-// distinct argument lists cannot render to the same key — unlike a %v of the
-// value slice, where []any{"a b"} and []any{"a","b"} both print "[a b]".
-func requestKey(importPath, nativeType string, args []string) string {
+// requestKey identifies a call. The rendered arguments are source in the
+// callee's language, so distinct argument lists cannot render to the same key
+// — unlike a %v of the value slice, where []any{"a b"} and []any{"a","b"} both
+// print "[a b]". The scheme is part of the key because the rendering is: the
+// same value spells differently in Go and in JS.
+func requestKey(scheme, importPath, nativeType string, args []string) string {
 	h := sha256.New()
-	fmt.Fprintf(h, "%s\x00%s\x00%d\x00", importPath, nativeType, len(args))
+	fmt.Fprintf(h, "%s\x00%s\x00%s\x00%d\x00", scheme, importPath, nativeType, len(args))
 	for _, a := range args {
 		fmt.Fprintf(h, "%s\x00", a)
 	}
@@ -225,16 +262,46 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 	return nil
 }
 
-// runNativeRequests evaluates every pending request in one generated program:
-// one build, one run, one results document. Each request ends up in cache —
-// with a value, or with the reason it has none, so a later round neither
-// re-requests it nor spins.
+// runNativeRequests evaluates every pending request, one generated program per
+// scheme. Each request ends up in cache — with a value, or with the reason it
+// has none, so a later round neither re-requests it nor spins.
 //
-// Only a program outcome is cached. A returned error is a failure of the batch
+// Only a program outcome is cached. A returned error is a failure of a batch
 // as a whole (the build, the run, a corrupt results document), which says
-// nothing about any one call and must not become that call's answer.
+// nothing about any one call and must not become that call's answer. One
+// scheme failing that way does not keep another scheme's values out of the
+// cache: the batches are independent programs and share no failure.
 func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) error {
-	values, bad, err := execConstEval(dir, reqs)
+	byScheme := map[string][]*nativeRequest{}
+	var order []string
+	for _, r := range reqs {
+		if _, seen := byScheme[r.scheme]; !seen {
+			order = append(order, r.scheme)
+		}
+		byScheme[r.scheme] = append(byScheme[r.scheme], r)
+	}
+	var firstErr error
+	for _, scheme := range order {
+		if err := runSchemeRequests(cache, dir, scheme, byScheme[scheme]); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+// runSchemeRequests runs one scheme's batch and caches its outcome per call.
+func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeRequest) error {
+	var (
+		values map[string]ir.Expr
+		bad    map[string]error
+		err    error
+	)
+	switch scheme {
+	case "js":
+		values, bad, err = execJSConstEval(dir, reqs)
+	default:
+		values, bad, err = execConstEval(dir, reqs)
+	}
 	if err != nil {
 		return err
 	}
@@ -244,7 +311,7 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) erro
 			cache.store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, bad[req.key])})
 		case !ok:
 			// The generated program ran but produced nothing for this key:
-			// consteval.Fail was called, or the call never returned.
+			// the runtime's Fail was called, or the call never returned.
 			cache.store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
 		default:
 			cache.store(req.key, constResult{expr: v})
@@ -315,12 +382,8 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[s
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	want := make(map[string]*ir.Type, len(reqs))
-	for _, r := range reqs {
-		want[r.key] = r.ret
-	}
 	parseStart := time.Now()
-	values, bad, err := parseConstResults(resultPath, results, want)
+	values, bad, err := parseConstResults(resultPath, results, wantTypes(reqs))
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
 	return values, bad, err
 }

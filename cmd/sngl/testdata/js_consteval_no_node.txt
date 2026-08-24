@@ -1,0 +1,25 @@
+# Without node the value cannot be computed at build time. html has no runtime
+# that names the js scheme, so the build fails — and the message says node,
+# because that is the thing the machine is missing.
+#
+# Emptying PATH is what makes this run the same way on a machine that has node
+# and one that does not.
+env PATH=
+
+! sngl generate --lang=none --platform=html --out=out app.sngl
+stderr 'needs node on PATH'
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const greeting = lib.shout("hello world")
+
+component main {
+    text(value=greeting)
+}
+-- lib/index.ts --
+/** @sngl-pure */
+export function shout(s: string): string {
+    return s.toUpperCase();
+}

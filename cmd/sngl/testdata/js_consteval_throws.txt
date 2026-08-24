@@ -1,0 +1,40 @@
+# A pure js:// function that throws costs its own value and no other: the two
+# calls share one node run, the runtime records the throw against that one key,
+# and the compiler reads the key's absence out of the results document the run
+# still produced. An `exit status` here would mean the throw escaped its call
+# and took the other one's value down with it.
+#
+# html reaches js through the bundler, not through a language that names the
+# scheme, so schemeRunnableAtRuntime says this target cannot recompute the
+# value: the missing key aborts the build rather than shipping a page with a
+# hole in it.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+! sngl generate --lang=none --platform=html --out=out app.sngl
+stderr 'consteval: .*: nope'
+stderr 'lib\.boom'
+stderr 'compile-time evaluation of boom produced no value'
+! stderr 'exit status'
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const bad = lib.boom()
+const good = lib.fine()
+
+component main {
+    text(value=bad)
+    text(value=good)
+}
+-- lib/index.ts --
+/** @sngl-pure */
+export function boom(): string {
+    throw new Error("nope");
+}
+
+/** @sngl-pure */
+export function fine(): string {
+    return "ok";
+}

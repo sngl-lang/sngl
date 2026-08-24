@@ -1,0 +1,45 @@
+# A struct crossing into JavaScript carries the property names the module
+# declared, not the SNGL names the importer derived from them.
+#
+# The importer lowers a TypeScript property's leading capital to reach a SNGL
+# field name, so a PascalCase property is spelled two ways. Writing an argument
+# by the SNGL spelling hands the function an object it cannot read: every
+# property is undefined, the sum is NaN, and NaN has no SNGL form — so the key
+# fails and the build stops rather than folding a wrong number. Reading one by
+# the SNGL spelling is the same mistake in the other direction, and it survives
+# into the page because nothing at build time looks at it.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep '30' out/index.html
+grep '\.X' out/index.html
+! grep '\.x\b' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const total = lib.sum(lib.Point{x = 10.0, y = 20.0})
+
+component main {
+    text(value=string(total))
+    var p = lib.origin()
+    text(value=string(p.x))
+}
+-- lib/index.ts --
+export interface Point {
+    X: number;
+    Y: number;
+}
+
+/** @sngl-pure */
+export function sum(p: Point): number {
+    return p.X + p.Y;
+}
+
+export function origin(): Point {
+    return { X: 3, Y: 4 };
+}

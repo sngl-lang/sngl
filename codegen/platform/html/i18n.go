@@ -9,6 +9,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 
 	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
+	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/i18nruntime"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -64,7 +65,7 @@ func i18nRuntimeSnippet() (string, error) {
 			Plugins:       []api.Plugin{virtFSPlugin(runtimeFS, js.VirtualRoot)},
 			LogLevel:      api.LogLevelWarning,
 		})
-		if err := esbuildBuildErr(res.Errors); err != nil {
+		if err := jsbundle.Err(res.Errors); err != nil {
 			i18nSnippetErr = err
 			return
 		}

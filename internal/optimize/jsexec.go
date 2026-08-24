@@ -1,0 +1,272 @@
+//go:build !js
+
+package optimize
+
+import (
+	"context"
+	"fmt"
+	"io/fs"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/evanw/esbuild/pkg/api"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
+	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/pkg/js/consteval"
+)
+
+// nodeBin is the interpreter a js:// batch runs under. Named as a bare command
+// so PATH decides, which is also what makes "node is not installed" a
+// diagnosable condition rather than a mysterious failure.
+const nodeBin = "node"
+
+// renderJSArgs turns folded argument values into JavaScript source using the JS
+// language translator, so the generated call site spells a value exactly the
+// way generated code would.
+func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
+	if len(args) != len(f.Params) {
+		return nil, fmt.Errorf("%s takes %d arguments, got %d", f.NativeName, len(f.Params), len(args))
+	}
+	if len(args) == 0 {
+		return nil, nil
+	}
+	jc := javascript.NewIRContext(codegen.NewExprCtx(nil))
+	out := make([]string, len(args))
+	for i, a := range args {
+		e := irFromValue(a, f.Params[i].Type)
+		if e == nil {
+			return nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
+		}
+		src := jc.EvalExpr(e)
+		if strings.TrimSpace(src) == "" {
+			return nil, fmt.Errorf("argument %d of %s has no JavaScript form", i, f.NativeName)
+		}
+		out[i] = src
+	}
+	return out, nil
+}
+
+// execJSConstEval generates, bundles and runs the js:// batch, returning the
+// values keyed by request key and the keys whose value did not check.
+//
+// The build step is in-process and costs about a millisecond, so none of the Go
+// path's binary-cache machinery has anything worth caching. That also means the
+// generated directory needs no stable name — its only job is to hold the
+// program until it has run.
+func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+	if dir == "" {
+		return nil, nil, fmt.Errorf("no project directory")
+	}
+	node, err := exec.LookPath(nodeBin)
+	if err != nil {
+		return nil, nil, fmt.Errorf("evaluating js:// functions at build time needs %s on PATH: %w", nodeBin, err)
+	}
+
+	src, err := jsConstEvalSource(dir, reqs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// The program lives inside the project so that node resolves bare
+	// specifiers against the project's node_modules; the dot prefix keeps it
+	// out of the tool globs that scan the tree.
+	srcDir, err := os.MkdirTemp(dir, ".sngl-consteval-js-*")
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating evaluator dir: %w", err)
+	}
+	defer os.RemoveAll(srcDir)
+	// The runtime is written beside the program rather than inlined into it, so
+	// that esbuild resolves it as an ordinary module and the bundle ends up
+	// holding one copy — which is what a module registering an encoder through
+	// globalThis needs.
+	if err := os.WriteFile(filepath.Join(srcDir, consteval.RuntimeFile), consteval.Runtime, 0o644); err != nil {
+		return nil, nil, fmt.Errorf("writing evaluator runtime: %w", err)
+	}
+	mainPath := filepath.Join(srcDir, "main.mjs")
+	if err := os.WriteFile(mainPath, []byte(src), 0o644); err != nil {
+		return nil, nil, fmt.Errorf("writing evaluator source: %w", err)
+	}
+	bundlePath := filepath.Join(srcDir, "bundle.mjs")
+	if err := bundleJSConstEval(dir, mainPath, bundlePath); err != nil {
+		return nil, nil, err
+	}
+
+	runDir, err := os.MkdirTemp("", "sngl-consteval-js-*")
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating output dir: %w", err)
+	}
+	defer os.RemoveAll(runDir)
+	resultPath := filepath.Join(runDir, "results.sngl")
+
+	slog.Info("exec", "cmd", nodeBin+" (const evaluator)", "dir", dir, "calls", len(reqs))
+	if err := runJSConstEval(node, dir, bundlePath, resultPath); err != nil {
+		return nil, nil, err
+	}
+
+	results, err := os.ReadFile(resultPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
+	}
+	return parseConstResults(resultPath, results, wantTypes(reqs))
+}
+
+// bundleJSConstEval transpiles the program and everything it imports into one
+// module for node to run.
+//
+// Bundling rather than transpiling the entry alone is what makes a TypeScript
+// module evaluable at all: the entry is generated JavaScript, so transpiling it
+// changes nothing, and the import it leaves behind hands the .ts back to node —
+// which strips types and refuses an enum, because an enum is not a type. It
+// also drops the unstated requirement that node be new enough to strip types.
+//
+// Resolution is esbuild's own, against the real directory, rather than the
+// virtual-FS plugin the html platform bundles a page through: that plugin
+// resolves through the checker's resolver, which answers with types, so a bare
+// specifier lands on a package's .d.ts and bundles to an empty module. Node
+// built-ins stay external under PlatformNode, so a program reaching for one
+// still gets node's.
+func bundleJSConstEval(dir, mainPath, bundlePath string) error {
+	// esbuild rejects a relative working directory, and dir is whatever the
+	// caller passed the compiler — "." for a build run from the project root.
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("resolving %s: %w", dir, err)
+	}
+	start := time.Now()
+	res := api.Build(api.BuildOptions{
+		EntryPoints:   []string{mainPath},
+		Outfile:       bundlePath,
+		AbsWorkingDir: absDir,
+		Bundle:        true,
+		Write:         true,
+		Format:        api.FormatESModule,
+		Platform:      api.PlatformNode,
+		// The calls sit behind a top-level await, which no target below ES2022
+		// can express.
+		Target:   api.ES2022,
+		Loader:   jsbundle.Loaders(),
+		LogLevel: api.LogLevelWarning,
+	})
+	slog.Debug("consteval bundle", "lang", "js", "duration", time.Since(start))
+	return jsbundle.Err(res.Errors)
+}
+
+func runJSConstEval(node, dir, mainPath, resultPath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), evalTimeout)
+	defer cancel()
+	run := exec.CommandContext(ctx, node, mainPath)
+	run.Dir = dir
+	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	// Anything an evaluated function prints goes to stderr: results travel in
+	// the file, so stdout carries nothing we need.
+	run.Stdout = os.Stderr
+	run.Stderr = os.Stderr
+	start := time.Now()
+	if err := run.Run(); err != nil {
+		return fmt.Errorf("running const evaluator: %w", err)
+	}
+	slog.Debug("consteval run", "lang", "js", "duration", time.Since(start))
+	return nil
+}
+
+// jsConstEvalSource generates the batch program. Each call sits in its own
+// function with a catch, so a throw costs one value rather than the round.
+func jsConstEvalSource(dir string, reqs []*nativeRequest) (string, error) {
+	aliases := map[string]string{}
+	var specs []string
+	for _, r := range reqs {
+		if _, ok := aliases[r.importPath]; ok {
+			continue
+		}
+		aliases[r.importPath] = fmt.Sprintf("p%d", len(aliases))
+		specs = append(specs, r.importPath)
+	}
+
+	var b strings.Builder
+	b.WriteString("// Code generated by sngl. DO NOT EDIT.\n\n")
+	fmt.Fprintf(&b, "import * as consteval from %q;\n", "./"+consteval.RuntimeFile)
+	for _, spec := range specs {
+		mod, err := jsRunSpecifier(dir, spec)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, "import * as %s from %q;\n", aliases[spec], mod)
+	}
+	b.WriteString("\n")
+
+	for i, r := range reqs {
+		call := fmt.Sprintf("%s.%s(%s)", aliases[r.importPath], r.funcName, strings.Join(r.args, ", "))
+		fmt.Fprintf(&b, "async function eval%d() {\n  const key = %q;\n  try {\n", i, r.key)
+		if r.ret == nil {
+			// A pure func with no result still runs — that is what the folder
+			// asked for — and folds to null.
+			fmt.Fprintf(&b, "    await %s;\n    consteval.emit(key, null);\n", call)
+		} else {
+			// Awaited unconditionally: awaiting a non-promise is the value
+			// itself, so an async export and a plain one need no distinction
+			// here.
+			fmt.Fprintf(&b, "    consteval.emit(key, await %s);\n", call)
+		}
+		b.WriteString("  } catch (err) {\n    consteval.fail(key, err);\n  }\n}\n\n")
+	}
+
+	for i := range reqs {
+		fmt.Fprintf(&b, "await eval%d();\n", i)
+	}
+	b.WriteString("await consteval.flush();\n")
+	return b.String(), nil
+}
+
+// jsRunSpecifier turns a js:// module spec into the specifier the generated
+// program imports it by, relative to the directory the program is written into
+// (one level below dir).
+//
+// A bare spec is handed to node unchanged so that node's own node_modules
+// resolution applies. A relative spec goes through the same resolver the
+// checker used, so `./lib` means the same module in both places — and then
+// past it, because that resolver answers with types: a .d.ts describes a
+// module but is not one, so the runtime file beside it is what actually runs.
+func jsRunSpecifier(dir, spec string) (string, error) {
+	if !strings.HasPrefix(spec, ".") && !strings.HasPrefix(spec, "/") {
+		return spec, nil
+	}
+	fsys := os.DirFS(dir)
+	root := jsscheme.VirtualRoot
+	abs, err := jsscheme.ResolveSpec(fsys, root, spec, path.Join(root, "__sngl_entry__.ts"))
+	if err != nil {
+		return "", fmt.Errorf("resolving js://%s for compile-time evaluation: %w", spec, err)
+	}
+	rel, ok := jsscheme.StripVirtRoot(abs, root)
+	if !ok {
+		return "", fmt.Errorf("resolving js://%s: resolver returned out-of-root path %q", spec, abs)
+	}
+	if strings.HasSuffix(rel, ".d.ts") {
+		runnable, ok := jsRuntimeSibling(fsys, rel)
+		if !ok {
+			return "", fmt.Errorf("js://%s resolves to %s, which declares a module but is not one; no runnable file sits beside it", spec, rel)
+		}
+		rel = runnable
+	}
+	return "../" + rel, nil
+}
+
+// jsRuntimeSibling finds the implementation a .d.ts describes, by the
+// extensions node will actually execute.
+func jsRuntimeSibling(fsys fs.FS, decl string) (string, bool) {
+	base := strings.TrimSuffix(decl, ".d.ts")
+	for _, ext := range []string{".js", ".mjs", ".cjs"} {
+		if _, err := fs.Stat(fsys, base+ext); err == nil {
+			return base + ext, true
+		}
+	}
+	return "", false
+}

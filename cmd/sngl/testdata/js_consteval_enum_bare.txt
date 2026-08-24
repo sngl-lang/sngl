@@ -1,0 +1,41 @@
+# An ambient enum whose members carry no value cannot receive one back.
+#
+# `declare enum Color { Red, Green }` says which members exist and not what
+# they are; TypeScript numbers them 0, 1 when it emits the object, but the
+# .d.ts is the only file the importer reads and it does not say so. So the 0
+# the function returns matches no member, and the key fails naming the enum and
+# the value rather than resolving to Red by position or surviving as a float.
+#
+# html under --lang=none cannot call js:// at runtime, so a key that cannot be
+# folded fails the build.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+! sngl generate --lang=none --platform=html --out=out app.sngl
+stderr 'is not the value of any member of Color'
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const c = lib.pick()
+
+component main {
+    if c == lib.Color.Red {
+        text(value="red")
+    }
+}
+-- lib/index.d.ts --
+export declare enum Color {
+    Red,
+    Green,
+}
+
+/** @sngl-pure */
+export declare function pick(): Color;
+-- lib/index.js --
+export const Color = { 0: "Red", Red: 0, 1: "Green", Green: 1 };
+
+export function pick() {
+    return Color.Red;
+}

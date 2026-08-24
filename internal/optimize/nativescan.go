@@ -13,7 +13,7 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // The walk is deliberately approximate: it ignores node kinds it does not know
 // and does not enter lambda bodies. A miss costs one extra `go build` and
 // nothing else, because a request made when no batch is open is evaluated on
-// its own (see requestPureGoFunc).
+// its own (see requestPureNativeFunc).
 func hasUnresolvedNativeCall(pkg *ir.Package, cfg *Config) bool {
 	seen := map[*ir.Package]bool{}
 	var walk func(*ir.Package) bool

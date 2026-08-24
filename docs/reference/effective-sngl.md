@@ -56,6 +56,56 @@ component main {
 }
 ```
 
+### Folding a host function at build time
+
+A function imported through a scheme can be marked so the compiler *runs* it
+while building and freezes the result into the output as a literal. An
+unmarked function is left as a call for the target to make at runtime.
+
+In Go the marker is a `//sngl:pure` line in the doc comment. In JavaScript and
+TypeScript it is a tag in the declaration's doc comment, and five spellings are
+accepted:
+
+| Marker                                             | Origin           | Promises         |
+|----------------------------------------------------|------------------|------------------|
+| `@sngl-pure`                                       | SNGL             | deterministic    |
+| `@__NO_SIDE_EFFECTS__` (or `#__NO_SIDE_EFFECTS__`) | Rollup, esbuild  | side-effect-free |
+| `@nosideeffects`                                   | Closure Compiler | side-effect-free |
+| `@__PURE__` (or `#__PURE__`)                       | Rollup, esbuild  | side-effect-free |
+
+```ts
+/** @sngl-pure */
+export function slugify(s: string): string {
+    return s.toLowerCase().split(" ").join("-");
+}
+```
+
+A marker must stand alone on its own line of the comment, so a mention of one
+in prose does not opt a function in. Matching is case-sensitive.
+
+**Reach for `@sngl-pure` in code you own.** It says the thing folding actually
+requires — that the function returns the same value every time — and it changes
+nothing about how any bundler treats the declaration.
+
+The other four were defined to mean *side-effect-free*, which is a weaker
+promise: `Date.now()`, `Math.random()`, `process.env.TZ` and
+`Intl.DateTimeFormat().resolvedOptions()` all have no side effects and none of
+them is deterministic. A function marked that way is taken at its word, so if
+the word is weaker than the library meant, the build freezes one moment's
+answer into the output and nothing downstream can tell it from a correct one.
+They are accepted because a package in `node_modules` cannot be annotated by
+the person compiling it, and honoring only `@sngl-pure` would mean no
+dependency could ever fold.
+
+A marked function has to be runnable during the build: `go://` folding needs
+the Go toolchain and `js://` folding needs `node`. When the tool is missing,
+the value falls back to a runtime call on a target that can make one, and the
+build fails on a target that cannot.
+
+Any `node` will do. The compiler compiles the module and everything it imports
+itself, so TypeScript is already gone by the time node sees it — a `.ts` with
+an enum folds, and node's own type stripping never comes into it.
+
 The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `func`, components, and `timer`. There is no `style` or `test` declaration: a reusable style is a `Style` constant, and a test is an ordinary function taking a `Test` receiver.
 
 A complete minimal file needs only a `component main`:

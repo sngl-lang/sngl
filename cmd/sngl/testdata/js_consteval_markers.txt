@@ -1,0 +1,72 @@
+# Every accepted purity marker, in the comment form its own ecosystem writes
+# it in. All six make a function foldable; each folded value is a different
+# string so the page can only carry it if that marker was read.
+#
+# @sngl-pure is ours and means deterministic. The rest were defined to mean
+# side-effect-free, which is weaker — they are honored because a library in
+# node_modules cannot be annotated by the person compiling it.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep 'folded-ours' out/index.html
+grep 'folded-line' out/index.html
+grep 'folded-rollup-at' out/index.html
+grep 'folded-rollup-hash' out/index.html
+grep 'folded-closure' out/index.html
+grep 'folded-pure-at' out/index.html
+grep 'folded-pure-hash' out/index.html
+
+# Nothing was left for the browser to compute.
+! grep 'marker-' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+component main {
+    text(value=lib.ours())
+    text(value=lib.lineComment())
+    text(value=lib.rollupAt())
+    text(value=lib.rollupHash())
+    text(value=lib.closure())
+    text(value=lib.pureAt())
+    text(value=lib.pureHash())
+}
+-- lib/index.ts --
+/** @sngl-pure */
+export function ours(): string {
+    return "folded-" + "ours";
+}
+
+// @sngl-pure
+export function lineComment(): string {
+    return "folded-" + "line";
+}
+
+/** @__NO_SIDE_EFFECTS__ */
+export function rollupAt(): string {
+    return "folded-" + "rollup-at";
+}
+
+/*#__NO_SIDE_EFFECTS__*/
+export function rollupHash(): string {
+    return "folded-" + "rollup-hash";
+}
+
+/** @nosideeffects */
+export function closure(): string {
+    return "folded-" + "closure";
+}
+
+/** @__PURE__ */
+export function pureAt(): string {
+    return "folded-" + "pure-at";
+}
+
+/*#__PURE__*/
+export function pureHash(): string {
+    return "folded-" + "pure-hash";
+}

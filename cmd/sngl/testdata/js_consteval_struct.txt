@@ -1,0 +1,46 @@
+# A pure js:// function returning an object folds to a struct literal, which is
+# checked against the interface the importer declared for it. The plain object
+# carries no type name, so the declared return type is the only thing that says
+# what shape it must have.
+#
+# The two number kinds cross separately: a JS `number` is a SNGL float, a
+# `bigint` a SNGL int. The id is 2^53+1 — the smallest integer a double cannot
+# hold — so routing a bigint through a double would show up here as a value
+# ending in 2.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep 'Ada Lovelace' out/index.html
+grep '9007199254740993' out/index.html
+grep '1\.5' out/index.html
+! grep 'charAt' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const who = lib.profile("ada", "lovelace")
+
+component main {
+    text(value=who.name)
+    text(value=string(who.id))
+    text(value=string(who.score))
+}
+-- lib/index.ts --
+export interface Profile {
+    name: string;
+    id: bigint;
+    score: number;
+}
+
+function title(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** @sngl-pure */
+export function profile(first: string, last: string): Profile {
+    return { name: title(first) + " " + title(last), id: 9007199254740993n, score: 1.5 };
+}
