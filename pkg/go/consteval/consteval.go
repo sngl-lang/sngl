@@ -161,7 +161,7 @@ func appendValue(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 		if v.Kind() == reflect.Float32 {
 			bits = 32
 		}
-		return strconv.AppendFloat(dst, f, 'g', -1, bits), nil
+		return appendFloat(dst, f, bits), nil
 	case reflect.String:
 		return AppendQuote(dst, v.String()), nil
 	case reflect.Pointer, reflect.Interface:
@@ -185,6 +185,18 @@ func appendValue(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 		return appendStruct(dst, v, depth)
 	}
 	return nil, fmt.Errorf("consteval: cannot encode %s", v.Type())
+}
+
+// appendFloat writes f as a SNGL float literal. SNGL has no exponent syntax —
+// `1e30` lexes as the number 1 with a unit suffix — so the format is 'f',
+// never 'g'. A value with no fractional part still gets one, or the literal
+// reads as an int and a large one overflows that type.
+func appendFloat(dst []byte, f float64, bits int) []byte {
+	out := strconv.AppendFloat(dst, f, 'f', -1, bits)
+	if !bytes.ContainsRune(out[len(dst):], '.') {
+		out = append(out, ".0"...)
+	}
+	return out
 }
 
 // customEncode applies a Marshaler implementation or a Register-ed encoder.
