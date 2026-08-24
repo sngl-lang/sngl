@@ -37,6 +37,17 @@ func (c *checker) checkExpr(e ast.Expr) ir.Expr {
 	if e == nil {
 		return nil
 	}
+	if c.nativeValues {
+		// An encoded enum member arrives as the literal it erased to, so it
+		// has to be claimed before inference reads it as a plain float or
+		// string. Nested values reach here too, which is why this sits at the
+		// dispatch rather than in CheckNativeValue.
+		if ed := expectedEnumDef(c.expected); ed != nil {
+			if x, ok := c.nativeEnumMember(e, ed); ok {
+				return x
+			}
+		}
+	}
 	return c.inferExpr(e)
 }
 

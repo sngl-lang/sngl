@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -75,6 +76,84 @@ func expectedStructDef(t *ir.Type) *ir.StructDef {
 	}
 	sd, _ := t.Decl.(*ir.StructDef)
 	return sd
+}
+
+// expectedEnumDef returns the enum declaration t names, or nil.
+func expectedEnumDef(t *ir.Type) *ir.EnumDef {
+	if t == nil || t.Kind != ir.TypeEnum {
+		return nil
+	}
+	ed, _ := t.Decl.(*ir.EnumDef)
+	return ed
+}
+
+// nativeEnumMember resolves an encoded literal to the member of ed it is the
+// erasure of. A TypeScript enum member compiles to its value, so a folded call
+// hands back a bare number or string with nothing on it naming the member; ed
+// is reached through the expected type, the same way a struct literal reaches
+// its declaration.
+//
+// Only a literal is claimed: a bare member *name* is an ident and stays with
+// inferIdent. A claimed literal is never read as its own type afterwards —
+// matching no member is this key's failure, because the alternative is a float
+// compiled in where an enum was declared.
+//
+// Two members with one value resolve to the first declared. TypeScript's own
+// reverse mapping answers with the last, but that mapping is an artifact of
+// how the enum object is built and the compiler never sees it; declaration
+// order is a rule readable off the source.
+func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
+	lit, ok := e.(*ast.LiteralExpr)
+	if !ok {
+		return nil, false
+	}
+	var match func(*ir.Literal) bool
+	var shown string
+	switch lit.Kind {
+	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
+		shown = strconv.Quote(lit.Raw)
+		match = func(v *ir.Literal) bool { return isStringLit(v) && v.Raw == lit.Raw }
+	case ast.LiteralInt, ast.LiteralFloat:
+		n, err := strconv.ParseFloat(lit.Raw, 64)
+		if err != nil {
+			return nil, false
+		}
+		shown = lit.Raw
+		match = func(v *ir.Literal) bool {
+			if isStringLit(v) {
+				return false
+			}
+			m, err := strconv.ParseFloat(v.Raw, 64)
+			return err == nil && m == n
+		}
+	default:
+		return nil, false
+	}
+	for _, m := range ed.Members {
+		// A member with no recorded value matches nothing. The importer leaves
+		// one unrecorded exactly when it could not read the value, so treating
+		// it as a candidate would resolve by position rather than by value.
+		v, _ := m.Value.(*ir.Literal)
+		if v == nil {
+			continue
+		}
+		if match(v) {
+			return &ir.Ident{
+				AST:    &ast.IdentExpr{Pos: lit.Pos, Name: m.Name},
+				Type:   c.expected,
+				Name:   m.Name,
+				Member: m.Name,
+			}, true
+		}
+	}
+	c.error(lit.Pos, "encoded value %s is not the value of any member of %s", shown, ed.Name)
+	return &ir.Literal{Type: TypDyn}, true
+}
+
+// isStringLit reports whether v holds text rather than a number, which decides
+// which of the two enum domains it can match in.
+func isStringLit(v *ir.Literal) bool {
+	return v.Type != nil && v.Type.Kind == ir.TypeString
 }
 
 // findNativeField looks a field up by its source-language name, which is what

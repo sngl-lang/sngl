@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -260,8 +261,41 @@ func (w *walker) populateEnumMembers(ed *ir.EnumDef, s *snglts.Node) {
 		if name == "" {
 			continue
 		}
-		ed.Members = append(ed.Members, &ir.EnumMember{Name: name})
+		ed.Members = append(ed.Members, &ir.EnumMember{Name: name, Value: w.enumMemberValue(m.Initializer())})
 	}
+}
+
+// enumMemberValue records what a member is spelled as, which is what a member
+// erases to at runtime: a folded call returns the value with nothing on it
+// naming the member, so this is the only way back.
+//
+// An initializer that is not plainly a string or a number — a computed member,
+// or an ambient one with no initializer at all — is left unrecorded rather
+// than guessed at. TypeScript's implicit numbering is deliberately not
+// reconstructed: it would put a value on a member the declaration does not
+// give one, and a wrong guess resolves silently to the wrong member.
+func (w *walker) enumMemberValue(init *snglts.Node) ir.Expr {
+	if init == nil {
+		return nil
+	}
+	raw := strings.TrimSpace(w.src[init.Pos():init.End()])
+	if raw == "" {
+		return nil
+	}
+	// snglts does not re-export the literal node kinds, so how the initializer
+	// is spelled is what classifies it: a closing quote ends a string, and
+	// anything else counts only if it reads as a number.
+	if q := raw[len(raw)-1]; q == '"' || q == '\'' || q == '`' {
+		return &ir.Literal{Type: ir.TypString, Raw: init.Text()}
+	}
+	if _, err := strconv.ParseFloat(raw, 64); err == nil {
+		return &ir.Literal{Type: ir.TypFloat, Raw: raw}
+	}
+	// 0x/0o/0b forms are numbers TypeScript accepts and ParseFloat does not.
+	if n, err := strconv.ParseInt(raw, 0, 64); err == nil {
+		return &ir.Literal{Type: ir.TypFloat, Raw: strconv.FormatInt(n, 10)}
+	}
+	return nil
 }
 
 func (w *walker) varStmtToVars(s *snglts.Node) []*ir.Var {
