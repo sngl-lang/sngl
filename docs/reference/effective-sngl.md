@@ -63,7 +63,7 @@ while building and freezes the result into the output as a literal. An
 unmarked function is left as a call for the target to make at runtime.
 
 In Go the marker is a `//sngl:pure` line in the doc comment. In JavaScript and
-TypeScript it is a tag in the declaration's doc comment, and five spellings are
+TypeScript it is a tag in the declaration's doc comment, and six spellings are
 accepted:
 
 | Marker                                             | Origin           | Promises         |
@@ -87,7 +87,7 @@ in prose does not opt a function in. Matching is case-sensitive.
 requires — that the function returns the same value every time — and it changes
 nothing about how any bundler treats the declaration.
 
-The other four were defined to mean *side-effect-free*, which is a weaker
+The other five were defined to mean *side-effect-free*, which is a weaker
 promise: `Date.now()`, `Math.random()`, `process.env.TZ` and
 `Intl.DateTimeFormat().resolvedOptions()` all have no side effects and none of
 them is deterministic. A function marked that way is taken at its word, so if

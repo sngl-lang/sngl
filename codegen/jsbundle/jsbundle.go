@@ -5,37 +5,36 @@ package jsbundle
 
 import (
 	"fmt"
+	"maps"
+	"path"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-// LoaderFor picks the loader for a path by extension. A `.d.ts` is loaded as
-// TypeScript so that a build reaching one gets an empty module rather than a
-// syntax error.
+// loaders is the one extension-to-loader mapping. A `.d.ts` needs no entry of
+// its own: path.Ext reads it as `.ts`, and loading it as TypeScript is what
+// makes a build that reaches one produce an empty module rather than a syntax
+// error.
+var loaders = map[string]api.Loader{
+	".ts":   api.LoaderTS,
+	".tsx":  api.LoaderTSX,
+	".jsx":  api.LoaderJSX,
+	".json": api.LoaderJSON,
+}
+
+// LoaderFor picks the loader for a path by extension.
 func LoaderFor(p string) api.Loader {
-	switch {
-	case strings.HasSuffix(p, ".ts"), strings.HasSuffix(p, ".d.ts"):
-		return api.LoaderTS
-	case strings.HasSuffix(p, ".tsx"):
-		return api.LoaderTSX
-	case strings.HasSuffix(p, ".jsx"):
-		return api.LoaderJSX
-	case strings.HasSuffix(p, ".json"):
-		return api.LoaderJSON
+	if l, ok := loaders[path.Ext(p)]; ok {
+		return l
 	}
 	return api.LoaderJS
 }
 
-// Loaders is the extension-to-loader map for a build that resolves paths
-// itself.
+// Loaders is the mapping itself, for a build that resolves paths through
+// esbuild rather than through a plugin calling LoaderFor per file.
 func Loaders() map[string]api.Loader {
-	return map[string]api.Loader{
-		".ts":   api.LoaderTS,
-		".tsx":  api.LoaderTSX,
-		".jsx":  api.LoaderJSX,
-		".json": api.LoaderJSON,
-	}
+	return maps.Clone(loaders)
 }
 
 // Err turns esbuild's messages into one error, keeping the first in full and
