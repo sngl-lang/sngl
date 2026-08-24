@@ -262,7 +262,9 @@ type Component struct {
 	// Builtin carries the #[builtin("window")] mark from the declaration, so the
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
-	Builtin      ast.BuiltinKind
+	Builtin ast.BuiltinKind
+	// Pkg is the declaring package URI; see StructDef.Pkg.
+	Pkg          string
 	Props        []*Prop
 	Events       []*EventDecl
 	ChildrenType *Type
@@ -424,7 +426,13 @@ type StructDef struct {
 	// them the same type again. The importer's own struct type is the key:
 	// two importers cannot collide however they spell a name, which a shared
 	// string could not promise. Must be comparable — it is compared with ==.
-	Origin  any
+	Origin any
+	// Pkg is the URI of the package that declared this type, for a package
+	// whose identity is global — today the embedded library's "sngl://std",
+	// "sngl://builtin", "sngl://draw". Empty for a program's own
+	// declarations, whose names are only meaningful relative to a build.
+	// See sameDecl: Pkg and Name are a named type's identity.
+	Pkg     string
 	Doc     string          // doc comment for scheme-imported decls; empty for SNGL-sourced
 	Builtin ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
 	// A declaration's members are looked up on the declaration, so this is
@@ -464,6 +472,7 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
+	Pkg     string           // declaring package URI; see StructDef.Pkg
 	Doc     string           // doc comment for scheme-imported decls
 	Methods map[string]*Func `json:"-"`
 }
@@ -485,6 +494,7 @@ type UnitDef struct {
 	AST      *ast.UnitDef
 	Name     string
 	Suffixes []*UnitSuffix
+	Pkg      string           // declaring package URI; see StructDef.Pkg
 	Builtin  ast.BuiltinKind  // compiler built-in marker; BuiltinNone otherwise
 	Methods  map[string]*Func `json:"-"`
 }

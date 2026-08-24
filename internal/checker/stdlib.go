@@ -159,7 +159,9 @@ func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource 
 
 func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	c.libDepth++
-	defer func() { c.libDepth-- }()
+	savedPkgName := c.libPkgName
+	c.libPkgName = "sngl://" + pkgName
+	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
 
 	stdlibPkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
@@ -409,7 +411,7 @@ func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv strin
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin}
 	// An ambient package's own root and the ambient scope are the same scope,
 	// so this binds the same symbol twice — which Declare tolerates, while
 	// still refusing a different symbol under a name already taken.
@@ -1056,6 +1058,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		AST:     comp,
 		Name:    comp.Name,
 		Stdlib:  true,
+		Pkg:     c.libPkgName,
 		Builtin: comp.Builtin,
 	}
 

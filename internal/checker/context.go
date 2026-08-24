@@ -51,7 +51,8 @@ func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.
 			if p := a.Value.ExprPos(); p != nil {
 				pos = *p
 			}
-			c.error(pos, "context %q: value type %v is not assignable to context type %v", ctx.Name, valType, ctx.Typ)
+			got, want := ir.Contrast(valType, ctx.Typ)
+			c.error(pos, "context %q: value type %v is not assignable to context type %v", ctx.Name, got, want)
 		}
 	}
 	children := c.checkBlockIR(&vn.Block)

@@ -153,6 +153,11 @@ type checker struct {
 	libPkgs    map[string]*ir.Package
 	libLoading map[string]bool
 	libDepth   int
+	// libPkgName is the URI of the lib package currently being loaded, stamped
+	// onto every declaration it builds as that declaration's identity (see
+	// ir.StructDef.Pkg). Saved and restored around each load, because a lib
+	// package's import of another nests one load inside the other.
+	libPkgName string
 
 	// builtinPkg is sngl://builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -1000,7 +1005,8 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			if typ.Kind != ir.TypeDyn {
@@ -1116,7 +1122,8 @@ func (c *checker) checkPendingConstInits() {
 			if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 				initExpr = adapted
 			} else {
-				c.error(p.decl.Pos, "cannot initialize %s with %s", typ, initType)
+				want, got := ir.Contrast(typ, initType)
+				c.error(p.decl.Pos, "cannot initialize %s with %s", want, got)
 			}
 		}
 		if typ.Kind != ir.TypeDyn {
@@ -1293,7 +1300,8 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
@@ -1354,7 +1362,8 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
@@ -1396,7 +1405,8 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			if typ.Kind != ir.TypeDyn {

@@ -2407,7 +2407,8 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)

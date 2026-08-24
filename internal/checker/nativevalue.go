@@ -48,7 +48,8 @@ func CheckNativeValue(e ast.Expr, want *ir.Type) (ir.Expr, error) {
 		// disagree — a compiler bug, not a program error, and one that would
 		// otherwise reach codegen as a well-formed literal of the wrong type.
 		if got := out.ExprType(); got != nil && !got.IsAssignableTo(want) {
-			return nil, fmt.Errorf("encoded value has type %s, which is not assignable to the declared %s", got, want)
+			gotStr, wantStr := ir.Contrast(got, want)
+			return nil, fmt.Errorf("encoded value has type %s, which is not assignable to the declared %s", gotStr, wantStr)
 		}
 	}
 	if len(c.diags) > 0 {
