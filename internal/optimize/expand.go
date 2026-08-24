@@ -91,6 +91,9 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 
 		// Propagate file assets back.
 		ctx.fileAssets = childCtx.fileAssets
+		if ctx.err == nil {
+			ctx.err = childCtx.err
+		}
 	}
 
 	// Bind each hoisted list<Window> symbol to the accumulated values.

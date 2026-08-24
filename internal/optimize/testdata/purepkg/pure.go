@@ -1,6 +1,7 @@
 package purepkg
 
 import (
+	"math"
 	"strings"
 	"time"
 )
@@ -141,3 +142,52 @@ func Anything() []any { return []any{Item{Name: "alpha", Value: 1}} }
 //
 //sngl:pure
 func Stamp0() time.Time { return time.Date(2026, 8, 24, 9, 30, 0, 0, time.UTC) }
+
+// Bytes returns a byte slice. The importer types []byte as list<int>, so the
+// encoder has to write the elements rather than a base64 string.
+//
+//sngl:pure
+func Bytes() []byte { return []byte("hi") }
+
+// Ratio returns a float32 whose nearest float64 is a different number, so the
+// encoding has to be at the width the value was computed at.
+//
+//sngl:pure
+func Ratio() float32 { return 0.1 }
+
+// Describe takes a struct. The batch program reaches purepkg under an alias, so
+// there is no name in it for a bare `Item{...}` argument.
+//
+//sngl:pure
+func Describe(it Item) string { return it.Name }
+
+// Node points at itself in Cycle's value.
+type Node struct {
+	Name string
+	Next *Node
+}
+
+// Cycle returns a value that contains itself: the encoder must refuse it
+// rather than recurse until the stack goes, which would cost the round its
+// whole results document.
+//
+//sngl:pure
+func Cycle() *Node {
+	n := &Node{Name: "a"}
+	n.Next = n
+	return n
+}
+
+// Huge returns a uint64 too large for the int the importer types it as, so the
+// encoded value cannot check against the declared return type. It is the
+// mismatch a batch must survive: the good values around it are unaffected.
+//
+//sngl:pure
+func Huge() uint64 { return math.MaxUint64 }
+
+// BoomWith panics like Boom, but only once its argument is known — so the call
+// is not const until a nested fold binds it, and the failure it produces
+// belongs to a child fold context.
+//
+//sngl:pure
+func BoomWith(s string) string { panic("boom: " + s) }

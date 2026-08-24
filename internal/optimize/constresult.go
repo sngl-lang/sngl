@@ -17,12 +17,18 @@ import (
 // hand-written literal does. want carries the return types, keyed as the
 // consts are; a key with no entry (a call that returns nothing) is checked
 // with no expectation.
-func parseConstResults(path string, src []byte, want map[string]*ir.Type) (map[string]ir.Expr, error) {
+//
+// The second result carries the keys that failed, one error each: a value that
+// does not check says nothing about the next key, which came from a different
+// function with its own declared type. Only an unparseable document — real
+// corruption — is returned as a whole-batch error.
+func parseConstResults(path string, src []byte, want map[string]*ir.Type) (map[string]ir.Expr, map[string]error, error) {
 	doc, err := parser.Parse(path, src)
 	if err != nil {
-		return nil, fmt.Errorf("parsing const evaluator results: %w", err)
+		return nil, nil, fmt.Errorf("parsing const evaluator results: %w", err)
 	}
 	out := map[string]ir.Expr{}
+	bad := map[string]error{}
 	for _, stmt := range doc.Stmts {
 		decl, ok := stmt.(*ast.ConstDecl)
 		if !ok {
@@ -35,14 +41,11 @@ func parseConstResults(path string, src []byte, want map[string]*ir.Type) (map[s
 			key := spec.Names[0]
 			e, err := checker.CheckNativeValue(spec.Default, want[key])
 			if err != nil {
-				// A value that does not check means the encoder and the
-				// importer disagree about the Go type, which no other key in
-				// the batch can be trusted to have escaped. Fail the batch so
-				// the message reaches the build rather than blanking one const.
-				return nil, fmt.Errorf("const evaluator result %q: %w", key, err)
+				bad[key] = err
+				continue
 			}
 			out[key] = e
 		}
 	}
-	return out, nil
+	return out, bad, nil
 }

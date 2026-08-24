@@ -44,6 +44,11 @@ type Config struct {
 	// copying to the output directory.
 	FileAssets []FileAsset
 
+	// nativeErr records that this build's round loop failed as a whole — a
+	// build error, a timeout — rather than for any one call. It is not cached
+	// with the calls: the next target's Config starts clean and retries.
+	nativeErr error
+
 	// nativeSettled records that compile-time evaluation of this build's
 	// go:// calls has already run. Every caller optimizes twice with one
 	// Config (before and after lowering), and by the second call every value
@@ -74,7 +79,9 @@ type evalCtx struct {
 	// native collects the pure go:// calls this pass could not answer from
 	// cache. Non-nil only during a probe pass (see evalNativeRounds); a pass
 	// over the real package runs with every needed value already cached.
-	native        *nativeEval
+	native *nativeEval
+	// nativeErr is Config.nativeErr: the batch failure this build already hit.
+	nativeErr     error
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
 	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
@@ -173,7 +180,14 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		}
 		pending = ne.order
 		slog.Info("consteval round", "calls", len(pending))
-		runNativeRequests(cfg.Dir, pending)
+		if err := runNativeRequests(cfg.Dir, pending); err != nil {
+			// Nothing is cached for these calls, so retrying the identical
+			// batch would only repeat the failure. The fold reports it per
+			// call site, which is where the target's ability to call the
+			// scheme at runtime decides whether it is fatal.
+			cfg.nativeErr = err
+			return nil
+		}
 	}
 
 	names := make([]string, 0, len(pending))
@@ -270,7 +284,14 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		}
 	}
 	cfg.FileAssets = merged
-	return nil
+
+	// Phase 3 folds too, so it can be the first phase to hit a fatal
+	// evaluation error. A probe's own errors are not reported: the same fold
+	// runs again on the real package.
+	if native != nil {
+		return nil
+	}
+	return rootCtx.err
 }
 
 // foldPkg runs Phases 1+2 on pkg and recursively on its imports. Returns the
@@ -302,6 +323,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 
 	ctx := &evalCtx{
 		native:        r.native,
+		nativeErr:     r.cfg.nativeErr,
 		platform:      r.cfg.Platform,
 		language:      r.cfg.Language,
 		dir:           r.cfg.Dir,

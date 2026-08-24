@@ -7,7 +7,6 @@ package consteval
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"reflect"
@@ -44,7 +43,7 @@ func Register[T any](fn func(T) ([]byte, error)) {
 // Emit encodes v and records it under key. An encoding error is recorded as a
 // failure, so one unrepresentable value costs only its own key.
 func Emit(key string, v any) {
-	b, err := appendValue(nil, reflect.ValueOf(v))
+	b, err := appendValue(nil, reflect.ValueOf(v), 0)
 	if err != nil {
 		Fail(key, err)
 		return
@@ -112,10 +111,19 @@ func reset() {
 	failures = map[string]error{}
 }
 
+// maxDepth bounds nesting. A value that points at itself has no SNGL form,
+// and recursing into one overflows the stack, which the generated program's
+// per-call recover cannot catch — so the whole round would lose its results
+// file rather than this one key.
+const maxDepth = 64
+
 // appendValue appends v as a SNGL expression.
-func appendValue(dst []byte, v reflect.Value) ([]byte, error) {
+func appendValue(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 	if !v.IsValid() {
 		return append(dst, "null"...), nil
+	}
+	if depth > maxDepth {
+		return nil, fmt.Errorf("consteval: %s nests deeper than %d levels", v.Type(), maxDepth)
 	}
 	if v.CanInterface() {
 		// A Marshaler may hand back a slice it still owns, so the bytes are
@@ -139,28 +147,35 @@ func appendValue(dst []byte, v reflect.Value) ([]byte, error) {
 		if f != f || f > 1.7976931348623157e308 || f < -1.7976931348623157e308 {
 			return nil, fmt.Errorf("consteval: %v has no SNGL form", f)
 		}
-		return strconv.AppendFloat(dst, f, 'g', -1, 64), nil
+		// At bitSize 64 a float32 rounds out to its float64 widening
+		// (0.1 becomes 0.10000000149011612), so the fold would be a
+		// different number than the function returned.
+		bits := 64
+		if v.Kind() == reflect.Float32 {
+			bits = 32
+		}
+		return strconv.AppendFloat(dst, f, 'g', -1, bits), nil
 	case reflect.String:
 		return AppendQuote(dst, v.String()), nil
 	case reflect.Pointer, reflect.Interface:
 		if v.IsNil() {
 			return append(dst, "null"...), nil
 		}
-		return appendValue(dst, v.Elem())
+		return appendValue(dst, v.Elem(), depth+1)
 	case reflect.Slice:
 		if v.IsNil() {
 			return append(dst, "null"...), nil // a nil slice is absent, not empty
 		}
-		return appendList(dst, v)
+		return appendList(dst, v, depth)
 	case reflect.Array:
-		return appendList(dst, v)
+		return appendList(dst, v, depth)
 	case reflect.Map:
 		if v.IsNil() {
 			return append(dst, "null"...), nil
 		}
-		return appendMap(dst, v)
+		return appendMap(dst, v, depth)
 	case reflect.Struct:
-		return appendStruct(dst, v)
+		return appendStruct(dst, v, depth)
 	}
 	return nil, fmt.Errorf("consteval: cannot encode %s", v.Type())
 }
@@ -193,26 +208,21 @@ func customEncode(v reflect.Value) ([]byte, bool, error) {
 	return b, true, err
 }
 
-func appendList(dst []byte, v reflect.Value) ([]byte, error) {
-	// A byte slice is a string in every target's data model, and base64 is
-	// what the old JSON path produced, so decoding stays unchanged.
-	if v.Kind() == reflect.Slice && v.Type().Elem().Kind() == reflect.Uint8 {
-		return AppendQuote(dst, base64.StdEncoding.EncodeToString(v.Bytes())), nil
-	}
+func appendList(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 	dst = append(dst, '[')
 	for i := range v.Len() {
 		if i > 0 {
 			dst = append(dst, ", "...)
 		}
 		var err error
-		if dst, err = appendValue(dst, v.Index(i)); err != nil {
+		if dst, err = appendValue(dst, v.Index(i), depth+1); err != nil {
 			return nil, err
 		}
 	}
 	return append(dst, ']'), nil
 }
 
-func appendMap(dst []byte, v reflect.Value) ([]byte, error) {
+func appendMap(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 	entries := make([]string, 0, v.Len())
 	for _, k := range v.MapKeys() {
 		// A bare identifier key would make `{a = 1}` a struct literal, so a
@@ -221,11 +231,11 @@ func appendMap(dst []byte, v reflect.Value) ([]byte, error) {
 		var err error
 		if k.Kind() == reflect.String {
 			e = AppendQuote(nil, k.String())
-		} else if e, err = appendValue(nil, k); err != nil {
+		} else if e, err = appendValue(nil, k, depth+1); err != nil {
 			return nil, err
 		}
 		e = append(e, " = "...)
-		if e, err = appendValue(e, v.MapIndex(k)); err != nil {
+		if e, err = appendValue(e, v.MapIndex(k), depth+1); err != nil {
 			return nil, err
 		}
 		entries = append(entries, string(e))
@@ -241,7 +251,7 @@ func appendMap(dst []byte, v reflect.Value) ([]byte, error) {
 	return append(dst, '}'), nil
 }
 
-func appendStruct(dst []byte, v reflect.Value) ([]byte, error) {
+func appendStruct(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 	t := v.Type()
 	dst = append(dst, t.Name()...)
 	dst = append(dst, '{')
@@ -263,7 +273,7 @@ func appendStruct(dst []byte, v reflect.Value) ([]byte, error) {
 		dst = append(dst, f.Name...)
 		dst = append(dst, " = "...)
 		var err error
-		if dst, err = appendValue(dst, v.Field(i)); err != nil {
+		if dst, err = appendValue(dst, v.Field(i), depth+1); err != nil {
 			return nil, err
 		}
 	}

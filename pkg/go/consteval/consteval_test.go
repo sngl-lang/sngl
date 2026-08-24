@@ -65,6 +65,7 @@ func TestEncode(t *testing.T) {
 		{"neg", -7, "-7"},
 		{"u", uint16(7), "7"},
 		{"f", 2.5, "2.5"},
+		{"f32", float32(0.1), "0.1"},
 		{"fwhole", 2.0, "2"},
 		{"b", true, "true"},
 		{"nilptr", (*item)(nil), "null"},
@@ -72,7 +73,9 @@ func TestEncode(t *testing.T) {
 		{"emptyslice", []string{}, "[]"},
 		{"list", []int{1, 2, 3}, "[1, 2, 3]"},
 		{"nested", [][]int{{1}, {2}}, "[[1], [2]]"},
-		{"bytes", []byte("hi"), `"aGk="`},
+		// The go:// importer types []byte as list<int>, so a base64 string
+		// could never check against the declared type.
+		{"bytes", []byte("hi"), "[104, 105]"},
 		{"m", map[string]int{"b": 2, "a": 1}, `{"a" = 1, "b" = 2}`},
 		{"mint", map[int]string{2: "b", 1: "a"}, `{1 = "a", 2 = "b"}`},
 		{"nilmap", map[string]int(nil), "null"},
@@ -120,6 +123,28 @@ func TestFailOmitsKey(t *testing.T) {
 	}
 	if strings.Contains(doc, "bad") {
 		t.Errorf("failed key present in document:\n%s", doc)
+	}
+}
+
+// A value that points at itself has no SNGL form. Without the depth cap the
+// encoder overflows the stack, which the generated program's recover cannot
+// catch, so the round writes no results file at all.
+func TestCyclicValueFailsOneKey(t *testing.T) {
+	type node struct {
+		Name string
+		Next *node
+	}
+	n := &node{Name: "a"}
+	n.Next = n
+	doc := flush(t, func() {
+		Emit("cyc", n)
+		Emit("ok", "yes")
+	})
+	if strings.Contains(doc, "cyc") {
+		t.Errorf("cyclic value emitted:\n%s", doc)
+	}
+	if constLine(doc, "ok") != `"yes"` {
+		t.Error("cyclic value took down an unrelated key")
 	}
 }
 

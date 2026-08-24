@@ -29,4 +29,4 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 	return nil, nativeFailed, fmt.Errorf("compile-time Go execution not available in WASM")
 }
 
-func runNativeRequests(dir string, reqs []*nativeRequest) {}
+func runNativeRequests(dir string, reqs []*nativeRequest) error { return nil }

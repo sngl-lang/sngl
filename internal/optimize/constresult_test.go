@@ -48,12 +48,23 @@ func importedFunc(t *testing.T, name string) *ir.Func {
 // against the return type of the named purepkg function.
 func checkResults(t *testing.T, fn, expr string) ir.Expr {
 	t.Helper()
+	got, bad := readResults(t, fn, expr)
+	if bad["k"] != nil {
+		t.Fatalf("parseConstResults(%s): %v", expr, bad["k"])
+	}
+	return got["k"]
+}
+
+// readResults is checkResults without the assertion, for the cases that are
+// about the per-key error.
+func readResults(t *testing.T, fn, expr string) (map[string]ir.Expr, map[string]error) {
+	t.Helper()
 	f := importedFunc(t, fn)
-	got, err := parseConstResults("results.sngl", []byte("const k = "+expr+"\n"), map[string]*ir.Type{"k": f.Return})
+	got, bad, err := parseConstResults("results.sngl", []byte("const k = "+expr+"\n"), map[string]*ir.Type{"k": f.Return})
 	if err != nil {
 		t.Fatalf("parseConstResults(%s): %v", expr, err)
 	}
-	return got["k"]
+	return got, bad
 }
 
 // The results document is the contract between pkg/go/consteval and the
@@ -65,9 +76,12 @@ func TestParseConstResultsScalars(t *testing.T) {
 
 const s = "a\"b\\c\nd\{e\}"
 `)
-	got, err := parseConstResults("results.sngl", src, map[string]*ir.Type{"s": f.Return})
+	got, bad, err := parseConstResults("results.sngl", src, map[string]*ir.Type{"s": f.Return})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if bad["s"] != nil {
+		t.Fatal(bad["s"])
 	}
 	lit, ok := got["s"].(*ir.Literal)
 	if !ok {
@@ -137,12 +151,34 @@ func unitBuiltin(t *ir.Type) ast.BuiltinKind {
 // well-formed literal of the wrong type.
 func TestParseConstResultsRejectsUnassignable(t *testing.T) {
 	f := importedFunc(t, "Greet") // returns string
-	_, err := parseConstResults("results.sngl", []byte("const x = 250ms\n"), map[string]*ir.Type{"x": f.Return})
-	if err == nil {
+	got, bad, err := parseConstResults("results.sngl", []byte("const x = 250ms\n"), map[string]*ir.Type{"x": f.Return})
+	if err != nil {
+		t.Fatalf("one bad value failed the whole document: %v", err)
+	}
+	if got["x"] != nil {
 		t.Fatal("a duration was accepted where a string was expected")
 	}
-	if !strings.Contains(err.Error(), "assignable") {
-		t.Errorf("error does not report the type mismatch: %v", err)
+	if bad["x"] == nil || !strings.Contains(bad["x"].Error(), "assignable") {
+		t.Errorf("error does not report the type mismatch: %v", bad["x"])
+	}
+}
+
+// A key that does not check is one key. The reader used to return on the first
+// failure, so every value in the document — each from a different function with
+// its own declared type — was dropped with it, silently and with no error to
+// show for it.
+func TestOneBadValueLeavesTheRestReadable(t *testing.T) {
+	str := importedFunc(t, "Greet").Return
+	src := []byte("const bad = 250ms\nconst good = \"hi\"\n")
+	got, bad, err := parseConstResults("results.sngl", src, map[string]*ir.Type{"bad": str, "good": str})
+	if err != nil {
+		t.Fatalf("one bad value failed the whole document: %v", err)
+	}
+	if bad["bad"] == nil {
+		t.Error("the mismatched value was accepted")
+	}
+	if litRaw(got["good"]) != "hi" {
+		t.Errorf("good = %v (%v), want the string it encoded", got["good"], bad["good"])
 	}
 }
 
@@ -310,13 +346,25 @@ func TestDynFieldNamesAreNotMapped(t *testing.T) {
 	}
 }
 
-// A value the encoder could not have written is a corrupt document, not an
-// empty value.
+// A value the encoder could not have written fails its key, rather than
+// folding to an empty value.
 func TestParseConstResultsRejectsNonValue(t *testing.T) {
 	f := importedFunc(t, "Greet")
-	_, err := parseConstResults("results.sngl", []byte("const x = someFunc()\n"), map[string]*ir.Type{"x": f.Return})
-	if err == nil {
+	got, bad, err := parseConstResults("results.sngl", []byte("const x = someFunc()\n"), map[string]*ir.Type{"x": f.Return})
+	if err != nil {
+		t.Fatalf("a bad value failed the whole document: %v", err)
+	}
+	if got["x"] != nil || bad["x"] == nil {
 		t.Fatal("a non-literal initializer was accepted")
+	}
+}
+
+// A document that does not parse is corruption: no key in it can be trusted,
+// and there is no per-key failure to report.
+func TestParseConstResultsRejectsCorruptDocument(t *testing.T) {
+	f := importedFunc(t, "Greet")
+	if _, _, err := parseConstResults("results.sngl", []byte("const x = = =\n"), map[string]*ir.Type{"x": f.Return}); err == nil {
+		t.Fatal("an unparseable results document was accepted")
 	}
 }
 
@@ -326,11 +374,14 @@ func TestParseConstResultsRejectsNonValue(t *testing.T) {
 // that the encoder and the importer read the same Go type.
 func TestParseConstResultsRejectsWrongStruct(t *testing.T) {
 	f := importedFunc(t, "GetTally")
-	_, err := parseConstResults("results.sngl", []byte(`const x = Item{Name = "a", Value = 1}`+"\n"), map[string]*ir.Type{"x": f.Return})
-	if err == nil {
+	_, bad, err := parseConstResults("results.sngl", []byte(`const x = Item{Name = "a", Value = 1}`+"\n"), map[string]*ir.Type{"x": f.Return})
+	if err != nil {
+		t.Fatalf("a bad value failed the whole document: %v", err)
+	}
+	if bad["x"] == nil {
 		t.Fatal("an Item was accepted where a Tally was expected")
 	}
-	if !strings.Contains(err.Error(), "Tally") {
-		t.Errorf("error does not name the expected type: %v", err)
+	if !strings.Contains(bad["x"].Error(), "Tally") {
+		t.Errorf("error does not name the expected type: %v", bad["x"])
 	}
 }

@@ -371,7 +371,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 }
 
 // A crashed build leaves its directory behind; nothing may own one for longer
-// than evalTimeout, so a later compile reclaims it instead of falling back to
+// than ownerLifetime, so a later compile reclaims it instead of falling back to
 // the slow path forever.
 func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	dir := t.TempDir()
@@ -380,7 +380,7 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := time.Now().Add(-2 * evalTimeout)
+	old := time.Now().Add(-2 * ownerLifetime)
 	if err := os.Chtimes(stale, old, old); err != nil {
 		t.Fatal(err)
 	}
@@ -390,6 +390,23 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	}
 	if got != stale {
 		t.Errorf("a stale directory was not reclaimed: got %s, want %s", got, stale)
+	}
+
+	// The other half of the bound: an owner that has spent one evalTimeout in
+	// its build and is now in its run still holds this directory, and deleting
+	// it takes the source out from under a live compile.
+	live, _, err := constEvalSrcDir(dir, src+"// live\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	when := time.Now().Add(-2 * evalTimeout)
+	if err := os.Chtimes(live, when, when); err != nil {
+		t.Fatal(err)
+	}
+	if got, _, err := constEvalSrcDir(dir, src+"// live\n"); err != nil {
+		t.Fatal(err)
+	} else if got == live {
+		t.Error("a directory a live owner may still hold was reclaimed")
 	}
 }
 
@@ -547,5 +564,207 @@ func TestRunConstEvalMissingBinaryIsNotExist(t *testing.T) {
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("a missing binary reported %v, which the rebuild-once path cannot recognise", err)
+	}
+}
+
+// One batch, and the values in it stand or fall one at a time. Two of these
+// calls cannot produce a value at all — a self-referential pointer and a
+// uint64 that does not fit the int the importer declared — and the fold of the
+// third must not notice.
+func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	cycle, huge := importedFunc(t, "Cycle"), importedFunc(t, "Huge")
+	got := evalNow(t, purepkgCtx(dir),
+		call{cycle, nil},
+		call{huge, nil},
+		call{importedFunc(t, "Bytes"), nil},
+		call{importedFunc(t, "Ratio"), nil},
+		call{fnGreet, []any{"batch"}},
+	)
+
+	if got[0].err == nil {
+		t.Errorf("Cycle() = %v; want an error, since a value containing itself has no SNGL form", got[0].expr)
+	}
+	if got[1].err == nil {
+		t.Errorf("Huge() = %v; want an error: %v does not fit %v", got[1].expr, "math.MaxUint64", huge.Return)
+	}
+	// []byte is list<int> on the import side, so the elements are what checks.
+	list, ok := got[2].expr.(*ir.ListLit)
+	if !ok {
+		t.Fatalf("Bytes() = %T (%v), want a list literal", got[2].expr, got[2].err)
+	}
+	if len(list.Elems) != 2 || litRaw(list.Elems[0]) != "104" || litRaw(list.Elems[1]) != "105" {
+		t.Errorf("Bytes() folded to %v, want [104, 105]", list.Elems)
+	}
+	// A float32 encoded at 64-bit precision reads back as 0.10000000149011612.
+	if got[3].err != nil || litRaw(got[3].expr) != "0.1" {
+		t.Errorf("Ratio() = %v, %v; want 0.1", litRaw(got[3].expr), got[3].err)
+	}
+	if got[4].err != nil || litRaw(got[4].expr) != "Hello, batch!" {
+		t.Errorf("Greet(batch) = %v, %v; want the greeting — a failed key in the batch took it down",
+			got[4].expr, got[4].err)
+	}
+}
+
+// A struct-typed argument is refused before the batch is written. The Go
+// translator spells the literal `Item{...}`, which names nothing in a program
+// that reaches purepkg under an alias, so the generated program would not
+// compile and every other value in the batch would go with it.
+func TestStructArgIsRefused(t *testing.T) {
+	f := importedFunc(t, "Describe")
+	_, _, err := renderGoArgs(f, []any{map[string]any{"Name": "a", "Value": 1}})
+	if err == nil {
+		t.Fatal("a struct argument was rendered")
+	}
+	for _, want := range []string{"Describe", "Item"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not name %s: %v", want, err)
+		}
+	}
+}
+
+// The cache hands out a copy. Later phases mutate IR in place, so two call
+// sites folding to one value must not be handed the same node.
+func TestCachedValueIsNotShared(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	got := evalNow(t, purepkgCtx(dir), call{getItemsFn(t), nil})
+	if got[0].err != nil {
+		t.Fatalf("GetItems(): %v", got[0].err)
+	}
+	second, state, err := requestPureGoFunc(purepkgCtx(dir), "go", purepkgPath, getItemsFn(t), nil)
+	if state != nativeReady || err != nil {
+		t.Fatalf("second request: state=%v err=%v", state, err)
+	}
+	if second == got[0].expr {
+		t.Fatal("two call sites share one expression node")
+	}
+	first := got[0].expr.(*ir.ListLit)
+	if second.(*ir.ListLit).Elems[0] == first.Elems[0] {
+		t.Error("the copy shares its elements with the original")
+	}
+	first.Elems = nil // what a later phase's in-place edit looks like
+	if len(second.(*ir.ListLit).Elems) != 2 {
+		t.Error("editing one call site's value changed the other's")
+	}
+}
+
+func getItemsFn(t *testing.T) *ir.Func {
+	t.Helper()
+	return importedFunc(t, "GetItems")
+}
+
+// A whole-batch failure — here a project directory the evaluator cannot be
+// built in — is not an answer about any one call, so it must not be cached as
+// one: the process goes on to optimize other targets, and one of them may
+// succeed where this one could not.
+func TestBatchFailureIsNotCached(t *testing.T) {
+	req := &nativeRequest{
+		key:        requestKey("infra", "purepkg.Greet", []string{`"x"`}),
+		importPath: purepkgPath,
+		nativeType: "purepkg.Greet",
+		funcName:   "Greet",
+		args:       []string{`"x"`},
+		ret:        ir.TypString,
+	}
+	if err := runNativeRequests(t.TempDir(), []*nativeRequest{req}); err == nil {
+		t.Fatal("the evaluator built in a directory with no module")
+	}
+	if _, cached := constCache.Load(req.key); cached {
+		t.Error("a build failure was cached as this call's final answer")
+	}
+}
+
+// A fatal fold error inside a nested scope — an inlined component body, a
+// for-loop iteration — is the child context's, and the child is what folds the
+// call that fails. Reporting it is the parent's job: this target cannot call
+// go:// at runtime, so a dropped error is a page rendered with the value
+// missing.
+func TestNestedFoldErrorIsReported(t *testing.T) {
+	dir := projectDir()
+	if dir == "" {
+		t.Skip("could not find project root")
+	}
+	fnBoomWith := purepkgFunc("BoomWith", []*ir.Param{{Name: "s", Type: ir.TypString}}, ir.TypString)
+	boomWith := func(arg ir.Expr) *ir.Call {
+		return &ir.Call{
+			AST: &ast.CallExpr{Func: &ast.SelectExpr{
+				Operand: &ast.IdentExpr{Name: "purepkg"},
+				Field:   "BoomWith",
+			}},
+			Type: ir.TypString,
+			Args: []ir.CallArg{{Value: arg}},
+		}
+	}
+	mkPkg := func(inlined bool) *ir.Package {
+		var body []ir.Stmt
+		var comps []*ir.Component
+		if inlined {
+			// component wrapped(name string) { text(value = purepkg.BoomWith(name)) }
+			// main { wrapped(name = "x") }
+			sym := &ir.Param{Name: "name", Type: ir.TypString}
+			comp := &ir.Component{
+				Name:  "wrapped",
+				Props: []*ir.Prop{{Name: "name", Type: ir.TypString, Sym: sym}},
+				Body: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
+					Name:  "value",
+					Value: boomWith(&ir.Ident{Name: "name", Sym: sym, Type: ir.TypString}),
+				}}}},
+			}
+			comps = append(comps, comp)
+			body = []ir.Stmt{&ir.NodeInst{
+				Name:      "wrapped",
+				Component: comp,
+				Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Raw: "x"}}},
+			}}
+		} else {
+			// main { for name = ["x"] { text(value = purepkg.BoomWith(name)) } }
+			loop := &ir.LoopVar{Name: "name", Type: ir.TypString}
+			body = []ir.Stmt{&ir.For{
+				Key:      "name",
+				ElemType: ir.TypString,
+				KeySym:   loop,
+				Iter: &ir.ListLit{
+					Type:  &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}},
+					Elems: []ir.Expr{&ir.Literal{Type: ir.TypString, Raw: "x"}},
+				},
+				Body: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
+					Name:  "value",
+					Value: boomWith(&ir.Ident{Name: "name", Sym: loop, Type: ir.TypString}),
+				}}}},
+			}}
+		}
+		comps = append(comps, &ir.Component{Name: "main", Body: body})
+		return &ir.Package{
+			Components: comps,
+			Imports: []*ir.Import{{
+				Path:  "go://" + purepkgPath,
+				Alias: "purepkg",
+				Native: &ir.NativeImport{
+					ImportPath: purepkgPath,
+					Funcs:      []*ir.Func{fnBoomWith},
+				},
+			}},
+		}
+	}
+
+	for _, tc := range []struct {
+		name    string
+		inlined bool
+	}{{"inlined component body", true}, {"for-loop iteration", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Optimize(mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir})
+			if err == nil {
+				t.Fatal("a nested fold's fatal error was dropped")
+			}
+			if !strings.Contains(err.Error(), "BoomWith") {
+				t.Errorf("error does not name the call that failed: %v", err)
+			}
+		})
 	}
 }

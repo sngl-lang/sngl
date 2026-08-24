@@ -151,6 +151,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	folded := foldStmts(cloned, childCtx)
 
 	ctx.fileAssets = childCtx.fileAssets
+	if ctx.err == nil {
+		ctx.err = childCtx.err
+	}
 	return folded
 }
 

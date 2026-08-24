@@ -28,6 +28,12 @@ import (
 // It must be generous — on a cold build cache the link dwarfs the calls.
 const evalTimeout = 120 * time.Second
 
+// ownerLifetime bounds how long one round can hold its generated package and
+// its cached binary. A round builds and runs under evalTimeout each, retries
+// both once when the binary was reclaimed under it, and then parses the
+// results — so evalTimeout alone is nowhere near the bound.
+const ownerLifetime = 5 * evalTimeout
+
 // constResult is a finished compile-time evaluation: the checked IR of the
 // value, or the reason there will never be one.
 type constResult struct {
@@ -111,7 +117,10 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 		if res.err != nil {
 			return nil, nativeFailed, res.err
 		}
-		return res.expr, nativeReady, nil
+		// A clone per call site: later phases mutate IR in place, so one node
+		// spliced into several places in the tree would be edited through
+		// whichever site was lowered first.
+		return ir.CloneExpr(res.expr), nativeReady, nil
 	}
 	req := &nativeRequest{
 		key:        key,
@@ -128,12 +137,21 @@ func requestPureGoFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, args
 		ctx.native.add(req)
 		return nil, nativePending, nil
 	}
+	if ctx.nativeErr != nil {
+		// The round loop's batch failed for a reason that is not about this
+		// call (a build error, a timeout). Report it without building again
+		// per call site, and without caching it: another target's Optimize
+		// gets to retry.
+		return nil, nativeFailed, ctx.nativeErr
+	}
 
 	// No batch is open: the round loop was skipped because
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	runNativeRequests(ctx.dir, []*nativeRequest{req})
+	if err := runNativeRequests(ctx.dir, []*nativeRequest{req}); err != nil {
+		return nil, nativeFailed, err
+	}
 	res, _ := constCache.Load(key)
 	if r, ok := res.(constResult); ok && r.err == nil {
 		return r.expr, nativeReady, nil
@@ -178,6 +196,14 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 		if e == nil {
 			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
 		}
+		// The Go translator spells a struct literal with the name its declaring
+		// package uses — `Item{}` — while the batch program reaches that
+		// package under an alias, where only `p0.Item{}` resolves. Refusing
+		// costs this one call; rendering it would be a program that does not
+		// build, and every other value in the batch with it.
+		if sd := unnameableStruct(e); sd != nil {
+			return nil, nil, fmt.Errorf("parameter %s of %s has struct type %s, which the compile-time evaluator cannot spell", f.Params[i].Name, f.NativeName, sd.Name)
+		}
 		src := gc.EvalExpr(e)
 		if strings.TrimSpace(src) == "" {
 			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.NativeName)
@@ -187,34 +213,68 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 	return out, gc.Imports(), nil
 }
 
+// unnameableStruct returns the first struct literal in e whose type the batch
+// program has no name for. A color is not one: it renders as the shared
+// snglcolor.Color, whose import the translator registers.
+func unnameableStruct(e ir.Expr) *ir.StructDef {
+	switch n := e.(type) {
+	case *ir.StructLit:
+		def := n.Def
+		if def == nil && n.Type != nil {
+			def, _ = n.Type.Decl.(*ir.StructDef)
+		}
+		if def != nil && !ir.IsColorStruct(n.Type) && def.Name != "color" {
+			return def
+		}
+		for _, f := range n.Fields {
+			if sd := unnameableStruct(f.Value); sd != nil {
+				return sd
+			}
+		}
+	case *ir.ListLit:
+		for _, el := range n.Elems {
+			if sd := unnameableStruct(el); sd != nil {
+				return sd
+			}
+		}
+	}
+	return nil
+}
+
 // runNativeRequests evaluates every pending request in one generated program:
 // one build, one run, one results document. Each request ends up in
 // constCache — with a value, or with the reason it has none, so a later round
 // neither re-requests it nor spins.
-func runNativeRequests(dir string, reqs []*nativeRequest) {
-	values, err := execConstEval(dir, reqs)
+//
+// Only a program outcome is cached. A returned error is a failure of the batch
+// as a whole (the build, the run, a corrupt results document), which says
+// nothing about any one call and must not become that call's permanent answer.
+func runNativeRequests(dir string, reqs []*nativeRequest) error {
+	values, bad, err := execConstEval(dir, reqs)
+	if err != nil {
+		return err
+	}
 	for _, req := range reqs {
-		if err != nil {
-			constCache.Store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, err)})
-			continue
-		}
-		v, ok := values[req.key]
-		if !ok {
+		switch v, ok := values[req.key]; {
+		case bad[req.key] != nil:
+			constCache.Store(req.key, constResult{err: fmt.Errorf("evaluating %s: %w", req.nativeType, bad[req.key])})
+		case !ok:
 			// The generated program ran but produced nothing for this key:
 			// consteval.Fail was called, or the call never returned.
 			constCache.Store(req.key, constResult{err: fmt.Errorf("compile-time evaluation of %s produced no value", req.nativeType)})
-			continue
+		default:
+			constCache.Store(req.key, constResult{expr: v})
+			slog.Debug("const eval", "func", req.nativeType)
 		}
-		constCache.Store(req.key, constResult{expr: v})
-		slog.Debug("const eval", "func", req.nativeType)
 	}
+	return nil
 }
 
 // execConstEval generates, builds and runs the batch program, returning the
-// values keyed by request key.
-func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error) {
+// values keyed by request key, and the keys whose value did not check.
+func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
-		return nil, fmt.Errorf("no project directory")
+		return nil, nil, fmt.Errorf("no project directory")
 	}
 
 	// The source must sit inside the project so the module resolves; the
@@ -222,16 +282,16 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error
 	src := constEvalSource(reqs)
 	srcDir, canonical, err := constEvalSrcDir(dir, src)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer os.RemoveAll(srcDir)
 	if err := os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(src), 0o644); err != nil {
-		return nil, fmt.Errorf("writing evaluator source: %w", err)
+		return nil, nil, fmt.Errorf("writing evaluator source: %w", err)
 	}
 
 	runDir, err := os.MkdirTemp("", "sngl-consteval-*")
 	if err != nil {
-		return nil, fmt.Errorf("creating output dir: %w", err)
+		return nil, nil, fmt.Errorf("creating output dir: %w", err)
 	}
 	defer os.RemoveAll(runDir)
 	resultPath := filepath.Join(runDir, "results.sngl")
@@ -242,7 +302,7 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error
 	binPath := filepath.Join(runDir, "eval")
 	if canonical {
 		if binPath, err = constEvalBinPath(filepath.Base(srcDir)); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -254,7 +314,7 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error
 	// unlikely; this makes it harmless.)
 	for attempt := range 2 {
 		if err := buildConstEval(dir, srcDir, binPath); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		err := runConstEval(dir, binPath, resultPath)
 		if err == nil {
@@ -264,21 +324,21 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, error
 			slog.Debug("consteval binary vanished before exec; rebuilding", "path", binPath)
 			continue
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
 	results, err := os.ReadFile(resultPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading const evaluator results: %w", err)
+		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
 	want := make(map[string]*ir.Type, len(reqs))
 	for _, r := range reqs {
 		want[r.key] = r.ret
 	}
 	parseStart := time.Now()
-	values, err := parseConstResults(resultPath, results, want)
+	values, bad, err := parseConstResults(resultPath, results, want)
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
-	return values, err
+	return values, bad, err
 }
 
 func buildConstEval(dir, srcDir, binPath string) error {
@@ -334,12 +394,12 @@ func constEvalSrcDir(dir, src string) (path string, canonical bool, err error) {
 	path = filepath.Join(dir, name)
 
 	// Mkdir is the lock: whoever creates the directory owns it until it is
-	// removed. A hard crash can leave one behind, but no live owner can
-	// outlast evalTimeout, so an older one is reclaimed rather than wedging
-	// every later compile into the slow path.
+	// removed. A hard crash can leave one behind, so a directory no live owner
+	// could still hold is reclaimed rather than wedging every later compile
+	// into the slow path.
 	err = os.Mkdir(path, 0o755)
 	if errors.Is(err, fs.ErrExist) {
-		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) > evalTimeout {
+		if fi, statErr := os.Stat(path); statErr == nil && time.Since(fi.ModTime()) > ownerLifetime {
 			os.RemoveAll(path)
 			err = os.Mkdir(path, 0o755)
 		}
@@ -421,11 +481,11 @@ const (
 	binMaxAge = 7 * 24 * time.Hour
 
 	// binGrace protects an entry another compile may be about to execute. A run
-	// touches its directory before building and cannot hold the binary for
-	// longer than evalTimeout, so anything younger than that may be live. Under
-	// budget pressure the cache may sit over budget for this long rather than
-	// delete a binary out from under a running compile.
-	binGrace = evalTimeout
+	// touches its directory before building, and ownerLifetime is how long it
+	// may still be building and running after that, so anything younger may be
+	// live. Under budget pressure the cache may sit over budget for this long
+	// rather than delete a binary out from under a running compile.
+	binGrace = ownerLifetime
 )
 
 // pruneConstEvalBins enforces binMaxAge and then the byte budget, evicting
