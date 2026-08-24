@@ -184,13 +184,21 @@ func rejectDynamicHrefs(req *codegen.Request) error {
 type compilation struct {
 	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
-	shared     *windowShared
 }
 
 // windowShared holds the results a window's codegen recomputes but that do not
-// vary by window. A static site emits one window per page — 420 for the docs
-// site — and everything here was being redone that many times.
+// vary by window. A static site emits one window per page, and everything here
+// was being redone that many times.
+//
+// projectDir and projectFS live here rather than on the htmlGen because
+// everything cached below is a function of them: with one place for them to
+// come from, no cache key has to carry them.
 type windowShared struct {
+	projectDir string
+	// projectFS is the FS the js:// virtual root is mounted on; it is the OS
+	// filesystem for the CLI and an in-memory one for the playground.
+	projectFS fs.FS
+
 	bundles      map[bundleKey]bundleResult
 	i18nManifest string
 	i18nLoaded   bool
@@ -202,6 +210,16 @@ type windowShared struct {
 	slotsRewritten bool
 }
 
+func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {
+	return &windowShared{
+		projectDir: projectDir,
+		projectFS:  projectFS,
+		bundles:    map[bundleKey]bundleResult{},
+	}
+}
+
+// bundleKey is every input bundleNativeScript takes that windowShared does not
+// already fix: the entry text and the two flags read off the htmlGen.
 type bundleKey struct {
 	entry  string
 	minify bool
@@ -353,6 +371,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				wasmExecURL, strings.Join(loaderScripts, "\n"))
 		}
 	}
+	// One cache for every window this compilation emits.
+	shared := newWindowShared(projectDir, projectFS)
+
 	ctx := codegen.NewCodegenCtx(req, "html")
 
 	// IR-driven rendering: one file per window. Packages with no main
@@ -360,12 +381,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// callers can verify codegen at least succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
-		gen := newHTMLGenFromCtx(ctx, jsLang, opts, c.sharedCache())
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
-		gen.projectDir = projectDir
-		gen.projectFS = projectFS
 		body, err := gen.generate()
 		if err != nil {
 			return nil, err
@@ -417,12 +436,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				seenPaths[name] = ast.Pos{}
 			}
 		}
-		gen := newHTMLGenFromCtx(ctx, jsLang, opts, c.sharedCache())
+		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
-		gen.projectDir = projectDir
-		gen.projectFS = projectFS
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
 		if win.Window != nil {
@@ -525,14 +542,9 @@ type htmlGen struct {
 	// WASM packages needing extern bindings at the top of the <script> block.
 	wasmPkgs []wasmPackage
 
-	// Project root for resolving native module specifiers (`./lib`, etc.)
-	// when bundling the inline <script> through esbuild. projectFS is the
-	// matching filesystem; both are used together so the same code path
-	// works for CLI (os.DirFS) and the in-memory playground.
-	projectDir string
-	projectFS  fs.FS
-	// shared caches the window-independent parts of codegen. nil in unit
-	// tests that build an htmlGen directly; every path then recomputes.
+	// shared is this compilation's cache, and the one place the project root
+	// and its filesystem come from. Never nil: newHTMLGen allocates one when
+	// the caller has no compilation to share.
 	shared *windowShared
 
 	// Preview mode: add data-sngl-line/col attributes, ensure all elements have IDs
@@ -636,17 +648,17 @@ type timerDef struct {
 	bodyAsync  bool
 }
 
-func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig) *htmlGen {
-	return newHTMLGenShared(pkg, lang, opts, nil)
-}
-
-func newHTMLGenShared(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
-	var ao codegen.AnalyzeOpts
-	if shared != nil {
-		ao.UsedComponents = shared.usedComponents
+// newHTMLGen builds the generator for one window. shared is the compilation's
+// cache; a caller with no compilation to share (a direct unit test) passes nil
+// and gets one of its own, so there is only ever one code path below.
+func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
+	if shared == nil {
+		shared = newWindowShared("", nil)
 	}
+	var ao codegen.AnalyzeOpts
+	ao.UsedComponents = shared.usedComponents
 	common := codegen.AnalyzeCommonFor(pkg, ao)
-	if shared != nil && shared.usedComponents == nil {
+	if shared.usedComponents == nil {
 		shared.usedComponents = maps.Clone(common.UsedComponents)
 	}
 
@@ -688,7 +700,7 @@ func newHTMLGenShared(pkg *ir.Package, lang codegen.LangTranslator, opts htmlCon
 
 // newHTMLGenFromCtx creates an htmlGen from CodegenCtx (IR-first path).
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
-	g := newHTMLGenShared(ctx.Pkg, lang, opts, shared)
+	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
@@ -709,10 +721,6 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 // window; the $N ids allocated while rendering are not, so each window still
 // gets its own map to add them to.
 func (g *htmlGen) prewalkShared() {
-	if g.shared == nil {
-		g.prewalkNodes()
-		return
-	}
 	if g.shared.prewalked == nil {
 		g.prewalkNodes()
 		g.shared.prewalked = maps.Clone(g.idToNode)
@@ -725,37 +733,21 @@ func (g *htmlGen) prewalkShared() {
 // rewrite is a package-wide IR edit, so once done it holds for every window
 // that follows.
 func (g *htmlGen) rewriteSlotCallsOnce() {
-	if g.shared == nil {
-		g.rewriteSlotCallsToAnchors()
-		return
-	}
 	if !g.shared.slotsRewritten {
 		g.rewriteSlotCallsToAnchors()
 		g.shared.slotsRewritten = true
 	}
 }
 
-// sharedCache lazily allocates the per-compilation cache the window loop hands
-// to every htmlGen it builds.
-func (c *compilation) sharedCache() *windowShared {
-	if c.shared == nil {
-		c.shared = &windowShared{bundles: map[bundleKey]bundleResult{}}
-	}
-	return c.shared
-}
-
 // bundleScript runs the window's script through esbuild, memoized on the
-// script text. Every page of a static site shares the same runtime, so the
-// docs site's 420 windows produce three distinct entries.
+// script text. Every page of a static site shares the same runtime, so a whole
+// site collapses to a handful of distinct entries.
 func (g *htmlGen) bundleScript(entry string) (string, error) {
-	if g.shared == nil {
-		return bundleNativeScript(entry, g.projectFS, g.minify, g.maps)
-	}
 	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps}
 	if got, ok := g.shared.bundles[key]; ok {
 		return got.out, got.err
 	}
-	out, err := bundleNativeScript(entry, g.projectFS, g.minify, g.maps)
+	out, err := bundleNativeScript(entry, g.shared.projectFS, g.minify, g.maps)
 	g.shared.bundles[key] = bundleResult{out: out, err: err}
 	return out, err
 }
@@ -763,11 +755,8 @@ func (g *htmlGen) bundleScript(entry string) (string, error) {
 // i18nManifest returns the inlined manifest, loaded from disk once per
 // compilation rather than once per window.
 func (g *htmlGen) i18nManifest() string {
-	if g.shared == nil {
-		return i18nManifestJS(g.projectDir, g.projectFS)
-	}
 	if !g.shared.i18nLoaded {
-		g.shared.i18nManifest = i18nManifestJS(g.projectDir, g.projectFS)
+		g.shared.i18nManifest = i18nManifestJS(g.shared.projectDir, g.shared.projectFS)
 		g.shared.i18nLoaded = true
 	}
 	return g.shared.i18nManifest
@@ -1172,19 +1161,23 @@ func (g *htmlGen) generate() (string, error) {
 	for _, id := range g.collectReferencedIDs() {
 		refSet[id] = true
 	}
-	return stripUnreferencedIDs(result, refSet), nil
+	return stripUnreferencedIDs(result, refSet, g.nextID), nil
 }
 
-// stripUnreferencedIDs removes every ` id="$N"` attribute whose id no handler
-// or updater refers to. One scan of the document: the obvious loop over the
-// allocated ids does a whole-document strings.Replace per id, which is
-// quadratic in the page and was the largest single source of garbage in a
-// static build (219MB of 1.18GB for the docs site).
+// stripUnreferencedIDs removes every ` id="$N"` attribute whose id allocID
+// handed out and no handler or updater refers to. One scan of the document:
+// the loop over the allocated ids it replaces does a whole-document
+// strings.Replace per id, which is quadratic in the page.
+//
+// nextID bounds what allocID has issued, and only an id it issued is a
+// candidate — so `$4` on a page that allocated three is left alone, as is any
+// spelling allocID cannot produce (`$00`). Anything else in an ` id="` would
+// belong to whatever emitted it.
 //
 // Only the first occurrence of a given id is dropped, matching the
 // strings.Replace(…, 1) it replaces — ids are unique in practice, so this only
 // matters if that ever stops being true.
-func stripUnreferencedIDs(doc string, referenced map[string]bool) string {
+func stripUnreferencedIDs(doc string, referenced map[string]bool, nextID int) string {
 	const attr = ` id="$`
 	if !strings.Contains(doc, attr) {
 		return doc
@@ -1199,27 +1192,44 @@ func stripUnreferencedIDs(doc string, referenced map[string]bool) string {
 			out.WriteString(rest)
 			break
 		}
-		end := strings.IndexByte(rest[i+len(attr):], '"')
-		digits := ""
-		if end >= 0 {
-			digits = rest[i+len(attr) : i+len(attr)+end]
-		}
-		if end < 0 || digits == "" || strings.IndexFunc(digits, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
-			// Not an allocated id; copy the marker and carry on.
-			out.WriteString(rest[:i+len(attr)])
-			rest = rest[i+len(attr):]
+		// Copy up to and including the marker, then decide about the value.
+		head := i + len(attr)
+		end := strings.IndexByte(rest[head:], '"')
+		if end < 0 || !isAllocatedID(rest[head:head+end], nextID) {
+			out.WriteString(rest[:head])
+			rest = rest[head:]
 			continue
 		}
-		id := "$" + digits
+		id := "$" + rest[head:head+end]
 		out.WriteString(rest[:i])
 		if referenced[id] || dropped[id] {
-			out.WriteString(rest[i : i+len(attr)+end+1])
+			out.WriteString(rest[i : head+end+1])
 		} else {
 			dropped[id] = true
 		}
-		rest = rest[i+len(attr)+end+1:]
+		rest = rest[head+end+1:]
 	}
 	return out.String()
+}
+
+// isAllocatedID reports whether digits is the decimal allocID would have
+// written for some id below nextID.
+func isAllocatedID(digits string, nextID int) bool {
+	if digits == "" || len(digits) > 1 && digits[0] == '0' {
+		return false
+	}
+	n := 0
+	for i := 0; i < len(digits); i++ {
+		c := digits[i]
+		if c < '0' || c > '9' {
+			return false
+		}
+		n = n*10 + int(c-'0')
+		if n >= nextID {
+			return false
+		}
+	}
+	return true
 }
 
 // renderIRStmt is the IR-driven top-level dispatch. Structural statements
