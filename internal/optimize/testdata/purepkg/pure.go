@@ -133,3 +133,11 @@ func GetRecord() Record { return Record{Stamp: Stamp{At: "t0", Seq: 1}, Note: "n
 //
 //sngl:pure
 func Anything() []any { return []any{Item{Name: "alpha", Value: 1}} }
+
+// Stamp0 returns a fixed time.Time. Paired with the duration case: both are
+// registered on the import side (codegen/scheme/golang/stdtypes.go) and the
+// encode side (pkg/go/consteval/stdtypes.go), and it takes both for the value
+// to survive.
+//
+//sngl:pure
+func Stamp0() time.Time { return time.Date(2026, 8, 24, 9, 30, 0, 0, time.UTC) }

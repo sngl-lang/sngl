@@ -146,6 +146,27 @@ func TestParseConstResultsRejectsUnassignable(t *testing.T) {
 	}
 }
 
+// A time.Time survives end to end for the same reason a duration does: the
+// importer maps it to the datetime type and the encoder writes it as the string
+// that type's domain is. Nothing pinned this before the two mappings became a
+// registry, and moving them is exactly when it could have broken.
+func TestTimeFoldsToDateTime(t *testing.T) {
+	want := importedFunc(t, "Stamp0").Return
+	if !ir.IsDateTimeStruct(want) {
+		t.Fatalf("time.Time imported as %v, want the datetime type", want)
+	}
+	lit, ok := checkResults(t, "Stamp0", `"2026-08-24T09:30:00Z"`).(*ir.Literal)
+	if !ok {
+		t.Fatalf("got %T", checkResults(t, "Stamp0", `"2026-08-24T09:30:00Z"`))
+	}
+	if lit.Raw != "2026-08-24T09:30:00Z" {
+		t.Errorf("Stamp0() folded to %q", lit.Raw)
+	}
+	if !lit.Type.IsAssignableTo(want) {
+		t.Errorf("Stamp0() folded to %v, which does not fit the declared %v", lit.Type, want)
+	}
+}
+
 // Field names come off the imported declaration, which is where the scheme
 // importer recorded the Go name it derived each SNGL name from. Nothing here
 // re-derives the mapping, so `HTTPStatus` lands on whatever the importer
