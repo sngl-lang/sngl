@@ -178,8 +178,7 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 
 	ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
 	if err != nil {
-		var skip *codegen.SkipError
-		if errors.As(err, &skip) {
+		if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
 			return []*codegen.TestResult{{
 				Desc:   "<launcher-skip>",
 				Passed: true,

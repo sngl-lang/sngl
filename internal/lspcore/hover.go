@@ -2,6 +2,7 @@ package lspcore
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -169,8 +170,7 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 	targetLine := pos.Line
 	var lines []string
 	// Gather contiguous comment lines ending at targetLine-1
-	for i := len(comments) - 1; i >= 0; i-- {
-		c := comments[i]
+	for _, c := range slices.Backward(comments) {
 		if c.Block {
 			continue
 		}

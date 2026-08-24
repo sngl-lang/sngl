@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -400,7 +401,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 	// in one branch does not trigger a subsequent branch in the same call.
 	// Construct from the tail so each node becomes the Else of the previous.
 	var chain ir.Stmt
-	for i := len(slots) - 1; i >= 0; i-- {
+	for i := range slices.Backward(slots) {
 		chain = &ir.If{
 			Cond: focusEqExpr(focusIDIdent(), i),
 			Body: bodies[i],
