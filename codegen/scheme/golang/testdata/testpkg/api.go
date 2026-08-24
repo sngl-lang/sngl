@@ -1,7 +1,10 @@
 // Package testpkg provides test types for the Go scheme importer.
 package testpkg
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Todo is a sample struct for testing.
 type Todo struct {
@@ -64,3 +67,17 @@ var Count int
 var hidden string
 
 func privateFn() {}
+
+// Priority is a named type whose underlying type is a basic int, so the
+// importer types it as int unless a mapping is registered for it. That makes it
+// the case that pins the registry lookup ahead of the Underlying() dispatch.
+type Priority int
+
+// Rank returns a Priority.
+func Rank() Priority { return 0 }
+
+// Stamped returns a time.Time. Without a registered mapping the importer takes
+// it for an opaque struct from another package and marks the function unusable,
+// so usability is what shows the mapping firing here — the resolved SNGL type
+// needs a loaded standard library, which this package has no way to reach.
+func Stamped() time.Time { return time.Time{} }

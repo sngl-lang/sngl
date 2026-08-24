@@ -112,6 +112,12 @@ type checker struct {
 	// When set to an enum type, bare enum member names resolve automatically.
 	expected *ir.Type
 
+	// nativeValues checks encoded native-language values rather than SNGL
+	// source: a struct literal takes its declaration from the expected type
+	// and names its fields as the source language does. Set only by
+	// CheckNativeValue.
+	nativeValues bool
+
 	// Current component (for event validation).
 	currentComponent *ir.Component
 
@@ -147,6 +153,11 @@ type checker struct {
 	libPkgs    map[string]*ir.Package
 	libLoading map[string]bool
 	libDepth   int
+	// libPkgName is the URI of the lib package currently being loaded, stamped
+	// onto every declaration it builds as that declaration's identity (see
+	// ir.StructDef.Pkg). Saved and restored around each load, because a lib
+	// package's import of another nests one load inside the other.
+	libPkgName string
 
 	// builtinPkg is sngl://builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -161,6 +172,10 @@ type checker struct {
 	// the mark rather than the word is what lets a program shadow `context`.
 	contextComp *ir.Component
 	windowType  *ir.Type
+
+	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
+	// registered for phases that have no scope — see ir.DurationType.
+	durationUnit *ir.UnitDef
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -435,7 +450,13 @@ func (c *checker) structField(pos ast.Pos, sd *ir.StructDef, name string) *ir.St
 	if sd == nil || c.rejectForeignUnexported(pos, sd, sd.Name, name) {
 		return nil
 	}
-	return findField(sd, name)
+	if f := findField(sd, name); f != nil {
+		return f
+	}
+	if c.nativeValues {
+		return findNativeField(sd, name)
+	}
+	return nil
 }
 
 // enumMember reports whether ed declares name, under the same visibility rule
@@ -984,7 +1005,8 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			if typ.Kind != ir.TypeDyn {
@@ -1100,7 +1122,8 @@ func (c *checker) checkPendingConstInits() {
 			if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 				initExpr = adapted
 			} else {
-				c.error(p.decl.Pos, "cannot initialize %s with %s", typ, initType)
+				want, got := ir.Contrast(typ, initType)
+				c.error(p.decl.Pos, "cannot initialize %s with %s", want, got)
 			}
 		}
 		if typ.Kind != ir.TypeDyn {
@@ -1277,7 +1300,8 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
@@ -1338,7 +1362,8 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
@@ -1380,7 +1405,8 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			if typ.Kind != ir.TypeDyn {

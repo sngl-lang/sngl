@@ -31,6 +31,11 @@ const (
 	BuiltinTime     BuiltinKind = "time"
 	BuiltinDateTime BuiltinKind = "datetime"
 
+	// Unit quantities. A unit kind marks a `unit` declaration, so the
+	// compiler can hand out its type where no scope is in reach — a foreign
+	// type importer mapping time.Duration, for one.
+	BuiltinDuration BuiltinKind = "duration"
+
 	// Generic constructors.
 	BuiltinList   BuiltinKind = "list"
 	BuiltinMap    BuiltinKind = "map"
@@ -76,6 +81,11 @@ func (b BuiltinKind) IsStringRepr() bool {
 	return false
 }
 
+// IsUnit reports whether the kind marks a unit declaration.
+func (b BuiltinKind) IsUnit() bool {
+	return b == BuiltinDuration
+}
+
 // IsGeneric reports whether the kind is a generic type constructor
 // (list/map/iter/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
@@ -112,6 +122,7 @@ func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
 		BuiltinInt, BuiltinFloat, BuiltinString,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
+		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
 		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext,
 		BuiltinNull, BuiltinPlatform, BuiltinLanguage,
@@ -121,7 +132,7 @@ func AllBuiltinKinds() []BuiltinKind {
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b.IsPrimitive() || b.IsStringRepr() || b.IsGeneric() || b.IsNode() || b.IsConst()
+	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() || b.IsNode() || b.IsConst()
 }
 
 // SetBuiltin stamps the mark onto a declaration. The #[builtin] macro asserts
@@ -158,3 +169,4 @@ type IntrinsicMark struct {
 func (c *ComponentDecl) SetBuiltin(k BuiltinKind) { c.Builtin = k }
 func (s *StructDef) SetBuiltin(k BuiltinKind)     { s.Builtin = k }
 func (c *ConstDecl) SetBuiltin(k BuiltinKind)     { c.Builtin = k }
+func (u *UnitDef) SetBuiltin(k BuiltinKind)       { u.Builtin = k }

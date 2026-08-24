@@ -323,6 +323,14 @@ func detectHiddenParam(t types.Type) string {
 // (TypDyn, false); callers use the bool to mark the enclosing declaration
 // Unusable.
 func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) (*ir.Type, bool) {
+	// A named type whose SNGL form is not its underlying one is registered by
+	// qualified name (see nativetypes.go), and has to be matched before the
+	// switch below, which dispatches on Underlying(): time.Duration's
+	// underlying type is a basic int64, so a lookup placed after the switch
+	// would be unreachable for exactly the types that need one.
+	if mapped, ok := lookupNativeType(t); ok {
+		return mapped, true
+	}
 	switch u := t.Underlying().(type) {
 	case *types.Basic:
 		switch u.Kind() {
@@ -353,9 +361,6 @@ func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) 
 			name := named.Obj().Name()
 			pkg := named.Obj().Pkg()
 			if pkg != nil {
-				if pkg.Path() == "time" && name == "Time" {
-					return ir.DateTimeType(), true
-				}
 				if _, isStruct := named.Underlying().(*types.Struct); isStruct && pkg.Path() == homePkg {
 					if sd, ok := structs[name]; ok {
 						return sd.SymType(), true

@@ -285,6 +285,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	return &ir.StructDef{
 		AST:        s,
 		Name:       s.Name,
+		Pkg:        c.libPkgName,
 		TypeParams: s.TypeParams,
 		Fields:     c.resolveStructFields(s),
 	}
@@ -348,6 +349,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	return &ir.EnumDef{
 		AST:     e,
 		Name:    e.Name,
+		Pkg:     c.libPkgName,
 		Members: members,
 	}
 }
@@ -379,6 +381,8 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	return &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
+		Pkg:      c.libPkgName,
+		Builtin:  u.Builtin,
 		Suffixes: suffixes,
 	}
 }

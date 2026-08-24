@@ -93,30 +93,39 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	}
 }
 
+// nativeCallTarget resolves a call written as `alias.name(...)` against the
+// package's native imports. It reads the AST because the checker leaves such a
+// call unresolved: there is no ir.Func to point at.
+func nativeCallTarget(call *ir.Call, ctx *evalCtx) (name string, ns *ir.NativeImport, ok bool) {
+	if call == nil || call.AST == nil {
+		return "", nil, false
+	}
+	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return "", nil, false
+	}
+	ident, ok := sel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return "", nil, false
+	}
+	ns, ok = ctx.getNativeImports()[ident.Name]
+	if !ok {
+		return "", nil, false
+	}
+	return sel.Field, ns, true
+}
+
 // isNativePureCall checks if an unresolved call is to a pure native function.
 func isNativePureCall(call *ir.Call, ctx *evalCtx) bool {
 	if call.Func != nil {
 		return false // already resolved
 	}
-	// Unresolved calls may be namespace.func() pattern — check via AST fallback.
-	if call.AST == nil {
-		return false
-	}
-	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	name, ns, ok := nativeCallTarget(call, ctx)
 	if !ok {
-		return false
-	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return false
-	}
-	nativeImports := ctx.getNativeImports()
-	ns, exists := nativeImports[ident.Name]
-	if !exists {
 		return false
 	}
 	for _, f := range ns.Funcs {
-		if f.Name == sel.Field && f.Purity == ir.PurityPure {
+		if f.Name == name && f.Purity == ir.PurityPure {
 			return true
 		}
 	}
@@ -318,27 +327,14 @@ func canFoldBody(f *ir.Func) bool {
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
-	if call.AST == nil {
-		return nil, false
-	}
-	sel, ok := call.AST.Func.(*ast.SelectExpr)
+	name, ns, ok := nativeCallTarget(call, ctx)
 	if !ok {
 		return nil, false
 	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return nil, false
-	}
-	nativeImports := ctx.getNativeImports()
-	ns, exists := nativeImports[ident.Name]
-	if !exists {
-		return nil, false
-	}
-	qualName := ident.Name + "." + sel.Field
 
 	// Try file:// scheme functions.
 	for _, f := range ns.Funcs {
-		if f.Name == sel.Field && f.NativePkg == "file" {
+		if f.Name == name && f.NativePkg == "file" {
 			if len(args) == 1 {
 				if filename, ok := args[0].(string); ok {
 					return evalFileFunc(f.NativeName, ns.ImportPath, filename, ctx)
@@ -347,30 +343,78 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 
-	if ctx.dir != "" {
-		for _, f := range ns.Funcs {
-			if f.Name == sel.Field && f.Purity == ir.PurityPure && f.NativePkg != "file" {
-				result, err := execPureGoFunc(ctx, ns.ImportPath, f.NativeName, args)
-				if err != nil {
-					// A failed compile-time evaluation can only be tolerated when
-					// the target can recompute the value at runtime instead. That
-					// requires the target language to call this scheme natively
-					// (go:// from a go target, js:// from a js target, …). When it
-					// can't — html static/none, kotlin, js+go://, etc. — the const
-					// is unrecoverable, and silently dropping it renders pages with
-					// empty/broken content. Abort the build instead.
-					scheme := ctx.nativeSchemes[ident.Name]
-					if !schemeRunnableAtRuntime(scheme, ctx.language) && ctx.err == nil {
-						ctx.err = fmt.Errorf("%s:// import %q failed to evaluate at build time and the %q target cannot call it at runtime: %w", scheme, qualName, ctx.language, err)
-					} else {
-						slog.Debug("pure func eval failed", "func", qualName, "err", err)
-					}
-					return nil, false
-				}
-				slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
-				return result, true
-			}
+	// The value model's view of a compile-time result. There is one result —
+	// the checked IR — and evalExpr projects it back to a value for the
+	// arithmetic, selection and argument rendering that operate on values.
+	e, ok := evalPureGoCall(call, name, ns, args, ctx)
+	if !ok {
+		return nil, false
+	}
+	return evalExpr(e, ctx)
+}
+
+// foldPureGoCall answers a pure go:// call with the checked IR of its
+// compile-time value. This is the folded form: it is what the checker would
+// have produced for the same value written as a literal, so a struct keeps its
+// Def and a whole float stays a float. evalNativeCall reaches the same result
+// through the value model, for the callers that need a value rather than an
+// expression.
+func foldPureGoCall(call *ir.Call, ctx *evalCtx) (ir.Expr, bool) {
+	if !isConstExpr(call, ctx) {
+		return nil, false
+	}
+	name, ns, ok := nativeCallTarget(call, ctx)
+	if !ok {
+		return nil, false
+	}
+	args := make([]any, 0, len(call.Args))
+	for _, a := range call.Args {
+		v, ok := evalExpr(a.Value, ctx)
+		if !ok {
+			return nil, false
 		}
+		args = append(args, v)
+	}
+	return evalPureGoCall(call, name, ns, args, ctx)
+}
+
+// evalPureGoCall requests the compile-time value of one pure non-file scheme
+// function and returns its checked IR.
+func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any, ctx *evalCtx) (ir.Expr, bool) {
+	if ctx.dir == "" {
+		return nil, false
+	}
+	alias := call.AST.Func.(*ast.SelectExpr).Operand.(*ast.IdentExpr).Name
+	qualName := alias + "." + name
+	for _, f := range ns.Funcs {
+		if f.Name != name || f.Purity != ir.PurityPure || f.NativePkg == "file" {
+			continue
+		}
+		scheme := ctx.nativeSchemes[alias]
+		result, state, err := requestPureGoFunc(ctx, scheme, ns.ImportPath, f, args)
+		switch state {
+		case nativePending:
+			// Recorded for the next round; this pass leaves the call
+			// unfolded and the round loop starts over with the value
+			// in hand.
+			return nil, false
+		case nativeFailed:
+			// A failed compile-time evaluation can only be tolerated when
+			// the target can recompute the value at runtime instead. That
+			// requires the target language to call this scheme natively
+			// (go:// from a go target, js:// from a js target, …). When it
+			// can't — html static/none, kotlin, js+go://, etc. — the const
+			// is unrecoverable, and silently dropping it renders pages with
+			// empty/broken content. Abort the build instead.
+			if !schemeRunnableAtRuntime(scheme, ctx.language) && ctx.err == nil {
+				ctx.err = fmt.Errorf("%s:// import %q failed to evaluate at build time and the %q target cannot call it at runtime: %w", scheme, qualName, ctx.language, err)
+			} else {
+				slog.Debug("pure func eval failed", "func", qualName, "err", err)
+			}
+			return nil, false
+		}
+		slog.Debug("pure func eval", "func", qualName, "result_type", fmt.Sprintf("%T", result))
+		return result, true
 	}
 	return nil, false
 }

@@ -30,6 +30,20 @@ func ClonePackage(pkg *Package) *Package {
 	if pkg == nil {
 		return nil
 	}
+	return newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
+}
+
+// CloneExpr returns a deep, independent copy of one expression, on the same
+// terms as ClonePackage. Its use is a value that several call sites splice into
+// one tree: later phases mutate IR in place, so they must not share a node.
+func CloneExpr(e Expr) Expr {
+	if e == nil {
+		return nil
+	}
+	return newCloner().clone(reflect.ValueOf(e)).Interface().(Expr)
+}
+
+func newCloner() *cloner {
 	c := &cloner{seen: map[uintptr]reflect.Value{}}
 	// Keep the immutable global primitive Type singletons shared: map each
 	// to itself so any pointer to one clones back to the same value.
@@ -37,7 +51,7 @@ func ClonePackage(pkg *Package) *Package {
 		rv := reflect.ValueOf(t)
 		c.seen[rv.Pointer()] = rv
 	}
-	return c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	return c
 }
 
 type cloner struct {

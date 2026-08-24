@@ -1663,7 +1663,17 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// Look up struct type.
 	var sd *ir.StructDef
-	if x.Package != "" {
+	if c.nativeValues {
+		// The name is the foreign type's, which binds nothing here; the
+		// declaration is the one the importer built, reached through the
+		// expected type. Comparing the two names is the only check that the
+		// encoder and the importer read the same Go type.
+		sd = expectedStructDef(c.expected)
+		if sd != nil && x.Name != "" && x.Name != sd.Name {
+			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
+			return &ir.Literal{Type: TypDyn}
+		}
+	} else if x.Package != "" {
 		// Qualified: pkg.Struct{...}
 		if sym, ok := c.scope.Lookup(x.Package); ok {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
@@ -1716,9 +1726,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			continue
 		}
 		var expected *ir.Type
+		name := f.Name
 		field := c.structField(f.NamePos, sd, f.Name)
 		if field != nil {
 			expected = field.Type
+			// Identical to f.Name for SNGL source, where the field was found
+			// by that name; under nativeValues it is the SNGL name of a field
+			// written with its foreign one.
+			name = field.Name
 		}
 		val := c.checkExprExpecting(f.Value, expected)
 		// Validate field exists on struct. An unexported field of another
@@ -1726,7 +1741,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
-		fields = append(fields, ir.FieldInit{Name: f.Name, NamePos: f.NamePos, Value: val})
+		fields = append(fields, ir.FieldInit{Name: name, NamePos: f.NamePos, Value: val})
 	}
 
 	if sd != nil {
@@ -2392,7 +2407,8 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
 					initExpr = adapted
 				} else {
-					c.error(decl.Pos, "cannot initialize %s with %s", typ, initType)
+					want, got := ir.Contrast(typ, initType)
+					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
 				}
 			}
 			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)

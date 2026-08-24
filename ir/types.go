@@ -239,9 +239,12 @@ func (t *Type) IsSingleBaseUnit() bool {
 	return bases == 1
 }
 
-// SameUnitType reports whether two unit types refer to the same UnitDef.
+// SameUnitType reports whether two unit types are the same unit. It asks the
+// same question Equal does, by the same rule: a library unit reached through a
+// second load of the library is still that unit, so unit arithmetic must not
+// depend on which check declared the operands.
 func (t *Type) SameUnitType(other *Type) bool {
-	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && t.Decl == other.Decl
+	return t.Kind == TypeUnit && other.Kind == TypeUnit && t.Decl != nil && other.Decl != nil && sameDecl(t, other)
 }
 
 // nativeIdentity returns the descriptor the importer recorded for a foreign
@@ -256,19 +259,118 @@ func nativeIdentity(sym Symbol) (any, bool) {
 	return d.Origin, true
 }
 
+// declRef is a named declaration's identity: the package that declared it and
+// the name it declared there.
+type declRef struct{ pkg, name string }
+
+// declIdentity returns the declaring package and name of a named declaration,
+// for a declaration that records one. A declaration with no recorded package —
+// an anonymous type, or one belonging to a program rather than to a globally
+// named package — has no identity beyond its pointer and reports false.
+func declIdentity(sym Symbol) (declRef, bool) {
+	var ref declRef
+	switch d := sym.(type) {
+	case *StructDef:
+		ref = declRef{d.Pkg, d.Name}
+	case *EnumDef:
+		ref = declRef{d.Pkg, d.Name}
+	case *UnitDef:
+		ref = declRef{d.Pkg, d.Name}
+	case *Component:
+		ref = declRef{d.Pkg, d.Name}
+	default:
+		return declRef{}, false
+	}
+	if ref.pkg == "" || ref.name == "" {
+		return declRef{}, false
+	}
+	return ref, true
+}
+
 // sameDecl reports whether two named types name the same declaration. The
 // pointer settles it when both came from the same load. They need not have:
 // two files importing one Go package each resolve it, so `SearchEntry` is a
 // different *StructDef on each side though it is one type — and a value of it
-// could not be passed where it was expected. Falling back to the package and
-// name is what makes those two the same type again.
+// could not be passed where it was expected. The same holds for the embedded
+// library, which every check loads its own copy of: one `unit duration`
+// declaration is as many *UnitDefs as there are checkers in the process.
+// Falling back to the declaring package and the name is what makes those the
+// same type again — and keeps a program's own `unit duration` a different one,
+// since a program records no package.
 func sameDecl(t, other *Type) bool {
 	if t.Decl == other.Decl {
 		return true
 	}
-	a, aok := nativeIdentity(t.Decl)
-	b, bok := nativeIdentity(other.Decl)
+	// A foreign declaration is keyed by its importer's descriptor, which is a
+	// stronger key than any string; one that has it is never matched by name.
+	if a, aok := nativeIdentity(t.Decl); aok {
+		b, bok := nativeIdentity(other.Decl)
+		return bok && a == b
+	}
+	if _, bok := nativeIdentity(other.Decl); bok {
+		return false
+	}
+	a, aok := declIdentity(t.Decl)
+	b, bok := declIdentity(other.Decl)
 	return aok && bok && a == b
+}
+
+// typeOrigin describes where a named type was declared, for a diagnostic that
+// has two same-named types to tell apart. It is the declaring package when the
+// declaration records one, and otherwise the source position, which is what a
+// program's own declaration has instead.
+func typeOrigin(t *Type) string {
+	if t == nil || t.Decl == nil {
+		return ""
+	}
+	var pkg string
+	var pos ast.Pos
+	switch d := t.Decl.(type) {
+	case *StructDef:
+		pkg = d.Pkg
+		if d.AST != nil {
+			pos = d.AST.Pos
+		}
+	case *EnumDef:
+		pkg = d.Pkg
+		if d.AST != nil {
+			pos = d.AST.Pos
+		}
+	case *UnitDef:
+		pkg = d.Pkg
+		if d.AST != nil {
+			pos = d.AST.Pos
+		}
+	case *Component:
+		pkg = d.Pkg
+		if d.AST != nil {
+			pos = d.AST.Pos
+		}
+	default:
+		return ""
+	}
+	if pkg != "" {
+		return pkg
+	}
+	return pos.String()
+}
+
+// Contrast renders two types for a diagnostic that reports one where the other
+// was wanted. Two different types can print identically — a program's own
+// `unit duration` and the library's — and "cannot initialize duration with
+// duration" names neither of them, so when the names collide each is qualified
+// by where it was declared. Types that print differently are left alone: the
+// names already say which is which.
+func Contrast(a, b *Type) (string, string) {
+	as, bs := a.String(), b.String()
+	if as != bs || a.Equal(b) {
+		return as, bs
+	}
+	ao, bo := typeOrigin(a), typeOrigin(b)
+	if ao == "" || bo == "" || ao == bo {
+		return as, bs
+	}
+	return as + " (" + ao + ")", bs + " (" + bo + ")"
 }
 
 // Substitute replaces TypeTypeParam nodes with concrete types from bindings.
@@ -502,6 +604,30 @@ func DateTimeType() *Type {
 		return stdlibDateTimeType
 	}
 	return TypDyn
+}
+
+// Registered stdlib duration unit type, populated by the checker from the
+// #[builtin("duration")] declaration for the same reason as the datetime one:
+// a foreign-type importer has a Go time.Duration to map and no scope to
+// resolve a name in.
+var stdlibDurationUnit *Type
+
+// RegisterDurationUnit records the resolved stdlib duration unit type so the
+// DurationType accessor can hand it out. Idempotent.
+func RegisterDurationUnit(duration *Type) {
+	if duration != nil {
+		stdlibDurationUnit = duration
+	}
+}
+
+// DurationType returns the registered stdlib duration unit type, falling back
+// to int when the stdlib has not been loaded yet — a duration's magnitude is
+// carried in its base unit, so int is the lossless fallback rather than dyn.
+func DurationType() *Type {
+	if stdlibDurationUnit != nil {
+		return stdlibDurationUnit
+	}
+	return TypInt
 }
 
 // FuncSig describes a function signature.

@@ -2,7 +2,6 @@ package optimize
 
 import (
 	"fmt"
-	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -61,17 +60,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	result := make([]ir.Stmt, 0, len(items))
 	for i, item := range items {
 		// Create a child context with loop variables bound.
-		childCtx := &evalCtx{
-			platform:      ctx.platform,
-			language:      ctx.language,
-			dir:           ctx.dir,
-			noCacheBust:   ctx.noCacheBust,
-			pkg:           ctx.pkg,
-			nativeImports: ctx.nativeImports,
-			fileAssets:    ctx.fileAssets,
-			values:        make(map[ir.Symbol]any, len(ctx.values)+2),
-		}
-		maps.Copy(childCtx.values, ctx.values)
+		childCtx := ctx.child()
 		// Match the checker's loop-var typing (expr.go): for the two-var form
 		// `for key, value = list` the key is the index (int) and the value is
 		// the element; for the single-var form `for item = list` the sole var
@@ -102,6 +91,9 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 
 		// Propagate file assets back.
 		ctx.fileAssets = childCtx.fileAssets
+		if ctx.err == nil {
+			ctx.err = childCtx.err
+		}
 	}
 
 	// Bind each hoisted list<Window> symbol to the accumulated values.

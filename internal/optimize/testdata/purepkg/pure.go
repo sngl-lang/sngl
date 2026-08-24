@@ -1,5 +1,11 @@
 package purepkg
 
+import (
+	"math"
+	"strings"
+	"time"
+)
+
 // Double returns x * 2.
 //
 //sngl:pure
@@ -32,3 +38,156 @@ func GetItems() []Item {
 //
 //sngl:pure
 func Boom() string { panic("boom") }
+
+// Join concatenates parts. Exercises a compile-time call whose argument is a
+// list, so the generated call site has to render a Go slice literal.
+//
+//sngl:pure
+func Join(parts []string, sep string) string { return strings.Join(parts, sep) }
+
+// Nothing returns nothing: a pure call the folder can only turn into null.
+//
+//sngl:pure
+func Nothing() {}
+
+// Whole returns a float whose value happens to be a whole number. On the JSON
+// results path such a value came back as an int and folded to an int literal;
+// the type says float and must stay float.
+//
+//sngl:pure
+func Whole() float64 { return 3.0 }
+
+// Wait returns a duration. SNGL models one as a unit value with a base of
+// milliseconds, so the fold must keep the unit rather than the bare magnitude.
+//
+//sngl:pure
+func Wait() time.Duration { return 250 * time.Millisecond }
+
+// Meta names its fields the way Go does and SNGL does not: an all-caps
+// initialism lowercases whole (URL, ID) while a leading one in a longer name
+// does not (HTTPStatus). Guessing the SNGL name from the Go name is what the
+// folder used to do; the correspondence is recorded on the imported
+// declaration instead.
+type Meta struct {
+	URL        string
+	ID         int
+	HTTPStatus int
+}
+
+// GetMeta returns a named struct directly, so the fold must produce a struct
+// literal carrying that declaration.
+//
+//sngl:pure
+func GetMeta() Meta { return Meta{URL: "/a", ID: 7, HTTPStatus: 404} }
+
+// Group holds a list of structs, so a value nests a struct inside a list
+// inside a struct.
+type Group struct {
+	Label string
+	Items []Item
+}
+
+// GetGroups returns groups of items.
+//
+//sngl:pure
+func GetGroups() []Group {
+	return []Group{
+		{Label: "first", Items: []Item{{Name: "alpha", Value: 1}}},
+		{Label: "second", Items: nil},
+	}
+}
+
+// Tally has Item's field shape under a different name, so a value of one where
+// the other is expected can only be caught by the type name.
+type Tally struct {
+	Name  string
+	Value int
+}
+
+// GetTally returns a Tally.
+//
+//sngl:pure
+func GetTally() Tally { return Tally{Name: "t", Value: 3} }
+
+// Stamp is embedded in Record. The encoder writes an embedded field under its
+// own Go name rather than promoting its fields, because that is the shape the
+// go:// importer declares.
+type Stamp struct {
+	At  string
+	Seq int
+}
+
+// Record embeds Stamp.
+type Record struct {
+	Stamp
+	Note string
+}
+
+// GetRecord returns a struct with an embedded struct.
+//
+//sngl:pure
+func GetRecord() Record { return Record{Stamp: Stamp{At: "t0", Seq: 1}, Note: "n"} }
+
+// Anything returns structs through an interface slice, so the importer can only
+// type the elements as dyn — there is no declaration for the reader to map
+// field names through.
+//
+//sngl:pure
+func Anything() []any { return []any{Item{Name: "alpha", Value: 1}} }
+
+// Stamp0 returns a fixed time.Time. Paired with the duration case: both are
+// registered on the import side (codegen/scheme/golang/stdtypes.go) and the
+// encode side (pkg/go/consteval/stdtypes.go), and it takes both for the value
+// to survive.
+//
+//sngl:pure
+func Stamp0() time.Time { return time.Date(2026, 8, 24, 9, 30, 0, 0, time.UTC) }
+
+// Bytes returns a byte slice. The importer types []byte as list<int>, so the
+// encoder has to write the elements rather than a base64 string.
+//
+//sngl:pure
+func Bytes() []byte { return []byte("hi") }
+
+// Ratio returns a float32 whose nearest float64 is a different number, so the
+// encoding has to be at the width the value was computed at.
+//
+//sngl:pure
+func Ratio() float32 { return 0.1 }
+
+// Describe takes a struct. The batch program reaches purepkg under an alias, so
+// there is no name in it for a bare `Item{...}` argument.
+//
+//sngl:pure
+func Describe(it Item) string { return it.Name }
+
+// Node points at itself in Cycle's value.
+type Node struct {
+	Name string
+	Next *Node
+}
+
+// Cycle returns a value that contains itself: the encoder must refuse it
+// rather than recurse until the stack goes, which would cost the round its
+// whole results document.
+//
+//sngl:pure
+func Cycle() *Node {
+	n := &Node{Name: "a"}
+	n.Next = n
+	return n
+}
+
+// Huge returns a uint64 too large for the int the importer types it as, so the
+// encoded value cannot check against the declared return type. It is the
+// mismatch a batch must survive: the good values around it are unaffected.
+//
+//sngl:pure
+func Huge() uint64 { return math.MaxUint64 }
+
+// BoomWith panics like Boom, but only once its argument is known — so the call
+// is not const until a nested fold binds it, and the failure it produces
+// belongs to a child fold context.
+//
+//sngl:pure
+func BoomWith(s string) string { panic("boom: " + s) }

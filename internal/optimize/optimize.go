@@ -1,7 +1,9 @@
 package optimize
 
 import (
+	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -41,6 +43,20 @@ type Config struct {
 	// FileAssets is populated by Optimize with file:// assets that need
 	// copying to the output directory.
 	FileAssets []FileAsset
+
+	// nativeErr records that this build's round loop failed as a whole — a
+	// build error, a timeout — rather than for any one call. It is not cached
+	// with the calls: the next target's Config starts clean and retries.
+	nativeErr error
+
+	// nativeSettled records that compile-time evaluation of this build's
+	// go:// calls has already run. Every caller optimizes twice with one
+	// Config (before and after lowering), and by the second call every value
+	// is cached — so the second must not clone a fully expanded IR just to
+	// discover nothing. Should lowering somehow produce a new foldable call,
+	// requestPureGoFunc evaluates it on its own: the same approximation
+	// hasUnresolvedNativeCall is allowed.
+	nativeSettled bool
 }
 
 // FileAsset records a file that must be copied to the output directory.
@@ -60,6 +76,12 @@ type evalCtx struct {
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	nativeSchemes map[string]string           // import alias → scheme ("go", "js", ...)
 	fileAssets    []FileAsset
+	// native collects the pure go:// calls this pass could not answer from
+	// cache. Non-nil only during a probe pass (see evalNativeRounds); a pass
+	// over the real package runs with every needed value already cached.
+	native *nativeEval
+	// nativeErr is Config.nativeErr: the batch failure this build already hit.
+	nativeErr     error
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
 	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
@@ -70,6 +92,35 @@ type evalCtx struct {
 	err error
 }
 
+// child returns a context for folding a nested scope — a for-loop iteration,
+// an inlined component body. It copies the parent whole and then replaces only
+// the state a nested fold must not share: the value bindings it is about to add
+// to, and the component recursion guard it increments.
+//
+// Copy the parent whole, deliberately: a field added to evalCtx is then carried
+// into every nested fold with no edit here or at any call site. The one that
+// was not — the compile-time request collector — cost the docs site every
+// highlighted code block, with no error to show for it, because a nested fold
+// that cannot record a request just leaves the value out.
+func (ctx *evalCtx) child() *evalCtx {
+	c := *ctx
+	c.values = make(map[ir.Symbol]any, len(ctx.values)+2)
+	maps.Copy(c.values, ctx.values)
+	c.inlining = make(map[*ir.Component]int, len(ctx.inlining)+1)
+	maps.Copy(c.inlining, ctx.inlining)
+	return &c
+}
+
+// childInPkg returns a child that folds a body belonging to another package.
+// Native-call resolution has to consult that package's imports, so the
+// memoized lookup maps are dropped for it to rebuild.
+func (ctx *evalCtx) childInPkg(pkg *ir.Package) *evalCtx {
+	c := ctx.child()
+	c.pkg = pkg
+	c.nativeImports, c.nativeSchemes = nil, nil
+	return c
+}
+
 // optimizerRun threads cross-package state across a single Optimize call so
 // that imports are folded once even when reached via diamond import paths.
 type optimizerRun struct {
@@ -77,7 +128,14 @@ type optimizerRun struct {
 	done       map[*ir.Package]bool
 	fileAssets []FileAsset
 	err        error // first fatal eval error across root + imports
+	native     *nativeEval
 }
+
+// maxEvalRounds bounds the round loop. Every round either caches a value for
+// each pending call or caches the reason it has none, so the loop terminates
+// on its own; the bound is here so a bug in that invariant fails with a
+// message instead of spinning.
+const maxEvalRounds = 10
 
 // Optimize mutates pkg in place: evaluates constant expressions, inlines pure
 // functions, eliminates dead branches and platform mismatches, and removes
@@ -85,16 +143,110 @@ type optimizerRun struct {
 // (Phases 1+2 only) so that for-loops inside imported components can unroll
 // against their own package consts. Phases 3+4 run only on the root package.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	// A pure go:// call can only fold once a subprocess has computed it, and
+	// building that subprocess is worth doing once for the whole batch. Learn
+	// the batch from throwaway passes over a clone, then fold pkg itself with
+	// every value already in hand.
+	if !cfg.nativeSettled && hasPureNativeFuncs(pkg, cfg) && hasUnresolvedNativeCall(pkg, cfg) {
+		if err := evalNativeRounds(pkg, cfg); err != nil {
+			return err
+		}
+	}
+	cfg.nativeSettled = true
+	return optimizeIR(pkg, cfg, nil)
+}
+
+// evalNativeRounds discovers and evaluates every pure go:// call reachable
+// from pkg. Each round folds a fresh clone — folding is destructive, and a
+// pass that left a call unfolded cannot be resumed — and hands the calls it
+// could not answer to one generated program.
+func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
+	probe := *cfg
+	probe.FileAssets = nil // a discarded pass must not report assets
+
+	var pending []*nativeRequest
+	for range maxEvalRounds {
+		ne := &nativeEval{}
+		cloneStart := time.Now()
+		clone := ir.ClonePackage(pkg)
+		slog.Debug("consteval probe clone", "duration", time.Since(cloneStart))
+		if err := optimizeIR(clone, &probe, ne); err != nil {
+			// Not final: the same fold runs again on the real package once the
+			// values are in, and reports it then if it still fails.
+			slog.Debug("consteval probe", "err", err)
+		}
+		if len(ne.order) == 0 {
+			return nil
+		}
+		pending = ne.order
+		slog.Info("consteval round", "calls", len(pending))
+		if err := runNativeRequests(cfg.Dir, pending); err != nil {
+			// Nothing is cached for these calls, so retrying the identical
+			// batch would only repeat the failure. The fold reports it per
+			// call site, which is where the target's ability to call the
+			// scheme at runtime decides whether it is fatal.
+			cfg.nativeErr = err
+			return nil
+		}
+	}
+
+	names := make([]string, 0, len(pending))
+	for _, r := range pending {
+		names = append(names, r.nativeType)
+	}
+	return fmt.Errorf("compile-time evaluation did not settle after %d rounds; still pending: %s",
+		maxEvalRounds, strings.Join(names, ", "))
+}
+
+// hasPureNativeFuncs reports whether the package graph imports any pure
+// function a subprocess could evaluate. It is the cheap half of the gate —
+// import lists only, no IR walk — and hasUnresolvedNativeCall decides whether
+// any such function is actually still called.
+func hasPureNativeFuncs(pkg *ir.Package, cfg *Config) bool {
+	if cfg.Dir == "" {
+		return false
+	}
+	seen := map[*ir.Package]bool{}
+	var walk func(*ir.Package) bool
+	walk = func(p *ir.Package) bool {
+		if p == nil || seen[p] {
+			return false
+		}
+		seen[p] = true
+		for _, imp := range p.Imports {
+			if imp.Native != nil {
+				for _, f := range imp.Native.Funcs {
+					if f.Purity == ir.PurityPure && f.NativePkg != "file" && f.Unusable == "" {
+						return true
+					}
+				}
+			}
+			if walk(imp.Pkg) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(pkg)
+}
+
+// optimizeIR is Optimize's single pass. native is non-nil only for a probe
+// pass, which records the go:// calls it could not fold instead of folding
+// them.
+func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	run := &optimizerRun{
-		cfg:  cfg,
-		done: map[*ir.Package]bool{},
+		cfg:    cfg,
+		done:   map[*ir.Package]bool{},
+		native: native,
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
 	rootCtx := run.foldPkg(pkg)
-	if run.err != nil {
+	if run.err != nil && native == nil {
 		return run.err
 	}
+	// A probe carries on past a fold error: it is discarded either way, and
+	// stopping here would hide the calls phase 3 goes on to discover.
 	if rootCtx == nil {
 		return nil
 	}
@@ -104,10 +256,15 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	expandForWindows(pkg, rootCtx)
 	slog.Debug("optimize: expand", "duration", time.Since(start))
 
-	// Phase 4: Dead code elimination (root only).
-	start = time.Now()
-	shakeUnused(pkg)
-	slog.Debug("optimize: shake", "duration", time.Since(start))
+	// Phase 4: Dead code elimination (root only). A probe pass is discarded,
+	// and pruning unreferenced declarations discovers nothing, so it is skipped
+	// there. Phase 3 is not: expanding a for-loop binds the loop variable, and
+	// that is what makes a native call's argument const in the first place.
+	if native == nil {
+		start = time.Now()
+		shakeUnused(pkg)
+		slog.Debug("optimize: shake", "duration", time.Since(start))
+	}
 
 	// Accumulate file assets across multiple Optimize calls on the same
 	// Config. The lowering pipeline runs Optimize twice (pre/post lower);
@@ -127,7 +284,14 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 		}
 	}
 	cfg.FileAssets = merged
-	return nil
+
+	// Phase 3 folds too, so it can be the first phase to hit a fatal
+	// evaluation error. A probe's own errors are not reported: the same fold
+	// runs again on the real package.
+	if native != nil {
+		return nil
+	}
+	return rootCtx.err
 }
 
 // foldPkg runs Phases 1+2 on pkg and recursively on its imports. Returns the
@@ -158,6 +322,8 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
+		native:        r.native,
+		nativeErr:     r.cfg.nativeErr,
 		platform:      r.cfg.Platform,
 		language:      r.cfg.Language,
 		dir:           r.cfg.Dir,

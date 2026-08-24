@@ -11,8 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
@@ -157,13 +155,8 @@ func proxyToGoTool() {
 func main() {
 	proxyToGoTool()
 
-	// The optimizer keeps a resident child process for compile-time go://
-	// evaluation; without this its binary outlives the compile.
-	defer optimize.CloseEvaluators()
-
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		optimize.CloseEvaluators()
 		os.Exit(1)
 	}
 }

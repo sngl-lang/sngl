@@ -173,6 +173,7 @@ type UnitDef struct {
 	Name        string
 	Suffixes    []*UnitSuffix
 	IsMultiline bool
+	Builtin     BuiltinKind // compiler built-in marker; BuiltinNone otherwise
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.

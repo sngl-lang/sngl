@@ -1,0 +1,17 @@
+// A program's own `duration` is not the library's. Both declarations exist in
+// one build here -- the annotation names the program's, and `3ms` names the
+// library's, since `ms` is a suffix only the library's declares -- so this
+// asserts that generalising type identity to (package, name) did not make a
+// shadowing declaration equal to the one it shadows. The diagnostic has to say
+// which is which: "cannot initialize duration with duration" named neither.
+import . "sngl://std"
+
+unit duration {
+    tick
+}
+
+var shadowed duration = 3ms // ERROR(check) "with duration (sngl://std)"
+
+component main {
+    text(value="{shadowed.string()}")
+}
