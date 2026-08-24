@@ -66,12 +66,12 @@ In Go the marker is a `//sngl:pure` line in the doc comment. In JavaScript and
 TypeScript it is a tag in the declaration's doc comment, and five spellings are
 accepted:
 
-| Marker | Origin | Promises |
-| --- | --- | --- |
-| `@sngl-pure` | SNGL | deterministic |
-| `@__NO_SIDE_EFFECTS__` (or `#__NO_SIDE_EFFECTS__`) | Rollup, esbuild | side-effect-free |
-| `@nosideeffects` | Closure Compiler | side-effect-free |
-| `@__PURE__` (or `#__PURE__`) | Rollup, esbuild | side-effect-free |
+| Marker                                             | Origin           | Promises         |
+|----------------------------------------------------|------------------|------------------|
+| `@sngl-pure`                                       | SNGL             | deterministic    |
+| `@__NO_SIDE_EFFECTS__` (or `#__NO_SIDE_EFFECTS__`) | Rollup, esbuild  | side-effect-free |
+| `@nosideeffects`                                   | Closure Compiler | side-effect-free |
+| `@__PURE__` (or `#__PURE__`)                       | Rollup, esbuild  | side-effect-free |
 
 ```ts
 /** @sngl-pure */
