@@ -29,12 +29,20 @@ grep 'var l = "warn"' out/index.html
 ! grep 'pickColor' out/index.html
 ! grep 'pickLevel' out/index.html
 
+# A negative member crosses as a unary over a literal, not a literal, so the
+# magnitude has to be negated before it is matched. Matching it as it stands
+# would select Plus, which holds 1 — and only the unary operator having no
+# meaning over an enum would stop the build, after the wrong member was picked.
+grep 'var s = -1' out/index.html
+! grep 'var s = 1' out/index.html
+
 -- app.sngl --
 import . "sngl://std"
 import lib "js://./lib"
 
 const c = lib.pickColor()
 const l = lib.pickLevel()
+const s = lib.pickCode()
 
 component main {
     if c == lib.Color.Green {
@@ -42,6 +50,9 @@ component main {
     }
     if l == lib.Level.Warn {
         text(value="warn wins")
+    }
+    if s == lib.Code.Minus {
+        text(value="minus wins")
     }
 }
 -- lib/index.ts --
@@ -56,6 +67,11 @@ export enum Level {
     Warn = "warn",
 }
 
+export enum Code {
+    Minus = -1,
+    Plus = 1,
+}
+
 /** @sngl-pure */
 export function pickColor(): Color {
     return Color.Green;
@@ -64,4 +80,9 @@ export function pickColor(): Color {
 /** @sngl-pure */
 export function pickLevel(): Level {
     return Level.Warn;
+}
+
+/** @sngl-pure */
+export function pickCode(): Code {
+    return Code.Minus;
 }

@@ -19,21 +19,35 @@ grep 'folded-closure' out/index.html
 grep 'folded-pure-at' out/index.html
 grep 'folded-pure-hash' out/index.html
 
-# Nothing was left for the browser to compute.
-! grep 'marker-' out/index.html
+# Nothing was left for the browser to compute. One unread marker ships the
+# whole module — the bundler has no way to send half of it — so either of
+# these catches any of the seven going unread.
+! grep 'function ours' out/index.html
+! grep 'function pureHash' out/index.html
 
 -- app.sngl --
 import . "sngl://std"
 import lib "js://./lib"
 
 component main {
-    text(value=lib.ours())
-    text(value=lib.lineComment())
-    text(value=lib.rollupAt())
-    text(value=lib.rollupHash())
-    text(value=lib.closure())
-    text(value=lib.pureAt())
-    text(value=lib.pureHash())
+    // Bound to state rather than used inline: an unfolded call is shipped as
+    // the module's own function, which is what the negative assertions look
+    // for. An inline use of one is dropped instead, and asserts nothing.
+    var a = lib.ours()
+    var b = lib.lineComment()
+    var c = lib.rollupAt()
+    var d = lib.rollupHash()
+    var e = lib.closure()
+    var f = lib.pureAt()
+    var g = lib.pureHash()
+
+    text(value=a)
+    text(value=b)
+    text(value=c)
+    text(value=d)
+    text(value=e)
+    text(value=f)
+    text(value=g)
 }
 -- lib/index.ts --
 /** @sngl-pure */

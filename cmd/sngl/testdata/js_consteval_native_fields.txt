@@ -17,7 +17,7 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 grep '30' out/index.html
-grep '\.X' out/index.html
+grep 'textContent = String\(state\.p\.X\)' out/index.html
 ! grep '\.x\b' out/index.html
 grep 'state\.p\.X = state\.p\.X' out/index.html
 

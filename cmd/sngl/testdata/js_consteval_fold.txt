@@ -10,17 +10,40 @@ exists out/index.html
 grep 'HELLO WORLD' out/index.html
 ! grep 'toUpperCase' out/index.html
 
+# A value crosses as SNGL source, and SNGL has no exponent syntax — `1e30`
+# lexes as a unit literal — so a number outside the range JS prints without an
+# exponent has its point moved by hand on the way out. Both ends of that range
+# are here: written the way String() writes them, neither would parse, and the
+# build would fail rather than fold. What the page shows is the number
+# formatted for display again, which is not what is being asserted.
+grep '>1e\+30<' out/index.html
+grep '>1e-07<' out/index.html
+
 -- app.sngl --
 import . "sngl://std"
 import lib "js://./lib"
 
 const greeting = lib.shout("hello world")
+const big = lib.big()
+const small = lib.small()
 
 component main {
     text(value=greeting)
+    text(value=string(big))
+    text(value=string(small))
 }
 -- lib/index.ts --
 /** @sngl-pure */
 export function shout(s: string): string {
     return s.toUpperCase();
+}
+
+/** @sngl-pure */
+export function big(): number {
+    return 1e30;
+}
+
+/** @sngl-pure */
+export function small(): number {
+    return 1e-7;
 }
