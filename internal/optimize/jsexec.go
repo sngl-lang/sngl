@@ -108,11 +108,7 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	want := make(map[string]*ir.Type, len(reqs))
-	for _, r := range reqs {
-		want[r.key] = r.ret
-	}
-	return parseConstResults(resultPath, results, want)
+	return parseConstResults(resultPath, results, wantTypes(reqs))
 }
 
 func runJSConstEval(node, dir, mainPath, resultPath string) error {

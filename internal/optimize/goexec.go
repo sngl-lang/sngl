@@ -58,6 +58,17 @@ type nativeRequest struct {
 	ret *ir.Type
 }
 
+// wantTypes keys the declared return types the way the results document keys
+// its consts, which is the form parseConstResults checks values against. Every
+// runner builds it the same way from its own batch.
+func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
+	want := make(map[string]*ir.Type, len(reqs))
+	for _, r := range reqs {
+		want[r.key] = r.ret
+	}
+	return want
+}
+
 // nativeEval collects the requests one fold pass discovered.
 type nativeEval struct {
 	byKey map[string]*nativeRequest
@@ -371,12 +382,8 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[s
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	want := make(map[string]*ir.Type, len(reqs))
-	for _, r := range reqs {
-		want[r.key] = r.ret
-	}
 	parseStart := time.Now()
-	values, bad, err := parseConstResults(resultPath, results, want)
+	values, bad, err := parseConstResults(resultPath, results, wantTypes(reqs))
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
 	return values, bad, err
 }
