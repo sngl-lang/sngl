@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -42,9 +43,24 @@ type TimerInfo struct {
 	LocalRefs map[string]bool
 }
 
+// AnalyzeOpts carries analysis the caller has already computed for this
+// package and does not want repeated. A platform that analyzes the same
+// package once per output file — html does, once per window — fills it from
+// the first pass. Whatever it supplies is copied, so the analysis codegen then
+// mutates is still the caller's alone.
+type AnalyzeOpts struct {
+	// UsedComponents is the result of the visual-tree scan. Nil means scan.
+	UsedComponents map[string]bool
+}
+
 // AnalyzeCommon extracts CommonAnalysis from a Package. Platforms call this
 // first, then add platform-specific analysis on top.
 func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
+	return AnalyzeCommonFor(pkg, AnalyzeOpts{})
+}
+
+// AnalyzeCommonFor is AnalyzeCommon with the parts named in o taken as given.
+func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	a := &CommonAnalysis{
 		Pkg:            pkg,
 		ModelFields:    make(map[string]bool),
@@ -137,8 +153,12 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 	}
 
 	// Walk visual tree to collect used primitive component names.
-	for _, comp := range pkg.Components {
-		collectUsedIRStmts(comp.Body, a.UsedComponents)
+	if o.UsedComponents != nil {
+		maps.Copy(a.UsedComponents, o.UsedComponents)
+	} else {
+		for _, comp := range pkg.Components {
+			collectUsedIRStmts(comp.Body, a.UsedComponents)
+		}
 	}
 
 	// Timers: package-level plus the main component's. MutationModel platforms

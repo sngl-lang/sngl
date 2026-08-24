@@ -5,6 +5,7 @@ import (
 	goast "go/ast"
 	"go/types"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -17,9 +18,22 @@ func init() {
 
 // GoImporter resolves go:// scheme imports by loading Go packages
 // and extracting exported types, functions, and variables.
-type GoImporter struct{}
+//
+// The registered importer has no cache: it is a process-wide singleton, and a
+// Go package loaded under one compilation must not answer the next. A caller
+// with a compilation to scope to takes a session (see NewSession).
+type GoImporter struct {
+	loaded *loadedPkgs
+}
 
 func (g *GoImporter) Scheme() string { return "go" }
+
+// NewSession returns an importer that loads each Go package once. Sound only
+// because a compilation is a single snapshot of the tree — which is what the
+// session's lifetime asserts.
+func (g *GoImporter) NewSession() codegen.SchemeImporter {
+	return &GoImporter{loaded: &loadedPkgs{pkgs: map[goPkgKey]*packages.Package{}}}
+}
 
 // goTypeID identifies a Go type by the package that declares it. Two files
 // that each resolve the package get their own *ir.StructDef; this is what says
@@ -42,21 +56,15 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 // the struct declarations it built and the loaded package, which is what a
 // caller mapping one type of that package needs (see typemap.go) and what the
 // declarations it returns are meaningless without.
+//
+// The loader itself goes through the session, so a caller with no session of
+// its own — a bare importer, as typemap.go builds — loads without caching.
 func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*ir.StructDef, *types.Package, error) {
-	cfg := &packages.Config{
-		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
-		Dir:  dir,
-	}
-	pkgs, err := packages.Load(cfg, userPath)
+	loaded, err := g.loaded.load(userPath, dir)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
+		return nil, nil, nil, err
 	}
-	if len(pkgs) == 0 {
-		return nil, nil, nil, fmt.Errorf("no Go package found for %q", userPath)
-	}
-	if len(pkgs[0].Errors) > 0 {
-		return nil, nil, nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
-	}
+	pkgs := []*packages.Package{loaded}
 
 	// Canonical import path — the loader resolves "./foo" or module-relative
 	// inputs to the full path. Field/return-type resolution compares against
@@ -175,6 +183,58 @@ func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*i
 	}
 
 	return ni, structs, pkgs[0].Types, nil
+}
+
+// loadedPkgs holds the Go packages one session has loaded. A compilation
+// resolves the same go:// import once per file that names it, and each load is
+// a `go list` plus a type check. What it hands back is immutable go/types
+// data; the IR declarations built from it are still fresh per call, because
+// the checker binds them into per-file symbol tables.
+//
+// Only successes are kept. A failed load says nothing durable — the file may
+// be mid-edit — and a compilation that hits one is aborting anyway, so
+// repeating it costs nothing worth having.
+type loadedPkgs struct {
+	mu   sync.Mutex
+	pkgs map[goPkgKey]*packages.Package
+}
+
+type goPkgKey struct{ dir, path string }
+
+func (l *loadedPkgs) load(userPath, dir string) (*packages.Package, error) {
+	if l == nil {
+		return loadGoPackage(userPath, dir)
+	}
+	key := goPkgKey{dir: dir, path: userPath}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if got, ok := l.pkgs[key]; ok {
+		return got, nil
+	}
+	pkg, err := loadGoPackage(userPath, dir)
+	if err != nil {
+		return nil, err
+	}
+	l.pkgs[key] = pkg
+	return pkg, nil
+}
+
+func loadGoPackage(userPath, dir string) (*packages.Package, error) {
+	cfg := &packages.Config{
+		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
+		Dir:  dir,
+	}
+	pkgs, err := packages.Load(cfg, userPath)
+	if err != nil {
+		return nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
+	}
+	if len(pkgs) == 0 {
+		return nil, fmt.Errorf("no Go package found for %q", userPath)
+	}
+	if len(pkgs[0].Errors) > 0 {
+		return nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
+	}
+	return pkgs[0], nil
 }
 
 // populateStructFields fills sd.Fields from the Go struct type. Fields whose

@@ -21,6 +21,7 @@ func newMinimalHTMLGen(t *testing.T) *htmlGen {
 		ctx:         codegen.NewExprCtx(nil),
 		idToNode:    map[string]*ir.NodeInst{},
 		loweredRefs: map[string]bool{},
+		shared:      newWindowShared("", nil),
 	}
 }
 

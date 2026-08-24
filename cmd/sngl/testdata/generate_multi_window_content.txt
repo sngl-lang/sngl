@@ -1,0 +1,130 @@
+# Every window is generated from its own body and its own script. The html
+# platform caches what does not vary by window (the analysis, the __n* id map,
+# the esbuild bundle) across the whole compilation, so a page taking another
+# page's cached work is exactly the failure this guards against: each page must
+# carry its own text and its own updater, and none of the others'.
+
+sngl generate --lang=none --platform=html --out=out site.sngl
+exists out/index.html
+exists out/beta.html
+exists out/gamma.html
+exists out/delta.html
+
+# The first window generated fills the caches the rest read.
+grep 'alpha body' out/index.html
+grep 'alpha shows' out/index.html
+! grep 'beta body' out/index.html
+! grep 'beta shows' out/index.html
+! grep 'gamma body' out/index.html
+! grep 'gamma shows' out/index.html
+
+grep 'beta body' out/beta.html
+grep 'beta shows' out/beta.html
+! grep 'alpha body' out/beta.html
+! grep 'alpha shows' out/beta.html
+! grep 'gamma body' out/beta.html
+! grep 'gamma shows' out/beta.html
+
+grep 'gamma body' out/gamma.html
+grep 'gamma shows' out/gamma.html
+! grep 'alpha body' out/gamma.html
+! grep 'alpha shows' out/gamma.html
+! grep 'beta body' out/gamma.html
+! grep 'beta shows' out/gamma.html
+
+# delta declares no state and no handler, so its page is the one that shows
+# what a window inherited that is not its own: the analysis a window mutates
+# during codegen (which helper functions its script needs, which CSS its
+# components registered) is per-window, and only the package-derived half is
+# shared. A leak here would give delta another window's runtime.
+grep 'delta body' out/delta.html
+! grep 'alpha body' out/delta.html
+! grep 'beta body' out/delta.html
+! grep 'gamma body' out/delta.html
+! grep 'function String' out/delta.html
+! grep 'addEventListener' out/delta.html
+
+# Which window is generated first decides which one fills the caches, and must
+# decide nothing else. Declaring the same three in the opposite order puts
+# gamma first; every page must still carry its own content and none other's.
+# (The pages are not byte-identical across the two orders: the __nN ids lower
+# assigns follow source order. What must not change is whose text lands where.)
+sngl generate --lang=none --platform=html --out=rev reversed.sngl
+
+grep 'alpha body' rev/index.html
+grep 'alpha shows' rev/index.html
+! grep 'beta body' rev/index.html
+! grep 'gamma body' rev/index.html
+
+grep 'beta body' rev/beta.html
+grep 'beta shows' rev/beta.html
+! grep 'alpha body' rev/beta.html
+! grep 'gamma body' rev/beta.html
+
+grep 'gamma body' rev/gamma.html
+grep 'gamma shows' rev/gamma.html
+! grep 'alpha body' rev/gamma.html
+! grep 'beta body' rev/gamma.html
+
+grep 'delta body' rev/delta.html
+! grep 'function String' rev/delta.html
+! grep 'addEventListener' rev/delta.html
+
+-- site.sngl --
+import . "sngl://std"
+
+output { none { html } }
+
+component main {
+    var alphaCount = 0
+    var betaCount = 0
+    var gammaCount = 0
+
+    window #alpha(title="Alpha", href="/") {
+        text(value="alpha body")
+        button(text="press alpha", @click { alphaCount += 1 })
+        text(value="alpha shows {alphaCount}")
+    }
+    window #beta(title="Beta", href="/beta.html") {
+        text(value="beta body")
+        button(text="press beta", @click { betaCount += 1 })
+        text(value="beta shows {betaCount}")
+    }
+    window #gamma(title="Gamma", href="/gamma.html") {
+        text(value="gamma body")
+        button(text="press gamma", @click { gammaCount += 1 })
+        text(value="gamma shows {gammaCount}")
+    }
+    window #delta(title="Delta", href="/delta.html") {
+        text(value="delta body")
+    }
+}
+-- reversed.sngl --
+import . "sngl://std"
+
+output { none { html } }
+
+component main {
+    var alphaCount = 0
+    var betaCount = 0
+    var gammaCount = 0
+
+    window #gamma(title="Gamma", href="/gamma.html") {
+        text(value="gamma body")
+        button(text="press gamma", @click { gammaCount += 1 })
+        text(value="gamma shows {gammaCount}")
+    }
+    window #beta(title="Beta", href="/beta.html") {
+        text(value="beta body")
+        button(text="press beta", @click { betaCount += 1 })
+        text(value="beta shows {betaCount}")
+    }
+    window #alpha(title="Alpha", href="/") {
+        text(value="alpha body")
+        button(text="press alpha", @click { alphaCount += 1 })
+        text(value="alpha shows {alphaCount}")
+    }
+    window #delta(title="Delta", href="/delta.html") {
+        text(value="delta body")
+    }
+}
