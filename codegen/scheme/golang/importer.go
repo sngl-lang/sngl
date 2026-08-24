@@ -34,20 +34,28 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	if userPath == "" {
 		return nil, fmt.Errorf("go scheme requires a package path (e.g. go://github.com/foo/bar)")
 	}
+	ni, _, _, err := g.load(userPath, dir)
+	return ni, err
+}
 
+// load is Resolve over an already-unwrapped package path. It also hands back
+// the struct declarations it built and the loaded package, which is what a
+// caller mapping one type of that package needs (see typemap.go) and what the
+// declarations it returns are meaningless without.
+func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*ir.StructDef, *types.Package, error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
 		Dir:  dir,
 	}
 	pkgs, err := packages.Load(cfg, userPath)
 	if err != nil {
-		return nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
+		return nil, nil, nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
 	}
 	if len(pkgs) == 0 {
-		return nil, fmt.Errorf("no Go package found for %q", userPath)
+		return nil, nil, nil, fmt.Errorf("no Go package found for %q", userPath)
 	}
 	if len(pkgs[0].Errors) > 0 {
-		return nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
+		return nil, nil, nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
 	}
 
 	// Canonical import path — the loader resolves "./foo" or module-relative
@@ -166,7 +174,7 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		}
 	}
 
-	return ni, nil
+	return ni, structs, pkgs[0].Types, nil
 }
 
 // populateStructFields fills sd.Fields from the Go struct type. Fields whose
