@@ -5,6 +5,7 @@ import (
 	goast "go/ast"
 	"go/types"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -35,20 +36,11 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		return nil, fmt.Errorf("go scheme requires a package path (e.g. go://github.com/foo/bar)")
 	}
 
-	cfg := &packages.Config{
-		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
-		Dir:  dir,
-	}
-	pkgs, err := packages.Load(cfg, userPath)
+	loaded, err := loadGoPackage(userPath, dir)
 	if err != nil {
-		return nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
+		return nil, err
 	}
-	if len(pkgs) == 0 {
-		return nil, fmt.Errorf("no Go package found for %q", userPath)
-	}
-	if len(pkgs[0].Errors) > 0 {
-		return nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
-	}
+	pkgs := []*packages.Package{loaded}
 
 	// Canonical import path — the loader resolves "./foo" or module-relative
 	// inputs to the full path. Field/return-type resolution compares against
@@ -167,6 +159,55 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	}
 
 	return ni, nil
+}
+
+// loadGoPackage runs the Go loader for one package path, memoized for the
+// life of the process. A compile resolves the same go:// import once per file
+// that names it — the docs site does so ten times — and each load is a `go
+// list` plus a type check, so the memo is worth more than every other saving
+// in the check phase combined. What it returns is immutable go/types data;
+// the IR declarations built from it are still fresh per call, because the
+// checker binds them into per-file symbol tables.
+var (
+	goPkgMu    sync.Mutex
+	goPkgCache = map[goPkgKey]goPkgResult{}
+)
+
+type goPkgKey struct{ dir, path string }
+
+type goPkgResult struct {
+	pkg *packages.Package
+	err error
+}
+
+func loadGoPackage(userPath, dir string) (*packages.Package, error) {
+	key := goPkgKey{dir: dir, path: userPath}
+	goPkgMu.Lock()
+	defer goPkgMu.Unlock()
+	if got, ok := goPkgCache[key]; ok {
+		return got.pkg, got.err
+	}
+	pkg, err := loadGoPackageUncached(userPath, dir)
+	goPkgCache[key] = goPkgResult{pkg: pkg, err: err}
+	return pkg, err
+}
+
+func loadGoPackageUncached(userPath, dir string) (*packages.Package, error) {
+	cfg := &packages.Config{
+		Mode: packages.NeedTypes | packages.NeedName | packages.NeedSyntax,
+		Dir:  dir,
+	}
+	pkgs, err := packages.Load(cfg, userPath)
+	if err != nil {
+		return nil, fmt.Errorf("loading Go package %q: %w", userPath, err)
+	}
+	if len(pkgs) == 0 {
+		return nil, fmt.Errorf("no Go package found for %q", userPath)
+	}
+	if len(pkgs[0].Errors) > 0 {
+		return nil, fmt.Errorf("loading %q: %s", userPath, pkgs[0].Errors[0].Msg)
+	}
+	return pkgs[0], nil
 }
 
 // populateStructFields fills sd.Fields from the Go struct type. Fields whose
