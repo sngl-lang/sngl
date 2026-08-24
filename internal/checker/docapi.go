@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"slices"
 	"strings"
 	"sync"
 
@@ -354,8 +355,8 @@ func PackageDoc(doc *ast.Document) string {
 func DeclDoc(stmts []ast.Stmt, declLine int) string {
 	var lines []string
 	nextLine := declLine
-	for i := len(stmts) - 1; i >= 0; i-- {
-		c, ok := stmts[i].(*ast.Comment)
+	for _, stmt := range slices.Backward(stmts) {
+		c, ok := stmt.(*ast.Comment)
 		if !ok {
 			break
 		}
