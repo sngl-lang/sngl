@@ -48,10 +48,21 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	if userPath == "" {
 		return nil, fmt.Errorf("go scheme requires a package path (e.g. go://github.com/foo/bar)")
 	}
+	ni, _, _, err := g.load(userPath, dir)
+	return ni, err
+}
 
+// load is Resolve over an already-unwrapped package path. It also hands back
+// the struct declarations it built and the loaded package, which is what a
+// caller mapping one type of that package needs (see typemap.go) and what the
+// declarations it returns are meaningless without.
+//
+// The loader itself goes through the session, so a caller with no session of
+// its own — a bare importer, as typemap.go builds — loads without caching.
+func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*ir.StructDef, *types.Package, error) {
 	loaded, err := g.loaded.load(userPath, dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	pkgs := []*packages.Package{loaded}
 
@@ -171,7 +182,7 @@ func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		}
 	}
 
-	return ni, nil
+	return ni, structs, pkgs[0].Types, nil
 }
 
 // loadedPkgs holds the Go packages one session has loaded. A compilation

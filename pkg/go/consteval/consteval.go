@@ -40,10 +40,17 @@ func Register[T any](fn func(T) ([]byte, error)) {
 	custom[reflect.TypeFor[T]()] = func(v any) ([]byte, error) { return fn(v.(T)) }
 }
 
+// Encode returns v as SNGL source, honoring a Marshaler implementation and any
+// registered encoder. It is the whole of what the compiler asks of this
+// package for one value; Emit is that plus the batching Flush writes out.
+func Encode(v any) ([]byte, error) {
+	return appendValue(nil, reflect.ValueOf(v), 0)
+}
+
 // Emit encodes v and records it under key. An encoding error is recorded as a
 // failure, so one unrepresentable value costs only its own key.
 func Emit(key string, v any) {
-	b, err := appendValue(nil, reflect.ValueOf(v), 0)
+	b, err := Encode(v)
 	if err != nil {
 		Fail(key, err)
 		return
