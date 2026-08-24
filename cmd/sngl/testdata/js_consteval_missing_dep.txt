@@ -1,0 +1,32 @@
+# A dependency that is not installed stops the build with its name in the
+# message. The importer reads types and never follows an import for code, so
+# nothing before this point has any reason to look for the package; the bundler
+# is the first phase that needs the module to exist, and it says which one it
+# could not find.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+! sngl generate --lang=none --platform=html --out=out app.sngl
+stderr 'left-pad'
+stderr 'lib/index.ts'
+
+# Diagnosed before anything runs, so the message is about the missing package
+# rather than about node's exit code.
+! stderr 'exit status'
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const padded = lib.pad("x")
+
+component main {
+    text(value=padded)
+}
+-- lib/index.ts --
+import leftPad from "left-pad";
+
+/** @sngl-pure */
+export function pad(s: string): string {
+    return leftPad(s, 4);
+}

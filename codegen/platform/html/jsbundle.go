@@ -10,6 +10,7 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
+	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
@@ -50,18 +51,14 @@ func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, er
 		// process cwd — otherwise esbuild emits `// ../../..×N/sngl/sngl-entry.js`
 		// where N is the build directory's absolute depth, making output
 		// non-reproducible across machines (and breaking golden tests in CI).
-		AbsWorkingDir: js.VirtualRoot,
-		Bundle:        true,
-		Write:         false,
-		Format:        api.FormatIIFE,
-		Platform:      api.PlatformBrowser,
-		Target:        api.ES2020,
-		Sourcemap:     sourcemapOpt,
-		Loader: map[string]api.Loader{
-			".ts":   api.LoaderTS,
-			".tsx":  api.LoaderTSX,
-			".json": api.LoaderJSON,
-		},
+		AbsWorkingDir:     js.VirtualRoot,
+		Bundle:            true,
+		Write:             false,
+		Format:            api.FormatIIFE,
+		Platform:          api.PlatformBrowser,
+		Target:            api.ES2020,
+		Sourcemap:         sourcemapOpt,
+		Loader:            jsbundle.Loaders(),
 		MinifyWhitespace:  minify,
 		MinifyIdentifiers: minify,
 		MinifySyntax:      minify,
@@ -71,7 +68,7 @@ func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, er
 		Plugins:     []api.Plugin{virtFSPlugin(fsys, js.VirtualRoot)},
 		LogLevel:    api.LogLevelWarning,
 	})
-	if err := esbuildBuildErr(res.Errors); err != nil {
+	if err := jsbundle.Err(res.Errors); err != nil {
 		return "", err
 	}
 	if len(res.OutputFiles) == 0 {
@@ -144,7 +141,7 @@ func minifyCSS(src string) (string, error) {
 		MinifySyntax:      true,
 		LogLevel:          api.LogLevelWarning,
 	})
-	if err := esbuildBuildErr(res.Errors); err != nil {
+	if err := jsbundle.Err(res.Errors); err != nil {
 		return "", err
 	}
 	return string(res.Code), nil
@@ -155,23 +152,6 @@ func ternaryTreeShaking(on bool) api.TreeShaking {
 		return api.TreeShakingTrue
 	}
 	return api.TreeShakingFalse
-}
-
-func esbuildBuildErr(errs []api.Message) error {
-	if len(errs) == 0 {
-		return nil
-	}
-	var b strings.Builder
-	b.WriteString("esbuild: ")
-	e := errs[0]
-	if e.Location != nil {
-		fmt.Fprintf(&b, "%s:%d:%d: ", e.Location.File, e.Location.Line, e.Location.Column)
-	}
-	b.WriteString(e.Text)
-	if len(errs) > 1 {
-		fmt.Fprintf(&b, " (+%d more)", len(errs)-1)
-	}
-	return fmt.Errorf("%s", b.String())
 }
 
 // virtFSPlugin builds an esbuild plugin that resolves every import against
@@ -227,23 +207,9 @@ func virtFSPlugin(fsys fs.FS, virtRoot string) api.Plugin {
 						return api.OnLoadResult{}, err
 					}
 					contents := string(data)
-					loader := loaderFor(args.Path)
+					loader := jsbundle.LoaderFor(args.Path)
 					return api.OnLoadResult{Contents: &contents, Loader: loader}, nil
 				})
 		},
 	}
-}
-
-func loaderFor(p string) api.Loader {
-	switch {
-	case strings.HasSuffix(p, ".ts"), strings.HasSuffix(p, ".d.ts"):
-		return api.LoaderTS
-	case strings.HasSuffix(p, ".tsx"):
-		return api.LoaderTSX
-	case strings.HasSuffix(p, ".jsx"):
-		return api.LoaderJSX
-	case strings.HasSuffix(p, ".json"):
-		return api.LoaderJSON
-	}
-	return api.LoaderJS
 }

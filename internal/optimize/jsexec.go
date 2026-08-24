@@ -14,7 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evanw/esbuild/pkg/api"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -52,11 +55,11 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 	return out, nil
 }
 
-// execJSConstEval generates and runs the js:// batch, returning the values
-// keyed by request key and the keys whose value did not check.
+// execJSConstEval generates, bundles and runs the js:// batch, returning the
+// values keyed by request key and the keys whose value did not check.
 //
-// There is no build step, so none of the Go path's binary-cache machinery has
-// anything to cache: node reads the program and runs it. That also means the
+// The build step is in-process and costs about a millisecond, so none of the Go
+// path's binary-cache machinery has anything worth caching. That also means the
 // generated directory needs no stable name — its only job is to hold the
 // program until it has run.
 func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
@@ -81,15 +84,20 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 		return nil, nil, fmt.Errorf("creating evaluator dir: %w", err)
 	}
 	defer os.RemoveAll(srcDir)
-	// The runtime travels as a file rather than inlined into the program: a
-	// module that wants to register an encoder for a type it does not own has
-	// to reach the same module instance the program does, and node gives one
-	// instance per resolved path.
+	// The runtime is written beside the program rather than inlined into it, so
+	// that esbuild resolves it as an ordinary module and the bundle ends up
+	// holding one copy — which is what a module registering an encoder through
+	// globalThis needs.
 	if err := os.WriteFile(filepath.Join(srcDir, consteval.RuntimeFile), consteval.Runtime, 0o644); err != nil {
 		return nil, nil, fmt.Errorf("writing evaluator runtime: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(srcDir, "main.mjs"), []byte(src), 0o644); err != nil {
+	mainPath := filepath.Join(srcDir, "main.mjs")
+	if err := os.WriteFile(mainPath, []byte(src), 0o644); err != nil {
 		return nil, nil, fmt.Errorf("writing evaluator source: %w", err)
+	}
+	bundlePath := filepath.Join(srcDir, "bundle.mjs")
+	if err := bundleJSConstEval(dir, mainPath, bundlePath); err != nil {
+		return nil, nil, err
 	}
 
 	runDir, err := os.MkdirTemp("", "sngl-consteval-js-*")
@@ -100,7 +108,7 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 	resultPath := filepath.Join(runDir, "results.sngl")
 
 	slog.Info("exec", "cmd", nodeBin+" (const evaluator)", "dir", dir, "calls", len(reqs))
-	if err := runJSConstEval(node, dir, filepath.Join(srcDir, "main.mjs"), resultPath); err != nil {
+	if err := runJSConstEval(node, dir, bundlePath, resultPath); err != nil {
 		return nil, nil, err
 	}
 
@@ -109,6 +117,47 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
 	return parseConstResults(resultPath, results, wantTypes(reqs))
+}
+
+// bundleJSConstEval transpiles the program and everything it imports into one
+// module for node to run.
+//
+// Bundling rather than transpiling the entry alone is what makes a TypeScript
+// module evaluable at all: the entry is generated JavaScript, so transpiling it
+// changes nothing, and the import it leaves behind hands the .ts back to node —
+// which strips types and refuses an enum, because an enum is not a type. It
+// also drops the unstated requirement that node be new enough to strip types.
+//
+// Resolution is esbuild's own, against the real directory, rather than the
+// virtual-FS plugin the html platform bundles a page through: that plugin
+// resolves through the checker's resolver, which answers with types, so a bare
+// specifier lands on a package's .d.ts and bundles to an empty module. Node
+// built-ins stay external under PlatformNode, so a program reaching for one
+// still gets node's.
+func bundleJSConstEval(dir, mainPath, bundlePath string) error {
+	// esbuild rejects a relative working directory, and dir is whatever the
+	// caller passed the compiler — "." for a build run from the project root.
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("resolving %s: %w", dir, err)
+	}
+	start := time.Now()
+	res := api.Build(api.BuildOptions{
+		EntryPoints:   []string{mainPath},
+		Outfile:       bundlePath,
+		AbsWorkingDir: absDir,
+		Bundle:        true,
+		Write:         true,
+		Format:        api.FormatESModule,
+		Platform:      api.PlatformNode,
+		// The calls sit behind a top-level await, which no target below ES2022
+		// can express.
+		Target:   api.ES2022,
+		Loader:   jsbundle.Loaders(),
+		LogLevel: api.LogLevelWarning,
+	})
+	slog.Debug("consteval bundle", "lang", "js", "duration", time.Since(start))
+	return jsbundle.Err(res.Errors)
 }
 
 func runJSConstEval(node, dir, mainPath, resultPath string) error {

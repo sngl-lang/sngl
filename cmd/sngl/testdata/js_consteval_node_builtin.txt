@@ -1,0 +1,28 @@
+# A module the bundler cannot inline still evaluates: node's own built-ins are
+# left as imports for node to satisfy, so a function reaching for one gets the
+# real thing rather than a bundled copy of nothing.
+[!node] skip
+env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+grep 'a/b/c.txt' out/index.html
+! grep 'node:path' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+import lib "js://./lib"
+
+const p = lib.joined()
+
+component main {
+    text(value=p)
+}
+-- lib/index.ts --
+import { join } from "node:path";
+
+/** @sngl-pure */
+export function joined(): string {
+    return join("a", "b", "c.txt");
+}
