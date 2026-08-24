@@ -404,7 +404,7 @@ func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
-func (gc *GoIRContext) MutTargetField(field string) string { return ExportName(field) }
+func (gc *GoIRContext) MutTargetField(n *ir.Select) string { return ExportName(n.Field) }
 
 func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !gc.EmitLineDirectives {

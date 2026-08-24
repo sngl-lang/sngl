@@ -63,7 +63,7 @@ while building and freezes the result into the output as a literal. An
 unmarked function is left as a call for the target to make at runtime.
 
 In Go the marker is a `//sngl:pure` line in the doc comment. In JavaScript and
-TypeScript it is a tag in the declaration's doc comment, and five spellings are
+TypeScript it is a tag in the declaration's doc comment, and six spellings are
 accepted:
 
 | Marker                                             | Origin           | Promises         |
@@ -87,7 +87,7 @@ in prose does not opt a function in. Matching is case-sensitive.
 requires — that the function returns the same value every time — and it changes
 nothing about how any bundler treats the declaration.
 
-The other four were defined to mean *side-effect-free*, which is a weaker
+The other five were defined to mean *side-effect-free*, which is a weaker
 promise: `Date.now()`, `Math.random()`, `process.env.TZ` and
 `Intl.DateTimeFormat().resolvedOptions()` all have no side effects and none of
 them is deterministic. A function marked that way is taken at its word, so if
@@ -105,6 +105,11 @@ build fails on a target that cannot.
 Any `node` will do. The compiler compiles the module and everything it imports
 itself, so TypeScript is already gone by the time node sees it — a `.ts` with
 an enum folds, and node's own type stripping never comes into it.
+
+A folded value crosses as SNGL source, and a class can choose its own form with
+a `[Symbol.for("sngl.marshal")]()` method returning that source; for a class
+you did not write and so cannot add a method to, `globalThis.__SNGL_CONSTEVAL__.register(Ctor, fn)`
+registers the same thing from outside.
 
 The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `func`, components, and `timer`. There is no `style` or `test` declaration: a reusable style is a `Style` constant, and a test is an ordinary function taking a `Test` receiver.
 

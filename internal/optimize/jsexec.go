@@ -24,9 +24,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/js/consteval"
 )
 
-// nodeBin is the interpreter a js:// batch runs under. Named as a bare command
-// so PATH decides, which is also what makes "node is not installed" a
-// diagnosable condition rather than a mysterious failure.
 const nodeBin = "node"
 
 // renderJSArgs turns folded argument values into JavaScript source using the JS
@@ -127,13 +124,6 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 // changes nothing, and the import it leaves behind hands the .ts back to node —
 // which strips types and refuses an enum, because an enum is not a type. It
 // also drops the unstated requirement that node be new enough to strip types.
-//
-// Resolution is esbuild's own, against the real directory, rather than the
-// virtual-FS plugin the html platform bundles a page through: that plugin
-// resolves through the checker's resolver, which answers with types, so a bare
-// specifier lands on a package's .d.ts and bundles to an empty module. Node
-// built-ins stay external under PlatformNode, so a program reaching for one
-// still gets node's.
 func bundleJSConstEval(dir, mainPath, bundlePath string) error {
 	// esbuild rejects a relative working directory, and dir is whatever the
 	// caller passed the compiler — "." for a build run from the project root.
@@ -211,9 +201,7 @@ func jsConstEvalSource(dir string, reqs []*nativeRequest) (string, error) {
 			// asked for — and folds to null.
 			fmt.Fprintf(&b, "    await %s;\n    consteval.emit(key, null);\n", call)
 		} else {
-			// Awaited unconditionally: awaiting a non-promise is the value
-			// itself, so an async export and a plain one need no distinction
-			// here.
+			// Awaited unconditionally, so an async export needs no distinction.
 			fmt.Fprintf(&b, "    consteval.emit(key, await %s);\n", call)
 		}
 		b.WriteString("  } catch (err) {\n    consteval.fail(key, err);\n  }\n}\n\n")

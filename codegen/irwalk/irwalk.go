@@ -58,7 +58,7 @@ type Renderer interface {
 
 	// — Mut targets (leaf hooks; walker composes Select/Index)
 	MutTargetIdent(*ir.Ident) string
-	MutTargetField(field string) string
+	MutTargetField(*ir.Select) string
 
 	// — Hooks
 	StmtPrefix(s ir.Stmt) []string
@@ -228,7 +228,7 @@ func EvalMutTarget(r Renderer, e ir.Expr) string {
 	case *ir.Ident:
 		return r.MutTargetIdent(n)
 	case *ir.Select:
-		return EvalMutTarget(r, n.Operand) + "." + r.MutTargetField(n.Field)
+		return EvalMutTarget(r, n.Operand) + "." + r.MutTargetField(n)
 	case *ir.Index:
 		return EvalMutTarget(r, n.Operand) + "[" + EvalExpr(r, n.Idx) + "]"
 	default:

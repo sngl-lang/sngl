@@ -44,9 +44,9 @@ func CheckNativeValue(e ast.Expr, want *ir.Type) (ir.Expr, error) {
 	c.diags = nil
 	out := c.checkExprExpecting(e, want)
 	if len(c.diags) == 0 && want != nil && out != nil {
-		// The encoder and the importer read the same Go type from opposite
-		// ends, so a value that does not fit its declared type means they
-		// disagree — a compiler bug, not a program error, and one that would
+		// The encoder and the importer read the same foreign declaration from
+		// opposite ends, so a value that does not fit its declared type means
+		// they disagree — a compiler bug, not a program error, and one that would
 		// otherwise reach codegen as a well-formed literal of the wrong type.
 		if got := out.ExprType(); got != nil && !got.IsAssignableTo(want) {
 			gotStr, wantStr := ir.Contrast(got, want)
@@ -98,11 +98,19 @@ func expectedEnumDef(t *ir.Type) *ir.EnumDef {
 // matching no member is this key's failure, because the alternative is a float
 // compiled in where an enum was declared.
 //
-// Two members with one value resolve to the first declared. TypeScript's own
-// reverse mapping answers with the last, but that mapping is an artifact of
-// how the enum object is built and the compiler never sees it; declaration
-// order is a rule readable off the source.
+// Two members with one value resolve to the first declared, which is a rule
+// readable off the source.
 func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
+	// A negative value is a unary over a literal, not a literal. Declining the
+	// unary would not leave the value unclaimed: the expected type survives
+	// the recursion into the operand, so the magnitude would be claimed on its
+	// own and resolve to whichever member happens to hold the positive value.
+	neg := false
+	if u, ok := e.(*ast.UnaryExpr); ok && u.Op == ast.UnaryNeg {
+		if inner, ok := u.Operand.(*ast.LiteralExpr); ok && isNumericLiteralKind(inner.Kind) {
+			neg, e = true, inner
+		}
+	}
 	lit, ok := e.(*ast.LiteralExpr)
 	if !ok {
 		return nil, false
@@ -119,6 +127,9 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 			return nil, false
 		}
 		shown = lit.Raw
+		if neg {
+			n, shown = -n, "-"+shown
+		}
 		match = func(v *ir.Literal) bool {
 			if isStringLit(v) {
 				return false
@@ -148,6 +159,12 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 	}
 	c.error(lit.Pos, "encoded value %s is not the value of any member of %s", shown, ed.Name)
 	return &ir.Literal{Type: TypDyn}, true
+}
+
+// isNumericLiteralKind reports whether a literal kind carries a number, which
+// is the only domain a unary minus can be encoding over.
+func isNumericLiteralKind(k ast.LiteralKind) bool {
+	return k == ast.LiteralInt || k == ast.LiteralFloat
 }
 
 // isStringLit reports whether v holds text rather than a number, which decides

@@ -30,4 +30,6 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	return nil, nativeFailed, fmt.Errorf("compile-time execution not available in WASM")
 }
 
-func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) error { return nil }
+func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[string]error {
+	return nil
+}

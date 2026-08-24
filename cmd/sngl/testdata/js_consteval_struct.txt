@@ -5,8 +5,13 @@
 #
 # The two number kinds cross separately: a JS `number` is a SNGL float, a
 # `bigint` a SNGL int. The id is 2^53+1 — the smallest integer a double cannot
-# hold — so routing a bigint through a double would show up here as a value
-# ending in 2.
+# hold — so routing a bigint through a double anywhere between the encoder and
+# the checker would show up here as a value ending in 2.
+#
+# The claim stops at the source text. What the page carries is a bare JS number
+# literal, which the browser rounds back to ...992 when it parses it; grep sees
+# only what the compiler wrote. Carrying the value into a running page would
+# need a BigInt literal, which nothing in this pipeline emits today.
 [!node] skip
 env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 

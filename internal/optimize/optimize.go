@@ -49,13 +49,15 @@ type Config struct {
 	// which is what confines a folded value to the compilation that folded it.
 	Cache *EvalCache
 
-	// nativeErr records that this build's round loop failed as a whole — a
-	// build error, a timeout — rather than for any one call. It is not cached
-	// with the calls: the next target's Config starts clean and retries.
-	nativeErr error
+	// nativeErr records, per scheme, that this build's round loop failed as a
+	// whole — a build error, a timeout — rather than for any one call. The
+	// batches are independent programs, so a go:// failure is no answer for a
+	// js:// call. It is not cached with the calls: the next target's Config
+	// starts clean and retries.
+	nativeErr map[string]error
 
 	// nativeSettled records that compile-time evaluation of this build's
-	// go:// calls has already run. Every caller optimizes twice with one
+	// native calls has already run. Every caller optimizes twice with one
 	// Config (before and after lowering), and by the second call every value
 	// is cached — so the second must not clone a fully expanded IR just to
 	// discover nothing. Should lowering somehow produce a new foldable call,
@@ -81,19 +83,20 @@ type evalCtx struct {
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	nativeSchemes map[string]string           // import alias → scheme ("go", "js", ...)
 	fileAssets    []FileAsset
-	// native collects the pure go:// calls this pass could not answer from
+	// native collects the pure native calls this pass could not answer from
 	// cache. Non-nil only during a probe pass (see evalNativeRounds); a pass
 	// over the real package runs with every needed value already cached.
 	native *nativeEval
 	// cache is Config.Cache: what this compilation has already evaluated.
 	cache *EvalCache
-	// nativeErr is Config.nativeErr: the batch failure this build already hit.
-	nativeErr     error
+	// nativeErr is Config.nativeErr: the batch failure this build already hit,
+	// per scheme.
+	nativeErr     map[string]error
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
 	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
 	interpDepth   int                   // recursion guard for interpretFunc dispatch
-	// err holds the first fatal evaluation error (e.g. a go:// import that
+	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
 	err error
@@ -153,7 +156,7 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	if cfg.Cache == nil {
 		cfg.Cache = NewEvalCache()
 	}
-	// A pure go:// call can only fold once a subprocess has computed it, and
+	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with
 	// every value already in hand.
@@ -166,7 +169,7 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	return optimizeIR(pkg, cfg, nil)
 }
 
-// evalNativeRounds discovers and evaluates every pure go:// call reachable
+// evalNativeRounds discovers and evaluates every pure native call reachable
 // from pkg. Each round folds a fresh clone — folding is destructive, and a
 // pass that left a call unfolded cannot be resumed — and hands the calls it
 // could not answer to one generated program.
@@ -190,12 +193,12 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		}
 		pending = ne.order
 		slog.Info("consteval round", "calls", len(pending))
-		if err := runNativeRequests(cfg.Cache, cfg.Dir, pending); err != nil {
+		if errs := runNativeRequests(cfg.Cache, cfg.Dir, pending); len(errs) > 0 {
 			// Nothing is cached for these calls, so retrying the identical
 			// batch would only repeat the failure. The fold reports it per
 			// call site, which is where the target's ability to call the
 			// scheme at runtime decides whether it is fatal.
-			cfg.nativeErr = err
+			cfg.nativeErr = errs
 			return nil
 		}
 	}
@@ -241,7 +244,7 @@ func hasPureNativeFuncs(pkg *ir.Package, cfg *Config) bool {
 }
 
 // optimizeIR is Optimize's single pass. native is non-nil only for a probe
-// pass, which records the go:// calls it could not fold instead of folding
+// pass, which records the native calls it could not fold instead of folding
 // them.
 func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	run := &optimizerRun{

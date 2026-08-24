@@ -103,6 +103,11 @@ func TestEncodes(t *testing.T) {
 		{`"tab\there"`, `"tab\there"`},
 		{`"\u0001"`, `"\x01"`},
 		{`"héllo"`, `"héllo"`},
+		// A boxed primitive is an object with no own enumerable properties, so
+		// without unwrapping it would cross as an empty struct named Number.
+		{"new Number(5)", "5.0"},
+		{`new String("hi")`, `"hi"`},
+		{"new Boolean(true)", "true"},
 	} {
 		t.Run(tc.js, func(t *testing.T) { value(t, tc.js, tc.want) })
 	}
@@ -133,18 +138,17 @@ func TestUnrepresentable(t *testing.T) {
 }
 
 // A type can choose its own SNGL form, and a caller can choose one for a type
-// it does not own. Neither hook can be an import: this runtime is written into
-// a scratch directory with no stable specifier.
+// it does not own.
 func TestExtensionHooks(t *testing.T) {
 	doc, stderr := run(t, `
 class Money { constructor(c) { this.cents = c; }
-  [Symbol.for("sngl.marshal")]() { return String(this.cents / 100) + ".00"; } }
+  [Symbol.for("sngl.marshal")]() { return (this.cents / 100).toFixed(2); } }
 class Tag { constructor(s) { this.s = s; } }
 globalThis.__SNGL_CONSTEVAL__.register(Tag, (t) => JSON.stringify(t.s));
 consteval.emit("a", new Money(250));
 consteval.emit("b", new Tag("x"));
 `)
-	for _, want := range []string{"const a = 2.5.00", `const b = "x"`} {
+	for _, want := range []string{"const a = 2.50", `const b = "x"`} {
 		if !strings.Contains(doc, want) {
 			t.Errorf("missing %q in:\n%s\n%s", want, doc, stderr)
 		}

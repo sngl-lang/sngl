@@ -250,7 +250,7 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
-func (kc *KtIRContext) MutTargetField(field string) string { return field }
+func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return n.Field }
 
 func (kc *KtIRContext) StmtPrefix(_ ir.Stmt) []string { return nil }
 

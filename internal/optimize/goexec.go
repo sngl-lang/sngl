@@ -157,20 +157,20 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 		ctx.native.add(req)
 		return nil, nativePending, nil
 	}
-	if ctx.nativeErr != nil {
-		// The round loop's batch failed for a reason that is not about this
-		// call (a build error, a timeout). Report it without building again
-		// per call site, and without caching it: another target's Optimize
-		// gets to retry.
-		return nil, nativeFailed, ctx.nativeErr
+	if err := ctx.nativeErr[scheme]; err != nil {
+		// This scheme's batch failed for a reason that is not about this call
+		// (a build error, a timeout). Report it without building again per
+		// call site, and without caching it: another target's Optimize gets to
+		// retry.
+		return nil, nativeFailed, err
 	}
 
 	// No batch is open: the round loop was skipped because
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	if err := runNativeRequests(ctx.evalCache(), ctx.dir, []*nativeRequest{req}); err != nil {
-		return nil, nativeFailed, err
+	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, []*nativeRequest{req}); errs[scheme] != nil {
+		return nil, nativeFailed, errs[scheme]
 	}
 	if r, ok := ctx.evalCache().load(key); ok && r.err == nil {
 		return r.expr, nativeReady, nil
@@ -268,10 +268,10 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 //
 // Only a program outcome is cached. A returned error is a failure of a batch
 // as a whole (the build, the run, a corrupt results document), which says
-// nothing about any one call and must not become that call's answer. One
-// scheme failing that way does not keep another scheme's values out of the
-// cache: the batches are independent programs and share no failure.
-func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) error {
+// nothing about any one call and must not become that call's answer. It is
+// returned under its scheme: one scheme failing that way keeps neither
+// another scheme's values out of the cache nor its calls from folding.
+func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[string]error {
 	byScheme := map[string][]*nativeRequest{}
 	var order []string
 	for _, r := range reqs {
@@ -280,13 +280,13 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) erro
 		}
 		byScheme[r.scheme] = append(byScheme[r.scheme], r)
 	}
-	var firstErr error
+	errs := map[string]error{}
 	for _, scheme := range order {
-		if err := runSchemeRequests(cache, dir, scheme, byScheme[scheme]); err != nil && firstErr == nil {
-			firstErr = err
+		if err := runSchemeRequests(cache, dir, scheme, byScheme[scheme]); err != nil {
+			errs[scheme] = err
 		}
 	}
-	return firstErr
+	return errs
 }
 
 // runSchemeRequests runs one scheme's batch and caches its outcome per call.

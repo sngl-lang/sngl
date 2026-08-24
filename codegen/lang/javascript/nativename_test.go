@@ -65,3 +65,20 @@ func TestStructLitKeepsSnglNamesForOtherSchemes(t *testing.T) {
 		t.Errorf("StructLit = %s, want %s", got, want)
 	}
 }
+
+// A SNGL enum member is its own name in generated JS. The checker leaves a
+// placeholder in Value today, so once that placeholder is filled in the only
+// thing keeping this true is the scheme test: a member reached through an enum
+// no JavaScript importer declared is never erased to its value.
+func TestEnumMemberKeepsSnglNameForOtherSchemes(t *testing.T) {
+	ed := &ir.EnumDef{
+		Name: "Color",
+		Members: []*ir.EnumMember{
+			{Name: "Red", Value: &ir.Literal{Raw: "0", Type: &ir.Type{Kind: ir.TypeInt}}},
+			{Name: "Green", Value: &ir.Literal{Raw: "1", Type: &ir.Type{Kind: ir.TypeInt}}},
+		},
+	}
+	if src, ok := nativeEnumMemberJS(&ir.Type{Kind: ir.TypeEnum, Decl: ed}, "Green"); ok {
+		t.Errorf("nativeEnumMemberJS = %s, want no erasure", src)
+	}
+}

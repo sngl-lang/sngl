@@ -7,7 +7,9 @@
 # property is undefined, the sum is NaN, and NaN has no SNGL form — so the key
 # fails and the build stops rather than folding a wrong number. Reading one by
 # the SNGL spelling is the same mistake in the other direction, and it survives
-# into the page because nothing at build time looks at it.
+# into the page because nothing at build time looks at it. Writing one is the
+# quietest of the three: the assignment lands on a second, lowercase property
+# and nothing throws.
 [!node] skip
 env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 
@@ -15,8 +17,9 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 grep '30' out/index.html
-grep '\.X' out/index.html
+grep 'textContent = String\(state\.p\.X\)' out/index.html
 ! grep '\.x\b' out/index.html
+grep 'state\.p\.X = state\.p\.X' out/index.html
 
 -- app.sngl --
 import . "sngl://std"
@@ -28,6 +31,7 @@ component main {
     text(value=string(total))
     var p = lib.origin()
     text(value=string(p.x))
+    button(text="bump", @click { p.x = p.x + 1.0 })
 }
 -- lib/index.ts --
 export interface Point {

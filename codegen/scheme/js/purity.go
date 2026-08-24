@@ -18,10 +18,6 @@ import "strings"
 //     be dropped when its result is unused, and strictly speaking says nothing
 //     about the declaration. It is accepted on a declaration anyway, because
 //     someone who writes it there plainly means the function itself.
-//
-// The three ecosystem markers promise side-effect-free, which is weaker than
-// the determinism folding needs; see the package doc on Purity for why that
-// matters and what it costs.
 var pureMarkers = map[string]bool{
 	"@sngl-pure":           true,
 	"@__NO_SIDE_EFFECTS__": true,
@@ -35,9 +31,7 @@ var pureMarkers = map[string]bool{
 // start is pos — the run of comments ending at the declaration with no blank
 // line between them. A comment separated by a blank line documents whatever
 // came before it, not this declaration, which is the same rule Go's doc
-// comments and SNGL's own package comments follow. Without it a file-header
-// comment would document, and could accidentally annotate, the first
-// declaration in the file.
+// comments and SNGL's own package comments follow.
 //
 // A TypeScript node's Pos() is its full start, so the trivia between the
 // previous declaration and this one sits at the front of its own extent.
@@ -96,9 +90,6 @@ func isPureDoc(doc string) bool {
 	return false
 }
 
-// stripCommentSyntax reduces one line of a comment to its content: the
-// delimiters that open and close it, and the `*` that leads a line inside a
-// JSDoc block, are not part of what the line says.
 func stripCommentSyntax(line string) string {
 	line = strings.TrimSpace(line)
 	for _, open := range []string{"/**", "/*", "//"} {
