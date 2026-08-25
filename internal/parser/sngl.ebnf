@@ -253,7 +253,10 @@ ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 
 # ── Type declarations ─────────────────────────────────────────────────────────
 
-StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructBodyItem { semi StructBodyItem } [ semi ] ] rbrace .
+# The separator is optional, as it is in StmtBlock. A required one made a field
+# whose type ends in `>` unterminatable: `>` gets no ASI (it may continue a
+# comparison), so `args list<string>` ran into the field below it.
+StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem [ semi ] } rbrace .
 
 StructBodyItem = { MacroAttr } StructBodyDecl .
 
