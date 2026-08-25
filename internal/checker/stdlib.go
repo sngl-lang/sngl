@@ -162,12 +162,33 @@ func parseStdlibDocs() []*ast.Document {
 // then components — so the file a declaration lives in does not affect
 // resolution.
 func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
-	// sngl://builtin is ambient — the one implicit import. Every other lib
-	// package loads into its own package and reaches scope only through an
-	// explicit import, so it registers against a detached symtab/scope chained
-	// to the builtins it is written against.
-	builtinPkg = c.loadStdlibPackage("builtin", true)
+	// sngl://builtin is ambient — the one implicit import. It still loads as
+	// an ordinary package and is then adopted into the ambient scope, so being
+	// ambient is a property of where its declarations end up and not of how
+	// they are built.
+	builtinPkg = c.libPkg("builtin")
+	c.adoptAmbient(builtinPkg)
 	return builtinPkg, c.libPkg("std")
+}
+
+// adoptAmbient binds a library package's declarations into the ambient scope,
+// where every file sees them unqualified. It works off the loaded package
+// rather than the load, so a package the cache already holds is adopted the
+// same way as one just built.
+func (c *checker) adoptAmbient(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	for _, sym := range pkg.Symbols.Root.Symbols {
+		c.bindLib(symPos(sym), c.scope, sym)
+	}
+	// The suffix index is the checker's, not the package's, so it is rebuilt
+	// from the declarations rather than only where a unit is first registered.
+	for _, u := range pkg.Units {
+		for _, sfx := range u.Suffixes {
+			c.unitBySuffix[sfx.Name] = u
+		}
+	}
 }
 
 // libDocs returns the parsed source of lib package name, letting Config
@@ -206,17 +227,15 @@ func targetUnavailable(t any) error {
 // lib packages import each other (sngl://draw is written against sngl://std),
 // and the import has to resolve to the same instance the user sees.
 func (c *checker) libPkg(name string) *ir.Package {
-	if pkg, ok := c.libPkgs[name]; ok {
+	if pkg, ok := c.libs.pkgs[name]; ok {
+		c.adoptLib(name, pkg)
 		return pkg
 	}
-	if c.libLoading[name] {
+	if c.libs.loading[name] {
 		// An import cycle inside lib/ is a compiler bug, not user input.
 		panic("sngl: import cycle in embedded library at sngl://" + name)
 	}
-	if c.libLoading == nil {
-		c.libLoading = map[string]bool{}
-	}
-	c.libLoading[name] = true
+	c.libs.loading[name] = true
 	// Load against the ambient builtin scope rather than whatever scope the
 	// first import happened to sit in: loading is lazy and memoized, so a
 	// scope captured from inside a function body (a `platform x { ... }`
@@ -227,16 +246,34 @@ func (c *checker) libPkg(name string) *ir.Package {
 		c.scope = c.stdlibScope
 		defer func() { c.scope = saved }()
 	}
-	pkg := c.loadStdlibPackage(name, false)
+	pkg := c.loadStdlibPackage(name)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
 	}
-	delete(c.libLoading, name)
-	if c.libPkgs == nil {
-		c.libPkgs = map[string]*ir.Package{}
-	}
-	c.libPkgs[name] = pkg
+	delete(c.libs.loading, name)
+	c.libs.pkgs[name] = pkg
+	c.adoptLib(name, pkg)
 	return pkg
+}
+
+// adoptLib takes the checker-side references a loaded library package earns.
+// They are re-derived from the package rather than recorded as it loads,
+// because the cache is shared: the package a check reaches was often built by
+// an outer one, which is the point — the declaration a platform extension is
+// attached to has to be the declaration user code resolves.
+func (c *checker) adoptLib(name string, pkg *ir.Package) {
+	for _, u := range pkg.Units {
+		for _, sfx := range u.Suffixes {
+			c.unitBySuffix[sfx.Name] = u
+		}
+	}
+	if name == irPkg && c.macroStruct == nil {
+		if sym, ok := pkg.Symbols.Root.LookupLocal(macroTypeName); ok {
+			if sd, isStruct := sym.(*ir.StructDef); isStruct {
+				c.macroStruct = sd
+			}
+		}
+	}
 }
 
 // inLibSource reports whether the declarations being registered come from
@@ -245,7 +282,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 // so the counter covers transitive loads too.
 func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
 
-func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
+func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libDepth++
 	savedPkgName := c.libPkgName
 	c.libPkgName = "sngl://" + pkgName
@@ -256,12 +293,16 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}
-	if !ambient {
-		savedSymtab, savedScope := c.symtab, c.scope
-		stdlibPkg.Symbols.Root.Parent = savedScope
-		c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
-		defer func() { c.symtab, c.scope = savedSymtab, savedScope }()
-	}
+	savedImportScope := c.libImportScope
+	savedSymtab, savedScope := c.symtab, c.scope
+	// The package's imports go one scope above its root: reachable while it
+	// loads, absent from what a dot import of it lifts.
+	c.libImportScope = NewScope(savedScope)
+	stdlibPkg.Symbols.Root.Parent = c.libImportScope
+	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
+	defer func() {
+		c.symtab, c.scope, c.libImportScope = savedSymtab, savedScope, savedImportScope
+	}()
 	savedLoadPkg := c.libLoadPkg
 	c.libLoadPkg = stdlibPkg
 	defer func() { c.libLoadPkg = savedLoadPkg }()
@@ -320,9 +361,9 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.resolveStdlibStructFields(s, structDefs[i])
 	}
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
-	// emits it rather than the bare SNGL name. A #[foreign] mark on the
-	// declaration is the shape this wants, but the mark does not reach codegen
-	// from a lib struct yet.
+	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
+	// this: a marked declaration is the program's own, and the Go emitter
+	// deliberately ignores a marked name for that reason.
 	for _, sd := range structDefs {
 		if sd.Foreign.Name == "" && sd.Name == "PluralKey" {
 			sd.Foreign.Name = "i18n.PluralKey"
@@ -567,9 +608,9 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	if c.libPkgName == "sngl://"+irPkg && s.Name == macroTypeName {
 		c.macroStruct = sd
 	}
-	// An ambient package's own root and the ambient scope are the same scope,
-	// so this binds the same symbol twice — which Declare tolerates, while
-	// still refusing a different symbol under a name already taken.
+	// A loading package's own root is the current scope, so this binds the
+	// same symbol twice — which Declare tolerates, while still refusing a
+	// different symbol under a name already taken.
 	c.bindLib(s.Pos, c.scope, sd)
 	// Stdlib package for qualified sngl.Type access.
 	pkg.Structs = append(pkg.Structs, sd)
@@ -819,9 +860,10 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 // Only the parenless form is an extension. `component sngl.X() { body }`
 // (android) is ignored here: that platform reads such a body itself.
 func (c *checker) mergePlatformExtensions() {
-	if len(c.cfg.Platforms) == 0 {
+	if len(c.cfg.Platforms) == 0 || c.libs.extended {
 		return
 	}
+	c.libs.extended = true
 	for _, p := range c.cfg.Platforms {
 		// An unavailable platform's overrides are built from types it cannot
 		// resolve (gtk4's widgets come from a GIR file installed outside this

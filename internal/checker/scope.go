@@ -99,6 +99,25 @@ func (c *checker) bindDeclared(claimed bool, sym ir.Symbol) {
 	c.scope.Replace(sym)
 }
 
+// importScope is where an import binds the name it introduces: the file's own
+// scope, or — while a library package loads — the scope above that package's
+// root, so a dot import of the package does not lift its imports on.
+func (c *checker) importScope() *ir.Scope {
+	if c.libImportScope != nil {
+		return c.libImportScope
+	}
+	return c.scope
+}
+
+// bindImport binds the namespace an import declares, once claimTopLevel has
+// ruled on the alias.
+func (c *checker) bindImport(claimed bool, sym ir.Symbol) {
+	if !claimed {
+		return
+	}
+	c.importScope().Replace(sym)
+}
+
 // mergeInto binds a declaration into a package's surface as the package's
 // files are merged. Two files of one package declaring the same name is a
 // duplicate: files are read in no guaranteed order, so tolerating one would

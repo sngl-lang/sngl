@@ -35,6 +35,34 @@ type Config struct {
 	// the one caller that checks lib/ source as the document rather than
 	// loading it as a package. Unexported: no program is lib source.
 	libSource bool
+	// libs is the library-package cache this check shares with the nested
+	// checks its imports start. Unexported: it is the compiler's own
+	// bookkeeping, and a cache built against other platforms would hand this
+	// check their declarations.
+	libs *libCache
+}
+
+// libCache holds the library packages one build has loaded. It is shared with
+// the nested checks an import starts, so a declaration of sngl://std is the
+// same *ir.Component in every package of the build — a platform extension is
+// attached to that one declaration, and type identity is per-declaration.
+type libCache struct {
+	pkgs    map[string]*ir.Package
+	loading map[string]bool
+	// extended records that the registered platforms' `component sngl.X`
+	// overrides have been merged into these packages. Sharing the packages
+	// means sharing the components the bodies attach to, so a second merge
+	// would report every override as a duplicate platform block.
+	extended bool
+}
+
+// libCache returns the library-package cache a check runs against: the one an
+// outer check handed down, or a new one.
+func (cfg *Config) libCache() *libCache {
+	if cfg != nil && cfg.libs != nil {
+		return cfg.libs
+	}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}}
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -156,14 +184,18 @@ type checker struct {
 	// stdlibPkg is the loaded standard library, bound as a namespace by an
 	// `import <alias> "sngl://std"` and flattened by the dot form.
 	stdlibPkg *ir.Package
-	// libPkgs memoizes loaded sngl://<name> packages; libLoading guards
-	// against a cycle among them.
-	libPkgs    map[string]*ir.Package
-	libLoading map[string]bool
-	libDepth   int
+	// libs memoizes loaded sngl://<name> packages and guards against a cycle
+	// among them. Shared with the checks this one's imports start.
+	libs     *libCache
+	libDepth int
 	// libLoadPkg is the library package currently loading, and the owner of
 	// any import registered while it does. nil outside a lib load.
 	libLoadPkg *ir.Package
+	// libImportScope is where an import registered while a library package
+	// loads binds its namespace, and where a dot import lifts into. It sits
+	// above the package's own root, so what the package imports is reachable
+	// while it loads without becoming part of what it exports.
+	libImportScope *ir.Scope
 	// libPkgName is the URI of the lib package currently being loaded, stamped
 	// onto every declaration it builds as that declaration's identity (see
 	// ir.StructDef.Pkg). Saved and restored around each load, because a lib
@@ -248,6 +280,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      make(map[string]bool),
 		pkgWindowIDs: make(map[string]bool),
+		libs:         cfg.libCache(),
 	}
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
@@ -771,6 +804,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 					Languages: c.cfg.Languages,
 					Platforms: c.cfg.Platforms,
 					Replaces:  c.replaces,
+					libs:      c.libs,
 				})
 				c.diags = append(c.diags, diags...)
 				c.mergePkgInto(merged, pkg)
@@ -828,6 +862,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 						Languages: c.cfg.Languages,
 						Platforms: c.cfg.Platforms,
 						Replaces:  c.replaces,
+						libs:      c.libs,
 					})
 					c.diags = append(c.diags, diags...)
 					c.mergePkgInto(merged, pkg)
@@ -886,7 +921,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 	c.markForeign(irImport.Pkg)
-	c.bindDeclared(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
+	c.bindImport(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
 }
 
 // importOwner is the package an import belongs to. While a library package
@@ -1480,7 +1515,7 @@ func (c *checker) stdlibHint(name string) string {
 	// The hint is for user code. Loading the library to build one while the
 	// library is itself loading would re-enter a package mid-load, which
 	// libPkg reports as a cycle.
-	if len(c.libLoading) > 0 {
+	if len(c.libs.loading) > 0 {
 		return ""
 	}
 	// Search every lib package, not just std: the shapes moved to sngl://draw,
@@ -1527,7 +1562,7 @@ func (c *checker) isLibraryNamespace(name string) bool {
 	if !ok || ns.Pkg == nil {
 		return false
 	}
-	for _, pkg := range c.libPkgs {
+	for _, pkg := range c.libs.pkgs {
 		if ns.Pkg == pkg {
 			return true
 		}
@@ -2543,7 +2578,7 @@ func (c *checker) dropPlaceholderBodies() {
 	}
 	// sngl://builtin is ambient and appears in nobody's import list, and its
 	// methods carry the largest share of the marks.
-	for _, pkg := range c.libPkgs {
+	for _, pkg := range c.libs.pkgs {
 		dropPkg(pkg)
 	}
 	dropPkg(c.builtinPkg)
@@ -3113,6 +3148,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 	pkg := irImport.Pkg
 	c.markForeign(pkg)
+	dst := c.importScope()
 	claim := func(name string) bool {
 		return c.claimTopLevel(name, imp.Pos, bindDot, imp.Path)
 	}
@@ -3136,12 +3172,12 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 			// it. Both bindings mean the same package, so this is a restated
 			// name rather than an ambiguous one. Only the stdlib lifts
 			// namespaces, so no second dot import can disagree about one.
-			c.bindLib(imp.Pos, c.scope, sym)
+			c.bindLib(imp.Pos, dst, sym)
 			continue
 		}
 		if !claim(sym.SymName()) {
 			continue
 		}
-		c.bindLib(imp.Pos, c.scope, sym)
+		c.bindLib(imp.Pos, dst, sym)
 	}
 }
