@@ -82,9 +82,7 @@ func Fail(key string, err error) {
 	failures[key] = err
 }
 
-// Sep separates a key from its value in the results file. A key is a hash and
-// an encoded string escapes a tab rather than writing one, so neither half can
-// hold the separator.
+// Sep separates a key from its value in the results file.
 const Sep = "\t"
 
 // Flush writes every emitted value to the file named by SNGL_CONSTEVAL_OUT,

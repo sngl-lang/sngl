@@ -75,9 +75,7 @@ export function fail(key, err) {
   failures.set(key, reason(err));
 }
 
-// sep separates a key from its value in the results file. A key is a hash and
-// an encoded string escapes a tab rather than writing one, so neither half can
-// hold the separator.
+// sep separates a key from its value in the results file.
 const sep = "\t";
 
 // flush writes every emitted value to the file named by SNGL_CONSTEVAL_OUT,
