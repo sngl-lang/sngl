@@ -620,7 +620,7 @@ type updateFunc struct {
 
 type eventHandler struct {
 	elemID  string
-	event   string // "click", "input", "change"
+	event   string // the DOM event name passed to addEventListener
 	body    string // JS statements
 	mutated map[string]bool
 	isAsync bool
@@ -1830,7 +1830,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		case "change":
 			g.addChangeHandler(id, h.Func)
 		default:
-			g.addClickHandler(id, h.Func.Block)
+			// A raw element's event name *is* the DOM event name. This used to
+			// fall through to click, so `@mouseover` silently wired a click
+			// listener.
+			g.addNamedHandler(id, h.Name, h.Func.Block)
 		}
 	}
 }
@@ -2943,6 +2946,13 @@ func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]strin
 }
 
 func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
+	g.addNamedHandler(elemID, "click", body)
+}
+
+// addNamedHandler registers a handler for an arbitrary DOM event whose body
+// takes no event argument. Unlike addParamEventHandler it binds no EventVar,
+// so a body reading the event is a separate (declared) concern.
+func (g *htmlGen) addNamedHandler(elemID, event string, body []ir.Stmt) {
 	if len(body) == 0 {
 		return
 	}
@@ -2959,7 +2969,7 @@ func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	g.handlers = append(g.handlers, eventHandler{
 		elemID:  elemID,
-		event:   "click",
+		event:   event,
 		body:    strings.Join(lines, "\n  "),
 		mutated: mutated,
 		isAsync: ir.BlockHasFuncvarAsyncCall(body, g.pts()),
