@@ -43,11 +43,10 @@ func TestOptimize_GoImportEvalFailureFatal(t *testing.T) {
 				Native: &ir.NativeImport{
 					ImportPath: "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
 					Funcs: []*ir.Func{{
-						Name:       "Boom",
-						NativeName: "purepkg.Boom",
-						NativePkg:  "purepkg",
-						Purity:     ir.PurityPure,
-						Return:     ir.TypString,
+						Name:    "Boom",
+						Foreign: ir.Foreign{Name: "purepkg.Boom", Path: "purepkg"},
+						Purity:  ir.PurityPure,
+						Return:  ir.TypString,
 					}},
 				},
 			}},

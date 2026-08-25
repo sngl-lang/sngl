@@ -167,12 +167,12 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 // and they are Go's — nothing in a generated page reads them, so a page built
 // around a `go://` value must keep spelling its fields the SNGL way.
 func jsFieldKey(sd *ir.StructDef, name string) string {
-	if sd == nil || !jsscheme.DeclaredHere(sd.Origin) {
+	if sd == nil || !jsscheme.DeclaredHere(sd.Foreign) {
 		return name
 	}
 	for _, f := range sd.Fields {
-		if f.Name == name && f.NativeName != "" {
-			return f.NativeName
+		if f.Name == name && f.Foreign.Name != "" {
+			return f.Foreign.Name
 		}
 	}
 	return name
@@ -417,7 +417,7 @@ func nativeEnumMemberJS(t *ir.Type, member string) (string, bool) {
 		return "", false
 	}
 	ed, _ := t.Decl.(*ir.EnumDef)
-	if ed == nil || !jsscheme.DeclaredHere(ed.Origin) {
+	if ed == nil || !jsscheme.DeclaredHere(ed.Foreign) {
 		return "", false
 	}
 	for _, m := range ed.Members {
@@ -449,8 +449,10 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	}
 	// Native scheme-import call (e.g. js://): emit through the bundler
 	// alias when the module is in BundledNativePkgs, recording the
-	// module → name binding for top-level `import * as` emission.
-	if n.Func != nil && n.Func.NativePkg != "" {
+	// module → name binding for top-level `import * as` emission. Only for a
+	// declaration JavaScript has: a #[foreign] mark naming another language
+	// would otherwise rewrite the call to a name nothing here declares.
+	if n.Func != nil && jsscheme.CallsHere(n.Func.Foreign) {
 		return jc.evalNativeCall(n)
 	}
 	if n.Receiver != nil {
@@ -487,8 +489,8 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 }
 
 func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
-	mod := n.Func.NativePkg
-	name := n.Func.NativeName
+	mod := n.Func.Foreign.Path
+	name := n.Func.Foreign.Name
 	if name == "" {
 		name = n.Func.Name
 	}

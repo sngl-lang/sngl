@@ -7,3 +7,22 @@
 // writes its declarations unqualified; `import <alias> "sngl://std"` qualifies
 // them, and is also how a platform overrides a component (`component
 // <alias>.vbox`).
+//
+// It also carries the `#[foreign]` mark, which records what a declaration
+// corresponds to outside SNGL: the import path it comes from and its name
+// there -- `#[foreign("js://example.com/api", "Entry")]` -- or, given one
+// argument, the name alone, which is all a struct field can say
+// (`#[foreign("Title")]`). A struct, a struct field and a function may carry
+// it. It imports nothing, is checked against nothing, and confers no type
+// identity, since several SNGL types can map to one target-language type.
+//
+// The declaration stays the program's own: the mark says how to spell it for
+// the language it names, and a backend generating another language ignores it
+// rather than emitting a name that language has never heard of.
+//
+// A function's mark may add flags: `#[foreign("js://./api", "add", pure)]`.
+// They state what a call costs, which is what SNGL cannot read off a body that
+// describes the foreign declaration rather than implementing it. `async` says
+// the declaration returns a promise its caller awaits. `pure` is not metadata
+// -- it lets the compiler evaluate a call at build time, so a function wrongly
+// marked pure is run during the build.

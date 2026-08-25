@@ -228,3 +228,28 @@ func TestFloatsAvoidExponentSyntax(t *testing.T) {
 		}
 	}
 }
+
+// prettyPrinted spans several lines, as a Marshaler returning SNGL source is
+// free to.
+type prettyPrinted struct{}
+
+func (prettyPrinted) MarshalSNGL() ([]byte, error) { return []byte("{\n  a = 1,\n}"), nil }
+
+// The record is one line. A value written over several would arrive as records
+// with no key in them, failing the whole batch with a message about
+// corruption; rejecting it at Emit costs the one key and names it.
+func TestMultiLineValueFailsOneKey(t *testing.T) {
+	doc := flush(t, func() {
+		Emit("multi", prettyPrinted{})
+		Emit("ok", "yes")
+	})
+	if strings.Contains(doc, "multi") {
+		t.Errorf("a multi-line value was written:\n%s", doc)
+	}
+	if resultLine(doc, "ok") != `"yes"` {
+		t.Error("a multi-line value took down an unrelated key")
+	}
+	if failures["multi"] == nil {
+		t.Error("the offending key was not recorded as a failure")
+	}
+}

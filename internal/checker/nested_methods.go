@@ -218,6 +218,11 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			ReturnType:     n.ReturnType,
 			Body:           n.Body,
 			Block:          n.Block,
+			// The marks are the declaration's, not the shape of its parameter
+			// list: desugaring the receiver must not drop what a mark said
+			// about the function it was written on.
+			Intrinsic: n.Intrinsic,
+			Foreign:   n.Foreign,
 		}
 		fn := c.buildFunc(synthetic)
 		if prev := c.declareMethod(n.Pos, fn); prev != nil {

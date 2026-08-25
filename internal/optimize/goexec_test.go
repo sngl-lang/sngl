@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -35,12 +36,11 @@ func projectDir() string {
 
 func purepkgFunc(name string, params []*ir.Param, ret *ir.Type) *ir.Func {
 	return &ir.Func{
-		Name:       name,
-		NativeName: "purepkg." + name,
-		NativePkg:  "purepkg",
-		Purity:     ir.PurityPure,
-		Params:     params,
-		Return:     ret,
+		Name:    name,
+		Foreign: ir.Foreign{Name: "purepkg." + name, Path: "purepkg"},
+		Purity:  ir.PurityPure,
+		Params:  params,
+		Return:  ret,
 	}
 }
 
@@ -107,7 +107,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	t.Helper()
 	for _, c := range calls {
 		if _, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args); state == nativeReady || err != nil {
-			t.Logf("%s resolved before the batch ran: %v", c.fn.NativeName, err)
+			t.Logf("%s resolved before the batch ran: %v", c.fn.Foreign.Name, err)
 		}
 	}
 	if len(ctx.native.order) > 0 {
@@ -117,7 +117,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	for i, c := range calls {
 		v, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args)
 		if state == nativePending {
-			t.Fatalf("%s still pending after its batch ran", c.fn.NativeName)
+			t.Fatalf("%s still pending after its batch ran", c.fn.Foreign.Name)
 		}
 		out[i] = constResult{expr: v, err: err}
 	}
@@ -646,7 +646,10 @@ func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
 // compile and every other value in the batch would go with it.
 func TestStructArgIsRefused(t *testing.T) {
 	f := importedFunc(t, "Describe")
-	_, _, err := renderGoArgs(f, []any{map[string]any{"Name": "a", "Value": 1}})
+	item := interp.NewStruct(nil, f.Params[0].Type)
+	item.Set("name", "a")
+	item.Set("value", 1)
+	_, _, err := renderGoArgs(f, []any{item})
 	if err == nil {
 		t.Fatal("a struct argument was rendered")
 	}

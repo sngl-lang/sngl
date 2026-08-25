@@ -21,8 +21,7 @@ func TestGoIRContext_ContextVar_NativeCall(t *testing.T) {
 		Receiver: &ir.Ident{Name: "svc"},
 		Func: &ir.Func{
 			Name:          "Fetch",
-			NativePkg:     "svc",
-			NativeName:    "svc.Fetch",
+			Foreign:       ir.Foreign{Path: "svc", Name: "svc.Fetch"},
 			HasContextArg: true,
 		},
 		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "id"}}},
@@ -45,8 +44,7 @@ func TestGoIRContext_ContextVar_DefaultBackground(t *testing.T) {
 		Receiver: &ir.Ident{Name: "svc"},
 		Func: &ir.Func{
 			Name:          "Fetch",
-			NativePkg:     "svc",
-			NativeName:    "svc.Fetch",
+			Foreign:       ir.Foreign{Path: "svc", Name: "svc.Fetch"},
 			HasContextArg: true,
 		},
 	}
@@ -289,7 +287,7 @@ func TestEvalCall_CgoNativePrefix(t *testing.T) {
 	gc := newMinimalIRCtx()
 	call := &ir.Call{
 		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{NativePkg: "C", NativeName: "gtk_label_new"},
+		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "gtk_label_new"}},
 		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull}}},
 	}
 	got := gc.EvalExpr(call)
@@ -300,12 +298,12 @@ func TestEvalCall_CgoNativePrefix(t *testing.T) {
 }
 
 func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
-	// Existing callers may still pass "C.foo" in NativeName.
+	// Existing callers may still pass "C.foo" in Foreign.Name.
 	// Renderer must not double up the prefix.
 	gc := newMinimalIRCtx()
 	call := &ir.Call{
 		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{NativePkg: "C", NativeName: "C.gtk_label_new"},
+		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "C.gtk_label_new"}},
 	}
 	got := gc.EvalExpr(call)
 	want := "C.gtk_label_new()"

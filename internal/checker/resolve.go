@@ -288,6 +288,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		Pkg:        c.libPkgName,
 		TypeParams: s.TypeParams,
 		Fields:     c.resolveStructFields(s),
+		Foreign:    irForeign(s.Foreign),
 	}
 }
 
@@ -325,6 +326,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				Name:    name,
 				Type:    typ,
 				Default: def,
+				Foreign: irForeign(f.Foreign),
 			})
 		}
 	}
@@ -573,6 +575,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),
+		Foreign:        irForeign(f.Foreign),
 	}
 	c.typeParams = prevTypeParams
 	if isMethod {
@@ -588,6 +591,16 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		// the receiver by Param.Receiver rather than re-matching a name.
 		if len(fn.Params) > 0 && (fn.Params[0].Name == ir.ReceiverParam || namesType(fn.Params[0].Type, typeName)) {
 			fn.Params[0].Receiver = true
+		}
+	}
+	// A #[foreign] function's body describes the foreign declaration rather
+	// than implementing it, so what a call costs is what the mark says. Purity
+	// is left unknown without the flag: inferring it from the body would fold
+	// a stub's result into the program in place of the call.
+	if f.Foreign.Name != "" {
+		fn.IsAsync = f.Foreign.Async
+		if f.Foreign.Pure {
+			fn.Purity = ir.PurityPure
 		}
 	}
 	// The #[intrinsic] mark says what this function is; nothing infers it from
@@ -631,4 +644,12 @@ func isComparable(t *ir.Type) bool {
 		return true
 	}
 	return false
+}
+
+// irForeign carries a #[foreign] mark into the IR. It deliberately leaves
+// Origin nil: Origin is a scheme importer's own key for a declaration it read,
+// and it is what makes two declarations the same type. A mark is a codegen
+// fact, so a marked declaration unifies with nothing.
+func irForeign(m ast.ForeignMark) ir.Foreign {
+	return ir.Foreign{Scheme: m.Scheme, Path: m.Path, Name: m.Name, Marked: m.Name != ""}
 }

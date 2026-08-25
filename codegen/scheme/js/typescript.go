@@ -115,7 +115,7 @@ func (w *walker) walk() {
 			if name == "" {
 				continue
 			}
-			sd := &ir.StructDef{Name: name, Native: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthStructAST(name, s)}
+			sd := &ir.StructDef{Name: name, Foreign: ir.Foreign{Name: name, Origin: jsTypeID{Module: w.importPath, Name: name}}, AST: w.synthStructAST(name, s)}
 			w.structs[name] = sd
 			w.outStructs = append(w.outStructs, sd)
 		case snglts.KindTypeAliasDeclaration:
@@ -125,7 +125,7 @@ func (w *walker) walk() {
 			}
 			// If the alias targets an object literal, treat it as a struct.
 			if t := s.Type(); t != nil && t.Kind == snglts.KindTypeLiteral {
-				sd := &ir.StructDef{Name: name, Native: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthStructAST(name, s)}
+				sd := &ir.StructDef{Name: name, Foreign: ir.Foreign{Name: name, Origin: jsTypeID{Module: w.importPath, Name: name}}, AST: w.synthStructAST(name, s)}
 				w.structs[name] = sd
 				w.outStructs = append(w.outStructs, sd)
 			}
@@ -134,7 +134,7 @@ func (w *walker) walk() {
 			if name == "" {
 				continue
 			}
-			ed := &ir.EnumDef{Name: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthEnumAST(name, s)}
+			ed := &ir.EnumDef{Name: name, Foreign: ir.Foreign{Origin: jsTypeID{Module: w.importPath, Name: name}}, AST: w.synthEnumAST(name, s)}
 			w.enums[name] = ed
 			w.outEnums = append(w.outEnums, ed)
 		}
@@ -179,10 +179,9 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 		return nil
 	}
 	f := &ir.Func{
-		Name:       name,
-		NativePkg:  w.importPath,
-		NativeName: name,
-		Purity:     ir.PurityUnknown,
+		Name:    name,
+		Foreign: ir.Foreign{Path: w.importPath, Name: name},
+		Purity:  ir.PurityUnknown,
 	}
 	if isPureDoc(docComment(w.src, s.Pos())) {
 		f.Purity = ir.PurityPure
@@ -196,8 +195,8 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 			paramName = fmt.Sprintf("arg%d", len(f.Params))
 		}
 		t, unusable := w.tsTypeToIR(p.Type())
-		if unusable != "" && f.Unusable == "" {
-			f.Unusable = fmt.Sprintf("parameter %q: %s", paramName, unusable)
+		if unusable != "" && f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = fmt.Sprintf("parameter %q: %s", paramName, unusable)
 		}
 		f.Params = append(f.Params, &ir.Param{Name: paramName, Type: t})
 	}
@@ -207,8 +206,8 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 			f.IsAsync = true
 			t, unusable = w.tsTypeToIR(promiseInnerNode(rt))
 		}
-		if unusable != "" && f.Unusable == "" {
-			f.Unusable = "return type: " + unusable
+		if unusable != "" && f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = "return type: " + unusable
 		}
 		if t != nil && t.Kind != ir.TypeVoid {
 			f.Return = t
@@ -242,12 +241,12 @@ func (w *walker) appendField(sd *ir.StructDef, m *snglts.Node) {
 	}
 	t, unusable := w.tsTypeToIR(m.Type())
 	sf := &ir.StructField{
-		Name:       lowerFirst(name),
-		Type:       t,
-		NativeName: name,
+		Name:    lowerFirst(name),
+		Type:    t,
+		Foreign: ir.Foreign{Name: name},
 	}
 	if unusable != "" {
-		sf.Unusable = unusable
+		sf.Foreign.Unusable = unusable
 	}
 	sd.Fields = append(sd.Fields, sf)
 }
@@ -325,14 +324,13 @@ func (w *walker) varDeclToVar(decl *snglts.Node) *ir.Var {
 	}
 	t, unusable := w.tsTypeToIR(decl.Type())
 	v := &ir.Var{
-		Name:       name,
-		Type:       t,
-		IsConst:    true,
-		NativePkg:  w.importPath,
-		NativeName: name,
+		Name:    name,
+		Type:    t,
+		IsConst: true,
+		Foreign: ir.Foreign{Path: w.importPath, Name: name},
 	}
 	if unusable != "" {
-		v.Unusable = unusable
+		v.Foreign.Unusable = unusable
 	}
 	return v
 }
@@ -396,10 +394,29 @@ func (w *walker) posFromOffset(offset int) ast.Pos {
 	return ast.Pos{File: w.filePath, Line: line + 1, Column: int(col) + 1}
 }
 
-// DeclaredHere reports whether a declaration's Origin says this importer read
-// it from a JavaScript module — which is what says whether its NativeName is a
-// name generated JavaScript should spell.
-func DeclaredHere(origin any) bool {
-	_, ok := origin.(jsTypeID)
-	return ok
+// DeclaredHere reports whether a declaration's Foreign says its Name is a name
+// generated JavaScript should spell: either this importer read the declaration
+// from a JavaScript module, or a #[foreign] mark named this scheme. A mark sets
+// no Origin — that is what keeps it out of type identity — so the scheme it
+// wrote is the only thing left to ask.
+func DeclaredHere(f ir.Foreign) bool {
+	if _, ok := f.Origin.(jsTypeID); ok {
+		return true
+	}
+	return f.Scheme == Scheme
+}
+
+// CallsHere reports whether a call to f should be routed through this scheme's
+// module machinery — the bundler alias and the `import * as` it records.
+//
+// A declaration this importer read has a module path and nothing else to say;
+// a marked one has only what the mark wrote, so it is routed here when the
+// mark named this language and left alone when it named another. Without that
+// second case a go:// mark would rewrite a JavaScript call to a name no
+// JavaScript declares.
+func CallsHere(f ir.Foreign) bool {
+	if f.Marked {
+		return f.Scheme == Scheme
+	}
+	return f.Path != ""
 }

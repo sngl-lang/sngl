@@ -132,6 +132,10 @@ func TestUnrepresentable(t *testing.T) {
 		// whole results file.
 		{"cycle", "(() => { const o = {}; o.self = o; return o; })()", "nests deeper"},
 		{"getter that throws", "({ get a() { throw new Error(\"boom\"); } })", "boom"},
+		// A marshalSymbol method returns arbitrary SNGL source, and the record
+		// is one line. Pretty-printed source would arrive as records with no
+		// key in them, failing the whole batch with a message about corruption.
+		{"multi-line marshal", `({ [Symbol.for("sngl.marshal")]() { return "{\n  a = 1,\n}"; } })`, "spans more than one line"},
 	} {
 		t.Run(tc.name, func(t *testing.T) { unrepresentable(t, tc.js, tc.reason) })
 	}

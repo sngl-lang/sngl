@@ -18,6 +18,17 @@
 //
 // Only tests import this package. It pulls in the compiler, so nothing it
 // touches reaches a generated program.
+//
+// # A struct now names its own type
+//
+// The encoder used to write a struct as `Item{...}` and now writes
+// `import("go://example.com/pkg").Item{...}`, so a golden test over the text
+// Encode returns changes with the compiler. The name alone was not enough to
+// resolve a declaration for a value the declared type says nothing about — a
+// func returning []any — and the encoder is the only end that knows which type
+// it held. Encode reports what the encoder writes, which is the whole of what
+// it is for, so the expected text is what moves.
+
 package sngltest
 
 import (

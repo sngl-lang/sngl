@@ -143,6 +143,26 @@ may contribute macros, declarations, or both. `internal/marks` is macro-only
 and has no directory; `internal/draw` declares the drawing primitives
 passCanvas emits, the intrinsic half of `sngl://draw`.
 
+**`#[foreign]` records what a declaration corresponds to outside SNGL.** It
+lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and
+because its users are outside the compiler: a language plugin generating marked
+SNGL to describe a foreign API, a platform package naming its host types.
+`#[foreign("go://example.com/api", "api.Entry")]` gives the import path and the
+name there; one argument is the name alone, which is all a struct field can
+say. A function may add flags — `pure` and `async` — that state what a call
+costs, because a foreign function's SNGL body describes it rather than
+implementing it and nothing may be inferred from it. `pure` is the sharp edge:
+it lets the compiler evaluate a call at build time, so a wrongly marked
+function runs during a build.
+
+The mark imports nothing, resolves nothing and validates nothing, and never
+confers type identity — only a scheme importer's `Foreign.Origin` unifies two
+declarations. A marked declaration is still the program's own, which is what
+`Foreign.Marked` says: a backend emits it, so the mark's `Name` is a name to
+spell alongside that declaration and never a reference redirecting to one the
+backend did not emit. Struct, struct field and function are the forms that
+carry it; the others refuse it.
+
 Not every compiler primitive is a package. The node operations a visual tree
 lowers to (CreateNode, AppendChild, …) are `ir.NodeOps` constants: no program
 can name them, no language registers an emitter for them, and their only

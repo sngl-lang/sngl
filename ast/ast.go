@@ -123,6 +123,10 @@ type StructBodyItem interface {
 func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
 
+// An attributed field or nested method stays wrapped until the expand pass
+// unwraps it, so the wrapper has to be a body item too.
+func (*AttrDecl) structBodyItem() {}
+
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
 	Pos         Pos
@@ -131,24 +135,31 @@ type StructDef struct {
 	Body        []StructBodyItem
 	IsMultiline bool
 	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
+	Foreign     ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
 }
 
 // Fields returns just the *StructField items from Body, in source order.
+//
+// An attributed item is unwrapped, so a marked field is a field here whether
+// or not the macro pass has run. The pass replaces the wrapper with what it
+// returns, but sngl.Parse and the LSP never run it, and a field that vanished
+// from Body would be reported as an unknown field on the struct.
 func (s *StructDef) Fields() []*StructField {
 	out := make([]*StructField, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := it.(*StructField); ok {
+		if f, ok := UnwrapAttrs(it).(*StructField); ok {
 			out = append(out, f)
 		}
 	}
 	return out
 }
 
-// Funcs returns just the *FuncDef items from Body, in source order.
+// Funcs returns just the *FuncDef items from Body, in source order. Attributed
+// items are unwrapped, as in Fields.
 func (s *StructDef) Funcs() []*FuncDef {
 	out := make([]*FuncDef, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := it.(*FuncDef); ok {
+		if f, ok := UnwrapAttrs(it).(*FuncDef); ok {
 			out = append(out, f)
 		}
 	}
@@ -164,6 +175,7 @@ type StructField struct {
 	NamePositions []Pos // parallel to Names; per-name source positions
 	Type          TypeExpr
 	Default       Expr
+	Foreign       ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -261,6 +273,8 @@ type FuncDef struct {
 	// Intrinsic is the #[intrinsic("...")] mark, if any. Its zero value means
 	// an ordinary function.
 	Intrinsic IntrinsicMark
+	// Foreign is the #[foreign(...)] mark, if any.
+	Foreign ForeignMark `json:",omitzero"`
 }
 
 // SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
@@ -375,7 +389,11 @@ type PlatformStmt struct {
 
 // --- StmtPos implementations ---
 
-func (s *StructDef) StmtPos() *Pos     { return &s.Pos }
+func (s *StructDef) StmtPos() *Pos { return &s.Pos }
+
+// A field is a Stmt only so AttrDecl can wrap one; nothing executes it.
+func (f *StructField) StmtPos() *Pos { return &f.Pos }
+
 func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
 func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }
 func (c *ConstDecl) StmtPos() *Pos     { return &c.Pos }
@@ -390,3 +408,28 @@ func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }
 func (a *AttrDecl) StmtPos() *Pos      { return &a.Pos }
+
+// UnwrapAttrs returns the declaration item carries, past any attribute wrappers.
+// Attributes nest — two marks on one declaration are two wrappers — and a
+// caller that wants the declaration wants it whether or not the macro pass has
+// replaced the wrappers yet.
+func UnwrapAttrs[T any](item T) any {
+	var x any = item
+	for {
+		attr, ok := x.(*AttrDecl)
+		if !ok || attr.Inner == nil {
+			return x
+		}
+		x = attr.Inner
+	}
+}
+
+// UnwrapStmt is UnwrapAttrs for a caller that switches over statements, which
+// every statement list a mark may be written in has to do: a switch that reads
+// the wrapper matches nothing and drops the declaration.
+func UnwrapStmt(s Stmt) Stmt {
+	if inner, ok := UnwrapAttrs(s).(Stmt); ok {
+		return inner
+	}
+	return s
+}

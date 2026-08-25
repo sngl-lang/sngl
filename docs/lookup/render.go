@@ -106,8 +106,8 @@ func typeMD(pkg string, t *TypeDetail) string {
 		return ""
 	}
 	var sb strings.Builder
-	if t.Native != nil && t.Native.Native != "" {
-		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", t.Native.Native))
+	if t.Native != nil && t.Native.Foreign.Name != "" {
+		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", t.Native.Foreign.Name))
 	}
 	if t.Doc != "" {
 		sb.WriteString(t.Doc)
@@ -196,8 +196,8 @@ func funcMD(f *FuncDetail) string {
 			sig += " " + f.Native.Return.String()
 		}
 		sb.WriteString("```\n" + sig + "\n```\n\n")
-		if f.Native.NativeName != "" {
-			sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", f.Native.NativeName))
+		if f.Native.Foreign.Name != "" {
+			sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", f.Native.Foreign.Name))
 		}
 	} else if f.AST != nil {
 		sb.WriteString("```\n")
@@ -248,8 +248,8 @@ func valueMD(v *ValueDetail) string {
 	var sb strings.Builder
 	if v.Native != nil && v.Native.Type != nil {
 		sb.WriteString(fmt.Sprintf("_Type:_ `%s`\n\n", v.Native.Type.String()))
-		if v.Native.NativeName != "" {
-			sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", v.Native.NativeName))
+		if v.Native.Foreign.Name != "" {
+			sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", v.Native.Foreign.Name))
 		}
 	}
 	if v.Doc != "" {

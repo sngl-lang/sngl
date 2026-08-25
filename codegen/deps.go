@@ -497,7 +497,7 @@ func opaqueFunc(fn *ir.Func) bool {
 	if fn.Intrinsic != "" {
 		return true
 	}
-	if fn.NativePkg != "" {
+	if fn.Foreign.Path != "" {
 		return true
 	}
 	return false

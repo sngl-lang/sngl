@@ -40,7 +40,7 @@ func TestBatchSpansTwoSchemes(t *testing.T) {
 		{"js", jspurePath, jsTag, []any{"world"}},
 	} {
 		if _, state, err := requestPureNativeFunc(ctx, c.scheme, c.path, c.fn, c.args); state != nativePending {
-			t.Fatalf("%s:// %s did not go into the batch: state %v, err %v", c.scheme, c.fn.NativeName, state, err)
+			t.Fatalf("%s:// %s did not go into the batch: state %v, err %v", c.scheme, c.fn.Foreign.Name, state, err)
 		}
 	}
 	if got := len(ctx.native.order); got != 2 {
@@ -61,21 +61,20 @@ func TestBatchSpansTwoSchemes(t *testing.T) {
 	} {
 		v, state, err := requestPureNativeFunc(ctx, c.scheme, c.path, c.fn, c.args)
 		if err != nil || state != nativeReady {
-			t.Errorf("%s:// %s: state %v, err %v", c.scheme, c.fn.NativeName, state, err)
+			t.Errorf("%s:// %s: state %v, err %v", c.scheme, c.fn.Foreign.Name, state, err)
 			continue
 		}
 		lit, _ := v.(*ir.Literal)
 		if lit == nil || lit.Raw != c.want[1:len(c.want)-1] {
-			t.Errorf("%s:// %s folded to %#v, want %s", c.scheme, c.fn.NativeName, v, c.want)
+			t.Errorf("%s:// %s folded to %#v, want %s", c.scheme, c.fn.Foreign.Name, v, c.want)
 		}
 	}
 }
 
 var jsTag = &ir.Func{
-	Name:       "tag",
-	NativeName: "tag",
-	NativePkg:  jspurePath,
-	Purity:     ir.PurityPure,
-	Params:     []*ir.Param{{Name: "s", Type: ir.TypString}},
-	Return:     ir.TypString,
+	Name:    "tag",
+	Foreign: ir.Foreign{Name: "tag", Path: jspurePath},
+	Purity:  ir.PurityPure,
+	Params:  []*ir.Param{{Name: "s", Type: ir.TypString}},
+	Return:  ir.TypString,
 }

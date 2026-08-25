@@ -20,11 +20,15 @@ func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
 	}
 	ir.Walk(f.Block, w.visit)
 
-	if w.mutates {
+	switch {
+	case f.Foreign.Name != "":
+		// A #[foreign] function's purity is asserted by its mark, not read off
+		// a body that only describes the foreign declaration (see buildFunc).
+	case w.mutates:
 		f.Purity = ir.PurityMutates
-	} else if len(w.reads) > 0 {
+	case len(w.reads) > 0:
 		f.Purity = ir.PurityReadonly
-	} else {
+	default:
 		f.Purity = ir.PurityPure
 	}
 

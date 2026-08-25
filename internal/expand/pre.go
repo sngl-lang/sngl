@@ -18,18 +18,66 @@ func ExpandPre(docs []*ast.Document) []ir.Diagnostic {
 	var diags []ir.Diagnostic
 
 	for _, doc := range docs {
-		var newStmts []ast.Stmt
+		doc.Stmts, diags = expandStmts(doc.Stmts, aliases, dotPkgs, diags)
 		for _, stmt := range doc.Stmts {
-			ad, ok := stmt.(*ast.AttrDecl)
+			diags = expandNested(stmt, aliases, dotPkgs, diags)
+		}
+	}
+	return diags
+}
+
+// expandStmts replaces every attributed declaration in a statement list with
+// what its marks made of it.
+func expandStmts(stmts []ast.Stmt, aliases map[string]imports.ImportRef, dotPkgs []string, diags []ir.Diagnostic) ([]ast.Stmt, []ir.Diagnostic) {
+	for i, stmt := range stmts {
+		ad, ok := stmt.(*ast.AttrDecl)
+		if !ok {
+			continue
+		}
+		result, attrDiags := applyAttrs(ad, aliases, dotPkgs)
+		diags = append(diags, attrDiags...)
+		stmts[i] = result
+	}
+	return stmts, diags
+}
+
+// expandNested applies the marks written on declarations a top-level one
+// contains: a struct's fields and methods, a component's. Neither is a
+// top-level declaration, so neither is reached from the document — but both go
+// through the same AttrDecl and the same handlers, so a mark means the same
+// thing wherever it is written.
+//
+// A body a mark can be written in has to be reached here. One that is not
+// leaves the AttrDecl standing, and the checker then reads a wrapper where a
+// declaration should be: the declaration is never registered and the name it
+// binds is undefined.
+func expandNested(stmt ast.Stmt, aliases map[string]imports.ImportRef, dotPkgs []string, diags []ir.Diagnostic) []ir.Diagnostic {
+	switch s := ast.UnwrapAttrs(stmt).(type) {
+	case *ast.StructDef:
+		for i, item := range s.Body {
+			ad, ok := item.(*ast.AttrDecl)
 			if !ok {
-				newStmts = append(newStmts, stmt)
 				continue
 			}
 			result, attrDiags := applyAttrs(ad, aliases, dotPkgs)
 			diags = append(diags, attrDiags...)
-			newStmts = append(newStmts, result)
+			if inner, ok := result.(ast.StructBodyItem); ok {
+				s.Body[i] = inner
+			}
 		}
-		doc.Stmts = newStmts
+	case *ast.ComponentDecl:
+		diags = expandBlock(&s.Body, aliases, dotPkgs, diags)
+	case *ast.PlatformStmt:
+		diags = expandBlock(&s.Body, aliases, dotPkgs, diags)
+	}
+	return diags
+}
+
+// expandBlock expands a statement list and everything nested in it.
+func expandBlock(b *ast.StmtBlock, aliases map[string]imports.ImportRef, dotPkgs []string, diags []ir.Diagnostic) []ir.Diagnostic {
+	b.Stmts, diags = expandStmts(b.Stmts, aliases, dotPkgs, diags)
+	for _, inner := range b.Stmts {
+		diags = expandNested(inner, aliases, dotPkgs, diags)
 	}
 	return diags
 }
@@ -186,6 +234,8 @@ func inheritPos(decl ast.Stmt, pos ast.Pos) {
 	case *ast.ConstDecl:
 		d.Pos = pos
 	case *ast.UnitDef:
+		d.Pos = pos
+	case *ast.StructField:
 		d.Pos = pos
 	}
 }

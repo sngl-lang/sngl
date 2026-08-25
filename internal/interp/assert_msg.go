@@ -308,6 +308,12 @@ func formatValue(v any) string {
 			parts[i] = formatValue(item)
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
+	case *Struct:
+		parts := make([]string, len(val.Fields))
+		for i, f := range val.Fields {
+			parts[i] = f.Name + ": " + formatValue(f.Value)
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
 	case map[string]any:
 		keys := make([]string, 0, len(val))
 		for k := range val {

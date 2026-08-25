@@ -185,6 +185,15 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.SetField(s.Op, target.Field, val)
 		}
+		if st, ok := obj.(*Struct); ok {
+			old, _ := st.Get(target.Field)
+			nv, err := ApplyOp(s.Op, old, val, target.ExprType())
+			if err != nil {
+				return err
+			}
+			st.Set(target.Field, nv)
+			return nil
+		}
 		if m, ok := obj.(map[string]any); ok {
 			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
 			if err != nil {

@@ -16,6 +16,9 @@ import (
 	// Registers the #[builtin] macro. The stdlib source is macro-expanded
 	// below, so the handlers must be present whenever the checker runs.
 	_ "git.duckfam.us/jonathan/sngl/internal/macros/marks"
+
+	// Registers #[foreign], which sngl://std carries for user and plugin code.
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/foreign"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -232,10 +235,10 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	// These annotations ensure that IRTypeToGo emits the qualified Go type
 	// (e.g. "i18n.PluralKey") rather than the plain SNGL name ("PluralKey").
 	for _, sd := range structDefs {
-		if sd.Native == "" {
+		if sd.Foreign.Name == "" {
 			switch sd.Name {
 			case "PluralKey":
-				sd.Native = "i18n.PluralKey"
+				sd.Foreign.Name = "i18n.PluralKey"
 			}
 		}
 	}
@@ -514,8 +517,8 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
 	// methods (int.min, string.upper, etc.) when called with constant args.
-	// Impure stdlib (alert.show, file.contents, anything with a NativePkg
-	// effect) gets its purity overridden later by stdlib.SetImpure or via
+	// Impure stdlib (alert.show, file.contents, anything reaching outside the
+	// program) gets its purity overridden later by stdlib.SetImpure or via
 	// scheme registration.
 	if fn.Purity == ir.PurityUnknown {
 		fn.Purity = ir.PurityPure

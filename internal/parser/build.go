@@ -335,14 +335,8 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == StructBodyItem {
-			sub := it.enter()
-			if !sub.done() && sub.isNonTerminal() {
-				switch sub.symbol() {
-				case FuncDecl:
-					s.Body = append(s.Body, b.buildFuncDecl(sub.enter()))
-				case StructField:
-					s.Body = append(s.Body, b.buildStructField(sub.enter()))
-				}
+			if item := b.buildStructBodyItem(it.enter()); item != nil {
+				s.Body = append(s.Body, item)
 			}
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == RBRACE {
@@ -354,6 +348,30 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 		}
 	}
 	return s
+}
+
+func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
+	// StructBodyItem = { MacroAttr } StructBodyDecl .
+	var attrs []ast.MacroAttr
+	for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+		attrs = append(attrs, b.buildMacroAttr(it.enter()))
+	}
+	var inner ast.StructBodyItem
+	if !it.done() && it.isNonTerminal() && it.symbol() == StructBodyDecl {
+		sub := it.enter()
+		if !sub.done() && sub.isNonTerminal() {
+			switch sub.symbol() {
+			case FuncDecl:
+				inner = b.buildFuncDecl(sub.enter())
+			case StructField:
+				inner = b.buildStructField(sub.enter())
+			}
+		}
+	}
+	if len(attrs) == 0 {
+		return inner
+	}
+	return &ast.AttrDecl{Pos: attrs[0].Pos, Attrs: attrs, Inner: inner.(ast.Stmt)}
 }
 
 func (b *builder) buildStructField(it nodeIter) *ast.StructField {
@@ -1787,7 +1805,7 @@ func (b *builder) buildImportExpr(it nodeIter) *ast.StructExpr {
 	path := stripQuotes(it.shift().Literal)
 	it.skip() // rparen
 	it.skip() // dot
-	return &ast.StructExpr{Pos: pos, Native: path + "#" + it.shift().Literal}
+	return &ast.StructExpr{Pos: pos, Native: &ast.NativeRef{Path: path, Name: it.shift().Literal}}
 }
 
 // --- Composite literals ---

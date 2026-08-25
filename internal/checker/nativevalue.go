@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,7 +19,7 @@ import (
 // SNGL binding: the declaration comes either from the ref the value carries,
 // looked up in types, or from want, where the scheme importer also put it. And
 // its fields carry the foreign names, which the importer recorded on each
-// StructField as NativeName. Both are resolved that way rather than off the
+// StructField as Foreign.Name. Both are resolved that way rather than off the
 // scope, so the result is ordinary checker output: a StructLit with its real
 // Def, a list with its real element type, a literal at the width and unit want
 // asks for.
@@ -85,10 +86,8 @@ var (
 // names are compared instead — all a value from an encoder with no module
 // identity (see pkg/js/consteval) can offer.
 func (c *checker) nativeStructDef(x *ast.StructExpr, want *ir.StructDef) (bad bool, sd *ir.StructDef) {
-	ref, ok := ir.ParseNativeDeclRef(x.Native)
-	if !ok {
-		return false, want
-	}
+	scheme, path := imports.ParseScheme(x.Native.Path)
+	ref := ir.NativeDeclRef{Scheme: scheme, Path: path, Name: x.Native.Name}
 	named, _ := c.nativeTypes[ref].(*ir.StructDef)
 	switch {
 	case named == nil:
@@ -98,7 +97,7 @@ func (c *checker) nativeStructDef(x *ast.StructExpr, want *ir.StructDef) (bad bo
 		}
 		return false, want
 	case want != nil && !named.SymType().Equal(want.SymType()):
-		c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Native, want.Name)
+		c.error(x.Pos, "encoded value is a %s, but a %s was expected", ref.Name, want.Name)
 		return true, nil
 	}
 	return false, named
@@ -215,7 +214,7 @@ func isStringLit(v *ir.Literal) bool {
 // rule, and it lives with the importer.
 func findNativeField(sd *ir.StructDef, nativeName string) *ir.StructField {
 	for _, f := range sd.Fields {
-		if f.NativeName == nativeName {
+		if f.Foreign.Name == nativeName {
 			return f
 		}
 	}
