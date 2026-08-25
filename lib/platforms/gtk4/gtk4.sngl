@@ -5,17 +5,18 @@
 // etc.) are available as VisualNode identifiers inside component bodies; the
 // platform's Resolve() maps them from the Gtk-4.0.gir type registry.
 //
-// Inside `platform gtk4 { ... }` extension bodies, native widget tags must be
-// qualified with `gtk4.` (e.g. `gtk4.GtkBox`) to disambiguate them from the
-// stdlib abstract components that they override (which are themselves
-// body-bearing under Plan H).
+// Inside a `platform gtk4 { ... }` body a native widget tag needs its `gtk4.`
+// prefix (e.g. `gtk4.GtkBox`): the stdlib component it overrides is in scope
+// too, and carries a body of its own.
 //
-// The view renderer (Task 5) walks each component body, finds the root
+// The view renderer walks each component body, finds the root
 // VisualNode, reads its widget type and prop/event bindings, and emits the
 // corresponding GTK4 Go code.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     package string
     main bool

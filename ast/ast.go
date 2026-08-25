@@ -135,7 +135,8 @@ type StructDef struct {
 	Body        []StructBodyItem
 	IsMultiline bool
 	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
-	Foreign     ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
+	Foreign     ForeignMark `json:",omitzero"`  // set by #[foreign(...)]; zero value otherwise
+	Options     bool        `json:",omitempty"` // set by #[options]; see ast/options.go
 }
 
 // Fields returns just the *StructField items from Body, in source order.
@@ -248,6 +249,9 @@ type Param struct {
 	Type          TypeExpr
 	Default       Expr
 	Bidirectional bool // :name — component binding param
+	// Attrs are the #[...] marks written before the parameter. Plumbing only:
+	// no macro reads them yet, and expand never descends here.
+	Attrs []MacroAttr `json:",omitempty"`
 }
 
 // ParamList is an ordered list of parameters.

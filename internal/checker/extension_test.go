@@ -13,21 +13,27 @@ import (
 // extStubPlatform is a minimal ir.Platform used by extension-merge tests. It
 // ships a single new-form `component sngl.text { platform extstub { ... } }`
 // extension so the merge pass has something to splice into the stdlib's
-// abstract `text` component.
-type extStubPlatform struct {
-	source string
-}
+// abstract `text` component. There is no lib/platforms/extstub directory, so
+// the source is handed to the checker through Config.LibSources.
+type extStubPlatform struct{}
 
 func (extStubPlatform) PlatformIdentifier() string { return "extstub" }
 func (extStubPlatform) Description() string        { return "extension-merge test stub" }
 func (extStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
-func (p extStubPlatform) Package() []*ast.Document {
-	doc, err := parser.Parse("extstub.sngl", []byte(withStd(p.source)))
+// extStubConfig builds a Config registering the stub platform with source as
+// its sngl://platforms/extstub package.
+func extStubConfig(t *testing.T, source string) *checker.Config {
+	t.Helper()
+	doc, err := parser.Parse("extstub.sngl", []byte(withStd(source)))
 	if err != nil {
-		panic("extstub parse: " + err.Error())
+		t.Fatalf("extstub parse: %v", err)
 	}
-	return []*ast.Document{doc}
+	return &checker.Config{
+		IsMain:     true,
+		Platforms:  []ir.Platform{extStubPlatform{}},
+		LibSources: map[string][]*ast.Document{"platforms/extstub": {doc}},
+	}
 }
 
 // TestExtensionMergeBasic exercises the platform-agnostic checker collection
@@ -58,11 +64,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	plat := extStubPlatform{source: extSource}
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: []ir.Platform{plat},
-	})
+	pkg, diags := checker.Check(doc, extStubConfig(t, extSource))
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Errorf("unexpected error: %s", d.Error())

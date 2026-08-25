@@ -19,6 +19,9 @@ import (
 
 	// Registers #[foreign], which sngl://std carries for user and plugin code.
 	_ "git.duckfam.us/jonathan/sngl/internal/macros/foreign"
+
+	// Registers #[options], which every platform and language package carries.
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/platforms"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -44,12 +47,44 @@ func HasPackage(name string) bool {
 }
 
 // StdlibDocs returns the parsed stdlib documents, every tier merged.
+//
+// The platforms/ and languages/ tiers are left out: they are per-target and
+// mutually exclusive (each declares its own `Options`), so merging them into
+// one corpus produces collisions no program could ever hit. Reach one through
+// PackageDocsFor, or import it.
 // The results are cached after the first call.
 //
 // Returns a copy of the cached slice so a caller that appends can't write into
 // the shared package-global backing array (bugs.md #12).
 func StdlibDocs() []*ast.Document {
 	return slices.Clone(parseStdlibDocs())
+}
+
+// unmarkedOptions names the library packages that declare a top-level struct
+// called Options without the #[options] mark. Every options lookup keys on the
+// mark, so an unmarked one would silently contribute no options at all; the
+// name match here exists only to catch that omission, and is the one place the
+// name means anything.
+func unmarkedOptions() []string {
+	var out []string
+	for pkg, docs := range stdlibTierDocs {
+		for _, doc := range docs {
+			for _, stmt := range doc.Stmts {
+				sd, ok := stmt.(*ast.StructDef)
+				if ok && sd.Name == "Options" && !sd.Options {
+					out = append(out, fmt.Sprintf("sngl://%s: struct Options at %s needs #[options] (and import . \"sngl://platforms\")", pkg, sd.Pos))
+				}
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// targetTier reports whether a package path names a platform or language
+// package — one contributed by a codegen plugin rather than by the library.
+func targetTier(pkg string) bool {
+	return strings.HasPrefix(pkg, "platforms/") || strings.HasPrefix(pkg, "languages/")
 }
 
 // parseStdlibDocs parses every .sngl file embedded in the lib package. File
@@ -64,6 +99,9 @@ func parseStdlibDocs() []*ast.Document {
 		// leaving a partial stdlib that produces confusing "undefined
 		// component/func" errors downstream (bugs.md #20).
 		stdlibTierDocs = map[string][]*ast.Document{}
+		// Macros expand over every tier, including the per-target ones the
+		// merged view drops.
+		var allDocs []*ast.Document
 		for _, tier := range lib.Packages() {
 			entries, err := lib.FS.ReadDir(tier)
 			if err != nil {
@@ -82,7 +120,10 @@ func parseStdlibDocs() []*ast.Document {
 				if err != nil {
 					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
 				}
-				stdlibDocs = append(stdlibDocs, doc)
+				if !targetTier(tier) {
+					stdlibDocs = append(stdlibDocs, doc)
+				}
+				allDocs = append(allDocs, doc)
 				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)
 			}
 		}
@@ -90,13 +131,16 @@ func parseStdlibDocs() []*ast.Document {
 		// marks (e.g. stringrepr on color/date/time) are applied before the
 		// checker registers these declarations.
 		var expandErrs []string
-		for _, d := range expand.ExpandPre(stdlibDocs) {
+		for _, d := range expand.ExpandPre(allDocs) {
 			if d.Severity == ir.Error {
 				expandErrs = append(expandErrs, fmt.Sprintf("%s: %s", d.Pos, d.Msg))
 			}
 		}
 		if len(expandErrs) > 0 {
 			panic("sngl: expanding stdlib macros:\n  " + strings.Join(expandErrs, "\n  "))
+		}
+		if missing := unmarkedOptions(); len(missing) > 0 {
+			panic("sngl: options schema not marked #[options]:\n  " + strings.Join(missing, "\n  "))
 		}
 	})
 	return stdlibDocs
@@ -126,6 +170,37 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	return builtinPkg, c.libPkg("std")
 }
 
+// libDocs returns the parsed source of lib package name, letting Config
+// substitute it (see Config.LibSources).
+func (c *checker) libDocs(name string) []*ast.Document {
+	if c.cfg != nil {
+		if docs, ok := c.cfg.LibSources[name]; ok {
+			return docs
+		}
+	}
+	return PackageDocsFor(name)
+}
+
+// hasLibPkg reports whether name resolves to a lib package for this check.
+func (c *checker) hasLibPkg(name string) bool {
+	if c.cfg != nil {
+		if _, ok := c.cfg.LibSources[name]; ok {
+			return true
+		}
+	}
+	return len(PackageDocsFor(name)) > 0
+}
+
+// targetUnavailable reports why a platform cannot be used in this
+// environment. The interface is matched structurally rather than named
+// (codegen.PlatformAvailability) because codegen imports this package.
+func targetUnavailable(t any) error {
+	if a, ok := t.(interface{ Unavailable() error }); ok {
+		return a.Unavailable()
+	}
+	return nil
+}
+
 // libPkg returns the loaded sngl://<name> package, loading it on first use.
 // Loading is lazy and memoized rather than a pass over lib.Packages() because
 // lib packages import each other (sngl://draw is written against sngl://std),
@@ -142,6 +217,16 @@ func (c *checker) libPkg(name string) *ir.Package {
 		c.libLoading = map[string]bool{}
 	}
 	c.libLoading[name] = true
+	// Load against the ambient builtin scope rather than whatever scope the
+	// first import happened to sit in: loading is lazy and memoized, so a
+	// scope captured from inside a function body (a `platform x { ... }`
+	// block's first mention of a platform package) would become the parent of
+	// every later use of the package.
+	if c.stdlibScope != nil {
+		saved := c.scope
+		c.scope = c.stdlibScope
+		defer func() { c.scope = saved }()
+	}
 	pkg := c.loadStdlibPackage(name, false)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
@@ -188,7 +273,7 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		components []*ast.ComponentDecl
 		contexts   []*ast.CallStmt
 	)
-	for _, doc := range PackageDocsFor(pkgName) {
+	for _, doc := range c.libDocs(pkgName) {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.Import:
@@ -231,15 +316,13 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	for i, s := range structs {
 		c.resolveStdlibStructFields(s, structDefs[i])
 	}
-	// Annotate stdlib structs that have known Go-runtime native type names.
-	// These annotations ensure that IRTypeToGo emits the qualified Go type
-	// (e.g. "i18n.PluralKey") rather than the plain SNGL name ("PluralKey").
+	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
+	// emits it rather than the bare SNGL name. It is matched by name because
+	// #[foreign] lives in sngl://std, and importing that from lib/i18n leaks
+	// the import into every consumer's IR — see the loader unification work.
 	for _, sd := range structDefs {
-		if sd.Foreign.Name == "" {
-			switch sd.Name {
-			case "PluralKey":
-				sd.Foreign.Name = "i18n.PluralKey"
-			}
+		if sd.Foreign.Name == "" && sd.Name == "PluralKey" {
+			sd.Foreign.Name = "i18n.PluralKey"
 		}
 	}
 	for _, s := range consts {
@@ -333,6 +416,28 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		}
 	}
 
+	// A platform or language package may ship its own body-bearing
+	// components (the wrappers lower's strict InlinePure pass is written
+	// against), and pass2 only walks the program's own components, so their
+	// bodies are checked here. A `component sngl.X` extension declaration is
+	// not one of those: mergePlatformExtensions splices its platform blocks
+	// into the component it names and checkPendingExtensions checks them
+	// there.
+	//
+	// Restricted to the target tiers: sngl://std's components carry bodies
+	// too, but they are declared without the pass1 pre-pass that binds their
+	// props and vars, so checking them here reports every one as undefined.
+	if targetTier(pkgName) {
+		for _, irComp := range stdlibPkg.Components {
+			if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
+				continue
+			}
+			nested := c.collectComponentDecls(irComp.AST, irComp)
+			irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nested)
+			c.checkComponentBody(irComp)
+		}
+	}
+
 	// Phase 3: refine stdlib context types from their default expressions.
 	// Context decls run BEFORE wrapper body checks (so wrapper bodies can
 	// read them), at which point a default like `i18n.defaultLocale()` still
@@ -356,6 +461,44 @@ const i18nPkg = "i18n"
 
 // stdPkg is the library package that declares the html namespace.
 const stdPkg = "std"
+
+// irPkg is the compiler's own package, and macroTypeName the return type it
+// declares that makes a function a macro.
+const (
+	irPkg         = "internal/ir"
+	macroTypeName = "Macro"
+)
+
+// macroPackage returns the URI of the package a macro of this name is
+// registered under, or "" for a name that is not a macro.
+func macroPackage(name string) string {
+	for uri, names := range expand.Registered() {
+		if slices.Contains(names, name) {
+			return uri
+		}
+	}
+	return ""
+}
+
+// IsMacroDecl reports whether a declaration is a macro, from the AST alone.
+// The documentation layer has no type information, so it matches the return
+// type's name under whatever alias the file imported sngl://internal/ir as;
+// the checker matches the declaration itself (isMacroSig), which is the
+// authority.
+func IsMacroDecl(f *ast.FuncDef) bool {
+	nt, ok := f.ReturnType.(*ast.NamedType)
+	return ok && nt.Name == macroTypeName
+}
+
+// isMacroSig reports whether a declared signature returns sngl://internal/ir's
+// Macro — the whole of what makes a declaration a macro rather than a function.
+func (c *checker) isMacroSig(t *ir.Type) bool {
+	if c.macroStruct == nil || t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd == c.macroStruct
+}
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the
 // package that declares PluralKey. They are opaque sentinels whose runtime
@@ -414,7 +557,13 @@ func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv strin
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin, Options: s.Options}
+	// Macro carries no #[builtin] kind: a kind names the IR construct a
+	// declaration dispatches to, and this one dispatches to none. It is found
+	// by name within the compiler's own package, which no program can import.
+	if c.libPkgName == "sngl://"+irPkg && s.Name == macroTypeName {
+		c.macroStruct = sd
+	}
 	// An ambient package's own root and the ambient scope are the same scope,
 	// so this binds the same symbol twice — which Declare tolerates, while
 	// still refusing a different symbol under a name already taken.
@@ -496,6 +645,15 @@ func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
 
 func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	fn := c.buildFunc(f)
+	// A macro declaration is not a function: it is the place a `#[...]` mark's
+	// documentation and argument list are written, and a Go handler is what
+	// runs. Binding it would put the name in scope, where a program could call
+	// it — and a dot import of the package that dot-imports the mark's package
+	// would lift it on, so `#[builtin]` would end up callable from any file
+	// that imports sngl://std.
+	if c.isMacroSig(fn.Return) {
+		return nil
+	}
 	// Stdlib funcs skip the body-check pass. When a stdlib signature omits a
 	// return annotation (common for the "=>" forms that delegate to an
 	// intrinsic), treat the missing return as an explicit dyn escape hatch
@@ -641,7 +799,7 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 	return true
 }
 
-// mergePlatformExtensions walks every registered platform's Package() docs
+// mergePlatformExtensions walks every registered platform's package source
 // for `component sngl.X` declarations and collects the checked IR body of
 // each `platform <name> { ... }` block into the stdlib *ir.Component's
 // PlatformBodies map (keyed by platform name).
@@ -655,15 +813,21 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 // platforms both shipping `component sngl.text { platform foo { ... } }`)
 // are an error.
 //
-// Note: this pass intentionally only acts on the new form (`HasParens=false`).
-// Legacy `component sngl.X() { body }` declarations in platform .sngl files
-// (html, bubbletea) continue to be ignored until Phase C rewrites them.
+// Only the parenless form is an extension. `component sngl.X() { body }`
+// (android) is ignored here: that platform reads such a body itself.
 func (c *checker) mergePlatformExtensions() {
 	if len(c.cfg.Platforms) == 0 {
 		return
 	}
 	for _, p := range c.cfg.Platforms {
-		for _, doc := range p.Package() {
+		// An unavailable platform's overrides are built from types it cannot
+		// resolve (gtk4's widgets come from a GIR file installed outside this
+		// repo). Every registered platform is merged regardless of the build
+		// target, so merging them would fail every compile.
+		if targetUnavailable(p) != nil {
+			continue
+		}
+		for _, doc := range c.libDocs("platforms/" + p.PlatformIdentifier()) {
 			// The extension prefix is whatever alias this document imported the
 			// stdlib under. Platform docs are not registered into the checker's
 			// scope, so resolve it from the document's own imports.
@@ -674,7 +838,7 @@ func (c *checker) mergePlatformExtensions() {
 					continue
 				}
 				if decl.HasParens {
-					// Legacy form — skip until Phase C rewrites.
+					// Parens form: the platform reads this body itself.
 					continue
 				}
 				dot := strings.IndexByte(decl.Name, '.')
@@ -803,7 +967,7 @@ func (c *checker) checkPendingExtensions() {
 }
 
 // registerPlatformExtensionTypes declares the blueprint enum/struct/unit types
-// from the named platform's Package() docs into the current (pushed) scope, so
+// from the named platform's package source into the current (pushed) scope, so
 // platform-extension bodies resolve them as real types rather than falling to
 // the platform's component resolver. Scope-local by design — these names are
 // not globally visible and do not collide across platforms.
@@ -821,7 +985,7 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 	var enums []*ast.EnumDef
 	var structs []*ast.StructDef
 	var units []*ast.UnitDef
-	for _, doc := range p.Package() {
+	for _, doc := range c.libDocs("platforms/" + platform) {
 		for _, s := range doc.Stmts {
 			switch d := s.(type) {
 			case *ast.EnumDef:
@@ -842,7 +1006,7 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
-		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin}
+		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin, Options: s.Options}
 		c.bindLib(s.Pos, c.scope, sd)
 		stubs[i] = sd
 	}

@@ -317,14 +317,10 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	// whatever the file has in scope.
 	sources := checker.PackageDocsFor("std")
 	if langName != "" {
-		if lang := codegen.LookupLang(langName); lang != nil {
-			sources = append(sources, lang.Package()...)
-		}
+		sources = append(sources, codegen.LangDocs(codegen.LookupLang(langName))...)
 	}
 	if platformName != "" {
-		if plat := codegen.LookupPlatform(platformName); plat != nil {
-			sources = append(sources, plat.Package()...)
-		}
+		sources = append(sources, codegen.PlatformDocs(codegen.LookupPlatform(platformName))...)
 	}
 
 	seen := map[string]bool{}
@@ -335,7 +331,7 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 		}
 		for _, stmt := range doc.Stmts {
 			s, ok := stmt.(*ast.StructDef)
-			if !ok || s.Name != "Options" {
+			if !ok || !s.Options {
 				continue
 			}
 			for _, f := range s.Fields() {
@@ -446,16 +442,12 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 	// Check if this is a registered platform or language
 	var pkgDoc *ast.Document
-	if plat := codegen.LookupPlatform(nsName); plat != nil {
-		if docs := plat.Package(); len(docs) > 0 {
-			pkgDoc = docs[0]
-		}
+	if docs := codegen.PlatformDocs(codegen.LookupPlatform(nsName)); len(docs) > 0 {
+		pkgDoc = docs[0]
 	}
 	if pkgDoc == nil {
-		if lang := codegen.LookupLang(nsName); lang != nil {
-			if docs := lang.Package(); len(docs) > 0 {
-				pkgDoc = docs[0]
-			}
+		if docs := codegen.LangDocs(codegen.LookupLang(nsName)); len(docs) > 0 {
+			pkgDoc = docs[0]
 		}
 	}
 

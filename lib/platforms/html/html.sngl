@@ -1,18 +1,19 @@
-// HTML platform package.
-// Raw HTML elements (div, span, button, input, etc.) are implicitly available
-// via APIResolver — any identifier is a valid HTML tag.
+// HTML output. Any identifier is a valid tag: `html.div`, `html.dialog`,
+// `html.my-widget`. The web element set is open — custom elements and new
+// standards mean it cannot be enumerated — so a tag resolves without being
+// declared here.
 //
-// Each component sngl.X() overrides the stdlib abstract component with an
-// HTML-native implementation. Props are inherited from the stdlib definition
-// and available as local variables in the body.
+// Each `component sngl.X` gives a stdlib component its HTML implementation.
+// The stdlib declares the props; the body reads them as locals.
 //
-// Inside `platform html { ... }` extension bodies, native HTML elements must
-// be qualified with `html.` (e.g. `html.input`) to disambiguate them from the
-// stdlib abstract components of the same name (which are themselves
-// body-bearing under Plan H).
+// Inside a `platform html { ... }` body a native element needs its `html.`
+// prefix: the stdlib component of the same name is in scope too, and carries
+// a body of its own.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
     preview bool

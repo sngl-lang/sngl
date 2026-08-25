@@ -136,6 +136,15 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args}
 }
 
+// buildParamAttrs consumes the leading { MacroAttr } of a Param or CompParam.
+func (b *builder) buildParamAttrs(it *nodeIter) []ast.MacroAttr {
+	var attrs []ast.MacroAttr
+	for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+		attrs = append(attrs, b.buildMacroAttr(it.enter()))
+	}
+	return attrs
+}
+
 // --- Document ---
 
 func (b *builder) buildDocument(children []int32) *ast.Document {
@@ -771,11 +780,13 @@ func (b *builder) buildParamList(it nodeIter) ast.ParamList {
 }
 
 func (b *builder) buildParam(it nodeIter) ast.Param {
-	// Param = ident [ Type ] [ assign Expr ] .
+	// Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
+	attrs := b.buildParamAttrs(&it)
 	nameTok := it.shift()
 	p := ast.Param{
-		Pos:  ast.Pos(b.posFromToken(nameTok)),
-		Name: nameTok.Literal,
+		Pos:   ast.Pos(b.posFromToken(nameTok)),
+		Name:  nameTok.Literal,
+		Attrs: attrs,
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		p.Type = b.buildType(it.enter())
@@ -839,9 +850,18 @@ func (b *builder) buildCompParamList(it nodeIter) ast.PropList {
 }
 
 func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
-	// CompParam = colon ident [Type] [assign Expr] | at ident [Type] | ident CompParamTail .
+	// CompParam = { MacroAttr } CompParamBody .
+	attrs := b.buildParamAttrs(&it)
+	if !it.done() && it.isNonTerminal() && it.symbol() == CompParamBody {
+		it = it.enter()
+	}
+	return b.buildCompParamBody(it, attrs)
+}
+
+func (b *builder) buildCompParamBody(it nodeIter, attrs []ast.MacroAttr) ast.ParamOrEventDecl {
+	// CompParamBody = colon ident [Type] [assign Expr] | at ident [Type] | ident [CompParamTail] .
 	if it.done() {
-		return ast.Param{}
+		return ast.Param{Attrs: attrs}
 	}
 	if !it.isNonTerminal() {
 		switch it.tokenType() {
@@ -852,6 +872,7 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 				Pos:           ast.Pos(b.posFromToken(nameTok)),
 				Name:          nameTok.Literal,
 				Bidirectional: true,
+				Attrs:         attrs,
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 				p.Type = b.buildType(it.enter())
@@ -873,12 +894,18 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 				e.Type = b.buildType(it.enter())
 			}
+			// The grammar hoists marks ahead of all three CompParam forms, so an
+			// event can carry one syntactically; nothing consumes it.
+			if len(attrs) > 0 {
+				b.errorf(attrs[0].Pos, "a mark cannot be attached to an event declaration")
+			}
 			return e
 		case IDENT:
 			nameTok := it.shift()
 			p := ast.Param{
-				Pos:  ast.Pos(b.posFromToken(nameTok)),
-				Name: nameTok.Literal,
+				Pos:   ast.Pos(b.posFromToken(nameTok)),
+				Name:  nameTok.Literal,
+				Attrs: attrs,
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == CompParamTail {
 				b.buildCompParamTail(it.enter(), &p)
@@ -887,7 +914,7 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 		}
 	}
 	it.skip()
-	return ast.Param{}
+	return ast.Param{Attrs: attrs}
 }
 
 func (b *builder) buildCompParamTail(it nodeIter, p *ast.Param) {

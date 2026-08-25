@@ -1,0 +1,20 @@
+// The grammar accepts a mark on a parameter or a component prop; nothing may
+// consume one yet, so every mark in that position is refused here.
+
+import . "sngl://std"
+import "sngl://draw"
+
+func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(expand) "unknown macro package \"nosuch\""
+
+func unknownName(#[draw.nosuch] a string) => a // ERROR(expand) "unknown macro \"nosuch\""
+
+func realMacro(#[draw.shape] a string) => a // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+
+func inLambda() => func(#[draw.shape] a int) => a // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+
+component element(
+    tag string,
+    #[draw.shape] attributes map<string, string>, // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+) {
+    text(value = tag)
+}

@@ -440,9 +440,8 @@ func optionElem(t *ir.Type) *ir.Type {
 
 // comparableEq reports whether two operand types can be compared with == / !=.
 // Strict "like types" rule: same kind, numeric-to-numeric, one side is null, or
-// an option<T> against T / option<T>. Cross-kind comparisons like string ==
-// color, which used to silently return false at runtime, become check-time
-// errors.
+// an option<T> against T / option<T>. A cross-kind comparison like
+// string == color is a check-time error: it has no true case at runtime.
 func comparableEq(left, right *ir.Type) bool {
 	if left == nil || right == nil {
 		return true
@@ -859,9 +858,8 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// (cast) forms above have already claimed the castable types, and
 	// components were handled as instantiation. Reaching this point with a
 	// type name means a cast to a type that has no cast, and with a value
-	// means calling a non-function. Both used to fall through to a dyn-typed
-	// ir.Call, silently accepting nonsense — the call-side counterpart of the
-	// member-access dyn fallback removed in !21.
+	// means calling a non-function. Neither may fall through to a dyn-typed
+	// ir.Call, which would accept nonsense silently.
 	//
 	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
 	// it stays permissive.
@@ -2883,7 +2881,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 }
 
 // buildPlatformPkgScope builds (and caches) a scope containing declarations
-// from the named platform's Package() docs.
+// from the named platform's sngl://platforms/<n> package.
 func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[platform]; ok {
@@ -2895,14 +2893,16 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	}
 
 	t := c.lookupTarget(platform)
-	if t == nil {
+	if t == nil || targetUnavailable(t) != nil {
 		return nil
 	}
-
-	pkg := c.buildPkgFromDocs(t.Package())
-	if pkg == nil {
+	uri := "platforms/" + platform
+	if !c.hasLibPkg(uri) {
 		return nil
 	}
+	// The same instance user code imports: a `platform x { ... }` block and an
+	// `import "sngl://platforms/x"` must name one declaration, not two.
+	pkg := c.libPkg(uri)
 
 	scope := NewScope(nil)
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)

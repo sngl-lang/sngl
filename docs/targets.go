@@ -89,7 +89,7 @@ func Targets() TargetCatalog {
 			Doc:          p.Description(),
 			Languages:    langs,
 			Capabilities: probePlatform(p),
-			Options:      optionsFromPackage(p.Package()),
+			Options:      optionsFromPackage(codegen.PlatformDocs(p)),
 		})
 	}
 
@@ -104,7 +104,7 @@ func Targets() TargetCatalog {
 			Name:         name,
 			Doc:          l.Description(),
 			Capabilities: probeLanguage(l),
-			Options:      optionsFromPackage(l.Package()),
+			Options:      optionsFromPackage(codegen.LangDocs(l)),
 		})
 	}
 
@@ -222,7 +222,7 @@ func optionsFromPackage(pkgs []*ast.Document) []OptionDoc {
 func extractOptionsStruct(doc *ast.Document) []OptionDoc {
 	var target *ast.StructDef
 	for _, s := range doc.Stmts {
-		if sd, ok := s.(*ast.StructDef); ok && sd.Name == "Options" {
+		if sd, ok := s.(*ast.StructDef); ok && sd.Options {
 			target = sd
 			break
 		}

@@ -72,10 +72,11 @@ func runGolden(t *testing.T, path string) {
 		t.Fatalf("parse: %v", err)
 	}
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:        os.DirFS("."),
-		Dir:       ".",
-		IsMain:    true,
-		Platforms: []ir.Platform{&testStubPlatform{}},
+		FS:         os.DirFS("."),
+		Dir:        ".",
+		IsMain:     true,
+		Platforms:  []ir.Platform{&testStubPlatform{}},
+		LibSources: testStubDocs(),
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -126,8 +127,10 @@ func stripAutoImports(s string) string {
 			if trimmed == "" {
 				continue
 			}
+			// Library source imports the macro packages its own marks come
+			// from, and those imports land on the package being checked.
 			if strings.HasPrefix(trimmed, "import ") &&
-				strings.Contains(trimmed, `"sngl://internal/`) {
+				(strings.Contains(trimmed, `"sngl://internal/`) || strings.Contains(trimmed, `"sngl://platforms"`)) {
 				continue
 			}
 			// First non-import, non-blank line ends the skip phase.
@@ -220,7 +223,7 @@ func (e errCapsName) Error() string {
 }
 
 // testStubPlatform is a minimal in-test ir.Platform registration so
-// golden fixtures can use `import "platform://teststub"` to exercise the
+// golden fixtures can use `import "sngl://platforms/teststub"` to exercise the
 // strict-mode (Caps.NoStdlibWrappers) branch of passInlinePure. The
 // platform exposes two wrapper components — one pure, one impure — and
 // nothing else.
@@ -231,22 +234,27 @@ func (testStubPlatform) Description() string        { return "in-test platform s
 func (testStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 const testStubSource = `
+import sngl "sngl://std"
+
 component Cleanwrap(value string) {
-    text(value=value)
+    sngl.text(value=value)
 }
 
 component Statefulwrap() {
     var count int = 0
-    text(value=string(count))
+    sngl.text(value=string(count))
 }
 `
 
-func (testStubPlatform) Package() []*ast.Document {
+// testStubDocs is the stub's sngl://platforms/teststub source. There is no
+// lib/platforms/teststub directory, so it reaches the checker through
+// Config.LibSources.
+func testStubDocs() map[string][]*ast.Document {
 	doc, err := parser.Parse("teststub.sngl", []byte(testStubSource))
 	if err != nil {
 		panic("teststub parse: " + err.Error())
 	}
-	return []*ast.Document{doc}
+	return map[string][]*ast.Document{"platforms/teststub": {doc}}
 }
 
 func writeUpdatedExpected(t *testing.T, path string, arc *txtar.Archive, got []byte) {

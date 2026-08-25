@@ -1363,8 +1363,8 @@ rather than to a directory of `.sngl` files:
 
 - `import "go://fmt"`, `import "ts://lodash"` — import declarations from a host
   language package, so generated code in that language can call into it;
-- `import "platform://html"`, `import "language://js"` — bring a platform's or
-  language's contributed package into scope;
+- `import "sngl://platforms/html"`, `import "sngl://languages/js"` — bring a
+  platform's or language's contributed package into scope;
 - other schemes may be resolved by the host to fetch remote SNGL sources.
 
 An import of a host-language package is the boundary at which the *language*
@@ -1395,9 +1395,10 @@ The contract has these observable facts:
   semantics defined in this manual; they do not change what a well-formed
   program means.
 - **Platform packages contribute names.** A platform or language may contribute
-  a package of declarations reachable through a `platform://` or `language://`
-  import, and `platform` blocks may resolve otherwise-unknown identifiers
-  against the active platform (for example raw HTML tag names).
+  a package of declarations reachable through a `sngl://platforms/…` or
+  `sngl://languages/…` import, and `platform` blocks may resolve
+  otherwise-unknown identifiers against the active platform (for example raw
+  HTML tag names).
 - **Some targets restrict programs.** A platform may support only certain
   languages, and a language may lack a capability that a program relies on; such
   a combination is rejected at build time rather than mis-compiled.

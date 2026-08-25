@@ -321,7 +321,7 @@ func (c *checker) namespaceNamed(name string) ir.Symbol {
 // target of $"..." interpolation lowering. Returns nil and emits an error
 // diagnostic if not found.
 //
-// This used to be an internal invariant. i18n is an ordinary package, so a
+// i18n is an ordinary package, not an internal invariant, so a
 // file that writes $"..." without importing it lands here, and the message
 // names the import rather than a compiler file.
 func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {

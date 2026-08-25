@@ -22,6 +22,10 @@ func ExpandPre(docs []*ast.Document) []ir.Diagnostic {
 		for _, stmt := range doc.Stmts {
 			diags = expandNested(stmt, aliases, dotPkgs, diags)
 		}
+		// Parameters are walked from the document rather than from
+		// expandNested: a mark can sit on a lambda's parameter, and a lambda
+		// reaches anywhere an expression does.
+		diags = append(diags, checkParamAttrs(doc, aliases, dotPkgs)...)
 	}
 	return diags
 }
@@ -82,69 +86,76 @@ func expandBlock(b *ast.StmtBlock, aliases map[string]imports.ImportRef, dotPkgs
 	return diags
 }
 
+// resolveMacroPkg resolves the macro package an attr names.
+//
+// Only a sngl:// import maps an alias to a macro package. An alias that names
+// nothing imported is an error rather than an ambient lookup — a macro package
+// is a dependency, and resolving it from the bare name would make
+// `#[draw.shape]` mean something different depending on what happened to be
+// registered.
+//
+// A lib package may carry macros alongside its declarations, which is why
+// sngl:// is not restricted to the internal/ prefix: sngl://draw ships the
+// `shape` mark next to the components it applies to.
+func resolveMacroPkg(attr ast.MacroAttr, aliases map[string]imports.ImportRef, dotPkgs []string) (uri string, resolved bool, diags []ir.Diagnostic) {
+	ref, aliasKnown := aliases[attr.Alias]
+	switch {
+	case aliasKnown && (ref.Scheme == "internal" || ref.Scheme == "sngl"):
+		if !HasPackage(ref.URI) {
+			return "", false, []ir.Diagnostic{{
+				Pos:      attr.Pos,
+				Msg:      fmt.Sprintf("package %q declares no macros", ref.Scheme+"://"+ref.URI),
+				Severity: ir.Error,
+			}}
+		}
+		return ref.URI, true, nil
+	case aliasKnown:
+		// The alias is imported, but not from a scheme that carries macros.
+		// Nothing downstream reads an attr expand leaves standing, so a silent
+		// skip would drop the mark and report nothing.
+		return "", false, []ir.Diagnostic{{
+			Pos:      attr.Pos,
+			Msg:      fmt.Sprintf("%q is not a macro package", attr.Alias),
+			Severity: ir.Error,
+		}}
+	case attr.Alias == "":
+		// Unqualified `#[name]` resolves against the dot-imported macro
+		// packages, the same way an unqualified declaration does.
+		for _, pkg := range dotPkgs {
+			if _, ok := lookupPre(pkg, attr.Name); ok {
+				return pkg, true, nil
+			}
+		}
+		return "", false, []ir.Diagnostic{{
+			Pos:      attr.Pos,
+			Msg:      fmt.Sprintf("unknown macro %q: no dot-imported macro package declares it", attr.Name),
+			Severity: ir.Error,
+		}}
+	default:
+		// Name the package the macro actually lives in, so the suggestion is a
+		// line the user can paste. A macro package is a library package like
+		// any other; the compiler's own live under internal/, which is where an
+		// unknown one most likely belongs.
+		suggest := "sngl://internal/" + attr.Alias
+		if lib.HasPackage(attr.Alias) {
+			suggest = "sngl://" + attr.Alias
+		}
+		return "", false, []ir.Diagnostic{{
+			Pos:      attr.Pos,
+			Msg:      fmt.Sprintf("unknown macro package %q: import it with import %q", attr.Alias, suggest),
+			Severity: ir.Error,
+		}}
+	}
+}
+
 func applyAttrs(ad *ast.AttrDecl, aliases map[string]imports.ImportRef, dotPkgs []string) (ast.Stmt, []ir.Diagnostic) {
 	decl := ad.Inner
 	var diags []ir.Diagnostic
 
 	for _, attr := range ad.Attrs {
-		ref, aliasKnown := aliases[attr.Alias]
-
-		// Resolve the macro package. Only a sngl:// import maps an alias to a
-		// macro package; any other alias is not a macro and is
-		// left untouched. An alias that names nothing imported is an error
-		// rather than an ambient lookup — a macro package is a dependency, and
-		// resolving it from the bare name would make `#[draw.shape]` mean
-		// something different depending on what happened to be registered.
-		//
-		// A lib package may carry macros alongside its declarations, which is
-		// why sngl:// is not restricted to the internal/ prefix: sngl://draw
-		// ships the `shape` mark next to the components it applies to.
-		var uri string
-		switch {
-		case aliasKnown && (ref.Scheme == "internal" || ref.Scheme == "sngl"):
-			if !HasPackage(ref.URI) {
-				diags = append(diags, ir.Diagnostic{
-					Pos:      attr.Pos,
-					Msg:      fmt.Sprintf("package %q declares no macros", ref.Scheme+"://"+ref.URI),
-					Severity: ir.Error,
-				})
-				continue
-			}
-			uri = ref.URI
-		case aliasKnown:
-			continue
-		case attr.Alias == "":
-			// Unqualified `#[name]` resolves against the dot-imported macro
-			// packages, the same way an unqualified declaration does.
-			found := false
-			for _, pkg := range dotPkgs {
-				if _, ok := lookupPre(pkg, attr.Name); ok {
-					uri, found = pkg, true
-					break
-				}
-			}
-			if !found {
-				diags = append(diags, ir.Diagnostic{
-					Pos:      attr.Pos,
-					Msg:      fmt.Sprintf("unknown macro %q: no dot-imported macro package declares it", attr.Name),
-					Severity: ir.Error,
-				})
-				continue
-			}
-		default:
-			// Name the package the macro actually lives in, so the suggestion
-			// is a line the user can paste. A macro package is a library
-			// package like any other; the compiler's own live under
-			// internal/, which is where an unknown one most likely belongs.
-			suggest := "sngl://internal/" + attr.Alias
-			if lib.HasPackage(attr.Alias) {
-				suggest = "sngl://" + attr.Alias
-			}
-			diags = append(diags, ir.Diagnostic{
-				Pos:      attr.Pos,
-				Msg:      fmt.Sprintf("unknown macro package %q: import it with import %q", attr.Alias, suggest),
-				Severity: ir.Error,
-			})
+		uri, resolved, resolveDiags := resolveMacroPkg(attr, aliases, dotPkgs)
+		diags = append(diags, resolveDiags...)
+		if !resolved {
 			continue
 		}
 

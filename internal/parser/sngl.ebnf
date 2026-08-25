@@ -340,7 +340,7 @@ TypeParamList = lt ident { comma ident } gt .
 
 ParamList = Param { comma Param } .
 
-Param = ident [ Type ] [ assign Expr ] .
+Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
@@ -349,7 +349,11 @@ ComponentDecl = kw_component ident [ dot ident ] [ lparen [ CompParamList ] rpar
 CompParamList = CompParam { comma CompParam } [ comma ] .
 
 # CompParam first tokens: colon → binding :field, at → event @event, ident → regular param.
-CompParam =
+# Attrs are hoisted ahead of the alternation so all three forms accept them
+# without repeating the repetition in each branch.
+CompParam = { MacroAttr } CompParamBody .
+
+CompParamBody =
       colon ident [ Type ] [ assign Expr ]
     | at ident [ Type ]
     | ident [ CompParamTail ]

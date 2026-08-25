@@ -10,6 +10,10 @@
 // packages do not re-export a dot import, and neither should this one.
 import std "sngl://std"
 
+// `Macro` is the return type that makes `shape` a mark rather than a
+// function.
+import ir "sngl://internal/ir"
+
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
@@ -67,3 +71,11 @@ component canvasText(x float, y float, content string, style CanvasStyle) list<s
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
 component canvasImage(x float, y float, w float, h float, src string) list<shape> {}
+
+// Marks a component as a shape: something a `canvas` hosts and paints rather
+// than a widget the layout places.
+//
+// It rewrites the component's children to `list<shape>`, so a shape may only
+// contain other shapes, and refuses a component that declares events — a
+// painted shape has nothing to raise one from.
+func shape() ir.Macro {}

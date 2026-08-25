@@ -6,28 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
 var previewCSS string
 
-//go:embed android.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 func init() {
-	doc, err := parser.Parse("android.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform android init: parsing android.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -91,7 +79,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string            { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string                  { return previewCSS }
-func (g *Generator) Package() []*ast.Document            { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()

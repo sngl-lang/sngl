@@ -8,7 +8,9 @@
 // primitive lowers to lipgloss / bubbles model code.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     // Go package name for the generated files.
     package string

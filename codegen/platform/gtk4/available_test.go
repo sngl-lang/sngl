@@ -24,7 +24,7 @@ func skipWithoutGIR(t *testing.T) {
 }
 
 // TestUnavailable_WithdrawsPackage pins the degradation contract: with no
-// usable GIR the platform contributes no Package() docs, so the checker never
+// usable GIR the platform contributes no declarations, so the checker never
 // sees the gtk4.Gtk* references in gtk4.sngl and compiles for every other
 // platform are unaffected.
 func TestUnavailable_WithdrawsPackage(t *testing.T) {
@@ -35,8 +35,8 @@ func TestUnavailable_WithdrawsPackage(t *testing.T) {
 	if err := g.Unavailable(); err == nil {
 		t.Fatal("Unavailable() = nil with a missing gir path; want an error")
 	}
-	if docs := g.Package(); docs != nil {
-		t.Errorf("Package() = %d docs while unavailable; want none", len(docs))
+	if docs := codegen.PlatformDocs(g); docs != nil {
+		t.Errorf("PlatformDocs = %d docs while unavailable; want none", len(docs))
 	}
 	if sym := g.Resolve("GtkButton"); sym != nil {
 		t.Errorf("Resolve(GtkButton) = %v while unavailable; want nil", sym)
@@ -61,7 +61,7 @@ func TestAvailable_ProvidesPackage(t *testing.T) {
 	if err := g.Unavailable(); err != nil {
 		t.Skipf("gtk4 metadata unavailable: %v", err)
 	}
-	if len(g.Package()) == 0 {
-		t.Error("Package() empty while gtk4 is available")
+	if len(codegen.PlatformDocs(g)) == 0 {
+		t.Error("PlatformDocs empty while gtk4 is available")
 	}
 }

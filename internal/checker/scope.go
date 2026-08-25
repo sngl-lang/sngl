@@ -101,8 +101,8 @@ func (c *checker) bindDeclared(claimed bool, sym ir.Symbol) {
 
 // mergeInto binds a declaration into a package's surface as the package's
 // files are merged. Two files of one package declaring the same name is a
-// duplicate; it used to be a silent overwrite, so which file's declaration
-// the package exposed depended on the order they were read in.
+// duplicate: files are read in no guaranteed order, so tolerating one would
+// leave the exposed declaration up to that order.
 func (c *checker) mergeInto(pos ast.Pos, dst *ir.Scope, sym ir.Symbol) {
 	if err := dst.Declare(sym); err != nil {
 		c.error(pos, "%s is declared in more than one file of this package", sym.SymName())

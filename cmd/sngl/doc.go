@@ -223,7 +223,7 @@ func resolvePackageDir(path string) string {
 
 // showPlatformDocs shows the declarations from a platform's Package.
 func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
-	docs := plat.Package()
+	docs := codegen.PlatformDocs(plat)
 	if len(docs) == 0 {
 		return fmt.Errorf("platform %q has no package source", name)
 	}
@@ -387,6 +387,7 @@ func renderIndexMD(idx *lookup.DeclIndex) string {
 	writeSummarySection(&sb, "Constants", idx.Constants)
 	writeSummarySection(&sb, "Data", idx.Data)
 	writeSummarySection(&sb, "Functions", idx.Functions)
+	writeSummarySection(&sb, "Macros", idx.Macros)
 	if len(idx.Overrides) > 0 || len(idx.PlatformTypes) > 0 {
 		sb.WriteString("---\n\n")
 		writeSummarySection(&sb, "Platform Overrides", idx.Overrides)
@@ -642,6 +643,16 @@ func renderEnumDoc(e *ast.EnumDef, doc string) string {
 
 func renderFuncDoc(f *ast.FuncDef, doc string) string {
 	var sb strings.Builder
+	// A macro is written as a mark, never called, so the declaration's own
+	// spelling would only invite a call.
+	if checker.IsMacroDecl(f) {
+		sb.WriteString(fmt.Sprintf("# macro %s\n\n", f.Name))
+		sb.WriteString("```\n" + lookup.MarkSignature(f.Name, f) + "\n```\n\n")
+		if doc != "" {
+			sb.WriteString(doc + "\n")
+		}
+		return sb.String()
+	}
 	sb.WriteString(fmt.Sprintf("# func %s\n\n", f.Name))
 
 	// Signature on one line in a code block

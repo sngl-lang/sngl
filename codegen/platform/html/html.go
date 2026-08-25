@@ -2,7 +2,6 @@ package html
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"html"
 	"io/fs"
@@ -21,21 +20,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-//go:embed html.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 func init() {
-	doc, err := parser.Parse("html.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform html init: parsing html.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -46,7 +34,6 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
-func (g *Generator) Package() []*ast.Document { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// HTML accepts any tag name as a valid element.
 	return &ir.Component{Name: identifier}

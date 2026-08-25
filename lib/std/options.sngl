@@ -2,6 +2,9 @@
 // Any field declared here is recognized in every output() block; platforms
 // pick up the values they care about through their own Options structs.
 
+import . "sngl://platforms"
+
+#[options]
 struct Options {
     // Display name for the app; used as window title and platform-native app name.
     name string

@@ -498,6 +498,10 @@ type StructDef struct {
 	Pkg     string
 	Doc     string          // doc comment for scheme-imported decls; empty for SNGL-sourced
 	Builtin ast.BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
+	// Options is the #[options] mark: this struct is a target's build-option
+	// schema. Every lookup of an option schema keys on the mark, so the
+	// declaration's name carries no meaning.
+	Options bool `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
@@ -608,7 +612,6 @@ const (
 type Language interface {
 	LanguageIdentifier() string
 	Description() string              // short one-line summary for reference docs
-	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 }
 
@@ -616,7 +619,6 @@ type Language interface {
 type Platform interface {
 	PlatformIdentifier() string
 	Description() string              // short one-line summary for reference docs
-	Package() []*ast.Document         // parsed .sngl API docs (includes Options struct)
 	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
 }
 

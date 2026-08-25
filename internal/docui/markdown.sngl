@@ -1,5 +1,5 @@
 import . "sngl://std"
-import "platform://html"
+import "sngl://platforms/html"
 
 component Markdown(src = "") {
     text(value=src)

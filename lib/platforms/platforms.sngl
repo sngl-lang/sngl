@@ -1,0 +1,18 @@
+// Package platforms declares the marks a platform or language package uses to
+// say what its declarations mean to the compiler.
+//
+// The vocabulary is public. A plugin living outside this repository writes the
+// same marks its in-tree siblings do, so the package is imported like any
+// other rather than gated behind the `internal/` tier. The per-target packages
+// under it — `sngl://platforms/html`, `sngl://languages/go` — are separate
+// packages and hold no marks.
+
+import ir "sngl://internal/ir"
+
+// Marks the struct that declares a target's build-option schema: the fields an
+// `output(...)` block may name.
+//
+// The mark, not the declaration's name, is what the compiler finds a target's
+// options by, so a target may call the struct whatever it likes and a struct
+// incidentally named `Options` is not one.
+func options() ir.Macro {}

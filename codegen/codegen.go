@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -211,6 +212,31 @@ func PlatformUnavailable(name string) error {
 		return a.Unavailable()
 	}
 	return nil
+}
+
+// PlatformDocs returns the SNGL declarations p contributes — the source of its
+// `sngl://platforms/<id>` package — or nil when it declares none or cannot be
+// used here. gtk4 without a GIR file resolves none of the widget types its
+// overrides are written against, so it contributes nothing rather than
+// declarations no one can check.
+func PlatformDocs(p PlatformGenerator) []*ast.Document {
+	if p == nil {
+		return nil
+	}
+	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
+		return nil
+	}
+	return checker.PackageDocsFor("platforms/" + p.PlatformIdentifier())
+}
+
+// LangDocs returns the source of l's `sngl://languages/<id>` package, or nil
+// when it declares none. The path is keyed by the language's own identifier,
+// so Go's package is languages/go.
+func LangDocs(l LangTranslator) []*ast.Document {
+	if l == nil {
+		return nil
+	}
+	return checker.PackageDocsFor("languages/" + l.LanguageIdentifier())
 }
 
 // TestRunner is optionally implemented by PlatformGenerators that provide

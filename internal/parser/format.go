@@ -737,7 +737,7 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 				f.write(",")
 				f.newline()
 			}
-			f.writeParam(p)
+			f.writeParam(p, true)
 		}
 		f.write(",")
 		f.newline()
@@ -747,12 +747,13 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeParam(p)
+			f.writeParam(p, false)
 		}
 	}
 }
 
-func (f *formatter) writeParam(p ast.Param) {
+func (f *formatter) writeParam(p ast.Param, multiline bool) {
+	f.writeParamAttrs(p.Attrs, multiline)
 	if p.Bidirectional {
 		f.write(":")
 	}
@@ -778,7 +779,7 @@ func (f *formatter) writeProps(pl ast.PropList) {
 				f.write(",")
 				f.newline()
 			}
-			f.writePropOrEvent(p)
+			f.writePropOrEvent(p, true)
 		}
 		f.write(",")
 		f.newline()
@@ -788,15 +789,15 @@ func (f *formatter) writeProps(pl ast.PropList) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writePropOrEvent(p)
+			f.writePropOrEvent(p, false)
 		}
 	}
 }
 
-func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl) {
+func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 	switch v := p.(type) {
 	case ast.Param:
-		f.writeParam(v)
+		f.writeParam(v, multiline)
 	case ast.EventDecl:
 		f.write("@")
 		f.write(v.Name)
@@ -1210,23 +1211,41 @@ func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
 
 func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
 	for _, attr := range attrs {
-		f.write("#[")
-		if attr.Alias != "" {
-			f.write(attr.Alias)
-			f.write(".")
-		}
-		f.write(attr.Name)
-		if len(attr.Args) > 0 {
-			f.write("(")
-			for i, arg := range attr.Args {
-				if i > 0 {
-					f.write(", ")
-				}
-				f.writeExpr(arg)
-			}
-			f.write(")")
-		}
-		f.write("]")
+		f.writeAttr(attr)
 		f.newline()
+	}
+}
+
+func (f *formatter) writeAttr(attr ast.MacroAttr) {
+	f.write("#[")
+	if attr.Alias != "" {
+		f.write(attr.Alias)
+		f.write(".")
+	}
+	f.write(attr.Name)
+	if len(attr.Args) > 0 {
+		f.write("(")
+		for i, arg := range attr.Args {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.writeExpr(arg)
+		}
+		f.write(")")
+	}
+	f.write("]")
+}
+
+// writeParamAttrs places a parameter's marks the way the surrounding list
+// reads: each on its own line above the parameter when the list is multiline,
+// inline ahead of it when it is not.
+func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
+	for _, attr := range attrs {
+		f.writeAttr(attr)
+		if multiline {
+			f.newline()
+		} else {
+			f.write(" ")
+		}
 	}
 }

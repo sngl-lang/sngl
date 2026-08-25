@@ -1,0 +1,42 @@
+package fyne
+
+import (
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// The blueprint file is read as data by the renderer, which would happily
+// consume a body the checker rejects. Importing the package is what loads and
+// checks it, so this is the only thing that keeps it type-correct.
+func TestFynePackageTypeChecks(t *testing.T) {
+	src := `
+import . "sngl://std"
+import "sngl://platforms/fyne"
+output { go { fyne() } }
+component main {
+    text(value="hi")
+}
+`
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var plats []ir.Platform
+	if p := codegen.LookupPlatform("fyne"); p != nil {
+		plats = append(plats, p)
+	}
+	var langs []ir.Language
+	if l := codegen.LookupLang("go"); l != nil {
+		langs = append(langs, l)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Errorf("sngl://platforms/fyne: %s: %s", d.Pos, d.Msg)
+		}
+	}
+}

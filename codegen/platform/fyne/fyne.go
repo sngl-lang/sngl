@@ -4,28 +4,16 @@ import (
 	_ "embed"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
 var previewCSS string
 
-//go:embed fyne.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 func init() {
-	doc, err := parser.Parse("fyne.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform fyne init: parsing fyne.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -38,7 +26,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) Package() []*ast.Document { return pkgDocs }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// Fyne accepts any tag name; codegen reads metadata from blueprint
 	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).

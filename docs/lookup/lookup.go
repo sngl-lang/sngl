@@ -67,6 +67,7 @@ type DeclIndex struct {
 	Constants     []DeclSummary
 	Data          []DeclSummary
 	Functions     []DeclSummary // free functions (no receiver)
+	Macros        []DeclSummary // `#[...]` marks: free funcs returning Macro
 	Overrides     []DeclSummary // sngl.* platform overrides
 	PlatformTypes []DeclSummary // "Options"-style platform structs
 	// Library is true for a package of the embedded SNGL library.
@@ -375,15 +376,11 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Built-in platform / language names (android, html, fyne, bubbletea, go,
 	// kotlin, ...) — resolve via the codegen registry so they share the same
 	// Lookup code paths as the stdlib and scheme imports.
-	if plat := codegen.LookupPlatform(path); plat != nil {
-		if docs := plat.Package(); len(docs) > 0 {
-			return mergeDocsTarget(path, docs), nil
-		}
+	if docs := codegen.PlatformDocs(codegen.LookupPlatform(path)); len(docs) > 0 {
+		return mergeDocsTarget(path, docs), nil
 	}
-	if lang := codegen.LookupLang(path); lang != nil {
-		if docs := lang.Package(); len(docs) > 0 {
-			return mergeDocsTarget(path, docs), nil
-		}
+	if docs := codegen.LangDocs(codegen.LookupLang(path)); len(docs) > 0 {
+		return mergeDocsTarget(path, docs), nil
 	}
 
 	// Alias lookup against cwd's imports.
@@ -471,7 +468,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	// Split structs into user vs Options-style platform types.
 	var userStructs []checker.DeclInfo
 	for _, d := range tgt.pd.Structs {
-		if d.Name == "Options" {
+		if sd, ok := d.Decl.(*ast.StructDef); ok && sd.Options {
 			idx.PlatformTypes = append(idx.PlatformTypes, DeclSummary{Name: d.Name, Doc: d.Doc})
 			continue
 		}
@@ -491,7 +488,12 @@ func buildIndex(tgt *target) *DeclIndex {
 		idx.Data = append(idx.Data, DeclSummary{Name: d.Name, Doc: d.Doc})
 	}
 	for _, d := range free {
-		idx.Functions = append(idx.Functions, DeclSummary{Name: d.Name, Doc: d.Doc})
+		s := DeclSummary{Name: d.Name, Doc: d.Doc}
+		if fd, ok := d.Decl.(*ast.FuncDef); ok && checker.IsMacroDecl(fd) {
+			idx.Macros = append(idx.Macros, s)
+			continue
+		}
+		idx.Functions = append(idx.Functions, s)
 	}
 
 	sortByName(idx.Components)
@@ -499,6 +501,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	sortByName(idx.Constants)
 	sortByName(idx.Data)
 	sortByName(idx.Functions)
+	sortByName(idx.Macros)
 	sortByName(idx.Overrides)
 	sortByName(idx.PlatformTypes)
 	return idx

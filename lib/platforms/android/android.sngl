@@ -7,7 +7,9 @@
 // definition and available as local variables in the body.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     // Kotlin package / Android application ID.
     package string

@@ -1,0 +1,19 @@
+// #[options] marks the struct that declares a build-option schema. A form with
+// no fields to check an output() argument against refuses it.
+
+import . "sngl://platforms"
+
+#[options] // ERROR(expand) "#[options] cannot mark"
+var bad = 5
+
+#[options] // ERROR(expand) "#[options] cannot mark"
+enum Bad {
+    a
+    b
+}
+
+#[options]
+#[options] // ERROR(expand) "already marked"
+struct Twice {
+    gadget string = ""
+}

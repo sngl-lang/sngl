@@ -4,11 +4,15 @@
 // Each subdirectory is one importable package: lib/<path> is `sngl://<path>`.
 // Nothing enumerates them in Go — add a directory and it exists.
 //
-//	builtin/   ambient built-ins, dot-imported into every file implicitly
-//	draw/      2D shapes and the canvas, plus the `shape` mark
-//	std/       the standard library, brought in by an explicit import
-//	internal/  the compiler's own primitives, declared so that what the
-//	           compiler knows about them is written where they are
+//	builtin/    ambient built-ins, dot-imported into every file implicitly
+//	draw/       2D shapes and the canvas, plus the `shape` mark
+//	std/        the standard library, brought in by an explicit import
+//	internal/   the compiler's own primitives, declared so that what the
+//	            compiler knows about them is written where they are
+//	platforms/  one package per registered platform, naming its native
+//	            primitives and overriding the stdlib components for it
+//	languages/  one package per registered language, named by the
+//	            language's own identifier (Go's is `go`, not `golang`)
 package lib
 
 import (
@@ -53,10 +57,17 @@ func Packages() []string {
 // PublicPackages returns the packages a program is meant to import, dropping
 // the compiler's own tier under internal/. Documentation indexes them; name
 // one explicitly and it still resolves, as an internal Go package does.
+//
+// platforms/ and languages/ are dropped for a different reason: they are
+// per-target and mutually exclusive, so indexing them alongside the library
+// would make a bare name like `Options` ambiguous between six packages that
+// can never be imported together. The docs reach them through the plugin
+// registry instead.
 func PublicPackages() []string {
+	private := []string{"internal", "platforms", "languages"}
 	out := make([]string, 0, len(Packages()))
 	for _, p := range Packages() {
-		if p == "internal" || strings.HasPrefix(p, "internal/") {
+		if slices.ContainsFunc(private, func(t string) bool { return p == t || strings.HasPrefix(p, t+"/") }) {
 			continue
 		}
 		out = append(out, p)

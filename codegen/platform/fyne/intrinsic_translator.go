@@ -170,7 +170,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}
 	// Only flow imports whose package name is referenced by the ctor
 	// goFn/goType — blueprints may list extra imports (e.g. "net/url")
-	// used by the unused prelude/Raw-arg path, which would otherwise
+	// used by the unused prelude/args path, which would otherwise
 	// leak as unused imports.
 	if t.importSink != nil {
 		ref := bp.Constructor.GoFn + " " + bp.Constructor.GoType

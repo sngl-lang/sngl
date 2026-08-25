@@ -25,7 +25,6 @@ func (t *Translator) Description() string {
 // SNGL i18n runtime shipped in pkg/kotlin/i18n/.
 const SnglI18nKotlinPackage = "us.duckfam.git.jonathan.sngl.i18n"
 
-func (t *Translator) Package() []*ast.Document            { return nil }
 func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Features        { return lower.AllFeatures() }
 

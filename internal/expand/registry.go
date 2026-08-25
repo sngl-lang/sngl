@@ -1,6 +1,7 @@
 package expand
 
 import (
+	"sort"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -68,6 +69,26 @@ func HasPackage(uri string) bool {
 	defer mu.RUnlock()
 	_, ok := preRegs[uri]
 	return ok
+}
+
+// Registered returns the registered macro names by package URI. It exists for
+// the drift test that pins these registrations against the `Macro`-returning
+// declarations in lib/: a registration with no declaration is a macro nobody
+// can read the documentation of, and a declaration with no registration is a
+// mark that expands to nothing.
+func Registered() map[string][]string {
+	mu.RLock()
+	defer mu.RUnlock()
+	out := make(map[string][]string, len(preRegs))
+	for uri, macros := range preRegs {
+		names := make([]string, 0, len(macros))
+		for name := range macros {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		out[uri] = names
+	}
+	return out
 }
 
 func lookupPre(uri, name string) (preMacro, bool) {

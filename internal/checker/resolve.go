@@ -289,6 +289,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		TypeParams: s.TypeParams,
 		Fields:     c.resolveStructFields(s),
 		Foreign:    irForeign(s.Foreign),
+		Options:    s.Options,
 	}
 }
 

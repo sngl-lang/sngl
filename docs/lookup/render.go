@@ -199,6 +199,10 @@ func funcMD(f *FuncDetail) string {
 		if f.Native.Foreign.Name != "" {
 			sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", f.Native.Foreign.Name))
 		}
+	} else if f.AST != nil && checker.IsMacroDecl(f.AST) {
+		// A macro is written as a mark, so the mark form is its signature; the
+		// declaration it is spelled as would only invite a call.
+		sb.WriteString("```\n" + MarkSignature(f.Name, f.AST) + "\n```\n\n")
 	} else if f.AST != nil {
 		sb.WriteString("```\n")
 		sb.WriteString(snglSignatureWithInferred(f.Name, f.AST))
@@ -209,6 +213,33 @@ func funcMD(f *FuncDetail) string {
 		sb.WriteString("\n\n")
 	}
 	return sb.String()
+}
+
+// MarkSignature renders a macro declaration the way it is written: as a
+// `#[...]` mark. Parameters become names only — "..." for the list parameter
+// that stands in for the bare-identifier flags SNGL has no variadic for, and
+// brackets for one with a default, since a mark's arguments are positional.
+// A macro taking none renders as `#[options]`.
+func MarkSignature(name string, f *ast.FuncDef) string {
+	return "#[" + name + markParams(f) + "]"
+}
+
+func markParams(f *ast.FuncDef) string {
+	var parts []string
+	for _, p := range f.Params.Params {
+		name := p.Name
+		if nt, ok := p.Type.(*ast.NamedType); ok && nt.Name == "list" {
+			name += "..."
+		}
+		if p.Default != nil {
+			name = "[" + name + "]"
+		}
+		parts = append(parts, name)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "(" + strings.Join(parts, ", ") + ")"
 }
 
 // snglSignatureWithInferred renders a SNGL func signature, falling back to

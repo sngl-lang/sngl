@@ -26,6 +26,11 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
+	// LibSources substitutes the source of an embedded package, keyed by lib
+	// path ("platforms/teststub"). It exists for the in-test platform stubs,
+	// which register a plugin with no lib/ directory behind it; production
+	// callers leave it nil and every package is read from lib.FS.
+	LibSources map[string][]*ast.Document
 	// libSource permits sngl://internal/ imports in the document itself, for
 	// the one caller that checks lib/ source as the document rather than
 	// loading it as a package. Unexported: no program is lib source.
@@ -161,6 +166,10 @@ type checker struct {
 	// ir.StructDef.Pkg). Saved and restored around each load, because a lib
 	// package's import of another nests one load inside the other.
 	libPkgName string
+	// macroStruct is sngl://internal/ir's `Macro`, the return type that makes a
+	// declared function a macro. Held as the declaration rather than the name
+	// because type identity is per-declaration.
+	macroStruct *ir.StructDef
 
 	// builtinPkg is sngl://builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -654,24 +663,78 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// Optional Resolve fallback for platform/language namespace imports.
 	var nsResolve func(string) ir.Symbol
 
+	// sngl://platforms/<n> and sngl://languages/<n> load through libPkg like
+	// any other embedded package. The registered plugin is still consulted,
+	// for two things the lib tree cannot say: whether the target exists at all
+	// here, and the namespace Resolve fallback that makes raw primitives
+	// (html.div) resolve.
+	platName, isPlatform := "", false
+	langName, isLanguage := "", false
 	if scheme == "sngl" {
+		platName, isPlatform = strings.CutPrefix(uri, "platforms/")
+		langName, isLanguage = strings.CutPrefix(uri, "languages/")
+	}
+
+	if isPlatform {
+		var target ir.Platform
+		for _, p := range c.cfg.Platforms {
+			if p.PlatformIdentifier() == platName {
+				target = p
+				break
+			}
+		}
+		if target == nil {
+			c.error(imp.Pos, "unknown platform %q", platName)
+		} else if err := targetUnavailable(target); err != nil {
+			c.error(imp.Pos, "platform %q is unavailable here: %v", platName, err)
+		} else {
+			nsResolve = target.Resolve
+			// A platform need not ship declarations (`none` does not); the
+			// namespace is still bound, for its Resolve fallback.
+			if c.hasLibPkg(uri) {
+				irImport.Pkg = c.libPkg(uri)
+			}
+		}
+	} else if isLanguage {
+		var target ir.Language
+		for _, l := range c.cfg.Languages {
+			if l.LanguageIdentifier() == langName {
+				target = l
+				break
+			}
+		}
+		if target == nil {
+			c.error(imp.Pos, "unknown language %q", langName)
+		} else {
+			nsResolve = target.Resolve
+			if c.hasLibPkg(uri) {
+				irImport.Pkg = c.libPkg(uri)
+			}
+		}
+	} else if scheme == "sngl" {
 		// The standard library. A scheme keeps it from colliding with a local
 		// package directory of any name — the collision a reserved bare path
 		// like "std" would reintroduce.
-		// sngl://internal/<name> is the compiler's own tier. A package there
-		// may contribute macros to the expand pass, declarations to the
-		// program, or both, so it resolves against the macro registry and the
-		// lib/ layout together — a macro-only package has no directory, and a
-		// declarations package has no macros.
-		if strings.HasPrefix(uri, "internal/") {
-			if !c.inLibSource() {
-				c.error(imp.Pos, "%q is internal to the compiler and cannot be imported", target)
-				return
-			}
+		// sngl://internal/<name> is the compiler's own tier, importable only
+		// from library source.
+		internal := strings.HasPrefix(uri, "internal/")
+		if internal && !c.inLibSource() {
+			c.error(imp.Pos, "%q is internal to the compiler and cannot be imported", target)
+			return
 		}
-		if strings.HasPrefix(uri, "internal/") && !HasPackage(uri) {
+		// A package may contribute macros to the expand pass, declarations to
+		// the program, or both, so a sngl:// path resolves against the macro
+		// registry and the lib/ layout together — a macro-only package has no
+		// directory, and a declarations package has no macros. This is not
+		// confined to the internal/ tier: sngl://platforms is the public
+		// vocabulary an out-of-tree platform plugin marks its source with.
+		if !HasPackage(uri) {
 			if !expand.HasPackage(uri) {
-				c.error(imp.Pos, "unknown internal package %q", uri)
+				if internal {
+					c.error(imp.Pos, "unknown internal package %q", uri)
+				} else {
+					c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
+				}
 				return
 			}
 			irImport.Pkg = &ir.Package{
@@ -682,45 +745,11 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.pkg.Imports = append(c.pkg.Imports, irImport)
 			return
 		}
-		if !HasPackage(uri) {
-			c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.Packages(), ", "))
-			return
-		}
 		if uri == "builtin" {
 			c.error(imp.Pos, "sngl://builtin is always in scope; remove the import")
 			return
 		}
 		irImport.Pkg = c.libPkg(uri)
-	} else if scheme == "platform" {
-		// Platform package import: import "platform://html"
-		var target ir.Platform
-		for _, p := range c.cfg.Platforms {
-			if p.PlatformIdentifier() == uri {
-				target = p
-				break
-			}
-		}
-		if target == nil {
-			c.error(imp.Pos, "unknown platform %q", uri)
-		} else {
-			irImport.Pkg = c.buildPkgFromDocs(target.Package())
-			nsResolve = target.Resolve
-		}
-	} else if scheme == "language" {
-		// Language package import: import "language://js"
-		var target ir.Language
-		for _, l := range c.cfg.Languages {
-			if l.LanguageIdentifier() == uri {
-				target = l
-				break
-			}
-		}
-		if target == nil {
-			c.error(imp.Pos, "unknown language %q", uri)
-		} else {
-			irImport.Pkg = c.buildPkgFromDocs(target.Package())
-			nsResolve = target.Resolve
-		}
 	} else if scheme != "" && c.cfg.Resolver != nil {
 		// Scheme import. Try FS-backed schemes first (git://, http://, …) so
 		// remote SNGL packages resolve to .sngl docs; fall back to native
@@ -855,23 +884,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 	c.bindDeclared(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
 }
 
-// buildPkgFromDocs type-checks a set of .sngl documents (typically from a
-// platform or language Package()) and returns a merged ir.Package.
-func (c *checker) buildPkgFromDocs(docs []*ast.Document) *ir.Package {
-	if len(docs) == 0 {
-		return nil
-	}
-	merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-	for _, doc := range docs {
-		pkg, _ := Check(doc, &Config{
-			Languages: c.cfg.Languages,
-			Platforms: c.cfg.Platforms,
-		})
-		c.mergePkgInto(merged, pkg)
-	}
-	return merged
-}
-
 // mergePkgInto merges all declarations from src into dst, registering symbols.
 func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	if src == nil {
@@ -936,7 +948,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams, Foreign: irForeign(s.Foreign)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams, Foreign: irForeign(s.Foreign), Options: s.Options}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
 	return sd
@@ -1441,6 +1453,12 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 // declares. Missing that one import is the most common way a file fails to
 // check, and "unknown component \"vbox\"" on its own does not say so.
 func (c *checker) stdlibHint(name string) string {
+	// A macro is declared in lib/ but never registered as a function, so it is
+	// never in scope: the only way to reach one is a `#[...]` mark. Saying so
+	// beats "undefined", which is true but reads as a missing import.
+	if uri := macroPackage(name); uri != "" {
+		return fmt.Sprintf("; %s is a macro declared by sngl://%s — write it as a mark, not a call", name, uri)
+	}
 	if c.pkg == nil {
 		return ""
 	}
@@ -1453,12 +1471,12 @@ func (c *checker) stdlibHint(name string) string {
 	// Search every lib package, not just std: the shapes moved to sngl://draw,
 	// and naming the wrong package is worse than saying nothing. Loading here
 	// is on an error path only.
-	for _, libName := range lib.Packages() {
+	// PublicPackages, not Packages: a hint names an import a program could
+	// write, so the compiler's own tier and the per-target platform/language
+	// packages are not candidates.
+	for _, libName := range lib.PublicPackages() {
 		if libName == "builtin" {
 			continue // ambient; a miss here is not a missing import
-		}
-		if strings.HasPrefix(libName, "internal/") {
-			continue // the compiler's own tier is not something to suggest
 		}
 		pkg := c.libPkg(libName)
 		if _, ok := pkg.Symbols.Root.LookupLocal(name); !ok {
@@ -1504,11 +1522,11 @@ func (c *checker) isLibraryNamespace(name string) bool {
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Component extensions: `component sngl.X { platform <name> { ... } }`.
-	// Validate qualified names. Tolerate the legacy `component sngl.X() { body }`
-	// form (parens, no props, no children type) used in html.sngl and
-	// bubbletea.sngl until those files are rewritten in Phase C.
-	legacyForm := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
-	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !legacyForm {
+	// A parens form with nothing in them declares no extension: android.sngl
+	// writes `component sngl.X() { body }`, whose body the platform reads
+	// itself rather than merging as an extension.
+	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !bare {
 		namespace := comp.Name[:dot]
 		if !c.isLibraryNamespace(namespace) {
 			c.error(comp.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", namespace, namespace, "sngl://std")
@@ -1541,7 +1559,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			c.error(pos, "component extension %q body must contain only platform blocks", comp.Name)
 			return
 		}
-		// Suppress normal registration — extension merge (Phase B) handles it.
+		// Suppress normal registration — mergePlatformExtensions owns it.
 		return
 	}
 
@@ -1578,9 +1596,23 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	// Walk component body for nested declarations. Struct/enum/unit
-	// decls inside a component body are hoisted to package scope at the
-	// IR level (Go and other targets have no per-component type scope).
+	nestedFuncs := c.collectComponentDecls(comp, irComp)
+
+	c.pkg.Components = append(c.pkg.Components, irComp)
+	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
+
+	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
+}
+
+// collectComponentDecls walks a component body for nested declarations,
+// hoisting struct/enum/unit decls to package scope (no target has a
+// per-component type scope) and attaching vars and consts to irComp. The
+// nested func defs are returned rather than registered, because the caller
+// decides what receiver they get.
+//
+// checkComponentBody declares comp.Vars into the body scope, so a component
+// whose body is checked must have been through here first.
+func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Component) []*ast.FuncDef {
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := ast.UnwrapStmt(stmt).(type) {
@@ -1594,34 +1626,21 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			for _, spec := range s.Specs {
 				typ := c.resolveType(spec.Type)
 				for _, name := range spec.Names {
-					v := &ir.Var{
-						AST:     s,
-						Name:    name,
-						Type:    typ,
-						IsConst: true,
-					}
-					irComp.Vars = append(irComp.Vars, v)
+					irComp.Vars = append(irComp.Vars, &ir.Var{AST: s, Name: name, Type: typ, IsConst: true})
 				}
 			}
 		case *ast.VarDecl:
 			for _, spec := range s.Specs {
 				typ := c.resolveType(spec.Type)
 				for _, name := range spec.Names {
-					v := &ir.Var{
-						AST:  s,
-						Name: name,
-						Type: typ,
-					}
+					v := &ir.Var{AST: s, Name: name, Type: typ}
 					for i := range spec.Handlers {
 						h := &spec.Handlers[i]
-						handler := &ir.EventHandler{
+						v.Handlers = append(v.Handlers, &ir.EventHandler{
 							AST:  h,
 							Name: h.Name,
-							Func: &ir.Func{
-								Params: c.buildParams(h.Params),
-							},
-						}
-						v.Handlers = append(v.Handlers, handler)
+							Func: &ir.Func{Params: c.buildParams(h.Params)},
+						})
 					}
 					irComp.Vars = append(irComp.Vars, v)
 				}
@@ -1630,11 +1649,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			nestedFuncs = append(nestedFuncs, s)
 		}
 	}
-
-	c.pkg.Components = append(c.pkg.Components, irComp)
-	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
-
-	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
+	return nestedFuncs
 }
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
@@ -1906,7 +1921,7 @@ func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
 
 // pkgProvider is satisfied by both ir.Platform and ir.Language.
 type pkgProvider interface {
-	Package() []*ast.Document
+	Description() string
 	Resolve(identifier string) ir.Symbol
 }
 
@@ -1943,9 +1958,17 @@ func (c *checker) lookupOptions(name string) *ir.StructDef {
 	if c.optionsCache == nil {
 		c.optionsCache = make(map[string]*ir.StructDef)
 	}
-	for _, doc := range t.Package() {
+	// Read the package source by lib path rather than asking the plugin: the
+	// options schema is the same declarations sngl://platforms/<n> holds. Only
+	// the Options struct is built — validating output() args must not drag a
+	// whole platform package through the checker.
+	docs := c.libDocs("platforms/" + name)
+	if len(docs) == 0 {
+		docs = c.libDocs("languages/" + name)
+	}
+	for _, doc := range docs {
 		for _, stmt := range doc.Stmts {
-			if sd, ok := stmt.(*ast.StructDef); ok && sd.Name == "Options" {
+			if sd, ok := stmt.(*ast.StructDef); ok && sd.Options {
 				irSD := c.buildStructDef(sd)
 				c.optionsCache[name] = irSD
 				return irSD
@@ -1958,14 +1981,19 @@ func (c *checker) lookupOptions(name string) *ir.StructDef {
 
 // lookupStdlibOptions returns the stdlib's top-level Options struct, or nil
 // if the stdlib does not declare one.
+//
+// It reads sngl://std alone, not the whole embedded corpus: several lib
+// packages declare an `Options`, and the corpus is ordered by sorted package
+// path, so a scan of all of it would return whichever package sorts first
+// rather than the stdlib's.
 func (c *checker) lookupStdlibOptions() *ir.StructDef {
 	if c.stdlibOptionsSet {
 		return c.stdlibOptions
 	}
 	c.stdlibOptionsSet = true
-	for _, doc := range parseStdlibDocs() {
+	for _, doc := range PackageDocsFor("std") {
 		for _, stmt := range doc.Stmts {
-			if sd, ok := stmt.(*ast.StructDef); ok && sd.Name == "Options" {
+			if sd, ok := stmt.(*ast.StructDef); ok && sd.Options {
 				c.stdlibOptions = c.buildStructDef(sd)
 				return c.stdlibOptions
 			}
@@ -2554,9 +2582,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 		// A block-bodied func with a non-void return type must return on all
 		// paths. (Expression bodies always return; void funcs need no return.)
-		// An empty `{}` body used to be exempt, which made `func f() int {}`
-		// compile for anyone — the exemption was there for signature stubs,
-		// and those carry a real body now.
+		// An empty `{}` body is not exempt: nothing declares a signature
+		// without a body any more, so exempting one would just let
+		// `func f() int {}` compile.
 		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)

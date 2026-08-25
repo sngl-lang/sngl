@@ -2,7 +2,6 @@
 package gtk4
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"os"
@@ -10,12 +9,10 @@ import (
 	"sync"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -80,11 +77,6 @@ func lowerCType(cType string) string {
 	return out.String()
 }
 
-//go:embed gtk4.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 // girAutoPaths are the standard locations checked when --opt gir= is not set.
 var girAutoPaths = []string{
 	"/usr/share/gir-1.0/Gtk-4.0.gir",
@@ -93,11 +85,6 @@ var girAutoPaths = []string{
 }
 
 func init() {
-	doc, err := parser.Parse("gtk4.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform gtk4 init: parsing gtk4.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -126,20 +113,6 @@ func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-
-// Package implements ir.Platform. With no GIR file to read, none of the
-// gtk4.Gtk* widget types gtk4.sngl builds its stdlib overrides from can be
-// resolved, so the platform contributes nothing at all rather than handing the
-// checker overrides it must reject. The checker merges every registered
-// platform's overrides irrespective of the build target, so contributing
-// unresolvable ones would turn a missing optional dependency into an
-// "unknown component" error on every compile, for every platform.
-func (g *Generator) Package() []*ast.Document {
-	if _, err := g.gir(); err != nil {
-		return nil
-	}
-	return pkgDocs
-}
 
 // Unavailable implements codegen.PlatformAvailability.
 func (g *Generator) Unavailable() error {

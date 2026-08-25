@@ -1,0 +1,41 @@
+# sngl://platforms is macro-only: it has no lib/platforms directory, only the
+# per-target packages under it. It resolves against the macro registry, and
+# unlike sngl://internal/marks it is public, so an ordinary program — or an
+# out-of-tree platform plugin — may import it.
+sngl check ok.sngl
+stdout 'ok'
+
+! sngl check internal.sngl
+stderr 'internal to the compiler'
+
+! sngl check nosuch.sngl
+stderr 'unknown stdlib package'
+
+-- ok.sngl --
+import . "sngl://std"
+import . "sngl://platforms"
+
+#[options]
+struct Knobs {
+    gadget string = ""
+}
+
+component main {
+    text(value="hello")
+}
+
+-- internal.sngl --
+import . "sngl://std"
+import . "sngl://internal/marks"
+
+component main {
+    text(value="hello")
+}
+
+-- nosuch.sngl --
+import . "sngl://std"
+import . "sngl://nosuch"
+
+component main {
+    text(value="hello")
+}

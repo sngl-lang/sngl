@@ -340,10 +340,10 @@ func containsSelfRef(comp *ir.Component) bool {
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
-// package's platform:// imports.
+// package's sngl://platforms/… imports.
 func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 	for _, imp := range pkg.Imports {
-		if !strings.HasPrefix(imp.Path, "platform://") {
+		if !strings.HasPrefix(imp.Path, "sngl://platforms/") {
 			continue
 		}
 		if imp.Pkg == nil {

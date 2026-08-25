@@ -3,7 +3,7 @@ expected_error: platform stdlib wrapper "Statefulwrap" must be pure (declares va
 -- input.sngl --
 import . "sngl://std"
 
-import "platform://teststub"
+import "sngl://platforms/teststub"
 
 component main {
     teststub.Statefulwrap()
