@@ -47,12 +47,21 @@ export function encode(v) {
 
 // emit encodes v and records it under key. An encoding error is recorded as a
 // failure, so one unrepresentable value costs only its own key.
+//
+// A marshalSymbol method returns arbitrary SNGL source, and source may be
+// written over several lines. The record is one line, so such a value is
+// rejected here — the last place that still knows whose value it is. Written
+// out, it would split into records the reader cannot attribute to anything.
 export function emit(key, v) {
   let src;
   try {
     src = encode(v);
   } catch (err) {
     fail(key, err);
+    return;
+  }
+  if (/[\n\r]/.test(src)) {
+    fail(key, new Error("encoded value spans more than one line"));
     return;
   }
   failures.delete(key);

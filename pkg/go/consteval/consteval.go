@@ -49,10 +49,19 @@ func Encode(v any) ([]byte, error) {
 
 // Emit encodes v and records it under key. An encoding error is recorded as a
 // failure, so one unrepresentable value costs only its own key.
+//
+// A Marshaler returns arbitrary SNGL source, and source may be written over
+// several lines. The record is one line, so such a value is rejected here —
+// the last place that still knows whose value it is. Written out, it would
+// split into records the reader cannot attribute to anything.
 func Emit(key string, v any) {
 	b, err := Encode(v)
 	if err != nil {
 		Fail(key, err)
+		return
+	}
+	if bytes.ContainsAny(b, "\n\r") {
+		Fail(key, fmt.Errorf("encoded value spans more than one line"))
 		return
 	}
 	mu.Lock()
