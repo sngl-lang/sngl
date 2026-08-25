@@ -44,12 +44,13 @@ type Package struct {
 	Contexts   []*Context
 	Symbols    *SymbolTable
 
-	// UsesShapes records that this package resolved a list<shape> children
-	// type. The canvas passes gate on it: an import of sngl://draw is neither
-	// necessary (list<shape> is resolved by the compiler, not by draw) nor
-	// sufficient (inlining flattens a canvas out of the package that imported
-	// it), so the construct is the only honest signal.
-	UsesShapes bool
+	// TreeKinds records the segmented trees (see Component.TreeKind) whose
+	// nodes this package declares or imports. The lowering pass for a tree
+	// gates on it: an import of sngl://draw is neither necessary (a package
+	// may declare its own shapes) nor sufficient (inlining flattens a canvas
+	// out of the package that imported it), so the declarations are the only
+	// honest signal.
+	TreeKinds map[string]bool `json:",omitempty"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -109,6 +110,24 @@ type AsyncKickerEntry struct {
 
 func (p *Package) IsMain() bool {
 	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
+}
+
+// UsesTree reports whether any component of the named segmented tree reaches
+// this package. See Package.TreeKinds.
+func (p *Package) UsesTree(kind string) bool {
+	return p != nil && p.TreeKinds[kind]
+}
+
+// NoteTreeKind records that a component of the named tree reaches this
+// package.
+func (p *Package) NoteTreeKind(kind string) {
+	if p == nil || kind == "" {
+		return
+	}
+	if p.TreeKinds == nil {
+		p.TreeKinds = map[string]bool{}
+	}
+	p.TreeKinds[kind] = true
 }
 
 // Import records a resolved import.
@@ -333,6 +352,13 @@ type Component struct {
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin ast.BuiltinKind
+	// TreeKind names the segmented tree this component is a member of
+	// ("shape"), and ChildKind the one its children must be members of. Both
+	// come from #[tree.kind]/#[tree.children] at registration; a member with
+	// no children type of its own hosts its own kind, so a shape contains
+	// shapes. Empty for an ordinary component.
+	TreeKind  string `json:",omitempty"`
+	ChildKind string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
 	Pkg          string
 	Props        []*Prop

@@ -3243,25 +3243,21 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
 		}
-		// Validate shape children: when ChildrenType is list<shape>, every child
-		// must itself have list<shape> ChildrenType (which is how shapes are identified).
-		if ct != nil && ct.Kind == ir.TypeList && len(ct.Elems) > 0 && ct.Elems[0].Kind == ir.TypeShape {
+		// A component marked #[tree.children("k")] hosts a segmented tree:
+		// every child must be a node marked #[tree.kind("k")].
+		if comp.ChildKind != "" {
 			for _, child := range children {
 				ni, ok := child.(*ir.NodeInst)
-				isShape := ok && ni.Component != nil &&
-					ni.Component.ChildrenType != nil &&
-					ni.Component.ChildrenType.Kind == ir.TypeList &&
-					len(ni.Component.ChildrenType.Elems) > 0 &&
-					ni.Component.ChildrenType.Elems[0].Kind == ir.TypeShape
-				if !isShape {
-					childName := "unknown"
-					if ok && ni.Component != nil {
-						childName = ni.Component.Name
-					} else if ok {
-						childName = ni.Name
-					}
-					c.error(vn.Pos, "expected shape component, got %s", childName)
+				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
+					continue
 				}
+				childName := "unknown"
+				if ok && ni.Component != nil {
+					childName = ni.Component.Name
+				} else if ok {
+					childName = ni.Name
+				}
+				c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
 			}
 		}
 	}

@@ -22,6 +22,10 @@ import (
 
 	// Registers #[options], which every platform and language package carries.
 	_ "git.duckfam.us/jonathan/sngl/internal/macros/platforms"
+
+	// Registers #[tree.kind]/#[tree.children], which sngl://draw's shapes
+	// carry.
+	_ "git.duckfam.us/jonathan/sngl/internal/macros/tree"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -246,6 +250,14 @@ func (c *checker) libPkg(name string) *ir.Package {
 		c.scope = c.stdlibScope
 		defer func() { c.scope = saved }()
 	}
+	// Library source has its own file scopes, but loading is lazy: it happens
+	// part-way through the importing document's pass1, whose claims are still
+	// in c.topLevel. A lib file's import alias would otherwise collide with a
+	// name the user's dot imports lifted — `import tree "sngl://internal/tree"`
+	// against std's `tree` component.
+	savedTopLevel := c.topLevel
+	c.topLevel = nil
+	defer func() { c.topLevel = savedTopLevel }()
 	pkg := c.loadStdlibPackage(name)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
@@ -1299,6 +1311,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		}
 	}
 
+	applyTreeMarks(comp, irComp, pkg)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}

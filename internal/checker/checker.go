@@ -764,7 +764,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// directory, and a declarations package has no macros. This is not
 		// confined to the internal/ tier: sngl://platforms is the public
 		// vocabulary an out-of-tree platform plugin marks its source with.
-		if !HasPackage(uri) {
+		// hasLibPkg rather than HasPackage: Config.LibSources substitutes the
+		// source of an embedded package, and a substituted one has to resolve.
+		if !c.hasLibPkg(uri) {
 			if !expand.HasPackage(uri) {
 				if internal {
 					c.error(imp.Pos, "unknown internal package %q", uri)
@@ -875,12 +877,13 @@ func (c *checker) registerImport(imp *ast.Import) {
 	owner := c.importOwner()
 	owner.Imports = append(owner.Imports, irImport)
 
-	// A canvas reaches this package if any package it imports declares one:
-	// inlining will bring the shapes here, and the pass that lowers them runs
-	// on this package. The flag records the construct, and the construct is
-	// wherever it was resolved.
-	if irImport.Pkg != nil && irImport.Pkg.UsesShapes {
-		owner.UsesShapes = true
+	// A segmented tree reaches this package if any package it imports declares
+	// one of its nodes: inlining will bring the nodes here, and the pass that
+	// lowers them runs on this package.
+	if irImport.Pkg != nil {
+		for kind := range irImport.Pkg.TreeKinds {
+			owner.NoteTreeKind(kind)
+		}
 	}
 
 	// Check for component main in imported library packages. The package's
@@ -942,7 +945,9 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Structs = append(dst.Structs, src.Structs...)
 	dst.Enums = append(dst.Enums, src.Enums...)
 	dst.Units = append(dst.Units, src.Units...)
-	dst.UsesShapes = dst.UsesShapes || src.UsesShapes
+	for kind := range src.TreeKinds {
+		dst.NoteTreeKind(kind)
+	}
 	dst.Funcs = append(dst.Funcs, src.Funcs...)
 	dst.Components = append(dst.Components, src.Components...)
 	dst.Vars = append(dst.Vars, src.Vars...)
@@ -1642,6 +1647,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 
 	// Resolve children type.
+	applyTreeMarks(comp, irComp, c.pkg)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}

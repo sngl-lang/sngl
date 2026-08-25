@@ -93,7 +93,7 @@ Three packages exist, and the split is the whole point of the tier system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one (the public spelling of `#[tree.kind("shape")]`). It is also the worked example of a package shipping a mark alongside the declarations it applies to.
 
 A library package documents itself with a **package comment**: a run of line
 comments at the top of a file, separated from what follows by a blank line
@@ -142,6 +142,23 @@ registry. `sngl://internal/<name>` is the compiler's own tier: a package there
 may contribute macros, declarations, or both. `internal/marks` is macro-only
 and has no directory; `internal/draw` declares the drawing primitives
 passCanvas emits, the intrinsic half of `sngl://draw`.
+
+**`#[tree.kind]` / `#[tree.children]` describe a segmented component tree.**
+`sngl://internal/tree` names a family of nodes — `kind("shape")` says a
+component is a member, `children("shape")` says it hosts members — and the
+checker rejects a child whose kind does not match. The names are opaque:
+drawing is the first user, rich text and menus are the next, and nothing in
+the mechanism knows what a shape is. A member with no children type of its own
+hosts its own kind, so a shape contains shapes without saying so.
+
+The package is internal, so users reach it through a package that wraps it:
+`#[draw.shape]` is `sngl://draw`'s public spelling of `#[tree.kind("shape")]`,
+and it keeps the rules that are about drawing rather than about trees — a
+painted shape declares no events. The facts land on `ir.Component.TreeKind`
+and `.ChildKind` at registration, and on `ir.Package.TreeKinds` for the
+lowering passes to gate on; `ast.ComponentDecl.Tree` carries them only from
+the macro pass to registration, because a mark the checker's own dispatch
+consults has to be in place before checking (see #103).
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and

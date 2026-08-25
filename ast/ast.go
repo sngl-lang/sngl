@@ -316,8 +316,13 @@ type ComponentDecl struct {
 	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr
 	Body         StmtBlock
-	IsShape      bool        // set by #[canvas.shape] macro
-	Builtin      BuiltinKind // set by #[builtin("window")]; BuiltinNone otherwise
+	// Tree carries the #[tree.kind]/#[tree.children] marks between the expand
+	// pass and component registration; every reader of the fact reads
+	// ir.Component instead. It is here only because a mark the checker's own
+	// dispatch consults has to be in place before checking, and expand has no
+	// post-check phase to set the IR from (see #103).
+	Tree    TreeMark    `json:",omitzero"`
+	Builtin BuiltinKind // set by #[builtin("window")]; BuiltinNone otherwise
 }
 
 // PropList is the parameter list of a component declaration.

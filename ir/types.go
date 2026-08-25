@@ -27,7 +27,6 @@ const (
 	TypeUnit      // Decl set
 	TypeFunc      // Sig set
 	TypeComponent // Decl set
-	TypeShape     // virtual; IsShape components satisfy it
 	TypeColor
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
@@ -65,7 +64,6 @@ var (
 	TypString = &Type{Kind: TypeString}
 	TypNull   = &Type{Kind: TypeNull}
 	TypVoid   = &Type{Kind: TypeVoid}
-	TypShape  = &Type{Kind: TypeShape}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -196,8 +194,6 @@ func (t *Type) String() string {
 			return t.Decl.SymName()
 		}
 		return "component"
-	case TypeShape:
-		return "shape"
 	case TypeColor:
 		return "color"
 	case TypeNull:

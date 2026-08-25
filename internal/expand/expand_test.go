@@ -60,8 +60,8 @@ component rect(x int, y int, w int, h int) {}`)
 	if !ok {
 		t.Fatalf("expected ComponentDecl after expand, got %T", doc.Stmts[1])
 	}
-	if !comp.IsShape {
-		t.Error("expected IsShape == true after canvas.shape macro")
+	if comp.Tree.Kind != "shape" {
+		t.Errorf("Tree.Kind = %q, want \"shape\" after draw.shape", comp.Tree.Kind)
 	}
 }
 
@@ -103,33 +103,25 @@ component badShape(@click) {}`)
 	}
 }
 
-func TestExpandPre_CanvasShape_RewritesListComponent(t *testing.T) {
-	doc := parseDoc(t, `import "sngl://draw"
-#[draw.shape]
-component myShape(x int) list<component> {}`)
-	diags := expand.ExpandPre([]*ast.Document{doc})
-	if len(diags) != 0 {
-		t.Fatalf("unexpected diags: %v", diags)
-	}
-	comp := doc.Stmts[1].(*ast.ComponentDecl)
-	named := comp.ChildrenType.(*ast.NamedType)
-	inner := named.TypeArgs[0].(*ast.NamedType)
-	if inner.Name != "shape" {
-		t.Fatalf("expected list<shape>, got list<%s>", inner.Name)
-	}
-}
-
-func TestExpandPre_CanvasShape_RejectsListOtherType(t *testing.T) {
-	doc := parseDoc(t, `import "sngl://draw"
-#[draw.shape]
-component myShape(x int) list<string> {}`)
-	diags := expand.ExpandPre([]*ast.Document{doc})
-	if len(diags) == 0 {
-		t.Fatal("expected error for list<string> on shape")
+// A shape's children are shapes, which the mark says on its own. A declared
+// children type would be a second, contradictable answer, so it is refused
+// rather than rewritten.
+func TestExpandPre_CanvasShape_RejectsChildrenType(t *testing.T) {
+	for _, src := range []string{
+		"component myShape(x int) list<component> {}",
+		"component myShape(x int) list<string> {}",
+	} {
+		doc := parseDoc(t, "import \"sngl://draw\"\n#[draw.shape]\n"+src)
+		diags := expand.ExpandPre([]*ast.Document{doc})
+		if len(diags) == 0 {
+			t.Errorf("expected a diagnostic for %q", src)
+		}
 	}
 }
 
-func TestExpandPre_CanvasShape_SetsChildrenType(t *testing.T) {
+// The mark leaves the source's own children type alone: what a shape hosts is
+// a fact on the IR component, which the checker fills in at registration.
+func TestExpandPre_CanvasShape_LeavesChildrenTypeUnset(t *testing.T) {
 	doc := parseDoc(t, `import "sngl://draw"
 #[draw.shape]
 component myShape(x int) {}`)
@@ -141,18 +133,10 @@ component myShape(x int) {}`)
 	if !ok {
 		t.Fatalf("expected ComponentDecl at index 1, got %T", doc.Stmts[1])
 	}
-	if comp.ChildrenType == nil {
-		t.Fatal("expected ChildrenType to be set to list<shape>")
+	if comp.ChildrenType != nil {
+		t.Errorf("ChildrenType = %v, want nil", comp.ChildrenType)
 	}
-	named, ok := comp.ChildrenType.(*ast.NamedType)
-	if !ok || named.Name != "list" {
-		t.Fatalf("expected list<shape>, got %v", comp.ChildrenType)
-	}
-	if len(named.TypeArgs) == 0 {
-		t.Fatal("expected type arg")
-	}
-	inner, ok := named.TypeArgs[0].(*ast.NamedType)
-	if !ok || inner.Name != "shape" {
-		t.Fatalf("expected shape type arg, got %v", named.TypeArgs[0])
+	if comp.Tree.Children != "" {
+		t.Errorf("Tree.Children = %q, want empty (implied at registration)", comp.Tree.Children)
 	}
 }

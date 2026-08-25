@@ -1488,14 +1488,15 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 	}
 }
 
+// A shape hosts shapes without saying so: #[tree.kind("shape")] implies the
+// child kind, so a rect accepts a circle and the canvas accepts the rect.
 func TestCheckShapeType(t *testing.T) {
-	// canvas and rect both have list<shape> ChildrenType — rect used inside canvas.
 	expectNoErrors(t, `
-component canvas(width float, height float) list<shape> {}
-component rect(x float, y float, w float, h float) list<shape> {}
 component myWidget() {
-    canvas(width=400, height=300) {
-        rect(x=10, y=10, w=100, h=50) {}
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0) {
+            circle(cx=50.0, cy=50.0, r=30.0) {}
+        }
     }
 }
 `)
@@ -1503,23 +1504,23 @@ component myWidget() {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
-component canvas(width float, height float) list<shape> {}
 component notAShape() {}
 component myWidget() {
-    canvas(width=400, height=300) {
+    canvas(width=400px, height=300px) {
         notAShape() {}
     }
 }
-`, "expected shape component")
+`, "expected shape component in canvas, got notAShape")
 }
 
+// `shape` was a type name only so that `list<shape>` could stand in for a
+// polymorphism SNGL does not have. It names nothing now.
 func TestCheckShape_StandaloneRejected(t *testing.T) {
-	// shape must not be usable as a standalone type (field, param, var).
 	expectError(t, `
 component myWidget() {
     var bad shape = 0
 }
-`, "shape is only valid as a children type")
+`, "unknown type")
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {
