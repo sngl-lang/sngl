@@ -16,9 +16,9 @@ import (
 // that names the missing field.
 func TestCapsStringNamesEveryField(t *testing.T) {
 	rv := reflect.New(reflect.TypeFor[Caps]()).Elem()
-	for f := range rv.NumField() {
-		if rv.Field(f).Kind() == reflect.Bool {
-			rv.Field(f).SetBool(true)
+	for _, field := range rv.Fields() {
+		if field.Kind() == reflect.Bool {
+			field.SetBool(true)
 		}
 	}
 	all := rv.Interface().(Caps)

@@ -925,8 +925,6 @@ func literalKindFromType(t *Type) ast.LiteralKind {
 		return ast.LiteralFloat
 	case TypeString:
 		return ast.LiteralStringQuoted
-	case TypeColor:
-		return ast.LiteralColor
 	case TypeNull:
 		return ast.LiteralNull
 	case TypeUnit:

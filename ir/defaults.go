@@ -13,8 +13,7 @@ func ZeroExpr(t *Type) Expr {
 		return &Literal{Type: t, Raw: "0"}
 	case TypeFloat:
 		return &Literal{Type: t, Raw: "0.0"}
-	case TypeString,
-		TypeColor:
+	case TypeString:
 		return &Literal{Type: t, Raw: ""}
 	case TypeNull:
 		return &Literal{Type: TypNull, Raw: "null"}

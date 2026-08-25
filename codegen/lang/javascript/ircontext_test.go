@@ -145,15 +145,10 @@ func TestJsLambda_AsyncPrefix(t *testing.T) {
 func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	// Kind-backed string-domain types.
-	for _, k := range []ir.TypeKind{ir.TypeColor} {
-		lit := &ir.Literal{Type: &ir.Type{Kind: k}, Raw: "val"}
-		got := jc.evalLiteral(lit)
-		if got != `"val"` {
-			t.Errorf("kind %v: got %q, want \"val\"", k, got)
-		}
-	}
-	// Struct-backed string-representable types (color/date/time/datetime).
+	// String-representable types (color/date/time/datetime) are struct-backed
+	// and identified by their #[builtin] mark. There is no string-domain type
+	// kind: the TypeColor this loop used to cover alongside them was never
+	// constructed by anything.
 	// String-repr is now flag-driven (ir.StructDef.Builtin), not name-driven.
 	for name, kind := range map[string]ast.BuiltinKind{
 		"color":    ast.BuiltinColor,

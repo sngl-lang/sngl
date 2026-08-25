@@ -30,7 +30,7 @@ func translateIRLiteral(n *ir.Literal) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "null"
-		case ir.TypeString, ir.TypeColor:
+		case ir.TypeString:
 			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
 			return strconv.Quote(n.Raw)
 		case ir.TypeStruct:

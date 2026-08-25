@@ -59,35 +59,43 @@ func wrapIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 // fromKind to targetKind is permitted without a user-defined method. Struct,
 // func, component, list, option, and null operands always require a method
 // (which SNGL does not dispatch for explicit casts) and return false.
-func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
-	if fromKind == ir.TypeDyn {
-		return true // dyn narrows through any primitive cast
-	}
-	if !isConvertiblePrimitive(fromKind) {
+// The string-repr structs (color, date, time, datetime) are the exception
+// among structs: each carries a canonical string form, so each converts to and
+// from string, and to itself. They are compared by declaration rather than by
+// kind, because every one of them is a TypeStruct and a kind-level test cannot
+// tell date from color — which is what the former TypeColor normalization did,
+// and why `date(aColor)` type-checked.
+func primitiveConvertible(from, target *ir.Type) bool {
+	if from == nil || target == nil {
 		return false
 	}
-	switch targetKind {
+	if from.Kind == ir.TypeDyn {
+		return true // dyn narrows through any primitive cast
+	}
+	fromStr, targetStr := ir.StringReprStruct(from), ir.StringReprStruct(target)
+	switch {
+	case fromStr:
+		// To string, or to its own type — `date(d)` is identity.
+		return target.Kind == ir.TypeString || (targetStr && from.Equal(target))
+	case targetStr:
+		// Only a string produces one; the parse/validate happens at
+		// platform-codegen time.
+		return from.Kind == ir.TypeString
+	}
+	if !isConvertiblePrimitive(from.Kind) {
+		return false
+	}
+	switch target.Kind {
 	case ir.TypeInt, ir.TypeFloat:
-		switch fromKind {
+		switch from.Kind {
 		case ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
 			return true
 		}
 	case ir.TypeString:
 		return true // any listed primitive → string
 	case ir.TypeBool:
-		switch fromKind {
+		switch from.Kind {
 		case ir.TypeBool, ir.TypeString:
-			return true
-		}
-	case ir.TypeColor:
-		// String-domain types accept a string operand (the literal /
-		// expression that holds the canonical form). They also accept
-		// themselves — `date(d)` is identity. The runtime parse/
-		// validate happens at platform-codegen time. Note: date/time/
-		// datetime structs are normalized to the TypeColor kind by the
-		// cast site (inferBuiltinConversion) before reaching here.
-		switch fromKind {
-		case ir.TypeString, targetKind:
 			return true
 		}
 	}
@@ -97,8 +105,6 @@ func primitiveConvertible(fromKind, targetKind ir.TypeKind) bool {
 func isConvertiblePrimitive(k ir.TypeKind) bool {
 	switch k {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
-		return true
-	case ir.TypeColor:
 		return true
 	}
 	return false

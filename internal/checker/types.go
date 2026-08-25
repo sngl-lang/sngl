@@ -36,8 +36,6 @@ const (
 	//go:fix inline
 	TypeComponent = ir.TypeComponent
 	//go:fix inline
-	TypeColor = ir.TypeColor
-	//go:fix inline
 	//go:fix inline
 	TypeNull = ir.TypeNull
 	//go:fix inline

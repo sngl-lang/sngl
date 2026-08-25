@@ -1,0 +1,20 @@
+// color, date, time and datetime each carry a canonical string form, so each
+// converts to and from string — but not to one another. All four are
+// TypeStruct, so the check has to compare declarations: while it normalized
+// them onto a single string-domain kind, every pair looked like an identity
+// cast and `date(aColor)` type-checked.
+import . "sngl://std"
+
+window #home(title="Home", href="/") {
+    const c = #ff8040
+
+    // Legal: to and from the canonical string form, and identity.
+    var s string = string(c)
+    var c2 color = color(s)
+    var d date = date("2026-01-02")
+    var d2 date = date(d)
+
+    var bad date = date(c) // ERROR(check) "date(): cannot convert color"
+
+    text(value=s)
+}

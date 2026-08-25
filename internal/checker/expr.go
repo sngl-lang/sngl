@@ -932,26 +932,11 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 			argExpr = c.checkExpr(call)
 		}
 		from = exprType(argExpr)
-		fromKind := ir.TypeInvalid
-		if from != nil {
-			fromKind = from.Kind
-			// color/date/time/datetime values are TypeStruct-backed by their
-			// stdlib StructDefs. For the explicit-cast primitiveConvertible
-			// check (e.g. `string(c)`, `string(d)`), substitute the string-
-			// domain TypeColor kind so the string-domain cast rules apply.
-			if ir.StringReprStruct(from) {
-				fromKind = ir.TypeColor
-			}
-		}
-		// Likewise, when the *target* is a string-repr struct (e.g.
-		// `date(s)`), normalize it to the TypeColor string-domain kind for
-		// the convertibility check; the actual Conversion still carries the
-		// concrete struct target type.
-		targetKind := target.Kind
-		if ir.StringReprStruct(target) {
-			targetKind = ir.TypeColor
-		}
-		if from != nil && fromKind != targetKind && !primitiveConvertible(fromKind, targetKind) {
+		// primitiveConvertible takes the types themselves: color, date, time
+		// and datetime are all TypeStruct, so the kinds alone cannot say which
+		// one, and an identity cast has to be told apart from a cast between
+		// two different string-repr types.
+		if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
@@ -1926,8 +1911,7 @@ func interpPartPrimitive(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
-		ir.TypeEnum, ir.TypeUnit, ir.TypeNull,
-		ir.TypeColor:
+		ir.TypeEnum, ir.TypeUnit, ir.TypeNull:
 		return true
 	}
 	return false
@@ -3311,7 +3295,7 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	// only when it already is that type: `text(value=doubled)` where doubled
 	// returns an int calls it and converts, as `text(value=doubled())` does.
 	if !actual.Sig.Return.IsAssignableTo(expected) &&
-		!primitiveConvertible(actual.Sig.Return.Kind, expected.Kind) {
+		!primitiveConvertible(actual.Sig.Return, expected) {
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
@@ -3380,7 +3364,7 @@ func propTypeMismatch(got, expected *ir.Type) bool {
 	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
 		return false
 	}
-	if got.IsAssignableTo(expected) || primitiveConvertible(got.Kind, expected.Kind) {
+	if got.IsAssignableTo(expected) || primitiveConvertible(got, expected) {
 		return false
 	}
 	// An unresolved type parameter is the tail of an earlier error.

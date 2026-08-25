@@ -3023,12 +3023,9 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		return
 	}
 
-	switch typ.Kind {
-	case ir.TypeColor:
-		if !isValidColor(val) {
-			c.error(pos, "invalid color literal %q", val)
-		}
-	}
+	// A colour is validated where it is built, in lowerHexLiteral: what
+	// reaches here is already a color StructLit, never a literal of a colour
+	// kind.
 }
 
 func isValidColor(s string) bool {

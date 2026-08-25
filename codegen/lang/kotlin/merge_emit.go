@@ -35,7 +35,7 @@ func kotlinZeroComparand(t *ir.Type) string {
 		return "null"
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeColor:
+	case ir.TypeString:
 		return `""`
 	case ir.TypeBool:
 		return "false"

@@ -110,7 +110,7 @@ func init() {
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
 	// The operand is the Color data class the android platform declares, not
-	// a String — IRTypeToKt maps TypeColor to String for an *annotation*
+	// a String — IRTypeToKt maps a colour struct to String for an *annotation*
 	// while values emit as Color(r=…, g=…, b=…, a=…), which is a discrepancy
 	// of its own and the reason this looked like a String.
 	reg("color.hex", func(a []string) string {
