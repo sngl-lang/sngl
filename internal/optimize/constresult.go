@@ -43,7 +43,7 @@ func parseNativeResults(path string, src []byte, want map[string]*ir.Type, types
 	bad := map[string]error{}
 	records := 0
 	keyed := 0
-	for _, line := range strings.Split(string(src), "\n") {
+	for line := range strings.SplitSeq(string(src), "\n") {
 		if line = recordLine(line); line != "" {
 			records++
 			if strings.Contains(line, resultSep) {
