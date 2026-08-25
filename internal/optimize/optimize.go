@@ -193,7 +193,7 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		}
 		pending = ne.order
 		slog.Info("consteval round", "calls", len(pending))
-		if errs := runNativeRequests(cfg.Cache, cfg.Dir, pending); len(errs) > 0 {
+		if errs := runNativeRequests(cfg.Cache, cfg.Dir, ir.IndexNativeDecls(pkg), pending); len(errs) > 0 {
 			// Nothing is cached for these calls, so retrying the identical
 			// batch would only repeat the failure. The fold reports it per
 			// call site, which is where the target's ability to call the

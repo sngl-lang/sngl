@@ -45,7 +45,7 @@ func run(t *testing.T, body string) (string, string) {
 func value(t *testing.T, js, want string) {
 	t.Helper()
 	doc, stderr := run(t, "consteval.emit(\"k\", "+js+");")
-	line := "const k = " + want
+	line := "k\t" + want
 	if !strings.Contains(doc, line) {
 		t.Errorf("%s encoded as:\n%s\nwant %s\n%s", js, doc, line, stderr)
 	}
@@ -55,10 +55,10 @@ func value(t *testing.T, js, want string) {
 func unrepresentable(t *testing.T, js, reason string) {
 	t.Helper()
 	doc, stderr := run(t, "consteval.emit(\"k\", "+js+");\nconsteval.emit(\"other\", 1);")
-	if strings.Contains(doc, "const k =") {
+	if strings.Contains(doc, "k\t") {
 		t.Errorf("%s was encoded as %s", js, doc)
 	}
-	if !strings.Contains(doc, "const other = 1.0") {
+	if !strings.Contains(doc, "other\t1.0") {
 		t.Errorf("a neighbouring key was lost with %s:\n%s", js, doc)
 	}
 	if !strings.Contains(stderr, reason) {
@@ -148,7 +148,7 @@ globalThis.__SNGL_CONSTEVAL__.register(Tag, (t) => JSON.stringify(t.s));
 consteval.emit("a", new Money(250));
 consteval.emit("b", new Tag("x"));
 `)
-	for _, want := range []string{"const a = 2.50", `const b = "x"`} {
+	for _, want := range []string{"a\t2.50", "b\t\"x\""} {
 		if !strings.Contains(doc, want) {
 			t.Errorf("missing %q in:\n%s\n%s", want, doc, stderr)
 		}
@@ -158,7 +158,7 @@ consteval.emit("b", new Tag("x"));
 // Keys are sorted so a rebuild of the same batch is byte-identical.
 func TestDeterministicOrder(t *testing.T) {
 	doc, _ := run(t, `consteval.emit("z", 1); consteval.emit("a", 2);`)
-	if strings.Index(doc, "const a") > strings.Index(doc, "const z") {
+	if strings.Index(doc, "a\t") > strings.Index(doc, "z\t") {
 		t.Errorf("keys are not sorted:\n%s", doc)
 	}
 }

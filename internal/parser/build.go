@@ -13,6 +13,8 @@ type builder struct {
 	filtered []Token
 	comments []Token
 	errors   []string
+	// native holds the expression of a native-value parse; nil for a document.
+	native ast.Expr
 }
 
 func newBuilder(file string, filtered, comments []Token) *builder {
@@ -136,6 +138,14 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 func (b *builder) buildDocument(children []int32) *ast.Document {
 	doc := &ast.Document{}
 	it := b.iter(children)
+	// Document = native_value Expr [ semi ] | { … } .
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == NATIVE_VALUE {
+		it.skip()
+		if !it.done() && it.isNonTerminal() {
+			b.native = b.buildExpr(it.enter())
+		}
+		return doc
+	}
 	for !it.done() {
 		// Document = { [ slashdash ] { MacroAttr } Stmt semi } .
 		if !it.isNonTerminal() {
@@ -1732,6 +1742,16 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return &ast.EventRefExpr{Pos: b.posFromToken(tok), Name: nameTok.Literal}
 		}
 		return &ast.EventRefExpr{Pos: b.posFromToken(tok)}
+	case NATIVE_TYPE:
+		refTok := it.shift()
+		s := &ast.StructExpr{
+			Pos:    ast.Pos(b.posFromToken(refTok)),
+			Native: refTok.Literal,
+		}
+		if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
+			s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+		}
+		return s
 	case IDENT:
 		identTok := it.shift()
 		// In expression context, ident may be followed by StructLitBody

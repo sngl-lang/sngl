@@ -106,6 +106,16 @@ Any `node` will do. The compiler compiles the module and everything it imports
 itself, so TypeScript is already gone by the time node sees it — a `.ts` with
 an enum folds, and node's own type stripping never comes into it.
 
+Where the function's declared return type says what the value is, that type is
+what makes it well-typed. Where it does not — a Go `[]any`, a TypeScript
+`any[]` — a `go://` value still arrives typed, because the Go runtime can name
+the type it is: `reflect` gives the declaring package and the name in it, which
+is exactly what the `go://` importer keyed its declarations by. A `js://` value
+cannot. A JavaScript value carries no link to the module that declared its
+type, a class name alone does not identify one, and a TypeScript interface has
+no runtime constructor at all — so an untyped `js://` element stays `dyn`, with
+the field names the source language used.
+
 A folded value crosses as SNGL source, and a class can choose its own form with
 a `[Symbol.for("sngl.marshal")]()` method returning that source; for a class
 you did not write and so cannot add a method to, `globalThis.__SNGL_CONSTEVAL__.register(Ctor, fn)`

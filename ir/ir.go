@@ -136,6 +136,63 @@ type NativeImport struct {
 	LinkFlags []string
 }
 
+// NativeTypeRef names a foreign declaration the way an encoded value does:
+// the scheme it was imported under, the package that declares it, and its name
+// there. That triple is what a runtime can say about a value — Go's
+// reflect.Type gives the last two — and what a scheme importer keys its
+// declarations by.
+type NativeDeclRef struct{ Scheme, Path, Name string }
+
+// ParseNativeDeclRef reads a ref written as scheme, path and name.
+func ParseNativeDeclRef(s string) (NativeDeclRef, bool) {
+	scheme, rest, ok := strings.Cut(s, "://")
+	if !ok {
+		return NativeDeclRef{}, false
+	}
+	path, name, ok := strings.Cut(rest, "#")
+	if !ok || scheme == "" || path == "" || name == "" {
+		return NativeDeclRef{}, false
+	}
+	return NativeDeclRef{Scheme: scheme, Path: path, Name: name}, true
+}
+
+// NativeDecls indexes every foreign declaration a package graph imported, so a
+// value that names one can be given the declaration rather than a name to
+// match against. A ref that is absent names a type this program never imported
+// — not an error, only the absence of a declaration.
+type NativeDecls map[NativeDeclRef]Symbol
+
+// IndexNativeDecls builds that index over p and the packages it imports.
+func IndexNativeDecls(p *Package) NativeDecls {
+	out := NativeDecls{}
+	seen := map[*Package]bool{}
+	var walk func(*Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+			if imp.Native == nil {
+				continue
+			}
+			scheme, _, ok := strings.Cut(imp.Path, "://")
+			if !ok {
+				continue
+			}
+			for _, sd := range imp.Native.Structs {
+				out[NativeDeclRef{scheme, imp.Native.ImportPath, sd.Name}] = sd
+			}
+			for _, ed := range imp.Native.Enums {
+				out[NativeDeclRef{scheme, imp.Native.ImportPath, ed.Name}] = ed
+			}
+		}
+	}
+	walk(p)
+	return out
+}
+
 // Func represents any function: top-level, type-attached method, or lambda.
 //
 // NativePkg/NativeName are set when the function originates from a scheme

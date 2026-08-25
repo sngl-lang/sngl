@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -90,20 +89,18 @@ func Encode[T any](t TB, v T) string {
 
 // checkValue checks encoded source against want the way the constant folder
 // does, so a value that passes here is one that folds.
+//
+// No index of imported declarations is passed: a value here is checked against
+// the type the importer gave it, which is the disagreement this helper exists
+// to find. Naming its own type would let the value pick the declaration and
+// the two halves could no longer differ.
 func checkValue(src string, want *ir.Type) error {
-	doc, err := parser.Parse("sngltest.sngl", []byte("const v = "+src+"\n"))
+	e, err := parser.ParseNativeValue("sngltest.sngl", []byte(src))
 	if err != nil {
 		return fmt.Errorf("the encoded source does not parse: %w", err)
 	}
-	for _, stmt := range doc.Stmts {
-		decl, ok := stmt.(*ast.ConstDecl)
-		if !ok || len(decl.Specs) != 1 {
-			continue
-		}
-		_, err := checker.CheckNativeValue(decl.Specs[0].Default, want)
-		return err
-	}
-	return fmt.Errorf("the encoded source is not a value")
+	_, err = checker.CheckNativeValue(e, want, nil)
+	return err
 }
 
 // disagree is the message for a value that does not fit the type the importer

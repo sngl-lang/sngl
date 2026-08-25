@@ -28,6 +28,7 @@ type lexer struct {
 	interpStack      []interpFrame // active string interpolation nesting
 	macroAttrDepth   int           // incremented by #[, decremented by matching ]
 	macroInnerBracks int           // [ inside macro attr args, to skip inner ]
+	nativeValue      bool          // scanning an encoded value: @"..." is a type ref
 }
 
 func newLexer(src string) *lexer {
@@ -270,6 +271,9 @@ func (l *lexer) NextToken() Token {
 		case ':':
 			return l.tok(COLON, ":", startLine, startCol)
 		case '@':
+			if l.nativeValue && l.peek() == '"' {
+				return l.scanNativeType(startLine, startCol)
+			}
 			return l.tok(AT, "@", startLine, startCol)
 		case '?':
 			return l.tok(QUESTION, "?", startLine, startCol)
@@ -742,10 +746,41 @@ func dedent(s string) string {
 	return strings.Join(result, "\n")
 }
 
+// scanNativeType scans @"scheme://path#Name", the type a native value names.
+// The text is machine-written and holds an import path and an identifier, so
+// there is nothing to unescape — the literal is everything up to the closing
+// quote.
+func (l *lexer) scanNativeType(startLine, startCol int) Token {
+	l.advance() // opening quote
+	start := l.pos
+	for l.pos < len(l.input) && l.input[l.pos] != '"' && l.input[l.pos] != '\n' {
+		l.advance()
+	}
+	if l.pos >= len(l.input) || l.input[l.pos] != '"' {
+		l.errors = append(l.errors, fmt.Sprintf("%d:%d: unterminated native type reference", startLine, startCol))
+		return l.tok(ILLEGAL, string(l.input[start:l.pos]), startLine, startCol)
+	}
+	lit := string(l.input[start:l.pos])
+	l.advance() // closing quote
+	return l.tok(NATIVE_TYPE, lit, startLine, startCol)
+}
+
 // Tokenize scans the entire source and returns all tokens up to (and including) EOF.
 // Lexer errors are returned separately.
 func Tokenize(src string) (tokens []Token, errs []string) {
+	return scanAll(newLexer(src), nil)
+}
+
+// TokenizeNativeValue scans src as one encoded native value. The leading
+// NATIVE_VALUE token is the mode itself: it is what the grammar's native-value
+// alternative predicts on, and no source text lexes to it.
+func TokenizeNativeValue(src string) (tokens []Token, errs []string) {
 	l := newLexer(src)
+	l.nativeValue = true
+	return scanAll(l, []Token{{Type: NATIVE_VALUE, Line: 1, Column: 1}})
+}
+
+func scanAll(l *lexer, tokens []Token) ([]Token, []string) {
 	for {
 		tok := l.NextToken()
 		tokens = append(tokens, tok)

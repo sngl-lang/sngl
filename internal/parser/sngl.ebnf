@@ -85,6 +85,8 @@
 # i18n_case_start  0x58  I18N_CASE_START   {body{    (opening segment with nested placeholder)
 # i18n_case_end    0x59  I18N_CASE_END     }body}    (closing segment of case body)
 # attr_open        0x5A  ATTR_OPEN         #[        (start of macro attribute)
+# native_value     0x5B  NATIVE_VALUE      (native-value mode sentinel)
+# native_type      0x5C  NATIVE_TYPE       @"go://p#T"
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -166,6 +168,8 @@ i18n_case_full    = `\x57` .
 i18n_case_start   = `\x58` .
 i18n_case_end     = `\x59` .
 attr_open         = `\x5A` .
+native_value      = `\x5B` .
+native_type       = `\x5C` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
@@ -201,7 +205,10 @@ MsgBody = i18n_case_full
 
 MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
 
-Document = { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
+# A native value — one expression an encoder wrote, see checker.CheckNativeValue
+# — is the second thing a Document can be. Only the native-value lexer emits the
+# sentinel, so ordinary source can never take that branch.
+Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -498,6 +505,7 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | at ident
+    | native_type StructLitBody
     | ident [ StructLitBody ]
     .
 

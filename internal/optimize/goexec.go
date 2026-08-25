@@ -58,8 +58,8 @@ type nativeRequest struct {
 	ret *ir.Type
 }
 
-// wantTypes keys the declared return types the way the results document keys
-// its consts, which is the form parseConstResults checks values against. Every
+// wantTypes keys the declared return types the way the results file keys its
+// records, which is the form parseNativeResults checks values against. Every
 // runner builds it the same way from its own batch.
 func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
 	want := make(map[string]*ir.Type, len(reqs))
@@ -169,7 +169,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, []*nativeRequest{req}); errs[scheme] != nil {
+	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), []*nativeRequest{req}); errs[scheme] != nil {
 		return nil, nativeFailed, errs[scheme]
 	}
 	if r, ok := ctx.evalCache().load(key); ok && r.err == nil {
@@ -271,7 +271,7 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 // nothing about any one call and must not become that call's answer. It is
 // returned under its scheme: one scheme failing that way keeps neither
 // another scheme's values out of the cache nor its calls from folding.
-func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[string]error {
+func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
 	byScheme := map[string][]*nativeRequest{}
 	var order []string
 	for _, r := range reqs {
@@ -282,7 +282,7 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[
 	}
 	errs := map[string]error{}
 	for _, scheme := range order {
-		if err := runSchemeRequests(cache, dir, scheme, byScheme[scheme]); err != nil {
+		if err := runSchemeRequests(cache, dir, types, scheme, byScheme[scheme]); err != nil {
 			errs[scheme] = err
 		}
 	}
@@ -290,7 +290,7 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[
 }
 
 // runSchemeRequests runs one scheme's batch and caches its outcome per call.
-func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeRequest) error {
+func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, scheme string, reqs []*nativeRequest) error {
 	var (
 		values map[string]ir.Expr
 		bad    map[string]error
@@ -298,9 +298,9 @@ func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeReque
 	)
 	switch scheme {
 	case "js":
-		values, bad, err = execJSConstEval(dir, reqs)
+		values, bad, err = execJSConstEval(dir, types, reqs)
 	default:
-		values, bad, err = execConstEval(dir, reqs)
+		values, bad, err = execConstEval(dir, types, reqs)
 	}
 	if err != nil {
 		return err
@@ -323,7 +323,7 @@ func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeReque
 
 // execConstEval generates, builds and runs the batch program, returning the
 // values keyed by request key, and the keys whose value did not check.
-func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
@@ -383,7 +383,7 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[s
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
 	parseStart := time.Now()
-	values, bad, err := parseConstResults(resultPath, results, wantTypes(reqs))
+	values, bad, err := parseNativeResults(resultPath, results, wantTypes(reqs), types)
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
 	return values, bad, err
 }

@@ -11,8 +11,32 @@ import (
 // Parse parses SNGL v2 source into an AST Document. Panics in the parser or
 // AST builder are converted into errors so callers don't crash on malformed
 // input.
-func Parse(filename string, src []byte) (doc *ast.Document, err error) {
+func Parse(filename string, src []byte) (*ast.Document, error) {
 	tokens, lexErrs := Tokenize(string(src))
+	doc, _, err := parseTokens(filename, tokens, lexErrs)
+	return doc, err
+}
+
+// ParseNativeValue parses src as one encoded native value: a single expression
+// written by a native-language encoder (see pkg/go/consteval), in which a
+// value may name its own type as @"scheme://path#Name".
+//
+// That spelling exists only here. Parse rejects it, because the token it needs
+// is lexed only in this mode — so a hand-written program cannot claim a
+// declaration the compiler would then trust.
+func ParseNativeValue(filename string, src []byte) (ast.Expr, error) {
+	tokens, lexErrs := TokenizeNativeValue(string(src))
+	_, native, err := parseTokens(filename, tokens, lexErrs)
+	if err != nil {
+		return nil, err
+	}
+	if native == nil {
+		return nil, fmt.Errorf("%s: no value", filename)
+	}
+	return native, nil
+}
+
+func parseTokens(filename string, tokens []Token, lexErrs []string) (doc *ast.Document, native ast.Expr, err error) {
 	var errs []error
 	for _, e := range lexErrs {
 		errs = append(errs, fmt.Errorf("%s: %s", filename, e))
@@ -35,12 +59,12 @@ func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 		}
 	}
 	if tree == nil {
-		return &ast.Document{}, errors.Join(errs...)
+		return &ast.Document{}, nil, errors.Join(errs...)
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-			doc = &ast.Document{}
+			doc, native = &ast.Document{}, nil
 			errs = append(errs, fmt.Errorf("%s: parser panic: %v", filename, r))
 			err = errors.Join(errs...)
 		}
@@ -51,7 +75,7 @@ func Parse(filename string, src []byte) (doc *ast.Document, err error) {
 	for _, e := range b.errors {
 		errs = append(errs, fmt.Errorf("%s", e))
 	}
-	return doc, errors.Join(errs...)
+	return doc, b.native, errors.Join(errs...)
 }
 
 // remapErrors translates byte-stream positions from the egg parser back to
