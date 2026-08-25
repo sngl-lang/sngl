@@ -46,7 +46,11 @@ type JSImporter struct{}
 // the same root and stay consistent with the checker.
 const VirtualRoot = "/sngl"
 
-func (j *JSImporter) Scheme() string { return "js" }
+// Scheme is the URI scheme this importer resolves, and the one a #[foreign]
+// mark writes to say a name is JavaScript's.
+const Scheme = "js"
+
+func (j *JSImporter) Scheme() string { return Scheme }
 
 // Resolve provides the legacy OS-rooted path. New callers should prefer
 // ResolveFS so behaviour is identical between CLI and playground.

@@ -1,0 +1,69 @@
+# A #[foreign] mark says what to emit, not what a type is. Several SNGL types
+# map to one target-language type — int8 and int16 are both a JS number — so a
+# marked declaration is its own type: it does not become the imported
+# declaration whose triple it repeats, and two marks with one triple do not
+# become each other.
+
+# Control: the same declaration is still the same type, so nothing here rejects
+# a foreign-marked struct on its own.
+sngl check ok.sngl
+stdout 'ok.sngl: ok'
+
+# Two marks, one triple, two types.
+! sngl check twomarks.sngl
+stderr 'cannot pass A as B'
+
+# A mark and the js:// import it names: still two types.
+! sngl check markvsimport.sngl
+stderr 'cannot pass Entry as'
+
+-- ok.sngl --
+import . "sngl://std"
+
+#[foreign("js://example.com/api#Entry")]
+struct A {
+    title string
+}
+
+func take(a A) => a.title
+
+component main {
+    text(value=take(A{title="x"}))
+}
+
+-- twomarks.sngl --
+import . "sngl://std"
+
+#[foreign("js://example.com/api#Entry")]
+struct A {
+    title string
+}
+
+#[foreign("js://example.com/api#Entry")]
+struct B {
+    title string
+}
+
+func take(b B) => b.title
+
+component main {
+    text(value=take(A{title="x"}))
+}
+
+-- markvsimport.sngl --
+import . "sngl://std"
+import api "js://./api"
+
+#[foreign("js://./api#Entry")]
+struct Entry {
+    title string
+}
+
+func take(e api.Entry) => e.title
+
+component main {
+    text(value=take(Entry{title="x"}))
+}
+-- api/index.ts --
+export type Entry = { title: string };
+export function nothing(): number { return 0; }

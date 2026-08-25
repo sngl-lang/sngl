@@ -255,7 +255,9 @@ ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 
 StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructBodyItem { semi StructBodyItem } [ semi ] ] rbrace .
 
-StructBodyItem = FuncDecl | StructField .
+StructBodyItem = { MacroAttr } StructBodyDecl .
+
+StructBodyDecl = FuncDecl | StructField .
 
 StructField = IdentList Type [ assign Expr ] .
 

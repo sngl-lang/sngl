@@ -286,24 +286,33 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.newline()
 	f.indent++
 	for _, item := range s.Body {
-		switch it := item.(type) {
-		case *ast.StructField:
-			f.write(strings.Join(it.Names, ", "))
-			if it.Type != nil {
-				f.write(" ")
-				f.writeType(it.Type)
-			}
-			if it.Default != nil {
-				f.write(" = ")
-				f.writeExpr(it.Default)
-			}
-		case *ast.FuncDef:
-			f.writeFuncDef(it)
-		}
+		f.writeStructBodyItem(item)
 		f.newline()
 	}
 	f.indent--
 	f.write("}")
+}
+
+func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
+	switch it := item.(type) {
+	case *ast.AttrDecl:
+		f.writeAttrs(it.Attrs)
+		if inner, ok := it.Inner.(ast.StructBodyItem); ok {
+			f.writeStructBodyItem(inner)
+		}
+	case *ast.StructField:
+		f.write(strings.Join(it.Names, ", "))
+		if it.Type != nil {
+			f.write(" ")
+			f.writeType(it.Type)
+		}
+		if it.Default != nil {
+			f.write(" = ")
+			f.writeExpr(it.Default)
+		}
+	case *ast.FuncDef:
+		f.writeFuncDef(it)
+	}
 }
 
 // --- enum ---
@@ -1195,7 +1204,12 @@ func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 // --- attr ---
 
 func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
-	for _, attr := range d.Attrs {
+	f.writeAttrs(d.Attrs)
+	f.formatStmt(d.Inner)
+}
+
+func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
+	for _, attr := range attrs {
 		f.write("#[")
 		if attr.Alias != "" {
 			f.write(attr.Alias)
@@ -1215,5 +1229,4 @@ func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
 		f.write("]")
 		f.newline()
 	}
-	f.formatStmt(d.Inner)
 }

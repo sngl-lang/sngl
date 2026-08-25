@@ -959,7 +959,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams, Foreign: irForeign(s.Foreign)}
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
 	return sd
@@ -1029,6 +1029,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				Type:    typ,
 				Init:    initExpr,
 				IsConst: true,
+				Foreign: irForeign(decl.Foreign),
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.bindVar(decl.Pos, v)
@@ -1057,7 +1058,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
 		for _, name := range spec.Names {
-			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
+			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true, Foreign: irForeign(decl.Foreign)}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
@@ -1324,10 +1325,11 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				continue
 			}
 			v := &ir.Var{
-				AST:  decl,
-				Name: name,
-				Type: typ,
-				Init: initExpr,
+				AST:     decl,
+				Name:    name,
+				Type:    typ,
+				Init:    initExpr,
+				Foreign: irForeign(decl.Foreign),
 			}
 			// Build event handlers.
 			for i := range spec.Handlers {

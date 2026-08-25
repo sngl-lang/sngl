@@ -7,3 +7,10 @@
 // writes its declarations unqualified; `import <alias> "sngl://std"` qualifies
 // them, and is also how a platform overrides a component (`component
 // <alias>.vbox`).
+//
+// It also carries the `#[foreign]` mark, which records what a declaration
+// corresponds to outside SNGL -- `#[foreign("js://example.com/api#Entry")]` on
+// a declaration, `#[foreign("Title")]` on a struct field. The mark informs
+// codegen and nothing else: it imports nothing, is checked against nothing,
+// and confers no type identity, since several SNGL types can map to one
+// target-language type.

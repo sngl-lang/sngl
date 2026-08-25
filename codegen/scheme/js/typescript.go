@@ -394,10 +394,14 @@ func (w *walker) posFromOffset(offset int) ast.Pos {
 	return ast.Pos{File: w.filePath, Line: line + 1, Column: int(col) + 1}
 }
 
-// DeclaredHere reports whether a declaration's Origin says this importer read
-// it from a JavaScript module — which is what says whether its Foreign.Name is a
-// name generated JavaScript should spell.
-func DeclaredHere(origin any) bool {
-	_, ok := origin.(jsTypeID)
-	return ok
+// DeclaredHere reports whether a declaration's Foreign says its Name is a name
+// generated JavaScript should spell: either this importer read the declaration
+// from a JavaScript module, or a #[foreign] mark named this scheme. A mark sets
+// no Origin — that is what keeps it out of type identity — so the scheme it
+// wrote is the only thing left to ask.
+func DeclaredHere(f ir.Foreign) bool {
+	if _, ok := f.Origin.(jsTypeID); ok {
+		return true
+	}
+	return f.Scheme == Scheme
 }

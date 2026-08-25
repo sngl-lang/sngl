@@ -1,0 +1,44 @@
+# A #[foreign] mark reaches codegen. The struct and its fields are named the
+# way the mark says — the same path a js:// import's declarations take — and
+# nothing was imported to say so: example.com/api does not exist.
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# The struct literal and the field read are spelled the module's way.
+grep 'Title:' out/index.html
+grep '\.Title' out/index.html
+
+# ... and not SNGL's.
+! grep 'title:' out/index.html
+
+# The mark informs codegen and nothing else: no module was resolved, so none
+# was bundled.
+! grep 'example.com/api' out/index.html
+
+# And the path really is unresolvable, which is what makes the build above
+# evidence rather than a coincidence.
+! sngl check needsimport.sngl
+stderr 'example.com/api'
+
+-- app.sngl --
+import . "sngl://std"
+
+#[foreign("js://example.com/api#Entry")]
+struct Entry {
+    #[foreign("Title")]
+    title string
+}
+
+component main {
+    var e = Entry{title = "hello"}
+    text(value=e.title)
+}
+
+-- needsimport.sngl --
+import . "sngl://std"
+import api "js://example.com/api"
+
+component main {
+    text(value=string(api.anything()))
+}

@@ -288,6 +288,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		Pkg:        c.libPkgName,
 		TypeParams: s.TypeParams,
 		Fields:     c.resolveStructFields(s),
+		Foreign:    irForeign(s.Foreign),
 	}
 }
 
@@ -325,6 +326,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				Name:    name,
 				Type:    typ,
 				Default: def,
+				Foreign: irForeign(f.Foreign),
 			})
 		}
 	}
@@ -350,6 +352,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		AST:     e,
 		Name:    e.Name,
 		Pkg:     c.libPkgName,
+		Foreign: irForeign(e.Foreign),
 		Members: members,
 	}
 }
@@ -573,6 +576,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),
+		Foreign:        irForeign(f.Foreign),
 	}
 	c.typeParams = prevTypeParams
 	if isMethod {
@@ -631,4 +635,12 @@ func isComparable(t *ir.Type) bool {
 		return true
 	}
 	return false
+}
+
+// irForeign carries a #[foreign] mark into the IR. It deliberately leaves
+// Origin nil: Origin is a scheme importer's own key for a declaration it read,
+// and it is what makes two declarations the same type. A mark is a codegen
+// fact, so a marked declaration unifies with nothing.
+func irForeign(m ast.ForeignMark) ir.Foreign {
+	return ir.Foreign{Scheme: m.Scheme, Pkg: m.Pkg, Name: m.Name}
 }

@@ -30,6 +30,34 @@ func ExpandPre(docs []*ast.Document) []ir.Diagnostic {
 			newStmts = append(newStmts, result)
 		}
 		doc.Stmts = newStmts
+		for _, stmt := range doc.Stmts {
+			diags = append(diags, expandStructBody(stmt, aliases, dotPkgs)...)
+		}
+	}
+	return diags
+}
+
+// expandStructBody applies the attributes on a struct's fields and nested
+// methods. A field is not a top-level declaration, so it is reached from the
+// struct rather than from the document — but it goes through the same
+// AttrDecl and the same handlers, so a mark means the same thing wherever it
+// is written.
+func expandStructBody(stmt ast.Stmt, aliases map[string]imports.ImportRef, dotPkgs []string) []ir.Diagnostic {
+	s, ok := stmt.(*ast.StructDef)
+	if !ok {
+		return nil
+	}
+	var diags []ir.Diagnostic
+	for i, item := range s.Body {
+		ad, ok := item.(*ast.AttrDecl)
+		if !ok {
+			continue
+		}
+		result, attrDiags := applyAttrs(ad, aliases, dotPkgs)
+		diags = append(diags, attrDiags...)
+		if inner, ok := result.(ast.StructBodyItem); ok {
+			s.Body[i] = inner
+		}
 	}
 	return diags
 }
@@ -186,6 +214,8 @@ func inheritPos(decl ast.Stmt, pos ast.Pos) {
 	case *ast.ConstDecl:
 		d.Pos = pos
 	case *ast.UnitDef:
+		d.Pos = pos
+	case *ast.StructField:
 		d.Pos = pos
 	}
 }

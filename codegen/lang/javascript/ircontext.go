@@ -167,7 +167,7 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 // and they are Go's — nothing in a generated page reads them, so a page built
 // around a `go://` value must keep spelling its fields the SNGL way.
 func jsFieldKey(sd *ir.StructDef, name string) string {
-	if sd == nil || !jsscheme.DeclaredHere(sd.Foreign.Origin) {
+	if sd == nil || !jsscheme.DeclaredHere(sd.Foreign) {
 		return name
 	}
 	for _, f := range sd.Fields {
@@ -417,7 +417,7 @@ func nativeEnumMemberJS(t *ir.Type, member string) (string, bool) {
 		return "", false
 	}
 	ed, _ := t.Decl.(*ir.EnumDef)
-	if ed == nil || !jsscheme.DeclaredHere(ed.Foreign.Origin) {
+	if ed == nil || !jsscheme.DeclaredHere(ed.Foreign) {
 		return "", false
 	}
 	for _, m := range ed.Members {

@@ -90,6 +90,7 @@ type EnumDef struct {
 	Name        string
 	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
+	Foreign     ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // Members returns just the *EnumMember items from Body, in source order.
@@ -123,6 +124,10 @@ type StructBodyItem interface {
 func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
 
+// An attributed field or nested method stays wrapped until the expand pass
+// unwraps it, so the wrapper has to be a body item too.
+func (*AttrDecl) structBodyItem() {}
+
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
 	Pos         Pos
@@ -131,6 +136,7 @@ type StructDef struct {
 	Body        []StructBodyItem
 	IsMultiline bool
 	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
+	Foreign     ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // Fields returns just the *StructField items from Body, in source order.
@@ -164,6 +170,7 @@ type StructField struct {
 	NamePositions []Pos // parallel to Names; per-name source positions
 	Type          TypeExpr
 	Default       Expr
+	Foreign       ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -204,6 +211,7 @@ type ConstDecl struct {
 	Specs     []VarSpec
 	// Builtin is set by the #[builtin] macro on a predeclared constant.
 	Builtin BuiltinKind
+	Foreign ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // VarDecl declares one or more variables.
@@ -211,6 +219,7 @@ type VarDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
+	Foreign   ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // --- Imports ---
@@ -261,6 +270,8 @@ type FuncDef struct {
 	// Intrinsic is the #[intrinsic("...")] mark, if any. Its zero value means
 	// an ordinary function.
 	Intrinsic IntrinsicMark
+	// Foreign is the #[foreign("...")] mark, if any.
+	Foreign ForeignMark
 }
 
 // SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
@@ -375,7 +386,11 @@ type PlatformStmt struct {
 
 // --- StmtPos implementations ---
 
-func (s *StructDef) StmtPos() *Pos     { return &s.Pos }
+func (s *StructDef) StmtPos() *Pos { return &s.Pos }
+
+// A field is a Stmt only so AttrDecl can wrap one; nothing executes it.
+func (f *StructField) StmtPos() *Pos { return &f.Pos }
+
 func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
 func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }
 func (c *ConstDecl) StmtPos() *Pos     { return &c.Pos }

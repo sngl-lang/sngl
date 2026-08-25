@@ -199,6 +199,10 @@ func IndexNativeDecls(p *Package) NativeDecls {
 type Foreign struct {
 	Pkg  string // scheme-import package path (e.g. "fmt")
 	Name string // native ref to emit (e.g. "fmt.Sprintf")
+	// Scheme names the language the Name belongs to, for a correspondence a
+	// #[foreign] mark declared. An importer answers the same question with
+	// Origin's own type and leaves this empty.
+	Scheme string
 	// Origin identifies the foreign declaration this was read from, in a type
 	// the importer defines. Two files that each resolve the same package get
 	// their own *StructDef for one type, and comparing Origin is what makes

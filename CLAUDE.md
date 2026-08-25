@@ -138,7 +138,13 @@ means `#[d.shape]`.
 A lib package may carry macros alongside its declarations — `sngl://draw`
 ships the `shape` mark next to the shape components it applies to — so the
 `sngl` scheme is checked against both the `lib/` layout and the macro
-registry. `sngl://internal/<name>` is the compiler's own tier: a package there
+registry. `sngl://std` carries `#[foreign(...)]` the same way: it
+records what a declaration corresponds to outside SNGL (`Foreign.Scheme`,
+`.Pkg`, `.Name` on the IR declaration) for codegen to read, and its users are
+outside the compiler — a language plugin generating marked SNGL to describe a
+foreign API, a platform package naming its host types. It imports nothing,
+validates nothing, and never confers type identity: only a scheme importer's
+`Foreign.Origin` unifies two declarations. `sngl://internal/<name>` is the compiler's own tier: a package there
 may contribute macros, declarations, or both. `internal/marks` is macro-only
 and has no directory; `internal/draw` declares the drawing primitives
 passCanvas emits, the intrinsic half of `sngl://draw`.
