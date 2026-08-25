@@ -118,6 +118,9 @@ type checker struct {
 	// CheckNativeValue.
 	nativeValues bool
 
+	// nativeTypes resolves the foreign declaration an encoded value names.
+	nativeTypes ir.NativeDecls
+
 	// Current component (for event validation).
 	currentComponent *ir.Component
 

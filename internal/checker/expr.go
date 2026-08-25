@@ -1675,12 +1675,16 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// Look up struct type.
 	var sd *ir.StructDef
 	if c.nativeValues {
-		// The name is the foreign type's, which binds nothing here; the
-		// declaration is the one the importer built, reached through the
-		// expected type. Comparing the two names is the only check that the
-		// encoder and the importer read the same Go type.
+		// The declaration is the one the importer built: named by the value
+		// itself where its runtime could say which type it was, and otherwise
+		// reached through the expected type.
 		sd = expectedStructDef(c.expected)
-		if sd != nil && x.Name != "" && x.Name != sd.Name {
+		if x.Native != "" {
+			var bad bool
+			if bad, sd = c.nativeStructDef(x, sd); bad {
+				return &ir.Literal{Type: TypDyn}
+			}
+		} else if sd != nil && x.Name != "" && x.Name != sd.Name {
 			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
 			return &ir.Literal{Type: TypDyn}
 		}

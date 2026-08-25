@@ -127,6 +127,11 @@ const (
 
 	// Macro attribute
 	ATTR_OPEN TokenType = 0x5A // #[ — start of macro attribute
+
+	// NATIVE_VALUE cannot be lexed from ordinary source: TokenizeNativeValue
+	// prepends it, and it is what the grammar's native-value Document
+	// alternative predicts on.
+	NATIVE_VALUE TokenType = 0x5B // leading sentinel of a native-value parse
 )
 
 var keywords = map[string]TokenType{

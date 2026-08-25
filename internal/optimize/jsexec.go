@@ -59,7 +59,7 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 // path's binary-cache machinery has anything worth caching. That also means the
 // generated directory needs no stable name — its only job is to hold the
 // program until it has run.
-func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
@@ -113,7 +113,7 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	return parseConstResults(resultPath, results, wantTypes(reqs))
+	return parseNativeResults(resultPath, results, wantTypes(reqs), types)
 }
 
 // bundleJSConstEval transpiles the program and everything it imports into one

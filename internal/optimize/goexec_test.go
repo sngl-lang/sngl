@@ -67,7 +67,26 @@ func purepkgCtx(dir string) *evalCtx {
 			Funcs:      []*ir.Func{fnDouble, fnGreet, fnBoom, fnJoin, purepkgFunc("Nothing", nil, nil)},
 		}},
 		nativeSchemes: map[string]string{"purepkg": "go"},
+		// pkg carries the real import, whose struct declarations are what a
+		// value naming its own type resolves against; the hand-built
+		// NativeImport above declares only funcs.
+		pkg: purepkgPackage(),
 	}
+}
+
+// purepkgPackage is a package importing purepkg through the real go://
+// importer, or nil where the import does not resolve — the same condition
+// importedFunc skips on.
+func purepkgPackage() *ir.Package {
+	ni, err := purepkgImport()
+	if err != nil {
+		return nil
+	}
+	return &ir.Package{Imports: []*ir.Import{{
+		Path:   "go://" + purepkgPath,
+		Alias:  "purepkg",
+		Native: ni,
+	}}}
 }
 
 // nextRound is the same compilation's next fold pass: a fresh request set over
@@ -92,7 +111,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 		}
 	}
 	if len(ctx.native.order) > 0 {
-		runNativeRequests(ctx.evalCache(), ctx.dir, ctx.native.order)
+		runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order)
 	}
 	out := make([]constResult, len(calls))
 	for i, c := range calls {
@@ -687,7 +706,7 @@ func TestBatchFailureIsNotCached(t *testing.T) {
 		ret:        ir.TypString,
 	}
 	cache := NewEvalCache()
-	if err := runNativeRequests(cache, t.TempDir(), []*nativeRequest{req}); err == nil {
+	if err := runNativeRequests(cache, t.TempDir(), nil, []*nativeRequest{req}); err == nil {
 		t.Fatal("the evaluator built in a directory with no module")
 	}
 	if _, cached := cache.load(req.key); cached {

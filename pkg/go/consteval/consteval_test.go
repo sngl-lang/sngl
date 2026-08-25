@@ -27,16 +27,20 @@ func flush(t *testing.T, emit func()) string {
 	return string(data)
 }
 
-// constLine returns the `const <key> = ...` right-hand side, or "" if the key
+// resultLine returns the value recorded under key, or "" if the key
 // was omitted.
-func constLine(doc, key string) string {
+func resultLine(doc, key string) string {
 	for line := range strings.SplitSeq(doc, "\n") {
-		if rest, ok := strings.CutPrefix(line, "const "+key+" = "); ok {
+		if rest, ok := strings.CutPrefix(line, key+Sep); ok {
 			return rest
 		}
 	}
 	return ""
 }
+
+// itemRef is how a value of item names its own type: the package reflect
+// reports for it, and the name in that package.
+const itemRef = `import("go://git.duckfam.us/jonathan/sngl/pkg/go/consteval").item`
 
 type item struct {
 	Name  string
@@ -82,9 +86,9 @@ func TestEncode(t *testing.T) {
 		{"m", map[string]int{"b": 2, "a": 1}, `{"a" = 1, "b" = 2}`},
 		{"mint", map[int]string{2: "b", 1: "a"}, `{1 = "a", 2 = "b"}`},
 		{"nilmap", map[string]int(nil), "null"},
-		{"st", item{Name: "alpha", Value: 1, skip: "x"}, `item{Name = "alpha", Value = 1}`},
-		{"stlist", []item{{Name: "a"}}, `[item{Name = "a", Value = 0}]`},
-		{"ptr", &item{Name: "p"}, `item{Name = "p", Value = 0}`},
+		{"st", item{Name: "alpha", Value: 1, skip: "x"}, itemRef + `{Name = "alpha", Value = 1}`},
+		{"stlist", []item{{Name: "a"}}, `[` + itemRef + `{Name = "a", Value = 0}]`},
+		{"ptr", &item{Name: "p"}, itemRef + `{Name = "p", Value = 0}`},
 		{"anon", struct{ A int }{3}, `{A = 3}`},
 		{"marshaler", celsius(1), "42degC"},
 		{"dur", 1500 * time.Millisecond, "1500ms"},
@@ -94,7 +98,7 @@ func TestEncode(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.key, func(t *testing.T) {
 			doc := flush(t, func() { Emit(tc.key, tc.val) })
-			if got := constLine(doc, tc.key); got != tc.want {
+			if got := resultLine(doc, tc.key); got != tc.want {
 				t.Errorf("Emit(%v) = %s, want %s", tc.val, got, tc.want)
 			}
 		})
@@ -109,7 +113,7 @@ func TestRegister(t *testing.T) {
 		return AppendQuote(nil, "n"+strconv.Itoa(v.N)), nil
 	})
 	doc := flush(t, func() { Emit("reg", notMine{N: 3}) })
-	if got := constLine(doc, "reg"); got != `"n3"` {
+	if got := resultLine(doc, "reg"); got != `"n3"` {
 		t.Errorf("registered encoder not used: got %s", got)
 	}
 }
@@ -121,7 +125,7 @@ func TestFailOmitsKey(t *testing.T) {
 		Emit("ok", 1)
 		Fail("bad", errors.New("nope"))
 	})
-	if constLine(doc, "ok") != "1" {
+	if resultLine(doc, "ok") != "1" {
 		t.Error("surviving key lost")
 	}
 	if strings.Contains(doc, "bad") {
@@ -146,7 +150,7 @@ func TestCyclicValueFailsOneKey(t *testing.T) {
 	if strings.Contains(doc, "cyc") {
 		t.Errorf("cyclic value emitted:\n%s", doc)
 	}
-	if constLine(doc, "ok") != `"yes"` {
+	if resultLine(doc, "ok") != `"yes"` {
 		t.Error("cyclic value took down an unrelated key")
 	}
 }
@@ -160,7 +164,7 @@ func TestUnencodableValueFailsOneKey(t *testing.T) {
 	if strings.Contains(doc, "fn") {
 		t.Errorf("unencodable value emitted:\n%s", doc)
 	}
-	if constLine(doc, "ok") != `"yes"` {
+	if resultLine(doc, "ok") != `"yes"` {
 		t.Error("unencodable value took down an unrelated key")
 	}
 }
@@ -187,10 +191,10 @@ func TestMarshalerBufferIsNotRetained(t *testing.T) {
 		copy(s.buf, `"two"`)
 		Emit("b", s)
 	})
-	if got := constLine(doc, "a"); got != `"one"` {
+	if got := resultLine(doc, "a"); got != `"one"` {
 		t.Errorf("first value became %s: the Marshaler's slice was retained", got)
 	}
-	if got := constLine(doc, "b"); got != `"two"` {
+	if got := resultLine(doc, "b"); got != `"two"` {
 		t.Errorf("second value = %s, want %q", got, `"two"`)
 	}
 }
