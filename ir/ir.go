@@ -136,7 +136,7 @@ type NativeImport struct {
 	LinkFlags []string
 }
 
-// NativeTypeRef names a foreign declaration the way an encoded value does:
+// NativeDeclRef names a foreign declaration the way an encoded value does:
 // the scheme it was imported under, the package that declares it, and its name
 // there. That triple is what a runtime can say about a value — Go's
 // reflect.Type gives the last two — and what a scheme importer keys its
