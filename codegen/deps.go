@@ -497,7 +497,7 @@ func opaqueFunc(fn *ir.Func) bool {
 	if fn.Intrinsic != "" {
 		return true
 	}
-	if fn.Foreign.Path != "" && !fn.Foreign.Marked {
+	if fn.Foreign.Path != "" {
 		return true
 	}
 	return false

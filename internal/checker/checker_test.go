@@ -1533,3 +1533,37 @@ component myWidget() {
 }
 `)
 }
+
+// A component-level func is desugared onto the component: a synthetic
+// declaration is built with a receiver prepended. The marks belong to the
+// declaration and not to its parameter list, so they are carried over — a mark
+// written in a component body would otherwise be accepted by the parser and by
+// the macro pass and reach the IR as nothing at all.
+func TestComponentFuncKeepsItsMarks(t *testing.T) {
+	src := withStd(`
+component main {
+    #[foreign("js://./api", "shout")]
+    func shout() => "hi"
+
+    text(value=shout())
+}
+`)
+	doc, err := parser.Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	for _, d := range expand.ExpandPre([]*ast.Document{doc}) {
+		t.Fatalf("expand: %s", d.Error())
+	}
+	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+	for _, fn := range pkg.Funcs {
+		if fn.Name != "shout" {
+			continue
+		}
+		if fn.Foreign.Name != "shout" || fn.Foreign.Path != "./api" {
+			t.Errorf("Foreign = %+v, want the mark the declaration carries", fn.Foreign)
+		}
+		return
+	}
+	t.Fatal("no shout method registered")
+}

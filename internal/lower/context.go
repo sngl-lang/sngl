@@ -212,6 +212,10 @@ type callEdge struct {
 // native import has none, and an intrinsic keeps one only when it says the
 // body computes the right answer — which the i18n entry points do, and their
 // bodies read the active locale, so the hidden parameter has to reach them.
+//
+// A #[foreign] mark is not an import: the backend emits the marked
+// declaration, so its body is walked. Skipped, it keeps an ir.ContextRead that
+// no emitter has a case for.
 func hasBody(f *ir.Func) bool {
 	if f == nil {
 		return false
