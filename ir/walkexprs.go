@@ -32,7 +32,29 @@ var (
 // root is passed by value) — rewrite its children, or use a container root.
 //
 // Panics on an unknown node kind, so every new IR shape extends this one
-// scaffold and all consumers stay in lockstep.
+// scaffold and all consumers stay in lockstep. Kind coverage is enforced by
+// that panic; *slot* coverage — a new Expr-typed field on an existing node —
+// would otherwise be silent, so TestRewriteVisitsEveryExprSlot enumerates the
+// Expr-typed fields of the IR by reflection and fails naming any this walk
+// does not reach.
+//
+// The walk covers what a node owns. These slots hold references to something
+// owned elsewhere and are deliberately skipped, because visiting them would
+// walk another node's body — once per reference, rewriting it more than once:
+//
+//   - Ident.Sym, Type.Decl, Prop.Sym — the declaration a name resolves to.
+//   - Call.Func — the callee, owned by pkg.Funcs; Lambda.Func, Closure.Func,
+//     Timer.Handler and EventHandler.Func are owned and are walked.
+//   - Call.ResolvedHandler — aliases Call.ErrorHandler or a handler owned by
+//     an enclosing boundary or window.
+//   - Component.Methods, StructDef/EnumDef/UnitDef.Methods — the same *Funcs
+//     already reached through their owning slice.
+//   - Func.Reads, Func.Writes — analysis results naming Vars owned by a scope.
+//   - Package.Symbols, Import.Pkg, Context/ContextRead.Ref — tables and
+//     cross-package or cross-declaration links.
+//
+// Type is not descended into at all: it is reached from every typed node, and
+// Type.Decl would lead back out into whole declarations.
 func Rewrite(root any, visit func(Node) (Node, error)) error {
 	w := rewriter{visit: visit}
 	w.root(root)
@@ -139,6 +161,13 @@ func (w *rewriter) expr(e Expr) Expr {
 		for i := range x.Args {
 			x.Args[i].Value = w.expr(x.Args[i].Value)
 		}
+		// An inline @error(e){...} belongs to this call site. ResolvedHandler
+		// is deliberately not walked: it aliases either this handler or one
+		// owned by an enclosing boundary or window, and walking it would visit
+		// that body a second time.
+		if x.ErrorHandler != nil {
+			w.fn(x.ErrorHandler.Func)
+		}
 	case *Conversion:
 		x.Operand = w.expr(x.Operand)
 	case *Select:
@@ -168,6 +197,15 @@ func (w *rewriter) expr(e Expr) Expr {
 	case *Closure:
 		if x.Func != nil {
 			w.fn(x.Func)
+		}
+		if x.State != nil {
+			// The captured-state literal is built at this site and owned by it,
+			// so its field values are ordinary expressions of the enclosing
+			// scope — a pass that rewrites reads of a captured Var has to reach
+			// them.
+			if st, ok := w.expr(x.State).(*StructLit); ok {
+				x.State = st
+			}
 		}
 	case *Literal, *Ident, *ContextRead:
 		// Leaf — no sub-expressions.
@@ -233,16 +271,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 	case *ErrorBoundary:
 		n.Children = w.stmts(n.Children)
 	case *Window:
-		n.Href = w.expr(n.Href)
-		n.Title = w.expr(n.Title)
-		n.Favicon = w.expr(n.Favicon)
-		for _, v := range n.Vars {
-			w.varDecl(v)
-		}
-		for _, f := range n.Funcs {
-			w.fn(f)
-		}
-		n.Body = w.stmts(n.Body)
+		w.window(n)
 	case *ContextProvider:
 		n.Value = w.expr(n.Value)
 		n.Children = w.stmts(n.Children)
@@ -276,6 +305,28 @@ func (w *rewriter) fn(f *Func) {
 	f.Block = w.stmts(f.Block)
 }
 
+// window walks everything a Window owns. A window is reachable two ways — as a
+// package-level declaration and as a statement inside a for-loop body — and
+// having one body of code for both is what stops the two from drifting apart.
+func (w *rewriter) window(win *Window) {
+	if w.done || win == nil {
+		return
+	}
+	win.Href = w.expr(win.Href)
+	win.Title = w.expr(win.Title)
+	win.Favicon = w.expr(win.Favicon)
+	for _, v := range win.Vars {
+		w.varDecl(v)
+	}
+	for _, f := range win.Funcs {
+		w.fn(f)
+	}
+	if win.ErrorHandler != nil {
+		w.fn(win.ErrorHandler.Func)
+	}
+	win.Body = w.stmts(win.Body)
+}
+
 func (w *rewriter) varDecl(v *Var) {
 	if w.done || v == nil {
 		return
@@ -305,10 +356,10 @@ func (w *rewriter) pkg(pkg *Package) {
 	if pkg == nil {
 		return
 	}
+	// A const is a Var like any other: it can carry handlers, and walking only
+	// its initializer was the reason a handler on one was invisible here.
 	for _, v := range pkg.Consts {
-		if v.Init != nil {
-			v.Init = w.expr(v.Init)
-		}
+		w.varDecl(v)
 	}
 	for _, v := range pkg.Vars {
 		w.varDecl(v)
@@ -316,7 +367,33 @@ func (w *rewriter) pkg(pkg *Package) {
 	for _, f := range pkg.Funcs {
 		w.fn(f)
 	}
+	// Declaration-level defaults are expressions of the declaring scope and are
+	// folded and lowered like any other. Reaching them here is what lets the
+	// consumers below drop their own copies of this walk.
+	for _, s := range pkg.Structs {
+		for _, f := range s.Fields {
+			f.Default = w.expr(f.Default)
+		}
+	}
+	for _, e := range pkg.Enums {
+		for _, m := range e.Members {
+			m.Value = w.expr(m.Value)
+		}
+	}
+	for _, ctx := range pkg.Contexts {
+		ctx.Default = w.expr(ctx.Default)
+	}
+	for _, o := range pkg.Outputs {
+		if o.Options != nil {
+			if st, ok := w.expr(o.Options).(*StructLit); ok {
+				o.Options = st
+			}
+		}
+	}
 	for _, c := range pkg.Components {
+		for _, p := range c.Props {
+			p.Default = w.expr(p.Default)
+		}
 		for _, v := range c.Vars {
 			w.varDecl(v)
 		}
@@ -332,19 +409,7 @@ func (w *rewriter) pkg(pkg *Package) {
 		w.timer(t)
 	}
 	for _, win := range pkg.Windows {
-		win.Href = w.expr(win.Href)
-		win.Title = w.expr(win.Title)
-		win.Favicon = w.expr(win.Favicon)
-		for _, v := range win.Vars {
-			w.varDecl(v)
-		}
-		for _, f := range win.Funcs {
-			w.fn(f)
-		}
-		if win.ErrorHandler != nil {
-			w.fn(win.ErrorHandler.Func)
-		}
-		win.Body = w.stmts(win.Body)
+		w.window(win)
 	}
 }
 
