@@ -22,9 +22,11 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The value is what proves the right member was picked: 1 could only have come
-# back as Green, and "warn" as Warn.
-grep 'var c = 1' out/index.html
-grep 'var l = "warn"' out/index.html
+# back as Green, and "warn" as Warn. It is read through a component var: a
+# member compares equal to a member by name, so the three conditions below fold
+# and leave the consts themselves with no reader.
+grep 'col = 1' out/index.html
+grep 'lvl = "warn"' out/index.html
 ! grep '"Green"' out/index.html
 ! grep 'pickColor' out/index.html
 ! grep 'pickLevel' out/index.html
@@ -33,8 +35,8 @@ grep 'var l = "warn"' out/index.html
 # magnitude has to be negated before it is matched. Matching it as it stands
 # would select Plus, which holds 1 — and only the unary operator having no
 # meaning over an enum would stop the build, after the wrong member was picked.
-grep 'var s = -1' out/index.html
-! grep 'var s = 1' out/index.html
+grep 'code = -1' out/index.html
+! grep 'code = 1' out/index.html
 
 -- app.sngl --
 import . "sngl://std"
@@ -45,6 +47,10 @@ const l = lib.pickLevel()
 const s = lib.pickCode()
 
 component main {
+    var col = c
+    var lvl = l
+    var code = s
+
     if c == lib.Color.Green {
         text(value="green wins")
     }

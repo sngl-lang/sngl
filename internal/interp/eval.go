@@ -582,9 +582,18 @@ func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, err
 	return nil, false, nil
 }
 
-// toStringAnyMap coerces a runtime value to map[string]any.
+// toStringAnyMap coerces a runtime value to map[string]any. An i18n argument
+// bag is written `{n = 1}`, which is a map literal or a struct literal
+// depending on what the call's declared parameter type made of it.
 func toStringAnyMap(v any) map[string]any {
 	if m, ok := v.(map[string]any); ok {
+		return m
+	}
+	if s, ok := v.(*Struct); ok {
+		m := make(map[string]any, len(s.Fields))
+		for _, f := range s.Fields {
+			m[f.Name] = f.Value
+		}
 		return m
 	}
 	return map[string]any{}
@@ -593,10 +602,8 @@ func toStringAnyMap(v any) map[string]any {
 // toStringStringMap coerces a runtime value to map[string]string.
 func toStringStringMap(v any) map[string]string {
 	m := map[string]string{}
-	if src, ok := v.(map[string]any); ok {
-		for k, val := range src {
-			m[k] = fmt.Sprintf("%v", val)
-		}
+	for k, val := range toStringAnyMap(v) {
+		m[k] = fmt.Sprintf("%v", val)
 	}
 	return m
 }
@@ -760,7 +767,7 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 		}
 		return unquoteString(e.Raw), nil
 	case ir.TypeColor:
-		return colorHexToStruct(e.Raw), nil
+		return colorHexToStruct(e.Type, e.Raw), nil
 	}
 	return e.Raw, nil
 }
@@ -898,6 +905,10 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
 	}
+	if s, ok := obj.(*Struct); ok {
+		v, _ := s.Get(e.Field)
+		return v, nil
+	}
 	if m, ok := obj.(map[string]any); ok {
 		return m[e.Field], nil
 	}
@@ -1025,31 +1036,21 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
-	m := make(map[string]any, len(e.Fields)+1)
+	s := NewStruct(e.Def, e.Type)
 	for _, f := range e.Fields {
-		if f.Spread {
-			v, err := env.Eval(f.Value)
-			if err != nil {
-				return nil, err
-			}
-			if src, ok := v.(map[string]any); ok {
-				maps.Copy(m, src)
-			}
-			continue
-		}
 		v, err := env.Eval(f.Value)
 		if err != nil {
 			return nil, err
 		}
-		m[f.Name] = v
+		if f.Spread {
+			if src, ok := v.(*Struct); ok {
+				s.Merge(src)
+			}
+			continue
+		}
+		s.Set(f.Name, v)
 	}
-	// Tag the value with its struct type name so method dispatch can find
-	// user-defined methods (`v.dot()` finds Vec2.dot). Anonymous
-	// struct literals have Def == nil and remain untagged.
-	if e.Def != nil && e.Def.Name != "" {
-		m["__type"] = e.Def.Name
-	}
-	return m, nil
+	return s, nil
 }
 
 func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
@@ -2163,6 +2164,21 @@ func equals(a, b any) bool {
 		}
 		return false
 	}
+	// Two struct values hold the same fields whatever order they were written
+	// in, so they are compared by name rather than by their rendered form.
+	if as, ok := a.(*Struct); ok {
+		bs, ok := b.(*Struct)
+		if !ok || len(as.Fields) != len(bs.Fields) {
+			return false
+		}
+		for _, f := range as.Fields {
+			other, found := bs.Get(f.Name)
+			if !found || !equals(f.Value, other) {
+				return false
+			}
+		}
+		return true
+	}
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
@@ -2231,13 +2247,16 @@ func runtimeTypeName(v any) string {
 		return "bool"
 	case []any:
 		return "list"
-	case map[string]any:
-		// Tagged struct value: prefer the declared type name so method
-		// dispatch reaches user-defined methods (`v.dot()` →
-		// Vec2.dot). See evalStructLit.
-		if t, ok := x["__type"].(string); ok && t != "" {
-			return t
+	case *Struct:
+		// The declared type name, so method dispatch reaches user-defined
+		// methods (`v.dot()` → Vec2.dot).
+		if name := x.Name(); name != "" {
+			return name
 		}
+		return "struct"
+	case map[string]any:
+		// Not "map": the name is looked up as a declared type, and the
+		// built-in map declares methods with no body to run.
 		return "struct"
 	case *regexp.Regexp:
 		return "regex"

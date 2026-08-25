@@ -14,6 +14,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -27,6 +28,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Literal:
 		return true
 	case *ir.Ident:
+		if x.Member != "" {
+			return true // an enum member is written, not computed
+		}
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
@@ -191,7 +195,7 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return result, true
 	case *ir.StructLit:
-		result := make(map[string]any, len(x.Fields))
+		result := interp.NewStruct(x.Def, x.Type)
 		for _, f := range x.Fields {
 			if f.Spread || f.Name == "" || f.Value == nil {
 				return nil, false
@@ -200,13 +204,32 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 			if !ok {
 				return nil, false
 			}
-			result[f.Name] = v
+			result.Set(f.Name, v)
+		}
+		return result, true
+	case *ir.MapLitIR:
+		result := make(map[string]any, len(x.Entries))
+		for _, e := range x.Entries {
+			k, ok := evalExpr(e.Key, ctx)
+			if !ok {
+				return nil, false
+			}
+			v, ok := evalExpr(e.Value, ctx)
+			if !ok {
+				return nil, false
+			}
+			result[fmt.Sprintf("%v", k)] = v
 		}
 		return result, true
 	case *ir.Select:
 		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
+		}
+		if s, ok := recv.(*interp.Struct); ok {
+			if v, exists := s.Get(x.Field); exists {
+				return v, true
+			}
 		}
 		if m, ok := recv.(map[string]any); ok {
 			v, exists := m[x.Field]
@@ -236,6 +259,12 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 }
 
 func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
+	// An enum member is its name, which is what the interpreter holds for one
+	// too. Which enum that name belongs to is the position's type, and
+	// irFromValue reads the member back off it.
+	if x.Member != "" {
+		return x.Member, true
+	}
 	// Const variable — evaluate its initializer, except where the compiler
 	// supplies the value. The build target is keyed off the #[builtin] mark
 	// rather than the name, so a declaration shadowing PLATFORM is an
@@ -351,31 +380,6 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		return nil, false
 	}
 	return evalExpr(e, ctx)
-}
-
-// foldPureGoCall answers a pure go:// call with the checked IR of its
-// compile-time value. This is the folded form: it is what the checker would
-// have produced for the same value written as a literal, so a struct keeps its
-// Def and a whole float stays a float. evalNativeCall reaches the same result
-// through the value model, for the callers that need a value rather than an
-// expression.
-func foldPureGoCall(call *ir.Call, ctx *evalCtx) (ir.Expr, bool) {
-	if !isConstExpr(call, ctx) {
-		return nil, false
-	}
-	name, ns, ok := nativeCallTarget(call, ctx)
-	if !ok {
-		return nil, false
-	}
-	args := make([]any, 0, len(call.Args))
-	for _, a := range call.Args {
-		v, ok := evalExpr(a.Value, ctx)
-		if !ok {
-			return nil, false
-		}
-		args = append(args, v)
-	}
-	return evalPureGoCall(call, name, ns, args, ctx)
 }
 
 // evalPureGoCall requests the compile-time value of one pure non-file scheme

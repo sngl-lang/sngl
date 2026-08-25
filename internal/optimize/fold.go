@@ -14,48 +14,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		return nil
 	}
 
-	// A pure go:// call folds to the checked IR of its result, not to a value
-	// rebuilt from one. The result document is SNGL source checked against the
-	// function's declared return type, so what lands here is checker output —
-	// a struct with its Def, a list with its element type, a float that stayed
-	// a float. Taken before evalExpr because that path can only hand back a
-	// value, and only the value's shape survives it.
-	if call, ok := e.(*ir.Call); ok {
-		if folded, ok := foldPureGoCall(call, ctx); ok {
-			return folded
-		}
-	}
-
-	// A const whose initializer is already a checked composite is spliced, not
-	// evaluated, for the reason the next comment gives: reading it through an
-	// ident would otherwise take the same round trip the node itself is
-	// exempted from, and arrive back without its declaration.
-	if id, ok := e.(*ir.Ident); ok {
-		if lit := spliceConst(id, ctx); lit != nil {
-			return lit
-		}
-	}
-
-	// Try full constant evaluation — but NOT for composite literal nodes
-	// (struct/list/map). Round-tripping those through the runtime value
-	// representation loses concrete type info: irFromValue rebuilds a struct
-	// value held in a `dyn` field as a naked StructLit (Def=nil), because a
-	// bare map[string]any carries no StructDef, and Go codegen then emits
-	// `struct{}` instead of the named type. Composite literals are instead
-	// folded element-by-element below, which preserves each node's Def while
-	// still folding any foldable component expressions. (evalExpr is still
-	// used for non-literal nodes like Select/Index/Call over const data.)
-	switch e.(type) {
-	case *ir.StructLit, *ir.ListLit, *ir.MapLitIR:
-		// fall through to per-component recursion
-	default:
-		if val, ok := evalExpr(e, ctx); ok {
-			if lit := irLiteral(val, e.ExprType()); lit != nil {
-				return lit
-			}
-			if expr := irFromValue(val, e.ExprType()); expr != nil {
-				return expr
-			}
+	if val, ok := evalExpr(e, ctx); ok {
+		if expr := irFromValue(val, e.ExprType()); expr != nil {
+			return expr
 		}
 	}
 
@@ -162,44 +123,6 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
 	}
 	return e
-}
-
-// spliceConst returns a copy of the composite literal a const ident reads,
-// standing where the ident stood, or nil for anything else — including a const
-// the compiler supplies rather than initializes, which has no initializer to
-// splice, and a composite still holding an unevaluated call, which splicing
-// would duplicate at every read site.
-//
-// The copy takes the ident's type, because an initializer may be typed
-// narrower than the name it initializes: an encoded value knows it is a list
-// of Item where the const is declared list<dyn>, and Go codegen would emit
-// `[]purepkg.Item` for a field of type `[]any`. A struct keeps its Def, which
-// names the type ahead of the type field.
-func spliceConst(id *ir.Ident, ctx *evalCtx) ir.Expr {
-	v, ok := id.Sym.(*ir.Var)
-	if !ok || !v.IsConst || v.Builtin != ast.BuiltinNone || v.Init == nil {
-		return nil
-	}
-	switch v.Init.(type) {
-	case *ir.StructLit, *ir.ListLit, *ir.MapLitIR:
-	default:
-		return nil
-	}
-	if !isConstExpr(v.Init, ctx) {
-		return nil
-	}
-	switch c := ir.CloneExpr(v.Init).(type) {
-	case *ir.StructLit:
-		c.Type = id.ExprType()
-		return c
-	case *ir.ListLit:
-		c.Type = id.ExprType()
-		return c
-	case *ir.MapLitIR:
-		c.Type = id.ExprType()
-		return c
-	}
-	return nil
 }
 
 // foldStmts folds a slice of statements, removing nil results.

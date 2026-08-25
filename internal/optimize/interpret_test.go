@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -34,28 +35,55 @@ func TestIRFromValue_Primitives(t *testing.T) {
 	}
 }
 
-func TestIRFromValue_Map(t *testing.T) {
-	val := map[string]any{
-		"r": 255,
-		"g": 128,
-		"b": 64,
-		"a": 255,
+// A struct value comes back as a struct literal carrying the declaration it
+// was built from, and its fields in the order they were checked in — neither
+// of which the expected type has to supply, and neither of which a bare map
+// could have held.
+func TestIRFromValue_Struct(t *testing.T) {
+	def := &ir.StructDef{Name: "color", Fields: []*ir.StructField{
+		{Name: "r"}, {Name: "g"}, {Name: "b"}, {Name: "a"},
+	}}
+	val := interp.NewStruct(def, nil)
+	for _, f := range []struct {
+		name string
+		v    int
+	}{{"r", 255}, {"g", 128}, {"b", 64}, {"a", 255}} {
+		val.Set(f.name, f.v)
 	}
 	got := irFromValue(val, nil)
 	sl, ok := got.(*ir.StructLit)
 	if !ok {
 		t.Fatalf("got %T, want *ir.StructLit", got)
 	}
-	if len(sl.Fields) != 4 {
-		t.Fatalf("Fields count = %d, want 4", len(sl.Fields))
+	if sl.Def != def {
+		t.Errorf("Def = %v, want the declaration the value carried", sl.Def)
 	}
+	var names []string
 	for _, f := range sl.Fields {
-		if f.Name == "r" {
-			lit := f.Value.(*ir.Literal)
-			if lit.Raw != "255" {
-				t.Errorf("r = %q", lit.Raw)
-			}
-		}
+		names = append(names, f.Name)
+	}
+	if len(names) != 4 || names[0] != "r" || names[1] != "g" || names[2] != "b" || names[3] != "a" {
+		t.Errorf("fields = %v, want them in the order they were set", names)
+	}
+	if lit, ok := sl.Fields[0].Value.(*ir.Literal); !ok || lit.Raw != "255" {
+		t.Errorf("r = %v", sl.Fields[0].Value)
+	}
+}
+
+// A map value is a map literal. It used to come back as a struct literal,
+// which is a different type with different codegen; nothing told the two apart
+// while both were a Go map.
+func TestIRFromValue_Map(t *testing.T) {
+	got := irFromValue(map[string]any{"b": 2, "a": 1}, nil)
+	ml, ok := got.(*ir.MapLitIR)
+	if !ok {
+		t.Fatalf("got %T, want *ir.MapLitIR", got)
+	}
+	if len(ml.Entries) != 2 {
+		t.Fatalf("Entries count = %d, want 2", len(ml.Entries))
+	}
+	if k, ok := ml.Entries[0].Key.(*ir.Literal); !ok || k.Raw != "a" {
+		t.Errorf("first key = %v, want the smallest — a map has no order of its own", ml.Entries[0].Key)
 	}
 }
 
