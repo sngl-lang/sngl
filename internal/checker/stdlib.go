@@ -517,8 +517,8 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
 	// methods (int.min, string.upper, etc.) when called with constant args.
-	// Impure stdlib (alert.show, file.contents, anything with a Foreign.Pkg
-	// effect) gets its purity overridden later by stdlib.SetImpure or via
+	// Impure stdlib (alert.show, file.contents, anything reaching outside the
+	// program) gets its purity overridden later by stdlib.SetImpure or via
 	// scheme registration.
 	if fn.Purity == ir.PurityUnknown {
 		fn.Purity = ir.PurityPure

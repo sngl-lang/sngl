@@ -15,7 +15,7 @@ func asyncNativeImport(scheme, name string) map[string]*ir.NativeImport {
 		Params:  []*ir.Param{{Name: "url", Type: &ir.Type{Kind: ir.TypeString}}},
 		Return:  &ir.Type{Kind: ir.TypeString},
 		IsAsync: true,
-		Foreign: ir.Foreign{Pkg: "api", Name: "api." + name},
+		Foreign: ir.Foreign{Path: "api", Name: "api." + name},
 	}
 	return map[string]*ir.NativeImport{
 		scheme: {

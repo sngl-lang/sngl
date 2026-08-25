@@ -41,7 +41,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 				ImportPath: "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
 				Funcs: []*ir.Func{{
 					Name:    "Double",
-					Foreign: ir.Foreign{Name: "purepkg.Double", Pkg: "purepkg"},
+					Foreign: ir.Foreign{Name: "purepkg.Double", Path: "purepkg"},
 					Purity:  ir.PurityPure,
 					Params:  []*ir.Param{{Name: "x", Type: ir.TypInt}},
 					Return:  ir.TypInt,

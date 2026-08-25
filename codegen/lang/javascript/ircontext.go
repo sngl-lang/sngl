@@ -449,8 +449,10 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	}
 	// Native scheme-import call (e.g. js://): emit through the bundler
 	// alias when the module is in BundledNativePkgs, recording the
-	// module → name binding for top-level `import * as` emission.
-	if n.Func != nil && n.Func.Foreign.Pkg != "" {
+	// module → name binding for top-level `import * as` emission. Only for a
+	// declaration JavaScript has: a #[foreign] mark naming another language
+	// would otherwise rewrite the call to a name nothing here declares.
+	if n.Func != nil && jsscheme.CallsHere(n.Func.Foreign) {
 		return jc.evalNativeCall(n)
 	}
 	if n.Receiver != nil {
@@ -487,7 +489,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 }
 
 func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
-	mod := n.Func.Foreign.Pkg
+	mod := n.Func.Foreign.Path
 	name := n.Func.Foreign.Name
 	if name == "" {
 		name = n.Func.Name

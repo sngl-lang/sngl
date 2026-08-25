@@ -36,7 +36,7 @@ func projectDir() string {
 func purepkgFunc(name string, params []*ir.Param, ret *ir.Type) *ir.Func {
 	return &ir.Func{
 		Name:    name,
-		Foreign: ir.Foreign{Name: "purepkg." + name, Pkg: "purepkg"},
+		Foreign: ir.Foreign{Name: "purepkg." + name, Path: "purepkg"},
 		Purity:  ir.PurityPure,
 		Params:  params,
 		Return:  ret,

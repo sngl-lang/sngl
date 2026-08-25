@@ -12,7 +12,7 @@ import (
 )
 
 // gtk4Translator implements codegen.IntrinsicTranslator for gtk4.
-// Emits IR fragments whose Call.Func values carry Foreign.Pkg="C" /
+// Emits IR fragments whose Call.Func values carry Foreign.Path="C" /
 // Foreign.Name="<bare C ident>" so gc.EvalExpr (via the namespace-call
 // path) renders the cgo source verbatim — the renderer prepends the
 // "C." prefix.
@@ -185,19 +185,17 @@ func (t *gtk4Translator) lookupNativeByCType(cType string) (*ir.Component, *gtk4
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
-// nativeFunc constructs an *ir.Func with Foreign.Pkg="C" /
-// Foreign.Name=<bare-C-identifier> so gc.EvalExpr's namespace-call branch
-// emits the cgo source `C.<Foreign.Name>` (the renderer adds the "C."
-// prefix). Callers pass bare names like "gtk_label_new" — never
-// pre-prefix with "C." (the renderer would still strip-and-add it via
-// the backwards-compat HasPrefix check, but new code should be clean).
+// nativeFunc constructs an *ir.Func that gc.EvalExpr's namespace-call branch
+// emits as cgo source, `C.<identifier>`. Callers pass a bare name like
+// "gtk_label_new": the renderer adds the "C." prefix, and one written in
+// survives only as a compatibility case.
 func nativeFunc(nativeName string) *ir.Func {
-	return &ir.Func{Foreign: ir.Foreign{Pkg: "C", Name: nativeName}, Name: nativeName}
+	return &ir.Func{Foreign: ir.Foreign{Path: "C", Name: nativeName}, Name: nativeName}
 }
 
 // nativeCall builds a single-level cgo C-API call. The receiver
 // (`C`) drives the renderer into evalNamespaceCall, which emits
-// `C.<Foreign.Name>(args)`.
+// `C.<identifier>(args)`.
 func nativeCall(nativeName string, args ...ir.Expr) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {

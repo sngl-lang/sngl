@@ -19,11 +19,11 @@ import (
 // The IR is constructed directly (rather than parse→check→optimize→lower)
 // because native go:// resolution requires the Go toolchain importer, which the
 // in-package parity harness intentionally omits — so a parsed fixture's go://
-// call never carries the Func.Foreign.Pkg linkage handlerPlacement keys on.
+// call never carries the Func.Foreign.Path linkage handlerPlacement keys on.
 func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 	const importPath = "example.com/route-post/api"
 
-	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Pkg: importPath}}
+	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Path: importPath}}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",
@@ -175,7 +175,7 @@ func TestCollectActionsLogicalMutations(t *testing.T) {
 // 0 while collectActions assigned the node handler index 1, a silent desync.
 func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	const importPath = "example.com/route-post/api"
-	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Pkg: importPath}}
+	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Path: importPath}}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",

@@ -371,10 +371,6 @@ func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
 	if len(attrs) == 0 {
 		return inner
 	}
-	if inner == nil {
-		b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
-		return nil
-	}
 	return &ast.AttrDecl{Pos: attrs[0].Pos, Attrs: attrs, Inner: inner.(ast.Stmt)}
 }
 
@@ -1809,7 +1805,7 @@ func (b *builder) buildImportExpr(it nodeIter) *ast.StructExpr {
 	path := stripQuotes(it.shift().Literal)
 	it.skip() // rparen
 	it.skip() // dot
-	return &ast.StructExpr{Pos: pos, Native: path + "#" + it.shift().Literal}
+	return &ast.StructExpr{Pos: pos, Native: &ast.NativeRef{Path: path, Name: it.shift().Literal}}
 }
 
 // --- Composite literals ---

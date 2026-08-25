@@ -208,15 +208,21 @@ type StructFieldLit struct {
 	Spread  bool // if true, Value is the spread operand
 }
 
+// NativeRef names a foreign declaration the way an encoded value writes it:
+// the import path it was read through, scheme and all, and its name there.
+// Path is the whole path a program's own import line would carry, so nothing
+// has to reassemble one to compare the two.
+type NativeRef struct{ Path, Name string }
+
 // StructExpr is a struct literal: Name{field = value, ...expr} or pkg.Name{...}.
 type StructExpr struct {
 	Pos     Pos
 	Package string // qualifier in pkg.Type (empty if unqualified)
 	Name    string
-	// Native is the foreign declaration the value names, scheme, path and name.
-	// Only parser.ParseNativeValue can produce one; it names the declaration
+	// Native is the foreign declaration the value names. Only
+	// parser.ParseNativeValue can produce one; it names the declaration
 	// outright where Name would leave the reader matching on a bare name.
-	Native    string `json:",omitempty"`
+	Native    *NativeRef `json:",omitempty"`
 	Fields    []StructFieldLit
 	Multiline bool
 }

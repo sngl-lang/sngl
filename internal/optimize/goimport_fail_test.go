@@ -44,7 +44,7 @@ func TestOptimize_GoImportEvalFailureFatal(t *testing.T) {
 					ImportPath: "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
 					Funcs: []*ir.Func{{
 						Name:    "Boom",
-						Foreign: ir.Foreign{Name: "purepkg.Boom", Pkg: "purepkg"},
+						Foreign: ir.Foreign{Name: "purepkg.Boom", Path: "purepkg"},
 						Purity:  ir.PurityPure,
 						Return:  ir.TypString,
 					}},

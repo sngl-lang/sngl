@@ -86,7 +86,7 @@ func platformBlueprints() map[string]*fyneBlueprint {
 // fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
 // (in blueprint goFn/goType and the view's literal fallbacks) to its full Go
 // import path. It is the single source of truth for resolving a selector to a
-// path: nativeCall uses it for Foreign.Pkg, and the import block uses it to scan
+// path: nativeCall uses it for Foreign.Path, and the import block uses it to scan
 // the generated body for framework usage — replacing the old always-on set.
 var fyneFrameworkPkgs = map[string]string{
 	"fmt":       "fmt",
@@ -107,10 +107,9 @@ func fyneImportPath(sel string) string {
 	return ""
 }
 
-// nativeCall builds a Call that gc.EvalExpr renders verbatim. For a
-// dotted name (e.g. "widget.NewLabel"), uses the namespace path with
-// Foreign.Pkg/Foreign.Name so the Go renderer emits the qualified name
-// directly. For a bare name (e.g. "append"), sets only Func.Name.
+// nativeCall builds a Call that gc.EvalExpr renders verbatim. A dotted name
+// (e.g. "widget.NewLabel") is emitted qualified, through the import path its
+// selector stands for. A bare name (e.g. "append") is emitted as written.
 func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
@@ -118,9 +117,9 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	}
 	if dot := strings.Index(nativeName, "."); dot > 0 {
 		pkg := nativeName[:dot]
-		// Foreign.Pkg must be the full Go import path so platforms can collect
-		// it (gc.Imports()); the selector in Foreign.Name (e.g. "widget" in
-		// "widget.NewLabel") stays the package name. Resolve the known fyne
+		// The import path must be the full Go one so platforms can collect it
+		// (gc.Imports()), while the name keeps the selector it is written with
+		// (e.g. "widget" in "widget.NewLabel"). Resolve the known fyne
 		// selectors; std/other selectors pass through unchanged.
 		nativePkg := pkg
 		if full := fyneImportPath(pkg); full != "" {
@@ -129,7 +128,7 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 		return &ir.Call{
 			Type:     retType,
 			Receiver: &ir.Ident{Name: pkg},
-			Func:     &ir.Func{Foreign: ir.Foreign{Pkg: nativePkg, Name: nativeName}},
+			Func:     &ir.Func{Foreign: ir.Foreign{Path: nativePkg, Name: nativeName}},
 			Args:     callArgs,
 		}
 	}

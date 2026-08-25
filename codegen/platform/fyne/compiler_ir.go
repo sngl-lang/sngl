@@ -87,12 +87,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if v.Name == "__root" {
 				// Plan B's __root sentinel: a stable *fyne.Container the
 				// renderSlot updaters operate on, and which BuildUI returns.
-				// Foreign.Pkg/Foreign.Name so evalNamespaceCall registers the
-				// container import when this init is rendered.
+				// It is built through a native call so that rendering this
+				// init registers the container import.
 				initCall := &ir.Call{
 					Type:     ir.TypDyn,
 					Receiver: &ir.Ident{Name: "container"},
-					Func:     &ir.Func{Foreign: ir.Foreign{Pkg: "fyne.io/fyne/v2/container", Name: "container.NewVBox"}},
+					Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2/container", Name: "container.NewVBox"}},
 				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -594,7 +594,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 			continue
 		}
 		for _, fn := range imp.Native.Funcs {
-			if fn.Foreign.Pkg == "C" {
+			if fn.Foreign.Path == "C" {
 				cNativeImports = append(cNativeImports, imp.Native)
 				break
 			}

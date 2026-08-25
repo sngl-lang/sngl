@@ -20,7 +20,7 @@ stderr 'cannot pass Entry as'
 -- ok.sngl --
 import . "sngl://std"
 
-#[foreign("js://example.com/api#Entry")]
+#[foreign("js://example.com/api", "Entry")]
 struct A {
     title string
 }
@@ -34,12 +34,12 @@ component main {
 -- twomarks.sngl --
 import . "sngl://std"
 
-#[foreign("js://example.com/api#Entry")]
+#[foreign("js://example.com/api", "Entry")]
 struct A {
     title string
 }
 
-#[foreign("js://example.com/api#Entry")]
+#[foreign("js://example.com/api", "Entry")]
 struct B {
     title string
 }
@@ -54,7 +54,7 @@ component main {
 import . "sngl://std"
 import api "js://./api"
 
-#[foreign("js://./api#Entry")]
+#[foreign("js://./api", "Entry")]
 struct Entry {
     title string
 }

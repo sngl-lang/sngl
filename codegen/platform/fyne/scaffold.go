@@ -58,7 +58,7 @@ type templateData struct {
 	Imports      map[string]bool // import set; template iterates in sorted key order and uses `index .Imports "path"` for lookups
 
 	// CgoPreamble holds the cgo comment block + `import "C"` line.
-	// Non-empty only when any native import uses Foreign.Pkg == "C".
+	// Non-empty only when any native import uses Foreign.Path == "C".
 	CgoPreamble string
 }
 

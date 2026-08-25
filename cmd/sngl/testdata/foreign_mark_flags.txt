@@ -1,0 +1,87 @@
+# The flags on #[foreign] state what a call costs, which is the half of a
+# foreign declaration SNGL cannot read off the body: the body describes the
+# foreign function rather than implementing it.
+
+# pure lets the compiler evaluate the call at build time — the result is in the
+# markup and the function is gone.
+sngl generate --lang=none --platform=html --out=pure pure.sngl
+grep '<span>5</span>' pure/index.html
+! grep 'function add' pure/index.html
+
+# Without it the call is left alone: nothing infers purity from a body the call
+# never reaches, so a stub body cannot fold its own answer into the program.
+sngl generate --lang=none --platform=html --out=stub stub.sngl
+grep 'function add' stub/index.html
+! grep '<span>0</span>' stub/index.html
+
+# async is the same fact the TypeScript importer reads off Promise<T>, so it
+# drives the same lowering: the computed that calls it is hoisted behind a
+# settled-state field and an async kicker awaits the call. Nothing was imported
+# to say so — the mark is the only source of it.
+sngl generate --lang=none --platform=html --out=async async.sngl
+grep 'async function \$compute___hoist_0' async/index.html
+grep 'await fetchHello' async/index.html
+
+# A misspelled flag is a spelling error the compiler can see, so it names the
+# alternatives rather than ignoring the flag.
+! sngl check typo.sngl
+stderr 'unknown value "puer"'
+stderr 'pure, async'
+
+# The flags describe a call, so a declaration that has none refuses them.
+! sngl check onstruct.sngl
+stderr 'which describes a call'
+
+-- pure.sngl --
+import . "sngl://std"
+
+#[foreign("js://./api", "add", pure)]
+func add(a int, b int) => a + b
+
+component main {
+    text(value=string(add(2, 3)))
+}
+
+-- stub.sngl --
+import . "sngl://std"
+
+#[foreign("js://./api", "add")]
+func add(a int, b int) => 0
+
+component main {
+    text(value=string(add(2, 3)))
+}
+
+-- async.sngl --
+import . "sngl://std"
+
+#[foreign("js://./api", "fetchHello", async)]
+func fetchHello(name string) => "hi " + name
+
+func greeting() => fetchHello("world")
+
+component main {
+    text(value=greeting())
+}
+
+-- typo.sngl --
+import . "sngl://std"
+
+#[foreign("js://./api", "add", puer)]
+func add(a int, b int) => a + b
+
+component main {
+    text(value=string(add(2, 3)))
+}
+
+-- onstruct.sngl --
+import . "sngl://std"
+
+#[foreign("js://./api", "Entry", pure)]
+struct Entry {
+    title string
+}
+
+component main {
+    text(value=Entry{title = "x"}.title)
+}

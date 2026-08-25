@@ -12,19 +12,36 @@ grep '\.Title' out/index.html
 # ... and not SNGL's.
 ! grep 'title:' out/index.html
 
-# The mark informs codegen and nothing else: no module was resolved, so none
-# was bundled.
-! grep 'example.com/api' out/index.html
+# The mark names the language it speaks for. The same mark under a go:// path
+# leaves JavaScript alone — a field name from another language would be a name
+# nothing in the generated program answers to.
+sngl generate --lang=none --platform=html --out=outgo goapp.sngl
+grep 'title:' outgo/index.html
+! grep 'Title:' outgo/index.html
 
 # And the path really is unresolvable, which is what makes the build above
-# evidence rather than a coincidence.
+# evidence rather than a coincidence: the mark resolved nothing.
 ! sngl check needsimport.sngl
 stderr 'example.com/api'
 
 -- app.sngl --
 import . "sngl://std"
 
-#[foreign("js://example.com/api#Entry")]
+#[foreign("js://example.com/api", "Entry")]
+struct Entry {
+    #[foreign("Title")]
+    title string
+}
+
+component main {
+    var e = Entry{title = "hello"}
+    text(value=e.title)
+}
+
+-- goapp.sngl --
+import . "sngl://std"
+
+#[foreign("go://example.com/api", "api.Entry")]
 struct Entry {
     #[foreign("Title")]
     title string

@@ -161,8 +161,8 @@ struct Point { int x; int y; };
 	if addFn == nil {
 		t.Fatalf("func 'add' not found; got funcs: %v", funcNames(ni.Funcs))
 	}
-	if addFn.Foreign.Pkg != "C" {
-		t.Errorf("Foreign.Pkg = %q, want %q", addFn.Foreign.Pkg, "C")
+	if addFn.Foreign.Path != "C" {
+		t.Errorf("Foreign.Path = %q, want %q", addFn.Foreign.Path, "C")
 	}
 	if addFn.Foreign.Name != "C.add" {
 		t.Errorf("Foreign.Name = %q, want %q", addFn.Foreign.Name, "C.add")

@@ -352,7 +352,6 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		AST:     e,
 		Name:    e.Name,
 		Pkg:     c.libPkgName,
-		Foreign: irForeign(e.Foreign),
 		Members: members,
 	}
 }
@@ -594,6 +593,16 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 			fn.Params[0].Receiver = true
 		}
 	}
+	// A #[foreign] function's body describes the foreign declaration rather
+	// than implementing it, so what a call costs is what the mark says. Purity
+	// is left unknown without the flag: inferring it from the body would fold
+	// a stub's result into the program in place of the call.
+	if f.Foreign.Name != "" {
+		fn.IsAsync = f.Foreign.Async
+		if f.Foreign.Pure {
+			fn.Purity = ir.PurityPure
+		}
+	}
 	// The #[intrinsic] mark says what this function is; nothing infers it from
 	// the shape of its body.
 	fn.Intrinsic = f.Intrinsic.ID
@@ -642,5 +651,5 @@ func isComparable(t *ir.Type) bool {
 // and it is what makes two declarations the same type. A mark is a codegen
 // fact, so a marked declaration unifies with nothing.
 func irForeign(m ast.ForeignMark) ir.Foreign {
-	return ir.Foreign{Scheme: m.Scheme, Pkg: m.Pkg, Name: m.Name}
+	return ir.Foreign{Scheme: m.Scheme, Path: m.Path, Name: m.Name, Marked: m.Name != ""}
 }

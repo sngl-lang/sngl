@@ -30,3 +30,31 @@ func TestCheckWrapperHappyPath(t *testing.T) {
 		t.Fatalf("Check returned nil package; diags=%v", diags)
 	}
 }
+
+// TestMarkedFieldWithoutMacroPass guards the route into the compiler that has
+// no macro pass: sngl.Parse + sngl.Check is what the LSP and the playground
+// run, so a marked field has to be a field there too. While the attribute
+// wrapper hid it, an editor reported the field as unknown on every struct that
+// used one.
+func TestMarkedFieldWithoutMacroPass(t *testing.T) {
+	const src = `import . "sngl://std"
+
+struct Entry {
+    #[foreign("Title")]
+    title string
+}
+
+component main {
+    text(value=Entry{title = "hi"}.title)
+}
+`
+	doc, err := sngl.Parse("t.sngl", strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if _, diags := sngl.Check(doc, "."); len(diags) > 0 {
+		for _, d := range diags {
+			t.Errorf("diagnostic: %s", d.Msg)
+		}
+	}
+}

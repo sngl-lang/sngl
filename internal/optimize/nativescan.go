@@ -121,7 +121,7 @@ func isEvaluableNativeCall(call *ir.Call, ctx *evalCtx) bool {
 		return false
 	}
 	for _, f := range ns.Funcs {
-		if f.Name == name && f.Purity == ir.PurityPure && f.Foreign.Pkg != "file" && f.Foreign.Unusable == "" {
+		if f.Name == name && f.Purity == ir.PurityPure && f.Foreign.Path != "file" && f.Foreign.Unusable == "" {
 			return true
 		}
 	}

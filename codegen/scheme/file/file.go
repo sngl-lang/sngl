@@ -54,7 +54,7 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 			Params:  []*ir.Param{{Name: "name", Type: ir.TypString}},
 			Return:  ir.TypString,
 			Purity:  ir.PurityPure,
-			Foreign: ir.Foreign{Pkg: "file", Name: name},
+			Foreign: ir.Foreign{Path: "file", Name: name},
 		}
 	}
 	return &ir.NativeImport{

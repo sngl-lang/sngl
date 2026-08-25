@@ -73,7 +73,7 @@ func TestBatchSpansTwoSchemes(t *testing.T) {
 
 var jsTag = &ir.Func{
 	Name:    "tag",
-	Foreign: ir.Foreign{Name: "tag", Pkg: jspurePath},
+	Foreign: ir.Foreign{Name: "tag", Path: jspurePath},
 	Purity:  ir.PurityPure,
 	Params:  []*ir.Param{{Name: "s", Type: ir.TypString}},
 	Return:  ir.TypString,

@@ -1,78 +1,101 @@
 // Package foreign registers #[foreign], the mark that says a declaration
 // corresponds to something outside SNGL.
 //
-// It lives in sngl://std rather than sngl://internal/marks because its users
-// are outside the compiler: a language plugin that describes a foreign API by
-// generating marked SNGL source, a platform or language package declaring the
-// host types it emits against, and user code doing the same by hand.
+// It resolves no path, imports no module, and asserts no correspondence the
+// compiler could check — a plugin's output is trusted. Its `pure` flag is the
+// sharp edge in that bargain: it lets the compiler evaluate a call at build
+// time, so a function wrongly marked pure runs during a build.
 //
-// The mark informs codegen and nothing else. It resolves no path, imports no
-// module, and asserts no correspondence the compiler could check — a plugin's
-// output is trusted. It does not confer type identity either: several SNGL
-// types can map to one target-language type (int8 and int16 are both a JS
-// number), so two declarations naming the same foreign thing stay two types.
-// Only a scheme importer's own Origin unifies declarations, and a mark never
-// sets one.
+// It confers no type identity: several SNGL types can map to one
+// target-language type (int8 and int16 are both a JS number), so two
+// declarations naming the same foreign thing stay two types. Only a scheme
+// importer's own Origin unifies declarations, and a mark never sets one.
+//
+// A marked declaration stays the program's own — a backend emits it — so the
+// mark's name is a name to spell alongside that declaration and never a
+// reference redirecting to one the backend did not emit.
 package foreign
 
 import (
 	"fmt"
-	"strings"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/expand"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 )
 
+// The flags #[foreign] accepts after the name. They are the claims about a
+// call that SNGL cannot read off a foreign declaration and must not infer from
+// the SNGL body, which describes the foreign function rather than implementing
+// it.
+const (
+	// flagPure says a call has no effects and no dependence on host state, so
+	// the compiler may evaluate one at build time. Without it a call is left
+	// unknown and always survives to runtime.
+	flagPure = "pure"
+	// flagAsync says the declaration returns a promise its caller awaits — the
+	// fact the TypeScript importer reads off Promise<T>.
+	flagAsync = "async"
+)
+
+var foreignFlags = []string{flagPure, flagAsync}
+
 func init() {
-	expand.RegisterPre("std", "foreign",
-		[]expand.Param{{Name: "ref", Kind: expand.ArgString}}, handler)
+	expand.RegisterPre("std", "foreign", []expand.Param{
+		{Name: "path", Kind: expand.ArgString},
+		{Name: "name", Kind: expand.ArgString, Optional: true},
+		{Name: "flags", Kind: expand.ArgIdent, Variadic: true, Enum: foreignFlags},
+	}, handler)
 }
 
-// handler implements #[foreign("...")], stamping the correspondence onto the
-// declaration it annotates.
+// Two arguments are the import path the declaration comes from and its name
+// there, written the way a program's own import line writes them. One argument
+// is the name alone: that is all a struct field can say, since a field has no
+// package of its own, and all a declaration that only renames needs. The flags
+// that follow state what a call costs.
 //
-// The argument is written the way every other foreign reference in the
-// compiler is — the scheme, the package and the name a value encoder writes
-// and ir.ParseNativeDeclRef reads — so a plugin emitting an import line and a
-// mark for the same declaration spells the target once.
-//
-// A bare name with no scheme is the short form: it sets the name to emit and
-// nothing else. That is all a struct field can say, since a field has no
-// package of its own.
+// Nothing here inspects the two strings beyond needing a name to set. The path
+// is not resolved, the scheme is not looked up, and the name is not checked to
+// exist — a plugin's output is trusted.
 func handler(args expand.Args, decl ast.Stmt) (ast.Stmt, error) {
-	raw := args.String("ref")
-	mark, err := parse(raw)
-	if err != nil {
-		return decl, err
+	path, name := args.String("path"), args.String("name")
+	if !args.Has("name") {
+		path, name = "", path
+	}
+	if name == "" {
+		return decl, fmt.Errorf("#[foreign] requires a non-empty name")
+	}
+	flags := args.Idents("flags")
+	for i, f := range flags {
+		if slices.Contains(flags[:i], f) {
+			return decl, fmt.Errorf("#[foreign(%q)] repeats flag %s", name, f)
+		}
+	}
+	if _, isFunc := decl.(*ast.FuncDef); len(flags) > 0 && !isFunc {
+		return decl, fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %T has none", name, flags[0], decl)
 	}
 	taggable, ok := decl.(ast.ForeignTaggable)
 	if !ok {
-		return decl, fmt.Errorf("#[foreign(%q)] cannot mark %T", raw, decl)
+		return decl, fmt.Errorf("#[foreign(%q)] cannot mark %T", name, decl)
 	}
 	if n := names(decl); n > 1 {
-		return decl, fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", raw, n)
+		return decl, fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
 	}
-	taggable.SetForeign(mark)
+	scheme, pkgPath := imports.ParseScheme(path)
+	err := taggable.SetForeign(ast.ForeignMark{
+		Scheme: scheme,
+		Path:   pkgPath,
+		Name:   name,
+		Pure:   slices.Contains(flags, flagPure),
+		Async:  slices.Contains(flags, flagAsync),
+	})
+	if err != nil {
+		return decl, fmt.Errorf("#[foreign(%q)]: %w", name, err)
+	}
 	return decl, nil
 }
 
-func parse(raw string) (ast.ForeignMark, error) {
-	if raw == "" {
-		return ast.ForeignMark{}, fmt.Errorf("#[foreign] requires a non-empty name")
-	}
-	if !strings.Contains(raw, "://") {
-		return ast.ForeignMark{Name: raw}, nil
-	}
-	ref, ok := ir.ParseNativeDeclRef(raw)
-	if !ok {
-		return ast.ForeignMark{}, fmt.Errorf("#[foreign(%q)]: expected scheme://package#Name, or a bare name", raw)
-	}
-	return ast.ForeignMark{Scheme: ref.Scheme, Pkg: ref.Path, Name: ref.Name}, nil
-}
-
-// names counts the names a declaration binds, for the forms that can bind
-// several at once.
 func names(decl ast.Stmt) int {
 	switch d := decl.(type) {
 	case *ast.StructField:

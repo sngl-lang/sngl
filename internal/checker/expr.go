@@ -1679,7 +1679,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// itself where its runtime could say which type it was, and otherwise
 		// reached through the expected type.
 		sd = expectedStructDef(c.expected)
-		if x.Native != "" {
+		if x.Native != nil {
 			var bad bool
 			if bad, sd = c.nativeStructDef(x, sd); bad {
 				return &ir.Literal{Type: TypDyn}

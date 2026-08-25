@@ -279,7 +279,7 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 
 	f := &ir.Func{
 		Name:    fn.Name(),
-		Foreign: ir.Foreign{Pkg: pkgPath, Name: pkgName + "." + fn.Name()},
+		Foreign: ir.Foreign{Path: pkgPath, Name: pkgName + "." + fn.Name()},
 	}
 
 	params := sig.Params()
@@ -339,7 +339,7 @@ func goVarToVar(v *types.Var, pkgPath, pkgName string, structs map[string]*ir.St
 	out := &ir.Var{
 		Name:    v.Name(),
 		Type:    t,
-		Foreign: ir.Foreign{Pkg: pkgPath, Name: pkgName + "." + v.Name()},
+		Foreign: ir.Foreign{Path: pkgPath, Name: pkgName + "." + v.Name()},
 	}
 	if !usable {
 		out.Foreign.Unusable = fmt.Sprintf("variable %s.%s has type not representable in SNGL", pkgName, v.Name())

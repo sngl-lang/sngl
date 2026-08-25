@@ -191,7 +191,7 @@ func extractDeclarations(ast *cc.AST, importPath string) (*ir.NativeImport, erro
 func extractFunc(d *cc.Declarator, name string, ft *cc.FunctionType, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Func {
 	fn := &ir.Func{
 		Name:    name,
-		Foreign: ir.Foreign{Pkg: "C", Name: "C." + name},
+		Foreign: ir.Foreign{Path: "C", Name: "C." + name},
 	}
 
 	// Return type.

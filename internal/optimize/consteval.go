@@ -334,7 +334,7 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 
 	// Try file:// scheme functions.
 	for _, f := range ns.Funcs {
-		if f.Name == name && f.Foreign.Pkg == "file" {
+		if f.Name == name && f.Foreign.Path == "file" {
 			if len(args) == 1 {
 				if filename, ok := args[0].(string); ok {
 					return evalFileFunc(f.Foreign.Name, ns.ImportPath, filename, ctx)
@@ -387,7 +387,7 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 	alias := call.AST.Func.(*ast.SelectExpr).Operand.(*ast.IdentExpr).Name
 	qualName := alias + "." + name
 	for _, f := range ns.Funcs {
-		if f.Name != name || f.Purity != ir.PurityPure || f.Foreign.Pkg == "file" {
+		if f.Name != name || f.Purity != ir.PurityPure || f.Foreign.Path == "file" {
 			continue
 		}
 		scheme := ctx.nativeSchemes[alias]

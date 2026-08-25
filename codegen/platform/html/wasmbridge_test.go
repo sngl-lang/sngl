@@ -99,11 +99,11 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 
 	// All four funcs are forced client-side via html.frontend, so they are
 	// WASM-eligible; the ref-bearing ones must still be filtered out. Wire
-	// the call funcs' Foreign.Pkg to the import path so frontendNativeFuncs
+	// the call funcs' Foreign.Path to the import path so frontendNativeFuncs
 	// recognizes them.
 	frontendUse := func(name string) ir.Stmt {
 		return &ir.CallStmt{Call: intrinsicCall("html.frontend",
-			&ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Pkg: "example.com/refpkg"}, Name: name}})}
+			&ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/refpkg"}, Name: name}})}
 	}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
@@ -161,7 +161,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 		Native: ni,
 	}
 	call := func() *ir.Call {
-		return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Pkg: "example.com/optin"}, Name: "Persist"},
+		return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/optin"}, Name: "Persist"},
 			Args: []ir.CallArg{{Value: &ir.Literal{}}}}
 	}
 

@@ -54,8 +54,8 @@ func TestParseNativeValueTypeRef(t *testing.T) {
 	if !ok {
 		t.Fatalf("element is %T, want a struct literal", list.Elements[0])
 	}
-	if s.Native != "go://example.com/p#Item" {
-		t.Errorf("Native = %q", s.Native)
+	if want := (ast.NativeRef{Path: "go://example.com/p", Name: "Item"}); s.Native == nil || *s.Native != want {
+		t.Errorf("Native = %+v, want %+v", s.Native, want)
 	}
 	if len(s.Fields) != 1 || s.Fields[0].Name != "Name" {
 		t.Errorf("fields = %v", s.Fields)
@@ -93,7 +93,7 @@ func TestNativeTypeRefIsModeOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseNativeValue: %v", err)
 	}
-	if s, ok := e.(*ast.StructExpr); !ok || s.Native != "go://example.com/p#Item" {
+	if s, ok := e.(*ast.StructExpr); !ok || s.Native == nil || s.Native.Name != "Item" {
 		t.Fatalf("native-value parse produced %#v, want a ref", e)
 	}
 	doc, _ := Parse("t.sngl", []byte("const x = "+src))
@@ -101,7 +101,7 @@ func TestNativeTypeRefIsModeOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if bytes.Contains(blob, []byte("go://example.com/p#Item")) {
+	if bytes.Contains(blob, []byte(`"Native"`)) {
 		t.Errorf("document parse left a ref in the AST: %s", blob)
 	}
 }

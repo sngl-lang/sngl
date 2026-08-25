@@ -39,7 +39,7 @@ func loadJSON(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error) {
 		Name:    sanitizeIdent(base),
 		Type:    t,
 		IsConst: true,
-		Foreign: ir.Foreign{Pkg: spec, Name: "default"},
+		Foreign: ir.Foreign{Path: spec, Name: "default"},
 	}
 	return &ir.NativeImport{
 		ImportPath: spec,

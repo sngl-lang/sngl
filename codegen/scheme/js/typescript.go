@@ -180,7 +180,7 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 	}
 	f := &ir.Func{
 		Name:    name,
-		Foreign: ir.Foreign{Pkg: w.importPath, Name: name},
+		Foreign: ir.Foreign{Path: w.importPath, Name: name},
 		Purity:  ir.PurityUnknown,
 	}
 	if isPureDoc(docComment(w.src, s.Pos())) {
@@ -327,7 +327,7 @@ func (w *walker) varDeclToVar(decl *snglts.Node) *ir.Var {
 		Name:    name,
 		Type:    t,
 		IsConst: true,
-		Foreign: ir.Foreign{Pkg: w.importPath, Name: name},
+		Foreign: ir.Foreign{Path: w.importPath, Name: name},
 	}
 	if unusable != "" {
 		v.Foreign.Unusable = unusable
@@ -404,4 +404,19 @@ func DeclaredHere(f ir.Foreign) bool {
 		return true
 	}
 	return f.Scheme == Scheme
+}
+
+// CallsHere reports whether a call to f should be routed through this scheme's
+// module machinery — the bundler alias and the `import * as` it records.
+//
+// A declaration this importer read has a module path and nothing else to say;
+// a marked one has only what the mark wrote, so it is routed here when the
+// mark named this language and left alone when it named another. Without that
+// second case a go:// mark would rewrite a JavaScript call to a name no
+// JavaScript declares.
+func CallsHere(f ir.Foreign) bool {
+	if f.Marked {
+		return f.Scheme == Scheme
+	}
+	return f.Path != ""
 }

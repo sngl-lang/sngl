@@ -5,14 +5,14 @@ import (
 	"modernc.org/cc/v4"
 )
 
-// mapCType converts a cc.Type to an *ir.Type.
-// structs is a mutable map from C struct name → ir.StructDef; entries are
-// added on first encounter so recursive/shared struct pointers reuse the same def.
-// Returns nil for unmappable types (caller should set Func.Foreign.Unusable).
 // cTypeID identifies a C type by name. C has one global type namespace, so
 // two headers that each declare GtkWidget declare the same type.
 type cTypeID struct{ Name string }
 
+// mapCType converts a cc.Type to an *ir.Type.
+// structs is a mutable map from C struct name → ir.StructDef; entries are
+// added on first encounter so recursive/shared struct pointers reuse the same def.
+// Returns nil for unmappable types; the caller marks the declaration unusable.
 func mapCType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type {
 	if t == nil {
 		return nil

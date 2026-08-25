@@ -517,7 +517,7 @@ func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 		Params:  []*ir.Param{{Name: "x", Type: intType()}},
 		Return:  intType(),
 		Purity:  purity,
-		Foreign: ir.Foreign{Pkg: "math", Name: "math.Square"},
+		Foreign: ir.Foreign{Path: "math", Name: "math.Square"},
 	}
 	return map[string]*ir.NativeImport{
 		"go://math": {

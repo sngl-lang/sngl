@@ -1029,7 +1029,6 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				Type:    typ,
 				Init:    initExpr,
 				IsConst: true,
-				Foreign: irForeign(decl.Foreign),
 			}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.bindVar(decl.Pos, v)
@@ -1058,7 +1057,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
 		for _, name := range spec.Names {
-			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true, Foreign: irForeign(decl.Foreign)}
+			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
@@ -1325,11 +1324,10 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				continue
 			}
 			v := &ir.Var{
-				AST:     decl,
-				Name:    name,
-				Type:    typ,
-				Init:    initExpr,
-				Foreign: irForeign(decl.Foreign),
+				AST:  decl,
+				Name: name,
+				Type: typ,
+				Init: initExpr,
 			}
 			// Build event handlers.
 			for i := range spec.Handlers {
@@ -2436,6 +2434,9 @@ func (c *checker) pass2() {
 	for changed := true; changed; {
 		changed = false
 		for _, fn := range allFuncs {
+			if fn.Foreign.Name != "" {
+				continue // asserted by the mark; the body is only a description
+			}
 			if p := highestCalledPurity(fn); p > fn.Purity {
 				fn.Purity = p
 				changed = true

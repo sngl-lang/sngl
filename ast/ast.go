@@ -90,7 +90,6 @@ type EnumDef struct {
 	Name        string
 	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
-	Foreign     ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // Members returns just the *EnumMember items from Body, in source order.
@@ -136,25 +135,31 @@ type StructDef struct {
 	Body        []StructBodyItem
 	IsMultiline bool
 	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
-	Foreign     ForeignMark // set by #[foreign("...")]; zero value otherwise
+	Foreign     ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
 }
 
 // Fields returns just the *StructField items from Body, in source order.
+//
+// An attributed item is unwrapped, so a marked field is a field here whether
+// or not the macro pass has run. The pass replaces the wrapper with what it
+// returns, but sngl.Parse and the LSP never run it, and a field that vanished
+// from Body would be reported as an unknown field on the struct.
 func (s *StructDef) Fields() []*StructField {
 	out := make([]*StructField, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := it.(*StructField); ok {
+		if f, ok := UnwrapAttrs(it).(*StructField); ok {
 			out = append(out, f)
 		}
 	}
 	return out
 }
 
-// Funcs returns just the *FuncDef items from Body, in source order.
+// Funcs returns just the *FuncDef items from Body, in source order. Attributed
+// items are unwrapped, as in Fields.
 func (s *StructDef) Funcs() []*FuncDef {
 	out := make([]*FuncDef, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := it.(*FuncDef); ok {
+		if f, ok := UnwrapAttrs(it).(*FuncDef); ok {
 			out = append(out, f)
 		}
 	}
@@ -170,7 +175,7 @@ type StructField struct {
 	NamePositions []Pos // parallel to Names; per-name source positions
 	Type          TypeExpr
 	Default       Expr
-	Foreign       ForeignMark // set by #[foreign("...")]; zero value otherwise
+	Foreign       ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -211,7 +216,6 @@ type ConstDecl struct {
 	Specs     []VarSpec
 	// Builtin is set by the #[builtin] macro on a predeclared constant.
 	Builtin BuiltinKind
-	Foreign ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // VarDecl declares one or more variables.
@@ -219,7 +223,6 @@ type VarDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
-	Foreign   ForeignMark // set by #[foreign("...")]; zero value otherwise
 }
 
 // --- Imports ---
@@ -270,8 +273,8 @@ type FuncDef struct {
 	// Intrinsic is the #[intrinsic("...")] mark, if any. Its zero value means
 	// an ordinary function.
 	Intrinsic IntrinsicMark
-	// Foreign is the #[foreign("...")] mark, if any.
-	Foreign ForeignMark
+	// Foreign is the #[foreign(...)] mark, if any.
+	Foreign ForeignMark `json:",omitzero"`
 }
 
 // SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
@@ -405,3 +408,18 @@ func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }
 func (a *AttrDecl) StmtPos() *Pos      { return &a.Pos }
+
+// UnwrapAttrs returns the declaration item carries, past any attribute wrappers.
+// Attributes nest — two marks on one declaration are two wrappers — and a
+// caller that wants the declaration wants it whether or not the macro pass has
+// replaced the wrappers yet.
+func UnwrapAttrs[T any](item T) any {
+	var x any = item
+	for {
+		attr, ok := x.(*AttrDecl)
+		if !ok || attr.Inner == nil {
+			return x
+		}
+		x = attr.Inner
+	}
+}

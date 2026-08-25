@@ -229,7 +229,7 @@ func hasPureNativeFuncs(pkg *ir.Package, cfg *Config) bool {
 		for _, imp := range p.Imports {
 			if imp.Native != nil {
 				for _, f := range imp.Native.Funcs {
-					if f.Purity == ir.PurityPure && f.Foreign.Pkg != "file" && f.Foreign.Unusable == "" {
+					if f.Purity == ir.PurityPure && f.Foreign.Path != "file" && f.Foreign.Unusable == "" {
 						return true
 					}
 				}

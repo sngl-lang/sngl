@@ -21,7 +21,7 @@ func TestGoIRContext_ContextVar_NativeCall(t *testing.T) {
 		Receiver: &ir.Ident{Name: "svc"},
 		Func: &ir.Func{
 			Name:          "Fetch",
-			Foreign:       ir.Foreign{Pkg: "svc", Name: "svc.Fetch"},
+			Foreign:       ir.Foreign{Path: "svc", Name: "svc.Fetch"},
 			HasContextArg: true,
 		},
 		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "id"}}},
@@ -44,7 +44,7 @@ func TestGoIRContext_ContextVar_DefaultBackground(t *testing.T) {
 		Receiver: &ir.Ident{Name: "svc"},
 		Func: &ir.Func{
 			Name:          "Fetch",
-			Foreign:       ir.Foreign{Pkg: "svc", Name: "svc.Fetch"},
+			Foreign:       ir.Foreign{Path: "svc", Name: "svc.Fetch"},
 			HasContextArg: true,
 		},
 	}
@@ -287,7 +287,7 @@ func TestEvalCall_CgoNativePrefix(t *testing.T) {
 	gc := newMinimalIRCtx()
 	call := &ir.Call{
 		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{Foreign: ir.Foreign{Pkg: "C", Name: "gtk_label_new"}},
+		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "gtk_label_new"}},
 		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull}}},
 	}
 	got := gc.EvalExpr(call)
@@ -303,7 +303,7 @@ func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
 	gc := newMinimalIRCtx()
 	call := &ir.Call{
 		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{Foreign: ir.Foreign{Pkg: "C", Name: "C.gtk_label_new"}},
+		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "C.gtk_label_new"}},
 	}
 	got := gc.EvalExpr(call)
 	want := "C.gtk_label_new()"
