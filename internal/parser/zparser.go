@@ -6409,9 +6409,6 @@ state2:
 //
 //	# ── Type declarations ─────────────────────────────────────────────────────────
 //
-//	# The separator is optional, as it is in StmtBlock. A required one made a field
-//	# whose type ends in `>` unterminatable: `>` gets no ASI (it may continue a
-//	# comparison), so `args list<string>` ran into the field below it.
 //	StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem [ semi ] } rbrace .
 //
 //	State 0
