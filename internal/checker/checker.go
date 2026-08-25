@@ -161,6 +161,9 @@ type checker struct {
 	libPkgs    map[string]*ir.Package
 	libLoading map[string]bool
 	libDepth   int
+	// libLoadPkg is the library package currently loading, and the owner of
+	// any import registered while it does. nil outside a lib load.
+	libLoadPkg *ir.Package
 	// libPkgName is the URI of the lib package currently being loaded, stamped
 	// onto every declaration it builds as that declaration's identity (see
 	// ir.StructDef.Pkg). Saved and restored around each load, because a lib
@@ -742,7 +745,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 				LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 				AddressedVars:  map[*ir.Var]bool{},
 			}
-			c.pkg.Imports = append(c.pkg.Imports, irImport)
+			owner := c.importOwner()
+			owner.Imports = append(owner.Imports, irImport)
 			return
 		}
 		if uri == "builtin" {
@@ -833,14 +837,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 
-	c.pkg.Imports = append(c.pkg.Imports, irImport)
+	owner := c.importOwner()
+	owner.Imports = append(owner.Imports, irImport)
 
 	// A canvas reaches this package if any package it imports declares one:
 	// inlining will bring the shapes here, and the pass that lowers them runs
 	// on this package. The flag records the construct, and the construct is
 	// wherever it was resolved.
 	if irImport.Pkg != nil && irImport.Pkg.UsesShapes {
-		c.pkg.UsesShapes = true
+		owner.UsesShapes = true
 	}
 
 	// Check for component main in imported library packages. The package's
@@ -882,6 +887,16 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 	c.markForeign(irImport.Pkg)
 	c.bindDeclared(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
+}
+
+// importOwner is the package an import belongs to. While a library package
+// loads, its imports are its own: appending them to the program's package puts
+// `import std "sngl://std"` in the IR of every program that reaches i18n.
+func (c *checker) importOwner() *ir.Package {
+	if c.libLoadPkg != nil {
+		return c.libLoadPkg
+	}
+	return c.pkg
 }
 
 // mergePkgInto merges all declarations from src into dst, registering symbols.

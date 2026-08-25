@@ -9,7 +9,6 @@ component main {
 }
 -- expected.sngl --
 import . "sngl://std"
-import sngl "sngl://std"
 import teststub "sngl://platforms/teststub"
 component main {
     sngl.text(value="hi")

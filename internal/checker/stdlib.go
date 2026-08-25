@@ -262,6 +262,9 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
 		defer func() { c.symtab, c.scope = savedSymtab, savedScope }()
 	}
+	savedLoadPkg := c.libLoadPkg
+	c.libLoadPkg = stdlibPkg
+	defer func() { c.libLoadPkg = savedLoadPkg }()
 
 	var (
 		imports    []*ast.Import
