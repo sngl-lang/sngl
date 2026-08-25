@@ -40,7 +40,7 @@ func resultLine(doc, key string) string {
 
 // itemRef is how a value of item names its own type: the package reflect
 // reports for it, and the name in that package.
-const itemRef = `@"go://git.duckfam.us/jonathan/sngl/pkg/go/consteval#item"`
+const itemRef = `import("go://git.duckfam.us/jonathan/sngl/pkg/go/consteval").item`
 
 type item struct {
 	Name  string

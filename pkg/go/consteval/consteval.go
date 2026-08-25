@@ -315,11 +315,10 @@ func appendTypeRef(dst []byte, t reflect.Type) []byte {
 	if pkg == "" || name == "" {
 		return append(dst, name...)
 	}
-	dst = append(dst, `@"go://`...)
+	dst = append(dst, `import("go://`...)
 	dst = append(dst, pkg...)
-	dst = append(dst, '#')
-	dst = append(dst, name...)
-	return append(dst, '"')
+	dst = append(dst, `").`...)
+	return append(dst, name...)
 }
 
 // AppendQuote appends s as a SNGL string literal. Braces are escaped because

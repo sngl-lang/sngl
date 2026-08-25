@@ -15,6 +15,9 @@ type builder struct {
 	errors   []string
 	// native holds the expression of a native-value parse; nil for a document.
 	native ast.Expr
+	// nativeMode is set for that parse, and is the whole of what keeps an
+	// import in expression position out of ordinary source.
+	nativeMode bool
 }
 
 func newBuilder(file string, filtered, comments []Token) *builder {
@@ -141,6 +144,7 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 	// Document = native_value Expr [ semi ] | { … } .
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == NATIVE_VALUE {
 		it.skip()
+		b.nativeMode = true
 		if !it.done() && it.isNonTerminal() {
 			b.native = b.buildExpr(it.enter())
 		}
@@ -1706,6 +1710,15 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			le := &ast.ListExpr{}
 			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 			return le
+		case ImportExpr:
+			x := b.buildImportExpr(it.enter())
+			if x == nil {
+				return nil
+			}
+			if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
+				x.Fields = b.buildStructLitFields(it.enter(), &x.Multiline)
+			}
+			return x
 		}
 		return b.buildExprBySymbol(sym, it.enter())
 	}
@@ -1742,16 +1755,6 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return &ast.EventRefExpr{Pos: b.posFromToken(tok), Name: nameTok.Literal}
 		}
 		return &ast.EventRefExpr{Pos: b.posFromToken(tok)}
-	case NATIVE_TYPE:
-		refTok := it.shift()
-		s := &ast.StructExpr{
-			Pos:    ast.Pos(b.posFromToken(refTok)),
-			Native: refTok.Literal,
-		}
-		if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
-			s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
-		}
-		return s
 	case IDENT:
 		identTok := it.shift()
 		// In expression context, ident may be followed by StructLitBody
@@ -1767,6 +1770,24 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 	default:
 		return b.tokenToExpr(it.shift())
 	}
+}
+
+// buildImportExpr builds import("scheme://path").Name, the declaration an
+// encoded value names. Outside a native-value parse it is an error and no
+// expression at all: a hand-written program must not be able to claim a
+// foreign declaration the compiler would then trust.
+func (b *builder) buildImportExpr(it nodeIter) *ast.StructExpr {
+	// ImportExpr = kw_import lparen str_full rparen dot ident .
+	pos := ast.Pos(b.posFromToken(it.shift())) // kw_import
+	if !b.nativeMode {
+		b.errorf(pos, "import is not an expression")
+		return nil
+	}
+	it.skip() // lparen
+	path := stripQuotes(it.shift().Literal)
+	it.skip() // rparen
+	it.skip() // dot
+	return &ast.StructExpr{Pos: pos, Native: path + "#" + it.shift().Literal}
 }
 
 // --- Composite literals ---

@@ -411,7 +411,7 @@ func assertItem(t *testing.T, e ir.Expr) {
 // differ.
 func TestNamedTypeMustAgreeWithTheExpectedOne(t *testing.T) {
 	f := importedFunc(t, "GetGroups")
-	ref := func(name string) string { return `@"go://` + purepkgPath + `#` + name + `"` }
+	ref := func(name string) string { return `import("go://` + purepkgPath + `").` + name }
 	src := record("x", `[`+ref("Group")+`{Label = "first", Items = [`+ref("Tally")+`{Name = "a", Value = 1}]}]`)
 	_, bad, err := parseNativeResults("results.sngl", []byte(src), map[string]*ir.Type{"x": f.Return}, purepkgDecls(t))
 	if err != nil {

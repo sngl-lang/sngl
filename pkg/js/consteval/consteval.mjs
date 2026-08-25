@@ -245,11 +245,11 @@ function encodeMap(v, depth) {
 // anonymous, because `Object` is not a type the importer ever declared and the
 // expected type is what says what shape the value must have.
 //
-// Unlike the Go runtime it writes a bare name, never a type reference the
-// checker could resolve. The js:// importer keys a declaration by module and
-// name, and JavaScript reifies no module identity: a value carries no link to
-// the module declaring its type, and a TypeScript interface has no runtime
-// constructor at all.
+// Unlike the Go runtime it writes a bare name, never the
+// `import("scheme://path").Name` a checker could resolve. The js:// importer
+// keys a declaration by module and name, and JavaScript reifies no module
+// identity: a value carries no link to the module declaring its type, and a
+// TypeScript interface has no runtime constructor at all.
 function encodeObject(v, depth) {
   // A boxed primitive is an object whose own enumerable properties are none,
   // so it would otherwise encode as `Number{}`.

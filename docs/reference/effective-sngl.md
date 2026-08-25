@@ -110,8 +110,10 @@ Where the function's declared return type says what the value is, that type is
 what makes it well-typed. Where it does not — a Go `[]any`, a TypeScript
 `any[]` — a `go://` value still arrives typed, because the Go runtime can name
 the type it is: `reflect` gives the declaring package and the name in it, which
-is exactly what the `go://` importer keyed its declarations by. A `js://` value
-cannot. A JavaScript value carries no link to the module that declared its
+is exactly what the `go://` importer keyed its declarations by. It writes that
+as `import("go://path/to/pkg").Type{…}`, which is not source you can write —
+only the reader the compiler points at a folded value accepts an import in
+expression position. A `js://` value cannot. A JavaScript value carries no link to the module that declared its
 type, a class name alone does not identify one, and a TypeScript interface has
 no runtime constructor at all — so an untyped `js://` element stays `dyn`, with
 the field names the source language used.

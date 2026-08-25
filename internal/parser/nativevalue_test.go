@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -40,7 +42,7 @@ func TestParseNativeValueShapes(t *testing.T) {
 // A value may name the declaration it is of, which is what gives it a type
 // where nothing else does.
 func TestParseNativeValueTypeRef(t *testing.T) {
-	e, err := ParseNativeValue("results", []byte(`[@"go://example.com/p#Item"{Name = "a"}]`))
+	e, err := ParseNativeValue("results", []byte(`[import("go://example.com/p").Item{Name = "a"}]`))
 	if err != nil {
 		t.Fatalf("ParseNativeValue: %v", err)
 	}
@@ -60,42 +62,46 @@ func TestParseNativeValueTypeRef(t *testing.T) {
 	}
 }
 
-// The type ref is unwritable in ordinary source: the token it needs is lexed
-// only in native-value mode. Without that a program could claim a declaration
-// the compiler would then trust.
+// The type ref is unwritable in ordinary source: an import is a declaration
+// there and nothing else. Without that a program could claim a declaration the
+// compiler would then trust.
 func TestOrdinaryParseRejectsTypeRef(t *testing.T) {
+	// Both positions reach PrimaryExpr, which is where the production is. An
+	// argument does not — NonIdentPrimary spells the alternatives out again —
+	// so a case there would fail on a syntax error and prove nothing.
 	for _, src := range []string{
-		`const x = @"go://example.com/p#Item"{Name = "a"}`,
-		`component c { text(@"go://example.com/p#Item"{}) }`,
+		`const x = import("go://example.com/p").Item{Name = "a"}`,
+		`const xs = [import("go://example.com/p").Item{}]`,
 	} {
-		if _, err := Parse("t.sngl", []byte(src)); err == nil {
-			t.Errorf("Parse(%s) accepted a native type ref", src)
+		_, err := Parse("t.sngl", []byte(src))
+		if err == nil {
+			t.Fatalf("Parse(%s) accepted a native type ref", src)
+		}
+		// The grammar has the production, so the rejection has to come from the
+		// gate. A syntax error would mean this passed for the wrong reason.
+		if !strings.Contains(err.Error(), "import is not an expression") {
+			t.Errorf("Parse(%s) failed with %v, want the gate", src, err)
 		}
 	}
 }
 
-// The mode is the lexer's: @ followed by a string is two tokens in ordinary
-// source and one in a native value.
-func TestNativeTypeTokenIsModeOnly(t *testing.T) {
-	const src = `@"go://example.com/p#Item"`
-	if got := kinds(Tokenize(src)); strings.Contains(got, "NATIVE_TYPE") {
-		t.Errorf("ordinary lexing produced a NATIVE_TYPE token: %s", got)
+// The gate is the whole of the mode: the same expression the native-value
+// parse builds a ref from leaves no ref behind in a document parse.
+func TestNativeTypeRefIsModeOnly(t *testing.T) {
+	const src = `import("go://example.com/p").Item{Name = "a"}`
+	e, err := ParseNativeValue("results", []byte(src))
+	if err != nil {
+		t.Fatalf("ParseNativeValue: %v", err)
 	}
-	if got := kinds(TokenizeNativeValue(src)); !strings.Contains(got, "NATIVE_TYPE") {
-		t.Errorf("native-value lexing produced no NATIVE_TYPE token: %s", got)
+	if s, ok := e.(*ast.StructExpr); !ok || s.Native != "go://example.com/p#Item" {
+		t.Fatalf("native-value parse produced %#v, want a ref", e)
 	}
-}
-
-// kinds names the tokens a scan produced, for an assertion about which ones
-// a mode can emit at all.
-func kinds(tokens []Token, _ []string) string {
-	var names []string
-	for _, tok := range tokens {
-		if tok.Type == NATIVE_TYPE {
-			names = append(names, "NATIVE_TYPE")
-			continue
-		}
-		names = append(names, fmt.Sprintf("%#x", byte(tok.Type)))
+	doc, _ := Parse("t.sngl", []byte("const x = "+src))
+	blob, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
 	}
-	return strings.Join(names, " ")
+	if bytes.Contains(blob, []byte("go://example.com/p#Item")) {
+		t.Errorf("document parse left a ref in the AST: %s", blob)
+	}
 }
