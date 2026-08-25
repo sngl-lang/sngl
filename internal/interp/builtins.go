@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // runIntrinsic runs this interpreter's implementation of the intrinsic named
@@ -191,11 +193,12 @@ var intrinsics = map[string]nativeFunc{
 
 	// --- color ---
 	"color.hex": func(args []any) (any, error) {
-		if m, ok := args[0].(map[string]any); ok {
-			r := clampByte(ToInt(m["r"]))
-			g := clampByte(ToInt(m["g"]))
-			b := clampByte(ToInt(m["b"]))
-			a := ToInt(m["a"])
+		if m, ok := args[0].(*Struct); ok {
+			field := func(name string) any { v, _ := m.Get(name); return v }
+			r := clampByte(ToInt(field("r")))
+			g := clampByte(ToInt(field("g")))
+			b := clampByte(ToInt(field("b")))
+			a := ToInt(field("a"))
 			if a == 255 {
 				return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
 			}
@@ -263,8 +266,10 @@ var intrinsics = map[string]nativeFunc{
 	},
 }
 
-// colorHexToStruct converts a hex color string like "#ff0000" to a Color struct map.
-func colorHexToStruct(hex string) map[string]any {
+// colorHexToStruct converts a hex color string like "#ff0000" to a color
+// value. typ is the literal's type, which carries the declaration the checker
+// resolved for it.
+func colorHexToStruct(typ *ir.Type, hex string) *Struct {
 	r, g, b, a := 0, 0, 0, 255
 	if len(hex) >= 7 && hex[0] == '#' {
 		r = hexToByte(hex[1:3])
@@ -274,7 +279,16 @@ func colorHexToStruct(hex string) map[string]any {
 	if len(hex) >= 9 {
 		a = hexToByte(hex[7:9])
 	}
-	return map[string]any{"r": r, "g": g, "b": b, "a": a}
+	var def *ir.StructDef
+	if typ != nil {
+		def, _ = typ.Decl.(*ir.StructDef)
+	}
+	s := NewStruct(def, typ)
+	s.Set("r", r)
+	s.Set("g", g)
+	s.Set("b", b)
+	s.Set("a", a)
+	return s
 }
 
 func clampByte(v int) int {

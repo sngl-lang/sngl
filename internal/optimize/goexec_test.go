@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -645,7 +646,10 @@ func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
 // compile and every other value in the batch would go with it.
 func TestStructArgIsRefused(t *testing.T) {
 	f := importedFunc(t, "Describe")
-	_, _, err := renderGoArgs(f, []any{map[string]any{"Name": "a", "Value": 1}})
+	item := interp.NewStruct(nil, f.Params[0].Type)
+	item.Set("name", "a")
+	item.Set("value", 1)
+	_, _, err := renderGoArgs(f, []any{item})
 	if err == nil {
 		t.Fatal("a struct argument was rendered")
 	}
