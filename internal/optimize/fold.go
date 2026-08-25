@@ -26,6 +26,16 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	}
 
+	// A const whose initializer is already a checked composite is spliced, not
+	// evaluated, for the reason the next comment gives: reading it through an
+	// ident would otherwise take the same round trip the node itself is
+	// exempted from, and arrive back without its declaration.
+	if id, ok := e.(*ir.Ident); ok {
+		if lit := spliceConst(id, ctx); lit != nil {
+			return lit
+		}
+	}
+
 	// Try full constant evaluation — but NOT for composite literal nodes
 	// (struct/list/map). Round-tripping those through the runtime value
 	// representation loses concrete type info: irFromValue rebuilds a struct
@@ -152,6 +162,44 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
 	}
 	return e
+}
+
+// spliceConst returns a copy of the composite literal a const ident reads,
+// standing where the ident stood, or nil for anything else — including a const
+// the compiler supplies rather than initializes, which has no initializer to
+// splice, and a composite still holding an unevaluated call, which splicing
+// would duplicate at every read site.
+//
+// The copy takes the ident's type, because an initializer may be typed
+// narrower than the name it initializes: an encoded value knows it is a list
+// of Item where the const is declared list<dyn>, and Go codegen would emit
+// `[]purepkg.Item` for a field of type `[]any`. A struct keeps its Def, which
+// names the type ahead of the type field.
+func spliceConst(id *ir.Ident, ctx *evalCtx) ir.Expr {
+	v, ok := id.Sym.(*ir.Var)
+	if !ok || !v.IsConst || v.Builtin != ast.BuiltinNone || v.Init == nil {
+		return nil
+	}
+	switch v.Init.(type) {
+	case *ir.StructLit, *ir.ListLit, *ir.MapLitIR:
+	default:
+		return nil
+	}
+	if !isConstExpr(v.Init, ctx) {
+		return nil
+	}
+	switch c := ir.CloneExpr(v.Init).(type) {
+	case *ir.StructLit:
+		c.Type = id.ExprType()
+		return c
+	case *ir.ListLit:
+		c.Type = id.ExprType()
+		return c
+	case *ir.MapLitIR:
+		c.Type = id.ExprType()
+		return c
+	}
+	return nil
 }
 
 // foldStmts folds a slice of statements, removing nil results.
