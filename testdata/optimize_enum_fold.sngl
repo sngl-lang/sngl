@@ -1,0 +1,27 @@
+// Enum members are compile-time constants, so a comparison between two of
+// them decides during optimization and the losing branch of an `if` over one
+// is eliminated. The member itself has no literal form — its canonical IR is
+// the identifier — so `picked` below must survive unfolded; TestOptimize_
+// EnumMemberKeepsIdent asserts that half, which no FOLD directive can express.
+import . "sngl://std"
+
+enum Color { red, green, blue }
+
+const picked = Color.red
+
+component enumfold {
+    var isRed = picked == Color.red      // FOLD true
+    var isBlue = picked == Color.blue    // FOLD false
+    var notBlue = picked != Color.blue   // FOLD true
+
+    var current Color = picked
+
+    text(value="{isRed}")
+}
+
+func testEnumFolding(t Test, c enumfold) {
+    t.assert(c.isRed == true)
+    t.assert(c.isBlue == false)
+    t.assert(c.notBlue == true)
+    t.assert(c.current == Color.red)
+}

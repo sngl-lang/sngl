@@ -33,6 +33,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if _, ok := x.Sym.(*ir.Namespace); ok {
 			return true // namespace refs are compile-time resolvable
 		}
+		if _, ok := enumMemberOf(x); ok {
+			return true
+		}
 		// Any symbol bound by a parent context (loop vars during expansion,
 		// component params during call-site inlining) becomes a const for
 		// the duration of that scope.
@@ -236,6 +239,9 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 }
 
 func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
+	if member, ok := enumMemberOf(x); ok {
+		return member, true
+	}
 	// Const variable — evaluate its initializer, except where the compiler
 	// supplies the value. The build target is keyed off the #[builtin] mark
 	// rather than the name, so a declaration shadowing PLATFORM is an
@@ -271,6 +277,15 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	for _, a := range call.Args {
 		v, ok := evalExpr(a.Value, ctx)
 		if !ok {
+			return nil, false
+		}
+		// An enumMember is meaningful only to this package's own comparison
+		// folding. Neither the body interpreter (which spells a member as its
+		// bare name) nor the native-call encoder knows the type, so a call
+		// taking one is left unfolded. That costs nothing: before members
+		// became const-evaluable such a call had a non-const argument and was
+		// not folded either.
+		if _, isEnum := v.(enumMember); isEnum {
 			return nil, false
 		}
 		args = append(args, v)
@@ -371,6 +386,15 @@ func foldPureGoCall(call *ir.Call, ctx *evalCtx) (ir.Expr, bool) {
 	for _, a := range call.Args {
 		v, ok := evalExpr(a.Value, ctx)
 		if !ok {
+			return nil, false
+		}
+		// An enumMember is meaningful only to this package's own comparison
+		// folding. Neither the body interpreter (which spells a member as its
+		// bare name) nor the native-call encoder knows the type, so a call
+		// taking one is left unfolded. That costs nothing: before members
+		// became const-evaluable such a call had a non-const argument and was
+		// not folded either.
+		if _, isEnum := v.(enumMember); isEnum {
 			return nil, false
 		}
 		args = append(args, v)
@@ -496,6 +520,49 @@ func parseLiteral(lit *ir.Literal) any {
 
 // irLiteral converts a Go value back to an IR Literal.
 // For strings, Raw stores the unquoted content (the formatter adds %q quoting).
+// enumMember is the folded value of a reference to an enum member declared in
+// SNGL. It is deliberately its own type rather than the bare member name: a
+// member has no literal form — its canonical IR is the Ident that already
+// holds it — so neither irLiteral nor irFromValue can represent one, they both
+// report nil, and foldExpr leaves the node standing. A bare string here would
+// instead be rebuilt as a string literal, handing codegen a string where the
+// enum type is required.
+//
+// The type is comparable, which is all a `==` or `!=` between two members
+// needs: numericOrNativeEq falls through to Go equality for it.
+//
+// A foreign enum (a TS one reached through js://) is deliberately not covered.
+// Its members are erased to their declared values at runtime, so what folds
+// there is the value itself — an ordinary int or string — and that must keep
+// its literal form. See cmd/sngl/testdata/js_consteval_enum.txt.
+type enumMember struct {
+	def  *ir.EnumDef
+	name string
+}
+
+// enumMemberOf returns the member an Ident refers to when it names a member of
+// a SNGL-declared enum. The checker sets Member for both the qualified form
+// (`Color.red`) and the bare one (`red` where a Color is expected); the
+// declaration comes from the ident's own type, which is where the bare form
+// records it. An enum read from a scheme import carries an importer descriptor
+// in Origin and is left alone, for the reason on enumMember.
+func enumMemberOf(x *ir.Ident) (enumMember, bool) {
+	if x == nil || x.Member == "" {
+		return enumMember{}, false
+	}
+	var def *ir.EnumDef
+	if x.Type != nil && x.Type.Kind == ir.TypeEnum {
+		def, _ = x.Type.Decl.(*ir.EnumDef)
+	}
+	if def == nil {
+		def, _ = x.Sym.(*ir.EnumDef)
+	}
+	if def == nil || def.Origin != nil {
+		return enumMember{}, false
+	}
+	return enumMember{def: def, name: x.Member}, true
+}
+
 func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	switch v := val.(type) {
 	case string:
