@@ -320,9 +320,9 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 		c.resolveStdlibStructFields(s, structDefs[i])
 	}
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
-	// emits it rather than the bare SNGL name. It is matched by name because
-	// #[foreign] lives in sngl://std, and importing that from lib/i18n leaks
-	// the import into every consumer's IR — see the loader unification work.
+	// emits it rather than the bare SNGL name. A #[foreign] mark on the
+	// declaration is the shape this wants, but the mark does not reach codegen
+	// from a lib struct yet.
 	for _, sd := range structDefs {
 		if sd.Foreign.Name == "" && sd.Name == "PluralKey" {
 			sd.Foreign.Name = "i18n.PluralKey"
@@ -560,7 +560,7 @@ func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv strin
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin, Options: s.Options}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin, Options: s.Options, Foreign: irForeign(s.Foreign)}
 	// Macro carries no #[builtin] kind: a kind names the IR construct a
 	// declaration dispatches to, and this one dispatches to none. It is found
 	// by name within the compiler's own package, which no program can import.
