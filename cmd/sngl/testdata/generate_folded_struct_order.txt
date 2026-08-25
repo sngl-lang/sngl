@@ -1,0 +1,34 @@
+# A struct that folds through the optimizer's value model comes back as the
+# checker built it: the declaration it names, the fields in the order they were
+# written, and the defaults the checker filled in after them.
+#
+# It used to come back as a bare map, so the literal was rebuilt with its keys
+# in alphabetical order and with the entry the interpreter tagged the value's
+# type in — `__type: "Point"`, a field the struct does not have and Go will not
+# compile.
+#
+# The struct is returned by a function so the fold has to go through a value:
+# a literal written in place is not re-derived from one. It is read into a
+# component var so it survives as an initializer rather than being measured and
+# discarded.
+
+sngl generate --platform=bubbletea --lang=go --out=out app.sngl
+grep 'Point\{Y: 1, X: 7, Tag: "none"\}' out/model.go
+! grep '__type' out/model.go
+
+-- app.sngl --
+import . "sngl://std"
+
+struct Point {
+    x int
+    y int
+    tag string = "none"
+}
+
+func origin() => Point{y = 1, x = 7}
+
+component main {
+    var here = origin()
+
+    text(value="{string(here.x)}")
+}

@@ -136,14 +136,87 @@ type NativeImport struct {
 	LinkFlags []string
 }
 
+// NativeDeclRef names a foreign declaration the way an encoded value does:
+// the scheme it was imported under, the package that declares it, and its name
+// there. That triple is what a runtime can say about a value — Go's
+// reflect.Type gives the last two — and what a scheme importer keys its
+// declarations by.
+type NativeDeclRef struct{ Scheme, Path, Name string }
+
+// NativeDecls indexes every foreign declaration a package graph imported, so a
+// value that names one can be given the declaration rather than a name to
+// match against. A ref that is absent names a type this program never imported
+// — not an error, only the absence of a declaration.
+type NativeDecls map[NativeDeclRef]Symbol
+
+// IndexNativeDecls builds that index over p and the packages it imports.
+func IndexNativeDecls(p *Package) NativeDecls {
+	out := NativeDecls{}
+	seen := map[*Package]bool{}
+	var walk func(*Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+			if imp.Native == nil {
+				continue
+			}
+			scheme, _, ok := strings.Cut(imp.Path, "://")
+			if !ok {
+				continue
+			}
+			for _, sd := range imp.Native.Structs {
+				out[NativeDeclRef{scheme, imp.Native.ImportPath, sd.Name}] = sd
+			}
+			for _, ed := range imp.Native.Enums {
+				out[NativeDeclRef{scheme, imp.Native.ImportPath, ed.Name}] = ed
+			}
+		}
+	}
+	walk(p)
+	return out
+}
+
+// Foreign records what a declaration corresponds to outside SNGL: the package
+// it lives in there, the name to emit for it, and whether SNGL can model it at
+// all. A declaration with an empty Foreign is SNGL's own.
+type Foreign struct {
+	Path string // scheme-import package path (e.g. "fmt")
+	// Name is the reference to emit, spelled the way the target language
+	// spells it where it is used — qualified when the importer knows the
+	// qualifier ("fmt.Sprintf", "api.Item"), bare otherwise.
+	Name string
+	// Scheme names the language the Name belongs to, for a correspondence a
+	// #[foreign] mark declared. An importer answers the same question with
+	// Origin's own type and leaves this empty.
+	Scheme string
+	// Origin identifies the foreign declaration this was read from, in a type
+	// the importer defines. Two files that each resolve the same package get
+	// their own *StructDef for one type, and comparing Origin is what makes
+	// them the same type again. The importer's own struct type is the key:
+	// two importers cannot collide however they spell a name, which a shared
+	// string could not promise. Must be comparable — it is compared with ==.
+	Origin any
+	// Marked says a #[foreign] mark asserted this rather than an importer
+	// reading it. The declaration is then still the program's own: a backend
+	// emits it, so Name is a name to spell alongside that declaration and
+	// never a reference redirecting to one the backend did not emit.
+	Marked bool
+	// Unusable is non-empty when SNGL cannot model the declaration precisely;
+	// the checker rejects any reference to it. Only a foreign declaration can
+	// be one: SNGL's own syntax cannot express a type SNGL has no name for.
+	Unusable string
+}
+
 // Func represents any function: top-level, type-attached method, or lambda.
 //
-// NativePkg/NativeName are set when the function originates from a scheme
-// import (e.g. "go://fmt"); codegen reads them to emit the correct import
-// and call. HasContextArg / HasErrorReturn describe shape adapter wrapping
-// applied by the importer (leading context.Context stripped; trailing error
-// unwrapped). Unusable is non-empty when SNGL cannot model the function
-// precisely; the checker rejects any reference to such a Func.
+// Foreign is set when the function originates from a scheme import (e.g.
+// "go://fmt"); codegen reads it to emit the correct import and call.
+// HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
+// the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
 	AST            *ast.FuncDef // nil for lambdas and event handlers
 	Name           string       // empty for lambdas and event handlers
@@ -158,13 +231,13 @@ type Func struct {
 	Reads          []*Var // vars read (directly or via called functions)
 	Writes         []*Var // vars mutated (directly or via called functions)
 	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
-	NativePkg      string // scheme-import package path (e.g. "fmt")
-	NativeName     string // qualified native ref to emit (e.g. "fmt.Sprintf")
+	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
+	// in the encoder and neither is written.
+	Foreign        `json:"Foreign,omitzero"`
 	HasContextArg  bool
 	HasErrorReturn bool
-	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
-	IsAsync        bool // for native imports: declared async (e.g. TS Promise<T>). For SNGL funcs: set by effect analysis when body transitively calls an IsAsync func.
-	Unusable       string
+	CanError       bool   // set by effect analysis; true if body raises or calls a CanError func
+	IsAsync        bool   // for native imports: declared async (e.g. TS Promise<T>). For SNGL funcs: set by effect analysis when body transitively calls an IsAsync func.
 	Doc            string // doc comment for scheme-imported decls
 	Synthesized    bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __renderSlotN)
 	// Stdlib is true for functions declared in the SNGL standard library
@@ -223,8 +296,7 @@ func (f *Func) FuncSig() *FuncSig {
 
 // Var represents a constant or variable declaration.
 //
-// NativePkg/NativeName are set when the var originates from a scheme import.
-// Unusable is non-empty when the var's type cannot be modelled precisely.
+// Foreign is set when the var originates from a scheme import.
 type Var struct {
 	AST      ast.Stmt // original ConstDecl or VarDecl
 	Name     string
@@ -236,9 +308,7 @@ type Var struct {
 	// (null, PLATFORM, LANGUAGE). The compiler supplies the type and value;
 	// the written ones are placeholders.
 	Builtin     ast.BuiltinKind
-	NativePkg   string
-	NativeName  string
-	Unusable    string
+	Foreign     `json:"Foreign,omitzero"`
 	Doc         string // doc comment for scheme-imported decls
 	Synthesized bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __slotN)
 }
@@ -419,14 +489,7 @@ type StructDef struct {
 	Name       string
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
-	Native     string // qualified native-language name (e.g. "ast.File"); empty for user-defined
-	// Origin identifies the foreign declaration this was read from, in a type
-	// the importer defines. Two files that each resolve the same package get
-	// their own *StructDef for one type, and comparing Origin is what makes
-	// them the same type again. The importer's own struct type is the key:
-	// two importers cannot collide however they spell a name, which a shared
-	// string could not promise. Must be comparable — it is compared with ==.
-	Origin any
+	Foreign    `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package
 	// whose identity is global — today the embedded library's "sngl://std",
 	// "sngl://builtin", "sngl://draw". Empty for a program's own
@@ -448,23 +511,21 @@ func (s *StructDef) IsExported() bool { return isExportedName(s.Name) }
 
 func (s *StructDef) SymType() *Type {
 	t := &Type{Kind: TypeStruct, Decl: s}
-	if s.Native != "" {
-		t.Meta = s.Native
+	if s.Foreign.Name != "" {
+		t.Meta = s.Foreign.Name
 	}
 	return t
 }
 
 // StructField is a resolved field in a struct.
 //
-// NativeName is the source-language field name (e.g. Go's "Decls" for SNGL
-// "decls") when the field comes from a scheme import. Unusable is set when
-// the field's native type cannot be modelled; reads/writes are rejected.
+// Foreign.Name is the source-language field name (e.g. Go's "Decls" for SNGL
+// "decls") when the field comes from a scheme import.
 type StructField struct {
-	Name       string
-	Type       *Type
-	Default    Expr // nil if no default
-	NativeName string
-	Unusable   string
+	Name    string
+	Type    *Type
+	Default Expr // nil if no default
+	Foreign `json:"Foreign,omitzero"`
 }
 
 // EnumDef is a resolved enum type declaration.
@@ -472,7 +533,7 @@ type EnumDef struct {
 	AST     *ast.EnumDef
 	Name    string
 	Members []*EnumMember
-	Origin  any              // foreign declaration this was read from; see StructDef.Origin
+	Foreign `json:"Foreign,omitzero"`
 	Pkg     string           // declaring package URI; see StructDef.Pkg
 	Doc     string           // doc comment for scheme-imported decls
 	Methods map[string]*Func `json:"-"`

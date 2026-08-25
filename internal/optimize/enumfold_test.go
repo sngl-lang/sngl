@@ -13,7 +13,9 @@ import (
 // comparison over one decide a branch, but the member has no literal form:
 // it evaluates to its name, and rebuilding that as a string literal would
 // hand codegen a string where the enum type is required. So a member left in
-// value position must come out of the optimizer as the Ident it went in as.
+// value position must come out of the optimizer as an Ident naming it. The
+// const it was read from is then unread, and dead-code elimination drops it,
+// so the surviving read is where a string-literal rewrite would show up.
 func TestOptimize_EnumMemberKeepsIdent(t *testing.T) {
 	const src = `import . "sngl://std"
 
@@ -55,28 +57,9 @@ component keeps {
 		t.Fatalf("enum member folded to a %s literal %q; it must stay an Ident",
 			lit.Type, lit.Raw)
 	}
-	if _, ok := current.Init.(*ir.Ident); !ok {
-		t.Fatalf("want *ir.Ident, got %T", current.Init)
-	}
-
-	// The const the var refers to holds the member itself, so that is where a
-	// string-literal rewrite would show up.
-	var picked *ir.Var
-	for _, c := range pkg.Consts {
-		if c.Name == "picked" {
-			picked = c
-		}
-	}
-	if picked == nil {
-		t.Fatal("const picked not found after optimization")
-	}
-	if lit, ok := picked.Init.(*ir.Literal); ok {
-		t.Fatalf("enum member folded to a %s literal %q; it must stay an Ident",
-			lit.Type, lit.Raw)
-	}
-	id, ok := picked.Init.(*ir.Ident)
+	id, ok := current.Init.(*ir.Ident)
 	if !ok {
-		t.Fatalf("const picked: want *ir.Ident, got %T", picked.Init)
+		t.Fatalf("want *ir.Ident, got %T", current.Init)
 	}
 	if id.Member != "green" {
 		t.Errorf("Member = %q, want %q", id.Member, "green")

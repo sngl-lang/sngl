@@ -58,8 +58,8 @@ type nativeRequest struct {
 	ret *ir.Type
 }
 
-// wantTypes keys the declared return types the way the results document keys
-// its consts, which is the form parseConstResults checks values against. Every
+// wantTypes keys the declared return types the way the results file keys its
+// records, which is the form parseNativeResults checks values against. Every
 // runner builds it the same way from its own batch.
 func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
 	want := make(map[string]*ir.Type, len(reqs))
@@ -111,16 +111,16 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	switch scheme {
 	case "go":
 		var ok bool
-		_, funcName, ok = strings.Cut(f.NativeName, ".")
+		_, funcName, ok = strings.Cut(f.Foreign.Name, ".")
 		if !ok || funcName == "" || !isExported(funcName) {
-			return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.NativeName)
+			return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.Foreign.Name)
 		}
 		argSrc, imports, err = renderGoArgs(f, args)
 	case "js":
 		// A JS export is named by its binding alone: there is no package
 		// qualifier to strip, and the importer only ever recorded a
 		// declaration that carried an `export`.
-		funcName = f.NativeName
+		funcName = f.Foreign.Name
 		if funcName == "" {
 			return nil, nativeFailed, fmt.Errorf("native function has no name")
 		}
@@ -131,7 +131,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	if err != nil {
 		return nil, nativeFailed, err
 	}
-	key := requestKey(scheme, importPath, f.NativeName, argSrc)
+	key := requestKey(scheme, importPath, f.Foreign.Name, argSrc)
 	if res, loaded := ctx.evalCache().load(key); loaded {
 		if res.err != nil {
 			return nil, nativeFailed, res.err
@@ -145,7 +145,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 		key:        key,
 		scheme:     scheme,
 		importPath: importPath,
-		nativeType: f.NativeName,
+		nativeType: f.Foreign.Name,
 		funcName:   funcName,
 		args:       argSrc,
 		imports:    imports,
@@ -169,7 +169,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, []*nativeRequest{req}); errs[scheme] != nil {
+	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), []*nativeRequest{req}); errs[scheme] != nil {
 		return nil, nativeFailed, errs[scheme]
 	}
 	if r, ok := ctx.evalCache().load(key); ok && r.err == nil {
@@ -177,7 +177,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	} else if ok {
 		return nil, nativeFailed, r.err
 	}
-	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.NativeName)
+	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.Foreign.Name)
 }
 
 // requestKey identifies a call. The rendered arguments are source in the
@@ -205,7 +205,7 @@ func isExported(name string) bool {
 // they reference.
 func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 	if len(args) != len(f.Params) {
-		return nil, nil, fmt.Errorf("%s takes %d arguments, got %d", f.NativeName, len(f.Params), len(args))
+		return nil, nil, fmt.Errorf("%s takes %d arguments, got %d", f.Foreign.Name, len(f.Params), len(args))
 	}
 	if len(args) == 0 {
 		return nil, nil, nil
@@ -215,7 +215,7 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 	for i, a := range args {
 		e := irFromValue(a, f.Params[i].Type)
 		if e == nil {
-			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
+			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.Foreign.Name, a)
 		}
 		// The Go translator spells a struct literal with the name its declaring
 		// package uses — `Item{}` — while the batch program reaches that
@@ -223,11 +223,11 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 		// costs this one call; rendering it would be a program that does not
 		// build, and every other value in the batch with it.
 		if sd := unnameableStruct(e); sd != nil {
-			return nil, nil, fmt.Errorf("parameter %s of %s has struct type %s, which the compile-time evaluator cannot spell", f.Params[i].Name, f.NativeName, sd.Name)
+			return nil, nil, fmt.Errorf("parameter %s of %s has struct type %s, which the compile-time evaluator cannot spell", f.Params[i].Name, f.Foreign.Name, sd.Name)
 		}
 		src := gc.EvalExpr(e)
 		if strings.TrimSpace(src) == "" {
-			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.NativeName)
+			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.Foreign.Name)
 		}
 		out[i] = src
 	}
@@ -271,7 +271,7 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 // nothing about any one call and must not become that call's answer. It is
 // returned under its scheme: one scheme failing that way keeps neither
 // another scheme's values out of the cache nor its calls from folding.
-func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[string]error {
+func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
 	byScheme := map[string][]*nativeRequest{}
 	var order []string
 	for _, r := range reqs {
@@ -282,7 +282,7 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[
 	}
 	errs := map[string]error{}
 	for _, scheme := range order {
-		if err := runSchemeRequests(cache, dir, scheme, byScheme[scheme]); err != nil {
+		if err := runSchemeRequests(cache, dir, types, scheme, byScheme[scheme]); err != nil {
 			errs[scheme] = err
 		}
 	}
@@ -290,7 +290,7 @@ func runNativeRequests(cache *EvalCache, dir string, reqs []*nativeRequest) map[
 }
 
 // runSchemeRequests runs one scheme's batch and caches its outcome per call.
-func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeRequest) error {
+func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, scheme string, reqs []*nativeRequest) error {
 	var (
 		values map[string]ir.Expr
 		bad    map[string]error
@@ -298,9 +298,9 @@ func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeReque
 	)
 	switch scheme {
 	case "js":
-		values, bad, err = execJSConstEval(dir, reqs)
+		values, bad, err = execJSConstEval(dir, types, reqs)
 	default:
-		values, bad, err = execConstEval(dir, reqs)
+		values, bad, err = execConstEval(dir, types, reqs)
 	}
 	if err != nil {
 		return err
@@ -323,7 +323,7 @@ func runSchemeRequests(cache *EvalCache, dir, scheme string, reqs []*nativeReque
 
 // execConstEval generates, builds and runs the batch program, returning the
 // values keyed by request key, and the keys whose value did not check.
-func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
@@ -383,7 +383,7 @@ func execConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[s
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
 	parseStart := time.Now()
-	values, bad, err := parseConstResults(resultPath, results, wantTypes(reqs))
+	values, bad, err := parseNativeResults(resultPath, results, wantTypes(reqs), types)
 	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
 	return values, bad, err
 }

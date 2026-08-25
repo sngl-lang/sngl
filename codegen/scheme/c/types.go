@@ -5,14 +5,14 @@ import (
 	"modernc.org/cc/v4"
 )
 
-// mapCType converts a cc.Type to an *ir.Type.
-// structs is a mutable map from C struct name → ir.StructDef; entries are
-// added on first encounter so recursive/shared struct pointers reuse the same def.
-// Returns nil for unmappable types (caller should set Func.Unusable).
 // cTypeID identifies a C type by name. C has one global type namespace, so
 // two headers that each declare GtkWidget declare the same type.
 type cTypeID struct{ Name string }
 
+// mapCType converts a cc.Type to an *ir.Type.
+// structs is a mutable map from C struct name → ir.StructDef; entries are
+// added on first encounter so recursive/shared struct pointers reuse the same def.
+// Returns nil for unmappable types; the caller marks the declaration unusable.
 func mapCType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type {
 	if t == nil {
 		return nil
@@ -110,9 +110,8 @@ func mapStructType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir
 	}
 	// Native is "C.Name" so IRTypeToGo emits the cgo type.
 	sd := &ir.StructDef{
-		Name:   name,
-		Native: "C." + name,
-		Origin: cTypeID{Name: name},
+		Name:    name,
+		Foreign: ir.Foreign{Name: "C." + name, Origin: cTypeID{Name: name}},
 	}
 	structs[name] = sd
 	// Map fields (best-effort; unmappable fields are skipped).
@@ -126,9 +125,9 @@ func mapStructType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir
 			continue
 		}
 		sd.Fields = append(sd.Fields, &ir.StructField{
-			Name:       f.Name(),
-			NativeName: f.Name(),
-			Type:       ft,
+			Name:    f.Name(),
+			Foreign: ir.Foreign{Name: f.Name()},
+			Type:    ft,
 		})
 	}
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd}

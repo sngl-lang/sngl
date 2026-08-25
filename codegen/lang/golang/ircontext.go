@@ -596,21 +596,21 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-		// Native (e.g. C/cgo) call: emit NativeName(args) directly, ignoring the
-		// SNGL import alias that ended up as the receiver.
-		if n.Func.NativePkg != "" {
-			name := n.Func.NativeName
-			// Cgo C-API call: NativeName carries the bare C identifier
-			// (e.g. "gtk_label_new"); renderer adds "C." prefix. Backwards-
-			// compat: if NativeName already starts with "C." (legacy
-			// callers), leave untouched so existing pre-baked NativeNames
-			// continue to work during the migration.
-			if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
+		// Native (e.g. C/cgo) call: emit the native name directly, ignoring
+		// the SNGL import alias that ended up as the receiver. A #[foreign]
+		// mark is excluded: it names a declaration this file also emits, so
+		// the call keeps the name that declaration is emitted under.
+		if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
+			name := n.Func.Foreign.Name
+			// A cgo call is written with the bare C identifier (e.g.
+			// "gtk_label_new") and the renderer adds the "C." prefix. A caller
+			// that already prefixed it keeps what it wrote.
+			if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
 				name = "C." + name
-			} else if n.Func.NativePkg != "C" {
+			} else if n.Func.Foreign.Path != "C" {
 				// Non-cgo native call (e.g. fmt.Println, time.Now) — record
 				// the import so platforms reading gc.Imports() see it.
-				gc.RequireImport(n.Func.NativePkg)
+				gc.RequireImport(n.Func.Foreign.Path)
 			}
 			// Context-taking native call: inject the context expression as the
 			// first argument. Mirrors legacy translateIRNativeCall — when the
@@ -1203,8 +1203,10 @@ func IRTypeToGo(t *ir.Type) string {
 			return colorGoType
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			if sd.Native != "" {
-				return sd.Native
+			// A mark names a type this file also declares, so using the mark's
+			// name here would leave two names for one type and no import.
+			if sd.Foreign.Name != "" && !sd.Foreign.Marked {
+				return sd.Foreign.Name
 			}
 			if name := ExportName(sd.Name); name != "" {
 				return name
@@ -1418,7 +1420,7 @@ func irAssignOp(op ast.AssignOp) string {
 // EmitFuncDef renders a complete Go function definition from an *ir.Func.
 // Includes the receiver clause (for Model methods), param list, return
 // type, and body. Body statements flow through EvalStmt — Synthesized
-// idents resolve to m.<name>, native funcs to C.<NativeName>, etc.
+// idents resolve to m.<name>, native funcs to their C identifier, etc.
 //
 // Returns the source as a slice of lines (each line WITHOUT trailing
 // newline). The caller joins with "\n" or writes each line followed by

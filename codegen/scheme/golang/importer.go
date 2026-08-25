@@ -145,10 +145,9 @@ func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*i
 			continue
 		}
 		sd := &ir.StructDef{
-			Name:   tn.Name(),
-			Native: pkgName + "." + tn.Name(),
-			Origin: goTypeID{Path: pkgPath, Name: tn.Name()},
-			Doc:    typeDoc[tn.Name()],
+			Name:    tn.Name(),
+			Foreign: ir.Foreign{Name: pkgName + "." + tn.Name(), Origin: goTypeID{Path: pkgPath, Name: tn.Name()}},
+			Doc:     typeDoc[tn.Name()],
 		}
 		structs[tn.Name()] = sd
 		ni.Structs = append(ni.Structs, sd)
@@ -251,12 +250,12 @@ func populateStructFields(sd *ir.StructDef, tn *types.TypeName, homePkg string, 
 		}
 		t, usable := goTypeToIR(f.Type(), homePkg, structs)
 		sf := &ir.StructField{
-			Name:       lowerFirst(f.Name()),
-			Type:       t,
-			NativeName: f.Name(),
+			Name:    lowerFirst(f.Name()),
+			Type:    t,
+			Foreign: ir.Foreign{Name: f.Name()},
 		}
 		if !usable {
-			sf.Unusable = fmt.Sprintf("field %s.%s has type not representable in SNGL", tn.Name(), f.Name())
+			sf.Foreign.Unusable = fmt.Sprintf("field %s.%s has type not representable in SNGL", tn.Name(), f.Name())
 		}
 		sd.Fields = append(sd.Fields, sf)
 	}
@@ -279,9 +278,8 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 	}
 
 	f := &ir.Func{
-		Name:       fn.Name(),
-		NativePkg:  pkgPath,
-		NativeName: pkgName + "." + fn.Name(),
+		Name:    fn.Name(),
+		Foreign: ir.Foreign{Path: pkgPath, Name: pkgName + "." + fn.Name()},
 	}
 
 	params := sig.Params()
@@ -299,8 +297,8 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 			stripping = false
 		}
 		t, usable := goTypeToIR(v.Type(), pkgPath, structs)
-		if !usable && f.Unusable == "" {
-			f.Unusable = fmt.Sprintf("parameter %q has type not representable in SNGL", v.Name())
+		if !usable && f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = fmt.Sprintf("parameter %q has type not representable in SNGL", v.Name())
 		}
 		f.Params = append(f.Params, &ir.Param{Name: v.Name(), Type: t})
 		i++
@@ -312,24 +310,24 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 		// void
 	case 1:
 		t, usable := goTypeToIR(results.At(0).Type(), pkgPath, structs)
-		if !usable && f.Unusable == "" {
-			f.Unusable = "return type not representable in SNGL"
+		if !usable && f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = "return type not representable in SNGL"
 		}
 		f.Return = t
 	case 2:
 		if isErrorType(results.At(1).Type()) {
 			t, usable := goTypeToIR(results.At(0).Type(), pkgPath, structs)
-			if !usable && f.Unusable == "" {
-				f.Unusable = "return type not representable in SNGL"
+			if !usable && f.Foreign.Unusable == "" {
+				f.Foreign.Unusable = "return type not representable in SNGL"
 			}
 			f.Return = t
 			f.HasErrorReturn = true
-		} else if f.Unusable == "" {
-			f.Unusable = "functions returning multiple values are not supported"
+		} else if f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = "functions returning multiple values are not supported"
 		}
 	default:
-		if f.Unusable == "" {
-			f.Unusable = "functions returning multiple values are not supported"
+		if f.Foreign.Unusable == "" {
+			f.Foreign.Unusable = "functions returning multiple values are not supported"
 		}
 	}
 
@@ -339,13 +337,12 @@ func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*i
 func goVarToVar(v *types.Var, pkgPath, pkgName string, structs map[string]*ir.StructDef) *ir.Var {
 	t, usable := goTypeToIR(v.Type(), pkgPath, structs)
 	out := &ir.Var{
-		Name:       v.Name(),
-		Type:       t,
-		NativePkg:  pkgPath,
-		NativeName: pkgName + "." + v.Name(),
+		Name:    v.Name(),
+		Type:    t,
+		Foreign: ir.Foreign{Path: pkgPath, Name: pkgName + "." + v.Name()},
 	}
 	if !usable {
-		out.Unusable = fmt.Sprintf("variable %s.%s has type not representable in SNGL", pkgName, v.Name())
+		out.Foreign.Unusable = fmt.Sprintf("variable %s.%s has type not representable in SNGL", pkgName, v.Name())
 	}
 	return out
 }

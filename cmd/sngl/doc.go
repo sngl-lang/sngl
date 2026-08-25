@@ -254,8 +254,8 @@ func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 func renderNativeStruct(s *ir.StructDef) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# struct %s\n\n", s.Name))
-	if s.Native != "" {
-		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", s.Native))
+	if s.Foreign.Name != "" {
+		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", s.Foreign.Name))
 	}
 	if s.Doc != "" {
 		sb.WriteString(s.Doc)
@@ -265,7 +265,7 @@ func renderNativeStruct(s *ir.StructDef) string {
 		sb.WriteString("## Fields\n\n```\n")
 		for _, f := range s.Fields {
 			line := fmt.Sprintf("%-20s %s", f.Name, f.Type.String())
-			if f.Unusable != "" {
+			if f.Foreign.Unusable != "" {
 				line += "  (unusable)"
 			}
 			sb.WriteString(line + "\n")
@@ -298,11 +298,11 @@ func renderNativeFunc(f *ir.Func) string {
 	sb.WriteString("```\n")
 	sb.WriteString(nativeFuncSignature(f))
 	sb.WriteString("\n```\n\n")
-	if f.NativeName != "" {
-		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", f.NativeName))
+	if f.Foreign.Name != "" {
+		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", f.Foreign.Name))
 	}
-	if f.Unusable != "" {
-		sb.WriteString(fmt.Sprintf("_Unusable:_ %s\n\n", f.Unusable))
+	if f.Foreign.Unusable != "" {
+		sb.WriteString(fmt.Sprintf("_Unusable:_ %s\n\n", f.Foreign.Unusable))
 	}
 	if f.Doc != "" {
 		sb.WriteString(f.Doc)
@@ -321,11 +321,11 @@ func renderNativeVar(v *ir.Var) string {
 	if v.Type != nil {
 		sb.WriteString(fmt.Sprintf("_Type:_ `%s`\n\n", v.Type.String()))
 	}
-	if v.NativeName != "" {
-		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", v.NativeName))
+	if v.Foreign.Name != "" {
+		sb.WriteString(fmt.Sprintf("_Native:_ `%s`\n\n", v.Foreign.Name))
 	}
-	if v.Unusable != "" {
-		sb.WriteString(fmt.Sprintf("_Unusable:_ %s\n\n", v.Unusable))
+	if v.Foreign.Unusable != "" {
+		sb.WriteString(fmt.Sprintf("_Unusable:_ %s\n\n", v.Foreign.Unusable))
 	}
 	if v.Doc != "" {
 		sb.WriteString(v.Doc)

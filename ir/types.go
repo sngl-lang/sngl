@@ -250,10 +250,10 @@ func (t *Type) SameUnitType(other *Type) bool {
 // not.
 func nativeIdentity(sym Symbol) (any, bool) {
 	d, ok := sym.(*StructDef)
-	if !ok || d.Origin == nil {
+	if !ok || d.Foreign.Origin == nil {
 		return nil, false
 	}
-	return d.Origin, true
+	return d.Foreign.Origin, true
 }
 
 // declRef is a named declaration's identity: the package that declared it and

@@ -49,11 +49,11 @@ func TestStructLitUsesTypeScriptPropertyNames(t *testing.T) {
 func TestStructLitKeepsSnglNamesForOtherSchemes(t *testing.T) {
 	type goTypeID struct{ Path, Name string }
 	sd := &ir.StructDef{
-		Name:   "Entry",
-		Origin: goTypeID{Path: "example.com/api", Name: "Entry"},
+		Name:    "Entry",
+		Foreign: ir.Foreign{Origin: goTypeID{Path: "example.com/api", Name: "Entry"}},
 		Fields: []*ir.StructField{
-			{Name: "title", NativeName: "Title"},
-			{Name: "href", NativeName: "Href"},
+			{Name: "title", Foreign: ir.Foreign{Name: "Title"}},
+			{Name: "href", Foreign: ir.Foreign{Name: "Href"}},
 		},
 	}
 	jc := NewIRContext(codegen.NewExprCtx(nil))

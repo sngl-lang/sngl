@@ -14,6 +14,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -27,14 +28,14 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Literal:
 		return true
 	case *ir.Ident:
+		if x.Member != "" {
+			return true // an enum member is written, not computed
+		}
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
 		if _, ok := x.Sym.(*ir.Namespace); ok {
 			return true // namespace refs are compile-time resolvable
-		}
-		if _, ok := enumMemberOf(x); ok {
-			return true
 		}
 		// Any symbol bound by a parent context (loop vars during expansion,
 		// component params during call-site inlining) becomes a const for
@@ -194,7 +195,7 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return result, true
 	case *ir.StructLit:
-		result := make(map[string]any, len(x.Fields))
+		result := interp.NewStruct(x.Def, x.Type)
 		for _, f := range x.Fields {
 			if f.Spread || f.Name == "" || f.Value == nil {
 				return nil, false
@@ -203,13 +204,32 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 			if !ok {
 				return nil, false
 			}
-			result[f.Name] = v
+			result.Set(f.Name, v)
+		}
+		return result, true
+	case *ir.MapLitIR:
+		result := make(map[string]any, len(x.Entries))
+		for _, e := range x.Entries {
+			k, ok := evalExpr(e.Key, ctx)
+			if !ok {
+				return nil, false
+			}
+			v, ok := evalExpr(e.Value, ctx)
+			if !ok {
+				return nil, false
+			}
+			result[fmt.Sprintf("%v", k)] = v
 		}
 		return result, true
 	case *ir.Select:
 		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
+		}
+		if s, ok := recv.(*interp.Struct); ok {
+			if v, exists := s.Get(x.Field); exists {
+				return v, true
+			}
 		}
 		if m, ok := recv.(map[string]any); ok {
 			v, exists := m[x.Field]
@@ -239,8 +259,11 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 }
 
 func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
-	if member, ok := enumMemberOf(x); ok {
-		return member, true
+	// An enum member is its name, which is what the interpreter holds for one
+	// too. Which enum that name belongs to is the position's type, and
+	// irFromValue reads the member back off it.
+	if x.Member != "" {
+		return x.Member, true
 	}
 	// Const variable — evaluate its initializer, except where the compiler
 	// supplies the value. The build target is keyed off the #[builtin] mark
@@ -277,15 +300,6 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	for _, a := range call.Args {
 		v, ok := evalExpr(a.Value, ctx)
 		if !ok {
-			return nil, false
-		}
-		// An enumMember is meaningful only to this package's own comparison
-		// folding. Neither the body interpreter (which spells a member as its
-		// bare name) nor the native-call encoder knows the type, so a call
-		// taking one is left unfolded. That costs nothing: before members
-		// became const-evaluable such a call had a non-const argument and was
-		// not folded either.
-		if _, isEnum := v.(enumMember); isEnum {
 			return nil, false
 		}
 		args = append(args, v)
@@ -349,10 +363,10 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 
 	// Try file:// scheme functions.
 	for _, f := range ns.Funcs {
-		if f.Name == name && f.NativePkg == "file" {
+		if f.Name == name && f.Foreign.Path == "file" {
 			if len(args) == 1 {
 				if filename, ok := args[0].(string); ok {
-					return evalFileFunc(f.NativeName, ns.ImportPath, filename, ctx)
+					return evalFileFunc(f.Foreign.Name, ns.ImportPath, filename, ctx)
 				}
 			}
 		}
@@ -368,40 +382,6 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 	return evalExpr(e, ctx)
 }
 
-// foldPureGoCall answers a pure go:// call with the checked IR of its
-// compile-time value. This is the folded form: it is what the checker would
-// have produced for the same value written as a literal, so a struct keeps its
-// Def and a whole float stays a float. evalNativeCall reaches the same result
-// through the value model, for the callers that need a value rather than an
-// expression.
-func foldPureGoCall(call *ir.Call, ctx *evalCtx) (ir.Expr, bool) {
-	if !isConstExpr(call, ctx) {
-		return nil, false
-	}
-	name, ns, ok := nativeCallTarget(call, ctx)
-	if !ok {
-		return nil, false
-	}
-	args := make([]any, 0, len(call.Args))
-	for _, a := range call.Args {
-		v, ok := evalExpr(a.Value, ctx)
-		if !ok {
-			return nil, false
-		}
-		// An enumMember is meaningful only to this package's own comparison
-		// folding. Neither the body interpreter (which spells a member as its
-		// bare name) nor the native-call encoder knows the type, so a call
-		// taking one is left unfolded. That costs nothing: before members
-		// became const-evaluable such a call had a non-const argument and was
-		// not folded either.
-		if _, isEnum := v.(enumMember); isEnum {
-			return nil, false
-		}
-		args = append(args, v)
-	}
-	return evalPureGoCall(call, name, ns, args, ctx)
-}
-
 // evalPureGoCall requests the compile-time value of one pure non-file scheme
 // function and returns its checked IR.
 func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any, ctx *evalCtx) (ir.Expr, bool) {
@@ -411,7 +391,7 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 	alias := call.AST.Func.(*ast.SelectExpr).Operand.(*ast.IdentExpr).Name
 	qualName := alias + "." + name
 	for _, f := range ns.Funcs {
-		if f.Name != name || f.Purity != ir.PurityPure || f.NativePkg == "file" {
+		if f.Name != name || f.Purity != ir.PurityPure || f.Foreign.Path == "file" {
 			continue
 		}
 		scheme := ctx.nativeSchemes[alias]
@@ -520,49 +500,6 @@ func parseLiteral(lit *ir.Literal) any {
 
 // irLiteral converts a Go value back to an IR Literal.
 // For strings, Raw stores the unquoted content (the formatter adds %q quoting).
-// enumMember is the folded value of a reference to an enum member declared in
-// SNGL. It is deliberately its own type rather than the bare member name: a
-// member has no literal form — its canonical IR is the Ident that already
-// holds it — so neither irLiteral nor irFromValue can represent one, they both
-// report nil, and foldExpr leaves the node standing. A bare string here would
-// instead be rebuilt as a string literal, handing codegen a string where the
-// enum type is required.
-//
-// The type is comparable, which is all a `==` or `!=` between two members
-// needs: numericOrNativeEq falls through to Go equality for it.
-//
-// A foreign enum (a TS one reached through js://) is deliberately not covered.
-// Its members are erased to their declared values at runtime, so what folds
-// there is the value itself — an ordinary int or string — and that must keep
-// its literal form. See cmd/sngl/testdata/js_consteval_enum.txt.
-type enumMember struct {
-	def  *ir.EnumDef
-	name string
-}
-
-// enumMemberOf returns the member an Ident refers to when it names a member of
-// a SNGL-declared enum. The checker sets Member for both the qualified form
-// (`Color.red`) and the bare one (`red` where a Color is expected); the
-// declaration comes from the ident's own type, which is where the bare form
-// records it. An enum read from a scheme import carries an importer descriptor
-// in Origin and is left alone, for the reason on enumMember.
-func enumMemberOf(x *ir.Ident) (enumMember, bool) {
-	if x == nil || x.Member == "" {
-		return enumMember{}, false
-	}
-	var def *ir.EnumDef
-	if x.Type != nil && x.Type.Kind == ir.TypeEnum {
-		def, _ = x.Type.Decl.(*ir.EnumDef)
-	}
-	if def == nil {
-		def, _ = x.Sym.(*ir.EnumDef)
-	}
-	if def == nil || def.Origin != nil {
-		return enumMember{}, false
-	}
-	return enumMember{def: def, name: x.Member}, true
-}
-
 func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	switch v := val.(type) {
 	case string:

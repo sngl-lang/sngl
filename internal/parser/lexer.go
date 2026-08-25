@@ -745,7 +745,17 @@ func dedent(s string) string {
 // Tokenize scans the entire source and returns all tokens up to (and including) EOF.
 // Lexer errors are returned separately.
 func Tokenize(src string) (tokens []Token, errs []string) {
-	l := newLexer(src)
+	return scanAll(newLexer(src), nil)
+}
+
+// TokenizeNativeValue scans src as one encoded native value. The leading
+// NATIVE_VALUE token is the mode itself: it is what the grammar's native-value
+// alternative predicts on, and no source text lexes to it.
+func TokenizeNativeValue(src string) (tokens []Token, errs []string) {
+	return scanAll(newLexer(src), []Token{{Type: NATIVE_VALUE, Line: 1, Column: 1}})
+}
+
+func scanAll(l *lexer, tokens []Token) ([]Token, []string) {
 	for {
 		tok := l.NextToken()
 		tokens = append(tokens, tok)

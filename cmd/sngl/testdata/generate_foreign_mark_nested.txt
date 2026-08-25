@@ -1,0 +1,63 @@
+# A #[foreign] mark means the same thing wherever a declaration can be
+# written, not only at the top of a file. A struct declared in a component
+# body is hoisted to package scope and reaches codegen the same way, so the
+# mark on it and on its field has to reach codegen too.
+#
+# The mark used to be dropped there: the macro pass reached the document and a
+# struct's body and nothing else, so the attribute wrapper survived into the
+# checker — which switches over statements and matched none of its cases. The
+# declaration was never registered, and the name it binds came back undefined.
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+grep 'Title:' out/index.html
+! grep 'title:' out/index.html
+
+# A platform block is the other body a declaration can be written in.
+sngl generate --lang=none --platform=html --out=outp platform.sngl
+grep 'Title:' outp/index.html
+! grep 'title:' outp/index.html
+
+# A component-level func carrying the mark resolves too: the symptom was the
+# call site reporting the name it declares as undefined.
+sngl check fn.sngl
+stdout 'ok'
+
+-- app.sngl --
+import . "sngl://std"
+
+component main {
+    #[foreign("js://example.com/api", "Entry")]
+    struct Entry {
+        #[foreign("Title")]
+        title string
+    }
+
+    var e = Entry{title = "hello"}
+    text(value=e.title)
+}
+
+-- platform.sngl --
+import . "sngl://std"
+
+platform html {
+    #[foreign("js://example.com/api", "Entry")]
+    struct Entry {
+        #[foreign("Title")]
+        title string
+    }
+}
+
+component main {
+    var e = Entry{title = "hello"}
+    text(value=e.title)
+}
+
+-- fn.sngl --
+import . "sngl://std"
+
+component main {
+    #[foreign("js://./api", "compute", pure)]
+    func compute(a int, b int) => a + b
+
+    text(value=string(compute(2, 3)))
+}

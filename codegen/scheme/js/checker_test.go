@@ -128,10 +128,10 @@ func TestUnusableSymbolRejected(t *testing.T) {
 	if len(imp.Funcs) != 1 {
 		t.Fatalf("Funcs: %d, want 1", len(imp.Funcs))
 	}
-	if imp.Funcs[0].Unusable == "" {
-		t.Errorf("tup.Unusable empty; expected tuple-not-supported message")
+	if imp.Funcs[0].Foreign.Unusable == "" {
+		t.Errorf("tup.Foreign.Unusable empty; expected tuple-not-supported message")
 	}
-	if !strings.Contains(imp.Funcs[0].Unusable, "tuple") {
-		t.Errorf("tup.Unusable = %q, want tuple mention", imp.Funcs[0].Unusable)
+	if !strings.Contains(imp.Funcs[0].Foreign.Unusable, "tuple") {
+		t.Errorf("tup.Foreign.Unusable = %q, want tuple mention", imp.Funcs[0].Foreign.Unusable)
 	}
 }

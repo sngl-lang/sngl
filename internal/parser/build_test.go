@@ -966,3 +966,18 @@ func TestParseTestdata(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatStructFieldAttr(t *testing.T) {
+	// A field mark is part of the field. If the formatter dropped it, `sngl
+	// fmt` would silently delete a codegen fact from a source file.
+	src := "struct Entry {\n    #[foreign(\"Title\")]\n    title string\n}"
+	doc, err := Parse("test.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := Format(doc)
+	want := src + "\n"
+	if got != want {
+		t.Errorf("format round-trip mismatch:\ngot:  %q\nwant: %q", got, want)
+	}
+}

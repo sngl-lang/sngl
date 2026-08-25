@@ -419,9 +419,9 @@ func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
 	var reason string
 	switch s := sym.(type) {
 	case *ir.Func:
-		reason = s.Unusable
+		reason = s.Foreign.Unusable
 	case *ir.Var:
-		reason = s.Unusable
+		reason = s.Foreign.Unusable
 	}
 	if reason != "" {
 		c.error(pos, "%s cannot be used: %s", name, reason)
@@ -1539,8 +1539,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
-						if f.Unusable != "" {
-							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Unusable)
+						if f.Foreign.Unusable != "" {
+							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Foreign.Unusable)
 						}
 						fieldType := f.Type
 						if typeArgBindings != nil {
@@ -1660,12 +1660,16 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// Look up struct type.
 	var sd *ir.StructDef
 	if c.nativeValues {
-		// The name is the foreign type's, which binds nothing here; the
-		// declaration is the one the importer built, reached through the
-		// expected type. Comparing the two names is the only check that the
-		// encoder and the importer read the same Go type.
+		// The declaration is the one the importer built: named by the value
+		// itself where its runtime could say which type it was, and otherwise
+		// reached through the expected type.
 		sd = expectedStructDef(c.expected)
-		if sd != nil && x.Name != "" && x.Name != sd.Name {
+		if x.Native != nil {
+			var bad bool
+			if bad, sd = c.nativeStructDef(x, sd); bad {
+				return &ir.Literal{Type: TypDyn}
+			}
+		} else if sd != nil && x.Name != "" && x.Name != sd.Name {
 			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
 			return &ir.Literal{Type: TypDyn}
 		}
@@ -2436,7 +2440,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 // checkStmt type-checks a single statement and returns its IR form.
 // Returns nil for declarations (registered on scope) and skipped nodes.
 func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
-	switch x := s.(type) {
+	switch x := ast.UnwrapStmt(s).(type) {
 	case *ast.AssignStmt:
 		targetExpr := c.checkExpr(x.Target)
 		targetType := exprType(targetExpr)
@@ -2857,8 +2861,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.Comment:
 		return nil
 	case *ast.DisabledDecl:
-		return nil
-	case *ast.AttrDecl:
 		return nil
 	}
 	return nil

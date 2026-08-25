@@ -80,7 +80,7 @@ func TestNativeEnumValue(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := checker.CheckNativeValue(tc.value, tc.want)
+			got, err := checker.CheckNativeValue(tc.value, tc.want, nil)
 			if tc.errWant != "" {
 				if err == nil {
 					t.Fatalf("got %#v, want error %q", got, tc.errWant)

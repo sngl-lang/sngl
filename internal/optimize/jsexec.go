@@ -31,7 +31,7 @@ const nodeBin = "node"
 // way generated code would.
 func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 	if len(args) != len(f.Params) {
-		return nil, fmt.Errorf("%s takes %d arguments, got %d", f.NativeName, len(f.Params), len(args))
+		return nil, fmt.Errorf("%s takes %d arguments, got %d", f.Foreign.Name, len(f.Params), len(args))
 	}
 	if len(args) == 0 {
 		return nil, nil
@@ -41,11 +41,11 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 	for i, a := range args {
 		e := irFromValue(a, f.Params[i].Type)
 		if e == nil {
-			return nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
+			return nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.Foreign.Name, a)
 		}
 		src := jc.EvalExpr(e)
 		if strings.TrimSpace(src) == "" {
-			return nil, fmt.Errorf("argument %d of %s has no JavaScript form", i, f.NativeName)
+			return nil, fmt.Errorf("argument %d of %s has no JavaScript form", i, f.Foreign.Name)
 		}
 		out[i] = src
 	}
@@ -59,7 +59,7 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 // path's binary-cache machinery has anything worth caching. That also means the
 // generated directory needs no stable name — its only job is to hold the
 // program until it has run.
-func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
@@ -113,7 +113,7 @@ func execJSConstEval(dir string, reqs []*nativeRequest) (map[string]ir.Expr, map
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	return parseConstResults(resultPath, results, wantTypes(reqs))
+	return parseNativeResults(resultPath, results, wantTypes(reqs), types)
 }
 
 // bundleJSConstEval transpiles the program and everything it imports into one

@@ -191,11 +191,12 @@ var intrinsics = map[string]nativeFunc{
 
 	// --- color ---
 	"color.hex": func(args []any) (any, error) {
-		if m, ok := args[0].(map[string]any); ok {
-			r := clampByte(ToInt(m["r"]))
-			g := clampByte(ToInt(m["g"]))
-			b := clampByte(ToInt(m["b"]))
-			a := ToInt(m["a"])
+		if m, ok := args[0].(*Struct); ok {
+			field := func(name string) any { v, _ := m.Get(name); return v }
+			r := clampByte(ToInt(field("r")))
+			g := clampByte(ToInt(field("g")))
+			b := clampByte(ToInt(field("b")))
+			a := ToInt(field("a"))
 			if a == 255 {
 				return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
 			}
@@ -263,41 +264,12 @@ var intrinsics = map[string]nativeFunc{
 	},
 }
 
-// colorHexToStruct converts a hex color string like "#ff0000" to a Color struct map.
-func colorHexToStruct(hex string) map[string]any {
-	r, g, b, a := 0, 0, 0, 255
-	if len(hex) >= 7 && hex[0] == '#' {
-		r = hexToByte(hex[1:3])
-		g = hexToByte(hex[3:5])
-		b = hexToByte(hex[5:7])
-	}
-	if len(hex) >= 9 {
-		a = hexToByte(hex[7:9])
-	}
-	return map[string]any{"r": r, "g": g, "b": b, "a": a}
-}
-
 func clampByte(v int) int {
 	if v < 0 {
 		return 0
 	}
 	if v > 255 {
 		return 255
-	}
-	return v
-}
-
-func hexToByte(s string) int {
-	v := 0
-	for _, c := range s {
-		v *= 16
-		if c >= '0' && c <= '9' {
-			v += int(c - '0')
-		} else if c >= 'a' && c <= 'f' {
-			v += int(c-'a') + 10
-		} else if c >= 'A' && c <= 'F' {
-			v += int(c-'A') + 10
-		}
 	}
 	return v
 }

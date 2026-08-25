@@ -39,8 +39,8 @@ func TestGoImporter_Resolve(t *testing.T) {
 		if want := wantFields[f.Name]; f.Type == nil || f.Type.Kind != want {
 			t.Errorf("field %q type = %v, want %v", f.Name, f.Type, want)
 		}
-		if f.Unusable != "" {
-			t.Errorf("field %q unexpectedly unusable: %s", f.Name, f.Unusable)
+		if f.Foreign.Unusable != "" {
+			t.Errorf("field %q unexpectedly unusable: %s", f.Name, f.Foreign.Unusable)
 		}
 	}
 
@@ -53,10 +53,10 @@ func TestGoImporter_Resolve(t *testing.T) {
 	for _, f := range bag.Fields {
 		bagFields[f.Name] = f
 	}
-	if okF := bagFields["ok"]; okF == nil || okF.Unusable != "" {
+	if okF := bagFields["ok"]; okF == nil || okF.Foreign.Unusable != "" {
 		t.Errorf("Bag.ok should be usable, got %+v", okF)
 	}
-	if bad := bagFields["bad"]; bad == nil || bad.Unusable == "" {
+	if bad := bagFields["bad"]; bad == nil || bad.Foreign.Unusable == "" {
 		t.Error("Bag.bad should be unusable")
 	}
 
@@ -73,8 +73,8 @@ func TestGoImporter_Resolve(t *testing.T) {
 	if !ok {
 		t.Fatal("missing func FormatDate")
 	}
-	if fd.Unusable != "" {
-		t.Errorf("FormatDate.Unusable = %q, want empty", fd.Unusable)
+	if fd.Foreign.Unusable != "" {
+		t.Errorf("FormatDate.Foreign.Unusable = %q, want empty", fd.Foreign.Unusable)
 	}
 	if len(fd.Params) != 1 || fd.Params[0].Name != "d" || fd.Params[0].Type.Kind != ir.TypeString {
 		t.Errorf("FormatDate.Params = %+v, want [{d string}]", fd.Params)
@@ -82,8 +82,8 @@ func TestGoImporter_Resolve(t *testing.T) {
 	if fd.Return == nil || fd.Return.Kind != ir.TypeString {
 		t.Errorf("FormatDate.Return = %v, want string", fd.Return)
 	}
-	if fd.NativeName != "testpkg.FormatDate" {
-		t.Errorf("FormatDate.NativeName = %q", fd.NativeName)
+	if fd.Foreign.Name != "testpkg.FormatDate" {
+		t.Errorf("FormatDate.Foreign.Name = %q", fd.Foreign.Name)
 	}
 
 	// SaveTodo: void return, param is the Todo struct (referential).
@@ -138,10 +138,10 @@ func TestGoImporter_Resolve(t *testing.T) {
 	}
 
 	// MultiReturn and ReturnsMap: unusable.
-	if mr := funcs["MultiReturn"]; mr == nil || mr.Unusable == "" {
+	if mr := funcs["MultiReturn"]; mr == nil || mr.Foreign.Unusable == "" {
 		t.Error("MultiReturn should be unusable")
 	}
-	if rm := funcs["ReturnsMap"]; rm == nil || rm.Unusable == "" {
+	if rm := funcs["ReturnsMap"]; rm == nil || rm.Foreign.Unusable == "" {
 		t.Error("ReturnsMap should be unusable")
 	}
 
@@ -149,8 +149,8 @@ func TestGoImporter_Resolve(t *testing.T) {
 	count, ok := vars["Count"]
 	if !ok {
 		t.Error("missing var Count")
-	} else if count.Unusable != "" {
-		t.Errorf("Count.Unusable = %q, want empty", count.Unusable)
+	} else if count.Foreign.Unusable != "" {
+		t.Errorf("Count.Foreign.Unusable = %q, want empty", count.Foreign.Unusable)
 	}
 
 	// Interface field/param: exposed as dyn, still usable.
@@ -162,15 +162,15 @@ func TestGoImporter_Resolve(t *testing.T) {
 		t.Fatalf("Carrier fields = %d, want 1", len(carrier.Fields))
 	}
 	h := carrier.Fields[0]
-	if h.Type.Kind != ir.TypeDyn || h.Unusable != "" {
-		t.Errorf("Carrier.handler type=%v unusable=%q, want dyn/empty", h.Type, h.Unusable)
+	if h.Type.Kind != ir.TypeDyn || h.Foreign.Unusable != "" {
+		t.Errorf("Carrier.handler type=%v unusable=%q, want dyn/empty", h.Type, h.Foreign.Unusable)
 	}
 	wi, ok := funcs["WithIface"]
 	if !ok {
 		t.Fatal("missing func WithIface")
 	}
-	if wi.Unusable != "" {
-		t.Errorf("WithIface.Unusable = %q", wi.Unusable)
+	if wi.Foreign.Unusable != "" {
+		t.Errorf("WithIface.Foreign.Unusable = %q", wi.Foreign.Unusable)
 	}
 	if len(wi.Params) != 1 || wi.Params[0].Type.Kind != ir.TypeDyn {
 		t.Errorf("WithIface.Params = %+v, want dyn", wi.Params)

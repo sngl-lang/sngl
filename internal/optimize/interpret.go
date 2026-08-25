@@ -9,39 +9,56 @@ import (
 // depth makes the fold fail silently — the original ir.Call is preserved.
 const maxInterpDepth = 256
 
-// irFromValue converts a Go-side runtime value (as produced by the
-// interp package) back into an IR expression. Primitives go through
-// irLiteral; maps become StructLits; slices become ListLits.
+// irFromValue converts a Go-side runtime value (as produced by the interp
+// package) back into an IR expression. Primitives go through irLiteral; struct
+// values become StructLits, maps MapLitIRs, slices ListLits.
 //
-// When typ is non-nil and represents a known struct type, the returned
-// StructLit carries Type+Def matching it. Otherwise, the StructLit is
-// "naked" (Def=nil); downstream consumers that need the Def must look
-// it up themselves.
+// typ is the type of the position the expression is going into. A value that
+// says what it is outranks it — a struct held in a `dyn` field is still that
+// struct, and Go names it by its own type — while a value that does not (a
+// bare slice or map) takes the position's, so a list of Item read through a
+// name declared list<dyn> is still emitted as []any.
+//
+// What the value carries beyond its type — the declaration, and the order its
+// fields were checked in — typ cannot supply at all, and is kept.
 func irFromValue(val any, typ *ir.Type) ir.Expr {
+	if m := enumMemberIdent(val, typ); m != nil {
+		return m
+	}
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
-	case bool, int, float64, string:
+	case bool, int, uint64, float64, string:
 		return irLiteral(v, typ)
-	case map[string]any:
-		var sd *ir.StructDef
-		if typ != nil && typ.Kind == ir.TypeStruct {
-			if d, ok := typ.Decl.(*ir.StructDef); ok {
-				sd = d
-			}
+	case *interp.Struct:
+		sd, t := v.Def, v.Type
+		if sd == nil {
+			sd = expectedStructDef(typ)
 		}
-		fields := make([]ir.FieldInit, 0, len(v))
-		for _, k := range sortedMapKeys(v) {
+		if t == nil {
+			t = typ
+		}
+		fields := make([]ir.FieldInit, 0, len(v.Fields))
+		for _, f := range v.Fields {
 			fields = append(fields, ir.FieldInit{
-				Name:  k,
-				Value: irFromValue(v[k], structFieldType(sd, k)),
+				Name:  f.Name,
+				Value: irFromValue(f.Value, structFieldType(sd, f.Name)),
 			})
 		}
-		return &ir.StructLit{
-			Type:   typ,
-			Def:    sd,
-			Fields: fields,
+		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
+	case map[string]any:
+		var entries []ir.MapEntry
+		for _, k := range sortedMapKeys(v) {
+			var valType *ir.Type
+			if typ != nil && typ.Kind == ir.TypeMap && len(typ.Elems) == 2 {
+				valType = typ.Elems[1]
+			}
+			entries = append(entries, ir.MapEntry{
+				Key:   &ir.Literal{Type: ir.TypString, Raw: k},
+				Value: irFromValue(v[k], valType),
+			})
 		}
+		return &ir.MapLitIR{Type: typ, Entries: entries}
 	case []any:
 		var elemType *ir.Type
 		if typ != nil && (typ.Kind == ir.TypeList || typ.Kind == ir.TypeIter) && len(typ.Elems) > 0 {
@@ -96,7 +113,7 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 
 	copiedArgs := make([]any, len(args))
 	for i, a := range args {
-		copiedArgs[i] = deepCopyValue(a)
+		copiedArgs[i] = interp.CloneValue(a)
 	}
 
 	result, err := env.CallUserFuncValues(fn, copiedArgs)
@@ -126,7 +143,7 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		}
 		switch x := e.(type) {
 		case *ir.Call:
-			if x.Func == nil || x.Func.NativePkg != "" {
+			if x.Func == nil || x.Func.Foreign.Path != "" {
 				hasNative = true
 				return
 			}
@@ -217,27 +234,6 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 	return hasNative
 }
 
-// deepCopyValue clones composite values (map[string]any, []any) so callee
-// mutations during interp evaluation can't corrupt cached const-eval
-// results held by the optimizer in ctx.values.
-func deepCopyValue(v any) any {
-	switch x := v.(type) {
-	case map[string]any:
-		c := make(map[string]any, len(x))
-		for k, val := range x {
-			c[k] = deepCopyValue(val)
-		}
-		return c
-	case []any:
-		c := make([]any, len(x))
-		for i, val := range x {
-			c[i] = deepCopyValue(val)
-		}
-		return c
-	}
-	return v
-}
-
 // sortedMapKeys returns the keys of m sorted alphabetically.
 func sortedMapKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
@@ -254,9 +250,39 @@ func sortedMapKeys(m map[string]any) []string {
 	return keys
 }
 
-// structFieldType returns the declared type of field name on sd, or nil
-// when sd is nil or the field isn't found. Used by irFromValue to keep
-// per-field type info when reconstructing folded struct literals.
+// enumMemberIdent rebuilds the member reference an enum-typed value stands
+// for. A member is its name in the value model, so the declaration the
+// position names is what says which member that is. A name that matches none
+// is not a member of this enum and stays the string it is.
+func enumMemberIdent(val any, typ *ir.Type) ir.Expr {
+	name, ok := val.(string)
+	if !ok || typ == nil || typ.Kind != ir.TypeEnum {
+		return nil
+	}
+	ed, _ := typ.Decl.(*ir.EnumDef)
+	if ed == nil {
+		return nil
+	}
+	for _, m := range ed.Members {
+		if m.Name == name {
+			return &ir.Ident{Type: typ, Name: m.Name, Member: m.Name}
+		}
+	}
+	return nil
+}
+
+// expectedStructDef returns the struct declaration t names, or nil.
+func expectedStructDef(t *ir.Type) *ir.StructDef {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return sd
+}
+
+// structFieldType returns the declared type of field name on sd, or nil when
+// sd is nil or the field isn't found. Used by irFromValue to keep per-field
+// type info when reconstructing folded composites.
 func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 	if sd == nil {
 		return nil

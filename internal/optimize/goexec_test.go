@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -35,12 +36,11 @@ func projectDir() string {
 
 func purepkgFunc(name string, params []*ir.Param, ret *ir.Type) *ir.Func {
 	return &ir.Func{
-		Name:       name,
-		NativeName: "purepkg." + name,
-		NativePkg:  "purepkg",
-		Purity:     ir.PurityPure,
-		Params:     params,
-		Return:     ret,
+		Name:    name,
+		Foreign: ir.Foreign{Name: "purepkg." + name, Path: "purepkg"},
+		Purity:  ir.PurityPure,
+		Params:  params,
+		Return:  ret,
 	}
 }
 
@@ -67,7 +67,26 @@ func purepkgCtx(dir string) *evalCtx {
 			Funcs:      []*ir.Func{fnDouble, fnGreet, fnBoom, fnJoin, purepkgFunc("Nothing", nil, nil)},
 		}},
 		nativeSchemes: map[string]string{"purepkg": "go"},
+		// pkg carries the real import, whose struct declarations are what a
+		// value naming its own type resolves against; the hand-built
+		// NativeImport above declares only funcs.
+		pkg: purepkgPackage(),
 	}
+}
+
+// purepkgPackage is a package importing purepkg through the real go://
+// importer, or nil where the import does not resolve — the same condition
+// importedFunc skips on.
+func purepkgPackage() *ir.Package {
+	ni, err := purepkgImport()
+	if err != nil {
+		return nil
+	}
+	return &ir.Package{Imports: []*ir.Import{{
+		Path:   "go://" + purepkgPath,
+		Alias:  "purepkg",
+		Native: ni,
+	}}}
 }
 
 // nextRound is the same compilation's next fold pass: a fresh request set over
@@ -88,17 +107,17 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	t.Helper()
 	for _, c := range calls {
 		if _, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args); state == nativeReady || err != nil {
-			t.Logf("%s resolved before the batch ran: %v", c.fn.NativeName, err)
+			t.Logf("%s resolved before the batch ran: %v", c.fn.Foreign.Name, err)
 		}
 	}
 	if len(ctx.native.order) > 0 {
-		runNativeRequests(ctx.evalCache(), ctx.dir, ctx.native.order)
+		runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order)
 	}
 	out := make([]constResult, len(calls))
 	for i, c := range calls {
 		v, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args)
 		if state == nativePending {
-			t.Fatalf("%s still pending after its batch ran", c.fn.NativeName)
+			t.Fatalf("%s still pending after its batch ran", c.fn.Foreign.Name)
 		}
 		out[i] = constResult{expr: v, err: err}
 	}
@@ -627,7 +646,10 @@ func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
 // compile and every other value in the batch would go with it.
 func TestStructArgIsRefused(t *testing.T) {
 	f := importedFunc(t, "Describe")
-	_, _, err := renderGoArgs(f, []any{map[string]any{"Name": "a", "Value": 1}})
+	item := interp.NewStruct(nil, f.Params[0].Type)
+	item.Set("name", "a")
+	item.Set("value", 1)
+	_, _, err := renderGoArgs(f, []any{item})
 	if err == nil {
 		t.Fatal("a struct argument was rendered")
 	}
@@ -687,7 +709,7 @@ func TestBatchFailureIsNotCached(t *testing.T) {
 		ret:        ir.TypString,
 	}
 	cache := NewEvalCache()
-	if err := runNativeRequests(cache, t.TempDir(), []*nativeRequest{req}); err == nil {
+	if err := runNativeRequests(cache, t.TempDir(), nil, []*nativeRequest{req}); err == nil {
 		t.Fatal("the evaluator built in a directory with no module")
 	}
 	if _, cached := cache.load(req.key); cached {

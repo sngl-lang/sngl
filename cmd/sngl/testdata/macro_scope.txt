@@ -25,9 +25,10 @@ sngl check aliased.sngl
 stdout 'aliased.sngl: ok'
 
 # A lib package that declares no macros says so, rather than reporting the
-# mark as an unknown package.
+# mark as an unknown package. sngl://builtin is the one left that declares
+# none — std carries #[foreign].
 ! sngl check no_macros.sngl
-stderr 'package "sngl://std" declares no macros'
+stderr 'package "sngl://builtin" declares no macros'
 
 -- no_import.sngl --
 #[draw.shape]
@@ -67,7 +68,7 @@ component main {
     }
 }
 -- no_macros.sngl --
-import std "sngl://std"
+import b "sngl://builtin"
 
-#[std.shape]
+#[b.shape]
 component blob(x float, y float) {}

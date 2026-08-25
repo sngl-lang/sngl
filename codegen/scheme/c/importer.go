@@ -190,16 +190,15 @@ func extractDeclarations(ast *cc.AST, importPath string) (*ir.NativeImport, erro
 
 func extractFunc(d *cc.Declarator, name string, ft *cc.FunctionType, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Func {
 	fn := &ir.Func{
-		Name:       name,
-		NativePkg:  "C",
-		NativeName: "C." + name,
+		Name:    name,
+		Foreign: ir.Foreign{Path: "C", Name: "C." + name},
 	}
 
 	// Return type.
 	if ft.Result() != nil && ft.Result().Kind() != cc.Void {
 		ret := mapCType(ft.Result(), ast, structs)
 		if ret == nil {
-			fn.Unusable = fmt.Sprintf("C function %s has unmappable return type", name)
+			fn.Foreign.Unusable = fmt.Sprintf("C function %s has unmappable return type", name)
 			return fn
 		}
 		fn.Return = ret
@@ -209,7 +208,7 @@ func extractFunc(d *cc.Declarator, name string, ft *cc.FunctionType, ast *cc.AST
 	for _, p := range ft.Parameters() {
 		pt := mapCType(p.Type(), ast, structs)
 		if pt == nil {
-			fn.Unusable = fmt.Sprintf("C function %s param has unmappable type", name)
+			fn.Foreign.Unusable = fmt.Sprintf("C function %s param has unmappable type", name)
 			return fn
 		}
 		pname := p.Name()

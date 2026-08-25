@@ -85,6 +85,7 @@
 # i18n_case_start  0x58  I18N_CASE_START   {body{    (opening segment with nested placeholder)
 # i18n_case_end    0x59  I18N_CASE_END     }body}    (closing segment of case body)
 # attr_open        0x5A  ATTR_OPEN         #[        (start of macro attribute)
+# native_value     0x5B  NATIVE_VALUE      (native-value mode sentinel)
 
 # ── Terminal definitions ─────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ i18n_case_full    = `\x57` .
 i18n_case_start   = `\x58` .
 i18n_case_end     = `\x59` .
 attr_open         = `\x5A` .
+native_value      = `\x5B` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
@@ -201,7 +203,10 @@ MsgBody = i18n_case_full
 
 MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
 
-Document = { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
+# A native value — one expression an encoder wrote, see checker.CheckNativeValue
+# — is the second thing a Document can be. Only the native-value lexer emits the
+# sentinel, so ordinary source can never take that branch.
+Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -250,7 +255,9 @@ ImportDecl = kw_import [ ident | dot ] str_full [ fat_arrow str_full ] .
 
 StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace [ StructBodyItem { semi StructBodyItem } [ semi ] ] rbrace .
 
-StructBodyItem = FuncDecl | StructField .
+StructBodyItem = { MacroAttr } StructBodyDecl .
+
+StructBodyDecl = FuncDecl | StructField .
 
 StructField = IdentList Type [ assign Expr ] .
 
@@ -498,8 +505,14 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | at ident
+    | ImportExpr StructLitBody
     | ident [ StructLitBody ]
     .
+
+# An import in expression position names a foreign declaration: the string is
+# the scheme import, the selector the type in it. Nothing here holds it to a
+# native-value parse; buildPrimaryInner does.
+ImportExpr = kw_import lparen str_full rparen dot ident .
 
 ListBody = [ ListElem { comma ListElem } [ comma ] ] .
 

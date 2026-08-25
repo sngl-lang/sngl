@@ -78,7 +78,7 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 			// Skip funcs the checker already flagged as unusable — variadic
 			// params, function-typed params, multi-value returns, etc. The
 			// WASM bridge would emit malformed Go for these.
-			if f.Unusable != "" {
+			if f.Foreign.Unusable != "" {
 				continue
 			}
 			// ref<T> is a SNGL-internal mutable-capture handle; it has no

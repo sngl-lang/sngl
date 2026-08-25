@@ -7,25 +7,30 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // CheckNativeValue checks e against want and returns its IR form.
 //
-// e is a value a native-language encoder wrote as SNGL source — see
-// pkg/go/consteval — so it differs from hand-written source in two ways that
-// only the expected type can settle. A struct literal names the foreign type
-// (`Item{...}`), which is not a SNGL binding: the declaration comes from want,
-// where the scheme importer put it. And its fields carry the foreign names,
-// which the importer recorded on each StructField as NativeName. Both are
-// resolved off want rather than off the scope, so the result is ordinary
-// checker output: a StructLit with its real Def, a list with its real element
-// type, a literal at the width and unit want asks for.
+// e is a value a native-language encoder wrote — see pkg/go/consteval, and
+// parser.ParseNativeValue for the syntax — so it differs from hand-written
+// source in two ways. A struct literal names the foreign type, which is not a
+// SNGL binding: the declaration comes either from the ref the value carries,
+// looked up in types, or from want, where the scheme importer also put it. And
+// its fields carry the foreign names, which the importer recorded on each
+// StructField as Foreign.Name. Both are resolved that way rather than off the
+// scope, so the result is ordinary checker output: a StructLit with its real
+// Def, a list with its real element type, a literal at the width and unit want
+// asks for.
+//
+// Where the value carries no ref and want is nothing — a func returning
+// []any — there is no declaration to be had, and the value stays dyn.
 //
 // The scope holds nothing but the standard library. An encoded value is data —
 // literals, lists, maps, struct literals and the predeclared true/false/null —
 // so nothing in it can refer to a user declaration.
-func CheckNativeValue(e ast.Expr, want *ir.Type) (ir.Expr, error) {
+func CheckNativeValue(e ast.Expr, want *ir.Type, types ir.NativeDecls) (ir.Expr, error) {
 	if e == nil {
 		return nil, fmt.Errorf("no expression")
 	}
@@ -42,6 +47,8 @@ func CheckNativeValue(e ast.Expr, want *ir.Type) (ir.Expr, error) {
 	}
 	c := nativeValueChecker
 	c.diags = nil
+	c.nativeTypes = types
+	defer func() { c.nativeTypes = nil }()
 	out := c.checkExprExpecting(e, want)
 	if len(c.diags) == 0 && want != nil && out != nil {
 		// The encoder and the importer read the same foreign declaration from
@@ -68,6 +75,33 @@ var (
 	nativeValueMu      sync.Mutex
 	nativeValueChecker *checker
 )
+
+// nativeStructDef resolves the struct declaration an encoded value names,
+// given the expected type it must agree with. It returns the declaration to
+// check the fields against, and whether the two disagreed — which is the
+// encoder and the importer having read different foreign types, a compiler bug
+// that would otherwise reach codegen as a literal of the wrong type.
+//
+// A ref naming a type the program did not import resolves to nothing, and the
+// names are compared instead — all a value from an encoder with no module
+// identity (see pkg/js/consteval) can offer.
+func (c *checker) nativeStructDef(x *ast.StructExpr, want *ir.StructDef) (bad bool, sd *ir.StructDef) {
+	scheme, path := imports.ParseScheme(x.Native.Path)
+	ref := ir.NativeDeclRef{Scheme: scheme, Path: path, Name: x.Native.Name}
+	named, _ := c.nativeTypes[ref].(*ir.StructDef)
+	switch {
+	case named == nil:
+		if want != nil && ref.Name != want.Name {
+			c.error(x.Pos, "encoded value is a %s, but a %s was expected", ref.Name, want.Name)
+			return true, nil
+		}
+		return false, want
+	case want != nil && !named.SymType().Equal(want.SymType()):
+		c.error(x.Pos, "encoded value is a %s, but a %s was expected", ref.Name, want.Name)
+		return true, nil
+	}
+	return false, named
+}
 
 // expectedStructDef returns the struct declaration t names, or nil.
 func expectedStructDef(t *ir.Type) *ir.StructDef {
@@ -180,7 +214,7 @@ func isStringLit(v *ir.Literal) bool {
 // rule, and it lives with the importer.
 func findNativeField(sd *ir.StructDef, nativeName string) *ir.StructField {
 	for _, f := range sd.Fields {
-		if f.NativeName == nativeName {
+		if f.Foreign.Name == nativeName {
 			return f
 		}
 	}

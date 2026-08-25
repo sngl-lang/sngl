@@ -11,12 +11,11 @@ import (
 // asyncNativeImport builds a *ir.NativeImport whose single function is async.
 func asyncNativeImport(scheme, name string) map[string]*ir.NativeImport {
 	fn := &ir.Func{
-		Name:       name,
-		Params:     []*ir.Param{{Name: "url", Type: &ir.Type{Kind: ir.TypeString}}},
-		Return:     &ir.Type{Kind: ir.TypeString},
-		IsAsync:    true,
-		NativePkg:  "api",
-		NativeName: "api." + name,
+		Name:    name,
+		Params:  []*ir.Param{{Name: "url", Type: &ir.Type{Kind: ir.TypeString}}},
+		Return:  &ir.Type{Kind: ir.TypeString},
+		IsAsync: true,
+		Foreign: ir.Foreign{Path: "api", Name: "api." + name},
 	}
 	return map[string]*ir.NativeImport{
 		scheme: {

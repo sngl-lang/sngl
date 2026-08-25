@@ -86,8 +86,8 @@ func TestRegisteredStructTypeIsUsable(t *testing.T) {
 		if f.Name != "Stamped" {
 			continue
 		}
-		if f.Unusable != "" {
-			t.Errorf("a func returning time.Time is unusable: %s", f.Unusable)
+		if f.Foreign.Unusable != "" {
+			t.Errorf("a func returning time.Time is unusable: %s", f.Foreign.Unusable)
 		}
 		return
 	}
