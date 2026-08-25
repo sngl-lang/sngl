@@ -49,7 +49,7 @@ struct ComposableProp {
 // prop values and emits { Name(key1 = val1, ...) } instead of a data value.
 struct Composable {
     name string
-    props list<ComposableProp>;
+    props list<ComposableProp>
 }
 
 // --- Core Layout ---
