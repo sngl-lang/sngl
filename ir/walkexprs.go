@@ -42,11 +42,15 @@ var (
 // owned elsewhere and are deliberately skipped, because visiting them would
 // walk another node's body — once per reference, rewriting it more than once:
 //
-//   - Ident.Sym, Type.Decl, Prop.Sym — the declaration a name resolves to.
+//   - Ident.Sym, Type.Decl, Prop.Sym, LocalVar.Sym — the declaration a name
+//     resolves to.
 //   - Call.Func — the callee, owned by pkg.Funcs; Lambda.Func, Closure.Func,
 //     Timer.Handler and EventHandler.Func are owned and are walked.
 //   - Call.ResolvedHandler — aliases Call.ErrorHandler or a handler owned by
 //     an enclosing boundary or window.
+//   - NodeInst.Component — the component being instantiated, owned by
+//     pkg.Components; the instance owns only its Props, Handlers and Children.
+//   - StructLit.Def — the struct being constructed, owned by pkg.Structs.
 //   - Component.Methods, StructDef/EnumDef/UnitDef.Methods — the same *Funcs
 //     already reached through their owning slice.
 //   - Func.Reads, Func.Writes — analysis results naming Vars owned by a scope.
@@ -55,6 +59,16 @@ var (
 //
 // Type is not descended into at all: it is reached from every typed node, and
 // Type.Decl would lead back out into whole declarations.
+//
+// That list is not a matter of taste, and the reason is worth keeping: the IR
+// is cyclic, and every cycle in it closes through one of those edges. A
+// recursive func reaches itself through Call.Func, a recursive component
+// through NodeInst.Component, a struct method constructing its own type
+// through StructLit.Def, and a scope its parent through Scope.Parent. Drop the
+// reference edges and what is left — what this walk descends into — is a tree.
+// So a cycle reachable by this walk is not something to guard against with a
+// visited set; it is the signal that a reference has been mistaken for
+// ownership.
 func Rewrite(root any, visit func(Node) (Node, error)) error {
 	w := rewriter{visit: visit}
 	w.root(root)
