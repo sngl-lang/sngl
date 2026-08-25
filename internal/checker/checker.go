@@ -558,11 +558,7 @@ func (c *checker) pass1() {
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
 	for _, stmt := range c.doc.Stmts {
-		inner := stmt
-		if attr, ok := stmt.(*ast.AttrDecl); ok {
-			inner = attr.Inner
-		}
-		if imp, ok := inner.(*ast.Import); ok {
+		if imp, ok := ast.UnwrapStmt(stmt).(*ast.Import); ok {
 			c.registerImport(imp)
 		}
 	}
@@ -576,11 +572,7 @@ func (c *checker) pass1() {
 	var structShells []*ir.StructDef
 	var pendingComponents []*ast.ComponentDecl
 	for _, stmt := range c.doc.Stmts {
-		inner := stmt
-		if attr, ok := stmt.(*ast.AttrDecl); ok {
-			inner = attr.Inner
-		}
-		switch s := inner.(type) {
+		switch s := ast.UnwrapStmt(stmt).(type) {
 		case *ast.StructDef:
 			structShells = append(structShells, c.registerStructShell(s))
 		case *ast.EnumDef:
@@ -599,7 +591,7 @@ func (c *checker) pass1() {
 	}
 
 	for _, stmt := range c.doc.Stmts {
-		switch s := stmt.(type) {
+		switch s := ast.UnwrapStmt(stmt).(type) {
 		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 			continue // already registered above
 		case *ast.ConstDecl:
@@ -620,21 +612,6 @@ func (c *checker) pass1() {
 			}
 		case *ast.DisabledDecl:
 			// Skip disabled declarations.
-		case *ast.AttrDecl:
-			switch inner := s.Inner.(type) {
-			case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
-				continue // already registered in pre-pass loops above
-			case *ast.ConstDecl:
-				c.registerConstShells(inner)
-			case *ast.VarDecl:
-				c.registerVars(inner)
-			case *ast.FuncDef:
-				c.registerFunc(inner)
-			case *ast.VisualNode:
-				c.registerRootVisualNode(inner)
-			case *ast.PlatformStmt:
-				c.pass1PlatformStmt(inner)
-			}
 		case *ast.Comment:
 			// Skip comments.
 		default:
@@ -1606,7 +1583,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// IR level (Go and other targets have no per-component type scope).
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
-		switch s := stmt.(type) {
+		switch s := ast.UnwrapStmt(stmt).(type) {
 		case *ast.StructDef:
 			c.registerStruct(s)
 		case *ast.EnumDef:
@@ -2073,7 +2050,7 @@ func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
 		return
 	}
 	for _, stmt := range s.Body.Stmts {
-		switch inner := stmt.(type) {
+		switch inner := ast.UnwrapStmt(stmt).(type) {
 		case *ast.Import:
 			c.registerImport(inner)
 		case *ast.EnumDef:
@@ -2794,7 +2771,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		seenWindowIDs := map[string]bool{}
 		for _, stmt := range comp.AST.Body.Stmts {
-			switch stmt.(type) {
+			switch ast.UnwrapStmt(stmt).(type) {
 			case *ast.ConstDecl, *ast.VarDecl:
 				continue // already checked above
 			case *ast.FuncDef:

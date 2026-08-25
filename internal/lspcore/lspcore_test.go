@@ -271,6 +271,27 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 	}
 }
 
+// The editor checks source the compiler has not run the macro pass over, so
+// the checker meets the attribute wrapper itself. A switch over statements
+// that reads the wrapper matches nothing: the declaration is never registered
+// and every use of it is reported as undefined — a file that builds, underlined
+// in red.
+func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
+	content := `import . "sngl://std"
+
+component main {
+    #[foreign("js://./api", "compute", pure)]
+    func compute(a int, b int) => a + b
+
+    text(value=string(compute(2, 3)))
+}
+`
+	_, diags := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	for _, d := range diags {
+		t.Errorf("marked declaration diagnosed: %s", d.Message)
+	}
+}
+
 func TestAnalyze_ParseError(t *testing.T) {
 	content := "component {"
 	_, diags := lspcore.Analyze(content, "bad.sngl", nil, "", nil)

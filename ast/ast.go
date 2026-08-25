@@ -423,3 +423,13 @@ func UnwrapAttrs[T any](item T) any {
 		x = attr.Inner
 	}
 }
+
+// UnwrapStmt is UnwrapAttrs for a caller that switches over statements, which
+// every statement list a mark may be written in has to do: a switch that reads
+// the wrapper matches nothing and drops the declaration.
+func UnwrapStmt(s Stmt) Stmt {
+	if inner, ok := UnwrapAttrs(s).(Stmt); ok {
+		return inner
+	}
+	return s
+}

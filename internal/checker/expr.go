@@ -2456,7 +2456,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 // checkStmt type-checks a single statement and returns its IR form.
 // Returns nil for declarations (registered on scope) and skipped nodes.
 func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
-	switch x := s.(type) {
+	switch x := ast.UnwrapStmt(s).(type) {
 	case *ast.AssignStmt:
 		targetExpr := c.checkExpr(x.Target)
 		targetType := exprType(targetExpr)
@@ -2877,8 +2877,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.Comment:
 		return nil
 	case *ast.DisabledDecl:
-		return nil
-	case *ast.AttrDecl:
 		return nil
 	}
 	return nil
