@@ -759,8 +759,16 @@ func IRTypeToKt(t *ir.Type) string {
 		// dyn holds anything including null (recursive structs like TreeNode
 		// use `dyn = null` for absent children).
 		return "Any?"
-	default:
+	case ir.TypeVoid, ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam,
+		ir.TypeRef, ir.TypeShape, ir.TypeNative, ir.TypeInvalid:
+		// No first-class Kotlin spelling in emitted code. "Any" is what the
+		// former default arm produced for each of these, so listing them
+		// changes nothing today — it only lets the arm below catch a kind
+		// nobody has considered, which "Any" would otherwise have absorbed
+		// into plausible-looking output.
 		return "Any"
+	default:
+		panic(fmt.Sprintf("IRTypeToKt: unhandled ir.TypeKind %v", t.Kind))
 	}
 }
 

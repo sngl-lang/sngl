@@ -486,8 +486,22 @@ func (t *Type) Equal(other *Type) bool {
 		return t.Sig.Equal(other.Sig)
 	case TypeTypeParam:
 		return t.ParamName == other.ParamName
+	case TypeNative:
+		// A native type's whole identity is the descriptor in Meta: two GTK
+		// widget types differ in nothing else. This arm used to fall through
+		// to the blanket `return true` below, which made every native type
+		// equal — and assignable to — every other.
+		a, aok := t.Meta.(NativeTypeRef)
+		b, bok := other.Meta.(NativeTypeRef)
+		return aok && bok && a == b
+	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeShape, TypeColor, TypeNull, TypeVoid:
+		// Kinds carrying no distinguishing payload: the Kind comparison above
+		// has already settled them. Listed explicitly rather than defaulted so
+		// that a new kind with an identity field cannot be answered "equal" by
+		// a fall-through, which is how TypeNative got through.
+		return true
 	}
-	return true
+	panic(fmt.Sprintf("ir.Type.Equal: unhandled ir.TypeKind %v", t.Kind))
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
