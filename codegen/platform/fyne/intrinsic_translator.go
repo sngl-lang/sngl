@@ -86,7 +86,7 @@ func platformBlueprints() map[string]*fyneBlueprint {
 // fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
 // (in blueprint goFn/goType and the view's literal fallbacks) to its full Go
 // import path. It is the single source of truth for resolving a selector to a
-// path: nativeCall uses it for NativePkg, and the import block uses it to scan
+// path: nativeCall uses it for Foreign.Pkg, and the import block uses it to scan
 // the generated body for framework usage — replacing the old always-on set.
 var fyneFrameworkPkgs = map[string]string{
 	"fmt":       "fmt",
@@ -109,7 +109,7 @@ func fyneImportPath(sel string) string {
 
 // nativeCall builds a Call that gc.EvalExpr renders verbatim. For a
 // dotted name (e.g. "widget.NewLabel"), uses the namespace path with
-// NativePkg/NativeName so the Go renderer emits the qualified name
+// Foreign.Pkg/Foreign.Name so the Go renderer emits the qualified name
 // directly. For a bare name (e.g. "append"), sets only Func.Name.
 func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
@@ -118,8 +118,8 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	}
 	if dot := strings.Index(nativeName, "."); dot > 0 {
 		pkg := nativeName[:dot]
-		// NativePkg must be the full Go import path so platforms can collect
-		// it (gc.Imports()); the selector in NativeName (e.g. "widget" in
+		// Foreign.Pkg must be the full Go import path so platforms can collect
+		// it (gc.Imports()); the selector in Foreign.Name (e.g. "widget" in
 		// "widget.NewLabel") stays the package name. Resolve the known fyne
 		// selectors; std/other selectors pass through unchanged.
 		nativePkg := pkg
@@ -129,7 +129,7 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 		return &ir.Call{
 			Type:     retType,
 			Receiver: &ir.Ident{Name: pkg},
-			Func:     &ir.Func{NativePkg: nativePkg, NativeName: nativeName},
+			Func:     &ir.Func{Foreign: ir.Foreign{Pkg: nativePkg, Name: nativeName}},
 			Args:     callArgs,
 		}
 	}

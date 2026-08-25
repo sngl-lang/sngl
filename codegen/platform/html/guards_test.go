@@ -33,7 +33,7 @@ func backendHandlerPkg() *ir.Package {
 	handler := EventHandlerValue(&ir.Func{Block: []ir.Stmt{
 		&ir.Assign{
 			Target: &ir.Ident{Name: "count"},
-			Value:  &ir.Call{Func: &ir.Func{NativePkg: "example.com/api", Name: "Persist"}},
+			Value:  &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Pkg: "example.com/api"}, Name: "Persist"}},
 		},
 	}})
 	btn := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{handler}}

@@ -216,7 +216,7 @@ func hasBody(f *ir.Func) bool {
 	if f == nil {
 		return false
 	}
-	if f.NativeName != "" || f.NativePkg != "" {
+	if f.Foreign.Name != "" || f.Foreign.Pkg != "" {
 		return false
 	}
 	return len(f.Block) > 0

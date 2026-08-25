@@ -607,7 +607,7 @@ func mapType(t *TypeDetail) TypeDetailView {
 	}
 	if t.Native != nil {
 		v.IsNative = true
-		v.NativeName = t.Native.Native
+		v.NativeName = t.Native.Foreign.Name
 		for _, f := range t.Native.Fields {
 			v.Fields = append(v.Fields, FieldView{
 				Name: f.Name,
@@ -654,7 +654,7 @@ func mapFunc(f *FuncDetail) FuncDetailView {
 	v := FuncDetailView{Name: f.Name, Doc: f.Doc}
 	if f.Native != nil {
 		v.IsNative = true
-		v.NativeName = f.Native.NativeName
+		v.NativeName = f.Native.Foreign.Name
 		for _, p := range f.Native.Params {
 			v.Params = append(v.Params, ParamView{Name: p.Name, Type: p.Type.String()})
 		}
@@ -686,7 +686,7 @@ func mapValue(val *ValueDetail) ValueDetailView {
 	v := ValueDetailView{Name: val.Name, Doc: val.Doc, IsConst: val.IsConst}
 	if val.Native != nil {
 		v.IsNative = true
-		v.NativeName = val.Native.NativeName
+		v.NativeName = val.Native.Foreign.Name
 		if val.Native.Type != nil {
 			v.Type = val.Native.Type.String()
 		}

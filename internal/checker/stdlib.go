@@ -232,10 +232,10 @@ func (c *checker) loadStdlibPackage(pkgName string, ambient bool) *ir.Package {
 	// These annotations ensure that IRTypeToGo emits the qualified Go type
 	// (e.g. "i18n.PluralKey") rather than the plain SNGL name ("PluralKey").
 	for _, sd := range structDefs {
-		if sd.Native == "" {
+		if sd.Foreign.Name == "" {
 			switch sd.Name {
 			case "PluralKey":
-				sd.Native = "i18n.PluralKey"
+				sd.Foreign.Name = "i18n.PluralKey"
 			}
 		}
 	}
@@ -514,7 +514,7 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	// Stdlib funcs are not body-checked, so the usual purity analysis never
 	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
 	// methods (int.min, string.upper, etc.) when called with constant args.
-	// Impure stdlib (alert.show, file.contents, anything with a NativePkg
+	// Impure stdlib (alert.show, file.contents, anything with a Foreign.Pkg
 	// effect) gets its purity overridden later by stdlib.SetImpure or via
 	// scheme registration.
 	if fn.Purity == ir.PurityUnknown {

@@ -126,7 +126,7 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		}
 		switch x := e.(type) {
 		case *ir.Call:
-			if x.Func == nil || x.Func.NativePkg != "" {
+			if x.Func == nil || x.Func.Foreign.Pkg != "" {
 				hasNative = true
 				return
 			}

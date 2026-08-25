@@ -419,9 +419,9 @@ func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
 	var reason string
 	switch s := sym.(type) {
 	case *ir.Func:
-		reason = s.Unusable
+		reason = s.Foreign.Unusable
 	case *ir.Var:
-		reason = s.Unusable
+		reason = s.Foreign.Unusable
 	}
 	if reason != "" {
 		c.error(pos, "%s cannot be used: %s", name, reason)
@@ -1554,8 +1554,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 				for _, f := range sd.Fields {
 					if f.Name == x.Field {
-						if f.Unusable != "" {
-							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Unusable)
+						if f.Foreign.Unusable != "" {
+							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Foreign.Unusable)
 						}
 						fieldType := f.Type
 						if typeArgBindings != nil {

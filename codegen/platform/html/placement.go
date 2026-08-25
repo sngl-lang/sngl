@@ -31,18 +31,18 @@ const (
 
 // funcImportScheme returns the source scheme ("go", "js", …) of the import a
 // native func originates from, or "" if fn is not a native (scheme-imported)
-// func. It maps fn.NativePkg back to the matching ir.Import via
+// func. It maps fn.Foreign.Pkg back to the matching ir.Import via
 // Native.ImportPath, then derives the scheme from the import's AST path —
 // mirroring isBundledImport in codegen/lang/javascript/jshelpers.go.
 func funcImportScheme(pkg *ir.Package, fn *ir.Func) string {
-	if pkg == nil || fn == nil || fn.NativePkg == "" {
+	if pkg == nil || fn == nil || fn.Foreign.Pkg == "" {
 		return ""
 	}
 	for _, imp := range pkg.Imports {
 		if imp == nil || imp.Native == nil || imp.AST == nil {
 			continue
 		}
-		if imp.Native.ImportPath != fn.NativePkg {
+		if imp.Native.ImportPath != fn.Foreign.Pkg {
 			continue
 		}
 		scheme, _ := codegen.SplitScheme(imp.AST.Path)
@@ -230,7 +230,7 @@ func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
 				return ir.SkipDir
 			}
 			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
-				out[nativeFuncKey{importPath: c.Func.NativePkg, name: c.Func.Name}] = true
+				out[nativeFuncKey{importPath: c.Func.Foreign.Pkg, name: c.Func.Name}] = true
 			}
 			return nil
 		})

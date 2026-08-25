@@ -381,13 +381,13 @@ func (v *irValidator) walkVar(va *ir.Var, isConst bool) {
 	}
 	if va.Init != nil {
 		v.walkExpr(va.Init)
-	} else if isConst && va.NativeName == "" {
+	} else if isConst && va.Foreign.Name == "" {
 		v.fail("const has no initializer")
 	}
 }
 
 func (v *irValidator) walkFunc(fn *ir.Func, allowAnonymous bool) {
-	if !allowAnonymous && fn.Name == "" && fn.NativeName == "" {
+	if !allowAnonymous && fn.Name == "" && fn.Foreign.Name == "" {
 		v.fail("func has no name")
 	}
 	for i, p := range fn.Params {

@@ -102,7 +102,7 @@ func isBundledImport(imp *ir.Import) bool {
 }
 
 // isBundledNativePkg reports whether the named native package path
-// (NativePkg / ImportPath) corresponds to a bundled js:// import in pkg.
+// (Foreign.Pkg / ImportPath) corresponds to a bundled js:// import in pkg.
 func isBundledNativePkg(pkg *ir.Package, nativePkg string) bool {
 	if pkg == nil || nativePkg == "" {
 		return false

@@ -35,12 +35,11 @@ func projectDir() string {
 
 func purepkgFunc(name string, params []*ir.Param, ret *ir.Type) *ir.Func {
 	return &ir.Func{
-		Name:       name,
-		NativeName: "purepkg." + name,
-		NativePkg:  "purepkg",
-		Purity:     ir.PurityPure,
-		Params:     params,
-		Return:     ret,
+		Name:    name,
+		Foreign: ir.Foreign{Name: "purepkg." + name, Pkg: "purepkg"},
+		Purity:  ir.PurityPure,
+		Params:  params,
+		Return:  ret,
 	}
 }
 
@@ -107,7 +106,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	t.Helper()
 	for _, c := range calls {
 		if _, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args); state == nativeReady || err != nil {
-			t.Logf("%s resolved before the batch ran: %v", c.fn.NativeName, err)
+			t.Logf("%s resolved before the batch ran: %v", c.fn.Foreign.Name, err)
 		}
 	}
 	if len(ctx.native.order) > 0 {
@@ -117,7 +116,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 	for i, c := range calls {
 		v, state, err := requestPureNativeFunc(ctx, "go", purepkgPath, c.fn, c.args)
 		if state == nativePending {
-			t.Fatalf("%s still pending after its batch ran", c.fn.NativeName)
+			t.Fatalf("%s still pending after its batch ran", c.fn.Foreign.Name)
 		}
 		out[i] = constResult{expr: v, err: err}
 	}

@@ -35,7 +35,7 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 			continue
 		}
 		// cgo imports come in via the c:// scheme (or are tagged
-		// NativePkg=="C" on every Func). Skip either way: cgo enters
+		// Foreign.Pkg=="C" on every Func). Skip either way: cgo enters
 		// generated files via the cgo preamble, not the import block.
 		if imp.AST != nil && strings.HasPrefix(imp.AST.Path, "c://") {
 			continue
@@ -59,7 +59,7 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 }
 
 // isCgoBundle reports whether every function on a NativeImport is tagged
-// NativePkg=="C". Mirrors fyne's pre-existing detection: the c:// scheme
+// Foreign.Pkg=="C". Mirrors fyne's pre-existing detection: the c:// scheme
 // is sometimes stripped before the import reaches codegen, so we look at
 // the Funcs slice as a fallback.
 func isCgoBundle(n *ir.NativeImport) bool {
@@ -67,7 +67,7 @@ func isCgoBundle(n *ir.NativeImport) bool {
 		return false
 	}
 	for _, fn := range n.Funcs {
-		if fn.NativePkg != "C" {
+		if fn.Foreign.Pkg != "C" {
 			return false
 		}
 	}

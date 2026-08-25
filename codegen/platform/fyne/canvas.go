@@ -162,7 +162,7 @@ func newCanvasContextCall(w, h int) *ir.Call {
 	return &ir.Call{
 		Type:     canvasCtxType(),
 		Receiver: &ir.Ident{Name: snglCanvasAlias},
-		Func:     &ir.Func{NativePkg: snglCanvasImportPath, NativeName: snglCanvasAlias + ".New"},
+		Func:     &ir.Func{Foreign: ir.Foreign{Pkg: snglCanvasImportPath, Name: snglCanvasAlias + ".New"}},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(w)}},
 			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(h)}},
@@ -202,7 +202,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	newImg := &ir.Call{
 		Type:     ir.NativeGoPointerOf("canvas.Image"),
 		Receiver: &ir.Ident{Name: "canvas"},
-		Func:     &ir.Func{NativePkg: "fyne.io/fyne/v2/canvas", NativeName: "canvas.NewImageFromImage"},
+		Func:     &ir.Func{Foreign: ir.Foreign{Pkg: "fyne.io/fyne/v2/canvas", Name: "canvas.NewImageFromImage"}},
 		Args:     []ir.CallArg{{Value: methodCall(dcField, "Result", nil, ir.TypDyn)}},
 	}
 	return []ir.Stmt{

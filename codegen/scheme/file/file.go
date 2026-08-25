@@ -50,12 +50,11 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 
 	fileFunc := func(name string) *ir.Func {
 		return &ir.Func{
-			Name:       name,
-			Params:     []*ir.Param{{Name: "name", Type: ir.TypString}},
-			Return:     ir.TypString,
-			Purity:     ir.PurityPure,
-			NativePkg:  "file",
-			NativeName: name,
+			Name:    name,
+			Params:  []*ir.Param{{Name: "name", Type: ir.TypString}},
+			Return:  ir.TypString,
+			Purity:  ir.PurityPure,
+			Foreign: ir.Foreign{Pkg: "file", Name: name},
 		}
 	}
 	return &ir.NativeImport{

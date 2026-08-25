@@ -36,11 +36,10 @@ func loadJSON(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error) {
 	t, structs := g.infer(raw, rootName)
 
 	v := &ir.Var{
-		Name:       sanitizeIdent(base),
-		Type:       t,
-		IsConst:    true,
-		NativePkg:  spec,
-		NativeName: "default",
+		Name:    sanitizeIdent(base),
+		Type:    t,
+		IsConst: true,
+		Foreign: ir.Foreign{Pkg: spec, Name: "default"},
 	}
 	return &ir.NativeImport{
 		ImportPath: spec,
@@ -82,18 +81,17 @@ func (g *jsonGen) inferType(v any, name string) *ir.Type {
 		return ir.ListOf(elemType)
 	case map[string]any:
 		sd := &ir.StructDef{
-			Name:   g.uniqueName(name),
-			Native: name,
-			Origin: jsTypeID{Module: g.path, Name: name},
-			AST:    &ast.StructDef{Pos: g.pos, Name: name},
+			Name:    g.uniqueName(name),
+			Foreign: ir.Foreign{Name: name, Origin: jsTypeID{Module: g.path, Name: name}},
+			AST:     &ast.StructDef{Pos: g.pos, Name: name},
 		}
 		g.structs = append(g.structs, sd)
 		for key, val := range x {
 			fieldType := g.inferType(val, upperFirst(sanitizeIdent(key)))
 			sd.Fields = append(sd.Fields, &ir.StructField{
-				Name:       sanitizeIdent(key),
-				Type:       fieldType,
-				NativeName: key,
+				Name:    sanitizeIdent(key),
+				Type:    fieldType,
+				Foreign: ir.Foreign{Name: key},
 			})
 		}
 		return sd.SymType()

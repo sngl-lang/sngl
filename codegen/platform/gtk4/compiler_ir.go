@@ -977,7 +977,7 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 	if call == nil || call.Func == nil || len(call.Args) == 0 {
 		return false
 	}
-	if call.Func.NativePkg != "C" || !strings.Contains(call.Func.NativeName, "_set_") {
+	if call.Func.Foreign.Pkg != "C" || !strings.Contains(call.Func.Foreign.Name, "_set_") {
 		return false
 	}
 	first := call.Args[0].Value

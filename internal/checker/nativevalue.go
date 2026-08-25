@@ -18,7 +18,7 @@ import (
 // SNGL binding: the declaration comes either from the ref the value carries,
 // looked up in types, or from want, where the scheme importer also put it. And
 // its fields carry the foreign names, which the importer recorded on each
-// StructField as NativeName. Both are resolved that way rather than off the
+// StructField as Foreign.Name. Both are resolved that way rather than off the
 // scope, so the result is ordinary checker output: a StructLit with its real
 // Def, a list with its real element type, a literal at the width and unit want
 // asks for.
@@ -215,7 +215,7 @@ func isStringLit(v *ir.Literal) bool {
 // rule, and it lives with the importer.
 func findNativeField(sd *ir.StructDef, nativeName string) *ir.StructField {
 	for _, f := range sd.Fields {
-		if f.NativeName == nativeName {
+		if f.Foreign.Name == nativeName {
 			return f
 		}
 	}

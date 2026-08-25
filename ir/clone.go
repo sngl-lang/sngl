@@ -20,7 +20,7 @@ var irPkgPath = reflect.TypeFor[Package]().PkgPath()
 //   - The immutable global primitive Type singletons (TypInt, TypString,
 //     …): several codegen sites compare against these by pointer identity,
 //     so they must stay shared.
-//   - Foreign values reached through `any`/interface fields (e.g. the
+//   - Values reached through `any`/interface fields (e.g. the
 //     platform-specific data in Type.Meta): treated as opaque metadata.
 //
 // Cloning works by reflection over the object graph with a pointer-identity

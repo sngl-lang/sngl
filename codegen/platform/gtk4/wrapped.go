@@ -23,7 +23,7 @@ import (
 // legacy path rather than producing half-wrapped (uncompilable) code.
 
 // gtk4rtPkg is the import path of the shared GTK4 runtime. Emitting an
-// ir.Func with this NativePkg auto-registers the import via the golang IR
+// ir.Func with this Foreign.Pkg auto-registers the import via the golang IR
 // context (see evalNamespaceCall).
 const gtk4rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
@@ -31,8 +31,8 @@ const gtk4rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 // field/local, replacing the per-widget *C.GtkX pointer types.
 const gtk4rtHandleType = "gtk4rt.Handle"
 
-// rtCall builds a `gtk4rt.<name>(args...)` call. The non-"C" NativePkg makes
-// evalNamespaceCall register the gtk4rt import and emit the NativeName verbatim.
+// rtCall builds a `gtk4rt.<name>(args...)` call. The non-"C" Foreign.Pkg makes
+// evalNamespaceCall register the gtk4rt import and emit the Foreign.Name verbatim.
 func rtCall(name string, args ...ir.Expr) *ir.Call {
 	ca := make([]ir.CallArg, len(args))
 	for i, a := range args {
@@ -41,7 +41,7 @@ func rtCall(name string, args ...ir.Expr) *ir.Call {
 	return &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: &ir.Ident{Name: "gtk4rt"},
-		Func:     &ir.Func{NativePkg: gtk4rtPkg, NativeName: "gtk4rt." + name},
+		Func:     &ir.Func{Foreign: ir.Foreign{Pkg: gtk4rtPkg, Name: "gtk4rt." + name}},
 		Args:     ca,
 	}
 }

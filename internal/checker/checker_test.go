@@ -513,12 +513,11 @@ func intType() *ir.Type { return &ir.Type{Kind: ir.TypeInt} }
 
 func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 	fn := &ir.Func{
-		Name:       "Square",
-		Params:     []*ir.Param{{Name: "x", Type: intType()}},
-		Return:     intType(),
-		Purity:     purity,
-		NativePkg:  "math",
-		NativeName: "math.Square",
+		Name:    "Square",
+		Params:  []*ir.Param{{Name: "x", Type: intType()}},
+		Return:  intType(),
+		Purity:  purity,
+		Foreign: ir.Foreign{Pkg: "math", Name: "math.Square"},
 	}
 	return map[string]*ir.NativeImport{
 		"go://math": {

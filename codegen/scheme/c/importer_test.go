@@ -161,11 +161,11 @@ struct Point { int x; int y; };
 	if addFn == nil {
 		t.Fatalf("func 'add' not found; got funcs: %v", funcNames(ni.Funcs))
 	}
-	if addFn.NativePkg != "C" {
-		t.Errorf("NativePkg = %q, want %q", addFn.NativePkg, "C")
+	if addFn.Foreign.Pkg != "C" {
+		t.Errorf("Foreign.Pkg = %q, want %q", addFn.Foreign.Pkg, "C")
 	}
-	if addFn.NativeName != "C.add" {
-		t.Errorf("NativeName = %q, want %q", addFn.NativeName, "C.add")
+	if addFn.Foreign.Name != "C.add" {
+		t.Errorf("Foreign.Name = %q, want %q", addFn.Foreign.Name, "C.add")
 	}
 
 	// Should have the Point struct
@@ -179,8 +179,8 @@ struct Point { int x; int y; };
 	if pointSd == nil {
 		t.Fatal("Point struct not found in NativeImport")
 	}
-	if pointSd.Native != "C.Point" {
-		t.Errorf("Point.Native = %q, want %q", pointSd.Native, "C.Point")
+	if pointSd.Foreign.Name != "C.Point" {
+		t.Errorf("Point.Native = %q, want %q", pointSd.Foreign.Name, "C.Point")
 	}
 }
 

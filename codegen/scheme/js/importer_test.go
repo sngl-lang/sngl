@@ -51,8 +51,8 @@ func TestSimpleFunctions(t *testing.T) {
 	if add == nil {
 		t.Fatalf("add not found in %#v", imp.Funcs)
 	}
-	if add.Unusable != "" {
-		t.Errorf("add unusable: %s", add.Unusable)
+	if add.Foreign.Unusable != "" {
+		t.Errorf("add unusable: %s", add.Foreign.Unusable)
 	}
 	if len(add.Params) != 2 {
 		t.Errorf("add params: %d, want 2", len(add.Params))

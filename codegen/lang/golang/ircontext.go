@@ -598,21 +598,21 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-		// Native (e.g. C/cgo) call: emit NativeName(args) directly, ignoring the
+		// Native (e.g. C/cgo) call: emit Foreign.Name(args) directly, ignoring the
 		// SNGL import alias that ended up as the receiver.
-		if n.Func.NativePkg != "" {
-			name := n.Func.NativeName
-			// Cgo C-API call: NativeName carries the bare C identifier
+		if n.Func.Foreign.Pkg != "" {
+			name := n.Func.Foreign.Name
+			// Cgo C-API call: Foreign.Name carries the bare C identifier
 			// (e.g. "gtk_label_new"); renderer adds "C." prefix. Backwards-
-			// compat: if NativeName already starts with "C." (legacy
-			// callers), leave untouched so existing pre-baked NativeNames
+			// compat: if Foreign.Name already starts with "C." (legacy
+			// callers), leave untouched so existing pre-baked Foreign.Names
 			// continue to work during the migration.
-			if n.Func.NativePkg == "C" && !strings.HasPrefix(name, "C.") {
+			if n.Func.Foreign.Pkg == "C" && !strings.HasPrefix(name, "C.") {
 				name = "C." + name
-			} else if n.Func.NativePkg != "C" {
+			} else if n.Func.Foreign.Pkg != "C" {
 				// Non-cgo native call (e.g. fmt.Println, time.Now) — record
 				// the import so platforms reading gc.Imports() see it.
-				gc.RequireImport(n.Func.NativePkg)
+				gc.RequireImport(n.Func.Foreign.Pkg)
 			}
 			// Context-taking native call: inject the context expression as the
 			// first argument. Mirrors legacy translateIRNativeCall — when the
@@ -1205,8 +1205,8 @@ func IRTypeToGo(t *ir.Type) string {
 			return colorGoType
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			if sd.Native != "" {
-				return sd.Native
+			if sd.Foreign.Name != "" {
+				return sd.Foreign.Name
 			}
 			if name := ExportName(sd.Name); name != "" {
 				return name
@@ -1422,7 +1422,7 @@ func irAssignOp(op ast.AssignOp) string {
 // EmitFuncDef renders a complete Go function definition from an *ir.Func.
 // Includes the receiver clause (for Model methods), param list, return
 // type, and body. Body statements flow through EvalStmt — Synthesized
-// idents resolve to m.<name>, native funcs to C.<NativeName>, etc.
+// idents resolve to m.<name>, native funcs to C.<Foreign.Name>, etc.
 //
 // Returns the source as a slice of lines (each line WITHOUT trailing
 // newline). The caller joins with "\n" or writes each line followed by

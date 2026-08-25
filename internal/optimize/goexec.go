@@ -111,16 +111,16 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	switch scheme {
 	case "go":
 		var ok bool
-		_, funcName, ok = strings.Cut(f.NativeName, ".")
+		_, funcName, ok = strings.Cut(f.Foreign.Name, ".")
 		if !ok || funcName == "" || !isExported(funcName) {
-			return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.NativeName)
+			return nil, nativeFailed, fmt.Errorf("%q is not an exported Go function", f.Foreign.Name)
 		}
 		argSrc, imports, err = renderGoArgs(f, args)
 	case "js":
 		// A JS export is named by its binding alone: there is no package
 		// qualifier to strip, and the importer only ever recorded a
 		// declaration that carried an `export`.
-		funcName = f.NativeName
+		funcName = f.Foreign.Name
 		if funcName == "" {
 			return nil, nativeFailed, fmt.Errorf("native function has no name")
 		}
@@ -131,7 +131,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	if err != nil {
 		return nil, nativeFailed, err
 	}
-	key := requestKey(scheme, importPath, f.NativeName, argSrc)
+	key := requestKey(scheme, importPath, f.Foreign.Name, argSrc)
 	if res, loaded := ctx.evalCache().load(key); loaded {
 		if res.err != nil {
 			return nil, nativeFailed, res.err
@@ -145,7 +145,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 		key:        key,
 		scheme:     scheme,
 		importPath: importPath,
-		nativeType: f.NativeName,
+		nativeType: f.Foreign.Name,
 		funcName:   funcName,
 		args:       argSrc,
 		imports:    imports,
@@ -177,7 +177,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	} else if ok {
 		return nil, nativeFailed, r.err
 	}
-	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.NativeName)
+	return nil, nativeFailed, fmt.Errorf("compile-time evaluation of %s produced no value", f.Foreign.Name)
 }
 
 // requestKey identifies a call. The rendered arguments are source in the
@@ -205,7 +205,7 @@ func isExported(name string) bool {
 // they reference.
 func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 	if len(args) != len(f.Params) {
-		return nil, nil, fmt.Errorf("%s takes %d arguments, got %d", f.NativeName, len(f.Params), len(args))
+		return nil, nil, fmt.Errorf("%s takes %d arguments, got %d", f.Foreign.Name, len(f.Params), len(args))
 	}
 	if len(args) == 0 {
 		return nil, nil, nil
@@ -215,7 +215,7 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 	for i, a := range args {
 		e := irFromValue(a, f.Params[i].Type)
 		if e == nil {
-			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.NativeName, a)
+			return nil, nil, fmt.Errorf("argument %d of %s (%T) has no IR form", i, f.Foreign.Name, a)
 		}
 		// The Go translator spells a struct literal with the name its declaring
 		// package uses — `Item{}` — while the batch program reaches that
@@ -223,11 +223,11 @@ func renderGoArgs(f *ir.Func, args []any) ([]string, []string, error) {
 		// costs this one call; rendering it would be a program that does not
 		// build, and every other value in the batch with it.
 		if sd := unnameableStruct(e); sd != nil {
-			return nil, nil, fmt.Errorf("parameter %s of %s has struct type %s, which the compile-time evaluator cannot spell", f.Params[i].Name, f.NativeName, sd.Name)
+			return nil, nil, fmt.Errorf("parameter %s of %s has struct type %s, which the compile-time evaluator cannot spell", f.Params[i].Name, f.Foreign.Name, sd.Name)
 		}
 		src := gc.EvalExpr(e)
 		if strings.TrimSpace(src) == "" {
-			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.NativeName)
+			return nil, nil, fmt.Errorf("argument %d of %s has no Go form", i, f.Foreign.Name)
 		}
 		out[i] = src
 	}
