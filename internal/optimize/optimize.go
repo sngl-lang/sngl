@@ -374,6 +374,27 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 			}
 		}
 	}
+	for _, e := range pkg.Enums {
+		for _, m := range e.Members {
+			if m.Value != nil {
+				m.Value = foldExpr(m.Value, ctx)
+			}
+		}
+	}
+	// A context default is spliced into a synthesized Var by passContext, which
+	// runs after this; folding it here is the only chance it gets.
+	for _, c := range pkg.Contexts {
+		if c.Default != nil {
+			c.Default = foldExpr(c.Default, ctx)
+		}
+	}
+	for _, o := range pkg.Outputs {
+		if o.Options != nil {
+			if st, ok := foldExpr(o.Options, ctx).(*ir.StructLit); ok {
+				o.Options = st
+			}
+		}
+	}
 	for _, comp := range pkg.Components {
 		foldComponent(comp, ctx)
 	}
@@ -418,12 +439,30 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	comp.Body = foldStmts(comp.Body, ctx)
 }
 
+// foldWindow folds everything a window owns. It must stay in step with the
+// *ir.Window arm of foldStmt, which handles a window nested in a for-loop
+// body: the two used to disagree about Href/Title/Favicon, so a top-level
+// window's href was never folded and html's static mode rejected a
+// compile-time-constant one as dynamic. ir.Rewrite has one window walk for
+// both positions; this driver folds rather than rewrites, so it keeps its own.
 func foldWindow(w *ir.Window, ctx *evalCtx) {
+	if w.Href != nil {
+		w.Href = foldExpr(w.Href, ctx)
+	}
+	if w.Title != nil {
+		w.Title = foldExpr(w.Title, ctx)
+	}
+	if w.Favicon != nil {
+		w.Favicon = foldExpr(w.Favicon, ctx)
+	}
 	for _, v := range w.Vars {
 		foldVar(v, ctx)
 	}
 	for _, f := range w.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
+	}
+	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
+		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}
 	w.Body = foldStmts(w.Body, ctx)
 }
@@ -431,6 +470,9 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 func foldTimer(t *ir.Timer, ctx *evalCtx) {
 	if t.Interval != nil {
 		t.Interval = foldExpr(t.Interval, ctx)
+	}
+	if t.Enabled != nil {
+		t.Enabled = foldExpr(t.Enabled, ctx)
 	}
 	if t.Handler != nil {
 		t.Handler.Block = foldStmts(t.Handler.Block, ctx)

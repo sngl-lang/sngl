@@ -766,8 +766,6 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 			}
 		}
 		return unquoteString(e.Raw), nil
-	case ir.TypeColor:
-		return colorHexToStruct(e.Type, e.Raw), nil
 	}
 	return e.Raw, nil
 }

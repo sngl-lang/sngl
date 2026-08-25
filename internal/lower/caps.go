@@ -253,5 +253,8 @@ func (c Caps) String() string {
 	if c.Canvas {
 		parts = append(parts, "Canvas")
 	}
+	if c.ReactiveCanvas {
+		parts = append(parts, "ReactiveCanvas")
+	}
 	return strings.Join(parts, ",")
 }

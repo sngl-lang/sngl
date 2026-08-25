@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -320,7 +322,14 @@ func (w *depExtractor) walkExpr(e ir.Expr) {
 	case *ir.Call:
 		w.walkCall(n)
 	default:
-		// Unhandled expr kinds are conservatively skipped.
+		// Skipping an unknown kind is not conservative, whatever the comment
+		// that used to sit here said: this walk collects the model vars an
+		// expression reads, and missing one under-counts the dependency set.
+		// The result is a view that never re-renders when that var changes —
+		// silent at build time and hard to trace at run time. Every kind is
+		// listed above, so reaching here means a new ir.Expr was added; it must
+		// be given an arm rather than skipped.
+		panic(fmt.Sprintf("codegen: depExtractor.walkExpr: unhandled ir.Expr %T", e))
 	}
 }
 
@@ -441,8 +450,16 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 		for _, c := range n.Children {
 			w.walkStmt(c)
 		}
+	case *ir.CanvasRedrawStmt:
+		// Carries NodeInst and Func pointers only — no expression can read a
+		// model var through it. Listed rather than defaulted so the arm below
+		// catches a genuinely new statement kind.
 	default:
-		// Unhandled stmt kinds are conservatively skipped.
+		// As in walkExpr: skipping a statement is not conservative here. A
+		// statement this walk does not descend into hides every read inside it,
+		// under-counting the dependency set and producing a view that never
+		// re-renders.
+		panic(fmt.Sprintf("codegen: depExtractor.walkStmt: unhandled ir.Stmt %T", s))
 	}
 }
 

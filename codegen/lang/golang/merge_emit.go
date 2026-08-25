@@ -35,7 +35,7 @@ func goZeroComparand(t *ir.Type) string {
 	switch t.Kind {
 	case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeRef, ir.TypeFunc:
 		return "nil"
-	case ir.TypeString, ir.TypeColor:
+	case ir.TypeString:
 		return `""`
 	case ir.TypeBool:
 		return "false"

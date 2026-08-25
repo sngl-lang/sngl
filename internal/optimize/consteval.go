@@ -462,7 +462,7 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 		if b, ok := operand.(bool); ok {
 			return b, true
 		}
-	case ir.TypeList, ir.TypeStruct, ir.TypeDyn, ir.TypeOption, ir.TypeColor:
+	case ir.TypeList, ir.TypeStruct, ir.TypeDyn, ir.TypeOption:
 		// Compound-type conversions are widening or narrowing within a
 		// compatible Go shape ([]any / map[string]any). Pass through.
 		return operand, true
