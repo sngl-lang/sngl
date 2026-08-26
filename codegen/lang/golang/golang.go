@@ -20,7 +20,6 @@ func (t *Translator) LanguageIdentifier() string { return "go" }
 func (t *Translator) Description() string {
 	return "Generate Go source. Supports HTTP route mode and WASM bindings."
 }
-func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
 func (t *Translator) Capabilities() lower.Features {
 	f := lower.AllFeatures()
 	// Go has no ternary expression; lower a ? b : c to an if/else with a temp var.

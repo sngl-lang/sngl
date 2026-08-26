@@ -16,10 +16,9 @@ func init() {
 // Translator implements codegen.LangTranslator for JavaScript.
 type Translator struct{}
 
-func (t *Translator) LanguageIdentifier() string          { return "js" }
-func (t *Translator) Description() string                 { return "Generate JavaScript source." }
-func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
-func (t *Translator) Capabilities() lower.Features        { return lower.AllFeatures() }
+func (t *Translator) LanguageIdentifier() string   { return "js" }
+func (t *Translator) Description() string          { return "Generate JavaScript source." }
+func (t *Translator) Capabilities() lower.Features { return lower.AllFeatures() }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return name.Name

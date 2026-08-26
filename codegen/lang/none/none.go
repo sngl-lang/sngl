@@ -20,8 +20,7 @@ func (t *Translator) LanguageIdentifier() string { return "none" }
 func (t *Translator) Description() string {
 	return "Sentinel language for static output modes that need no backing code."
 }
-func (t *Translator) Resolve(identifier string) ir.Symbol { return nil }
-func (t *Translator) Capabilities() lower.Features        { return lower.AllFeatures() }
+func (t *Translator) Capabilities() lower.Features { return lower.AllFeatures() }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string { return name.Name }
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string      { return "" }

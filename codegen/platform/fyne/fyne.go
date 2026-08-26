@@ -26,10 +26,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-
-// Resolve answers nothing: every name a `platform fyne { ... }` body writes is
-// declared in fyne.sngl.
-func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>` Assigns

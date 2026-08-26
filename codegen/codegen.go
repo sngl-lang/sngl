@@ -177,8 +177,8 @@ type PlatformGenerator interface {
 
 // OptionConfigurable is optionally implemented by PlatformGenerators that
 // accept CLI options affecting the type-check phase (not just code generation).
-// The CLI calls Configure with the parsed --opt key=value map before checkDoc
-// so platform Resolve() can honor the supplied options.
+// The CLI calls Configure with the parsed --opt key=value map before checkDoc,
+// so a platform's declarations can honor the supplied options.
 type OptionConfigurable interface {
 	Configure(opts map[string]string) error
 }

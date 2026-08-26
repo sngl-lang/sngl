@@ -410,10 +410,9 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	}
 	// The i18n and html namespaces describe std's own declarations, so they
 	// belong to that package only. Declaring them from the builtin pass as
-	// well put an empty `html` namespace in the ambient scope, which shadowed
-	// the real one and lost the platform Resolve fallback attached to it; and
-	// building them while any other package loads would re-enter the package
-	// PluralKey lives in.
+	// well puts an empty `html` namespace in the ambient scope, which shadows
+	// the real one; and building them while any other package loads would
+	// re-enter the package PluralKey lives in.
 	//
 	// They are declared before the funcs whose receiver names them, so that
 	// `func i18n.tr(...)` finds a declaration to be a member of. Their
@@ -1065,12 +1064,9 @@ func (c *checker) checkPendingExtensions() {
 		for _, pe := range byPlatform[platform] {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
-			savedPlatform := c.currentPlatform
 			pe.comp.AST.Body = pe.body
 			pe.comp.Body = nil
-			c.currentPlatform = pe.platform
 			c.checkComponentBody(pe.comp)
-			c.currentPlatform = savedPlatform
 			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody

@@ -145,11 +145,6 @@ func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	return g.registry, g.initErr
 }
 
-// Resolve implements ir.Platform. gtk4 resolves no identifier of its own: the
-// widget set reaches SNGL as the declarations PackageFS generates, which the
-// checker loads and type-checks like any other library source.
-func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
-
 // Generate writes gtk4 source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {

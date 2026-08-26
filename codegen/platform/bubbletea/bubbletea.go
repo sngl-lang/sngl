@@ -25,10 +25,6 @@ func (g *Generator) Description() string {
 	return "Terminal UI, written in Go using the Bubble Tea framework."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-
-// Resolve answers nothing: the blueprint primitives a `platform bubbletea
-// { ... }` body writes are declared in bubbletea.sngl.
-func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	f.InlineComponents = false

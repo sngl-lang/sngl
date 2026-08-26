@@ -645,15 +645,13 @@ const (
 // Language is a Target for a registered language translator.
 type Language interface {
 	LanguageIdentifier() string
-	Description() string              // short one-line summary for reference docs
-	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
+	Description() string // short one-line summary for reference docs
 }
 
 // Platform is a Target for a registered platform generator.
 type Platform interface {
 	PlatformIdentifier() string
-	Description() string              // short one-line summary for reference docs
-	Resolve(identifier string) Symbol // dynamic identifiers (e.g., html.div); nil if unknown
+	Description() string // short one-line summary for reference docs
 }
 
 // StaticTarget identifies the compile target by name.

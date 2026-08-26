@@ -34,12 +34,6 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
-
-// Resolve answers nothing: every tag resolves to the `element` component
-// sngl://platforms/html declares, whose #[wildcard] says so in source and
-// gives a call something to be checked against. The method stays because
-// ir.Platform requires it.
-func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	f.AsyncReactive = false
@@ -1312,9 +1306,9 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 }
 
 // irCallName extracts the bare or namespace-qualified name from an IR Call
-// expression. Namespace-resolved element calls (ns.Foo where ns is resolved
-// via Resolve()) leave Call.Func nil and Call.Receiver set to the namespace
-// ident — reassemble "ns.Foo" from Receiver + the AST back-reference.
+// expression. Namespace-resolved element calls (ns.Foo) leave Call.Func nil and
+// Call.Receiver set to the namespace ident — reassemble "ns.Foo" from Receiver
+// plus the AST back-reference.
 func irCallName(call *ir.Call) string {
 	if call == nil {
 		return ""

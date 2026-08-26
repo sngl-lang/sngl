@@ -77,9 +77,8 @@ func (g *Generator) PlatformIdentifier() string { return "android" }
 func (g *Generator) Description() string {
 	return "Android app. Emits Jetpack Compose; can mix in Go via gomobile when --lang go is used."
 }
-func (g *Generator) SupportedLangs() []string            { return []string{"kotlin", "go"} }
-func (g *Generator) PreviewCSS() string                  { return previewCSS }
-func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
+func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
+func (g *Generator) PreviewCSS() string       { return previewCSS }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// NoInlineComponents: hoist user-component vars/funcs/timers into main

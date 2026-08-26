@@ -302,11 +302,6 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				}
 			}
 		}
-		// Try platform Resolve() inside platform blocks.
-		if resolved := c.resolvePlatformIdent(x.Name); resolved != nil {
-			sym = resolved
-			ok = true
-		}
 	}
 	if !ok {
 		// `this`-elision: bare name resolves to `this.<name>` inside a method
@@ -959,7 +954,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*ir.Namespace); ok && (ns.Pkg != nil || ns.Resolve != nil) {
+			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if ns.Pkg != nil {
 					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
 						if c.rejectUnexported(sel.Pos, fsym) {
@@ -2875,7 +2870,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -2889,18 +2884,10 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	return clone
 }
 
-// nsMember resolves a name a namespace's package does not declare. A wildcard
-// component of that package is consulted first: a package that says in source
-// which names it stands for must not be overruled by a plugin that accepts
-// every identifier and leaves nothing to check a call against.
+// nsMember resolves a name a namespace's package does not declare: a wildcard
+// component of that package, which says in source which names it stands for.
 func (c *checker) nsMember(pos ast.Pos, ns *ir.Namespace, name string) ir.Symbol {
-	if sym := c.scopeWildcard(pos, nsScope(ns), name); sym != nil {
-		return sym
-	}
-	if ns.Resolve != nil {
-		return ns.Resolve(name)
-	}
-	return nil
+	return c.scopeWildcard(pos, nsScope(ns), name)
 }
 
 // nsScope is the scope a namespace's members are looked up in, or nil.
@@ -2930,23 +2917,8 @@ func (c *checker) scopeWildcard(pos ast.Pos, scope *ir.Scope, name string) ir.Sy
 	}
 }
 
-// resolvePlatformIdent resolves an unknown identifier inside a platform block
-// against the platform's own package, then its Resolve(). Returns nil when not
-// inside a platform block or when neither answers.
-func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
-	if c.currentPlatform == "" {
-		return nil
-	}
-	t := c.lookupTarget(c.currentPlatform)
-	if t == nil {
-		return nil
-	}
-	return t.Resolve(name)
-}
-
 // resolveQualifiedIdent reports whether a qualified name "ns.Field" resolves
-// to a namespace member (component, func, or platform-resolved element like
-// html.div) via an in-scope Namespace.
+// to a namespace member (component or func) via an in-scope Namespace.
 func (c *checker) resolveQualifiedIdent(name string) bool {
 	ns, field, ok := strings.Cut(name, ".")
 	if !ok {
@@ -2962,11 +2934,6 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 	}
 	if nsSym.Pkg != nil {
 		if _, ok := nsSym.Pkg.Symbols.Root.Lookup(field); ok {
-			return true
-		}
-	}
-	if nsSym.Resolve != nil {
-		if nsSym.Resolve(field) != nil {
 			return true
 		}
 	}
@@ -3092,11 +3059,6 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 		defer func() { c.scope.Parent = savedParent }()
 	}
 
-	// Track current platform so Resolve() fallback works on unknown identifiers.
-	savedPlatform := c.currentPlatform
-	c.currentPlatform = s.Platform
-	defer func() { c.currentPlatform = savedPlatform }()
-
 	body := c.checkBlockIR(&s.Body)
 	return &ir.PlatformFilter{AST: s, Platform: s.Platform, Body: body}
 }
@@ -3216,20 +3178,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	// Unknown component check — skip if name resolves to a variable
-	// (e.g. timer condition guard like `running { ... }`),
-	// or if the platform/namespace can resolve it. Platform-resolved
-	// names (e.g. GtkButton via GIR) bind into `comp` so the NodeInst
-	// carries the resolved Component (including any platform-provided
-	// Native metadata) downstream.
+	// (e.g. timer condition guard like `running { ... }`), or if a namespace
+	// can resolve it.
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
-			if c.resolveQualifiedIdent(name) {
-				// namespace member — leave comp nil.
-			} else if resolved := c.resolvePlatformIdent(name); resolved != nil {
-				if co, ok := resolved.(*ir.Component); ok {
-					comp = co
-				}
-			} else {
+			if !c.resolveQualifiedIdent(name) {
 				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHint(name))
 			}
 		}
@@ -3415,11 +3368,8 @@ func wildcardTarget(comp *ir.Component, name string) *ir.Prop {
 	if !ok || err != nil {
 		return nil
 	}
-	// Only a map collects. A wildcard prop declared in source must be one
-	// (checkWildcardPropType), so what reaches here otherwise is a component
-	// a platform's Resolve() synthesized: it has no body to read the values
-	// from, and every pass downstream reads its props by the name that was
-	// written, so they stay there.
+	// Only a map collects: a wildcard prop declared in source must be one
+	// (checkWildcardPropType).
 	if wildcardValueType(p) == nil {
 		return nil
 	}

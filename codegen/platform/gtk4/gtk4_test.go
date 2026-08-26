@@ -56,10 +56,6 @@ func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	if len(names) != 1 || names[0] != "GtkButton" {
 		t.Errorf("declared components = %v; want just the GtkButton the supplied GIR names", names)
 	}
-	// Resolve is not the mechanism any more, and every platform agrees on that.
-	if sym := gen.Resolve("GtkButton"); sym != nil {
-		t.Errorf("Resolve(GtkButton) = %v; want nil", sym)
-	}
 }
 
 const minimalGIR = `<?xml version="1.0"?>

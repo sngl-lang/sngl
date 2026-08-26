@@ -169,10 +169,6 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
-	// Current platform block name (e.g., "html" inside `platform html { }`).
-	// Used to try platform Resolve() on unknown identifiers.
-	currentPlatform string
-
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
 	optionsCache map[string]*ir.StructDef
@@ -320,23 +316,15 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
-	// Inject all registered platform and language names as namespaces with
-	// Resolve fallback so raw element access (e.g., html.div) works. If a
-	// stdlib namespace with the same name already exists (e.g. the "html"
-	// namespace declared by loadStdlib for the html.frontend/html.backend
-	// placement directives), preserve its Pkg and attach the Resolve fallback
-	// to the same namespace so named directives resolve via Pkg first and raw
-	// elements fall through to Resolve.
-	// Raw element access is ambient for every platform, so the Resolve-bearing
-	// namespace always goes in the ambient scope. The standard library may also
-	// declare a namespace of the same name (lib/std/html.sngl declares `html`
-	// for the html.frontend/html.backend directives); attach Resolve to that
-	// one too, so importing std keeps raw elements working rather than
-	// shadowing them with a directives-only namespace.
-	declareNS := func(name, uri string, resolve func(string) ir.Symbol) {
+	// Inject all registered platform and language names as namespaces so a
+	// target's own declarations are reachable unqualified by name (html.div).
+	// The namespace is ambient for every platform. The standard library may
+	// also declare a namespace of the same name (lib/std/html.sngl declares
+	// `html` for the html.frontend/html.backend placement directives); the
+	// target's package goes behind that one rather than shadowing it.
+	declareNS := func(name, uri string) {
 		pkg := c.targetNSPkg(uri)
 		attach := func(ns *ir.Namespace) {
-			ns.Resolve = resolve
 			// A namespace's members are its package's declarations, and a
 			// target ships a package like anything else. The stdlib may
 			// already have declared a namespace of this name for its own
@@ -369,13 +357,13 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	}
 	for _, p := range cfg.Platforms {
 		if targetUnavailable(p) != nil {
-			declareNS(p.PlatformIdentifier(), "", p.Resolve)
+			declareNS(p.PlatformIdentifier(), "")
 			continue
 		}
-		declareNS(p.PlatformIdentifier(), "platforms/"+p.PlatformIdentifier(), p.Resolve)
+		declareNS(p.PlatformIdentifier(), "platforms/"+p.PlatformIdentifier())
 	}
 	for _, l := range cfg.Languages {
-		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier(), l.Resolve)
+		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier())
 	}
 
 	// Splice platform extension bodies into the stdlib components they target.
@@ -739,14 +727,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 		Replace: imp.Replace,
 	}
 
-	// Optional Resolve fallback for platform/language namespace imports.
-	var nsResolve func(string) ir.Symbol
-
 	// sngl://platforms/<n> and sngl://languages/<n> load through libPkg like
-	// any other embedded package. The registered plugin is still consulted,
-	// for two things the lib tree cannot say: whether the target exists at all
-	// here, and the namespace Resolve fallback that makes raw primitives
-	// (html.div) resolve.
+	// any other embedded package. The registered plugin is still consulted for
+	// the one thing the lib tree cannot say: whether the target exists at all
+	// here.
 	platName, isPlatform := "", false
 	langName, isLanguage := "", false
 	if scheme == "sngl" {
@@ -767,9 +751,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 		} else if err := targetUnavailable(target); err != nil {
 			c.error(imp.Pos, "platform %q is unavailable here: %v", platName, err)
 		} else {
-			nsResolve = target.Resolve
 			// A platform need not ship declarations (`none` does not); the
-			// namespace is still bound, for its Resolve fallback.
+			// namespace is still bound.
 			if c.hasLibPkg(uri) {
 				irImport.Pkg = c.libPkg(uri)
 			}
@@ -785,7 +768,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if target == nil {
 			c.error(imp.Pos, "unknown language %q", langName)
 		} else {
-			nsResolve = target.Resolve
 			if c.hasLibPkg(uri) {
 				irImport.Pkg = c.libPkg(uri)
 			}
@@ -937,17 +919,16 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	// Declare namespace in scope.
-	// If the new namespace is inert (nil pkg and no resolver) and a namespace
-	// with the same alias already exists in scope with a non-nil package (e.g.
-	// the predeclared "i18n" stdlib namespace), skip re-declaration so the
+	// If the new namespace is inert (nil pkg) and a namespace with the same
+	// alias already exists in scope with a non-nil package (e.g. the
+	// predeclared "i18n" stdlib namespace), skip re-declaration so the
 	// existing, richer namespace stays accessible. This prevents `import "i18n"`
 	// from shadowing the predeclared i18n namespace with a no-op nil-pkg entry.
 	ns := &ir.Namespace{
-		Name:    alias,
-		Pkg:     irImport.Pkg,
-		Resolve: nsResolve,
+		Name: alias,
+		Pkg:  irImport.Pkg,
 	}
-	if ns.Pkg == nil && ns.Resolve == nil {
+	if ns.Pkg == nil {
 		if existing, ok := c.scope.Lookup(alias); ok {
 			if existingNS, ok := existing.(*ir.Namespace); ok && existingNS.Pkg != nil {
 				return // keep the existing richer namespace; don't shadow it
@@ -1805,11 +1786,7 @@ func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
 }
 
 // resolveComponentSymbol resolves a visual-node target — bare "Foo" or
-// qualified "ns.Foo" — to the symbol it was declared as. A namespace's
-// platform Resolve fallback is deliberately not consulted: it synthesises
-// elements on demand, and a synthesised element never carries a #[builtin]
-// mark, so consulting it could only ever produce a false negative at extra
-// cost.
+// qualified "ns.Foo" — to the symbol it was declared as.
 func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
 	if name == "" {
 		return nil, false
@@ -1995,7 +1972,6 @@ func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
 // pkgProvider is satisfied by both ir.Platform and ir.Language.
 type pkgProvider interface {
 	Description() string
-	Resolve(identifier string) ir.Symbol
 }
 
 // lookupTarget finds a registered platform or language by name.
