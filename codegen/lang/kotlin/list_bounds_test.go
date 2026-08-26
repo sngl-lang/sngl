@@ -53,10 +53,10 @@ func runKts(t *testing.T, script string) []string {
 		t.Fatalf("kotlinc: %v\n--- script ---\n%s\n--- output ---\n%s", err, script, out)
 	}
 	var lines []string
-	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		// kotlinc writes its own warnings to the same stream; keep our markers.
-		if strings.HasPrefix(l, "case ") {
-			lines = append(lines, strings.TrimPrefix(l, "case "))
+		if after, ok := strings.CutPrefix(l, "case "); ok {
+			lines = append(lines, after)
 		}
 	}
 	return lines
