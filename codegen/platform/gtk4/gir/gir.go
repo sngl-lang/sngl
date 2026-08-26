@@ -28,15 +28,37 @@ type ConstructorInfo struct {
 // Prop is a writable property on a GIR class.
 type Prop struct {
 	Name string
-	// InterfaceName, when non-empty, identifies the interface this prop
-	// was inherited from (e.g. "Orientable"). Lets the codegen pick the
-	// `gtk_<interface>_set_<prop>` C setter instead of building a (wrong)
-	// `gtk_<class>_set_<prop>` name. Empty for direct class properties.
+	// Setter is the C identifier of the property's setter function, taken
+	// from the GIR <property setter="…"> reference and resolved through the
+	// owner's method list. Empty for a property GIR names no setter for —
+	// construct-only ones, and ones only reachable through g_object_set.
+	// It cannot be derived from the class and property names: eleven GTK
+	// setters do not follow that shape (gtk_image_set_from_icon_name,
+	// gtk_notebook_set_current_page, …).
+	Setter string
+	// SetterCType is the C type of the value parameter of that setter. GIR
+	// does not promise it matches the property's own type — GtkGrid's
+	// column-spacing property is a gint and its setter takes a guint — and
+	// it is the setter's parameter that a cgo call has to satisfy.
+	SetterCType string
+	// InterfaceName, when non-empty, identifies the interface this prop was
+	// inherited from (e.g. "Orientable"). Its setter takes the interface as
+	// its receiver, so the codegen casts the widget to that type rather than
+	// to its own class. Empty for direct class properties.
 	InterfaceName string
 	// GIRType is the raw GIR <type name=…> value for the property's
 	// value type, e.g. "utf8", "gint", "Orientation".
 	GIRType string
 	IRType  *ir.Type
+}
+
+// EnumInfo holds the members of a GIR <enumeration> or <bitfield>.
+// Members maps the GIR member name ("vertical") to its C identifier
+// ("GTK_ORIENTATION_VERTICAL"), which is how a SNGL string value reaches
+// an enum-typed property.
+type EnumInfo struct {
+	CType   string
+	Members map[string]string
 }
 
 // Signal is a GLib signal on a GIR class.
@@ -108,6 +130,10 @@ func (c *ClassInfo) ConstructorFor(supplied map[string]bool) ConstructorInfo {
 type TypeRegistry struct {
 	Classes    map[string]*ClassInfo
 	Interfaces map[string]*InterfaceInfo
+	// Enums holds every <enumeration> and <bitfield> in the namespace,
+	// keyed by GIR name ("Orientation") — the same spelling a property's
+	// type carries.
+	Enums map[string]*EnumInfo
 	// ByCType indexes the same entries under the C type name
 	// ("GtkButton"), which is what generated declarations and emitted
 	// code carry. Classes with no c:type are absent.
@@ -130,27 +156,45 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	reg := &TypeRegistry{
 		Classes:    make(map[string]*ClassInfo),
 		Interfaces: make(map[string]*InterfaceInfo),
+		Enums:      make(map[string]*EnumInfo),
 		ByCType:    make(map[string]*ClassInfo),
 	}
 	dec := xml.NewDecoder(bytes.NewReader(data))
 
 	var (
-		inNamespace  bool
-		inClass      bool
-		inInterface  bool
-		inCtor       bool // inside a <constructor> element
-		acceptCtor   bool // whether this is the first (accepted) constructor
-		inCtorParams bool
-		inParam      bool
-		inProp       bool
+		inNamespace    bool
+		inClass        bool
+		inInterface    bool
+		inCtor         bool // inside a <constructor> element
+		acceptCtor     bool // whether this is the first (accepted) constructor
+		inCtorParams   bool
+		inParam        bool
+		inProp         bool
+		inMethod       bool
+		inMethodParams bool
+		inMethodParam  bool
+		// inPropArray records that the property being parsed carries an
+		// <array> type (GStrv and friends). Its inner <type> names the
+		// element, not the property, so the property keeps no GIR type at
+		// all — nothing may read it as that primitive.
+		inPropArray bool
+
+		inEnum bool
 
 		currentClass     *ClassInfo
 		currentInterface *InterfaceInfo
+		currentEnum      *EnumInfo
+		// methods maps a class or interface to its methods by GIR name, so a
+		// <property setter="set_focus"> reference can be resolved to the C
+		// function it names and the type that function takes.
+		methods       = map[any]map[string]*methodInfo{}
+		currentMethod *methodInfo
 
 		paramName     string
 		paramTypeName string
 		propName      string
 		propWritable  string
+		propSetter    string
 		propTypeName  string
 	)
 
@@ -184,6 +228,47 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				currentInterface = info
 				reg.Interfaces[name] = info
 
+			case (local == "enumeration" || local == "bitfield") && inNamespace && !inEnum:
+				inEnum = true
+				currentEnum = &EnumInfo{
+					CType:   attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type"),
+					Members: map[string]string{},
+				}
+				reg.Enums[attrVal(t.Attr, "", "name")] = currentEnum
+
+			case local == "member" && inEnum:
+				currentEnum.Members[attrVal(t.Attr, "", "name")] =
+					attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")
+
+			case (local == "method" || local == "function") && (inClass || inInterface) && !inCtor && !inMethod:
+				owner := any(currentClass)
+				if inInterface {
+					owner = currentInterface
+				}
+				m := methods[owner]
+				if m == nil {
+					m = map[string]*methodInfo{}
+					methods[owner] = m
+				}
+				inMethod = true
+				name := attrVal(t.Attr, "", "name")
+				currentMethod = &methodInfo{ident: attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")}
+				if _, seen := m[name]; !seen {
+					m[name] = currentMethod
+				}
+
+			case local == "parameters" && inMethod:
+				inMethodParams = true
+
+			// A setter takes one value beyond its instance parameter, which
+			// is a separate element — so the first <parameter> is it.
+			case local == "parameter" && inMethodParams && currentMethod.valCType == "":
+				inMethodParam = true
+
+			case local == "type" && inMethodParam:
+				currentMethod.valCType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
+				inMethodParam = false
+
 			case local == "implements" && inClass:
 				name := attrVal(t.Attr, "", "name")
 				if name != "" {
@@ -213,13 +298,17 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "type" && inParam:
 				paramTypeName = attrVal(t.Attr, "", "name")
 
-			case local == "type" && inProp:
+			case local == "array" && inProp:
+				inPropArray = true
+
+			case local == "type" && inProp && !inPropArray:
 				propTypeName = attrVal(t.Attr, "", "name")
 
 			case local == "property" && (inClass || inInterface) && !inProp:
 				inProp = true
 				propName = attrVal(t.Attr, "", "name")
 				propWritable = attrVal(t.Attr, "", "writable")
+				propSetter = attrVal(t.Attr, "", "setter")
 				propTypeName = ""
 
 			case local == "signal" && inClass:
@@ -237,6 +326,10 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "namespace":
 				inNamespace = false
 
+			case (local == "enumeration" || local == "bitfield") && inEnum:
+				inEnum = false
+				currentEnum = nil
+
 			case local == "class" && inClass:
 				inClass = false
 				currentClass = nil
@@ -244,6 +337,15 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "interface" && inInterface:
 				inInterface = false
 				currentInterface = nil
+
+			case (local == "method" || local == "function") && inMethod:
+				inMethod = false
+				inMethodParams = false
+				inMethodParam = false
+				currentMethod = nil
+
+			case local == "parameters" && inMethodParams:
+				inMethodParams = false
 
 			case local == "constructor" && inCtor:
 				inCtor = false
@@ -272,9 +374,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 
 			case local == "property" && inProp:
 				inProp = false
+				inPropArray = false
 				if propWritable == "1" {
 					p := Prop{
 						Name:    propName,
+						Setter:  propSetter,
 						GIRType: propTypeName,
 						IRType:  girTypeToIR(propTypeName),
 					}
@@ -287,6 +391,17 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				}
 			}
 		}
+	}
+
+	// Resolve every <property setter="…"> reference — a GIR method name —
+	// to the C identifier of that method, before the interface merge copies
+	// resolved props onto implementing classes. A reference nothing declares
+	// leaves the prop with no setter rather than a name that does not exist.
+	for _, cls := range reg.Classes {
+		resolveSetters(cls.Props, methods[any(cls)])
+	}
+	for _, iface := range reg.Interfaces {
+		resolveSetters(iface.Props, methods[any(iface)])
 	}
 
 	// Post-pass: merge interface properties into each implementing class.
@@ -335,6 +450,30 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	}
 
 	return reg, nil
+}
+
+// resolveSetters rewrites each prop's Setter from the GIR method name the
+// property referenced to that method's C identifier.
+func resolveSetters(props []Prop, methods map[string]*methodInfo) {
+	for i := range props {
+		if props[i].Setter == "" {
+			continue
+		}
+		m := methods[props[i].Setter]
+		if m == nil {
+			props[i].Setter = ""
+			continue
+		}
+		props[i].Setter = m.ident
+		props[i].SetterCType = m.valCType
+	}
+}
+
+// methodInfo is one GIR <method>: the C function it names, and the C type of
+// the first parameter after the instance — for a setter, the value.
+type methodInfo struct {
+	ident    string
+	valCType string
 }
 
 // attrVal finds an attribute value by namespace URI and local name.

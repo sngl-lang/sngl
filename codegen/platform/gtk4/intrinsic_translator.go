@@ -12,6 +12,46 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// emitShared is the state every translator emitting into one generated file
+// accumulates: which preamble helpers that file has to carry, and which
+// property assignments could not be emitted. A nil *emitShared answers every
+// method, so a scope that emits no widgets need not carry one.
+type emitShared struct {
+	boolToInt  bool
+	gObjectSet bool
+	errs       []error
+	seen       map[string]bool
+}
+
+func (s *emitShared) needBoolToInt() {
+	if s != nil {
+		s.boolToInt = true
+	}
+}
+
+func (s *emitShared) needGObjectSet() {
+	if s != nil {
+		s.gObjectSet = true
+	}
+}
+
+// fail records that a property cannot be emitted. The same property assigned
+// from several places is one error. A nil sink drops it, which is why every
+// scope that resolves widget props is given one.
+func (s *emitShared) fail(err error) {
+	if s == nil {
+		return
+	}
+	if s.seen == nil {
+		s.seen = map[string]bool{}
+	}
+	if s.seen[err.Error()] {
+		return
+	}
+	s.seen[err.Error()] = true
+	s.errs = append(s.errs, err)
+}
+
 // gtk4Translator implements codegen.IntrinsicTranslator for gtk4.
 // Emits IR fragments whose Call.Func values carry Foreign.Path="C" /
 // Foreign.Name="<bare C ident>" so gc.EvalExpr (via the namespace-call
@@ -45,8 +85,11 @@ type gtk4Translator struct {
 	// A declaration says which props and events a widget has; the C setter
 	// behind each one is read back out of here, keyed by the C type the
 	// declaration's #[intrinsic] names. nil in scopes that emit no widgets.
-	registry      *gir.TypeRegistry
-	boolToIntUsed *bool // points to compilation.needsBoolToInt; set when boolToGoInt is called
+	registry *gir.TypeRegistry
+	// shared accumulates what the file being emitted needs beyond the
+	// statements themselves: preamble helpers, and the properties that
+	// could not be emitted at all. nil in scopes that emit no widgets.
+	shared *emitShared
 
 	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
 	// (LocalVar.CanvasDraw) to their GtkDrawingArea Model field + draw func,
@@ -95,10 +138,10 @@ func (t *gtk4Translator) withRegistry(reg *gir.TypeRegistry) *gtk4Translator {
 	return t
 }
 
-// withBoolToIntFlag points the translator at a flag that gets set when
-// boolToGoInt is called, so the caller knows to emit the boolToInt helper.
-func (t *gtk4Translator) withBoolToIntFlag(flag *bool) *gtk4Translator {
-	t.boolToIntUsed = flag
+// withShared points the translator at the per-file accumulator described on
+// gtk4Translator.shared.
+func (t *gtk4Translator) withShared(s *emitShared) *gtk4Translator {
+	t.shared = s
 	return t
 }
 
@@ -238,9 +281,7 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 // the bool first, then pass the int through C.gboolean.
 // boolToInt is emitted into model.go only when this is called.
 func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
-	if t.boolToIntUsed != nil {
-		*t.boolToIntUsed = true
-	}
+	t.shared.needBoolToInt()
 	return &ir.Call{
 		Type: ir.TypInt,
 		Func: &ir.Func{Name: "boolToInt"},
@@ -520,87 +561,206 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isSkipped(node) {
 		return nil
 	}
+	// style is the platform's own prop, forwarded onto the widget root by the
+	// override bodies, and no GTK property is behind it. Two GTK classes
+	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
+	// declaration reserves the name for style, so it is not theirs.
+	if prop == stylePropName {
+		return nil
+	}
 	bare := codegen.IdentBareName(node)
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
 	}
-	// Resolve the prop via the static table first, then GIR, so we get the
-	// setter, the receiver-cast type (e.g. *C.GtkEditable for the
-	// text setter on a GtkEntry), and any value-type override
-	// (e.g. GtkOrientation enum).
+	info := t.classFor(cType)
+	p, hasProp := girProp(info, prop)
+
+	// gtkSetterTable is the platform's deliberate choice, so it wins: it
+	// picks gtk_label_set_text over the gtk_label_set_label GIR names, and
+	// it answers for props GIR names no setter for (GtkImage.file). GIR's
+	// `setter=` answers the rest.
 	entry := gtkSetterFor(cType, prop)
-	setter := entry.Setter
-	recvType := cType
-	if entry.RecvType != "" {
-		recvType = entry.RecvType
-	}
-	var valType string
-	if setter == "" {
+	if entry.Setter == "" {
 		// Stdlib-mapped name: most "value"/"text" props flow into the
 		// underlying GTK "label" setter on labels & buttons.
 		switch prop {
 		case "value", "text":
 			entry = gtkSetterFor(cType, "label")
-			setter = entry.Setter
-			if entry.RecvType != "" {
-				recvType = entry.RecvType
-			}
 		}
 	}
-	if info := t.classFor(cType); info != nil {
-		if p, ok := girProp(info, prop); ok {
-			g := girSetter(info, p)
-			if setter == "" {
-				setter = g.Setter
-			}
-			if g.RecvType != "" {
-				recvType = g.RecvType
-			}
-			valType = g.ValType
-		}
-	}
-	if setter == "" {
-		return nil
+	if entry.Setter == "" && hasProp {
+		entry = girSetter(info, p)
 	}
 	// Wrapped mode: emit a gtk4rt setter over the Handle with the raw
-	// Go-native value. Unmapped setters/values fall through to cgo (→ fallback).
-	if t.wrapped {
-		if rt, ok := rtSetterTable[setter]; ok {
+	// Go-native value, before anything cgo-shaped is built — a coercion
+	// records that its helper is needed, and here nothing would use it.
+	// Setters that surface does not have fall through to cgo, leaving a `C.`
+	// that triggers the whole-program fallback.
+	if t.wrapped && entry.Setter != "" {
+		if rt, ok := rtSetterTable[entry.Setter]; ok {
 			if arg, ok := rtSetterValue(rt.kind, value); ok {
 				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, t.qualifyNodeExpr(node), arg)}}
 			}
 		}
 	}
-	valArg := t.coerceSetterValue(setter, value, valType)
+	recvType := cType
+	if entry.RecvType != "" {
+		recvType = entry.RecvType
+	}
+	if !hasProp {
+		if entry.Setter == "" {
+			// Not a GTK property at all — nothing to set.
+			return nil
+		}
+		// A static-table prop GIR does not describe on this class, because
+		// the parse merges interface properties but not inherited ones
+		// (GtkApplicationWindow's title). The SNGL value type is all there
+		// is to coerce by.
+		return t.emitSetterCall(node, recvType, entry.Setter, t.coerceSetterValue(entry.Setter, value))
+	}
+	kind := propKind(t.registry, p)
+	if kind == propUnsettable {
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s: no SNGL value can produce %s, which is what this GTK property takes", cType, p.Name, girTypeLabel(p)))
+		return nil
+	}
+	if entry.Setter == "" {
+		return t.emitGObjectPropSet(node, p, kind, value)
+	}
+	valArg, err := t.setterValueArg(kind, p, entry.ValType, value)
+	if err != nil {
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s: %w", cType, p.Name, err))
+		return nil
+	}
+	return t.emitSetterCall(node, recvType, entry.Setter, valArg)
+}
+
+// emitSetterCall is the call to a C setter: the widget cast to the type that
+// setter takes as its receiver, then the cgo-coerced value.
+func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, cast, valArg)}}
 }
 
+// gObjectSetFn is the preamble helper that carries each kind of value through
+// GObject's generic property path. Every kind but propUnsettable has one, so
+// a property GTK ships no setter for is still settable.
+var gObjectSetFn = map[propValueKind]string{
+	propString: "sngl_set_prop_string",
+	propBool:   "sngl_set_prop_bool",
+	propInt:    "sngl_set_prop_int",
+	propFloat:  "sngl_set_prop_double",
+	propEnum:   "sngl_set_prop_int",
+}
+
+// emitGObjectPropSet sets a property GTK ships no setter for by name, through
+// g_object_set_property. The property's GIR name is the GObject property name;
+// the helper transforms the primitive value into whatever GType the class's
+// GParamSpec declares, which is how an enum-, float- or unsigned-typed
+// property is reached from one of four helpers.
+func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propValueKind, value ir.Expr) []ir.Stmt {
+	fn, ok := gObjectSetFn[kind]
+	if !ok {
+		return nil
+	}
+	valArg, err := t.gObjectValueArg(kind, p, value)
+	if err != nil {
+		t.shared.fail(fmt.Errorf("gtk4: %s: %w", p.Name, err))
+		return nil
+	}
+	t.shared.needGObjectSet()
+	obj := cgoCast("", t.qualifyNodeExpr(node))
+	name := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: p.Name})
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, obj, name, valArg)}}
+}
+
+// setterValueArg is the value argument for the C setter of a property GIR
+// describes: the cgo cast that matches the C parameter type.
+func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
+	switch kind {
+	case propString:
+		return nativeCall("CString", value), nil
+	case propBool:
+		return nativeCall("gboolean", t.boolToGoInt(value)), nil
+	case propInt, propFloat:
+		return nativeCall(girScalarCast(p), value), nil
+	case propEnum:
+		member, isMember, err := t.enumValueArg(p, value)
+		if err != nil {
+			return nil, err
+		}
+		if isMember {
+			return member, nil
+		}
+		// An int flows through the named cgo type, which the setter's
+		// parameter is declared as.
+		return nativeCall(valType, member), nil
+	}
+	return nil, fmt.Errorf("no value of this type can be set")
+}
+
+// gObjectValueArg is the value argument for one of the gObjectSetFn helpers,
+// whose parameters are plain C scalars.
+func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value ir.Expr) (ir.Expr, error) {
+	switch kind {
+	case propString:
+		return nativeCall("CString", value), nil
+	case propBool:
+		return nativeCall("int", t.boolToGoInt(value)), nil
+	case propInt:
+		return nativeCall("int", value), nil
+	case propFloat:
+		return nativeCall("double", value), nil
+	case propEnum:
+		member, _, err := t.enumValueArg(p, value)
+		if err != nil {
+			return nil, err
+		}
+		return nativeCall("int", member), nil
+	}
+	return nil, fmt.Errorf("no value of this type can be set")
+}
+
+// enumValueArg resolves the value bound to an enum- or bitfield-typed
+// property: a string literal names one of its members, and an int is the
+// member's own number. isMember reports the former, whose cgo spelling is
+// already typed and needs no cast.
+func (t *gtk4Translator) enumValueArg(p gir.Prop, value ir.Expr) (arg ir.Expr, isMember bool, err error) {
+	if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+		cst := girEnumMember(t.registry, p.GIRType, lit.Raw)
+		if cst == "" {
+			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Raw, p.GIRType)
+		}
+		return &ir.Ident{Name: cst, Type: ir.TypDyn}, true, nil
+	}
+	if vt := exprIRType(value); vt != nil && vt.Kind == ir.TypeInt {
+		return value, false, nil
+	}
+	return nil, false, fmt.Errorf("a %s value is a string literal naming one of its members, or an int", p.GIRType)
+}
+
+// girTypeLabel names the type a property takes, for an error a reader can act
+// on. An array property carries no GIR type of its own — its inner <type>
+// names the element.
+func girTypeLabel(p gir.Prop) string {
+	if p.GIRType == "" {
+		return "an array"
+	}
+	return "a " + p.GIRType
+}
+
 // coerceSetterValue wraps the SNGL value expression so its Go-side
-// representation matches the cgo type the C setter expects.
+// representation matches the cgo type the C setter expects. This is the path
+// for a prop the loaded GIR does not describe, where the SNGL value's own type
+// is all there is to go on:
 //   - Booleans → C.gboolean(v)
 //   - Integers / Floats → C.int(v) / C.double(v)
-//   - Strings → C.CString(v)
-//   - Enum-typed setters (valType set, e.g. GtkOrientation):
-//     map known SNGL string literals to their C constants, otherwise
-//     cast through the named cgo type.
-func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType string) ir.Expr {
-	// Boolean-only setter shortcut — kept for setters whose GIR metadata
-	// we may not have resolved.
+//   - anything else → C.CString(v)
+func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr {
+	// A boolean setter whose property the GIR did not carry: the value may
+	// well be typed dyn, and the cast below would make a string of it.
 	if setter == "gtk_check_button_set_active" {
 		return nativeCall("gboolean", t.boolToGoInt(value))
-	}
-	if valType != "" {
-		// Enum / named-type setter. Map literal strings to C constants.
-		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-			if cst := girEnumConstant(valType, lit.Raw); cst != "" {
-				return &ir.Ident{Name: cst, Type: ir.TypDyn}
-			}
-		}
-		// Generic cast: C.<TypeName>(v) — cgo coerces untyped int
-		// constants into the named integer type.
-		return nativeCall(valType, value)
 	}
 	if vt := exprIRType(value); vt != nil {
 		switch vt.Kind {
@@ -632,22 +792,6 @@ func exprIRType(e ir.Expr) *ir.Type {
 		return n.Type
 	}
 	return nil
-}
-
-// girEnumConstant maps a (GTK enum type, SNGL string value) pair to
-// the corresponding cgo constant identifier. Returns "" when the type
-// or value isn't recognised; callers fall back to a generic cast.
-func girEnumConstant(enumType, value string) string {
-	switch enumType {
-	case "GtkOrientation":
-		switch value {
-		case "horizontal":
-			return "C.GTK_ORIENTATION_HORIZONTAL"
-		case "vertical":
-			return "C.GTK_ORIENTATION_VERTICAL"
-		}
-	}
-	return ""
 }
 
 // gtk4SignalFor maps a SNGL event name on a given C type to the

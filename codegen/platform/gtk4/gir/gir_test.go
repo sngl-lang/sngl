@@ -271,3 +271,115 @@ func TestParseGIR_UnmappableType(t *testing.T) {
 		t.Errorf("expected TypeDyn fallback, got %v", info.Props)
 	}
 }
+
+// setterGIR exercises everything a property's setter reference has to carry:
+// a setter whose name is not derivable from the class and property names, a
+// setter whose value parameter is typed differently from the property, a
+// property with no setter at all, an enumeration, and an array-typed property.
+const setterGIR = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <enumeration name="Orientation" c:type="GtkOrientation">
+      <member name="horizontal" value="0" c:identifier="GTK_ORIENTATION_HORIZONTAL"/>
+      <member name="vertical" value="1" c:identifier="GTK_ORIENTATION_VERTICAL"/>
+    </enumeration>
+    <class name="Image" c:type="GtkImage">
+      <constructor name="new" c:identifier="gtk_image_new"/>
+      <method name="set_from_icon_name" c:identifier="gtk_image_set_from_icon_name">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="icon_name" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_column_spacing" c:identifier="gtk_image_set_column_spacing">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="spacing" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="icon-name" writable="1" setter="set_from_icon_name">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="column-spacing" writable="1" setter="set_column_spacing">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="file" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="orientation" writable="1" setter="set_missing">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+      <property name="artists" writable="1">
+        <array c:type="char**">
+          <type name="utf8" c:type="char*"/>
+        </array>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+
+// TestParseGIR_SetterIsRead pins that a property's setter is the C function
+// GIR names it to be. gtk_image_set_from_icon_name is the standing example of
+// a setter no rule over the class and property names produces.
+func TestParseGIR_SetterIsRead(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(setterGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	props := map[string]gir.Prop{}
+	for _, p := range reg.ByCType["GtkImage"].Props {
+		props[p.Name] = p
+	}
+	if got := props["icon-name"].Setter; got != "gtk_image_set_from_icon_name" {
+		t.Errorf("icon-name setter = %q; want gtk_image_set_from_icon_name", got)
+	}
+	// The setter's value parameter, not the property, is what a call has to
+	// satisfy — here a guint against a gint property.
+	if got := props["column-spacing"].SetterCType; got != "guint" {
+		t.Errorf("column-spacing setter value C type = %q; want guint", got)
+	}
+	// A property GIR names no setter for has none, and one whose reference
+	// resolves to no method has none either.
+	if got := props["file"].Setter; got != "" {
+		t.Errorf("file setter = %q; want none", got)
+	}
+	if got := props["orientation"].Setter; got != "" {
+		t.Errorf("orientation setter = %q; want none — set_missing is not declared", got)
+	}
+	// An array property's inner <type> names its element, so the property
+	// keeps no GIR type that could be read as that element.
+	if got := props["artists"].GIRType; got != "" {
+		t.Errorf("artists GIR type = %q; want none", got)
+	}
+}
+
+// TestParseGIR_Enumerations pins the member table an enum-typed property is
+// set through: a SNGL string names a member, and the C identifier is what the
+// emitted call carries.
+func TestParseGIR_Enumerations(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(setterGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	e := reg.Enums["Orientation"]
+	if e == nil {
+		t.Fatal("Orientation enumeration not captured")
+	}
+	if e.CType != "GtkOrientation" {
+		t.Errorf("CType = %q; want GtkOrientation", e.CType)
+	}
+	if got := e.Members["vertical"]; got != "GTK_ORIENTATION_VERTICAL" {
+		t.Errorf("Members[vertical] = %q; want GTK_ORIENTATION_VERTICAL", got)
+	}
+}

@@ -52,9 +52,81 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 			t.Errorf("generated source is missing %q", want)
 		}
 	}
-	// GTK's own `unit` property is a SNGL keyword; no declaration can carry it.
+	// GTK's own `unit` property is a SNGL keyword, so it is declared under
+	// the deterministic rewrite rather than dropped.
 	if strings.Contains(src, "\n    unit ") {
 		t.Error("generated source declares a prop named `unit`, which is a keyword")
+	}
+	if !strings.Contains(src, "\n    unit_ ") {
+		t.Error("generated source declares no `unit_` prop; GtkPrintOperation.unit has nowhere else to land")
+	}
+}
+
+// TestSnglName_RewritesKeywords pins the rewrite itself, including that it is
+// driven by the lexer rather than by a list of names.
+func TestSnglName_RewritesKeywords(t *testing.T) {
+	for _, tc := range []struct{ gir, want string }{
+		{"default-width", "defaultWidth"},
+		{"unit", "unit_"},
+		{"for", "for_"},
+		{"platform", "platform_"},
+		{"icon_name", "iconName"},
+	} {
+		got, ok := snglName(tc.gir)
+		if !ok || got != tc.want {
+			t.Errorf("snglName(%q) = %q, %v; want %q", tc.gir, got, ok, tc.want)
+		}
+	}
+	if _, ok := snglName(""); ok {
+		t.Error("snglName(\"\") reported a name")
+	}
+}
+
+// TestSnglName_NoCollisions sweeps the host's whole widget set: camel-casing
+// and the keyword rewrite together must not make two GIR names on one class
+// into one SNGL name, since the declaration would then carry one prop where
+// GTK has two and the emitter would set the wrong one.
+func TestSnglName_NoCollisions(t *testing.T) {
+	skipWithoutGIR(t)
+	reg, err := (&Generator{}).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewritten := 0
+	for _, info := range reg.Classes {
+		if info.CType == "" {
+			continue
+		}
+		props := map[string]string{}
+		events := map[string]string{}
+		for _, p := range info.Props {
+			n, ok := snglName(p.Name)
+			if !ok {
+				t.Errorf("%s.%s has no SNGL spelling", info.CType, p.Name)
+				continue
+			}
+			if strings.HasSuffix(n, "_") {
+				rewritten++
+			}
+			if prev, dup := props[n]; dup && prev != p.Name {
+				t.Errorf("%s: %q and %q both spell %q", info.CType, prev, p.Name, n)
+			}
+			props[n] = p.Name
+		}
+		for _, sig := range info.Signals {
+			n, ok := snglName(sig.Name)
+			if !ok {
+				t.Errorf("%s signal %s has no SNGL spelling", info.CType, sig.Name)
+				continue
+			}
+			if prev, dup := events[n]; dup && prev != sig.Name {
+				t.Errorf("%s: signals %q and %q both spell %q", info.CType, prev, sig.Name, n)
+			}
+			events[n] = sig.Name
+		}
+	}
+	if rewritten == 0 {
+		t.Error("no name needed the keyword rewrite; the sweep is asserting nothing")
 	}
 }
 
@@ -145,6 +217,39 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 	got := girSetter(box, p)
 	if got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" || got.ValType != "GtkOrientation" {
 		t.Errorf("girSetter(GtkBox.orientation) = %+v; want the GtkOrientable setter with both casts", got)
+	}
+	// A setter is the name GIR gives it, which for eleven GTK properties is
+	// not the one the class and property names would produce.
+	for _, tc := range []struct{ cType, prop, want string }{
+		{"GtkImage", "iconName", "gtk_image_set_from_icon_name"},
+		{"GtkNotebook", "page", "gtk_notebook_set_current_page"},
+		{"GtkWindow", "focusWidget", "gtk_window_set_focus"},
+		{"GtkGLArea", "useEs", "gtk_gl_area_set_use_es"},
+	} {
+		info := girClassInfoFor(t, tc.cType)
+		p, ok := girProp(info, tc.prop)
+		if !ok {
+			t.Errorf("girProp(%s, %s) not found", tc.cType, tc.prop)
+			continue
+		}
+		if got := girSetter(info, p).Setter; got != tc.want {
+			t.Errorf("girSetter(%s.%s) = %q; want %q", tc.cType, tc.prop, got, tc.want)
+		}
+	}
+	// A property GIR names no setter for has none — there is no derived
+	// spelling to fall back on, and gtk_image_set_file does not exist.
+	img := girClassInfoFor(t, "GtkImage")
+	p, ok = girProp(img, "file")
+	if !ok {
+		t.Fatal("girProp(GtkImage, file) not found")
+	}
+	if got := girSetter(img, p).Setter; got != "" {
+		t.Errorf("girSetter(GtkImage.file) = %q; want none", got)
+	}
+	// It is the static table that answers for it, and that answer is the
+	// setter the gtk4 override bodies rely on.
+	if got := gtkSetterFor("GtkImage", "file").Setter; got != "gtk_image_set_from_file" {
+		t.Errorf("gtkSetterFor(GtkImage.file) = %q; want gtk_image_set_from_file", got)
 	}
 	// The event a body writes is the SNGL spelling of a GLib signal name.
 	if got := girSignal(girClassInfoFor(t, "GtkButton"), "clicked"); got != "clicked" {

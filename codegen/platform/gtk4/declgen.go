@@ -111,8 +111,11 @@ func widgetCType(comp *ir.Component) string {
 }
 
 // snglName is the SNGL spelling of a GIR property or signal name:
-// "default-width" becomes "defaultWidth". It reports false for a name no
-// declaration can carry — GTK's own `unit` property, which is a keyword here.
+// "default-width" becomes "defaultWidth". A name that lands on a SNGL keyword
+// — GTK's own `unit` property — takes a trailing underscore, which is a legal
+// identifier here and cannot collide with a camel-cased name (no GIR name
+// carries one). It reports false only for a name no identifier can be made
+// of at all.
 func snglName(girName string) (string, bool) {
 	parts := strings.FieldsFunc(girName, func(r rune) bool { return r == '-' || r == '_' })
 	if len(parts) == 0 {
@@ -123,10 +126,14 @@ func snglName(girName string) (string, bool) {
 	for _, p := range parts[1:] {
 		out.WriteString(strings.ToUpper(p[:1]) + p[1:])
 	}
-	if !isSnglIdent(out.String()) || parser.LookupIdent(out.String()) != parser.IDENT {
+	name := out.String()
+	if !isSnglIdent(name) {
 		return "", false
 	}
-	return out.String(), true
+	if parser.LookupIdent(name) != parser.IDENT {
+		name += "_"
+	}
+	return name, true
 }
 
 func isSnglIdent(s string) bool {
@@ -182,22 +189,97 @@ func girProp(info *gir.ClassInfo, snglProp string) (gir.Prop, bool) {
 	return gir.Prop{}, false
 }
 
-// girSetter is the C setter for one property of one class, with the casts it
-// needs. An interface-inherited property binds to the interface's namespaced
-// setter (gtk_orientable_set_orientation) and takes the interface as its
-// receiver, not the class.
+// girSetter is the C setter GIR names for one property of one class, with the
+// casts a call to it needs. An interface-inherited property binds to the
+// interface's setter (gtk_orientable_set_orientation) and takes the interface
+// as its receiver, not the class. Setter is empty for a property GIR names no
+// setter for; there is no derived spelling to fall back on.
 func girSetter(info *gir.ClassInfo, p gir.Prop) gtkSetterEntry {
-	ns := lowerCType(info.CType)
-	e := gtkSetterEntry{}
+	e := gtkSetterEntry{Setter: p.Setter}
 	if p.InterfaceName != "" {
-		ns = lowerCType(p.InterfaceName)
 		e.RecvType = "Gtk" + p.InterfaceName
 	}
-	e.Setter = "gtk_" + ns + "_set_" + strings.ReplaceAll(p.Name, "-", "_")
 	if gt := p.GIRType; girTypeIsNamedNonPrimitive(gt) {
 		e.ValType = "Gtk" + gt
 	}
 	return e
+}
+
+// propValueKind is the shape of value a property takes, which decides both
+// how a SNGL value is coerced for the C setter and — for a property with no
+// setter — which of the generic GObject helpers can carry it.
+type propValueKind int
+
+const (
+	// propUnsettable is a property whose value no SNGL expression can
+	// produce: a GObject, a boxed struct, a string array, or any type from
+	// a namespace other than Gtk (the platform parses only Gtk-4.0.gir, so
+	// it cannot tell a foreign enum from a foreign struct).
+	propUnsettable propValueKind = iota
+	propString
+	propBool
+	propInt
+	propFloat
+	// propEnum is a Gtk enumeration or bitfield: an int on the wire, and a
+	// SNGL string naming one of its members.
+	propEnum
+)
+
+// propKind classifies p's value type. reg supplies the enumerations, so a
+// nil registry classifies nothing.
+func propKind(reg *gir.TypeRegistry, p gir.Prop) propValueKind {
+	switch p.GIRType {
+	case "utf8", "gchararray", "filename":
+		return propString
+	case "gboolean":
+		return propBool
+	case "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
+		return propInt
+	case "gdouble", "gfloat":
+		return propFloat
+	}
+	if reg != nil && reg.Enums[p.GIRType] != nil {
+		return propEnum
+	}
+	return propUnsettable
+}
+
+// girScalarCast is the cgo type a numeric value takes to satisfy the C
+// parameter of p's setter. GIR names that parameter's own C type, which is not
+// always the property's: GtkGrid's column-spacing property is a gint while its
+// setter takes a guint, and GtkEntry's invisible-char is a guint while its
+// setter takes a gunichar. A parameter whose C type is not a plain cgo
+// identifier ("unsigned int", a pointer) falls back to the glib typedef of the
+// property, which cgo does accept there.
+func girScalarCast(p gir.Prop) string {
+	if c := p.SetterCType; c != "" && !strings.ContainsAny(c, "* ") {
+		return c
+	}
+	switch p.GIRType {
+	case "gint":
+		return "int"
+	case "gdouble":
+		return "double"
+	}
+	return p.GIRType
+}
+
+// girEnumMember is the cgo spelling of the enum member a SNGL string names —
+// `C.GTK_ORIENTATION_VERTICAL` for "vertical" on a GtkOrientation property.
+// Empty when the type is not an enumeration or names no such member.
+func girEnumMember(reg *gir.TypeRegistry, girType, value string) string {
+	if reg == nil {
+		return ""
+	}
+	e := reg.Enums[girType]
+	if e == nil {
+		return ""
+	}
+	ident := e.Members[strings.ReplaceAll(value, "-", "_")]
+	if ident == "" {
+		return ""
+	}
+	return "C." + ident
 }
 
 // girSignal returns the GLib signal name behind a SNGL event name.

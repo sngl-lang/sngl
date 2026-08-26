@@ -14,6 +14,18 @@ grep '#include <gtk/gtk.h>' out/model.go
 # cgo enabled
 grep 'import "C"' out/model.go
 
+# The setter for each prop is the C function the fixture GIR names, and the
+# enum value is the member's own C identifier.
+grep 'gtk_orientable_set_orientation' out/model.go
+grep 'C.GTK_ORIENTATION_VERTICAL' out/model.go
+grep 'gtk_button_set_label' out/model.go
+
+# GtkImage.file is a property real GIR names no setter for, so the platform's
+# own table answers for it — and it wins over the GIR name where both exist,
+# which is why a label is set with set_text and not the set_label GIR names.
+grep 'gtk_label_set_text' out/model.go
+! grep 'gtk_label_set_label' out/model.go
+
 # Button constructor from the inline GIR (gtk_button_new_with_label is the
 # first/only constructor in the fixture, exercising the GIR-driven ctor path).
 grep 'gtk_button_new_with_label' out/model.go
@@ -33,13 +45,37 @@ grep 'snglActivate' out/callbacks.go
   xmlns:c="http://www.gtk.org/introspection/c/1.0"
   xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <namespace name="Gtk" version="4.0">
+    <enumeration name="Orientation" c:type="GtkOrientation">
+      <member name="horizontal" value="0" c:identifier="GTK_ORIENTATION_HORIZONTAL"/>
+      <member name="vertical" value="1" c:identifier="GTK_ORIENTATION_VERTICAL"/>
+    </enumeration>
     <interface name="Orientable">
-      <property name="orientation" writable="1">
+      <method name="set_orientation" c:identifier="gtk_orientable_set_orientation">
+        <parameters>
+          <instance-parameter name="orientable">
+            <type name="Orientable" c:type="GtkOrientable*"/>
+          </instance-parameter>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="orientation" writable="1" setter="set_orientation">
         <type name="Orientation" c:type="GtkOrientation"/>
       </property>
     </interface>
     <interface name="Editable">
-      <property name="text" writable="1">
+      <method name="set_text" c:identifier="gtk_editable_set_text">
+        <parameters>
+          <instance-parameter name="editable">
+            <type name="Editable" c:type="GtkEditable*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="text" writable="1" setter="set_text">
         <type name="utf8" c:type="gchar*"/>
       </property>
       <glib:signal name="changed">
@@ -60,7 +96,17 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="label" writable="1">
+      <method name="set_label" c:identifier="gtk_button_set_label">
+        <parameters>
+          <instance-parameter name="button">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="label">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
         <type name="utf8" c:type="gchar*"/>
       </property>
       <glib:signal name="clicked">
@@ -77,7 +123,17 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="label" writable="1">
+      <method name="set_label" c:identifier="gtk_label_set_label">
+        <parameters>
+          <instance-parameter name="label">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="str">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
         <type name="utf8" c:type="gchar*"/>
       </property>
     </class>
@@ -93,7 +149,17 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="spacing" writable="1">
+      <method name="set_spacing" c:identifier="gtk_box_set_spacing">
+        <parameters>
+          <instance-parameter name="box">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="spacing" writable="1" setter="set_spacing">
         <type name="gint" c:type="int"/>
       </property>
     </class>
@@ -106,7 +172,17 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="active" writable="1">
+      <method name="set_active" c:identifier="gtk_check_button_set_active">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="setting">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="active" writable="1" setter="set_active">
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="label" writable="1">
@@ -135,7 +211,17 @@ grep 'snglActivate' out/callbacks.go
           </parameter>
         </parameters>
       </constructor>
-      <property name="title" writable="1">
+      <method name="set_title" c:identifier="gtk_window_set_title">
+        <parameters>
+          <instance-parameter name="window">
+            <type name="ApplicationWindow" c:type="GtkApplicationWindow*"/>
+          </instance-parameter>
+          <parameter name="title">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="title" writable="1" setter="set_title">
         <type name="utf8" c:type="gchar*"/>
       </property>
       <property name="default-width" writable="1">
