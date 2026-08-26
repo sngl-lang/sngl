@@ -4,7 +4,8 @@ import "git.duckfam.us/jonathan/sngl/ir"
 
 // passPlatformExtensionBody specializes each *ir.Component whose
 // PlatformBodies map has an entry for the active platform by swapping
-// that entry into Component.Body. The checker is platform-agnostic and
+// that entry into Component.Body, and its PlatformVars entry into
+// Component.Vars. The checker is platform-agnostic and
 // collects every registered platform's `component sngl.X { platform <p>
 // { ... } }` body into the map; the active platform is chosen here.
 //
@@ -50,23 +51,13 @@ func specializePkgBodies(pkg *ir.Package, platform string, seen map[*ir.Package]
 	// specialized too.
 	if pkg.Symbols != nil {
 		pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
-			comp, ok := sym.(*ir.Component)
-			if !ok || comp == nil || comp.PlatformBodies == nil {
-				return true
-			}
-			if body, ok := comp.PlatformBodies[platform]; ok {
-				comp.Body = body
-			}
+			comp, _ := sym.(*ir.Component)
+			specializeComp(comp, platform)
 			return true
 		})
 	}
 	for _, comp := range pkg.Components {
-		if comp == nil || comp.PlatformBodies == nil {
-			continue
-		}
-		if body, ok := comp.PlatformBodies[platform]; ok {
-			comp.Body = body
-		}
+		specializeComp(comp, platform)
 	}
 	for _, imp := range pkg.Imports {
 		if imp != nil {
@@ -81,20 +72,12 @@ func specializePkgBodies(pkg *ir.Package, platform string, seen map[*ir.Package]
 	// symbol table or import edge above, so specialize each Component actually
 	// referenced in the tree. Idempotent: re-swapping an already-specialized
 	// Body is a no-op.
-	specializeComp := func(comp *ir.Component) {
-		if comp == nil || comp.PlatformBodies == nil {
-			return
-		}
-		if body, ok := comp.PlatformBodies[platform]; ok {
-			comp.Body = body
-		}
-	}
 	var walk func(stmts []ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				specializeComp(n.Component)
+				specializeComp(n.Component, platform)
 				walk(n.Children)
 			case *ir.For:
 				walk(n.Body)
@@ -113,5 +96,24 @@ func specializePkgBodies(pkg *ir.Package, platform string, seen map[*ir.Package]
 		if win != nil {
 			walk(win.Body)
 		}
+	}
+}
+
+// specializeComp swaps one component's entries for platform into the live
+// Body and Vars slots. The vars travel with the body wherever the body does:
+// the body reads them, and a var belonging to a platform that is not the
+// build target must never reach codegen. Idempotent — re-swapping an
+// already-specialized component writes the same values.
+func specializeComp(comp *ir.Component, platform string) {
+	if comp == nil || comp.PlatformBodies == nil {
+		return
+	}
+	body, ok := comp.PlatformBodies[platform]
+	if !ok {
+		return
+	}
+	comp.Body = body
+	if vars, ok := comp.PlatformVars[platform]; ok {
+		comp.Vars = vars
 	}
 }

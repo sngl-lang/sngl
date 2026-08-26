@@ -1703,34 +1703,50 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 			c.registerEnum(s)
 		case *ast.UnitDef:
 			c.registerUnit(s)
-		case *ast.ConstDecl:
-			for _, spec := range s.Specs {
-				typ := c.resolveType(spec.Type)
-				for _, name := range spec.Names {
-					irComp.Vars = append(irComp.Vars, &ir.Var{AST: s, Name: name, Type: typ, IsConst: true})
-				}
-			}
-		case *ast.VarDecl:
-			for _, spec := range s.Specs {
-				typ := c.resolveType(spec.Type)
-				for _, name := range spec.Names {
-					v := &ir.Var{AST: s, Name: name, Type: typ}
-					for i := range spec.Handlers {
-						h := &spec.Handlers[i]
-						v.Handlers = append(v.Handlers, &ir.EventHandler{
-							AST:  h,
-							Name: h.Name,
-							Func: &ir.Func{Params: c.buildParams(h.Params)},
-						})
-					}
-					irComp.Vars = append(irComp.Vars, v)
-				}
-			}
+		case *ast.ConstDecl, *ast.VarDecl:
+			irComp.Vars = append(irComp.Vars, c.collectComponentVarDecl(stmt)...)
 		case *ast.FuncDef:
 			nestedFuncs = append(nestedFuncs, s)
 		}
 	}
 	return nestedFuncs
+}
+
+// collectComponentVarDecl builds the pre-registered ir.Vars for one component
+// body var/const declaration. Split out of collectComponentDecls because a
+// platform extension body is collected on its own (checkPendingExtensions),
+// where only the state declarations travel with the body — the struct/enum/unit
+// hoisting and nested funcs of a full component body do not.
+//
+// Returns nil for any other statement.
+func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
+	var out []*ir.Var
+	switch s := stmt.(type) {
+	case *ast.ConstDecl:
+		for _, spec := range s.Specs {
+			typ := c.resolveType(spec.Type)
+			for _, name := range spec.Names {
+				out = append(out, &ir.Var{AST: s, Name: name, Type: typ, IsConst: true})
+			}
+		}
+	case *ast.VarDecl:
+		for _, spec := range s.Specs {
+			typ := c.resolveType(spec.Type)
+			for _, name := range spec.Names {
+				v := &ir.Var{AST: s, Name: name, Type: typ}
+				for i := range spec.Handlers {
+					h := &spec.Handlers[i]
+					v.Handlers = append(v.Handlers, &ir.EventHandler{
+						AST:  h,
+						Name: h.Name,
+						Func: &ir.Func{Params: c.buildParams(h.Params)},
+					})
+				}
+				out = append(out, v)
+			}
+		}
+	}
+	return out
 }
 
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {

@@ -993,6 +993,9 @@ func (c *checker) mergePlatformExtensions() {
 						c.error(pl.Pos, "component %s.%s has duplicate platform block for %q", ns, local, pl.Platform)
 						continue
 					}
+					if stdComp.PlatformVars == nil {
+						stdComp.PlatformVars = map[string][]*ir.Var{}
+					}
 					// Reserve the key first so duplicate-detection works even
 					// when the body check appends nothing (e.g., empty body).
 					stdComp.PlatformBodies[pl.Platform] = nil
@@ -1005,6 +1008,18 @@ func (c *checker) mergePlatformExtensions() {
 			}
 		}
 	}
+}
+
+// collectExtensionVars pre-registers the vars and consts a platform extension
+// body declares, the way pass1 does for an ordinary component body. Only state
+// declarations are collected: a struct, enum, unit or func in an extension body
+// is out of scope here and stays unbound.
+func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
+	var out []*ir.Var
+	for _, stmt := range body.Stmts {
+		out = append(out, c.collectComponentVarDecl(stmt)...)
+	}
+	return out
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
@@ -1064,12 +1079,24 @@ func (c *checker) checkPendingExtensions() {
 		for _, pe := range byPlatform[platform] {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
+			savedVars := pe.comp.Vars
 			pe.comp.AST.Body = pe.body
 			pe.comp.Body = nil
+			// checkComponentBody declares comp.Vars into the body scope and
+			// checkComponentVars looks the pre-registered var up there by
+			// name, so the body's own state has to be collected before the
+			// body is checked — pass1's collectComponentDecls only ever saw
+			// the component's parenless stub. The list starts from the
+			// component's own vars so a var the stdlib declaration made stays
+			// visible to the override.
+			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
+			pe.comp.Vars = vars
 			c.checkComponentBody(pe.comp)
 			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+			pe.comp.PlatformVars[pe.platform] = pe.comp.Vars
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
+			pe.comp.Vars = savedVars
 		}
 		c.popScope()
 	}

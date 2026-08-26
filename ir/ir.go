@@ -397,6 +397,16 @@ type Component struct {
 	// platform's body into Component.Body before remaining lowering
 	// passes run. nil for components with no extension declarations.
 	PlatformBodies map[string][]Stmt `json:"-"`
+	// PlatformVars holds the vars and consts declared by each extension
+	// body, keyed the same way as PlatformBodies and swapped into
+	// Component.Vars by the same lowering pass. It is per-platform for the
+	// reason the bodies are: the checker checks every registered platform's
+	// extension, so two platforms may declare different state on one stdlib
+	// component, and only the build target's may reach codegen. Each entry
+	// is the whole var list the specialized component has (the component's
+	// own vars first, then the body's), so the swap is a replacement rather
+	// than an append and stays idempotent.
+	PlatformVars map[string][]*Var `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other

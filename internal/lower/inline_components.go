@@ -18,7 +18,7 @@ var passNoInlineComponents = pass{
 	apply:   lowerInlineComponents,
 }
 
-func lowerInlineComponents(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -28,7 +28,7 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	cycles := findRecursiveCycles(pkg)
 	reactive := collectReactiveVars(pkg)
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -42,6 +42,7 @@ type inlineCompState struct {
 	cycles      map[*ir.Component]bool
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
+	platform    string
 	instCounter int
 }
 
@@ -305,11 +306,27 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
 		return false
 	}
-	// Only inline components declared in this package.
-	if !st.isLocalComponent(comp) {
+	// Only inline components declared in this package, or a stdlib component
+	// this build's platform extension specialized: passPlatformExtensionBody
+	// swapped that body and its vars into the component, and state declared
+	// there is per-instance for exactly the reasons a user component's var
+	// is. A pure override never reaches here — passInlinePure substituted it
+	// already — so this is the impure override's path to the same renames.
+	if !st.isLocalComponent(comp) && !st.specializedHere(comp) {
 		return false
 	}
 	return true
+}
+
+// specializedHere reports whether comp carries a platform extension body for
+// the platform being lowered for. With no platform (LSP, format) nothing is
+// specialized and nothing qualifies.
+func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
+	if st.platform == "" || comp.PlatformBodies == nil {
+		return false
+	}
+	_, ok := comp.PlatformBodies[st.platform]
+	return ok
 }
 
 // isLocalComponent reports whether comp is declared in the package being lowered.
