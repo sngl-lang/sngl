@@ -65,6 +65,12 @@ component Column(
     chain list<string>,
 ) list<component> {}
 
+#[intrinsic("android:Box")]
+component Box(
+    modifier sngl.Style,
+    chain list<string>,
+) list<component> {}
+
 #[intrinsic("android:Row")]
 component Row(
     modifier sngl.Style,
@@ -104,9 +110,11 @@ component sngl.hbox {
     }
 }
 
-component sngl.stack() {
-    Box {
-        slot
+component sngl.stack {
+    platform android {
+        Box(modifier={...style}) {
+            slot
+        }
     }
 }
 

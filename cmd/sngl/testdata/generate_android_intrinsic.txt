@@ -25,6 +25,9 @@ grep 'Text\(text = "hi", modifier = Modifier\.padding\(1\.dp\), style = TextStyl
 grep 'Row\(modifier = Modifier\.padding\(2\.dp\)\) \{' out/MainScreen.kt
 grep 'Column\(modifier = Modifier\.verticalScroll\(rememberScrollState\(\)\)\) \{' out/MainScreen.kt
 
+# stack layers its children, so it is a Box and not a Column.
+grep 'Box\(modifier = Modifier\.padding\(3\.dp\)\) \{' out/MainScreen.kt
+
 -- app.sngl --
 import . "sngl://std"
 import android "sngl://platforms/android"
@@ -40,6 +43,9 @@ component main {
         }
         scroll {
             text(value="scrolled")
+        }
+        stack(style={padding=3}) {
+            text(value="layered")
         }
     }
 }

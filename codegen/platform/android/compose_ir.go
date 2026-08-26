@@ -191,15 +191,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 	style := cc.buildModifier(n)
 
 	switch n.Name {
-	case "stack":
-		cc.line("Column(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
 	case "button":
 		text := cc.resolveTextProp(n)
 		clickHandler := codegen.NodeHandler(n, "click")
