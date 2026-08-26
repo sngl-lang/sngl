@@ -72,11 +72,10 @@ component element(
     width int,
     height int,
 
-    // `value` and `max` are the two attributes whose type is the element's,
-    // not the attribute's: a string everywhere but on <progress>/<meter>,
-    // where they are numbers. Nothing here can say which element this is.
-    value dyn,
-    max dyn,
+    // An attribute is written as it is emitted, so a caller holding a number
+    // converts: `component sngl.progress` spells string(value).
+    value string,
+    max string,
 
     // Every other attribute. `data-*` and `aria-*` reach an element this way,
     // as does an attribute a standard adds after this file was written.
@@ -227,7 +226,7 @@ component sngl.textarea {
 
 component sngl.progress {
     platform html {
-        html.progress(value=value, max=max, style={...style}) {}
+        html.progress(value=string(value), max=string(max), style={...style}) {}
     }
 }
 
