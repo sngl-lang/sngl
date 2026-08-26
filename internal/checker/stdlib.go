@@ -8,24 +8,9 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
-
-	// Registers the #[builtin] macro. The stdlib source is macro-expanded
-	// below, so the handlers must be present whenever the checker runs.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/marks"
-
-	// Registers #[foreign], which sngl://std carries for user and plugin code.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/foreign"
-
-	// Registers #[options], which every platform and language package carries.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/platforms"
-
-	// Registers #[tree.kind]/#[tree.children], which sngl://draw's shapes
-	// carry.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/tree"
 )
 
 // Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
@@ -64,27 +49,6 @@ func StdlibDocs() []*ast.Document {
 	return slices.Clone(parseStdlibDocs())
 }
 
-// unmarkedOptions names the library packages that declare a top-level struct
-// called Options without the #[options] mark. Every options lookup keys on the
-// mark, so an unmarked one would silently contribute no options at all; the
-// name match here exists only to catch that omission, and is the one place the
-// name means anything.
-func unmarkedOptions() []string {
-	var out []string
-	for pkg, docs := range stdlibTierDocs {
-		for _, doc := range docs {
-			for _, stmt := range doc.Stmts {
-				sd, ok := stmt.(*ast.StructDef)
-				if ok && sd.Name == "Options" && !sd.Options {
-					out = append(out, fmt.Sprintf("sngl://%s: struct Options at %s needs #[options] (and import . \"sngl://platforms\")", pkg, sd.Pos))
-				}
-			}
-		}
-	}
-	slices.Sort(out)
-	return out
-}
-
 // targetTier reports whether a package path names a platform or language
 // package — one contributed by a codegen plugin rather than by the library.
 func targetTier(pkg string) bool {
@@ -103,9 +67,6 @@ func parseStdlibDocs() []*ast.Document {
 		// leaving a partial stdlib that produces confusing "undefined
 		// component/func" errors downstream (bugs.md #20).
 		stdlibTierDocs = map[string][]*ast.Document{}
-		// Macros expand over every tier, including the per-target ones the
-		// merged view drops.
-		var allDocs []*ast.Document
 		for _, tier := range lib.Packages() {
 			entries, err := lib.FS.ReadDir(tier)
 			if err != nil {
@@ -127,24 +88,8 @@ func parseStdlibDocs() []*ast.Document {
 				if !targetTier(tier) {
 					stdlibDocs = append(stdlibDocs, doc)
 				}
-				allDocs = append(allDocs, doc)
 				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)
 			}
-		}
-		// Run pre-check macro expansion over the stdlib source so #[builtin]
-		// marks (e.g. stringrepr on color/date/time) are applied before the
-		// checker registers these declarations.
-		var expandErrs []string
-		for _, d := range expand.ExpandPre(allDocs) {
-			if d.Severity == ir.Error {
-				expandErrs = append(expandErrs, fmt.Sprintf("%s: %s", d.Pos, d.Msg))
-			}
-		}
-		if len(expandErrs) > 0 {
-			panic("sngl: expanding stdlib macros:\n  " + strings.Join(expandErrs, "\n  "))
-		}
-		if missing := unmarkedOptions(); len(missing) > 0 {
-			panic("sngl: options schema not marked #[options]:\n  " + strings.Join(missing, "\n  "))
 		}
 	})
 	return stdlibDocs
@@ -173,6 +118,30 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	builtinPkg = c.libPkg("builtin")
 	c.adoptAmbient(builtinPkg)
 	return builtinPkg, c.libPkg("std")
+}
+
+// resolveMacroSig resolves a macro's declared parameter types, once, the
+// first time a mark of it is applied.
+//
+// It cannot be done as the package loads. sngl://builtin's own files
+// dot-import the package that declares #[builtin], and a package's imports are
+// registered before its declarations, so the mark package loads while `list`
+// still names nothing: `list<ir.IntrinsicFlag>` would degrade to `list<dyn>`
+// and a declared flag list would read as an ordinary expression argument. By
+// the time a mark is applied the generic is in scope.
+func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
+	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
+		return
+	}
+	c.libs.macroSigs[fn] = true
+	// The package's own root, whose parent is the scope its imports bound
+	// their namespaces in — the scope the declaration was written in.
+	savedScope, savedTab, savedTP := c.scope, c.symtab, c.typeParams
+	c.scope, c.symtab, c.typeParams = pkg.Symbols.Root, pkg.Symbols, nil
+	defer func() { c.scope, c.symtab, c.typeParams = savedScope, savedTab, savedTP }()
+	for i, p := range fn.AST.Params.Params {
+		fn.Params[i].Type = c.resolveType(p.Type)
+	}
 }
 
 // adoptAmbient binds a library package's declarations into the ambient scope,
@@ -319,6 +288,9 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libLoadPkg = stdlibPkg
 	defer func() { c.libLoadPkg = savedLoadPkg }()
 
+	docs := c.libDocs(pkgName)
+	defer c.setMarkScope(docs)()
+
 	var (
 		imports    []*ast.Import
 		units      []*ast.UnitDef
@@ -329,7 +301,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		components []*ast.ComponentDecl
 		contexts   []*ast.CallStmt
 	)
-	for _, doc := range c.libDocs(pkgName) {
+	for _, doc := range docs {
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.Import:
@@ -372,6 +344,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	for i, s := range structs {
 		c.resolveStdlibStructFields(s, structDefs[i])
 	}
+	c.assertOptionsMarked(pkgName, structDefs)
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
 	// this: a marked declaration is the program's own, and the Go emitter
@@ -511,6 +484,26 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	return stdlibPkg
 }
 
+// assertOptionsMarked fails the build when a library package declares a
+// top-level struct called Options without the #[options] mark. Every options
+// lookup keys on the mark, so an unmarked one would silently contribute no
+// options at all; the name match here exists only to catch that omission, and
+// is the one place the name means anything.
+//
+// Embedded source only: a Config.LibSources substitution is test input, and one
+// of them plants an unmarked Options on purpose.
+func (c *checker) assertOptionsMarked(pkgName string, structs []*ir.StructDef) {
+	if c.cfg != nil && c.cfg.LibSources[pkgName] != nil {
+		return
+	}
+	for _, sd := range structs {
+		if sd.Name == "Options" && !sd.Options {
+			panic(fmt.Sprintf("sngl: sngl://%s: struct Options at %s needs #[options] (and import . %q)",
+				pkgName, sd.AST.Pos, "sngl://platforms"))
+		}
+	}
+}
+
 // i18nPkg declares the translation entry points, the locale-aware primitives
 // behind them, and the PluralKey those are keyed by.
 const i18nPkg = "i18n"
@@ -525,12 +518,18 @@ const (
 	macroTypeName = "Macro"
 )
 
-// macroPackage returns the URI of the package a macro of this name is
-// registered under, or "" for a name that is not a macro.
+// macroPackage returns the URI of the package that declares a macro of this
+// name, or "" for a name that is not a macro. It reads the parsed source
+// rather than a loaded package: the caller is an error path, and loading a
+// package to build a hint would re-enter one mid-load.
 func macroPackage(name string) string {
-	for uri, names := range expand.Registered() {
-		if slices.Contains(names, name) {
-			return uri
+	for _, pkg := range lib.Packages() {
+		for _, doc := range PackageDocsFor(pkg) {
+			for _, stmt := range doc.Stmts {
+				if f, ok := stmt.(*ast.FuncDef); ok && f.Name == name && IsMacroDecl(f) {
+					return pkg
+				}
+			}
 		}
 	}
 	return ""
@@ -613,7 +612,8 @@ func (c *checker) addReceiverFuncs(pkg *ir.Package, funcs []*ir.Func, recv strin
 // Fields are filled in by resolveStdlibStructFields once every name is in
 // scope.
 func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName, Builtin: s.Builtin, Options: s.Options, Foreign: irForeign(s.Foreign)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName}
+	c.applyMarks(s, sd)
 	// Macro carries no #[builtin] kind: a kind names the IR construct a
 	// declaration dispatches to, and this one dispatches to none. It is found
 	// by name within the compiler's own package, which no program can import.
@@ -653,6 +653,7 @@ func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) 
 
 func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 	ed := c.buildEnumDef(e)
+	c.applyMarks(e, ed)
 	c.bindLib(e.Pos, c.scope, ed)
 	pkg.Enums = append(pkg.Enums, ed)
 	c.bindLib(e.Pos, pkg.Symbols.Root, ed)
@@ -660,6 +661,7 @@ func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
 
 func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	ud := c.buildUnitDef(u)
+	c.applyMarks(u, ud)
 	c.bindLib(u.Pos, c.scope, ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
@@ -669,10 +671,9 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	c.bindLib(u.Pos, pkg.Symbols.Root, ud)
 }
 
-// registerStdlibConst registers a library const. The #[builtin] mark travels
-// from the declaration onto every name it declares, so collectBuiltins can
-// find the predeclared constants; for an unmarked const this is an ordinary
-// registration.
+// registerStdlibConst registers a library const. A mark on the declaration is
+// applied to every name it declares, which is why #[builtin] on a grouped
+// const reports the kind twice rather than picking one.
 func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
@@ -690,8 +691,8 @@ func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
 				Type:    typ,
 				Init:    init,
 				IsConst: true,
-				Builtin: decl.Builtin,
 			}
+			c.applyMarks(decl, v)
 			pkg.Consts = append(pkg.Consts, v)
 			c.bindLib(decl.Pos, c.scope, v)
 			c.bindLib(decl.Pos, pkg.Symbols.Root, v)
@@ -708,8 +709,13 @@ func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
 	// would lift it on, so `#[builtin]` would end up callable from any file
 	// that imports sngl://std.
 	if c.isMacroSig(fn.Return) {
+		// The declaration is the whole of what the compiler knows about a
+		// macro except what it does, so it is kept on the package where mark
+		// resolution reads it.
+		pkg.Macros = append(pkg.Macros, fn)
 		return nil
 	}
+	c.applyMarks(f, fn)
 	// Stdlib funcs skip the body-check pass. When a stdlib signature omits a
 	// return annotation (common for the "=>" forms that delegate to an
 	// intrinsic), treat the missing return as an explicit dyn escape hatch
@@ -1042,7 +1048,9 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 	var enums []*ast.EnumDef
 	var structs []*ast.StructDef
 	var units []*ast.UnitDef
-	for _, doc := range c.libDocs("platforms/" + platform) {
+	docs := c.libDocs("platforms/" + platform)
+	defer c.setMarkScope(docs)()
+	for _, doc := range docs {
 		for _, s := range doc.Stmts {
 			switch d := s.(type) {
 			case *ast.EnumDef:
@@ -1063,7 +1071,8 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
-		sd := &ir.StructDef{AST: s, Name: s.Name, Builtin: s.Builtin, Options: s.Options}
+		sd := &ir.StructDef{AST: s, Name: s.Name}
+		c.applyMarks(s, sd)
 		c.bindLib(s.Pos, c.scope, sd)
 		stubs[i] = sd
 	}
@@ -1279,12 +1288,12 @@ func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
 
 func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
 	irComp := &ir.Component{
-		AST:     comp,
-		Name:    comp.Name,
-		Stdlib:  true,
-		Pkg:     c.libPkgName,
-		Builtin: comp.Builtin,
+		AST:    comp,
+		Name:   comp.Name,
+		Stdlib: true,
+		Pkg:    c.libPkgName,
 	}
+	c.applyMarks(comp, irComp)
 
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
@@ -1311,7 +1320,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 		}
 	}
 
-	applyTreeMarks(comp, irComp, pkg)
+	finishTreeMarks(comp, irComp, pkg)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
@@ -1348,4 +1357,49 @@ func libImportAliases(doc *ast.Document) map[string]string {
 		out[alias] = uri
 	}
 	return out
+}
+
+// Loaded library packages for callers outside a check — the documentation
+// tools and the language server. A lib package is immutable once built and
+// costs a full load, so one instance is shared.
+var (
+	libPkgMu    sync.Mutex
+	libPkgCache = map[string]*ir.Package{}
+)
+
+// LibPackage returns the built IR of the embedded package `sngl://<name>`, or
+// nil when no such package exists.
+//
+// A mark states its fact on the IR, so a caller that wants to know what a
+// declaration was marked has to load the package that declares it — the parsed
+// source says only what was written. Loading is memoized: the packages are the
+// compiler's own and do not change within a process.
+func LibPackage(name string) *ir.Package {
+	if !HasPackage(name) {
+		return nil
+	}
+	libPkgMu.Lock()
+	defer libPkgMu.Unlock()
+	if pkg, ok := libPkgCache[name]; ok {
+		return pkg
+	}
+	pkg := newChecker(&ast.Document{}, &Config{}).libPkg(name)
+	libPkgCache[name] = pkg
+	return pkg
+}
+
+// OptionsStruct returns the #[options]-marked struct of `sngl://<name>`, or
+// nil when the package declares none. The mark, not the declaration's name, is
+// what a target's option schema is found by.
+func OptionsStruct(name string) *ir.StructDef {
+	pkg := LibPackage(name)
+	if pkg == nil {
+		return nil
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Options {
+			return sd
+		}
+	}
+	return nil
 }

@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -36,13 +35,6 @@ func treeStubConfig(t *testing.T) *checker.Config {
 	doc, err := parser.Parse("richtext.sngl", []byte(treeStubSource))
 	if err != nil {
 		t.Fatalf("parse stub: %v", err)
-	}
-	// LibSources bypasses parseStdlibDocs, which is where embedded lib source
-	// gets its marks expanded.
-	for _, d := range expand.ExpandPre([]*ast.Document{doc}) {
-		if d.Severity == ir.Error {
-			t.Fatalf("expand stub: %s", d.Msg)
-		}
 	}
 	return &checker.Config{
 		IsMain:     true,

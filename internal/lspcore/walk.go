@@ -119,8 +119,6 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			walkE(x.Init)
 		case *ast.DisabledDecl:
 			walkS(x.Inner)
-		case *ast.AttrDecl:
-			walkS(x.Inner)
 		}
 	}
 	for _, st := range doc.Stmts {

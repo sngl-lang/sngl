@@ -3,17 +3,17 @@
 
 import . "sngl://platforms"
 
-#[options] // ERROR(expand) "#[options] cannot mark"
+#[options] // ERROR(check) "#[options] cannot mark"
 var bad = 5
 
-#[options] // ERROR(expand) "#[options] cannot mark"
+#[options] // ERROR(check) "#[options] cannot mark"
 enum Bad {
     a
     b
 }
 
 #[options]
-#[options] // ERROR(expand) "already marked"
+#[options] // ERROR(check) "already marked"
 struct Twice {
     gadget string = ""
 }

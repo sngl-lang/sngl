@@ -201,6 +201,9 @@ func (f *formatter) blockEndLine(start int, block *ast.StmtBlock) int {
 // --- top-level and block statements ---
 
 func (f *formatter) formatStmt(s ast.Stmt) {
+	if a, ok := s.(ast.Attributed); ok {
+		f.writeAttrs(a.MarkAttrs())
+	}
 	switch x := s.(type) {
 	case *ast.Import:
 		f.writeImport(x)
@@ -242,8 +245,6 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeComment(x)
 	case *ast.DisabledDecl:
 		f.writeDisabledDecl(x)
-	case *ast.AttrDecl:
-		f.writeAttrDecl(x)
 	}
 }
 
@@ -294,12 +295,10 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 }
 
 func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
+	if a, ok := item.(ast.Attributed); ok {
+		f.writeAttrs(a.MarkAttrs())
+	}
 	switch it := item.(type) {
-	case *ast.AttrDecl:
-		f.writeAttrs(it.Attrs)
-		if inner, ok := it.Inner.(ast.StructBodyItem); ok {
-			f.writeStructBodyItem(inner)
-		}
 	case *ast.StructField:
 		f.write(strings.Join(it.Names, ", "))
 		if it.Type != nil {
@@ -1203,11 +1202,6 @@ func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 }
 
 // --- attr ---
-
-func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
-	f.writeAttrs(d.Attrs)
-	f.formatStmt(d.Inner)
-}
 
 func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
 	for _, attr := range attrs {

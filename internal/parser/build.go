@@ -188,13 +188,8 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 				attrs = append(attrs, b.buildMacroAttr(it.enter()))
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-				inner := b.buildStmt(it.enter())
-				if inner != nil {
-					doc.Stmts = append(doc.Stmts, &ast.AttrDecl{
-						Pos:   attrs[0].Pos,
-						Attrs: attrs,
-						Inner: inner,
-					})
+				if inner := b.buildStmt(it.enter()); inner != nil {
+					doc.Stmts = append(doc.Stmts, b.attach(attrs, inner))
 				}
 			} else {
 				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
@@ -377,10 +372,25 @@ func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
 			}
 		}
 	}
-	if len(attrs) == 0 {
+	if len(attrs) == 0 || inner == nil {
 		return inner
 	}
-	return &ast.AttrDecl{Pos: attrs[0].Pos, Attrs: attrs, Inner: inner.(ast.Stmt)}
+	item, _ := b.attach(attrs, inner.(ast.Stmt)).(ast.StructBodyItem)
+	return item
+}
+
+// attach records the marks written before a declaration on the declaration
+// itself. A statement form that cannot carry one is refused here, where the
+// mark's position is known — a mark annotates a declaration, and nothing
+// downstream would have anything to annotate.
+func (b *builder) attach(attrs []ast.MacroAttr, inner ast.Stmt) ast.Stmt {
+	target, ok := inner.(ast.Attributed)
+	if !ok {
+		b.errorf(attrs[0].Pos, "#[%s] cannot mark %T", attrs[0].MarkName(), inner)
+		return inner
+	}
+	target.SetMarkAttrs(attrs[0].Pos, attrs)
+	return target
 }
 
 func (b *builder) buildStructField(it nodeIter) *ast.StructField {
@@ -1204,13 +1214,8 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 				attrs = append(attrs, b.buildMacroAttr(it.enter()))
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-				inner := b.buildStmt(it.enter())
-				if inner != nil {
-					block.Stmts = append(block.Stmts, &ast.AttrDecl{
-						Pos:   attrs[0].Pos,
-						Attrs: attrs,
-						Inner: inner,
-					})
+				if inner := b.buildStmt(it.enter()); inner != nil {
+					block.Stmts = append(block.Stmts, b.attach(attrs, inner))
 				}
 			} else {
 				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")

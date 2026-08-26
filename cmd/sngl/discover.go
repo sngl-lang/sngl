@@ -17,7 +17,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -228,13 +227,6 @@ func validateOutputs(pkg *ir.Package) error {
 
 // checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
 func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
-	// Run pre-check macro expansion before type-checking.
-	for _, d := range expand.ExpandPre([]*ast.Document{doc}) {
-		if d.Severity == ir.Error {
-			return nil, d
-		}
-	}
-
 	langs, plats := collectTargets()
 	fsys := os.DirFS(dir)
 	pkg, diags := checker.Check(doc, &checker.Config{

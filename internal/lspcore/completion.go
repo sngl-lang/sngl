@@ -314,40 +314,34 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	// Build options are directive surface, not declarations the file imports:
 	// `output { none { html(name="X") } }` checks with no import at all, so
 	// these are read from the package that declares them rather than from
-	// whatever the file has in scope.
-	sources := checker.PackageDocsFor("std")
+	// whatever the file has in scope. The #[options] mark is on the loaded
+	// IR, so the package is loaded rather than only parsed.
+	uris := []string{"std"}
 	if langName != "" {
-		sources = append(sources, codegen.LangDocs(codegen.LookupLang(langName))...)
+		uris = append(uris, "languages/"+langName)
 	}
 	if platformName != "" {
-		sources = append(sources, codegen.PlatformDocs(codegen.LookupPlatform(platformName))...)
+		uris = append(uris, "platforms/"+platformName)
 	}
 
 	seen := map[string]bool{}
 	var items []CompletionItem
-	for _, doc := range sources {
-		if doc == nil {
+	for _, uri := range uris {
+		sd := checker.OptionsStruct(uri)
+		if sd == nil {
 			continue
 		}
-		for _, stmt := range doc.Stmts {
-			s, ok := stmt.(*ast.StructDef)
-			if !ok || !s.Options {
+		for _, f := range sd.Fields {
+			if seen[f.Name] {
 				continue
 			}
-			for _, f := range s.Fields() {
-				for _, name := range f.Names {
-					if seen[name] {
-						continue
-					}
-					seen[name] = true
-					items = append(items, CompletionItem{
-						Label:      name,
-						Kind:       CIKProperty,
-						Detail:     typeExprString(f.Type),
-						InsertText: name + "=",
-					})
-				}
-			}
+			seen[f.Name] = true
+			items = append(items, CompletionItem{
+				Label:      f.Name,
+				Kind:       CIKProperty,
+				Detail:     f.Type.String(),
+				InsertText: f.Name + "=",
+			})
 		}
 	}
 	return items

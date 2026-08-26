@@ -13,8 +13,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
@@ -1444,12 +1442,6 @@ func TestCheckProjectTestdata(t *testing.T) {
 			if err != nil {
 				t.Skipf("v2 parse failed: %v", err)
 			}
-			// Run pre-check macro expansion and assert ERROR(expand) directives.
-			expandDiags := expand.ExpandPre([]*ast.Document{doc})
-			testutil.AssertDiagnostics(t, expandDiags, s.Errors, "expand")
-			if s.ExpectsError("expand") {
-				return // expansion errors; skip type-check
-			}
 			langs, plats := testtargets.Targets()
 			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
@@ -1538,8 +1530,8 @@ component myWidget() {
 // A component-level func is desugared onto the component: a synthetic
 // declaration is built with a receiver prepended. The marks belong to the
 // declaration and not to its parameter list, so they are carried over — a mark
-// written in a component body would otherwise be accepted by the parser and by
-// the macro pass and reach the IR as nothing at all.
+// written in a component body would otherwise be accepted by the parser and
+// reach the IR as nothing at all.
 func TestComponentFuncKeepsItsMarks(t *testing.T) {
 	src := withStd(`
 component main {
@@ -1552,9 +1544,6 @@ component main {
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
-	}
-	for _, d := range expand.ExpandPre([]*ast.Document{doc}) {
-		t.Fatalf("expand: %s", d.Error())
 	}
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, fn := range pkg.Funcs {

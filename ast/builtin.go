@@ -134,39 +134,3 @@ func AllBuiltinKinds() []BuiltinKind {
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() || b.IsNode() || b.IsConst()
 }
-
-// SetBuiltin stamps the mark onto a declaration. The #[builtin] macro asserts
-// this interface rather than switching on the kind, so which declaration forms
-// can carry a mark is a property of the AST, not knowledge the macro holds.
-type BuiltinTaggable interface {
-	SetBuiltin(BuiltinKind)
-}
-
-// IntrinsicTaggable is a declaration form that can carry #[intrinsic("...")].
-// Separate from BuiltinTaggable because the two marks answer different
-// questions: a builtin kind says which IR construct a declaration dispatches
-// to, an intrinsic id says which native implementation may replace its body.
-type IntrinsicTaggable interface {
-	SetIntrinsic(IntrinsicMark)
-}
-
-// IntrinsicMark is what #[intrinsic("Id", flags...)] records: the id a backend
-// matches to emit a native implementation, plus the facts about the call that
-// have no other surface in SNGL. The zero value means "not an intrinsic".
-type IntrinsicMark struct {
-	ID string
-	// BodyUsable: the SNGL body computes the same result, so a backend that
-	// does not implement ID may emit the body instead.
-	BodyUsable bool
-	// Mutates: a call has an effect beyond its result.
-	Mutates bool
-	// Readonly: a call reads host state, so its result must not be folded.
-	Readonly bool
-	// MutatesReceiver: the first argument is written through in place.
-	MutatesReceiver bool
-}
-
-func (c *ComponentDecl) SetBuiltin(k BuiltinKind) { c.Builtin = k }
-func (s *StructDef) SetBuiltin(k BuiltinKind)     { s.Builtin = k }
-func (c *ConstDecl) SetBuiltin(k BuiltinKind)     { c.Builtin = k }
-func (u *UnitDef) SetBuiltin(k BuiltinKind)       { u.Builtin = k }

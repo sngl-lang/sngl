@@ -276,8 +276,6 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 		Pkg:        c.libPkgName,
 		TypeParams: s.TypeParams,
 		Fields:     c.resolveStructFields(s),
-		Foreign:    irForeign(s.Foreign),
-		Options:    s.Options,
 	}
 }
 
@@ -296,6 +294,10 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 	var fields []*ir.StructField
 	seen := make(map[string]struct{})
 	for _, f := range s.Fields() {
+		// A field's marks apply to the declaration, which may bind several
+		// names; the mark refuses that itself, so applying to the first is
+		// enough to reach the one it allows.
+		var first *ir.StructField
 		fieldLabel := "struct field"
 		if len(f.Names) > 0 {
 			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
@@ -311,13 +313,13 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				// Placeholder; actual default checked later when scope is ready.
 				def = &ir.Literal{Type: typ}
 			}
-			fields = append(fields, &ir.StructField{
-				Name:    name,
-				Type:    typ,
-				Default: def,
-				Foreign: irForeign(f.Foreign),
-			})
+			fld := &ir.StructField{Name: name, Type: typ, Default: def}
+			if first == nil {
+				first = fld
+			}
+			fields = append(fields, fld)
 		}
+		c.applyMarks(f, first)
 	}
 	return fields
 }
@@ -373,7 +375,6 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 		AST:      u,
 		Name:     u.Name,
 		Pkg:      c.libPkgName,
-		Builtin:  u.Builtin,
 		Suffixes: suffixes,
 	}
 }
@@ -564,8 +565,8 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),
-		Foreign:        irForeign(f.Foreign),
 	}
+	c.refuseParamMarks(f.Params.Params)
 	c.typeParams = prevTypeParams
 	if isMethod {
 		fn.Receiver = typeName
@@ -581,27 +582,6 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		if len(fn.Params) > 0 && (fn.Params[0].Name == ir.ReceiverParam || namesType(fn.Params[0].Type, typeName)) {
 			fn.Params[0].Receiver = true
 		}
-	}
-	// A #[foreign] function's body describes the foreign declaration rather
-	// than implementing it, so what a call costs is what the mark says. Purity
-	// is left unknown without the flag: inferring it from the body would fold
-	// a stub's result into the program in place of the call.
-	if f.Foreign.Name != "" {
-		fn.IsAsync = f.Foreign.Async
-		if f.Foreign.Pure {
-			fn.Purity = ir.PurityPure
-		}
-	}
-	// The #[intrinsic] mark says what this function is; nothing infers it from
-	// the shape of its body.
-	fn.Intrinsic = f.Intrinsic.ID
-	fn.IntrinsicBodyUsable = f.Intrinsic.BodyUsable
-	fn.MutatesReceiver = f.Intrinsic.MutatesReceiver
-	switch {
-	case f.Intrinsic.Mutates:
-		fn.Purity = ir.PurityMutates
-	case f.Intrinsic.Readonly:
-		fn.Purity = ir.PurityReadonly
 	}
 	return fn
 }
@@ -633,12 +613,4 @@ func isComparable(t *ir.Type) bool {
 		return true
 	}
 	return false
-}
-
-// irForeign carries a #[foreign] mark into the IR. It deliberately leaves
-// Origin nil: Origin is a scheme importer's own key for a declaration it read,
-// and it is what makes two declarations the same type. A mark is a codegen
-// fact, so a marked declaration unifies with nothing.
-func irForeign(m ast.ForeignMark) ir.Foreign {
-	return ir.Foreign{Scheme: m.Scheme, Path: m.Path, Name: m.Name, Marked: m.Name != ""}
 }

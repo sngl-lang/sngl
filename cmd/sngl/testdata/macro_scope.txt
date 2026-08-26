@@ -12,7 +12,7 @@ stdout 'qualified.sngl: ok'
 
 # An unqualified macro resolves against dot-imported macro packages only.
 ! sngl check bare_builtin.sngl
-stderr 'unknown macro "builtin": no dot-imported macro package declares it'
+stderr 'unknown macro "builtin": no dot-imported package declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
 # sngl://draw brings both the shape components and the mark that declares new
@@ -24,11 +24,11 @@ stdout 'with_std.sngl: ok'
 sngl check aliased.sngl
 stdout 'aliased.sngl: ok'
 
-# A lib package that declares no macros says so, rather than reporting the
-# mark as an unknown package. sngl://builtin is the one left that declares
-# none — std carries #[foreign].
+# A macro exists because a package declares it, so a mark naming one the
+# package does not declare says exactly that. sngl://i18n declares no macros at
+# all; std, which does, is one import line away.
 ! sngl check no_macros.sngl
-stderr 'package "sngl://builtin" declares no macros'
+stderr 'unknown macro "shape": package "sngl://i18n" declares none of that name'
 
 -- no_import.sngl --
 #[draw.shape]
@@ -68,7 +68,7 @@ component main {
     }
 }
 -- no_macros.sngl --
-import b "sngl://builtin"
+import b "sngl://i18n"
 
 #[b.shape]
 component blob(x float, y float) {}

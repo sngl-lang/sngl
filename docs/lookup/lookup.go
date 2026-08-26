@@ -306,6 +306,18 @@ type target struct {
 	// allPackages is the merged view: everything a file can see without
 	// naming a package.
 	allPackages bool
+	// optionsDecl is the target's #[options]-marked struct, if it declares
+	// one. The mark is on the loaded IR, so it is resolved once here and the
+	// declaration is then recognised by identity.
+	optionsDecl *ast.StructDef
+}
+
+// optionsDeclOf returns the declaration sngl://<uri> marked #[options], or nil.
+func optionsDeclOf(uri string) *ast.StructDef {
+	if sd := checker.OptionsStruct(uri); sd != nil {
+		return sd.AST
+	}
+	return nil
 }
 
 func resolveTarget(cwd, path string) (*target, error) {
@@ -328,10 +340,11 @@ func resolveTarget(cwd, path string) (*target, error) {
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
-			title:   "sngl://" + uri,
-			pd:      pd,
-			stmts:   stmts,
-			library: true,
+			title:       "sngl://" + uri,
+			pd:          pd,
+			stmts:       stmts,
+			library:     true,
+			optionsDecl: optionsDeclOf(uri),
 		}, nil
 	}
 
@@ -377,10 +390,14 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// kotlin, ...) — resolve via the codegen registry so they share the same
 	// Lookup code paths as the stdlib and scheme imports.
 	if docs := codegen.PlatformDocs(codegen.LookupPlatform(path)); len(docs) > 0 {
-		return mergeDocsTarget(path, docs), nil
+		t := mergeDocsTarget(path, docs)
+		t.optionsDecl = optionsDeclOf("platforms/" + path)
+		return t, nil
 	}
 	if docs := codegen.LangDocs(codegen.LookupLang(path)); len(docs) > 0 {
-		return mergeDocsTarget(path, docs), nil
+		t := mergeDocsTarget(path, docs)
+		t.optionsDecl = optionsDeclOf("languages/" + path)
+		return t, nil
 	}
 
 	// Alias lookup against cwd's imports.
@@ -468,7 +485,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	// Split structs into user vs Options-style platform types.
 	var userStructs []checker.DeclInfo
 	for _, d := range tgt.pd.Structs {
-		if sd, ok := d.Decl.(*ast.StructDef); ok && sd.Options {
+		if sd, ok := d.Decl.(*ast.StructDef); ok && tgt.optionsDecl != nil && sd == tgt.optionsDecl {
 			idx.PlatformTypes = append(idx.PlatformTypes, DeclSummary{Name: d.Name, Doc: d.Doc})
 			continue
 		}

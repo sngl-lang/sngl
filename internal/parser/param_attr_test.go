@@ -10,7 +10,7 @@ import (
 func findFunc(t *testing.T, doc *ast.Document, name string) *ast.FuncDef {
 	t.Helper()
 	for _, s := range doc.Stmts {
-		if fn, ok := ast.UnwrapStmt(s).(*ast.FuncDef); ok && fn.Name == name {
+		if fn, ok := s.(*ast.FuncDef); ok && fn.Name == name {
 			return fn
 		}
 	}
@@ -21,7 +21,7 @@ func findFunc(t *testing.T, doc *ast.Document, name string) *ast.FuncDef {
 func findComponent(t *testing.T, doc *ast.Document, name string) *ast.ComponentDecl {
 	t.Helper()
 	for _, s := range doc.Stmts {
-		if c, ok := ast.UnwrapStmt(s).(*ast.ComponentDecl); ok && c.Name == name {
+		if c, ok := s.(*ast.ComponentDecl); ok && c.Name == name {
 			return c
 		}
 	}

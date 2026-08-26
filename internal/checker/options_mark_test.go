@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -62,13 +61,6 @@ func optStubConfig(t *testing.T) *checker.Config {
 	}
 	pdoc := parse("optstub.sngl", optStubPlatformSource)
 	ldoc := parse("optlang.sngl", optStubLangSource)
-	// LibSources bypasses parseStdlibDocs, which is where embedded lib source
-	// gets its marks expanded.
-	for _, d := range expand.ExpandPre([]*ast.Document{pdoc, ldoc}) {
-		if d.Severity == ir.Error {
-			t.Fatalf("expand stub: %s", d.Msg)
-		}
-	}
 	return &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{optStubPlatform{}},

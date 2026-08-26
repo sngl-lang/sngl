@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
 )
@@ -54,6 +54,14 @@ type libCache struct {
 	// means sharing the components the bodies attach to, so a second merge
 	// would report every override as a duplicate platform block.
 	extended bool
+	// roles records the declaration each #[builtin] kind named in library
+	// source. A mark binds its declaration to the checker that registered it,
+	// but the packages are shared: a nested check reaches them from the cache
+	// with nothing to register, so it takes the same references from here.
+	roles map[ast.BuiltinKind]ir.Symbol
+	// macroSigs records the macro declarations whose parameter types have
+	// been resolved; see resolveMacroSig.
+	macroSigs map[*ir.Func]bool
 }
 
 // libCache returns the library-package cache a check runs against: the one an
@@ -62,7 +70,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, roles: map[ast.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -188,6 +196,12 @@ type checker struct {
 	// among them. Shared with the checks this one's imports start.
 	libs     *libCache
 	libDepth int
+	// markAliases and markDotPkgs resolve the package a #[...] mark names,
+	// for the documents whose declarations are being registered. A lib load
+	// swaps them for its own (setMarkScope): an alias binds a macro package
+	// the way it binds any other imported name.
+	markAliases map[string]imports.ImportRef
+	markDotPkgs []string
 	// libLoadPkg is the library package currently loading, and the owner of
 	// any import registered while it does. nil outside a lib load.
 	libLoadPkg *ir.Package
@@ -282,14 +296,18 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		pkgWindowIDs: make(map[string]bool),
 		libs:         cfg.libCache(),
 	}
+	// Set before the library loads, which swap in their own: a lib load
+	// restores what it found, and what it finds must be the program's.
+	c.setMarkScope([]*ast.Document{doc})
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
 	c.builtinPkg, c.stdlibPkg = c.loadStdlib()
-	// Both packages, because a mark says which construct a declaration is, not
-	// which package declares it: the predeclared constants are in
-	// sngl://builtin and the visual nodes are in sngl://std.
-	c.collectBuiltins(c.builtinPkg, c.stdlibPkg)
+	// A library package the cache already held registered nothing here, so the
+	// references its marks bound are taken from the cache instead.
+	for kind, sym := range c.libs.roles {
+		c.bindBuiltinRole(kind, sym)
+	}
 	c.stdlibScope = stdlibScope
 	if c.windowComp == nil {
 		// The stdlib is embedded and compiler-controlled; a missing window
@@ -603,7 +621,7 @@ func (c *checker) pass1() {
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
 	for _, stmt := range c.doc.Stmts {
-		if imp, ok := ast.UnwrapStmt(stmt).(*ast.Import); ok {
+		if imp, ok := stmt.(*ast.Import); ok {
 			c.registerImport(imp)
 		}
 	}
@@ -617,7 +635,7 @@ func (c *checker) pass1() {
 	var structShells []*ir.StructDef
 	var pendingComponents []*ast.ComponentDecl
 	for _, stmt := range c.doc.Stmts {
-		switch s := ast.UnwrapStmt(stmt).(type) {
+		switch s := stmt.(type) {
 		case *ast.StructDef:
 			structShells = append(structShells, c.registerStructShell(s))
 		case *ast.EnumDef:
@@ -636,7 +654,7 @@ func (c *checker) pass1() {
 	}
 
 	for _, stmt := range c.doc.Stmts {
-		switch s := ast.UnwrapStmt(stmt).(type) {
+		switch s := stmt.(type) {
 		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 			continue // already registered above
 		case *ast.ConstDecl:
@@ -758,30 +776,18 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.error(imp.Pos, "%q is internal to the compiler and cannot be imported", target)
 			return
 		}
-		// A package may contribute macros to the expand pass, declarations to
-		// the program, or both, so a sngl:// path resolves against the macro
-		// registry and the lib/ layout together — a macro-only package has no
-		// directory, and a declarations package has no macros. This is not
-		// confined to the internal/ tier: sngl://platforms is the public
-		// vocabulary an out-of-tree platform plugin marks its source with.
-		// hasLibPkg rather than HasPackage: Config.LibSources substitutes the
-		// source of an embedded package, and a substituted one has to resolve.
+		// Every library package is a directory under lib/, macro-only ones
+		// included: a package declares its macros the way it declares
+		// anything else, so the layout is the whole answer to whether one
+		// exists. hasLibPkg rather than HasPackage: Config.LibSources
+		// substitutes the source of an embedded package, and a substituted one
+		// has to resolve.
 		if !c.hasLibPkg(uri) {
-			if !expand.HasPackage(uri) {
-				if internal {
-					c.error(imp.Pos, "unknown internal package %q", uri)
-				} else {
-					c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
-				}
-				return
+			if internal {
+				c.error(imp.Pos, "unknown internal package %q", uri)
+			} else {
+				c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
 			}
-			irImport.Pkg = &ir.Package{
-				Symbols:        NewSymbolTable(),
-				LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
-				AddressedVars:  map[*ir.Var]bool{},
-			}
-			owner := c.importOwner()
-			owner.Imports = append(owner.Imports, irImport)
 			return
 		}
 		if uri == "builtin" {
@@ -985,6 +991,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 func (c *checker) registerEnum(e *ast.EnumDef) {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
+	c.applyMarks(e, ed)
 	c.pkg.Enums = append(c.pkg.Enums, ed)
 	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
@@ -992,6 +999,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 
 func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
+	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
@@ -1003,7 +1011,8 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams, Foreign: irForeign(s.Foreign), Options: s.Options}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
 	return sd
@@ -1017,6 +1026,7 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 func (c *checker) registerUnit(u *ast.UnitDef) {
 	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
+	c.applyMarks(u, ud)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.bindDeclared(claimed, ud)
 	// Populate reverse suffix lookup.
@@ -1102,6 +1112,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		vars := make([]*ir.Var, 0, len(spec.Names))
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
+			c.applyMarks(decl, v)
 			c.pkg.Consts = append(c.pkg.Consts, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
@@ -1331,6 +1342,9 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 }
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
+	// A var declares no marked form, so this reports the mark rather than
+	// applying one; the declaration still registers.
+	c.applyMarks(decl, nil)
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
 		var initExpr ir.Expr
@@ -1480,6 +1494,7 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 
 func (c *checker) registerFunc(f *ast.FuncDef) {
 	fn := c.buildFunc(f)
+	c.applyMarks(f, fn)
 
 	// Only free functions bind a file-scope name; a method's name lives under
 	// its receiver, checked when it is attached there.
@@ -1622,6 +1637,8 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		AST:  comp,
 		Name: comp.Name,
 	}
+	c.applyMarks(comp, irComp)
+	c.refuseParamMarks(compParams(comp))
 
 	// Resolve props and events from PropList.
 	for _, p := range comp.Props.Props {
@@ -1647,7 +1664,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 
 	// Resolve children type.
-	applyTreeMarks(comp, irComp, c.pkg)
+	finishTreeMarks(comp, irComp, c.pkg)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
@@ -1671,7 +1688,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Component) []*ast.FuncDef {
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
-		switch s := ast.UnwrapStmt(stmt).(type) {
+		switch s := stmt.(type) {
 		case *ast.StructDef:
 			c.registerStruct(s)
 		case *ast.EnumDef:
@@ -2014,20 +2031,18 @@ func (c *checker) lookupOptions(name string) *ir.StructDef {
 	if c.optionsCache == nil {
 		c.optionsCache = make(map[string]*ir.StructDef)
 	}
-	// Read the package source by lib path rather than asking the plugin: the
-	// options schema is the same declarations sngl://platforms/<n> holds. Only
-	// the Options struct is built — validating output() args must not drag a
-	// whole platform package through the checker.
-	docs := c.libDocs("platforms/" + name)
-	if len(docs) == 0 {
-		docs = c.libDocs("languages/" + name)
+	// Read the options schema off the loaded sngl://platforms/<n> package
+	// rather than asking the plugin: the schema is the #[options]-marked
+	// declaration that package holds, and the mark is only on the IR.
+	uri := "platforms/" + name
+	if !c.hasLibPkg(uri) {
+		uri = "languages/" + name
 	}
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			if sd, ok := stmt.(*ast.StructDef); ok && sd.Options {
-				irSD := c.buildStructDef(sd)
-				c.optionsCache[name] = irSD
-				return irSD
+	if c.hasLibPkg(uri) {
+		for _, sd := range c.libPkg(uri).Structs {
+			if sd.Options {
+				c.optionsCache[name] = sd
+				return sd
 			}
 		}
 	}
@@ -2047,12 +2062,10 @@ func (c *checker) lookupStdlibOptions() *ir.StructDef {
 		return c.stdlibOptions
 	}
 	c.stdlibOptionsSet = true
-	for _, doc := range PackageDocsFor("std") {
-		for _, stmt := range doc.Stmts {
-			if sd, ok := stmt.(*ast.StructDef); ok && sd.Options {
-				c.stdlibOptions = c.buildStructDef(sd)
-				return c.stdlibOptions
-			}
+	for _, sd := range c.libPkg(stdPkg).Structs {
+		if sd.Options {
+			c.stdlibOptions = sd
+			return c.stdlibOptions
 		}
 	}
 	return nil
@@ -2134,7 +2147,7 @@ func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
 		return
 	}
 	for _, stmt := range s.Body.Stmts {
-		switch inner := ast.UnwrapStmt(stmt).(type) {
+		switch inner := stmt.(type) {
 		case *ast.Import:
 			c.registerImport(inner)
 		case *ast.EnumDef:
@@ -2855,7 +2868,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		seenWindowIDs := map[string]bool{}
 		for _, stmt := range comp.AST.Body.Stmts {
-			switch ast.UnwrapStmt(stmt).(type) {
+			switch stmt.(type) {
 			case *ast.ConstDecl, *ast.VarDecl:
 				continue // already checked above
 			case *ast.FuncDef:
@@ -3186,4 +3199,16 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 		c.bindLib(imp.Pos, dst, sym)
 	}
+}
+
+// compParams is a component's props that are parameters. An event declaration
+// parses from an identifier list and cannot carry a mark.
+func compParams(comp *ast.ComponentDecl) []ast.Param {
+	var out []ast.Param
+	for _, p := range comp.Props.Props {
+		if param, ok := p.(ast.Param); ok {
+			out = append(out, param)
+		}
+	}
+	return out
 }

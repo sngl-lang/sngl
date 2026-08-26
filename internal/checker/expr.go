@@ -2017,6 +2017,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	if c.expected != nil && c.expected.Kind == ir.TypeFunc {
 		expectedSig = c.expected.Sig
 	}
+	c.refuseParamMarks(x.Params.Params)
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -2454,7 +2455,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 // checkStmt type-checks a single statement and returns its IR form.
 // Returns nil for declarations (registered on scope) and skipped nodes.
 func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
-	switch x := ast.UnwrapStmt(s).(type) {
+	switch x := s.(type) {
 	case *ast.AssignStmt:
 		targetExpr := c.checkExpr(x.Target)
 		targetType := exprType(targetExpr)

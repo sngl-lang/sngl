@@ -221,10 +221,10 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			// The marks are the declaration's, not the shape of its parameter
 			// list: desugaring the receiver must not drop what a mark said
 			// about the function it was written on.
-			Intrinsic: n.Intrinsic,
-			Foreign:   n.Foreign,
+			Attrs: n.Attrs,
 		}
 		fn := c.buildFunc(synthetic)
+		c.applyMarks(synthetic, fn)
 		if prev := c.declareMethod(n.Pos, fn); prev != nil {
 			noun := "type"
 			if typeDecl != nil {

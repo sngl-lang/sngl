@@ -3,22 +3,13 @@ package lib_test
 import (
 	"fmt"
 	"io/fs"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/expand"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/lib"
-
-	// A macro registers from its package's init(), so the registry is only
-	// populated once every macro package is linked in. The checker imports
-	// them all for the same reason.
-	_ "git.duckfam.us/jonathan/sngl/internal/checker"
-	// The checker links the marks it expands over lib/ itself; #[draw.shape]
-	// is a program-facing mark and reaches the registry through cmd/sngl.
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 )
 
 // macroDeclRE matches a macro declaration: a func whose return type is
@@ -28,53 +19,33 @@ import (
 // and should count too.
 var macroDeclRE = regexp.MustCompile(`(?m)^func\s+([A-Za-z_]\w*)\s*\([^)]*\)\s+(?:\w+\.)?Macro\b`)
 
-// TestEveryMacroIsDeclared pins the macro registry against the declarations,
-// so the two cannot drift while both exist.
+// TestEveryDeclaredMacroIsImplemented checks the one direction that is still
+// possible to get wrong. A macro exists because a lib package declares it: the
+// name, the argument list and the documentation are all read off the
+// declaration, and the compiler adds only an implementation. So a Go entry
+// with no declaration is unreachable rather than wrong — nothing resolves to
+// it — while a declaration with no implementation is a mark that resolves and
+// then fails at every use site, far from here.
 //
-// A macro's declaration is the only place its documentation and argument list
-// can be read: `sngl doc sngl://platforms` renders the declaration, not the Go
-// handler. So a registration with no declaration is a macro nobody can look
-// up, and a declaration with no registration is a mark that expands to nothing
-// — the `#[...]` would fail to resolve at a use site far from here.
-func TestEveryMacroIsDeclared(t *testing.T) {
-	declared := map[string]bool{}
-	err := fs.WalkDir(lib.FS, ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".sngl") {
-			return err
+// It reads the loaded packages rather than the source: a macro is a declared
+// signature, and what the checker dispatches on is the declaration it built.
+func TestEveryDeclaredMacroIsImplemented(t *testing.T) {
+	declared := 0
+	for _, name := range lib.Packages() {
+		pkg := checker.LibPackage(name)
+		if pkg == nil {
+			continue
 		}
-		src, err := lib.FS.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		for _, m := range macroDeclRE.FindAllStringSubmatch(string(src), -1) {
-			declared[path.Dir(p)+"."+m[1]] = true
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(declared) == 0 {
-		t.Fatal("no `func ...() Macro` declarations found in lib/")
-	}
-
-	registered := map[string]bool{}
-	for uri, names := range expand.Registered() {
-		for _, name := range names {
-			key := uri + "." + name
-			registered[key] = true
-			if !declared[key] {
-				t.Errorf("macro #[%s] is registered under sngl://%s but no `func %s(...) Macro` declares it there; "+
-					"nothing can document it", name, uri, name)
+		for _, m := range pkg.Macros {
+			declared++
+			if !checker.MacroIsImplemented(name, m.Name) {
+				t.Errorf("sngl://%s declares `func %s(...) Macro` but the compiler implements no mark for it; "+
+					"#[%s] would resolve and then fail at every use site", name, m.Name, m.Name)
 			}
 		}
 	}
-	for key := range declared {
-		if !registered[key] {
-			uri, name, _ := strings.Cut(key, ".")
-			t.Errorf("sngl://%s declares `func %s(...) Macro` but no macro is registered under that package and name; "+
-				"#[%s] would not resolve", uri, name, name)
-		}
+	if declared == 0 {
+		t.Fatal("no macro declarations found in lib/")
 	}
 }
 

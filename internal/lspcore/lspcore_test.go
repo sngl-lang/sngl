@@ -271,11 +271,11 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 	}
 }
 
-// The editor checks source the compiler has not run the macro pass over, so
-// the checker meets the attribute wrapper itself. A switch over statements
-// that reads the wrapper matches nothing: the declaration is never registered
-// and every use of it is reported as undefined — a file that builds, underlined
-// in red.
+// The editor takes the same route into the checker every other caller does,
+// marks included. While a marked declaration was a wrapper around itself, a
+// switch over statements matched nothing: the declaration was never registered
+// and every use of it was reported as undefined — a file that builds,
+// underlined in red.
 func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
 	content := `import . "sngl://std"
 

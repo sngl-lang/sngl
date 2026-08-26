@@ -38,11 +38,17 @@ type Package struct {
 	Vars       []*Var
 	Funcs      []*Func
 	Components []*Component
-	Windows    []*Window
-	Timers     []*Timer
-	Outputs    []*Output
-	Contexts   []*Context
-	Symbols    *SymbolTable
+	// Macros are the package's `func X(...) Macro` declarations. A macro is
+	// not a function — it is written as a `#[...]` mark and never called — so
+	// it is kept here rather than bound in scope. The declaration is what says
+	// a macro exists, what arguments it takes and what it does; the compiler
+	// adds only an implementation for the ones it implements.
+	Macros   []*Func
+	Windows  []*Window
+	Timers   []*Timer
+	Outputs  []*Output
+	Contexts []*Context
+	Symbols  *SymbolTable
 
 	// TreeKinds records the segmented trees (see Component.TreeKind) whose
 	// nodes this package declares or imports. The lowering pass for a tree

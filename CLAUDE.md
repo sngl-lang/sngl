@@ -112,12 +112,14 @@ A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to,
 
 `internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
-The `#[builtin]` macro only stamps the kind: it asserts `ast.BuiltinTaggable`
-and lets the AST say which declaration forms can carry a mark. What a kind then
-*requires* — that a node kind names a component, that a const kind names a
-const — is checked by `collectBuiltins` (`internal/checker/builtins.go`), where
-the compiler stores the reference, because that is where the requirement comes
-from. A duplicate mark is an error there rather than a silent overwrite.
+The `#[builtin]` mark only stamps the kind on whichever IR the declaration
+became. What a kind then *requires* — that a node kind names a component, that
+a const kind names a const — is checked by `bindBuiltinRole`
+(`internal/checker/builtins.go`), where the compiler stores the reference,
+because that is where the requirement comes from. A duplicate mark is an error
+there rather than a silent overwrite. Which declaration forms may carry a mark
+at all is the AST's answer: a form implements `ast.Attributed`, and the parser
+refuses a mark on one that does not.
 
 **Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
@@ -125,7 +127,8 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
 checker dispatches a visual node to the matching IR construct off the mark. The
-macro lives in `internal/macros/marks`; kinds are `ast.BuiltinKind`.
+mark is declared in `lib/internal/marks` and implemented in
+`internal/checker/marks_impl.go`; kinds are `ast.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
 `#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
@@ -156,9 +159,9 @@ The package is internal, so users reach it through a package that wraps it:
 and it keeps the rules that are about drawing rather than about trees — a
 painted shape declares no events. The facts land on `ir.Component.TreeKind`
 and `.ChildKind` at registration, and on `ir.Package.TreeKinds` for the
-lowering passes to gate on; `ast.ComponentDecl.Tree` carries them only from
-the macro pass to registration, because a mark the checker's own dispatch
-consults has to be in place before checking (see #103).
+lowering passes to gate on. Nothing about a mark reaches the AST: the source
+carries the `#[...]` as written and the checker applies it where it registers
+the declaration.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and

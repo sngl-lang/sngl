@@ -5,20 +5,18 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// applyTreeMarks copies #[tree.kind]/#[tree.children] from a component
-// declaration onto the IR component, and records the kinds on the declaring
-// package. Both registration paths — lib source and pass1 — call it, so a mark
-// means the same thing wherever the component was written.
+// finishTreeMarks derives what the tree marks imply and records the kinds on
+// the declaring package. The marks themselves wrote TreeKind and ChildKind
+// when they were applied; this runs once afterwards, so a component that
+// carries both marks is read as one node rather than twice.
 //
 // A member with no children type of its own hosts its own kind: a shape
 // contains shapes without saying so. A declared children type says what it
 // accepts instead, which is how a member of one tree hosts another.
-func applyTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
+func finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
 	if decl == nil || comp == nil {
 		return
 	}
-	comp.TreeKind = decl.Tree.Kind
-	comp.ChildKind = decl.Tree.Children
 	if comp.ChildKind == "" && comp.TreeKind != "" && decl.ChildrenType == nil {
 		comp.ChildKind = comp.TreeKind
 	}

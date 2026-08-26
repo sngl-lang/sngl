@@ -1,20 +1,21 @@
-// The grammar accepts a mark on a parameter or a component prop; nothing may
-// consume one yet, so every mark in that position is refused here.
+// The grammar accepts a mark on a parameter or a component prop, but a mark
+// annotates a declaration and a parameter is not one, so every mark in that
+// position is refused — whether or not the name it gives resolves to a macro.
 
 import . "sngl://std"
 import "sngl://draw"
 
-func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(expand) "unknown macro package \"nosuch\""
+func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
 
-func unknownName(#[draw.nosuch] a string) => a // ERROR(expand) "unknown macro \"nosuch\""
+func unknownName(#[draw.nosuch] a string) => a // ERROR(check) "#[draw.nosuch] cannot mark a parameter"
 
-func realMacro(#[draw.shape] a string) => a // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+func realMacro(#[draw.shape] a string) => a // ERROR(check) "#[draw.shape] cannot mark a parameter"
 
-func inLambda() => func(#[draw.shape] a int) => a // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+func inLambda() => func(#[draw.shape] a int) => a // ERROR(check) "#[draw.shape] cannot mark a parameter"
 
 component element(
     tag string,
-    #[draw.shape] attributes map<string, string>, // ERROR(expand) "#[draw.shape] cannot mark a parameter"
+    #[draw.shape] attributes map<string, string>, // ERROR(check) "#[draw.shape] cannot mark a parameter"
 ) {
     text(value = tag)
 }
