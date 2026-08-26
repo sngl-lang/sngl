@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -219,10 +220,8 @@ func optionsForPackage(uri string) []OptionDoc {
 		if doc == nil {
 			continue
 		}
-		for _, s := range doc.Stmts {
-			if s == ast.Stmt(sd.AST) {
-				return extractOptionsStruct(doc, sd.AST)
-			}
+		if slices.Contains(doc.Stmts, ast.Stmt(sd.AST)) {
+			return extractOptionsStruct(doc, sd.AST)
 		}
 	}
 	return nil
