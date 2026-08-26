@@ -29,7 +29,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget()})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}

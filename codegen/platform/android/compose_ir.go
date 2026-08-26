@@ -117,6 +117,10 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		cc.renderUserComponent(n)
 		return
 	}
+	if comp, composable := composeIntrinsic(n); comp != nil {
+		cc.renderIntrinsic(n, comp, composable)
+		return
+	}
 	if n.Component != nil {
 		cc.renderStdlibComposable(n)
 		return
@@ -187,7 +191,7 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 	style := cc.buildModifier(n)
 
 	switch n.Name {
-	case "vbox", "stack":
+	case "stack":
 		cc.line("Column(%s) {", style)
 		cc.indent++
 		for _, child := range n.Children {
@@ -195,37 +199,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		}
 		cc.indent--
 		cc.line("}")
-
-	case "hbox":
-		cc.line("Row(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "scroll":
-		cc.line("Column(%s.verticalScroll(rememberScrollState())) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "text":
-		content := cc.resolveContent(n)
-		// Text takes a `modifier` param even though our style helper
-		// folds visual styling into TextStyle; the modifier carries
-		// the testTag, which is the only thing finders rely on.
-		mod := cc.buildModifier(n)
-		ts := cc.textStyle(n)
-		args := []string{"text = " + content, mod}
-		if ts != "" {
-			args = append(args, ts)
-		}
-		cc.line("Text(%s)", strings.Join(args, ", "))
 
 	case "button":
 		text := cc.resolveTextProp(n)
@@ -420,9 +393,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 	case "divider":
 		cc.line("HorizontalDivider(%s)", style)
 
-	case "spacer":
-		cc.line("Spacer(%s)", style)
-
 	case "badge":
 		content := cc.resolveContent(n)
 		cc.line("Badge(%s) { Text(%s) }", style, content)
@@ -571,11 +541,18 @@ func (cc *irComposeContext) resolveTextProp(n *ir.NodeInst) string {
 // synthetic __nN ids from passReactivity) attaches a `.testTag("<id>")`
 // so Compose UI tests can locate the node via `onNodeWithTag`.
 func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
+	return cc.modifierRaw(n, "style")
+}
+
+// modifierRaw is buildModifierRaw over a named style prop: a declared
+// intrinsic names its props after the Compose arguments it emits, so the
+// Style behind its Modifier is not called "style".
+func (cc *irComposeContext) modifierRaw(n *ir.NodeInst, styleProp string) string {
 	parts := []string{"Modifier"}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("testTag(%q)", id))
 	}
-	for _, sf := range codegen.NodeStyleFields(n) {
+	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
@@ -602,7 +579,14 @@ func userTestTag(n *ir.NodeInst) string {
 }
 
 func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
-	styleFields := codegen.NodeStyleFields(n)
+	if ts := cc.textStyleExpr(n, "style"); ts != "" {
+		return "style = " + ts
+	}
+	return ""
+}
+
+func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {
+	styleFields := codegen.NodeStyleFieldsOf(n, styleProp)
 	if styleFields == nil {
 		return ""
 	}
@@ -630,7 +614,7 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 	if len(styleParts) == 0 {
 		return ""
 	}
-	return "style = TextStyle(" + strings.Join(styleParts, ", ") + ")"
+	return "TextStyle(" + strings.Join(styleParts, ", ") + ")"
 }
 
 // composeColorExpr converts an evaluated SNGL color value to a Compose Color
@@ -712,4 +696,106 @@ func composeModifier(prop, val string) string {
 		return ""
 	}
 	return ""
+}
+
+// --- Declared Compose intrinsics ---
+
+// intrinsicNS prefixes every intrinsic id this platform answers to, so a
+// primitive declared here can never collide with a stdlib intrinsic or with
+// another platform's.
+const intrinsicNS = "android:"
+
+// composeIntrinsic returns the composable name behind n when n is a component
+// marked #[intrinsic] in this platform's namespace. A stdlib component whose
+// android override is written in the extension form is inlined into its caller
+// at lower time, so what reaches codegen is the intrinsic the override named.
+func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
+	if n.Component == nil {
+		return nil, ""
+	}
+	name, ok := strings.CutPrefix(n.Component.Intrinsic, intrinsicNS)
+	if !ok || name == "" {
+		return nil, ""
+	}
+	return n.Component, name
+}
+
+// renderIntrinsic emits a declared composable from its declaration:
+// `composable` is the intrinsic id past the namespace, each declared prop is
+// the Compose argument of that name in declaration order, and children are a
+// trailing lambda. Two prop names are this emitter's own — `modifier` builds
+// the Modifier chain from a Style, and `chain` appends further Modifier calls
+// to it — because neither is a value Compose takes as written.
+func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
+	var args []string
+	for _, p := range comp.Props {
+		switch p.Name {
+		case "chain":
+		case "modifier":
+			args = append(args, "modifier = "+cc.intrinsicModifier(n))
+		default:
+			if isStyleType(p.Type) {
+				if ts := cc.textStyleExpr(n, p.Name); ts != "" {
+					args = append(args, p.Name+" = "+ts)
+				}
+				continue
+			}
+			if v := codegen.NodeProp(n, p.Name); v != nil {
+				args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
+			}
+		}
+	}
+	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
+	if comp.ChildrenType == nil {
+		cc.line("%s", call)
+		return
+	}
+	cc.line("%s {", call)
+	cc.indent++
+	for _, child := range n.Children {
+		cc.renderStmt(child)
+	}
+	cc.indent--
+	cc.line("}")
+}
+
+// intrinsicModifier builds the Modifier chain for a declared composable:
+// the styling and testTag every node gets, then the composable's own
+// `chain` entries, which are Modifier calls spelled in Kotlin because
+// Style has no field that names one.
+func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst) string {
+	var mod strings.Builder
+	mod.WriteString(cc.modifierRaw(n, "modifier"))
+	for _, call := range irStringList(codegen.NodeProp(n, "chain")) {
+		mod.WriteString("." + call)
+	}
+	return mod.String()
+}
+
+// isStyleType reports whether t is the stdlib Style struct — the prop type
+// the TextStyle mapping is keyed on, since Compose spells typography as an
+// argument of its own rather than as a Modifier.
+func isStyleType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Name == "Style"
+}
+
+// irStringList reads a list-of-string-literal expression. A non-literal
+// element is skipped: the value is Kotlin source, so nothing else could be
+// emitted for it.
+func irStringList(e ir.Expr) []string {
+	lit, ok := e.(*ir.ListLit)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(lit.Elems))
+	for _, el := range lit.Elems {
+		if s, ok := codegen.IRLiteralString(el); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }

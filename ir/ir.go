@@ -365,6 +365,12 @@ type Component struct {
 	// shapes. Empty for an ordinary component.
 	TreeKind  string `json:",omitempty"`
 	ChildKind string `json:",omitempty"`
+	// Intrinsic is the id from #[intrinsic] on a component: this component is
+	// emitted by the platform codegen that answers to the id, not by
+	// inlining a body. It is what tells the inliner to leave the component
+	// standing — a bodyless component the wrappers lower *to*, rather than a
+	// wrapper over one.
+	Intrinsic string `json:",omitempty"`
 	// Wildcard is the RE2 pattern from #[platforms.wildcard]: a name nobody
 	// declared in this component's package namespace resolves to this
 	// component when the pattern matches the whole name. Empty for an

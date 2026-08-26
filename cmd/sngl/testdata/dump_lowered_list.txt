@@ -1,5 +1,6 @@
 # Verifies `dump --stage lowered --list` succeeds for every shipping platform.
-# InlinePure runs always-on (Plan G); fyne also opts into NoStdlibWrappers.
+# InlinePure runs always-on (Plan G); every platform but none opts into
+# NoStdlibWrappers, so its overrides must inline to declared primitives.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
@@ -22,7 +23,7 @@ stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReac
 stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
+stdout 'caps: StructComponents,StdlibContextParam,NoStdlibWrappers,NoInlineComponents,NoStructSpread,Canvas'
 stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas'
 
 # Unknown pass name surfaces a non-zero exit.

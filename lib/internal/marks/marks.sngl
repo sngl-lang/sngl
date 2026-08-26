@@ -34,4 +34,13 @@ func builtin(kind string) ir.Macro {}
 // carry the facts that have no other surface in SNGL — see
 // `ir.IntrinsicFlag`. An id no backend answers to is a typo nothing else would
 // catch, so the checker rejects one.
+//
+// A component may carry the mark too: it is then a primitive one platform's
+// codegen emits from the declaration, and the id is that codegen's dispatch
+// key, namespaced by the platform (`android:Column`) so the two id spaces
+// never meet. It takes no flags — those describe a call, and a component has none —
+// and it names no entry in the function registry, since the props and events
+// are the declaration itself. The mark also keeps the inliner off the
+// component: a platform's stdlib overrides lower down to its primitives, so
+// the primitives must survive the pass that removes the overrides.
 func intrinsic(id string, flags list<ir.IntrinsicFlag> = []) ir.Macro {}

@@ -1,13 +1,19 @@
 // Android (Jetpack Compose) platform package.
-// Raw Compose composables (Column, Row, Text, Button, etc.) are implicitly
-// available via APIResolver — any identifier is a valid @Composable.
 //
-// Each component sngl.X() overrides the stdlib abstract component with a
-// Compose-native implementation. Props are inherited from the stdlib
-// definition and available as local variables in the body.
+// The intrinsics below are the Compose composables compose_ir.go emits from
+// their declarations: #[intrinsic] names the composable and keeps the
+// inliner off the component, and each prop is named after the Compose
+// argument it becomes. They are ordinary components otherwise, so user code
+// can reach a composable this package wraps no wrapper for.
+//
+// A `component sngl.X { platform android { ... } }` override is inlined into
+// the caller at lower time, so its body is what the codegen sees. The
+// remaining `component sngl.X()` bodies below are not: they are read by
+// nothing and still keyed on the stdlib name by a switch in compose_ir.go.
 
 import sngl "sngl://std"
 import . "sngl://platforms"
+import . "sngl://internal/marks"
 
 #[options]
 struct Options {
@@ -40,31 +46,61 @@ struct Options {
     gradleVersion string
 }
 
-// ComposableProp is a key-value pair for composable lambda parameters.
-struct ComposableProp {
-    key string
-    value dyn
-}
+// --- The intrinsics ---
+//
+// A prop's name is the Compose argument it is emitted as, in declaration
+// order. Two names are the emitter's own: `modifier` takes a Style and
+// becomes the `Modifier` chain built from it, and `chain` appends further
+// Modifier calls verbatim after those.
+//
+// The id is `android:` plus the composable's name — namespaced by the
+// platform whose codegen answers to it, so a platform primitive can never
+// collide with a stdlib intrinsic or with another platform's. It names no
+// Kotlin package: the platform codegen emits the call, not the language
+// translator.
 
-// Composable describes a composable lambda to emit for a Compose parameter
-// that expects @Composable () -> Unit. The codegen detects this struct in
-// prop values and emits { Name(key1 = val1, ...) } instead of a data value.
-struct Composable {
-    name string
-    props list<ComposableProp>
-}
+#[intrinsic("android:Column")]
+component Column(
+    modifier sngl.Style,
+    chain list<string>,
+) list<component> {}
+
+#[intrinsic("android:Row")]
+component Row(
+    modifier sngl.Style,
+    chain list<string>,
+) list<component> {}
+
+#[intrinsic("android:Spacer")]
+component Spacer(
+    modifier sngl.Style,
+    chain list<string>,
+) {}
+
+#[intrinsic("android:Text")]
+component Text(
+    text string,
+    modifier sngl.Style,
+    // Typography, as Compose's own `style` argument: a TextStyle built from
+    // the Style's font and colour fields.
+    style sngl.Style,
+) {}
 
 // --- Core Layout ---
 
-component sngl.vbox() {
-    Column {
-        slot
+component sngl.vbox {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.hbox() {
-    Row {
-        slot
+component sngl.hbox {
+    platform android {
+        Row(modifier={...style}) {
+            slot
+        }
     }
 }
 
@@ -74,20 +110,29 @@ component sngl.stack() {
     }
 }
 
-component sngl.spacer() {
-    Spacer {}
+component sngl.spacer {
+    platform android {
+        Spacer(modifier={...style}) {}
+    }
 }
 
-component sngl.scroll() {
-    Column {
-        slot
+component sngl.scroll {
+    platform android {
+        Column(
+            modifier={...style},
+            chain=["verticalScroll(rememberScrollState())"],
+        ) {
+            slot
+        }
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text() {
-    Text(text=value) {}
+component sngl.text {
+    platform android {
+        Text(text=value, modifier={...style}, style={...style}) {}
+    }
 }
 
 component sngl.button() {
@@ -171,7 +216,7 @@ component sngl.card() {
 }
 
 component sngl.chip() {
-    AssistChip(label=Composable{name="Text", props=[{key="text", value=label}]}) {}
+    AssistChip(label=label) {}
 }
 
 component sngl.link() {

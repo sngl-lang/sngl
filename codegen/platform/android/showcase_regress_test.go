@@ -8,7 +8,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// androidTarget is the registered-platform set these tests check against.
+// Without it the checker never merges this platform's `component sngl.X`
+// extension bodies, so the stdlib components stay abstract and codegen sees a
+// tree the real CLI never produces. (Naming this platform directly rather than
+// through internal/testtargets: that package imports codegen/platform, which
+// this internal test package is part of.)
+func androidTarget() []ir.Platform { return []ir.Platform{&Generator{}} }
 
 // compileSrc compiles a program to Kotlin via CompileIR (non-test mode) or
 // CompileTestIR (test mode), returning the generated MainScreen.kt source.
@@ -18,7 +27,7 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget()})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}

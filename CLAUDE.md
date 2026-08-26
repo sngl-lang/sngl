@@ -166,6 +166,24 @@ lowering passes to gate on. Nothing about a mark reaches the AST: the source
 carries the `#[...]` as written and the checker applies it where it registers
 the declaration.
 
+**`#[intrinsic]` on a component is a platform primitive.** On a function the
+mark names a signature in `ir.Intrinsics` that every language backend must
+implement. On a component there is no signature to register — the declaration
+*is* the contract for props and events, and one platform's codegen emits the
+widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
+`lib/platforms/android/`). The id is that codegen's dispatch key, namespaced by
+the emitting platform (`android:Column`) so it can never collide with a stdlib
+intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
+the two forms to opposite rules: a function id must be in the registry, a
+component id must not be, and must carry its namespace.
+
+The mark's other job is to stop the inliner. A platform's extension override
+inlines into its caller (`passInlinePure`), and under `NoStdlibWrappers` every
+platform-package component must inline or the build fails — so the primitives
+those overrides lower down to have to be exempt.
+`isPlatformStdlibComponent` reads `Component.Intrinsic` for that, alongside
+`Wildcard`, which is the same exemption for html's raw element.
+
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and
 because its users are outside the compiler: a language plugin generating marked

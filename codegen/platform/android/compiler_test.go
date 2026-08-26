@@ -73,7 +73,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget()})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
@@ -103,7 +103,7 @@ func TestFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true, Platforms: androidTarget()})
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
 			}

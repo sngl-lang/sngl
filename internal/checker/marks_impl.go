@@ -78,7 +78,9 @@ const (
 )
 
 // markIntrinsic implements #[intrinsic("Id", flags...)], stamping the id and
-// what the compiler needs to know about a call onto the function.
+// what the compiler needs to know about a call onto the function — or, on a
+// component, the id alone: a component is emitted by the platform codegen
+// that answers to the id, and no call cost follows from that.
 func markIntrinsic(m *mark) error {
 	id := m.args.String("id")
 	if id == "" {
@@ -91,6 +93,18 @@ func markIntrinsic(m *mark) error {
 	if slices.Contains(flags, flagMutates) && slices.Contains(flags, flagReadonly) {
 		return fmt.Errorf("#[intrinsic(%q)] is both %s and %s; a call either has an effect or only reads host state",
 			id, flagMutates, flagReadonly)
+	}
+	if comp, ok := m.sym.(*ir.Component); ok {
+		// A component has no signature, so the flags — which all describe
+		// what a call costs — have nothing to describe.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[intrinsic(%q)] carries %s, which describes a call; a component has none", id, flags[0])
+		}
+		if comp.Intrinsic != "" {
+			return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, comp.Intrinsic)
+		}
+		comp.Intrinsic = id
+		return nil
 	}
 	fn, ok := m.sym.(*ir.Func)
 	if !ok {

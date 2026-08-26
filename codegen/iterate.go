@@ -300,7 +300,14 @@ type StyleField struct {
 // preserving source order. Returns nil if there's no style prop or it isn't a
 // struct literal.
 func NodeStyleFields(n *ir.NodeInst) []StyleField {
-	style := NodeProp(n, "style")
+	return NodeStyleFieldsOf(n, "style")
+}
+
+// NodeStyleFieldsOf is NodeStyleFields over a differently named prop, for a
+// node that takes more than one Style — a declared native widget naming its
+// props after the host's own arguments.
+func NodeStyleFieldsOf(n *ir.NodeInst, prop string) []StyleField {
+	style := NodeProp(n, prop)
 	if style == nil {
 		return nil
 	}
