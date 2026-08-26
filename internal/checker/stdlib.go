@@ -1310,6 +1310,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 				Default:       def,
 				Bidirectional: pd.Bidirectional,
 			}
+			c.applyParamMarks(pd, prop)
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{

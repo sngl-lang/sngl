@@ -1,7 +1,7 @@
-// HTML output. Any identifier is a valid tag: `html.div`, `html.dialog`,
-// `html.my-widget`. The web element set is open — custom elements and new
-// standards mean it cannot be enumerated — so a tag resolves without being
-// declared here.
+// HTML output. Any identifier is a valid tag: `html.div`, `html.dialog`.
+// The web element set is open — new standards keep adding to it — so a tag
+// resolves without being declared here. A hyphenated custom element cannot
+// be written yet: an identifier holds no hyphen.
 //
 // Each `component sngl.X` gives a stdlib component its HTML implementation.
 // The stdlib declares the props; the body reads them as locals.

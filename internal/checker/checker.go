@@ -1638,7 +1638,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		Name: comp.Name,
 	}
 	c.applyMarks(comp, irComp)
-	c.refuseParamMarks(compParams(comp))
 
 	// Resolve props and events from PropList.
 	for _, p := range comp.Props.Props {
@@ -1649,6 +1648,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				Type:          c.resolveType(pd.Type),
 				Bidirectional: pd.Bidirectional,
 			}
+			c.applyParamMarks(pd, prop)
 			if prop.Type.Kind == ir.TypeDyn && pd.Default == nil {
 				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
 			}
@@ -3199,16 +3199,4 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 		c.bindLib(imp.Pos, dst, sym)
 	}
-}
-
-// compParams is a component's props that are parameters. An event declaration
-// parses from an identifier list and cannot carry a mark.
-func compParams(comp *ast.ComponentDecl) []ast.Param {
-	var out []ast.Param
-	for _, p := range comp.Props.Props {
-		if param, ok := p.(ast.Param); ok {
-			out = append(out, param)
-		}
-	}
-	return out
 }

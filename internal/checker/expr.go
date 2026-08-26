@@ -1020,16 +1020,14 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 					}
 				}
-				// Try Resolve() fallback for dynamic elements (e.g., html.code).
-				if ns.Resolve != nil {
-					if resolved := ns.Resolve(sel.Field); resolved != nil {
-						t := resolved.SymType()
-						if t == nil {
-							t = TypDyn
-						}
-						args := c.checkCallArgs(call.Args, nil)
-						return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
+				// A name the package does not declare (e.g. html.code).
+				if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
+					t := resolved.SymType()
+					if t == nil {
+						t = TypDyn
 					}
+					args := c.checkCallArgs(call.Args, nil)
+					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
 				}
 				// Nothing found in namespace.
 				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
@@ -1507,15 +1505,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}
-					// Try Resolve() fallback for dynamic members.
-					if ns.Resolve != nil {
-						if resolved := ns.Resolve(x.Field); resolved != nil {
-							t := resolved.SymType()
-							if t == nil {
-								t = TypDyn
-							}
-							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
+					// A name the package does not declare.
+					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
+						t := resolved.SymType()
+						if t == nil {
+							t = TypDyn
 						}
+						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 					}
 				}
 			}
@@ -2649,8 +2645,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// walks their reactive props and wires the mutation
 						// updaters. Without this they became ir.CallStmt, which
 						// lowering skips, leaving reactive attributes frozen.
-						if comp == nil && ns.Resolve != nil {
-							if resolved := ns.Resolve(sel.Field); resolved != nil {
+						if comp == nil {
+							if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
 								if co, ok := resolved.(*ir.Component); ok {
 									comp = co
 									compName = sel.Field
@@ -2922,6 +2918,25 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	return clone
 }
 
+// nsMember resolves a name a namespace's package does not declare. A wildcard
+// component of that package is consulted first: a package that says in source
+// which names it stands for must not be overruled by a plugin that accepts
+// every identifier and leaves nothing to check a call against.
+func (c *checker) nsMember(pos ast.Pos, ns *ir.Namespace, name string) ir.Symbol {
+	comp, err := wildcardComponent(ns.Pkg, name)
+	if err != nil {
+		c.error(pos, "%s", err)
+		return nil
+	}
+	if comp != nil {
+		return comp
+	}
+	if ns.Resolve != nil {
+		return ns.Resolve(name)
+	}
+	return nil
+}
+
 // resolvePlatformIdent tries the current platform's Resolve() for an unknown
 // identifier. Returns nil when not inside a platform block or when the
 // platform cannot resolve the name.
@@ -2956,6 +2971,9 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		if _, ok := nsSym.Pkg.Symbols.Root.Lookup(field); ok {
 			return true
 		}
+	}
+	if w, err := wildcardComponent(nsSym.Pkg, field); err == nil && w != nil {
+		return true
 	}
 	if nsSym.Resolve != nil {
 		if nsSym.Resolve(field) != nil {
@@ -3152,12 +3170,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 						}
 					}
 				}
-				// Fall back to the namespace's platform Resolve (e.g.
-				// html.input → raw HTML <input> component; gtk4.GtkBox →
-				// GIR-resolved component). Lets platform-extension bodies
+				// A name the package does not declare: a wildcard component
+				// of its own, else the platform's Resolve (gtk4.GtkBox →
+				// GIR-resolved widget). Lets platform-extension bodies
 				// reference native tags qualified by platform name.
-				if comp == nil && nsSym.Resolve != nil {
-					if resolved := nsSym.Resolve(field); resolved != nil {
+				if comp == nil {
+					if resolved := c.nsMember(vn.Pos, nsSym, field); resolved != nil {
 						if co, ok := resolved.(*ir.Component); ok {
 							comp = co
 							qualifiedLocal = field
@@ -3369,6 +3387,12 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 			return p.Type
 		}
 	}
+	// A name nobody declared still has a type when a wildcard prop covers it,
+	// which is what makes its value checkable. An ambiguity is reported by
+	// validateVisualNodeProps, at the use site; here it simply types nothing.
+	if p, ok, err := wildcardProp(comp, name); ok && err == nil {
+		return p.Type
+	}
 	return nil
 }
 
@@ -3428,7 +3452,9 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			if strings.HasPrefix(name, ":") {
 				name = name[1:]
 			}
-			if !componentHasProp(comp, name) && !componentHasEvent(comp, name) {
+			if _, err := componentWildcardProp(comp, name); err != nil {
+				c.error(vn.Pos, "%s", err)
+			} else if !componentHasProp(comp, name) && !componentHasEvent(comp, name) {
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -3448,9 +3474,15 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	seen := make(map[string]ast.Pos)
 
 	// Build ordered prop list for positional binding.
+	// A wildcard prop has no position: it stands for names, and binding one
+	// positionally would give it a name nobody wrote.
 	var orderedProps []*ir.Prop
 	if comp != nil {
-		orderedProps = comp.Props
+		for _, p := range comp.Props {
+			if p.Wildcard == "" {
+				orderedProps = append(orderedProps, p)
+			}
+		}
 	}
 	boundProps := make(map[string]bool)
 
@@ -3632,6 +3664,11 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	// stdlib component props without defaults are optional by platform convention).
 	if comp != nil && !comp.Stdlib {
 		for _, p := range comp.Props {
+			// A wildcard prop stands for names rather than being one, so
+			// there is nothing to require: its own name binds nothing.
+			if p.Wildcard != "" {
+				continue
+			}
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
@@ -3797,6 +3834,11 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	// stdlib component props without defaults are optional by platform convention).
 	if !comp.Stdlib {
 		for _, p := range comp.Props {
+			// A wildcard prop stands for names rather than being one, so
+			// there is nothing to require: its own name binds nothing.
+			if p.Wildcard != "" {
+				continue
+			}
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
@@ -3825,7 +3867,9 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			if strings.HasPrefix(propName, ":") {
 				propName = propName[1:]
 			}
-			if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
+			if _, err := componentWildcardProp(comp, propName); err != nil {
+				c.error(*call.Func.ExprPos(), "%s", err)
+			} else if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -3842,7 +3886,15 @@ func componentHasProp(comp *ir.Component, name string) bool {
 			return true
 		}
 	}
-	return false
+	ok, _ := componentWildcardProp(comp, name)
+	return ok
+}
+
+// componentWildcardProp reports whether a wildcard prop covers a name no
+// declared prop binds, and the ambiguity if two of them do.
+func componentWildcardProp(comp *ir.Component, name string) (bool, error) {
+	_, ok, err := wildcardProp(comp, name)
+	return ok, err
 }
 
 func componentHasEvent(comp *ir.Component, name string) bool {

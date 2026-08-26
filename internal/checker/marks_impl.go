@@ -24,6 +24,7 @@ var markImpls = map[markKey]markImpl{
 	{"internal/tree", "kind"}:       markTreeKind,
 	{"internal/tree", "children"}:   markTreeChildren,
 	{"platforms", "options"}:        markOptions,
+	{"platforms", "wildcard"}:       markWildcard,
 	{"std", "foreign"}:              markForeign,
 	{"draw", "shape"}:               markShape,
 }
@@ -188,7 +189,7 @@ func markForeign(m *mark) error {
 
 // markedNames counts the names one declaration binds. A foreign name stands
 // for one declaration, so a grouped one cannot carry the mark.
-func markedNames(decl ast.Stmt) int {
+func markedNames(decl ast.Marked) int {
 	switch d := decl.(type) {
 	case *ast.StructField:
 		return len(d.Names)
@@ -301,4 +302,39 @@ func markShape(m *mark) error {
 		return fmt.Errorf("shape components may only have shape children; remove the children type")
 	}
 	return applyTreeMark(m, "kind", shapeKind, setTreeKind)
+}
+
+// --- #[wildcard] ---
+
+// markWildcard implements #[platforms.wildcard("pattern")], which says what a
+// name nobody declared resolves to: a component reached by any matching name
+// in its package's namespace, or a prop bound by any matching prop name.
+//
+// The pattern is anchored to the whole name, so a partial match is not one.
+// It is compiled here, where the mark is written, so a pattern RE2 cannot
+// parse is reported at its own position rather than at the first call site
+// that would have matched it.
+func markWildcard(m *mark) error {
+	pat := m.args.String("pattern")
+	if pat == "" {
+		return fmt.Errorf("#[wildcard] requires a non-empty pattern")
+	}
+	if _, err := compileWildcard(pat); err != nil {
+		return fmt.Errorf("#[wildcard(%q)]: %w", pat, err)
+	}
+	switch d := m.sym.(type) {
+	case *ir.Component:
+		if d.Wildcard != "" {
+			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
+		}
+		d.Wildcard = pat
+	case *ir.Prop:
+		if d.Wildcard != "" {
+			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
+		}
+		d.Wildcard = pat
+	default:
+		return fmt.Errorf("#[wildcard(%q)] cannot mark %T; only a component or one of its props stands for names nobody declared", pat, m.decl)
+	}
+	return nil
 }

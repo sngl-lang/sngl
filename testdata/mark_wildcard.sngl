@@ -1,0 +1,22 @@
+// #[wildcard] on a component prop says which prop names nobody declared the
+// component still accepts, and what type their values have. Without it the
+// only accepted names are the declared ones.
+
+import . "sngl://std"
+import . "sngl://platforms"
+
+component attrs(
+    label string = "",
+    #[wildcard("data[A-Za-z0-9]+")] data string = "",
+) {
+    text(value = label)
+}
+
+component main() {
+    window {
+        attrs(label = "hi", dataRole = "row", dataIndex7 = "3")
+        // The declared name still binds: a wildcard adds names, it does not
+        // take its own away.
+        attrs(data = "plain")
+    }
+}

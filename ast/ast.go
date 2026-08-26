@@ -230,9 +230,10 @@ type Param struct {
 	Type          TypeExpr
 	Default       Expr
 	Bidirectional bool // :name — component binding param
-	// Attrs are the #[...] marks written before the parameter. No mark may be
-	// written there — a mark annotates a declaration — so the checker refuses
-	// them where it registers the parameter.
+	// Attrs are the #[...] marks written before the parameter. Only a
+	// component prop is a declaration enough to carry one, and only the marks
+	// that say something about a prop; the checker refuses the rest where it
+	// registers the parameter.
 	Attrs []MacroAttr `json:",omitempty"`
 }
 

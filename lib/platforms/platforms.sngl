@@ -16,3 +16,19 @@ import ir "sngl://internal/ir"
 // options by, so a target may call the struct whatever it likes and a struct
 // incidentally named `Options` is not one.
 func options() ir.Macro {}
+
+// Marks what a name nobody declared resolves to. `pattern` is an RE2 regular
+// expression, matched against the whole name.
+//
+// On a component, a name in its package's namespace that matches resolves to
+// it. A package whose members cannot be enumerated says so here once — the
+// web's element set is open, because a custom element is a tag nobody
+// declared — instead of a plugin accepting every identifier silently and
+// leaving the compiler nothing to check a call against.
+//
+// On a component prop, a prop name that matches is accepted at a call site
+// and its value checked against the prop's declared type.
+//
+// A declared name always beats a wildcard, and a name two wildcards match is
+// an error rather than whichever was written first.
+func wildcard(pattern string) ir.Macro {}

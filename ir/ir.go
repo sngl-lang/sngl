@@ -365,6 +365,11 @@ type Component struct {
 	// shapes. Empty for an ordinary component.
 	TreeKind  string `json:",omitempty"`
 	ChildKind string `json:",omitempty"`
+	// Wildcard is the RE2 pattern from #[platforms.wildcard]: a name nobody
+	// declared in this component's package namespace resolves to this
+	// component when the pattern matches the whole name. Empty for an
+	// ordinary component, which only its own name reaches.
+	Wildcard string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
 	Pkg          string
 	Props        []*Prop
@@ -411,6 +416,11 @@ type Prop struct {
 	Type          *Type
 	Default       Expr // nil if no default
 	Bidirectional bool
+	// Wildcard is the RE2 pattern from #[platforms.wildcard] written on the
+	// prop: a prop name nobody declared is accepted at a call site when the
+	// pattern matches it whole, and its value checked against Type. Empty for
+	// an ordinary prop, which only its own name binds.
+	Wildcard string `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so

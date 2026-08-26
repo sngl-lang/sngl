@@ -1,6 +1,11 @@
-// The grammar accepts a mark on a parameter or a component prop, but a mark
-// annotates a declaration and a parameter is not one, so every mark in that
-// position is refused — whether or not the name it gives resolves to a macro.
+// A mark annotates a declaration, and a function or lambda parameter is not
+// one, so every mark there is refused — whether or not the name it gives
+// resolves to a macro.
+//
+// A component prop is the exception: #[platforms.wildcard] says something
+// about one. So a mark written there is resolved first, and a name that names
+// no macro is reported as the unknown macro it is rather than as an illegal
+// position.
 
 import . "sngl://std"
 import "sngl://draw"
@@ -16,6 +21,7 @@ func inLambda() => func(#[draw.shape] a int) => a // ERROR(check) "#[draw.shape]
 component element(
     tag string,
     #[draw.shape] attributes map<string, string>, // ERROR(check) "#[draw.shape] cannot mark a parameter"
+    #[nosuch.mark] extra string = "", // ERROR(check) "unknown macro package"
 ) {
     text(value = tag)
 }

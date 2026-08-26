@@ -30,12 +30,13 @@ type mark struct {
 	c    *checker
 	attr ast.MacroAttr
 	args markArgs
-	// decl is the annotated declaration as written. A mark reads it for the
-	// facts the IR does not carry — how many names a field declares, whether a
-	// component declared a children type of its own.
-	decl ast.Stmt
+	// decl is what the mark was written on, as written: an ast.Attributed
+	// declaration form, or an ast.Param for a component prop. A mark reads it
+	// for the facts the IR does not carry — how many names a field declares,
+	// whether a component declared a children type of its own.
+	decl ast.Marked
 	// sym is the IR the declaration registered as: *ir.StructDef, *ir.Func,
-	// *ir.Component, *ir.Var, *ir.UnitDef, *ir.StructField.
+	// *ir.Component, *ir.Var, *ir.UnitDef, *ir.StructField, *ir.Prop.
 	sym any
 }
 
@@ -51,13 +52,33 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 		return
 	}
 	for _, attr := range a.MarkAttrs() {
-		c.applyMark(attr, decl, sym)
+		c.applyMark(attr, a, sym, false)
 	}
 }
 
-func (c *checker) applyMark(attr ast.MacroAttr, decl ast.Stmt, sym any) {
+// paramMarks are the marks that may be written on a component prop. Every
+// other mark says something about a declaration that a prop is not, so the
+// position is refused rather than left to the mark to notice.
+var paramMarks = map[markKey]bool{
+	{"platforms", "wildcard"}: true,
+}
+
+// applyParamMarks resolves and runs the marks written on a component prop.
+// prop is the ir.Prop the checker has just built for it, which is what a mark
+// legal here writes to.
+func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
+	for _, attr := range p.MarkAttrs() {
+		c.applyMark(attr, p, prop, true)
+	}
+}
+
+func (c *checker) applyMark(attr ast.MacroAttr, decl ast.Marked, sym any, inParam bool) {
 	uri, fn, ok := c.resolveMacro(attr)
 	if !ok {
+		return
+	}
+	if inParam && !paramMarks[markKey{uri, attr.Name}] {
+		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MarkName())
 		return
 	}
 	args, err := markArgsFor(fn, attr.Args)
@@ -156,15 +177,16 @@ func (c *checker) setMarkScope(docs []*ast.Document) func() {
 	return func() { c.markAliases, c.markDotPkgs = savedAliases, savedDot }
 }
 
-// refuseParamMarks reports the marks written on a parameter or component prop.
-// The grammar accepts one there, but a mark annotates a declaration and a
-// parameter is not one: there is nothing for a mark to say about it and no
-// implementation could be written. Refusing at registration puts the report
-// where the parameter is known, so no walk of the document is needed to find
-// one.
+// refuseParamMarks reports the marks written on a function or lambda
+// parameter. The grammar accepts one there, but a mark annotates a
+// declaration and such a parameter is not one: there is nothing for a mark to
+// say about it. Refusing at registration puts the report where the parameter
+// is known, so no walk of the document is needed to find one.
+//
+// A component prop is the exception and goes through applyParamMarks.
 func (c *checker) refuseParamMarks(params []ast.Param) {
 	for _, p := range params {
-		for _, attr := range p.Attrs {
+		for _, attr := range p.MarkAttrs() {
 			c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MarkName())
 		}
 	}
