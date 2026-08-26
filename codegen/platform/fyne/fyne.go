@@ -29,7 +29,10 @@ func (g *Generator) PreviewCSS() string       { return previewCSS }
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	// Fyne accepts any tag name; codegen reads metadata from blueprint
 	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
-	return &ir.Component{Name: identifier}
+	// The wildcard prop says the same about its props as the name does about
+	// the tag: nothing declares them here, so there is nothing for the
+	// checker to reject a prop name against.
+	return &ir.Component{Name: identifier, Props: []*ir.Prop{{Name: "prop", Wildcard: ".*"}}}
 }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()

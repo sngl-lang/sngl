@@ -10,6 +10,13 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// markTarget is a syntax form a mark can be written on. The AST knows only
+// that some forms carry `#[...]` attributes; a mark is what this package makes
+// of one, so the interface that names them marks lives here rather than there.
+type markTarget interface {
+	MacroAttrs() []ast.MacroAttr
+}
+
 // A mark is a macro written as `#[...]` on a declaration. Everything about one
 // except what it does comes from its declaration in lib/: the package it lives
 // in, its name, its parameter list and its documentation are read off
@@ -34,7 +41,7 @@ type mark struct {
 	// declaration form, or an ast.Param for a component prop. A mark reads it
 	// for the facts the IR does not carry — how many names a field declares,
 	// whether a component declared a children type of its own.
-	decl ast.Marked
+	decl markTarget
 	// sym is the IR the declaration registered as: *ir.StructDef, *ir.Func,
 	// *ir.Component, *ir.Var, *ir.UnitDef, *ir.StructField, *ir.Prop.
 	sym any
@@ -51,7 +58,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	if !ok {
 		return
 	}
-	for _, attr := range a.MarkAttrs() {
+	for _, attr := range a.MacroAttrs() {
 		c.applyMark(attr, a, sym, false)
 	}
 }
@@ -67,12 +74,12 @@ var paramMarks = map[markKey]bool{
 // prop is the ir.Prop the checker has just built for it, which is what a mark
 // legal here writes to.
 func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
-	for _, attr := range p.MarkAttrs() {
+	for _, attr := range p.MacroAttrs() {
 		c.applyMark(attr, p, prop, true)
 	}
 }
 
-func (c *checker) applyMark(attr ast.MacroAttr, decl ast.Marked, sym any, inParam bool) {
+func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inParam bool) {
 	uri, fn, ok := c.resolveMacro(attr)
 	if !ok {
 		return
@@ -186,7 +193,7 @@ func (c *checker) setMarkScope(docs []*ast.Document) func() {
 // A component prop is the exception and goes through applyParamMarks.
 func (c *checker) refuseParamMarks(params []ast.Param) {
 	for _, p := range params {
-		for _, attr := range p.MarkAttrs() {
+		for _, attr := range p.MacroAttrs() {
 			c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MarkName())
 		}
 	}

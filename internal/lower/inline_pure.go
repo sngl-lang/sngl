@@ -342,6 +342,12 @@ func containsSelfRef(comp *ir.Component) bool {
 // isPlatformStdlibComponent reports whether comp came from one of the
 // package's sngl://platforms/… imports.
 func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
+	// A wildcard component is the primitive the wrappers lower *to* — a raw
+	// element — not a wrapper over one. It has no body to inline, so the
+	// strict check would read it as an impure wrapper and fail the build.
+	if comp != nil && comp.Wildcard != "" {
+		return false
+	}
 	for _, imp := range pkg.Imports {
 		if !strings.HasPrefix(imp.Path, "sngl://platforms/") {
 			continue

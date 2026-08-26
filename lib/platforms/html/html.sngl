@@ -1,7 +1,8 @@
 // HTML output. Any identifier is a valid tag: `html.div`, `html.dialog`.
 // The web element set is open — new standards keep adding to it — so a tag
-// resolves without being declared here. A hyphenated custom element cannot
-// be written yet: an identifier holds no hyphen.
+// resolves to the `element` component below rather than to a declaration of
+// its own. A tag no identifier can spell is written through that component's
+// `tag` prop: `html.element(tag="my-widget")`.
 //
 // Each `component sngl.X` gives a stdlib component its HTML implementation.
 // The stdlib declares the props; the body reads them as locals.
@@ -36,6 +37,68 @@ struct Options {
     // Disable content-hash filenames for emitted assets; produce stable paths.
     noCacheBust bool
 }
+
+// The element every tag resolves to. The web's element set is open — a new
+// standard adds to it, and a custom element is a tag nobody declared — so one
+// declaration answers to every tag name rather than one per tag existing.
+//
+// The typed props are the attributes whose value is not a string; everything
+// else is one, which is what the wildcard prop says. A tag-specific numeric
+// attribute missing from this list is accepted as a string rather than
+// rejected.
+#[wildcard("[a-zA-Z][a-zA-Z0-9]*")]
+component element(
+    // The tag to emit, in place of the name this resolved from. This is how a
+    // hyphenated custom element is written, an identifier holding no hyphen.
+    // It names the element rather than describing it, so it is never emitted
+    // as an attribute.
+    tag string,
+
+    style sngl.Style,
+    class string,
+    id string,
+    textContent string,
+    innerText string,
+    innerHTML string,
+
+    disabled bool,
+    checked bool,
+    readonly bool,
+    selected bool,
+    hidden bool,
+    open bool,
+
+    rows int,
+    width int,
+    height int,
+
+    // `value` and `max` are the two attributes whose type is the element's,
+    // not the attribute's: a string everywhere but on <progress>/<meter>,
+    // where they are numbers. Nothing here can say which element this is.
+    value dyn,
+    max dyn,
+
+    // Every other attribute. `data-*` and `aria-*` reach an element this way,
+    // as does an attribute a standard adds after this file was written.
+    //
+    // Lowercase, because HTML attribute names are: a camelCase name is a DOM
+    // property rather than an attribute, and the ones an element takes are
+    // declared above. That is what makes a misspelling here reportable at all.
+    #[wildcard("[a-z][a-z0-9]*([-:.][a-z0-9]+)*")]
+    attr string,
+
+    @click sngl.ClickEvent,
+    @input sngl.InputEvent,
+    @change sngl.ChangeEvent,
+    @focus sngl.FocusEvent,
+    @blur sngl.FocusEvent,
+    @submit sngl.SubmitEvent,
+    @scroll sngl.ScrollEvent,
+    @load sngl.LoadEvent,
+    @error sngl.ErrorEvent,
+    @close sngl.DismissEvent,
+    @select sngl.SelectEvent,
+) list<component> {}
 
 // --- Core Layout ---
 

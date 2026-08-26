@@ -1,53 +1,48 @@
 package ast
 
-// Attributed is a declaration form that can carry `#[...]` marks. The parser
-// attaches them to the declaration itself rather than wrapping it, so a marked
-// declaration is the same node an unmarked one is and every consumer sees one
-// shape. The checker resolves and applies the marks where it registers the
-// declaration.
+// Attributed is a declaration form that can carry `#[...]` macro attributes.
+// The parser attaches them to the declaration itself rather than wrapping it,
+// so an attributed declaration is the same node an unattributed one is and
+// every consumer sees one shape.
 //
-// Which forms implement it is the AST's answer to what may be marked: a form
-// that does not is refused at parse time, where the position is known, rather
-// than by a mark that has no idea what it was written on.
+// What an attribute means is not the AST's to know: it is syntax for reaching
+// past the syntax, and the checker is where one becomes a mark on the
+// declaration it annotates. Which forms implement this is the AST's whole
+// answer — a form that does not is refused at parse time, where the position
+// is known.
 type Attributed interface {
 	Stmt
-	Marked
-	// SetMarkAttrs records them. pos is the first mark's position and becomes
-	// the declaration's own, so a doc comment written above the marks still
+	// MacroAttrs returns the attributes written on the declaration, in source
+	// order.
+	MacroAttrs() []MacroAttr
+	// SetMacroAttrs records them. pos is the first attribute's position and
+	// becomes the declaration's own, so a doc comment written above them still
 	// reads as adjacent to the declaration.
-	SetMarkAttrs(pos Pos, attrs []MacroAttr)
+	SetMacroAttrs(pos Pos, attrs []MacroAttr)
 }
 
-// Marked is anything a mark may be written on. Every Attributed form is one,
-// and so is a component prop — which the parser fills in directly rather than
-// through SetMarkAttrs, and which is not a Stmt, so it is this narrower
-// interface the checker carries a mark's target as.
-type Marked interface {
-	// MarkAttrs returns the marks written on it, in source order.
-	MarkAttrs() []MacroAttr
-}
+func (s *StructDef) MacroAttrs() []MacroAttr     { return s.Attrs }
+func (f *StructField) MacroAttrs() []MacroAttr   { return f.Attrs }
+func (f *FuncDef) MacroAttrs() []MacroAttr       { return f.Attrs }
+func (c *ComponentDecl) MacroAttrs() []MacroAttr { return c.Attrs }
+func (c *ConstDecl) MacroAttrs() []MacroAttr     { return c.Attrs }
+func (v *VarDecl) MacroAttrs() []MacroAttr       { return v.Attrs }
+func (u *UnitDef) MacroAttrs() []MacroAttr       { return u.Attrs }
+func (e *EnumDef) MacroAttrs() []MacroAttr       { return e.Attrs }
 
-func (s *StructDef) MarkAttrs() []MacroAttr     { return s.Attrs }
-func (f *StructField) MarkAttrs() []MacroAttr   { return f.Attrs }
-func (f *FuncDef) MarkAttrs() []MacroAttr       { return f.Attrs }
-func (c *ComponentDecl) MarkAttrs() []MacroAttr { return c.Attrs }
-func (c *ConstDecl) MarkAttrs() []MacroAttr     { return c.Attrs }
-func (v *VarDecl) MarkAttrs() []MacroAttr       { return v.Attrs }
-func (u *UnitDef) MarkAttrs() []MacroAttr       { return u.Attrs }
-func (e *EnumDef) MarkAttrs() []MacroAttr       { return e.Attrs }
+// A Param is not Attributed — the parser fills its attributes in directly, and
+// it is not a Stmt — but it reads them out the same way, so that whatever
+// accepts attributes from a declaration accepts them from a parameter too.
+func (p Param) MacroAttrs() []MacroAttr { return p.Attrs }
 
-// Param is Marked but not Attributed: a component prop carries marks, and a
-// function parameter carries the ones the checker refuses.
-func (p Param) MarkAttrs() []MacroAttr { return p.Attrs }
-
-func (s *StructDef) SetMarkAttrs(pos Pos, attrs []MacroAttr)     { s.Attrs, s.Pos = attrs, pos }
-func (f *StructField) SetMarkAttrs(pos Pos, attrs []MacroAttr)   { f.Attrs, f.Pos = attrs, pos }
-func (f *FuncDef) SetMarkAttrs(pos Pos, attrs []MacroAttr)       { f.Attrs, f.Pos = attrs, pos }
-func (c *ComponentDecl) SetMarkAttrs(pos Pos, attrs []MacroAttr) { c.Attrs, c.Pos = attrs, pos }
-func (c *ConstDecl) SetMarkAttrs(pos Pos, attrs []MacroAttr)     { c.Attrs, c.Pos = attrs, pos }
-func (v *VarDecl) SetMarkAttrs(pos Pos, attrs []MacroAttr)       { v.Attrs, v.Pos = attrs, pos }
-func (u *UnitDef) SetMarkAttrs(pos Pos, attrs []MacroAttr)       { u.Attrs, u.Pos = attrs, pos }
-func (e *EnumDef) SetMarkAttrs(pos Pos, attrs []MacroAttr)       { e.Attrs, e.Pos = attrs, pos }
+func (s *StructDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)     { s.Attrs, s.Pos = attrs, pos }
+func (f *StructField) SetMacroAttrs(pos Pos, attrs []MacroAttr)   { f.Attrs, f.Pos = attrs, pos }
+func (f *FuncDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { f.Attrs, f.Pos = attrs, pos }
+func (c *ComponentDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr) { c.Attrs, c.Pos = attrs, pos }
+func (c *ConstDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr)     { c.Attrs, c.Pos = attrs, pos }
+func (v *VarDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { v.Attrs, v.Pos = attrs, pos }
+func (u *UnitDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { u.Attrs, u.Pos = attrs, pos }
+func (e *EnumDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { e.Attrs, e.Pos = attrs, pos }
 
 // MarkName renders an attribute the way it was written, for diagnostics. A
 // bare mark has no alias, so the dotted form would print as ".builtin".

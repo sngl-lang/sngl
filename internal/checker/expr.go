@@ -2931,15 +2931,65 @@ func (c *checker) nsMember(pos ast.Pos, ns *ir.Namespace, name string) ir.Symbol
 	if comp != nil {
 		return comp
 	}
+	if comp := c.targetWildcard(pos, ns.Name, name); comp != nil {
+		return comp
+	}
 	if ns.Resolve != nil {
 		return ns.Resolve(name)
 	}
 	return nil
 }
 
-// resolvePlatformIdent tries the current platform's Resolve() for an unknown
-// identifier. Returns nil when not inside a platform block or when the
-// platform cannot resolve the name.
+// targetWildcard resolves a name against the wildcard components of the
+// package a registered platform or language ships. The ambient namespace a
+// target gets is not built from that package — `html`'s is the synthetic one
+// std's placement directives live in — so the package is reached here, and
+// lazily: every registered target has a namespace and most programs name none
+// of them.
+func (c *checker) targetWildcard(pos ast.Pos, target, name string) *ir.Component {
+	uri := c.targetPkgURI(target)
+	// A package still loading cannot answer for itself: its own body checks
+	// reach here, and libPkg treats re-entry as a cycle.
+	if uri == "" || c.libs.loading[uri] {
+		return nil
+	}
+	comp, err := wildcardComponent(c.libPkg(uri), name)
+	if err != nil {
+		c.error(pos, "%s", err)
+		return nil
+	}
+	return comp
+}
+
+// targetPkgURI is the lib package a registered platform or language ships, or
+// "" when the name is no registered target or the target ships none.
+func (c *checker) targetPkgURI(name string) string {
+	if c.cfg == nil {
+		return ""
+	}
+	uri := ""
+	for _, p := range c.cfg.Platforms {
+		if p.PlatformIdentifier() == name {
+			if targetUnavailable(p) != nil {
+				return ""
+			}
+			uri = "platforms/" + name
+		}
+	}
+	for _, l := range c.cfg.Languages {
+		if l.LanguageIdentifier() == name {
+			uri = "languages/" + name
+		}
+	}
+	if uri == "" || !c.hasLibPkg(uri) {
+		return ""
+	}
+	return uri
+}
+
+// resolvePlatformIdent resolves an unknown identifier inside a platform block
+// against the platform's own package, then its Resolve(). Returns nil when not
+// inside a platform block or when neither answers.
 func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
 	if c.currentPlatform == "" {
 		return nil
@@ -2947,6 +2997,9 @@ func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
 	t := c.lookupTarget(c.currentPlatform)
 	if t == nil {
 		return nil
+	}
+	if comp := c.targetWildcard(ast.Pos{}, c.currentPlatform, name); comp != nil {
+		return comp
 	}
 	return t.Resolve(name)
 }
@@ -2973,6 +3026,9 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		}
 	}
 	if w, err := wildcardComponent(nsSym.Pkg, field); err == nil && w != nil {
+		return true
+	}
+	if c.targetWildcard(ast.Pos{}, nsSym.Name, field) != nil {
 		return true
 	}
 	if nsSym.Resolve != nil {
@@ -3433,13 +3489,6 @@ func componentEventType(comp *ir.Component, name string) *ir.Type {
 
 // validateVisualNodeProps validates props and events against a component definition.
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
-	// Skip validation for platform-synthesized components (e.g. raw HTML tags
-	// or bubbletea/fyne blueprint marker tags). These are created on the fly
-	// by Platform.Resolve and have no declared Props/Events — the platform
-	// codegen reads their args directly.
-	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
-		return
-	}
 	// Validate args match props/events.
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
@@ -3458,7 +3507,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
-			if !componentHasEvent(comp, arg.Name) {
+			if !componentAcceptsEvent(comp, arg.Name) {
 				c.error(vn.Pos, "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3824,7 +3873,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
-			if !componentHasEvent(comp, arg.Name) {
+			if !componentAcceptsEvent(comp, arg.Name) {
 				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3851,12 +3900,6 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 // validateCallStmtComponentArgs validates prop/event names on a component call
 // parsed as a CallStmt. Value checking is deferred to checkAndSplitArgs.
 func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Component) {
-	// Skip validation for platform-synthesized components (raw native tags
-	// like html.progress) — they have no declared Props/Events; the platform
-	// codegen reads their args directly. Mirrors validateVisualNodeProps.
-	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
-		return
-	}
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
@@ -3873,7 +3916,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
-			if !componentHasEvent(comp, arg.Name) {
+			if !componentAcceptsEvent(comp, arg.Name) {
 				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3904,6 +3947,16 @@ func componentHasEvent(comp *ir.Component, name string) bool {
 		}
 	}
 	return false
+}
+
+// componentAcceptsEvent reports whether a handler may be attached for name.
+// A component that answers to any name answers for any event raised on it:
+// the DOM's event set is as open as its element set, and what a raw element
+// declares is there for the payload types, not as the whole list. Only the
+// `@name` form asks — an undeclared *prop* on such a component is still an
+// error, which is the whole reason the wildcard says what it covers.
+func componentAcceptsEvent(comp *ir.Component, name string) bool {
+	return componentHasEvent(comp, name) || comp.Wildcard != ""
 }
 
 // hoistForLoopWindowIDs scans a for-loop body for window declarations with

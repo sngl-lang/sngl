@@ -26,6 +26,22 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 	return out
 }
 
+// rawElementTag reports the tag an explicit `tag=` prop names. It is the
+// escape hatch for a tag no identifier can spell (a hyphenated custom
+// element), so only a literal is one: a computed tag would have to be
+// resolved at runtime, and nothing downstream can do that.
+func rawElementTag(n *ir.NodeInst) (string, bool) {
+	expr := codegen.NodeProp(n, "tag")
+	if expr == nil {
+		return "", false
+	}
+	s, ok := codegen.IRLiteralString(expr)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
+}
+
 // nodePos extracts the source position of a NodeInst (for preview mode).
 func nodePos(n *ir.NodeInst) ast.Pos {
 	if n == nil {

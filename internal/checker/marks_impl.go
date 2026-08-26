@@ -189,7 +189,7 @@ func markForeign(m *mark) error {
 
 // markedNames counts the names one declaration binds. A foreign name stands
 // for one declaration, so a grouped one cannot carry the mark.
-func markedNames(decl ast.Marked) int {
+func markedNames(decl markTarget) int {
 	switch d := decl.(type) {
 	case *ast.StructField:
 		return len(d.Names)

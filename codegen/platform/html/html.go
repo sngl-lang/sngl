@@ -34,10 +34,12 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	// HTML accepts any tag name as a valid element.
-	return &ir.Component{Name: identifier}
-}
+
+// Resolve answers nothing: every tag resolves to the `element` component
+// sngl://platforms/html declares, whose #[wildcard] says so in source and
+// gives a call something to be checked against. The method stays because
+// ir.Platform requires it.
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	f.AsyncReactive = false
@@ -1374,6 +1376,12 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component == nil || n.Component.AST == nil {
 		return false
 	}
+	// A wildcard component answers to every tag name, so the node's name is a
+	// tag rather than a reference to this declaration: inlining its (empty)
+	// body would render nothing at all.
+	if n.Component.Wildcard != "" {
+		return false
+	}
 	if isStdlibComponentName(n.Name) {
 		return false
 	}
@@ -1628,6 +1636,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if _, local, ok := strings.Cut(tag, "."); ok {
 		tag = local
 	}
+	// An explicit tag= names the element; it is how a tag no identifier can
+	// spell (a hyphenated custom element) is written, so it wins over the
+	// resolved name and is not an attribute.
+	if t, ok := rawElementTag(n); ok {
+		tag = t
+	}
 
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
@@ -1661,6 +1675,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// Build inline attributes from static props.
 	// innerText and innerHTML are rendered as element content, not attributes.
 	props := nodeProps(n)
+	// `tag` names the element; it is not one of its attributes.
+	delete(props, "tag")
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""

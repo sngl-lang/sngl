@@ -617,7 +617,7 @@ component main {
 
 The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `sngl://platforms/…` packages expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
 
-Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
+A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
 
 ```sngl
 import . "sngl://std"

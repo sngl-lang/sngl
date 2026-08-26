@@ -389,7 +389,7 @@ func (b *builder) attach(attrs []ast.MacroAttr, inner ast.Stmt) ast.Stmt {
 		b.errorf(attrs[0].Pos, "#[%s] cannot mark %T", attrs[0].MarkName(), inner)
 		return inner
 	}
-	target.SetMarkAttrs(attrs[0].Pos, attrs)
+	target.SetMacroAttrs(attrs[0].Pos, attrs)
 	return target
 }
 

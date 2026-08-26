@@ -202,7 +202,7 @@ func (f *formatter) blockEndLine(start int, block *ast.StmtBlock) int {
 
 func (f *formatter) formatStmt(s ast.Stmt) {
 	if a, ok := s.(ast.Attributed); ok {
-		f.writeAttrs(a.MarkAttrs())
+		f.writeAttrs(a.MacroAttrs())
 	}
 	switch x := s.(type) {
 	case *ast.Import:
@@ -296,7 +296,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 
 func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
 	if a, ok := item.(ast.Attributed); ok {
-		f.writeAttrs(a.MarkAttrs())
+		f.writeAttrs(a.MacroAttrs())
 	}
 	switch it := item.(type) {
 	case *ast.StructField:

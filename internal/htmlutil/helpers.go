@@ -17,6 +17,11 @@ func ExprToStaticValueIR(e ir.Expr) string {
 		}
 		return ""
 	}
+	// An enum member is static: `display` is typed `Display`, so `"flex"`
+	// reaches here as the member rather than as the string that was written.
+	if id, ok := e.(*ir.Ident); ok && id.Member != "" {
+		return id.Member
+	}
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
 		return ""
