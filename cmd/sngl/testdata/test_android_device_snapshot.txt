@@ -1,6 +1,7 @@
 # Device snapshot via View.draw → PNG. Goldens under device/ subdir.
 
-[!exec:java] skip 'JDK required'
+[!android-jdk] skip 'no JDK in the range the Android toolchain supports'
+[!android-sdk] skip 'ANDROID_HOME / ANDROID_SDK_ROOT not set'
 [!exec:adb] skip 'adb required'
 [!exec:emulator] skip 'emulator required'
 

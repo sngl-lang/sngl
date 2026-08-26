@@ -277,6 +277,11 @@ type TestResult struct {
 	Log      []string
 	Children []*TestResult
 	Duration time.Duration
+	// Skipped marks a result that never ran — a launcher whose
+	// prerequisites are missing, or a test calling t.skip. It is neither
+	// a pass nor a failure, so reporters must not fold it into either.
+	Skipped    bool
+	SkipReason string
 }
 
 // TestFailure describes a single recorded failure on a test result.

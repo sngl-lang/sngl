@@ -13,6 +13,9 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"git.duckfam.us/jonathan/sngl/internal/jdk"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/txtar"
@@ -63,6 +66,29 @@ func TestScript(t *testing.T) {
 	conds["ci"] = script.BoolCondition(
 		"running under GitLab CI",
 		os.Getenv("GITLAB_CI") == "true" || os.Getenv("CI") == "true",
+	)
+	// `chromium` is true when go-rod can find a Chrome/Chromium binary — the
+	// same lookup the html launcher does before it emits a SkipError. Scripts
+	// that assert on a real browser run guard with `[!chromium] skip`.
+	conds["chromium"] = script.BoolCondition(
+		"a Chrome/Chromium binary go-rod can drive is available",
+		func() bool { _, found := launcher.LookPath(); return found }(),
+	)
+	// `android-jdk` / `android-sdk` mirror the two prerequisites the android
+	// launcher checks before skipping. `[!exec:java]` is not enough: a JDK
+	// outside the toolchain's supported window is on PATH but unusable, and
+	// the SDK root is an env var rather than a binary.
+	conds["android-jdk"] = script.BoolCondition(
+		"a JDK the Android toolchain supports is available",
+		func() bool {
+			combo := androidtc.Default()
+			_, reason := jdk.CompatibleHome(combo.JDKMin, combo.JDKMax)
+			return reason == ""
+		}(),
+	)
+	conds["android-sdk"] = script.BoolCondition(
+		"ANDROID_HOME or ANDROID_SDK_ROOT points at an Android SDK",
+		os.Getenv("ANDROID_HOME") != "" || os.Getenv("ANDROID_SDK_ROOT") != "",
 	)
 	// `short` is true under `go test -short`. Slow scripts (e.g. the Robolectric
 	// round-trips, ~2.5min combined) guard with `[short] skip` so the fast local

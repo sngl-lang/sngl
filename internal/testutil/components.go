@@ -196,6 +196,11 @@ func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 		}
 		t.Fatalf("sngl test failed: %v\n%s", err, outStr)
 	}
+	// A run in which every result was skipped prints SKIP where a real run
+	// prints PASS, so the marker check below would read it as a failure.
+	if strings.Contains(outStr, "\nSKIP\n") {
+		t.Skipf("sngl test skipped every test:\n%s", outStr)
+	}
 	if !strings.Contains(outStr, "PASS") {
 		t.Fatalf("sngl test produced no PASS marker:\n%s", outStr)
 	}
