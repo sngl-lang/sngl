@@ -105,12 +105,3 @@ func ByName(name string) (Combo, bool) {
 	}
 	return Combo{}, false
 }
-
-// Names returns every known combo name, newest-first, for diagnostics.
-func Names() []string {
-	out := make([]string, len(combos))
-	for i, c := range combos {
-		out[i] = c.Name
-	}
-	return out
-}

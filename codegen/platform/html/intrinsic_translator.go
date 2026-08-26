@@ -26,9 +26,6 @@ type htmlTranslator struct {
 	// to the correct DOM property (textContent). Caller-supplied; nil
 	// is fine — OnPropAssign falls back to the DOM-name fast path.
 	idToNode map[string]*ir.NodeInst
-	// canvasIDs maps each canvas draw func to its canvas element ID.
-	// Used by OnDefault to emit CanvasRedrawStmt → clearRect+drawFunc JS.
-	canvasIDs map[*ir.Func]string
 }
 
 func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {

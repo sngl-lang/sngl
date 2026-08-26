@@ -235,14 +235,3 @@ func EvalMutTarget(r Renderer, e ir.Expr) string {
 		return EvalExpr(r, e)
 	}
 }
-
-// EvalCallArgs is a convenience for Renderer.Call implementations
-// that just need each call argument rendered as a Go-string in
-// positional order.
-func EvalCallArgs(r Renderer, args []ir.CallArg) []string {
-	out := make([]string, len(args))
-	for i, a := range args {
-		out[i] = EvalExpr(r, a.Value)
-	}
-	return out
-}

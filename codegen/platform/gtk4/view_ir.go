@@ -24,7 +24,6 @@ type viewContext struct {
 	ctx        *codegen.CodegenCtx
 	buf        *strings.Builder
 	indent     int
-	fields     []widgetField
 	depTracker *codegen.DepTracker
 
 	// eventInvokers collects (id, sngl-event, field, gtk-signal, cType)

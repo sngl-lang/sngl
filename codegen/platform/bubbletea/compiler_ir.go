@@ -1310,16 +1310,6 @@ func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	return golang.LowerVarInit(v, gc)
 }
 
-func irExprGoType(e ir.Expr) string {
-	if e == nil {
-		return "any"
-	}
-	if t := e.ExprType(); t != nil {
-		return golang.IRTypeToGo(t)
-	}
-	return "any"
-}
-
 // widgetsHaveResize reports whether any widget declares a resize template, which
 // gates emission of the resizeWidgets() method and its call sites. An empty
 // method (or calls to a non-existent method) would be dead/invalid code.

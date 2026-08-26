@@ -74,8 +74,3 @@ func PublicPackages() []string {
 	}
 	return out
 }
-
-// HasPackage reports whether name is an embedded package directory.
-func HasPackage(name string) bool {
-	return slices.Contains(Packages(), name)
-}

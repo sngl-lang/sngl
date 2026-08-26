@@ -1755,33 +1755,6 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	}
 }
 
-// builtinNodeComps indexes the components in comps by their #[builtin] node
-// mark. Stdlib registration order is not significant, so the lookup is by tag
-// rather than by position.
-//
-// Two declarations sharing a node kind is a stdlib authoring error, and it
-// panics rather than resolving arbitrarily: comps is a map, so picking "the"
-// component for a duplicated kind would depend on iteration order and the same
-// source would compile differently run to run. Note that a duplicate mark could
-// not be an alias even if we tolerated it — struct/component type identity is
-// per-declaration (ir.Type.Equal compares Decl), so the mark classifies a
-// declaration, it does not make two of them the same type.
-func builtinNodeComps(comps map[string]ir.Symbol) map[ast.BuiltinKind]*ir.Component {
-	out := map[ast.BuiltinKind]*ir.Component{}
-	for _, sym := range comps {
-		comp, ok := sym.(*ir.Component)
-		if !ok || !comp.Builtin.IsNode() {
-			continue
-		}
-		if prev, dup := out[comp.Builtin]; dup {
-			panic(fmt.Sprintf("sngl: components %q and %q both carry #[builtin(%q)]",
-				prev.Name, comp.Name, comp.Builtin))
-		}
-		out[comp.Builtin] = comp
-	}
-	return out
-}
-
 // builtinNodeKind resolves name, through the current scope, to the #[builtin]
 // node kind it denotes — i.e. whether a visual node with this target is one of
 // the compiler's own constructs (window/timer/slot/errorBoundary) rather than an

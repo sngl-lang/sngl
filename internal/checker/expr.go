@@ -1815,24 +1815,6 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 	return &ir.MapLitIR{Type: mapType, Entries: entries}
 }
 
-func structHasField(sd *ir.StructDef, name string) bool {
-	for _, f := range sd.Fields {
-		if f.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-func structFieldType(sd *ir.StructDef, name string) *ir.Type {
-	for _, f := range sd.Fields {
-		if f.Name == name {
-			return f.Type
-		}
-	}
-	return nil
-}
-
 func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	if len(x.Elements) == 0 {
 		if c.expected != nil && c.expected.Kind == ir.TypeList {

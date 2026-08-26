@@ -632,13 +632,6 @@ func TestParsePos(t *testing.T) {
 	}
 }
 
-func identNameTest(e ast.Expr) string {
-	if id, ok := e.(*ast.IdentExpr); ok {
-		return id.Name
-	}
-	return ""
-}
-
 func TestParseConstExpr(t *testing.T) {
 	// `const` is a unary-precedence prefix; paren groups the operand.
 	doc := mustParse(t, `const x = const (1 + 2)`)

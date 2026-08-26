@@ -527,10 +527,6 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 	}
 	v := ComponentDetailView{Name: c.Name, Doc: c.Doc, Examples: append([]string(nil), c.Examples...)}
 	if c.Schema != nil {
-		type pe struct {
-			name string
-			ps   any
-		}
 		names := make([]string, 0, len(c.Schema.Props))
 		for n := range c.Schema.Props {
 			names = append(names, n)
