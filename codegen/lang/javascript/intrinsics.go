@@ -63,7 +63,14 @@ func init() {
 	reg("list.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("list.join", func(a []string) string { return a[0] + ".join(" + a[1] + ")" })
 	reg("list.reverse", func(a []string) string { return "[..." + a[0] + "].reverse()" })
-	reg("list.slice", func(a []string) string { return a[0] + ".slice(" + a[1] + ", " + a[2] + ")" })
+	// Array.prototype.slice reads a negative bound as an offset from the end;
+	// slice is documented to clamp both bounds to [0, length].
+	reg("list.slice", func(a []string) string {
+		return "((__l, __a, __b) => { const __n = __l.length; " +
+			"const __lo = Math.min(Math.max(__a, 0), __n); " +
+			"const __hi = Math.min(Math.max(__b, 0), __n); " +
+			"return __l.slice(__lo, Math.max(__lo, __hi)) })(" + a[0] + ", " + a[1] + ", " + a[2] + ")"
+	})
 	reg("list.filter", func(a []string) string { return a[0] + ".filter(" + a[1] + ")" })
 	reg("list.map", func(a []string) string { return a[0] + ".map(" + a[1] + ")" })
 	reg("map.length", func(a []string) string { return a[0] + ".size" })
@@ -125,7 +132,12 @@ func init() {
 	reg("File.pickFolder", func(a []string) string { return `""` })
 
 	reg("list.push", func(a []string) string { return a[0] + ".push(" + a[1] + ")" })
-	reg("list.remove", func(a []string) string { return a[0] + ".splice(" + a[1] + ", 1)" })
+	// splice reads a negative index as an offset from the end; an out-of-range
+	// index is documented to leave the list unchanged.
+	reg("list.remove", func(a []string) string {
+		return "((__l, __i) => { if (__i >= 0 && __i < __l.length) __l.splice(__i, 1) })(" +
+			a[0] + ", " + a[1] + ")"
+	})
 
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the

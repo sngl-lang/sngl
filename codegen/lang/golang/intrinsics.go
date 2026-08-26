@@ -62,8 +62,12 @@ func init() {
 	reg("list.push", func(a []string) string {
 		return a[0] + " = append(" + a[0] + ", " + a[1] + ")"
 	})
+	// An out-of-range index leaves the list unchanged (lib/builtin/methods.sngl).
+	// The index is bound once: it is an arbitrary expression and the guard
+	// reads it three times.
 	reg("list.remove", func(a []string) string {
-		return a[0] + " = append(" + a[0] + "[:" + a[1] + "], " + a[0] + "[" + a[1] + "+1:]...)"
+		return "if __i := " + a[1] + "; __i >= 0 && __i < len(" + a[0] + ") { " +
+			a[0] + " = append(" + a[0] + "[:__i], " + a[0] + "[__i+1:]...) }"
 	})
 
 	// --- int/float min, max, abs, clamp ---
@@ -91,9 +95,29 @@ func init() {
 	// Go is statically typed, so these name the element type they build rather
 	// than falling back to []any: a list<int> is emitted as []int, and an []any
 	// result would not assign to it.
-	regImp("list.join", []string{"strings"}, func(a []string) string { return "strings.Join(" + a[0] + ", " + a[1] + ")" })
+	// strings.Join needs []string, so it only spells a list<string>. Every
+	// other element type goes through the platform's default conversion, which
+	// is what the declaration promises and what fmt.Sprint is.
+	regTypedImp("list.join", func(a []string, ts []*ir.Type) (string, []string) {
+		if goElem(ts[0]) == "string" {
+			return "strings.Join(" + a[0] + ", " + a[1] + ")", []string{"strings"}
+		}
+		return "func() string { __src := " + a[0] + "; __parts := make([]string, len(__src)); " +
+			"for __i, __v := range __src { __parts[__i] = fmt.Sprint(__v) }; " +
+			"return strings.Join(__parts, " + a[1] + ") }()", []string{"strings", "fmt"}
+	})
 	regImp("list.indexOf", []string{"slices"}, func(a []string) string { return "slices.Index(" + a[0] + ", " + a[1] + ")" })
-	reg("list.slice", func(a []string) string { return "(" + a[0] + ")[" + a[1] + ":" + a[2] + "]" })
+	// A Go slice expression aliases its operand and panics out of range; slice
+	// is documented to copy and to clamp both bounds to [0, length].
+	regTyped("list.slice", nil, func(a []string, ts []*ir.Type) string {
+		el := goElem(ts[0])
+		return "func() []" + el + " { __src := " + a[0] + "; __n := len(__src); " +
+			"__lo, __hi := " + a[1] + ", " + a[2] + "; " +
+			"if __lo < 0 { __lo = 0 }; if __lo > __n { __lo = __n }; " +
+			"if __hi < 0 { __hi = 0 }; if __hi > __n { __hi = __n }; " +
+			"if __hi < __lo { __hi = __lo }; " +
+			"__out := make([]" + el + ", __hi-__lo); copy(__out, __src[__lo:__hi]); return __out }()"
+	})
 	regTyped("list.reverse", nil, func(a []string, ts []*ir.Type) string {
 		el := goElem(ts[0])
 		return "func() []" + el + " { __src := " + a[0] + "; __out := make([]" + el + ", len(__src)); for __i, __v := range __src { __out[len(__src)-1-__i] = __v }; return __out }()"
@@ -190,6 +214,23 @@ func regTyped(id string, imports []string, fn func(a []string, ts []*ir.Type) st
 			}
 		}
 		return fn(a, ts), imports
+	})
+}
+
+// regTypedImp registers an emitter whose imports depend on the argument types
+// it was given, so a form that only some element types take does not declare an
+// import the others would leave unused.
+func regTypedImp(id string, fn func(a []string, ts []*ir.Type) (string, []string)) {
+	codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		a := make([]string, len(args))
+		ts := make([]*ir.Type, len(args))
+		for i, e := range args {
+			a[i] = tr(e)
+			if e != nil {
+				ts[i] = e.ExprType()
+			}
+		}
+		return fn(a, ts)
 	})
 }
 
