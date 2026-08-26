@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 func TestPlatformRegistered(t *testing.T) {
@@ -20,28 +21,10 @@ func TestPlatformRegistered(t *testing.T) {
 	}
 }
 
-func TestResolve_KnownWidget(t *testing.T) {
-	gen := codegen.LookupPlatform("gtk4")
-	if gen == nil {
-		t.Fatal("gtk4 platform not registered")
-	}
-	sym := gen.Resolve("GtkButton")
-	if sym == nil {
-		t.Skip("GIR file not available on this machine — skipping")
-	}
-	comp, ok := sym.(*ir.Component)
-	if !ok {
-		t.Fatalf("expected *ir.Component, got %T", sym)
-	}
-	if comp.Name != "GtkButton" {
-		t.Errorf("Name = %q, want GtkButton", comp.Name)
-	}
-}
-
-// TestResolve_HonorsConfigureGIR verifies the platform's Resolve uses the
-// gir path supplied via Configure (via --opt gir= on the CLI), so type-check
-// works on machines without system GTK4 dev files installed.
-func TestResolve_HonorsConfigureGIR(t *testing.T) {
+// TestConfigureGIR_ProvidesDeclarations verifies the platform builds its
+// widget declarations from the gir path supplied via Configure (--opt gir= on
+// the CLI), so a type-check works on a machine with no system GTK4 dev files.
+func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	gen := codegen.LookupPlatform("gtk4")
 	if gen == nil {
 		t.Fatal("gtk4 platform not registered")
@@ -59,12 +42,23 @@ func TestResolve_HonorsConfigureGIR(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cfg.Configure(map[string]string{}) })
-	sym := gen.Resolve("GtkButton")
-	if sym == nil {
-		t.Fatal("Resolve(GtkButton) = nil with Configure'd gir; expected component")
+
+	docs := checker.ProvidedDocs(gen)
+	if len(docs) != 1 {
+		t.Fatalf("ProvidedDocs = %d docs; want 1", len(docs))
 	}
-	if comp, ok := sym.(*ir.Component); !ok || comp.Name != "GtkButton" {
-		t.Fatalf("got %T %v, want *ir.Component named GtkButton", sym, sym)
+	var names []string
+	for _, stmt := range docs[0].Stmts {
+		if c, ok := stmt.(*ast.ComponentDecl); ok {
+			names = append(names, c.Name)
+		}
+	}
+	if len(names) != 1 || names[0] != "GtkButton" {
+		t.Errorf("declared components = %v; want just the GtkButton the supplied GIR names", names)
+	}
+	// Resolve is not the mechanism any more, and every platform agrees on that.
+	if sym := gen.Resolve("GtkButton"); sym != nil {
+		t.Errorf("Resolve(GtkButton) = %v; want nil", sym)
 	}
 }
 
@@ -79,13 +73,3 @@ const minimalGIR = `<?xml version="1.0"?>
     </class>
   </namespace>
 </repository>`
-
-func TestResolve_Unknown(t *testing.T) {
-	gen := codegen.LookupPlatform("gtk4")
-	if gen == nil {
-		t.Skip("gtk4 not registered")
-	}
-	if sym := gen.Resolve("NotAWidget"); sym != nil {
-		t.Errorf("expected nil for unknown widget, got %v", sym)
-	}
-}

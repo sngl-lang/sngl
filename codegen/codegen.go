@@ -216,10 +216,11 @@ func PlatformUnavailable(name string) error {
 }
 
 // PlatformDocs returns the SNGL declarations p contributes — the source of its
-// `sngl://platforms/<id>` package — or nil when it declares none or cannot be
-// used here. gtk4 without a GIR file resolves none of the widget types its
-// overrides are written against, so it contributes nothing rather than
-// declarations no one can check.
+// `sngl://platforms/<id>` package, both what lib/ embeds and what p
+// synthesizes — or nil when it declares none or cannot be used here. gtk4
+// without a GIR file has no widget set to declare and its overrides are
+// written against that set, so it contributes nothing rather than declarations
+// no one can check.
 func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if p == nil {
 		return nil
@@ -227,7 +228,8 @@ func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
 		return nil
 	}
-	return checker.PackageDocsFor("platforms/" + p.PlatformIdentifier())
+	return append(checker.PackageDocsFor("platforms/"+p.PlatformIdentifier()),
+		checker.ProvidedDocs(p)...)
 }
 
 // LangDocs returns the source of l's `sngl://languages/<id>` package, or nil

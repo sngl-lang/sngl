@@ -813,6 +813,12 @@ func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	var docs []*ast.Document
 	for _, pkg := range pkgs {
 		docs = append(docs, checker.PackageDocsFor(pkg)...)
+		// A platform whose declarations are derived from the host synthesizes
+		// them rather than embedding them; gtk4's widget set is whatever the
+		// GTK introspection data installed here describes.
+		if plat, ok := strings.CutPrefix(pkg, "platforms/"); ok {
+			docs = append(docs, checker.ProvidedDocs(codegen.LookupPlatform(plat))...)
+		}
 	}
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)

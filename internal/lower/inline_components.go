@@ -301,10 +301,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if st.cycles[comp] {
 		return false
 	}
-	if comp.Native != nil {
-		return false
-	}
-	// Platform-resolved and stdlib wrappers with no body cannot be inlined.
+	// Platform primitives and stdlib wrappers with no body cannot be inlined.
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
 		return false
 	}

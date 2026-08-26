@@ -108,6 +108,10 @@ func (c *ClassInfo) ConstructorFor(supplied map[string]bool) ConstructorInfo {
 type TypeRegistry struct {
 	Classes    map[string]*ClassInfo
 	Interfaces map[string]*InterfaceInfo
+	// ByCType indexes the same entries under the C type name
+	// ("GtkButton"), which is what generated declarations and emitted
+	// code carry. Classes with no c:type are absent.
+	ByCType map[string]*ClassInfo
 }
 
 // ParseGIR reads and parses a GIR file at path.
@@ -126,6 +130,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	reg := &TypeRegistry{
 		Classes:    make(map[string]*ClassInfo),
 		Interfaces: make(map[string]*InterfaceInfo),
+		ByCType:    make(map[string]*ClassInfo),
 	}
 	dec := xml.NewDecoder(bytes.NewReader(data))
 
@@ -320,6 +325,12 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 					cls.Signals = append(cls.Signals, is)
 				}
 			}
+		}
+	}
+
+	for _, cls := range reg.Classes {
+		if cls.CType != "" {
+			reg.ByCType[cls.CType] = cls
 		}
 	}
 

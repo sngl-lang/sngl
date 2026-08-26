@@ -7,6 +7,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -16,16 +17,19 @@ func stubGC() *golang.GoIRContext {
 	return golang.NewIRContext(ctx)
 }
 
-// seedNative registers a fake GIR-resolved native component on the
-// translator's tagComponent map so OnCreateNode and friends can resolve
-// the tag without a real GIR registry. Mirrors what collectTagComponents
-// would produce from a lowered package.
-func seedNative(tr *gtk4Translator, tag, cType, constructor string) {
-	c := &ir.Component{
-		Name:   tag,
-		Native: &gtk4NativeComponent{CType: cType, Constructor: constructor},
+// seedWidget registers one widget declaration on the translator plus the GIR
+// entry the emitter reads its C API from, which together are what a real
+// compile supplies: collectTagComponents finds the declaration, the platform
+// hands over the registry it was generated from.
+func seedWidget(tr *gtk4Translator, tag, cType, constructor string) {
+	tr.tagComponent[tag] = &ir.Component{Name: tag, Intrinsic: intrinsicPrefix + cType}
+	if tr.registry == nil {
+		tr.registry = &gir.TypeRegistry{ByCType: map[string]*gir.ClassInfo{}}
 	}
-	tr.tagComponent[tag] = c
+	tr.registry.ByCType[cType] = &gir.ClassInfo{
+		CType:        cType,
+		Constructors: []gir.ConstructorInfo{{Name: constructor}},
+	}
 }
 
 func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {
@@ -42,7 +46,7 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		fields = append(fields, name+" "+cType)
 	})
-	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	stmts := tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	got := renderStmts(gc, stmts)
 	if !strings.Contains(got, "C.gtk_label_new") {
@@ -71,8 +75,8 @@ func TestGtk4Translator_OnCreateNode_UnknownTag(t *testing.T) {
 func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	seedNative(tr, "GtkBox", "GtkBox", "gtk_box_new")
-	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
+	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
 	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
@@ -86,8 +90,8 @@ func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	seedNative(tr, "GtkBox", "GtkBox", "gtk_box_new")
-	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
+	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
 	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
@@ -101,7 +105,7 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	seedNative(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
@@ -119,7 +123,7 @@ func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	seedNative(tr, "GtkButton", "GtkButton", "gtk_button_new")
+	seedWidget(tr, "GtkButton", "GtkButton", "gtk_button_new")
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkButton")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "handleClick", Synthesized: true}

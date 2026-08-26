@@ -4,6 +4,7 @@ package gtk4
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -15,20 +16,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
-
-// gtk4NativeComponent is the gtk4-specific metadata attached to an
-// ir.Component resolved from GIR. Read by gtk4Translator at codegen
-// time; nil for non-GIR components.
-type gtk4NativeComponent struct {
-	CType       string // "GtkButton"
-	Constructor string // "gtk_button_new_with_label"
-	// CtorParams carries the GIR ConstructorInfo.Params for the
-	// chosen constructor. Codegen uses this to emit typed-zero
-	// argument placeholders so the cgo call type-checks; user-supplied
-	// prop values are applied immediately afterward via dedicated
-	// setter calls.
-	CtorParams []gir.ConstructorParam
-}
 
 // pickPrimaryConstructorInfo returns the full ConstructorInfo for the
 // first constructor in the class. Falls back to a synthetic
@@ -94,17 +81,21 @@ type Generator struct {
 	registry *gir.TypeRegistry
 	initErr  error // set if autodetect GIR load fails
 	girOpt   string
+	fsOnce   sync.Once
+	pkgFS    fs.FS
 }
 
 // Configure implements codegen.OptionConfigurable. Reads the "gir" option so
-// Resolve (called during type-check, before code generation) can honor the
-// CLI-supplied GIR path. Resets cached registry state so subsequent Resolve
-// calls re-load against the new path.
+// PackageFS (called during type-check, before code generation) can honor the
+// CLI-supplied GIR path. Resets the cached registry and the source built from
+// it so both re-load against the new path.
 func (g *Generator) Configure(opts map[string]string) error {
 	g.girOpt = opts["gir"]
 	g.once = sync.Once{}
+	g.fsOnce = sync.Once{}
 	g.registry = nil
 	g.initErr = nil
+	g.pkgFS = nil
 	return nil
 }
 
@@ -154,23 +145,10 @@ func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	return g.registry, g.initErr
 }
 
-// Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
-// It lazy-loads the GIR file on first call. Returns nil if the GIR file is
-// not available on this machine or the identifier is not a known widget.
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	reg, err := g.gir()
-	if err != nil {
-		// GIR unavailable — caller gets nil. The gtk4 overrides are withheld
-		// in this state, so nothing should be asking.
-		return nil
-	}
-	name := stripGtkPrefix(identifier)
-	info, ok := reg.Classes[name]
-	if !ok {
-		return nil
-	}
-	return girClassToComponent(info)
-}
+// Resolve implements ir.Platform. gtk4 resolves no identifier of its own: the
+// widget set reaches SNGL as the declarations PackageFS generates, which the
+// checker loads and type-checks like any other library source.
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 
 // Generate writes gtk4 source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
@@ -383,85 +361,4 @@ func resolveGIRPath(girPath string) (string, error) {
 		" — install the GTK 4 development package (Debian/Ubuntu: libgtk-4-dev, " +
 		"Fedora: gtk4-devel, Arch: gtk4, macOS: brew install gtk4) " +
 		"or point at the file with --opt gir=/path/to/Gtk-4.0.gir")
-}
-
-// stripGtkPrefix removes the "Gtk" prefix so "GtkButton" → "Button".
-// Identifiers that don't start with "Gtk" are returned unchanged.
-func stripGtkPrefix(identifier string) string {
-	if strings.HasPrefix(identifier, "Gtk") {
-		return identifier[3:]
-	}
-	return identifier
-}
-
-// girClassToComponent converts GIR class metadata to an ir.Component.
-// Props become *ir.Prop entries; signals become *ir.EventDecl entries.
-func girClassToComponent(info *gir.ClassInfo) *ir.Component {
-	comp := &ir.Component{
-		Name:   info.CType,
-		Stdlib: true, // GIR-derived platform components: props are optional by convention
-		// GIR doesn't model "accepts children" — but every GTK
-		// container widget can take children, and rejecting children
-		// at the checker level would block GtkBox/GtkWindow/etc.
-		// Allow any children at the IR level; the gtk4 codegen knows
-		// which parent types actually have child-append APIs.
-		ChildrenType: &ir.Type{Kind: ir.TypeDyn},
-		Native: func() *gtk4NativeComponent {
-			ci := pickPrimaryConstructorInfo(info)
-			return &gtk4NativeComponent{
-				CType:       info.CType,
-				Constructor: ci.Name,
-				CtorParams:  ci.Params,
-			}
-		}(),
-	}
-	lower := lowerCType(info.CType)
-	for _, p := range info.Props {
-		t := p.IRType
-		if t == nil {
-			t = &ir.Type{Kind: ir.TypeDyn}
-		}
-		// Property names like "default-width" become C setter
-		// "gtk_<class>_set_default_width" (hyphens → underscores).
-		// Interface-inherited props (e.g. `orientation` on GtkBox via
-		// GtkOrientable) bind to the interface's namespaced setter
-		// (`gtk_orientable_set_orientation`), not the class's.
-		setterProp := strings.ReplaceAll(p.Name, "-", "_")
-		setterNS := lower
-		var recvType string
-		if p.InterfaceName != "" {
-			setterNS = lowerCType(p.InterfaceName)
-			recvType = "Gtk" + p.InterfaceName
-		}
-		// Map GIR raw type → cgo value type when it's a non-primitive
-		// (enum or struct): bare names like "Orientation" become
-		// "GtkOrientation". Primitives (utf8, gint, gboolean, …) stay
-		// empty so the setter falls back to IR-type-driven coercion.
-		var valType string
-		if gt := p.GIRType; gt != "" && girTypeIsNamedNonPrimitive(gt) {
-			valType = "Gtk" + gt
-		}
-		comp.Props = append(comp.Props, &ir.Prop{
-			Name:               p.Name,
-			Type:               t,
-			NativeSetter:       "gtk_" + setterNS + "_set_" + setterProp,
-			NativeReceiverType: recvType,
-			NativeValueType:    valType,
-		})
-	}
-	// SNGL `style` is forwarded onto every widget root by the stdlib wrapper
-	// bodies (`gtk4.GtkBox(..., style={...style})`). gtk4 has no style→GTK-CSS
-	// transform yet (deferred), so the prop is accepted for type-checking and
-	// skipped at codegen — it carries no NativeSetter.
-	comp.Props = append(comp.Props, &ir.Prop{
-		Name: "style",
-		Type: &ir.Type{Kind: ir.TypeDyn},
-	})
-	for _, s := range info.Signals {
-		comp.Events = append(comp.Events, &ir.EventDecl{
-			Name:         s.Name,
-			NativeSignal: s.Name,
-		})
-	}
-	return comp
 }

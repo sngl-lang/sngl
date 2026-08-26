@@ -24,9 +24,9 @@ func skipWithoutGIR(t *testing.T) {
 }
 
 // TestUnavailable_WithdrawsPackage pins the degradation contract: with no
-// usable GIR the platform contributes no declarations, so the checker never
-// sees the gtk4.Gtk* references in gtk4.sngl and compiles for every other
-// platform are unaffected.
+// usable GIR there is no widget set to generate declarations from, so the
+// platform contributes none — the checker never sees the gtk4.Gtk* references
+// in gtk4.sngl and compiles for every other platform are unaffected.
 func TestUnavailable_WithdrawsPackage(t *testing.T) {
 	g := &Generator{}
 	if err := g.Configure(map[string]string{"gir": filepath.Join(t.TempDir(), "absent.gir")}); err != nil {
@@ -38,8 +38,8 @@ func TestUnavailable_WithdrawsPackage(t *testing.T) {
 	if docs := codegen.PlatformDocs(g); docs != nil {
 		t.Errorf("PlatformDocs = %d docs while unavailable; want none", len(docs))
 	}
-	if sym := g.Resolve("GtkButton"); sym != nil {
-		t.Errorf("Resolve(GtkButton) = %v while unavailable; want nil", sym)
+	if fsys := g.PackageFS(); fsys != nil {
+		t.Errorf("PackageFS = %v while unavailable; want nil", fsys)
 	}
 	// Targeting it anyway must fail loudly rather than emit an empty UI.
 	req := &codegen.Request{Pkg: &ir.Package{}, Lang: codegen.LookupLang("go"), Source: "t.sngl"}
@@ -55,13 +55,17 @@ func TestUnavailable_WithdrawsPackage(t *testing.T) {
 }
 
 // TestAvailable_ProvidesPackage is the mirror case: where the GIR file exists,
-// nothing about the platform's contribution changed.
+// the platform contributes both halves of its package — the hand-written
+// overrides and the generated widget set.
 func TestAvailable_ProvidesPackage(t *testing.T) {
 	g := &Generator{}
 	if err := g.Unavailable(); err != nil {
 		t.Skipf("gtk4 metadata unavailable: %v", err)
 	}
-	if len(codegen.PlatformDocs(g)) == 0 {
-		t.Error("PlatformDocs empty while gtk4 is available")
+	if n := len(codegen.PlatformDocs(g)); n < 2 {
+		t.Errorf("PlatformDocs = %d docs while gtk4 is available; want the embedded source and the generated widgets", n)
+	}
+	if g.PackageFS() == nil {
+		t.Error("PackageFS = nil while gtk4 is available")
 	}
 }

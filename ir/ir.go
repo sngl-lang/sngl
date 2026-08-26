@@ -397,11 +397,6 @@ type Component struct {
 	// platform's body into Component.Body before remaining lowering
 	// passes run. nil for components with no extension declarations.
 	PlatformBodies map[string][]Stmt `json:"-"`
-	// Native carries platform-provided metadata for components that
-	// resolve through a platform's Resolve() (e.g. GIR-loaded GTK
-	// widgets). nil for user-defined and stdlib components. Opaque to
-	// the checker — consumers cast to a platform-specific shape.
-	Native any `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other
@@ -436,18 +431,6 @@ type Prop struct {
 	// a parameter; the checker visits a component's bodies more than once, so
 	// the symbol is minted once here rather than per pass.
 	Sym *Param `json:"-"`
-	// NativeSetter is the platform-provided setter for this prop
-	// (e.g. "gtk_label_set_text" for GtkLabel.label). Empty for props
-	// without a platform binding. Opaque to the checker.
-	NativeSetter string `json:"-"`
-	// NativeReceiverType is the platform cast type the setter's first
-	// argument expects (e.g. "GtkEditable" for the gtk_editable_set_text
-	// setter on a GtkEntry widget). Empty → use the widget's own type.
-	NativeReceiverType string `json:"-"`
-	// NativeValueType is the platform value type the setter's value
-	// argument expects (e.g. "GtkOrientation" for gtk_orientable_set_orientation).
-	// Empty → infer from the SNGL value type.
-	NativeValueType string `json:"-"`
 }
 
 // EventDecl is a resolved event declaration on a component.
@@ -457,10 +440,6 @@ type EventDecl struct {
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
-	// NativeSignal is the platform-provided signal name (e.g.
-	// "clicked" for GtkButton's click event). Empty for events
-	// without a platform binding.
-	NativeSignal string `json:"-"`
 }
 
 // EventHandler is a resolved event handler. The handler body is represented

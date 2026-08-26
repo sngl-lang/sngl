@@ -159,15 +159,64 @@ func (c *checker) adoptAmbient(pkg *ir.Package) {
 	}
 }
 
-// libDocs returns the parsed source of lib package name, letting Config
-// substitute it (see Config.LibSources).
+// libDocs returns the parsed source of lib package name: what lib/ embeds,
+// plus what the target of that name synthesizes (providedDocs). Config.LibSources
+// substitutes the whole package instead, for the in-test stubs.
 func (c *checker) libDocs(name string) []*ast.Document {
 	if c.cfg != nil {
 		if docs, ok := c.cfg.LibSources[name]; ok {
 			return docs
 		}
 	}
-	return PackageDocsFor(name)
+	return append(PackageDocsFor(name), c.providedDocs(name)...)
+}
+
+// providedDocs is the source the registered platform of this package name
+// synthesizes, or nil for any other package.
+func (c *checker) providedDocs(name string) []*ast.Document {
+	plat, ok := strings.CutPrefix(name, "platforms/")
+	if !ok || c.cfg == nil {
+		return nil
+	}
+	return ProvidedDocs(c.lookupTarget(plat))
+}
+
+// ProvidedDocs parses the .sngl source a target synthesizes for its own
+// library package, which it provides as an fs.FS the way lib.FS is one.
+//
+// A target whose declarations are derived from the host cannot embed them:
+// gtk4's widget set is whatever the GTK introspection data installed here
+// describes. The interface is matched structurally, as PlatformAvailability is,
+// because codegen imports this package.
+func ProvidedDocs(t any) []*ast.Document {
+	p, ok := t.(interface{ PackageFS() fs.FS })
+	if !ok {
+		return nil
+	}
+	fsys := p.PackageFS()
+	if fsys == nil {
+		return nil
+	}
+	entries, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		panic(fmt.Sprintf("sngl: reading target-provided source: %v", err))
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		data, err := fs.ReadFile(fsys, e.Name())
+		if err != nil {
+			panic(fmt.Sprintf("sngl: reading target-provided file %q: %v", e.Name(), err))
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", e.Name(), err))
+		}
+		docs = append(docs, doc)
+	}
+	return docs
 }
 
 // hasLibPkg reports whether name resolves to a lib package for this check.
@@ -177,7 +226,7 @@ func (c *checker) hasLibPkg(name string) bool {
 			return true
 		}
 	}
-	return len(PackageDocsFor(name)) > 0
+	return len(PackageDocsFor(name)) > 0 || len(c.providedDocs(name)) > 0
 }
 
 // targetUnavailable reports why a platform cannot be used in this

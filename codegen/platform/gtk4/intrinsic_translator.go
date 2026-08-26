@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -38,9 +39,14 @@ type gtk4Translator struct {
 	// calls over gtk4rt.Handle instead of inline cgo. Unmapped ops fall through
 	// to the cgo emission (leaving a `C.` that triggers the whole-program
 	// fallback in emitIR). See wrapped.go.
-	wrapped       bool
-	tagComponent  map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
-	boolToIntUsed *bool                    // points to compilation.needsBoolToInt; set when boolToGoInt is called
+	wrapped      bool
+	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	// registry is the GIR data the widget declarations were generated from.
+	// A declaration says which props and events a widget has; the C setter
+	// behind each one is read back out of here, keyed by the C type the
+	// declaration's #[intrinsic] names. nil in scopes that emit no widgets.
+	registry      *gir.TypeRegistry
+	boolToIntUsed *bool // points to compilation.needsBoolToInt; set when boolToGoInt is called
 
 	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
 	// (LocalVar.CanvasDraw) to their GtkDrawingArea Model field + draw func,
@@ -77,11 +83,15 @@ func (t *gtk4Translator) isLocalRef(id string) bool {
 	return t.localRefs != nil && t.localRefs[id]
 }
 
-// withPkg attaches a package whose imports may carry GIR-resolved
-// components; the translator consults their Native metadata when a
-// tag isn't matched by the static SNGL-stdlib switch.
+// withPkg attaches the package being emitted.
 func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
 	t.pkg = pkg
+	return t
+}
+
+// withRegistry attaches the GIR data behind the widget declarations.
+func (t *gtk4Translator) withRegistry(reg *gir.TypeRegistry) *gtk4Translator {
+	t.registry = reg
 	return t
 }
 
@@ -159,28 +169,27 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 	}
 }
 
-// lookupNativeByTag finds an ir.Component by name (tag) using the
-// pre-collected tag→Component map. Returns the gtk4 metadata when
-// present.
-func (t *gtk4Translator) lookupNativeByTag(tag string) (*ir.Component, *gtk4NativeComponent) {
-	c, ok := t.tagComponent[tag]
-	if !ok || c == nil {
-		return nil, nil
+// widgetClass returns the GTK class behind a tag: the C type its declaration's
+// #[intrinsic] names, and the GIR entry the emitter reads the class's C API
+// from. Zero values for a tag that is not one of this platform's widgets.
+func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
+	cType := widgetCType(t.tagComponent[tag])
+	if cType == "" {
+		return "", nil
 	}
-	if nm, ok := c.Native.(*gtk4NativeComponent); ok {
-		return c, nm
+	info := t.classFor(cType)
+	if info == nil {
+		return "", nil
 	}
-	return c, nil
+	return cType, info
 }
 
-// lookupNativeByCType finds an ir.Component whose native CType matches.
-func (t *gtk4Translator) lookupNativeByCType(cType string) (*ir.Component, *gtk4NativeComponent) {
-	for _, c := range t.tagComponent {
-		if nm, ok := c.Native.(*gtk4NativeComponent); ok && nm.CType == cType {
-			return c, nm
-		}
+// classFor returns the GIR entry for a C type the walk already resolved.
+func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
+	if t.registry == nil {
+		return nil
 	}
-	return nil, nil
+	return t.registry.ByCType[cType]
 }
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
@@ -253,8 +262,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// button, ...) with their gtk4.sngl-defined native widget bodies
 	// before this translator runs, so every tag landing here is a
 	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
-	comp, nm := t.lookupNativeByTag(tag)
-	if nm == nil {
+	cType, info := t.widgetClass(tag)
+	if info == nil {
 		// No native widget mapping for this tag (e.g. stdlib component
 		// like `avatar`/`chip`/`divider` with no gtk4 override). Record
 		// the id as skipped so later AppendChild/PropAssign/AttachHandler
@@ -263,34 +272,34 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
+	ctorInfo := pickPrimaryConstructorInfo(info)
 	// gtk_application_window_new requires the GtkApplication;
 	// special-case so it gets the `app` parameter passed into
 	// BuildUI rather than nil.
-	if nm.Constructor == "gtk_application_window_new" {
+	if ctorInfo.Name == "gtk_application_window_new" {
 		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
 		if t.wrapped {
-			return t.emitConstructorAssign(id, nm.CType, rtCall("ApplicationWindowNew", appRef))
+			return t.emitConstructorAssign(id, cType, rtCall("ApplicationWindowNew", appRef))
 		}
-		return t.emitConstructorAssign(id, nm.CType, nativeCall("gtk_application_window_new", appRef))
+		return t.emitConstructorAssign(id, cType, nativeCall("gtk_application_window_new", appRef))
 	}
-	_ = comp
 	// Wrapped mode: emit a gtk4rt constructor when the widget is in the
 	// bounded surface. Unmapped widgets fall through to the cgo ctor below,
 	// leaving a `C.` that triggers the whole-program fallback.
 	if t.wrapped {
-		if ctor, ok := rtCtorForCType(nm.CType); ok {
-			return t.emitConstructorAssign(id, nm.CType, ctor)
+		if ctor, ok := rtCtorForCType(cType); ok {
+			return t.emitConstructorAssign(id, cType, ctor)
 		}
 	}
 	// Pass a typed-zero value for each required constructor parameter
 	// so the cgo call type-checks. OnPropAssign immediately rewrites
 	// any user-supplied prop values via the dedicated setter.
 	args := []ir.Expr{}
-	for _, p := range nm.CtorParams {
+	for _, p := range ctorInfo.Params {
 		args = append(args, ctorZeroArg(p.GIRType, p.IRType))
 	}
-	ctor := nativeCall(nm.Constructor, args...)
-	return t.emitConstructorAssign(id, nm.CType, ctor)
+	ctor := nativeCall(ctorInfo.Name, args...)
+	return t.emitConstructorAssign(id, cType, ctor)
 }
 
 // ctorZeroArg returns the IR expression for a typed-zero value matching
@@ -516,10 +525,10 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if !ok {
 		return nil
 	}
-	// Resolve the prop via the GIR-derived metadata so we get the
+	// Resolve the prop via the static table first, then GIR, so we get the
 	// setter, the receiver-cast type (e.g. *C.GtkEditable for the
 	// text setter on a GtkEntry), and any value-type override
-	// (e.g. GtkOrientation enum) in a single lookup.
+	// (e.g. GtkOrientation enum).
 	entry := gtkSetterFor(cType, prop)
 	setter := entry.Setter
 	recvType := cType
@@ -539,18 +548,16 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			}
 		}
 	}
-	if comp, _ := t.lookupNativeByCType(cType); comp != nil {
-		for _, p := range comp.Props {
-			if p.Name == prop {
-				if setter == "" && p.NativeSetter != "" {
-					setter = p.NativeSetter
-				}
-				if p.NativeReceiverType != "" {
-					recvType = p.NativeReceiverType
-				}
-				valType = p.NativeValueType
-				break
+	if info := t.classFor(cType); info != nil {
+		if p, ok := girProp(info, prop); ok {
+			g := girSetter(info, p)
+			if setter == "" {
+				setter = g.Setter
 			}
+			if g.RecvType != "" {
+				recvType = g.RecvType
+			}
+			valType = g.ValType
 		}
 	}
 	if setter == "" {
@@ -575,7 +582,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 //   - Booleans → C.gboolean(v)
 //   - Integers / Floats → C.int(v) / C.double(v)
 //   - Strings → C.CString(v)
-//   - Enum-typed setters (NativeValueType set, e.g. GtkOrientation):
+//   - Enum-typed setters (valType set, e.g. GtkOrientation):
 //     map known SNGL string literals to their C constants, otherwise
 //     cast through the named cgo type.
 func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr, valType string) ir.Expr {
@@ -671,15 +678,8 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
 	if signal == "" {
-		// GIR-resolved native metadata fallback.
-		if comp, _ := t.lookupNativeByCType(cType); comp != nil {
-			for _, e := range comp.Events {
-				if e.Name == event && e.NativeSignal != "" {
-					signal = e.NativeSignal
-					break
-				}
-			}
-		}
+		// The declared event is the SNGL spelling of a GLib signal name.
+		signal = girSignal(t.classFor(cType), event)
 	}
 	if signal == "" {
 		return nil

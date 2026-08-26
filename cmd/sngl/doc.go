@@ -227,8 +227,12 @@ func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	if len(docs) == 0 {
 		return fmt.Errorf("platform %q has no package source", name)
 	}
-	doc := docs[0]
-	pd := checker.ExtractPackageDocs(doc)
+	pd := &checker.PackageDocs{}
+	for _, doc := range docs {
+		d := checker.ExtractPackageDocs(doc)
+		pd.Components = append(pd.Components, d.Components...)
+		pd.Structs = append(pd.Structs, d.Structs...)
+	}
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# Platform: %s\n\n", name))

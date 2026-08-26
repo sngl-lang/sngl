@@ -26,10 +26,11 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
-	// LibSources substitutes the source of an embedded package, keyed by lib
+	// LibSources substitutes the source of a library package, keyed by lib
 	// path ("platforms/teststub"). It exists for the in-test platform stubs,
 	// which register a plugin with no lib/ directory behind it; production
-	// callers leave it nil and every package is read from lib.FS.
+	// callers leave it nil. A substitution replaces the package, where the
+	// source a target provides (ProvidedDocs) adds to it.
 	LibSources map[string][]*ast.Document
 	// libSource permits sngl://internal/ imports in the document itself, for
 	// the one caller that checks lib/ source as the document rather than
