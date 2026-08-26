@@ -1460,7 +1460,7 @@ ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 ```
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" [ StructBodyItem { ";" StructBodyItem } [ ";" ] ] "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] } "}"
 
 StructField = IdentList Type [ "=" Expr ]
 

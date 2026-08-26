@@ -26,7 +26,7 @@ func translateIRLiteral(n *ir.Literal) string {
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeString, ir.TypeColor:
+		case ir.TypeString:
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 			return n.Raw

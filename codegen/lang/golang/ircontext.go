@@ -430,8 +430,6 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Raw
 	case ir.TypeNull:
 		return "nil"
-	case ir.TypeColor:
-		return fmt.Sprintf("%q", n.Raw)
 	case ir.TypeUnit:
 		if out, ok := LowerUnitLiteralGo(n); ok {
 			return out
@@ -1171,7 +1169,7 @@ func IRTypeToGo(t *ir.Type) string {
 			return fmt.Sprintf("float%d", t.Bits)
 		}
 		return "float64"
-	case ir.TypeString, ir.TypeColor:
+	case ir.TypeString:
 		return "string"
 	case ir.TypeList:
 		if len(t.Elems) > 0 {
@@ -1307,8 +1305,6 @@ func IRLiteralToGo(e ir.Expr) string {
 			return n.Raw
 		case ir.TypeNull:
 			return "nil"
-		case ir.TypeColor:
-			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeUnit:
 			if out, ok := LowerUnitLiteralGo(n); ok {
 				return out

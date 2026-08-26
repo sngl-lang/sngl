@@ -60,14 +60,26 @@ func init() {
 
 	// --- list (in-place mutations) ---
 	reg("list.push", func(a []string) string { return a[0] + ".add(" + a[1] + ")" })
-	reg("list.remove", func(a []string) string { return a[0] + ".removeAt(" + a[1] + ")" })
+	// removeAt throws out of range; an out-of-range index is documented to
+	// leave the list unchanged.
+	reg("list.remove", func(a []string) string {
+		return "run { val __l = " + a[0] + "; val __i = " + a[1] + "; " +
+			"if (__i >= 0 && __i < __l.size) __l.removeAt(__i) }"
+	})
 
 	// --- list and map (non-mutating) ---
 	reg("list.length", func(a []string) string { return a[0] + ".size" })
 	reg("list.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("list.join", func(a []string) string { return a[0] + ".joinToString(" + a[1] + ")" })
 	reg("list.reverse", func(a []string) string { return a[0] + ".reversed()" })
-	reg("list.slice", func(a []string) string { return a[0] + ".subList(" + a[1] + ", " + a[2] + ")" })
+	// subList returns a live view of the receiver and throws out of range;
+	// slice is documented to copy and to clamp both bounds to [0, length].
+	reg("list.slice", func(a []string) string {
+		return "run { val __l = " + a[0] + "; val __n = __l.size; " +
+			"val __lo = (" + a[1] + ").coerceIn(0, __n); " +
+			"val __hi = (" + a[2] + ").coerceIn(0, __n); " +
+			"__l.subList(__lo, maxOf(__lo, __hi)).toList() }"
+	})
 	reg("list.filter", func(a []string) string { return a[0] + ".filter(" + a[1] + ")" })
 	reg("list.map", func(a []string) string { return a[0] + ".map(" + a[1] + ")" })
 	reg("map.length", func(a []string) string { return a[0] + ".size" })
@@ -110,7 +122,7 @@ func init() {
 	// The generated Color is a data class of Int channels; let keeps the
 	// operand from being evaluated three times.
 	// The operand is the Color data class the android platform declares, not
-	// a String — IRTypeToKt maps TypeColor to String for an *annotation*
+	// a String — IRTypeToKt maps a color struct to String for an *annotation*
 	// while values emit as Color(r=…, g=…, b=…, a=…), which is a discrepancy
 	// of its own and the reason this looked like a String.
 	reg("color.hex", func(a []string) string {

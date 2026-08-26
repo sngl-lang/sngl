@@ -27,7 +27,6 @@ const (
 	TypeUnit      // Decl set
 	TypeFunc      // Sig set
 	TypeComponent // Decl set
-	TypeColor
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
@@ -194,8 +193,6 @@ func (t *Type) String() string {
 			return t.Decl.SymName()
 		}
 		return "component"
-	case TypeColor:
-		return "color"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:
@@ -482,8 +479,22 @@ func (t *Type) Equal(other *Type) bool {
 		return t.Sig.Equal(other.Sig)
 	case TypeTypeParam:
 		return t.ParamName == other.ParamName
+	case TypeNative:
+		// A native type's whole identity is the descriptor in Meta: two GTK
+		// widget types differ in nothing else. This arm used to fall through
+		// to the blanket `return true` below, which made every native type
+		// equal — and assignable to — every other.
+		a, aok := t.Meta.(NativeTypeRef)
+		b, bok := other.Meta.(NativeTypeRef)
+		return aok && bok && a == b
+	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeNull, TypeVoid:
+		// Kinds carrying no distinguishing payload: the Kind comparison above
+		// has already settled them. Listed explicitly rather than defaulted so
+		// that a new kind with an identity field cannot be answered "equal" by
+		// a fall-through, which is how TypeNative got through.
+		return true
 	}
-	return true
+	panic(fmt.Sprintf("ir.Type.Equal: unhandled ir.TypeKind %v", t.Kind))
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
@@ -500,12 +511,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if t.Kind == TypeNull && target.Kind == TypeFunc {
-		return true
-	}
-	if t.Kind == TypeString && isStringDomain(target.Kind) {
-		return true
-	}
-	if isStringDomain(t.Kind) && target.Kind == TypeString {
 		return true
 	}
 	// The color/date/time/datetime value types are carried as stdlib-
@@ -544,10 +549,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	return false
 }
 
-func isStringDomain(k TypeKind) bool {
-	return k == TypeColor
-}
-
 // builtinOf returns the ast.BuiltinKind of t's backing StructDef, or
 // BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
 // and generic behaviour travel with the type rather than with a hardcoded name.
@@ -562,9 +563,9 @@ func builtinOf(t *Type) ast.BuiltinKind {
 	return sd.Builtin
 }
 
-// IsColorStruct reports whether t is the color value type. The color value is
-// carried uniformly as a TypeStruct backed by its StructDef (no separate
-// TypeColor kind is produced); call this to detect the shape.
+// IsColorStruct reports whether t is the color value type. A colour is a
+// TypeStruct backed by its stdlib StructDef and marked #[builtin("color")];
+// call this to detect the shape.
 func IsColorStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinColor }
 
 // StringReprStruct reports whether t is a struct with a canonical string form

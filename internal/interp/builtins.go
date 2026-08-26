@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // runIntrinsic runs this interpreter's implementation of the intrinsic named
@@ -266,52 +264,12 @@ var intrinsics = map[string]nativeFunc{
 	},
 }
 
-// colorHexToStruct converts a hex color string like "#ff0000" to a color
-// value. typ is the literal's type, which carries the declaration the checker
-// resolved for it.
-func colorHexToStruct(typ *ir.Type, hex string) *Struct {
-	r, g, b, a := 0, 0, 0, 255
-	if len(hex) >= 7 && hex[0] == '#' {
-		r = hexToByte(hex[1:3])
-		g = hexToByte(hex[3:5])
-		b = hexToByte(hex[5:7])
-	}
-	if len(hex) >= 9 {
-		a = hexToByte(hex[7:9])
-	}
-	var def *ir.StructDef
-	if typ != nil {
-		def, _ = typ.Decl.(*ir.StructDef)
-	}
-	s := NewStruct(def, typ)
-	s.Set("r", r)
-	s.Set("g", g)
-	s.Set("b", b)
-	s.Set("a", a)
-	return s
-}
-
 func clampByte(v int) int {
 	if v < 0 {
 		return 0
 	}
 	if v > 255 {
 		return 255
-	}
-	return v
-}
-
-func hexToByte(s string) int {
-	v := 0
-	for _, c := range s {
-		v *= 16
-		if c >= '0' && c <= '9' {
-			v += int(c - '0')
-		} else if c >= 'a' && c <= 'f' {
-			v += int(c-'a') + 10
-		} else if c >= 'A' && c <= 'F' {
-			v += int(c-'A') + 10
-		}
 	}
 	return v
 }

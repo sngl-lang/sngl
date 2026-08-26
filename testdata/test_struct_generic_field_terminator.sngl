@@ -1,0 +1,28 @@
+import . "sngl://std"
+
+// A field whose type ends in `>` is terminated by the newline like any other.
+// It was not: `>` may continue a comparison, so it gets no ASI, and the struct
+// body was the one construct in the grammar that required a separator between
+// items. `args list<string>` therefore ran into the field below it and the
+// struct failed to parse. Every field here but the last one is the case.
+struct Cmd {
+    args list<string>
+    env map<string, string>
+    nested list<list<int>>
+    name string
+}
+
+component main { text(value="x") }
+
+func testGenericFieldIsTerminatedByTheNewline(t Test, c main) {
+    var cmd Cmd = {
+        args = ["build", "."],
+        env = {"HOME" = "/root"},
+        nested = [[1, 2]],
+        name = "go",
+    }
+    t.assert(cmd.args.length() == 2)
+    t.assert(cmd.env.length() == 1)
+    t.assert(cmd.nested[0][1] == 2)
+    t.assert(cmd.name == "go")
+}

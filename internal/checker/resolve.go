@@ -594,8 +594,7 @@ func isComparable(t *ir.Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeColor:
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
 		return true
 	case ir.TypeStruct:
 		// Conservative: accept any named struct as comparable. Refine
