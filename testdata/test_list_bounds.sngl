@@ -1,0 +1,54 @@
+import . "sngl://std"
+
+// The edges of list.slice and list.remove, which lib/builtin/methods.sngl
+// documents and the interpreter implements but no backend agreed with: Go
+// sliced the backing array and panicked out of range, Kotlin handed back a
+// live subList view that threw, and both blew up on an out-of-range remove.
+component main { text(value="x") }
+
+func testSliceClampsBothBounds(t Test, c main) {
+    var xs list<int> = [1, 2, 3]
+
+    // Bounds are clamped to [0, length], never an error.
+    t.assert(xs.slice(0, 99).length() == 3)
+    t.assert(xs.slice(-5, 2).length() == 2)
+    t.assert(xs.slice(-5, 99).length() == 3)
+
+    // An inverted range is empty rather than a panic.
+    t.assert(xs.slice(2, 1).length() == 0)
+    t.assert(xs.slice(99, 0).length() == 0)
+}
+
+func testSliceReturnsACopy(t Test, c main) {
+    var xs list<int> = [1, 2, 3]
+    var head list<int> = xs.slice(0, 2)
+
+    // Growing the copy must not write into the list it came from. A Go slice
+    // expression shares the backing array, so this wrote 9 over xs[2].
+    head.push(9)
+    t.assert(xs.length() == 3)
+    t.assert(xs[2] == 3)
+}
+
+func testRemoveIgnoresAnOutOfRangeIndex(t Test, c main) {
+    var xs list<int> = [1, 2, 3]
+
+    xs.remove(99)
+    t.assert(xs.length() == 3)
+
+    xs.remove(-1)
+    t.assert(xs.length() == 3)
+
+    // The in-range case still removes.
+    xs.remove(1)
+    t.assert(xs.length() == 2)
+    t.assert(xs[1] == 3)
+}
+
+func testJoinCoercesNonStringElements(t Test, c main) {
+    var ns list<int> = [1, 2, 3]
+    t.assert(ns.join(",") == "1,2,3")
+
+    var ss list<string> = ["a", "b"]
+    t.assert(ss.join("-") == "a-b")
+}

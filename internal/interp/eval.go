@@ -1645,10 +1645,11 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
 			idx := ToInt(rest[0])
-			if idx >= 0 && idx < len(list) {
-				newList := append(list[:idx], list[idx+1:]...)
-				return env.writeBackList(recvExpr, newList)
+			if idx < 0 || idx >= len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
 			}
+			newList := append(list[:idx], list[idx+1:]...)
+			return env.writeBackList(recvExpr, newList)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -1732,10 +1733,11 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
 			idx := ToInt(rest[0])
-			if idx >= 0 && idx < len(list) {
-				newList := append(list[:idx], list[idx+1:]...)
-				return env.writeBackList(call.Args[0].Value, newList)
+			if idx < 0 || idx >= len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
 			}
+			newList := append(list[:idx], list[idx+1:]...)
+			return env.writeBackList(call.Args[0].Value, newList)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
