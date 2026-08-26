@@ -146,6 +146,11 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 					return true
 				}
 			}
+			for _, f := range propLambdas(n) {
+				if bodyHasEmitFor(f.Block, name) {
+					return true
+				}
+			}
 		case *ir.If:
 			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
 				return true
@@ -226,46 +231,55 @@ func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
 
 // handlerReportsValueChange reports whether h fires for one of the candidate
 // value-changing SNGL events. Native stdlib wrappers name their handler after
-// the DOM/framework signal (html `@input`, gtk4 `@changed`, android
-// `@onValueChange`) but forward it by emitting the SNGL event (`input()`) from
-// the body — so both the handler name and the emitted events count.
+// the DOM/framework signal (html `@input`, gtk4 `@changed`) but forward it by
+// emitting the SNGL event (`input()`) from the body — so both the handler name
+// and the emitted events count.
 func handlerReportsValueChange(h *ir.EventHandler, candidates []string) bool {
-	if slices.Contains(candidates, h.Name) {
-		return true
-	}
+	return slices.Contains(candidates, h.Name) || lambdaReportsValueChange(h.Func, candidates)
+}
+
+// lambdaReportsValueChange is the body half of the same question, for a
+// callback that has no name of its own to be recognised by.
+func lambdaReportsValueChange(f *ir.Func, candidates []string) bool {
 	for _, c := range candidates {
-		if bodyHasEmitFor(h.Func.Block, c) {
+		if bodyHasEmitFor(f.Block, c) {
 			return true
 		}
 	}
 	return false
 }
 
-// injectEmitIntoHandlers recursively searches stmts for the first NodeInst
-// whose handler reports a value change — either the handler's own name is one
-// of the candidate SNGL events (html: `@input { input() }`) or its body emits
-// one of them (gtk4: `@changed { input() }`, android: `@onValueChange { input() }`,
-// where the handler is named for the native signal). It prepends emit to that
-// handler's block. Returns true if the injection was performed.
-// emitFor builds the statement to prepend to h. A nil value means the emit
-// reads the event, which is h's own parameter: the event was an ambient name
-// once and is a declared parameter now, so the reference names a declaration.
-// A handler written without one (`@input { }`) has nothing to name, and this
-// is the pass that needs it, so this is the pass that declares it.
-func emitFor(h *ir.EventHandler, propName string, evtType *ir.Type, value ir.Expr) *ir.Emit {
+// injectEmitIntoHandlers recursively searches stmts for the first NodeInst that
+// reports a value change — a handler whose own name is one of the candidate
+// SNGL events (html: `@input { input() }`), a handler whose body emits one of
+// them (gtk4: `@changed { input() }`, where the handler is named for the native
+// signal), or a callback passed as a func-typed prop, which has only its body
+// to say so with (android: `onValueChange=func(e) { input(e) }`). It prepends
+// emit there. Returns true if the injection was performed.
+// emitFor builds the statement to prepend to f, the handler or callback the
+// change arrives in. A nil value means the emit reads the new value from f's
+// own parameter: it was an ambient name once and is a declared parameter now,
+// so the reference names a declaration. A handler written without one
+// (`@input { }`) has nothing to name, and this is the pass that needs it, so
+// this is the pass that declares it.
+//
+// The parameter reaches the value either way: an event parameter carries it in
+// the field the event declares, and a callback parameter is the value.
+func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr) *ir.Emit {
 	if value == nil {
-		if len(h.Func.Params) == 0 {
-			h.Func.Params = []*ir.Param{{Name: "__event", Type: evtType}}
+		if len(f.Params) == 0 {
+			f.Params = []*ir.Param{{Name: "__event", Type: evtType}}
 		}
-		p := h.Func.Params[0]
+		p := f.Params[0]
 		t := p.Type
 		if t == nil {
 			t = ir.TypDyn
 		}
-		value = &ir.Select{
-			Operand: &ir.Ident{Name: p.Name, Type: t, Sym: p},
-			Field:   "value",
-			Type:    ir.TypString,
+		ref := &ir.Ident{Name: p.Name, Type: t, Sym: p}
+		if t.Kind == ir.TypeStruct {
+			value = &ir.Select{Operand: ref, Field: "value", Type: ir.TypString}
+		} else {
+			value = ref
 		}
 	}
 	return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: value}}}
@@ -281,9 +295,19 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 					continue
 				}
 				if handlerReportsValueChange(h, candidates) {
-					h.Func.Block = append([]ir.Stmt{emitFor(h, propName, evtType, value)}, h.Func.Block...)
+					h.Func.Block = append([]ir.Stmt{emitFor(h.Func, propName, evtType, value)}, h.Func.Block...)
 					return true
 				}
+			}
+			// A callback passed as a func-typed prop reports the change the
+			// same way a handler does — by emitting the SNGL event from its
+			// body — so the write-back belongs in it for the same reason.
+			for _, f := range propLambdas(n) {
+				if !lambdaReportsValueChange(f, candidates) {
+					continue
+				}
+				f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value)}, f.Block...)
+				return true
 			}
 			// Recurse into children.
 			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value) {
@@ -374,6 +398,9 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 			if x.Handlers[j].Func != nil {
 				x.Handlers[j].Func.Block = walk(x.Handlers[j].Func.Block)
 			}
+		}
+		for _, f := range propLambdas(x) {
+			f.Block = walk(f.Block)
 		}
 		x.Children = walk(x.Children)
 	case *ir.PlatformFilter:

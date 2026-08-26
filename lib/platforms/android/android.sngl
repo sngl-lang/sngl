@@ -49,9 +49,17 @@ struct Options {
 // --- The intrinsics ---
 //
 // A prop's name is the Compose argument it is emitted as, in declaration
-// order. Two names are the emitter's own: `modifier` takes a Style and
-// becomes the `Modifier` chain built from it, and `chain` appends further
-// Modifier calls verbatim after those.
+// order. Three names are the emitter's own: `modifier` takes a Style and
+// becomes the `Modifier` chain built from it, `chain` appends further Modifier
+// calls verbatim after those, and `args` is arguments spelled in Kotlin, for a
+// value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
+// has no way to write.
+//
+// A func-typed prop is a Compose lambda argument, and the override supplies
+// the lambda: its body is emitted where the argument goes, so what the callback
+// does is ordinary code in this file rather than a case in the codegen. A
+// parameter typed as an event payload is the SNGL event, built from the value
+// Compose passes; one typed as that value is the value.
 //
 // The id is `android:` plus the composable's name — namespaced by the
 // platform whose codegen answers to it, so a platform primitive can never
@@ -75,6 +83,7 @@ component Box(
 component Row(
     modifier sngl.Style,
     chain list<string>,
+    args list<string>,
 ) list<component> {}
 
 #[intrinsic("android:Spacer")]
@@ -110,6 +119,38 @@ component Card(
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
+) list<component> {}
+
+#[intrinsic("android:Checkbox")]
+component Checkbox(
+    checked bool,
+    onCheckedChange func(bool),
+) {}
+
+#[intrinsic("android:Switch")]
+component Switch(
+    checked bool,
+    onCheckedChange func(bool),
+) {}
+
+#[intrinsic("android:OutlinedTextField")]
+component OutlinedTextField(
+    value string,
+    minLines int,
+    modifier sngl.Style,
+    // Compose passes the new text; the SNGL event a handler reads is built
+    // from it at the boundary, which is what declaring the payload says.
+    onValueChange func(e sngl.InputEvent),
+) {}
+
+#[intrinsic("android:Dialog")]
+component Dialog(
+    onDismissRequest func(),
+) list<component> {}
+
+#[intrinsic("android:Surface")]
+component Surface(
+    args list<string>,
 ) list<component> {}
 
 // --- Core Layout ---
@@ -179,11 +220,13 @@ component sngl.input() {
     OutlinedTextField(value=value) {}
 }
 
-component sngl.checkbox() {
-    Row {
-        Checkbox(checked=checked, ) {}
-        if label != "" {
-            Text(text=label) {}
+component sngl.checkbox {
+    platform android {
+        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+            Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+            if label != "" {
+                Text(text=label) {}
+            }
         }
     }
 }
@@ -196,11 +239,13 @@ component sngl.radio() {
     }
 }
 
-component sngl.toggle() {
-    Row {
-        Switch(checked=checked, ) {}
-        if label != "" {
-            Text(text=label) {}
+component sngl.toggle {
+    platform android {
+        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+            Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+            if label != "" {
+                Text(text=label) {}
+            }
         }
     }
 }
@@ -209,8 +254,15 @@ component sngl.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange { input() }) {}
+component sngl.textarea {
+    platform android {
+        OutlinedTextField(
+            value=value,
+            minLines=3,
+            modifier={...style},
+            onValueChange=func(e) { input(e); change(e) },
+        ) {}
+    }
 }
 
 component sngl.datepicker() {
@@ -267,15 +319,17 @@ component sngl.tabs {
     }
 }
 
-component sngl.modal() {
-    if open {
-        Dialog(onDismissRequest=func(){}) {
-            Card {
-                Column {
-                    if title != "" {
-                        Text(text=title) {}
+component sngl.modal {
+    platform android {
+        if open {
+            Dialog(onDismissRequest=func() { close() }) {
+                Surface(args=["shape = MaterialTheme.shapes.medium"]) {
+                    Column(modifier={padding=16}) {
+                        if title != "" {
+                            Text(text=title) {}
+                        }
+                        slot
                     }
-                    slot
                 }
             }
         }

@@ -187,7 +187,21 @@ func (t *Type) String() string {
 		}
 		return "unit"
 	case TypeFunc:
-		return "func"
+		// The signature, not the bare word: the two sides of a func-vs-func
+		// mismatch are the parameters and the return, so a diagnostic naming
+		// only the kind reads as if the types were equal.
+		if t.Sig == nil {
+			return "func"
+		}
+		params := make([]string, len(t.Sig.Params))
+		for i, p := range t.Sig.Params {
+			params[i] = p.Type.String()
+		}
+		sig := "func(" + strings.Join(params, ", ") + ")"
+		if t.Sig.Return != nil {
+			sig += " " + t.Sig.Return.String()
+		}
+		return sig
 	case TypeComponent:
 		if t.Decl != nil {
 			return t.Decl.SymName()

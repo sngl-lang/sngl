@@ -246,47 +246,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.indent--
 		cc.line(")")
 
-	case "textarea":
-		cc.line("OutlinedTextField(value = \"\", onValueChange = {}, %s, minLines = 3)", style)
-
-	case "checkbox":
-		label := cc.resolveTextProp(n)
-		changeHandler := codegen.NodeHandler(n, "change")
-		if changeHandler != nil && changeHandler.Func != nil {
-			cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-			cc.indent++
-			// Find the checked state variable
-			checkedVar := "false"
-			if len(changeHandler.Func.Block) > 0 {
-				if toggle, ok := changeHandler.Func.Block[0].(*ir.Toggle); ok {
-					checkedVar = cc.kc.EvalExpr(toggle.Target)
-				}
-			}
-			cc.line("Checkbox(checked = %s, onCheckedChange = {", checkedVar)
-			cc.indent++
-			for _, stmt := range changeHandler.Func.Block {
-				for _, line := range cc.kc.EvalStmt(stmt) {
-					cc.line("%s", line)
-				}
-			}
-			cc.indent--
-			cc.line("})")
-			cc.line("Text(%s)", label)
-			cc.indent--
-			cc.line("}")
-		} else {
-			cc.line("Checkbox(checked = false, onCheckedChange = {})")
-		}
-
-	case "toggle":
-		label := cc.resolveTextProp(n)
-		cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-		cc.indent++
-		cc.line("Text(%s)", label)
-		cc.line("Switch(checked = false, onCheckedChange = {})")
-		cc.indent--
-		cc.line("}")
-
 	case "select":
 		// Two-way `:value` dropdown. The binding pass synthesizes the
 		// write-back as a @change handler (like `input`), so selecting an
@@ -388,31 +347,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 
 	case "image":
 		cc.line("// TODO: Image composable")
-
-	case "modal":
-		openExpr := codegen.NodeProp(n, "open")
-		if openExpr != nil {
-			cond := cc.kc.EvalExpr(openExpr)
-			cc.line("if (%s) {", cond)
-			cc.indent++
-			cc.line("Dialog(onDismissRequest = {}) {")
-			cc.indent++
-			cc.line("Surface(shape = MaterialTheme.shapes.medium) {")
-			cc.indent++
-			cc.line("Column(modifier = Modifier.padding(16.dp)) {")
-			cc.indent++
-			for _, child := range n.Children {
-				cc.renderStmt(child)
-			}
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-		}
 
 	case "datepicker":
 		// One-way `value` (the date, a String on Android) + @change. Rendered
@@ -690,14 +624,20 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 // renderIntrinsic emits a declared composable from its declaration:
 // `composable` is the intrinsic id past the namespace, each declared prop is
 // the Compose argument of that name in declaration order, and children are a
-// trailing lambda. Two prop names are this emitter's own — `modifier` builds
-// the Modifier chain from a Style, and `chain` appends further Modifier calls
-// to it — because neither is a value Compose takes as written.
+// trailing lambda. A func-typed prop is a callback, emitted as the Kotlin
+// lambda Compose takes there.
+//
+// Three prop names are this emitter's own — `modifier` builds the Modifier
+// chain from a Style, `chain` appends further Modifier calls to it, and `args`
+// is arguments already spelled in Kotlin — because none of the three is a
+// value Compose takes as written.
 func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
 	var args []string
 	for _, p := range comp.Props {
 		switch p.Name {
 		case "chain":
+		case "args":
+			args = append(args, irStringList(codegen.NodeProp(n, p.Name))...)
 		case "modifier":
 			args = append(args, "modifier = "+cc.intrinsicModifier(n))
 		default:
@@ -707,9 +647,15 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 				}
 				continue
 			}
-			if v := codegen.NodeProp(n, p.Name); v != nil {
-				args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
+			v := codegen.NodeProp(n, p.Name)
+			if v == nil {
+				continue
 			}
+			if lam, ok := v.(*ir.Lambda); ok {
+				args = append(args, cc.lambdaArg(p.Name, lam))
+				continue
+			}
+			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
 		}
 	}
 	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
@@ -737,6 +683,84 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst) string {
 		mod.WriteString("." + call)
 	}
 	return mod.String()
+}
+
+// rawCallbackValue names the value Compose hands a callback, in the emitted
+// Kotlin. It is a generated local: the declaration names the SNGL event built
+// from it, not the framework's own argument.
+const rawCallbackValue = "newValue"
+
+// lambdaArg emits a func-typed prop as the Kotlin lambda Compose takes in its
+// place. Compose spells a callback as an argument, so the body is written where
+// the argument goes and the whole call stays one expression even when the body
+// spans lines.
+//
+// A parameter is declared only where the body reads it: a Compose callback
+// lambda may leave the value it is passed unnamed, and every declaration here
+// is one the stdlib override wrote for whichever handlers a call site turned
+// out to supply.
+func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
+	if lam.Func == nil || len(lam.Func.Block) == 0 {
+		return name + " = {}"
+	}
+	kc := cc.kc
+	for _, p := range lam.Func.Params {
+		kc = kc.WithLocal(p.Name)
+	}
+	saved := cc.kc
+	cc.kc = kc
+	var body []string
+	for _, stmt := range lam.Func.Block {
+		body = append(body, cc.kc.EvalStmt(stmt)...)
+	}
+	cc.kc = saved
+	if len(body) == 0 {
+		return name + " = {}"
+	}
+
+	var params, prologue []string
+	for _, p := range lam.Func.Params {
+		if !readsParam(lam.Func.Block, p) {
+			continue
+		}
+		// A parameter declared as an event payload is the SNGL event, while
+		// Compose passes the changed value: the event is built from it here,
+		// the only place both are in view. SnglInputEvent is the holder this
+		// platform emits (compiler_ir.go).
+		if p.Type != nil && p.Type.Kind == ir.TypeStruct {
+			params = append(params, rawCallbackValue)
+			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
+			continue
+		}
+		params = append(params, p.Name)
+	}
+
+	outer := strings.Repeat("    ", cc.indent)
+	var b strings.Builder
+	b.WriteString(name + " = {")
+	if len(params) > 0 {
+		b.WriteString(" " + strings.Join(params, ", ") + " ->")
+	}
+	for _, line := range append(prologue, body...) {
+		b.WriteString("\n" + outer + "    " + line)
+	}
+	b.WriteString("\n" + outer + "}")
+	return b.String()
+}
+
+// readsParam reports whether stmts reference p. The parameter is declared only
+// then: what a callback's lambda receives is named for the body's sake, and a
+// name declared over an unused value would shadow whatever else carries it —
+// a call site binding a state var of the same name is exactly that case.
+func readsParam(stmts []ir.Stmt, p *ir.Param) bool {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == p {
+			found = true
+		}
+		return nil
+	})
+	return found
 }
 
 // isStyleType reports whether t is the stdlib Style struct — the prop type

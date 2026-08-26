@@ -481,6 +481,9 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 						visit(h.Func.Block)
 					}
 				}
+				for _, f := range propLambdas(n) {
+					visit(f.Block)
+				}
 			case *ir.If:
 				visit(n.Body)
 				visit(n.Else)
@@ -615,6 +618,12 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 		case *ir.NodeInst:
 			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
+			// A prop lambda is the enclosing scope of its own body: a
+			// parameter a user handler names but the emit passes no argument
+			// for is the one this lambda receives.
+			for _, f := range propLambdas(n) {
+				f.Block = substituteEventsIn(f.Block, handlers, f)
+			}
 			for _, h := range n.Handlers {
 				if h.Func == nil {
 					continue
@@ -691,6 +700,20 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return e
 	})
 	return walker.stmts(stmts)
+}
+
+// propLambdas are the lambdas a node's arguments carry. A prop declared with a
+// func type takes one, and its body is code written in the component the call
+// site belongs to — so a walk over that component's statements has to reach it
+// or the body is invisible to every rewrite the walk performs.
+func propLambdas(n *ir.NodeInst) []*ir.Func {
+	var out []*ir.Func
+	for _, p := range n.Props {
+		if lam, ok := p.Value.(*ir.Lambda); ok && lam.Func != nil {
+			out = append(out, lam.Func)
+		}
+	}
+	return out
 }
 
 // deepCloneStmts produces a deep copy of stmts so substitution mutations

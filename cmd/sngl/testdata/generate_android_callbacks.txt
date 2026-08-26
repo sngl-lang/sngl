@@ -1,0 +1,67 @@
+# A Compose callback is an argument, not a subscription, so an android
+# intrinsic declares one as a func-typed prop and the stdlib override passes
+# the lambda. Everything the callback does is written there: which SNGL events
+# it forwards, and what it hands them.
+
+sngl generate --platform=android --lang=kotlin --out=out app.sngl
+
+# textarea forwards @input onto onValueChange. The lambda parameter is
+# declared as the event payload, so the holder a handler reads `.value` from is
+# built from the text Compose passed.
+grep 'OutlinedTextField\(value = notes, minLines = 3, modifier = Modifier, onValueChange = \{ newValue ->' out/MainScreen.kt
+grep 'val e = SnglInputEvent\(newValue\)' out/MainScreen.kt
+grep 'notes = e\.value' out/MainScreen.kt
+
+# toggle binds `checked` and puts the Switch before its label. A call site that
+# wired nothing leaves the callback empty rather than dropping the state.
+grep 'Switch\(checked = flag, onCheckedChange = \{\}\)' out/MainScreen.kt
+grep 'Text\(text = "Wifi", modifier = Modifier\)' out/MainScreen.kt
+
+# A two-way `:checked` binding reaches the same callback: the write-back is the
+# binding's, injected into the lambda because the lambda is what reports the
+# change.
+grep 'Checkbox\(checked = flag, onCheckedChange = \{' out/MainScreen.kt
+grep 'flag = !flag' out/MainScreen.kt
+
+# modal renders its title, and @close is the Dialog's dismiss callback.
+grep 'Text\(text = "Howdy", modifier = Modifier\)' out/MainScreen.kt
+grep 'onDismissRequest = \{' out/MainScreen.kt
+grep 'open = false' out/MainScreen.kt
+
+# `args` carries an argument whose value has no SNGL spelling.
+grep 'Row\(modifier = Modifier, verticalAlignment = Alignment.CenterVertically\) \{' out/MainScreen.kt
+grep 'Surface\(shape = MaterialTheme\.shapes\.medium\) \{' out/MainScreen.kt
+
+# A program can pass its own lambda to an intrinsic directly; the parameter
+# names in the emitted Kotlin are the ones it wrote.
+grep 'Switch\(checked = flag, onCheckedChange = \{ v ->' out/MainScreen.kt
+grep 'flag = v' out/MainScreen.kt
+
+# A func-typed prop on a component of the program's own takes a lambda the same
+# way, with the parameter type coming from the declaration rather than from an
+# annotation, and an expression-bodied one where the prop returns a value.
+grep 'label = "hi!"' out/MainScreen.kt
+
+-- app.sngl --
+import . "sngl://std"
+import android "sngl://platforms/android"
+
+component tapper(onTap func(), decorate func(s string) string) {
+    button(text=decorate("hi"), @click { onTap() })
+}
+
+component main {
+    var label = ""
+    var notes = ""
+    var flag = false
+    var open = false
+
+    textarea(value=notes, @input(e) { notes = e.value })
+    toggle(checked=flag, label="Wifi")
+    checkbox(:checked=flag, label="Enable")
+    modal(open=open, title="Howdy", @close { open = false }) {
+        text(value="body")
+    }
+    android.Switch(checked=flag, onCheckedChange=func(v) { flag = v })
+    tapper(onTap=func() { label = "hi!" }, decorate=func(s) => s + "!")
+}
