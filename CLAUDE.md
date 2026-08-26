@@ -73,7 +73,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
-- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from the system-installed `Gtk-4.0.gir` (probed under `/usr/share/gir-1.0/` etc., or `--opt gir=PATH`); no GIR XML is vendored — `codegen/platform/gtk4/gir/` holds only the parser. With no GIR available the platform withdraws its `Package()` docs and reports `Unavailable()`, so unrelated compiles are unaffected; targeting gtk4 explicitly then fails with one actionable error. Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
+- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from the system-installed `Gtk-4.0.gir` (probed under `/usr/share/gir-1.0/` etc., or `--opt gir=PATH`); no GIR XML is vendored — `codegen/platform/gtk4/gir/` holds only the parser. With no GIR available the platform reports `Unavailable()` and its `sngl://platforms/gtk4` declarations are withheld, so unrelated compiles are unaffected; targeting gtk4 explicitly then fails with one actionable error. Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages
@@ -89,11 +89,14 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
 
-Three packages exist, and the split is the whole point of the tier system:
+The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
 - **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one (the public spelling of `#[tree.kind("shape")]`). It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
+- **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Under it, one per-target package per registered platform (`platforms/html`) and language (`languages/go`).
+- **`lib/internal/` → `sngl://internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
 comments at the top of a file, separated from what follows by a blank line
@@ -110,7 +113,7 @@ Packages import each other — `lib/draw` is written against `lib/std` — so th
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
 
-`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
+`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's `lib/platforms/<name>/` package; its source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
 The `#[builtin]` mark only stamps the kind on whichever IR the declaration
 became. What a kind then *requires* — that a node kind names a component, that
@@ -140,11 +143,11 @@ means `#[d.shape]`.
 
 A lib package may carry macros alongside its declarations — `sngl://draw`
 ships the `shape` mark next to the shape components it applies to — so the
-`sngl` scheme is checked against both the `lib/` layout and the macro
-registry. `sngl://internal/<name>` is the compiler's own tier: a package there
-may contribute macros, declarations, or both. `internal/marks` is macro-only
-and has no directory; `internal/draw` declares the drawing primitives
-passCanvas emits, the intrinsic half of `sngl://draw`.
+`sngl` scheme is checked against the `lib/` layout alone: a directory is what
+makes a package exist, macro-only ones included. `sngl://internal/<name>` is
+the compiler's own tier: a package there may contribute macros, declarations,
+or both. `internal/marks` declares only macros; `internal/draw` declares the
+drawing primitives passCanvas emits, the intrinsic half of `sngl://draw`.
 
 **`#[tree.kind]` / `#[tree.children]` describe a segmented component tree.**
 `sngl://internal/tree` names a family of nodes — `kind("shape")` says a

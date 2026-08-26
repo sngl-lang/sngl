@@ -4,9 +4,7 @@
 // may replace a function's body.
 //
 // Unlike a user-facing mark such as `#[draw.shape]` these annotate the library
-// source itself. The checker runs macro expansion over that source before it
-// registers the declarations, so the marks are in place by the time anything
-// reads them.
+// source itself: the checker reads them off a declaration as it registers it.
 //
 // The path is `sngl://internal/marks` and not `.../builtin`: `sngl://builtin`
 // is the ambient package of built-in types, a different thing one letter away

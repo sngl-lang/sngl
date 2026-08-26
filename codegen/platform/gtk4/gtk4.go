@@ -160,8 +160,8 @@ func (g *Generator) gir() (*gir.TypeRegistry, error) {
 func (g *Generator) Resolve(identifier string) ir.Symbol {
 	reg, err := g.gir()
 	if err != nil {
-		// GIR unavailable — caller gets nil. Package() withholds the gtk4
-		// overrides in this state, so nothing should be asking.
+		// GIR unavailable — caller gets nil. The gtk4 overrides are withheld
+		// in this state, so nothing should be asking.
 		return nil
 	}
 	name := stripGtkPrefix(identifier)
@@ -176,7 +176,7 @@ func (g *Generator) Resolve(identifier string) ir.Symbol {
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// Targeting gtk4 without the GIR file is the one case that must be loud:
-	// Package() withheld the widget overrides, so generation would otherwise
+	// the widget overrides were withheld, so generation would otherwise
 	// silently emit an empty UI.
 	if _, err := g.gir(); err != nil {
 		return fmt.Errorf("platform gtk4 is unavailable here: %w", err)

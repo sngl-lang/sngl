@@ -268,6 +268,35 @@ func add(a int, b int) => a + b
 	}
 }
 
+// A nested func with an explicit receiver stays a method on the named type
+// rather than being desugared onto the surrounding one, and a mark written on
+// it means what it would at top level.
+func TestForeignMarksNestedMethodWithExplicitReceiver(t *testing.T) {
+	pkg, errs := checkForeign(t, `
+struct Row {
+    n int = 0
+}
+
+component App {
+    #[std.foreign("js://example.com/api", "Double", pure)]
+    func Row.double(x int) => x * 2
+}
+`)
+	wantNoMarkErrs(t, errs)
+	var fn *ir.Func
+	for _, f := range pkg.Funcs {
+		if f.Receiver == "Row" {
+			fn = f
+		}
+	}
+	if fn == nil {
+		t.Fatalf("no method on Row in %d funcs", len(pkg.Funcs))
+	}
+	if !fn.Foreign.Marked || fn.Foreign.Name != "Double" || fn.Purity != ir.PurityPure {
+		t.Errorf("nested method foreign = %+v purity %v", fn.Foreign, fn.Purity)
+	}
+}
+
 // One foreign name cannot stand for several declarations.
 func TestForeignRefusesSeveralNames(t *testing.T) {
 	_, errs := checkForeign(t, `

@@ -320,7 +320,8 @@ example to read a node's state or drive its events in a test (see
 ### Macro attributes
 
 A macro attribute begins with `#[` and ends with the matching `]`. It decorates
-the declaration or statement that follows it:
+what follows it: a declaration, a statement, a function parameter or a
+component prop.
 
 ```
 MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } ] ")" ] "]"
@@ -365,7 +366,7 @@ attributes and a slashdash prefix, and optionally followed by a semicolon
 <!-- BEGIN GENERATED: grammar-document -->
 
 ```ebnf
-Document = { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -774,7 +775,7 @@ TypeParamList = "<" IDENT { "," IDENT } ">"
 
 ParamList = Param { "," Param }
 
-Param = IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 
 ```
 
@@ -890,6 +891,7 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | "@" IDENT
+    | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 
@@ -1191,7 +1193,9 @@ ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ 
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
-CompParam = 
+CompParam = { MacroAttr } CompParamBody
+
+CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
     | IDENT [ CompParamTail ]
@@ -1363,7 +1367,7 @@ rather than to a directory of `.sngl` files:
 
 - `import "go://fmt"`, `import "ts://lodash"` — import declarations from a host
   language package, so generated code in that language can call into it;
-- `import "sngl://platforms/html"`, `import "sngl://languages/js"` — bring a
+- `import "sngl://platforms/html"`, `import "sngl://languages/go"` — bring a
   platform's or language's contributed package into scope;
 - other schemes may be resolved by the host to fetch remote SNGL sources.
 
@@ -1414,7 +1418,7 @@ The complete grammar, assembled from `internal/parser/sngl.ebnf`:
 <!-- BEGIN GENERATED: grammar-full -->
 
 ```ebnf
-Document = { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -1502,7 +1506,7 @@ TypeParamList = "<" IDENT { "," IDENT } ">"
 
 ParamList = Param { "," Param }
 
-Param = IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 
 ```
 
@@ -1511,7 +1515,9 @@ ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ 
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
-CompParam = 
+CompParam = { MacroAttr } CompParamBody
+
+CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
     | IDENT [ CompParamTail ]
@@ -1576,6 +1582,7 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | "@" IDENT
+    | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 

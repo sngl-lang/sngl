@@ -188,8 +188,9 @@ type OptionConfigurable interface {
 // gtk4, which reads widget metadata from the GTK 4 GIR file installed with the
 // GTK development package.
 //
-// A platform that reports itself unavailable must also stop contributing
-// Package() docs, so a compile for any *other* platform is unaffected: the
+// A platform that reports itself unavailable also stops contributing the
+// declarations of its sngl://platforms/<id> package, so a compile for any
+// *other* platform is unaffected: the
 // checker merges every registered platform's stdlib overrides regardless of
 // the build target, and overrides referencing types the platform cannot
 // resolve would otherwise fail every compile in the process.

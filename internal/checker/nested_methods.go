@@ -177,6 +177,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		// up by the normal top-level func path.
 		if _, _, isMethod := ast.SplitMethodName(n.Name); isMethod {
 			fn := c.buildFunc(n)
+			c.applyMarks(n, fn)
 			if prev := c.declareMethod(n.Pos, fn); prev != nil {
 				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 				continue

@@ -40,11 +40,10 @@ component main {
 	t.Errorf("a dot import of sngl://std made the compiler's own sngl://internal/ir reachable as %q; got %v", "ir.Macro", diags)
 }
 
-// TestImportedPackageSharesStdlibIdentity pins one library instance per build.
-// An imported package is checked by a nested Check, which used to build its
-// own sngl://std: the `text` inside the imported component was then a
-// different *ir.Component than the program's, so a platform extension body
-// attached to one was invisible on the other.
+// TestImportedPackageSharesStdlibIdentity pins one library instance per build:
+// an imported package is checked by a nested Check, and a `text` from a second
+// sngl://std would be a different *ir.Component than the program's, so a
+// platform extension body attached to one would be invisible on the other.
 func TestImportedPackageSharesStdlibIdentity(t *testing.T) {
 	res := &mockResolver{pkgs: map[string]string{
 		"sub": `

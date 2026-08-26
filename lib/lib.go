@@ -58,16 +58,20 @@ func Packages() []string {
 // the compiler's own tier under internal/. Documentation indexes them; name
 // one explicitly and it still resolves, as an internal Go package does.
 //
-// platforms/ and languages/ are dropped for a different reason: they are
-// per-target and mutually exclusive, so indexing them alongside the library
-// would make a bare name like `Options` ambiguous between six packages that
-// can never be imported together. The docs reach them through the plugin
-// registry instead.
+// A per-target package under platforms/ or languages/ is dropped for a
+// different reason: they are mutually exclusive, so indexing them alongside
+// the library would make a bare name like `Options` ambiguous between six
+// packages that can never be imported together. The docs reach them through
+// the plugin registry instead. The `platforms` and `languages` packages
+// themselves are ordinary public vocabulary and stay.
 func PublicPackages() []string {
-	private := []string{"internal", "platforms", "languages"}
+	perTarget := []string{"platforms", "languages"}
 	out := make([]string, 0, len(Packages()))
 	for _, p := range Packages() {
-		if slices.ContainsFunc(private, func(t string) bool { return p == t || strings.HasPrefix(p, t+"/") }) {
+		if p == "internal" || strings.HasPrefix(p, "internal/") {
+			continue
+		}
+		if slices.ContainsFunc(perTarget, func(t string) bool { return strings.HasPrefix(p, t+"/") }) {
 			continue
 		}
 		out = append(out, p)

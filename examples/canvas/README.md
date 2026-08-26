@@ -25,7 +25,7 @@ sngl check examples/canvas/app.sngl
 Everything below comes from `sngl://draw`, which the app dot-imports alongside
 `sngl://std`.
 
-- `canvas(width, height)` — the container; accepts `list<shape>` children
+- `canvas(width, height)` — the container; hosts the shapes below as children
 - `rect(x, y, w, h, style)` — filled/stroked rectangle
 - `circle(cx, cy, r, style)` — filled/stroked circle
 - `ellipse(cx, cy, rx, ry, style)` — filled/stroked ellipse
