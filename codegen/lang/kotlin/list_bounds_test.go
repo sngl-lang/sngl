@@ -1,6 +1,9 @@
 package kotlin
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -8,16 +11,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The Kotlin forms of the list intrinsics whose edges the backends disagreed
-// on (GitLab #100): subList returned a live view of the receiver and threw out
-// of range, removeAt threw, where lib/builtin/methods.sngl documents a clamped
-// copy and an out-of-range no-op.
+// The Kotlin forms of the list intrinsics whose edges the three backends
+// disagreed on (GitLab #100): subList returned a live view of the receiver and
+// threw out of range, removeAt threw, where lib/builtin/methods.sngl documents
+// a clamped copy and an out-of-range no-op.
 //
-// Unlike the Go and JS cases these are not executed — there is no Kotlin
-// toolchain in this module, and an execution test that only ever skips asserts
-// nothing. What is checked here is structural: the guard is present, and each
-// operand is spelled once so an argument with a side effect runs once.
+// Like the Go and JS cases these are executed rather than pattern-matched.
+// kotlinc costs seconds per invocation, so every case for both intrinsics is
+// compiled and run as one script and the output lines are compared in order.
 
+// emitKt renders intrinsic id over args typed by types, as codegen would.
 func emitKt(t *testing.T, id string, names []string, types []*ir.Type) string {
 	t.Helper()
 	fn := codegen.LookupIntrinsic(langKt, id)
@@ -32,43 +35,114 @@ func emitKt(t *testing.T, id string, names []string, types []*ir.Type) string {
 	return code
 }
 
-func TestKotlinListSliceClampsAndCopies(t *testing.T) {
-	code := emitKt(t, "list.slice",
-		[]string{"recvExpr", "loExpr", "hiExpr"},
-		[]*ir.Type{ir.ListOf(ir.TypInt), ir.TypInt, ir.TypInt})
-
-	for _, want := range []string{
-		"coerceIn(0, __n)",  // both bounds clamped to [0, length]
-		"maxOf(__lo, __hi)", // an inverted range is empty, not an exception
-		".toList()",         // a copy, not the live subList view
-	} {
-		if !strings.Contains(code, want) {
-			t.Errorf("list.slice emitted %q, want it to contain %q", code, want)
+// runKts runs script under kotlinc and returns the lines it marked as results.
+func runKts(t *testing.T, script string) []string {
+	t.Helper()
+	if _, err := exec.LookPath("kotlinc"); err != nil {
+		t.Skip("kotlinc is not installed")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cases.kts")
+	if err := os.WriteFile(path, []byte(script), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("kotlinc", "-script", path)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("kotlinc: %v\n--- script ---\n%s\n--- output ---\n%s", err, script, out)
+	}
+	var lines []string
+	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		// kotlinc writes its own warnings to the same stream; keep our markers.
+		if strings.HasPrefix(l, "case ") {
+			lines = append(lines, strings.TrimPrefix(l, "case "))
 		}
 	}
-	// Each operand is an arbitrary expression; spelling one twice would run it
-	// twice.
-	for _, operand := range []string{"recvExpr", "loExpr", "hiExpr"} {
-		if n := strings.Count(code, operand); n != 1 {
-			t.Errorf("list.slice spells %q %d times, want 1: %s", operand, n, code)
-		}
-	}
+	return lines
 }
 
-func TestKotlinListRemoveGuardsItsIndex(t *testing.T) {
-	code := emitKt(t, "list.remove",
-		[]string{"recvExpr", "idxExpr"},
+func TestKotlinListBoundsBehaviour(t *testing.T) {
+	slice := emitKt(t, "list.slice",
+		[]string{"xs", "lo", "hi"},
+		[]*ir.Type{ir.ListOf(ir.TypInt), ir.TypInt, ir.TypInt})
+	remove := emitKt(t, "list.remove",
+		[]string{"xs", "i"},
 		[]*ir.Type{ir.ListOf(ir.TypInt), ir.TypInt})
 
-	if !strings.Contains(code, "__i >= 0 && __i < __l.size") {
-		t.Errorf("list.remove emitted %q, want an in-range guard around removeAt", code)
+	type kase struct {
+		name   string
+		body   string
+		expect string
 	}
-	if strings.HasPrefix(code, "recvExpr.removeAt(") {
-		t.Errorf("list.remove is still the unguarded form: %s", code)
+	var cases []kase
+
+	// Bounds are clamped to [0, length]; an inverted range is empty. Every one
+	// of these threw IndexOutOfBoundsException on the bare subList it replaces.
+	for _, b := range []struct{ lo, hi, want string }{
+		{"0", "99", "1,2,3"},
+		{"-1", "3", "1,2,3"},
+		{"-5", "2", "1,2"},
+		{"-5", "99", "1,2,3"},
+		{"2", "1", ""},
+		{"99", "0", ""},
+	} {
+		cases = append(cases, kase{
+			name: "slice(" + b.lo + ", " + b.hi + ")",
+			body: "run { val xs = mutableListOf(1, 2, 3); val lo = " + b.lo + "; val hi = " + b.hi +
+				"; println(\"case \" + (" + slice + ").joinToString(\",\")) }",
+			expect: b.want,
+		})
 	}
-	for _, operand := range []string{"recvExpr", "idxExpr"} {
-		if n := strings.Count(code, operand); n != 1 {
-			t.Errorf("list.remove spells %q %d times, want 1: %s", operand, n, code)
+
+	// The result is a copy, not the live subList view: growing it must not be
+	// visible through the operand.
+	cases = append(cases, kase{
+		name: "slice returns a copy",
+		body: "run { val xs = mutableListOf(1, 2, 3); val lo = 0; val hi = 2" +
+			"; val head = (" + slice + ").toMutableList(); head.add(9)" +
+			"; println(\"case \" + xs.joinToString(\",\")) }",
+		expect: "1,2,3",
+	})
+
+	// An out-of-range or negative index leaves the list unchanged.
+	for _, b := range []struct{ idx, want string }{
+		{"99", "1,2,3"},
+		{"-1", "1,2,3"},
+		{"1", "1,3"},
+	} {
+		cases = append(cases, kase{
+			name: "remove(" + b.idx + ")",
+			body: "run { val xs = mutableListOf(1, 2, 3); val i = " + b.idx + "; " + remove +
+				"; println(\"case \" + xs.joinToString(\",\")) }",
+			expect: b.want,
+		})
+	}
+
+	// The index is an arbitrary expression and the guard reads it more than
+	// once, so it has to be bound before the guard runs.
+	removeCall := emitKt(t, "list.remove",
+		[]string{"xs", "next()"},
+		[]*ir.Type{ir.ListOf(ir.TypInt), ir.TypInt})
+	cases = append(cases, kase{
+		name: "remove evaluates its index once",
+		body: "run { val xs = mutableListOf(1, 2, 3); var calls = 0; fun next(): Int { calls++; return 1 }; " +
+			removeCall + "; println(\"case \" + calls) }",
+		expect: "1",
+	})
+
+	var script strings.Builder
+	for _, c := range cases {
+		script.WriteString(c.body + "\n")
+	}
+	got := runKts(t, script.String())
+
+	if len(got) != len(cases) {
+		t.Fatalf("got %d result lines, want %d:\n%s", len(got), len(cases), strings.Join(got, "\n"))
+	}
+	for i, c := range cases {
+		if got[i] != c.expect {
+			t.Errorf("%s = %q, want %q", c.name, got[i], c.expect)
 		}
 	}
 }
