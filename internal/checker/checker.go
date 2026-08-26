@@ -332,25 +332,49 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// for the html.frontend/html.backend directives); attach Resolve to that
 	// one too, so importing std keeps raw elements working rather than
 	// shadowing them with a directives-only namespace.
-	declareNS := func(name string, resolve func(string) ir.Symbol) {
+	declareNS := func(name, uri string, resolve func(string) ir.Symbol) {
+		pkg := c.targetNSPkg(uri)
+		attach := func(ns *ir.Namespace) {
+			ns.Resolve = resolve
+			// A namespace's members are its package's declarations, and a
+			// target ships a package like anything else. The stdlib may
+			// already have declared a namespace of this name for its own
+			// members (lib/std/html.sngl declares `html` for the placement
+			// directives), so the target's package goes behind it in the
+			// scope chain rather than replacing it: a name std declares wins,
+			// then the target's, then the target's wildcards.
+			switch {
+			case pkg == nil:
+			case ns.Pkg == nil:
+				ns.Pkg = pkg
+			case ns.Pkg != pkg && ns.Pkg.Symbols != nil:
+				ns.Pkg.Symbols.Root.Parent = pkg.Symbols.Root
+			}
+		}
 		if existing, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); ok {
 			if ns, ok := existing.(*ir.Namespace); ok {
-				ns.Resolve = resolve
+				attach(ns)
 			}
 		}
 		if existing, ok := stdlibScope.LookupLocal(name); ok {
 			if ns, ok := existing.(*ir.Namespace); ok {
-				ns.Resolve = resolve
+				attach(ns)
 				return
 			}
 		}
-		c.bindLib(ast.Pos{}, stdlibScope, &ir.Namespace{Name: name, Resolve: resolve})
+		ns := &ir.Namespace{Name: name}
+		attach(ns)
+		c.bindLib(ast.Pos{}, stdlibScope, ns)
 	}
 	for _, p := range cfg.Platforms {
-		declareNS(p.PlatformIdentifier(), p.Resolve)
+		if targetUnavailable(p) != nil {
+			declareNS(p.PlatformIdentifier(), "", p.Resolve)
+			continue
+		}
+		declareNS(p.PlatformIdentifier(), "platforms/"+p.PlatformIdentifier(), p.Resolve)
 	}
 	for _, l := range cfg.Languages {
-		declareNS(l.LanguageIdentifier(), l.Resolve)
+		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier(), l.Resolve)
 	}
 
 	// Splice platform extension bodies into the stdlib components they target.
@@ -897,7 +921,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// when it loaded, so a lookup that walks the chain finds the importing
 	// file's own main and blames the import for it.
 	if irImport.Pkg != nil && irImport.Pkg.Symbols != nil && irImport.Pkg.Symbols.Root != nil {
-		if sym, ok := irImport.Pkg.Symbols.Root.LookupLocal("main"); ok {
+		if sym, ok := irImport.Pkg.Symbols.Root.LookupDeclaredLocal("main"); ok {
 			if _, isComp := sym.(*ir.Component); isComp {
 				c.error(imp.Pos, "component main can only be defined in the main package")
 			}
@@ -1659,12 +1683,14 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				Name: pd.Name,
 				Type: c.resolveType(pd.Type),
 			}
+			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		}
 	}
 
 	// Resolve children type.
 	finishTreeMarks(comp, irComp, c.pkg)
+	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
@@ -1972,6 +1998,17 @@ type pkgProvider interface {
 }
 
 // lookupTarget finds a registered platform or language by name.
+// targetNSPkg is the lib package a target ships, loaded like any other. It is
+// the same instance an `import "sngl://platforms/x"` reaches, because libPkg
+// memoizes: a platform's declarations must be one set, whether user code
+// imported them or only named one through the ambient namespace.
+func (c *checker) targetNSPkg(uri string) *ir.Package {
+	if uri == "" || !c.hasLibPkg(uri) {
+		return nil
+	}
+	return c.libPkg(uri)
+}
+
 func (c *checker) lookupTarget(name string) pkgProvider {
 	if c.cfg == nil {
 		return nil
@@ -2623,10 +2660,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 		// A block-bodied func with a non-void return type must return on all
-		// paths. (Expression bodies always return; void funcs need no return.)
-		// An empty `{}` body is not exempt: nothing declares a signature
-		// without a body any more, so exempting one would just let
-		// `func f() int {}` compile.
+		// paths, an empty `{}` body included.
 		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)

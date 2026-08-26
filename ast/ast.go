@@ -315,6 +315,9 @@ type EventDecl struct {
 	Pos  Pos
 	Name string
 	Type TypeExpr // optional type annotation
+	// Attrs are the #[...] macro attributes written before the event, read
+	// the same way a Param's are.
+	Attrs []MacroAttr `json:",omitempty"`
 }
 
 // EventHandler is an event handler: @name[(params)] { body }.

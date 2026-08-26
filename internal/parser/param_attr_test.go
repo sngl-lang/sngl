@@ -88,8 +88,9 @@ component element(
 	}
 }
 
-// A mark is legal on every CompParam form the grammar hoists it over, except
-// the event form, which has nowhere to carry it.
+// A mark is legal on every CompParam form the grammar hoists it over, the
+// event form included: #[wildcard] says which event names a component answers
+// to as well as which prop names.
 func TestParseParamAttrForms(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -102,7 +103,8 @@ func TestParseParamAttrForms(t *testing.T) {
 		{"binding", `component c(#[m] :a int) {}`, false},
 		{"multiple", `component c(#[m] #[n("x")] a int) {}`, false},
 		{"lambda", `func f() => func(#[m] a int) => a`, false},
-		{"event", `component c(#[m] @click) {}`, true},
+		{"event", `component c(#[m] @click) {}`, false},
+		{"event typed", `component c(#[m] @click E) {}`, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

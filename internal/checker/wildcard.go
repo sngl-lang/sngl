@@ -2,52 +2,21 @@ package checker
 
 import (
 	"fmt"
-	"regexp"
-	"sync"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A wildcard pattern matches a whole name or nothing: `a` does not stand for
-// `data`. The pattern is stored as written, so the anchors are added here
-// rather than in the IR, and \A...\z rather than ^...$ so a pattern cannot opt
-// into matching a line of a multi-line name.
-var (
-	wildcardMu    sync.Mutex
-	wildcardCache = map[string]*regexp.Regexp{}
-)
+// A wildcard is matched where every other name is: a scope checks its
+// wildcards after its map of identifiers (ir.Scope.WildcardMatches), so
+// nothing here knows about packages, platforms, or roots. What remains is the
+// prop side, where the "scope" is a component's prop list.
 
-func compileWildcard(pattern string) (*regexp.Regexp, error) {
-	wildcardMu.Lock()
-	defer wildcardMu.Unlock()
-	if re, ok := wildcardCache[pattern]; ok {
-		return re, nil
-	}
-	// Compile the pattern as written first, so a syntax error names what the
-	// author typed rather than the anchors added around it.
-	if _, err := regexp.Compile(pattern); err != nil {
-		return nil, err
-	}
-	re, err := regexp.Compile(`\A(?:` + pattern + `)\z`)
-	if err != nil {
-		return nil, err
-	}
-	wildcardCache[pattern] = re
-	return re, nil
-}
-
-// wildcardMatches reports whether a wildcard pattern accepted at check time
-// covers name. A pattern that failed to compile was reported where it was
-// written, so it matches nothing here rather than being reported again.
-func wildcardMatches(pattern, name string) bool {
-	if pattern == "" {
-		return false
-	}
-	re, err := compileWildcard(pattern)
-	if err != nil {
-		return false
-	}
-	return re.MatchString(name)
+// compileWildcard reports whether a pattern is usable, at the position it was
+// written, rather than leaving a bad one to match nothing at every call site.
+func compileWildcard(pattern string) error {
+	_, err := ir.CompileWildcard(pattern)
+	return err
 }
 
 // wildcardProp returns the prop of comp whose wildcard pattern covers name.
@@ -55,9 +24,12 @@ func wildcardMatches(pattern, name string) bool {
 // up first; two wildcards covering one name is ambiguous and reported by the
 // caller, which knows the use site.
 func wildcardProp(comp *ir.Component, name string) (*ir.Prop, bool, error) {
+	if comp == nil {
+		return nil, false, nil
+	}
 	var found *ir.Prop
 	for _, p := range comp.Props {
-		if !wildcardMatches(p.Wildcard, name) {
+		if !ir.MatchesWildcard(p.Wildcard, name) {
 			continue
 		}
 		if found != nil {
@@ -68,22 +40,32 @@ func wildcardProp(comp *ir.Component, name string) (*ir.Prop, bool, error) {
 	return found, found != nil, nil
 }
 
-// wildcardComponent returns the component of pkg whose wildcard pattern covers
-// name — the declaration a name nobody declared resolves to. A declared name
-// beats every wildcard, so the caller looks one up first.
-func wildcardComponent(pkg *ir.Package, name string) (*ir.Component, error) {
-	if pkg == nil {
-		return nil, nil
+// applyEventMarks runs the marks written on a component's event declaration.
+// An event sits in the prop list, so the marks legal there are the same ones,
+// and applyMark is told so.
+func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
+	for _, attr := range e.MacroAttrs() {
+		c.applyMark(attr, e, evt, true)
 	}
-	var found *ir.Component
-	for _, comp := range pkg.Components {
-		if !wildcardMatches(comp.Wildcard, name) {
+}
+
+// wildcardEvent returns the event of comp whose pattern covers name. A
+// declared event of that name beats every wildcard, so the caller looks one up
+// first; two wildcards covering one name is ambiguous and reported by the
+// caller, which knows the use site.
+func wildcardEvent(comp *ir.Component, name string) (*ir.EventDecl, bool, error) {
+	if comp == nil {
+		return nil, false, nil
+	}
+	var found *ir.EventDecl
+	for _, e := range comp.Events {
+		if !ir.MatchesWildcard(e.Wildcard, name) {
 			continue
 		}
 		if found != nil {
-			return nil, fmt.Errorf("%q matches both wildcard components %s and %s", name, found.Name, comp.Name)
+			return nil, false, fmt.Errorf("event %q matches both wildcard events %q and %q on component %s", name, found.Name, e.Name, comp.Name)
 		}
-		found = comp
+		found = e
 	}
-	return found, nil
+	return found, found != nil, nil
 }

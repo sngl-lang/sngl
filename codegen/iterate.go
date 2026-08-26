@@ -234,7 +234,47 @@ func NodeProp(n *ir.NodeInst, name string) ir.Expr {
 			return p.Value
 		}
 	}
-	return nil
+	// A name no prop declares may still have been written at the call site
+	// and collected by a wildcard prop, which binds under its own name.
+	return WildcardProps(n)[name]
+}
+
+// WildcardProps is the names a node's wildcard props collected, mapped to the
+// values written for them. A wildcard prop binds once, under its own name, and
+// holds the matched names as its keys — so this is where a backend that reads
+// props by the name the author wrote finds them.
+//
+// Returns nil for a node with no wildcard prop, which is nearly all of them.
+func WildcardProps(n *ir.NodeInst) map[string]ir.Expr {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	var out map[string]ir.Expr
+	for _, dp := range n.Component.Props {
+		if dp.Wildcard == "" {
+			continue
+		}
+		for _, p := range n.Props {
+			if p.Name != dp.Name {
+				continue
+			}
+			m, ok := p.Value.(*ir.MapLitIR)
+			if !ok {
+				continue
+			}
+			for _, e := range m.Entries {
+				k, ok := e.Key.(*ir.Literal)
+				if !ok {
+					continue
+				}
+				if out == nil {
+					out = map[string]ir.Expr{}
+				}
+				out[k.Raw] = e.Value
+			}
+		}
+	}
+	return out
 }
 
 // NodeHandler returns the event handler with the given name, or nil.

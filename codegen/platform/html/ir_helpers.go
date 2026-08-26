@@ -6,6 +6,8 @@ package html
 // these instead of ast.VisualNode accessors.
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -23,7 +25,25 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 		}
 		out[p.Name] = p.Value
 	}
+	// An attribute nobody declared was collected under its wildcard prop's
+	// name; an element's attributes are the names that were written, so the
+	// map is unpacked back into them here — the one place html turns props
+	// into names.
+	maps.Copy(out, codegen.WildcardProps(n))
+	for _, dp := range componentProps(n) {
+		if dp.Wildcard != "" {
+			delete(out, dp.Name)
+		}
+	}
 	return out
+}
+
+// componentProps is the props a node's component declares, or nil.
+func componentProps(n *ir.NodeInst) []*ir.Prop {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	return n.Component.Props
 }
 
 // rawElementTag reports the tag an explicit `tag=` prop names. It is the

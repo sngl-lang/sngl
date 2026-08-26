@@ -1,5 +1,4 @@
 // BubbleTea (Charm TUI) platform package.
-// Raw terminal components are implicitly available via APIResolver.
 //
 // Components render through three inlined blueprint primitives — Layout,
 // Styled, and Widget — described by the blueprint records below (JoinDir,

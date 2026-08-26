@@ -121,14 +121,9 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 }
 
 // resolveMacroSig resolves a macro's declared parameter types, once, the
-// first time a mark of it is applied.
-//
-// It cannot be done as the package loads. sngl://builtin's own files
-// dot-import the package that declares #[builtin], and a package's imports are
-// registered before its declarations, so the mark package loads while `list`
-// still names nothing: `list<ir.IntrinsicFlag>` would degrade to `list<dyn>`
-// and a declared flag list would read as an ordinary expression argument. By
-// the time a mark is applied the generic is in scope.
+// first time a mark of it is applied. Not as the package loads: the mark
+// package loads from inside sngl://builtin's own imports, where `list` names
+// nothing yet and `list<ir.IntrinsicFlag>` would degrade to `list<dyn>`.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -1063,10 +1058,14 @@ func (c *checker) registerPlatformExtensionTypes(platform string) {
 		}
 	}
 	for _, u := range units {
-		c.bindLib(u.Pos, c.scope, c.buildUnitDef(u))
+		ud := c.buildUnitDef(u)
+		c.applyMarks(u, ud)
+		c.bindLib(u.Pos, c.scope, ud)
 	}
 	for _, e := range enums {
-		c.bindLib(e.Pos, c.scope, c.buildEnumDef(e))
+		ed := c.buildEnumDef(e)
+		c.applyMarks(e, ed)
+		c.bindLib(e.Pos, c.scope, ed)
 	}
 	// Declare struct names first so fields can reference sibling types.
 	stubs := make([]*ir.StructDef, len(structs))
@@ -1317,11 +1316,13 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 				Name: pd.Name,
 				Type: c.resolveType(pd.Type),
 			}
+			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		}
 	}
 
 	finishTreeMarks(comp, irComp, pkg)
+	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}

@@ -35,6 +35,8 @@ func (e *EnumDef) MacroAttrs() []MacroAttr       { return e.Attrs }
 // accepts attributes from a declaration accepts them from a parameter too.
 func (p Param) MacroAttrs() []MacroAttr { return p.Attrs }
 
+func (e EventDecl) MacroAttrs() []MacroAttr { return e.Attrs }
+
 func (s *StructDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)     { s.Attrs, s.Pos = attrs, pos }
 func (f *StructField) SetMacroAttrs(pos Pos, attrs []MacroAttr)   { f.Attrs, f.Pos = attrs, pos }
 func (f *FuncDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { f.Attrs, f.Pos = attrs, pos }

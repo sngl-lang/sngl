@@ -46,12 +46,12 @@ struct Options {
 // else is one, which is what the wildcard prop says. A tag-specific numeric
 // attribute missing from this list is accepted as a string rather than
 // rejected.
-#[wildcard("[a-zA-Z][a-zA-Z0-9]*")]
+#[wildcard("[a-zA-Z][a-zA-Z0-9]*", "tag")]
 component element(
-    // The tag to emit, in place of the name this resolved from. This is how a
-    // hyphenated custom element is written, an identifier holding no hyphen.
-    // It names the element rather than describing it, so it is never emitted
-    // as an attribute.
+    // The name this resolved from — `html.div` binds "div" — and the tag to
+    // emit. Writing it is how a hyphenated custom element is reached, an
+    // identifier holding no hyphen: `html.element(tag="my-widget")`. It names
+    // the element rather than describing it, so it is never an attribute.
     tag string,
 
     style sngl.Style,
@@ -77,14 +77,15 @@ component element(
     value string,
     max string,
 
-    // Every other attribute. `data-*` and `aria-*` reach an element this way,
-    // as does an attribute a standard adds after this file was written.
+    // Every other attribute, keyed by the name it was written under. `data-*`
+    // and `aria-*` reach an element this way, as does an attribute a standard
+    // adds after this file was written.
     //
     // Lowercase, because HTML attribute names are: a camelCase name is a DOM
     // property rather than an attribute, and the ones an element takes are
     // declared above. That is what makes a misspelling here reportable at all.
     #[wildcard("[a-z][a-z0-9]*([-:.][a-z0-9]+)*")]
-    attr string,
+    attrs map<string, string>,
 
     @click sngl.ClickEvent,
     @input sngl.InputEvent,
@@ -97,6 +98,16 @@ component element(
     @error sngl.ErrorEvent,
     @close sngl.DismissEvent,
     @select sngl.SelectEvent,
+
+    // Every other DOM event. The event set is as open as the element set and
+    // the attribute set, for the same reason: a standard adds to it. The
+    // events above are declared for their payload types, not as the whole
+    // list, so one that carries nothing SNGL can name reaches a handler here.
+    //
+    // Void, because a payload this cannot name is one a handler cannot read;
+    // an event whose payload matters is declared above.
+    #[wildcard("[a-z][a-z0-9]*")]
+    @event,
 ) list<component> {}
 
 // --- Core Layout ---

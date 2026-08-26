@@ -370,6 +370,10 @@ type Component struct {
 	// component when the pattern matches the whole name. Empty for an
 	// ordinary component, which only its own name reaches.
 	Wildcard string `json:",omitempty"`
+	// WildcardInto names the prop the matched name binds to, from the mark's
+	// second argument. Without it the name a wildcard matched reaches nothing:
+	// the component was resolved by a name it has no way to read.
+	WildcardInto string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
 	Pkg          string
 	Props        []*Prop
@@ -444,6 +448,9 @@ type Prop struct {
 type EventDecl struct {
 	Name string
 	Type *Type // payload type; nil for void events
+	// Wildcard is the pattern this event answers to beyond its own name, from
+	// #[wildcard]. Empty for an ordinary event.
+	Wildcard string `json:",omitempty"`
 	// NativeSignal is the platform-provided signal name (e.g.
 	// "clicked" for GtkButton's click event). Empty for events
 	// without a platform binding.
@@ -669,3 +676,7 @@ type StaticTarget struct {
 	Platform string
 	Language string
 }
+
+// WildcardPattern implements ir.WildcardSymbol: a component carrying
+// #[wildcard] answers to every name its pattern matches.
+func (c *Component) WildcardPattern() string { return c.Wildcard }

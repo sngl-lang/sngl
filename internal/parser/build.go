@@ -904,11 +904,7 @@ func (b *builder) buildCompParamBody(it nodeIter, attrs []ast.MacroAttr) ast.Par
 			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 				e.Type = b.buildType(it.enter())
 			}
-			// The grammar hoists marks ahead of all three CompParam forms, so an
-			// event can carry one syntactically; nothing consumes it.
-			if len(attrs) > 0 {
-				b.errorf(attrs[0].Pos, "a mark cannot be attached to an event declaration")
-			}
+			e.Attrs = attrs
 			return e
 		case IDENT:
 			nameTok := it.shift()

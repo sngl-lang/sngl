@@ -1,22 +1,37 @@
 // #[wildcard] on a component prop says which prop names nobody declared the
-// component still accepts, and what type their values have. Without it the
-// only accepted names are the declared ones.
+// component still accepts, and what type their values have. The prop collects
+// every name it matched, keyed by that name, so the body can read them —
+// without that the values are accepted and then reach nothing.
 
 import . "sngl://std"
 import . "sngl://platforms"
 
 component attrs(
     label string = "",
-    #[wildcard("data[A-Za-z0-9]+")] data string = "",
+    #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,
 ) {
     text(value = label)
+    text(value = "{data.length()}")
+}
+
+// #[wildcard] on an event declaration says which event names nobody declared
+// the component still accepts. Nothing is collected, unlike a prop: a handler
+// is bound under the name it was written with, so the names stay distinct
+// without a map to hold them.
+component surface(
+    @click ClickEvent,
+    #[wildcard("on[A-Z][A-Za-z]*")] @event,
+) {
+    text(value = "x")
 }
 
 component main() {
     window {
         attrs(label = "hi", dataRole = "row", dataIndex7 = "3")
+        // A declared event and two the wildcard covers, on one node.
+        surface(@click { }, @onHover { }, @onDragEnd { })
         // The declared name still binds: a wildcard adds names, it does not
         // take its own away.
-        attrs(data = "plain")
+        attrs(data = {dataRole = "plain"})
     }
 }

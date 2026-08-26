@@ -26,9 +26,16 @@ func options() ir.Macro {}
 // declared — instead of a plugin accepting every identifier silently and
 // leaving the compiler nothing to check a call against.
 //
-// On a component prop, a prop name that matches is accepted at a call site
-// and its value checked against the prop's declared type.
+// `into` names the prop the matched name binds to, and is what makes the name
+// readable: a component resolved by a name nobody declared has no other way to
+// learn which one it was. Only a component's mark takes it.
+//
+// On a component prop, a prop name that matches is accepted at a call site and
+// its value checked against the prop's value type. Such a prop is a
+// `map<string, V>` and collects every name it matched, keyed by that name —
+// one call site binds a wildcard prop as many times as it likes, which a
+// scalar has no room for.
 //
 // A declared name always beats a wildcard, and a name two wildcards match is
 // an error rather than whichever was written first.
-func wildcard(pattern string) ir.Macro {}
+func wildcard(pattern string, into string = "") ir.Macro {}

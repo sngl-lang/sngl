@@ -10,14 +10,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// markImpls binds each macro the compiler implements to the code that runs for
-// it. It says nothing else about a macro: the package, the name, the parameter
-// list and the documentation are all read off the `func X(...) ir.Macro`
-// declaration in lib/, which is also the only place they can be read from —
-// `sngl doc` renders the declaration.
-//
-// A declaration with no entry here is a mark that would resolve and then do
-// nothing; lib/macros_test.go reports one.
+// markImpls binds each macro the compiler implements to the code that runs
+// for it, and says nothing else about one. A declaration with no entry here is
+// a mark that would resolve and then do nothing.
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
@@ -319,7 +314,7 @@ func markWildcard(m *mark) error {
 	if pat == "" {
 		return fmt.Errorf("#[wildcard] requires a non-empty pattern")
 	}
-	if _, err := compileWildcard(pat); err != nil {
+	if err := compileWildcard(pat); err != nil {
 		return fmt.Errorf("#[wildcard(%q)]: %w", pat, err)
 	}
 	switch d := m.sym.(type) {
@@ -327,14 +322,69 @@ func markWildcard(m *mark) error {
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
 		}
-		d.Wildcard = pat
+		d.Wildcard, d.WildcardInto = pat, m.args.String("into")
+		// The prop it names is checked by finishWildcardMarks: a component's
+		// marks run before its props are built, so there is nothing to look
+		// the name up in yet.
 	case *ir.Prop:
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
 		}
+		if m.args.Has("into") {
+			return fmt.Errorf("#[wildcard(%q)]: `into` names where a matched name is bound, which only a component's mark has to say; a prop's matched names are its own keys", pat)
+		}
+		if err := checkWildcardPropType(d); err != nil {
+			return fmt.Errorf("#[wildcard(%q)] on prop %q: %w", pat, d.Name, err)
+		}
+		d.Wildcard = pat
+	case *ir.EventDecl:
+		if d.Wildcard != "" {
+			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
+		}
+		if m.args.Has("into") {
+			return fmt.Errorf("#[wildcard(%q)]: `into` names where a matched name is bound, which only a component's mark has to say; a handler already carries the name it was written under", pat)
+		}
+		// No map, unlike a prop: a handler is bound under its own name in the
+		// IR, so the names a wildcard event matched are already distinct
+		// without being collected anywhere.
 		d.Wildcard = pat
 	default:
-		return fmt.Errorf("#[wildcard(%q)] cannot mark %T; only a component or one of its props stands for names nobody declared", pat, m.decl)
+		return fmt.Errorf("#[wildcard(%q)] cannot mark %T; only a component, one of its props or one of its events stands for names nobody declared", pat, m.decl)
 	}
 	return nil
+}
+
+// checkWildcardPropType requires a wildcard prop to be a map keyed by string.
+// A wildcard prop stands for many names at once, so one call site can bind it
+// many times; a scalar has room for one of them, and the rest were being
+// accepted and then dropped on the floor.
+func checkWildcardPropType(p *ir.Prop) error {
+	t := p.Type
+	if t == nil || t.Kind != ir.TypeMap || len(t.Elems) != 2 || t.Elems[0].Kind != ir.TypeString {
+		got := "no type"
+		if t != nil {
+			got = t.String()
+		}
+		return fmt.Errorf("a wildcard prop collects every name it matches, so it is a map keyed by that name; declare it map<string, V> rather than %s", got)
+	}
+	return nil
+}
+
+// finishWildcardMarks validates the `into` prop a component's wildcard mark
+// names, once its props exist. The matched name is a name, so the prop it
+// binds to holds a string.
+func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
+	if comp == nil || comp.WildcardInto == "" {
+		return
+	}
+	for _, p := range comp.Props {
+		if p.Name != comp.WildcardInto {
+			continue
+		}
+		if p.Type == nil || p.Type.Kind != ir.TypeString {
+			c.error(pos, "#[wildcard(..., %q)] on component %s: the matched name is a name, so %q holds a string", comp.WildcardInto, comp.Name, p.Name)
+		}
+		return
+	}
+	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
 }

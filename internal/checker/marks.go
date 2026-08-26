@@ -17,15 +17,8 @@ type markTarget interface {
 	MacroAttrs() []ast.MacroAttr
 }
 
-// A mark is a macro written as `#[...]` on a declaration. Everything about one
-// except what it does comes from its declaration in lib/: the package it lives
-// in, its name, its parameter list and its documentation are read off
-// `func X(...) ir.Macro`. The compiler adds an implementation, bound here by
-// the declaration's identity.
-//
-// Marks are resolved and applied where the checker registers the declaration
-// they annotate, so a mark can state a semantic fact about it directly. There
-// is no separate expansion pass and no AST field between the two.
+// markKey identifies a mark by the lib/ declaration it was written from,
+// which is what an implementation is bound to.
 type markKey struct{ pkg, name string }
 
 // markImpl is what a mark does. It is handed the arguments the checker
@@ -96,7 +89,7 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 	impl, ok := markImpls[markKey{uri, attr.Name}]
 	if !ok {
 		// The declaration says the macro exists; nothing in the compiler says
-		// what it does. lib/macros_test.go pins this shut.
+		// what it does.
 		c.error(attr.Pos, "macro %s is declared by sngl://%s but the compiler implements no mark for it", attr.MarkName(), uri)
 		return
 	}

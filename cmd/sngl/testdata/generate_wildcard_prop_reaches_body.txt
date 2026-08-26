@@ -1,0 +1,43 @@
+# A prop name matched by #[wildcard] is collected into the wildcard prop under
+# that prop's own name, which is what lets a component's own body read the
+# value written for it. Collecting it anywhere else validates the value and
+# then drops it silently: every pass downstream binds a body's prop reference
+# by the declared prop's name, so the body reads the prop's zero value with
+# nothing anywhere reporting the loss.
+#
+# The assertion is on the lowered IR rather than on markup because the static
+# HTML renderer does not fold a map iteration into text — a plain map prop
+# behaves the same way there, so markup could not tell the two apart.
+
+sngl dump --stage lowered --lang none --platform html app.sngl
+
+# The body's `data` reference became the map built from the call site, so the
+# name that matched and the value written for it both arrived.
+stdout 'for k, v = \{"dataRole" = "row-7"\}'
+
+# The declared prop still binds under its own name, and is not collected.
+stdout 'textContent="plain"'
+
+# The name a component-level wildcard matched reaches the declaration too:
+# `vbox` renders through html.div, and `element` reads the tag it resolved to.
+stdout 'tag="div"'
+
+-- app.sngl --
+import . "sngl://std"
+import . "sngl://platforms"
+
+component badge(
+    label string = "",
+    #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
+) {
+    text(value = label)
+    for k, v = data {
+        text(value = v)
+    }
+}
+
+component main {
+    vbox {
+        badge(label = "plain", dataRole = "row-7")
+    }
+}

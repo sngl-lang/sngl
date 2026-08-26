@@ -798,6 +798,7 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 	case ast.Param:
 		f.writeParam(v, multiline)
 	case ast.EventDecl:
+		f.writeParamAttrs(v.Attrs, multiline)
 		f.write("@")
 		f.write(v.Name)
 		if v.Type != nil {

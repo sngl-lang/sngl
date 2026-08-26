@@ -1636,9 +1636,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if _, local, ok := strings.Cut(tag, "."); ok {
 		tag = local
 	}
-	// An explicit tag= names the element; it is how a tag no identifier can
-	// spell (a hyphenated custom element) is written, so it wins over the
-	// resolved name and is not an attribute.
+	// The tag the element resolved to: `element` binds the matched name to
+	// its `tag` prop, and a call site that wrote one of its own — the way a
+	// hyphenated custom element is reached — replaced it there. n.Name is the
+	// fallback for a node that resolved to no component at all.
 	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
@@ -1846,9 +1847,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		case "change":
 			g.addChangeHandler(id, h.Func)
 		default:
-			// A raw element's event name *is* the DOM event name. This used to
-			// fall through to click, so `@mouseover` silently wired a click
-			// listener.
+			// A raw element's event name *is* the DOM event name.
 			g.addNamedHandler(id, h.Name, h.Func.Block)
 		}
 	}
