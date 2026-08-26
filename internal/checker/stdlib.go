@@ -980,11 +980,9 @@ func (c *checker) checkPendingExtensions() {
 	if len(c.pendingExtensions) == 0 {
 		return
 	}
-	// Group by platform so each platform's blueprint types (the enums/structs/
-	// units declared at the top level of its Package() docs — e.g. bubbletea's
-	// JoinDir/Model) are in scope while its extension bodies are checked. They
-	// must be scoped per platform: several platforms each declare a distinct
-	// `struct Options`.
+	// Group by platform so each platform's own package is in scope while its
+	// extension bodies are checked. It must be scoped per platform: several
+	// platforms each declare a distinct `struct Options`.
 	var order []string
 	byPlatform := map[string][]pendingExtension{}
 	for _, pe := range c.pendingExtensions {
@@ -1003,10 +1001,18 @@ func (c *checker) checkPendingExtensions() {
 		// Platform bodies are written against the standard library they
 		// extend (bare `slot`, `text`, …), which reaches user scope only by
 		// import. Resolve them in the std package's own scope, which chains
-		// to the ambient builtins.
+		// to the ambient builtins, with the platform's own package between the
+		// two — the same scope a `platform x { ... }` block in user code gets,
+		// so a body names its package's declarations (bubbletea's Layout, its
+		// JoinDir) as the instances that package registered rather than as
+		// re-registered copies, which would not unify with the prop types
+		// built from them.
 		c.scope = c.stdlibPkg.Symbols.Root
+		if ps := c.buildPlatformPkgScope(platform); ps != nil {
+			ps.Parent = c.scope
+			c.scope = ps
+		}
 		c.pushScope()
-		c.registerPlatformExtensionTypes(platform)
 		for _, pe := range byPlatform[platform] {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
@@ -1021,62 +1027,6 @@ func (c *checker) checkPendingExtensions() {
 			pe.comp.Body = savedBody
 		}
 		c.popScope()
-	}
-}
-
-// registerPlatformExtensionTypes declares the blueprint enum/struct/unit types
-// from the named platform's package source into the current (pushed) scope, so
-// platform-extension bodies resolve them as real types rather than falling to
-// the platform's component resolver. Scope-local by design — these names are
-// not globally visible and do not collide across platforms.
-func (c *checker) registerPlatformExtensionTypes(platform string) {
-	var p ir.Platform
-	for _, pl := range c.cfg.Platforms {
-		if pl.PlatformIdentifier() == platform {
-			p = pl
-			break
-		}
-	}
-	if p == nil {
-		return
-	}
-	var enums []*ast.EnumDef
-	var structs []*ast.StructDef
-	var units []*ast.UnitDef
-	docs := c.libDocs("platforms/" + platform)
-	defer c.setMarkScope(docs)()
-	for _, doc := range docs {
-		for _, s := range doc.Stmts {
-			switch d := s.(type) {
-			case *ast.EnumDef:
-				enums = append(enums, d)
-			case *ast.StructDef:
-				structs = append(structs, d)
-			case *ast.UnitDef:
-				units = append(units, d)
-			}
-		}
-	}
-	for _, u := range units {
-		ud := c.buildUnitDef(u)
-		c.applyMarks(u, ud)
-		c.bindLib(u.Pos, c.scope, ud)
-	}
-	for _, e := range enums {
-		ed := c.buildEnumDef(e)
-		c.applyMarks(e, ed)
-		c.bindLib(e.Pos, c.scope, ed)
-	}
-	// Declare struct names first so fields can reference sibling types.
-	stubs := make([]*ir.StructDef, len(structs))
-	for i, s := range structs {
-		sd := &ir.StructDef{AST: s, Name: s.Name}
-		c.applyMarks(s, sd)
-		c.bindLib(s.Pos, c.scope, sd)
-		stubs[i] = sd
-	}
-	for i, s := range structs {
-		stubs[i].Fields = c.buildStructDef(s).Fields
 	}
 }
 

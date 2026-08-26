@@ -25,19 +25,10 @@ func (g *Generator) Description() string {
 	return "Terminal UI, written in Go using the Bubble Tea framework."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	// Bubbletea accepts any tag name; its codegen reads metadata directly
-	// from blueprint .sngl bodies (Layout/Styled/Widget).
-	// The wildcard prop says the same about its props as the name does about
-	// the tag: nothing declares them here, so there is nothing for the
-	// checker to reject a prop name against.
-	// The wildcard says the same about its props as the name does about the
-	// tag: nothing declares them here, so there is nothing for the checker to
-	// reject a name against. Untyped, so the values stay under the names that
-	// were written — this component has no body to collect them into a map
-	// for, and the blueprint extractor reads them by those names.
-	return &ir.Component{Name: identifier, Props: []*ir.Prop{{Name: "props", Wildcard: ".*"}}}
-}
+
+// Resolve answers nothing: the blueprint primitives a `platform bubbletea
+// { ... }` body writes are declared in bubbletea.sngl.
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	f.InlineComponents = false

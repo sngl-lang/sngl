@@ -1,9 +1,9 @@
 // BubbleTea (Charm TUI) platform package.
 //
-// Components render through three inlined blueprint primitives — Layout,
-// Styled, and Widget — described by the blueprint records below (JoinDir,
-// Model, Focus, Bind, Event). The Go extractor in blueprint.go reads these
-// off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
+// Components render through four inlined blueprint primitives — Layout,
+// Styled, Widget and Overlay — whose props are the blueprint records below
+// (JoinDir, Model, Focus, Bind, Event). The Go extractor in blueprint.go reads
+// these off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
 // primitive lowers to lipgloss / bubbles model code.
 
 import sngl "sngl://std"
@@ -56,6 +56,50 @@ struct Event {
     on string
     key string
 }
+
+// --- The primitives ---
+//
+// Every body below renders through exactly one of these. Their props are the
+// blueprint: extractBlueprint reads them off the inlined NodeInst by the names
+// declared here, so a rename here is a rename in blueprint.go.
+
+component Layout(
+    join JoinDir,
+    style sngl.Style,
+    // Body text revealed, dim, under the focused trigger this Layout wraps.
+    tooltip string,
+) list<component> {}
+
+component Styled(
+    content string,
+    focus Focus,
+    events list<Event>,
+    style sngl.Style,
+) {}
+
+component Widget(
+    model Model,
+    focus Focus,
+    binds list<Bind>,
+    placeholder string,
+    style sngl.Style,
+
+    // Operands for the `$\{name\}` tokens in this widget's Model strings. A
+    // token names one of these props, so the set grows with the templates
+    // rather than with the widget count.
+    options list<string>,
+    items list<string>,
+    columns list<string>,
+    rows list<list<string>>,
+    value float,
+    max float,
+) {}
+
+component Overlay(
+    placement string,
+    dim bool,
+    style sngl.Style,
+) list<component> {}
 
 // --- Core Layout ---
 
@@ -213,7 +257,7 @@ component sngl.textarea {
 
 component sngl.datepicker {
     platform bubbletea {
-        Styled(content=value, style={...style}) {}
+        Styled(content=string(value), style={...style}) {}
     }
 }
 

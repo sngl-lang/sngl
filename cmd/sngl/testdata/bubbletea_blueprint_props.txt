@@ -1,0 +1,53 @@
+# The blueprint primitives every `platform bubbletea { ... }` body renders
+# through are declared in sngl://platforms/bubbletea, so a call against one is
+# checked like any other. Before, the platform's Resolve() minted a component
+# for whatever name was written, carrying one untyped wildcard prop: every prop
+# name, every prop value and every event name passed unchecked.
+
+# A prop nobody declared is an error.
+! sngl check badprop.sngl
+stderr 'unknown prop "styl" on component Styled'
+
+# So is an event. The wildcard sat on a prop, so event validation was skipped
+# entirely — these primitives declare no events, and take none.
+! sngl check badevent.sngl
+stderr 'unknown event "bogus" on component Layout'
+
+# A declared prop's type is checked. `join` selects the lipgloss axis and is a
+# JoinDir, not a string.
+! sngl check badtype.sngl
+stderr 'cannot use string as JoinDir for prop "join" on component Layout'
+
+# The primitives themselves still resolve.
+sngl check good.sngl
+
+-- badprop.sngl --
+import . "sngl://std"
+import bt "sngl://platforms/bubbletea"
+
+component main {
+    bt.Styled(content = "hi", styl = {}) {}
+}
+-- badevent.sngl --
+import . "sngl://std"
+import bt "sngl://platforms/bubbletea"
+
+component main {
+    bt.Layout(join = bt.JoinDir.vertical, @bogus { }) {}
+}
+-- badtype.sngl --
+import . "sngl://std"
+import bt "sngl://platforms/bubbletea"
+
+component main {
+    bt.Layout(join = "vertical") {}
+}
+-- good.sngl --
+import . "sngl://std"
+import bt "sngl://platforms/bubbletea"
+
+component main {
+    bt.Layout(join = bt.JoinDir.vertical) {
+        bt.Styled(content = "hi") {}
+    }
+}

@@ -26,19 +26,10 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	// Fyne accepts any tag name; codegen reads metadata from blueprint
-	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
-	// The wildcard prop says the same about its props as the name does about
-	// the tag: nothing declares them here, so there is nothing for the
-	// checker to reject a prop name against.
-	// The wildcard says the same about its props as the name does about the
-	// tag: nothing declares them here, so there is nothing for the checker to
-	// reject a name against. Untyped, so the values stay under the names that
-	// were written — this component has no body to collect them into a map
-	// for, and the blueprint extractor reads them by those names.
-	return &ir.Component{Name: identifier, Props: []*ir.Prop{{Name: "props", Wildcard: ".*"}}}
-}
+
+// Resolve answers nothing: every name a `platform fyne { ... }` body writes is
+// declared in fyne.sngl.
+func (g *Generator) Resolve(identifier string) ir.Symbol { return nil }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>` Assigns
