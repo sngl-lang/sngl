@@ -92,6 +92,26 @@ component Text(
     style sngl.Style,
 ) {}
 
+#[intrinsic("android:HorizontalDivider")]
+component HorizontalDivider(
+    modifier sngl.Style,
+) {}
+
+#[intrinsic("android:CircularProgressIndicator")]
+component CircularProgressIndicator(
+    modifier sngl.Style,
+) {}
+
+#[intrinsic("android:Card")]
+component Card(
+    modifier sngl.Style,
+) list<component> {}
+
+#[intrinsic("android:TabRow")]
+component TabRow(
+    selectedTabIndex int,
+) list<component> {}
+
 // --- Core Layout ---
 
 component sngl.vbox {
@@ -203,8 +223,10 @@ component sngl.progress() {
     LinearProgressIndicator {}
 }
 
-component sngl.spinner() {
-    CircularProgressIndicator {}
+component sngl.spinner {
+    platform android {
+        CircularProgressIndicator(modifier={...style}) {}
+    }
 }
 
 component sngl.badge() {
@@ -213,13 +235,17 @@ component sngl.badge() {
     }
 }
 
-component sngl.divider() {
-    HorizontalDivider {}
+component sngl.divider {
+    platform android {
+        HorizontalDivider(modifier={...style}) {}
+    }
 }
 
-component sngl.card() {
-    Card {
-        slot
+component sngl.card {
+    platform android {
+        Card(modifier={...style}) {
+            slot
+        }
     }
 }
 
@@ -233,9 +259,11 @@ component sngl.link() {
     }
 }
 
-component sngl.tabs() {
-    Column {
-        slot
+component sngl.tabs {
+    platform android {
+        TabRow(selectedTabIndex=selected) {
+            slot
+        }
     }
 }
 

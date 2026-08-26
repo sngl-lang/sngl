@@ -378,12 +378,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 			cc.line("LinearProgressIndicator(%s)", style)
 		}
 
-	case "spinner":
-		cc.line("CircularProgressIndicator(%s)", style)
-
-	case "divider":
-		cc.line("HorizontalDivider(%s)", style)
-
 	case "badge":
 		content := cc.resolveContent(n)
 		cc.line("Badge(%s) { Text(%s) }", style, content)
@@ -394,15 +388,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 
 	case "image":
 		cc.line("// TODO: Image composable")
-
-	case "card":
-		cc.line("Card(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
 
 	case "modal":
 		openExpr := codegen.NodeProp(n, "open")
@@ -428,15 +413,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 			cc.indent--
 			cc.line("}")
 		}
-
-	case "tabs":
-		cc.line("TabRow(selectedTabIndex = 0) {")
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
 
 	case "datepicker":
 		// One-way `value` (the date, a String on Android) + @change. Rendered
