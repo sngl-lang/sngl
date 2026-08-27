@@ -16,10 +16,15 @@ import (
 // Generate refuses, so there is nothing to assert. Tests that additionally
 // need a real GTK to compile or render gate on pkg-config as well (see
 // internal/testutil.ComponentFixtureSkipReason).
+// skipWithoutGIR skips a test that asserts the host GTK's own catalogue --
+// which classes exist, which properties it records a setter for. Since the
+// platform falls back to the bundled subset, Unavailable() can no longer fail,
+// so the condition is whether the registry came from that subset rather than
+// whether one loaded at all.
 func skipWithoutGIR(t *testing.T) {
 	t.Helper()
-	if err := (&Generator{}).Unavailable(); err != nil {
-		t.Skipf("gtk4 metadata unavailable: %v", err)
+	if (&Generator{}).usingMinimalGIR() {
+		t.Skip("no host Gtk-4.0.gir; the bundled subset does not carry the catalogue this asserts")
 	}
 }
 

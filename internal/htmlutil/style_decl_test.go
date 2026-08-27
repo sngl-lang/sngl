@@ -6,6 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
 )
 
@@ -23,9 +24,14 @@ func TestStyleFieldsAllReachCSS(t *testing.T) {
 	if len(fields) < 20 {
 		t.Fatalf("found only %d Style fields; the declaration was not read", len(fields))
 	}
+	// Through the renderer the platform actually calls, with a value that suits
+	// every field's type. A predicate written beside the test can agree with the
+	// declaration while the renderer drops the field -- which is what happened:
+	// the six multi-declaration props were listed as supported by hand, so
+	// deleting one of their arms went undetected.
 	for _, name := range fields {
-		if !htmlutil.StylePropSupported(name) {
-			t.Errorf("Style.%s is declared in lib/std but has no CSS mapping: it renders as nothing", name)
+		if css := htmlutil.StylePropToCSSIR(name, &ir.Literal{Type: ir.TypInt, Raw: "1"}); css == "" {
+			t.Errorf("Style.%s is declared in lib/std and renders as nothing", name)
 		}
 	}
 }

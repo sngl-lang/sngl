@@ -75,6 +75,16 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 		buildable = append(buildable, n)
 	}
 	t.Logf("%d of %d classes generate; %d refuse with a diagnostic", len(buildable), len(names), len(refused))
+	// Refusing is a valid answer for a class, so the counts have to be guarded:
+	// a change that made every widget refuse would otherwise leave nothing to
+	// compile and nothing to fail.
+	if len(buildable) == 0 {
+		t.Fatal("no class generated; the surface asserted nothing")
+	}
+	if min := len(names) / 2; len(buildable) < min {
+		t.Errorf("only %d of %d classes generate; want at least %d -- the surface collapsed rather than a class refusing",
+			len(buildable), len(names), min)
+	}
 
 	var b strings.Builder
 	for _, n := range buildable {

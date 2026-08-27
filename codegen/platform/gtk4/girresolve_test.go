@@ -1,7 +1,14 @@
 package gtk4
 
 import (
+	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 )
@@ -83,4 +90,110 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 			t.Errorf("nil generator: %v", err)
 		}
 	})
+}
+
+// The bundled subset has to carry the setter GIR records for every property the
+// stdlib overrides bind, not merely the classes. A property it declares without
+// one still compiles: the emitter falls through to g_object_set_property, so the
+// generated code differs by host and nothing says so. Asserted as the absence of
+// that fallback across every override, which needs no system GIR to check.
+func TestBundledGIRLosesNoSetter(t *testing.T) {
+	const src = `import . "sngl://std"
+component main() {
+    window(title="t") {
+        vbox {
+            text(value="a")
+            button(text="b")
+            input(value="c")
+            checkbox(label="d", checked=true)
+            image(src="e")
+            progress(value=0.5, showValue=true)
+            spinner(label="f")
+            divider()
+            toggle(checked=true)
+            datepicker()
+            link(href="g", text="h")
+            card {}
+            stack {}
+            popover(open=true)
+            tooltip(text="i") { text(value="j") }
+            spacer()
+            scroll { text(value="s") }
+            textarea(value="k")
+        }
+    }
+}
+`
+	out := generateWithBundledGIR(t, src)
+	if generic := strings.Count(out, "sngl_set_prop_"); generic != 0 {
+		t.Errorf("%d property assignments fell through to g_object_set_property; the bundled GIR records no setter for them:\n%s",
+			generic, genericPropLines(out))
+	}
+	// A guard, because zero fallbacks is also what an empty program emits.
+	if n := strings.Count(out, "C.gtk_"); n < 20 {
+		t.Errorf("only %d gtk calls emitted; the fixture did not exercise the overrides", n)
+	}
+}
+
+// genericPropLines is the fallback call sites, for a failure that names them.
+func genericPropLines(out string) string {
+	var b strings.Builder
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.Contains(line, "sngl_set_prop_") && strings.Contains(line, "C.CString(") {
+			b.WriteString(strings.TrimSpace(line))
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
+// generateWithBundledGIR compiles src with every gtk4 registry pinned to the
+// bundled subset: the registered platform the checker reads declarations from,
+// and the generator that emits. Both, because they are separate objects -- and a
+// helper that configured only one silently measured the host's GIR, which is how
+// the first version of this test passed with a setter deliberately removed.
+func generateWithBundledGIR(t *testing.T, src string) string {
+	t.Helper()
+
+	g := &Generator{}
+	if err := g.Configure(map[string]string{"gir": girBuiltin}); err != nil {
+		t.Fatalf("configure: %v", err)
+	}
+	if !g.usingMinimalGIR() {
+		t.Fatal("the generator did not take the bundled subset; this would measure the host GIR")
+	}
+	for _, p := range codegen.CollectPlatforms() {
+		reg, ok := p.(*Generator)
+		if !ok || reg.PlatformIdentifier() != platformName {
+			continue
+		}
+		if err := reg.Configure(map[string]string{"gir": girBuiltin}); err != nil {
+			t.Fatalf("configure registered gtk4: %v", err)
+		}
+		t.Cleanup(func() { _ = reg.Configure(map[string]string{}) })
+	}
+
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms()})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check: %s", d.Msg)
+		}
+	}
+	lang := codegen.LookupLang("go")
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: platformName}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+		t.Fatalf("generate against the bundled GIR: %v", err)
+	}
+	model, ok := mem.Files()["model.go"]
+	if !ok {
+		t.Fatal("no model.go emitted")
+	}
+	return string(model)
 }

@@ -134,13 +134,7 @@
       <constructor name="new" c:identifier="gtk_entry_new"/>
     </class>
     <class name="Button" c:type="GtkButton" parent="Widget">
-      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
-        <parameters>
-          <parameter name="label" transfer-ownership="none" nullable="1">
-            <type name="utf8" c:type="const gchar*"/>
-          </parameter>
-        </parameters>
-      </constructor>
+      <constructor name="new" c:identifier="gtk_button_new"/>
       <method name="set_label" c:identifier="gtk_button_set_label">
         <parameters>
           <instance-parameter name="button">
@@ -304,16 +298,46 @@
       <property name="fraction" writable="1" setter="set_fraction">
         <type name="gdouble" c:type="gdouble"/>
       </property>
-      <property name="text" writable="1">
+      <method name="set_text" c:identifier="gtk_progress_bar_set_text">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_show_text" c:identifier="gtk_progress_bar_set_show_text">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="setting">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="text" writable="1" setter="set_text">
         <type name="utf8" c:type="gchar*"/>
       </property>
-      <property name="show-text" writable="1">
+      <property name="show-text" writable="1" setter="set_show_text">
         <type name="gboolean" c:type="gboolean"/>
       </property>
     </class>
     <class name="Spinner" c:type="GtkSpinner" parent="Widget">
       <constructor name="new" c:identifier="gtk_spinner_new"/>
-      <property name="spinning" writable="1">
+      <method name="set_spinning" c:identifier="gtk_spinner_set_spinning">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Spinner" c:type="GtkSpinner*"/>
+          </instance-parameter>
+          <parameter name="spinning">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="spinning" writable="1" setter="set_spinning">
         <type name="gboolean" c:type="gboolean"/>
       </property>
     </class>
@@ -387,7 +411,17 @@
     </class>
     <class name="Popover" c:type="GtkPopover" parent="Widget">
       <constructor name="new" c:identifier="gtk_popover_new"/>
-      <property name="autohide" writable="1">
+      <method name="set_autohide" c:identifier="gtk_popover_set_autohide">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Popover" c:type="GtkPopover*"/>
+          </instance-parameter>
+          <parameter name="autohide">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="autohide" writable="1" setter="set_autohide">
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <glib:signal name="closed">

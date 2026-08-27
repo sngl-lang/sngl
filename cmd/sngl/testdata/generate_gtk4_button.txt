@@ -29,9 +29,12 @@ grep 'gtk_button_set_label' out/model.go
 grep 'gtk_label_set_text' out/model.go
 ! grep 'gtk_label_set_label' out/model.go
 
-# Button constructor from the inline GIR (gtk_button_new_with_label is the
-# first/only constructor in the fixture, exercising the GIR-driven ctor path).
-grep 'gtk_button_new_with_label' out/model.go
+# The constructor comes from the GIR rather than from the class name, and the
+# bundled subset names the same one the system GIR does -- gtk_button_new takes
+# no arguments, while gtk_button_new_with_label is a separate constructor the
+# emitter must not reach for.
+grep 'gtk_button_new\(\)' out/model.go
+! grep 'gtk_button_new_with_label' out/model.go
 
 # tooltip-text and sensitive are declared only on Widget, and reach GtkBox and
 # GtkButton down the parent chain. Their setters take a GtkWidget*, so the

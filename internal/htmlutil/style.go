@@ -179,22 +179,6 @@ func PropToCSS(prop string) string {
 	}
 }
 
-// StylePropSupported reports whether a `Style` field reaches CSS at all: it
-// either has a direct PropToCSS mapping or is one of the fields stylePropCSS
-// expands into several declarations.
-//
-// It exists for the test that enumerates `Style`'s declared fields against it.
-// A field declared in lib/std with no mapping here type-checks and then renders
-// as nothing, silently — which has happened twice — so the declaration and the
-// mapping are held in step by a test rather than by review.
-func StylePropSupported(prop string) bool {
-	switch prop {
-	case "paddingX", "paddingY", "marginX", "marginY", "borderWidth", "maxLines":
-		return true
-	}
-	return PropToCSS(prop) != ""
-}
-
 // IsNumeric reports whether s consists only of digits, dots, and hyphens.
 func IsNumeric(s string) bool {
 	for _, c := range s {
