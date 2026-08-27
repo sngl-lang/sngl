@@ -200,6 +200,22 @@ type blueprint struct {
 // extractBlueprint reads a blueprint off an inlined primitive node. Kind is
 // decided structurally: a `model` prop ⇒ Widget; else a `join` prop ⇒ Layout;
 // else Styled.
+// btIntrinsic returns the primitive a node resolved to — "Layout", "Styled",
+// "Widget", "Overlay" — or "" for anything that is not one. Read off the
+// #[intrinsic] id on the declaration rather than the node's name: a stdlib
+// wrapper inlines to one of these, and matching the name would also match a
+// user component that happened to be called Widget.
+func btIntrinsic(n *ir.NodeInst) string {
+	if n == nil || n.Component == nil {
+		return ""
+	}
+	id, ok := strings.CutPrefix(n.Component.Intrinsic, "bubbletea:")
+	if !ok {
+		return ""
+	}
+	return id
+}
+
 func extractBlueprint(n *ir.NodeInst) blueprint {
 	var bp blueprint
 
@@ -208,7 +224,7 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 	placementProp := codegen.NodeProp(n, "placement")
 
 	switch {
-	case n.Name == "Overlay" || placementProp != nil:
+	case btIntrinsic(n) == "Overlay" || placementProp != nil:
 		bp.Kind = bpOverlay
 		bp.Placement = placementProp
 		if d := codegen.NodeProp(n, "dim"); d != nil {

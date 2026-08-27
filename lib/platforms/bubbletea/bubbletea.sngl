@@ -8,6 +8,7 @@
 
 import sngl "sngl://std"
 import . "sngl://platforms"
+import . "sngl://internal/marks"
 
 #[options]
 struct Options {
@@ -62,7 +63,12 @@ struct Event {
 // Every body below renders through exactly one of these. Their props are the
 // blueprint: extractBlueprint reads them off the inlined NodeInst by the names
 // declared here, so a rename here is a rename in blueprint.go.
+//
+// #[intrinsic] is what says these are the primitives rather than wrappers over
+// one: they carry no body, and the id is what the view renderer recognises them
+// by instead of their names.
 
+#[intrinsic("bubbletea:Layout")]
 component Layout(
     join JoinDir,
     style sngl.Style,
@@ -70,6 +76,7 @@ component Layout(
     tooltip string,
 ) list<component> {}
 
+#[intrinsic("bubbletea:Styled")]
 component Styled(
     content string,
     focus Focus,
@@ -77,6 +84,7 @@ component Styled(
     style sngl.Style,
 ) {}
 
+#[intrinsic("bubbletea:Widget")]
 component Widget(
     model Model,
     focus Focus,
@@ -95,6 +103,7 @@ component Widget(
     max float,
 ) {}
 
+#[intrinsic("bubbletea:Overlay")]
 component Overlay(
     placement string,
     dim bool,

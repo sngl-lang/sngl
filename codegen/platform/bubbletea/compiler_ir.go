@@ -298,7 +298,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	wins := ctx.Windows()
 	for _, win := range wins {
 		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			if n.Component == nil || n.Name != "Widget" {
+			if btIntrinsic(n) != "Widget" {
 				return false
 			}
 			bp := extractBlueprint(n)
@@ -1123,7 +1123,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			}
 			// Overlay-content handlers stay live while the overlay is open, so
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
-			childInOverlay := inOverlay || (n.Component != nil && n.Name == "Overlay")
+			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
@@ -1162,7 +1162,7 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 		case *ir.ErrorBoundary:
 			collectOverlays(n.Children, gate, gc, out)
 		case *ir.NodeInst:
-			if n.Component != nil && n.Name == "Overlay" {
+			if btIntrinsic(n) == "Overlay" {
 				oi := overlayInfo{}
 				if gate != nil && gate.Cond != nil {
 					oi.openExpr = gc.EvalExpr(gate.Cond)
