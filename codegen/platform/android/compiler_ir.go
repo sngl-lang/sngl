@@ -210,9 +210,9 @@ func listStateInitKt(bind irAndroidBind, initVal string) string {
 // keeps `return` local, so a body with a local var, an `if`, a `for` or an
 // early return emits as `derivedStateOf(fun(): T { ... })`.
 func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, indent string) string {
-	if cfg.GoLib {
-		return "derivedStateOf { golib.Golib." + exportName(comp.name) + "() }"
-	}
+	// Only a computed the gomobile module actually emits is called through it;
+	// a component's computed is rendered here from Compose state, because that
+	// module has no Model for its body to read component state through.
 	if comp.fn == nil || len(comp.fn.Block) == 0 {
 		return "derivedStateOf { " + ktComputedZero(comp) + " }"
 	}
@@ -393,9 +393,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	if info.NeedsToast {
 		kc.RequireImport("android.widget.Toast")
 		kc.RequireImport("androidx.compose.ui.platform.LocalContext")
-	}
-	if cfg.GoLib {
-		kc.RequireImport("golib.Golib")
 	}
 	// i18n import is registered dynamically by kc.RequireImport during
 	// body rendering whenever an I18n.* call is emitted.

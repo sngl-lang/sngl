@@ -111,11 +111,6 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
 	}
-	for _, fn := range allFuncs {
-		if codegen.IsComputed(fn) {
-			emitGoLibIRComputed(&discard, fn, gc)
-		}
-	}
 
 	// Build output: package clause, conditional import block, then code.
 	var b strings.Builder
@@ -128,7 +123,12 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		b.WriteString(")\n")
 	}
 
-	// Pass 2: emit actual code.
+	// Pass 2: emit actual code. A computed is skipped by the same filter and
+	// deliberately has no pass of its own: this module holds free functions and
+	// no state, so a computed that reads a var would render it through a Model
+	// receiver that does not exist here, and one that reads none is folded to a
+	// constant before it arrives. The Kotlin side renders them from Compose
+	// state.
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
@@ -137,11 +137,6 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 			continue
 		}
 		emitGoLibIRFunc(&b, fn, gc)
-	}
-	for _, fn := range allFuncs {
-		if codegen.IsComputed(fn) {
-			emitGoLibIRComputed(&b, fn, gc)
-		}
 	}
 
 	return []byte(b.String())
@@ -159,19 +154,5 @@ func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
-	}
-}
-
-func emitGoLibIRComputed(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
-		return
-	}
-	goName := exportName(fn.Name)
-	if len(fn.Block) == 1 {
-		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
-			body := gc.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "\nfunc %s() string {\n\treturn %s\n}\n", goName, body)
-			return
-		}
 	}
 }
