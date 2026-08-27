@@ -65,10 +65,62 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 
 func TestGtk4Translator_OnCreateNode_UnknownTag(t *testing.T) {
 	gc := stubGC()
-	tr := newGtk4Translator(gc, func(_, _ string) {})
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
 	stmts := tr.OnCreateNode(context.Background(), "__n0", "wibble")
 	if len(stmts) != 0 {
 		t.Errorf("expected no stmts for unknown tag; got %d", len(stmts))
+	}
+	// Emitting nothing is only correct if the caller is told: a dropped node is
+	// a widget missing from the window the user asked for.
+	if len(shared.errs) != 1 {
+		t.Fatalf("expected one diagnostic for an unknown tag; got %v", shared.errs)
+	}
+	if !strings.Contains(shared.errs[0].Error(), "wibble") {
+		t.Errorf("diagnostic %q does not name the tag", shared.errs[0])
+	}
+}
+
+func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) {
+	gc := stubGC()
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
+	// What an abstract stdlib component looks like at this point: no
+	// #[intrinsic] C type, and no gtk4 entry in the overrides the checker
+	// collected across every registered platform.
+	tr.tagComponent["progress"] = &ir.Component{
+		Name:           "progress",
+		Stdlib:         true,
+		Pkg:            "sngl://std",
+		PlatformBodies: map[string][]ir.Stmt{"html": nil},
+	}
+	if stmts := tr.OnCreateNode(context.Background(), "__n0", "progress"); len(stmts) != 0 {
+		t.Errorf("expected no stmts; got %d", len(stmts))
+	}
+	if len(shared.errs) != 1 {
+		t.Fatalf("expected one diagnostic; got %v", shared.errs)
+	}
+	got := shared.errs[0].Error()
+	for _, want := range []string{`"progress"`, "gtk4"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("diagnostic %q does not mention %s", got, want)
+		}
+	}
+}
+
+func TestGtk4Translator_OnCreateNode_UserComponentIsSilent(t *testing.T) {
+	gc := stubGC()
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
+	// A component the program declared itself with an empty body draws nothing
+	// on purpose. Only a library declaration this platform failed to implement
+	// is a gap.
+	tr.tagComponent["label"] = &ir.Component{Name: "label"}
+	if stmts := tr.OnCreateNode(context.Background(), "__n0", "label"); len(stmts) != 0 {
+		t.Errorf("expected no stmts; got %d", len(stmts))
+	}
+	if len(shared.errs) != 0 {
+		t.Fatalf("expected no diagnostic for a user component; got %v", shared.errs)
 	}
 }
 

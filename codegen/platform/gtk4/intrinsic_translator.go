@@ -227,6 +227,38 @@ func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
 	return cType, info
 }
 
+// unresolvedTagError explains why a node tag resolved to no GTK widget, or
+// returns nil when emitting nothing for it is correct.
+//
+// Every case is read off the declaration rather than matched against a list of
+// names. A library component is abstract — it renders only through the
+// `platform gtk4 { ... }` body in lib/platforms/gtk4/gtk4.sngl that
+// passPlatformExtensionBody swaps in and passInlinePure then inlines away — so
+// one arriving here still bearing its own name is one this platform never
+// implemented. A component of the user's own with an empty body is the
+// program's own statement that it draws nothing, and is left alone.
+func (t *gtk4Translator) unresolvedTagError(tag string) error {
+	comp := t.tagComponent[tag]
+	if comp == nil {
+		return fmt.Errorf("gtk4: no widget for node %q", tag)
+	}
+	if cType := widgetCType(comp); cType != "" {
+		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
+	}
+	if !comp.Stdlib {
+		// A user component that renders nothing. Its own body is the answer.
+		return nil
+	}
+	// PlatformBodies survives passPlatformExtensionBody — the pass swaps the
+	// active platform's entry into Body and leaves the map — so it is still the
+	// record of which platforms declared an override, and a gtk4 entry here
+	// means the override existed but did not reach a widget.
+	if _, ok := comp.PlatformBodies[platformName]; ok {
+		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
+	}
+	return fmt.Errorf("component %q has no gtk4 implementation", tag)
+}
+
 // classFor returns the GIR entry for a C type the walk already resolved.
 func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 	if t.registry == nil {
@@ -305,11 +337,17 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
 	cType, info := t.widgetClass(tag)
 	if info == nil {
-		// No native widget mapping for this tag (e.g. stdlib component
-		// like `avatar`/`chip`/`divider` with no gtk4 override). Record
-		// the id as skipped so later AppendChild/PropAssign/AttachHandler
-		// references to it are dropped — otherwise we'd emit `m.<id>`
-		// for a field that was never declared on Model.
+		// Nothing here can be emitted. When the tag names a declaration this
+		// platform was supposed to implement, the build has to fail: dropping
+		// the node emits a window missing the widgets its source asked for and
+		// says so nowhere.
+		if err := t.unresolvedTagError(tag); err != nil {
+			t.shared.fail(err)
+		}
+		// Record the id as skipped so later AppendChild/PropAssign/
+		// AttachHandler references to it are dropped rather than emitting
+		// `m.<id>` for a field that was never declared on Model. A diagnostic
+		// only reaches the caller if the rest of the walk does not panic.
 		t.skipped[id] = struct{}{}
 		return nil
 	}

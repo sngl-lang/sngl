@@ -87,7 +87,11 @@ func (g *Generator) Configure(opts map[string]string) error {
 	return nil
 }
 
-func (g *Generator) PlatformIdentifier() string { return "gtk4" }
+// platformName is this platform's registry identifier, and the name a
+// diagnostic spells so the reader knows which target rejected their program.
+const platformName = "gtk4"
+
+func (g *Generator) PlatformIdentifier() string { return platformName }
 func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }

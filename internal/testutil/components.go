@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -154,6 +155,9 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 	cmd := exec.Command(snglBin, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if reason, ok := unsupportedComponentReason(string(out)); ok {
+			t.Skip(reason)
+		}
 		if reason, ok := skipReasonFromOutput(string(out)); ok {
 			t.Skip(reason)
 		}
@@ -191,6 +195,9 @@ func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 	out, err := cmd.CombinedOutput()
 	outStr := string(out)
 	if err != nil {
+		if reason, ok := unsupportedComponentReason(outStr); ok {
+			t.Skip(reason)
+		}
 		if reason, ok := skipReasonFromOutput(outStr); ok {
 			t.Skip(reason)
 		}
@@ -243,6 +250,28 @@ func skipReasonFromOutput(out string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// unimplementedComponent matches the diagnostic a platform emits for a
+// stdlib component it declares no implementation for.
+var unimplementedComponent = regexp.MustCompile(`component "([^"]+)" has no (\S+) implementation`)
+
+// unsupportedComponentReason reports that the fixture asked for a stdlib
+// component the target platform does not implement.
+//
+// Deliberately separate from skipReasonFromOutput, whose signals are all
+// "this machine is missing a tool": that is a gap in the environment, this is
+// a gap in the platform, and reading them off one list would let a genuinely
+// broken toolchain hide as an unimplemented feature. The reason is the
+// compiler's own diagnostic, which it derives from the platform package's
+// declarations -- so a component gaining an implementation stops matching
+// here on its own, with no list to update.
+func unsupportedComponentReason(out string) (string, bool) {
+	m := unimplementedComponent.FindStringSubmatch(out)
+	if m == nil {
+		return "", false
+	}
+	return m[2] + " does not implement " + m[1], true
 }
 
 // nativeSkipReason reports a platform's static skip reason for the
