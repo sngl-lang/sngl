@@ -14,32 +14,26 @@ import (
 
 // girClassInfoFor is the loaded class metadata for one C type, from whatever
 // GIR the host has. Skips when there is none.
-// girClassInfoOptional is girClassInfoFor for a class whose presence depends on
-// the host's GTK version. Which classes and setter links a GIR carries is
-// GTK's catalogue, not this platform's behaviour, so a case naming vocabulary
-// this host does not have is skipped rather than failed -- CI runs an older GTK
-// than a typical development box. Callers must guard against every case being
-// skipped, or the assertion says nothing.
-func girClassInfoOptional(t *testing.T, cType string) *gir.ClassInfo {
+// bundledGIR is the introspection data these tests read: the subset this
+// repository ships, not whatever GTK the host carries. Which classes and setter
+// links a system GIR records varies by GTK version -- CI runs an older one than
+// a typical development box -- so a test naming host vocabulary asserts GTK's
+// catalogue rather than this platform's behaviour, and fails on the wrong
+// machine. The rules below are asserted over every entry of the fixture instead.
+func bundledGIR(t *testing.T) *gir.TypeRegistry {
 	t.Helper()
-	skipWithoutGIR(t)
-	reg, err := (&Generator{}).gir()
+	reg, err := gir.Minimal()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("bundled GIR does not parse: %v", err)
 	}
-	return reg.ByCType[cType]
+	return reg
 }
 
 func girClassInfoFor(t *testing.T, cType string) *gir.ClassInfo {
 	t.Helper()
-	skipWithoutGIR(t)
-	reg, err := (&Generator{}).gir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	info := reg.ByCType[cType]
+	info := bundledGIR(t).ByCType[cType]
 	if info == nil {
-		t.Fatalf("GIR has no class %s", cType)
+		t.Fatalf("bundled GIR declares no class %s", cType)
 	}
 	return info
 }
@@ -270,38 +264,62 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 	if got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" || got.ValType != "GtkOrientation" {
 		t.Errorf("girSetter(GtkBox.orientation) = %+v; want the GtkOrientable setter with both casts", got)
 	}
-	// A setter is the name GIR gives it, which for eleven GTK properties is
-	// not the one the class and property names would produce.
-	checked := 0
-	for _, tc := range []struct{ cType, prop, want string }{
-		{"GtkImage", "iconName", "gtk_image_set_from_icon_name"},
-		{"GtkNotebook", "page", "gtk_notebook_set_current_page"},
-		{"GtkWindow", "focusWidget", "gtk_window_set_focus"},
-		{"GtkGLArea", "useEs", "gtk_gl_area_set_use_es"},
+	// girSetter is a projection of what the parse recorded, so what is worth
+	// asserting is its rules rather than any particular setter's name. Every
+	// property of every class in the fixture goes through them, and each rule
+	// must be exercised by at least one -- a sweep that classified nothing
+	// would otherwise pass on an empty registry.
+	var sawInterface, sawAncestor, sawOwn, sawNamedType int
+	for _, info := range bundledGIR(t).ByCType {
+		for _, p := range info.Props {
+			got := girSetter(info, p)
+			switch {
+			case p.InterfaceName != "":
+				// An interface setter takes the interface as its receiver, and
+				// says so even when the property is also inherited from an
+				// ancestor: GIR pointed at the interface's function.
+				sawInterface++
+				if want := "Gtk" + p.InterfaceName; got.RecvType != want {
+					t.Errorf("%s.%s: RecvType = %q, want %q", info.CType, p.Name, got.RecvType, want)
+				}
+			case p.OwnerCType != "":
+				sawAncestor++
+				if got.RecvType != p.OwnerCType {
+					t.Errorf("%s.%s: RecvType = %q, want the declaring ancestor %q", info.CType, p.Name, got.RecvType, p.OwnerCType)
+				}
+			default:
+				sawOwn++
+				if got.RecvType != "" {
+					t.Errorf("%s.%s is the class's own; RecvType = %q, want no cast", info.CType, p.Name, got.RecvType)
+				}
+			}
+			if girTypeIsNamedNonPrimitive(p.GIRType) {
+				sawNamedType++
+				if want := "Gtk" + p.GIRType; got.ValType != want {
+					t.Errorf("%s.%s: ValType = %q, want %q", info.CType, p.Name, got.ValType, want)
+				}
+			} else if got.ValType != "" {
+				t.Errorf("%s.%s is a primitive; ValType = %q, want none", info.CType, p.Name, got.ValType)
+			}
+			if got.Setter != p.Setter {
+				t.Errorf("%s.%s: Setter = %q, want the recorded %q", info.CType, p.Name, got.Setter, p.Setter)
+			}
+		}
+	}
+	for _, c := range []struct {
+		n    int
+		what string
+	}{
+		{sawInterface, "an interface-inherited property"},
+		{sawAncestor, "an ancestor-inherited property"},
+		{sawOwn, "a class's own property"},
+		{sawNamedType, "a property of a named GIR type"},
 	} {
-		info := girClassInfoOptional(t, tc.cType)
-		if info == nil {
-			t.Logf("skipping %s: not in this GTK's GIR", tc.cType)
-			continue
-		}
-		p, ok := girProp(info, tc.prop)
-		if !ok {
-			t.Logf("skipping %s.%s: not in this GTK's GIR", tc.cType, tc.prop)
-			continue
-		}
-		got := girSetter(info, p).Setter
-		if got == "" {
-			t.Logf("skipping %s.%s: this GTK's GIR records no setter for it", tc.cType, tc.prop)
-			continue
-		}
-		checked++
-		if got != tc.want {
-			t.Errorf("girSetter(%s.%s) = %q; want %q", tc.cType, tc.prop, got, tc.want)
+		if c.n == 0 {
+			t.Errorf("the fixture contains no %s; that rule went unasserted", c.what)
 		}
 	}
-	if checked == 0 {
-		t.Error("no irregular-setter case was checked; the table asserted nothing on this host")
-	}
+
 	// A property GIR names no setter for has none — there is no derived
 	// spelling to fall back on, and gtk_image_set_file does not exist.
 	img := girClassInfoFor(t, "GtkImage")
@@ -370,66 +388,101 @@ func TestClassInheritance_Merges(t *testing.T) {
 	// means one entry, because the merge must not stack a shadowed copy behind
 	// it. girProp answers with the first match, so a duplicate would be
 	// invisible there and would surface only as a declaration carrying the same
-	// prop twice, which does not parse.
-	//
-	// GtkColumnViewCell is GTK 4.12. On an older host the pair is absent, and
-	// the case is skipped rather than failed: which classes a GIR carries is
-	// GTK's catalogue, not this platform's behaviour.
-	if cell := girClassInfoOptional(t, "GtkColumnViewCell"); cell == nil {
-		t.Log("skipping own-declaration-wins: GtkColumnViewCell is not in this GTK's GIR")
-	} else if p, ok := girProp(cell, "child"); !ok {
-		t.Log("skipping own-declaration-wins: GtkColumnViewCell has no child prop here")
-	} else {
-		if got := girSetter(cell, p); got.Setter != "gtk_column_view_cell_set_child" || got.RecvType != "" {
-			t.Errorf("girSetter(GtkColumnViewCell.child) = %+v; want its own setter with no cast, not GtkListItem's", got)
+	// prop twice, which does not parse -- so the observable rule is that no
+	// class carries a property name more than once, whatever it inherited.
+	for _, info := range bundledGIR(t).ByCType {
+		seen := map[string]int{}
+		for _, p := range info.Props {
+			seen[p.Name]++
 		}
-		if n := countProps(cell.Props, "child"); n != 1 {
-			t.Errorf("GtkColumnViewCell carries %d child properties; want 1", n)
+		for name, n := range seen {
+			if n != 1 {
+				t.Errorf("%s carries %d %q properties; the merge stacked a shadowed copy", info.CType, n, name)
+			}
 		}
 	}
 
-	// Inheritance composes with the interface merge rather than fighting it,
-	// and the order the two passes run in is what makes it work.
-	// GtkListBase declares an orientation property of its own but no
-	// set_orientation method, so its own entry has no setter at all; the
-	// working one is GtkOrientable's, which the interface merge puts on
-	// GtkListView. Run the parent merge first and GtkListView would take its
-	// parent's setterless entry, and the interface merge would then skip the
-	// name as already present — leaving a prop reachable only through the
-	// generic GObject path.
-	lb := girClassInfoFor(t, "GtkListBase")
-	p, ok = girProp(lb, "orientation")
-	if !ok || p.Setter != "" {
-		t.Errorf("GtkListBase.orientation = %+v, %v; want its own setterless entry", p, ok)
+	// An inherited property names the ancestor that declared it, and a
+	// class's own names nobody -- which is what makes the receiver cast right.
+	// Asserted against the parent chain the fixture records rather than against
+	// a class known to redeclare one, since which classes do is GTK's business.
+	reg := bundledGIR(t)
+	checkedInherited := 0
+	for _, info := range reg.ByCType {
+		own := map[string]bool{}
+		for _, p := range info.Props {
+			if p.OwnerCType == "" && p.InterfaceName == "" {
+				own[p.Name] = true
+			}
+		}
+		for _, p := range info.Props {
+			if p.OwnerCType == "" {
+				continue
+			}
+			checkedInherited++
+			if own[p.Name] {
+				t.Errorf("%s.%s is inherited from %s while the class declares its own", info.CType, p.Name, p.OwnerCType)
+			}
+			if reg.ByCType[p.OwnerCType] == nil {
+				t.Errorf("%s.%s names ancestor %s, which the fixture does not declare", info.CType, p.Name, p.OwnerCType)
+			}
+		}
 	}
-	lv := girClassInfoFor(t, "GtkListView")
-	p, ok = girProp(lv, "orientation")
-	if !ok {
-		t.Fatal("GtkListView has no orientation")
-	}
-	// The interface tag is the one thing set on it, so girSetter's preference
-	// for InterfaceName over OwnerCType never has to break a tie: the merge
-	// decided which of the two a prop carries.
-	if p.InterfaceName != "Orientable" || p.OwnerCType != "" {
-		t.Errorf("GtkListView.orientation carries iface %q and owner %q; want the interface tag alone", p.InterfaceName, p.OwnerCType)
-	}
-	if got := girSetter(lv, p); got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" {
-		t.Errorf("girSetter(GtkListView.orientation) = %+v; want the GtkOrientable setter and cast", got)
+	if checkedInherited == 0 {
+		t.Error("no inherited property in the fixture; the merge went unasserted")
 	}
 
-	// An inherited member carries its own flags, so the three rules that
-	// withhold a member apply to it on those and not on the child's.
-	//
-	// Arity: GtkEntryBuffer.text's setter takes (text, len), which a
-	// one-value cgo call site cannot reach, and the subclass inherits the
-	// cleared name rather than a callable-looking one.
-	buf := girClassInfoFor(t, "GtkPasswordEntryBuffer")
-	p, ok = girProp(buf, "text")
-	if !ok {
-		t.Fatal("GtkPasswordEntryBuffer has no text prop")
+	// Inheritance composes with the interface merge rather than fighting it.
+	// A property an interface contributed carries the interface tag and nothing
+	// else, even where an ancestor declares the same name: the merge decides
+	// which of the two a prop wears, so girSetter's preference for the
+	// interface never has to break a tie. Were the parent merge to run first,
+	// the child would take the ancestor's entry and the interface merge would
+	// skip the name as already present, leaving the property reachable only
+	// through the generic GObject path.
+	ifaceProps := 0
+	for _, info := range reg.ByCType {
+		for _, p := range info.Props {
+			if p.InterfaceName == "" {
+				continue
+			}
+			ifaceProps++
+			if p.OwnerCType != "" {
+				t.Errorf("%s.%s carries iface %q and owner %q; want the interface tag alone",
+					info.CType, p.Name, p.InterfaceName, p.OwnerCType)
+			}
+		}
 	}
-	if p.SetterValParams != 2 || p.Setter != "" {
-		t.Errorf("GtkPasswordEntryBuffer.text = setter %q over %d params; want no setter recorded for a two-value one", p.Setter, p.SetterValParams)
+	if ifaceProps == 0 {
+		t.Error("no interface-contributed property in the fixture; the composition rule went unasserted")
+	}
+
+	// An inherited member carries its own flags, so a rule that withholds a
+	// member applies on those rather than on the child's. Arity is the one with
+	// a shape worth sweeping for: a cgo call site passes exactly one value, so
+	// a setter GIR named that takes any other number is recorded as no setter
+	// at all, and a subclass inherits the cleared name rather than a
+	// callable-looking one.
+	arity := 0
+	for _, info := range reg.ByCType {
+		for _, p := range info.Props {
+			switch {
+			case p.SetterValParams == 1:
+				if p.Setter == "" {
+					t.Errorf("%s.%s names a one-value setter and recorded none", info.CType, p.Name)
+				}
+			case p.Setter != "":
+				t.Errorf("%s.%s recorded setter %q over %d values; only one is callable",
+					info.CType, p.Name, p.Setter, p.SetterValParams)
+			default:
+				if p.SetterValParams != 0 {
+					arity++
+				}
+			}
+		}
+	}
+	if arity == 0 {
+		t.Log("the fixture records no uncallable-arity setter; that branch is asserted by gir's own parse tests")
 	}
 
 	// Construct-only: GtkWidget.css-name is inherited by every widget class,

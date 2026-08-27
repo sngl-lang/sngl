@@ -1,0 +1,401 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <enumeration name="Orientation" c:type="GtkOrientation">
+      <member name="horizontal" value="0" c:identifier="GTK_ORIENTATION_HORIZONTAL"/>
+      <member name="vertical" value="1" c:identifier="GTK_ORIENTATION_VERTICAL"/>
+    </enumeration>
+    <interface name="Orientable">
+      <method name="set_orientation" c:identifier="gtk_orientable_set_orientation">
+        <parameters>
+          <instance-parameter name="orientable">
+            <type name="Orientable" c:type="GtkOrientable*"/>
+          </instance-parameter>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="orientation" writable="1" setter="set_orientation">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+    </interface>
+    <interface name="Editable">
+      <method name="set_text" c:identifier="gtk_editable_set_text">
+        <parameters>
+          <instance-parameter name="editable">
+            <type name="Editable" c:type="GtkEditable*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="text" writable="1" setter="set_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="changed">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </interface>
+    <class name="Widget" c:type="GtkWidget">
+      <method name="set_visible" c:identifier="gtk_widget_set_visible">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="visible">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_sensitive" c:identifier="gtk_widget_set_sensitive">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="sensitive">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_hexpand" c:identifier="gtk_widget_set_hexpand">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="expand">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_vexpand" c:identifier="gtk_widget_set_vexpand">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="expand">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_tooltip_text" c:identifier="gtk_widget_set_tooltip_text">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="visible" writable="1" setter="set_visible">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="sensitive" writable="1" setter="set_sensitive">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="hexpand" writable="1" setter="set_hexpand">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="vexpand" writable="1" setter="set_vexpand">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tooltip-text" writable="1" setter="set_tooltip_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <!-- Construct-only, so no widget may declare it, and a widget whose
+           props all came down the chain must not pick it up. -->
+      <property name="css-name" writable="1" construct-only="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <!-- Returns a gboolean the (instance, user_data) -> void trampoline
+           cannot produce, so it is inherited but not connectable. -->
+      <glib:signal name="query-tooltip">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </glib:signal>
+      <!-- Void with no arguments: the one shape the trampoline can carry, so
+           every class inherits it as a connectable event. -->
+      <glib:signal name="destroy">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Entry" c:type="GtkEntry" parent="Widget">
+      <implements name="Editable"/>
+      <constructor name="new" c:identifier="gtk_entry_new"/>
+    </class>
+    <class name="Button" c:type="GtkButton" parent="Widget">
+      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_label" c:identifier="gtk_button_set_label">
+        <parameters>
+          <instance-parameter name="button">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="label">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="clicked">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Label" c:type="GtkLabel" parent="Widget">
+      <constructor name="new" c:identifier="gtk_label_new">
+        <parameters>
+          <parameter name="str" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_label" c:identifier="gtk_label_set_label">
+        <parameters>
+          <instance-parameter name="label">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="str">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="Box" c:type="GtkBox" parent="Widget">
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_box_new">
+        <parameters>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_spacing" c:identifier="gtk_box_set_spacing">
+        <parameters>
+          <instance-parameter name="box">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="spacing" writable="1" setter="set_spacing">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+    <class name="CheckButton" c:type="GtkCheckButton" parent="Widget">
+      <constructor name="new" c:identifier="gtk_check_button_new"/>
+      <constructor name="new_with_label" c:identifier="gtk_check_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_active" c:identifier="gtk_check_button_set_active">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="setting">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="active" writable="1" setter="set_active">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="label" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="toggled">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Image" c:type="GtkImage" parent="Widget">
+      <constructor name="new" c:identifier="gtk_image_new"/>
+      <property name="file" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="ScrolledWindow" c:type="GtkScrolledWindow" parent="Widget">
+      <constructor name="new" c:identifier="gtk_scrolled_window_new"/>
+    </class>
+    <!-- Between ApplicationWindow and Widget so the parent chain is two deep:
+         close-request is inherited twice over, and carries its own return type
+         rather than the one its landing class would suggest. -->
+    <class name="Window" c:type="GtkWindow" parent="Widget">
+      <constructor name="new" c:identifier="gtk_window_new"/>
+      <!-- Takes no arguments and is still unconnectable, because GTK reads a
+           gboolean back out of it. -->
+      <glib:signal name="close-request">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="ApplicationWindow" c:type="GtkApplicationWindow" parent="Window">
+      <constructor name="new" c:identifier="gtk_application_window_new">
+        <parameters>
+          <parameter name="application">
+            <type name="Application" c:type="GtkApplication*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_title" c:identifier="gtk_window_set_title">
+        <parameters>
+          <instance-parameter name="window">
+            <type name="ApplicationWindow" c:type="GtkApplicationWindow*"/>
+          </instance-parameter>
+          <parameter name="title">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="title" writable="1" setter="set_title">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="default-width" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+      <property name="default-height" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+    <class name="ProgressBar" c:type="GtkProgressBar" parent="Widget">
+      <constructor name="new" c:identifier="gtk_progress_bar_new"/>
+      <method name="set_fraction" c:identifier="gtk_progress_bar_set_fraction">
+        <parameters>
+          <instance-parameter name="pbar">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="fraction">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="fraction" writable="1" setter="set_fraction">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="text" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="show-text" writable="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Spinner" c:type="GtkSpinner" parent="Widget">
+      <constructor name="new" c:identifier="gtk_spinner_new"/>
+      <property name="spinning" writable="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Separator" c:type="GtkSeparator" parent="Widget">
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_separator_new">
+        <parameters>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+    <class name="LinkButton" c:type="GtkLinkButton" parent="Button">
+      <constructor name="new" c:identifier="gtk_link_button_new">
+        <parameters>
+          <parameter name="uri">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_uri" c:identifier="gtk_link_button_set_uri">
+        <parameters>
+          <instance-parameter name="link_button">
+            <type name="LinkButton" c:type="GtkLinkButton*"/>
+          </instance-parameter>
+          <parameter name="uri">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="uri" writable="1" setter="set_uri">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="Switch" c:type="GtkSwitch" parent="Widget">
+      <constructor name="new" c:identifier="gtk_switch_new"/>
+      <method name="set_active" c:identifier="gtk_switch_set_active">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Switch" c:type="GtkSwitch*"/>
+          </instance-parameter>
+          <parameter name="is_active">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="active" writable="1" setter="set_active">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Calendar" c:type="GtkCalendar" parent="Widget">
+      <constructor name="new" c:identifier="gtk_calendar_new"/>
+      <glib:signal name="day-selected">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Frame" c:type="GtkFrame" parent="Widget">
+      <constructor name="new" c:identifier="gtk_frame_new">
+        <parameters>
+          <parameter name="label" nullable="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+    <class name="Stack" c:type="GtkStack" parent="Widget">
+      <constructor name="new" c:identifier="gtk_stack_new"/>
+    </class>
+    <class name="Popover" c:type="GtkPopover" parent="Widget">
+      <constructor name="new" c:identifier="gtk_popover_new"/>
+      <property name="autohide" writable="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <glib:signal name="closed">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+  </namespace>
+</repository>
+

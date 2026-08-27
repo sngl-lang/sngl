@@ -75,31 +75,14 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.Common
 	}
 	c.cfg = c.cfg.withDefaults()
 
-	// Load GIR registry. An explicit --opt gir= always overrides the
-	// generator's cached (autodetected) registry so tests with inline GIR
-	// fixtures work deterministically regardless of the host system.
-	if c.cfg.GIRPath != "" {
-		reg, perr := gir.ParseGIR(c.cfg.GIRPath)
-		if perr == nil {
-			c.registry = reg
-			if c.gen != nil {
-				c.gen.registry = reg
-			}
-		}
-	} else if c.gen != nil && c.gen.registry != nil {
-		c.registry = c.gen.registry
-	} else {
-		path, err := resolveGIRPath(c.cfg.GIRPath)
-		if err == nil {
-			reg, perr := gir.ParseGIR(path)
-			if perr == nil {
-				c.registry = reg
-				if c.gen != nil {
-					c.gen.registry = reg
-				}
-			}
-		}
+	// The registry comes from the generator, which is the only thing that
+	// resolves one. An inline fixture, the bundled subset and the host's file
+	// are therefore chosen here exactly as they were during type-check.
+	reg, girErr := c.gen.useGIR(c.cfg.GIRPath)
+	if girErr != nil {
+		return nil, fmt.Errorf("gtk4: %w", girErr)
 	}
+	c.registry = reg
 
 	c.ctx = codegen.NewCodegenCtx(req, "gtk4")
 	c.info = analyzeIR(c.ctx)

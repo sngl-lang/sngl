@@ -73,7 +73,11 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
-- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from the system-installed `Gtk-4.0.gir` (probed under `/usr/share/gir-1.0/` etc., or `--opt gir=PATH`); no GIR XML is vendored — `codegen/platform/gtk4/gir/` holds only the parser. With no GIR available the platform reports `Unavailable()` and its `sngl://platforms/gtk4` declarations are withheld, so unrelated compiles are unaffected; targeting gtk4 explicitly then fails with one actionable error. Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
+- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
+
+  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platforms/gtk4` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
+
+  Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages

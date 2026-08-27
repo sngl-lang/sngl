@@ -68,6 +68,7 @@ type Generator struct {
 	once     sync.Once
 	registry *gir.TypeRegistry
 	initErr  error // set if autodetect GIR load fails
+	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
 	fsOnce   sync.Once
 	pkgFS    fs.FS
@@ -126,14 +127,79 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 // failure. Configure resets the cache when --opt gir= changes.
 func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	g.once.Do(func() {
-		p, err := resolveGIRPath(g.girOpt)
-		if err != nil {
-			g.initErr = err
-			return
-		}
-		g.registry, g.initErr = gir.ParseGIR(p)
+		g.registry, g.minimal, g.initErr = girRegistry(g.girOpt)
 	})
 	return g.registry, g.initErr
+}
+
+// useGIR is how everything that needs the registry gets it, including the code
+// generator, which used to resolve its own. Passing the option rather than
+// reading it means one resolver, one cache and one answer: a caller holding a
+// Config built from the same --opt cannot end up with a different registry than
+// type-check used, which is what happened when there were two.
+//
+// A nil Generator answers from the resolver directly, for a test that builds a
+// compilation without one.
+func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
+	if g == nil {
+		reg, _, err := girRegistry(opt)
+		return reg, err
+	}
+	if opt != "" && opt != g.girOpt {
+		// A Config naming a GIR the generator was not configured with wins, and
+		// re-arms the cache so every later reader agrees with it.
+		g.girOpt = opt
+		g.once = sync.Once{}
+		g.fsOnce = sync.Once{}
+		g.registry, g.initErr, g.pkgFS = nil, nil, nil
+	}
+	return g.gir()
+}
+
+// girRegistry resolves the "gir" option to a widget registry, and reports
+// whether the result is the bundled subset. It is the one place that decides,
+// because the code generator used to resolve its own and the two could disagree
+// -- and the generator's copy discarded the parse error, so a path that did not
+// load left it with no registry and every widget reported as undeclared.
+//
+//   - "builtin": the bundled subset, whatever the host has.
+//   - any other non-empty value: that path, and a failure to load it is an
+//     error, since the caller named it.
+//   - empty: the host's Gtk-4.0.gir if the probe finds one, else the bundled
+//     subset -- a host without GTK 4 development files can still check and
+//     document the widgets lib/platforms/gtk4 wraps.
+func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
+	if opt == girBuiltin {
+		reg, err = gir.Minimal()
+		return reg, err == nil, err
+	}
+	if opt != "" {
+		// Through resolveGIRPath rather than straight to ParseGIR: a path the
+		// caller named and that is not there gets the message that says which
+		// option carried it and how to fix it.
+		p, perr := resolveGIRPath(opt)
+		if perr != nil {
+			return nil, false, perr
+		}
+		reg, err = gir.ParseGIR(p)
+		return reg, false, err
+	}
+	if p, perr := resolveGIRPath(""); perr == nil {
+		if reg, err = gir.ParseGIR(p); err == nil {
+			return reg, false, nil
+		}
+		return nil, false, err
+	}
+	reg, err = gir.Minimal()
+	return reg, err == nil, err
+}
+
+// usingMinimalGIR reports whether the registry is the bundled subset. A
+// diagnostic about a widget that is not declared says so, because the fix is to
+// install GTK rather than to correct the name.
+func (g *Generator) usingMinimalGIR() bool {
+	_, _ = g.gir()
+	return g.minimal
 }
 
 // Generate writes gtk4 source files directly into sink. This is the
@@ -326,6 +392,10 @@ func writeRawFile(sink codegen.Sink, name string, content []byte) error {
 	}
 	return wc.Close()
 }
+
+// girBuiltin selects the bundled subset explicitly, for a test that wants a
+// registry that does not vary with the host's GTK version.
+const girBuiltin = "builtin"
 
 // resolveGIRPath returns the path to the Gtk-4.0.gir file.
 // If girPath is non-empty it validates that path. Otherwise it probes the
