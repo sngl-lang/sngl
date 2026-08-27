@@ -257,6 +257,13 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 			return fmt.Sprintf("%q", n.Raw)
 		case ir.TypeNull:
 			return "null"
+		case ir.TypeFloat:
+			// Kotlin types an unsuffixed whole number as Int, so a float
+			// whose raw form lost its fraction compares and assigns against
+			// Double as a type error rather than a widening.
+			if !strings.Contains(n.Raw, ".") {
+				return n.Raw + ".0"
+			}
 		}
 		return n.Raw
 	case *ir.Ident:
