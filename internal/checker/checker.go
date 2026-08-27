@@ -59,7 +59,7 @@ type libCache struct {
 	// source. A mark binds its declaration to the checker that registered it,
 	// but the packages are shared: a nested check reaches them from the cache
 	// with nothing to register, so it takes the same references from here.
-	roles map[ast.BuiltinKind]ir.Symbol
+	roles map[ir.BuiltinKind]ir.Symbol
 	// macroSigs records the macro declarations whose parameter types have
 	// been resolved; see resolveMacroSig.
 	macroSigs map[*ir.Func]bool
@@ -71,7 +71,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, roles: map[ast.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -1758,7 +1758,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.bindWindow(vn.Pos, w)
 		return
 	}
-	if c.builtinNodeKind(name) == ast.BuiltinTimer {
+	if c.builtinNodeKind(name) == ir.BuiltinTimer {
 		t := c.buildTimer(vn)
 		c.pkg.Timers = append(c.pkg.Timers, t)
 		return
@@ -1789,14 +1789,14 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 // `component timer` resolves first and is treated as an ordinary component.
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
-func (c *checker) builtinNodeKind(name string) ast.BuiltinKind {
+func (c *checker) builtinNodeKind(name string) ir.BuiltinKind {
 	sym, ok := c.resolveComponentSymbol(name)
 	if !ok {
-		return ast.BuiltinNone
+		return ir.BuiltinNone
 	}
 	comp, ok := sym.(*ir.Component)
 	if !ok || !comp.Builtin.IsNode() {
-		return ast.BuiltinNone
+		return ir.BuiltinNone
 	}
 	return comp.Builtin
 }
@@ -1826,7 +1826,7 @@ func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
 // specifically. Window is the only node kind that owns a lexical scope and
 // hoists its own element ids, so a few sites care about it by name.
 func (c *checker) isWindowNode(name string) bool {
-	return c.builtinNodeKind(name) == ast.BuiltinWindow
+	return c.builtinNodeKind(name) == ir.BuiltinWindow
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.

@@ -36,7 +36,7 @@ var markImpls = map[markKey]markImpl{
 // that is where the requirement comes from.
 func markBuiltin(m *mark) error {
 	raw := m.args.String("kind")
-	kind := ast.BuiltinKind(raw)
+	kind := ir.BuiltinKind(raw)
 	if !kind.Valid() {
 		return fmt.Errorf("unknown builtin kind %q (valid: %s)", raw, strings.Join(builtinKindNames(), ", "))
 	}
@@ -57,7 +57,7 @@ func markBuiltin(m *mark) error {
 }
 
 func builtinKindNames() []string {
-	all := ast.AllBuiltinKinds()
+	all := ir.AllBuiltinKinds()
 	names := make([]string, len(all))
 	for i, k := range all {
 		names[i] = string(k)

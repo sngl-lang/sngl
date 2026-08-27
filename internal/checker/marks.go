@@ -78,19 +78,19 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 		return
 	}
 	if inParam && !paramMarks[markKey{uri, attr.Name}] {
-		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MarkName())
+		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
 		return
 	}
 	args, err := markArgsFor(fn, attr.Args)
 	if err != nil {
-		c.error(attr.Pos, "macro %s: %s", attr.MarkName(), err)
+		c.error(attr.Pos, "macro %s: %s", attr.MacroName(), err)
 		return
 	}
 	impl, ok := markImpls[markKey{uri, attr.Name}]
 	if !ok {
 		// The declaration says the macro exists; nothing in the compiler says
 		// what it does.
-		c.error(attr.Pos, "macro %s is declared by sngl://%s but the compiler implements no mark for it", attr.MarkName(), uri)
+		c.error(attr.Pos, "macro %s is declared by sngl://%s but the compiler implements no mark for it", attr.MacroName(), uri)
 		return
 	}
 	if err := impl(&mark{c: c, attr: attr, args: args, decl: decl, sym: sym}); err != nil {
@@ -187,7 +187,7 @@ func (c *checker) setMarkScope(docs []*ast.Document) func() {
 func (c *checker) refuseParamMarks(params []ast.Param) {
 	for _, p := range params {
 		for _, attr := range p.MacroAttrs() {
-			c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MarkName())
+			c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
 		}
 	}
 }

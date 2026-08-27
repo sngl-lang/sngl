@@ -135,7 +135,7 @@ Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
 checker dispatches a visual node to the matching IR construct off the mark. The
 mark is declared in `lib/internal/marks` and implemented in
-`internal/checker/marks_impl.go`; kinds are `ast.BuiltinKind`.
+`internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
 `#[draw.shape]` needs `import "sngl://draw"`, and the unqualified

@@ -46,9 +46,9 @@ func (v *VarDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { v.Attrs, v.P
 func (u *UnitDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { u.Attrs, u.Pos = attrs, pos }
 func (e *EnumDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { e.Attrs, e.Pos = attrs, pos }
 
-// MarkName renders an attribute the way it was written, for diagnostics. A
-// bare mark has no alias, so the dotted form would print as ".builtin".
-func (a MacroAttr) MarkName() string {
+// MacroName renders an attribute the way it was written, for diagnostics. A
+// bare one has no alias, so the dotted form would print as ".builtin".
+func (a MacroAttr) MacroName() string {
 	if a.Alias == "" {
 		return a.Name
 	}

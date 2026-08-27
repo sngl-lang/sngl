@@ -563,16 +563,16 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	return false
 }
 
-// builtinOf returns the ast.BuiltinKind of t's backing StructDef, or
+// builtinOf returns the BuiltinKind of t's backing StructDef, or
 // BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
 // and generic behaviour travel with the type rather than with a hardcoded name.
-func builtinOf(t *Type) ast.BuiltinKind {
+func builtinOf(t *Type) BuiltinKind {
 	if t == nil || t.Kind != TypeStruct {
-		return ast.BuiltinNone
+		return BuiltinNone
 	}
 	sd, ok := t.Decl.(*StructDef)
 	if !ok {
-		return ast.BuiltinNone
+		return BuiltinNone
 	}
 	return sd.Builtin
 }
@@ -580,7 +580,7 @@ func builtinOf(t *Type) ast.BuiltinKind {
 // IsColorStruct reports whether t is the color value type. A colour is a
 // TypeStruct backed by its stdlib StructDef and marked #[builtin("color")];
 // call this to detect the shape.
-func IsColorStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinColor }
+func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
 
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.
@@ -590,9 +590,9 @@ func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
 // time/datetime value type. These three were formerly the TypeDate/TypeTime/
 // TypeDateTime kinds; they are now carried uniformly as TypeStruct backed by
 // the StructDef (like color).
-func IsDateStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinDate }
-func IsTimeStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinTime }
-func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinDateTime }
+func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
+func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
+func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
 // Registered stdlib datetime struct type. Populated by the checker once
 // lib/types.sngl is parsed, so non-checker phases (foreign-type importers,

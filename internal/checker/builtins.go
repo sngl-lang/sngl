@@ -18,14 +18,14 @@ import (
 // The predeclared constants are the other half: PLATFORM and LANGUAGE are
 // declared with a placeholder value because the real one is not known until a
 // build picks a target, and this is where the compiler supplies it.
-func (c *checker) bindBuiltinRole(kind ast.BuiltinKind, sym ir.Symbol) {
+func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 	bound := false
 	switch kind {
-	case ast.BuiltinWindow:
+	case ir.BuiltinWindow:
 		bound = bindBuiltin(c, &c.windowComp, kind, sym) != nil
-	case ast.BuiltinContext:
+	case ir.BuiltinContext:
 		bound = bindBuiltin(c, &c.contextComp, kind, sym) != nil
-	case ast.BuiltinNull:
+	case ir.BuiltinNull:
 		if v := bindBuiltin(c, &c.nullConst, kind, sym); v != nil {
 			// Neither the type nor the value can be spelled, so the written
 			// ones are placeholders the compiler replaces.
@@ -33,14 +33,14 @@ func (c *checker) bindBuiltinRole(kind ast.BuiltinKind, sym ir.Symbol) {
 			v.Init = &ir.Literal{Type: TypNull, Raw: "null"}
 			bound = true
 		}
-	case ast.BuiltinDuration:
+	case ir.BuiltinDuration:
 		if u := bindBuiltin(c, &c.durationUnit, kind, sym); u != nil {
 			// Handed to phases with no scope of their own; the Go importer
 			// maps time.Duration through it.
 			ir.RegisterDurationUnit(u.SymType())
 			bound = true
 		}
-	case ast.BuiltinPlatform:
+	case ir.BuiltinPlatform:
 		if v := bindBuiltin(c, &c.platformConst, kind, sym); v != nil {
 			// No initializer: the value arrives when a build picks a target,
 			// and the optimizer reads it off the mark.
@@ -48,7 +48,7 @@ func (c *checker) bindBuiltinRole(kind ast.BuiltinKind, sym ir.Symbol) {
 			v.Init = nil
 			bound = true
 		}
-	case ast.BuiltinLanguage:
+	case ir.BuiltinLanguage:
 		if v := bindBuiltin(c, &c.languageConst, kind, sym); v != nil {
 			v.Type = TypString
 			v.Init = nil
@@ -70,7 +70,7 @@ func (c *checker) bindBuiltinRole(kind ast.BuiltinKind, sym ir.Symbol) {
 // A kind classifies one declaration; two sharing a mark would be two
 // incompatible things rather than aliases, so the second is an error and not a
 // silent overwrite.
-func bindBuiltin[T ir.Symbol](c *checker, dst *T, kind ast.BuiltinKind, sym ir.Symbol) T {
+func bindBuiltin[T ir.Symbol](c *checker, dst *T, kind ir.BuiltinKind, sym ir.Symbol) T {
 	var zero T
 	got, ok := sym.(T)
 	if !ok {

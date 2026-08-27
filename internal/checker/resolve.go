@@ -61,21 +61,21 @@ func namesType(t *ir.Type, name string) bool {
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
 // its #[builtin] kind) to the type arguments of t. The construction logic stays
 // in the compiler; only the name→kind binding lives in scope.
-func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) *ir.Type {
+func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, t *ast.NamedType) *ir.Type {
 	switch id {
-	case ast.BuiltinList:
+	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
 			return ListOf(TypDyn)
 		}
 		return ListOf(c.resolveType(t.TypeArgs[0]))
-	case ast.BuiltinOption:
+	case ir.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
 			return OptionOf(TypDyn)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
-	case ast.BuiltinMap:
+	case ir.BuiltinMap:
 		if len(t.TypeArgs) != 2 {
 			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
 			return TypDyn
@@ -87,13 +87,13 @@ func (c *checker) constructBuiltinGeneric(id ast.BuiltinKind, t *ast.NamedType) 
 			return TypDyn
 		}
 		return ir.MapOf(k, v)
-	case ast.BuiltinIter:
+	case ir.BuiltinIter:
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
 			return TypDyn
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
-	case ast.BuiltinRef:
+	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
 			return ir.RefOf(TypDyn)
@@ -115,7 +115,7 @@ func (c *checker) userShadowsBuiltin(name string) bool {
 		return false
 	}
 	sd, ok := sym.(*ir.StructDef)
-	return ok && sd.Builtin == ast.BuiltinNone
+	return ok && sd.Builtin == ir.BuiltinNone
 }
 
 // resolveNamedType resolves a named type reference to an IR *Type.

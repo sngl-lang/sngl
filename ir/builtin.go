@@ -1,4 +1,4 @@
-package ast
+package ir
 
 // BuiltinKind marks a declaration as one of the compiler's built-ins. It is set
 // by the #[builtin] macro before type-checking and read by the checker and IR;
@@ -20,7 +20,7 @@ const (
 	// Scalar primitives. Only the names with a stdlib struct decl are marked;
 	// the mark distinguishes the built-in's own decl from a user declaration
 	// that shadows the name. The concrete singleton is held by the compiler
-	// (ir.BuiltinScalar), keyed by these names.
+	// (BuiltinScalar), keyed by these names.
 	BuiltinInt    BuiltinKind = "int"
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"

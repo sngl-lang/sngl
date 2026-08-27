@@ -673,11 +673,11 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 	// Publish the canonical date/time/datetime struct types so non-checker
 	// phases (foreign-type importers) can synthesize them without scope access.
 	switch sd.Builtin {
-	case ast.BuiltinDate:
+	case ir.BuiltinDate:
 		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ast.BuiltinTime:
+	case ir.BuiltinTime:
 		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ast.BuiltinDateTime:
+	case ir.BuiltinDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
 	return sd

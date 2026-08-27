@@ -69,7 +69,7 @@ func TestBuiltinMarkStampsTheKind(t *testing.T) {
 struct Tiny {}
 `)
 	wantNoMarkErrs(t, errs)
-	if len(pkg.Structs) != 1 || pkg.Structs[0].Builtin != ast.BuiltinInt {
+	if len(pkg.Structs) != 1 || pkg.Structs[0].Builtin != ir.BuiltinInt {
 		t.Fatalf("Builtin = %q, want int", pkg.Structs[0].Builtin)
 	}
 }

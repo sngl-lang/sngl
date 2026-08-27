@@ -2540,7 +2540,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// `output` is matched by name: it is a build directive with its
 			// own data structure, not a component, so nothing in scope
 			// resolves to it (see registerRootVisualNode).
-			isRootish := c.builtinNodeKind(id.Name) != ast.BuiltinNone || id.Name == "output"
+			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone || id.Name == "output"
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -3072,13 +3072,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
 	switch c.builtinNodeKind(name) {
-	case ast.BuiltinWindow:
+	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
 		c.bindWindow(vn.Pos, w)
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
-	case ast.BuiltinTimer:
+	case ir.BuiltinTimer:
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
@@ -3086,10 +3086,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case ast.BuiltinSlot:
+	case ir.BuiltinSlot:
 		children := c.checkBlockIR(&vn.Block)
 		return &ir.SlotInst{AST: vn, Children: children}
-	case ast.BuiltinErrorBoundary:
+	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
 	}
 	// `output` is not a component (see registerRootVisualNode), so it stays a
