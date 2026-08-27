@@ -14,6 +14,22 @@ import (
 
 // girClassInfoFor is the loaded class metadata for one C type, from whatever
 // GIR the host has. Skips when there is none.
+// girClassInfoOptional is girClassInfoFor for a class whose presence depends on
+// the host's GTK version. Which classes and setter links a GIR carries is
+// GTK's catalogue, not this platform's behaviour, so a case naming vocabulary
+// this host does not have is skipped rather than failed -- CI runs an older GTK
+// than a typical development box. Callers must guard against every case being
+// skipped, or the assertion says nothing.
+func girClassInfoOptional(t *testing.T, cType string) *gir.ClassInfo {
+	t.Helper()
+	skipWithoutGIR(t)
+	reg, err := (&Generator{}).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reg.ByCType[cType]
+}
+
 func girClassInfoFor(t *testing.T, cType string) *gir.ClassInfo {
 	t.Helper()
 	skipWithoutGIR(t)
@@ -256,21 +272,35 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 	}
 	// A setter is the name GIR gives it, which for eleven GTK properties is
 	// not the one the class and property names would produce.
+	checked := 0
 	for _, tc := range []struct{ cType, prop, want string }{
 		{"GtkImage", "iconName", "gtk_image_set_from_icon_name"},
 		{"GtkNotebook", "page", "gtk_notebook_set_current_page"},
 		{"GtkWindow", "focusWidget", "gtk_window_set_focus"},
 		{"GtkGLArea", "useEs", "gtk_gl_area_set_use_es"},
 	} {
-		info := girClassInfoFor(t, tc.cType)
-		p, ok := girProp(info, tc.prop)
-		if !ok {
-			t.Errorf("girProp(%s, %s) not found", tc.cType, tc.prop)
+		info := girClassInfoOptional(t, tc.cType)
+		if info == nil {
+			t.Logf("skipping %s: not in this GTK's GIR", tc.cType)
 			continue
 		}
-		if got := girSetter(info, p).Setter; got != tc.want {
+		p, ok := girProp(info, tc.prop)
+		if !ok {
+			t.Logf("skipping %s.%s: not in this GTK's GIR", tc.cType, tc.prop)
+			continue
+		}
+		got := girSetter(info, p).Setter
+		if got == "" {
+			t.Logf("skipping %s.%s: this GTK's GIR records no setter for it", tc.cType, tc.prop)
+			continue
+		}
+		checked++
+		if got != tc.want {
 			t.Errorf("girSetter(%s.%s) = %q; want %q", tc.cType, tc.prop, got, tc.want)
 		}
+	}
+	if checked == 0 {
+		t.Error("no irregular-setter case was checked; the table asserted nothing on this host")
 	}
 	// A property GIR names no setter for has none — there is no derived
 	// spelling to fall back on, and gtk_image_set_file does not exist.
@@ -335,21 +365,27 @@ func TestClassInheritance_Merges(t *testing.T) {
 
 	// A class's own declaration wins over the one it would inherit, so the
 	// setter is the class's own and there is no ancestor cast.
-	cell := girClassInfoFor(t, "GtkColumnViewCell")
-	p, ok = girProp(cell, "child")
-	if !ok {
-		t.Fatal("GtkColumnViewCell has no child prop")
-	}
-	if got := girSetter(cell, p); got.Setter != "gtk_column_view_cell_set_child" || got.RecvType != "" {
-		t.Errorf("girSetter(GtkColumnViewCell.child) = %+v; want its own setter with no cast, not GtkListItem's", got)
-	}
-
-	// One member, one entry: the merge must not stack a shadowed copy behind
-	// the class's own. girProp answers with the first match, so a duplicate
-	// would be invisible there and would surface only as a declaration
-	// carrying the same prop twice, which does not parse.
-	if n := countProps(cell.Props, "child"); n != 1 {
-		t.Errorf("GtkColumnViewCell carries %d child properties; want 1", n)
+	// A class's own declaration wins over the one it would inherit, so the
+	// setter is the class's own and there is no ancestor cast; and one member
+	// means one entry, because the merge must not stack a shadowed copy behind
+	// it. girProp answers with the first match, so a duplicate would be
+	// invisible there and would surface only as a declaration carrying the same
+	// prop twice, which does not parse.
+	//
+	// GtkColumnViewCell is GTK 4.12. On an older host the pair is absent, and
+	// the case is skipped rather than failed: which classes a GIR carries is
+	// GTK's catalogue, not this platform's behaviour.
+	if cell := girClassInfoOptional(t, "GtkColumnViewCell"); cell == nil {
+		t.Log("skipping own-declaration-wins: GtkColumnViewCell is not in this GTK's GIR")
+	} else if p, ok := girProp(cell, "child"); !ok {
+		t.Log("skipping own-declaration-wins: GtkColumnViewCell has no child prop here")
+	} else {
+		if got := girSetter(cell, p); got.Setter != "gtk_column_view_cell_set_child" || got.RecvType != "" {
+			t.Errorf("girSetter(GtkColumnViewCell.child) = %+v; want its own setter with no cast, not GtkListItem's", got)
+		}
+		if n := countProps(cell.Props, "child"); n != 1 {
+			t.Errorf("GtkColumnViewCell carries %d child properties; want 1", n)
+		}
 	}
 
 	// Inheritance composes with the interface merge rather than fighting it,
