@@ -294,41 +294,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.indent--
 		cc.line("}")
 
-	case "radio":
-		// One-way `value` (the selected option) + @change. Each option is a
-		// RadioButton; selecting fires @change (no-op when unwired). direction
-		// "horizontal" lays them in a Row, otherwise a Column.
-		optionsExpr := "listOf<String>()"
-		if o := codegen.NodeProp(n, "options"); o != nil {
-			optionsExpr = cc.kc.EvalExpr(o)
-		}
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		container := "Column"
-		if d, ok := codegen.IRLiteralString(codegen.NodeProp(n, "direction")); ok && d == "horizontal" {
-			container = "Row"
-		}
-		cc.line("%s(%s) {", container, style)
-		cc.indent++
-		cc.line("%s.forEach { opt ->", optionsExpr)
-		cc.indent++
-		cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-		cc.indent++
-		cc.line("RadioButton(selected = (%s == opt), onClick = {", valueExpr)
-		cc.indent++
-		emitInputHandlerCall(cc, n, "change", "opt")
-		cc.indent--
-		cc.line("})")
-		cc.line("Text(opt)")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-
 	case "progress":
 		if v := codegen.NodeProp(n, "value"); v != nil {
 			val := cc.kc.EvalExpr(v)

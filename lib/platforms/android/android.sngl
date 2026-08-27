@@ -59,7 +59,9 @@ struct Options {
 // the lambda: its body is emitted where the argument goes, so what the callback
 // does is ordinary code in this file rather than a case in the codegen. A
 // parameter typed as an event payload is the SNGL event, built from the value
-// Compose passes; one typed as that value is the value.
+// Compose passes; one typed as that value is the value. A callback Compose
+// passes nothing to has neither, so the override names the value itself and
+// hands it to the SNGL event as the argument — `change(opt)` in radio below.
 //
 // The id is `android:` plus the composable's name — namespaced by the
 // platform whose codegen answers to it, so a platform primitive can never
@@ -131,6 +133,12 @@ component Checkbox(
 component Switch(
     checked bool,
     onCheckedChange func(bool),
+) {}
+
+#[intrinsic("android:RadioButton")]
+component RadioButton(
+    selected bool,
+    onClick func(),
 ) {}
 
 #[intrinsic("android:OutlinedTextField")]
@@ -233,9 +241,31 @@ component sngl.checkbox {
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio() {
-    Column {
-        slot
+// Compose's RadioButton is one option, so the group is the loop: the
+// container is the direction the prop asks for and each option is a button
+// beside its label. onClick is passed nothing, so `change(opt)` is where the
+// selected option becomes the event's value.
+component sngl.radio {
+    platform android {
+        if direction == "horizontal" {
+            Row(modifier={...style}) {
+                for opt = options {
+                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                        RadioButton(selected=(value == opt), onClick=func() { change(opt) }) {}
+                        Text(text=opt) {}
+                    }
+                }
+            }
+        } else {
+            Column(modifier={...style}) {
+                for opt = options {
+                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                        RadioButton(selected=(value == opt), onClick=func() { change(opt) }) {}
+                        Text(text=opt) {}
+                    }
+                }
+            }
+        }
     }
 }
 

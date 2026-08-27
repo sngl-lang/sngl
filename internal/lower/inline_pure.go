@@ -660,12 +660,21 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return stmts
 	}
 	bindings := map[string]ir.Expr{}
+	// A wrapper that has the value but no event carries it as the argument:
+	// a platform callback reporting a change it is passed nothing for
+	// (Compose's RadioButton onClick, whose value is the option the override
+	// looped to) can only name the value. The payloads this applies to hold
+	// exactly that one field, so a read of it is the argument itself.
+	payloadValues := map[string]ir.Expr{}
 	for i, p := range params {
 		if p == nil || p.Name == "" {
 			continue
 		}
 		if i < len(args) {
 			bindings[p.Name] = args[i].Value
+			if f, ok := soleFieldGiven(p.Type, args[i].Value); ok {
+				payloadValues[p.Name+"."+f] = args[i].Value
+			}
 			continue
 		}
 		// No matching arg — the wrapper invoked @event() with fewer args
@@ -687,6 +696,15 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return stmts
 	}
 	walker := newExprWalker(func(e ir.Expr) ir.Expr {
+		if sel, ok := e.(*ir.Select); ok && len(payloadValues) > 0 {
+			if id, ok := sel.Operand.(*ir.Ident); ok {
+				if _, isParam := id.Sym.(*ir.Param); isParam {
+					if v, ok := payloadValues[id.Name+"."+sel.Field]; ok {
+						return deepCloneExpr(v)
+					}
+				}
+			}
+		}
 		id, ok := e.(*ir.Ident)
 		if !ok {
 			return e
@@ -700,6 +718,27 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return e
 	})
 	return walker.stmts(stmts)
+}
+
+// soleFieldGiven reports the one field of the event payload p declares, when
+// arg is that field's value rather than the payload. A payload of one field
+// and a value of that field's type are the same information, and a wrapper
+// with no event to pass has only the second — so the handler's read of the
+// field resolves to it. Anything else (a payload passed as itself, a payload
+// of more than one field) is left to the ordinary parameter binding.
+func soleFieldGiven(payload *ir.Type, arg ir.Expr) (string, bool) {
+	if payload == nil || payload.Kind != ir.TypeStruct || arg == nil {
+		return "", false
+	}
+	sd, ok := payload.Decl.(*ir.StructDef)
+	if !ok || len(sd.Fields) != 1 {
+		return "", false
+	}
+	at := arg.ExprType()
+	if at == nil || at.Kind == ir.TypeStruct {
+		return "", false
+	}
+	return sd.Fields[0].Name, true
 }
 
 // propLambdas are the lambdas a node's arguments carry. A prop declared with a
