@@ -83,8 +83,8 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	// A component with no body is platform-resolved (e.g. stdlib widget
-	// stubs with Native metadata). Nothing to inline.
+	// Nothing to inline. A platform primitive is the intended case and is
+	// exempted by its #[intrinsic] mark before this is consulted.
 	if len(c.Body) == 0 {
 		return false
 	}
@@ -280,6 +280,11 @@ func impurityReason(comp *ir.Component) string {
 	}
 	if len(comp.Timers) > 0 {
 		parts = append(parts, "timer")
+	}
+	if len(parts) == 0 {
+		// Reached when the body is empty, which is what an unmarked platform
+		// primitive looks like — the reason a reader needs, and the fix.
+		return "no body to inline; mark it #[intrinsic] if it is a platform primitive"
 	}
 	return strings.Join(parts, ", ")
 }

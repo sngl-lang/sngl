@@ -22,7 +22,7 @@ grep 'chosen = "large"$' out/MainScreen.kt
 # fold at build time, so no runtime branch survives.
 grep 'Row\(modifier = Modifier\.padding\(4\.dp\)\) \{' out/MainScreen.kt
 grep 'Column\(modifier = Modifier\.padding\(5\.dp\)\) \{' out/MainScreen.kt
-! grep 'if ((\"horizontal\" == \"horizontal\"))' out/MainScreen.kt
+! grep '"horizontal" == "horizontal"' out/MainScreen.kt
 
 # Each option sits in a Row aligned on its centre.
 grep 'Row\(modifier = Modifier, verticalAlignment = Alignment\.CenterVertically\) \{' out/MainScreen.kt

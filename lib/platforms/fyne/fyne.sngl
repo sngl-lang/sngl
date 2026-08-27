@@ -32,6 +32,7 @@
 
 import sngl "sngl://std"
 import . "sngl://platforms"
+import . "sngl://internal/marks"
 
 #[options]
 struct Options {
@@ -69,6 +70,7 @@ struct Event {
 
 // The one platform primitive. Every component below renders exactly one of
 // these; its props are the blueprint the Go renderer reads.
+#[intrinsic("fyne:widget")]
 component widget(
     constructor Constructor,
     init list<Init>,
