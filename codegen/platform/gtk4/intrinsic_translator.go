@@ -246,7 +246,11 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
 	}
 	if !comp.Stdlib {
-		// A user component that renders nothing. Its own body is the answer.
+		// A user component that renders nothing. Lowering drops such a node
+		// before codegen, so this is unreachable through a compile — but this
+		// function is the translator's entry point, and the alternative to
+		// answering here is telling a user their own component has no gtk4
+		// implementation, which is not what is wrong.
 		return nil
 	}
 	// PlatformBodies survives passPlatformExtensionBody — the pass swaps the

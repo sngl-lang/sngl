@@ -127,8 +127,10 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		}
 		if !n.Component.Stdlib {
 			// A user component the optimizer eliminated — its body was empty,
-			// so there is no composable to call and nothing to draw. It is not
-			// in Pkg.Components, which is why isUserComponent missed it.
+			// so there is no composable to call and nothing to draw. Lowering
+			// drops such a node now, so this is unreachable through a compile;
+			// it stays because the alternative below is a panic, and a panic is
+			// the wrong answer for a program that is merely empty.
 			return
 		}
 	}
