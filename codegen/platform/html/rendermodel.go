@@ -2,9 +2,12 @@ package html
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -32,6 +35,11 @@ type renderBuilder struct {
 	cur       strings.Builder
 	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
+	// rawElem is the `element` declaration every HTML tag resolves to. The
+	// server render reads the same declaration the client render does, so the
+	// two agree on the tag, on which props are boolean, and on which prop
+	// holds the tag rather than describing the element.
+	rawElem *ir.Component
 }
 
 func (rb *renderBuilder) writeRaw(s string) { rb.cur.WriteString(s) }
@@ -53,7 +61,12 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // handlerPlacement) wrap their triggering element in a server-action <form>.
 // path is the route URL the form posts to.
 func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) *codegen.RouteRender {
-	rb := &renderBuilder{pkg: pkg, state: stateVarNames(pkg), actionIdx: actionIdx}
+	rb := &renderBuilder{
+		pkg:       pkg,
+		state:     stateVarNames(pkg),
+		actionIdx: actionIdx,
+		rawElem:   rawElementDecl(pkg),
+	}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
 	}
@@ -120,22 +133,46 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			path, actionIdx))
 	}
 
+	decl := n.Component
+	if decl == nil || decl.Wildcard == "" {
+		decl = rb.rawElem
+	}
 	tag := htmlTagFor(n.Name)
+	if t, ok := rawElementTag(decl, n); ok {
+		tag = t
+	}
 	rb.writeRaw("<" + tag)
 
 	// Attribute-style props (non-text-content) referencing state → HoleAttr.
 	var textBinding *ir.Arg
-	for i := range n.Props {
-		p := &n.Props[i]
+	for _, p := range rb.elementAttrs(decl, n) {
 		if isTextContentProp(n.Name, p.Name) {
 			textBinding = p
+			continue
+		}
+		if p.Name == "style" {
+			// A style struct is a set of CSS declarations; written through as
+			// a value it is not a string at all.
+			if css := htmlutil.BuildCSSStyleIR([]ir.Arg{*p}); css != "" {
+				rb.writeRaw(` style="` + css + `"`)
+			}
 			continue
 		}
 		if rb.exprIsReactive(p.Value) {
 			rb.writeRaw(" " + p.Name + `="`)
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: p.Value, Attr: p.Name})
 			rb.writeRaw(`"`)
-		} else if s, ok := codegen.IRLiteralString(p.Value); ok {
+			continue
+		}
+		// A boolean attribute is present or absent; `open="false"` leaves a
+		// <details> open, so a false one is written as nothing.
+		if bv, ok := codegen.IRLiteralBool(p.Value); ok {
+			if bv {
+				rb.writeRaw(" " + p.Name)
+			}
+			continue
+		}
+		if s, ok := codegen.IRLiteralString(p.Value); ok {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 		}
 	}
@@ -213,11 +250,43 @@ func htmlTagFor(name string) string {
 	return "div"
 }
 
+// elementAttrs is the props to write as attributes, in a stable order: the
+// ones the node was called with, minus the prop holding the tag (it names the
+// element rather than describing it) and minus the wildcard container, whose
+// entries are unpacked back into the attribute names they were written under
+// and appended sorted.
+func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
+	into := tagPropName(decl)
+	wildcard := map[string]bool{}
+	if decl != nil {
+		for _, dp := range decl.Props {
+			if dp != nil && dp.Wildcard != "" {
+				wildcard[dp.Name] = true
+			}
+		}
+	}
+	var out []*ir.Arg
+	for i := range n.Props {
+		p := &n.Props[i]
+		if p.Name == "" || p.Name == into || wildcard[p.Name] {
+			continue
+		}
+		out = append(out, p)
+	}
+	extra := codegen.WildcardProps(n)
+	for _, name := range slices.Sorted(maps.Keys(extra)) {
+		out = append(out, &ir.Arg{Name: name, Value: extra[name]})
+	}
+	return out
+}
+
 // isTextContentProp reports whether prop is rendered as the element's text
-// content (vs. an attribute) for the given element.
+// content (vs. an attribute) for the given element. The DOM-side content props
+// are here too: no attribute spells them, so writing one as an attribute both
+// invents markup and loses the text.
 func isTextContentProp(elem, prop string) bool {
 	switch prop {
-	case "value", "text", "label", "content":
+	case "value", "text", "label", "content", "textContent", "innerText":
 		return true
 	}
 	return false

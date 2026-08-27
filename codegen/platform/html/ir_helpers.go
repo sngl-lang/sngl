@@ -46,12 +46,17 @@ func componentProps(n *ir.NodeInst) []*ir.Prop {
 	return n.Component.Props
 }
 
-// rawElementTag reports the tag an explicit `tag=` prop names. It is the
-// escape hatch for a tag no identifier can spell (a hyphenated custom
-// element), so only a literal is one: a computed tag would have to be
+// rawElementTag reports the tag the element's tag prop names — the prop the
+// #[wildcard] mark binds a matched name into, which every `html.div` sets and
+// which a call site writing a tag no identifier can spell (a hyphenated custom
+// element) replaces. Only a literal is one: a computed tag would have to be
 // resolved at runtime, and nothing downstream can do that.
-func rawElementTag(n *ir.NodeInst) (string, bool) {
-	expr := codegen.NodeProp(n, "tag")
+func rawElementTag(decl *ir.Component, n *ir.NodeInst) (string, bool) {
+	into := tagPropName(decl)
+	if into == "" {
+		return "", false
+	}
+	expr := codegen.NodeProp(n, into)
 	if expr == nil {
 		return "", false
 	}

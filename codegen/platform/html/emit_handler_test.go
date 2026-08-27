@@ -39,11 +39,14 @@ func TestEventHandler_SyncWrapper(t *testing.T) {
 
 func TestEventHandler_AsyncInputWrapper(t *testing.T) {
 	g := newMinimalHTMLGen(t)
+	// hasParam, not the event name, is what puts `e` in the signature: the
+	// handler declared the parameter this body reads.
 	g.handlers = []eventHandler{{
-		elemID:  "$2",
-		event:   "input",
-		body:    "await save(e.target.value);",
-		isAsync: true,
+		elemID:   "$2",
+		event:    "input",
+		body:     "await save(e.target.value);",
+		hasParam: true,
+		isAsync:  true,
 	}}
 	var b strings.Builder
 	g.emitHandlers(&b)

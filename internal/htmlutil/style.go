@@ -108,6 +108,8 @@ func PropToCSS(prop string) string {
 		return "width"
 	case "height":
 		return "height"
+	case "minWidth":
+		return "min-width"
 	case "maxWidth":
 		return "max-width"
 	case "maxHeight":
@@ -118,6 +120,8 @@ func PropToCSS(prop string) string {
 		return "color"
 	case "background":
 		return "background-color"
+	case "fontFamily":
+		return "font-family"
 	case "fontSize":
 		return "font-size"
 	case "fontWeight":
@@ -158,11 +162,37 @@ func PropToCSS(prop string) string {
 		return "justify-content"
 	case "border":
 		return "border"
+	case "borderBottom":
+		return "border-bottom"
+	case "borderLeft":
+		return "border-left"
+	case "borderCollapse":
+		return "border-collapse"
+	case "borderStyle":
+		return "border-style"
+	case "cursor":
+		return "cursor"
 	case "listStyleType":
 		return "list-style-type"
 	default:
 		return ""
 	}
+}
+
+// StylePropSupported reports whether a `Style` field reaches CSS at all: it
+// either has a direct PropToCSS mapping or is one of the fields stylePropCSS
+// expands into several declarations.
+//
+// It exists for the test that enumerates `Style`'s declared fields against it.
+// A field declared in lib/std with no mapping here type-checks and then renders
+// as nothing, silently — which has happened twice — so the declaration and the
+// mapping are held in step by a test rather than by review.
+func StylePropSupported(prop string) bool {
+	switch prop {
+	case "paddingX", "paddingY", "marginX", "marginY", "borderWidth", "maxLines":
+		return true
+	}
+	return PropToCSS(prop) != ""
 }
 
 // IsNumeric reports whether s consists only of digits, dots, and hyphens.
@@ -181,7 +211,7 @@ func IsSizeProp(cssProp string) bool {
 	switch cssProp {
 	case "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
 		"margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
-		"width", "height", "max-width", "max-height", "gap",
+		"width", "height", "min-width", "max-width", "max-height", "gap",
 		"font-size", "border-width", "border-radius", "top", "bottom", "left", "right":
 		return true
 	}

@@ -6,6 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -26,58 +27,28 @@ type htmlTranslator struct {
 	// to the correct DOM property (textContent). Caller-supplied; nil
 	// is fine — OnPropAssign falls back to the DOM-name fast path.
 	idToNode map[string]*ir.NodeInst
+	// rawElem is the `element` declaration every HTML tag resolves to. By
+	// the time a tree is lowered to node ops the NodeInsts are gone, but
+	// the declaration is one for every tag, so holding it is enough to
+	// answer which props are boolean and which events exist.
+	rawElem *ir.Component
 }
 
-func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}}
+func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}, rawElem: g.rawElement()}
 }
 
 // newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
 // id → NodeInst map so OnPropAssign can map SNGL component props to DOM
 // props via domWriteForIR. Required when translating handler/timer/setter
 // bodies that NoReactivity injects with the original SNGL prop names.
-func newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNode map[string]*ir.NodeInst) *htmlTranslator {
-	t := newHTMLTranslator(jc)
+func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNode map[string]*ir.NodeInst) *htmlTranslator {
+	t := g.newHTMLTranslator(jc)
 	t.idToNode = idToNode
 	return t
 }
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
-
-// htmlNativeDOMProps is the set of DOM property names that html.sngl's
-// platform-extension bodies write to directly. Any prop not in this
-// set falls back to element.setAttribute(name, value).
-//
-// passInlinePure substitutes stdlib wrapper components with their
-// html.sngl-defined native element bodies at lowering time, so every
-// prop name landing here is a native DOM attribute/property name.
-var htmlNativeDOMProps = map[string]bool{
-	"textContent": true,
-	"innerHTML":   true,
-	"value":       true,
-	"placeholder": true,
-	"disabled":    true,
-	"readonly":    true,
-	"checked":     true,
-	"type":        true,
-	"className":   true,
-	"src":         true,
-	"alt":         true,
-	"href":        true,
-	"title":       true,
-	"role":        true,
-	"rows":        true,
-	"max":         true,
-}
-
-// htmlEventName maps a SNGL event name to its DOM counterpart.
-func htmlEventName(event string) string {
-	switch event {
-	case "click", "input", "change", "submit":
-		return event
-	}
-	return ""
-}
 
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
@@ -137,7 +108,7 @@ func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	domEvent := htmlEventName(event)
+	domEvent := domEventName(t.rawElem, event)
 	if domEvent == "" {
 		return nil
 	}
@@ -166,24 +137,42 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			}
 		}
 	}
-	if !htmlNativeDOMProps[prop] {
-		// Unknown prop: emit node.setAttribute("prop", value).
+	// The prop the tag name binds to names the element; the tag already
+	// reached OnCreateNode, and there is no attribute to write it as.
+	if prop != "" && prop == tagPropName(t.rawElem) {
+		return nil
+	}
+	setAttr := func(name string, v ir.Expr) []ir.Stmt {
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
 			Receiver: node,
 			Func:     &ir.Func{Name: "setAttribute"},
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Raw: prop}},
-				{Value: value},
+				{Value: &ir.Literal{Type: ir.TypString, Raw: name}},
+				{Value: v},
 			},
 		}}}
 	}
-	// node.<prop> = value
-	return []ir.Stmt{&ir.Assign{
-		Target: &ir.Select{Operand: node, Field: prop, Type: ir.TypDyn},
-		Op:     ast.AssignSet,
-		Value:  value,
-	}}
+	// A `style={...}` struct is a set of CSS declarations, not a value any
+	// DOM sink accepts: passed through it stringifies to "[object Object]".
+	if prop == "style" {
+		if sl, ok := value.(*ir.StructLit); ok {
+			css := htmlutil.BuildCSSStyleIR([]ir.Arg{{Name: "style", Value: sl}})
+			if css == "" {
+				return nil
+			}
+			return setAttr(prop, &ir.Literal{Type: ir.TypString, Raw: css})
+		}
+	}
+	if field, ok := domPropForProp(t.rawElem, prop); ok {
+		// node.<field> = value
+		return []ir.Stmt{&ir.Assign{
+			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},
+			Op:     ast.AssignSet,
+			Value:  value,
+		}}
+	}
+	return setAttr(prop, value)
 }
 
 // domWriteForIR is the IR-level mirror of domWriteFor in html.go. Returns

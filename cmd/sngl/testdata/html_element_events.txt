@@ -1,0 +1,55 @@
+# `element` declares its events, so codegen reads the declaration rather than
+# matching names: which listener is attached, whether it takes an event
+# argument, and what that argument stands for all come from there.
+#
+# Before, three name lists disagreed. An event outside click/input/change was
+# routed to a registration that binds no event parameter, and the emitted
+# signature was picked by a separate `event == "input" || event == "change"`
+# test — so `@error(e) { msg = e.message }` compiled to a listener with no `e`
+# and the body threw ReferenceError. On the lowered (JS-built) path a fourth
+# list dropped any event outside click/input/change/submit on the floor.
+
+sngl generate --platform html --lang none -o out events.sngl
+
+# @error carries ErrorEvent, whose fields the element declares nothing of, so
+# the parameter stands for the event and the listener takes it.
+grep 'addEventListener\("error", function\(e\) \{' out/index.html
+grep 'state\.msg = e\.message;' out/index.html
+! grep 'addEventListener\("error", function\(\)' out/index.html
+
+# @input carries InputEvent{value}, and `value` IS a prop of the element: the
+# field is the control's own state, read back off the target.
+grep 'addEventListener\("input", function\(e\) \{' out/index.html
+grep 'state\.txt = e\.target\.value;' out/index.html
+
+# A handler that declares no parameter gets no argument in the signature —
+# the body has nothing that could resolve to the event.
+grep 'addEventListener\("click", function\(\) \{' out/index.html
+
+# An event the element declares no payload for still reaches its own DOM
+# event through the wildcard event, and not click's listener.
+grep 'addEventListener\("mouseover", function\(\) \{' out/index.html
+
+# The same holds on the lowered path, where the element is built by JS: the
+# listener is attached inside the slot renderer rather than dropped.
+grep 'addEventListener\("mouseover", \(\) => \{' out/index.html
+
+-- events.sngl --
+import . "sngl://std"
+
+component main {
+    var msg string = ""
+    var txt string = ""
+    var hits int = 0
+    var rows list<string> = ["a"]
+
+    window {
+        html.img(src = "x.png", @error(e) { msg = e.message })
+        html.input(@input(e) { txt = e.value })
+        html.button(@click { hits = hits + 1 })
+        html.div(@mouseover { hits = hits + 1 })
+        for r = rows {
+            html.li(textContent = r, @mouseover { hits = hits + 1 })
+        }
+    }
+}

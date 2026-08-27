@@ -594,6 +594,12 @@ type htmlGen struct {
 
 	// canvasSetups collects canvas elements needing JS draw wiring.
 	canvasSetups []canvasSetup
+
+	// rawElem is the `element` declaration every HTML tag resolves to (see
+	// element_decl.go). Resolved once per generator; rawElemDone separates
+	// "not looked up yet" from "looked up and there is none".
+	rawElem     *ir.Component
+	rawElemDone bool
 }
 
 type componentParam struct {
@@ -615,11 +621,16 @@ type updateFunc struct {
 }
 
 type eventHandler struct {
-	elemID  string
-	event   string // the DOM event name passed to addEventListener
-	body    string // JS statements
-	mutated map[string]bool
-	isAsync bool
+	elemID string
+	event  string // the DOM event name passed to addEventListener
+	body   string // JS statements
+	// hasParam is true when the body reads the event: the handler declared a
+	// parameter, so translation bound it (see eventPayloadBase) and the
+	// emitted listener must take `e`. The signature is chosen from this
+	// rather than from the event's name, which said nothing about the body.
+	hasParam bool
+	mutated  map[string]bool
+	isAsync  bool
 }
 
 type timerDef struct {
@@ -1625,6 +1636,9 @@ const maxComponentDepth = 10
 // (writeUserAttrs / exprDeps).
 func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth int) {
 	indent := strings.Repeat("  ", depth)
+	// The declaration this element resolved to answers which prop holds the
+	// tag, which props are boolean, and which events it has.
+	decl := g.elementDecl(n)
 	// Extract tag name: "html.div" → "div", "button" → "button"
 	tag := n.Name
 	if _, local, ok := strings.Cut(tag, "."); ok {
@@ -1634,7 +1648,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// its `tag` prop, and a call site that wrote one of its own — the way a
 	// hyphenated custom element is reached — replaced it there. n.Name is the
 	// fallback for a node that resolved to no component at all.
-	if t, ok := rawElementTag(n); ok {
+	if t, ok := rawElementTag(decl, n); ok {
 		tag = t
 	}
 
@@ -1670,8 +1684,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// Build inline attributes from static props.
 	// innerText and innerHTML are rendered as element content, not attributes.
 	props := nodeProps(n)
-	// `tag` names the element; it is not one of its attributes.
-	delete(props, "tag")
+	// The prop the matched tag name binds to names the element; it is not one
+	// of its attributes. Which prop that is comes from the element's
+	// #[wildcard] mark, not from the name "tag".
+	delete(props, tagPropName(decl))
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""
@@ -1804,13 +1820,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			// is in handlers — not the raw `.value`.
 			if field, ok := domFieldForIR(n.Name, name); ok {
 				body = fmt.Sprintf(`%s.%s = %s;`, id, field, jsVal)
+			} else if field, ok := domPropForProp(decl, name); ok {
+				body = fmt.Sprintf(`%s.%s = %s;`, id, field, jsVal)
 			} else {
-				switch name {
-				case "innerHTML", "innerText", "textContent", "value", "checked", "disabled", "selected", "hidden":
-					body = fmt.Sprintf(`%s.%s = %s;`, id, name, jsVal)
-				default:
-					body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
-				}
+				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)
 			}
 			// An i18n.tr-rooted prop with no state dependencies still
 			// varies by locale and must run at least once on initial
@@ -1827,23 +1840,20 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 	}
 
-	// Wire up events
+	// Wire up events. A raw element's event name is the DOM event name, and
+	// every event goes through the same registration: whether the listener
+	// takes an event argument is the handler's parameter list to answer, not
+	// the event name's, so there is no per-event case to get wrong.
 	for i := range n.Handlers {
 		h := &n.Handlers[i]
 		if h.Func == nil {
 			continue
 		}
-		switch h.Name {
-		case "click":
-			g.addClickHandler(id, h.Func.Block)
-		case "input":
-			g.addInputHandler(id, h.Func)
-		case "change":
-			g.addChangeHandler(id, h.Func)
-		default:
-			// A raw element's event name *is* the DOM event name.
-			g.addNamedHandler(id, h.Name, h.Func.Block)
+		event := domEventName(decl, h.Name)
+		if event == "" {
+			continue
 		}
+		g.addEventHandler(decl, id, event, h.Func)
 	}
 }
 
@@ -2345,7 +2355,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 
 	for _, fn := range synthFuncs {
-		tr := newHTMLTranslator(jc)
+		tr := g.newHTMLTranslator(jc)
 		body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 		synthesized := &ir.Func{
 			Name:   fn.Name,
@@ -2442,11 +2452,11 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 		if h.isAsync {
 			keyword = "async function"
 		}
-		if h.event == "input" || h.event == "change" {
-			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(e) {\n  %s\n});\n", h.elemID, h.event, keyword, body)
-		} else {
-			fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s() {\n  %s\n});\n", h.elemID, h.event, keyword, body)
+		param := ""
+		if h.hasParam {
+			param = "e"
 		}
+		fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(%s) {\n  %s\n});\n", h.elemID, h.event, keyword, param, body)
 	}
 }
 
@@ -2634,11 +2644,13 @@ func (g *htmlGen) optimizeIR() {
 	// but HTML has already translated to JS strings).
 	handlerBodyMap := make(map[string]string)
 	handlerAsyncMap := make(map[string]bool)
+	handlerParamMap := make(map[string]bool)
 	handlers := make([]codegen.Handler, len(g.handlers))
 	for i, h := range g.handlers {
 		key := h.elemID + ":" + h.event
 		handlerBodyMap[key] = h.body
 		handlerAsyncMap[key] = h.isAsync
+		handlerParamMap[key] = h.hasParam
 		handlers[i] = codegen.Handler{
 			NodeID:  h.elemID,
 			Event:   h.event,
@@ -2693,11 +2705,12 @@ func (g *htmlGen) optimizeIR() {
 	for i, h := range m.Handlers {
 		key := h.NodeID + ":" + h.Event
 		g.handlers[i] = eventHandler{
-			elemID:  h.NodeID,
-			event:   h.Event,
-			body:    handlerBodyMap[key],
-			mutated: varSetToNames(h.Mutated),
-			isAsync: handlerAsyncMap[key],
+			elemID:   h.NodeID,
+			event:    h.Event,
+			body:     handlerBodyMap[key],
+			hasParam: handlerParamMap[key],
+			mutated:  varSetToNames(h.Mutated),
+			isAsync:  handlerAsyncMap[key],
 		}
 	}
 
@@ -2954,37 +2967,6 @@ func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]strin
 	return remapped
 }
 
-func (g *htmlGen) addClickHandler(elemID string, body []ir.Stmt) {
-	g.addNamedHandler(elemID, "click", body)
-}
-
-// addNamedHandler registers a handler for an arbitrary DOM event whose body
-// takes no event argument. Unlike addParamEventHandler it binds no EventVar,
-// so a body reading the event is a separate (declared) concern.
-func (g *htmlGen) addNamedHandler(elemID, event string, body []ir.Stmt) {
-	if len(body) == 0 {
-		return
-	}
-	lines := g.translateBlockJC(body)
-	var mutated map[string]bool
-	for _, s := range body {
-		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
-			if mutated == nil {
-				mutated = make(map[string]bool)
-			}
-			mutated[v.Name] = true
-		}
-	}
-	mutated = g.remapMutated(mutated, g.dataRenames)
-	g.handlers = append(g.handlers, eventHandler{
-		elemID:  elemID,
-		event:   event,
-		body:    strings.Join(lines, "\n  "),
-		mutated: mutated,
-		isAsync: ir.BlockHasFuncvarAsyncCall(body, g.pts()),
-	})
-}
-
 // scopedJC returns a JsIRContext whose ExprCtx is a clone of g.ctx, carrying
 // the live locals, renames, and EventVar so WalkLowered + jc.EvalStmt resolves
 // identifiers consistently with the rest of html emission.
@@ -3015,7 +2997,7 @@ func (g *htmlGen) scopedJCFresh() *javascript.JsIRContext {
 // Used by handler/timer/setter emission to converge on the new dispatch path.
 func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 	jc := g.scopedJC()
-	tr := newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
 	// Split off CanvasRedrawStmts: they carry a NodeInst→ID lookup that
 	// only htmlGen has, so handle them here rather than in the translator.
 	var regular []ir.Stmt
@@ -3183,25 +3165,18 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 	}
 }
 
-func (g *htmlGen) addInputHandler(elemID string, fn *ir.Func) {
-	g.addParamEventHandler(elemID, "input", fn)
-}
-
-func (g *htmlGen) addChangeHandler(elemID string, fn *ir.Func) {
-	g.addParamEventHandler(elemID, "change", fn)
-}
-
-// addParamEventHandler registers an event handler whose function may carry
-// a single event-arg param. The param is bound to `e.target` so handler
-// bodies that read `evt.value` resolve to `e.target.value`. Body emission
+// addEventHandler registers a handler for one DOM event. The handler's
+// function may carry a single event-arg param; what that param stands for is
+// the event's declared payload to say (see eventPayloadBase), and whether it
+// carries one at all decides the emitted listener's signature. Body emission
 // goes through translateBlockJC.
-func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
+func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
 	savedEvent := g.ctx.EventVar
 	savedEventParam := g.ctx.EventParam
-	g.ctx.EventVar = "e.target"
+	g.ctx.EventVar = eventPayloadBase(decl, event)
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
@@ -3233,11 +3208,15 @@ func (g *htmlGen) addParamEventHandler(elemID, event string, fn *ir.Func) {
 	}
 	mutated = g.remapMutated(mutated, g.dataRenames)
 	g.handlers = append(g.handlers, eventHandler{
-		elemID:  elemID,
-		event:   event,
-		body:    strings.Join(lines, "\n  "),
-		mutated: mutated,
-		isAsync: ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
+		elemID: elemID,
+		event:  event,
+		body:   strings.Join(lines, "\n  "),
+		// The listener takes `e` exactly when the handler declared the
+		// parameter that translation bound to it: with no parameter nothing in
+		// the body can resolve to the event, and with one the body reads it.
+		hasParam: len(fn.Params) > 0,
+		mutated:  mutated,
+		isAsync:  ir.BlockHasFuncvarAsyncCall(fn.Block, g.pts()),
 	})
 }
 
@@ -3345,7 +3324,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
 	}
-	tr := newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)
