@@ -122,8 +122,15 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		return
 	}
 	if n.Component != nil {
-		cc.renderStdlibComposable(n)
-		return
+		if cc.renderStdlibComposable(n) {
+			return
+		}
+		if !n.Component.Stdlib {
+			// A user component the optimizer eliminated — its body was empty,
+			// so there is no composable to call and nothing to draw. It is not
+			// in Pkg.Components, which is why isUserComponent missed it.
+			return
+		}
 	}
 	cc.line("Text(\"[unknown: %s]\")", n.Name)
 }
@@ -187,31 +194,14 @@ func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(cc.ctx.Pkg.Components, comp)
 }
 
-func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
+// renderStdlibComposable emits the components whose android body is still
+// written here rather than declared in lib/platforms/android. It reports
+// whether it recognised n; an unrecognised one is a missing override, which
+// renderNode says out loud rather than dropping.
+func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 	style := cc.buildModifier(n)
 
 	switch n.Name {
-	case "button":
-		text := cc.resolveTextProp(n)
-		clickHandler := codegen.NodeHandler(n, "click")
-		if clickHandler != nil && clickHandler.Func != nil {
-			cc.line("Button(onClick = {")
-			cc.indent++
-			for _, stmt := range clickHandler.Func.Block {
-				for _, line := range cc.kc.EvalStmt(stmt) {
-					cc.line("%s", line)
-				}
-			}
-			cc.indent--
-			cc.line("}, %s) {", style)
-			cc.indent++
-			cc.line("Text(%s)", text)
-			cc.indent--
-			cc.line("}")
-		} else {
-			cc.line("Button(onClick = {}, %s) { Text(%s) }", style, text)
-		}
-
 	case "input":
 		// Resolve `value=...` for the controlled-input expression.
 		valueExpr := "\"\""
@@ -302,17 +292,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 			cc.line("LinearProgressIndicator(%s)", style)
 		}
 
-	case "badge":
-		content := cc.resolveContent(n)
-		cc.line("Badge(%s) { Text(%s) }", style, content)
-
-	case "link":
-		text := cc.resolveTextProp(n)
-		cc.line("Text(%s, color = MaterialTheme.colorScheme.primary, %s)", text, cc.textStyle(n))
-
-	case "image":
-		cc.line("// TODO: Image composable")
-
 	case "datepicker":
 		// One-way `value` (the date, a String on Android) + @change. Rendered
 		// as a read-only field showing the date with the placeholder as label.
@@ -339,19 +318,9 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.line(")")
 
 	default:
-		if len(n.Children) > 0 {
-			cc.line("Column(%s) {", style)
-			cc.indent++
-			for _, child := range n.Children {
-				cc.renderStmt(child)
-			}
-			cc.indent--
-			cc.line("}")
-		} else {
-			content := cc.resolveContent(n)
-			cc.line("Text(%s)", content)
-		}
+		return false
 	}
+	return true
 }
 
 func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
@@ -383,24 +352,6 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 }
 
 // --- Helpers ---
-
-func (cc *irComposeContext) resolveContent(n *ir.NodeInst) string {
-	for _, name := range []string{"value", "text", "label", "content"} {
-		if v := codegen.NodeProp(n, name); v != nil {
-			return cc.kc.EvalExpr(v)
-		}
-	}
-	return `""`
-}
-
-func (cc *irComposeContext) resolveTextProp(n *ir.NodeInst) string {
-	for _, name := range []string{"text", "label", "value"} {
-		if v := codegen.NodeProp(n, name); v != nil {
-			return cc.kc.EvalExpr(v)
-		}
-	}
-	return `""`
-}
 
 // buildModifierRaw returns just the modifier expression (e.g., "Modifier.padding(16.dp)")
 // without the "modifier = " prefix. A user-authored #id (not the
@@ -442,13 +393,6 @@ func userTestTag(n *ir.NodeInst) string {
 		return ""
 	}
 	return n.ID
-}
-
-func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
-	if ts := cc.textStyleExpr(n, "style"); ts != "" {
-		return "style = " + ts
-	}
-	return ""
 }
 
 func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {

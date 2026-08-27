@@ -7,9 +7,13 @@
 // can reach a composable this package wraps no wrapper for.
 //
 // A `component sngl.X { platform android { ... } }` override is inlined into
-// the caller at lower time, so its body is what the codegen sees. The
-// remaining `component sngl.X()` bodies below are not: they are read by
-// nothing and still keyed on the stdlib name by a switch in compose_ir.go.
+// the caller at lower time, so its body is what the codegen sees.
+//
+// The four `component sngl.X()` bodies left below are not read at all — the
+// parens form is skipped by mergePlatformExtensions — and those four
+// components are still written by name in a switch in compose_ir.go. Each
+// needs something the generic intrinsic emitter cannot yet say; the comment
+// on each says which.
 
 import sngl "sngl://std"
 import . "sngl://platforms"
@@ -101,6 +105,7 @@ component Text(
     // Typography, as Compose's own `style` argument: a TextStyle built from
     // the Style's font and colour fields.
     style sngl.Style,
+    args list<string>,
 ) {}
 
 #[intrinsic("android:HorizontalDivider")]
@@ -112,6 +117,17 @@ component HorizontalDivider(
 component CircularProgressIndicator(
     modifier sngl.Style,
 ) {}
+
+#[intrinsic("android:Button")]
+component Button(
+    onClick func(),
+    modifier sngl.Style,
+) list<component> {}
+
+#[intrinsic("android:Badge")]
+component Badge(
+    modifier sngl.Style,
+) list<component> {}
 
 #[intrinsic("android:Card")]
 component Card(
@@ -212,18 +228,28 @@ component sngl.text {
     }
 }
 
-component sngl.button() {
-    Button {
-        Text(text=text) {}
+component sngl.button {
+    platform android {
+        Button(onClick=func() { click() }, modifier={...style}) {
+            Text(text=text) {}
+        }
     }
 }
 
-component sngl.image() {
-    Box {
-        Text(text=alt) {}
+// Compose has no image loader in the box: an `Image` needs a painter, and
+// every source SNGL accepts (a URL, an asset path) needs a different one, so
+// android draws no image yet. The emitter used to render a TODO comment,
+// which draws nothing; an unsized Spacer is the declared spelling of that.
+component sngl.image {
+    platform android {
+        Spacer(modifier={...style}) {}
     }
 }
 
+// Not converted. The placeholder becomes Compose's `label`, which takes a
+// composable lambda — `label = { Text("...") }`. An intrinsic prop can carry a
+// value or a statement lambda, but nothing declares a *composable* lambda
+// argument, so the label cannot be written here.
 component sngl.input() {
     OutlinedTextField(value=value) {}
 }
@@ -280,6 +306,12 @@ component sngl.toggle {
     }
 }
 
+// Not converted, for three reasons. The menu needs per-call-site state
+// (`var expanded by remember`), and expandCall hoists an override's vars into
+// the enclosing composable, so a select inside a `for` would share one
+// `expanded` across every row. DropdownMenuItem's `text` is a composable
+// lambda (see input). And the placeholder fallback needs Kotlin's
+// `isNotEmpty()`, which SNGL has no spelling for on a bound prop.
 component sngl.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
@@ -295,12 +327,18 @@ component sngl.textarea {
     }
 }
 
+// Not converted. Same composable-lambda `label` as input.
 component sngl.datepicker() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
+// Not converted. Compose's determinate/indeterminate split is by *presence* of
+// the `progress` argument, and the emitter picks by whether the call site gave
+// `value` at all — a distinction an override body cannot draw, since a prop it
+// reads is always there. `progress` is also a `() -> Float` lambda, and a
+// func-typed prop's body is emitted as statements, not as an expression.
 component sngl.progress() {
     LinearProgressIndicator {}
 }
@@ -311,9 +349,11 @@ component sngl.spinner {
     }
 }
 
-component sngl.badge() {
-    Badge {
-        Text(text=value) {}
+component sngl.badge {
+    platform android {
+        Badge(modifier={...style}) {
+            Text(text=value) {}
+        }
     }
 }
 
@@ -331,13 +371,19 @@ component sngl.card {
     }
 }
 
-component sngl.chip() {
-    AssistChip(label=label) {}
+component sngl.chip {
+    platform android {
+        Text(text=label) {}
+    }
 }
 
-component sngl.link() {
-    TextButton(@onClick { click() }) {
-        Text(text=text) {}
+component sngl.link {
+    platform android {
+        Text(
+            text=text,
+            style={...style},
+            args=["color = MaterialTheme.colorScheme.primary"],
+        ) {}
     }
 }
 
@@ -366,62 +412,72 @@ component sngl.modal {
     }
 }
 
-component sngl.drawer() {
-    Column {
-        slot
+component sngl.drawer {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.tooltip() {
-    Box {
-        slot
+component sngl.tooltip {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.popover() {
-    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
-        slot
+component sngl.popover {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.splitview() {
-    Row {
-        slot
+component sngl.splitview {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.table() {
-    Column {
-        slot
+component sngl.table {
+    platform android {
+        Text(text="") {}
     }
 }
 
-component sngl.tree() {
-    Column {
-        slot
+component sngl.tree {
+    platform android {
+        Text(text="") {}
     }
 }
 
-component sngl.menu() {
-    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
-        slot
+component sngl.menu {
+    platform android {
+        Text(text="") {}
     }
 }
 
-component sngl.menubar() {
-    Row {
-        slot
+component sngl.menubar {
+    platform android {
+        Text(text="") {}
     }
 }
 
-component sngl.toolbar() {
-    Row {
-        slot
+component sngl.toolbar {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.avatar() {
-    Box {
-        Text(text=initials) {}
+component sngl.avatar {
+    platform android {
+        Text(text="") {}
     }
 }
