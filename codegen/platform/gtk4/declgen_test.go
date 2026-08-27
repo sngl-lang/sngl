@@ -1,6 +1,8 @@
 package gtk4
 
 import (
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -93,6 +95,12 @@ func TestSnglName_NoCollisions(t *testing.T) {
 		t.Fatal(err)
 	}
 	rewritten := 0
+	// reserved records every GIR property whose SNGL spelling collides with
+	// a name the declaration reserves for the platform's own prop. declgen
+	// silently drops those, so a sweep that does not model the reservation
+	// would report no collision either way — and the two real ones would go
+	// unnoticed if the reservation were ever removed.
+	var reserved []string
 	for _, info := range reg.Classes {
 		if info.CType == "" {
 			continue
@@ -100,6 +108,9 @@ func TestSnglName_NoCollisions(t *testing.T) {
 		props := map[string]string{}
 		events := map[string]string{}
 		for _, p := range info.Props {
+			if p.ConstructOnly {
+				continue
+			}
 			n, ok := snglName(p.Name)
 			if !ok {
 				t.Errorf("%s.%s has no SNGL spelling", info.CType, p.Name)
@@ -108,12 +119,19 @@ func TestSnglName_NoCollisions(t *testing.T) {
 			if strings.HasSuffix(n, "_") {
 				rewritten++
 			}
+			if n == stylePropName {
+				reserved = append(reserved, info.CType+"."+p.Name)
+				continue
+			}
 			if prev, dup := props[n]; dup && prev != p.Name {
 				t.Errorf("%s: %q and %q both spell %q", info.CType, prev, p.Name, n)
 			}
 			props[n] = p.Name
 		}
 		for _, sig := range info.Signals {
+			if !sig.Connectable() {
+				continue
+			}
 			n, ok := snglName(sig.Name)
 			if !ok {
 				t.Errorf("%s signal %s has no SNGL spelling", info.CType, sig.Name)
@@ -127,6 +145,16 @@ func TestSnglName_NoCollisions(t *testing.T) {
 	}
 	if rewritten == 0 {
 		t.Error("no name needed the keyword rewrite; the sweep is asserting nothing")
+	}
+	// The reservation is load-bearing, and these two are what it costs: both
+	// classes have a real GTK property named style that the platform's own
+	// style prop takes the name of. If this list empties, the reservation is
+	// dropping nothing and the seeding in widgetSource is dead; if it grows,
+	// a property stopped being declared without anyone deciding that.
+	sort.Strings(reserved)
+	want := []string{"GtkCellRendererText.style", "GtkTextTag.style"}
+	if !slices.Equal(reserved, want) {
+		t.Errorf("properties dropped by the %q reservation = %v; want %v", stylePropName, reserved, want)
 	}
 }
 
@@ -252,11 +280,11 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 		t.Errorf("gtkSetterFor(GtkImage.file) = %q; want gtk_image_set_from_file", got)
 	}
 	// The event a body writes is the SNGL spelling of a GLib signal name.
-	if got := girSignal(girClassInfoFor(t, "GtkButton"), "clicked"); got != "clicked" {
-		t.Errorf("girSignal(GtkButton, clicked) = %q; want clicked", got)
+	if got, ok := girSignal(girClassInfoFor(t, "GtkButton"), "clicked"); !ok || got.Name != "clicked" {
+		t.Errorf("girSignal(GtkButton, clicked) = %+v, %v; want clicked, true", got, ok)
 	}
-	if got := girSignal(box, "notAThing"); got != "" {
-		t.Errorf("girSignal(GtkBox, notAThing) = %q; want empty", got)
+	if got, ok := girSignal(box, "notAThing"); ok {
+		t.Errorf("girSignal(GtkBox, notAThing) = %+v, true; want not found", got)
 	}
 }
 

@@ -394,7 +394,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		if canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc)
+			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared, canvasByFunc)
 			continue
 		}
 		if fn.Synthesized {

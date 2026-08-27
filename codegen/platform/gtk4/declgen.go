@@ -67,6 +67,13 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		fmt.Fprintf(&b, "\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
 		taken := map[string]bool{stylePropName: true}
 		for _, p := range info.Props {
+			// A construct-only property is not declared: the widget exists
+			// before any prop is assigned, and GObject refuses the write
+			// after construction. Declaring it would type-check a binding
+			// that silently does nothing at runtime.
+			if p.ConstructOnly {
+				continue
+			}
 			n, ok := snglName(p.Name)
 			if !ok || taken[n] {
 				continue
@@ -77,6 +84,13 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		fmt.Fprintf(&b, "    %s dyn,\n", stylePropName)
 		events := map[string]bool{}
 		for _, s := range info.Signals {
+			// A signal the fixed trampoline cannot carry is not declared, so
+			// binding it is a checker error on an event that does not exist
+			// rather than a connection that misdelivers at runtime. The
+			// emitter says the same thing for a signal reached some other way.
+			if !s.Connectable() {
+				continue
+			}
 			n, ok := snglName(s.Name)
 			if !ok || events[n] {
 				continue
@@ -282,15 +296,25 @@ func girEnumMember(reg *gir.TypeRegistry, girType, value string) string {
 	return "C." + ident
 }
 
-// girSignal returns the GLib signal name behind a SNGL event name.
-func girSignal(info *gir.ClassInfo, event string) string {
+// girSignal returns the GLib signal behind a SNGL event name. The registry
+// keeps every signal, connectable or not, so the emitter can tell a name it
+// has never heard of from one it is refusing.
+func girSignal(info *gir.ClassInfo, event string) (gir.Signal, bool) {
 	if info == nil {
-		return ""
+		return gir.Signal{}, false
 	}
 	for _, s := range info.Signals {
 		if n, ok := snglName(s.Name); ok && n == event {
-			return s.Name
+			return s, true
 		}
 	}
-	return ""
+	return gir.Signal{}, false
+}
+
+// girSignalReturnLabel spells a signal's return type for a diagnostic.
+func girSignalReturnLabel(s gir.Signal) string {
+	if s.ReturnType == "" || s.ReturnType == "none" {
+		return "void"
+	}
+	return s.ReturnType
 }

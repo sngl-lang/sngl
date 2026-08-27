@@ -26,9 +26,14 @@ import (
 // snglCallbacks holds registered Go signal handlers indexed by int.
 var snglCallbacks []func()
 
+// The index arrives as GTK's user_data pointer round-tripped through
+// GPOINTER_TO_INT, so a stray pointer lands here as an arbitrary int —
+// negative included. Bound it on both sides. (//export must sit directly
+// above the declaration, so this note goes above it.)
+//
 //export snglGoDispatch
 func snglGoDispatch(idx C.int) {
-	if int(idx) < len(snglCallbacks) {
+	if idx >= 0 && int(idx) < len(snglCallbacks) {
 		snglCallbacks[int(idx)]()
 	}
 }
@@ -52,7 +57,7 @@ var snglDrawFuncs []func(*C.cairo_t)
 
 //export sngl_draw_dispatch
 func sngl_draw_dispatch(idx C.int, cr *C.cairo_t) {
-	if int(idx) < len(snglDrawFuncs) {
+	if idx >= 0 && int(idx) < len(snglDrawFuncs) {
 		snglDrawFuncs[int(idx)](cr)
 	}
 }

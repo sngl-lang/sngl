@@ -171,3 +171,79 @@ func TestGtk4Translator_OnIter_Slot(t *testing.T) {
 		t.Errorf("expected 'm.__slot0'; got: %s", got)
 	}
 }
+
+// seedShared gives the translator the per-file accumulator a real compile
+// hands it, so a refusal is recorded rather than dropped by the nil sink.
+func seedShared(tr *gtk4Translator) *emitShared {
+	s := &emitShared{}
+	tr.withShared(s)
+	return s
+}
+
+// TestGtk4Translator_OnAttachHandler_RefusesWrongArity pins the emitter half
+// of the signal-shape rule. declgen withholds a signal the fixed (instance,
+// user_data) trampoline cannot carry, so this path is reached only when the
+// event arrives some other way — a static table entry, or a stdlib override
+// written against a signal that is not connectable. It has to refuse the
+// build rather than connect a callback that misfires.
+func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
+	gc := stubGC()
+	tr := newGtk4Translator(gc, func(_, _ string) {})
+	seedWidget(tr, "GtkEntry", "GtkEntry", "gtk_entry_new")
+	// One argument of its own: GTK would pass it where the callback index
+	// is expected.
+	tr.registry.ByCType["GtkEntry"].Signals = []gir.Signal{
+		{Name: "icon-press", Params: 1, ReturnType: "none"},
+		{Name: "changed", Params: 0, ReturnType: "none"},
+	}
+	shared := seedShared(tr)
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkEntry")
+	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
+	handler := &ir.Ident{Name: "onPress", Synthesized: true}
+
+	if got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "iconPress", handler)); got != "" {
+		t.Errorf("emitted a connection for icon-press: %s", got)
+	}
+	if len(shared.errs) != 1 {
+		t.Fatalf("recorded %d errors; want 1: %v", len(shared.errs), shared.errs)
+	}
+	for _, want := range []string{"GtkEntry", "iconPress", "icon-press", "1 argument"} {
+		if !strings.Contains(shared.errs[0].Error(), want) {
+			t.Errorf("error %q does not mention %q", shared.errs[0], want)
+		}
+	}
+	// The connectable sibling still connects.
+	if got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "changed", handler)); !strings.Contains(got, `"changed"`) {
+		t.Errorf("changed was not connected: %s", got)
+	}
+}
+
+// TestGtk4Translator_OnPropAssign_RefusesConstructOnly pins the emitter half
+// of the construct-only rule: GObject answers a post-construction write with a
+// g_critical and no change, so emitting the generic set would compile and do
+// nothing. declgen withholds these, making this the same defence-in-depth as
+// the signal case.
+func TestGtk4Translator_OnPropAssign_RefusesConstructOnly(t *testing.T) {
+	gc := stubGC()
+	tr := newGtk4Translator(gc, func(_, _ string) {})
+	seedWidget(tr, "GtkAssistant", "GtkAssistant", "gtk_assistant_new")
+	tr.registry.ByCType["GtkAssistant"].Props = []gir.Prop{
+		{Name: "use-header-bar", ConstructOnly: true, GIRType: "gint", IRType: &ir.Type{Kind: ir.TypeInt}},
+	}
+	shared := seedShared(tr)
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkAssistant")
+	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
+	val := &ir.Literal{Type: ir.TypInt, Raw: "1"}
+
+	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "useHeaderBar", val)); got != "" {
+		t.Errorf("emitted a set for a construct-only property: %s", got)
+	}
+	if len(shared.errs) != 1 {
+		t.Fatalf("recorded %d errors; want 1: %v", len(shared.errs), shared.errs)
+	}
+	for _, want := range []string{"GtkAssistant", "use-header-bar", "construct-only"} {
+		if !strings.Contains(shared.errs[0].Error(), want) {
+			t.Errorf("error %q does not mention %q", shared.errs[0], want)
+		}
+	}
+}

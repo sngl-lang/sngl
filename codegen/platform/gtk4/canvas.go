@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -345,8 +346,13 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 // emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
 // method `func (m *Model) _canvasDrawN(cr *C.cairo_t)`, translating each
 // canvas-intrinsic CallStmt body statement into native cairo calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta) {
-	tr := newGtk4Translator(gc, func(string, string) {})
+func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared, byFunc map[*ir.Func]*canvasMeta) {
+	// The registry and the shared sink are not optional even though a draw
+	// body reaches mostly cairo intrinsics: *emitShared is nil-safe, so
+	// without the sink a fail() here would be discarded and the build would
+	// emit the broken call anyway, and a needBoolToInt() would silently omit
+	// the helper the emitted code then references.
+	tr := newGtk4Translator(gc, func(string, string) {}).withRegistry(reg).withShared(shared)
 	tr.canvasByFunc = byFunc
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	synthesized := &ir.Func{

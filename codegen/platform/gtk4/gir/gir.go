@@ -16,7 +16,14 @@ type ConstructorParam struct {
 	// "gint", "Orientation". Used by codegen to pick the right cgo
 	// type and emit typed zero values.
 	GIRType string
-	IRType  *ir.Type
+	// CType is the raw GIR <type c:type=…> value, e.g. "const char*",
+	// "GtkTextTagTable*", "GApplicationFlags". Its trailing "*" is the only
+	// thing in GIR that distinguishes a pointer parameter from an integer
+	// typedef of a name that looks just as opaque: Gio.File is a GFile*,
+	// Gio.ApplicationFlags is a GApplicationFlags. Empty for a parameter
+	// GIR describes with <array> or <varargs> instead of a <type>.
+	CType  string
+	IRType *ir.Type
 }
 
 // ConstructorInfo holds the C identifier and parameters for a widget constructor.
@@ -41,11 +48,25 @@ type Prop struct {
 	// column-spacing property is a gint and its setter takes a guint — and
 	// it is the setter's parameter that a cgo call has to satisfy.
 	SetterCType string
+	// SetterValParams is how many parameters beyond the instance the setter
+	// GIR named takes. A cgo call site passes exactly one value, so only 1
+	// is callable: gtk_text_buffer_set_text takes (text, len) and
+	// gtk_actionable_set_action_target is variadic, which cgo cannot call at
+	// all. Setter is cleared for those, and this records why — 0 means GIR
+	// named no setter, anything but 1 means it named an uncallable one.
+	SetterValParams int
 	// InterfaceName, when non-empty, identifies the interface this prop was
 	// inherited from (e.g. "Orientable"). Its setter takes the interface as
 	// its receiver, so the codegen casts the widget to that type rather than
 	// to its own class. Empty for direct class properties.
 	InterfaceName string
+	// ConstructOnly is GIR's construct-only="1": the property is writable,
+	// but only as an argument to g_object_new. GObject refuses a later
+	// g_object_set_property with a g_critical and leaves the value
+	// unchanged, and this platform creates the widget before it assigns any
+	// prop — so there is no order in which such a property can be set, and
+	// neither a setter call nor the generic path reaches it.
+	ConstructOnly bool
 	// GIRType is the raw GIR <type name=…> value for the property's
 	// value type, e.g. "utf8", "gint", "Orientation".
 	GIRType string
@@ -64,6 +85,24 @@ type EnumInfo struct {
 // Signal is a GLib signal on a GIR class.
 type Signal struct {
 	Name string
+	// Params is how many arguments the signal passes beyond the instance.
+	// The C trampoline SNGL connects has a fixed (instance, user_data)
+	// signature, so anything above zero would shift the user_data the
+	// callback index rides in — GTK would hand the first real argument to
+	// the dispatcher and it would fire an unrelated callback.
+	Params int
+	// ReturnType is the GIR name of the signal's return value, "none" for a
+	// void signal. The trampoline returns void, so a signal GTK reads a
+	// return value from (GtkWindow's close-request is a gboolean) would have
+	// that value read out of an uninitialized register.
+	ReturnType string
+}
+
+// Connectable reports whether the fixed (instance, user_data) trampoline is a
+// correct callback for this signal. Only a void signal with no arguments of
+// its own is; see the field comments for what goes wrong otherwise.
+func (s Signal) Connectable() bool {
+	return s.Params == 0 && (s.ReturnType == "none" || s.ReturnType == "")
 }
 
 // ClassInfo holds resolved metadata for one GTK widget class.
@@ -181,6 +220,13 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 
 		inEnum bool
 
+		// A <glib:signal> is parsed across its own <return-value> and
+		// <parameters> children, which is why it needs a scope of its own
+		// rather than an attribute read at the start element.
+		currentSignal  *Signal
+		inSignalParams bool
+		inSignalReturn bool
+
 		currentClass     *ClassInfo
 		currentInterface *InterfaceInfo
 		currentEnum      *EnumInfo
@@ -190,12 +236,14 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 		methods       = map[any]map[string]*methodInfo{}
 		currentMethod *methodInfo
 
-		paramName     string
-		paramTypeName string
-		propName      string
-		propWritable  string
-		propSetter    string
-		propTypeName  string
+		paramName         string
+		paramTypeName     string
+		propName          string
+		propWritable      string
+		propConstructOnly string
+		propSetter        string
+		propTypeName      string
+		paramCType        string
 	)
 
 	for {
@@ -260,10 +308,13 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "parameters" && inMethod:
 				inMethodParams = true
 
-			// A setter takes one value beyond its instance parameter, which
-			// is a separate element — so the first <parameter> is it.
-			case local == "parameter" && inMethodParams && currentMethod.valCType == "":
-				inMethodParam = true
+			// The instance is a separate element (<instance-parameter>), so
+			// every <parameter> here is a value the caller has to supply.
+			// Only the first one's type is recorded; the count is what says
+			// whether a one-value cgo call site can reach this method at all.
+			case local == "parameter" && inMethodParams:
+				currentMethod.valParams++
+				inMethodParam = currentMethod.valParams == 1
 
 			case local == "type" && inMethodParam:
 				currentMethod.valCType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
@@ -294,9 +345,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inParam = true
 				paramName = attrVal(t.Attr, "", "name")
 				paramTypeName = ""
+				paramCType = ""
 
-			case local == "type" && inParam:
+			case local == "type" && inParam && paramTypeName == "":
 				paramTypeName = attrVal(t.Attr, "", "name")
+				paramCType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
 
 			case local == "array" && inProp:
 				inPropArray = true
@@ -308,16 +361,28 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inProp = true
 				propName = attrVal(t.Attr, "", "name")
 				propWritable = attrVal(t.Attr, "", "writable")
+				propConstructOnly = attrVal(t.Attr, "", "construct-only")
 				propSetter = attrVal(t.Attr, "", "setter")
 				propTypeName = ""
 
-			case local == "signal" && inClass:
-				sigName := attrVal(t.Attr, "", "name")
-				currentClass.Signals = append(currentClass.Signals, Signal{Name: sigName})
+			case local == "signal" && (inClass || inInterface) && currentSignal == nil:
+				currentSignal = &Signal{Name: attrVal(t.Attr, "", "name")}
 
-			case local == "signal" && inInterface && currentInterface != nil:
-				sigName := attrVal(t.Attr, "", "name")
-				currentInterface.Signals = append(currentInterface.Signals, Signal{Name: sigName})
+			case local == "return-value" && currentSignal != nil:
+				inSignalReturn = true
+
+			case local == "type" && inSignalReturn:
+				currentSignal.ReturnType = attrVal(t.Attr, "", "name")
+				inSignalReturn = false
+
+			// A signal's <parameters> carries no <instance-parameter>: the
+			// instance is implicit. So every <parameter> is an argument the
+			// callback signature has to carry beyond it.
+			case local == "parameters" && currentSignal != nil:
+				inSignalParams = true
+
+			case local == "parameter" && inSignalParams:
+				currentSignal.Params++
 			}
 
 		case xml.EndElement:
@@ -355,11 +420,29 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "parameters" && inCtorParams:
 				inCtorParams = false
 
+			case local == "return-value" && inSignalReturn:
+				inSignalReturn = false
+
+			case local == "parameters" && inSignalParams:
+				inSignalParams = false
+
+			case local == "signal" && currentSignal != nil:
+				switch {
+				case inClass && currentClass != nil:
+					currentClass.Signals = append(currentClass.Signals, *currentSignal)
+				case inInterface && currentInterface != nil:
+					currentInterface.Signals = append(currentInterface.Signals, *currentSignal)
+				}
+				currentSignal = nil
+				inSignalParams = false
+				inSignalReturn = false
+
 			case local == "parameter" && inParam:
 				inParam = false
 				cp := ConstructorParam{
 					Name:    paramName,
 					GIRType: paramTypeName,
+					CType:   paramCType,
 					IRType:  girTypeToIR(paramTypeName),
 				}
 				// Append to the in-progress (last) Constructors entry.
@@ -377,10 +460,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inPropArray = false
 				if propWritable == "1" {
 					p := Prop{
-						Name:    propName,
-						Setter:  propSetter,
-						GIRType: propTypeName,
-						IRType:  girTypeToIR(propTypeName),
+						Name:          propName,
+						Setter:        propSetter,
+						ConstructOnly: propConstructOnly == "1",
+						GIRType:       propTypeName,
+						IRType:        girTypeToIR(propTypeName),
 					}
 					switch {
 					case currentClass != nil:
@@ -464,16 +548,29 @@ func resolveSetters(props []Prop, methods map[string]*methodInfo) {
 			props[i].Setter = ""
 			continue
 		}
+		props[i].SetterValParams = m.valParams
+		// One value is all a cgo call site passes. Keep the name only when
+		// that is all the setter wants; the rest fall through to the generic
+		// GObject path, which reaches them by property name and needs no
+		// signature.
+		if m.valParams != 1 {
+			props[i].Setter = ""
+			continue
+		}
 		props[i].Setter = m.ident
 		props[i].SetterCType = m.valCType
 	}
 }
 
-// methodInfo is one GIR <method>: the C function it names, and the C type of
-// the first parameter after the instance — for a setter, the value.
+// methodInfo is one GIR <method>: the C function it names, how many values it
+// takes beyond the instance, and the C type of the first of them — for a
+// setter, the value.
 type methodInfo struct {
 	ident    string
 	valCType string
+	// valParams counts the <parameter> elements after the instance — the
+	// values a caller supplies.
+	valParams int
 }
 
 // attrVal finds an attribute value by namespace URI and local name.

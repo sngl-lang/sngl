@@ -332,47 +332,81 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 			return t.emitConstructorAssign(id, cType, ctor)
 		}
 	}
+	// GIR describes no constructor for this class at all. The name derived
+	// from the class is not one GTK ships for any of them — 46 of the 47
+	// such classes are abstract bases and interior helpers (GtkWidget,
+	// GtkRange, GtkListItem) — so emitting the call would leave a link
+	// error in the user's build instead of a compiler diagnostic here.
+	if len(info.Constructors) == 0 {
+		t.shared.fail(fmt.Errorf("gtk4: %s cannot be constructed: GTK declares no constructor for it", cType))
+		return nil
+	}
 	// Pass a typed-zero value for each required constructor parameter
 	// so the cgo call type-checks. OnPropAssign immediately rewrites
 	// any user-supplied prop values via the dedicated setter.
 	args := []ir.Expr{}
 	for _, p := range ctorInfo.Params {
-		args = append(args, ctorZeroArg(p.GIRType, p.IRType))
+		arg, err := ctorZeroArg(t.registry, p)
+		if err != nil {
+			t.shared.fail(fmt.Errorf("gtk4: %s cannot be constructed: %s takes %s %s, %w", cType, ctorInfo.Name, p.GIRType, p.Name, err))
+			return nil
+		}
+		args = append(args, arg)
 	}
 	ctor := nativeCall(ctorInfo.Name, args...)
 	return t.emitConstructorAssign(id, cType, ctor)
 }
 
-// ctorZeroArg returns the IR expression for a typed-zero value matching
-// the given GIR/IR type, suitable as a placeholder argument to a
-// constructor call. Pointer types become nil; primitives become typed
-// zero casts; enums/structs become a bare 0 (cgo coerces untyped int
-// constants into the enum type).
-func ctorZeroArg(girType string, t *ir.Type) ir.Expr {
-	switch girType {
+// ctorZeroArg returns the IR expression for a typed-zero value matching one
+// constructor parameter, suitable as a placeholder a later prop assignment
+// overwrites. Primitives become typed zero casts, a Gtk enumeration a bare 0
+// (cgo coerces an untyped int constant into the named type), and a pointer
+// nil — which the parameter's c:type is the only thing in GIR that identifies,
+// since a GIR name alone does not say whether GApplicationFlags is an integer
+// or GFile is a pointer.
+//
+// It errors for a parameter whose zero cannot be spelled: a varargs or array
+// form with no c:type at all, and a named type from a namespace other than
+// Gtk, which the platform does not parse and so cannot tell a foreign enum
+// (a bare 0) from a foreign callback (nil). Refusing here is a build
+// diagnostic naming the class; guessing emits Go that does not compile.
+func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error) {
+	switch p.GIRType {
 	case "utf8", "filename", "gchararray":
-		return &ir.Literal{Type: ir.TypNull}
-	case "gboolean":
-		return nativeCall("gboolean", &ir.Literal{Type: ir.TypInt, Raw: "0"})
-	case "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
-		return nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: "0"})
+		return &ir.Literal{Type: ir.TypNull}, nil
+	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
+		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Raw: "0"}), nil
 	case "gdouble", "gfloat":
-		return nativeCall("double", &ir.Literal{Type: ir.TypFloat, Raw: "0"})
+		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Raw: "0"}), nil
 	}
-	if t != nil {
-		switch t.Kind {
-		case ir.TypeString:
-			return &ir.Literal{Type: ir.TypNull}
-		case ir.TypeInt:
-			return nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: "0"})
-		case ir.TypeBool:
-			return nativeCall("gboolean", &ir.Literal{Type: ir.TypInt, Raw: "0"})
-		case ir.TypeFloat:
-			return nativeCall("double", &ir.Literal{Type: ir.TypFloat, Raw: "0"})
-		}
+	// A Gtk enumeration or bitfield: an integer, and a bare 0 coerces into
+	// the named cgo type.
+	if reg != nil && reg.Enums[p.GIRType] != nil {
+		return &ir.Literal{Type: ir.TypInt, Raw: "0"}, nil
 	}
-	// Enum or unknown — bare 0 coerces into named cgo integer types.
-	return &ir.Literal{Type: ir.TypInt, Raw: "0"}
+	// gpointer is void*, which cgo renders as unsafe.Pointer — nil, not 0,
+	// even though the c:type carries no star.
+	if strings.HasSuffix(p.CType, "*") || p.CType == "gpointer" {
+		return &ir.Literal{Type: ir.TypNull}, nil
+	}
+	if p.CType == "" {
+		return nil, fmt.Errorf("which GIR describes with no C type of its own")
+	}
+	return nil, fmt.Errorf("whose C type %s is from a namespace this platform does not parse, so its zero value cannot be spelled", p.CType)
+}
+
+// ctorScalarCast is the cgo type a numeric zero takes to satisfy one
+// constructor parameter. It is the parameter's own c:type, not the GIR type's
+// canonical cgo spelling — GTK constructors take guint and float parameters of
+// gint- and gdouble-named GIR types, and cgo does not convert between named C
+// numeric types on its own. A c:type that is not a plain cgo identifier
+// ("unsigned int") falls back to the glib typedef, which cgo does accept.
+// Mirrors girScalarCast, which does the same for a property's setter.
+func ctorScalarCast(p gir.ConstructorParam) string {
+	if c := p.CType; c != "" && !strings.ContainsAny(c, "* ") {
+		return c
+	}
+	return p.GIRType
 }
 
 // OnCreateComponent promotes a recursive/non-inlinable user component
@@ -588,6 +622,16 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		case "value", "text":
 			entry = gtkSetterFor(cType, "label")
 		}
+	}
+	// A construct-only property has no reachable write: the widget already
+	// exists by the time any prop is assigned, and GObject answers a later
+	// g_object_set_property with a g_critical and no change. declgen
+	// withholds these, so reaching here means the prop arrived some other
+	// way — refuse rather than emit a call that silently does nothing.
+	// A static-table entry naming a real setter still wins, above.
+	if entry.Setter == "" && hasProp && p.ConstructOnly {
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
+		return nil
 	}
 	if entry.Setter == "" && hasProp {
 		entry = girSetter(info, p)
@@ -823,10 +867,23 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	signal := gtk4SignalFor(cType, event)
 	if signal == "" {
 		// The declared event is the SNGL spelling of a GLib signal name.
-		signal = girSignal(t.classFor(cType), event)
-	}
-	if signal == "" {
-		return nil
+		sig, ok := girSignal(t.classFor(cType), event)
+		if !ok {
+			return nil
+		}
+		// The trampoline this connects is (instance, user_data) returning
+		// void. A signal of any other shape would hand its first argument to
+		// the dispatcher in place of the callback index, so refuse the build
+		// naming it rather than emit a connection that misfires. declgen
+		// withholds these from the declaration, so reaching here means the
+		// event arrived some other way — a static table entry, or a stdlib
+		// override written against a signal that is not connectable.
+		if !sig.Connectable() {
+			t.shared.fail(fmt.Errorf("gtk4: %s.%s: the %q signal passes %d argument(s) and returns %s; only a void signal with none can be connected",
+				cType, event, sig.Name, sig.Params, girSignalReturnLabel(sig)))
+			return nil
+		}
+		signal = sig.Name
 	}
 	// Wrapped mode: gtk4rt.Connect registers the handler in cbind and wires the
 	// GTK signal in one call — no per-program snglCallbacks slice or cgo.

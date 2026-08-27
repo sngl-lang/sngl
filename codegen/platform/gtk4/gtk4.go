@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
@@ -17,12 +16,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// pickPrimaryConstructorInfo returns the full ConstructorInfo for the
-// first constructor in the class. Falls back to a synthetic
-// "gtk_<lower>_new" with no params when the class declared none in GIR.
+// pickPrimaryConstructorInfo returns the full ConstructorInfo for the first
+// constructor in the class, and the zero value when GIR declares none. There
+// is no name to derive for that case: GTK ships no gtk_<lower>_new for 46 of
+// the 47 classes without one, so a derived name would only move a link error
+// into the user's build. OnCreateNode refuses those with a diagnostic.
 func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	if len(info.Constructors) == 0 {
-		return gir.ConstructorInfo{Name: "gtk_" + lowerCType(info.CType) + "_new"}
+		return gir.ConstructorInfo{}
 	}
 	return info.Constructors[0]
 }
@@ -49,19 +50,6 @@ func girTypeIsNamedNonPrimitive(name string) bool {
 	// names contain a "." (e.g. "Gio.File") and need different handling
 	// — return false there so the codegen falls back to defaults.
 	return !strings.Contains(name, ".") && name[0] >= 'A' && name[0] <= 'Z'
-}
-
-// lowerCType maps "GtkLabel" → "label", "GtkApplicationWindow" → "application_window".
-func lowerCType(cType string) string {
-	bare := strings.TrimPrefix(cType, "Gtk")
-	var out strings.Builder
-	for i, r := range bare {
-		if i > 0 && unicode.IsUpper(r) {
-			out.WriteByte('_')
-		}
-		out.WriteRune(unicode.ToLower(r))
-	}
-	return out.String()
 }
 
 // girAutoPaths are the standard locations checked when --opt gir= is not set.

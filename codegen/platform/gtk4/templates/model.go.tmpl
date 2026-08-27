@@ -8,11 +8,13 @@ package {{.Package}}
 
 extern void snglGoDispatch(int idx);
 // g_signal_connect callbacks are invoked with the signal's signature
-// (self, ...args, user_data). For the simple signals SNGL connects to
-// — clicked / changed / toggled / activated — that's (instance,
-// user_data); declare sngl_cb to match so the idx pointer arrives
-// unmangled. Without the correct arity GTK would pass `instance` into
-// `data` and snglGoDispatch would fire a wildly wrong callback.
+// (self, ...args, user_data). This one is (instance, user_data), which
+// is the signature of a void signal that carries no arguments of its
+// own — and gir.Signal.Connectable is what holds every connection to
+// that shape, since otherwise GTK would pass the signal's first real
+// argument into `data` and snglGoDispatch would fire a wildly wrong
+// callback. 155 of GTK's 400 signals qualify; the rest are neither
+// declared nor connectable.
 static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
