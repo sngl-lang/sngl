@@ -60,6 +60,14 @@ type Prop struct {
 	// its receiver, so the codegen casts the widget to that type rather than
 	// to its own class. Empty for direct class properties.
 	InterfaceName string
+	// OwnerCType, when non-empty, is the C type of the ancestor class this
+	// prop was inherited from ("GtkWidget" for tooltip-text on a GtkBox).
+	// Its setter takes that ancestor as its receiver — gtk_widget_set_visible
+	// wants a GtkWidget*, and cgo rejects a GtkBox* there — so the codegen
+	// casts to it. Empty for a property the class declares itself; an
+	// interface-inherited one is named by InterfaceName instead, which wins
+	// because the interface setter is the one GIR pointed at.
+	OwnerCType string
 	// ConstructOnly is GIR's construct-only="1": the property is writable,
 	// but only as an argument to g_object_new. GObject refuses a later
 	// g_object_set_property with a g_critical and leaves the value
@@ -110,9 +118,13 @@ type ClassInfo struct {
 	CType        string            // e.g. "GtkButton"
 	Constructor  ConstructorInfo   // first constructor found (kept for legacy callers)
 	Constructors []ConstructorInfo // every constructor found, in declaration order
-	Props        []Prop            // writable properties (after interface merge)
+	Props        []Prop            // writable properties (after interface and parent merge)
 	Signals      []Signal
 	Implements   []string // names of interfaces declared via <implements>
+	// Parent is the GIR name of the superclass, from <class parent="…">.
+	// A dotted name ("GObject.Object") is in another namespace, which this
+	// parser does not read, so the chain ends there.
+	Parent string
 }
 
 // InterfaceInfo holds resolved metadata for one GIR interface.
@@ -265,6 +277,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inClass = true
 				info := &ClassInfo{}
 				info.CType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
+				info.Parent = attrVal(t.Attr, "", "parent")
 				name := attrVal(t.Attr, "", "name")
 				currentClass = info
 				reg.Classes[name] = info
@@ -497,34 +510,80 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				continue
 			}
 			for _, ip := range iface.Props {
-				dup := false
-				for _, existing := range cls.Props {
-					if existing.Name == ip.Name {
-						dup = true
-						break
-					}
+				if hasProp(cls.Props, ip.Name) {
+					continue
 				}
-				if !dup {
-					tagged := ip
-					if tagged.InterfaceName == "" {
-						tagged.InterfaceName = ifaceName
-					}
-					cls.Props = append(cls.Props, tagged)
+				tagged := ip
+				if tagged.InterfaceName == "" {
+					tagged.InterfaceName = ifaceName
 				}
+				cls.Props = append(cls.Props, tagged)
 			}
 			for _, is := range iface.Signals {
-				dup := false
-				for _, existing := range cls.Signals {
-					if existing.Name == is.Name {
-						dup = true
-						break
-					}
+				if hasSignal(cls.Signals, is.Name) {
+					continue
 				}
-				if !dup {
-					cls.Signals = append(cls.Signals, is)
-				}
+				cls.Signals = append(cls.Signals, is)
 			}
 		}
+	}
+
+	// Post-pass: fold each class's ancestors into it. It runs after the
+	// interface merge has finished for every class, because what a class
+	// inherits is its parent's *merged* surface: GtkListView gets
+	// orientation because GtkListBase implements GtkOrientable, and only a
+	// parent whose interfaces are already folded in can pass it down.
+	//
+	// Precedence, nearest declaration first: a class's own properties, then
+	// the interfaces it declares itself, then its parent's merged set (own,
+	// its interfaces, its parent's, …). Appending only names not already
+	// present is what implements it, since the interface merge left the
+	// class's own props at the front.
+	inherited := map[string]bool{}
+	var inherit func(name string)
+	inherit = func(name string) {
+		// Marked before recursing, so a parent cycle in malformed GIR stops
+		// here rather than recursing forever.
+		if inherited[name] {
+			return
+		}
+		inherited[name] = true
+		cls := reg.Classes[name]
+		if cls == nil {
+			return
+		}
+		parent := reg.Classes[cls.Parent]
+		if parent == nil {
+			// No parent, or one in a namespace this parser does not read.
+			return
+		}
+		inherit(cls.Parent)
+		for _, pp := range parent.Props {
+			if hasProp(cls.Props, pp.Name) {
+				continue
+			}
+			tagged := pp
+			if tagged.InterfaceName == "" && tagged.OwnerCType == "" {
+				// The receiver a call to this setter needs. Without a C type
+				// to name there is no cast to emit, so the setter is dropped
+				// and the property falls through to the generic GObject path,
+				// which needs no receiver type at all.
+				if parent.CType == "" {
+					tagged.Setter = ""
+				}
+				tagged.OwnerCType = parent.CType
+			}
+			cls.Props = append(cls.Props, tagged)
+		}
+		for _, ps := range parent.Signals {
+			if hasSignal(cls.Signals, ps.Name) {
+				continue
+			}
+			cls.Signals = append(cls.Signals, ps)
+		}
+	}
+	for name := range reg.Classes {
+		inherit(name)
 	}
 
 	for _, cls := range reg.Classes {
@@ -534,6 +593,26 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	}
 
 	return reg, nil
+}
+
+// hasProp reports whether props already carries a property of this GIR name.
+func hasProp(props []Prop, name string) bool {
+	for _, p := range props {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// hasSignal reports whether signals already carries one of this GIR name.
+func hasSignal(signals []Signal, name string) bool {
+	for _, s := range signals {
+		if s.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveSetters rewrites each prop's Setter from the GIR method name the

@@ -146,13 +146,21 @@ func TestSnglName_NoCollisions(t *testing.T) {
 	if rewritten == 0 {
 		t.Error("no name needed the keyword rewrite; the sweep is asserting nothing")
 	}
-	// The reservation is load-bearing, and these two are what it costs: both
-	// classes have a real GTK property named style that the platform's own
-	// style prop takes the name of. If this list empties, the reservation is
-	// dropping nothing and the seeding in widgetSource is dead; if it grows,
-	// a property stopped being declared without anyone deciding that.
+	// The reservation is load-bearing, and these five are what it costs.
+	// GtkCellRendererText and GtkTextTag each have a real GTK property named
+	// style that the platform's own style prop takes the name of; the other
+	// three are GtkCellRendererText's subclasses, which inherit it. If this
+	// list empties, the reservation is dropping nothing and the seeding in
+	// widgetSource is dead; if it grows, a property stopped being declared
+	// without anyone deciding that.
 	sort.Strings(reserved)
-	want := []string{"GtkCellRendererText.style", "GtkTextTag.style"}
+	want := []string{
+		"GtkCellRendererAccel.style",
+		"GtkCellRendererCombo.style",
+		"GtkCellRendererSpin.style",
+		"GtkCellRendererText.style",
+		"GtkTextTag.style",
+	}
 	if !slices.Equal(reserved, want) {
 		t.Errorf("properties dropped by the %q reservation = %v; want %v", stylePropName, reserved, want)
 	}
@@ -305,4 +313,173 @@ func TestWidgetCType(t *testing.T) {
 	if got := widgetCType(nil); got != "" {
 		t.Errorf("widgetCType(nil) = %q; want empty", got)
 	}
+}
+
+// TestClassInheritance_Merges pins the parent-chain merge and its precedence.
+// Every GTK widget is a GtkWidget, and its properties and signals are declared
+// only there — without this a GtkBox has no visible, no hexpand and no
+// tooltip-text, and every stdlib override that needs one is unwritable.
+func TestClassInheritance_Merges(t *testing.T) {
+	box := girClassInfoFor(t, "GtkBox")
+
+	// An inherited property is on the class, and a call to its setter casts
+	// the widget to the ancestor that declares it: gtk_widget_set_tooltip_text
+	// takes a GtkWidget*, and cgo refuses a GtkBox* there.
+	p, ok := girProp(box, "tooltipText")
+	if !ok {
+		t.Fatal("GtkBox has no tooltipText; GtkWidget's properties did not merge")
+	}
+	if got := girSetter(box, p); got.Setter != "gtk_widget_set_tooltip_text" || got.RecvType != "GtkWidget" {
+		t.Errorf("girSetter(GtkBox.tooltipText) = %+v; want gtk_widget_set_tooltip_text cast to GtkWidget", got)
+	}
+
+	// A class's own declaration wins over the one it would inherit, so the
+	// setter is the class's own and there is no ancestor cast.
+	cell := girClassInfoFor(t, "GtkColumnViewCell")
+	p, ok = girProp(cell, "child")
+	if !ok {
+		t.Fatal("GtkColumnViewCell has no child prop")
+	}
+	if got := girSetter(cell, p); got.Setter != "gtk_column_view_cell_set_child" || got.RecvType != "" {
+		t.Errorf("girSetter(GtkColumnViewCell.child) = %+v; want its own setter with no cast, not GtkListItem's", got)
+	}
+
+	// One member, one entry: the merge must not stack a shadowed copy behind
+	// the class's own. girProp answers with the first match, so a duplicate
+	// would be invisible there and would surface only as a declaration
+	// carrying the same prop twice, which does not parse.
+	if n := countProps(cell.Props, "child"); n != 1 {
+		t.Errorf("GtkColumnViewCell carries %d child properties; want 1", n)
+	}
+
+	// Inheritance composes with the interface merge rather than fighting it,
+	// and the order the two passes run in is what makes it work.
+	// GtkListBase declares an orientation property of its own but no
+	// set_orientation method, so its own entry has no setter at all; the
+	// working one is GtkOrientable's, which the interface merge puts on
+	// GtkListView. Run the parent merge first and GtkListView would take its
+	// parent's setterless entry, and the interface merge would then skip the
+	// name as already present — leaving a prop reachable only through the
+	// generic GObject path.
+	lb := girClassInfoFor(t, "GtkListBase")
+	p, ok = girProp(lb, "orientation")
+	if !ok || p.Setter != "" {
+		t.Errorf("GtkListBase.orientation = %+v, %v; want its own setterless entry", p, ok)
+	}
+	lv := girClassInfoFor(t, "GtkListView")
+	p, ok = girProp(lv, "orientation")
+	if !ok {
+		t.Fatal("GtkListView has no orientation")
+	}
+	// The interface tag is the one thing set on it, so girSetter's preference
+	// for InterfaceName over OwnerCType never has to break a tie: the merge
+	// decided which of the two a prop carries.
+	if p.InterfaceName != "Orientable" || p.OwnerCType != "" {
+		t.Errorf("GtkListView.orientation carries iface %q and owner %q; want the interface tag alone", p.InterfaceName, p.OwnerCType)
+	}
+	if got := girSetter(lv, p); got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" {
+		t.Errorf("girSetter(GtkListView.orientation) = %+v; want the GtkOrientable setter and cast", got)
+	}
+
+	// An inherited member carries its own flags, so the three rules that
+	// withhold a member apply to it on those and not on the child's.
+	//
+	// Arity: GtkEntryBuffer.text's setter takes (text, len), which a
+	// one-value cgo call site cannot reach, and the subclass inherits the
+	// cleared name rather than a callable-looking one.
+	buf := girClassInfoFor(t, "GtkPasswordEntryBuffer")
+	p, ok = girProp(buf, "text")
+	if !ok {
+		t.Fatal("GtkPasswordEntryBuffer has no text prop")
+	}
+	if p.SetterValParams != 2 || p.Setter != "" {
+		t.Errorf("GtkPasswordEntryBuffer.text = setter %q over %d params; want no setter recorded for a two-value one", p.Setter, p.SetterValParams)
+	}
+
+	// Construct-only: GtkWidget.css-name is inherited by every widget class,
+	// and no widget may declare it — the widget exists before any prop is
+	// assigned and GObject refuses the write.
+	if p, ok := girProp(box, "cssName"); !ok {
+		t.Fatal("GtkBox did not inherit css-name at all")
+	} else if !p.ConstructOnly {
+		t.Error("GtkWidget.css-name arrived on GtkBox without its construct-only flag")
+	}
+
+	// Connectability: GtkWidget::query-tooltip carries four arguments the
+	// (instance, user_data) trampoline has no room for, and GtkWidget::destroy
+	// is a void signal with none — so exactly one of the two is inheritable as
+	// an event, and the reason travels with the signal rather than being
+	// re-derived from the class it lands on.
+	for _, tc := range []struct {
+		signal string
+		want   bool
+	}{{"queryTooltip", false}, {"destroy", true}} {
+		sig, ok := girSignal(box, tc.signal)
+		if !ok {
+			t.Errorf("GtkBox did not inherit the %s signal", tc.signal)
+			continue
+		}
+		if sig.Connectable() != tc.want {
+			t.Errorf("GtkBox.%s connectable = %v; want %v", tc.signal, sig.Connectable(), tc.want)
+		}
+	}
+	// And the return type is carried for its own sake, not as a proxy for the
+	// argument count: GtkWindow::close-request takes no arguments and is
+	// unconnectable only because GTK reads a gboolean back out of it, which
+	// the void trampoline never wrote.
+	appWin := girClassInfoFor(t, "GtkApplicationWindow")
+	sig, ok := girSignal(appWin, "closeRequest")
+	if !ok {
+		t.Fatal("GtkApplicationWindow did not inherit GtkWindow's close-request signal")
+	}
+	if sig.Params != 0 || sig.ReturnType != "gboolean" || sig.Connectable() {
+		t.Errorf("inherited close-request = %d params returning %q, connectable %v; want 0 params returning gboolean and not connectable",
+			sig.Params, sig.ReturnType, sig.Connectable())
+	}
+
+	// And the declaration says the same: an inherited property and event are
+	// written, a construct-only or unconnectable one is not.
+	reg, err := (&Generator{}).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decl := componentDecl(t, string(widgetSource(reg)), "GtkBox")
+	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy,\n"} {
+		if !strings.Contains(decl, want) {
+			t.Errorf("the GtkBox declaration is missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{"\n    cssName ", "\n    @queryTooltip,\n"} {
+		if strings.Contains(decl, unwanted) {
+			t.Errorf("the GtkBox declaration carries %q, which the merge must withhold", unwanted)
+		}
+	}
+}
+
+// componentDecl slices out one component declaration from generated source, so
+// an assertion about a class's props cannot be satisfied by another class's.
+func componentDecl(t *testing.T, src, name string) string {
+	t.Helper()
+	head := "\ncomponent " + name + "("
+	i := strings.Index(src, head)
+	if i < 0 {
+		t.Fatalf("generated source declares no %s", name)
+	}
+	rest := src[i:]
+	end := strings.Index(rest, ") list<component> {}")
+	if end < 0 {
+		t.Fatalf("the %s declaration does not end", name)
+	}
+	return rest[:end]
+}
+
+// countProps is how many entries in props carry this GIR name.
+func countProps(props []gir.Prop, name string) int {
+	n := 0
+	for _, p := range props {
+		if p.Name == name {
+			n++
+		}
+	}
+	return n
 }

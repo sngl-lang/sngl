@@ -96,3 +96,106 @@ component sngl.scroll {
     }
 }
 
+// --- Indicators ---
+
+// GtkProgressBar's fraction is 0.0-1.0, which is the range the stdlib
+// `value` carries when `max` is left at its default. A `max` other than 1
+// would need `value/max`, and a division nothing guards against a zero
+// denominator is worse than the scale being wrong.
+component sngl.progress {
+    platform gtk4 {
+        gtk4.GtkProgressBar(fraction=value, text=label, showText=showValue, style={...style}) {}
+    }
+}
+
+component sngl.spinner {
+    platform gtk4 {
+        gtk4.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
+    }
+}
+
+// `direction` is not forwarded: orientation is a GtkOrientation, and the
+// only SNGL value that reaches a GTK enum is a string literal naming one of
+// its members (see enumValueArg) — a prop reference has no compile-time
+// member to name. A separator is therefore horizontal, which is what
+// `direction` defaults to.
+component sngl.divider {
+    platform gtk4 {
+        gtk4.GtkSeparator(style={...style}) {}
+    }
+}
+
+component sngl.link {
+    platform gtk4 {
+        gtk4.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
+    }
+}
+
+// GtkSwitch reports its own changes through `state-set`, which returns a
+// gboolean, and through GObject's notify — neither of which the fixed
+// (instance, user_data) → void trampoline can carry. So `active` is bound
+// one way and `@change` is not connected; a toggle renders and follows the
+// model, and a user flip does not reach it.
+component sngl.toggle {
+    platform gtk4 {
+        gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}) {}
+    }
+}
+
+// `value`, `min` and `max` are `date`, a builtin struct with no fields, and
+// GtkCalendar takes the day, month and year as three separate ints (its own
+// `date` property is a GLib.DateTime, which no SNGL expression produces).
+// So the calendar is shown and its selection reported, and the bound value
+// does not reach it.
+component sngl.datepicker {
+    platform gtk4 {
+        gtk4.GtkCalendar(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
+    }
+}
+
+// --- Layout ---
+
+component sngl.spacer {
+    platform gtk4 {
+        gtk4.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
+    }
+}
+
+// The same shape html uses: a wrapper carrying the tooltip text, with the
+// wrapped content inside it.
+component sngl.tooltip {
+    platform gtk4 {
+        gtk4.GtkBox(tooltipText=text, style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.card {
+    platform gtk4 {
+        gtk4.GtkFrame(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.stack {
+    platform gtk4 {
+        gtk4.GtkStack(style={...style}) {
+            slot
+        }
+    }
+}
+
+// `open` reaches the popover as widget visibility rather than as
+// gtk_popover_popup: the emitter has one setter path per property and
+// popup/popdown is a pair of calls chosen by the value. `position` is a
+// GtkPositionType, so it is unreachable for the same reason as divider's
+// orientation.
+component sngl.popover {
+    platform gtk4 {
+        gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
+            slot
+        }
+    }
+}

@@ -206,12 +206,17 @@ func girProp(info *gir.ClassInfo, snglProp string) (gir.Prop, bool) {
 // girSetter is the C setter GIR names for one property of one class, with the
 // casts a call to it needs. An interface-inherited property binds to the
 // interface's setter (gtk_orientable_set_orientation) and takes the interface
-// as its receiver, not the class. Setter is empty for a property GIR names no
-// setter for; there is no derived spelling to fall back on.
+// as its receiver, not the class; a superclass-inherited one binds to that
+// ancestor's setter (gtk_widget_set_visible) and takes the ancestor. Setter is
+// empty for a property GIR names no setter for; there is no derived spelling
+// to fall back on.
 func girSetter(info *gir.ClassInfo, p gir.Prop) gtkSetterEntry {
 	e := gtkSetterEntry{Setter: p.Setter}
-	if p.InterfaceName != "" {
+	switch {
+	case p.InterfaceName != "":
 		e.RecvType = "Gtk" + p.InterfaceName
+	case p.OwnerCType != "":
+		e.RecvType = p.OwnerCType
 	}
 	if gt := p.GIRType; girTypeIsNamedNonPrimitive(gt) {
 		e.ValType = "Gtk" + gt

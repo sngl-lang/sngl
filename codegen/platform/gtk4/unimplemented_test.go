@@ -50,7 +50,7 @@ func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 import . "sngl://std"
 component main {
     text(value="visible")
-    progress(value=0.5)
+    avatar(initials="ab")
 }
 `)
 	if err == nil {
@@ -59,7 +59,7 @@ component main {
 	msg := err.Error()
 	// The message has to name both halves: which component, and which target
 	// does not have it.
-	for _, want := range []string{`"progress"`, "gtk4"} {
+	for _, want := range []string{`"avatar"`, "gtk4"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("diagnostic %q does not mention %s", msg, want)
 		}
@@ -85,5 +85,83 @@ component main {
 	}
 	if _, ok := files["model.go"]; !ok {
 		t.Fatal("model.go not emitted")
+	}
+}
+
+// TestStdlibOverrides_EmitTheirWidgets is the other side of the rule above:
+// the stdlib components gtk4.sngl does implement have to reach the C API the
+// override body names. A missing override is a build failure by the rule
+// above, so what this adds is that the body was not merely present but
+// emitted — the widget constructor and the setter for each prop it forwards.
+//
+// The props that are not here are the ones the platform cannot carry, and
+// they are documented at each override: a GtkOrientation or GtkPositionType
+// reachable only from a string literal (divider's direction, popover's
+// position), and a `date`, which is a builtin struct with no fields to pull
+// GtkCalendar's day/month/year out of.
+func TestStdlibOverrides_EmitTheirWidgets(t *testing.T) {
+	skipWithoutGIR(t)
+	files, err := buildForGtk4(t, `
+import . "sngl://std"
+component main {
+    var frac = 0.25
+    var on = false
+    var shown = false
+    var d date
+    vbox {
+        progress(value=frac, label="loading", showValue=true)
+        spinner(label="working")
+        divider
+        link(href="https://example.com", text="a link")
+        toggle(checked=on)
+        datepicker(value=d)
+        spacer
+        tooltip(text="explains it") { text(value="hover me") }
+        card { text(value="in a card") }
+        stack { text(value="a page") }
+        popover(open=shown) { button(text="trigger") }
+    }
+}
+`)
+	if err != nil {
+		t.Fatalf("building the implemented stdlib components: %v", err)
+	}
+	model := string(files["model.go"])
+	if model == "" {
+		t.Fatal("model.go not emitted")
+	}
+	for _, want := range []string{
+		// progress
+		"C.gtk_progress_bar_new()",
+		"C.gtk_progress_bar_set_fraction(",
+		"C.gtk_progress_bar_set_show_text(",
+		// spinner
+		"C.gtk_spinner_set_spinning(",
+		// divider
+		"C.gtk_separator_new(",
+		// link
+		"C.gtk_link_button_set_uri(",
+		// label is GtkButton's, two links up the chain from GtkLinkButton,
+		// and its setter takes the GtkButton the cast names.
+		"C.gtk_button_set_label((*C.GtkButton)",
+		// toggle
+		"C.gtk_switch_set_active(",
+		// datepicker: the calendar, and its one connectable signal
+		"C.gtk_calendar_new()",
+		`C.CString("day-selected")`,
+		// spacer, and tooltip -- both GtkWidget properties, so both are
+		// reachable only because the parent chain merged.
+		"C.gtk_widget_set_hexpand(",
+		"C.gtk_widget_set_tooltip_text(",
+		// card, stack and popover each host a slot in a container whose
+		// child API is not gtk_box_append.
+		"C.gtk_frame_set_child(",
+		"C.gtk_stack_add_child(",
+		"C.gtk_popover_set_child(",
+		"C.gtk_popover_set_autohide(",
+	} {
+		if !strings.Contains(model, want) {
+			t.Errorf("the emitted model.go does not call %s", want)
+		}
 	}
 }

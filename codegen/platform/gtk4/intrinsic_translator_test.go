@@ -88,20 +88,20 @@ func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) 
 	// What an abstract stdlib component looks like at this point: no
 	// #[intrinsic] C type, and no gtk4 entry in the overrides the checker
 	// collected across every registered platform.
-	tr.tagComponent["progress"] = &ir.Component{
-		Name:           "progress",
+	tr.tagComponent["avatar"] = &ir.Component{
+		Name:           "avatar",
 		Stdlib:         true,
 		Pkg:            "sngl://std",
 		PlatformBodies: map[string][]ir.Stmt{"html": nil},
 	}
-	if stmts := tr.OnCreateNode(context.Background(), "__n0", "progress"); len(stmts) != 0 {
+	if stmts := tr.OnCreateNode(context.Background(), "__n0", "avatar"); len(stmts) != 0 {
 		t.Errorf("expected no stmts; got %d", len(stmts))
 	}
 	if len(shared.errs) != 1 {
 		t.Fatalf("expected one diagnostic; got %v", shared.errs)
 	}
 	got := shared.errs[0].Error()
-	for _, want := range []string{`"progress"`, "gtk4"} {
+	for _, want := range []string{`"avatar"`, "gtk4"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("diagnostic %q does not mention %s", got, want)
 		}

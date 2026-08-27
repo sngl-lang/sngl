@@ -513,6 +513,19 @@ func gtk4ChildAppendFn(parentCType string) string {
 		return "gtk_scrolled_window_set_child"
 	case "GtkWindow", "GtkApplicationWindow":
 		return "gtk_window_set_child"
+	// The single-child setters below back the stdlib overrides that host a
+	// slot in something other than a box. Each takes one child, so a second
+	// append replaces the first — which is what the GTK API does and what the
+	// stdlib component says (card and popover each wrap one region).
+	case "GtkFrame":
+		return "gtk_frame_set_child"
+	case "GtkPopover":
+		return "gtk_popover_set_child"
+	// gtk_stack_add_child returns the GtkStackPage it created; the emitted
+	// call is a statement and discards it, which is what a stack whose pages
+	// are never named by the program wants.
+	case "GtkStack":
+		return "gtk_stack_add_child"
 	}
 	return ""
 }
