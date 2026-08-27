@@ -9,9 +9,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The blueprint file is read as data by the renderer, which would happily
-// consume a body the checker rejects. Importing the package is what loads and
-// checks it, so this is the only thing that keeps it type-correct.
+// lib/platforms/fyne/fyne.sngl declares twelve intrinsics and thirty-four
+// overrides written against them, and no Go code in this package parses that
+// file. Importing the package is what loads and checks it, so this is the only
+// thing that keeps it type-correct.
 func TestFynePackageTypeChecks(t *testing.T) {
 	src := `
 import . "sngl://std"

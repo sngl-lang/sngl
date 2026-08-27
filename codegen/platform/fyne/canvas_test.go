@@ -12,10 +12,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // TestCanvas_EmitsGGDrawAndRedraw verifies the fyne platform renders a
@@ -36,16 +33,7 @@ component main {
     button(text="Grow", @click { radius = radius + 10.0 })
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
-		}
-	}
+	pkg := checkForFyne(t, src)
 
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
@@ -149,16 +137,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
-		}
-	}
+	pkg := checkForFyne(t, src)
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := g.Capabilities(lang).ToLowerCaps()

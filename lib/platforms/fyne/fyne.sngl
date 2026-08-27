@@ -1,34 +1,35 @@
 // Fyne platform package.
 //
-// Each component declares a blueprint — structured render directives the codegen
-// reads at platform load off the single `widget` primitive the body renders. The
-// renderer walks each component body, picks the first VisualNode (or the node
-// inside a top-level `if`), and reads its args. No platform Go code branches on
-// component name.
+// The `#[intrinsic("fyne:<Name>")]` components below are the Fyne widgets this
+// platform can build — one per Go constructor, twelve of them for the
+// thirty-four stdlib components that reach them. Each declares the props and
+// events the widget actually supports, and `widgets.go` holds the one Go table
+// that says, per intrinsic id, which constructor to call, which Go type it
+// returns, and which setter or callback field each prop and event becomes. The
+// id is the dispatch key, so no Go code in this package matches a component
+// name.
 //
-// These are stand-alone declarations, not `component sngl.X { platform fyne }`
-// extensions: the renderer reads the body as data, and an extension body is
-// instead *inlined* into the program (dropping the caller's props, children and
-// handlers, which a blueprint carries as data rather than as expressions).
+// Every stdlib component is then a `component sngl.X { platform fyne { ... } }`
+// override whose body instantiates one of those intrinsics. That body is
+// *inlined* into the caller by `passInlinePure`, so a prop is an expression the
+// inliner substitutes — `text=value` reads the stdlib component's own `value`
+// prop — rather than a string naming one. An override that named its props as
+// data would lose the caller's props, children and handlers, which is what the
+// earlier blueprint form did and why it needed a decoder of its own.
 //
 // Imports:
-//   The renderer always emits "fmt", "fyne.io/fyne/v2", "fyne.io/fyne/v2/widget",
-//   "fyne.io/fyne/v2/container" — these baselines cover the BuildUI fallbacks
-//   and the multi-root path. Components that need anything else (canvas, layout,
-//   net/url, etc.) declare it via the Constructor.imports field; the renderer
-//   collects the union across rendered components.
+//   Nothing here declares a Go import. `nativeCall` resolves a constructor's
+//   selector (`widget`, `container`, `layout`, `canvas`) through
+//   `fyneFrameworkPkgs`, and `OnCreateNode` does the same for the selector in
+//   the widget's Go type, so the emitted file imports exactly the packages the
+//   rendered widgets name.
 //
-// Blueprint:
-//   Constructor{goFn, goType, imports}         the Go constructor to call
-//   Init{prop, target, transform}              one-shot setter
-//   Reactive{prop, target, transform}          setter + dep-tracked updater
-//   Event{prop, target, signature, bindParam,  closure assigned after ctor
-//         bindProp}
-//
-// Top-level args on the `widget` primitive:
-//   constructor       Constructor{...}
-//   init/reactive/    the three binding kinds, each keyed by prop name
-//     events
+// Style:
+//   Every intrinsic takes a `style` so an override can forward the stdlib
+//   component's `style` through, but Fyne has no style surface the setter table
+//   can reach: the prop carries no setter, so the assignment is dropped. It is
+//   declared because the data is what a future theme/layout implementation
+//   needs, not because anything reads it today.
 
 import sngl "sngl://std"
 import . "sngl://platforms"
@@ -40,447 +41,321 @@ struct Options {
     main bool
 }
 
-// --- Blueprint vocabulary ---
+// --- The intrinsics ---
+//
+// Twelve widgets, one per Go constructor. A prop appears here only when
+// `widgets.go` gives it a setter; an event only when it gives it a callback
+// field. `Hyperlink` and `Image` therefore declare no props beyond `style`:
+// `widget.Hyperlink` exposes its text as a struct field rather than a setter,
+// and `canvas.Image` is constructed from a URI this platform has no expression
+// to build.
 
-struct Constructor {
-    goFn string
-    goType string
-    imports list<string>
-}
+#[intrinsic("fyne:Label")]
+component Label(text string, style sngl.Style) {}
 
-struct Init {
-    prop string
-    target string
-    transform string
-}
+#[intrinsic("fyne:Button")]
+component Button(text string, style sngl.Style, @click sngl.ClickEvent) {}
 
-struct Reactive {
-    prop string
-    target string
-    transform string
-}
+#[intrinsic("fyne:Entry")]
+component Entry(text string, placeholder string, style sngl.Style, @input sngl.InputEvent) {}
 
-struct Event {
-    prop string
-    target string
-    signature string
-    bindParam string
-    bindProp string
-}
+#[intrinsic("fyne:MultiLineEntry")]
+component MultiLineEntry(text string, placeholder string, rows int, style sngl.Style, @input sngl.InputEvent) {}
 
-// The one platform primitive. Every component below renders exactly one of
-// these; its props are the blueprint the Go renderer reads.
-#[intrinsic("fyne:widget")]
-component widget(
-    constructor Constructor,
-    init list<Init>,
-    reactive list<Reactive>,
-    events list<Event>,
-    style sngl.Style,
-) {}
+#[intrinsic("fyne:Check")]
+component Check(text string, checked bool, style sngl.Style, @change sngl.ChangeEvent) {}
 
-// --- VBox-style containers ---
+#[intrinsic("fyne:Select")]
+component Select(selected string, style sngl.Style, @change sngl.ChangeEvent) {}
 
-component vbox(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:Hyperlink")]
+component Hyperlink(style sngl.Style) {}
 
-component stack(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:Image")]
+component Image(style sngl.Style) {}
 
-component scroll(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVScroll",
-            goType="*container.Scroll",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:Spacer")]
+component Spacer(style sngl.Style) {}
 
-component card(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:VBox")]
+component VBox(style sngl.Style) list<component> {}
 
-component radio(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:HBox")]
+component HBox(style sngl.Style) list<component> {}
 
-component drawer(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+#[intrinsic("fyne:VScroll")]
+component VScroll(style sngl.Style) component {}
 
-component tooltip(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
+// --- Layout containers ---
 
-component popover(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component table(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component tree(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component menu(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-// --- HBox-style containers ---
-
-component hbox(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component tabs(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component splitview(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component menubar(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-component toolbar(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Spacer ---
-
-component spacer(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="layout.NewSpacer",
-            goType="fyne.CanvasObject",
-            imports=["fyne.io/fyne/v2/layout"],
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Label-rendered widgets ---
-
-component text(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        reactive=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        style={...style},
-    ) {}
-}
-
-component badge(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        reactive=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        style={...style},
-    ) {}
-}
-
-component divider(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        reactive=[
-            Reactive{prop="label", target=".SetText", transform="fmt.Sprint"},
-        ],
-        style={...style},
-    ) {}
-}
-
-component progress(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        reactive=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        style={...style},
-    ) {}
-}
-
-component spinner(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        style={...style},
-    ) {}
-}
-
-component avatar(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        style={...style},
-    ) {}
-}
-
-component chip(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        style={...style},
-    ) {}
-}
-
-component datepicker(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Button ---
-
-component button(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewButton",
-            goType="*widget.Button",
-        },
-        reactive=[
-            Reactive{prop="text", target=".SetText", transform="fmt.Sprint"},
-        ],
-        events=[
-            Event{prop="click", target=".OnTapped", signature="func()"},
-        ],
-        style={...style},
-    ) {}
-}
-
-// --- Hyperlink ---
-
-component link(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewHyperlink",
-            goType="*widget.Hyperlink",
-            imports=["net/url"],
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Image ---
-
-component image(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="canvas.NewImageFromURI",
-            goType="*canvas.Image",
-            imports=["fyne.io/fyne/v2/canvas"],
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Checkbox / Toggle ---
-
-component checkbox(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewCheck",
-            goType="*widget.Check",
-        },
-        style={...style},
-    ) {}
-}
-
-component toggle(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewCheck",
-            goType="*widget.Check",
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Select ---
-
-component select(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewSelect",
-            goType="*widget.Select",
-        },
-        style={...style},
-    ) {}
-}
-
-// --- Modal ---
-
-component modal(open bool, style sngl.Style) {
-    if open {
-        widget(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-            },
-            style={...style},
-        ) {}
+component sngl.vbox {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
     }
 }
 
-// --- Entry inputs ---
-
-component input(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewEntry",
-            goType="*widget.Entry",
-        },
-        init=[
-            Init{prop="placeholder", target=".SetPlaceHolder"},
-            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        reactive=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        events=[
-            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", bindProp="value"},
-        ],
-        style={...style},
-    ) {}
+component sngl.hbox {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
 }
 
-component textarea(style sngl.Style) {
-    widget(
-        constructor=Constructor{
-            goFn="widget.NewMultiLineEntry",
-            goType="*widget.Entry",
-        },
-        init=[
-            Init{prop="placeholder", target=".SetPlaceHolder"},
-            Init{prop="rows", target=".SetMinRowsVisible"},
-            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        reactive=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        events=[
-            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", bindProp="value"},
-        ],
-        style={...style},
-    ) {}
+// Fyne has no layered container in the widget set this platform builds from,
+// so a stack is a vertical box: the children are all present and in order,
+// they just do not overlap.
+component sngl.stack {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.scroll {
+    platform fyne {
+        VScroll(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.spacer {
+    platform fyne {
+        Spacer(style={...style}) {}
+    }
+}
+
+component sngl.card {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.splitview {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// --- Overlays ---
+//
+// `open` is not forwarded: Fyne's overlay lifecycle is a canvas-level
+// push/pop rather than a property, and the setter table has one setter per
+// prop. So an overlay renders inline with its content visible, which is what
+// the blueprint form did too.
+
+component sngl.modal {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.drawer {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.popover {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// The shape html uses: a box carrying the tooltip text, with the wrapped
+// content inside it.
+component sngl.tooltip {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// --- Navigation ---
+//
+// A tab strip, menu bar and toolbar are all a row of their entries. Fyne's
+// own AppTabs/MainMenu/Toolbar take their items as constructor arguments,
+// which the create-then-set sequence this platform emits cannot supply.
+
+component sngl.tabs {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.toolbar {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.menubar {
+    platform fyne {
+        HBox(style={...style}) {}
+    }
+}
+
+component sngl.menu {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+// --- Data display ---
+//
+// `table`, `tree` and `radio` take their contents as a list prop rather than
+// as children, and Fyne's Table/Tree/RadioGroup read theirs through a
+// callback or a constructor argument. Each renders as its container, empty,
+// until this platform can emit that.
+
+component sngl.table {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+component sngl.tree {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+component sngl.radio {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+// --- Text ---
+
+component sngl.text {
+    platform fyne {
+        Label(text=value, style={...style}) {}
+    }
+}
+
+component sngl.badge {
+    platform fyne {
+        Label(text=value, style={...style}) {}
+    }
+}
+
+component sngl.chip {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+component sngl.divider {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+// `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
+// is the half of an avatar this platform can render.
+component sngl.avatar {
+    platform fyne {
+        Label(text=initials, style={...style}) {}
+    }
+}
+
+component sngl.spinner {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+// `value` is a float and the label is text, so the conversion is spelled
+// here rather than left to a transform in the setter table.
+component sngl.progress {
+    platform fyne {
+        Label(text=string(value), style={...style}) {}
+    }
+}
+
+// `value`, `min` and `max` are `date`, which no SNGL expression converts to a
+// string, so the picker shows its `placeholder` and its selection does not
+// reach the bound value.
+component sngl.datepicker {
+    platform fyne {
+        Label(text=placeholder, style={...style}) {}
+    }
+}
+
+// --- Controls ---
+
+component sngl.button {
+    platform fyne {
+        Button(text=text, style={...style}, @click { click() }) {}
+    }
+}
+
+// `href` and `text` are not forwarded: `widget.Hyperlink` exposes both as
+// struct fields, and this platform's setter table calls methods.
+component sngl.link {
+    platform fyne {
+        Hyperlink(style={...style}) {}
+    }
+}
+
+component sngl.image {
+    platform fyne {
+        Image(style={...style}) {}
+    }
+}
+
+component sngl.checkbox {
+    platform fyne {
+        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    }
+}
+
+// Fyne's Check is the switch affordance too: `widget.Switch` is not in the
+// widget set this platform builds from.
+component sngl.toggle {
+    platform fyne {
+        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    }
+}
+
+// `options` is not forwarded: `widget.Select` takes its choices as a
+// constructor argument, which the create-then-set sequence cannot supply.
+component sngl.select {
+    platform fyne {
+        Select(selected=value, style={...style}, @change { change() }) {}
+    }
+}
+
+// --- Text entry ---
+
+component sngl.input {
+    platform fyne {
+        Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
+    }
+}
+
+component sngl.textarea {
+    platform fyne {
+        MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
+    }
 }

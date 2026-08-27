@@ -17,8 +17,11 @@ import (
 // (or promoted handler) emission; widget-field registrations flow back
 // into the enclosing compilation via fieldSink.
 type fyneTranslator struct {
-	gc         *golang.GoIRContext
-	blueprints map[string]*fyneBlueprint
+	gc *golang.GoIRContext
+	// widgets resolves a lowered node tag to the fyne widget behind it. Built
+	// by collectNodes from each CreateNode's component declaration, so the key
+	// is a tag and the value came from that declaration's #[intrinsic] id.
+	widgets    map[string]*fyneWidget
 	fieldSink  func(name, goType string)
 	importSink func(path string)
 	// localRefs is the set of synthesized widget ref ids that lower's
@@ -47,10 +50,10 @@ type fyneTranslator struct {
 	canvasState *canvasutil.GoCanvasState
 }
 
-func newFyneTranslator(gc *golang.GoIRContext, blueprints map[string]*fyneBlueprint, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
+func newFyneTranslator(gc *golang.GoIRContext, widgets map[string]*fyneWidget, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
 	return &fyneTranslator{
 		gc:         gc,
-		blueprints: blueprints,
+		widgets:    widgets,
 		fieldSink:  fieldSink,
 		importSink: importSink,
 		idTags:     map[string]string{},
@@ -78,18 +81,12 @@ func localElementRef(name string) ir.Expr {
 	return &ir.Ident{Name: name, Type: ir.TypDyn}
 }
 
-// platformBlueprints returns the blueprint table loaded at init().
-func platformBlueprints() map[string]*fyneBlueprint {
-	return loadBlueprints()
-}
-
 // fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
-// (in blueprint goFn/goType and the view's literal fallbacks) to its full Go
-// import path. It is the single source of truth for resolving a selector to a
+// (in a widget's Go constructor/type and the view's literal fallbacks) to its
+// full Go import path. It is the single source of truth for resolving a selector to a
 // path: nativeCall uses it for Foreign.Path, and the import block uses it to scan
 // the generated body for framework usage — replacing the old always-on set.
 var fyneFrameworkPkgs = map[string]string{
-	"fmt":       "fmt",
 	"fyne":      "fyne.io/fyne/v2",
 	"widget":    "fyne.io/fyne/v2/widget",
 	"container": "fyne.io/fyne/v2/container",
@@ -159,37 +156,29 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 			return t.emitCanvasCreate(id)
 		}
 	}
-	bp, ok := t.blueprints[tag]
-	if !ok || bp.Constructor == nil || bp.Constructor.GoType == "" {
+	w, ok := t.widgets[tag]
+	if !ok {
 		return nil
 	}
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
 	if !t.isLocalRef(id) {
-		t.fieldSink(id, bp.Constructor.GoType)
+		t.fieldSink(id, w.GoType)
 	}
-	// Only flow imports whose package name is referenced by the ctor
-	// goFn/goType — blueprints may list extra imports (e.g. "net/url")
-	// used by the unused prelude/args path, which would otherwise
-	// leak as unused imports.
+	// The Go type reaches the output as a Model field's type string rather
+	// than as an evaluated call, so gc never sees its package. Flow both
+	// spellings' imports explicitly.
 	if t.importSink != nil {
-		ref := bp.Constructor.GoFn + " " + bp.Constructor.GoType
-		for _, imp := range bp.Constructor.Imports {
-			if imp == "" {
-				continue
-			}
-			pkg := imp
-			if i := strings.LastIndex(imp, "/"); i >= 0 {
-				pkg = imp[i+1:]
-			}
-			if strings.Contains(ref, pkg+".") {
-				t.importSink(imp)
-			}
+		for _, imp := range w.ctorImports() {
+			t.importSink(imp)
 		}
 	}
 
-	args := zeroArgsToExprs(bp.Constructor.ZeroArgs)
-	ctor := nativeCall(bp.Constructor.GoFn, args, ir.TypDyn)
+	args := make([]ir.Expr, len(w.CtorArgs))
+	for i, a := range w.CtorArgs {
+		args[i] = a.expr()
+	}
+	ctor := nativeCall(w.GoFn, args, ir.TypDyn)
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
@@ -223,30 +212,6 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
-// zeroArgsToExprs parses a blueprint's ZeroArgs string into IR exprs.
-// Recognises the small handful of forms blueprints actually use.
-func zeroArgsToExprs(zeroArgs string) []ir.Expr {
-	switch zeroArgs {
-	case "":
-		return nil
-	case `""`:
-		return []ir.Expr{&ir.Literal{Type: ir.TypString, Raw: ""}}
-	case `"", nil`:
-		return []ir.Expr{
-			&ir.Literal{Type: ir.TypString, Raw: ""},
-			&ir.Literal{Type: ir.TypNull},
-		}
-	case `nil`:
-		return []ir.Expr{&ir.Literal{Type: ir.TypNull}}
-	case `nil, nil`:
-		return []ir.Expr{
-			&ir.Literal{Type: ir.TypNull},
-			&ir.Literal{Type: ir.TypNull},
-		}
-	}
-	return nil
-}
-
 func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	// A child that's been appended to a parent is no longer a top-level
 	// candidate. Window/component emitters consult topLevel to decide
@@ -260,11 +225,11 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
-	// assign to .Content instead. Detected via parent's tag → blueprint.
+	// assign to .Content instead. The widget's table entry says which.
 	parentTag := t.idTags[codegen.IdentBareName(parent)]
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
-	if bp, ok := t.blueprints[parentTag]; ok && bp.Constructor != nil && isSingleChildContainerGoFn(bp.Constructor.GoFn) {
+	if w, ok := t.widgets[parentTag]; ok && w.SingleChild {
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: "Content", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
@@ -272,18 +237,6 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}}
 	}
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Add", []ir.Expr{child}, ir.TypVoid)}}
-}
-
-// isSingleChildContainerGoFn reports whether the given fyne constructor
-// produces a widget that stores its child via a `Content` field rather
-// than an Add method. Used by OnAppendChild to switch from
-// `parent.Add(child)` to `parent.Content = child` for those types.
-func isSingleChildContainerGoFn(goFn string) bool {
-	switch goFn {
-	case "container.NewVScroll", "container.NewHScroll", "container.NewScroll":
-		return true
-	}
-	return false
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
@@ -334,21 +287,15 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if !ok {
 		return nil
 	}
-	bp, ok := t.blueprints[tag]
+	w, ok := t.widgets[tag]
 	if !ok {
 		return nil
 	}
-	var target string
-	for _, b := range bp.Bindings {
-		if b.matchesEvent(event) {
-			target = b.Target
-			break
-		}
-	}
-	if target == "" {
+	ev, ok := w.Events[event]
+	if !ok {
 		return nil
 	}
-	fieldName := strings.TrimPrefix(target, ".")
+	fieldName := ev.Field
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
@@ -401,24 +348,13 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if !ok {
 		return nil
 	}
-	bp, ok := t.blueprints[tag]
+	w, ok := t.widgets[tag]
 	if !ok {
 		return nil
 	}
-	var target, transform string
-	for _, b := range bp.Bindings {
-		if (b.Kind == bindReactive || b.Kind == bindInit) && b.Prop == prop {
-			target = b.Target
-			transform = b.Transform
-			break
-		}
-	}
-	if target == "" {
+	methodName, ok := w.Props[prop]
+	if !ok {
 		return nil
-	}
-	methodName := strings.TrimPrefix(target, ".")
-	if transform != "" {
-		value = nativeCall(transform, []ir.Expr{value}, ir.TypString)
 	}
 	nodeRef := t.nodeRefFor(bareID)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}

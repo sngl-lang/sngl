@@ -220,8 +220,8 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 // emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
 // method `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating
 // each canvas-intrinsic CallStmt body statement into Context method calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta, importSink func(string)) {
-	tr := newFyneTranslator(gc, platformBlueprints(), func(string, string) {}, importSink)
+func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta, widgets map[string]*fyneWidget, importSink func(string)) {
+	tr := newFyneTranslator(gc, widgets, func(string, string) {}, importSink)
 	tr.canvasByFunc = byFunc
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	synthesized := &ir.Func{
