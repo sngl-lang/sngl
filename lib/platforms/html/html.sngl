@@ -1,4 +1,5 @@
-// HTML output. Any identifier is a valid tag: `html.div`, `html.dialog`.
+// HTML output. Any lowercase identifier is a valid tag: `html.div`,
+// `html.dialog`.
 // The web element set is open — new standards keep adding to it — so a tag
 // resolves to the `element` component below rather than to a declaration of
 // its own. A tag no identifier can spell is written through that component's
@@ -46,7 +47,12 @@ struct Options {
 // else is one, which is what the wildcard prop says. A tag-specific numeric
 // attribute missing from this list is accepted as a string rather than
 // rejected.
-#[wildcard("[a-zA-Z][a-zA-Z0-9]*", "tag")]
+// Lowercase, for the same reason the attribute wildcard below is: an HTML tag
+// name is lowercase, so a camelCase identifier is a misspelling rather than a
+// tag nobody has standardised yet. Without that a typo inside a
+// `platform html { ... }` body, where a bare name reaches this wildcard, is a
+// silently-emitted element.
+#[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
     // The name this resolved from — `html.div` binds "div" — and the tag to
     // emit. Writing it is how a hyphenated custom element is reached, an

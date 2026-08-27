@@ -1,0 +1,89 @@
+# A wildcard stands for names in one position, and says which names stand
+# there. Three things follow, each of which the compiler used to get wrong.
+
+# 1. A spread field is a written prop name like any other, so one a wildcard
+# prop covers is collected into that prop rather than becoming an argument
+# named after a prop no component declares. As a bare argument it named
+# nothing and every backend dropped it.
+sngl dump --stage checked --lang none --platform html spread.sngl
+stdout 'td\(attrs=\{"bgcolor" = '
+! stdout 'td\(bgcolor='
+
+# 2. An HTML tag name is lowercase, so a camelCase identifier inside a
+# `platform html { ... }` body — where a bare name reaches the element
+# wildcard — is a misspelling rather than a tag nobody has standardised yet.
+! sngl dump --stage checked --lang none --platform html typo.sngl
+stderr 'unknown component "thisIsATypoNotATag"'
+
+# 3. A dot import lifts a package's declarations. A wildcard component's
+# declaration is its own name; the open set of names it also answers to
+# belongs to the package, and is reached by naming it (`html.div`) or from
+# inside its platform's body. Lifted, it left the importing file with no
+# undeclared node name to misspell and no undefined identifier at all. The
+# name below is a real tag, so only the lift can make it resolve here.
+! sngl dump --stage checked --lang none --platform html dotimport.sngl
+stderr 'unknown component "div"'
+
+# The declaration itself is lifted, and is how the open set is reached from a
+# file that dot-imported the package.
+sngl dump --stage checked --lang none --platform html dotdecl.sngl
+stdout 'element\(tag="div"\)'
+
+! sngl dump --stage checked --lang none --platform html dotexpr.sngl
+stderr 'undefined: someUndefinedIdentifier'
+
+-- spread.sngl --
+import std "sngl://std"
+import html "sngl://platforms/html"
+
+struct tdAttrs {
+    bgcolor string
+    colspan string
+}
+
+component main() {
+    std.window {
+        platform html {
+            html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
+        }
+    }
+}
+-- typo.sngl --
+import . "sngl://std"
+
+component main() {
+    window {
+        platform html {
+            thisIsATypoNotATag(id = "x") { }
+        }
+    }
+}
+-- dotimport.sngl --
+import std "sngl://std"
+import . "sngl://platforms/html"
+
+component main() {
+    std.window {
+        div(id = "x") { }
+    }
+}
+-- dotexpr.sngl --
+import std "sngl://std"
+import . "sngl://platforms/html"
+
+func typoed() => someUndefinedIdentifier
+
+component main() {
+    std.window {
+        std.text(value = "x")
+    }
+}
+-- dotdecl.sngl --
+import std "sngl://std"
+import . "sngl://platforms/html"
+
+component main() {
+    std.window {
+        element(tag = "div") { }
+    }
+}

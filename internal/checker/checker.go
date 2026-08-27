@@ -3188,12 +3188,12 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 			// it. Both bindings mean the same package, so this is a restated
 			// name rather than an ambiguous one. Only the stdlib lifts
 			// namespaces, so no second dot import can disagree about one.
-			c.bindLib(imp.Pos, dst, sym)
+			c.bindLifted(imp.Pos, dst, sym)
 			continue
 		}
 		if !claim(sym.SymName()) {
 			continue
 		}
-		c.bindLib(imp.Pos, dst, sym)
+		c.bindLifted(imp.Pos, dst, sym)
 	}
 }

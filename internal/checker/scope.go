@@ -87,6 +87,16 @@ func (c *checker) bindLib(pos ast.Pos, scope *ir.Scope, sym ir.Symbol) {
 	}
 }
 
+// bindLifted binds a name a dot import lifted. Unlike bindLib it does not lift
+// the symbol's wildcard pattern with it (ir.Scope.DeclareName): the import
+// names the declaration, not the open set of names that declaration also
+// answers to.
+func (c *checker) bindLifted(pos ast.Pos, scope *ir.Scope, sym ir.Symbol) {
+	if err := scope.DeclareName(sym); err != nil {
+		c.error(pos, "stdlib declares %s twice", sym.SymName())
+	}
+}
+
 // bindDeclared binds a top-level declaration once claimTopLevel has ruled on
 // the name. That rule permits exactly one rebinding — a declaration shadowing
 // a name a dot import lifted into this same scope — so the write is a

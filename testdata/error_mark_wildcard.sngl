@@ -62,8 +62,22 @@ component twoEvts(
     text(value = "x")
 }
 
+// A wildcard says which names stand in one position — here a visual node's.
+// It does not make every undeclared identifier resolve to the component: read
+// anywhere else, a name it covers is a misspelling like any other.
+#[wildcard("box[A-Za-z0-9]*", "which")]
+component anyBox(which string = "") {
+    text(value = which)
+}
+
+func boxedTypo() => boxSomething // ERROR(check) "undefined: boxSomething"
+
 component main() {
     window {
+        // A wildcard prop is bound under its own name or by a name its pattern
+        // covers. Both on one call are two spellings of one map, and the
+        // second silently replaced the first.
+        attrs(data = {dataRole = "plain"}, dataIndex = "3") // ERROR(check) "bound directly and as \"dataIndex\""
         evts(@onHover { })
         evts(@hover { }) // ERROR(check) "unknown event \"hover\" on component evts"
         twoEvts(@ax { }) // ERROR(check) "matches both wildcard events"

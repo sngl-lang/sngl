@@ -3136,7 +3136,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				}
 			}
 		}
-	} else if sym, ok := c.lookupComponentInScope(name); ok {
+	} else if sym, ok := c.lookupComponentInScope(vn.Pos, name); ok {
 		if c.rejectUnexported(vn.Pos, sym) {
 			return nil
 		}
@@ -3463,6 +3463,42 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	// Entries a wildcard prop collected, keyed by the prop's own name. Built
 	// alongside props and appended as one map arg once every name is in.
 	var wildcardEntries map[string][]ir.MapEntry
+	// The first matched name routed into each wildcard prop, and the call site
+	// that bound that prop under its own name. A call may do one or the other;
+	// doing both is reported once the whole arg list has been read, so the
+	// diagnostic does not depend on which spelling came first.
+	var wildcardFirstName map[string]string
+	var wildcardDirect map[string]ast.Pos
+	noteDirect := func(name string, pos ast.Pos) {
+		if comp == nil {
+			return
+		}
+		for _, p := range comp.Props {
+			if p.Name != name || p.Wildcard == "" {
+				continue
+			}
+			if wildcardDirect == nil {
+				wildcardDirect = map[string]ast.Pos{}
+			}
+			if _, dup := wildcardDirect[name]; !dup {
+				wildcardDirect[name] = pos
+			}
+			return
+		}
+	}
+	collectWildcard := func(wc *ir.Prop, name string, val ir.Expr) {
+		if wildcardEntries == nil {
+			wildcardEntries = map[string][]ir.MapEntry{}
+		}
+		if wildcardFirstName == nil {
+			wildcardFirstName = map[string]string{}
+		}
+		key := &ir.Literal{Type: TypString, Raw: name}
+		wildcardEntries[wc.Name] = append(wildcardEntries[wc.Name], ir.MapEntry{Key: key, Value: val})
+		if _, had := wildcardFirstName[wc.Name]; !had {
+			wildcardFirstName[wc.Name] = name
+		}
+	}
 
 	// Order check: positional after named is an error.
 	// Spread args (...expr) expand to named props and are exempt from this check.
@@ -3523,6 +3559,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 							selExpr = wrapIfNeeded(selExpr, propType)
 						}
 						boundProps[f.Name] = true
+						// A spread field is a written prop name like any
+						// other, so a name a wildcard prop covers is
+						// collected into it rather than becoming an arg under
+						// its own name — which named no prop, and was dropped
+						// by every backend.
+						if wc := wildcardTarget(comp, f.Name); wc != nil {
+							collectWildcard(wc, f.Name, selExpr)
+							continue
+						}
+						noteDirect(f.Name, spread.Pos)
 						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
 					}
 					continue
@@ -3594,25 +3640,22 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
+				pos := args.Pos
+				if arg.Value != nil {
+					pos = *arg.Value.ExprPos()
+				}
 				if boundProps[propName] {
-					pos := args.Pos
-					if arg.Value != nil {
-						pos = *arg.Value.ExprPos()
-					}
 					c.error(pos, "prop %q already provided on component %s", propName, comp.Name)
 					continue
 				}
 				boundProps[propName] = true
+				noteDirect(propName, pos)
 			}
 			// A wildcard prop collects the names it matched rather than
 			// being one: the value is an entry keyed by the written name,
 			// and every match on this call site lands in the same map.
 			if wc := wildcardTarget(comp, strings.TrimPrefix(resolvedName, ":")); wc != nil {
-				if wildcardEntries == nil {
-					wildcardEntries = map[string][]ir.MapEntry{}
-				}
-				key := &ir.Literal{Type: TypString, Raw: strings.TrimPrefix(resolvedName, ":")}
-				wildcardEntries[wc.Name] = append(wildcardEntries[wc.Name], ir.MapEntry{Key: key, Value: val})
+				collectWildcard(wc, strings.TrimPrefix(resolvedName, ":"), val)
 				continue
 			}
 			props = append(props, ir.Arg{Name: resolvedName, NamePos: arg.NamePos, Value: val})
@@ -3656,6 +3699,15 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		for _, p := range comp.Props {
 			entries := wildcardEntries[p.Name]
 			if len(entries) == 0 {
+				continue
+			}
+			// The prop's own name and a name its wildcard covers are two ways
+			// to write the same map, and the second one appended here would
+			// silently replace the first. Neither is wrong on its own, so the
+			// call site is told to pick one rather than one being preferred.
+			if pos, direct := wildcardDirect[p.Name]; direct {
+				c.error(pos, "prop %q on component %s is bound directly and as %q, which its wildcard collects into it; bind the map or the matched names, not both",
+					p.Name, comp.Name, wildcardFirstName[p.Name])
 				continue
 			}
 			props = append(props, ir.Arg{Name: p.Name, Value: &ir.MapLitIR{Type: p.Type, Entries: entries}})
@@ -4034,10 +4086,19 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 // that are not lexically visible — which is exactly the bug: platform-extension
 // bodies, checked against the stdlib scope, would otherwise pick up a
 // same-named user component and shadow the platform's own blueprint.
-func (c *checker) lookupComponentInScope(name string) (ir.Symbol, bool) {
+func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
-		return nil, false
+		// A name nobody declared is still a node name when a wildcard covers
+		// it — an open element set, reached unqualified inside a `platform x
+		// { ... }` body, whose scope carries the target package's wildcards.
+		// Asked for here rather than in Scope.Lookup because a visual node is
+		// the only bare position a wildcard stands in: as an expression the
+		// same name is a misspelling.
+		sym = c.scopeWildcard(pos, c.scope, name)
+		if sym == nil {
+			return nil, false
+		}
 	}
 	if _, isComp := sym.(*ir.Component); !isComp {
 		return nil, false

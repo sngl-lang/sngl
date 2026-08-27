@@ -260,6 +260,15 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		if used[p.Name] {
 			continue
 		}
+		// A wildcard prop is never offered. It is a map of the names its
+		// pattern covers, and binding it under its own name is legal only when
+		// no covered name is written on the same call — which the checker
+		// rejects as a conflict, so offering the name here would suggest a
+		// spelling that may not compile. The names it does stand for are open
+		// by construction and cannot be enumerated.
+		if isWildcardProp(p) {
+			continue
+		}
 		detail := typeExprString(p.Type)
 		items = append(items, CompletionItem{
 			Label:            p.Name,
@@ -602,4 +611,22 @@ func enumThisItems(d *ast.EnumDef) []CompletionItem {
 		})
 	}
 	return items
+}
+
+// isWildcardProp reports whether a prop carries #[wildcard(...)].
+//
+// Matched by the mark's own name, which is all this can do and all it needs:
+// completion runs on one parsed document with no checker, so nothing here
+// resolves the macro to sngl://platforms, applies it, or knows the pattern it
+// compiled to. The name survives aliasing (`import p "sngl://platforms"` makes
+// it `#[p.wildcard]`, same Name), and the cost of a false positive — a user
+// macro of that name on an ordinary prop — is one withheld suggestion rather
+// than a wrong one.
+func isWildcardProp(p ast.Param) bool {
+	for _, a := range p.MacroAttrs() {
+		if a.Name == "wildcard" {
+			return true
+		}
+	}
+	return false
 }

@@ -36,9 +36,9 @@ type Scope struct {
 	Parent  *Scope
 	Symbols map[string]Symbol
 	// Wildcards are the symbols in this scope that answer to names nobody
-	// declared, checked in order after Symbols misses. A scope is a map of
-	// identifiers plus these: a declared name always wins, and a wildcard is
-	// consulted only when there is no name to find.
+	// declared. A declared name always wins, and a wildcard is consulted only
+	// when there is no name to find — and only by a caller resolving a
+	// position a wildcard stands in (WildcardMatches), never by Lookup.
 	Wildcards []Symbol
 }
 
@@ -94,7 +94,7 @@ func (s *Scope) localWildcardMatches(name string) []Symbol {
 	return out
 }
 
-// lookupWildcard is the fallback LookupLocal shares with Lookup.
+// lookupWildcard is LookupLocal's fallback. Lookup has none: see there.
 func (s *Scope) lookupWildcard(name string) (Symbol, bool) {
 	if m := s.localWildcardMatches(name); len(m) > 0 {
 		return m[0], true
@@ -127,6 +127,22 @@ func (s *Scope) Declare(sym Symbol) error {
 	return nil
 }
 
+// DeclareName binds a symbol under its own name only, without lifting a
+// wildcard symbol's pattern into this scope. For a dot import: it lifts the
+// declarations of a package, and a wildcard component's declaration is the
+// name `element` — the open set of names it also answers to is reached by
+// naming the package (`html.div`) or by being inside its platform's body, both
+// of which go to the package's own scope. Lifting the set instead would mean
+// the importing file has no undeclared node name left to misspell.
+func (s *Scope) DeclareName(sym Symbol) error {
+	name := sym.SymName()
+	if prev, ok := s.Symbols[name]; ok && prev != sym {
+		return &RedeclaredError{Name: name, Prev: prev}
+	}
+	s.Symbols[name] = sym
+	return nil
+}
+
 // Replace binds a symbol, overwriting any existing binding of the same name.
 // For the places where rebinding is the intent — shadowing a dot-imported
 // name, splicing a platform override over the stdlib declaration it extends.
@@ -135,19 +151,18 @@ func (s *Scope) Replace(sym Symbol) {
 	s.noteWildcard(sym)
 }
 
-// Lookup walks the parent chain for a name.
+// Lookup walks the parent chain for a name. Declared names only: it resolves
+// every identifier in the language — a type, a variable, a func, a method
+// receiver — and a wildcard stands for names in one specific position, a
+// visual node's, a prop's, an event's. Answering all of them with one would
+// make every misspelling a reference to it. The sites that resolve such a
+// position consult WildcardMatches themselves, having first missed here, which
+// is already how the qualified form works (`html.div`, via nsMember).
 func (s *Scope) Lookup(name string) (Symbol, bool) {
-	// Every declared name in the chain beats every wildcard in it: a wildcard
-	// stands for the names nobody declared, so the whole chain has to have no
-	// declaration of this one before any of them answers. Among wildcards the
-	// innermost wins, the way an inner declaration shadows an outer one.
 	for sc := s; sc != nil; sc = sc.Parent {
 		if sym, ok := sc.Symbols[name]; ok {
 			return sym, true
 		}
-	}
-	if m := s.WildcardMatches(name); len(m) > 0 {
-		return m[0], true
 	}
 	return nil, false
 }
@@ -276,9 +291,23 @@ func (st *SymbolTable) LookupDeclaredComponent(name string) (Symbol, bool) {
 	return nil, false
 }
 
-// LookupComponent finds a component declaration from the root scope outward.
+// LookupComponent finds a component for this name from the root scope outward,
+// falling back to a wildcard component covering it. A component name is a node
+// position, which is one of the positions a wildcard stands in, so this is one
+// of the sites Scope.Lookup leaves the wildcard consult to. Callers asking
+// whether a name was *declared* want LookupDeclaredComponent.
+//
+// A name covered by two wildcards in one scope is an ambiguity, reported by
+// the checker paths that hold a position to report it at (scopeWildcard); here
+// the first still answers, as it did when Lookup itself fell back.
 func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
-	if sym, ok := st.Root.Lookup(name); ok {
+	sym, ok := st.Root.Lookup(name)
+	if !ok {
+		if m := st.Root.WildcardMatches(name); len(m) > 0 {
+			sym, ok = m[0], true
+		}
+	}
+	if ok {
 		if c, isComp := sym.(*Component); isComp {
 			return c, true
 		}
