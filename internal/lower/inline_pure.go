@@ -30,12 +30,13 @@ var passInlinePure = pass{
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
+func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &inlinePureState{
 		pkg:      pkg,
+		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
 	}
@@ -70,20 +71,24 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 }
 
 type inlinePureState struct {
-	pkg      *ir.Package
+	pkg *ir.Package
+	// platform is the target being lowered for, empty for a platform-agnostic
+	// caller (LSP, format), which leaves every library component abstract.
+	platform string
 	inFlight map[*ir.Component]bool
 	stack    []*ir.Component // active inline chain, for cycle-error messages
 }
 
-// isPure reports whether a component is structurally pure (no internal
-// state). nil component → false.
+// isPure reports whether a component carries no state of its own, which is
+// what makes substituting its body for a call to it sound. nil → false.
+//
+// An empty body is pure: it declares nothing, so nothing about substituting it
+// can go wrong. Whether there is anything worth substituting is a separate
+// question, and the caller's — for a primitive nothing is expected, for a
+// library component it means the target implemented nothing, and for a user
+// component it means the node renders nothing.
 func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
-		return false
-	}
-	// Nothing to inline. A platform primitive is the intended case and is
-	// exempted by its #[intrinsic] mark before this is consulted.
-	if len(c.Body) == 0 {
 		return false
 	}
 	return len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0
@@ -196,14 +201,44 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 
-	// Decide eligibility.
-	pure := st.isPure(comp)
-	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if !pure && !strictApplies {
+	// A primitive is what every wrapper lowers *to* and has no body by design:
+	// #[intrinsic] for a platform widget, #[builtin] for a node kind the
+	// checker dispatches, a wildcard for a raw element, a tree kind for a
+	// member or host of a segmented tree.
+	if isPrimitiveComponent(comp) {
 		return []ir.Stmt{n}, nil
 	}
+
+	pure := st.isPure(comp)
+	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
 	if strictApplies && !pure {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
+	}
+
+	if len(comp.Body) == 0 {
+		// A user component declaring nothing at all renders nothing, so the
+		// node goes rather than reaching a codegen that has to guess what an
+		// empty component means — each platform guessed differently, and two
+		// grew a local workaround for it. A library component with no body is
+		// one the target implemented nothing for; that is a diagnostic waiting
+		// on the last platform to state its implementations declaratively, so
+		// for now it is left alone. Only when lowering for a target: with none,
+		// every library component is still abstract.
+		switch {
+		case strictApplies:
+			// A platform package's own component reaches here only unmarked:
+			// isPrimitiveComponent returned above for every marked one. So it
+			// is a primitive missing its mark, and nothing downstream can tell
+			// that from a wrapper that implements nothing.
+			return nil, fmt.Errorf("platform stdlib wrapper %q has no body to inline; mark it #[intrinsic] if it is a platform primitive (at %s)", comp.Name, compPos(comp))
+		case st.platform != "" && !comp.Stdlib:
+			return nil, nil
+		}
+		return []ir.Stmt{n}, nil
+	}
+
+	if !pure && !strictApplies {
+		return []ir.Stmt{n}, nil
 	}
 
 	// Recursive pure components (self-call directly or transitively) can't
@@ -280,9 +315,9 @@ func impurityReason(comp *ir.Component) string {
 		parts = append(parts, "timer")
 	}
 	if len(parts) == 0 {
-		// Reached when the body is empty, which is what an unmarked platform
-		// primitive looks like — the reason a reader needs, and the fix.
-		return "no body to inline; mark it #[intrinsic] if it is a platform primitive"
+		// Unreachable: the caller asks only when isPure said no, and isPure
+		// says no only for one of the three above.
+		return "state"
 	}
 	return strings.Join(parts, ", ")
 }
@@ -340,6 +375,17 @@ func containsSelfRef(comp *ir.Component) bool {
 		return false
 	}
 	return visit(comp.Body)
+}
+
+// isPrimitiveComponent reports whether a component is something a codegen
+// renders directly rather than a wrapper to be composed away. Each marker says
+// so in its own vocabulary, and none of them implies a body.
+func isPrimitiveComponent(comp *ir.Component) bool {
+	if comp == nil {
+		return false
+	}
+	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
+		comp.TreeKind != "" || comp.ChildKind != ""
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
