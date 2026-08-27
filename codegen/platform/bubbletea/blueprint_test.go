@@ -68,7 +68,7 @@ component main {
 //
 // These construct the inlined primitive *ir.NodeInst directly. Phase 1 only
 // declares the blueprint vocabulary + extractor; the wrapper-body inlining that
-// produces these nodes at lower time (StdlibWrappers=false) lands in Phase 2,
+// produces these nodes at lower time lands in Phase 2,
 // so there is no inlined node to compile through the harness yet. The shapes
 // built here mirror exactly what the inlined primitives carry: struct-literal
 // props for Model/Focus, list-of-struct-literal props for binds/events, an

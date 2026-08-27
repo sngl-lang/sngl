@@ -35,10 +35,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// create/append/attachHandler intrinsic-call sequences. fyne consumes
 	// the flat output via WalkLowered + fyneTranslator.
 	f.Declarative = false
-	// NoStdlibWrappers: inline fyne.sngl wrapper components at lowering time.
-	// fyne wrappers are pure blueprint-bearing NodeInsts; the translator
-	// reads the same Constructor/bindings props after inlining.
-	f.StdlibWrappers = false
 	f.InlineComponents = false
 	f.StructSpread = false
 	f.StructComponents = true

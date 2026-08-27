@@ -359,7 +359,7 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 
 	// Inlined blueprint primitive — render off its blueprint record rather than
 	// keying on a stdlib component name. Every stdlib wrapper is now inlined to
-	// one of these three primitives at lower time (NoStdlibWrappers); see
+	// one of these three primitives at lower time; see
 	// bubbletea.sngl + blueprint.go.
 	if n.Component != nil && (n.Name == "Layout" || n.Name == "Styled" || n.Name == "Widget" || n.Name == "Overlay") {
 		vc.renderBlueprint(n, resultVar)

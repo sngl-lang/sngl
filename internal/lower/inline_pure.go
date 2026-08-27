@@ -14,7 +14,7 @@ import (
 //
 // Two modes share the substitution engine:
 //   - Optimization (always-on): inlines user-defined pure components.
-//   - Strict (Caps.NoStdlibWrappers): inlines platform-stdlib wrappers
+//   - Strict: inlines platform-stdlib wrappers
 //     and errors if any platform-stdlib component is impure.
 //
 // Runs between passToggle and passReactivity. Must run BEFORE
@@ -35,10 +35,9 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 		return nil
 	}
 	st := &inlinePureState{
-		pkg:        pkg,
-		strictMode: caps.NoStdlibWrappers,
-		inFlight:   map[*ir.Component]bool{},
-		stack:      nil,
+		pkg:      pkg,
+		inFlight: map[*ir.Component]bool{},
+		stack:    nil,
 	}
 	for _, comp := range pkg.Components {
 		body, err := st.inlineStmts(comp.Body)
@@ -71,10 +70,9 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 }
 
 type inlinePureState struct {
-	pkg        *ir.Package
-	strictMode bool
-	inFlight   map[*ir.Component]bool
-	stack      []*ir.Component // active inline chain, for cycle-error messages
+	pkg      *ir.Package
+	inFlight map[*ir.Component]bool
+	stack    []*ir.Component // active inline chain, for cycle-error messages
 }
 
 // isPure reports whether a component is structurally pure (no internal
@@ -200,7 +198,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	// Decide eligibility.
 	pure := st.isPure(comp)
-	strictApplies := st.strictMode && isPlatformStdlibComponent(st.pkg, comp)
+	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
 	if !pure && !strictApplies {
 		return []ir.Stmt{n}, nil
 	}

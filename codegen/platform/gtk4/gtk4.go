@@ -105,7 +105,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne uses.
 	f.Reactivity = false
 	f.Declarative = false
-	f.StdlibWrappers = false
 	f.InlineComponents = false
 	f.StructSpread = false
 	f.StructComponents = true

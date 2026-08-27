@@ -174,8 +174,6 @@ func setCapByName(c *Caps, name string) error {
 		c.NoReactivity = true
 	case "NoDeclarative":
 		c.NoDeclarative = true
-	case "NoStdlibWrappers":
-		c.NoStdlibWrappers = true
 	case "NoListLambdas":
 		c.NoListLambdas = true
 	case "NoInlineComponents":
@@ -194,7 +192,7 @@ func (e errCapsName) Error() string {
 
 // testStubPlatform is a minimal in-test ir.Platform registration so
 // golden fixtures can use `import "sngl://platforms/teststub"` to exercise the
-// strict-mode (Caps.NoStdlibWrappers) branch of passInlinePure. The
+// strict-mode branch of passInlinePure. The
 // platform exposes two wrapper components — one pure, one impure — and
 // nothing else.
 type testStubPlatform struct{}

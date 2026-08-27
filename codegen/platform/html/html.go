@@ -40,7 +40,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.ImplicitRecv = false
 	f.InlineComponents = false
 	f.Reactivity = false
-	f.StdlibWrappers = false
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
@@ -1387,7 +1386,7 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component.Wildcard != "" {
 		return false
 	}
-	if isStdlibComponentName(n.Name) {
+	if n.Component.Stdlib {
 		return false
 	}
 	return true
@@ -1609,22 +1608,6 @@ func stripInterTagWhitespace(s string) string {
 	}
 	out := b.String()
 	return strings.TrimRight(out, " \t\n\r")
-}
-
-// isStdlibComponentName reports whether a name is a built-in stdlib
-// component that the html platform handles via dedicated renderStaticX
-// helpers rather than inlined user-component expansion.
-func isStdlibComponentName(name string) bool {
-	switch name {
-	case "vbox", "hbox", "stack", "scroll", "spacer", "text", "button", "input",
-		"image", "checkbox", "radio", "toggle", "select", "textarea", "progress",
-		"spinner", "badge", "tabs", "link", "divider", "modal", "drawer",
-		"tooltip", "popover", "splitview", "table", "tree", "menu",
-		"menubar", "toolbar", "datepicker", "chip", "avatar", "card", "slot",
-		"window", "timer", "canvas":
-		return true
-	}
-	return false
 }
 
 const maxComponentDepth = 10

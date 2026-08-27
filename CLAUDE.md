@@ -178,9 +178,9 @@ the two forms to opposite rules: a function id must be in the registry, a
 component id must not be, and must carry its namespace.
 
 The mark's other job is to stop the inliner. A platform's extension override
-inlines into its caller (`passInlinePure`), and under `NoStdlibWrappers` every
-platform-package component must inline or the build fails — so the primitives
-those overrides lower down to have to be exempt.
+inlines into its caller (`passInlinePure`), and every platform-package
+component must inline or the build fails — so the primitives those overrides
+lower down to have to be exempt.
 `isPlatformStdlibComponent` reads `Component.Intrinsic` for that, alongside
 `Wildcard`, which is the same exemption for html's raw element.
 

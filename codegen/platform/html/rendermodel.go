@@ -137,7 +137,10 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	if decl == nil || decl.Wildcard == "" {
 		decl = rb.rawElem
 	}
-	tag := htmlTagFor(n.Name)
+	// A node the declaration cannot name a tag for is rendered as a container
+	// rather than as a bogus <name> literal, so a user component keeps
+	// rendering instead of emitting invalid markup.
+	tag := "div"
 	if t, ok := rawElementTag(decl, n); ok {
 		tag = t
 	}
@@ -224,30 +227,6 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 		return nil
 	})
 	return reactive
-}
-
-// htmlTagFor maps a SNGL element/component name to the HTML tag the route
-// skeleton emits. Layout primitives become <div>; text becomes <span>. A
-// namespaced platform-sngl wrapper (e.g. html.input) trusts its suffix as the
-// real tag. An unrecognized BARE name (a user component or unknown element) is
-// conservatively rendered as <div> rather than emitting a bogus <name> literal
-// — chosen over a hard build error so existing component fixtures keep
-// rendering (a wrong-but-valid container, not invalid markup).
-func htmlTagFor(name string) string {
-	switch name {
-	case "vbox", "hbox", "box", "stack", "grid":
-		return "div"
-	case "text", "label":
-		return "span"
-	case "button":
-		return "button"
-	case "canvas":
-		return "canvas"
-	}
-	if _, after, ok := strings.Cut(name, "."); ok {
-		return after
-	}
-	return "div"
 }
 
 // elementAttrs is the props to write as attributes, in a stable order: the

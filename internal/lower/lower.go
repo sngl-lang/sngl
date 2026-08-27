@@ -55,7 +55,7 @@ type pass struct {
 //     handle; canvas draw funcs (built by NoCanvas, earlier) are still walked
 //     by NoTernary via pkg/component/window Funcs, so their ternaries lower.
 //     7a. InlinePure — always on; inlines pure user components and (under
-//     NoStdlibWrappers) platform-stdlib wrappers. Runs after reactivity
+//     platform-stdlib wrappers. Runs after reactivity
 //     wires user-level deps and before declarative flattening.
 //     7b. NoInlineComponents — opt-in. Inlines every non-recursive user
 //     component into main, renaming vars/funcs/timers and substituting

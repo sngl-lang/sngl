@@ -232,29 +232,6 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	}
 }
 
-// TestHTMLTagForFallback pins fix #5: known layout/text primitives map to real
-// tags, a namespaced platform-sngl wrapper (html.input) passes its suffix
-// through as the real tag, and an unrecognized bare name falls back to a safe
-// "div" rather than emitting a bogus <name> literal.
-func TestHTMLTagForFallback(t *testing.T) {
-	cases := map[string]string{
-		"vbox":       "div",
-		"hbox":       "div",
-		"text":       "span",
-		"label":      "span",
-		"button":     "button",
-		"html.input": "input", // platform-sngl wrapper: trust the suffix
-		"widget.svg": "svg",   // namespaced suffix passes through
-		"MyWidget":   "div",   // unknown bare component name → safe default
-		"frobnicate": "div",   // unknown bare element → safe default
-	}
-	for in, want := range cases {
-		if got := htmlTagFor(in); got != want {
-			t.Errorf("htmlTagFor(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func exprReadsVar(e ir.Expr, name string) bool {
 	found := false
 	ir.WalkExprs(e, func(x ir.Expr) error {

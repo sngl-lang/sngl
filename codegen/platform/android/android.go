@@ -87,12 +87,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// components remain, eliminating cross-component state plumbing.
 	f.InlineComponents = false
 	f.StructSpread = false
-	// NoStdlibWrappers: a `component sngl.X { platform android { ... } }`
-	// override must inline down to the declared Compose intrinsics, which
-	// #[intrinsic] keeps standing. The overrides still written in the parens
-	// form contribute no body and stay on the name-keyed switch in
-	// compose_ir.go.
-	f.StdlibWrappers = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
 	// Canvas2D: passCanvas extracts the canvas+shapes subtree into a

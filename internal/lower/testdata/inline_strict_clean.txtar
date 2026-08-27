@@ -1,4 +1,3 @@
-caps: NoStdlibWrappers
 -- input.sngl --
 import . "sngl://std"
 

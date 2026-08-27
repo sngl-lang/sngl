@@ -35,7 +35,6 @@ type Features struct {
 	ListLambdas      bool // can emit xs.filter(f) / xs.map(f) natively
 	Reactivity       bool // can handle reactive deps natively (false → explicit updater stmts)
 	Declarative      bool // can handle declarative visual tree (false → flat create/update/delete calls)
-	StdlibWrappers   bool // keep platform-stdlib wrapper components (false → inline them)
 	InlineComponents bool // can handle inline component references (false → inline into main)
 	ImplicitRecv     bool // can handle implicit receiver (false → explicit Args[0])
 	StructSpread     bool // can handle struct-literal spreads (false → flatten)
@@ -77,7 +76,6 @@ func AllFeatures() Features {
 		ListLambdas:      true,
 		Reactivity:       true,
 		Declarative:      true,
-		StdlibWrappers:   true,
 		InlineComponents: true,
 		ImplicitRecv:     true,
 		StructSpread:     true,
@@ -99,7 +97,6 @@ func (f Features) ToLowerCaps() Caps {
 		NoListLambdas:      !f.ListLambdas,
 		NoReactivity:       !f.Reactivity,
 		NoDeclarative:      !f.Declarative,
-		NoStdlibWrappers:   !f.StdlibWrappers,
 		NoInlineComponents: !f.InlineComponents,
 		NoImplicitRecv:     !f.ImplicitRecv,
 		NoStructSpread:     !f.StructSpread,
@@ -144,7 +141,6 @@ type Caps struct {
 	StdlibContextParam bool
 	NoReactivity       bool // reactive deps → explicit updater stmts after each mutation
 	NoDeclarative      bool // visual node tree → flat stream of create/update/delete IR calls
-	NoStdlibWrappers   bool // Inline platform-stdlib wrapper components; fail if any wrapper is impure.
 	NoListLambdas      bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
 	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
 	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
@@ -181,7 +177,6 @@ func (c Caps) Merge(other Caps) Caps {
 		ReactiveCanvas:     c.ReactiveCanvas || other.ReactiveCanvas,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
-		NoStdlibWrappers:   c.NoStdlibWrappers || other.NoStdlibWrappers,
 		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
 		NoInlineComponents: c.NoInlineComponents || other.NoInlineComponents,
 		NoImplicitRecv:     c.NoImplicitRecv || other.NoImplicitRecv,
@@ -228,9 +223,6 @@ func (c Caps) String() string {
 	}
 	if c.NoReactivity {
 		parts = append(parts, "NoReactivity")
-	}
-	if c.NoStdlibWrappers {
-		parts = append(parts, "NoStdlibWrappers")
 	}
 	if c.NoInlineComponents {
 		parts = append(parts, "NoInlineComponents")
