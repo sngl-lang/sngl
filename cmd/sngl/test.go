@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -274,6 +275,20 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 			results, err = safeRunTests(runner, pkg, lang, opts)
 		}
 		if err != nil {
+			// A component this target does not implement is not a failure of
+			// the fixture: the matrix runs every platform over every file, and
+			// a target that supports fewer components would otherwise make
+			// every program using one of them red. Reported as a skip naming
+			// the component, so the gap stays visible.
+			if missing, ok := errors.AsType[*codegen.UnimplementedComponent](err); ok {
+				allResults = append(allResults, &codegen.TestResult{
+					Component: filepath.Base(filename),
+					Skipped:   true,
+					SkipReason: fmt.Sprintf("%s does not implement %s",
+						missing.Platform, missing.Component),
+				})
+				continue
+			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
 			continue

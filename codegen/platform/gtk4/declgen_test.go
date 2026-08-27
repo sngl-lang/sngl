@@ -466,11 +466,11 @@ func componentDecl(t *testing.T, src, name string) string {
 		t.Fatalf("generated source declares no %s", name)
 	}
 	rest := src[i:]
-	end := strings.Index(rest, ") list<component> {}")
-	if end < 0 {
+	before, _, ok := strings.Cut(rest, ") list<component> {}")
+	if !ok {
 		t.Fatalf("the %s declaration does not end", name)
 	}
-	return rest[:end]
+	return before
 }
 
 // countProps is how many entries in props carry this GIR name.

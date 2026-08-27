@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"testing"
 
@@ -34,9 +35,7 @@ func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {
 // intrinsic component by that name.
 func testWidgets() map[string]*fyneWidget {
 	out := make(map[string]*fyneWidget, len(fyneWidgets))
-	for id, w := range fyneWidgets {
-		out[id] = w
-	}
+	maps.Copy(out, fyneWidgets)
 	return out
 }
 

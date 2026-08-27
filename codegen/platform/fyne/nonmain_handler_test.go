@@ -49,7 +49,7 @@ component focusLoop {
 
 	// Every `X.OnTapped = m.<name>` must have a `func (m *Model) <name>(`.
 	var missing []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		_, rhs, ok := strings.Cut(strings.TrimSpace(line), ".OnTapped = m.")
 		if !ok {
 			continue

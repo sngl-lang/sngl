@@ -260,7 +260,7 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 	if _, ok := comp.PlatformBodies[platformName]; ok {
 		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
 	}
-	return fmt.Errorf("component %q has no gtk4 implementation", tag)
+	return &codegen.UnimplementedComponent{Component: tag, Platform: platformName}
 }
 
 // classFor returns the GIR entry for a C type the walk already resolved.
