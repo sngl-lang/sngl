@@ -27,7 +27,7 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 	}
 	// An attribute nobody declared was collected under its wildcard prop's
 	// name; an element's attributes are the names that were written, so the
-	// map is unpacked back into them here — the one place html turns props
+	// map is unpacked back into them here — where html turns props
 	// into names.
 	maps.Copy(out, codegen.WildcardProps(n))
 	for _, dp := range componentProps(n) {

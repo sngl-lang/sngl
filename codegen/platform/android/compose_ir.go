@@ -679,7 +679,8 @@ func readsParam(stmts []ir.Stmt, p *ir.Param) bool {
 	return found
 }
 
-// isStyleType reports whether t is the stdlib Style struct — the prop type
+// isStyleType reports whether t is a struct named Style — in practice the
+// stdlib's, which is the prop type
 // the TextStyle mapping is keyed on, since Compose spells typography as an
 // argument of its own rather than as a Modifier.
 func isStyleType(t *ir.Type) bool {

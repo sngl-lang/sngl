@@ -54,9 +54,9 @@ type pass struct {
 //     injects CanvasRedrawStmt nodes that NoTernary's stmt walker does not
 //     handle; canvas draw funcs (built by NoCanvas, earlier) are still walked
 //     by NoTernary via pkg/component/window Funcs, so their ternaries lower.
-//     7a. InlinePure — always on; inlines pure user components and (under
-//     platform-stdlib wrappers. Runs after reactivity
-//     wires user-level deps and before declarative flattening.
+//     7a. InlinePure — always on; inlines pure user components and
+//     platform-stdlib wrappers. Must run before reactivity, which flattens a
+//     NodeInst past the point this pass can recognise the wrapper call.
 //     7b. NoInlineComponents — opt-in. Inlines every non-recursive user
 //     component into main, renaming vars/funcs/timers and substituting
 //     prop refs with call-site arg exprs. After this pass, codegen on

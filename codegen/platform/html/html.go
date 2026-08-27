@@ -623,10 +623,11 @@ type eventHandler struct {
 	elemID string
 	event  string // the DOM event name passed to addEventListener
 	body   string // JS statements
-	// hasParam is true when the body reads the event: the handler declared a
-	// parameter, so translation bound it (see eventPayloadBase) and the
-	// emitted listener must take `e`. The signature is chosen from this
-	// rather than from the event's name, which said nothing about the body.
+	// hasParam is whether the handler declared a parameter, which is what
+	// translation binds `e` from (see eventPayloadBase) and so what the emitted
+	// listener's signature follows — rather than the event's name, which says
+	// nothing about the handler. A declared parameter the body never reads
+	// still sets it.
 	hasParam bool
 	mutated  map[string]bool
 	isAsync  bool

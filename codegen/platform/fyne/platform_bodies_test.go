@@ -12,9 +12,14 @@ import (
 )
 
 // stdlibComponentsUnderFyne is every stdlib component this platform is
-// responsible for, one per line of the source below. The list is spelled out
-// so a component added to sngl://std without a fyne override is a failing
-// test here rather than a node silently dropped at codegen.
+// responsible for, one per line of the source below.
+//
+// The list is written out rather than derived, so it catches an override that
+// went missing and NOT a component added to sngl://std -- adding one there with
+// no override anywhere leaves every test here green. Making that a failure
+// wants the bodyless-declaration syntax in #123, which turns "a target must
+// implement this" into something the compiler can see rather than something
+// each platform's test restates.
 var stdlibComponentsUnderFyne = []string{
 	"vbox", "hbox", "stack", "scroll", "spacer", "card", "splitview",
 	"modal", "drawer", "popover", "tooltip",

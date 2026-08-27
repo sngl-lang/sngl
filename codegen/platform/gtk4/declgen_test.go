@@ -561,14 +561,3 @@ func componentDecl(t *testing.T, src, name string) string {
 	}
 	return before
 }
-
-// countProps is how many entries in props carry this GIR name.
-func countProps(props []gir.Prop, name string) int {
-	n := 0
-	for _, p := range props {
-		if p.Name == name {
-			n++
-		}
-	}
-	return n
-}

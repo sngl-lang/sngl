@@ -3,8 +3,8 @@ package html
 // Everything html needs to know about a raw element comes from the `element`
 // declaration in lib/platforms/html — which props exist, which are boolean,
 // which prop the matched tag name binds to, and which events carry a payload.
-// This file is the only place that reads it, so no list of names is kept
-// beside the declaration to drift away from it.
+// This file is where those questions are answered; its callers ask them rather
+// than keeping a list of names beside the declaration to drift away from it.
 
 import (
 	"git.duckfam.us/jonathan/sngl/ir"

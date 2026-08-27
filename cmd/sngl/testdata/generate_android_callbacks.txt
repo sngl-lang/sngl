@@ -2,6 +2,13 @@
 # intrinsic declares one as a func-typed prop and the stdlib override passes
 # the lambda. Everything the callback does is written there: which SNGL events
 # it forwards, and what it hands them.
+#
+# Stopped on #124: the last assertion below fails. A func-typed prop that
+# returns a value is emitted as an immediately-invoked lambda with an untyped
+# parameter, which does not compile -- so this archive documents the bug and is
+# not run. Everything above that assertion passes today; delete the stop when
+# #124 is fixed and the whole file should be green.
+stop 'see #124: a value-returning func prop emits Kotlin that does not compile'
 
 sngl generate --platform=android --lang=kotlin --out=out app.sngl
 
@@ -38,9 +45,21 @@ grep 'Switch\(checked = flag, onCheckedChange = \{ v ->' out/MainScreen.kt
 grep 'flag = v' out/MainScreen.kt
 
 # A func-typed prop on a component of the program's own takes a lambda the same
-# way, with the parameter type coming from the declaration rather than from an
-# annotation, and an expression-bodied one where the prop returns a value.
+# way. The void one works: onTap's body lands where it is called.
 grep 'label = "hi!"' out/MainScreen.kt
+
+# The value-returning one does not, and this is what #124 is about. `decorate`
+# is emitted as an immediately-invoked lambda whose parameter carries no type,
+# which Kotlin rejects:
+#
+#   Text(text = { s -> (s + "!") }("hi"), ...)
+#   error: an explicit type is required on a value parameter.
+#
+# The parameter type is in the declaration -- `decorate func(s string) string`
+# -- so the emitter has it and does not write it. Either spelling below is a
+# correct fix: type the parameter, or fold the call, since both operands are
+# constant here.
+! grep 'Text\(text = \{ s -> \(s \+ "!"\) \}\("hi"\)' out/MainScreen.kt
 
 -- app.sngl --
 import . "sngl://std"

@@ -33,7 +33,3 @@ func Minimal() (*TypeRegistry, error) {
 	})
 	return minimalReg, minimalErr
 }
-
-// MinimalSource is the bundled GIR as bytes, for a test that wants to parse its
-// own copy rather than share the memoized registry.
-func MinimalSource() []byte { return minimalGIR }

@@ -149,7 +149,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// Attribute-style props (non-text-content) referencing state → HoleAttr.
 	var textBinding *ir.Arg
 	for _, p := range rb.elementAttrs(decl, n) {
-		if isTextContentProp(n.Name, p.Name) {
+		if isTextContentProp(p.Name) {
 			textBinding = p
 			continue
 		}
@@ -259,11 +259,11 @@ func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.
 	return out
 }
 
-// isTextContentProp reports whether prop is rendered as the element's text
-// content (vs. an attribute) for the given element. The DOM-side content props
-// are here too: no attribute spells them, so writing one as an attribute both
-// invents markup and loses the text.
-func isTextContentProp(elem, prop string) bool {
+// isTextContentProp reports whether prop is rendered as an element's text
+// content rather than as an attribute. The DOM-side content props are here
+// too: no attribute spells them, so writing one as an attribute both invents
+// markup and loses the text.
+func isTextContentProp(prop string) bool {
 	switch prop {
 	case "value", "text", "label", "content", "textContent", "innerText":
 		return true

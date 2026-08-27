@@ -50,7 +50,7 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
 - **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
 - **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, html, none), each registers in `init()`
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html, none), each registers in `init()`
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -99,7 +99,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
 - **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one (the public spelling of `#[tree.kind("shape")]`). It is also the worked example of a package shipping a mark alongside the declarations it applies to.
 - **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
-- **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Under it, one per-target package per registered platform (`platforms/html`) and language (`languages/go`).
+- **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Under it, one package per platform that declares any (`platforms/html`, `platforms/gtk4`); `lib/languages/` is the sibling tier a language package lives in (`languages/go`), not a subdirectory of this one. A registered target with nothing to declare has no directory.
 - **`lib/internal/` → `sngl://internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
@@ -185,8 +185,12 @@ The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
 lower down to have to be exempt.
-`isPlatformStdlibComponent` reads `Component.Intrinsic` for that, alongside
-`Wildcard`, which is the same exemption for html's raw element.
+`isPrimitiveComponent` reads `Component.Intrinsic` for that, alongside
+`Wildcard` (html's raw element), `Builtin` (a node kind) and a tree kind (a
+shape, or the canvas that hosts them) — the marks are the whole list, and each
+says in its own vocabulary that the declaration is rendered rather than
+composed away. `isPlatformStdlibComponent` is a different question: whether a
+component came from a `sngl://platforms/` package the program imports.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and
@@ -243,7 +247,7 @@ SNGL ships per-target-language runtime packages under `pkg/<lang>/<name>/`. Thes
 The `lib/` directory holds **SNGL stdlib declarations** (language-agnostic `.sngl` files embedded into the compiler). The `pkg/` directory holds **runtime implementations** (per-target-language packages emitted into generated code's import graph).
 
 When adding a new stdlib package that needs runtime support:
-1. Declare the SNGL surface in `lib/<name>.sngl`.
+1. Declare the SNGL surface in `lib/<name>/`, one directory per importable package.
 2. For each target language that needs runtime support, create `pkg/<lang>/<name>/`.
 3. The codegen for that language emits `import "git.duckfam.us/jonathan/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
 
