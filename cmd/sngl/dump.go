@@ -144,6 +144,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f = dumpDefaultFormat(cmd, stage, f)
 
 	switch stage {
 	case "parsed":

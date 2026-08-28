@@ -10,8 +10,20 @@ import (
 
 // CommonAnalysis holds platform-independent analysis extracted from a Package.
 // Platforms embed this and add their own fields on top.
+//
+// Everything here is derived from the package and settled before codegen
+// starts: it is what a generator reads, never where it writes. What a
+// generator accumulates as it emits lives in Emission, which is a separate
+// type for that reason — the two used to be one struct, and a dump of the
+// analysis was a dump of the emitter's scratch space as well.
+//
+// The package itself is deliberately absent. The analysis is a set of facts
+// about a program, not the program, and holding a live *ir.Package made it
+// neither serializable nor meaningfully dumpable: `dump --stage analysis`
+// walked the whole IR graph — sngl://std included — and hit its cycles. A
+// caller wanting the package has it already; a caller wanting dependencies
+// wants NewDepTrackerFromPkg.
 type CommonAnalysis struct {
-	Pkg            *ir.Package                // source package (for DepTracker construction)
 	ModelFields    map[string]bool            // data fields + computed fields
 	ComputedFields map[string]bool            // subset of ModelFields that are computed
 	ComputedDeps   map[string]map[string]bool // computed name → root field deps
@@ -25,9 +37,32 @@ type CommonAnalysis struct {
 	Units          []*ir.UnitDef
 	Timers         []TimerInfo
 	NeedsToast     bool
-	Helpers        map[string]bool // needed helper functions (populated during codegen)
 	UsedComponents map[string]bool // primitive component names used in the visual tree
-	Styles         []string        // CSS rules registered by components during codegen
+}
+
+// Emission is what a code generator accumulates while it emits: which helper
+// functions its output turned out to need, and the CSS its components
+// registered on the way past. Both are outputs of codegen rather than facts
+// about the program, which is why they are not on CommonAnalysis.
+//
+// A platform that writes either embeds this beside the analysis, so the
+// fields stay reachable under the names they always had.
+type Emission struct {
+	Helpers map[string]bool // helper functions the emitted code needs
+	Styles  []string        // CSS rules registered by components during codegen
+}
+
+// NewEmission returns an empty accumulator.
+func NewEmission() *Emission {
+	return &Emission{Helpers: make(map[string]bool)}
+}
+
+// AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
+func (e *Emission) AddStyle(css string) {
+	if slices.Contains(e.Styles, css) {
+		return
+	}
+	e.Styles = append(e.Styles, css)
 }
 
 // TimerInfo captures platform-independent parts of a timer declaration.
@@ -62,7 +97,6 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 // AnalyzeCommonFor is AnalyzeCommon with the parts named in o taken as given.
 func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	a := &CommonAnalysis{
-		Pkg:            pkg,
 		ModelFields:    make(map[string]bool),
 		ComputedFields: make(map[string]bool),
 		ComputedDeps:   make(map[string]map[string]bool),
@@ -70,7 +104,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		ExternFuncs:    make(map[string]bool),
 		ExternVars:     make(map[string]bool),
 		StructFields:   make(map[string][]string),
-		Helpers:        make(map[string]bool),
 		UsedComponents: make(map[string]bool),
 	}
 
@@ -225,26 +258,6 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 			panic(fmt.Sprintf("collectUsedIRStmts: unhandled stmt %T", n))
 		}
 	}
-}
-
-// DepTracker returns a new DepTracker initialized from this analysis.
-func (a *CommonAnalysis) DepTracker() *DepTracker {
-	if a.Pkg == nil {
-		return &DepTracker{
-			ModelVars:     make(map[*ir.Var]struct{}),
-			ComputedFuncs: make(map[*ir.Func]struct{}),
-			ComputedDeps:  make(map[*ir.Func]map[*ir.Var]struct{}),
-		}
-	}
-	return NewDepTrackerFromPkg(a.Pkg)
-}
-
-// AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
-func (a *CommonAnalysis) AddStyle(css string) {
-	if slices.Contains(a.Styles, css) {
-		return
-	}
-	a.Styles = append(a.Styles, css)
 }
 
 // PruneUnusedComputeds removes computed fields that are not referenced by

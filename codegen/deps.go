@@ -38,6 +38,12 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 	computed := make(map[*ir.Func]struct{})
 	computedDeps := make(map[*ir.Func]map[*ir.Var]struct{})
 
+	// No package tracks nothing. The guard is here rather than at the call
+	// sites because every caller wants the same empty tracker back.
+	if pkg == nil {
+		return &DepTracker{ModelVars: model, ComputedFuncs: computed, ComputedDeps: computedDeps}
+	}
+
 	for _, v := range pkg.Vars {
 		model[v] = struct{}{}
 	}

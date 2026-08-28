@@ -44,6 +44,18 @@ func resolveDumpFormat(cmd *cobra.Command) (dumpFormat, error) {
 	}
 }
 
+// dumpDefaultFormat is the format a stage falls back to when --format was not
+// given. Every stage but one dumps a program, which the sngl default renders
+// as source; the analysis dumps a set of derived facts *about* a program, and
+// those have no source form to render. Defaulting it to json prints the stage
+// rather than failing on a flag nobody set.
+func dumpDefaultFormat(cmd *cobra.Command, stage string, f dumpFormat) dumpFormat {
+	if stage == "analysis" && !cmd.Flags().Changed("format") {
+		return dumpFormatJSON
+	}
+	return f
+}
+
 func resolveColor(cmd *cobra.Command) error {
 	raw, _ := cmd.Flags().GetString("color")
 	switch raw {
@@ -73,7 +85,7 @@ func dumpDocument(f dumpFormat, doc any) error {
 		case *ir.Package:
 			text = sngl.Format(ir.Convert(doc))
 		default:
-			return fmt.Errorf("unable to format output of type %T as sngl source", doc)
+			return fmt.Errorf("cannot render %T as sngl source: only a parsed document or a checked package has one — try --format json or --format spew", doc)
 		}
 		lexer = "SNGL"
 	case dumpFormatSpew:

@@ -38,9 +38,6 @@ type irComputed struct {
 }
 
 func (info *irAnalysis) depTracker() *codegen.DepTracker {
-	if info.dt == nil {
-		info.dt = info.CommonAnalysis.DepTracker()
-	}
 	return info.dt
 }
 
@@ -166,6 +163,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
+		// The context built one from the package already; this used to build
+		// a second from the copy the analysis was carrying.
+		dt: ctx.Deps,
 	}
 
 	pkg := ctx.Pkg

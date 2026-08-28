@@ -493,8 +493,11 @@ type htmlGen struct {
 	pkg *ir.Package
 	ctx *codegen.ExprCtx
 
-	// Analysis (shared)
+	// Analysis (shared), and the accumulator codegen writes to as it emits.
+	// One Emission per window, which is what the per-window analysis gave
+	// before the two were separated.
 	*codegen.CommonAnalysis
+	*codegen.Emission
 	dt *codegen.DepTracker
 
 	// Element ID counter
@@ -666,6 +669,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		pkg:            pkg,
 		lang:           lang,
 		CommonAnalysis: common,
+		Emission:       codegen.NewEmission(),
 		preview:        opts.Preview,
 		testMode:       opts.Test,
 		minify:         opts.Minify,
@@ -675,7 +679,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		shared:         shared,
 	}
 
-	g.dt = common.DepTracker()
+	g.dt = codegen.NewDepTrackerFromPkg(pkg)
 	g.currentComp = mainIRComponent(pkg)
 	g.ctx = codegen.NewExprCtx(pkg)
 	// Seed package consts as locals so identifier resolution treats them as
@@ -690,10 +694,10 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	if g.ctx.NativeImports == nil {
 		g.ctx.NativeImports = map[string]map[string]bool{}
 	}
-	// Use the single helper-flag map from the analysis: the JsIRContext path
+	// Use the single helper-flag map from the emission: the JsIRContext path
 	// writes jc.Ctx.Helpers and the emit check reads g.ctx.Helpers, so wiring
 	// them to the same map makes a flag from either path reach the check.
-	g.ctx.Helpers = common.Helpers
+	g.ctx.Helpers = g.Helpers
 
 	return g
 }
@@ -1051,7 +1055,7 @@ func (g *htmlGen) generate() (string, error) {
 	}
 	if g.stylesheet == "" {
 		// Only emit default inline styles when no external stylesheet is specified.
-		// Component-specific CSS is registered via CommonAnalysis.AddStyle()
+		// Component-specific CSS is registered via Emission.AddStyle()
 		// during tree rendering and emitted here.
 		const defaultCSS = "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
 			"body { font-family: system-ui, sans-serif; }\n"

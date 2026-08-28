@@ -1,0 +1,44 @@
+# The analysis stage dumps facts *about* a program, so it defaults to json
+# rather than to the sngl source form the other stages print. It used to fail
+# at these exact flags — the documented ones — twice over: --format defaulted
+# to sngl, which cannot render it, and the analysis carried the whole
+# *ir.Package, which json could not walk without hitting a cycle.
+
+sngl dump --stage analysis --lang js --platform html main.sngl
+stdout '"ModelFields"'
+stdout '"count": true'
+stdout '"ComputedDeps"'
+stdout '"UsedComponents"'
+
+# (The "Pkg" keys further down are ir.Component.Pkg, the URI string a
+# declaration came from — not the package pointer that used to be here. The
+# structural guard for that is TestCommonAnalysisHoldsNoIRPackage.)
+
+# Helpers and Styles are what codegen accumulates while it emits, not what
+# analysis derived. They live on Emission and are absent here.
+! stdout '"Helpers"'
+! stdout '"Styles"'
+
+# An explicit --format is still obeyed, and spew renders the same facts.
+sngl dump --stage analysis --format spew --lang js --platform html main.sngl
+stdout 'ModelFields'
+
+# Asking for the source form is an error that names the formats that work,
+# rather than the bare "unable to format" it used to be.
+! sngl dump --stage analysis --format sngl --lang js --platform html main.sngl
+stderr 'cannot render \*codegen.CommonAnalysis as sngl source'
+stderr 'try --format json or --format spew'
+
+# The default is per-stage, not global: every other stage still prints sngl.
+sngl dump --stage checked main.sngl
+stdout 'component main'
+
+-- main.sngl --
+import . "sngl://std"
+
+var count = 0
+
+component main {
+    text(value="hello")
+    button(text="go", @click { count = count + 1 })
+}

@@ -32,7 +32,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	return &CodegenCtx{
 		Pkg:           req.Pkg,
 		Analysis:      analysis,
-		Deps:          analysis.DepTracker(),
+		Deps:          NewDepTrackerFromPkg(req.Pkg),
 		ExprCtx:       exprCtx,
 		Namer:         NewNamer(),
 		Platform:      platform,
@@ -42,7 +42,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 
 // BuildMutation creates a MutationModel pre-populated with handlers and timers.
 func (ctx *CodegenCtx) BuildMutation(stmts []ir.Stmt) *MutationModel {
-	m := NewMutationModel(ctx.Analysis)
+	m := NewMutationModel(ctx.Analysis, ctx.Deps)
 	m.Handlers = ctx.collectHandlers(stmts)
 	m.Timers = ctx.collectTimers()
 	return m

@@ -105,11 +105,12 @@ type TimerHandler struct {
 	Mutated map[*ir.Var]struct{} // vars mutated by the timer body
 }
 
-// NewMutationModel creates a MutationModel from a CommonAnalysis.
-func NewMutationModel(a *CommonAnalysis) *MutationModel {
+// NewMutationModel creates a MutationModel from a CommonAnalysis and the
+// dependency tracker of the package it was derived from.
+func NewMutationModel(a *CommonAnalysis, deps *DepTracker) *MutationModel {
 	return &MutationModel{
 		Analysis:   a,
-		DepTracker: a.DepTracker(),
+		DepTracker: deps,
 	}
 }
 
