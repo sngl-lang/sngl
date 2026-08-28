@@ -148,3 +148,132 @@ component main {
 		t.Errorf("error does not name the missing Spec: %v", err)
 	}
 }
+
+// versionedWidgetSrc is the same widget reached through a semantic-import
+// versioned path whose package name is not its last segment. `charts` is what
+// the module's Go source calls itself; `v2` is what the path ends with, and
+// `fyne-charts` is what stripping the version leaves.
+const versionedWidgetSrc = `
+import . "sngl://std"
+import "sngl://platforms/fyne"
+
+var reading int = 42
+
+component Gauge(:level int, @change ChangeEvent) {
+    fyne.Widget(
+        spec=fyne.Spec{
+            new="charts.NewGauge",
+            args=[fyne.Arg{raw="0"}],
+            goType="*charts.Gauge",
+            imports=["github.com/example/fyne-charts/v2"],
+            setters=[fyne.Setter{prop="number", call="SetValue"}],
+            handlers=[fyne.Handler{on="change", field="OnValueChanged", signature="func(v int)", param="v"}],
+        },
+        number=level,
+        @change { change() },
+    ) {}
+}
+
+component main {
+    vbox {
+        Gauge(:level=reading, @change {})
+    }
+}
+`
+
+// A module's Go package name lives in its source, not in its import path, so
+// nothing the compiler can compute from the path recovers it. The Spec's own
+// spelling is the authority, and the import must be aliased to match it.
+//
+// Resolving a selector by matching a path's last segment got this wrong three
+// ways at once: `v2` matched no selector, so the bare `charts` was emitted as
+// an import path of its own; the real path was imported too, under whatever
+// alias the Go emitter derived; and the call sites named neither.
+func TestVersionedThirdPartyPathIsAliasedToItsWrittenSelector(t *testing.T) {
+	out := generateFyneGo(t, versionedWidgetSrc)
+
+	for _, tc := range []struct{ what, want string }{
+		{"import aliased to the written selector", `charts "github.com/example/fyne-charts/v2"`},
+		{"constructor", "charts.NewGauge(0)"},
+		{"widget field type", "*charts.Gauge"},
+		{"setter", ".SetValue(m.reading)"},
+	} {
+		if !strings.Contains(out, tc.want) {
+			t.Errorf("%s: missing %q\n--- generated ---\n%s", tc.what, tc.want, out)
+		}
+	}
+	// The selector must not also arrive as a path of its own, and the module
+	// must not arrive a second time under a derived alias.
+	if strings.Contains(out, "\t\"charts\"\n") {
+		t.Errorf("the bare selector was imported as a path of its own\n--- generated ---\n%s", out)
+	}
+	if n := strings.Count(out, "github.com/example/fyne-charts/v2"); n != 1 {
+		t.Errorf("module imported %d times, want 1\n--- generated ---\n%s", n, out)
+	}
+}
+
+// A Spec that declares an import its Go spellings never reach, or reaches a
+// package it never declared, cannot be resolved either way round -- so it is
+// an error rather than a bogus import or a dangling selector.
+func TestSpecImportsMustPairWithTheSelectorsItWrites(t *testing.T) {
+	for _, tc := range []struct{ what, spec string }{
+		{"an import no spelling names", `new="charts.NewGauge", goType="*charts.Gauge",
+             imports=["github.com/example/a", "github.com/example/b"]`},
+		{"a bare constructor with an import", `new="NewGauge", goType="Gauge",
+             imports=["github.com/example/a"]`},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			src := strings.Replace(versionedWidgetSrc,
+				`new="charts.NewGauge",
+            args=[fyne.Arg{raw="0"}],
+            goType="*charts.Gauge",
+            imports=["github.com/example/fyne-charts/v2"],`,
+				tc.spec+`, args=[fyne.Arg{raw="0"}],`, 1)
+			if src == versionedWidgetSrc {
+				t.Fatal("the fixture did not substitute; this test asserts nothing")
+			}
+			if _, err := generateFyneGoErr(t, src); err == nil {
+				t.Error("a Spec whose imports and selectors do not pair generated without complaint")
+			}
+		})
+	}
+}
+
+// generateFyneGoErr is generateFyneGo returning the Generate error instead of
+// failing the test, for the cases where the error is the subject.
+func generateFyneGoErr(t *testing.T, src string) (string, error) {
+	t.Helper()
+	pkg := checkForFyne(t, src)
+	g := &Generator{}
+	lang := codegen.LookupLang("go")
+	if lang == nil {
+		t.Fatal("go lang not registered")
+	}
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne"}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	mem := codegen.NewMemSink()
+	err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem)
+	return string(mem.Files()["model.go"]), err
+}
+
+// A callback parameter with no name is the ordinary Go spelling of a func
+// type, and reads as obviously correct. Dropping it silently emitted a handler
+// taking no parameters, assigned to a field that passes one, whose body named
+// a variable that did not exist -- three Go compile errors out of a build that
+// reported success. Naming it is the whole requirement, so saying so is the
+// fix.
+func TestUnnamedSignatureParamIsAnError(t *testing.T) {
+	src := strings.Replace(versionedWidgetSrc,
+		`signature="func(v int)"`, `signature="func(int)"`, 1)
+	if src == versionedWidgetSrc {
+		t.Fatal("the fixture did not substitute; this test asserts nothing")
+	}
+	out, err := generateFyneGoErr(t, src)
+	if err == nil {
+		t.Fatalf("an unnamed callback parameter generated without complaint\n--- generated ---\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "needs a name for every parameter") {
+		t.Errorf("error does not say what is wrong: %v", err)
+	}
+}

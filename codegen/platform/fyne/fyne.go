@@ -186,7 +186,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	body, imports, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	if err != nil {
 		return err
 	}
@@ -204,10 +204,22 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	type aliasImporter interface {
 		RequireImportAs(path, alias string) string
 	}
+	// The emitter is its own context, so an alias forced during translation
+	// does not reach it on its own. A widget package has to arrive under the
+	// selector its Spec's Go spellings are written with -- both the
+	// constructor call and the Model field's type string are emitted verbatim
+	// -- and the alias the emitter would derive is the package name guessed
+	// from the path, which for a /vN module is not even close.
 	for _, p := range imports {
 		if p == snglCanvasImportPath {
 			if ai, ok := e.(aliasImporter); ok {
 				ai.RequireImportAs(p, snglCanvasAlias)
+				continue
+			}
+		}
+		if alias := aliases[p]; alias != "" {
+			if ai, ok := e.(aliasImporter); ok {
+				ai.RequireImportAs(p, alias)
 				continue
 			}
 		}

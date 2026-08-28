@@ -171,7 +171,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // returns it, the Go import paths it uses, and the cgo preamble (if any). The
 // caller feeds these to a FileEmitter, which owns package + import block +
 // gofmt + line directives.
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, string, error) {
+// The aliases returned alongside the imports are the selectors widget
+// packages must arrive under: the file emitter is a context of its own, so an
+// alias forced during translation does not reach it.
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -219,7 +222,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	allFuncs = append(allFuncs, promotedHandlersInNonMainComponents(ctx, allFuncs)...)
 	nodeSpecs, err := collectNodes(ctx.Pkg, allFuncs)
 	if err != nil {
-		return "", nil, "", err
+		return "", nil, nil, "", err
 	}
 
 	// Pre-scan canvas elements: flattened `lower.CreateNode("canvas")`
@@ -426,7 +429,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 	}
 	if err != nil {
-		return "", nil, "", err
+		return "", nil, nil, "", err
 	}
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
@@ -461,7 +464,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		imports = append(imports, p)
 	}
 	imports = append(imports, gc.Imports()...)
-	return b.String(), imports, td.CgoPreamble, nil
+	return b.String(), imports, specAliases(nodeSpecs), td.CgoPreamble, nil
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
@@ -1207,4 +1210,28 @@ func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, window
 	for _, code := range windowCodes {
 		b.WriteString(code)
 	}
+}
+
+// specAliases is the selector every widget package must be imported under,
+// unioned across the build's Specs. Two Specs binding one selector to
+// different paths cannot both be honoured -- call sites qualify with the
+// literal selector -- so the first wins and the second keeps the emitter's
+// derived alias, which is a build that fails to compile rather than one that
+// silently calls the wrong package.
+func specAliases(specs map[string]*fyneSpec) map[string]string {
+	out := map[string]string{}
+	claimed := map[string]string{}
+	for _, sp := range specs {
+		if sp == nil {
+			continue
+		}
+		for sel, path := range sp.PkgPaths {
+			if prev, dup := claimed[sel]; dup && prev != path {
+				continue
+			}
+			claimed[sel] = path
+			out[path] = sel
+		}
+	}
+	return out
 }

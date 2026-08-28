@@ -65,6 +65,15 @@ type fyneSpec struct {
 	// after the node's CreateNode, which is the only place they are known to
 	// be in scope.
 	CtorProps map[string]ir.Expr
+	// PkgPaths maps the package selector the Spec's Go spellings are written
+	// with to the import path it stands for. The author's spelling is the
+	// authority: `new="charts.NewGauge"` says the package is reached as
+	// `charts`, and that alias is forced on the import so the call site and
+	// the import block agree. Deriving it from the path instead cannot work
+	// -- a module's Go package name is in its source, not its path, and
+	// `github.com/x/fyne-charts/v2` yields neither `charts` nor anything
+	// stable.
+	PkgPaths map[string]string
 }
 
 // isSingleChild reports whether this widget takes its child through a field
@@ -164,6 +173,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				h.Field, _ = codegen.IRLiteralString(structField(sl, "field"))
 				h.Signature, _ = codegen.IRLiteralString(structField(sl, "signature"))
 				h.Param, _ = codegen.IRLiteralString(structField(sl, "param"))
+				if err := checkHandlerSignature(tag, on, h.Signature); err != nil {
+					return nil, err
+				}
 				if on != "" && h.Field != "" {
 					sp.Handlers[on] = h
 				}
@@ -172,6 +184,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	}
 	if sp.New == "" || sp.GoType == "" {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
+	}
+	if err := sp.bindImports(tag); err != nil {
+		return nil, err
 	}
 	return sp, nil
 }
@@ -217,4 +232,84 @@ func structField(sl *ir.StructLit, name string) ir.Expr {
 		}
 	}
 	return nil
+}
+
+// checkHandlerSignature rejects a signature whose parameters the emitter
+// cannot name. The callback's parameters become the promoted handler's
+// parameters, and the handler body refers to one of them by name (Spec's
+// `param`), so an unnamed parameter has nothing to refer to.
+//
+// `func(string)` is the ordinary Go spelling of a callback type and reads as
+// obviously correct, which is exactly why this is an error: dropping the
+// parameter emitted a handler taking none, assigned to a field that passes
+// one, whose body named a variable that did not exist -- three Go compile
+// errors out of a build that reported success.
+func checkHandlerSignature(tag, on, sig string) error {
+	if sig == "" {
+		return nil
+	}
+	inner, ok := strings.CutPrefix(sig, "func")
+	if !ok {
+		return fmt.Errorf("fyne primitive %s: handler %q signature %q is not a func type", tag, on, sig)
+	}
+	inner, ok = strings.CutPrefix(strings.TrimSpace(inner), "(")
+	if !ok {
+		return fmt.Errorf("fyne primitive %s: handler %q signature %q is not a func type", tag, on, sig)
+	}
+	inner, _, _ = strings.Cut(inner, ")")
+	if strings.TrimSpace(inner) == "" {
+		return nil
+	}
+	for part := range strings.SplitSeq(inner, ",") {
+		if len(strings.Fields(part)) < 2 {
+			return fmt.Errorf("fyne primitive %s: handler %q signature %q needs a name for every parameter (%q has none); "+
+				"the handler body refers to one by name", tag, on, sig, strings.TrimSpace(part))
+		}
+	}
+	return nil
+}
+
+// bindImports pairs each declared import path with the selector the Spec's Go
+// spellings reach it through, so the emitter can force that alias.
+//
+// The selectors are the ones `new` and `goType` are written with. A Spec
+// declares its packages whether they are fyne's or not, so a fyne widget
+// binding `widget` to fyne.io/fyne/v2/widget goes through here like any other.
+// Selectors and imports pair up in order; any other count is ambiguous and
+// said so, because guessing emits a bogus import and Go that does not
+// compile.
+func (sp *fyneSpec) bindImports(tag string) error {
+	if len(sp.Imports) == 0 {
+		return nil
+	}
+	var free []string
+	seen := map[string]bool{}
+	for _, sel := range []string{pkgSelector(sp.New), pkgSelector(sp.GoType)} {
+		if sel == "" || seen[sel] {
+			continue
+		}
+		seen[sel] = true
+		free = append(free, sel)
+	}
+	if len(free) != len(sp.Imports) {
+		return fmt.Errorf("fyne primitive %s: Spec declares %d import(s) but its Go spellings name %d "+
+			"package(s) %q -- each import needs exactly one selector to be reached through",
+			tag, len(sp.Imports), len(free), free)
+	}
+	sp.PkgPaths = map[string]string{}
+	for i, sel := range free {
+		sp.PkgPaths[sel] = sp.Imports[i]
+	}
+	return nil
+}
+
+// pkgSelector is the package selector a Go spelling is qualified with, or ""
+// when it names no package. Leading punctuation is the pointer and slice
+// syntax a Go type carries ("*fynegauge.Gauge").
+func pkgSelector(goName string) string {
+	sel, _, ok := strings.Cut(strings.TrimLeft(goName, "*[]"), ".")
+	if !ok {
+		return ""
+	}
+	return sel
 }
