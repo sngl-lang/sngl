@@ -15,13 +15,19 @@ import (
 
 // Config holds checker configuration.
 type Config struct {
-	FS        fs.FS            // filesystem for resolving relative imports
-	Dir       string           // OS directory for scheme imports
-	IsMain    bool             // whether output declarations are allowed
-	Resolver  ImportResolver   // import resolver (nil = no imports)
-	Languages []ir.Language    // registered languages
-	Platforms []ir.Platform    // registered platforms
-	Target    *ir.StaticTarget // current compile target (nil = check all)
+	FS        fs.FS          // filesystem for resolving relative imports
+	Dir       string         // OS directory for scheme imports
+	IsMain    bool           // whether output declarations are allowed
+	Resolver  ImportResolver // import resolver (nil = no imports)
+	Languages []ir.Language  // registered languages
+	Platforms []ir.Platform  // registered platforms
+	// Targets are the compile targets this check is for. A target's library
+	// package is loaded as though the document had written
+	// `import _ "sngl://platforms/<it>"`, so its overrides are checked and its
+	// failures are this build's. Empty is not "check nothing": the document's
+	// own `output` blocks name targets too, and an explicit import of one
+	// names it as well.
+	Targets []ir.StaticTarget
 	// Replaces maps local import paths to replacement URLs, supplied by an
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
@@ -50,11 +56,12 @@ type Config struct {
 type libCache struct {
 	pkgs    map[string]*ir.Package
 	loading map[string]bool
-	// extended records that the registered platforms' `component sngl.X`
-	// overrides have been merged into these packages. Sharing the packages
-	// means sharing the components the bodies attach to, so a second merge
-	// would report every override as a duplicate platform block.
-	extended bool
+	// extended records which target packages' `component sngl.X` overrides
+	// have been merged into these packages, keyed by lib path. Sharing the
+	// packages means sharing the components the bodies attach to, so merging
+	// the same one twice would report every override as a duplicate platform
+	// block.
+	extended map[string]bool
 	// roles records the declaration each #[builtin] kind named in library
 	// source. A mark binds its declaration to the checker that registered it,
 	// but the packages are shared: a nested check reaches them from the cache
@@ -71,7 +78,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
 }
 
 // ImportResolver resolves import paths to parsed documents or native declarations.
@@ -366,11 +373,19 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier())
 	}
 
-	// Splice platform extension bodies into the stdlib components they target.
-	// AST splicing happens here so that user pass1/pass2 see body-bearing
-	// stdlib components; IR body checking is run from Check() after user
-	// pass1 (so user-declared symbols are visible if a body references them).
-	c.mergePlatformExtensions()
+	// Splice the build target's extension bodies into the stdlib components
+	// they target. AST splicing happens here so that user pass1/pass2 see
+	// body-bearing stdlib components; IR body checking runs from Check() after
+	// user pass1, so a body can reference a user-declared symbol.
+	//
+	// Building for a target is an `import _ "sngl://platforms/<it>"` nobody
+	// wrote, so only the target's package loads here. A program that imports
+	// one itself gets the same treatment where the import is checked, which is
+	// how it asks to be held to a platform's rules without naming any of its
+	// declarations.
+	for _, pkgName := range c.targetPackages() {
+		c.mergeTargetExtensions(pkgName)
+	}
 
 	return c
 }
@@ -2143,10 +2158,31 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 	return nil
 }
 
+// targetsPlatform reports whether a `platform <name> { ... }` block is for a
+// platform this check is building for. With no target named, every block is
+// checked: that is the platform-agnostic read the LSP and a bare check want,
+// and a block skipped there would be a block nobody ever checked.
+func (c *checker) targetsPlatform(name string) bool {
+	if c.cfg == nil || len(c.cfg.Targets) == 0 {
+		return true
+	}
+	named := false
+	for _, t := range c.cfg.Targets {
+		if t.Platform == "" {
+			continue
+		}
+		named = true
+		if t.Platform == name {
+			return true
+		}
+	}
+	return !named
+}
+
 // pass1PlatformStmt registers declarations inside a platform block.
 // Skipped when the target platform is known and doesn't match.
 func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
-	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+	if !c.targetsPlatform(s.Platform) {
 		return
 	}
 	for _, stmt := range s.Body.Stmts {

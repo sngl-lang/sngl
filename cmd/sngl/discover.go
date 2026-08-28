@@ -225,8 +225,16 @@ func validateOutputs(pkg *ir.Package) error {
 	return nil
 }
 
-// checkDoc type-checks a parsed document. Returns an error if any diagnostics are errors.
-func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
+// checkDoc type-checks a parsed document. Returns an error if any diagnostics
+// are errors.
+//
+// targets are the compile targets this check is for, when a caller selected
+// them itself -- `--platform`/`--lang` on the command line. A caller that did
+// not need pass none: the document's own `output` blocks name its targets, and
+// the checker reads those. Either way a target's library package is loaded as
+// though the document had imported it, so its overrides are checked here and
+// its failures belong to this build.
+func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTarget) (*ir.Package, error) {
 	langs, plats := collectTargets()
 	fsys := os.DirFS(dir)
 	pkg, diags := checker.Check(doc, &checker.Config{
@@ -236,6 +244,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool) (*ir.Package, error) {
 		Resolver:  &cliResolver{rootDir: dir, fsys: fsys},
 		Languages: langs,
 		Platforms: plats,
+		Targets:   targets,
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {

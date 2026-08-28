@@ -171,14 +171,22 @@ func (c *checker) libDocs(name string) []*ast.Document {
 	return append(PackageDocsFor(name), c.providedDocs(name)...)
 }
 
-// providedDocs is the source the registered platform of this package name
-// synthesizes, or nil for any other package.
+// providedDocs is the source the registered target of this package name
+// provides, or nil for any other package.
 func (c *checker) providedDocs(name string) []*ast.Document {
-	plat, ok := strings.CutPrefix(name, "platforms/")
-	if !ok || c.cfg == nil {
+	if c.cfg == nil {
 		return nil
 	}
-	return ProvidedDocs(c.lookupTarget(plat))
+	// Both tiers: a language declares its foreign-type surface the way a
+	// platform declares its widgets, and lookupTarget already answers for
+	// either.
+	target, ok := strings.CutPrefix(name, "platforms/")
+	if !ok {
+		if target, ok = strings.CutPrefix(name, "languages/"); !ok {
+			return nil
+		}
+	}
+	return ProvidedDocs(c.lookupTarget(target))
 }
 
 // ProvidedDocs parses the .sngl source a target synthesizes for its own
@@ -904,36 +912,163 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 	return true
 }
 
-// mergePlatformExtensions walks every registered platform's package source
-// for `component sngl.X` declarations and collects the checked IR body of
-// each `platform <name> { ... }` block into the stdlib *ir.Component's
-// PlatformBodies map (keyed by platform name).
+// targetPackages is every target package this check loads. Building for a
+// target is an `import _ "sngl://platforms/<it>"` nobody wrote, and these are
+// the ways a document comes to have written one.
 //
-// The checker is platform-agnostic: it does not know or care which platform
-// will be the active build target. The lowering pass passPlatformExtensionBody
-// reads PlatformBodies[opts.Platform] and swaps it into Component.Body before
-// any other pass runs.
+// An explicit import always counts: it is the program asking to be held to a
+// platform's rules, and no flag takes that back. The target itself is whatever
+// the caller named, or -- when the caller named nothing -- whatever the
+// document's own `output` blocks declare, which is the same order `sngl build`
+// resolves them in. The target is added to the imports rather than replacing
+// them.
 //
-// Duplicate platform entries for the same stdlib X (e.g., two registered
-// platforms both shipping `component sngl.text { platform foo { ... } }`)
-// are an error.
-//
-// Only the parenless form is an extension. `component sngl.X() { body }`
-// (android) is ignored here: that platform reads such a body itself.
-func (c *checker) mergePlatformExtensions() {
-	if len(c.cfg.Platforms) == 0 || c.libs.extended {
-		return
+// Read from the AST rather than from pkg.Outputs, which does not exist yet:
+// the overrides have to be spliced before anything reads a stdlib component's
+// body, and that is earlier than checking an output block.
+func (c *checker) targetPackages() []string {
+	seen := map[string]bool{}
+	var out []string
+	addPkg := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
 	}
-	c.libs.extended = true
-	for _, p := range c.cfg.Platforms {
-		// An unavailable platform's overrides are built from types it cannot
-		// resolve (gtk4's widgets come from a GIR file installed outside this
-		// repo). Every registered platform is merged regardless of the build
-		// target, so merging them would fail every compile.
-		if targetUnavailable(p) != nil {
+	addTarget := func(t ir.StaticTarget) {
+		if t.Platform != "" {
+			addPkg("platforms/" + t.Platform)
+		}
+		if t.Language != "" {
+			addPkg("languages/" + t.Language)
+		}
+	}
+
+	// Explicit imports, which nothing overrides.
+	var declared []ir.StaticTarget
+	for _, stmt := range c.doc.Stmts {
+		switch s := stmt.(type) {
+		case *ast.Import:
+			if uri, ok := strings.CutPrefix(s.Path, "sngl://"); ok && targetTier(uri) {
+				addPkg(uri)
+			}
+		case *ast.VisualNode:
+			if visualNodeTarget(s) == "output" {
+				declared = append(declared, declaredOutputTargets(s)...)
+			}
+		}
+	}
+
+	// The target: what the caller named wins over what the document declares.
+	resolved := c.cfg.Targets
+	if len(resolved) == 0 {
+		resolved = declared
+	}
+	for _, t := range resolved {
+		addTarget(t)
+	}
+
+	if len(out) == 0 {
+		// Nothing named a target anywhere: no flag, no output block, no
+		// import. There is no build to restrict to, so every registered
+		// target's overrides load -- what a bare `check`, the LSP and `doc`
+		// want, and what this did for every caller before a target could be
+		// named at all.
+		for _, p := range c.cfg.Platforms {
+			addPkg("platforms/" + p.PlatformIdentifier())
+		}
+		for _, l := range c.cfg.Languages {
+			addPkg("languages/" + l.LanguageIdentifier())
+		}
+	}
+	return out
+}
+
+// declaredOutputTargets reads the lang/platform pairs an `output` node names,
+// in either form: `output(lang=..., platform=...)` and
+// `output { <lang> { <platform>(...) } }`. It reads only those two names --
+// options are the checker's business later, and getting them wrong here would
+// only mean loading a package that was going to load anyway.
+func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
+	var out []ir.StaticTarget
+	var flat ir.StaticTarget
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Name == "" {
 			continue
 		}
-		for _, doc := range c.libDocs("platforms/" + p.PlatformIdentifier()) {
+		switch arg.Name {
+		case "lang":
+			flat.Language = literalString(arg.Value)
+		case "platform":
+			flat.Platform = literalString(arg.Value)
+		}
+	}
+	if flat.Language != "" || flat.Platform != "" {
+		out = append(out, flat)
+	}
+	for _, stmt := range vn.Block.Stmts {
+		langNode, ok := stmt.(*ast.VisualNode)
+		if !ok {
+			continue
+		}
+		lang := visualNodeTarget(langNode)
+		if len(langNode.Block.Stmts) == 0 {
+			out = append(out, ir.StaticTarget{Language: lang})
+			continue
+		}
+		for _, langStmt := range langNode.Block.Stmts {
+			platNode, ok := langStmt.(*ast.VisualNode)
+			if !ok {
+				continue
+			}
+			out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(platNode)})
+		}
+	}
+	return out
+}
+
+// mergeTargetExtensions collects the `component sngl.X` overrides one target's
+// package declares, checking each `platform <name> { ... }` block into the
+// stdlib *ir.Component's PlatformBodies map. The lowering pass
+// passPlatformExtensionBody reads PlatformBodies[opts.Platform] and swaps it
+// into Component.Body before any other pass runs.
+//
+// A target's package is loaded the way a side-effect import is, and for the
+// same reason: building for a platform is an `import _ "sngl://platforms/<it>"`
+// nobody wrote. So this runs for the build target, and for any target package
+// the program imported itself -- which is how a program asks to be held to a
+// platform's rules without naming one of its declarations.
+//
+// It used to run for every registered platform at once, which made one
+// platform's problems everybody's: an override naming a widget its own host
+// could not describe was reported in a build targeting something else
+// entirely, so a platform had to withhold its whole package rather than serve
+// a half of it. Loading only what a build actually reaches removes the need
+// for that, and gives a program the choice.
+//
+// Duplicate entries for the same stdlib X under one platform name are an
+// error. Only the parenless form is an extension; `component sngl.X() { body }`
+// (android) is ignored here, because that platform reads such a body itself.
+func (c *checker) mergeTargetExtensions(pkgName string) {
+	if c.libs.extended[pkgName] {
+		return
+	}
+	c.libs.extended[pkgName] = true
+	name, ok := strings.CutPrefix(pkgName, "platforms/")
+	if !ok {
+		// Only a platform declares overrides; a language package has no
+		// `component sngl.X` to merge.
+		return
+	}
+	if p := c.lookupTarget(name); p != nil && targetUnavailable(p) != nil {
+		// An unavailable target's overrides are written against declarations
+		// it cannot provide.
+		return
+	}
+	{
+		for _, doc := range c.libDocs(pkgName) {
 			// The extension prefix is whatever alias this document imported the
 			// stdlib under. Platform docs are not registered into the checker's
 			// scope, so resolve it from the document's own imports.
