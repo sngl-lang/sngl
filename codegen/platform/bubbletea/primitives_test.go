@@ -16,7 +16,9 @@ import (
 var btPrimitives = []string{"Layout", "Styled", "Widget", "Overlay"}
 
 func TestPrimitivesCarryTheirIntrinsicID(t *testing.T) {
-	docs := checker.PackageDocsFor("platforms/bubbletea")
+	// Through the platform itself, which is where its package lives: the
+	// checker reads a target's source from the fs.FS the target provides.
+	docs := checker.ProvidedDocs(&Generator{})
 	if len(docs) == 0 {
 		t.Fatal("no sngl://platforms/bubbletea source; nothing below would be checked")
 	}

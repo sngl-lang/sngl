@@ -2253,57 +2253,48 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 
 // checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
 // If sig is non-nil, validates arg types and arity against it using Pythonic named/positional rules.
-// checkEmitArgs checks what an `event(...)` hands its payload. Nothing did
-// before, so an override body could forward a value of any type into an event
-// declared to carry another, and the mismatch surfaced as a type error in the
-// generated program rather than against the declaration that was wrong.
-//
-// Two spellings are right, because a platform reaches an event from whichever
-// of the two its host handed it: the payload itself, and the value the payload
-// carries when it carries exactly one. `input(e)` is the first, `change(opt)`
-// the second. No argument is always right -- an event whose payload the
-// handler does not read is emitted bare.
-func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args []ir.CallArg) {
-	if len(args) == 0 {
-		return
-	}
-	if len(args) > 1 {
-		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(args))
-		return
-	}
-	if evt.Type == nil {
-		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
-		return
-	}
-	got := exprType(args[0].Value)
-	if got == nil || got.Kind == ir.TypeDyn || evt.Type.Kind == ir.TypeDyn {
-		return
-	}
-	if got.IsAssignableTo(evt.Type) {
-		return
-	}
-	if f := soleField(evt.Type); f != nil && got.IsAssignableTo(f) {
-		return
-	}
-	if f := soleField(evt.Type); f != nil {
-		c.error(pos, "cannot use %s as %s for event %q; its payload is %s, whose value is %s",
-			got, evt.Type, evt.Name, evt.Type, f)
-		return
-	}
-	c.error(pos, "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
-}
 
-// soleField is the type of a struct's only field, or nil when the struct has
-// any other number -- the value an event "carries" is only unambiguous at one.
-func soleField(t *ir.Type) *ir.Type {
-	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+// checkEmitArgs checks and returns what an `event(...)` hands over. Nothing
+// checked it before, so an override body could forward a value of any type into
+// an event declared to carry another, and the mismatch surfaced as a type error
+// in the generated program rather than against the declaration that was wrong.
+//
+// The argument is the payload, or there is none. A shorthand accepting the
+// payload's single field instead would tie the rule to the payload's shape:
+// adding a second field to a one-field event would stop every such call site
+// checking, so a change that is backward compatible in the declaration would
+// not be in the checker. Writing the payload out costs a call site nothing and
+// keeps the two independent.
+//
+// The argument is checked against the payload rather than on its own, so a
+// struct literal here is typed by the declaration -- `change({value = opt})`
+// names no type and needs none.
+func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList) []ir.CallArg {
+	var vals []ast.Expr
+	for _, a := range args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Value == nil {
+			continue
+		}
+		vals = append(vals, arg.Value)
+	}
+	switch {
+	case len(vals) == 0:
+		return nil
+	case len(vals) > 1:
+		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(vals))
+		return nil
+	case evt.Type == nil:
+		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
 		return nil
 	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	if !ok || len(sd.Fields) != 1 {
+	val := c.checkExprExpecting(vals[0], evt.Type)
+	if got := exprType(val); got != nil && got.Kind != ir.TypeDyn &&
+		evt.Type.Kind != ir.TypeDyn && !got.IsAssignableTo(evt.Type) {
+		c.error(*vals[0].ExprPos(), "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
 		return nil
 	}
-	return sd.Fields[0].Type
+	return []ir.CallArg{{Value: val}}
 }
 
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
@@ -2611,8 +2602,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" && c.currentComponent != nil {
 			for _, evt := range c.currentComponent.Events {
 				if evt.Name == id.Name {
-					args := c.checkCallArgs(x.Call.Args, nil)
-					c.checkEmitArgs(x.Pos, evt, args)
+					args := c.checkEmitArgs(x.Pos, evt, x.Call.Args)
 					return &ir.Emit{AST: x, Name: id.Name, Args: args}
 				}
 			}
@@ -3100,7 +3090,7 @@ func (c *checker) errorEventType() *ir.Type {
 // checkPlatformStmtIR type-checks a platform statement and returns IR.
 func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 	// Skip body when target platform is known and doesn't match.
-	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+	if !c.targetsPlatform(s.Platform) {
 		return nil
 	}
 

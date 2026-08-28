@@ -29,7 +29,7 @@ func checkForFyne(t *testing.T, src string) *ir.Package {
 	if p == nil {
 		t.Fatal("fyne platform not registered")
 	}
-	cfg := &checker.Config{IsMain: true, Platforms: []ir.Platform{p}}
+	cfg := &checker.Config{IsMain: true, Platforms: []ir.Platform{p}, Targets: []ir.StaticTarget{{Platform: "fyne", Language: "go"}}}
 	if l := codegen.LookupLang("go"); l != nil {
 		cfg.Languages = []ir.Language{l}
 	}

@@ -53,6 +53,7 @@ func elementDeclForTest(t *testing.T) *ir.Component {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])

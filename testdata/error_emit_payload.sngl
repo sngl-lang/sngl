@@ -5,9 +5,11 @@
 // bool into a ChangeEvent, and android's textarea forwarded an InputEvent into
 // one, which is a different declaration and so a different type.
 //
-// Two spellings are right, because a platform reaches an event from whichever
-// of the two its host handed it: the payload itself, and the value the payload
-// carries when it carries exactly one.
+// The argument is the payload or there is none. A shorthand taking the single
+// field of a one-field payload would tie the rule to the payload's shape: the
+// day that struct gained a second field, every such call site would stop being
+// checked. The argument is checked against the payload, so an anonymous
+// literal is typed by the declaration and names nothing.
 import . "sngl://std"
 
 struct Payload {
@@ -18,21 +20,31 @@ component emitter(
     @one Payload,
     @none FocusEvent,
 ) {
-    // The payload itself, the value it carries, and neither: all three right.
-    text(value="a", @click { one(Payload{value = "x"}) })
-    text(value="b", @click { one("x") })
+    text(value="a", @click { one({value = "x"}) })
+    text(value="b", @click { one(Payload{value = "y"}) })
     text(value="c", @click { none() })
+}
+
+// The field's own type is not the payload's, however few fields it has.
+component fieldValue(@one Payload) {
+    text(value="d", @click { one("x") }) // ERROR(check) "cannot use string as Payload for event \"one\""
 }
 
 component wrongType(@one Payload) {
     var flag = false
-    text(value="d", @click { one(flag) }) // ERROR(check) "cannot use bool as Payload for event \"one\""
+    text(value="e", @click { one(flag) }) // ERROR(check) "cannot use bool as Payload for event \"one\""
 }
 
-component emptyPayloadWithArg(@none FocusEvent) {
-    text(value="e", @click { none("x") }) // ERROR(check) "cannot use string as FocusEvent for event \"none\""
+// A payload with no fields is still a payload: an empty literal is one, and a
+// value of another type is not.
+component emptyPayload(@none FocusEvent) {
+    text(value="f", @click { none({}) })
+}
+
+component emptyPayloadWrongType(@none FocusEvent) {
+    text(value="g", @click { none("x") }) // ERROR(check) "cannot use string as FocusEvent for event \"none\""
 }
 
 component tooManyArgs(@one Payload) {
-    text(value="f", @click { one("a", "b") }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
+    text(value="h", @click { one({value = "a"}, {value = "b"}) }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
 }

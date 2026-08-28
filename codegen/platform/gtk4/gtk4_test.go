@@ -44,8 +44,8 @@ func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	t.Cleanup(func() { _ = cfg.Configure(map[string]string{}) })
 
 	docs := checker.ProvidedDocs(gen)
-	if len(docs) != 1 {
-		t.Fatalf("ProvidedDocs = %d docs; want 1", len(docs))
+	if len(docs) != 2 {
+		t.Fatalf("ProvidedDocs = %d docs; want 2 (the written half and the generated one)", len(docs))
 	}
 	var names []string
 	for _, stmt := range docs[0].Stmts {

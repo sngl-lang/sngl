@@ -177,7 +177,7 @@ func generateWithBundledGIR(t *testing.T, src string) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms()})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s", d.Msg)

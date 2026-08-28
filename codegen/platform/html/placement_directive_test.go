@@ -36,6 +36,7 @@ component main {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{gen},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 		Languages: []ir.Language{lang},
 	})
 	for _, d := range diags {

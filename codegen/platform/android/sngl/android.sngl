@@ -65,7 +65,10 @@ struct Options {
 // parameter typed as an event payload is the SNGL event, built from the value
 // Compose passes; one typed as that value is the value. A callback Compose
 // passes nothing to has neither, so the override names the value itself and
-// hands it to the SNGL event as the argument — `change(opt)` in radio below.
+// builds the event from the value it does have — `change({value = opt})`
+// in radio below. An event is handed its payload, never a value to build one
+// from: a shorthand for a single-field payload would stop checking the moment
+// that payload gained a second field.
 //
 // The id is `android:` plus the composable's name — namespaced by the
 // platform whose codegen answers to it, so a platform primitive can never
@@ -269,15 +272,15 @@ component sngl.checkbox {
 
 // Compose's RadioButton is one option, so the group is the loop: the
 // container is the direction the prop asks for and each option is a button
-// beside its label. onClick is passed nothing, so `change(opt)` is where the
-// selected option becomes the event's value.
+// beside its label. onClick is passed nothing, so the override builds the
+// ChangeEvent itself from the option it looped over.
 component sngl.radio {
     platform android {
         if direction == "horizontal" {
             Row(modifier={...style}) {
                 for opt = options {
                     Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                        RadioButton(selected=(value == opt), onClick=func() { change(opt) }) {}
+                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
                         Text(text=opt) {}
                     }
                 }
@@ -286,7 +289,7 @@ component sngl.radio {
             Column(modifier={...style}) {
                 for opt = options {
                     Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                        RadioButton(selected=(value == opt), onClick=func() { change(opt) }) {}
+                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
                         Text(text=opt) {}
                     }
                 }
@@ -325,7 +328,7 @@ component sngl.textarea {
             // @input carries the InputEvent Compose's text is built into;
             // @change carries a ChangeEvent, a different declaration, so it
             // takes the value rather than the other event.
-            onValueChange=func(e) { input(e); change(e.value) },
+            onValueChange=func(e) { input(e); change({value = e.value}) },
         ) {}
     }
 }

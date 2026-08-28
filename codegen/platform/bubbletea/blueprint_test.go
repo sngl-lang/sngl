@@ -38,6 +38,7 @@ func compileBubbletea(t *testing.T, src string) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: plats,
+		Targets:   []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}},
 		Languages: langs,
 	})
 	if hasErrors(diags) {

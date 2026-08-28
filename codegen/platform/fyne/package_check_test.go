@@ -34,7 +34,7 @@ component main {
 	if l := codegen.LookupLang("go"); l != nil {
 		langs = append(langs, l)
 	}
-	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs})
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs, Targets: []ir.StaticTarget{{Platform: "fyne", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Errorf("sngl://platforms/fyne: %s: %s", d.Pos, d.Msg)

@@ -184,14 +184,14 @@ func TestSnglName_NoCollisions(t *testing.T) {
 func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 	skipWithoutGIR(t)
 	g := &Generator{}
-	if docs := checker.ProvidedDocs(g); len(docs) != 1 {
-		t.Fatalf("ProvidedDocs = %d docs; want 1", len(docs))
+	if docs := checker.ProvidedDocs(g); len(docs) != 2 {
+		t.Fatalf("ProvidedDocs = %d docs; want 2 (the written half and the generated one)", len(docs))
 	}
 	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl://platforms/gtk4\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{Platforms: []ir.Platform{g}})
+	pkg, diags := checker.Check(doc, &checker.Config{Platforms: []ir.Platform{g}, Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		t.Errorf("checking against the gtk4 package: %s: %s", d.Pos, d.Msg)
 	}

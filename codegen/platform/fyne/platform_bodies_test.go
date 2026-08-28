@@ -205,7 +205,7 @@ func checkAllComponents(t *testing.T) *ir.Package {
 	if l := codegen.LookupLang("go"); l != nil {
 		langs = append(langs, l)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs, Targets: []ir.StaticTarget{{Platform: "fyne", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("%s: %s", d.Pos, d.Msg)

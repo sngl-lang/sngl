@@ -27,7 +27,7 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget()})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}

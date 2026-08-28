@@ -330,13 +330,13 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(lib.PublicPackages()...)
+		pd, stmts := stdlibPackageDocs(publicPackages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
-		if !checker.HasPackage(uri) {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
+		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(publicPackages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
@@ -807,18 +807,47 @@ func FirstSentence(doc string) string {
 // stdlibPackageDocs returns the declarations of the named embedded packages,
 // merged. Packages are directories on disk, so this reads the layout rather
 // than filtering a merged set.
+// providedPackageDocs is the source a registered target provides for its own
+// library package. A target carries its package rather than lib/ holding it, so
+// a package that exists only because a plugin is registered has to resolve
+// here the way it does in the checker.
+func providedPackageDocs(pkg string) []*ast.Document {
+	if name, ok := strings.CutPrefix(pkg, "platforms/"); ok {
+		return checker.ProvidedDocs(codegen.LookupPlatform(name))
+	}
+	if name, ok := strings.CutPrefix(pkg, "languages/"); ok {
+		return checker.ProvidedDocs(codegen.LookupLang(name))
+	}
+	return nil
+}
+
+// publicPackages is every package `sngl doc` can address: the embedded library
+// tiers, plus the one each registered target provides.
+func publicPackages() []string {
+	out := lib.PublicPackages()
+	for _, p := range codegen.CollectPlatforms() {
+		name := "platforms/" + p.PlatformIdentifier()
+		if len(providedPackageDocs(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	for _, l := range codegen.Langs() {
+		name := "languages/" + l
+		if len(providedPackageDocs(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
 	var docs []*ast.Document
 	for _, pkg := range pkgs {
 		docs = append(docs, checker.PackageDocsFor(pkg)...)
-		// A platform whose declarations are derived from the host synthesizes
-		// them rather than embedding them; gtk4's widget set is whatever the
-		// GTK introspection data installed here describes.
-		if plat, ok := strings.CutPrefix(pkg, "platforms/"); ok {
-			docs = append(docs, checker.ProvidedDocs(codegen.LookupPlatform(plat))...)
-		}
+		docs = append(docs, providedPackageDocs(pkg)...)
 	}
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)

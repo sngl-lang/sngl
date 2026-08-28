@@ -2,10 +2,8 @@ package gtk4
 
 import (
 	"fmt"
-	"io/fs"
 	"slices"
 	"strings"
-	"testing/fstest"
 	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
@@ -22,23 +20,6 @@ const widgetSourceFile = "widgets.gir.sngl"
 // describes: the stdlib override bodies forward `style={...style}` onto the
 // widget root, and GTK has no property behind it (see the emitter's skip).
 const stylePropName = "style"
-
-// PackageFS returns the generated half of sngl://platforms/gtk4: one component
-// declaration per GTK widget class the host's introspection data describes.
-//
-// nil when the GIR file is absent, which is the same answer the rest of the
-// platform gives then — no declarations rather than declarations written
-// against types nothing can resolve.
-func (g *Generator) PackageFS() fs.FS {
-	reg, err := g.gir()
-	if err != nil {
-		return nil
-	}
-	g.fsOnce.Do(func() {
-		g.pkgFS = fstest.MapFS{widgetSourceFile: &fstest.MapFile{Data: widgetSource(reg)}}
-	})
-	return g.pkgFS
-}
 
 // widgetSource writes the SNGL source for every class in reg. A GIR property
 // becomes a typed prop and a GLib signal an event, both under the SNGL
