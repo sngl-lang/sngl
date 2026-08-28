@@ -10,6 +10,8 @@ import (
 // grammar: nothing else notices when sngl.ebnf changes and specgen is not
 // re-run. The whole pipeline runs over a copy, mdox included, because mdox
 // reflows what the generator writes.
+//
+// Where that copy lives is constrained from both sides — see below.
 func TestSpecificationIsGenerated(t *testing.T) {
 	root := repoRoot()
 	spec := filepath.Join(root, "docs", "reference", "specification.md")
@@ -17,15 +19,18 @@ func TestSpecificationIsGenerated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The copy lives beside the original: mdox refuses a file outside the
-	// directory it is anchored on.
-	f, err := os.CreateTemp(filepath.Dir(spec), "specgen-check-*.md")
+	// Not t.TempDir(): mdox is anchored on the repo root (generate runs it
+	// with cmd.Dir = root) and refuses a file outside its anchor, so the copy
+	// has to live under root. It must not live under docs/ either — that tree
+	// is a corpus another package's test enumerates and then reads, and a
+	// transient .md in it made TestDocSNGLBlocks fail on a file that had
+	// already been cleaned up. A scratch directory at the root satisfies both.
+	dir, err := os.MkdirTemp(root, ".specgen-check-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmp := f.Name()
-	f.Close()
-	t.Cleanup(func() { os.Remove(tmp) })
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	tmp := filepath.Join(dir, "specification.md")
 	if err := os.WriteFile(tmp, want, 0o644); err != nil {
 		t.Fatal(err)
 	}
