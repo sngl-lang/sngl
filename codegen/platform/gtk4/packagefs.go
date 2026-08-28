@@ -6,12 +6,12 @@ import (
 	"testing/fstest"
 )
 
-// sngdir is the written half of sngl://platforms/gtk4: the overrides and
+// snglsrc is the written half of sngl://platforms/gtk4: the overrides and
 // primitives this platform declares by hand. See
 // codegen/platform/html/packagefs.go for why a plugin carries its own source.
 //
-//go:embed sngl/*.sngl
-var sngdir embed.FS
+//go:embed *.sngl
+var snglsrc embed.FS
 
 // PackageFS is the whole of sngl://platforms/gtk4: what this package embeds,
 // plus one component declaration per GTK widget class the host's introspection
@@ -23,25 +23,18 @@ var sngdir embed.FS
 // derived from the host -- which is what will let a target serve its package
 // from somewhere else entirely.
 func (g *Generator) PackageFS() fs.FS {
-	written, err := fs.Sub(sngdir, "sngl")
-	if err != nil {
-		return nil
-	}
 	reg, err := g.gir()
 	if err != nil {
 		// No introspection data, so the package is withheld whole rather than
 		// served half. Its overrides are written against gtk4.Gtk* widgets the
-		// generated half declares, and mergePlatformExtensions walks every
-		// registered platform's source -- so serving the written half alone
-		// would report those widgets as undefined in a build targeting some
-		// other platform entirely.
+		// generated half declares, so serving the written half alone would
+		// report every one of those widgets as undefined.
 		return nil
 	}
-	_ = written
 	g.fsOnce.Do(func() {
 		g.pkgFS = fstest.MapFS{widgetSourceFile: &fstest.MapFile{Data: widgetSource(reg)}}
 	})
-	return mergedFS{written: written, generated: g.pkgFS}
+	return mergedFS{written: snglsrc, generated: g.pkgFS}
 }
 
 // mergedFS reads one package out of two filesystems. The generated half wins a

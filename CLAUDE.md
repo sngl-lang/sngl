@@ -75,7 +75,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **android** — generates Android app code; supports `kotlin` and `golang`.
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
-  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/sngl/` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
+  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
@@ -119,7 +119,7 @@ A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to,
 
 `internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
-**A target carries its own library package.** `sngl://platforms/<name>` and `sngl://languages/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/sngl/html.sngl`, `codegen/lang/golang/sngl/golang.sngl` — and is embedded there.
+**A target carries its own library package.** `sngl://platforms/<name>` and `sngl://languages/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
 
 The point is that the checker does not know where a package comes from. gtk4's `PackageFS` returns its embedded overrides merged with one component declaration per GTK widget class, generated from the host's introspection data; nothing outside `codegen/platform/gtk4/packagefs.go` knows half of that package did not exist a moment earlier. The same interface is what will let a plugin outside this repository answer over an RPC.
 
@@ -181,7 +181,7 @@ mark names a signature in `ir.Intrinsics` that every language backend must
 implement. On a component there is no signature to register — the declaration
 *is* the contract for props and events, and one platform's codegen emits the
 widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
-`codegen/platform/android/sngl/`). The id is that codegen's dispatch key, namespaced by
+`codegen/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
 the emitting platform (`android:Column`) so it can never collide with a stdlib
 intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a

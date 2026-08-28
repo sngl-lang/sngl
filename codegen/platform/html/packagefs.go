@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// sngdir is this platform's own library package, `sngl://platforms/html`.
+// snglsrc is this platform's own library package, `sngl://platforms/html`.
 //
 // It lives here rather than under lib/ because it is this plugin's, not the
 // standard library's: a platform is the thing that knows what it declares, and
@@ -16,15 +16,9 @@ import (
 // declarations it generates from the host's introspection data without the
 // checker knowing that is unusual.
 //
-//go:embed sngl/*.sngl
-var sngdir embed.FS
+//go:embed *.sngl
+var snglsrc embed.FS
 
 // PackageFS implements the interface the checker reads a target's own library
 // package through.
-func (g *Generator) PackageFS() fs.FS {
-	sub, err := fs.Sub(sngdir, "sngl")
-	if err != nil {
-		return nil
-	}
-	return sub
-}
+func (g *Generator) PackageFS() fs.FS { return snglsrc }
