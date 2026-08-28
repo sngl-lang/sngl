@@ -40,6 +40,17 @@ type renderBuilder struct {
 	// two agree on the tag, on which props are boolean, and on which prop
 	// holds the tag rather than describing the element.
 	rawElem *ir.Component
+
+	// err is the first thing the server render could not express. It has no
+	// error return -- it builds a skeleton -- so the failure is carried out and
+	// reported by the caller rather than written into the page.
+	err error
+}
+
+func (rb *renderBuilder) fail(format string, args ...any) {
+	if rb.err == nil {
+		rb.err = fmt.Errorf(format, args...)
+	}
 }
 
 func (rb *renderBuilder) writeRaw(s string) { rb.cur.WriteString(s) }
@@ -60,7 +71,7 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
 // path is the route URL the form posts to.
-func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) *codegen.RouteRender {
+func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
 		state:     stateVarNames(pkg),
@@ -70,7 +81,10 @@ func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, acti
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
 	}
-	return rb.finish()
+	if rb.err != nil {
+		return nil, rb.err
+	}
+	return rb.finish(), nil
 }
 
 func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
@@ -146,11 +160,21 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	}
 	rb.writeRaw("<" + tag)
 
-	// Attribute-style props (non-text-content) referencing state → HoleAttr.
+	// Attribute-style props (non-content) referencing state → HoleAttr.
+	//
+	// Which props are content comes from contentProp, the same question the
+	// client render answers: `innerHTML` used to be written as an attribute of
+	// its own name holding raw markup, and `value` as a text node on whatever
+	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
+	var rawBinding *ir.Arg
 	for _, p := range rb.elementAttrs(decl, n) {
-		if isTextContentProp(p.Name) {
+		switch contentProp(p.Name) {
+		case textContentKind:
 			textBinding = p
+			continue
+		case rawContentKind:
+			rawBinding = p
 			continue
 		}
 		if p.Name == "style" {
@@ -177,15 +201,42 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 		}
 		if s, ok := codegen.IRLiteralString(p.Value); ok {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
+			continue
 		}
+		// Neither reactive, nor a bool, nor a string literal: there is nothing
+		// to write and no hole to write it into. Dropping it silently is how a
+		// bound `value` left an <input> with no value at all.
+		rb.fail("prop %q cannot be rendered server-side: its value is neither a literal nor a state-dependent expression", p.Name)
+		return
 	}
 	rb.writeRaw(">")
+
+	// A void element holds no content and takes no close tag: the parser
+	// closes it, and `</input>` is invalid markup.
+	if voidElements[tag] {
+		if backendForm {
+			rb.writeRaw("</form>")
+		}
+		return
+	}
 
 	// Text-content binding (e.g. text(value=...)) → HoleText or literal.
 	if textBinding != nil {
 		if rb.exprIsReactive(textBinding.Value) {
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleText, Expr: textBinding.Value})
 		} else if s, ok := codegen.IRLiteralString(textBinding.Value); ok {
+			rb.writeRaw(s)
+		}
+	}
+	// innerHTML is markup, so a literal is written through unescaped -- which
+	// is what the prop means, and why it is not an attribute. A reactive one
+	// would need a hole that interpolates without escaping, and the route
+	// skeleton has no such kind: escaping it would render the markup as text,
+	// and not escaping an interpolated value is an injection. Say so.
+	if rawBinding != nil {
+		if rb.exprIsReactive(rawBinding.Value) {
+			rb.fail("innerHTML cannot depend on state in a server-rendered route: the value would be interpolated into markup unescaped")
+		} else if s, ok := codegen.IRLiteralString(rawBinding.Value); ok {
 			rb.writeRaw(s)
 		}
 	}
@@ -257,18 +308,6 @@ func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.
 		out = append(out, &ir.Arg{Name: name, Value: extra[name]})
 	}
 	return out
-}
-
-// isTextContentProp reports whether prop is rendered as an element's text
-// content rather than as an attribute. The DOM-side content props are here
-// too: no attribute spells them, so writing one as an attribute both invents
-// markup and loses the text.
-func isTextContentProp(prop string) bool {
-	switch prop {
-	case "value", "text", "label", "content", "textContent", "innerText":
-		return true
-	}
-	return false
 }
 
 // logicalMutations returns the handler body with visual/DOM-patch statements

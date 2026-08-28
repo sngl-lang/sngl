@@ -1751,8 +1751,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 
 	// Self-closing tags
-	switch tag {
-	case "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr":
+	switch {
+	case voidElements[tag]:
 		b.WriteString("/>\n")
 	default:
 		b.WriteString(">")

@@ -54,6 +54,10 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		// hidden _action value is guaranteed to match the switch case that runs
 		// the handler's mutations — the two no longer count independently.
 		actions, actionIdx := collectActions(req.Pkg, win, targets)
+		render, err := buildRenderModel(req.Pkg, win, path, actionIdx)
+		if err != nil {
+			return fmt.Errorf("html: route %s: %w", path, err)
+		}
 		routes = append(routes, codegen.HTTPRoute{
 			Name:      routeHandlerName(win.Name, path),
 			Path:      path,
@@ -61,7 +65,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 			Params:    extractRouteParams(path),
 			WindowIdx: i,
 			Actions:   actions,
-			Render:    buildRenderModel(req.Pkg, win, path, actionIdx),
+			Render:    render,
 			StateVars: stateVars,
 		})
 	}

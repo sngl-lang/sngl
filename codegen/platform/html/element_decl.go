@@ -8,7 +8,6 @@ package html
 
 import (
 	"git.duckfam.us/jonathan/sngl/ir"
-	"strings"
 )
 
 // rawElementDecl returns the wildcard component every HTML tag resolves to —
@@ -163,10 +162,10 @@ func domEventName(comp *ir.Component, event string) string {
 			continue
 		}
 		if e.Name == event {
-			return domEventSpelling(event)
+			return event
 		}
 		if e.Wildcard != "" && ir.MatchesWildcard(e.Wildcard, event) {
-			return domEventSpelling(event)
+			return event
 		}
 	}
 	return ""
@@ -240,10 +239,39 @@ func wildcardPropNamed(decl *ir.Component, prop string) bool {
 	return false
 }
 
-// domEventSpelling is the DOM name for a SNGL event name. DOM event types are
-// all lowercase; SNGL spells a two-word event in camelCase (`scrollEnd`, which
-// the DOM calls `scrollend`), so the case is dropped. A name already lowercase
-// is unchanged, which is every event the element declares by name.
-func domEventSpelling(event string) string {
-	return strings.ToLower(event)
+// voidElements are the tags that hold no content: the HTML parser closes them
+// itself, and a close tag for one -- `</input>` -- is invalid markup. The
+// static and route renders read this same list; the route render had none, and
+// emitted a close tag for every element.
+var voidElements = map[string]bool{
+	"area": true, "base": true, "br": true, "col": true, "embed": true,
+	"hr": true, "img": true, "input": true, "link": true, "meta": true,
+	"source": true, "track": true, "wbr": true,
+}
+
+// contentProp reports how a prop's value is written when the element is
+// rendered as markup rather than patched through the DOM: as escaped text
+// content, as raw markup, or not as content at all.
+//
+// Only the DOM-side content properties are content. A prop the client render
+// writes through a DOM property (domPropForProp) has no attribute that spells
+// it, but in markup the attribute is the initial value the DOM reads -- an
+// <input>'s `value` is the attribute, and writing it as a text node both
+// invents a child and loses the value.
+type contentKind int
+
+const (
+	notContent contentKind = iota
+	textContentKind
+	rawContentKind
+)
+
+func contentProp(prop string) contentKind {
+	switch prop {
+	case "textContent", "innerText":
+		return textContentKind
+	case "innerHTML":
+		return rawContentKind
+	}
+	return notContent
 }

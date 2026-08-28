@@ -121,14 +121,13 @@ component element(
     // Void, because a payload this cannot name is one a handler cannot read;
     // an event whose payload matters is declared above.
     //
-    // camelCase is accepted, unlike the prop patterns above: SNGL spells a
-    // two-word event `@scrollEnd` and the DOM spells it `scrollend`, so the
-    // name is lowercased on the way out. Rejecting the camelCase form dropped
-    // every such handler with no diagnostic -- `@scrollEnd` and `@longPress`
-    // are both declared in the standard library. `longpress` is not a DOM
-    // event, so a handler for it is inert here until something fires one; the
-    // listener is emitted rather than the handler discarded.
-    #[wildcard("[a-z][a-zA-Z0-9]*")]
+    // Lowercase, because these are DOM event types and that is how the DOM
+    // spells them. A stdlib component's SNGL name for an event -- `@scrollEnd`
+    // -- is mapped to the DOM one by the override that wraps it, which is what
+    // wrapping an element in SNGL is for. Accepting the SNGL spelling here
+    // instead would emit `addEventListener("scrollEnd")`, an event nothing
+    // fires.
+    #[wildcard("[a-z][a-z0-9]*")]
     @event,
 ) list<component> {}
 
@@ -164,9 +163,12 @@ component sngl.spacer {
     }
 }
 
+// `@scrollEnd` is the standard library's name for the event the DOM calls
+// `scrollend`. The names differ, so the override maps them: that is the half of
+// wrapping an element that a wildcard cannot do for itself.
 component sngl.scroll {
     platform html {
-        html.div(style={...style, overflow="auto"}) {
+        html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
             slot
         }
     }
