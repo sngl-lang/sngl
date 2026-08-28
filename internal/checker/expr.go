@@ -1959,7 +1959,9 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 		}
 	}
 	if chain == nil {
-		return &ir.Literal{Type: TypString, Raw: `""`}
+		// Raw is the value, not its source spelling — `""` here would be the
+		// two-character string, which Go codegen duly renders as "\"\"".
+		return &ir.Literal{Type: TypString, Raw: ""}
 	}
 	return chain
 }
