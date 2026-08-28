@@ -8,6 +8,7 @@ package html
 
 import (
 	"git.duckfam.us/jonathan/sngl/ir"
+	"strings"
 )
 
 // rawElementDecl returns the wildcard component every HTML tag resolves to —
@@ -162,10 +163,10 @@ func domEventName(comp *ir.Component, event string) string {
 			continue
 		}
 		if e.Name == event {
-			return event
+			return domEventSpelling(event)
 		}
 		if e.Wildcard != "" && ir.MatchesWildcard(e.Wildcard, event) {
-			return event
+			return domEventSpelling(event)
 		}
 	}
 	return ""
@@ -237,4 +238,12 @@ func wildcardPropNamed(decl *ir.Component, prop string) bool {
 		}
 	}
 	return false
+}
+
+// domEventSpelling is the DOM name for a SNGL event name. DOM event types are
+// all lowercase; SNGL spells a two-word event in camelCase (`scrollEnd`, which
+// the DOM calls `scrollend`), so the case is dropped. A name already lowercase
+// is unchanged, which is every event the element declares by name.
+func domEventSpelling(event string) string {
+	return strings.ToLower(event)
 }

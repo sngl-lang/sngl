@@ -1,0 +1,24 @@
+# SNGL spells a two-word event in camelCase and the DOM spells it lowercase.
+# html's wildcard event pattern was lowercase-only, so every camelCase handler
+# was dropped with no diagnostic -- including @scrollEnd and @longPress, both
+# declared in the standard library.
+
+sngl generate --lang none --platform html --out out app.sngl
+grep 'addEventListener\("scrollend"' out/index.html
+grep 'addEventListener\("longpress"' out/index.html
+grep 'addEventListener\("click"' out/index.html
+
+# The camelCase spelling must not reach the DOM: it is not an event type.
+! grep 'addEventListener\("scrollEnd"' out/index.html
+! grep 'addEventListener\("longPress"' out/index.html
+
+-- app.sngl --
+import . "sngl://std"
+
+component main {
+    var n = 0
+    scroll(@scrollEnd { n = n + 1 }) {
+        text(value=string(n))
+    }
+    button(text="hit", @longPress { n = 0 }, @click { n = n + 1 })
+}

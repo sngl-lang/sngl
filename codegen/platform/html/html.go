@@ -76,6 +76,12 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		codegen.SetOptionField(req.Options, "main", false)
 	}
 
+	if req.Pkg != nil {
+		if err := validateRawElements(req.Pkg); err != nil {
+			return err
+		}
+	}
+
 	// Validate placement directives (html.frontend/html.backend) before any
 	// mode-specific work; these guards are language- and mode-agnostic.
 	if err := checkPlacementDirectives(req.Pkg); err != nil {

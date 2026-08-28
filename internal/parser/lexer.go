@@ -65,6 +65,13 @@ func (l *lexer) advance() rune {
 }
 
 func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
+	if typ == ILLEGAL {
+		// encode() drops ILLEGAL from the stream the parser sees, so an
+		// ILLEGAL token with no lex error beside it is a failure nobody
+		// reports: the parse continues past the bad input and fails somewhere
+		// else, or succeeds. illegal() is the only way to build one.
+		panic("sngl/parser: ILLEGAL token built outside illegal(); the lex error would go unreported")
+	}
 	if typ != LINE_COMMENT && typ != BLOCK_COMMENT {
 		l.prevPrevTok = l.prevTok
 		l.prevTok = typ
@@ -80,7 +87,8 @@ func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
 // string in the file, because the parse then ran to EOF.
 func (l *lexer) illegal(msg string, line, col int) Token {
 	l.errors = append(l.errors, fmt.Sprintf("%d:%d: %s", line, col, msg))
-	return l.tok(ILLEGAL, msg, line, col)
+	l.prevPrevTok, l.prevTok = l.prevTok, ILLEGAL
+	return Token{Type: ILLEGAL, Literal: msg, Line: line, Column: col}
 }
 
 // NextToken returns the next token from the source.
@@ -373,8 +381,7 @@ func (l *lexer) NextToken() Token {
 			}
 			return l.tok(PIPE, "|", startLine, startCol)
 		default:
-			l.errors = append(l.errors, fmt.Sprintf("%d:%d: unexpected character %q", startLine, startCol, string(ch)))
-			return l.tok(ILLEGAL, string(ch), startLine, startCol)
+			return l.illegal(fmt.Sprintf("unexpected character %q", string(ch)), startLine, startCol)
 		}
 	}
 }
@@ -703,7 +710,7 @@ func (l *lexer) scanHashToken(startLine, startCol int) Token {
 	}
 	name := string(l.input[start:l.pos])
 	if len(name) == 0 {
-		return l.tok(ILLEGAL, "#", startLine, startCol)
+		return l.illegal(`"#" names nothing: a color literal or an element reference follows it`, startLine, startCol)
 	}
 	// A single token for every `#…` form. Whether it is a color literal
 	// (#rrggbb / #rrggbbaa) or an element reference is decided downstream by

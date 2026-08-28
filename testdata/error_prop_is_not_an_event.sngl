@@ -1,0 +1,12 @@
+// A wildcard event stands for the names of an open set -- every DOM event, for
+// html's `element` -- not for any name a caller may write in prop position. A
+// prop is accepted only when the component declares a prop of that name, or an
+// event of exactly that name; matching the wildcard is not enough, or a
+// misspelled DOM property would satisfy "any event name" perfectly well.
+import . "sngl://std"
+
+component main {
+    window {
+        html.div(innerTxt = "x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
+    }
+}

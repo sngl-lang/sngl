@@ -120,7 +120,15 @@ component element(
     //
     // Void, because a payload this cannot name is one a handler cannot read;
     // an event whose payload matters is declared above.
-    #[wildcard("[a-z][a-z0-9]*")]
+    //
+    // camelCase is accepted, unlike the prop patterns above: SNGL spells a
+    // two-word event `@scrollEnd` and the DOM spells it `scrollend`, so the
+    // name is lowercased on the way out. Rejecting the camelCase form dropped
+    // every such handler with no diagnostic -- `@scrollEnd` and `@longPress`
+    // are both declared in the standard library. `longpress` is not a DOM
+    // event, so a handler for it is inert here until something fires one; the
+    // listener is emitted rather than the handler discarded.
+    #[wildcard("[a-z][a-zA-Z0-9]*")]
     @event,
 ) list<component> {}
 

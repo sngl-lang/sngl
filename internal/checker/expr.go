@@ -3473,7 +3473,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			}
 			if _, err := componentWildcardProp(comp, name); err != nil {
 				c.error(vn.Pos, "%s", err)
-			} else if !componentHasProp(comp, name) && !componentAcceptsEvent(comp, name) {
+			} else if !componentHasProp(comp, name) && !componentDeclaresEventNamed(comp, name) {
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -3874,7 +3874,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
-				if !componentHasProp(comp, propName) && !componentAcceptsEvent(comp, propName) {
+				if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
 					c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 					continue
 				}
@@ -3964,7 +3964,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			}
 			if _, err := componentWildcardProp(comp, propName); err != nil {
 				c.error(*call.Func.ExprPos(), "%s", err)
-			} else if !componentHasProp(comp, propName) && !componentAcceptsEvent(comp, propName) {
+			} else if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
@@ -4020,6 +4020,17 @@ func componentAcceptsEvent(comp *ir.Component, name string) bool {
 	}
 	ok, _ := componentWildcardEvent(comp, name)
 	return ok
+}
+
+// componentDeclaresEventNamed reports whether comp declares an event of this
+// exact name. Deliberately not a wildcard match: this answers "is this
+// prop-position name actually an event", and a wildcard event stands for the
+// names of a whole open set -- every DOM event, for html's `element` -- not for
+// any name a caller might write in prop position. Accepting the wildcard there
+// let `html.div(innerTxt = "x")` through, because a camelCase misspelling of a
+// DOM property matches "any event name" perfectly well.
+func componentDeclaresEventNamed(comp *ir.Component, name string) bool {
+	return componentHasEvent(comp, name)
 }
 
 // bindWildcardName binds the name a wildcard component was resolved by to the
