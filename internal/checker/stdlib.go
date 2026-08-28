@@ -3,6 +3,7 @@ package checker
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -945,12 +946,32 @@ func (c *checker) targetPackages() []string {
 		}
 	}
 
-	// Explicit imports, which nothing overrides.
+	// Explicit imports, which nothing overrides. Through the same `=>`
+	// resolution registerImport applies before it looks at the scheme, so a
+	// replace pointing at a target package counts and one pointing away from
+	// it does not -- pass1 has not built its map yet, and this is the same
+	// scan it will do.
+	replaces := map[string]string{}
+	for _, stmt := range c.doc.Stmts {
+		if imp, ok := stmt.(*ast.Import); ok && imp.Replace != "" {
+			if _, dup := replaces[imp.Path]; !dup {
+				replaces[imp.Path] = imp.Replace
+			}
+		}
+	}
+	maps.Copy(replaces, c.cfg.Replaces)
+
 	var declared []ir.StaticTarget
 	for _, stmt := range c.doc.Stmts {
 		switch s := stmt.(type) {
 		case *ast.Import:
-			if uri, ok := strings.CutPrefix(s.Path, "sngl://"); ok && targetTier(uri) {
+			target := s.Path
+			if s.Replace != "" {
+				target = s.Replace
+			} else if mapped, ok := replaces[s.Path]; ok {
+				target = mapped
+			}
+			if uri, ok := strings.CutPrefix(target, "sngl://"); ok && targetTier(uri) {
 				addPkg(uri)
 			}
 		case *ast.VisualNode:

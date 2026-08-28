@@ -136,6 +136,33 @@ component main {
 		}
 	})
 
+	t.Run("a replace decides which package an import names", func(t *testing.T) {
+		// registerImport resolves `=>` before it looks at the scheme, so this
+		// has to as well: an import redirected at a target package names it,
+		// and one redirected away from a target package does not.
+		const intoStub = `import . "sngl://std"
+import _ "sngl://platforms/nowhere" => "sngl://platforms/tgtstub"
+
+component main {
+    text(value="hi")
+}
+`
+		if !brokenOverrideReported(t, intoStub, ir.StaticTarget{Platform: "html"}) {
+			t.Error("an import replaced with a target package did not load it")
+		}
+
+		const awayFromStub = `import . "sngl://std"
+import _ "sngl://platforms/tgtstub" => "sngl://std"
+
+component main {
+    text(value="hi")
+}
+`
+		if brokenOverrideReported(t, awayFromStub, ir.StaticTarget{Platform: "html"}) {
+			t.Error("an import replaced away from a target package still loaded it")
+		}
+	})
+
 	t.Run("naming nothing loads everything", func(t *testing.T) {
 		// No flag, no output block, no import: there is no build to restrict
 		// to, so every registered platform loads -- what a bare check wants.
