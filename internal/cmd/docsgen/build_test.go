@@ -59,3 +59,30 @@ func TestWebsiteProducesContent(t *testing.T) {
 		t.Error("components/index.html has no <link rel=\"stylesheet\"> — site CSS dropped")
 	}
 }
+
+// TestWebsiteTypeChecks is TestWebsiteProducesContent's cheap half, and the
+// only one that runs in -short mode -- which is the mode CI's `go tool verify
+// -dry` uses. Checking the site against the html platform costs under a
+// second, because the go:// consts are evaluated by the optimizer and this
+// stops at the checker; the full build compiles them to wasm and costs a
+// minute, which is why it skips.
+//
+// Without this the website is only ever built by the `pages` job, and `pages`
+// runs on the default branch alone: a type error in a `platform html` body
+// reached main and broke the docs deploy, having passed every pipeline on the
+// way in.
+func TestWebsiteTypeChecks(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The platform must be named: a `platform html { ... }` body is checked
+	// against the html package only when html is a target of the build, so
+	// `sngl check` with no platform walks straight past the thing that broke.
+	cmd := exec.Command("go", "tool", "sngl", "dump", "--stage", "checked",
+		"--platform", "html", "--lang", "none", "website.sngl")
+	cmd.Dir = repoRoot
+	if combined, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("website.sngl does not type-check against the html platform: %v\n%s", err, combined)
+	}
+}
