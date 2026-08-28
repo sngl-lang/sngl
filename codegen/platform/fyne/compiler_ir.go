@@ -820,16 +820,54 @@ func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	return nil
 }
 
-func extractIRAssignTarget(stmts []ir.Stmt) string {
+// extractEventBindTarget returns the variable the synthesized two-way bind
+// writes, or "" when stmts does not begin with one.
+//
+// passPropBindings opens a bound node's handler with `<var> = <event>.<field>`.
+// A Fyne callback receives the unwrapped value rather than the SNGL event
+// struct, so the emitter replaces that statement with a read of the callback's
+// own parameter — which means it has to be certain it is looking at that
+// statement and not at the first line the user wrote.
+//
+// Recognising "an assignment" was not certain enough: a handler whose body
+// merely began with one had that line replaced and silently dropped. The bind
+// is identified by its whole shape instead — a plain assignment to a name,
+// reading a field off one of the handler's own parameters.
+func extractEventBindTarget(stmts []ir.Stmt, params []*ir.Param) string {
 	if len(stmts) == 0 {
 		return ""
 	}
-	if assign, ok := stmts[0].(*ir.Assign); ok {
-		if ident, ok := assign.Target.(*ir.Ident); ok {
-			return ident.Name
+	assign, ok := stmts[0].(*ir.Assign)
+	if !ok || assign.Op != ast.AssignSet {
+		return ""
+	}
+	target, ok := assign.Target.(*ir.Ident)
+	if !ok {
+		return ""
+	}
+	sel, ok := assign.Value.(*ir.Select)
+	if !ok || !isParamRef(sel.Operand, params) {
+		return ""
+	}
+	return target.Name
+}
+
+// isParamRef reports whether e reads one of params. Sym is the reliable answer;
+// the name is the fallback for an ident a pass rebuilt without re-resolving it.
+func isParamRef(e ir.Expr, params []*ir.Param) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	for _, p := range params {
+		if p == nil {
+			continue
+		}
+		if id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name) {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
 func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) []string {
@@ -1045,11 +1083,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	var prelude []ir.Stmt
 	if binding.Param != "" {
-		// Match view_ir.go's old declarative path: the first stmt is the
-		// synthesized `var = e.<field>` two-way bind — re-emit as a direct
-		// `m.<var> = <bindParam>` since the closure exposes the unwrapped
-		// fyne value.
-		bindVar := extractIRAssignTarget(stmts)
+		// The synthesized `var = e.<field>` two-way bind, when the handler
+		// opens with one, is re-emitted as a direct `m.<var> = <param>` since
+		// the closure exposes the unwrapped fyne value. fn.Params is the SNGL
+		// signature the bind was written against, not the Fyne one that
+		// replaced it above.
+		bindVar := extractEventBindTarget(stmts, fn.Params)
 		if bindVar != "" {
 			prelude = []ir.Stmt{&ir.Assign{
 				Target: &ir.Ident{Name: bindVar},

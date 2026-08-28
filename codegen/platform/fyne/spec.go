@@ -137,7 +137,7 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 					continue
 				}
 				var a fyneArg
-				a.Raw = literalSource(structField(sl, "raw"))
+				a.Raw, _ = codegen.IRLiteralString(structField(sl, "raw"))
 				a.Prop, _ = codegen.IRLiteralString(structField(sl, "prop"))
 				sp.Args = append(sp.Args, a)
 			}
@@ -199,20 +199,6 @@ func (s *fyneSpec) ctorArgs() []ir.Expr {
 // without this package holding a table of the ones it knows.
 func rawGoExpr(src string) ir.Expr {
 	return &ir.Ident{Name: src, Type: ir.TypDyn}
-}
-
-// literalSource is a string literal's content exactly as written.
-//
-// codegen.IRLiteralString cannot be used for Go source: it strips a leading
-// and trailing quote from the literal's Raw, and Raw already holds the decoded
-// content — so `Arg{raw: "\"\""}`, the empty Go string a Fyne constructor is
-// called with, would decode to nothing at all.
-func literalSource(e ir.Expr) string {
-	lit, ok := e.(*ir.Literal)
-	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeString {
-		return ""
-	}
-	return lit.Raw
 }
 
 // listElems returns the elements of an IR list literal, or nil.

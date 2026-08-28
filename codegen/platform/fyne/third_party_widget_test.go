@@ -42,7 +42,7 @@ component Gauge(level int, @change ChangeEvent) {
 
 component main {
     vbox {
-        Gauge(level=reading, @change { reading = 0 })
+        Gauge(level=reading, @change { reading = reading + 1 })
     }
 }
 `
@@ -74,12 +74,13 @@ func TestThirdPartyWidgetIsWrappedInSNGLAlone(t *testing.T) {
 		{"callback field", ".OnValueChanged = m."},
 		// The callback's Go signature, which is the widget's and not the
 		// SNGL event's — the handler is promoted with the params the Spec
-		// named.
+		// named. (The Spec's `param`, which names the value *inside* that
+		// signature, is exercised by the stdlib two-way bind in
+		// promoted_handler_test.go; nothing binds this widget. Asserting it
+		// here matched the generated SetReading accessor instead.)
 		{"callback signature", "func (m *Model) __n0_change_handler(v int)"},
-		// The Spec's `param`: the handler's write-back reads the value off
-		// the callback's own parameter, since the closure never receives an
-		// SNGL event struct to read it from.
-		{"value parameter write-back", "m.reading = v"},
+		// The handler runs what the call site wrote.
+		{"handler body", "m.reading = (m.reading + 1)"},
 	} {
 		if !strings.Contains(out, tc.want) {
 			t.Errorf("%s: missing %q\n--- generated ---\n%s", tc.what, tc.want, out)
