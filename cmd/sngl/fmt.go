@@ -43,6 +43,20 @@ func init() {
 }
 
 func runFmt(cmd *cobra.Command, args []string) error {
+	// fmt rewrites files in place, and a package addressed by URI has none:
+	// its source is embedded in this binary, or synthesized by the target that
+	// serves it. Saying so beats the stat error the URI used to produce, and
+	// beats quietly turning fmt into a printer.
+	for _, arg := range args {
+		uri, err := libraryURI(arg)
+		if err != nil {
+			return err
+		}
+		if uri != "" {
+			return fmt.Errorf("%s: fmt works on files, and this package has no source on disk", arg)
+		}
+	}
+
 	files, err := discoverFiles(args)
 	if err != nil {
 		return err

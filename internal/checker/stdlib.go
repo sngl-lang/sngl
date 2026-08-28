@@ -1611,11 +1611,18 @@ func libImportAliases(doc *ast.Document) map[string]string {
 
 // Loaded library packages for callers outside a check — the documentation
 // tools and the language server. A lib package is immutable once built and
-// costs a full load, so one instance is shared.
+// costs a full load, so one instance is shared. The diagnostics are cached
+// with it: the load happens once, so a later caller asking for them cannot
+// re-run it.
 var (
 	libPkgMu    sync.Mutex
-	libPkgCache = map[string]*ir.Package{}
+	libPkgCache = map[string]libPkgEntry{}
 )
+
+type libPkgEntry struct {
+	pkg   *ir.Package
+	diags []ir.Diagnostic
+}
 
 // LibPackage returns the built IR of the embedded package `sngl://<name>`, or
 // nil when no such package exists.
@@ -1625,21 +1632,54 @@ var (
 // source says only what was written. Loading is memoized: the packages are the
 // compiler's own and do not change within a process.
 func LibPackage(name string) *ir.Package {
+	pkg, _ := CheckLibPackage(name)
+	return pkg
+}
+
+// CheckLibPackage is LibPackage plus the diagnostics the load produced, for a
+// caller reporting on the package rather than reading it — `sngl check
+// sngl://platforms/gtk4`.
+//
+// Loading a lib package is not the same as checking its source as a document:
+// it runs with the lib-source rules that permit the `sngl://internal/` imports
+// a platform package writes, and it sees the declarations a target synthesizes
+// and never wrote to a file. Both are why this is the only way to check one.
+func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	if !HasPackage(name) && registeredTarget(name) == nil {
-		return nil
+		return nil, nil
 	}
 	libPkgMu.Lock()
 	defer libPkgMu.Unlock()
-	if pkg, ok := libPkgCache[name]; ok {
-		return pkg
+	if e, ok := libPkgCache[name]; ok {
+		return e.pkg, e.diags
 	}
 	// Through LibSources so the IR is built from the same documents
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
-	pkg := newChecker(&ast.Document{}, cfg).libPkg(name)
-	libPkgCache[name] = pkg
-	return pkg
+	c := newChecker(&ast.Document{}, cfg)
+	pkg := c.libPkg(name)
+	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
+	return pkg, c.diags
+}
+
+// Packages lists the `sngl://` packages this process can reach: the public
+// tiers embedded under lib/, plus the package each registered target serves
+// for itself. A target that cannot serve one — gtk4 with no introspection
+// data — contributes nothing, so the list is what is actually addressable
+// here rather than what the build could in principle offer.
+func Packages() []string {
+	out := lib.PublicPackages()
+	targetPkgMu.RLock()
+	names := slices.Collect(maps.Keys(targetPkgs))
+	targetPkgMu.RUnlock()
+	for _, name := range names {
+		if len(PackageSource(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // OptionsStruct returns the #[options]-marked struct of `sngl://<name>`, or

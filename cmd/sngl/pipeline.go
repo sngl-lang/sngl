@@ -62,9 +62,32 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 	}
 
-	explicitFiles := explicitFileSet(args)
+	libs, paths, err := resolveInputs(args)
+	if err != nil {
+		return err
+	}
+	for _, in := range libs {
+		if err := in.Err(); err != nil {
+			return fmt.Errorf("%s: %w", in.Path, err)
+		}
+		// "." is the project directory a generated file is written relative
+		// to. The package itself has none — its source is embedded, or the
+		// target synthesized it — so generating from one is generating into
+		// the working directory.
+		if err := emitPackage(in.Pkg, in.Path, ".", cliLang, cliPlat, p); err != nil {
+			return err
+		}
+	}
 
-	files, err := discoverFiles(args)
+	// A package named and no paths left is the whole input: only fall through
+	// to the current directory when no argument was given at all.
+	if len(paths) == 0 && len(args) > 0 {
+		return nil
+	}
+
+	explicitFiles := explicitFileSet(paths)
+
+	files, err := discoverFiles(paths)
 	if err != nil {
 		return err
 	}
@@ -108,97 +131,114 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 		slog.Info("check", "dir", dir, "duration", time.Since(start))
 
-		if err := validateOutputs(pkg); err != nil {
+		if err := emitPackage(pkg, filename, dir, cliLang, cliPlat, p); err != nil {
 			return err
 		}
+	}
+	return nil
+}
 
-		targets, err := resolveTargets(pkg, cliLang, cliPlat, p.cliOpts)
-		if err != nil {
+// emitPackage runs the half of the pipeline downstream of the checker:
+// resolve the targets, then optimize, lower and generate once per target.
+//
+// It is split out because a package addressed by `sngl://<uri>` arrives here
+// already checked — the checker built it, under the lib-source rules its own
+// imports need — so the two entry points share everything after the check and
+// nothing before it.
+//
+// name identifies the input in diagnostics: a file path, or the URI as
+// written. dir is what imports and generated paths resolve against.
+func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipelineOpts) error {
+	if err := validateOutputs(pkg); err != nil {
+		return err
+	}
+
+	targets, err := resolveTargets(pkg, cliLang, cliPlat, p.cliOpts)
+	if err != nil {
+		return fmt.Errorf("%s: %w", dir, err)
+	}
+	if len(targets) == 0 {
+		return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
+	}
+
+	// One cache for every target of this compilation: they fold the same
+	// source, so a value evaluated for one is the value for all. It is not
+	// shared any wider — a folded value has no record of the Go body that
+	// produced it, so it must not survive the compilation.
+	evalCache := optimize.NewEvalCache()
+
+	for _, target := range targets {
+		// Each target optimizes+lowers the IR in place, so with more than
+		// one target every target after the first must start from the
+		// original checked IR — not the already-lowered state left by the
+		// previous target. Clone per target from the pristine pkg (which
+		// is never mutated when len(targets) > 1). A single target lowers
+		// pkg directly.
+		tpkg := pkg
+		if len(targets) > 1 {
+			tpkg = ir.ClonePackage(pkg)
+		}
+
+		if target.Options == nil {
+			target.Options = &ir.StructLit{}
+		}
+		if p.main {
+			codegen.SetOptionField(target.Options, "main", true)
+		}
+		if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
+			codegen.SetOptionField(target.Options, "projectDir", dir)
+		}
+
+		optCfg := &optimize.Config{
+			Platform:    target.Platform,
+			Language:    target.Lang,
+			Dir:         dir,
+			NoCacheBust: optionBool(target.Options, "noCacheBust"),
+			Cache:       evalCache,
+		}
+		start := time.Now()
+		if err := optimize.Optimize(tpkg, optCfg); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
-		if len(targets) == 0 {
-			return fmt.Errorf("%s: no output target specified (use --lang/--platform flags or add an output node)", dir)
+		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+
+		plat := codegen.LookupPlatform(target.Platform)
+		lang := codegen.LookupLang(target.Lang)
+		if plat == nil {
+			return fmt.Errorf("%s: unknown platform %q (available: %v)", name, target.Platform, codegen.Platforms())
 		}
+		if lang == nil {
+			return fmt.Errorf("%s: unknown language %q (available: %v)", name, target.Lang, codegen.Langs())
+		}
+		caps := plat.Capabilities(lang).ToLowerCaps()
+		start = time.Now()
+		if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+			return fmt.Errorf("%s: %w", dir, err)
+		}
+		slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
 
-		// One cache for every target of this compilation: they fold the same
-		// source, so a value evaluated for one is the value for all. It is not
-		// shared any wider — a folded value has no record of the Go body that
-		// produced it, so it must not survive the compilation.
-		evalCache := optimize.NewEvalCache()
-
-		for _, target := range targets {
-			// Each target optimizes+lowers the IR in place, so with more than
-			// one target every target after the first must start from the
-			// original checked IR — not the already-lowered state left by the
-			// previous target. Clone per target from the pristine pkg (which
-			// is never mutated when len(targets) > 1). A single target lowers
-			// pkg directly.
-			tpkg := pkg
-			if len(targets) > 1 {
-				tpkg = ir.ClonePackage(pkg)
-			}
-
-			if target.Options == nil {
-				target.Options = &ir.StructLit{}
-			}
-			if p.main {
-				codegen.SetOptionField(target.Options, "main", true)
-			}
-			if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
-				codegen.SetOptionField(target.Options, "projectDir", dir)
-			}
-
-			optCfg := &optimize.Config{
-				Platform:    target.Platform,
-				Language:    target.Lang,
-				Dir:         dir,
-				NoCacheBust: optionBool(target.Options, "noCacheBust"),
-				Cache:       evalCache,
-			}
+		if caps != (lower.Caps{}) {
 			start = time.Now()
 			if err := optimize.Optimize(tpkg, optCfg); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
-			slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+			slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+		}
 
-			plat := codegen.LookupPlatform(target.Platform)
-			lang := codegen.LookupLang(target.Lang)
-			if plat == nil {
-				return fmt.Errorf("%s: unknown platform %q (available: %v)", filename, target.Platform, codegen.Platforms())
-			}
-			if lang == nil {
-				return fmt.Errorf("%s: unknown language %q (available: %v)", filename, target.Lang, codegen.Langs())
-			}
-			caps := plat.Capabilities(lang).ToLowerCaps()
-			start = time.Now()
-			if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
-				return fmt.Errorf("%s: %w", dir, err)
-			}
-			slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+		var fileAssets []codegen.FileAsset
+		for _, fa := range optCfg.FileAssets {
+			fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
+		}
 
-			if caps != (lower.Caps{}) {
-				start = time.Now()
-				if err := optimize.Optimize(tpkg, optCfg); err != nil {
-					return fmt.Errorf("%s: %w", dir, err)
-				}
-				slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
-			}
+		start = time.Now()
+		if err := generateTarget(name, tpkg, target, p.outDir, fileAssets, p.quiet); err != nil {
+			return err
+		}
+		slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-			var fileAssets []codegen.FileAsset
-			for _, fa := range optCfg.FileAssets {
-				fileAssets = append(fileAssets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
-			}
-
-			start = time.Now()
-			if err := generateTarget(filename, tpkg, target, p.outDir, fileAssets, p.quiet); err != nil {
+		if p.onTarget != nil {
+			if err := p.onTarget(target, tpkg, dir, p.outDir); err != nil {
 				return err
-			}
-			slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
-
-			if p.onTarget != nil {
-				if err := p.onTarget(target, tpkg, dir, p.outDir); err != nil {
-					return err
-				}
 			}
 		}
 	}

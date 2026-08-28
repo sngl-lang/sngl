@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -78,34 +76,7 @@ func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
 	if len(args) > 0 {
 		target = args[0]
 	}
-
-	info, err := os.Stat(target)
-	if err != nil {
-		return nil, "", err
-	}
-
-	start := time.Now()
-	if info.IsDir() {
-		doc, err := parseDir(target)
-		if err != nil {
-			return nil, "", err
-		}
-		slog.Info("parse", "dir", target, "duration", time.Since(start))
-		return doc, target, nil
-	}
-
-	f, err := os.Open(target)
-	if err != nil {
-		return nil, "", err
-	}
-	doc, err := parseSNGL(target, f)
-	f.Close()
-	if err != nil {
-		return nil, "", err
-	}
-	slog.Info("parse", "file", target, "duration", time.Since(start))
-
-	return doc, filepath.Dir(target), nil
+	return parsePathInput(target)
 }
 
 func dumpParseStdin() (*ast.Document, string, error) {

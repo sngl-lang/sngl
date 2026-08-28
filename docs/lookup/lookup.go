@@ -330,13 +330,13 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(publicPackages()...)
+		pd, stmts := stdlibPackageDocs(checker.Packages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
 		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(publicPackages(), ", "))
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(checker.Packages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
@@ -850,26 +850,6 @@ func providedPackageDocs(pkg string) []*ast.Document {
 		return checker.ProvidedDocs(codegen.LookupLang(name))
 	}
 	return nil
-}
-
-// publicPackages is every package `sngl doc` can address: the embedded library
-// tiers, plus the one each registered target provides.
-func publicPackages() []string {
-	out := lib.PublicPackages()
-	for _, p := range codegen.CollectPlatforms() {
-		name := "platforms/" + p.PlatformIdentifier()
-		if len(providedPackageDocs(name)) > 0 {
-			out = append(out, name)
-		}
-	}
-	for _, l := range codegen.Langs() {
-		name := "languages/" + l
-		if len(providedPackageDocs(name)) > 0 {
-			out = append(out, name)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
