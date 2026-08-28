@@ -10,10 +10,9 @@ import (
 // The analysis must hold no pointer into the IR graph it was derived from:
 // `sngl dump --stage analysis` serializes it and that graph has cycles.
 func TestCommonAnalysisHoldsNoIRPackage(t *testing.T) {
-	pkgType := reflect.TypeOf((*ir.Package)(nil))
-	at := reflect.TypeOf(CommonAnalysis{})
-	for i := range at.NumField() {
-		f := at.Field(i)
+	pkgType := reflect.TypeFor[*ir.Package]()
+	at := reflect.TypeFor[CommonAnalysis]()
+	for f := range at.Fields() {
 		if f.Type == pkgType {
 			t.Errorf("CommonAnalysis.%s is a %s; the analysis must not carry the package "+
 				"it was derived from (see NewDepTrackerFromPkg)", f.Name, f.Type)
@@ -24,13 +23,13 @@ func TestCommonAnalysisHoldsNoIRPackage(t *testing.T) {
 // Helpers and Styles are accumulated during emit, so a dump of the analysis
 // carrying them would be a dump of the emitter's scratch space.
 func TestEmissionOwnsWhatCodegenAccumulates(t *testing.T) {
-	at := reflect.TypeOf(CommonAnalysis{})
+	at := reflect.TypeFor[CommonAnalysis]()
 	for _, name := range []string{"Helpers", "Styles"} {
 		if _, ok := at.FieldByName(name); ok {
 			t.Errorf("CommonAnalysis.%s: codegen's accumulators belong on Emission", name)
 		}
 	}
-	et := reflect.TypeOf(Emission{})
+	et := reflect.TypeFor[Emission]()
 	for _, name := range []string{"Helpers", "Styles"} {
 		if _, ok := et.FieldByName(name); !ok {
 			t.Errorf("Emission.%s missing", name)

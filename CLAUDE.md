@@ -319,9 +319,9 @@ fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
 those have no source form — `--format sngl` on it is an error naming the two
 that work.
 
-A positional argument may also be a package: `sngl dump --stage checked
-sngl://platforms/gtk4` reads the library package rather than a path. It arrives
-already checked, because a library package loads under the rules that permit
-its own `sngl://internal/` imports and because a target synthesizes part of it
-with no file on disk. `check` and `generate` take one too; `fmt` does not,
-since it rewrites files and a package has none.
+A positional argument may also be a package rather than a path:
+`sngl dump --stage checked sngl://platforms/gtk4`. It arrives already checked,
+because a library package loads under the rules that permit its own
+`sngl://internal/` imports and because a target synthesizes part of it with no
+file on disk. `check` and `generate` take one too; `fmt` does not, since it
+rewrites files and a package has none.
