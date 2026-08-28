@@ -232,14 +232,16 @@ func PlatformDocs(p PlatformGenerator) []*ast.Document {
 		checker.ProvidedDocs(p)...)
 }
 
-// LangDocs returns the source of l's `sngl://languages/<id>` package, or nil
-// when it declares none. The path is keyed by the language's own identifier,
-// so Go's package is languages/go.
+// LangDocs returns the SNGL declarations l contributes -- the source of its
+// `sngl://languages/<id>` package, both what lib/ embeds and what l serves
+// itself -- or nil when it declares none. The path is keyed by the language's
+// own identifier, so Go's package is languages/go.
 func LangDocs(l LangTranslator) []*ast.Document {
 	if l == nil {
 		return nil
 	}
-	return checker.PackageDocsFor("languages/" + l.LanguageIdentifier())
+	return append(checker.PackageDocsFor("languages/"+l.LanguageIdentifier()),
+		checker.ProvidedDocs(l)...)
 }
 
 // TestRunner is optionally implemented by PlatformGenerators that provide

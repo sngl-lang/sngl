@@ -216,7 +216,7 @@ func optionsForPackage(uri string) []OptionDoc {
 	if sd == nil || sd.AST == nil {
 		return nil
 	}
-	for _, doc := range checker.PackageDocsFor(uri) {
+	for _, doc := range checker.PackageSource(uri) {
 		if doc == nil {
 			continue
 		}
