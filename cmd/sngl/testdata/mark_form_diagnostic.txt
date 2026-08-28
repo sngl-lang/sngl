@@ -1,0 +1,13 @@
+# A mark names a declaration form the language spells, and so does the
+# diagnostic when it lands on the wrong one. The compiler's Go type is not the
+# first thing a reader should meet.
+
+! sngl check app.sngl
+stderr 'cannot mark an import'
+! stderr 'ast\.'
+
+-- app.sngl --
+import . "sngl://internal/marks"
+
+#[builtin("int")]
+import _ "sngl://std"

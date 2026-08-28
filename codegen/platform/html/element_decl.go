@@ -1,7 +1,7 @@
 package html
 
 // Everything html needs to know about a raw element comes from the `element`
-// declaration in lib/platforms/html — which props exist, which are boolean,
+// declaration in codegen/platform/html — which props exist, which are boolean,
 // which prop the matched tag name binds to, and which events carry a payload.
 // This file is where those questions are answered; its callers ask them rather
 // than keeping a list of names beside the declaration to drift away from it.
@@ -11,7 +11,7 @@ import (
 )
 
 // rawElementDecl returns the wildcard component every HTML tag resolves to —
-// `element` in lib/platforms/html. It is found by its mark rather than by its
+// `element` in codegen/platform/html. It is found by its mark rather than by its
 // name: a wildcard component with a prop to bind the matched name into is
 // exactly the declaration that answers to a tag.
 //

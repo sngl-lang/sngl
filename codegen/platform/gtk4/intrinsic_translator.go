@@ -232,7 +232,7 @@ func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
 //
 // Every case is read off the declaration rather than matched against a list of
 // names. A library component is abstract — it renders only through the
-// `platform gtk4 { ... }` body in lib/platforms/gtk4/gtk4.sngl that
+// `platform gtk4 { ... }` body in codegen/platform/gtk4/gtk4.sngl that
 // passPlatformExtensionBody swaps in and passInlinePure then inlines away — so
 // one arriving here still bearing its own name is one this platform never
 // implemented. A component of the user's own with an empty body is the

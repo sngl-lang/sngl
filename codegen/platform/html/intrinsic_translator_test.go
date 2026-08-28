@@ -30,7 +30,7 @@ func renderStmts(jc *javascript.JsIRContext, stmts []ir.Stmt) string {
 }
 
 // newTranslatorForTest builds a translator carrying the REAL `element`
-// declaration from lib/platforms/html. The translator answers which props are
+// declaration from codegen/platform/html. The translator answers which props are
 // boolean and which events exist from that declaration, so a stub here would
 // let the two drift apart silently — the bug these tests now cover.
 func newTranslatorForTest(t *testing.T, jc *javascript.JsIRContext) *htmlTranslator {
@@ -60,7 +60,7 @@ func elementDeclForTest(t *testing.T) *ir.Component {
 	}
 	c := rawElementDecl(pkg)
 	if c == nil {
-		t.Fatal("no wildcard element declaration found in lib/platforms/html")
+		t.Fatal("no wildcard element declaration found in codegen/platform/html")
 	}
 	return c
 }

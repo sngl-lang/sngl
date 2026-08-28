@@ -133,50 +133,6 @@ type InterfaceInfo struct {
 	Signals []Signal
 }
 
-// ConstructorFor returns the constructor that matches the supplied
-// prop set most closely. Preference order:
-//
-//  1. A constructor whose param names match a supplied prop one-for-one.
-//  2. The zero-arg constructor when no props are supplied.
-//  3. The first constructor (Constructor) as the last-resort fallback.
-//
-// supplied is the set of prop names the caller will pass to the
-// constructor (e.g. {"label"} for `button(text=...)`).
-func (c *ClassInfo) ConstructorFor(supplied map[string]bool) ConstructorInfo {
-	if c == nil {
-		return ConstructorInfo{}
-	}
-	ctors := c.Constructors
-	if len(ctors) == 0 {
-		return c.Constructor
-	}
-	// Best match: every param maps to a supplied prop.
-	for _, ctor := range ctors {
-		if len(ctor.Params) == 0 {
-			continue
-		}
-		ok := true
-		for _, p := range ctor.Params {
-			if !supplied[p.Name] {
-				ok = false
-				break
-			}
-		}
-		if ok {
-			return ctor
-		}
-	}
-	// No-arg form when caller has nothing to bind.
-	if len(supplied) == 0 {
-		for _, ctor := range ctors {
-			if len(ctor.Params) == 0 {
-				return ctor
-			}
-		}
-	}
-	return ctors[0]
-}
-
 // TypeRegistry maps GIR class name (e.g. "Button") to ClassInfo.
 type TypeRegistry struct {
 	Classes    map[string]*ClassInfo

@@ -167,7 +167,7 @@ func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
 //     error, since the caller named it.
 //   - empty: the host's Gtk-4.0.gir if the probe finds one, else the bundled
 //     subset -- a host without GTK 4 development files can still check and
-//     document the widgets lib/platforms/gtk4 wraps.
+//     document the widgets codegen/platform/gtk4 wraps.
 func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
 	if opt == girBuiltin {
 		reg, err = gir.Minimal()

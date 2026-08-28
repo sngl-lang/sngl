@@ -13,7 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 )
 
-// The bundled subset must cover every widget lib/platforms/gtk4 names, or a
+// The bundled subset must cover every widget codegen/platform/gtk4 names, or a
 // host without GTK 4 development files cannot check the stdlib overrides.
 // Spelled out rather than derived from the source so adding an override that
 // names a new widget is a failure here, with the fix being to extend the

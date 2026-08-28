@@ -1,0 +1,21 @@
+# A platform primitive belongs to the codegen that emits it. Naming one from a
+# build targeting a different platform has no answer, and inventing one emitted
+# `<Switch onCheckedChange="...">` from a build that reported success.
+
+! sngl generate --lang none --platform html --out out app.sngl
+stderr 'android platform primitive'
+stderr 'targets html'
+
+# Its own platform still builds it.
+sngl generate --lang kotlin --platform android --out out2 app.sngl
+exists out2/MainScreen.kt
+
+-- app.sngl --
+import . "sngl://std"
+import "sngl://platforms/android"
+
+component main {
+    vbox {
+        android.Switch(checked=true, onCheckedChange=func(v bool) {})
+    }
+}

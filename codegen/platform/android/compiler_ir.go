@@ -209,7 +209,7 @@ func listStateInitKt(bind irAndroidBind, initVal string) string {
 // error. An anonymous function is the shape that both takes statements and
 // keeps `return` local, so a body with a local var, an `if`, a `for` or an
 // early return emits as `derivedStateOf(fun(): T { ... })`.
-func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, indent string) string {
+func computedCalcKt(comp irAndroidComputed, kc *kotlin.KtIRContext, indent string) string {
 	// Only a computed the gomobile module actually emits is called through it;
 	// a component's computed is rendered here from Compose state, because that
 	// module has no Model for its body to read component state through.
@@ -503,7 +503,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// the state accessor (c.<name>). Init exprs use classKC (bare sibling
 		// refs, resolved via implicit `this`).
 		for _, comp := range info.computeds {
-			fmt.Fprintf(&body, "    val %s by %s\n", comp.name, computedCalcKt(comp, cfg, classKC, "    "))
+			fmt.Fprintf(&body, "    val %s by %s\n", comp.name, computedCalcKt(comp, classKC, "    "))
 		}
 		// Component-level user funcs become members of the state
 		// class so their bodies resolve reactive vars via implicit
@@ -555,7 +555,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// non-test mode.
 	if !testMode {
 		for _, comp := range info.computeds {
-			fmt.Fprintf(&body, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, cfg, kc, "    "))
+			fmt.Fprintf(&body, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, kc, "    "))
 		}
 	}
 

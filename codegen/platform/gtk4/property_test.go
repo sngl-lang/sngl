@@ -275,9 +275,13 @@ func TestConstructOnlyProp_IsNotDeclared(t *testing.T) {
 	if !strings.Contains(strings.Join(msgs, "\n"), "useHeaderBar") {
 		t.Errorf("diagnostics do not name the prop: %v", msgs)
 	}
-	// A writable, non-construct-only property of the same class still is.
-	if msgs := checkGtk4(t, gtk4Window(`            gtk4.GtkAssistant(pages="x") {}`)); len(msgs) == 0 {
-		t.Log("GtkAssistant.pages accepted")
+	// The control, which has to be a different class: GtkAssistant declares
+	// exactly two properties, `pages` (read-only) and `use-header-bar`
+	// (construct-only), so nothing on it can show that the rejection above is
+	// about being construct-only rather than about being rejected at all.
+	// GtkLabel.label is writable, not construct-only, and carries a setter.
+	if msgs := checkGtk4(t, gtk4Window(`            gtk4.GtkLabel(label="x") {}`)); len(msgs) != 0 {
+		t.Errorf("GtkLabel.label is writable and not construct-only, so it must type-check: %v", msgs)
 	}
 }
 

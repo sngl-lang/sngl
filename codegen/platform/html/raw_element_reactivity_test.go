@@ -32,13 +32,20 @@ component main {
 	out := generateMainPage(t, src)
 
 	// The click handler that mutates volume must also patch the progress
-	// element's value (a <progress> reflects its `value` content attribute
-	// to the rendered bar).
+	// element's value, and must patch it the same way the initial render
+	// does. `value` is a live IDL attribute on <progress>, so the property
+	// write drives the bar; what matters here is that one prop has one
+	// spelling -- writing the property at init and the content attribute in
+	// the handler was two answers to one question.
 	handler := out[strings.Index(out, "state.volume = state.volume + 10"):]
 	if i := strings.Index(handler, "});"); i >= 0 {
 		handler = handler[:i]
 	}
-	if !strings.Contains(handler, `setAttribute("value", String(state.volume))`) {
+	if !strings.Contains(handler, `__n0.value = String(state.volume)`) {
 		t.Errorf("click handler does not update the progress value after mutating volume:\n%s", handler)
+	}
+	// The same spelling at init, which is the half that used to disagree.
+	if !strings.Contains(out, `__n0.value = String(state.volume)`) {
+		t.Errorf("the initial render writes the progress value differently from the handler:\n%s", out)
 	}
 }

@@ -50,7 +50,7 @@ func markBuiltin(m *mark) error {
 	case *ir.UnitDef:
 		d.Builtin = kind
 	default:
-		return fmt.Errorf("#[builtin(%q)] cannot mark %T", raw, m.decl)
+		return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 	}
 	m.c.bindBuiltinRole(kind, m.sym.(ir.Symbol))
 	return nil
@@ -108,7 +108,7 @@ func markIntrinsic(m *mark) error {
 	}
 	fn, ok := m.sym.(*ir.Func)
 	if !ok {
-		return fmt.Errorf("#[intrinsic(%q)] cannot mark %T", id, m.decl)
+		return fmt.Errorf("#[intrinsic(%q)] cannot mark %s", id, ast.DeclFormName(m.decl))
 	}
 	if fn.Intrinsic != "" {
 		return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, fn.Intrinsic)
@@ -159,7 +159,7 @@ func markForeign(m *mark) error {
 		return err
 	}
 	if _, isFunc := m.sym.(*ir.Func); len(flags) > 0 && !isFunc {
-		return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %T has none", name, flags[0], m.decl)
+		return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %s has none", name, flags[0], ast.DeclFormName(m.decl))
 	}
 	if n := markedNames(m.decl); n > 1 {
 		return fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
@@ -191,7 +191,7 @@ func markForeign(m *mark) error {
 			d.Purity = ir.PurityPure
 		}
 	default:
-		return fmt.Errorf("#[foreign(%q)] cannot mark %T", name, m.decl)
+		return fmt.Errorf("#[foreign(%q)] cannot mark %s", name, ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -241,7 +241,7 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 func markOptions(m *mark) error {
 	sd, ok := m.sym.(*ir.StructDef)
 	if !ok {
-		return fmt.Errorf("#[options] cannot mark %T; only a struct declares an options schema", m.decl)
+		return fmt.Errorf("#[options] cannot mark %s; only a struct declares an options schema", ast.DeclFormName(m.decl))
 	}
 	if sd.Options {
 		return fmt.Errorf("#[options]: already marked as an options schema")
@@ -281,7 +281,7 @@ func applyTreeMark(m *mark, name, kind string, set func(*ir.Component, string) e
 	}
 	comp, ok := m.sym.(*ir.Component)
 	if !ok {
-		return fmt.Errorf("#[tree.%s(%q)] cannot mark %T; only a component is a node in a tree", name, kind, m.decl)
+		return fmt.Errorf("#[tree.%s(%q)] cannot mark %s; only a component is a node in a tree", name, kind, ast.DeclFormName(m.decl))
 	}
 	if err := set(comp, kind); err != nil {
 		return fmt.Errorf("#[tree.%s(%q)]: %w", name, kind, err)
@@ -363,7 +363,7 @@ func markWildcard(m *mark) error {
 		// without being collected anywhere.
 		d.Wildcard = pat
 	default:
-		return fmt.Errorf("#[wildcard(%q)] cannot mark %T; only a component, one of its props or one of its events stands for names nobody declared", pat, m.decl)
+		return fmt.Errorf("#[wildcard(%q)] cannot mark %s; only a component, one of its props or one of its events stands for names nobody declared", pat, ast.DeclFormName(m.decl))
 	}
 	return nil
 }

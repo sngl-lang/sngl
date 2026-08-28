@@ -386,7 +386,7 @@ func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
 func (b *builder) attach(attrs []ast.MacroAttr, inner ast.Stmt) ast.Stmt {
 	target, ok := inner.(ast.Attributed)
 	if !ok {
-		b.errorf(attrs[0].Pos, "#[%s] cannot mark %T", attrs[0].MacroName(), inner)
+		b.errorf(attrs[0].Pos, "#[%s] cannot mark %s", attrs[0].MacroName(), ast.DeclFormName(inner))
 		return inner
 	}
 	target.SetMacroAttrs(attrs[0].Pos, attrs)

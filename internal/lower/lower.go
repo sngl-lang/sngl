@@ -84,6 +84,7 @@ type pass struct {
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
+	passForeignPrimitive,
 	passPlatformExtensionBody,
 	passPlatformFilter,
 	passPropBindings,
@@ -128,6 +129,13 @@ type Options struct {
 	// platform-agnostic tools (LSP, format) that should leave abstract
 	// stdlib components abstract.
 	Platform string
+
+	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
+	// component id from another platform's namespace. A platform primitive is
+	// the emitting codegen's dispatch key, so one platform's is meaningless to
+	// another -- but a platform may choose to implement someone else's, and
+	// this is how it says so. Nil means it claims none.
+	ClaimsIntrinsic func(id string) bool
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,

@@ -135,7 +135,7 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		}
 	}
 	// Every stdlib component either has an android override in
-	// lib/platforms/android or a body in renderStdlibComposable, so reaching
+	// codegen/platform/android or a body in renderStdlibComposable, so reaching
 	// here means the compiler lost track of a node — a compiler bug, not a
 	// program error. A panic reports it as one (and gives a fuzzer something
 	// to find); a rendered marker would ship the bug into the app instead.
@@ -202,7 +202,7 @@ func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 }
 
 // renderStdlibComposable emits the components whose android body is still
-// written here rather than declared in lib/platforms/android. It reports
+// written here rather than declared in codegen/platform/android. It reports
 // whether it recognised n; an unrecognised one is a missing override, which
 // renderNode panics on.
 func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {

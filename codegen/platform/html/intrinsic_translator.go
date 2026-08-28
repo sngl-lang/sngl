@@ -243,18 +243,11 @@ func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, 
 		return mkAssign(field), true
 	}
 	switch componentName {
-	case "progress":
-		if prop == "value" {
-			return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: node,
-				Func:     &ir.Func{Name: "setAttribute"},
-				Args: []ir.CallArg{
-					{Value: &ir.Literal{Type: ir.TypString, Raw: "value"}},
-					{Value: value},
-				},
-			}}}, true
-		}
+	// No `progress` case: it wrote `value` through setAttribute while the
+	// init path, reading the same prop off the element declaration, wrote the
+	// property -- one reactive value, two spellings. The declaration decides
+	// for both now. What stays here is structural, where a prop has to be
+	// written rather than what it is called.
 	case "checkbox", "toggle":
 		if prop == "checked" {
 			// The __n* id is on the wrapping <label>; descend to the

@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// minimalGIR is introspection data for the widgets lib/platforms/gtk4 wraps,
+// minimalGIR is introspection data for the widgets codegen/platform/gtk4 wraps,
 // and nothing else. It is here so the platform has a widget vocabulary without
 // GTK 4 development files on the host: the declarations type-check, `sngl doc`
 // renders them, the LSP resolves them, and a test asserting what a setter is
