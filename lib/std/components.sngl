@@ -138,7 +138,7 @@ component checkbox(
 // value on user selection.
 component radio(
     style Style,
-    value string,
+    :value string,
     options list<string>,
     disabled bool,
     direction string,

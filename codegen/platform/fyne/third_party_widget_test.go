@@ -25,7 +25,7 @@ import "sngl://platforms/fyne"
 
 var reading int = 42
 
-component Gauge(level int, @change ChangeEvent) {
+component Gauge(:level int, @change ChangeEvent) {
     fyne.Widget(
         spec=fyne.Spec{
             new="fynegauge.NewGauge",
@@ -42,7 +42,7 @@ component Gauge(level int, @change ChangeEvent) {
 
 component main {
     vbox {
-        Gauge(level=reading, @change { reading = reading + 1 })
+        Gauge(:level=reading)
     }
 }
 `
@@ -74,13 +74,15 @@ func TestThirdPartyWidgetIsWrappedInSNGLAlone(t *testing.T) {
 		{"callback field", ".OnValueChanged = m."},
 		// The callback's Go signature, which is the widget's and not the
 		// SNGL event's — the handler is promoted with the params the Spec
-		// named. (The Spec's `param`, which names the value *inside* that
-		// signature, is exercised by the stdlib two-way bind in
-		// promoted_handler_test.go; nothing binds this widget. Asserting it
-		// here matched the generated SetReading accessor instead.)
+		// named.
 		{"callback signature", "func (m *Model) __n0_change_handler(v int)"},
-		// The handler runs what the call site wrote.
-		{"handler body", "m.reading = (m.reading + 1)"},
+		// The Spec's `param`, naming the value inside that signature: a
+		// `:level` binding writes back from the callback's own parameter, so
+		// a widget the compiler has never heard of takes part in two-way
+		// binding on the strength of its declaration alone. Matched with its
+		// following line so it cannot be satisfied by the generated
+		// SetReading accessor, whose body is the same assignment.
+		{"two-way write-back", "\tm.reading = v\n\tm.__n0.SetValue(m.reading)"},
 	} {
 		if !strings.Contains(out, tc.want) {
 			t.Errorf("%s: missing %q\n--- generated ---\n%s", tc.what, tc.want, out)
