@@ -3,12 +3,11 @@
 # the lambda. Everything the callback does is written there: which SNGL events
 # it forwards, and what it hands them.
 #
-# Stopped on #124: the last assertion below fails. A func-typed prop that
-# returns a value is emitted as an immediately-invoked lambda with an untyped
-# parameter, which does not compile -- so this archive documents the bug and is
-# not run. Everything above that assertion passes today; delete the stop when
-# #124 is fixed and the whole file should be green.
-stop 'see #124: a value-returning func prop emits Kotlin that does not compile'
+# The last assertion is stopped on #124 -- a func-typed prop that returns a
+# value is emitted as an immediately-invoked lambda with an untyped parameter,
+# which does not compile. The stop sits directly above it so everything before
+# it still runs; delete the stop when #124 is fixed and the file should be
+# green.
 
 sngl generate --platform=android --lang=kotlin --out=out app.sngl
 
@@ -59,6 +58,7 @@ grep 'label = "hi!"' out/MainScreen.kt
 # -- so the emitter has it and does not write it. Either spelling below is a
 # correct fix: type the parameter, or fold the call, since both operands are
 # constant here.
+stop 'see #124: a value-returning func prop emits Kotlin that does not compile'
 ! grep 'Text\(text = \{ s -> \(s \+ "!"\) \}\("hi"\)' out/MainScreen.kt
 
 -- app.sngl --

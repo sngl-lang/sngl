@@ -164,6 +164,26 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			return setAttr(prop, &ir.Literal{Type: ir.TypString, Raw: css})
 		}
 	}
+	// A wildcard prop is a map of the names it collected, not a name of its
+	// own: writing it as one produces an attribute literally called "attrs"
+	// whose value stringifies to "[object Map]", and loses every name in it.
+	// The two markup paths (nodeProps, elementAttrs) already unpack it; this is
+	// the third, and the one a node inside a `for` or a reactive slot takes.
+	if wc := wildcardPropNamed(t.rawElem, prop); wc {
+		m, ok := value.(*ir.MapLitIR)
+		if !ok {
+			return nil
+		}
+		var out []ir.Stmt
+		for _, e := range m.Entries {
+			k, ok := e.Key.(*ir.Literal)
+			if !ok {
+				continue
+			}
+			out = append(out, t.OnPropAssign(ctx, node, k.Raw, e.Value)...)
+		}
+		return out
+	}
 	if field, ok := domPropForProp(t.rawElem, prop); ok {
 		// node.<field> = value
 		return []ir.Stmt{&ir.Assign{

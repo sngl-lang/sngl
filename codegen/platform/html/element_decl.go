@@ -223,3 +223,18 @@ func eventPayloadFields(comp *ir.Component, event string) []string {
 	}
 	return nil
 }
+
+// wildcardPropNamed reports whether prop is the declaration's wildcard prop --
+// the map every name it matched was collected into. Such a prop names no
+// attribute of its own, so a caller writing one has to unpack it first.
+func wildcardPropNamed(decl *ir.Component, prop string) bool {
+	if decl == nil || prop == "" {
+		return false
+	}
+	for _, p := range decl.Props {
+		if p.Name == prop && p.Wildcard != "" {
+			return true
+		}
+	}
+	return false
+}

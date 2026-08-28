@@ -47,12 +47,13 @@ struct Options {
 // else is one, which is what the wildcard prop says. A tag-specific numeric
 // attribute missing from this list is accepted as a string rather than
 // rejected.
-// Lowercase, for the same reason the attribute wildcard below is: an HTML tag
-// name is lowercase, so a camelCase identifier is a misspelling rather than a
-// tag nobody has standardised yet. Without that a typo inside a
-// `platform html { ... }` body, where a bare name reaches this wildcard, is a
-// silently-emitted element.
-#[wildcard("[a-z][a-z0-9]*", "tag")]
+// Lowercase-initial, so a typo inside a `platform html { ... }` body -- where a
+// bare name reaches this wildcard -- is reported rather than emitted as an
+// element nobody has heard of. Capitals after the first character are allowed
+// because SVG's vocabulary is camelCase inside foreign content:
+// `linearGradient`, `clipPath`, `feGaussianBlur`, `foreignObject`. Requiring
+// all-lowercase rejects every one of them.
+#[wildcard("[a-z][a-zA-Z0-9]*", "tag")]
 component element(
     // The name this resolved from — `html.div` binds "div" — and the tag to
     // emit. Writing it is how a hyphenated custom element is reached, an
@@ -83,14 +84,16 @@ component element(
     value string,
     max string,
 
-    // Every other attribute, keyed by the name it was written under. `data-*`
-    // and `aria-*` reach an element this way, as does an attribute a standard
-    // adds after this file was written.
+    // Every other attribute, keyed by the name it was written under -- an
+    // attribute a standard adds after this file was written, and SVG's, which
+    // are camelCase: `viewBox`, `preserveAspectRatio`, `patternUnits`.
     //
-    // Lowercase, because HTML attribute names are: a camelCase name is a DOM
-    // property rather than an attribute, and the ones an element takes are
-    // declared above. That is what makes a misspelling here reportable at all.
-    #[wildcard("[a-z][a-z0-9]*([-:.][a-z0-9]+)*")]
+    // A hyphenated name (`data-*`, `aria-*`) does not reach the pattern at all:
+    // it is not an identifier, so it can only be written as a key of this map,
+    // and a key is taken as given. The pattern governs the names written as
+    // props, and requires a lowercase first character so a misspelling there is
+    // still reportable.
+    #[wildcard("[a-z][a-zA-Z0-9]*")]
     attrs map<string, string>,
 
     @click sngl.ClickEvent,

@@ -3,11 +3,16 @@
 # platform's Resolve() minted a nameless component with no props and the
 # checker skipped validation entirely: every prop name and every value passed.
 
-# An attribute nobody declared and no wildcard covers is an error. The tail
-# covers lowercase attribute names, so a camelCase one — a DOM property, not an
-# attribute — misses it unless `element` declares it.
+# An attribute nobody declared and no wildcard covers is an error. The wildcard
+# requires a lowercase first character, so a capitalised name misses it unless
+# `element` declares it.
+#
+# A camelCase name does match, because SVG attributes are camelCase (viewBox,
+# preserveAspectRatio) -- so a misspelling of a DOM property, `innerTxt` for
+# `innerText`, is accepted as an attribute rather than reported. That is the
+# cost of reaching SVG through the same wildcard.
 ! sngl check badname.sngl
-stderr 'unknown prop "innerTxt" on component element'
+stderr 'unknown prop "InnerText" on component element'
 
 # A declared attribute's type is checked. `style` is a struct, not a string.
 ! sngl check badtype.sngl
@@ -27,7 +32,7 @@ import . "sngl://std"
 
 component main {
     window {
-        html.div(innerTxt = "x")
+        html.div(InnerText = "x")
     }
 }
 -- badtype.sngl --

@@ -9,11 +9,15 @@ sngl dump --stage checked --lang none --platform html spread.sngl
 stdout 'td\(attrs=\{"bgcolor" = '
 ! stdout 'td\(bgcolor='
 
-# 2. An HTML tag name is lowercase, so a camelCase identifier inside a
+# 2. A tag name starts lowercase, so a capitalised identifier inside a
 # `platform html { ... }` body — where a bare name reaches the element
 # wildcard — is a misspelling rather than a tag nobody has standardised yet.
+#
+# Only the first character: SVG's vocabulary is camelCase inside foreign
+# content (linearGradient, clipPath, feGaussianBlur), so a rule that rejected
+# every capital would reject every one of those.
 ! sngl dump --stage checked --lang none --platform html typo.sngl
-stderr 'unknown component "thisIsATypoNotATag"'
+stderr 'unknown component "ThisIsATypoNotATag"'
 
 # 3. A dot import lifts a package's declarations. A wildcard component's
 # declaration is its own name; the open set of names it also answers to
@@ -54,7 +58,7 @@ import . "sngl://std"
 component main() {
     window {
         platform html {
-            thisIsATypoNotATag(id = "x") { }
+            ThisIsATypoNotATag(id = "x") { }
         }
     }
 }
