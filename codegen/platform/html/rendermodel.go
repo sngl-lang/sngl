@@ -199,13 +199,17 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			}
 			continue
 		}
-		if s, ok := codegen.IRLiteralString(p.Value); ok {
-			rb.writeRaw(" " + p.Name + `="` + s + `"`)
+		// Any literal, not only a string one: `element` declares `rows`,
+		// `width` and `height` as ints, and an int literal accepted by the
+		// static render was rejected here -- the two paths disagreeing about
+		// the very shape this was meant to keep in step.
+		if v := codegen.IRLiteralAny(p.Value); v != nil {
+			rb.writeRaw(" " + p.Name + `="` + fmt.Sprint(v) + `"`)
 			continue
 		}
-		// Neither reactive, nor a bool, nor a string literal: there is nothing
-		// to write and no hole to write it into. Dropping it silently is how a
-		// bound `value` left an <input> with no value at all.
+		// Not reactive and not a literal: there is nothing to write and no hole
+		// to write it into. Dropping it silently is how a bound `value` left an
+		// <input> with no value at all.
 		rb.fail("prop %q cannot be rendered server-side: its value is neither a literal nor a state-dependent expression", p.Name)
 		return
 	}

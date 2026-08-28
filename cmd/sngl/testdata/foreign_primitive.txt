@@ -3,7 +3,8 @@
 # `<Switch onCheckedChange="...">` from a build that reported success.
 
 ! sngl generate --lang none --platform html --out out app.sngl
-stderr 'android platform primitive'
+stderr 'platform primitive'
+stderr 'android'
 stderr 'targets html'
 
 # Its own platform still builds it.

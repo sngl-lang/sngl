@@ -183,6 +183,34 @@ type OptionConfigurable interface {
 	Configure(opts map[string]string) error
 }
 
+// ForeignIntrinsics is optionally implemented by a PlatformGenerator that
+// renders an #[intrinsic] component from another platform's namespace.
+//
+// A platform primitive's id is the emitting codegen's dispatch key, so one
+// platform's means nothing to another and naming it from a build targeting
+// something else is an error (lower's ForeignPrimitive pass). A platform that
+// does implement someone else's says so here rather than having it assumed --
+// which is the difference between a rule and a wall.
+//
+// No platform implements this today. It is the seam for one that wants to: a
+// platform embedding another's widget set, or a host that renders a subset of
+// android's Compose primitives.
+type ForeignIntrinsics interface {
+	// ClaimsIntrinsic reports whether this platform emits the component
+	// carrying this #[intrinsic] id, e.g. "android:Column".
+	ClaimsIntrinsic(id string) bool
+}
+
+// ClaimsIntrinsicFunc returns p's foreign-intrinsic predicate, or nil when it
+// claims none. Shaped for lower.Options.ClaimsIntrinsic, which cannot name this
+// interface: lower is below codegen.
+func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
+	if fi, ok := p.(ForeignIntrinsics); ok {
+		return fi.ClaimsIntrinsic
+	}
+	return nil
+}
+
 // PlatformAvailability is optionally implemented by PlatformGenerators whose
 // component vocabulary depends on files outside this repository — today only
 // gtk4, which reads widget metadata from the GTK 4 GIR file installed with the

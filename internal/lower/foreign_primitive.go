@@ -46,7 +46,7 @@ var passForeignPrimitive = pass{
 			if opts.ClaimsIntrinsic != nil && opts.ClaimsIntrinsic(n.Component.Intrinsic) {
 				return nil
 			}
-			bad = fmt.Errorf("component %q is a %s platform primitive (#[intrinsic(%q)]) and this build targets %s, which declares no implementation of it",
+			bad = fmt.Errorf("component %q is %s's platform primitive (#[intrinsic(%q)]) and this build targets %s, which declares no implementation of it",
 				n.Component.Name, ns, n.Component.Intrinsic, opts.Platform)
 			return nil
 		})

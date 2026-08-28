@@ -148,7 +148,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
 				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -186,7 +186,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
 				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -255,7 +255,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "stopAfter", stopAfter, "duration", time.Since(start))
@@ -316,7 +316,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 
 	caps := plat.Capabilities(lang).ToLowerCaps()
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))

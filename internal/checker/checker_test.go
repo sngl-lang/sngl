@@ -1259,8 +1259,11 @@ func TestCheckTestdata(t *testing.T) {
 					if d.Severity != ir.Error {
 						continue
 					}
-					// Match by line number and substring.
-					if d.Pos.Line == exp.Line && strings.Contains(d.Msg, exp.Substring) {
+					// exp.Pos(), not exp.Line: a directive may name the
+					// position it expects when a comment cannot be written
+					// there. Reading the comment's own line ignored that and
+					// passed a fixture naming a line the file does not have.
+					if d.Pos.Line == exp.Pos() && strings.Contains(d.Msg, exp.Substring) {
 						found = true
 						break
 					}
@@ -1271,7 +1274,7 @@ func TestCheckTestdata(t *testing.T) {
 						fmt.Fprintf(&got, "\n  %s", d.Error())
 					}
 					t.Errorf("line %d: expected error containing %q, got:%s",
-						exp.Line, exp.Substring, got.String())
+						exp.Pos(), exp.Substring, got.String())
 				}
 			}
 			// Match each ERROR(lint) directive against warning-severity diagnostics.
