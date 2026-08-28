@@ -36,10 +36,9 @@ func specsAt(pairs map[string]*fyneSpec) map[string]*fyneSpec { return pairs }
 
 func labelSpec() *fyneSpec {
 	return &fyneSpec{
-		New:      "widget.NewLabel",
+		New:      fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "NewLabel"},
 		Args:     []fyneArg{{Raw: `""`}},
-		GoType:   "*widget.Label",
-		Imports:  []string{"fyne.io/fyne/v2/widget"},
+		GoType:   fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "*Label"},
 		Setters:  map[string]string{"text": "SetText"},
 		Handlers: map[string]fyneHandler{},
 	}
@@ -47,9 +46,8 @@ func labelSpec() *fyneSpec {
 
 func entrySpec() *fyneSpec {
 	return &fyneSpec{
-		New:     "widget.NewEntry",
-		GoType:  "*widget.Entry",
-		Imports: []string{"fyne.io/fyne/v2/widget"},
+		New:     fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "NewEntry"},
+		GoType:  fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "*Entry"},
 		Setters: map[string]string{"text": "SetText"},
 		Handlers: map[string]fyneHandler{
 			"input": {Field: "OnChanged", Signature: "func(s string)", Param: "s"},

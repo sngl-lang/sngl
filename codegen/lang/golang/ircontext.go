@@ -121,6 +121,43 @@ func (gc *GoIRContext) RequireImportAs(path, alias string) {
 	gc.imports.aliases[path] = alias
 }
 
+// AliasFor registers path and returns the alias its symbols must be qualified
+// with, assigning one on first call and returning the same one after.
+//
+// This is the answer to "what do I call this package": the caller supplies an
+// import path and a bare identifier, which is all it can know, and the alias
+// is this context's to choose. A caller that spells the selector itself is
+// guessing at a Go package name that lives in the module's source -- not in
+// its path -- and cannot know what another import already claimed.
+//
+// Assignment is the conventional name for the path, suffixed if something
+// already holds it, and happens in registration order. Registration order is
+// the walk order, so the result is stable across runs of one build; nothing
+// here depends on map iteration.
+func (gc *GoIRContext) AliasFor(path string) string {
+	if path == "" || path == "C" || gc.imports == nil {
+		return ""
+	}
+	gc.RequireImport(path)
+	if a := gc.imports.aliases[path]; a != "" {
+		return a
+	}
+	if gc.imports.aliases == nil {
+		gc.imports.aliases = map[string]string{}
+	}
+	taken := make(map[string]bool, len(gc.imports.aliases))
+	for _, a := range gc.imports.aliases {
+		taken[a] = true
+	}
+	base := goAliasFor(path)
+	alias := base
+	for i := 2; taken[alias]; i++ {
+		alias = fmt.Sprintf("%s%d", base, i)
+	}
+	gc.imports.aliases[path] = alias
+	return alias
+}
+
 // ForcedAlias returns the explicit alias registered for path via
 // RequireImportAs, or "" if none.
 func (gc *GoIRContext) ForcedAlias(path string) string {

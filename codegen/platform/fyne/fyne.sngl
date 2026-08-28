@@ -100,11 +100,23 @@ struct Handler {
 // one of them applies: `add` is the method a Container calls per child
 // (default `Add`), `content` the field a Wrapper assigns its single child to
 // (default `Content`).
+// A Go declaration this platform emits a reference to: the import path it
+// lives in, and its identifier there.
+//
+// That is the whole of what a Spec can know. What the package is *called* in
+// the emitted file is the Go backend's to decide -- a module's package name is
+// in its source rather than in its path, and another import may already hold
+// the obvious name -- so a Spec that spelled a selector would be guessing at
+// both. `name` may carry the pointer and slice syntax a type needs.
+struct Native {
+    path string
+    name string
+}
+
 struct Spec {
-    new string
+    new Native
     args list<Arg>
-    goType string
-    imports list<string>
+    goType Native
     add string
     content string
     setters list<Setter>
@@ -170,10 +182,9 @@ component Wrapper(
 component Label(text string, style sngl.Style) {
     Widget(
         spec=Spec{
-            new="widget.NewLabel",
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
             args=[Arg{raw=`""`}],
-            goType="*widget.Label",
-            imports=["fyne.io/fyne/v2/widget"],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Label"},
             setters=[Setter{prop="text", call="SetText"}],
         },
         text=text,
@@ -184,10 +195,9 @@ component Label(text string, style sngl.Style) {
 component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
     Widget(
         spec=Spec{
-            new="widget.NewButton",
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
             args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType="*widget.Button",
-            imports=["fyne.io/fyne/v2/widget"],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Button"},
             setters=[Setter{prop="text", call="SetText"}],
             handlers=[Handler{on="click", field="OnTapped", signature="func()"}],
         },
@@ -200,9 +210,8 @@ component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
 component Entry(text string, placeholder string, style sngl.Style, @input sngl.InputEvent) {
     Widget(
         spec=Spec{
-            new="widget.NewEntry",
-            goType="*widget.Entry",
-            imports=["fyne.io/fyne/v2/widget"],
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
             setters=[
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -219,9 +228,8 @@ component Entry(text string, placeholder string, style sngl.Style, @input sngl.I
 component MultiLineEntry(text string, placeholder string, rows int, style sngl.Style, @input sngl.InputEvent) {
     Widget(
         spec=Spec{
-            new="widget.NewMultiLineEntry",
-            goType="*widget.Entry",
-            imports=["fyne.io/fyne/v2/widget"],
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
             setters=[
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -240,10 +248,9 @@ component MultiLineEntry(text string, placeholder string, rows int, style sngl.S
 component Check(text string, checked bool, style sngl.Style, @change sngl.ChangeEvent) {
     Widget(
         spec=Spec{
-            new="widget.NewCheck",
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
             args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType="*widget.Check",
-            imports=["fyne.io/fyne/v2/widget"],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Check"},
             setters=[
                 Setter{prop="text", call="SetText"},
                 Setter{prop="flag", call="SetChecked"},
@@ -263,10 +270,9 @@ component Check(text string, checked bool, style sngl.Style, @change sngl.Change
 component Select(selected string, options list<string>, style sngl.Style, @change sngl.ChangeEvent) {
     Widget(
         spec=Spec{
-            new="widget.NewSelect",
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
             args=[Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
-            goType="*widget.Select",
-            imports=["fyne.io/fyne/v2/widget"],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Select"},
             setters=[Setter{prop="text", call="SetSelected"}],
             handlers=[Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
         },
@@ -283,10 +289,9 @@ component Select(selected string, options list<string>, style sngl.Style, @chang
 component Hyperlink(style sngl.Style) {
     Widget(
         spec=Spec{
-            new="widget.NewHyperlink",
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
             args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType="*widget.Hyperlink",
-            imports=["fyne.io/fyne/v2/widget"],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
         },
         style={...style},
     ) {}
@@ -297,10 +302,9 @@ component Hyperlink(style sngl.Style) {
 component Image(style sngl.Style) {
     Widget(
         spec=Spec{
-            new="canvas.NewImageFromURI",
+            new=Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
             args=[Arg{raw="nil"}],
-            goType="*canvas.Image",
-            imports=["fyne.io/fyne/v2/canvas"],
+            goType=Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
         style={...style},
     ) {}
@@ -309,9 +313,8 @@ component Image(style sngl.Style) {
 component Spacer(style sngl.Style) {
     Widget(
         spec=Spec{
-            new="layout.NewSpacer",
-            goType="fyne.CanvasObject",
-            imports=["fyne.io/fyne/v2/layout", "fyne.io/fyne/v2"],
+            new=Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
+            goType=Native{path="fyne.io/fyne/v2", name="CanvasObject"},
         },
         style={...style},
     ) {}
@@ -320,9 +323,8 @@ component Spacer(style sngl.Style) {
 component VBox(style sngl.Style) list<component> {
     Container(
         spec=Spec{
-            new="container.NewVBox",
-            goType="*fyne.Container",
-            imports=["fyne.io/fyne/v2/container", "fyne.io/fyne/v2"],
+            new=Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
+            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
             add="Add",
         },
         style={...style},
@@ -334,9 +336,8 @@ component VBox(style sngl.Style) list<component> {
 component HBox(style sngl.Style) list<component> {
     Container(
         spec=Spec{
-            new="container.NewHBox",
-            goType="*fyne.Container",
-            imports=["fyne.io/fyne/v2/container", "fyne.io/fyne/v2"],
+            new=Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
+            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
             add="Add",
         },
         style={...style},
@@ -348,10 +349,9 @@ component HBox(style sngl.Style) list<component> {
 component VScroll(style sngl.Style) component {
     Wrapper(
         spec=Spec{
-            new="container.NewVScroll",
+            new=Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
             args=[Arg{raw="nil"}],
-            goType="*container.Scroll",
-            imports=["fyne.io/fyne/v2/container"],
+            goType=Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
             content="Content",
         },
         style={...style},

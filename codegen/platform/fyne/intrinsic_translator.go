@@ -110,31 +110,21 @@ func fyneImportPath(sel string) string {
 	return ""
 }
 
-// importPathFor resolves a Go package selector to an import path: the one the
-// Spec bound to that selector, else a fyne framework package.
-//
-// The Spec's binding is the author's own spelling (see fyneSpec.PkgPaths), not
-// a guess from the path. Matching a path's last segment was the guess, and it
-// is wrong for every module whose package name is not its final path
-// component -- `github.com/x/charts/v2` most of all, whose last segment is
-// `v2`.
-func importPathFor(sel string, pkgPaths map[string]string) string {
-	if p, ok := pkgPaths[sel]; ok {
-		return p
-	}
-	return fyneImportPath(sel)
-}
-
 // nativeCall builds a Call that gc.EvalExpr renders verbatim. A dotted name
 // (e.g. "widget.NewLabel") is emitted qualified, through the import path its
 // selector stands for. A bare name (e.g. "append") is emitted as written.
-func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
-	return nativeCallIn(nativeName, nil, args, retType)
+// nativeCallAt is nativeCall for a name whose import path is already known --
+// a Spec's, which travels with the Native rather than being recovered from the
+// selector. The name arrives qualified with the alias the context assigned.
+func nativeCallAt(qualifiedName, path string, args []ir.Expr, retType *ir.Type) *ir.Call {
+	c := nativeCall(qualifiedName, args, retType)
+	if path != "" {
+		c.Func = &ir.Func{Foreign: ir.Foreign{Path: path, Name: qualifiedName}}
+	}
+	return c
 }
 
-// nativeCallIn is nativeCall with the Spec's selector-to-import-path bindings
-// a dotted name may resolve through.
-func nativeCallIn(nativeName string, pkgPaths map[string]string, args []ir.Expr, retType *ir.Type) *ir.Call {
+func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		callArgs[i] = ir.CallArg{Value: a}
@@ -146,7 +136,7 @@ func nativeCallIn(nativeName string, pkgPaths map[string]string, args []ir.Expr,
 		// (e.g. "widget" in "widget.NewLabel"). Resolve the known fyne
 		// selectors; std/other selectors pass through unchanged.
 		nativePkg := pkg
-		if full := importPathFor(pkg, pkgPaths); full != "" {
+		if full := fyneImportPath(pkg); full != "" {
 			nativePkg = full
 		}
 		return &ir.Call{
@@ -188,31 +178,14 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return nil
 	}
 	t.topLevel = append(t.topLevel, id)
-	if !t.isLocalRef(id) {
-		t.fieldSink(id, sp.GoType)
-	}
 	// The Go type reaches the output as a Model field's type string rather
-	// than as an evaluated call, so gc never sees its package. The Spec's
-	// declared imports cover both spellings.
-	if t.importSink != nil {
-		for _, imp := range sp.Imports {
-			t.importSink(imp)
-		}
+	// than as an evaluated call, so gc never sees it as an expression --
+	// qualifying it here is what registers its import and fixes its alias.
+	goType := sp.GoType.qualify(t.gc)
+	if !t.isLocalRef(id) {
+		t.fieldSink(id, goType)
 	}
-	// Force each widget package to the selector the Spec's Go spellings use.
-	// Both spellings are emitted verbatim -- the constructor as a call, the Go
-	// type as a field-type string -- so the import block has to agree with
-	// them rather than derive its own alias. Left to the default, a path whose
-	// conventional name differs from the selector (or collides with another
-	// import, which is what the numeric suffix is for) renders an alias no
-	// call site mentions.
-	if t.gc != nil {
-		for sel, path := range sp.PkgPaths {
-			t.gc.RequireImportAs(path, sel)
-		}
-	}
-
-	ctor := nativeCallIn(sp.New, sp.PkgPaths, sp.ctorArgs(), ir.TypDyn)
+	ctor := nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(), ir.TypDyn)
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own

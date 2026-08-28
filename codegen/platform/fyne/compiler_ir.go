@@ -464,7 +464,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		imports = append(imports, p)
 	}
 	imports = append(imports, gc.Imports()...)
-	return b.String(), imports, specAliases(nodeSpecs), td.CgoPreamble, nil
+	return b.String(), imports, assignedAliases(gc), td.CgoPreamble, nil
 }
 
 func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
@@ -1070,11 +1070,18 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		binding = sp.Handlers[fn.LoweredFromEvent]
 	}
 
-	var params []*ir.Param
+	// One parse, shared with the Spec decode that validated it -- two
+	// readings of one signature is how a parameter got dropped from a
+	// signature the decoder had just accepted.
+	params := fn.Params
 	if binding.Signature != "" {
-		params = parseSignatureParams(binding.Signature)
-	} else {
-		params = fn.Params
+		parsed, err := signatureParams("", fn.LoweredFromEvent, binding.Signature)
+		if err != nil {
+			// specFromProps rejected this already; reaching here means the two
+			// disagree, which is a bug in this package rather than in the Spec.
+			panic("fyne: " + err.Error())
+		}
+		params = parsed
 	}
 
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -1116,33 +1123,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
-}
-
-// parseSignatureParams converts a binding signature like "func(s string)"
-// into IR params. Each comma-separated token is split on the first space
-// into "name" / "type"; the type is preserved as a TypeDyn with Meta set
-// so IRTypeToGo round-trips it as a raw Go type. Returns nil for an
-// empty parameter list.
-func parseSignatureParams(sig string) []*ir.Param {
-	sig = strings.TrimPrefix(sig, "func")
-	sig = strings.TrimPrefix(strings.TrimSuffix(sig, ")"), "(")
-	if strings.TrimSpace(sig) == "" {
-		return nil
-	}
-	parts := strings.Split(sig, ",")
-	out := make([]*ir.Param, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		tokens := strings.SplitN(p, " ", 2)
-		if len(tokens) != 2 {
-			continue
-		}
-		out = append(out, &ir.Param{
-			Name: strings.TrimSpace(tokens[0]),
-			Type: &ir.Type{Kind: ir.TypeDyn, Meta: strings.TrimSpace(tokens[1])},
-		})
-	}
-	return out
 }
 
 // emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
@@ -1212,25 +1192,16 @@ func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, window
 	}
 }
 
-// specAliases is the selector every widget package must be imported under,
-// unioned across the build's Specs. Two Specs binding one selector to
-// different paths cannot both be honoured -- call sites qualify with the
-// literal selector -- so the first wins and the second keeps the emitter's
-// derived alias, which is a build that fails to compile rather than one that
-// silently calls the wrong package.
-func specAliases(specs map[string]*fyneSpec) map[string]string {
+// assignedAliases is the alias every import must arrive under: whatever the
+// translation context assigned as it registered them. Read from the context
+// rather than from the Specs because the context is what de-conflicts two
+// packages wanting one name, and because its import order is the walk order
+// -- so the result is the same on every run of a build.
+func assignedAliases(gc *golang.GoIRContext) map[string]string {
 	out := map[string]string{}
-	claimed := map[string]string{}
-	for _, sp := range specs {
-		if sp == nil {
-			continue
-		}
-		for sel, path := range sp.PkgPaths {
-			if prev, dup := claimed[sel]; dup && prev != path {
-				continue
-			}
-			claimed[sel] = path
-			out[path] = sel
+	for _, p := range gc.Imports() {
+		if a := gc.ForcedAlias(p); a != "" {
+			out[p] = a
 		}
 	}
 	return out

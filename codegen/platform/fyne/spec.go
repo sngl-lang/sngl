@@ -2,6 +2,10 @@ package fyne
 
 import (
 	"fmt"
+	astgo "go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -43,11 +47,18 @@ type fyneHandler struct {
 // the primitive was instantiated with. Everything this platform knows about
 // Fyne arrives here: no Go code below names a Fyne type, a constructor, or a
 // component.
+// fyneNative is a Go declaration reference: the import path and the
+// identifier in it. The alias it is qualified with is not here, because it is
+// not the Spec's to choose -- see fyneSpec.qualify.
+type fyneNative struct {
+	Path string
+	Name string
+}
+
 type fyneSpec struct {
-	New     string
-	Args    []fyneArg
-	GoType  string
-	Imports []string
+	New    fyneNative
+	Args   []fyneArg
+	GoType fyneNative
 	// Add is the method a multi-child container attaches each child with;
 	// Content the field a single-child container assigns its child to. Which
 	// applies is decided by Content being set, because that is the case with
@@ -65,15 +76,37 @@ type fyneSpec struct {
 	// after the node's CreateNode, which is the only place they are known to
 	// be in scope.
 	CtorProps map[string]ir.Expr
-	// PkgPaths maps the package selector the Spec's Go spellings are written
-	// with to the import path it stands for. The author's spelling is the
-	// authority: `new="charts.NewGauge"` says the package is reached as
-	// `charts`, and that alias is forced on the import so the call site and
-	// the import block agree. Deriving it from the path instead cannot work
-	// -- a module's Go package name is in its source, not its path, and
-	// `github.com/x/fyne-charts/v2` yields neither `charts` nor anything
-	// stable.
-	PkgPaths map[string]string
+}
+
+// aliaser assigns the alias an import path's symbols are qualified with. The
+// Go context implements it; see golang.GoIRContext.AliasFor.
+type aliaser interface {
+	AliasFor(path string) string
+}
+
+// qualify renders a Native as Go source: the identifier, qualified with
+// whatever alias the emitting context assigns its path. A Native with no path
+// is a bare identifier and is emitted as written.
+//
+// The prefix is the pointer and slice syntax a type carries, which sits
+// outside the qualification: "*Container" in fyne.io/fyne/v2 is
+// "*<alias>.Container".
+func (n fyneNative) qualify(a aliaser) string {
+	if n.Name == "" {
+		return ""
+	}
+	if n.Path == "" || a == nil {
+		return n.Name
+	}
+	alias := a.AliasFor(n.Path)
+	if alias == "" {
+		return n.Name
+	}
+	i := 0
+	for i < len(n.Name) && (n.Name[i] == '*' || n.Name[i] == '[' || n.Name[i] == ']') {
+		i++
+	}
+	return n.Name[:i] + alias + "." + n.Name[i:]
 }
 
 // isSingleChild reports whether this widget takes its child through a field
@@ -126,19 +159,13 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	for _, f := range lit.Fields {
 		switch f.Name {
 		case "new":
-			sp.New, _ = codegen.IRLiteralString(f.Value)
+			sp.New = nativeFromExpr(f.Value)
 		case "goType":
-			sp.GoType, _ = codegen.IRLiteralString(f.Value)
+			sp.GoType = nativeFromExpr(f.Value)
 		case "add":
 			sp.Add, _ = codegen.IRLiteralString(f.Value)
 		case "content":
 			sp.Content, _ = codegen.IRLiteralString(f.Value)
-		case "imports":
-			for _, e := range listElems(f.Value) {
-				if s, ok := codegen.IRLiteralString(e); ok && s != "" {
-					sp.Imports = append(sp.Imports, s)
-				}
-			}
 		case "args":
 			for _, e := range listElems(f.Value) {
 				sl, ok := e.(*ir.StructLit)
@@ -173,7 +200,7 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				h.Field, _ = codegen.IRLiteralString(structField(sl, "field"))
 				h.Signature, _ = codegen.IRLiteralString(structField(sl, "signature"))
 				h.Param, _ = codegen.IRLiteralString(structField(sl, "param"))
-				if err := checkHandlerSignature(tag, on, h.Signature); err != nil {
+				if _, err := signatureParams(tag, on, h.Signature); err != nil {
 					return nil, err
 				}
 				if on != "" && h.Field != "" {
@@ -182,11 +209,8 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 			}
 		}
 	}
-	if sp.New == "" || sp.GoType == "" {
+	if sp.New.Name == "" || sp.GoType.Name == "" {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
-	}
-	if err := sp.bindImports(tag); err != nil {
-		return nil, err
 	}
 	return sp, nil
 }
@@ -234,82 +258,64 @@ func structField(sl *ir.StructLit, name string) ir.Expr {
 	return nil
 }
 
-// checkHandlerSignature rejects a signature whose parameters the emitter
-// cannot name. The callback's parameters become the promoted handler's
-// parameters, and the handler body refers to one of them by name (Spec's
-// `param`), so an unnamed parameter has nothing to refer to.
+// signatureParams parses a callback signature into its parameters, one name
+// and Go type each.
 //
-// `func(string)` is the ordinary Go spelling of a callback type and reads as
-// obviously correct, which is exactly why this is an error: dropping the
-// parameter emitted a handler taking none, assigned to a field that passes
-// one, whose body named a variable that did not exist -- three Go compile
-// errors out of a build that reported success.
-func checkHandlerSignature(tag, on, sig string) error {
+// Parsed as Go rather than split on spaces: the parameters become the promoted
+// handler's, and the handler body refers to one of them by the name Spec's
+// `param` gives -- so what counts as a parameter has to be what Go says, not
+// what a delimiter guess says. Two string heuristics that disagreed is how an
+// unnamed parameter got dropped from `func(string)` while `func(v, w int)`,
+// which names every one of them, was rejected.
+func signatureParams(tag, on, sig string) ([]*ir.Param, error) {
 	if sig == "" {
-		return nil
+		return nil, nil
 	}
-	inner, ok := strings.CutPrefix(sig, "func")
-	if !ok {
-		return fmt.Errorf("fyne primitive %s: handler %q signature %q is not a func type", tag, on, sig)
+	expr, err := parser.ParseExpr(sig + "{}")
+	if err != nil {
+		return nil, fmt.Errorf("fyne primitive %s: handler %q signature %q is not a Go func type: %v", tag, on, sig, err)
 	}
-	inner, ok = strings.CutPrefix(strings.TrimSpace(inner), "(")
-	if !ok {
-		return fmt.Errorf("fyne primitive %s: handler %q signature %q is not a func type", tag, on, sig)
+	fn, ok := expr.(*astgo.FuncLit)
+	if !ok || fn.Type == nil {
+		return nil, fmt.Errorf("fyne primitive %s: handler %q signature %q is not a func type", tag, on, sig)
 	}
-	inner, _, _ = strings.Cut(inner, ")")
-	if strings.TrimSpace(inner) == "" {
-		return nil
+	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
+		return nil, fmt.Errorf("fyne primitive %s: handler %q signature %q returns a value; "+
+			"the promoted handler returns nothing", tag, on, sig)
 	}
-	for part := range strings.SplitSeq(inner, ",") {
-		if len(strings.Fields(part)) < 2 {
-			return fmt.Errorf("fyne primitive %s: handler %q signature %q needs a name for every parameter (%q has none); "+
-				"the handler body refers to one by name", tag, on, sig, strings.TrimSpace(part))
+	var out []*ir.Param
+	if fn.Type.Params == nil {
+		return out, nil
+	}
+	for _, f := range fn.Type.Params.List {
+		var buf strings.Builder
+		if err := printer.Fprint(&buf, token.NewFileSet(), f.Type); err != nil {
+			return nil, fmt.Errorf("fyne primitive %s: handler %q signature %q: %v", tag, on, sig, err)
+		}
+		if len(f.Names) == 0 {
+			return nil, fmt.Errorf("fyne primitive %s: handler %q signature %q needs a name for every "+
+				"parameter (the %s has none); the handler body refers to one by name", tag, on, sig, buf.String())
+		}
+		for _, n := range f.Names {
+			out = append(out, &ir.Param{
+				Name: n.Name,
+				Type: &ir.Type{Kind: ir.TypeDyn, Meta: buf.String()},
+			})
 		}
 	}
-	return nil
+	return out, nil
 }
 
-// bindImports pairs each declared import path with the selector the Spec's Go
-// spellings reach it through, so the emitter can force that alias.
-//
-// The selectors are the ones `new` and `goType` are written with. A Spec
-// declares its packages whether they are fyne's or not, so a fyne widget
-// binding `widget` to fyne.io/fyne/v2/widget goes through here like any other.
-// Selectors and imports pair up in order; any other count is ambiguous and
-// said so, because guessing emits a bogus import and Go that does not
-// compile.
-func (sp *fyneSpec) bindImports(tag string) error {
-	if len(sp.Imports) == 0 {
-		return nil
+// nativeFromExpr reads a Native record. A bare string is accepted as the
+// identifier alone, which is what a Go builtin or a name already in scope
+// needs.
+func nativeFromExpr(e ir.Expr) fyneNative {
+	if sl, ok := e.(*ir.StructLit); ok {
+		var n fyneNative
+		n.Path, _ = codegen.IRLiteralString(structField(sl, "path"))
+		n.Name, _ = codegen.IRLiteralString(structField(sl, "name"))
+		return n
 	}
-	var free []string
-	seen := map[string]bool{}
-	for _, sel := range []string{pkgSelector(sp.New), pkgSelector(sp.GoType)} {
-		if sel == "" || seen[sel] {
-			continue
-		}
-		seen[sel] = true
-		free = append(free, sel)
-	}
-	if len(free) != len(sp.Imports) {
-		return fmt.Errorf("fyne primitive %s: Spec declares %d import(s) but its Go spellings name %d "+
-			"package(s) %q -- each import needs exactly one selector to be reached through",
-			tag, len(sp.Imports), len(free), free)
-	}
-	sp.PkgPaths = map[string]string{}
-	for i, sel := range free {
-		sp.PkgPaths[sel] = sp.Imports[i]
-	}
-	return nil
-}
-
-// pkgSelector is the package selector a Go spelling is qualified with, or ""
-// when it names no package. Leading punctuation is the pointer and slice
-// syntax a Go type carries ("*fynegauge.Gauge").
-func pkgSelector(goName string) string {
-	sel, _, ok := strings.Cut(strings.TrimLeft(goName, "*[]"), ".")
-	if !ok {
-		return ""
-	}
-	return sel
+	name, _ := codegen.IRLiteralString(e)
+	return fyneNative{Name: name}
 }
