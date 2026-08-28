@@ -82,7 +82,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Key Internal Packages
 
-- **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. All phases after the checker operate on IR, not AST.
+- **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. Phases after the checker work from IR rather than re-reading the source, but IR is not AST-free: an operator is still an `ast.BinaryOp`/`ast.AssignOp`, and `ir.NodeInst` and `ir.VarDecl` keep the `ast.Stmt` they came from for positions and diagnostics. That is why `internal/lower`, `internal/optimize` and every platform import `ast`.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions)
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness

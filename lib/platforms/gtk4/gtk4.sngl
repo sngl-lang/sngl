@@ -45,7 +45,7 @@ component sngl.button {
 
 component sngl.checkbox {
     platform gtk4 {
-        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change(checked) }) {}
+        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
     }
 }
 
@@ -104,7 +104,9 @@ component sngl.scroll {
 // denominator is worse than the scale being wrong.
 component sngl.progress {
     platform gtk4 {
-        gtk4.GtkProgressBar(fraction=value, text=label, showText=showValue, style={...style}) {}
+        // GTK's fraction is 0..1, so the value is measured against max here
+        // rather than passed through as if it already were one.
+        gtk4.GtkProgressBar(fraction=value/max, text=label, showText=showValue, style={...style}) {}
     }
 }
 

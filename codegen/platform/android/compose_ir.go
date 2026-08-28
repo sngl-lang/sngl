@@ -292,9 +292,16 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 		cc.line("}")
 
 	case "progress":
+		// Compose's progress is 0..1, so the value is measured against max
+		// rather than passed through as if it already were a fraction. max
+		// defaults to 1, so a call site that gave only a value is unchanged.
 		if v := codegen.NodeProp(n, "value"); v != nil {
 			val := cc.kc.EvalExpr(v)
-			cc.line("LinearProgressIndicator(progress = { %s.toFloat() }, %s)", val, style)
+			frac := val + ".toFloat()"
+			if m := codegen.NodeProp(n, "max"); m != nil {
+				frac = "(" + val + " / " + cc.kc.EvalExpr(m) + ").toFloat()"
+			}
+			cc.line("LinearProgressIndicator(progress = { %s }, %s)", frac, style)
 		} else {
 			cc.line("LinearProgressIndicator(%s)", style)
 		}

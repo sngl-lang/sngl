@@ -2253,6 +2253,59 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 
 // checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
 // If sig is non-nil, validates arg types and arity against it using Pythonic named/positional rules.
+// checkEmitArgs checks what an `event(...)` hands its payload. Nothing did
+// before, so an override body could forward a value of any type into an event
+// declared to carry another, and the mismatch surfaced as a type error in the
+// generated program rather than against the declaration that was wrong.
+//
+// Two spellings are right, because a platform reaches an event from whichever
+// of the two its host handed it: the payload itself, and the value the payload
+// carries when it carries exactly one. `input(e)` is the first, `change(opt)`
+// the second. No argument is always right -- an event whose payload the
+// handler does not read is emitted bare.
+func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args []ir.CallArg) {
+	if len(args) == 0 {
+		return
+	}
+	if len(args) > 1 {
+		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(args))
+		return
+	}
+	if evt.Type == nil {
+		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
+		return
+	}
+	got := exprType(args[0].Value)
+	if got == nil || got.Kind == ir.TypeDyn || evt.Type.Kind == ir.TypeDyn {
+		return
+	}
+	if got.IsAssignableTo(evt.Type) {
+		return
+	}
+	if f := soleField(evt.Type); f != nil && got.IsAssignableTo(f) {
+		return
+	}
+	if f := soleField(evt.Type); f != nil {
+		c.error(pos, "cannot use %s as %s for event %q; its payload is %s, whose value is %s",
+			got, evt.Type, evt.Name, evt.Type, f)
+		return
+	}
+	c.error(pos, "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
+}
+
+// soleField is the type of a struct's only field, or nil when the struct has
+// any other number -- the value an event "carries" is only unambiguous at one.
+func soleField(t *ir.Type) *ir.Type {
+	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || len(sd.Fields) != 1 {
+		return nil
+	}
+	return sd.Fields[0].Type
+}
+
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
 	// No sig: check exprs, pass through names unchanged (dynamic call).
 	if sig == nil {
@@ -2559,6 +2612,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			for _, evt := range c.currentComponent.Events {
 				if evt.Name == id.Name {
 					args := c.checkCallArgs(x.Call.Args, nil)
+					c.checkEmitArgs(x.Pos, evt, args)
 					return &ir.Emit{AST: x, Name: id.Name, Args: args}
 				}
 			}

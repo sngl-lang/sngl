@@ -47,13 +47,18 @@ struct Options {
 // else is one, which is what the wildcard prop says. A tag-specific numeric
 // attribute missing from this list is accepted as a string rather than
 // rejected.
-// Lowercase-initial, so a typo inside a `platform html { ... }` body -- where a
-// bare name reaches this wildcard -- is reported rather than emitted as an
-// element nobody has heard of. Capitals after the first character are allowed
-// because SVG's vocabulary is camelCase inside foreign content:
-// `linearGradient`, `clipPath`, `feGaussianBlur`, `foreignObject`. Requiring
-// all-lowercase rejects every one of them.
-#[wildcard("[a-z][a-zA-Z0-9]*", "tag")]
+// Lowercase, so a typo inside a `platform html { ... }` body -- where a bare
+// name reaches this wildcard -- is reported rather than emitted as an element
+// nobody has heard of.
+//
+// This rejects SVG, whose vocabulary is camelCase inside foreign content
+// (`linearGradient`, `clipPath`, `feGaussianBlur`). Reaching it by widening the
+// pattern would cost the misspelling check for every HTML tag, so SVG is left
+// for a tree kind of its own -- `#[tree.kind]` names a family of nodes and
+// says which host accepts them, which is what an SVG subtree is. Until then it
+// is written through `element(tag=..., attrs={...})`, which the diagnostics
+// below point at.
+#[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
     // The name this resolved from — `html.div` binds "div" — and the tag to
     // emit. Writing it is how a hyphenated custom element is reached, an
@@ -85,15 +90,15 @@ component element(
     max string,
 
     // Every other attribute, keyed by the name it was written under -- an
-    // attribute a standard adds after this file was written, and SVG's, which
-    // are camelCase: `viewBox`, `preserveAspectRatio`, `patternUnits`.
+    // attribute a standard adds after this file was written among them.
     //
     // A hyphenated name (`data-*`, `aria-*`) does not reach the pattern at all:
     // it is not an identifier, so it can only be written as a key of this map,
     // and a key is taken as given. The pattern governs the names written as
-    // props, and requires a lowercase first character so a misspelling there is
-    // still reportable.
-    #[wildcard("[a-z][a-zA-Z0-9]*")]
+    // props, and is lowercase for the reason the tag pattern is: a camelCase
+    // name there is a DOM property or a misspelling of one, and the properties
+    // an element takes are declared above.
+    #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
     @click sngl.ClickEvent,

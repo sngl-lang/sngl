@@ -1,8 +1,10 @@
 package ir
 
-// BuiltinKind marks a declaration as one of the compiler's built-ins. It is set
-// by the #[builtin] macro before type-checking and read by the checker and IR;
-// BuiltinNone ("") is an ordinary declaration.
+// BuiltinKind marks a declaration as one of the compiler's built-ins. The
+// #[builtin] mark sets it during checking -- applyMarks runs from the
+// registration functions of pass 1, not before them -- and the checker, this
+// package and the optimizer read it. BuiltinNone ("") is an ordinary
+// declaration.
 //
 // Type kinds (primitive, string-repr, generic) mark a struct; node kinds mark a
 // component. A declaration is at most one kind, so a single field carries them

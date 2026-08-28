@@ -202,7 +202,11 @@ component textarea(
 component progress(
     style Style,
     value float,
-    max float,
+    // The value `value` is measured against. One rather than zero, because a
+    // platform that wants a fraction divides by it and every platform that
+    // does not still has to render something: `<progress max="0">` is invalid
+    // HTML, and a GTK fraction of value/0 is not a number.
+    max float = 1,
     label string,
     variant string,
     showValue bool,

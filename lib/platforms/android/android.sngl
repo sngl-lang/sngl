@@ -322,7 +322,10 @@ component sngl.textarea {
             value=value,
             minLines=3,
             modifier={...style},
-            onValueChange=func(e) { input(e); change(e) },
+            // @input carries the InputEvent Compose's text is built into;
+            // @change carries a ChangeEvent, a different declaration, so it
+            // takes the value rather than the other event.
+            onValueChange=func(e) { input(e); change(e.value) },
         ) {}
     }
 }
