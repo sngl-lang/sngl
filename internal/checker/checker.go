@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -153,6 +154,14 @@ type checker struct {
 	// this package's own `import "p" => "url"` declarations. Populated at the
 	// start of pass1 before any import is resolved.
 	replaces map[string]string
+
+	// targets is what this check is building for: what the caller named, or --
+	// when it named nothing -- what this document's own `output` blocks
+	// declare. Resolved once because three things read it and they have to
+	// agree: which target packages load, which `platform` blocks are checked,
+	// and what a nested check inherits. An imported document declares no
+	// `output` of its own, so it can only inherit.
+	targets []ir.StaticTarget
 
 	// Current function return type (for return stmt checking).
 	returnType *ir.Type
@@ -383,6 +392,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// one itself gets the same treatment where the import is checked, which is
 	// how it asks to be held to a platform's rules without naming any of its
 	// declarations.
+	c.targets = c.resolvedTargets()
 	for _, pkgName := range c.targetPackages() {
 		c.mergeTargetExtensions(pkgName)
 	}
@@ -808,7 +818,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 			if internal {
 				c.error(imp.Pos, "unknown internal package %q", uri)
 			} else {
-				c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
+				c.error(imp.Pos, "unknown stdlib package %q (have: %s)", uri, strings.Join(c.importablePackages(), ", "))
 			}
 			return
 		}
@@ -828,13 +838,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 			merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 			for _, d := range docs {
 				pkg, diags := Check(d, &Config{
-					FS:        subFS,
-					Dir:       c.cfg.Dir,
-					Resolver:  c.cfg.Resolver,
-					Languages: c.cfg.Languages,
-					Platforms: c.cfg.Platforms,
-					Replaces:  c.replaces,
-					libs:      c.libs,
+					FS:         subFS,
+					Dir:        c.cfg.Dir,
+					Resolver:   c.cfg.Resolver,
+					Languages:  c.cfg.Languages,
+					Platforms:  c.cfg.Platforms,
+					Replaces:   c.replaces,
+					Targets:    c.targets,
+					LibSources: c.cfg.LibSources,
+					libs:       c.libs,
 				})
 				c.diags = append(c.diags, diags...)
 				c.mergePkgInto(merged, pkg)
@@ -886,13 +898,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 				merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 				for _, d := range docs {
 					pkg, diags := Check(d, &Config{
-						FS:        c.cfg.FS,
-						Dir:       c.cfg.Dir,
-						Resolver:  c.cfg.Resolver,
-						Languages: c.cfg.Languages,
-						Platforms: c.cfg.Platforms,
-						Replaces:  c.replaces,
-						libs:      c.libs,
+						FS:         c.cfg.FS,
+						Dir:        c.cfg.Dir,
+						Resolver:   c.cfg.Resolver,
+						Languages:  c.cfg.Languages,
+						Platforms:  c.cfg.Platforms,
+						Replaces:   c.replaces,
+						Targets:    c.targets,
+						LibSources: c.cfg.LibSources,
+						libs:       c.libs,
 					})
 					c.diags = append(c.diags, diags...)
 					c.mergePkgInto(merged, pkg)
@@ -2017,6 +2031,24 @@ func (c *checker) targetNSPkg(uri string) *ir.Package {
 	return c.libPkg(uri)
 }
 
+// importablePackages names every package this check could import: the public
+// lib/ tiers, plus the package each configured target serves for itself. A
+// target's package is not under lib/, so a list read from there alone would
+// omit every one of them from the hint.
+func (c *checker) importablePackages() []string {
+	out := lib.PublicPackages()
+	if c.cfg != nil {
+		for _, p := range c.cfg.Platforms {
+			out = append(out, "platforms/"+p.PlatformIdentifier())
+		}
+		for _, l := range c.cfg.Languages {
+			out = append(out, "languages/"+l.LanguageIdentifier())
+		}
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
 func (c *checker) lookupTarget(name string) pkgProvider {
 	if c.cfg == nil {
 		return nil
@@ -2163,11 +2195,11 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 // checked: that is the platform-agnostic read the LSP and a bare check want,
 // and a block skipped there would be a block nobody ever checked.
 func (c *checker) targetsPlatform(name string) bool {
-	if c.cfg == nil || len(c.cfg.Targets) == 0 {
+	if len(c.targets) == 0 {
 		return true
 	}
 	named := false
-	for _, t := range c.cfg.Targets {
+	for _, t := range c.targets {
 		if t.Platform == "" {
 			continue
 		}

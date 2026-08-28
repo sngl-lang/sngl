@@ -29,6 +29,32 @@ func PackageDocsFor(name string) []*ast.Document {
 	return slices.Clone(stdlibTierDocs[name])
 }
 
+// PackageSource returns the whole parsed source of `sngl://<name>`: what lib/
+// embeds, plus what a registered target serves for its own package. A reader
+// outside a check wants the source the loaded IR was built from, and for a
+// target package that is not under lib/ at all.
+//
+// One parse, shared with LibPackage. A caller that reads a mark off the loaded
+// IR and then finds that declaration in the source (`sngl doc`, the LSP) is
+// comparing *ast.StructDef pointers, and two parses of one file never share
+// one. These readers are outside any check, so nothing splices into what they
+// get back.
+func PackageSource(name string) []*ast.Document {
+	packageSourceMu.Lock()
+	defer packageSourceMu.Unlock()
+	if docs, ok := packageSourceCache[name]; ok {
+		return docs
+	}
+	docs := append(PackageDocsFor(name), ProvidedDocs(registeredTarget(name))...)
+	packageSourceCache[name] = docs
+	return docs
+}
+
+var (
+	packageSourceMu    sync.Mutex
+	packageSourceCache = map[string][]*ast.Document{}
+)
+
 // HasPackage reports whether `sngl://<name>` names an embedded package.
 func HasPackage(name string) bool {
 	parseStdlibDocs()
@@ -187,7 +213,35 @@ func (c *checker) providedDocs(name string) []*ast.Document {
 			return nil
 		}
 	}
+	// This config's targets and no others. A check is defined by the targets
+	// it was configured with, so a target absent from them contributes
+	// nothing here even when it is registered process-wide -- PackageSource is
+	// where the registry answers, for readers that have no config to carry.
 	return ProvidedDocs(c.lookupTarget(target))
+}
+
+// Targets that serve a library package, keyed by its `sngl://<uri>`. A
+// target's package lives with its plugin rather than under lib/, and this
+// package cannot import the plugin registry that knows them -- so the registry
+// registers into this one.
+var (
+	targetPkgMu sync.RWMutex
+	targetPkgs  = map[string]any{}
+)
+
+// RegisterTargetPackage records that `sngl://<uri>` is served by t. Called by
+// the codegen registry as each target registers, so that a reader outside a
+// check can load a target package the same way a check does.
+func RegisterTargetPackage(uri string, t any) {
+	targetPkgMu.Lock()
+	defer targetPkgMu.Unlock()
+	targetPkgs[uri] = t
+}
+
+func registeredTarget(uri string) any {
+	targetPkgMu.RLock()
+	defer targetPkgMu.RUnlock()
+	return targetPkgs[uri]
 }
 
 // ProvidedDocs parses the .sngl source a target synthesizes for its own
@@ -202,6 +256,11 @@ func ProvidedDocs(t any) []*ast.Document {
 	if !ok {
 		return nil
 	}
+	// Parsed fresh every call. A check splices platform bodies into the
+	// documents it is given, and a target may be reconfigured to serve a
+	// different package (gtk4 against another GIR), so neither the ASTs nor
+	// the fs.FS behind them can be shared between checks. The package-level
+	// readers memoize their own copy -- see packageSourceOnce.
 	fsys := p.PackageFS()
 	if fsys == nil {
 		return nil
@@ -961,7 +1020,6 @@ func (c *checker) targetPackages() []string {
 	}
 	maps.Copy(replaces, c.cfg.Replaces)
 
-	var declared []ir.StaticTarget
 	for _, stmt := range c.doc.Stmts {
 		switch s := stmt.(type) {
 		case *ast.Import:
@@ -974,19 +1032,10 @@ func (c *checker) targetPackages() []string {
 			if uri, ok := strings.CutPrefix(target, "sngl://"); ok && targetTier(uri) {
 				addPkg(uri)
 			}
-		case *ast.VisualNode:
-			if visualNodeTarget(s) == "output" {
-				declared = append(declared, declaredOutputTargets(s)...)
-			}
 		}
 	}
 
-	// The target: what the caller named wins over what the document declares.
-	resolved := c.cfg.Targets
-	if len(resolved) == 0 {
-		resolved = declared
-	}
-	for _, t := range resolved {
+	for _, t := range c.targets {
 		addTarget(t)
 	}
 
@@ -1004,6 +1053,27 @@ func (c *checker) targetPackages() []string {
 		}
 	}
 	return out
+}
+
+// resolvedTargets is what this check builds for: what the caller named wins
+// over what the document's own `output` blocks declare, which is the order
+// `sngl build` resolves them in. A caller that named nothing and a document
+// that declares nothing give none, and every registered target loads.
+//
+// Read from the AST rather than from pkg.Outputs, which does not exist yet:
+// the overrides have to be spliced before anything reads a stdlib component's
+// body, and that is earlier than checking an output block.
+func (c *checker) resolvedTargets() []ir.StaticTarget {
+	if len(c.cfg.Targets) > 0 {
+		return c.cfg.Targets
+	}
+	var declared []ir.StaticTarget
+	for _, stmt := range c.doc.Stmts {
+		if s, ok := stmt.(*ast.VisualNode); ok && visualNodeTarget(s) == "output" {
+			declared = append(declared, declaredOutputTargets(s)...)
+		}
+	}
+	return declared
 }
 
 // declaredOutputTargets reads the lang/platform pairs an `output` node names,
@@ -1555,7 +1625,7 @@ var (
 // source says only what was written. Loading is memoized: the packages are the
 // compiler's own and do not change within a process.
 func LibPackage(name string) *ir.Package {
-	if !HasPackage(name) {
+	if !HasPackage(name) && registeredTarget(name) == nil {
 		return nil
 	}
 	libPkgMu.Lock()
@@ -1563,7 +1633,11 @@ func LibPackage(name string) *ir.Package {
 	if pkg, ok := libPkgCache[name]; ok {
 		return pkg
 	}
-	pkg := newChecker(&ast.Document{}, &Config{}).libPkg(name)
+	// Through LibSources so the IR is built from the same documents
+	// PackageSource hands back: a mark is read off the IR and its declaration
+	// then looked up in the source by pointer.
+	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
+	pkg := newChecker(&ast.Document{}, cfg).libPkg(name)
 	libPkgCache[name] = pkg
 	return pkg
 }
