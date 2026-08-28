@@ -18,8 +18,6 @@
 //
 // specgen runs from docs/generate.go under `go generate`; its own test fails
 // when the committed regions have drifted from internal/parser/sngl.ebnf.
-//
-// Usage: go run ./internal/cmd/specgen
 package main
 
 import (
@@ -40,15 +38,13 @@ func main() {
 	}
 }
 
-// repoRoot locates the project root from this source file's own path.
 func repoRoot() string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
 }
 
-// generate rewrites the generated regions of the markdown file at outPath
-// from root's grammar. outPath is a parameter so a test can run the whole
-// pipeline, mdox included, over a copy and diff the result.
+// outPath is a parameter so a test can run the whole pipeline, mdox included,
+// over a copy and diff the result.
 func generate(root, outPath string) error {
 	prods := parseEBNF(filepath.Join(root, "internal", "parser", "sngl.ebnf"))
 	gen := newGenerator(prods)
@@ -65,8 +61,8 @@ func generate(root, outPath string) error {
 		return err
 	}
 
-	// Run mdox fmt so the file matches the project's markdown style and
-	// `go tool verify -dry` doesn't flip-flop between generate and check.
+	// mdox fmt keeps `go tool verify -dry` from flip-flopping between generate
+	// and check.
 	cmd := exec.Command("go", "tool", "mdox", "fmt", "--soft-wraps", outPath)
 	cmd.Dir = root
 	cmd.Stdout = os.Stderr
@@ -77,13 +73,10 @@ func generate(root, outPath string) error {
 	return nil
 }
 
-// ── Region replacement ────────────────────────────────────────────────────────
-
 // RE2 lacks backreferences, so both marker names are captured and compared in
 // the callback. Region bodies must not themselves contain a BEGIN marker.
 var regionRE = regexp.MustCompile(`(?s)(<!-- BEGIN GENERATED: (\S+) -->\n).*?(\n<!-- END GENERATED: (\S+) -->)`)
 
-// fillRegions rewrites the body of every recognized GENERATED region in src.
 func (g *generator) fillRegions(src string) (string, error) {
 	var genErr error
 	out := regionRE.ReplaceAllStringFunc(src, func(match string) string {
@@ -103,7 +96,6 @@ func (g *generator) fillRegions(src string) (string, error) {
 	return out, genErr
 }
 
-// region returns the generated content for a region name.
 func (g *generator) region(name string) (string, bool) {
 	switch name {
 	case "grammar-full":
@@ -121,9 +113,6 @@ func (g *generator) region(name string) (string, bool) {
 	return "", false
 }
 
-// ── EBNF parsing ──────────────────────────────────────────────────────────────
-
-// production is a named EBNF rule with its body and preceding comment block.
 type production struct {
 	name string
 	body string
@@ -131,7 +120,6 @@ type production struct {
 
 var prodRE = regexp.MustCompile(`^(\w+)\s*=\s*(.*)`)
 
-// parseEBNF reads the EBNF file and extracts productions.
 func parseEBNF(path string) []production {
 	f, err := os.Open(path)
 	if err != nil {
@@ -176,15 +164,11 @@ func parseEBNF(path string) []production {
 	return prods
 }
 
-// ── Grammar sections ──────────────────────────────────────────────────────────
-
-// section groups productions for display under a heading.
 type section struct {
 	slug  string
 	rules []string
 }
 
-// sections defines the grammar groups and their stable region slugs.
 var sections = []section{
 	{"document", []string{"Document", "StmtBlock"}},
 	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "PlatformNode", "AssignOp", "IncDecOp"}},
@@ -211,7 +195,6 @@ var sections = []section{
 	{"types", []string{"Type", "TypeList", "FuncTypeParamList", "FuncTypeParam"}},
 }
 
-// generator holds parsed productions and section lookup.
 type generator struct {
 	prodMap       map[string]production
 	sectionBySlug map[string]section
@@ -231,7 +214,6 @@ func newGenerator(prods []production) *generator {
 	return g
 }
 
-// grammarSection renders one section's productions as a fenced ebnf block.
 func (g *generator) grammarSection(sec section) string {
 	var b strings.Builder
 	b.WriteString("```ebnf\n")
@@ -246,7 +228,6 @@ func (g *generator) grammarSection(sec section) string {
 	return b.String()
 }
 
-// grammarFull renders every section in order, each under its own sub-heading.
 func (g *generator) grammarFull() string {
 	var b strings.Builder
 	for _, sec := range sections {
@@ -256,7 +237,6 @@ func (g *generator) grammarFull() string {
 	return b.String()
 }
 
-// tokenReplacements maps terminal names to readable symbols.
 var tokenReplacements = map[string]string{
 	"ident": "IDENT", "int_lit": "INT", "float_lit": "FLOAT",
 	"str_full": `STRING`, "triple_full": `TRIPLE_STRING`, "raw_str": "RAW_STRING",
@@ -289,7 +269,6 @@ var tokenReplacements = map[string]string{
 
 var tokenRE = regexp.MustCompile(`\b[a-z][a-z0-9_]*\b`)
 
-// formatBody replaces terminal names with readable tokens and cleans up the body.
 func formatBody(body string) string {
 	body = strings.TrimSuffix(strings.TrimSpace(body), ".")
 	body = strings.TrimSpace(body)
@@ -315,8 +294,6 @@ func formatBody(body string) string {
 	}
 	return "\n" + strings.Join(out, "\n")
 }
-
-// ── Precedence & keywords ───────────────────────────────────────────────────--
 
 func precedenceTable() string {
 	return strings.Join([]string{

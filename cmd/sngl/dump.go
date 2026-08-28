@@ -73,10 +73,8 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	return f, i, nil
 }
 
-// dumpParsed resolves dump's positional argument to a document. A library
-// package has no directory: its source is embedded, or synthesized by the
-// target that serves it, so imports resolve through the checker rather than
-// against a place on disk.
+// A library package has no directory — its source is embedded, or synthesized
+// by the target serving it — so its imports resolve through the checker.
 func dumpParsed(args []string, inp dumpInput) (*ast.Document, string, error) {
 	if inp == dumpInputSNGL && len(args) > 0 {
 		in, err := resolveInput(args[0])
@@ -90,11 +88,9 @@ func dumpParsed(args []string, inp dumpInput) (*ast.Document, string, error) {
 	return dumpParseInput(inp, args)
 }
 
-// dumpChecked resolves the argument and checks it, for the stages downstream
-// of the checker. A library package is handed back as the checker already
-// built it: it loads under the lib-source rules that permit its own
-// sngl://internal/ imports, which a fresh check of the same source would
-// reject.
+// A library package is handed back as the checker already built it: it loads
+// under the lib-source rules that permit its own sngl://internal/ imports,
+// which a fresh check of the same source would reject.
 func dumpChecked(cmd *cobra.Command, args []string, inp dumpInput) (*ir.Package, string, error) {
 	if inp == dumpInputSNGL && len(args) > 0 {
 		in, err := resolveInput(args[0])
@@ -362,17 +358,15 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	return dumpCodegenOutput(names, files)
 }
 
-// dumpCLITargets is the target the --lang/--platform flags name, for the check
-// that precedes target resolution: a stage dump has to check against the same
-// target it then dumps for, or it reports a tree the build would never make.
+// A stage dump must check against the same target it then dumps for, or it
+// reports a tree the build would never make.
 func dumpCLITargets(cmd *cobra.Command) ([]ir.StaticTarget, error) {
 	lang, _ := cmd.Flags().GetString("lang")
 	plat, _ := cmd.Flags().GetString("platform")
 	lang, plat, err := resolveLangPlat(lang, plat)
 	if err != nil {
-		// Returning no targets here checked against every registered one and
-		// dumped a tree for a target the caller never named; the flags are
-		// unusable, so say so instead.
+		// Returning no targets instead checks against every registered one and
+		// dumps a tree for a target the caller never named.
 		return nil, err
 	}
 	return cliSelectedTargets(lang, plat), nil
@@ -395,8 +389,6 @@ func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error
 	return targets[0], nil
 }
 
-// dumpCodegenOutput prints generated source to stdout. Single file: raw.
-// Multiple files: txtar format with per-file syntax highlighting.
 func dumpCodegenOutput(names []string, files map[string][]byte) error {
 	if len(names) == 1 {
 		name := names[0]

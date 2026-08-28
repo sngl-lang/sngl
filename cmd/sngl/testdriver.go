@@ -19,9 +19,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// resolveLauncher returns the TestLauncher for a target. Platform takes
-// precedence; language is the fallback. Returns nil if neither
-// implements it.
 func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestLauncher {
 	if l, ok := plat.(codegen.TestLauncher); ok {
 		return l
@@ -32,15 +29,10 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 	return nil
 }
 
-// runViaLauncher generates the target's sources + testagent main into a
-// tmpdir, invokes Launch, and drives the RPC stream until runComplete
-// or the agent closes. Returns one TestResult per testEnd notification.
-//
-// Tests are grouped by their component-under-test (second parameter type).
-// Each group runs in its own launcher invocation against the original IR
-// package, passing the component name via the rootComponent option so the
-// platform builds its Model from that component. No AST round-trip — IR
-// stays IR.
+// Tests are grouped by their component-under-test (second parameter type), and
+// each group runs in its own launcher invocation against the original IR
+// package: the component name goes over the rootComponent option so the
+// platform builds its Model from it, with no AST round-trip.
 func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -58,18 +50,12 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
 
-	// Caller hands us a checked-but-not-lowered package; lowering
-	// substitutes ContextRead/reactivity into platform-emittable form.
-	// Without this the platform's Generate panics on un-lowered nodes
-	// (e.g. ContextRead in irwalk.EvalExpr).
-	// Mirror the generate pipeline's optimize→lower→optimize sequence. The
-	// agent path previously ran lower alone; without the optimize passes,
-	// lowering can leave constructs the language codegen rejects — e.g. a
-	// reactive context-provider value that passContext promotes into a
-	// synthesized __ctx_* Var.Init. The post-lower optimize folds/eliminates
-	// that Var so a NoTernary rewrite (which only lowers ternaries in
-	// statement positions, never in Var initializers) never strands a ternary
-	// in a Var.Init reaching Go codegen.
+	// The package arrives checked but not lowered, and must go through the
+	// generate pipeline's full optimize→lower→optimize: lower alone leaves
+	// constructs the language codegen rejects, e.g. a ternary stranded in the
+	// __ctx_* Var.Init passContext synthesizes, which NoTernary does not rewrite
+	// (it lowers ternaries in statement positions only) and the post-lower
+	// optimize folds away.
 	optCfg := &optimize.Config{
 		Platform: plat.PlatformIdentifier(),
 		Language: langIdent(lang),
@@ -116,9 +102,8 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	return results, nil
 }
 
-// cloneOptions returns a shallow copy of opts so per-group SetOptionField
-// mutations don't leak into sibling groups. The field-value pointers are
-// shared (read-only at this stage), only the Fields slice is duplicated.
+// Only the Fields slice is duplicated — the value pointers are read-only at
+// this stage — so a per-group SetOptionField cannot leak into a sibling group.
 func cloneOptions(opts *ir.StructLit) *ir.StructLit {
 	if opts == nil {
 		return &ir.StructLit{}
@@ -128,10 +113,8 @@ func cloneOptions(opts *ir.StructLit) *ir.StructLit {
 	return out
 }
 
-// pkgWithTestSubset returns a shallow copy of pkg whose Funcs include all
-// non-test funcs plus only the test funcs in keep. Used to scope a per-
-// group launcher invocation to its own tests so each binary registers
-// only the tests it should run.
+// Scopes a per-group launcher invocation so each binary registers only the
+// tests it should run.
 func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
 	out := *pkg
 	out.Funcs = make([]*ir.Func, 0, len(pkg.Funcs))
@@ -144,9 +127,6 @@ func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
 	return &out
 }
 
-// launchOneGroup runs a single component-group through the launcher.
-// It generates the target sources into a tempdir, launches the agent,
-// and collects testEnd notifications.
 func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -192,9 +172,7 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	return driveRPC(ch, fixtureDir, fixtureFile)
 }
 
-// langIdent returns a best-effort identifier for the language, for
-// error messages. Different language types may expose this differently;
-// fall back to "" when none of the known methods is available.
+// Best-effort, for error messages: language types spell this differently.
 func langIdent(lang codegen.LangTranslator) string {
 	type identer interface{ LangIdentifier() string }
 	if l, ok := lang.(identer); ok {
@@ -207,16 +185,12 @@ func langIdent(lang codegen.LangTranslator) string {
 	return ""
 }
 
-// driveRPC sends list+run, then collects testStart/log/testEnd/markFail
-// notifications into TestResults. snapshotAssert requests are answered
-// via the snapshot.Store backed by fixtureDir.
 func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen.TestResult, error) {
 	r := testrpc.NewReader(ch)
 	w := testrpc.NewWriter(ch)
 	store := &snapshot.Store{Dir: fixtureDir, Update: os.Getenv("SNGL_UPDATE_SNAPSHOTS") == "1"}
-	// fixtureBase is the .sngl filename (e.g. "app.sngl"). The snapshot
-	// store appends ".snapshots" so goldens live in
-	// <fixtureDir>/<fixtureBase>.snapshots/<name>.<ext>.
+	// The store appends ".snapshots", so goldens live in
+	// <fixtureDir>/<fixtureFile>.snapshots/<name>.<ext>.
 	fixtureBase := fixtureFile
 
 	runID, err := w.Request("run", map[string]any{})

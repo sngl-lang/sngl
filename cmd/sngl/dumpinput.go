@@ -48,8 +48,6 @@ func resolveDumpInput(cmd *cobra.Command, args []string) (dumpInput, error) {
 	}
 }
 
-// dumpParseInput parses input according to the given source mode.
-// Returns the parsed document and the directory context for imports.
 func dumpParseInput(input dumpInput, args []string) (*ast.Document, string, error) {
 	switch input {
 	case dumpInputSNGL:
@@ -70,7 +68,6 @@ func dumpParseInput(input dumpInput, args []string) (*ast.Document, string, erro
 	return nil, "", fmt.Errorf("unhandled input source %q", input)
 }
 
-// dumpParseAndMerge parses the input file/directory and merges siblings.
 func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
 	target := "."
 	if len(args) > 0 {
@@ -213,7 +210,6 @@ func extractMarkdownSNGL(path string) ([]mdBlock, error) {
 	return blocks, nil
 }
 
-// mdFindAnnotation looks backward from fenceLine to find a <!-- SNGL-... --> comment.
 func mdFindAnnotation(lines []string, fenceLine int) (annotation, prelude string) {
 	i := fenceLine - 1
 	for i >= 0 && strings.TrimSpace(lines[i]) == "" {

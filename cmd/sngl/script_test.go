@@ -137,7 +137,6 @@ func snglCmd() script.Cmd {
 			Args:    "args...",
 		},
 		func(s *script.State, args ...string) (script.WaitFunc, error) {
-			// Capture stdout.
 			oldOut := os.Stdout
 			rOut, wOut, err := os.Pipe()
 			if err != nil {
@@ -145,7 +144,6 @@ func snglCmd() script.Cmd {
 			}
 			os.Stdout = wOut
 
-			// Capture stderr.
 			oldErr := os.Stderr
 			rErr, wErr, err := os.Pipe()
 			if err != nil {
@@ -163,14 +161,12 @@ func snglCmd() script.Cmd {
 			go func() { defer wg.Done(); io.Copy(&stdoutBuf, rOut) }()
 			go func() { defer wg.Done(); io.Copy(&stderrBuf, rErr) }()
 
-			// Switch to the script's working directory.
 			oldDir, _ := os.Getwd()
 			os.Chdir(s.Getwd())
 
-			// Propagate the script state's environment into the process
-			// so in-process sngl reads see vars set via `env VAR=value`.
-			// Diff against the current process env, applying only the
-			// keys that changed, and remember the originals to restore.
+			// In-process sngl reads the process environment, so a var set
+			// with `env VAR=value` has to be applied to it — only the keys
+			// that differ, with the originals kept for the restore below.
 			origEnv := map[string]string{}
 			origUnset := map[string]bool{}
 			scriptEnv := map[string]string{}
@@ -198,7 +194,6 @@ func snglCmd() script.Cmd {
 			rootCmd.SilenceErrors = true
 			cmdErr := rootCmd.Execute()
 
-			// Restore state.
 			os.Chdir(oldDir)
 			for k, v := range origEnv {
 				os.Setenv(k, v)
@@ -226,8 +221,6 @@ func snglCmd() script.Cmd {
 	)
 }
 
-// findGoModAncestor walks upward from start looking for a go.mod file.
-// Returns the absolute path to the file, or "" if none found.
 func findGoModAncestor(start string) string {
 	dir, err := filepath.Abs(start)
 	if err != nil {
@@ -246,9 +239,8 @@ func findGoModAncestor(start string) string {
 	}
 }
 
-// resetFlags resets all flags on cmd and its subcommands to their default values.
-// pflag's slice values append on Set, so use the SliceValue.Replace path when
-// available; otherwise fall through to a plain Set against DefValue.
+// pflag's slice values append on Set, so a reset goes through
+// SliceValue.Replace where available and a plain Set against DefValue otherwise.
 func resetFlags(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if sv, ok := f.Value.(pflag.SliceValue); ok {

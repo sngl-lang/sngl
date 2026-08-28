@@ -9,7 +9,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
-// SNGLBlock represents a ```sngl code block extracted from a markdown file.
 type SNGLBlock struct {
 	Source     string // raw code block content (before wrapping)
 	Line       int    // 1-based line of first source line in the markdown file
@@ -18,8 +17,6 @@ type SNGLBlock struct {
 	File       string // markdown file path
 }
 
-// ExtractSNGLBlocks scans a markdown file and returns all ```sngl code blocks
-// with their annotations and preludes.
 func ExtractSNGLBlocks(t testing.TB, path string) []SNGLBlock {
 	t.Helper()
 	f, err := os.Open(path)
@@ -70,10 +67,9 @@ func ExtractSNGLBlocks(t testing.TB, path string) []SNGLBlock {
 	return blocks
 }
 
-// FindAnnotation looks backward from fenceLine in lines to find a
-// <!-- SNGL-... --> comment. Returns the annotation type and any prelude source.
+// Looks backward from fenceLine for a <!-- SNGL-... --> comment, returning the
+// annotation type and any prelude source.
 func FindAnnotation(lines []string, fenceLine int) (annotation, prelude string) {
-	// Skip blank lines before the fence
 	i := fenceLine - 1
 	for i >= 0 && strings.TrimSpace(lines[i]) == "" {
 		i--
@@ -96,7 +92,6 @@ func FindAnnotation(lines []string, fenceLine int) (annotation, prelude string) 
 		return "", ""
 	}
 
-	// Scan backward to find the opening <!-- SNGL-
 	var preludeLines []string
 	for i = i - 1; i >= 0; i-- {
 		trimmed := strings.TrimSpace(lines[i])

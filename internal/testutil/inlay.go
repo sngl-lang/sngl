@@ -23,9 +23,7 @@ type InlayDirective struct {
 	DirLine   int    // 1-based line of the directive comment (for error messages)
 }
 
-// ParseInlayDirectives scans a file for INLAY directives and resolves each
-// target to a 1-based source position. Returns an error if any target cannot
-// be located.
+// Errors if any directive target cannot be located in the source.
 func ParseInlayDirectives(path string) ([]InlayDirective, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -21,11 +21,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// gitIgnored reports whether path is excluded by git (.gitignore et al.).
-// Used by the recursive `...` walk so it doesn't discover scratch/build
-// artifacts (e.g. tmp/, _site/). Exit 0 from `git check-ignore` means the
-// path is ignored; any other status (not ignored, no git, not a repo) is
-// treated as not-ignored so discovery degrades gracefully outside git.
+// Any status but 0 — not ignored, no git, not a repo — reads as not-ignored,
+// so the `...` walk still works outside a repository.
 func gitIgnored(path string) bool {
 	return exec.Command("git", "check-ignore", "-q", path).Run() == nil
 }
@@ -36,10 +33,7 @@ func discoverFiles(args []string) ([]string, error) {
 	}
 	var files []string
 	for _, arg := range args {
-		// `path/...` is a recursive walk anchored at path (Go-style).
-		// Bare `...` and `./...` walk the current directory. Mirrors
-		// `go test ./...`: skip `testdata` directories and any directory
-		// whose base name starts with `.` or `_`.
+		// Mirrors `go test ./...`, skipped directories included.
 		if strings.HasSuffix(arg, "/...") || arg == "..." || arg == "./..." {
 			root := strings.TrimSuffix(arg, "/...")
 			if root == "" || root == "." {
@@ -96,7 +90,6 @@ func discoverFiles(args []string) ([]string, error) {
 	return files, nil
 }
 
-// parseSNGL parses a .sngl file.
 func parseSNGL(filename string, r io.Reader) (*ast.Document, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -109,10 +102,7 @@ func isSNGLFile(path string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ".sngl")
 }
 
-// shouldSkipWalkDir reports whether a `...` recursive walk should descend
-// into the given directory base name. Mirrors `go test ./...`: skip
-// `testdata`, plus any directory beginning with `.` or `_` (vendor caches,
-// hidden VCS state, scratch dirs).
+// Mirrors `go test ./...`: testdata, plus anything beginning with `.` or `_`.
 func shouldSkipWalkDir(name string) bool {
 	if name == "testdata" {
 		return true
@@ -124,9 +114,8 @@ func shouldSkipWalkDir(name string) bool {
 	return c == '.' || c == '_'
 }
 
-// parseDir parses all .sngl files in a directory and merges them into a single
-// document. This implements package-level semantics: all definitions in the
-// directory become part of the same compilation unit.
+// A directory is one compilation unit: every .sngl file in it merges into one
+// document.
 func parseDir(dir string) (*ast.Document, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -159,9 +148,6 @@ func parseDir(dir string) (*ast.Document, error) {
 	return doc, nil
 }
 
-// mergeDir merges all sibling .sngl files in the same directory as filename
-// into doc. This implements package-level merging: all definitions in sibling
-// files become part of the same compilation unit.
 func mergeDir(doc *ast.Document, filename string) *ast.Document {
 	dir := filepath.Dir(filename)
 	base := filepath.Base(filename)
@@ -191,8 +177,8 @@ func mergeDir(doc *ast.Document, filename string) *ast.Document {
 	return doc
 }
 
-// mergeInto merges definitions from src into dst, excluding imports.
-// Each file's imports are file-scoped and do not leak into siblings.
+// Imports are dropped: each file's are file-scoped and must not leak into
+// siblings.
 func mergeInto(dst, src *ast.Document) {
 	for _, stmt := range src.Stmts {
 		if _, isImport := stmt.(*ast.Import); isImport {
@@ -202,8 +188,6 @@ func mergeInto(dst, src *ast.Document) {
 	}
 }
 
-// validateOutputs checks that output declarations reference valid lang/platform
-// pairs and that the platform supports the language.
 func validateOutputs(pkg *ir.Package) error {
 	for _, out := range pkg.Outputs {
 		var pos ast.Pos
@@ -225,15 +209,11 @@ func validateOutputs(pkg *ir.Package) error {
 	return nil
 }
 
-// checkDoc type-checks a parsed document. Returns an error if any diagnostics
-// are errors.
-//
-// targets are the compile targets this check is for, when a caller selected
-// them itself -- `--platform`/`--lang` on the command line. A caller that did
-// not need pass none: the document's own `output` blocks name its targets, and
-// the checker reads those. Either way a target's library package is loaded as
-// though the document had imported it, so its overrides are checked here and
-// its failures belong to this build.
+// targets are the compile targets a caller selected itself, from
+// `--platform`/`--lang`; passing none leaves the document's own `output` blocks
+// to name them. Either way a target's library package is loaded as though the
+// document had imported it, so its overrides are checked here and its failures
+// belong to this build.
 func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTarget) (*ir.Package, error) {
 	langs, plats := collectTargets()
 	fsys := os.DirFS(dir)
@@ -259,7 +239,6 @@ func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTa
 	return pkg, nil
 }
 
-// cliResolver implements checker.ImportResolver using registered codegen schemes.
 // One is built per check (see checkDoc), which is the lifetime any scheme
 // session it opens inherits.
 type cliResolver struct {
@@ -363,10 +342,8 @@ func (r *cliResolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, 
 	return imp.Resolve(uri, dir)
 }
 
-// ResolveSchemeFS dispatches to a registered FS scheme importer (e.g., git://),
-// downloads or cache-hits its filesystem, and returns all *.sngl documents at
-// the FS root along with the FS itself so nested imports within the package
-// can be resolved against it. Returns (nil, nil, nil) when scheme has no FS
+// The FS is returned alongside the documents so nested imports within the
+// package resolve against it. (nil, nil, nil) means the scheme has no FS
 // importer registered.
 func (r *cliResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
 	imp := codegen.LookupFSScheme(scheme)
@@ -399,11 +376,9 @@ func (r *cliResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document,
 	return docs, fsys, nil
 }
 
-// explicitFileSet returns the absolute paths of args that are regular files
-// (not directories). Used to skip sibling merging when a specific file is
-// passed. Directory and `...` glob args are NOT marked here — the caller
-// decides whether to treat walked descendants as standalone (test mode) or
-// as a merged package (build/compile mode).
+// Marks the args naming a file, so sibling merging can be skipped for them.
+// Directory and `...` args are NOT marked: the caller decides whether walked
+// descendants are standalone (test mode) or a merged package (build).
 func explicitFileSet(args []string) map[string]bool {
 	m := make(map[string]bool)
 	for _, arg := range args {
@@ -416,9 +391,6 @@ func explicitFileSet(args []string) map[string]bool {
 	return m
 }
 
-// resolveLangPlat fills in a default language when only --platform is given.
-// When --platform is set and --lang is omitted, the first supported language
-// for that platform is used. --lang without --platform is still an error.
 func resolveLangPlat(cliLang, cliPlat string) (string, string, error) {
 	if cliPlat != "" && cliLang == "" {
 		plat := codegen.LookupPlatform(cliPlat)
@@ -437,7 +409,6 @@ func resolveLangPlat(cliLang, cliPlat string) (string, string, error) {
 	return cliLang, cliPlat, nil
 }
 
-// collectTargets gathers registered languages and platforms as checker targets.
 func collectTargets() ([]ir.Language, []ir.Platform) {
 	var langs []ir.Language
 	for _, name := range codegen.Langs() {

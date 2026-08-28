@@ -6,9 +6,7 @@ import (
 
 // MutationModel is the intermediate representation for platforms that emit
 // a static component tree once and generate targeted updater functions to
-// patch specific parts when state changes (Document+Mutations model).
-//
-// Used by HTML and Fyne.
+// patch specific parts when state changes.
 type MutationModel struct {
 	Analysis   *CommonAnalysis
 	DepTracker *DepTracker
@@ -18,9 +16,7 @@ type MutationModel struct {
 }
 
 // RenderModel is the intermediate representation for platforms that
-// re-render the full view from state on every change (Render Loop model).
-//
-// Used by BubbleTea and Android/Compose.
+// re-render the full view from state on every change.
 type RenderModel struct {
 	Analysis *CommonAnalysis
 	Handlers []Handler
@@ -28,8 +24,6 @@ type RenderModel struct {
 }
 
 // Updater is a registered reactive update function with its dependencies.
-// The platform-specific code body is stored as a string; deps track which
-// root state fields this updater reads.
 type Updater struct {
 	Name     string               // e.g., "$u_0_text", "updateLabel0"
 	Kind     string               // "text", "attr", "if", "list", "else", "disabled", etc.
@@ -38,24 +32,19 @@ type Updater struct {
 	Body     string               // platform-specific code body (filled during emit)
 	Deps     map[*ir.Var]struct{} // root state var dependencies
 	InitOnly bool                 // run only on initial sync; mutation updates are emitted inline elsewhere
-	// Requires records the runtime helpers and native imports this updater's
-	// body needs, collected structurally during its translation (not by
-	// text-scanning). Because these ride on the Updater, a dead updater dropped
-	// by OptimizeMutation contributes nothing, and merged updaters union them —
-	// so the platform's final helper/import set reflects only surviving code.
+	// Requires rides on the Updater so that an updater OptimizeMutation drops
+	// contributes no helpers or imports, and merged updaters union theirs.
 	Requires Requirement
 }
 
 // Requirement is the set of runtime helpers and native imports a generated
-// code body depends on. Unioned across merged updaters; dropped with dead ones.
+// code body depends on.
 type Requirement struct {
 	Helpers       map[string]bool            // helper function names (e.g. "String")
 	NativeImports map[string]map[string]bool // module path → set of imported names
 }
 
-// MergeInto unions r's helpers and native imports into the given (non-nil)
-// maps. Used by platforms to fold a surviving updater's requirements into the
-// shared helper/import sets they render from.
+// MergeInto unions r's helpers and native imports into the given (non-nil) maps.
 func (r Requirement) MergeInto(helpers map[string]bool, native map[string]map[string]bool) {
 	for h := range r.Helpers {
 		helpers[h] = true
@@ -70,7 +59,6 @@ func (r Requirement) MergeInto(helpers map[string]bool, native map[string]map[st
 	}
 }
 
-// union merges other into r (in place), allocating r's maps as needed.
 func (r *Requirement) union(other Requirement) {
 	for h := range other.Helpers {
 		if r.Helpers == nil {
@@ -91,7 +79,6 @@ func (r *Requirement) union(other Requirement) {
 	}
 }
 
-// Handler represents an event binding on a visual node.
 type Handler struct {
 	NodeID  string               // element/widget identifier
 	Event   string               // "click", "input", "change"
@@ -99,14 +86,11 @@ type Handler struct {
 	Mutated map[*ir.Var]struct{} // vars this handler mutates
 }
 
-// TimerHandler combines timer metadata with its mutation info.
 type TimerHandler struct {
 	TimerInfo
 	Mutated map[*ir.Var]struct{} // vars mutated by the timer body
 }
 
-// NewMutationModel creates a MutationModel from a CommonAnalysis and the
-// dependency tracker of the package it was derived from.
 func NewMutationModel(a *CommonAnalysis, deps *DepTracker) *MutationModel {
 	return &MutationModel{
 		Analysis:   a,
@@ -114,7 +98,6 @@ func NewMutationModel(a *CommonAnalysis, deps *DepTracker) *MutationModel {
 	}
 }
 
-// NewRenderModel creates a RenderModel from a CommonAnalysis.
 func NewRenderModel(a *CommonAnalysis) *RenderModel {
 	return &RenderModel{
 		Analysis: a,

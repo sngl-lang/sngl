@@ -61,29 +61,18 @@ type LangTranslator interface {
 
 	GenerateIdentifier(name *ir.Ident) string
 
-	// IR-typed public API. TranslateIRExpr/TranslateIRMutation were removed
-	// from the interface once the html platform moved fully onto each
-	// language's *IRContext path; languages may still implement them as
-	// concrete (non-interface) methods for internal use (e.g. golang/http.go
-	// calls golang.Translator.TranslateIRMutation directly).
 	TranslateIRLiteral(e ir.Expr) string
 
 	TypeToNative(hint string) string
 	ExportName(name string) string
 
-	// NewFileEmitter returns a per-file emitter that owns header,
-	// imports, body buffer, and source-map sidecar internally. The
-	// platform writes IR-translated content through the emitter; Close
-	// flushes the assembled file to sink under opts.Name. See
-	// FileEmitter and FileOptions.
+	// NewFileEmitter returns a per-file emitter that owns header, imports,
+	// body buffer, and source-map sidecar internally.
 	NewFileEmitter(sink Sink, opts FileOptions) FileEmitter
 }
 
-// UnimplementedFileEmitter is the placeholder returned by languages that
-// haven't migrated to the FileEmitter surface yet. Every method that
-// requires actual emission returns an error indicating the language is
-// not migrated. Used by codegen.RequireFileEmitter to error early when
-// a platform attempts file-emitter usage against a non-migrated lang.
+// UnimplementedFileEmitter is returned by languages that have not migrated to
+// the FileEmitter surface; every emitting method errors.
 type UnimplementedFileEmitter struct {
 	Lang string
 }
@@ -123,22 +112,13 @@ type FileOptions struct {
 	CgoPreamble string
 }
 
-// FileEmitter is the per-file rendering surface. Languages own their
-// concrete implementation; the platform writes through this generic
-// interface so its code stays lang-agnostic.
+// FileEmitter is the per-file rendering surface. Languages own the concrete
+// implementation so the platform's code stays lang-agnostic: it writes raw
+// bytes and/or IR through the emitter, then Close flushes header, package
+// decl, import block and body to the sink as one file.
 //
-// Lifecycle:
-//  1. Platform asks the language: `e := lang.NewFileEmitter(sink, opts)`.
-//  2. Platform writes via io.Writer (raw bytes for things like function
-//     signatures) and/or calls EvalExpr/EvalStmt to translate IR. Each
-//     translation call may auto-register imports as a side-effect.
-//  3. Platform calls Close. The emitter flushes header + package decl
-//     + import block + body to the sink as a single file, plus any
-//     source-map sidecar.
-//
-// Imports are tracked internally. The platform never sees raw paths;
-// when it needs a specific alias for an import it explicitly registers,
-// it gets the alias back from RequireImport.
+// Imports are tracked internally; the platform never sees raw paths, and gets
+// an alias back from RequireImport for one it registers explicitly.
 type FileEmitter interface {
 	io.Writer
 
@@ -185,16 +165,9 @@ type OptionConfigurable interface {
 
 // ForeignIntrinsics is optionally implemented by a PlatformGenerator that
 // renders an #[intrinsic] component from another platform's namespace.
-//
-// A platform primitive's id is the emitting codegen's dispatch key, so one
-// platform's means nothing to another and naming it from a build targeting
-// something else is an error (lower's ForeignPrimitive pass). A platform that
-// does implement someone else's says so here rather than having it assumed --
-// which is the difference between a rule and a wall.
-//
-// No platform implements this today. It is the seam for one that wants to: a
-// platform embedding another's widget set, or a host that renders a subset of
-// android's Compose primitives.
+// Naming a foreign primitive is otherwise an error (lower's ForeignPrimitive
+// pass); a platform that does implement one says so here rather than having it
+// assumed. No platform implements this today.
 type ForeignIntrinsics interface {
 	// ClaimsIntrinsic reports whether this platform emits the component
 	// carrying this #[intrinsic] id, e.g. "android:Column".
@@ -213,15 +186,12 @@ func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
 
 // PlatformAvailability is optionally implemented by PlatformGenerators whose
 // component vocabulary depends on files outside this repository — today only
-// gtk4, which reads widget metadata from the GTK 4 GIR file installed with the
-// GTK development package.
+// gtk4 and its GIR file.
 //
-// A platform that reports itself unavailable also stops contributing the
-// declarations of its sngl://platforms/<id> package, so a compile for any
-// *other* platform is unaffected: the
-// checker merges every registered platform's stdlib overrides regardless of
-// the build target, and overrides referencing types the platform cannot
-// resolve would otherwise fail every compile in the process.
+// An unavailable platform also stops contributing its sngl://platforms/<id>
+// declarations: the checker merges every registered platform's overrides
+// regardless of build target, so overrides naming types it cannot resolve
+// would fail every compile in the process.
 type PlatformAvailability interface {
 	// Unavailable returns nil when the platform can be used here, or an error
 	// naming what is missing and how to supply it.
@@ -453,14 +423,12 @@ type HTTPRoute struct {
 	WindowIdx int          // index into CodegenCtx.Windows()
 	Actions   []HTTPAction // server-state form actions (POST handlers)
 
-	// Render is the language-agnostic per-route render model: a static HTML
-	// skeleton interleaved with IR-expr holes (text/attr bindings, reactive
-	// if/for). The target language fills the holes by translating their IR
-	// against the route's State via its own *IRContext. nil when the route
-	// has no server-rendered content. Added in Phase 3; consumed in Phase 4.
+	// Render is a static HTML skeleton interleaved with IR-expr holes, which
+	// the target language fills against the route's State. nil when the route
+	// has no server-rendered content.
 	Render *RouteRender
 	// StateVars are the component state fields surfaced to the server State
-	// struct. Added in Phase 3; consumed in Phase 4.
+	// struct.
 	StateVars []StateVar
 }
 
@@ -469,18 +437,13 @@ type HTTPRoute struct {
 // function when compiling with --lang go).
 type HTTPAction struct {
 	Name string // action identifier (e.g., "action0")
-	// Mutations is the type-checked handler body to execute server-side. It
-	// still carries the full handler block (including any visual/DOM-patch
-	// statements) for the legacy RenderHTML-based consumer.
+	// Mutations is the full type-checked handler body, visual/DOM-patch
+	// statements included.
 	//
-	// Deprecated: use LogicalMutations, which excludes DOM/visual statements.
-	// Kept unchanged through Phase 3 so the existing Go consumer's POST body
-	// output stays byte-identical; Phase 4 switches the consumer to
-	// LogicalMutations.
+	// Deprecated: use LogicalMutations, which excludes those.
 	Mutations []ir.Stmt
-	// LogicalMutations is the handler's logical state-mutation IR with
-	// visual/DOM-patch statements removed (e.g. assignments to an element-ref
-	// Select target). Added in Phase 3; consumed in Phase 4.
+	// LogicalMutations is the handler's state-mutation IR with visual/DOM-patch
+	// statements removed.
 	LogicalMutations []ir.Stmt
 }
 
@@ -513,10 +476,6 @@ type RouteHole struct {
 // RouteRender is a static HTML skeleton interleaved with holes. Chunks[i] is
 // emitted, then Holes[i] (if present), alternating. Invariant:
 // len(Chunks) == len(Holes)+1.
-//
-// (The spec calls this the "RenderModel"; the codegen package already uses
-// RenderModel for the render-loop platform IR, so the HTTP-seam type is named
-// RouteRender to avoid the collision.)
 type RouteRender struct {
 	Chunks []string
 	Holes  []RouteHole
@@ -557,30 +516,23 @@ type CCompiler interface {
 	EmitCHeader(imports []*ir.NativeImport) string
 }
 
-// MutationModelEmitter is optionally implemented by platforms that use the
-// Document+Mutations model: emit a static tree once, then generate targeted
-// updater functions to patch specific parts when state changes.
-//
-// Platforms: HTML, Fyne.
+// MutationModelEmitter is optionally implemented by platforms that emit a
+// static tree once, then generate targeted updater functions to patch it.
 type MutationModelEmitter interface {
 	BuildMutationModel(req *Request, analysis *CommonAnalysis) (*MutationModel, error)
 	EmitFromMutation(m *MutationModel, req *Request, sink Sink) error
 }
 
-// RenderModelEmitter is optionally implemented by platforms that use the
-// Render Loop model: re-render the full view from state on every change,
-// letting the framework handle diffing.
-//
-// Platforms: BubbleTea, Android/Compose.
+// RenderModelEmitter is optionally implemented by platforms that re-render the
+// full view from state on every change, letting the framework diff.
 type RenderModelEmitter interface {
 	BuildRenderModel(req *Request, analysis *CommonAnalysis) (*RenderModel, error)
 	EmitFromRender(m *RenderModel, req *Request, sink Sink) error
 }
 
-// MutationCompilerFactory is optionally implemented by PlatformGenerators that
-// expose a per-request MutationModelEmitter. The singleton Generator stays
-// stateless; each call returns a fresh compilation object that owns per-request
-// build state across BuildMutationModel and EmitFromMutation.
+// MutationCompilerFactory keeps the singleton Generator stateless: each call
+// returns a fresh compilation owning the per-request build state across
+// BuildMutationModel and EmitFromMutation.
 type MutationCompilerFactory interface {
 	NewMutationCompiler() MutationModelEmitter
 }
@@ -591,15 +543,13 @@ type RenderCompilerFactory interface {
 	NewRenderCompiler() RenderModelEmitter
 }
 
-// OutputFile represents a single generated file. Its WriteTo function writes
-// the file content lazily, allowing template execution to be deferred to
-// write time.
+// OutputFile represents a single generated file. WriteTo is lazy, so template
+// execution is deferred to write time.
 type OutputFile struct {
 	Name    string // relative path, e.g. "model.go"
 	WriteTo func(w io.Writer) (int64, error)
 }
 
-// BytesFile creates an OutputFile backed by a byte slice.
 func BytesFile(name string, content []byte) *OutputFile {
 	return &OutputFile{
 		Name: name,
@@ -632,7 +582,6 @@ func TemplateFile(name string, tmpl *template.Template, data any) *OutputFile {
 	}
 }
 
-// TemplateFuncs returns the base template FuncMap with the skip function.
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"skip": func() string { panic(skipError(ErrSkip)) },

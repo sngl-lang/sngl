@@ -210,8 +210,6 @@ func TestCollectConstraints_ReturnFuncvar(t *testing.T) {
 	t.Fatalf("expected constraint %+v in %+v", want, cs)
 }
 
-// --- analyzePointsTo tests ---
-
 func TestPointsTo_DirectStore_SyncSlot(t *testing.T) {
 	syncFn := &ir.Func{Name: "syncFn"}
 	v := &ir.Var{Name: "v", Type: funcType(), Init: identTo(syncFn)}
@@ -260,8 +258,6 @@ func TestPointsTo_MixedStore_PromotesAsync(t *testing.T) {
 		t.Fatalf("expected 2 candidates, got %d", len(info.Candidates(ir.SlotVarKey(v))))
 	}
 }
-
-// --- analyzeAsyncWithPointsTo tests ---
 
 // TestAnalyzeAsyncWithPointsTo_FuncvarCallColorsCaller: a caller that invokes a
 // funcvar slot pointing to an async function should itself become async after

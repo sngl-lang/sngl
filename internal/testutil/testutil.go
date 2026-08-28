@@ -51,7 +51,6 @@ type FoldDirective struct {
 	Line     int    // 1-based line number
 }
 
-// ParseFoldDirectives scans a file for // FOLD value comments.
 func ParseFoldDirectives(path string) ([]FoldDirective, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -96,7 +95,6 @@ func parseSNGLLiteral(s string) (any, error) {
 	return nil, fmt.Errorf("unrecognized SNGL literal: %s", s)
 }
 
-// ParseDirectives scans a file for // ERROR(phase) "substring" comments.
 func ParseDirectives(path string) ([]ErrorDirective, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -125,7 +123,6 @@ func ParseDirectives(path string) ([]ErrorDirective, error) {
 	return dirs, s.Err()
 }
 
-// Filter returns directives matching the given phase.
 func Filter(dirs []ErrorDirective, phase string) []ErrorDirective {
 	var out []ErrorDirective
 	for _, d := range dirs {
@@ -136,9 +133,8 @@ func Filter(dirs []ErrorDirective, phase string) []ErrorDirective {
 	return out
 }
 
-// AssertDiagnostics matches directives against the diagnostic stream.
-// Phase "lint" filters to warning-severity; all other phases filter to errors.
-// Only directives matching the supplied phase are checked.
+// Phase "lint" filters to warning-severity; every other phase filters to
+// errors. Only directives matching the supplied phase are checked.
 func AssertDiagnostics(t testing.TB, diags []ir.Diagnostic, dirs []ErrorDirective, phase string) {
 	t.Helper()
 	targetSeverity := ir.Error
@@ -173,7 +169,6 @@ func AssertDiagnostics(t testing.TB, diags []ir.Diagnostic, dirs []ErrorDirectiv
 	}
 }
 
-// ParseFile opens and parses a .sngl file.
 func ParseFile(path string) (*ast.Document, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {

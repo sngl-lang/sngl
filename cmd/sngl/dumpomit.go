@@ -2,9 +2,8 @@ package main
 
 import "reflect"
 
-// omitFields walks v recursively and zeros any exported struct fields
-// whose names appear in the omit set. v must be a pointer for mutation
-// to take effect. Safe only when the value won't be used after dumping.
+// v must be a pointer for the mutation to take effect, and is unusable
+// afterwards: the named fields are zeroed in place.
 func omitFields(v any, omit map[string]bool) {
 	omitWalk(reflect.ValueOf(v), omit, make(map[uintptr]bool))
 }

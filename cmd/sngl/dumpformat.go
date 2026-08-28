@@ -44,11 +44,8 @@ func resolveDumpFormat(cmd *cobra.Command) (dumpFormat, error) {
 	}
 }
 
-// dumpDefaultFormat is the format a stage falls back to when --format was not
-// given. Every stage but one dumps a program, which the sngl default renders
-// as source; the analysis dumps a set of derived facts *about* a program, and
-// those have no source form to render. Defaulting it to json prints the stage
-// rather than failing on a flag nobody set.
+// analysis dumps derived facts about a program rather than the program, so it
+// has no source form and the sngl default would fail on a flag nobody set.
 func dumpDefaultFormat(cmd *cobra.Command, stage string, f dumpFormat) dumpFormat {
 	if stage == "analysis" && !cmd.Flags().Changed("format") {
 		return dumpFormatJSON

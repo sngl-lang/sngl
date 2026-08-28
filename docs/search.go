@@ -18,9 +18,8 @@ type SearchEntry struct {
 	Kind  string // discriminator: "component"|"type"|"method"|"enum"|"member"|"func"|"const"|"data"|"override"|"platform-type"|"platform"|"language"|"page"|"lesson"
 }
 
-// SearchIndex enumerates every searchable record in the docs site. Stable
-// ordering: titles ascending after dedupe so the SNGL renderer doesn't have
-// to sort at compile time.
+// Stable ordering: titles ascending after dedupe, so the SNGL renderer doesn't
+// have to sort at compile time.
 //
 //sngl:pure
 func SearchIndex() []SearchEntry {
@@ -34,7 +33,6 @@ func SearchIndex() []SearchEntry {
 		out = append(out, e)
 	}
 
-	// Per-package decls (stdlib + every platform/language with a Package()).
 	for _, pkg := range lookup.StdlibPackages() {
 		idx := lookup.PackageIndex(pkg.Path)
 		if !idx.Found {
@@ -138,7 +136,6 @@ func SearchIndex() []SearchEntry {
 		})
 	}
 
-	// Markdown pages (learn / reference / root index).
 	for _, p := range Pages() {
 		crumb := "Docs"
 		if p.Section != "" {
@@ -153,7 +150,6 @@ func SearchIndex() []SearchEntry {
 		})
 	}
 
-	// Targets reference (platforms + languages).
 	cat := Targets()
 	for _, p := range cat.Platforms {
 		add(SearchEntry{
@@ -174,7 +170,7 @@ func SearchIndex() []SearchEntry {
 		})
 	}
 
-	// Tutorial lessons. The tutorial page reads `#lesson=<slug>` on load.
+	// The tutorial page reads `#lesson=<slug>` on load.
 	for _, s := range Tutorial() {
 		for _, l := range s.Lessons {
 			add(SearchEntry{

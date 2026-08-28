@@ -7,12 +7,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// Extraction helpers for v2 Document. The v2 Document only has Stmts []Stmt;
-// these helpers provide the v1-style named-slice access patterns that
-// downstream code (platforms, cmd) still uses during the migration.
-
-// --- Expr helpers ---
-
 // ExprLiteralString extracts a string value from a LiteralExpr.
 func ExprLiteralString(e ast.Expr) (string, bool) {
 	if e == nil {
@@ -47,8 +41,6 @@ func ExprLiteralString(e ast.Expr) (string, bool) {
 	}
 	return "", false
 }
-
-// --- ComponentDecl helpers ---
 
 // CompParams extracts Param entries from a ComponentDecl's Props.
 func CompParams(comp *ast.ComponentDecl) []ast.Param {

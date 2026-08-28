@@ -344,8 +344,6 @@ func containsStr(s, sub string) bool {
 	return false
 }
 
-// --- Binary/unary operator validation ---
-
 func TestBinaryOpTypeMismatch(t *testing.T) {
 	expectError(t, `const x = "hello" + true`, "operator + not defined")
 	expectError(t, `const x = "hello" - 1`, "operator - not defined")
@@ -410,8 +408,6 @@ component main {
 }`)
 }
 
-// --- const(expr) assertion ---
-
 func TestConstExprLiteral(t *testing.T) {
 	expectNoErrors(t, `const x = const 42`)
 	expectNoErrors(t, `const x = const (1 + 2)`)
@@ -452,7 +448,6 @@ func TestConstExprErasedFromIR(t *testing.T) {
 	}
 }
 
-// --- const(expr) locks function purity ---
 //
 // The primary motivation for `const` is to force compile-time evaluation of
 // pure function calls. If a user refactors a function from pure → impure,
@@ -554,8 +549,6 @@ var y = const math.Square(4)
 		t.Error("expected 'not a constant expression' error for impure import")
 	}
 }
-
-// --- Import aliases / replaces ---
 
 func TestImportIdentAlias(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
@@ -716,8 +709,6 @@ import "widgets" => "widgets_v3"
 	}
 }
 
-// --- If condition / for iterator ---
-
 func TestIfConditionMustBeBool(t *testing.T) {
 	expectError(t, `
 func foo() {
@@ -752,8 +743,6 @@ func foo() {
 }`)
 }
 
-// --- Assignment type checking ---
-
 func TestAssignTypeMismatch(t *testing.T) {
 	expectError(t, `
 func foo() {
@@ -778,8 +767,6 @@ func foo() {
 }`)
 }
 
-// --- Const reassignment ---
-
 func TestConstReassignment(t *testing.T) {
 	expectError(t, `
 const x = 1
@@ -787,8 +774,6 @@ func foo() {
 	x = 2
 }`, "cannot assign to const")
 }
-
-// --- Return type checking ---
 
 func TestReturnTypeMismatch(t *testing.T) {
 	expectError(t, `
@@ -821,8 +806,6 @@ func foo() int {
 }`)
 }
 
-// --- Const expression validation ---
-
 func TestConstNonConstRef(t *testing.T) {
 	expectError(t, `
 var mutable = 5
@@ -844,8 +827,6 @@ const x = compute()
 `, "non-const")
 }
 
-// --- Var init type checking ---
-
 func TestVarInitTypeMismatch(t *testing.T) {
 	expectError(t, `var x int = "hello"`, "cannot initialize int with string")
 }
@@ -857,8 +838,6 @@ func TestVarInitValid(t *testing.T) {
 func TestVarInitIntToFloat(t *testing.T) {
 	expectNoErrors(t, `var x float = 42`)
 }
-
-// --- Function argument type checking ---
 
 func TestFuncArgTypeMismatch(t *testing.T) {
 	expectError(t, `
@@ -914,8 +893,6 @@ func test() {
 		}
 	}
 }
-
-// --- Method call semantics ---
 
 func TestMethodInstanceCall(t *testing.T) {
 	// 2.add(3) — receiver is implicit first arg.
@@ -985,8 +962,6 @@ func test() {
 }
 `)
 }
-
-// --- Stdlib tests ---
 
 func TestStdlibComponentResolution(t *testing.T) {
 	// text() should resolve as a stdlib component, not an error.
@@ -1193,8 +1168,6 @@ component main {
 		t.Error("CallStmt.Call.Func is nil, want resolved function")
 	}
 }
-
-// --- Testdata-driven tests ---
 
 func testdataDir() string {
 	_, thisFile, _, _ := runtime.Caller(0)

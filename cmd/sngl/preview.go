@@ -43,17 +43,17 @@ type previewServer struct {
 	sourceDir  string
 	activeLang string
 	activePlat string
-	content    []byte        // latest compiled HTML
-	doc        *ast.Document // latest parsed AST
+	content    []byte
+	doc        *ast.Document
 	clientsMu  sync.Mutex
 	clients    map[chan struct{}]struct{}
 
-	// Schema from stdlib for showing all possible properties
+	// Stdlib schemas, so the editor can show the unset properties too.
 	schemas     checker.SchemaRegistry
-	styleNames  []string // all known style property names, sorted
+	styleNames  []string // sorted
 	styleSchema map[string]checker.StylePropSchema
 
-	// Runtime state synced from browser
+	// Synced from the browser.
 	runtimeState map[string]any
 }
 
@@ -85,12 +85,10 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		styleSchema: styleProps,
 	}
 
-	// Initial parse to determine default target
 	if err := s.recompile(); err != nil {
 		return fmt.Errorf("initial compile: %w", err)
 	}
 
-	// Start file watcher
 	go s.watch()
 
 	mux := http.NewServeMux()
@@ -133,7 +131,6 @@ func (s *previewServer) recompile() error {
 
 	s.mu.Lock()
 
-	// Resolve active target if not set
 	if s.activeLang == "" || s.activePlat == "" {
 		if pkg != nil && len(pkg.Outputs) > 0 {
 			s.activeLang = pkg.Outputs[0].Lang
@@ -229,7 +226,6 @@ func (s *previewServer) handlePreview(w http.ResponseWriter, r *http.Request) {
 		w.Write(content)
 		return
 	}
-	// Inject live-reload + selection script before </body>
 	html := strings.Replace(string(content), "</body>", liveReloadScript+"\n</body>", 1)
 	w.Write([]byte(html))
 }
@@ -256,7 +252,6 @@ func (s *previewServer) handleEvents(w http.ResponseWriter, r *http.Request) {
 		s.clientsMu.Unlock()
 	}()
 
-	// Send initial connected event
 	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
 	flusher.Flush()
 
@@ -287,12 +282,10 @@ func (s *previewServer) handleTargets(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{}
 	var targets []target
 
-	// Active target from checker (outputs are resolved during check).
 	if doc != nil {
 		_ = doc // outputs are resolved during check; fallback below covers all platforms
 	}
 
-	// From registry
 	for _, plat := range codegen.Platforms() {
 		pg := codegen.LookupPlatform(plat)
 		for _, lang := range pg.SupportedLangs() {
@@ -341,8 +334,6 @@ func (s *previewServer) handleSwitch(w http.ResponseWriter, r *http.Request) {
 	s.broadcast()
 	w.WriteHeader(http.StatusOK)
 }
-
-// --- Node API for visual editor ---
 
 type nodeResponse struct {
 	Component string              `json:"component"`
@@ -408,7 +399,6 @@ func (s *previewServer) handleAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if doc != nil {
-		// Extract data and computed declarations from v2 AST.
 		for _, stmt := range doc.Stmts {
 			switch s := stmt.(type) {
 			case *ast.VarDecl:
@@ -465,7 +455,6 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find visual node at position in v2 AST.
 	vn := findNodeInDoc(doc, line, col)
 	if vn == nil {
 		http.Error(w, "node not found", http.StatusNotFound)
@@ -481,10 +470,9 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		Styles:    make(map[string]propJSON),
 	}
 
-	// Look up the component schema for all possible props/events
 	schema := s.schemas[compName]
 
-	// Add all schema props (unset ones first, then overwrite with set ones)
+	// Schema first, so a set prop overwrites its unset entry below.
 	if schema != nil {
 		for name, ps := range schema.Props {
 			resp.Props[name] = propJSON{
@@ -493,7 +481,6 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Overwrite with actually-set props from Args
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok || arg.Name == "" {
@@ -510,7 +497,6 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		resp.Props[arg.Name] = exprToPropJSON(arg.Value, typeName, enum)
 	}
 
-	// Add all known style properties (unset first, then overwrite)
 	for _, name := range s.styleNames {
 		sp := s.styleSchema[name]
 		resp.Styles[name] = propJSON{
@@ -518,7 +504,6 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 			Enum: sp.Enum,
 		}
 	}
-	// Find style arg and extract struct fields
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok || arg.Name != "style" {
@@ -532,7 +517,6 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Collect event handler names from Args
 	setEvents := map[string]bool{}
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok {
@@ -540,14 +524,12 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Add all schema events (unset first, then mark set ones)
 	if schema != nil {
 		for name := range schema.Events {
 			resp.Events = append(resp.Events, eventJSON{Name: name, Set: setEvents[name]})
 			delete(setEvents, name)
 		}
 	}
-	// Add remaining events not in schema
 	for name := range setEvents {
 		resp.Events = append(resp.Events, eventJSON{Name: name, Set: true})
 	}
@@ -567,7 +549,6 @@ func vnComponentName(vn *ast.VisualNode) string {
 	return parser.FormatExpr(vn.Target)
 }
 
-// findNodeInDoc searches all components in the document for a VisualNode at the given position.
 func findNodeInDoc(doc *ast.Document, line, col int) *ast.VisualNode {
 	for _, stmt := range doc.Stmts {
 		if comp, ok := stmt.(*ast.ComponentDecl); ok {
@@ -612,7 +593,6 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse SNGL source
 	data, err := os.ReadFile(s.sourceFile)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -624,18 +604,15 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find the visual node at the given position
 	vn := findNodeInDoc(doc, line, col)
 	if vn == nil {
 		http.Error(w, "node not found at position", http.StatusNotFound)
 		return
 	}
 
-	// Update properties by replacing/adding named args
 	for k, v := range body.Props {
 		setArg(vn, k, parseSNGLValue(v))
 	}
-	// Update style properties
 	if len(body.Styles) > 0 {
 		var fields []ast.StructFieldLit
 		for k, v := range body.Styles {
@@ -644,7 +621,6 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 		setArg(vn, "style", &ast.StructExpr{Fields: fields})
 	}
 
-	// Write back formatted source
 	formatted := parser.Format(doc)
 	if err := os.WriteFile(s.sourceFile, []byte(formatted), 0o644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -656,28 +632,23 @@ func (s *previewServer) handleNodePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseSNGLValue(s string) ast.Expr {
-	// Try integer
 	var i int
 	if _, err := fmt.Sscanf(s, "%d", &i); err == nil && fmt.Sprintf("%d", i) == s {
 		return &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: s}
 	}
-	// Try float
 	var f float64
 	if _, err := fmt.Sscanf(s, "%g", &f); err == nil {
 		return &ast.LiteralExpr{Kind: ast.LiteralFloat, Raw: s}
 	}
-	// Try bool
 	if s == "true" || s == "false" {
 		return &ast.LiteralExpr{Kind: ast.LiteralBool, Raw: s}
 	}
-	// Color
 	if strings.HasPrefix(s, "#") {
 		return &ast.LiteralExpr{Kind: ast.LiteralColor, Raw: s}
 	}
 	return &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: `"` + s + `"`}
 }
 
-// setArg replaces or adds a named argument on a VisualNode.
 func setArg(vn *ast.VisualNode, name string, val ast.Expr) {
 	for i, a := range vn.Args.Args {
 		if arg, ok := a.(ast.Arg); ok && arg.Name == name {

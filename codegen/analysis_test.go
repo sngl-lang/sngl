@@ -7,15 +7,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The analysis is a set of facts about a program and must hold no pointer into
-// the IR graph it was derived from. One used to live here — a *ir.Package
-// field carried solely so DepTracker() could hand it back — and it made the
-// analysis unserializable: `sngl dump --stage analysis` walked the whole
-// graph, sngl://std included, and encoding/json hit its cycles.
-//
-// The rule is checked structurally rather than by encoding a fixture, because
-// what matters is that no such field exists, not that today's fixture happens
-// to have an acyclic one.
+// The analysis must hold no pointer into the IR graph it was derived from:
+// `sngl dump --stage analysis` serializes it and that graph has cycles.
 func TestCommonAnalysisHoldsNoIRPackage(t *testing.T) {
 	pkgType := reflect.TypeOf((*ir.Package)(nil))
 	at := reflect.TypeOf(CommonAnalysis{})
@@ -28,10 +21,8 @@ func TestCommonAnalysisHoldsNoIRPackage(t *testing.T) {
 	}
 }
 
-// Helpers and Styles are what a generator accumulates while it emits, not what
-// analysis derived before it started. They belong to Emission; putting either
-// back on CommonAnalysis makes a dump of the analysis a dump of the emitter's
-// scratch space as well.
+// Helpers and Styles are accumulated during emit, so a dump of the analysis
+// carrying them would be a dump of the emitter's scratch space.
 func TestEmissionOwnsWhatCodegenAccumulates(t *testing.T) {
 	at := reflect.TypeOf(CommonAnalysis{})
 	for _, name := range []string{"Helpers", "Styles"} {
@@ -47,8 +38,6 @@ func TestEmissionOwnsWhatCodegenAccumulates(t *testing.T) {
 	}
 }
 
-// AddStyle is a set, not a list: a component registering the same rule twice
-// must not emit it twice.
 func TestAddStyleIgnoresDuplicates(t *testing.T) {
 	e := NewEmission()
 	e.AddStyle("a { color: red }")
@@ -59,9 +48,6 @@ func TestAddStyleIgnoresDuplicates(t *testing.T) {
 	}
 }
 
-// A nil package tracks nothing rather than panicking. The guard used to sit on
-// CommonAnalysis.DepTracker, which is gone; it belongs here, where every
-// caller reaches it.
 func TestNewDepTrackerFromNilPackage(t *testing.T) {
 	dt := NewDepTrackerFromPkg(nil)
 	if dt == nil {

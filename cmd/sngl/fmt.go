@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// atomicWrite replaces filename with data via a sibling temp file +
-// rename, so a partial write never leaves the destination corrupted.
+// A sibling temp file + rename, so a formatter error mid-write cannot leave
+// the source truncated.
 func atomicWrite(filename string, data []byte) error {
 	dir := filepath.Dir(filename)
 	tmp, err := os.CreateTemp(dir, ".sngl-fmt-*")
@@ -43,10 +43,8 @@ func init() {
 }
 
 func runFmt(cmd *cobra.Command, args []string) error {
-	// fmt rewrites files in place, and a package addressed by URI has none:
-	// its source is embedded in this binary, or synthesized by the target that
-	// serves it. Saying so beats the stat error the URI used to produce, and
-	// beats quietly turning fmt into a printer.
+	// A package addressed by URI has no file to rewrite: its source is
+	// embedded in this binary, or synthesized by the target serving it.
 	for _, arg := range args {
 		uri, err := libraryURI(arg)
 		if err != nil {
@@ -98,9 +96,6 @@ func runFmt(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Atomic write: format into a buffer, then replace the original via
-		// rename. Truncating the source before writing risks corrupting it
-		// if FormatTo errors mid-write.
 		var buf bytes.Buffer
 		if _, err := parser.FormatTo(doc, &buf); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)

@@ -34,7 +34,6 @@ func untypedNumericConst(expr ir.Expr) (raw string, isFloat, ok bool) {
 	return "", false, false
 }
 
-// isUntypedNumericConst is the boolean form of untypedNumericConst.
 func isUntypedNumericConst(expr ir.Expr) bool {
 	_, _, ok := untypedNumericConst(expr)
 	return ok
@@ -69,7 +68,6 @@ func (c *checker) unifyNumericOperands(leftExpr, rightExpr ir.Expr, pos ast.Pos)
 	return leftExpr, rightExpr
 }
 
-// signedBounds returns the inclusive [min, max] of a signed integer width.
 func signedBounds(bits uint8) (*big.Int, *big.Int) {
 	max := new(big.Int).Lsh(big.NewInt(1), uint(bits-1)) // 2^(bits-1)
 	min := new(big.Int).Neg(max)                         // -2^(bits-1)
@@ -77,7 +75,6 @@ func signedBounds(bits uint8) (*big.Int, *big.Int) {
 	return min, max
 }
 
-// unsignedMax returns 2^bits - 1.
 func unsignedMax(bits uint8) *big.Int {
 	m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
 	return m.Sub(m, big.NewInt(1))

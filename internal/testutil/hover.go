@@ -22,9 +22,7 @@ type HoverDirective struct {
 	DirLine   int    // 1-based line of the directive comment itself (for error messages)
 }
 
-// ParseHoverDirectives scans a file for HOVER directives and resolves each
-// target to a 1-based source position. Returns an error if any target cannot
-// be located in the source.
+// Errors if any directive target cannot be located in the source.
 func ParseHoverDirectives(path string) ([]HoverDirective, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

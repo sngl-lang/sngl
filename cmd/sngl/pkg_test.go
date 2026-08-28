@@ -33,10 +33,6 @@ func buildTarGz(t *testing.T, files map[string]string) []byte {
 	return buf.Bytes()
 }
 
-// TestPkgDownloadPopulatesCache drives the full import pipeline: a main that
-// imports "widgets" via an http replace pointing at a local httptest tarball.
-// runPkgDownload should fetch the archive and extract it under the isolated
-// cache dir.
 func TestPkgDownloadPopulatesCache(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{
 		"pkg/widgets.sngl": `component Counter(label = "") { }`,
@@ -73,7 +69,6 @@ component main {
 		t.Fatalf("runPkgDownload: %v", err)
 	}
 
-	// Cache should now have an http subdir for the served host.
 	httpCache := filepath.Join(cacheRoot, "sngl", "http")
 	entries, err := os.ReadDir(httpCache)
 	if err != nil {
@@ -84,8 +79,6 @@ component main {
 	}
 }
 
-// TestPkgCacheClearRemovesDir runs pkg cache clear with --yes against a
-// prepopulated fake cache and verifies it is gone afterwards.
 func TestPkgCacheClearRemovesDir(t *testing.T) {
 	cacheRoot := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", cacheRoot)
