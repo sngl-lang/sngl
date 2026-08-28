@@ -196,52 +196,16 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 }
 
 // domWriteForIR is the IR-level mirror of domWriteFor in html.go. Returns
-// (stmts, true) when the (componentName, prop) pair maps to a known DOM
-// write, or (nil, false) when the caller should fall back to the generic
-// DOM-name dispatch.
-// domFieldForIR returns the DOM property that a component prop maps to for a
-// direct `el.<field> = value` write, and whether such a flat mapping exists.
-// Components whose reactive prop needs an attribute, a nested element, or a
-// style write (progress, checkbox, modal, …) return ok=false and must go
-// through domWriteForIR. Both the handler-path (domWriteForIR) and the
-// initial-render write share this table so the two never disagree — e.g. a
-// text node's `value` is `textContent` in both, not `.textContent` in
-// handlers and `.value` at init.
-func domFieldForIR(componentName, prop string) (string, bool) {
-	switch componentName {
-	case "text", "badge":
-		if prop == "value" {
-			return "textContent", true
-		}
-	case "button":
-		if prop == "text" {
-			return "textContent", true
-		}
-		if prop == "disabled" {
-			return "disabled", true
-		}
-	case "input":
-		if prop == "value" {
-			return "value", true
-		}
-		if prop == "disabled" {
-			return "disabled", true
-		}
-	}
-	return "", false
-}
+// (stmts, true) when the prop has to be written somewhere other than the node
+// itself, or (nil, false) when the caller should fall back to the generic
+// DOM-name dispatch -- which is where a prop's DOM spelling is decided, off
+// the element's declaration.
+//
+// What remains here is structural: which element a prop lands on, not what it
+// is called. A checkbox's `checked` belongs to the <input> inside the <label>
+// the node id is on, and no declaration of that label says so.
 
 func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, bool) {
-	mkAssign := func(field string) []ir.Stmt {
-		return []ir.Stmt{&ir.Assign{
-			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},
-			Op:     ast.AssignSet,
-			Value:  value,
-		}}
-	}
-	if field, ok := domFieldForIR(componentName, prop); ok {
-		return mkAssign(field), true
-	}
 	switch componentName {
 	// No `progress` case: it wrote `value` through setAttribute while the
 	// init path, reading the same prop off the element declaration, wrote the

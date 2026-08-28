@@ -8,16 +8,17 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<vbox>
-  <text id="__n0" data-sngl-id="__n0">
-  </text>
-  <text>
-  </text>
-  <text>
-  </text>
-  <button id="$2" text="Add">
+<div style="display:flex;flex-direction:column">
+  <span id="__n0" data-sngl-id="__n0">
+  </span>
+  <span>
+  </span>
+  <span>
+  </span>
+  <button id="$3">
+    <span>Add</span>
   </button>
-</vbox>
+</div>
 
 <script>
 (() => {
@@ -35,9 +36,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $2 = document.getElementById("$2");
+  var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  $2.addEventListener("click", function() {
+  $3.addEventListener("click", function() {
     state.xs = state.xs.push(state.xs.length + 1);
     __n0.textContent = "count: " + String(main_total(state));
   });

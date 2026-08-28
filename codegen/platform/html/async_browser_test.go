@@ -82,10 +82,12 @@ func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 
 	resolver := &asyncBrowserResolver{fsys: fsys}
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:       fsys,
-		Dir:      ".",
-		IsMain:   true,
-		Resolver: resolver,
+		FS:        fsys,
+		Dir:       ".",
+		IsMain:    true,
+		Resolver:  resolver,
+		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {

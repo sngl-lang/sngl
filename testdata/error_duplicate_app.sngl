@@ -4,6 +4,6 @@ component main {
     text(value="first")
 }
 
-component main { // ERROR(parse) "duplicate"
+component main { // ERROR(check) "redeclared in this file"
     text(value="second")
 }

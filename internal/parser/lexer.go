@@ -72,6 +72,17 @@ func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
 	return Token{Type: typ, Literal: lit, Line: line, Column: col}
 }
 
+// illegal records a positioned lex error and returns the ILLEGAL token for it.
+//
+// Both halves matter: encode() drops ILLEGAL tokens from the stream the parser
+// sees, so a token returned without the error is a failure nobody reports at
+// the place it happened -- an unterminated string was blamed on the first
+// string in the file, because the parse then ran to EOF.
+func (l *lexer) illegal(msg string, line, col int) Token {
+	l.errors = append(l.errors, fmt.Sprintf("%d:%d: %s", line, col, msg))
+	return l.tok(ILLEGAL, msg, line, col)
+}
+
 // NextToken returns the next token from the source.
 func (l *lexer) NextToken() Token {
 	for {
@@ -146,7 +157,7 @@ func (l *lexer) NextToken() Token {
 				}
 			}
 			if depth > 0 {
-				return l.tok(ILLEGAL, "unterminated block comment", startLine, startCol)
+				return l.illegal("unterminated block comment", startLine, startCol)
 			}
 			return l.tok(BLOCK_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
 		}
@@ -576,9 +587,9 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 		l.advance()
 	}
 	if triple {
-		return l.tok(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
+		return l.illegal("unterminated triple-quoted string", startLine, startCol)
 	}
-	return l.tok(ILLEGAL, "unterminated string", startLine, startCol)
+	return l.illegal("unterminated string", startLine, startCol)
 }
 
 // scanCaseBodyContent scans a case body in an i18n plural/select placeholder.
@@ -658,7 +669,7 @@ func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) 
 		sb.WriteRune(ch)
 		l.advance()
 	}
-	return l.tok(ILLEGAL, "unterminated i18n case body", startLine, startCol)
+	return l.illegal("unterminated i18n case body", startLine, startCol)
 }
 
 func (l *lexer) scanTripleString(startLine, startCol int, i18n bool) Token {
@@ -680,7 +691,7 @@ func (l *lexer) scanRawString(startLine, startCol int) Token {
 		sb.WriteRune(ch)
 		l.advance()
 	}
-	return l.tok(ILLEGAL, "unterminated raw string", startLine, startCol)
+	return l.illegal("unterminated raw string", startLine, startCol)
 }
 
 func (l *lexer) scanHashToken(startLine, startCol int) Token {

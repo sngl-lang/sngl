@@ -15,14 +15,32 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)\)\s+("(?:[^"\\]|\\.)*")`)
+var directiveRE = regexp.MustCompile(`//\s*ERROR\((\w+)(?::(\d+)(?::(\d+))?)?\)\s+("(?:[^"\\]|\\.)*")`)
 var foldRE = regexp.MustCompile(`//\s*FOLD\s+(.+)`)
 
-// ErrorDirective represents a // ERROR(phase) "substring" comment in a test fixture.
+// ErrorDirective represents a // ERROR(phase) "substring" comment in a test
+// fixture. The diagnostic is expected on the line the comment sits on, which
+// is the usual case and needs saying nowhere.
+//
+// `// ERROR(phase:LINE) "..."` and `// ERROR(phase:LINE:COL) "..."` name the
+// position instead, for a diagnostic that cannot be reported where a comment
+// can be written: an unterminated string swallows everything after it, so a
+// comment on its line is inside the string rather than after it.
 type ErrorDirective struct {
 	Phase     string // "parse", "check", "compile"
 	Substring string
-	Line      int // 1-based line number where the directive appears
+	Line      int // 1-based line the directive comment appears on
+	AtLine    int // expected diagnostic line; 0 means "the line above"
+	AtCol     int // expected diagnostic column; 0 means "anywhere on the line"
+}
+
+// Pos is the line the diagnostic is expected on: the directive's own line
+// unless it named another.
+func (d ErrorDirective) Pos() int {
+	if d.AtLine != 0 {
+		return d.AtLine
+	}
+	return d.Line
 }
 
 // FoldDirective represents a // FOLD value comment on a data or computed line.
@@ -92,11 +110,16 @@ func ParseDirectives(path string) ([]ErrorDirective, error) {
 	for s.Scan() {
 		lineNum++
 		if m := directiveRE.FindStringSubmatch(s.Text()); m != nil {
-			sub, err := strconv.Unquote(m[2])
+			sub, err := strconv.Unquote(m[4])
 			if err != nil {
 				return nil, fmt.Errorf("%s:%d: ERROR directive: %w", path, lineNum, err)
 			}
-			dirs = append(dirs, ErrorDirective{Phase: m[1], Substring: sub, Line: lineNum})
+			atLine, _ := strconv.Atoi(m[2])
+			atCol, _ := strconv.Atoi(m[3])
+			dirs = append(dirs, ErrorDirective{
+				Phase: m[1], Substring: sub, Line: lineNum,
+				AtLine: atLine, AtCol: atCol,
+			})
 		}
 	}
 	return dirs, s.Err()

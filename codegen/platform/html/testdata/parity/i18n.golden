@@ -8,14 +8,16 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<vbox>
-  <text id="__n0" data-sngl-id="__n0">
-  </text>
-  <button id="$0" text="Add">
+<div style="display:flex;flex-direction:column">
+  <span id="__n0" data-sngl-id="__n0">
+  </span>
+  <button id="$1">
+    <span>Add</span>
   </button>
-  <button id="$1" text="Reset">
+  <button id="$2">
+    <span>Reset</span>
   </button>
-</vbox>
+</div>
 
 <script>
 (() => {
@@ -543,14 +545,14 @@ body { font-family: system-ui, sans-serif; }
     return i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state2.count]]));
   }
   var __ctx_locale = i18n.defaultLocale();
-  var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  $0.addEventListener("click", function() {
+  $1.addEventListener("click", function() {
     state.count = state.count + 1;
     __n0.textContent = main_label(state);
   });
-  $1.addEventListener("click", function() {
+  $2.addEventListener("click", function() {
     state.count = 0;
     __n0.textContent = main_label(state);
   });

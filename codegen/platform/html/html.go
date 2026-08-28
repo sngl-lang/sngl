@@ -1798,13 +1798,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			deps := g.exprDeps(expr)
 			uname := fmt.Sprintf("$u_%s_%s", id[1:], name)
 			var body string
-			// Route the init write through the same component→DOM-field
-			// mapping the handler path uses (domWriteForIR), so e.g. a text
-			// node's `value` is written as `.textContent` at init just as it
-			// is in handlers — not the raw `.value`.
-			if field, ok := domFieldForIR(n.Name, name); ok {
-				body = fmt.Sprintf(`%s.%s = %s;`, id, field, jsVal)
-			} else if field, ok := domPropForProp(decl, name); ok {
+			// The element's declaration decides how a prop is written, in the
+			// initial render and in a handler alike, so the two cannot
+			// disagree about one prop.
+			if field, ok := domPropForProp(decl, name); ok {
 				body = fmt.Sprintf(`%s.%s = %s;`, id, field, jsVal)
 			} else {
 				body = fmt.Sprintf(`%s.setAttribute(%q, %s);`, id, name, jsVal)

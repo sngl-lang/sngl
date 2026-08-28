@@ -141,7 +141,15 @@ func generateRouteServer(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := filepath.Dir(path)
-	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS(dir), Dir: dir, IsMain: true})
+	// Configured with the platform and language this then generates for.
+	// Without them html's package never loads, no stdlib component is
+	// overridden, and the fixture renders `<vbox>`/`<text>` -- output no build
+	// produces, pinned in a golden.
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS: os.DirFS(dir), Dir: dir, IsMain: true,
+		Platforms: []ir.Platform{&htmlplat.Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "go"}},
+	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s", d.Msg)
