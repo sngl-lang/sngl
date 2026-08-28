@@ -20,9 +20,11 @@ import (
 // `m.__n0.Add(m.__n1)` with `__n1` neither declared nor a Model field. Exit
 // code 0, output that does not compile.
 //
-// Dispatching on the intrinsic id closes it: the id on the declaration and the
-// key in fyneWidgets are the same string, so a node the platform declares is a
-// node it can emit, wherever it was written.
+// What closes it is that a widget carries its own construction: the node the
+// pre-scan found a Spec for is the node the emitter builds, wherever it was
+// written. fyne.Label and fyne.Button are ordinary components in this
+// platform's package, so reaching for one from user code is the same act as
+// the stdlib override doing it.
 func TestUserWrittenIntrinsicBuildsItsWidget(t *testing.T) {
 	src := `
 import . "sngl://std"

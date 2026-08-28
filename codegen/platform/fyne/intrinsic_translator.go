@@ -18,10 +18,14 @@ import (
 // into the enclosing compilation via fieldSink.
 type fyneTranslator struct {
 	gc *golang.GoIRContext
-	// widgets resolves a lowered node tag to the fyne widget behind it. Built
-	// by collectNodes from each CreateNode's component declaration, so the key
-	// is a tag and the value came from that declaration's #[intrinsic] id.
-	widgets    map[string]*fyneWidget
+	// specs resolves a lowered node id to the widget Spec its instantiation
+	// carried. Built package-wide by collectNodes, because a promoted handler
+	// or a reactive splice references nodes created in a sibling Func.
+	//
+	// The key is the node id and not the tag: every widget in fyne.sngl lowers
+	// to one of three primitives, so a tag names the children contract rather
+	// than the widget.
+	specs      map[string]*fyneSpec
 	fieldSink  func(name, goType string)
 	importSink func(path string)
 	// localRefs is the set of synthesized widget ref ids that lower's
@@ -31,7 +35,6 @@ type fyneTranslator struct {
 	// bare local name. Escaping ids keep the Model-field behavior. nil →
 	// every id is a field.
 	localRefs map[string]bool
-	idTags    map[string]string
 	// topLevel tracks widget ids created via OnCreateNode that have not
 	// (yet) been consumed by an AppendChild. Window-body/component-method
 	// emission uses this to discover the topmost widget(s) to return as
@@ -50,13 +53,12 @@ type fyneTranslator struct {
 	canvasState *canvasutil.GoCanvasState
 }
 
-func newFyneTranslator(gc *golang.GoIRContext, widgets map[string]*fyneWidget, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
+func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
 	return &fyneTranslator{
 		gc:         gc,
-		widgets:    widgets,
+		specs:      specs,
 		fieldSink:  fieldSink,
 		importSink: importSink,
-		idTags:     map[string]string{},
 	}
 }
 
@@ -81,11 +83,15 @@ func localElementRef(name string) ir.Expr {
 	return &ir.Ident{Name: name, Type: ir.TypDyn}
 }
 
-// fyneFrameworkPkgs maps every fyne/std package selector the codegen emits
-// (in a widget's Go constructor/type and the view's literal fallbacks) to its
-// full Go import path. It is the single source of truth for resolving a selector to a
-// path: nativeCall uses it for Foreign.Path, and the import block uses it to scan
-// the generated body for framework usage — replacing the old always-on set.
+// fyneFrameworkPkgs maps the fyne package selectors this platform emits
+// *itself* — the toast box, the BuildUI fallbacks, the multi-root wrapper — to
+// their full Go import paths, and is what the Model's rendered field-type
+// strings are scanned against.
+//
+// A widget's own packages do not come from here: those are the `imports` its
+// Spec declares, which is what lets a Spec name a Go module this table never
+// heard of. The table is the fallback for a selector no Spec resolved, so the
+// fyne widgets need not repeat what every build already imports.
 var fyneFrameworkPkgs = map[string]string{
 	"fyne":      "fyne.io/fyne/v2",
 	"widget":    "fyne.io/fyne/v2/widget",
@@ -104,10 +110,30 @@ func fyneImportPath(sel string) string {
 	return ""
 }
 
+// importPathFor resolves a Go package selector against the import paths a
+// Spec declared, by matching the selector to a path's last segment. That is
+// the whole resolution rule for a widget's packages: a Spec naming
+// "github.com/example/fynetable" answers for the selector "fynetable" without
+// this platform knowing the module exists.
+func importPathFor(sel string, imports []string) string {
+	for _, p := range imports {
+		if p[strings.LastIndex(p, "/")+1:] == sel {
+			return p
+		}
+	}
+	return fyneImportPath(sel)
+}
+
 // nativeCall builds a Call that gc.EvalExpr renders verbatim. A dotted name
 // (e.g. "widget.NewLabel") is emitted qualified, through the import path its
 // selector stands for. A bare name (e.g. "append") is emitted as written.
 func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
+	return nativeCallIn(nativeName, nil, args, retType)
+}
+
+// nativeCallIn is nativeCall with the Spec-declared import paths a dotted
+// name's selector may resolve through.
+func nativeCallIn(nativeName string, imports []string, args []ir.Expr, retType *ir.Type) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		callArgs[i] = ir.CallArg{Value: a}
@@ -119,7 +145,7 @@ func nativeCall(nativeName string, args []ir.Expr, retType *ir.Type) *ir.Call {
 		// (e.g. "widget" in "widget.NewLabel"). Resolve the known fyne
 		// selectors; std/other selectors pass through unchanged.
 		nativePkg := pkg
-		if full := fyneImportPath(pkg); full != "" {
+		if full := importPathFor(pkg, imports); full != "" {
 			nativePkg = full
 		}
 		return &ir.Call{
@@ -156,29 +182,24 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 			return t.emitCanvasCreate(id)
 		}
 	}
-	w, ok := t.widgets[tag]
+	sp, ok := t.specs[id]
 	if !ok {
 		return nil
 	}
-	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
 	if !t.isLocalRef(id) {
-		t.fieldSink(id, w.GoType)
+		t.fieldSink(id, sp.GoType)
 	}
 	// The Go type reaches the output as a Model field's type string rather
-	// than as an evaluated call, so gc never sees its package. Flow both
-	// spellings' imports explicitly.
+	// than as an evaluated call, so gc never sees its package. The Spec's
+	// declared imports cover both spellings.
 	if t.importSink != nil {
-		for _, imp := range w.ctorImports() {
+		for _, imp := range sp.Imports {
 			t.importSink(imp)
 		}
 	}
 
-	args := make([]ir.Expr, len(w.CtorArgs))
-	for i, a := range w.CtorArgs {
-		args[i] = a.expr()
-	}
-	ctor := nativeCall(w.GoFn, args, ir.TypDyn)
+	ctor := nativeCallIn(sp.New, sp.Imports, sp.ctorArgs(), ir.TypDyn)
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
@@ -225,18 +246,24 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
-	// assign to .Content instead. The widget's table entry says which.
-	parentTag := t.idTags[codegen.IdentBareName(parent)]
+	// assign to the field the Spec names instead.
+	sp := t.specs[codegen.IdentBareName(parent)]
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
-	if w, ok := t.widgets[parentTag]; ok && w.SingleChild {
+	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
-			Target: &ir.Select{Operand: parent, Field: "Content", Type: ir.TypDyn},
+			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: ir.TypDyn},
 			Op:     ast.AssignSet,
 			Value:  child,
 		}}
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Add", []ir.Expr{child}, ir.TypVoid)}}
+	// A parent with no Spec is the slot-function `parent` param or the
+	// synthesized __root container, both of which are *fyne.Container.
+	method := "Add"
+	if sp != nil {
+		method = sp.addMethod()
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, method, []ir.Expr{child}, ir.TypVoid)}}
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
@@ -283,19 +310,15 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 
 func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	bareID := codegen.IdentBareName(node)
-	tag, ok := t.idTags[bareID]
+	sp, ok := t.specs[bareID]
 	if !ok {
 		return nil
 	}
-	w, ok := t.widgets[tag]
+	h, ok := sp.Handlers[event]
 	if !ok {
 		return nil
 	}
-	ev, ok := w.Events[event]
-	if !ok {
-		return nil
-	}
-	fieldName := ev.Field
+	fieldName := h.Field
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
@@ -344,15 +367,11 @@ func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
 
 func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	bareID := codegen.IdentBareName(node)
-	tag, ok := t.idTags[bareID]
+	sp, ok := t.specs[bareID]
 	if !ok {
 		return nil
 	}
-	w, ok := t.widgets[tag]
-	if !ok {
-		return nil
-	}
-	methodName, ok := w.Props[prop]
+	methodName, ok := sp.Setters[prop]
 	if !ok {
 		return nil
 	}

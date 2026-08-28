@@ -1,0 +1,21 @@
+// A binding writes the new value back through the prop, so the declaration has
+// to have said the prop may be written: `component X(:count int)`.
+//
+// Binding one declared without the colon used to be dropped without a word —
+// passPropBindings looked for a bidirectional prop, found none, and moved on.
+// The program then ran with a binding that did nothing, which is invisible
+// wherever the child happens to mutate the prop directly (the inliner
+// substitutes the caller's variable and the write lands anyway) and only shows
+// up where the write-back has to come from a platform event.
+
+import . "sngl://std"
+
+component OneWay(count int) {
+    text(value=string(count))
+}
+
+component main {
+    var n = 0
+
+    OneWay(:count=n) // ERROR(check) "one-way prop"
+}

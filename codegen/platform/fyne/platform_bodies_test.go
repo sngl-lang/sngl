@@ -2,7 +2,6 @@ package fyne
 
 import (
 	"sort"
-	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -127,9 +126,15 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 }
 
 // TestEveryFyneBodyLowersToADeclaredWidget closes the other half: an override
-// body is only worth having if the intrinsic it instantiates is one the Go
-// table can emit. Every component reachable from a fyne override body that
-// carries a fyne #[intrinsic] id must resolve through widgetFor.
+// body is only worth having if what it instantiates carries a Spec the Go
+// emitter can build a widget from.
+//
+// The check runs over the *checked* tree, before inlining, so an override's
+// body names a widget component (Label, VBox …) rather than the primitive that
+// widget's own body instantiates. Following the chain to a primitive and
+// decoding the Spec there is what proves the override reaches something
+// buildable — and it is the same walk a user's own widget declaration would be
+// followed by, since nothing here knows which of the two it is looking at.
 func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 	pkg := checkAllComponents(t)
 
@@ -147,45 +152,68 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 		if comp == nil {
 			t.Fatalf("fixture did not instantiate %q", name)
 		}
-		ids := fyneIntrinsicIDs(comp.PlatformBodies["fyne"])
-		if len(ids) == 0 {
-			t.Errorf("%s: fyne body instantiates no fyne intrinsic", name)
+		prims := fynePrimitiveNodes(comp.PlatformBodies["fyne"])
+		if len(prims) == 0 {
+			t.Errorf("%s: fyne body reaches no fyne primitive", name)
 			continue
 		}
-		for _, id := range ids {
-			used[id] = true
-			if _, ok := fyneWidgets[id]; !ok {
-				t.Errorf("%s: fyne body uses intrinsic %q, which fyneWidgets does not declare", name, id)
+		for _, n := range prims {
+			used[fynePrimitive(n.Component)] = true
+			if _, err := specFromProps(n.Name, nodeProps(n)); err != nil {
+				t.Errorf("%s: %v", name, err)
 			}
 		}
 	}
 
-	// The reverse: a table row nothing reaches is a row nothing tests.
+	// The reverse: a primitive no override reaches is one nothing tests.
 	var unused []string
-	for id := range fyneWidgets {
+	for _, id := range []string{"Widget", "Container", "Wrapper"} {
 		if !used[id] {
 			unused = append(unused, id)
 		}
 	}
 	sort.Strings(unused)
 	if len(unused) > 0 {
-		t.Errorf("fyneWidgets rows no override reaches: %v", unused)
+		t.Errorf("fyne primitives no override reaches: %v", unused)
 	}
 }
 
-// fyneIntrinsicIDs collects the fyne intrinsic ids of every component
-// instantiated anywhere in stmts.
-func fyneIntrinsicIDs(stmts []ir.Stmt) []string {
-	var out []string
-	codegen.WalkVisualTree(stmts, func(n *ir.NodeInst, _ int) bool {
-		if n.Component == nil {
+// fynePrimitiveNodes collects every fyne primitive instantiation reachable
+// from stmts, following a non-primitive component into its own body — which is
+// how a widget declaration (`component Label { Widget(spec=...) }`) is reached
+// from an override that names it.
+func fynePrimitiveNodes(stmts []ir.Stmt) []*ir.NodeInst {
+	var out []*ir.NodeInst
+	seen := map[*ir.Component]bool{}
+	var walk func([]ir.Stmt)
+	walk = func(s []ir.Stmt) {
+		codegen.WalkVisualTree(s, func(n *ir.NodeInst, _ int) bool {
+			if n.Component == nil {
+				return false
+			}
+			if fynePrimitive(n.Component) != "" {
+				out = append(out, n)
+				return false
+			}
+			if !seen[n.Component] {
+				seen[n.Component] = true
+				walk(n.Component.Body)
+			}
 			return false
-		}
-		if id, ok := strings.CutPrefix(n.Component.Intrinsic, intrinsicPrefix); ok {
-			out = append(out, id)
-		}
-		return false
-	})
+		})
+	}
+	walk(stmts)
+	return out
+}
+
+// nodeProps is the node's props by name, the shape specFromProps decodes. In a
+// real build these arrive as the assignments lowering emits after CreateNode;
+// here they are read straight off the checked node.
+func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
+	out := map[string]ir.Expr{}
+	for _, p := range n.Props {
+		out[p.Name] = p.Value
+	}
 	return out
 }
 

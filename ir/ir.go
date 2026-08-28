@@ -287,6 +287,11 @@ type Func struct {
 	// takes a single string param rather than the SNGL InputEvent).
 	LoweredFromTag   string `json:"-"`
 	LoweredFromEvent string `json:"-"`
+	// LoweredFromNode is the synthesized node id (`__nN`) the handler was
+	// attached to. A tag identifies the *kind* of node and no more, so a
+	// platform whose components all lower to a handful of primitives has to
+	// ask about the instance to learn anything about it.
+	LoweredFromNode string `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this function's Block that do NOT escape to any other

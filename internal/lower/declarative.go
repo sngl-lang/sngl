@@ -334,6 +334,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			h.Func.Name = handlerName
 			h.Func.LoweredFromTag = n.Name
 			h.Func.LoweredFromEvent = h.Name
+			h.Func.LoweredFromNode = id
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
 		}

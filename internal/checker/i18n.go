@@ -261,7 +261,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	if trFn == nil {
 		// Already errored; return a string-typed placeholder so type-checking
 		// can continue without cascading failures.
-		return &ir.Literal{Type: TypString, Raw: `""`}
+		return &ir.Literal{Type: TypString, Raw: ""}
 	}
 
 	// Build the args map<string, dyn>: placeholder name → checked value expression.

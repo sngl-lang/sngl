@@ -75,8 +75,11 @@ component main {
 // props for Model/Focus, list-of-struct-literal props for binds/events, an
 // enum-member Ident for join, and string-literal props for content.
 
+// Raw is the value, not its source spelling — the lexer never puts the
+// delimiters there. This helper used to add them, which only read correctly
+// because IRLiteralString stripped a leading and trailing quote back off.
 func irStr(s string) *ir.Literal {
-	return &ir.Literal{Type: ir.TypString, Raw: `"` + s + `"`}
+	return &ir.Literal{Type: ir.TypString, Raw: s}
 }
 
 func irBool(b bool) *ir.Literal {

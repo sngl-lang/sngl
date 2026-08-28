@@ -1,0 +1,13 @@
+// A binding writes the new value back, so its target has to be somewhere a
+// value can be written. Binding an expression that is not an lvalue used to be
+// dropped in silence, leaving a `:value=` that read like a binding and was not
+// one.
+
+import . "sngl://std"
+
+component main {
+    var name = "world"
+
+    input(:value="literal") // ERROR(check) "must be assignable"
+    input(:value=name.length()) // ERROR(check) "must be assignable"
+}

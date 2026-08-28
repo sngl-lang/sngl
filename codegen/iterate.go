@@ -325,7 +325,14 @@ func NodeStyleFieldsOf(n *ir.NodeInst, prop string) []StyleField {
 // --- IR literal extraction ---
 
 // IRLiteralString extracts a string value from an IR Literal expression.
-// Returns the raw string content (without quotes) and true, or ("", false).
+// Returns the value and true, or ("", false) for anything that is not a string
+// literal.
+//
+// Raw is the decoded content, carrying no delimiters: the lexer builds it from
+// a strings.Builder the quotes never reach, and a synthesized literal stores
+// the value a backend will quote for its own target. So there is nothing here
+// to unquote — a string whose content happens to begin and end with `"` is a
+// string like any other.
 func IRLiteralString(e ir.Expr) (string, bool) {
 	if e == nil {
 		return "", false
@@ -334,12 +341,7 @@ func IRLiteralString(e ir.Expr) (string, bool) {
 	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeString {
 		return "", false
 	}
-	// Raw includes quotes for string literals; strip them.
-	s := lit.Raw
-	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
-		s, _ = strconv.Unquote(s)
-	}
-	return s, true
+	return lit.Raw, true
 }
 
 // IRLiteralBool extracts a bool value from an IR Literal expression.
