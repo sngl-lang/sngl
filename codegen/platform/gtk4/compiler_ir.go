@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -46,13 +47,16 @@ func (info *irAnalysis) depTracker() *codegen.DepTracker {
 // compilation holds per-request build state flowing between
 // BuildMutationModel and EmitFromMutation.
 type compilation struct {
-	gen            *Generator
-	ctx            *codegen.CodegenCtx
-	info           *irAnalysis
-	cfg            Config
-	registry       *gir.TypeRegistry
-	needsBoolToInt bool // set when any translator calls boolToGoInt
-	wrapped        bool // emitIRMode(true): target pkg/go/gtk4rt instead of inline cgo
+	gen      *Generator
+	ctx      *codegen.CodegenCtx
+	info     *irAnalysis
+	cfg      Config
+	registry *gir.TypeRegistry
+	// shared is what the translators of one emitted file accumulate:
+	// preamble helpers they need, and properties they could not emit.
+	// Reset per emitIRMode attempt.
+	shared  *emitShared
+	wrapped bool // emitIRMode(true): target pkg/go/gtk4rt instead of inline cgo
 	// disableWrapped forces the inline-cgo path even for wrappable programs.
 	// Set when an external cgo harness will call the generated Model.BuildUI
 	// (agent-mode test build; Snapshot/BatchSnapshot): those harnesses expect
@@ -71,31 +75,14 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.Common
 	}
 	c.cfg = c.cfg.withDefaults()
 
-	// Load GIR registry. An explicit --opt gir= always overrides the
-	// generator's cached (autodetected) registry so tests with inline GIR
-	// fixtures work deterministically regardless of the host system.
-	if c.cfg.GIRPath != "" {
-		reg, perr := gir.ParseGIR(c.cfg.GIRPath)
-		if perr == nil {
-			c.registry = reg
-			if c.gen != nil {
-				c.gen.registry = reg
-			}
-		}
-	} else if c.gen != nil && c.gen.registry != nil {
-		c.registry = c.gen.registry
-	} else {
-		path, err := resolveGIRPath(c.cfg.GIRPath)
-		if err == nil {
-			reg, perr := gir.ParseGIR(path)
-			if perr == nil {
-				c.registry = reg
-				if c.gen != nil {
-					c.gen.registry = reg
-				}
-			}
-		}
+	// The registry comes from the generator, which is the only thing that
+	// resolves one. An inline fixture, the bundled subset and the host's file
+	// are therefore chosen here exactly as they were during type-check.
+	reg, girErr := c.gen.useGIR(c.cfg.GIRPath)
+	if girErr != nil {
+		return nil, fmt.Errorf("gtk4: %w", girErr)
 	}
+	c.registry = reg
 
 	c.ctx = codegen.NewCodegenCtx(req, "gtk4")
 	c.info = analyzeIR(c.ctx)
@@ -329,7 +316,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.needsBoolToInt = false
+	c.shared = &emitShared{}
 	exprCtx := c.ctx.ExprCtx
 	if main := c.ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -368,7 +355,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
-			withPkg(c.ctx.Pkg).withBoolToIntFlag(&c.needsBoolToInt).
+			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
 			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped)
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
@@ -390,18 +377,18 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		if canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc)
+			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared, canvasByFunc)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc, c.wrapped)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, canvasByFunc, c.wrapped)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
 			continue
 		}
-		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, canvasByFunc, c.wrapped)
+		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
 	}
 
 	// --- Phase 2b: render<Comp> methods for non-inlinable (recursive)
@@ -409,7 +396,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
 		if createTargets[cc.Component] {
-			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, &c.needsBoolToInt, c.wrapped)
+			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 		}
 	}
 
@@ -438,7 +425,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// calls from EvalExpr (e.g. for unsafe.Pointer casts) are captured before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped)
+	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc))
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 {
@@ -487,18 +474,22 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped)
 	}
 
+	if len(c.shared.errs) > 0 {
+		return nil, nil, errors.Join(c.shared.errs...)
+	}
 	modelSrc = []byte(modelBuf.String())
 	return modelSrc, []byte(callbacksBuf.String()), nil
 }
 
 func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
 	td := templateData{
-		Package:        c.cfg.Package,
-		Main:           c.cfg.Main,
-		FunctionCode:   functionCode,
-		Imports:        map[string]bool{},
-		NeedsBoolToInt: c.needsBoolToInt,
-		Wrapped:        c.wrapped,
+		Package:         c.cfg.Package,
+		Main:            c.cfg.Main,
+		FunctionCode:    functionCode,
+		Imports:         map[string]bool{},
+		NeedsBoolToInt:  c.shared.boolToInt,
+		NeedsGObjectSet: c.shared.gObjectSet,
+		Wrapped:         c.wrapped,
 	}
 	if c.wrapped {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if
@@ -624,10 +615,10 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // codegen.WalkLowered routes intrinsic shapes through gtk4Translator
 // into ir.Stmt fragments; we then synthesize a new *ir.Func and feed
 // it through gc.EmitFuncDef.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
@@ -881,12 +872,12 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // splices that follow flow through codegen.WalkLowered into the gtk4
 // translator so `__nN.value = expr` shapes get rewritten via
 // OnPropAssign into `C.gtk_*_set_*(...)` calls.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populate idCTypes so OnPropAssign in reactivity splices finds
@@ -1002,14 +993,25 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 // CanvasRedrawStmt (a state mutation that a canvas draw func reads) is
 // translated into a gtk_widget_queue_draw call; plain statements pass
 // through untouched.
-func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	if len(fn.Block) == 0 {
 		return
 	}
-	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withWrapped(wrapped)
+	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
+	// The node C types, as the promoted-handler and component-method emitters
+	// do. Without them OnPropAssign has no widget to write through and returns
+	// nothing, so a prop assignment reaching this emitter would emit the model
+	// write and drop the setter.
+	//
+	// Unfalsified: every component function I could write inlines into its
+	// caller, so the assignment lands in a promoted handler, which already
+	// copies these. This is here because the three emitters should not disagree
+	// about what their translator knows, not because a program is known to
+	// reach it.
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	fnCopy := *fn
@@ -1047,6 +1049,17 @@ func isWindowClass(cType string) bool {
 	return false
 }
 
+// windowTitleGo is the Go expression for the window's `title` prop, or "" when
+// it declares none. A window's title was read by no platform and emitted
+// nowhere, so a declared prop reached the output as nothing.
+func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
+	wins := ctx.Windows()
+	if len(wins) == 0 || wins[0].Window == nil || wins[0].Window.Title == nil {
+		return ""
+	}
+	return gc.EvalExpr(wins[0].Window.Title)
+}
+
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget.
 // With NoDeclarative on, the body buffer is a flat stream of intrinsic
 // calls (CreateNode → m.<id> = ctor; AppendChild → gtk_box_append; etc.)
@@ -1059,9 +1072,9 @@ func isWindowClass(cType string) bool {
 // GtkApplicationWindow/GtkWindow at the root so there's no need for the
 // synthetic m.__root wrapper or a freshly-constructed
 // gtk_application_window_new.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title)
 		return
 	}
 	// Empty component: no tree to build; BuildUI just creates a window.
@@ -1144,6 +1157,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
+	// The window's declared title. Not through gtk4rt: the cgo scaffold does
+	// not require this module, so importing it does not build. The string is
+	// allocated once at startup and not freed, as the snapshot harness does
+	// with its application id.
+	if title != "" {
+		fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString(%s))\n", title)
+		gc.RequireImport("unsafe")
+	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: &ir.Ident{Name: "C"},
@@ -1167,7 +1188,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 // return its single top-level widget (or a fresh vbox wrapping several)
 // as *C.GtkWidget. The CreateComponent call site emits
 // `m.<id> = m.render<Comp>(props...)` (see OnCreateComponent).
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, boolToIntUsed *bool, wrapped bool) {
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	compGC := gc.ForComponent(cc.Component)
@@ -1179,7 +1200,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 
 	tr := newGtk4Translator(compGC, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withBoolToIntFlag(boolToIntUsed).withLocalRefs(cc.Component.LocalRefs).withWrapped(wrapped)
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(cc.Component.LocalRefs).withWrapped(wrapped)
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 

@@ -9,10 +9,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
@@ -26,16 +23,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
-		}
-	}
+	pkg := checkForFyne(t, src)
 	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true, NoDeclarative: true}, lower.Options{Platform: "fyne"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -67,7 +55,11 @@ component main {
 		// so the node-escape lower pass emits it as a function-local
 		// `__n0 := ...` rather than a shared Model field.
 		"__n0 := widget.NewLabel",
-		"__n0.SetText(fmt.Sprint(",
+		// `text=value` in the fyne override forwards a `string` prop to a
+		// `string` prop, so the setter takes the value as it stands — the
+		// blueprint form's `fmt.Sprint` wrapper existed only because the
+		// prop it named carried no type.
+		`__n0.SetText("hi")`,
 		"container.Add(__n0)",
 		"m.__slot0 = append(m.__slot0, __n0)",
 	} {

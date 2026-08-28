@@ -6,6 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -26,61 +27,28 @@ type htmlTranslator struct {
 	// to the correct DOM property (textContent). Caller-supplied; nil
 	// is fine — OnPropAssign falls back to the DOM-name fast path.
 	idToNode map[string]*ir.NodeInst
-	// canvasIDs maps each canvas draw func to its canvas element ID.
-	// Used by OnDefault to emit CanvasRedrawStmt → clearRect+drawFunc JS.
-	canvasIDs map[*ir.Func]string
+	// rawElem is the `element` declaration every HTML tag resolves to. By
+	// the time a tree is lowered to node ops the NodeInsts are gone, but
+	// the declaration is one for every tag, so holding it is enough to
+	// answer which props are boolean and which events exist.
+	rawElem *ir.Component
 }
 
-func newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}}
+func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}, rawElem: g.rawElement()}
 }
 
 // newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
 // id → NodeInst map so OnPropAssign can map SNGL component props to DOM
 // props via domWriteForIR. Required when translating handler/timer/setter
 // bodies that NoReactivity injects with the original SNGL prop names.
-func newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNode map[string]*ir.NodeInst) *htmlTranslator {
-	t := newHTMLTranslator(jc)
+func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNode map[string]*ir.NodeInst) *htmlTranslator {
+	t := g.newHTMLTranslator(jc)
 	t.idToNode = idToNode
 	return t
 }
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
-
-// htmlNativeDOMProps is the set of DOM property names that html.sngl's
-// platform-extension bodies write to directly. Any prop not in this
-// set falls back to element.setAttribute(name, value).
-//
-// passInlinePure substitutes stdlib wrapper components with their
-// html.sngl-defined native element bodies at lowering time, so every
-// prop name landing here is a native DOM attribute/property name.
-var htmlNativeDOMProps = map[string]bool{
-	"textContent": true,
-	"innerHTML":   true,
-	"value":       true,
-	"placeholder": true,
-	"disabled":    true,
-	"readonly":    true,
-	"checked":     true,
-	"type":        true,
-	"className":   true,
-	"src":         true,
-	"alt":         true,
-	"href":        true,
-	"title":       true,
-	"role":        true,
-	"rows":        true,
-	"max":         true,
-}
-
-// htmlEventName maps a SNGL event name to its DOM counterpart.
-func htmlEventName(event string) string {
-	switch event {
-	case "click", "input", "change", "submit":
-		return event
-	}
-	return ""
-}
 
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
@@ -140,7 +108,7 @@ func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	domEvent := htmlEventName(event)
+	domEvent := domEventName(t.rawElem, event)
 	if domEvent == "" {
 		return nil
 	}
@@ -169,86 +137,81 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			}
 		}
 	}
-	if !htmlNativeDOMProps[prop] {
-		// Unknown prop: emit node.setAttribute("prop", value).
+	// The prop the tag name binds to names the element; the tag already
+	// reached OnCreateNode, and there is no attribute to write it as.
+	if prop != "" && prop == tagPropName(t.rawElem) {
+		return nil
+	}
+	setAttr := func(name string, v ir.Expr) []ir.Stmt {
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
 			Receiver: node,
 			Func:     &ir.Func{Name: "setAttribute"},
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Raw: prop}},
-				{Value: value},
+				{Value: &ir.Literal{Type: ir.TypString, Raw: name}},
+				{Value: v},
 			},
 		}}}
 	}
-	// node.<prop> = value
-	return []ir.Stmt{&ir.Assign{
-		Target: &ir.Select{Operand: node, Field: prop, Type: ir.TypDyn},
-		Op:     ast.AssignSet,
-		Value:  value,
-	}}
-}
-
-// domWriteForIR is the IR-level mirror of domWriteFor in html.go. Returns
-// (stmts, true) when the (componentName, prop) pair maps to a known DOM
-// write, or (nil, false) when the caller should fall back to the generic
-// DOM-name dispatch.
-// domFieldForIR returns the DOM property that a component prop maps to for a
-// direct `el.<field> = value` write, and whether such a flat mapping exists.
-// Components whose reactive prop needs an attribute, a nested element, or a
-// style write (progress, checkbox, modal, …) return ok=false and must go
-// through domWriteForIR. Both the handler-path (domWriteForIR) and the
-// initial-render write share this table so the two never disagree — e.g. a
-// text node's `value` is `textContent` in both, not `.textContent` in
-// handlers and `.value` at init.
-func domFieldForIR(componentName, prop string) (string, bool) {
-	switch componentName {
-	case "text", "badge":
-		if prop == "value" {
-			return "textContent", true
-		}
-	case "button":
-		if prop == "text" {
-			return "textContent", true
-		}
-		if prop == "disabled" {
-			return "disabled", true
-		}
-	case "input":
-		if prop == "value" {
-			return "value", true
-		}
-		if prop == "disabled" {
-			return "disabled", true
+	// A `style={...}` struct is a set of CSS declarations, not a value any
+	// DOM sink accepts: passed through it stringifies to "[object Object]".
+	if prop == "style" {
+		if sl, ok := value.(*ir.StructLit); ok {
+			css := htmlutil.BuildCSSStyleIR([]ir.Arg{{Name: "style", Value: sl}})
+			if css == "" {
+				return nil
+			}
+			return setAttr(prop, &ir.Literal{Type: ir.TypString, Raw: css})
 		}
 	}
-	return "", false
-}
-
-func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, bool) {
-	mkAssign := func(field string) []ir.Stmt {
+	// A wildcard prop is a map of the names it collected, not a name of its
+	// own: writing it as one produces an attribute literally called "attrs"
+	// whose value stringifies to "[object Map]", and loses every name in it.
+	// The two markup paths (nodeProps, elementAttrs) already unpack it; this is
+	// the third, and the one a node inside a `for` or a reactive slot takes.
+	if wc := wildcardPropNamed(t.rawElem, prop); wc {
+		m, ok := value.(*ir.MapLitIR)
+		if !ok {
+			return nil
+		}
+		var out []ir.Stmt
+		for _, e := range m.Entries {
+			k, ok := e.Key.(*ir.Literal)
+			if !ok {
+				continue
+			}
+			out = append(out, t.OnPropAssign(ctx, node, k.Raw, e.Value)...)
+		}
+		return out
+	}
+	if field, ok := domPropForProp(t.rawElem, prop); ok {
+		// node.<field> = value
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},
 			Op:     ast.AssignSet,
 			Value:  value,
 		}}
 	}
-	if field, ok := domFieldForIR(componentName, prop); ok {
-		return mkAssign(field), true
-	}
+	return setAttr(prop, value)
+}
+
+// domWriteForIR is the IR-level mirror of domWriteFor in html.go. Returns
+// (stmts, true) when the prop has to be written somewhere other than the node
+// itself, or (nil, false) when the caller should fall back to the generic
+// DOM-name dispatch -- which is where a prop's DOM spelling is decided, off
+// the element's declaration.
+//
+// What remains here is structural: which element a prop lands on, not what it
+// is called. A checkbox's `checked` belongs to the <input> inside the <label>
+// the node id is on, and no declaration of that label says so.
+
+func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, bool) {
 	switch componentName {
-	case "progress":
-		if prop == "value" {
-			return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: node,
-				Func:     &ir.Func{Name: "setAttribute"},
-				Args: []ir.CallArg{
-					{Value: &ir.Literal{Type: ir.TypString, Raw: "value"}},
-					{Value: value},
-				},
-			}}}, true
-		}
+	// No `progress` case: it wrote `value` through setAttribute while the
+	// init path, reading the same prop off the element declaration, wrote the
+	// property -- one reactive value, two spellings. The declaration decides
+	// for both now. What stays here is structural, where a prop has to be
+	// written rather than what it is called.
 	case "checkbox", "toggle":
 		if prop == "checked" {
 			// The __n* id is on the wrapping <label>; descend to the

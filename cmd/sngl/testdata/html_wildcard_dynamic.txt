@@ -1,0 +1,32 @@
+# What the element wildcard has to get right on the dynamic path.
+#
+# A wildcard prop is a map of the names it collected, not a name of its own.
+#    Three sites turn props into attributes -- static markup, the route-mode
+#    skeleton, and the DOM writes a node inside a `for` or a reactive slot
+#    takes. The third wrote the map itself, so a looped checkbox got an
+#    attribute called "attrs" holding "[object Map]" and no type at all, and
+#    rendered as a text box.
+#
+#    Nothing in testdata reaches this path, so the html corpus generates
+#    identically with the fix in or out.
+
+sngl generate --platform=html --lang=none --out=out loop.sngl
+exists out/index.html
+
+# The map is unpacked into one attribute per name it collected.
+grep 'setAttribute\("type", "checkbox"\)' out/index.html
+! grep 'setAttribute\("attrs"' out/index.html
+! grep 'object Map' out/index.html
+
+-- loop.sngl --
+import . "sngl://std"
+
+component main {
+    var items = ["a", "b"]
+    var on = false
+    vbox {
+        for it = items {
+            checkbox(label=it, checked=on)
+        }
+    }
+}

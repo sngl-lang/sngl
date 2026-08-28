@@ -14,13 +14,9 @@ import (
 // dot+suffix was silently discarded by parser error recovery, leaving every
 // override component named just "sngl".
 func TestPlatformOverridesHaveQualifiedNames(t *testing.T) {
-	gen := codegen.LookupPlatform("android")
-	if gen == nil {
-		t.Fatal("platform android not registered")
-	}
-	docs := gen.Package()
+	docs := codegen.PlatformDocs(codegen.LookupPlatform("android"))
 	if len(docs) == 0 {
-		t.Fatal("no Package() documents")
+		t.Fatal("no package documents")
 	}
 	found := false
 	for _, doc := range docs {

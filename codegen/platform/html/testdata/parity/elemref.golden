@@ -8,19 +8,20 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<vbox>
-  <input id="__n0" data-sngl-id="__n0" placeholder="Type here"/>
-  <text id="__n1" data-sngl-id="__n1">
-  </text>
-  <button id="$0" text="Clear">
+<div style="display:flex;flex-direction:column">
+  <input id="__n0" data-sngl-id="__n0" placeholder="Type here" type=""/>
+  <span id="__n1" data-sngl-id="__n1">
+  </span>
+  <button id="$1">
+    <span>Clear</span>
   </button>
-</vbox>
+</div>
 
 <script>
 (() => {
   // sngl-entry.js
   var state = { name: "" };
-  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
@@ -28,7 +29,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
-  $0.addEventListener("click", function() {
+  $1.addEventListener("click", function() {
     state.name = "";
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";

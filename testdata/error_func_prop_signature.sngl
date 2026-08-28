@@ -1,0 +1,16 @@
+// A lambda whose signature is not the prop's is rejected, and the report names
+// both signatures: an expression-bodied lambda always returns a value, so it is
+// not a callback declared to return none.
+
+import . "sngl://std"
+
+component edit(onEdit func(s string)) {
+    text(value="x")
+}
+
+component main {
+    var log = ""
+
+    edit(onEdit=func(s) => s)                // ERROR(check) "cannot use func(string) string as func(string)"
+    edit(onEdit=func(s string, n int) { })   // ERROR(check) "cannot use func(string, int) as func(string)"
+}

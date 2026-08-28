@@ -150,11 +150,11 @@ func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 	// kind: the TypeColor this loop used to cover alongside them was never
 	// constructed by anything.
 	// String-repr is now flag-driven (ir.StructDef.Builtin), not name-driven.
-	for name, kind := range map[string]ast.BuiltinKind{
-		"color":    ast.BuiltinColor,
-		"date":     ast.BuiltinDate,
-		"time":     ast.BuiltinTime,
-		"datetime": ast.BuiltinDateTime,
+	for name, kind := range map[string]ir.BuiltinKind{
+		"color":    ir.BuiltinColor,
+		"date":     ir.BuiltinDate,
+		"time":     ir.BuiltinTime,
+		"datetime": ir.BuiltinDateTime,
 	} {
 		typ := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: name, Builtin: kind}}
 		lit := &ir.Literal{Type: typ, Raw: "val"}

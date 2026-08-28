@@ -1,526 +1,633 @@
 // Fyne platform package.
 //
-// Each component declares a Blueprint — structured render directives the
-// codegen reads at platform load. The renderer walks each component body, picks
-// the first VisualNode (or the node inside a top-level `if`), and reads its
-// `constructor=Constructor{...}` and `bindings=[...]` args. No platform Go
-// code branches on component name.
+// Three `#[intrinsic]` primitives — Widget, Container, Wrapper — are the whole
+// of what this platform's Go emitter knows how to build. Which Fyne widget one
+// of them becomes is *data*: a `Spec` record, passed as a prop, naming the Go
+// constructor to call, the Go type it returns, the import paths those two
+// spellings need, and the setter or callback field behind each value it can be
+// given. `spec.go` decodes that record; nothing in the Go emitter names a Fyne
+// type or a component.
 //
-// Imports:
-//   The renderer always emits "fmt", "fyne.io/fyne/v2", "fyne.io/fyne/v2/widget",
-//   "fyne.io/fyne/v2/container" — these baselines cover the BuildUI fallbacks
-//   and the multi-root path. Components that need anything else (canvas, layout,
-//   net/url, etc.) declare it via the Constructor.imports field; the renderer
-//   collects the union across rendered components.
+// The three primitives differ only in their children contract, because that is
+// what a component declaration cannot express as data:
 //
-// Blueprint:
-//   Constructor{goFn, goType, args, prelude, switches, imports}
-//     - args items: Prop{name, transform} | Event{name, signature} |
-//                   Raw{value}  (template tokens: ${prop}, ${id}, ${children})
-//     - prelude: list of raw Go statements emitted in a scope before ctor
-//     - switches: Switch{prop, value, goFn} picks alternate goFn at codegen time
-//   Init{prop, target, transform, quoted}      one-shot setter
-//   Reactive{prop, target, transform}          setter + dep-tracked updater
-//   Event{prop, target, signature, bindParam}  closure assigned after ctor
+//   Widget     no children      — a leaf.
+//   Container  list<component>  — children attach through a method (`Add`).
+//   Wrapper    component        — the child is assigned to a field (`Content`).
 //
-// Top-level args on the inner VisualNode:
-//   constructor       Constructor{...}
-//   bindings          list of Init/Reactive/Event records
-//   fieldPrefix       Model field prefix (e.g. "label", "btn")
-//   updaterPrefix     reactive updater name prefix (e.g. "updateLabel")
-//   condProp          wrap render in `if <prop> { ... }` (modal)
-//   transient=true    skip Model storage; assign to caller's resultVar inline
+// Everything below Widget/Container/Wrapper — Label, Button, VBox and the rest
+// — is an ordinary component declaration carrying a Spec, and so is anything a
+// user writes. Wrapping a Fyne widget this package never heard of, from a Go
+// module that is not Fyne's, is writing one more of them: `Spec.imports` is
+// where the import path comes from, so no Go table has to grow a row.
+//
+// Value props:
+//   A prop's *value* has to reach the emitter through a declared prop, because
+//   that is what lowering turns into the `node.prop = expr` assignment the
+//   emitter sees. The primitives therefore declare a small vocabulary of value
+//   props by type — text, placeholder, number, flag, options — and `Setter`
+//   binds one of them to a Go method. The vocabulary grows with the *types* a
+//   Fyne setter takes, not with the widget count.
+//
+// Events:
+//   Likewise: `@click`, `@change` and `@input` are the declared events, and
+//   `Handler` binds one to a Go callback field, its Go func signature, and the
+//   name of the parameter carrying the value (so a two-way `:value` bind can
+//   read it straight off the callback rather than off an event struct Fyne
+//   never passes).
+//
+// Style:
+//   Every widget takes a `style` so an override can forward the stdlib
+//   component's through, but no Spec below gives it a setter — Fyne has no
+//   style surface these constructors reach. The prop carries the data a future
+//   theme/layout implementation needs; today the assignment is dropped.
 
-import . "sngl://std"
+import sngl "sngl://std"
+import . "sngl://platforms"
+import . "sngl://internal/marks"
 
+#[options]
 struct Options {
     package string
     main bool
 }
 
-// --- VBox-style containers ---
+// --- The Spec vocabulary ---
 
-component vbox() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
+// One argument to a widget's Go constructor.
+//
+// `prop` names one of the primitive's value props; when the instantiation
+// supplies it, that expression is the argument. `raw` is Go source spliced
+// verbatim, and is also the fallback when `prop` names a prop the caller left
+// out — a Fyne constructor takes its content up front, so the argument still
+// has to be *something*.
+struct Arg {
+    raw string
+    prop string
+}
+
+// The Go setter method one value prop becomes: `Setter{prop="text",
+// call="SetText"}` emits `w.SetText(v)`. A prop with no Setter has no Fyne
+// surface to reach, so the assignment is dropped.
+struct Setter {
+    prop string
+    call string
+}
+
+// The Go callback field one declared event is assigned to.
+//
+// `signature` is the Go func literal type the field takes, which is Fyne's and
+// not the SNGL event's: `OnChanged` on an Entry is `func(string)` where the
+// SNGL `@input` carries an InputEvent. `param` names that parameter so a
+// promoted handler's two-way write-back reads the value from it (`m.name = s`)
+// rather than off an event struct the closure never receives.
+struct Handler {
+    on string
+    field string
+    signature string
+    param string
+}
+
+// Everything the Go emitter needs to build one Fyne widget.
+//
+// `new` is the constructor function and `args` what it is called with.
+// `goType` is what it returns — it reaches the output as a Model field's type
+// string rather than as an evaluated call, which is why `imports` must name
+// its package as well as the constructor's: gc cannot see a type it never
+// evaluates.
+//
+// `add` and `content` are the two ways a container takes children, and only
+// one of them applies: `add` is the method a Container calls per child
+// (default `Add`), `content` the field a Wrapper assigns its single child to
+// (default `Content`).
+// A Go declaration this platform emits a reference to: the import path it
+// lives in, and its identifier there.
+//
+// That is the whole of what a Spec can know. What the package is *called* in
+// the emitted file is the Go backend's to decide -- a module's package name is
+// in its source rather than in its path, and another import may already hold
+// the obvious name -- so a Spec that spelled a selector would be guessing at
+// both. `name` may carry the pointer and slice syntax a type needs.
+struct Native {
+    path string
+    name string
+}
+
+struct Spec {
+    new Native
+    args list<Arg>
+    goType Native
+    add string
+    content string
+    setters list<Setter>
+    handlers list<Handler>
+}
+
+// --- The primitives ---
+//
+// #[intrinsic] is what makes these primitives rather than wrappers over one:
+// they carry no body, so the inliner leaves them in place, and the emitter
+// recognises them by the id rather than by their names.
+
+#[intrinsic("fyne:Widget")]
+component Widget(
+    spec Spec,
+    text string,
+    placeholder string,
+    number int,
+    flag bool,
+    options list<string>,
+    style sngl.Style,
+    @click sngl.ClickEvent,
+    @change sngl.ChangeEvent,
+    @input sngl.InputEvent,
+) {}
+
+#[intrinsic("fyne:Container")]
+component Container(
+    spec Spec,
+    text string,
+    placeholder string,
+    number int,
+    flag bool,
+    options list<string>,
+    style sngl.Style,
+    @click sngl.ClickEvent,
+    @change sngl.ChangeEvent,
+    @input sngl.InputEvent,
+) list<component> {}
+
+#[intrinsic("fyne:Wrapper")]
+component Wrapper(
+    spec Spec,
+    text string,
+    placeholder string,
+    number int,
+    flag bool,
+    options list<string>,
+    style sngl.Style,
+    @click sngl.ClickEvent,
+    @change sngl.ChangeEvent,
+    @input sngl.InputEvent,
+) component {}
+
+// --- The Fyne widgets ---
+//
+// Twelve declarations, one per Go constructor. Each is an ordinary component:
+// its body instantiates a primitive with the Spec that says which Fyne widget
+// to build, and the inliner collapses it into whatever instantiated it. They
+// are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
+// written the same way a user would write a thirteenth.
+
+component Label(text string, style sngl.Style) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
+            args=[Arg{raw=`""`}],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Label"},
+            setters=[Setter{prop="text", call="SetText"}],
         },
-        transient=true,
+        text=text,
         style={...style},
     ) {}
 }
 
-component stack() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
+component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
+            args=[Arg{raw=`""`}, Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Button"},
+            setters=[Setter{prop="text", call="SetText"}],
+            handlers=[Handler{on="click", field="OnTapped", signature="func()"}],
         },
-        transient=true,
+        text=text,
         style={...style},
+        @click { click() },
     ) {}
 }
 
-component scroll() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVScroll",
-            goType="*container.Scroll",
-            args=[Raw{value=`container.NewVBox(${children}...)`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component card() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component radio() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component drawer() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component tooltip() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component popover() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component table() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component tree() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component menu() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewVBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-// --- HBox-style containers ---
-
-component hbox() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component tabs() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component splitview() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component menubar() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component toolbar() {
-    Container(
-        constructor=Constructor{
-            goFn="container.NewHBox",
-            goType="*fyne.Container",
-            args=[Raw{value=`${children}...`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-// --- Spacer ---
-
-component spacer() {
-    Spacer(
-        constructor=Constructor{
-            goFn="layout.NewSpacer",
-            goType="fyne.CanvasObject",
-            imports=["fyne.io/fyne/v2/layout"],
-            args=[],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-// --- Label-rendered widgets ---
-
-component text() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Prop{name="value", transform="fmt.Sprint"}],
-        },
-        bindings=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component badge() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Prop{name="value", transform="fmt.Sprint"}],
-        },
-        bindings=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component divider() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Prop{name="label", transform="fmt.Sprint"}],
-        },
-        bindings=[
-            Reactive{prop="label", target=".SetText", transform="fmt.Sprint"},
-        ],
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component progress() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Prop{name="value", transform="fmt.Sprint"}],
-        },
-        bindings=[
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-        ],
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component spinner() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Raw{value=`fmt.Sprint("")`}],
-        },
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component avatar() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Raw{value=`fmt.Sprint("")`}],
-        },
-        fieldPrefix="label",
-        updaterPrefix="updateLabel",
-        style={...style},
-    ) {}
-}
-
-component chip() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Raw{value=`""`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-component datepicker() {
-    Label(
-        constructor=Constructor{
-            goFn="widget.NewLabel",
-            goType="*widget.Label",
-            args=[Raw{value=`""`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-// --- Button ---
-
-component button() {
-    Button(
-        constructor=Constructor{
-            goFn="widget.NewButton",
-            goType="*widget.Button",
-            args=[
-                Prop{name="text", transform="fmt.Sprint"},
-                Event{name="click", signature="func()"},
+component Entry(text string, placeholder string, style sngl.Style, @input sngl.InputEvent) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            setters=[
+                Setter{prop="text", call="SetText"},
+                Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
+            handlers=[Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
         },
-        bindings=[
-            Reactive{prop="text", target=".SetText", transform="fmt.Sprint"},
-            Event{prop="click", target=".OnTapped", signature="func()"},
-        ],
-        fieldPrefix="btn",
+        text=text,
+        placeholder=placeholder,
         style={...style},
+        @input { input() },
     ) {}
 }
 
-// --- Hyperlink ---
-
-component link() {
-    Hyperlink(
-        constructor=Constructor{
-            goFn="widget.NewHyperlink",
-            goType="*widget.Hyperlink",
-            imports=["net/url"],
-            prelude=[`linkURL${id}, _ := url.Parse(${href})`],
-            args=[
-                Prop{name="text"},
-                Raw{value=`linkURL${id}`},
+component MultiLineEntry(text string, placeholder string, rows int, style sngl.Style, @input sngl.InputEvent) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            setters=[
+                Setter{prop="text", call="SetText"},
+                Setter{prop="placeholder", call="SetPlaceHolder"},
+                Setter{prop="number", call="SetMinRowsVisible"},
             ],
+            handlers=[Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
         },
-        fieldPrefix="link",
+        text=text,
+        placeholder=placeholder,
+        number=rows,
         style={...style},
+        @input { input() },
     ) {}
 }
 
-// --- Image ---
-
-component image() {
-    Image(
-        constructor=Constructor{
-            goFn="canvas.NewImageFromURI",
-            goType="*canvas.Image",
-            imports=["fyne.io/fyne/v2/canvas"],
-            args=[Raw{value=`nil /* TODO: ${src} */`}],
-        },
-        transient=true,
-        style={...style},
-    ) {}
-}
-
-// --- Checkbox / Toggle ---
-
-component checkbox() {
-    Check(
-        constructor=Constructor{
-            goFn="widget.NewCheck",
-            goType="*widget.Check",
-            args=[
-                Prop{name="label", transform="fmt.Sprint"},
-                Event{name="change", signature="func(b bool)"},
+component Check(text string, checked bool, style sngl.Style, @change sngl.ChangeEvent) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
+            args=[Arg{raw=`""`}, Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Check"},
+            setters=[
+                Setter{prop="text", call="SetText"},
+                Setter{prop="flag", call="SetChecked"},
             ],
+            handlers=[Handler{on="change", field="OnChanged", signature="func(b bool)", param="b"}],
         },
-        fieldPrefix="check",
+        text=text,
+        flag=checked,
+        style={...style},
+        @change { change() },
+    ) {}
+}
+
+// The choices are a constructor argument, which is why `options` is an `Arg`
+// rather than a `Setter`: `widget.Select` has no method that replaces them, so
+// a later change to the bound list does not reach the widget.
+component Select(selected string, options list<string>, style sngl.Style, @change sngl.ChangeEvent) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
+            args=[Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Select"},
+            setters=[Setter{prop="text", call="SetSelected"}],
+            handlers=[Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
+        },
+        text=selected,
+        options=options,
+        style={...style},
+        @change { change() },
+    ) {}
+}
+
+// `widget.Hyperlink` exposes its text and its URL as struct fields rather than
+// as setters, and a URL is a `*url.Parse` result rather than an expression this
+// package can spell, so the link renders empty.
+component Hyperlink(style sngl.Style) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
+            args=[Arg{raw=`""`}, Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
+        },
         style={...style},
     ) {}
 }
 
-component toggle() {
-    Check(
-        constructor=Constructor{
-            goFn="widget.NewCheck",
-            goType="*widget.Check",
-            args=[
-                Prop{name="label", transform="fmt.Sprint"},
-                Event{name="change", signature="func(b bool)"},
-            ],
+// `canvas.Image` is constructed from a URI, which this platform has no
+// expression to build, so the image is empty.
+component Image(style sngl.Style) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
+            args=[Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
-        fieldPrefix="check",
         style={...style},
     ) {}
 }
 
-// --- Select ---
-
-component select() {
-    Select(
-        constructor=Constructor{
-            goFn="widget.NewSelect",
-            goType="*widget.Select",
-            args=[
-                Raw{value="nil"},
-                Event{name="change", signature="func(s string)"},
-            ],
+component Spacer(style sngl.Style) {
+    Widget(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
+            goType=Native{path="fyne.io/fyne/v2", name="CanvasObject"},
         },
-        fieldPrefix="sel",
         style={...style},
     ) {}
 }
 
-// --- Modal ---
-
-component modal() {
-    if open {
-        Container(
-            constructor=Constructor{
-                goFn="container.NewVBox",
-                goType="*fyne.Container",
-                args=[Raw{value=`${children}...`}],
-            },
-            transient=true,
-            style={...style},
-        ) {}
+component VBox(style sngl.Style) list<component> {
+    Container(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
+            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
+            add="Add",
+        },
+        style={...style},
+    ) {
+        sngl.slot
     }
 }
 
-// --- Entry inputs ---
-
-component input() {
-    Entry(
-        constructor=Constructor{
-            goFn="widget.NewEntry",
-            goType="*widget.Entry",
-            switches=[Switch{prop="type", value="password", goFn="widget.NewPasswordEntry"}],
+component HBox(style sngl.Style) list<component> {
+    Container(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
+            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
+            add="Add",
         },
-        bindings=[
-            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
-            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", bindProp="value", syncTarget=".SetText"},
-        ],
-        fieldPrefix="entry",
-        updaterPrefix="updateEntry",
         style={...style},
-    ) {}
+    ) {
+        sngl.slot
+    }
 }
 
-component textarea() {
-    Entry(
-        constructor=Constructor{
-            goFn="widget.NewMultiLineEntry",
-            goType="*widget.Entry",
+component VScroll(style sngl.Style) component {
+    Wrapper(
+        spec=Spec{
+            new=Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
+            args=[Arg{raw="nil"}],
+            goType=Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
+            content="Content",
         },
-        bindings=[
-            Init{prop="placeholder", target=".SetPlaceHolder", quoted=true},
-            Init{prop="rows", target=".SetMinRowsVisible"},
-            Init{prop="value", target=".SetText", transform="fmt.Sprint"},
-            Reactive{prop="value", target=".SetText", transform="fmt.Sprint"},
-            Event{prop="input", target=".OnChanged", signature="func(s string)", bindParam="s", bindProp="value", syncTarget=".SetText"},
-        ],
-        fieldPrefix="entry",
-        updaterPrefix="updateEntry",
         style={...style},
-    ) {}
+    ) {
+        sngl.slot
+    }
+}
+
+// --- Layout containers ---
+
+component sngl.vbox {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.hbox {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// Fyne has no layered container in the widget set this platform builds from,
+// so a stack is a vertical box: the children are all present and in order,
+// they just do not overlap.
+component sngl.stack {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.scroll {
+    platform fyne {
+        VScroll(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.spacer {
+    platform fyne {
+        Spacer(style={...style}) {}
+    }
+}
+
+component sngl.card {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.splitview {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// --- Overlays ---
+//
+// `open` is not forwarded: Fyne's overlay lifecycle is a canvas-level
+// push/pop rather than a property, and a Spec's vocabulary is setters and
+// constructor arguments. So an overlay renders inline with its content
+// visible.
+
+component sngl.modal {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.drawer {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.popover {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// The shape html uses: a box carrying the tooltip text, with the wrapped
+// content inside it.
+component sngl.tooltip {
+    platform fyne {
+        VBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+// --- Navigation ---
+//
+// A tab strip, menu bar and toolbar are all a row of their entries. Fyne's
+// own AppTabs/MainMenu/Toolbar take their items as typed constructor
+// arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no `Arg` can
+// build out of a SNGL prop.
+
+component sngl.tabs {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.toolbar {
+    platform fyne {
+        HBox(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.menubar {
+    platform fyne {
+        HBox(style={...style}) {}
+    }
+}
+
+component sngl.menu {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+// --- Data display ---
+//
+// `table`, `tree` and `radio` take their contents as a list prop rather than
+// as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
+// no way to spell. Each renders as its container, empty.
+
+component sngl.table {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+component sngl.tree {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+component sngl.radio {
+    platform fyne {
+        VBox(style={...style}) {}
+    }
+}
+
+// --- Text ---
+
+component sngl.text {
+    platform fyne {
+        Label(text=value, style={...style}) {}
+    }
+}
+
+component sngl.badge {
+    platform fyne {
+        Label(text=value, style={...style}) {}
+    }
+}
+
+component sngl.chip {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+component sngl.divider {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+// `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
+// is the half of an avatar this platform can render.
+component sngl.avatar {
+    platform fyne {
+        Label(text=initials, style={...style}) {}
+    }
+}
+
+component sngl.spinner {
+    platform fyne {
+        Label(text=label, style={...style}) {}
+    }
+}
+
+// `value` is a float and the label is text, so the conversion is spelled
+// here rather than left to the Spec, which binds a prop to a setter and
+// converts nothing.
+component sngl.progress {
+    platform fyne {
+        Label(text=string(value), style={...style}) {}
+    }
+}
+
+// `value`, `min` and `max` are `date`, which no SNGL expression converts to a
+// string, so the picker shows its `placeholder` and its selection does not
+// reach the bound value.
+component sngl.datepicker {
+    platform fyne {
+        Label(text=placeholder, style={...style}) {}
+    }
+}
+
+// --- Controls ---
+
+component sngl.button {
+    platform fyne {
+        Button(text=text, style={...style}, @click { click() }) {}
+    }
+}
+
+// `href` and `text` are not forwarded — see the Hyperlink declaration.
+component sngl.link {
+    platform fyne {
+        Hyperlink(style={...style}) {}
+    }
+}
+
+component sngl.image {
+    platform fyne {
+        Image(style={...style}) {}
+    }
+}
+
+component sngl.checkbox {
+    platform fyne {
+        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    }
+}
+
+// Fyne's Check is the switch affordance too: `widget.Switch` is not in the
+// widget set this platform builds from.
+component sngl.toggle {
+    platform fyne {
+        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    }
+}
+
+component sngl.select {
+    platform fyne {
+        Select(selected=value, options=options, style={...style}, @change { change() }) {}
+    }
+}
+
+// --- Text entry ---
+
+component sngl.input {
+    platform fyne {
+        Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
+    }
+}
+
+component sngl.textarea {
+    platform fyne {
+        MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
+    }
 }

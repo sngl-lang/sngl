@@ -320,7 +320,8 @@ example to read a node's state or drive its events in a test (see
 ### Macro attributes
 
 A macro attribute begins with `#[` and ends with the matching `]`. It decorates
-the declaration or statement that follows it:
+what follows it: a declaration, a statement, a function parameter or a
+component prop.
 
 ```
 MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } ] ")" ] "]"
@@ -365,7 +366,7 @@ attributes and a slashdash prefix, and optionally followed by a semicolon
 <!-- BEGIN GENERATED: grammar-document -->
 
 ```ebnf
-Document = { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -774,7 +775,7 @@ TypeParamList = "<" IDENT { "," IDENT } ">"
 
 ParamList = Param { "," Param }
 
-Param = IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 
 ```
 
@@ -890,6 +891,7 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | "@" IDENT
+    | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 
@@ -1191,7 +1193,9 @@ ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ 
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
-CompParam = 
+CompParam = { MacroAttr } CompParamBody
+
+CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
     | IDENT [ CompParamTail ]
@@ -1363,8 +1367,8 @@ rather than to a directory of `.sngl` files:
 
 - `import "go://fmt"`, `import "ts://lodash"` — import declarations from a host
   language package, so generated code in that language can call into it;
-- `import "platform://html"`, `import "language://js"` — bring a platform's or
-  language's contributed package into scope;
+- `import "sngl://platforms/html"`, `import "sngl://languages/go"` — bring a
+  platform's or language's contributed package into scope;
 - other schemes may be resolved by the host to fetch remote SNGL sources.
 
 An import of a host-language package is the boundary at which the *language*
@@ -1395,9 +1399,10 @@ The contract has these observable facts:
   semantics defined in this manual; they do not change what a well-formed
   program means.
 - **Platform packages contribute names.** A platform or language may contribute
-  a package of declarations reachable through a `platform://` or `language://`
-  import, and `platform` blocks may resolve otherwise-unknown identifiers
-  against the active platform (for example raw HTML tag names).
+  a package of declarations reachable through a `sngl://platforms/…` or
+  `sngl://languages/…` import, and `platform` blocks may resolve
+  otherwise-unknown identifiers against the active platform (for example raw
+  HTML tag names).
 - **Some targets restrict programs.** A platform may support only certain
   languages, and a language may lack a capability that a program relies on; such
   a combination is rejected at build time rather than mis-compiled.
@@ -1413,7 +1418,7 @@ The complete grammar, assembled from `internal/parser/sngl.ebnf`:
 <!-- BEGIN GENERATED: grammar-full -->
 
 ```ebnf
-Document = { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -1455,7 +1460,7 @@ ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 ```
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" [ StructBodyItem { ";" StructBodyItem } [ ";" ] ] "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] } "}"
 
 StructField = IdentList Type [ "=" Expr ]
 
@@ -1501,7 +1506,7 @@ TypeParamList = "<" IDENT { "," IDENT } ">"
 
 ParamList = Param { "," Param }
 
-Param = IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 
 ```
 
@@ -1510,7 +1515,9 @@ ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ 
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
-CompParam = 
+CompParam = { MacroAttr } CompParamBody
+
+CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
     | IDENT [ CompParamTail ]
@@ -1575,6 +1582,7 @@ PrimaryExpr =
     | AnonStructLit
     | FuncLit
     | "@" IDENT
+    | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 

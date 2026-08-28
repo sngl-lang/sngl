@@ -587,8 +587,6 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 			walkE(x.Init)
 		case *ast.DisabledDecl:
 			walkS(x.Inner)
-		case *ast.AttrDecl:
-			walkS(x.Inner)
 		}
 	}
 	for _, st := range doc.Stmts {

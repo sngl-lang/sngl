@@ -2,9 +2,12 @@ package html
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -32,6 +35,22 @@ type renderBuilder struct {
 	cur       strings.Builder
 	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
+	// rawElem is the `element` declaration every HTML tag resolves to. The
+	// server render reads the same declaration the client render does, so the
+	// two agree on the tag, on which props are boolean, and on which prop
+	// holds the tag rather than describing the element.
+	rawElem *ir.Component
+
+	// err is the first thing the server render could not express. It has no
+	// error return -- it builds a skeleton -- so the failure is carried out and
+	// reported by the caller rather than written into the page.
+	err error
+}
+
+func (rb *renderBuilder) fail(format string, args ...any) {
+	if rb.err == nil {
+		rb.err = fmt.Errorf(format, args...)
+	}
 }
 
 func (rb *renderBuilder) writeRaw(s string) { rb.cur.WriteString(s) }
@@ -52,12 +71,20 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
 // path is the route URL the form posts to.
-func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) *codegen.RouteRender {
-	rb := &renderBuilder{pkg: pkg, state: stateVarNames(pkg), actionIdx: actionIdx}
+func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
+	rb := &renderBuilder{
+		pkg:       pkg,
+		state:     stateVarNames(pkg),
+		actionIdx: actionIdx,
+		rawElem:   rawElementDecl(pkg),
+	}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
 	}
-	return rb.finish()
+	if rb.err != nil {
+		return nil, rb.err
+	}
+	return rb.finish(), nil
 }
 
 func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
@@ -120,32 +147,96 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			path, actionIdx))
 	}
 
-	tag := htmlTagFor(n.Name)
+	decl := n.Component
+	if decl == nil || decl.Wildcard == "" {
+		decl = rb.rawElem
+	}
+	// A node the declaration cannot name a tag for is rendered as a container
+	// rather than as a bogus <name> literal, so a user component keeps
+	// rendering instead of emitting invalid markup.
+	tag := "div"
+	if t, ok := rawElementTag(decl, n); ok {
+		tag = t
+	}
 	rb.writeRaw("<" + tag)
 
-	// Attribute-style props (non-text-content) referencing state → HoleAttr.
+	// Attribute-style props (non-content) referencing state → HoleAttr.
+	//
+	// Which props are content comes from contentProp, the same question the
+	// client render answers: `innerHTML` used to be written as an attribute of
+	// its own name holding raw markup, and `value` as a text node on whatever
+	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
-	for i := range n.Props {
-		p := &n.Props[i]
-		if isTextContentProp(n.Name, p.Name) {
+	var rawBinding *ir.Arg
+	for _, p := range rb.elementAttrs(decl, n) {
+		switch contentProp(p.Name) {
+		case textContentKind:
 			textBinding = p
+			continue
+		case rawContentKind:
+			rawBinding = p
+			continue
+		}
+		if p.Name == "style" {
+			// A style struct is a set of CSS declarations; written through as
+			// a value it is not a string at all.
+			if css := htmlutil.BuildCSSStyleIR([]ir.Arg{*p}); css != "" {
+				rb.writeRaw(` style="` + css + `"`)
+			}
 			continue
 		}
 		if rb.exprIsReactive(p.Value) {
 			rb.writeRaw(" " + p.Name + `="`)
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: p.Value, Attr: p.Name})
 			rb.writeRaw(`"`)
-		} else if s, ok := codegen.IRLiteralString(p.Value); ok {
-			rb.writeRaw(" " + p.Name + `="` + s + `"`)
+			continue
 		}
+		// A boolean attribute is present or absent; `open="false"` leaves a
+		// <details> open, so a false one is written as nothing.
+		if bv, ok := codegen.IRLiteralBool(p.Value); ok {
+			if bv {
+				rb.writeRaw(" " + p.Name)
+			}
+			continue
+		}
+		if s, ok := codegen.IRLiteralString(p.Value); ok {
+			rb.writeRaw(" " + p.Name + `="` + s + `"`)
+			continue
+		}
+		// Not reactive and not a literal: there is nothing to write and no hole
+		// to write it into. Dropping it silently is how a bound `value` left an
+		// <input> with no value at all.
+		rb.fail("prop %q cannot be rendered server-side: its value is neither a literal nor a state-dependent expression", p.Name)
+		return
 	}
 	rb.writeRaw(">")
+
+	// A void element holds no content and takes no close tag: the parser
+	// closes it, and `</input>` is invalid markup.
+	if voidElements[tag] {
+		if backendForm {
+			rb.writeRaw("</form>")
+		}
+		return
+	}
 
 	// Text-content binding (e.g. text(value=...)) → HoleText or literal.
 	if textBinding != nil {
 		if rb.exprIsReactive(textBinding.Value) {
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleText, Expr: textBinding.Value})
 		} else if s, ok := codegen.IRLiteralString(textBinding.Value); ok {
+			rb.writeRaw(s)
+		}
+	}
+	// innerHTML is markup, so a literal is written through unescaped -- which
+	// is what the prop means, and why it is not an attribute. A reactive one
+	// would need a hole that interpolates without escaping, and the route
+	// skeleton has no such kind: escaping it would render the markup as text,
+	// and not escaping an interpolated value is an injection. Say so.
+	if rawBinding != nil {
+		if rb.exprIsReactive(rawBinding.Value) {
+			rb.fail("innerHTML cannot depend on state in a server-rendered route: the value would be interpolated into markup unescaped")
+		} else if s, ok := codegen.IRLiteralString(rawBinding.Value); ok {
 			rb.writeRaw(s)
 		}
 	}
@@ -189,38 +280,34 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 	return reactive
 }
 
-// htmlTagFor maps a SNGL element/component name to the HTML tag the route
-// skeleton emits. Layout primitives become <div>; text becomes <span>. A
-// namespaced platform-sngl wrapper (e.g. html.input) trusts its suffix as the
-// real tag. An unrecognized BARE name (a user component or unknown element) is
-// conservatively rendered as <div> rather than emitting a bogus <name> literal
-// — chosen over a hard build error so existing component fixtures keep
-// rendering (a wrong-but-valid container, not invalid markup).
-func htmlTagFor(name string) string {
-	switch name {
-	case "vbox", "hbox", "box", "stack", "grid":
-		return "div"
-	case "text", "label":
-		return "span"
-	case "button":
-		return "button"
-	case "canvas":
-		return "canvas"
+// elementAttrs is the props to write as attributes, in a stable order: the
+// ones the node was called with, minus the prop holding the tag (it names the
+// element rather than describing it) and minus the wildcard container, whose
+// entries are unpacked back into the attribute names they were written under
+// and appended sorted.
+func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
+	into := tagPropName(decl)
+	wildcard := map[string]bool{}
+	if decl != nil {
+		for _, dp := range decl.Props {
+			if dp != nil && dp.Wildcard != "" {
+				wildcard[dp.Name] = true
+			}
+		}
 	}
-	if _, after, ok := strings.Cut(name, "."); ok {
-		return after
+	var out []*ir.Arg
+	for i := range n.Props {
+		p := &n.Props[i]
+		if p.Name == "" || p.Name == into || wildcard[p.Name] {
+			continue
+		}
+		out = append(out, p)
 	}
-	return "div"
-}
-
-// isTextContentProp reports whether prop is rendered as the element's text
-// content (vs. an attribute) for the given element.
-func isTextContentProp(elem, prop string) bool {
-	switch prop {
-	case "value", "text", "label", "content":
-		return true
+	extra := codegen.WildcardProps(n)
+	for _, name := range slices.Sorted(maps.Keys(extra)) {
+		out = append(out, &ir.Arg{Name: name, Value: extra[name]})
 	}
-	return false
+	return out
 }
 
 // logicalMutations returns the handler body with visual/DOM-patch statements

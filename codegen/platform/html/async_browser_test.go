@@ -82,10 +82,12 @@ func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 
 	resolver := &asyncBrowserResolver{fsys: fsys}
 	pkg, diags := checker.Check(doc, &checker.Config{
-		FS:       fsys,
-		Dir:      ".",
-		IsMain:   true,
-		Resolver: resolver,
+		FS:        fsys,
+		Dir:       ".",
+		IsMain:    true,
+		Resolver:  resolver,
+		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
@@ -145,7 +147,7 @@ func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
 
 	// Note: text(value=greeting) must come BEFORE button(…@click…) in the
 	// SNGL source so the NoReactivity lowering seeds idToNode["__n*"] before
-	// addClickHandler translates the DOM-write assign (#__nN.value = greeting)
+	// the click handler translates the DOM-write assign (#__nN.value = greeting)
 	// via domWriteFor → textContent.  If the button comes first the fall-through
 	// path produces __n0.value (a custom expando) instead of __n0.textContent.
 	const snglSrc = `

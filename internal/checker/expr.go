@@ -7,6 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"maps"
+	"slices"
 )
 
 // exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
@@ -301,11 +302,6 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				}
 			}
 		}
-		// Try platform Resolve() inside platform blocks.
-		if resolved := c.resolvePlatformIdent(x.Name); resolved != nil {
-			sym = resolved
-			ok = true
-		}
 	}
 	if !ok {
 		// `this`-elision: bare name resolves to `this.<name>` inside a method
@@ -440,9 +436,7 @@ func optionElem(t *ir.Type) *ir.Type {
 
 // comparableEq reports whether two operand types can be compared with == / !=.
 // Strict "like types" rule: same kind, numeric-to-numeric, one side is null, or
-// an option<T> against T / option<T>. Cross-kind comparisons like string ==
-// color, which used to silently return false at runtime, become check-time
-// errors.
+// an option<T> against T / option<T>.
 func comparableEq(left, right *ir.Type) bool {
 	if left == nil || right == nil {
 		return true
@@ -859,9 +853,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// (cast) forms above have already claimed the castable types, and
 	// components were handled as instantiation. Reaching this point with a
 	// type name means a cast to a type that has no cast, and with a value
-	// means calling a non-function. Both used to fall through to a dyn-typed
-	// ir.Call, silently accepting nonsense — the call-side counterpart of the
-	// member-access dyn fallback removed in !21.
+	// means calling a non-function.
 	//
 	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
 	// it stays permissive.
@@ -962,7 +954,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*ir.Namespace); ok && (ns.Pkg != nil || ns.Resolve != nil) {
+			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if ns.Pkg != nil {
 					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
 						if c.rejectUnexported(sel.Pos, fsym) {
@@ -1007,16 +999,14 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
 					}
 				}
-				// Try Resolve() fallback for dynamic elements (e.g., html.code).
-				if ns.Resolve != nil {
-					if resolved := ns.Resolve(sel.Field); resolved != nil {
-						t := resolved.SymType()
-						if t == nil {
-							t = TypDyn
-						}
-						args := c.checkCallArgs(call.Args, nil)
-						return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
+				// A name the package does not declare (e.g. html.code).
+				if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
+					t := resolved.SymType()
+					if t == nil {
+						t = TypDyn
 					}
+					args := c.checkCallArgs(call.Args, nil)
+					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
 				}
 				// Nothing found in namespace.
 				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
@@ -1494,15 +1484,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}
-					// Try Resolve() fallback for dynamic members.
-					if ns.Resolve != nil {
-						if resolved := ns.Resolve(x.Field); resolved != nil {
-							t := resolved.SymType()
-							if t == nil {
-								t = TypDyn
-							}
-							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
+					// A name the package does not declare.
+					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
+						t := resolved.SymType()
+						if t == nil {
+							t = TypDyn
 						}
+						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 					}
 				}
 			}
@@ -1806,24 +1794,6 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 	return &ir.MapLitIR{Type: mapType, Entries: entries}
 }
 
-func structHasField(sd *ir.StructDef, name string) bool {
-	for _, f := range sd.Fields {
-		if f.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-func structFieldType(sd *ir.StructDef, name string) *ir.Type {
-	for _, f := range sd.Fields {
-		if f.Name == name {
-			return f.Type
-		}
-	}
-	return nil
-}
-
 func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	if len(x.Elements) == 0 {
 		if c.expected != nil && c.expected.Kind == ir.TypeList {
@@ -1989,7 +1959,9 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 		}
 	}
 	if chain == nil {
-		return &ir.Literal{Type: TypString, Raw: `""`}
+		// Raw is the value, not its source spelling — `""` here would be the
+		// two-character string, which Go codegen duly renders as "\"\"".
+		return &ir.Literal{Type: TypString, Raw: ""}
 	}
 	return chain
 }
@@ -2003,6 +1975,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	if c.expected != nil && c.expected.Kind == ir.TypeFunc {
 		expectedSig = c.expected.Sig
 	}
+	c.refuseParamMarks(x.Params.Params)
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -2282,6 +2255,50 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 
 // checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
 // If sig is non-nil, validates arg types and arity against it using Pythonic named/positional rules.
+
+// checkEmitArgs checks and returns what an `event(...)` hands over. Nothing
+// checked it before, so an override body could forward a value of any type into
+// an event declared to carry another, and the mismatch surfaced as a type error
+// in the generated program rather than against the declaration that was wrong.
+//
+// The argument is the payload, or there is none. A shorthand accepting the
+// payload's single field instead would tie the rule to the payload's shape:
+// adding a second field to a one-field event would stop every such call site
+// checking, so a change that is backward compatible in the declaration would
+// not be in the checker. Writing the payload out costs a call site nothing and
+// keeps the two independent.
+//
+// The argument is checked against the payload rather than on its own, so a
+// struct literal here is typed by the declaration -- `change({value = opt})`
+// names no type and needs none.
+func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList) []ir.CallArg {
+	var vals []ast.Expr
+	for _, a := range args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Value == nil {
+			continue
+		}
+		vals = append(vals, arg.Value)
+	}
+	switch {
+	case len(vals) == 0:
+		return nil
+	case len(vals) > 1:
+		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(vals))
+		return nil
+	case evt.Type == nil:
+		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
+		return nil
+	}
+	val := c.checkExprExpecting(vals[0], evt.Type)
+	if got := exprType(val); got != nil && got.Kind != ir.TypeDyn &&
+		evt.Type.Kind != ir.TypeDyn && !got.IsAssignableTo(evt.Type) {
+		c.error(*vals[0].ExprPos(), "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
+		return nil
+	}
+	return []ir.CallArg{{Value: val}}
+}
+
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
 	// No sig: check exprs, pass through names unchanged (dynamic call).
 	if sig == nil {
@@ -2440,7 +2457,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 // checkStmt type-checks a single statement and returns its IR form.
 // Returns nil for declarations (registered on scope) and skipped nodes.
 func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
-	switch x := ast.UnwrapStmt(s).(type) {
+	switch x := s.(type) {
 	case *ast.AssignStmt:
 		targetExpr := c.checkExpr(x.Target)
 		targetType := exprType(targetExpr)
@@ -2569,7 +2586,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// `output` is matched by name: it is a build directive with its
 			// own data structure, not a component, so nothing in scope
 			// resolves to it (see registerRootVisualNode).
-			isRootish := c.builtinNodeKind(id.Name) != ast.BuiltinNone || id.Name == "output"
+			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone || id.Name == "output"
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -2587,7 +2604,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" && c.currentComponent != nil {
 			for _, evt := range c.currentComponent.Events {
 				if evt.Name == id.Name {
-					args := c.checkCallArgs(x.Call.Args, nil)
+					args := c.checkEmitArgs(x.Pos, evt, x.Call.Args)
 					return &ir.Emit{AST: x, Name: id.Name, Args: args}
 				}
 			}
@@ -2615,8 +2632,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// A declared component in the namespace's package.
 						// Visibility (unexported names) is enforced by
 						// rejectUnexported, not by casing heuristics.
+						// Declared only: a wildcard answers to every name,
+						// and one reached that way is named by the name it
+						// matched — the branch below, which knows that.
 						if ns.Pkg != nil {
-							if fsym, ok := ns.Pkg.Symbols.LookupComponent(sel.Field); ok {
+							if fsym, ok := ns.Pkg.Symbols.LookupDeclaredComponent(sel.Field); ok {
 								if c.rejectUnexported(x.Pos, fsym) {
 									return nil
 								}
@@ -2634,8 +2654,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// walks their reactive props and wires the mutation
 						// updaters. Without this they became ir.CallStmt, which
 						// lowering skips, leaving reactive attributes frozen.
-						if comp == nil && ns.Resolve != nil {
-							if resolved := ns.Resolve(sel.Field); resolved != nil {
+						if comp == nil {
+							if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
 								if co, ok := resolved.(*ir.Component); ok {
 									comp = co
 									compName = sel.Field
@@ -2663,7 +2683,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				AST:       x,
 				Name:      compName,
 				Component: comp,
-				Props:     props,
+				Props:     bindWildcardName(comp, compName, props),
 				Handlers:  handlers,
 				Bindings:  bindings,
 				Key:       keyExpr,
@@ -2867,32 +2887,36 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 }
 
 // buildPlatformPkgScope builds (and caches) a scope containing declarations
-// from the named platform's Package() docs.
+// from the named platform's sngl://platforms/<n> package.
 func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[platform]; ok {
 			// Clone so each insertion point gets its own parent chain.
 			clone := NewScope(nil)
 			maps.Copy(clone.Symbols, s.Symbols)
+			clone.Wildcards = slices.Clone(s.Wildcards)
 			return clone
 		}
 	}
 
 	t := c.lookupTarget(platform)
-	if t == nil {
+	if t == nil || targetUnavailable(t) != nil {
 		return nil
 	}
-
-	pkg := c.buildPkgFromDocs(t.Package())
-	if pkg == nil {
+	uri := "platforms/" + platform
+	if !c.hasLibPkg(uri) {
 		return nil
 	}
+	// The same instance user code imports: a `platform x { ... }` block and an
+	// `import "sngl://platforms/x"` must name one declaration, not two.
+	pkg := c.libPkg(uri)
 
 	scope := NewScope(nil)
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
+	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg, Resolve: t.Resolve})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -2902,26 +2926,45 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	// Return a clone for this usage.
 	clone := NewScope(nil)
 	maps.Copy(clone.Symbols, scope.Symbols)
+	clone.Wildcards = slices.Clone(scope.Wildcards)
 	return clone
 }
 
-// resolvePlatformIdent tries the current platform's Resolve() for an unknown
-// identifier. Returns nil when not inside a platform block or when the
-// platform cannot resolve the name.
-func (c *checker) resolvePlatformIdent(name string) ir.Symbol {
-	if c.currentPlatform == "" {
+// nsMember resolves a name a namespace's package does not declare: a wildcard
+// component of that package, which says in source which names it stands for.
+func (c *checker) nsMember(pos ast.Pos, ns *ir.Namespace, name string) ir.Symbol {
+	return c.scopeWildcard(pos, nsScope(ns), name)
+}
+
+// nsScope is the scope a namespace's members are looked up in, or nil.
+func nsScope(ns *ir.Namespace) *ir.Scope {
+	if ns == nil || ns.Pkg == nil || ns.Pkg.Symbols == nil {
 		return nil
 	}
-	t := c.lookupTarget(c.currentPlatform)
-	if t == nil {
+	return ns.Pkg.Symbols.Root
+}
+
+// scopeWildcard is the wildcard binding of scope that covers name. A declared
+// name was already looked up by the caller; two wildcards covering one name is
+// an ambiguity rather than whichever was written first.
+func (c *checker) scopeWildcard(pos ast.Pos, scope *ir.Scope, name string) ir.Symbol {
+	if scope == nil {
 		return nil
 	}
-	return t.Resolve(name)
+	matches := scope.WildcardMatches(name)
+	switch len(matches) {
+	case 0:
+		return nil
+	case 1:
+		return matches[0]
+	default:
+		c.error(pos, "%q matches wildcards %s and %s", name, matches[0].SymName(), matches[1].SymName())
+		return nil
+	}
 }
 
 // resolveQualifiedIdent reports whether a qualified name "ns.Field" resolves
-// to a namespace member (component, func, or platform-resolved element like
-// html.div) via an in-scope Namespace.
+// to a namespace member (component or func) via an in-scope Namespace.
 func (c *checker) resolveQualifiedIdent(name string) bool {
 	ns, field, ok := strings.Cut(name, ".")
 	if !ok {
@@ -2937,11 +2980,6 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 	}
 	if nsSym.Pkg != nil {
 		if _, ok := nsSym.Pkg.Symbols.Root.Lookup(field); ok {
-			return true
-		}
-	}
-	if nsSym.Resolve != nil {
-		if nsSym.Resolve(field) != nil {
 			return true
 		}
 	}
@@ -3054,7 +3092,7 @@ func (c *checker) errorEventType() *ir.Type {
 // checkPlatformStmtIR type-checks a platform statement and returns IR.
 func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 	// Skip body when target platform is known and doesn't match.
-	if c.cfg.Target != nil && c.cfg.Target.Platform != "" && c.cfg.Target.Platform != s.Platform {
+	if !c.targetsPlatform(s.Platform) {
 		return nil
 	}
 
@@ -3066,11 +3104,6 @@ func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
 		c.scope.Parent = platformScope
 		defer func() { c.scope.Parent = savedParent }()
 	}
-
-	// Track current platform so Resolve() fallback works on unknown identifiers.
-	savedPlatform := c.currentPlatform
-	c.currentPlatform = s.Platform
-	defer func() { c.currentPlatform = savedPlatform }()
 
 	body := c.checkBlockIR(&s.Body)
 	return &ir.PlatformFilter{AST: s, Platform: s.Platform, Body: body}
@@ -3085,13 +3118,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
 	switch c.builtinNodeKind(name) {
-	case ast.BuiltinWindow:
+	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
 		c.bindWindow(vn.Pos, w)
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
-	case ast.BuiltinTimer:
+	case ir.BuiltinTimer:
 		t := c.buildTimer(vn)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
@@ -3099,10 +3132,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case ast.BuiltinSlot:
+	case ir.BuiltinSlot:
 		children := c.checkBlockIR(&vn.Block)
 		return &ir.SlotInst{AST: vn, Children: children}
-	case ast.BuiltinErrorBoundary:
+	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
 	}
 	// `output` is not a component (see registerRootVisualNode), so it stays a
@@ -3135,12 +3168,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 						}
 					}
 				}
-				// Fall back to the namespace's platform Resolve (e.g.
-				// html.input → raw HTML <input> component; gtk4.GtkBox →
-				// GIR-resolved component). Lets platform-extension bodies
+				// A name the package does not declare: a wildcard component
+				// of its own, else the platform's Resolve (gtk4.GtkBox →
+				// GIR-resolved widget). Lets platform-extension bodies
 				// reference native tags qualified by platform name.
-				if comp == nil && nsSym.Resolve != nil {
-					if resolved := nsSym.Resolve(field); resolved != nil {
+				if comp == nil {
+					if resolved := c.nsMember(vn.Pos, nsSym, field); resolved != nil {
 						if co, ok := resolved.(*ir.Component); ok {
 							comp = co
 							qualifiedLocal = field
@@ -3149,7 +3182,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				}
 			}
 		}
-	} else if sym, ok := c.lookupComponentInScope(name); ok {
+	} else if sym, ok := c.lookupComponentInScope(vn.Pos, name); ok {
 		if c.rejectUnexported(vn.Pos, sym) {
 			return nil
 		}
@@ -3191,20 +3224,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	// Unknown component check — skip if name resolves to a variable
-	// (e.g. timer condition guard like `running { ... }`),
-	// or if the platform/namespace can resolve it. Platform-resolved
-	// names (e.g. GtkButton via GIR) bind into `comp` so the NodeInst
-	// carries the resolved Component (including any platform-provided
-	// Native metadata) downstream.
+	// (e.g. timer condition guard like `running { ... }`), or if a namespace
+	// can resolve it.
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
-			if c.resolveQualifiedIdent(name) {
-				// namespace member — leave comp nil.
-			} else if resolved := c.resolvePlatformIdent(name); resolved != nil {
-				if co, ok := resolved.(*ir.Component); ok {
-					comp = co
-				}
-			} else {
+			if !c.resolveQualifiedIdent(name) {
 				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHint(name))
 			}
 		}
@@ -3227,25 +3251,21 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
 		}
-		// Validate shape children: when ChildrenType is list<shape>, every child
-		// must itself have list<shape> ChildrenType (which is how shapes are identified).
-		if ct != nil && ct.Kind == ir.TypeList && len(ct.Elems) > 0 && ct.Elems[0].Kind == ir.TypeShape {
+		// A component marked #[tree.children("k")] hosts a segmented tree:
+		// every child must be a node marked #[tree.kind("k")].
+		if comp.ChildKind != "" {
 			for _, child := range children {
 				ni, ok := child.(*ir.NodeInst)
-				isShape := ok && ni.Component != nil &&
-					ni.Component.ChildrenType != nil &&
-					ni.Component.ChildrenType.Kind == ir.TypeList &&
-					len(ni.Component.ChildrenType.Elems) > 0 &&
-					ni.Component.ChildrenType.Elems[0].Kind == ir.TypeShape
-				if !isShape {
-					childName := "unknown"
-					if ok && ni.Component != nil {
-						childName = ni.Component.Name
-					} else if ok {
-						childName = ni.Name
-					}
-					c.error(vn.Pos, "expected shape component, got %s", childName)
+				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
+					continue
 				}
+				childName := "unknown"
+				if ok && ni.Component != nil {
+					childName = ni.Component.Name
+				} else if ok {
+					childName = ni.Name
+				}
+				c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
 			}
 		}
 	}
@@ -3264,6 +3284,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	if qualifiedLocal != "" {
 		emitName = qualifiedLocal
 	}
+	props = bindWildcardName(comp, emitName, props)
 	return &ir.NodeInst{
 		AST:       vn,
 		Name:      emitName,
@@ -3356,7 +3377,49 @@ func componentPropType(comp *ir.Component, name string) *ir.Type {
 			return p.Type
 		}
 	}
+	// A name nobody declared still has a type when a wildcard prop covers it,
+	// which is what makes its value checkable. The prop is a map keyed by the
+	// name, so the value's type is the map's, not the prop's. An ambiguity is
+	// reported by validateVisualNodeProps, at the use site; here it simply
+	// types nothing.
+	if p, ok, err := wildcardProp(comp, name); ok && err == nil {
+		return wildcardValueType(p)
+	}
 	return nil
+}
+
+// wildcardValueType is the type a wildcard prop checks one matched value
+// against: its map's value type. A wildcard prop that is not a map is a
+// declaration error reported where it was written, and types nothing here.
+func wildcardValueType(p *ir.Prop) *ir.Type {
+	if p == nil || p.Type == nil || p.Type.Kind != ir.TypeMap || len(p.Type.Elems) != 2 {
+		return nil
+	}
+	return p.Type.Elems[1]
+}
+
+// wildcardTarget is the wildcard prop a written prop name is collected into,
+// or nil when a declared prop binds the name. A declared name always beats a
+// wildcard, so the declared lookup comes first.
+func wildcardTarget(comp *ir.Component, name string) *ir.Prop {
+	if comp == nil {
+		return nil
+	}
+	for _, p := range comp.Props {
+		if p.Name == name {
+			return nil
+		}
+	}
+	p, ok, err := wildcardProp(comp, name)
+	if !ok || err != nil {
+		return nil
+	}
+	// Only a map collects: a wildcard prop declared in source must be one
+	// (checkWildcardPropType).
+	if wildcardValueType(p) == nil {
+		return nil
+	}
+	return p
 }
 
 // propTypeMismatch reports whether a prop value cannot reach its prop's type.
@@ -3366,7 +3429,7 @@ func propTypeMismatch(got, expected *ir.Type) bool {
 	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
 		return false
 	}
-	if got.IsAssignableTo(expected) || primitiveConvertible(got, expected) {
+	if got.IsAssignableTo(expected) {
 		return false
 	}
 	// An unresolved type parameter is the tail of an earlier error.
@@ -3396,13 +3459,6 @@ func componentEventType(comp *ir.Component, name string) *ir.Type {
 
 // validateVisualNodeProps validates props and events against a component definition.
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
-	// Skip validation for platform-synthesized components (e.g. raw HTML tags
-	// or bubbletea/fyne blueprint marker tags). These are created on the fly
-	// by Platform.Resolve and have no declared Props/Events — the platform
-	// codegen reads their args directly.
-	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
-		return
-	}
 	// Validate args match props/events.
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
@@ -3415,11 +3471,15 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			if strings.HasPrefix(name, ":") {
 				name = name[1:]
 			}
-			if !componentHasProp(comp, name) && !componentHasEvent(comp, name) {
+			if _, err := componentWildcardProp(comp, name); err != nil {
+				c.error(vn.Pos, "%s", err)
+			} else if !componentHasProp(comp, name) && !componentDeclaresEventNamed(comp, name) {
 				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
-			if !componentHasEvent(comp, arg.Name) {
+			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
+				c.error(vn.Pos, "%s", err)
+			} else if !ok && !componentHasEvent(comp, arg.Name) {
 				c.error(vn.Pos, "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3435,11 +3495,56 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	seen := make(map[string]ast.Pos)
 
 	// Build ordered prop list for positional binding.
+	// A wildcard prop has no position: it stands for names, and binding one
+	// positionally would give it a name nobody wrote.
 	var orderedProps []*ir.Prop
 	if comp != nil {
-		orderedProps = comp.Props
+		for _, p := range comp.Props {
+			if p.Wildcard == "" {
+				orderedProps = append(orderedProps, p)
+			}
+		}
 	}
 	boundProps := make(map[string]bool)
+	// Entries a wildcard prop collected, keyed by the prop's own name. Built
+	// alongside props and appended as one map arg once every name is in.
+	var wildcardEntries map[string][]ir.MapEntry
+	// The first matched name routed into each wildcard prop, and the call site
+	// that bound that prop under its own name. A call may do one or the other;
+	// doing both is reported once the whole arg list has been read, so the
+	// diagnostic does not depend on which spelling came first.
+	var wildcardFirstName map[string]string
+	var wildcardDirect map[string]ast.Pos
+	noteDirect := func(name string, pos ast.Pos) {
+		if comp == nil {
+			return
+		}
+		for _, p := range comp.Props {
+			if p.Name != name || p.Wildcard == "" {
+				continue
+			}
+			if wildcardDirect == nil {
+				wildcardDirect = map[string]ast.Pos{}
+			}
+			if _, dup := wildcardDirect[name]; !dup {
+				wildcardDirect[name] = pos
+			}
+			return
+		}
+	}
+	collectWildcard := func(wc *ir.Prop, name string, val ir.Expr) {
+		if wildcardEntries == nil {
+			wildcardEntries = map[string][]ir.MapEntry{}
+		}
+		if wildcardFirstName == nil {
+			wildcardFirstName = map[string]string{}
+		}
+		key := &ir.Literal{Type: TypString, Raw: name}
+		wildcardEntries[wc.Name] = append(wildcardEntries[wc.Name], ir.MapEntry{Key: key, Value: val})
+		if _, had := wildcardFirstName[wc.Name]; !had {
+			wildcardFirstName[wc.Name] = name
+		}
+	}
 
 	// Order check: positional after named is an error.
 	// Spread args (...expr) expand to named props and are exempt from this check.
@@ -3500,6 +3605,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 							selExpr = wrapIfNeeded(selExpr, propType)
 						}
 						boundProps[f.Name] = true
+						// A spread field is a written prop name like any
+						// other, so a name a wildcard prop covers is
+						// collected into it rather than becoming an arg under
+						// its own name — which named no prop, and was dropped
+						// by every backend.
+						if wc := wildcardTarget(comp, f.Name); wc != nil {
+							collectWildcard(wc, f.Name, selExpr)
+							continue
+						}
+						noteDirect(f.Name, spread.Pos)
 						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
 					}
 					continue
@@ -3571,15 +3686,23 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
+				pos := args.Pos
+				if arg.Value != nil {
+					pos = *arg.Value.ExprPos()
+				}
 				if boundProps[propName] {
-					pos := args.Pos
-					if arg.Value != nil {
-						pos = *arg.Value.ExprPos()
-					}
 					c.error(pos, "prop %q already provided on component %s", propName, comp.Name)
 					continue
 				}
 				boundProps[propName] = true
+				noteDirect(propName, pos)
+			}
+			// A wildcard prop collects the names it matched rather than
+			// being one: the value is an entry keyed by the written name,
+			// and every match on this call site lands in the same map.
+			if wc := wildcardTarget(comp, strings.TrimPrefix(resolvedName, ":")); wc != nil {
+				collectWildcard(wc, strings.TrimPrefix(resolvedName, ":"), val)
+				continue
 			}
 			props = append(props, ir.Arg{Name: resolvedName, NamePos: arg.NamePos, Value: val})
 
@@ -3615,10 +3738,38 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
+	// One arg per wildcard prop, under the prop's own name, so the body that
+	// declared it has something to read and every backend reaches the values
+	// through the declaration rather than through the raw argument list.
+	if comp != nil {
+		for _, p := range comp.Props {
+			entries := wildcardEntries[p.Name]
+			if len(entries) == 0 {
+				continue
+			}
+			// The prop's own name and a name its wildcard covers are two ways
+			// to write the same map, and the second one appended here would
+			// silently replace the first. Neither is wrong on its own, so the
+			// call site is told to pick one rather than one being preferred.
+			if pos, direct := wildcardDirect[p.Name]; direct {
+				c.error(pos, "prop %q on component %s is bound directly and as %q, which its wildcard collects into it; bind the map or the matched names, not both",
+					p.Name, comp.Name, wildcardFirstName[p.Name])
+				continue
+			}
+			props = append(props, ir.Arg{Name: p.Name, Value: &ir.MapLitIR{Type: p.Type, Entries: entries}})
+			boundProps[p.Name] = true
+		}
+	}
+
 	// Arity: all required props must be bound (user-defined components only;
 	// stdlib component props without defaults are optional by platform convention).
 	if comp != nil && !comp.Stdlib {
 		for _, p := range comp.Props {
+			// A wildcard prop stands for names rather than being one, so
+			// there is nothing to require: its own name binds nothing.
+			if p.Wildcard != "" {
+				continue
+			}
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
@@ -3723,7 +3874,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if strings.HasPrefix(propName, ":") {
 					propName = propName[1:]
 				}
-				if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
+				if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
 					c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 					continue
 				}
@@ -3774,7 +3925,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			}
 			c.checkBlock(&arg.Body)
 			c.popScope()
-			if !componentHasEvent(comp, arg.Name) {
+			if !componentAcceptsEvent(comp, arg.Name) {
 				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3784,6 +3935,11 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	// stdlib component props without defaults are optional by platform convention).
 	if !comp.Stdlib {
 		for _, p := range comp.Props {
+			// A wildcard prop stands for names rather than being one, so
+			// there is nothing to require: its own name binds nothing.
+			if p.Wildcard != "" {
+				continue
+			}
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
@@ -3796,12 +3952,6 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 // validateCallStmtComponentArgs validates prop/event names on a component call
 // parsed as a CallStmt. Value checking is deferred to checkAndSplitArgs.
 func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Component) {
-	// Skip validation for platform-synthesized components (raw native tags
-	// like html.progress) — they have no declared Props/Events; the platform
-	// codegen reads their args directly. Mirrors validateVisualNodeProps.
-	if comp.AST == nil && len(comp.Props) == 0 && len(comp.Events) == 0 {
-		return
-	}
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
@@ -3812,11 +3962,15 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			if strings.HasPrefix(propName, ":") {
 				propName = propName[1:]
 			}
-			if !componentHasProp(comp, propName) && !componentHasEvent(comp, propName) {
+			if _, err := componentWildcardProp(comp, propName); err != nil {
+				c.error(*call.Func.ExprPos(), "%s", err)
+			} else if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
 				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
 			}
 		case ast.EventHandler:
-			if !componentHasEvent(comp, arg.Name) {
+			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
+				c.error(*call.Func.ExprPos(), "%s", err)
+			} else if !ok && !componentHasEvent(comp, arg.Name) {
 				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
 			}
 		}
@@ -3829,7 +3983,15 @@ func componentHasProp(comp *ir.Component, name string) bool {
 			return true
 		}
 	}
-	return false
+	ok, _ := componentWildcardProp(comp, name)
+	return ok
+}
+
+// componentWildcardProp reports whether a wildcard prop covers a name no
+// declared prop binds, and the ambiguity if two of them do.
+func componentWildcardProp(comp *ir.Component, name string) (bool, error) {
+	_, ok, err := wildcardProp(comp, name)
+	return ok, err
 }
 
 func componentHasEvent(comp *ir.Component, name string) bool {
@@ -3839,6 +4001,56 @@ func componentHasEvent(comp *ir.Component, name string) bool {
 		}
 	}
 	return false
+}
+
+// componentWildcardEvent reports whether a wildcard event covers name when no
+// declared event binds, and the ambiguity if two of them do.
+func componentWildcardEvent(comp *ir.Component, name string) (bool, error) {
+	_, ok, err := wildcardEvent(comp, name)
+	return ok, err
+}
+
+// componentAcceptsEvent reports whether a handler may be attached for name. A
+// declared event binds first; failing that, an event carrying #[wildcard] with
+// a matching pattern does. An ambiguity is reported where the name was
+// written, and accepts here rather than reporting twice.
+func componentAcceptsEvent(comp *ir.Component, name string) bool {
+	if componentHasEvent(comp, name) {
+		return true
+	}
+	ok, _ := componentWildcardEvent(comp, name)
+	return ok
+}
+
+// componentDeclaresEventNamed reports whether comp declares an event of this
+// exact name. Deliberately not a wildcard match: this answers "is this
+// prop-position name actually an event", and a wildcard event stands for the
+// names of a whole open set -- every DOM event, for html's `element` -- not for
+// any name a caller might write in prop position. Accepting the wildcard there
+// let `html.div(innerTxt = "x")` through, because a camelCase misspelling of a
+// DOM property matches "any event name" perfectly well.
+func componentDeclaresEventNamed(comp *ir.Component, name string) bool {
+	return componentHasEvent(comp, name)
+}
+
+// bindWildcardName binds the name a wildcard component was resolved by to the
+// prop its mark named. A component reached through a wildcard was reached by a
+// name it otherwise has no way to read — `html.div` resolves `element`, and
+// nothing downstream could say which tag that was. A name the call site wrote
+// itself wins: that is how a name no identifier can spell is given.
+func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg {
+	if comp == nil || comp.Wildcard == "" || comp.WildcardInto == "" || name == "" {
+		return props
+	}
+	for _, p := range props {
+		if p.Name == comp.WildcardInto {
+			return props
+		}
+	}
+	return append(props, ir.Arg{
+		Name:  comp.WildcardInto,
+		Value: &ir.Literal{Type: TypString, Raw: name},
+	})
 }
 
 // hoistForLoopWindowIDs scans a for-loop body for window declarations with
@@ -3931,10 +4143,19 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 // that are not lexically visible — which is exactly the bug: platform-extension
 // bodies, checked against the stdlib scope, would otherwise pick up a
 // same-named user component and shadow the platform's own blueprint.
-func (c *checker) lookupComponentInScope(name string) (ir.Symbol, bool) {
+func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
-		return nil, false
+		// A name nobody declared is still a node name when a wildcard covers
+		// it — an open element set, reached unqualified inside a `platform x
+		// { ... }` body, whose scope carries the target package's wildcards.
+		// Asked for here rather than in Scope.Lookup because a visual node is
+		// the only bare position a wildcard stands in: as an expression the
+		// same name is a misspelling.
+		sym = c.scopeWildcard(pos, c.scope, name)
+		if sym == nil {
+			return nil, false
+		}
 	}
 	if _, isComp := sym.(*ir.Component); !isComp {
 		return nil, false

@@ -6,6 +6,8 @@ package html
 // these instead of ast.VisualNode accessors.
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -23,7 +25,46 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 		}
 		out[p.Name] = p.Value
 	}
+	// An attribute nobody declared was collected under its wildcard prop's
+	// name; an element's attributes are the names that were written, so the
+	// map is unpacked back into them here — where html turns props
+	// into names.
+	maps.Copy(out, codegen.WildcardProps(n))
+	for _, dp := range componentProps(n) {
+		if dp.Wildcard != "" {
+			delete(out, dp.Name)
+		}
+	}
 	return out
+}
+
+// componentProps is the props a node's component declares, or nil.
+func componentProps(n *ir.NodeInst) []*ir.Prop {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	return n.Component.Props
+}
+
+// rawElementTag reports the tag the element's tag prop names — the prop the
+// #[wildcard] mark binds a matched name into, which every `html.div` sets and
+// which a call site writing a tag no identifier can spell (a hyphenated custom
+// element) replaces. Only a literal is one: a computed tag would have to be
+// resolved at runtime, and nothing downstream can do that.
+func rawElementTag(decl *ir.Component, n *ir.NodeInst) (string, bool) {
+	into := tagPropName(decl)
+	if into == "" {
+		return "", false
+	}
+	expr := codegen.NodeProp(n, into)
+	if expr == nil {
+		return "", false
+	}
+	s, ok := codegen.IRLiteralString(expr)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
 }
 
 // nodePos extracts the source position of a NodeInst (for preview mode).

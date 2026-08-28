@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -15,7 +14,7 @@ func TestBindBuiltinRejectsWrongDeclarationForm(t *testing.T) {
 	c := &checker{}
 	sd := &ir.StructDef{Name: "window"}
 	var dst *ir.Component
-	if got := bindBuiltin(c, &dst, ast.BuiltinWindow, sd); got != nil {
+	if got := bindBuiltin(c, &dst, ir.BuiltinWindow, sd); got != nil {
 		t.Errorf("bound a struct to a component field")
 	}
 	if dst != nil {
@@ -34,8 +33,8 @@ func TestBindBuiltinRejectsDuplicate(t *testing.T) {
 	first := &ir.Component{Name: "window"}
 	second := &ir.Component{Name: "alsoWindow"}
 	var dst *ir.Component
-	bindBuiltin(c, &dst, ast.BuiltinWindow, first)
-	bindBuiltin(c, &dst, ast.BuiltinWindow, second)
+	bindBuiltin(c, &dst, ir.BuiltinWindow, first)
+	bindBuiltin(c, &dst, ir.BuiltinWindow, second)
 	if dst != first {
 		t.Errorf("dst = %v, want the first declaration to win", dst)
 	}

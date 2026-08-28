@@ -261,7 +261,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	if trFn == nil {
 		// Already errored; return a string-typed placeholder so type-checking
 		// can continue without cascading failures.
-		return &ir.Literal{Type: TypString, Raw: `""`}
+		return &ir.Literal{Type: TypString, Raw: ""}
 	}
 
 	// Build the args map<string, dyn>: placeholder name → checked value expression.
@@ -321,7 +321,7 @@ func (c *checker) namespaceNamed(name string) ir.Symbol {
 // target of $"..." interpolation lowering. Returns nil and emits an error
 // diagnostic if not found.
 //
-// This used to be an internal invariant. i18n is an ordinary package, so a
+// i18n is an ordinary package, not an internal invariant, so a
 // file that writes $"..." without importing it lands here, and the message
 // names the import rather than a compiler file.
 func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {

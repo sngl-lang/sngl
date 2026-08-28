@@ -136,6 +136,15 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args}
 }
 
+// buildParamAttrs consumes the leading { MacroAttr } of a Param or CompParam.
+func (b *builder) buildParamAttrs(it *nodeIter) []ast.MacroAttr {
+	var attrs []ast.MacroAttr
+	for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+		attrs = append(attrs, b.buildMacroAttr(it.enter()))
+	}
+	return attrs
+}
+
 // --- Document ---
 
 func (b *builder) buildDocument(children []int32) *ast.Document {
@@ -179,13 +188,8 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 				attrs = append(attrs, b.buildMacroAttr(it.enter()))
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-				inner := b.buildStmt(it.enter())
-				if inner != nil {
-					doc.Stmts = append(doc.Stmts, &ast.AttrDecl{
-						Pos:   attrs[0].Pos,
-						Attrs: attrs,
-						Inner: inner,
-					})
+				if inner := b.buildStmt(it.enter()); inner != nil {
+					doc.Stmts = append(doc.Stmts, b.attach(attrs, inner))
 				}
 			} else {
 				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
@@ -368,10 +372,25 @@ func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
 			}
 		}
 	}
-	if len(attrs) == 0 {
+	if len(attrs) == 0 || inner == nil {
 		return inner
 	}
-	return &ast.AttrDecl{Pos: attrs[0].Pos, Attrs: attrs, Inner: inner.(ast.Stmt)}
+	item, _ := b.attach(attrs, inner.(ast.Stmt)).(ast.StructBodyItem)
+	return item
+}
+
+// attach records the marks written before a declaration on the declaration
+// itself. A statement form that cannot carry one is refused here, where the
+// mark's position is known — a mark annotates a declaration, and nothing
+// downstream would have anything to annotate.
+func (b *builder) attach(attrs []ast.MacroAttr, inner ast.Stmt) ast.Stmt {
+	target, ok := inner.(ast.Attributed)
+	if !ok {
+		b.errorf(attrs[0].Pos, "#[%s] cannot mark %s", attrs[0].MacroName(), ast.DeclFormName(inner))
+		return inner
+	}
+	target.SetMacroAttrs(attrs[0].Pos, attrs)
+	return target
 }
 
 func (b *builder) buildStructField(it nodeIter) *ast.StructField {
@@ -771,11 +790,13 @@ func (b *builder) buildParamList(it nodeIter) ast.ParamList {
 }
 
 func (b *builder) buildParam(it nodeIter) ast.Param {
-	// Param = ident [ Type ] [ assign Expr ] .
+	// Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
+	attrs := b.buildParamAttrs(&it)
 	nameTok := it.shift()
 	p := ast.Param{
-		Pos:  ast.Pos(b.posFromToken(nameTok)),
-		Name: nameTok.Literal,
+		Pos:   ast.Pos(b.posFromToken(nameTok)),
+		Name:  nameTok.Literal,
+		Attrs: attrs,
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		p.Type = b.buildType(it.enter())
@@ -839,9 +860,18 @@ func (b *builder) buildCompParamList(it nodeIter) ast.PropList {
 }
 
 func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
-	// CompParam = colon ident [Type] [assign Expr] | at ident [Type] | ident CompParamTail .
+	// CompParam = { MacroAttr } CompParamBody .
+	attrs := b.buildParamAttrs(&it)
+	if !it.done() && it.isNonTerminal() && it.symbol() == CompParamBody {
+		it = it.enter()
+	}
+	return b.buildCompParamBody(it, attrs)
+}
+
+func (b *builder) buildCompParamBody(it nodeIter, attrs []ast.MacroAttr) ast.ParamOrEventDecl {
+	// CompParamBody = colon ident [Type] [assign Expr] | at ident [Type] | ident [CompParamTail] .
 	if it.done() {
-		return ast.Param{}
+		return ast.Param{Attrs: attrs}
 	}
 	if !it.isNonTerminal() {
 		switch it.tokenType() {
@@ -852,6 +882,7 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 				Pos:           ast.Pos(b.posFromToken(nameTok)),
 				Name:          nameTok.Literal,
 				Bidirectional: true,
+				Attrs:         attrs,
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 				p.Type = b.buildType(it.enter())
@@ -873,12 +904,14 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 				e.Type = b.buildType(it.enter())
 			}
+			e.Attrs = attrs
 			return e
 		case IDENT:
 			nameTok := it.shift()
 			p := ast.Param{
-				Pos:  ast.Pos(b.posFromToken(nameTok)),
-				Name: nameTok.Literal,
+				Pos:   ast.Pos(b.posFromToken(nameTok)),
+				Name:  nameTok.Literal,
+				Attrs: attrs,
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == CompParamTail {
 				b.buildCompParamTail(it.enter(), &p)
@@ -887,7 +920,7 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 		}
 	}
 	it.skip()
-	return ast.Param{}
+	return ast.Param{Attrs: attrs}
 }
 
 func (b *builder) buildCompParamTail(it nodeIter, p *ast.Param) {
@@ -1177,13 +1210,8 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 				attrs = append(attrs, b.buildMacroAttr(it.enter()))
 			}
 			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-				inner := b.buildStmt(it.enter())
-				if inner != nil {
-					block.Stmts = append(block.Stmts, &ast.AttrDecl{
-						Pos:   attrs[0].Pos,
-						Attrs: attrs,
-						Inner: inner,
-					})
+				if inner := b.buildStmt(it.enter()); inner != nil {
+					block.Stmts = append(block.Stmts, b.attach(attrs, inner))
 				}
 			} else {
 				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")

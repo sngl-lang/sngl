@@ -197,18 +197,53 @@ func listStateInitKt(bind irAndroidBind, initVal string) string {
 	return "mutableStateListOf(" + elems + ")"
 }
 
-// computedValueKt renders the Kotlin expression for a computed's derivedStateOf
-// body using the supplied context (which controls state-var prefixing).
-func computedValueKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext) string {
-	if cfg.GoLib {
-		return "golib.Golib." + exportName(comp.name) + "()"
+// computedCalcKt renders the whole `derivedStateOf(...)` call for a computed,
+// using the supplied context (which controls state-var prefixing). `indent` is
+// the leading whitespace of the declaration line, so a multi-line body closes
+// its brace under the declaration.
+//
+// A body that is a single `return expr` renders as a lambda holding that
+// expression. Anything else is a statement sequence, and a lambda cannot hold
+// one that returns: `return` inside the non-inline `derivedStateOf` lambda is
+// not a Kotlin expression-value but a non-local return, which is a compile
+// error. An anonymous function is the shape that both takes statements and
+// keeps `return` local, so a body with a local var, an `if`, a `for` or an
+// early return emits as `derivedStateOf(fun(): T { ... })`.
+func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, indent string) string {
+	// Only a computed the gomobile module actually emits is called through it;
+	// a component's computed is rendered here from Compose state, because that
+	// module has no Model for its body to read component state through.
+	if comp.fn == nil || len(comp.fn.Block) == 0 {
+		return "derivedStateOf { " + ktComputedZero(comp) + " }"
 	}
-	if comp.fn != nil && len(comp.fn.Block) == 1 {
+	if len(comp.fn.Block) == 1 {
 		if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			if v := kc.EvalExpr(ret.Value); v != "" {
-				return v
+				return "derivedStateOf { " + v + " }"
 			}
 		}
+	}
+	retType := comp.ktType
+	if retType == "" {
+		retType = "Any"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "derivedStateOf(fun(): %s {\n", retType)
+	for _, stmt := range comp.fn.Block {
+		for _, line := range kc.EvalStmt(stmt) {
+			fmt.Fprintf(&b, "%s    %s\n", indent, line)
+		}
+	}
+	fmt.Fprintf(&b, "%s})", indent)
+	return b.String()
+}
+
+// ktComputedZero is the value for a computed with no body to evaluate — typed
+// from its return type, because `derivedStateOf { "" }` on an Int computed is
+// a Kotlin type error rather than a wrong number.
+func ktComputedZero(comp irAndroidComputed) string {
+	if comp.fn != nil {
+		return kotlin.KtZeroFor(comp.fn.Return)
 	}
 	return `""`
 }
@@ -326,6 +361,28 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		kc.IdentRewrites = rewrites
 	}
 
+	// Under --lang go the user's functions are emitted into the gomobile
+	// module, exported and capitalised, so a Kotlin call site has to name them
+	// there. Without this the module held `func Fib(n int) int` and the Kotlin
+	// called a bare `fib(k)` that existed in neither file.
+	//
+	// The filter is emitGoLibIR's: what that module emits is what can be
+	// called through it, and a computed or a receiver-bearing func is not.
+	if cfg.GoLib {
+		if kc.IdentRewrites == nil {
+			kc.IdentRewrites = map[string]string{}
+		}
+		for _, fn := range ctx.AllFuncs() {
+			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+				continue
+			}
+			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+				continue
+			}
+			kc.IdentRewrites[fn.Name] = "golib.Golib." + exportName(fn.Name)
+		}
+	}
+
 	// Pass 1: register all known imports before rendering the body.
 	// Structural Compose imports are always required for any Compose UI.
 	kc.RequireImport("androidx.compose.foundation.background")
@@ -359,7 +416,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		kc.RequireImport("android.widget.Toast")
 		kc.RequireImport("androidx.compose.ui.platform.LocalContext")
 	}
-	if cfg.GoLib {
+	if cfg.GoLib && len(kc.IdentRewrites) > 0 {
 		kc.RequireImport("golib.Golib")
 	}
 	// i18n import is registered dynamically by kc.RequireImport during
@@ -471,8 +528,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// the state accessor (c.<name>). Init exprs use classKC (bare sibling
 		// refs, resolved via implicit `this`).
 		for _, comp := range info.computeds {
-			compVal := computedValueKt(comp, cfg, classKC)
-			fmt.Fprintf(&body, "    val %s by derivedStateOf { %s }\n", comp.name, compVal)
+			fmt.Fprintf(&body, "    val %s by %s\n", comp.name, computedCalcKt(comp, cfg, classKC, "    "))
 		}
 		// Component-level user funcs become members of the state
 		// class so their bodies resolve reactive vars via implicit
@@ -524,8 +580,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// non-test mode.
 	if !testMode {
 		for _, comp := range info.computeds {
-			compVal := computedValueKt(comp, cfg, kc)
-			fmt.Fprintf(&body, "    val %s by remember { derivedStateOf { %s } }\n", comp.name, compVal)
+			fmt.Fprintf(&body, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, cfg, kc, "    "))
 		}
 	}
 

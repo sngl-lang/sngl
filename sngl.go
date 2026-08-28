@@ -9,7 +9,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -31,12 +30,6 @@ func Parse(filename string, r io.Reader) (doc *ast.Document, err error) {
 		}
 	}()
 	return parser.Parse(filename, src)
-}
-
-// ExpandPre runs pre-check macro expansion on docs. Call after Parse and before
-// Check. Modifies docs in place. Returns diagnostics for any expansion errors.
-func ExpandPre(docs []*ast.Document) []ir.Diagnostic {
-	return expand.ExpandPre(docs)
 }
 
 // Format returns the formatted SNGL source for a document.

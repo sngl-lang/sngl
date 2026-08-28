@@ -250,8 +250,9 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 	os.WriteFile(path, []byte(out.String()), 0o644)
 }
 
-// TestPlatformSourcesPassChecker verifies that each platform's PkgSource .sngl
-// file passes the type checker (no bare expression statements, etc.).
+// TestPlatformSourcesPassChecker verifies that each platform's
+// lib/platforms/<name>/ source passes the type checker (no bare expression
+// statements, etc.).
 func TestPlatformSourcesPassChecker(t *testing.T) {
 	tests := []struct {
 		lang, platform string

@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -134,7 +133,7 @@ func TestDurationKeepsItsUnit(t *testing.T) {
 	if want == nil || want.Kind != ir.TypeUnit {
 		t.Fatalf("time.Duration imported as %v, want a unit type", want)
 	}
-	if got := unitBuiltin(want); got != ast.BuiltinDuration {
+	if got := unitBuiltin(want); got != ir.BuiltinDuration {
 		t.Fatalf("time.Duration imported as a unit marked %q, want duration", got)
 	}
 
@@ -151,13 +150,13 @@ func TestDurationKeepsItsUnit(t *testing.T) {
 }
 
 // unitBuiltin is the #[builtin] mark on a unit type's declaration.
-func unitBuiltin(t *ir.Type) ast.BuiltinKind {
+func unitBuiltin(t *ir.Type) ir.BuiltinKind {
 	if t == nil || t.Kind != ir.TypeUnit {
-		return ast.BuiltinNone
+		return ir.BuiltinNone
 	}
 	ud, _ := t.Decl.(*ir.UnitDef)
 	if ud == nil {
-		return ast.BuiltinNone
+		return ir.BuiltinNone
 	}
 	return ud.Builtin
 }

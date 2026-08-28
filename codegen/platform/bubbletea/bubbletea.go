@@ -4,28 +4,16 @@ import (
 	_ "embed"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
 var previewCSS string
 
-//go:embed bubbletea.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 func init() {
-	doc, err := parser.Parse("bubbletea.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform bubbletea init: parsing bubbletea.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -37,12 +25,6 @@ func (g *Generator) Description() string {
 	return "Terminal UI, written in Go using the Bubble Tea framework."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) Package() []*ast.Document { return pkgDocs }
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	// Bubbletea accepts any tag name; its codegen reads metadata directly
-	// from blueprint .sngl bodies (Layout/Styled/Widget).
-	return &ir.Component{Name: identifier}
-}
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	f.InlineComponents = false
@@ -53,7 +35,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.FocusOrder = true
 	f.Canvas = true
 	f.ReactiveCanvas = false // RenderModel: View() re-runs each update, re-rasterizing the canvas; no explicit redraw
-	f.StdlibWrappers = false // strict: all stdlib wrappers must inline to Layout/Styled/Widget primitives
 	return f
 }
 

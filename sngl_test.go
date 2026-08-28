@@ -31,11 +31,11 @@ func TestCheckWrapperHappyPath(t *testing.T) {
 	}
 }
 
-// TestMarkedFieldWithoutMacroPass guards the route into the compiler that has
-// no macro pass: sngl.Parse + sngl.Check is what the LSP and the playground
-// run, so a marked field has to be a field there too. While the attribute
-// wrapper hid it, an editor reported the field as unknown on every struct that
-// used one.
+// TestMarkedFieldWithoutMacroPass guards the route into the compiler the LSP
+// and the playground take: sngl.Parse + sngl.Check, with nothing between them.
+// A marked field has to be a field there too — while a marked declaration was
+// a wrapper around itself, an editor reported the field as unknown on every
+// struct that used one.
 func TestMarkedFieldWithoutMacroPass(t *testing.T) {
 	const src = `import . "sngl://std"
 

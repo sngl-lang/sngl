@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -274,6 +275,20 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 			results, err = safeRunTests(runner, pkg, lang, opts)
 		}
 		if err != nil {
+			// A component this target does not implement is not a failure of
+			// the fixture: the matrix runs every platform over every file, and
+			// a target that supports fewer components would otherwise make
+			// every program using one of them red. Reported as a skip naming
+			// the component, so the gap stays visible.
+			if missing, ok := errors.AsType[*codegen.UnimplementedComponent](err); ok {
+				allResults = append(allResults, &codegen.TestResult{
+					Component: filepath.Base(filename),
+					Skipped:   true,
+					SkipReason: fmt.Sprintf("%s does not implement %s",
+						missing.Platform, missing.Component),
+				})
+				continue
+			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
 			continue
@@ -282,7 +297,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		for _, r := range results {
 			allResults = append(allResults, r)
 			totalTests += countTests(r)
-			if !r.Passed {
+			if !r.Passed && !r.Skipped {
 				totalFail++
 			}
 		}
@@ -315,14 +330,31 @@ func reportResults(allResults []*codegen.TestResult, totalTests, totalFail int, 
 		printResult(r, r.Component, verbose)
 	}
 
+	var totalSkip int
+	for _, r := range allResults {
+		totalSkip += countSkipped(r)
+	}
+	skipSuffix := ""
+	if totalSkip > 0 {
+		skipSuffix = fmt.Sprintf(", %d skipped", totalSkip)
+	}
+
 	fmt.Println()
 	if totalFail > 0 {
 		fmt.Printf("FAIL\n")
-		fmt.Printf("not ok   %d tests, %d failures\n", totalTests, totalFail)
+		fmt.Printf("not ok   %d tests, %d failures%s\n", totalTests, totalFail, skipSuffix)
 		return fmt.Errorf("test failed")
 	}
+	// A run where nothing executed must not print PASS: the txtar fixtures
+	// and internal/testutil match on that marker, so a skip that says PASS
+	// makes every assertion after it vacuous.
+	if totalTests == 0 && totalSkip > 0 {
+		fmt.Printf("SKIP\n")
+		fmt.Printf("no tests ran, %d skipped\n", totalSkip)
+		return nil
+	}
 	fmt.Printf("PASS\n")
-	fmt.Printf("ok   %d tests, 0 failures\n", totalTests)
+	fmt.Printf("ok   %d tests, 0 failures%s\n", totalTests, skipSuffix)
 	return nil
 }
 
@@ -333,7 +365,9 @@ func printResult(r *codegen.TestResult, prefix string, verbose bool) {
 		fmt.Printf("=== RUN   %s\n", name)
 	}
 
-	if r.Passed {
+	if r.Skipped {
+		fmt.Printf("--- SKIP: %s: %s\n", name, r.SkipReason)
+	} else if r.Passed {
 		fmt.Printf("--- PASS: %s (%.2fs)\n", name, r.Duration.Seconds())
 	} else {
 		fmt.Printf("--- FAIL: %s (%.2fs)\n", name, r.Duration.Seconds())
@@ -355,9 +389,23 @@ func printResult(r *codegen.TestResult, prefix string, verbose bool) {
 }
 
 func countTests(r *codegen.TestResult) int {
+	if r.Skipped {
+		return 0
+	}
 	n := 1
 	for _, child := range r.Children {
 		n += countTests(child)
+	}
+	return n
+}
+
+func countSkipped(r *codegen.TestResult) int {
+	if r.Skipped {
+		return 1
+	}
+	n := 0
+	for _, child := range r.Children {
+		n += countSkipped(child)
 	}
 	return n
 }
@@ -366,16 +414,19 @@ type jsonOutput struct {
 	Passed   bool         `json:"passed"`
 	Tests    int          `json:"tests"`
 	Failures int          `json:"failures"`
+	Skipped  int          `json:"skipped,omitempty"`
 	Results  []jsonResult `json:"results"`
 }
 
 type jsonResult struct {
-	Name     string       `json:"name"`
-	Passed   bool         `json:"passed"`
-	Error    string       `json:"error,omitempty"`
-	Log      []string     `json:"log,omitempty"`
-	Duration float64      `json:"duration_s"`
-	Children []jsonResult `json:"children,omitempty"`
+	Name       string       `json:"name"`
+	Passed     bool         `json:"passed"`
+	Skipped    bool         `json:"skipped,omitempty"`
+	SkipReason string       `json:"skip_reason,omitempty"`
+	Error      string       `json:"error,omitempty"`
+	Log        []string     `json:"log,omitempty"`
+	Duration   float64      `json:"duration_s"`
+	Children   []jsonResult `json:"children,omitempty"`
 }
 
 func printJSON(results []*codegen.TestResult, totalTests, totalFail int) error {
@@ -385,6 +436,7 @@ func printJSON(results []*codegen.TestResult, totalTests, totalFail int) error {
 		Failures: totalFail,
 	}
 	for _, r := range results {
+		out.Skipped += countSkipped(r)
 		out.Results = append(out.Results, toJSON(r, r.Component))
 	}
 	enc := json.NewEncoder(os.Stdout)
@@ -401,11 +453,13 @@ func printJSON(results []*codegen.TestResult, totalTests, totalFail int) error {
 func toJSON(r *codegen.TestResult, prefix string) jsonResult {
 	name := prefix + "/" + r.Desc
 	jr := jsonResult{
-		Name:     name,
-		Passed:   r.Passed,
-		Error:    r.Error,
-		Log:      r.Log,
-		Duration: r.Duration.Seconds(),
+		Name:       name,
+		Passed:     r.Passed,
+		Skipped:    r.Skipped,
+		SkipReason: r.SkipReason,
+		Error:      r.Error,
+		Log:        r.Log,
+		Duration:   r.Duration.Seconds(),
 	}
 	for _, child := range r.Children {
 		jr.Children = append(jr.Children, toJSON(child, name))

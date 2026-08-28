@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -176,10 +177,38 @@ type PlatformGenerator interface {
 
 // OptionConfigurable is optionally implemented by PlatformGenerators that
 // accept CLI options affecting the type-check phase (not just code generation).
-// The CLI calls Configure with the parsed --opt key=value map before checkDoc
-// so platform Resolve() can honor the supplied options.
+// The CLI calls Configure with the parsed --opt key=value map before checkDoc,
+// so a platform's declarations can honor the supplied options.
 type OptionConfigurable interface {
 	Configure(opts map[string]string) error
+}
+
+// ForeignIntrinsics is optionally implemented by a PlatformGenerator that
+// renders an #[intrinsic] component from another platform's namespace.
+//
+// A platform primitive's id is the emitting codegen's dispatch key, so one
+// platform's means nothing to another and naming it from a build targeting
+// something else is an error (lower's ForeignPrimitive pass). A platform that
+// does implement someone else's says so here rather than having it assumed --
+// which is the difference between a rule and a wall.
+//
+// No platform implements this today. It is the seam for one that wants to: a
+// platform embedding another's widget set, or a host that renders a subset of
+// android's Compose primitives.
+type ForeignIntrinsics interface {
+	// ClaimsIntrinsic reports whether this platform emits the component
+	// carrying this #[intrinsic] id, e.g. "android:Column".
+	ClaimsIntrinsic(id string) bool
+}
+
+// ClaimsIntrinsicFunc returns p's foreign-intrinsic predicate, or nil when it
+// claims none. Shaped for lower.Options.ClaimsIntrinsic, which cannot name this
+// interface: lower is below codegen.
+func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
+	if fi, ok := p.(ForeignIntrinsics); ok {
+		return fi.ClaimsIntrinsic
+	}
+	return nil
 }
 
 // PlatformAvailability is optionally implemented by PlatformGenerators whose
@@ -187,8 +216,9 @@ type OptionConfigurable interface {
 // gtk4, which reads widget metadata from the GTK 4 GIR file installed with the
 // GTK development package.
 //
-// A platform that reports itself unavailable must also stop contributing
-// Package() docs, so a compile for any *other* platform is unaffected: the
+// A platform that reports itself unavailable also stops contributing the
+// declarations of its sngl://platforms/<id> package, so a compile for any
+// *other* platform is unaffected: the
 // checker merges every registered platform's stdlib overrides regardless of
 // the build target, and overrides referencing types the platform cannot
 // resolve would otherwise fail every compile in the process.
@@ -211,6 +241,35 @@ func PlatformUnavailable(name string) error {
 		return a.Unavailable()
 	}
 	return nil
+}
+
+// PlatformDocs returns the SNGL declarations p contributes — the source of its
+// `sngl://platforms/<id>` package, both what lib/ embeds and what p
+// synthesizes — or nil when it declares none or cannot be used here. gtk4
+// without a GIR file has no widget set to declare and its overrides are
+// written against that set, so it contributes nothing rather than declarations
+// no one can check.
+func PlatformDocs(p PlatformGenerator) []*ast.Document {
+	if p == nil {
+		return nil
+	}
+	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
+		return nil
+	}
+	return append(checker.PackageDocsFor("platforms/"+p.PlatformIdentifier()),
+		checker.ProvidedDocs(p)...)
+}
+
+// LangDocs returns the SNGL declarations l contributes -- the source of its
+// `sngl://languages/<id>` package, both what lib/ embeds and what l serves
+// itself -- or nil when it declares none. The path is keyed by the language's
+// own identifier, so Go's package is languages/go.
+func LangDocs(l LangTranslator) []*ast.Document {
+	if l == nil {
+		return nil
+	}
+	return append(checker.PackageDocsFor("languages/"+l.LanguageIdentifier()),
+		checker.ProvidedDocs(l)...)
 }
 
 // TestRunner is optionally implemented by PlatformGenerators that provide
@@ -251,6 +310,11 @@ type TestResult struct {
 	Log      []string
 	Children []*TestResult
 	Duration time.Duration
+	// Skipped marks a result that never ran — a launcher whose
+	// prerequisites are missing, or a test calling t.skip. It is neither
+	// a pass nor a failure, so reporters must not fold it into either.
+	Skipped    bool
+	SkipReason string
 }
 
 // TestFailure describes a single recorded failure on a test result.

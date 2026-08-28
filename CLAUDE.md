@@ -50,7 +50,7 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
 - **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
 - **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, html, none), each registers in `init()`
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html, none), each registers in `init()`
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -71,14 +71,20 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go://` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
-- **fyne** — generates Go desktop code; supports `golang` lang only.
+- **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (`list<component>`, children attach through a method) and `Wrapper` (`component`, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
+
+  A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
-- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from the system-installed `Gtk-4.0.gir` (probed under `/usr/share/gir-1.0/` etc., or `--opt gir=PATH`); no GIR XML is vendored — `codegen/platform/gtk4/gir/` holds only the parser. With no GIR available the platform withdraws its `Package()` docs and reports `Unavailable()`, so unrelated compiles are unaffected; targeting gtk4 explicitly then fails with one actionable error. Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
+- **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
+
+  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
+
+  Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen; provides an interpreter-based test runner for headless test execution.
 
 ### Key Internal Packages
 
-- **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. All phases after the checker operate on IR, not AST.
+- **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. Phases after the checker work from IR rather than re-reading the source, but IR is not AST-free: an operator is still an `ast.BinaryOp`/`ast.AssignOp`, and `ir.NodeInst` and `ir.VarDecl` keep the `ast.Stmt` they came from for positions and diagnostics. That is why `internal/lower`, `internal/optimize` and every platform import `ast`.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions)
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness
@@ -89,11 +95,14 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
 
-Three packages exist, and the split is the whole point of the tier system:
+The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one (the public spelling of `#[tree.kind("shape")]`). It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
+- **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Only the vocabulary: `sngl://platforms/<name>` and `sngl://languages/<name>` are not under `lib/` at all — a target carries its own package, described below.
+- **`lib/internal/` → `sngl://internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
 comments at the top of a file, separated from what follows by a blank line
@@ -110,14 +119,22 @@ Packages import each other — `lib/draw` is written against `lib/std` — so th
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
 
-`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations are injected via `PkgSource` overrides keyed by platform name; a platform source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
+`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
-The `#[builtin]` macro only stamps the kind: it asserts `ast.BuiltinTaggable`
-and lets the AST say which declaration forms can carry a mark. What a kind then
-*requires* — that a node kind names a component, that a const kind names a
-const — is checked by `collectBuiltins` (`internal/checker/builtins.go`), where
-the compiler stores the reference, because that is where the requirement comes
-from. A duplicate mark is an error there rather than a silent overwrite.
+**A target carries its own library package.** `sngl://platforms/<name>` and `sngl://languages/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
+
+The point is that the checker does not know where a package comes from. gtk4's `PackageFS` returns its embedded overrides merged with one component declaration per GTK widget class, generated from the host's introspection data; nothing outside `codegen/platform/gtk4/packagefs.go` knows half of that package did not exist a moment earlier. The same interface is what will let a plugin outside this repository answer over an RPC.
+
+A target that cannot serve its package returns nil and contributes none, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform serving overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 does this when no introspection data resolves.
+
+The `#[builtin]` mark only stamps the kind on whichever IR the declaration
+became. What a kind then *requires* — that a node kind names a component, that
+a const kind names a const — is checked by `bindBuiltinRole`
+(`internal/checker/builtins.go`), where the compiler stores the reference,
+because that is where the requirement comes from. A duplicate mark is an error
+there rather than a silent overwrite. Which declaration forms may carry a mark
+at all is the AST's answer: a form implements `ast.Attributed`, and the parser
+refuses a mark on one that does not.
 
 **Built-ins are declared, not hardcoded.** The compiler identifies a built-in by
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
@@ -125,7 +142,8 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
 checker dispatches a visual node to the matching IR construct off the mark. The
-macro lives in `internal/macros/marks`; kinds are `ast.BuiltinKind`.
+mark is declared in `lib/internal/marks` and implemented in
+`internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
 `#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
@@ -137,11 +155,50 @@ means `#[d.shape]`.
 
 A lib package may carry macros alongside its declarations — `sngl://draw`
 ships the `shape` mark next to the shape components it applies to — so the
-`sngl` scheme is checked against both the `lib/` layout and the macro
-registry. `sngl://internal/<name>` is the compiler's own tier: a package there
-may contribute macros, declarations, or both. `internal/marks` is macro-only
-and has no directory; `internal/draw` declares the drawing primitives
-passCanvas emits, the intrinsic half of `sngl://draw`.
+`sngl` scheme is checked against the `lib/` layout alone: a directory is what
+makes a package exist, macro-only ones included. `sngl://internal/<name>` is
+the compiler's own tier: a package there may contribute macros, declarations,
+or both. `internal/marks` declares only macros; `internal/draw` declares the
+drawing primitives passCanvas emits, the intrinsic half of `sngl://draw`.
+
+**`#[tree.kind]` / `#[tree.children]` describe a segmented component tree.**
+`sngl://internal/tree` names a family of nodes — `kind("shape")` says a
+component is a member, `children("shape")` says it hosts members — and the
+checker rejects a child whose kind does not match. The names are opaque:
+drawing is the first user, rich text and menus are the next, and nothing in
+the mechanism knows what a shape is. A member with no children type of its own
+hosts its own kind, so a shape contains shapes without saying so.
+
+The package is internal, so users reach it through a package that wraps it:
+`#[draw.shape]` is `sngl://draw`'s public spelling of `#[tree.kind("shape")]`,
+and it keeps the rules that are about drawing rather than about trees — a
+painted shape declares no events. The facts land on `ir.Component.TreeKind`
+and `.ChildKind` at registration, and on `ir.Package.TreeKinds` for the
+lowering passes to gate on. Nothing about a mark reaches the AST: the source
+carries the `#[...]` as written and the checker applies it where it registers
+the declaration.
+
+**`#[intrinsic]` on a component is a platform primitive.** On a function the
+mark names a signature in `ir.Intrinsics` that every language backend must
+implement. On a component there is no signature to register — the declaration
+*is* the contract for props and events, and one platform's codegen emits the
+widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
+`codegen/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
+the emitting platform (`android:Column`) so it can never collide with a stdlib
+intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
+the two forms to opposite rules: a function id must be in the registry, a
+component id must not be, and must carry its namespace.
+
+The mark's other job is to stop the inliner. A platform's extension override
+inlines into its caller (`passInlinePure`), and every platform-package
+component must inline or the build fails — so the primitives those overrides
+lower down to have to be exempt.
+`isPrimitiveComponent` reads `Component.Intrinsic` for that, alongside
+`Wildcard` (html's raw element), `Builtin` (a node kind) and a tree kind (a
+shape, or the canvas that hosts them) — the marks are the whole list, and each
+says in its own vocabulary that the declaration is rendered rather than
+composed away. `isPlatformStdlibComponent` is a different question: whether a
+component came from a `sngl://platforms/` package the program imports.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and
@@ -198,7 +255,7 @@ SNGL ships per-target-language runtime packages under `pkg/<lang>/<name>/`. Thes
 The `lib/` directory holds **SNGL stdlib declarations** (language-agnostic `.sngl` files embedded into the compiler). The `pkg/` directory holds **runtime implementations** (per-target-language packages emitted into generated code's import graph).
 
 When adding a new stdlib package that needs runtime support:
-1. Declare the SNGL surface in `lib/<name>.sngl`.
+1. Declare the SNGL surface in `lib/<name>/`, one directory per importable package.
 2. For each target language that needs runtime support, create `pkg/<lang>/<name>/`.
 3. The codegen for that language emits `import "git.duckfam.us/jonathan/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
 

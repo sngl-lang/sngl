@@ -38,7 +38,7 @@ func TestBrowser_FuncvarStoredAsyncUpdatesDOM(t *testing.T) {
 
 	// Note: text(value=greeting) must come BEFORE button(…@click…) in the
 	// SNGL source so the NoReactivity lowering seeds idToNode["__n*"] before
-	// addClickHandler translates the DOM-write assign (#__nN.value = greeting)
+	// the click handler translates the DOM-write assign (#__nN.value = greeting)
 	// via domWriteFor → textContent.  If the button comes first the fall-through
 	// path produces __n0.value (a custom expando) instead of __n0.textContent.
 	//

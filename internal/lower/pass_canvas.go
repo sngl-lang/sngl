@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil || !pkg.UsesShapes {
+	if !pkg.UsesTree("shape") {
 		return nil
 	}
 	var counter int
@@ -26,7 +26,7 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 	return nil
 }
 
-// walkCanvasStmts finds canvas containers (NodeInsts with list<shape> ChildrenType)
+// walkCanvasStmts finds canvas containers (NodeInsts that host shapes)
 // and transforms their shape children into a draw function. Recurses into
 // layout NodeInsts (vbox, hbox, etc.) and ir.Window nodes to find canvases
 // nested at any depth.
@@ -50,15 +50,13 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 	}
 }
 
-// isShapeContainer reports whether a NodeInst has list<shape> ChildrenType.
+// isShapeContainer reports whether a NodeInst hosts shapes without being one:
+// a canvas, not a rect. A shape's own children are drawn by the emitter that
+// draws it, so only the outermost host becomes a draw function.
 func isShapeContainer(ni *ir.NodeInst) bool {
-	if ni.Component == nil || ni.Component.ChildrenType == nil {
-		return false
-	}
-	ct := ni.Component.ChildrenType
-	return ct.Kind == ir.TypeList &&
-		len(ct.Elems) > 0 &&
-		ct.Elems[0].Kind == ir.TypeShape
+	return ni.Component != nil &&
+		ni.Component.ChildKind == "shape" &&
+		ni.Component.TreeKind == ""
 }
 
 // buildDrawFunc generates a draw function for a set of shape children.

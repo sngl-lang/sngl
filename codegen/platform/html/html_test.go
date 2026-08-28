@@ -1,6 +1,7 @@
 package html
 
 import (
+	"git.duckfam.us/jonathan/sngl/ir"
 	"os"
 	"strings"
 	"testing"
@@ -22,7 +23,11 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS: s.FS, Dir: s.Dir, IsMain: true,
+		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
+	})
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}
@@ -67,7 +72,11 @@ func generateHTML(t *testing.T, path string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	dir := path[:strings.LastIndex(path, "/")]
-	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS(dir), Dir: dir, IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		FS: os.DirFS(dir), Dir: dir, IsMain: true,
+		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
+	})
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}
@@ -225,7 +234,15 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	// Configured with the platform it then generates for. Without it, html's
+	// package never loads, no `component sngl.text { platform html { ... } }`
+	// override is merged, and `text` reaches codegen abstract -- which no real
+	// build produces and which kept a name-matching fallback alive.
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
+	})
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}

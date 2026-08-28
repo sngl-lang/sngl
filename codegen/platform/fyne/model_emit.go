@@ -155,9 +155,6 @@ func (m *Model) updateToast() {
 // matching the known framework/std selectors rather than a per-site call.
 func requireTypeImports(gc *golang.GoIRContext, goType string) {
 	for sel, path := range fyneFrameworkPkgs {
-		if sel == "fmt" {
-			continue // fmt is never a type package
-		}
 		if strings.Contains(goType, sel+".") {
 			gc.RequireImport(path)
 		}

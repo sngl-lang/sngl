@@ -54,14 +54,6 @@ type MacroAttr struct {
 	Args  []Expr // optional arguments
 }
 
-// AttrDecl wraps any declaration prefixed with one or more #[...] attributes.
-// The expand pass processes and removes AttrDecl nodes before the checker runs.
-type AttrDecl struct {
-	Pos   Pos
-	Attrs []MacroAttr
-	Inner Stmt
-}
-
 // Document is the top-level container for a .sngl file.
 type Document struct {
 	Stmts []Stmt
@@ -90,6 +82,7 @@ type EnumDef struct {
 	Name        string
 	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
+	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // Members returns just the *EnumMember items from Body, in source order.
@@ -123,10 +116,6 @@ type StructBodyItem interface {
 func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
 
-// An attributed field or nested method stays wrapped until the expand pass
-// unwraps it, so the wrapper has to be a body item too.
-func (*AttrDecl) structBodyItem() {}
-
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
 	Pos         Pos
@@ -134,32 +123,25 @@ type StructDef struct {
 	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
 	Body        []StructBodyItem
 	IsMultiline bool
-	Builtin     BuiltinKind // set by #[builtin("...")]; BuiltinNone otherwise
-	Foreign     ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
+	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // Fields returns just the *StructField items from Body, in source order.
-//
-// An attributed item is unwrapped, so a marked field is a field here whether
-// or not the macro pass has run. The pass replaces the wrapper with what it
-// returns, but sngl.Parse and the LSP never run it, and a field that vanished
-// from Body would be reported as an unknown field on the struct.
 func (s *StructDef) Fields() []*StructField {
 	out := make([]*StructField, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := UnwrapAttrs(it).(*StructField); ok {
+		if f, ok := it.(*StructField); ok {
 			out = append(out, f)
 		}
 	}
 	return out
 }
 
-// Funcs returns just the *FuncDef items from Body, in source order. Attributed
-// items are unwrapped, as in Fields.
+// Funcs returns just the *FuncDef items from Body, in source order.
 func (s *StructDef) Funcs() []*FuncDef {
 	out := make([]*FuncDef, 0, len(s.Body))
 	for _, it := range s.Body {
-		if f, ok := UnwrapAttrs(it).(*FuncDef); ok {
+		if f, ok := it.(*FuncDef); ok {
 			out = append(out, f)
 		}
 	}
@@ -175,7 +157,7 @@ type StructField struct {
 	NamePositions []Pos // parallel to Names; per-name source positions
 	Type          TypeExpr
 	Default       Expr
-	Foreign       ForeignMark `json:",omitzero"` // set by #[foreign(...)]; zero value otherwise
+	Attrs         []MacroAttr `json:",omitempty"` // the #[...] marks written on the field
 }
 
 // UnitDef declares a unit type with named suffixes.
@@ -185,7 +167,7 @@ type UnitDef struct {
 	Name        string
 	Suffixes    []*UnitSuffix
 	IsMultiline bool
-	Builtin     BuiltinKind // compiler built-in marker; BuiltinNone otherwise
+	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.
@@ -214,8 +196,7 @@ type ConstDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
-	// Builtin is set by the #[builtin] macro on a predeclared constant.
-	Builtin BuiltinKind
+	Attrs     []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // VarDecl declares one or more variables.
@@ -223,6 +204,7 @@ type VarDecl struct {
 	Pos       Pos
 	IsGrouped bool
 	Specs     []VarSpec
+	Attrs     []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // --- Imports ---
@@ -248,6 +230,11 @@ type Param struct {
 	Type          TypeExpr
 	Default       Expr
 	Bidirectional bool // :name — component binding param
+	// Attrs are the #[...] macro attributes written before the parameter. The
+	// grammar accepts them anywhere a parameter is written; which of them mean
+	// anything there is the checker's to say, and it refuses the rest where it
+	// registers the parameter.
+	Attrs []MacroAttr `json:",omitempty"`
 }
 
 // ParamList is an ordered list of parameters.
@@ -267,18 +254,11 @@ type FuncDef struct {
 	TypeParams     []string // method-level generic type parameters, e.g., ["T", "U"]
 	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
 	Params         ParamList
-	ReturnType     TypeExpr  // nil for void/action functions
-	Body           Expr      // single-expression form (=> expr)
-	Block          StmtBlock // block form ({ ... })
-	// Intrinsic is the #[intrinsic("...")] mark, if any. Its zero value means
-	// an ordinary function.
-	Intrinsic IntrinsicMark
-	// Foreign is the #[foreign(...)] mark, if any.
-	Foreign ForeignMark `json:",omitzero"`
+	ReturnType     TypeExpr    // nil for void/action functions
+	Body           Expr        // single-expression form (=> expr)
+	Block          StmtBlock   // block form ({ ... })
+	Attrs          []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
-
-// SetIntrinsic records the #[intrinsic] mark. Satisfies IntrinsicTaggable.
-func (f *FuncDef) SetIntrinsic(m IntrinsicMark) { f.Intrinsic = m }
 
 // IsTest returns true if this function is a test function.
 func (f *FuncDef) IsTest() bool { return strings.HasPrefix(f.Name, "test") }
@@ -312,8 +292,7 @@ type ComponentDecl struct {
 	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr
 	Body         StmtBlock
-	IsShape      bool        // set by #[canvas.shape] macro
-	Builtin      BuiltinKind // set by #[builtin("window")]; BuiltinNone otherwise
+	Attrs        []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // PropList is the parameter list of a component declaration.
@@ -336,6 +315,9 @@ type EventDecl struct {
 	Pos  Pos
 	Name string
 	Type TypeExpr // optional type annotation
+	// Attrs are the #[...] macro attributes written before the event, read
+	// the same way a Param's are.
+	Attrs []MacroAttr `json:",omitempty"`
 }
 
 // EventHandler is an event handler: @name[(params)] { body }.
@@ -391,7 +373,7 @@ type PlatformStmt struct {
 
 func (s *StructDef) StmtPos() *Pos { return &s.Pos }
 
-// A field is a Stmt only so AttrDecl can wrap one; nothing executes it.
+// A field is a Stmt only so it can carry marks; nothing executes it.
 func (f *StructField) StmtPos() *Pos { return &f.Pos }
 
 func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
@@ -407,29 +389,3 @@ func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
 func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }
-func (a *AttrDecl) StmtPos() *Pos      { return &a.Pos }
-
-// UnwrapAttrs returns the declaration item carries, past any attribute wrappers.
-// Attributes nest — two marks on one declaration are two wrappers — and a
-// caller that wants the declaration wants it whether or not the macro pass has
-// replaced the wrappers yet.
-func UnwrapAttrs[T any](item T) any {
-	var x any = item
-	for {
-		attr, ok := x.(*AttrDecl)
-		if !ok || attr.Inner == nil {
-			return x
-		}
-		x = attr.Inner
-	}
-}
-
-// UnwrapStmt is UnwrapAttrs for a caller that switches over statements, which
-// every statement list a mark may be written in has to do: a switch that reads
-// the wrapper matches nothing and drops the declaration.
-func UnwrapStmt(s Stmt) Stmt {
-	if inner, ok := UnwrapAttrs(s).(Stmt); ok {
-		return inner
-	}
-	return s
-}

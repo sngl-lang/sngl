@@ -13,8 +13,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/expand"
-	_ "git.duckfam.us/jonathan/sngl/internal/macros/draw"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
@@ -1261,8 +1259,11 @@ func TestCheckTestdata(t *testing.T) {
 					if d.Severity != ir.Error {
 						continue
 					}
-					// Match by line number and substring.
-					if d.Pos.Line == exp.Line && strings.Contains(d.Msg, exp.Substring) {
+					// exp.Pos(), not exp.Line: a directive may name the
+					// position it expects when a comment cannot be written
+					// there. Reading the comment's own line ignored that and
+					// passed a fixture naming a line the file does not have.
+					if d.Pos.Line == exp.Pos() && strings.Contains(d.Msg, exp.Substring) {
 						found = true
 						break
 					}
@@ -1273,7 +1274,7 @@ func TestCheckTestdata(t *testing.T) {
 						fmt.Fprintf(&got, "\n  %s", d.Error())
 					}
 					t.Errorf("line %d: expected error containing %q, got:%s",
-						exp.Line, exp.Substring, got.String())
+						exp.Pos(), exp.Substring, got.String())
 				}
 			}
 			// Match each ERROR(lint) directive against warning-severity diagnostics.
@@ -1444,12 +1445,6 @@ func TestCheckProjectTestdata(t *testing.T) {
 			if err != nil {
 				t.Skipf("v2 parse failed: %v", err)
 			}
-			// Run pre-check macro expansion and assert ERROR(expand) directives.
-			expandDiags := expand.ExpandPre([]*ast.Document{doc})
-			testutil.AssertDiagnostics(t, expandDiags, s.Errors, "expand")
-			if s.ExpectsError("expand") {
-				return // expansion errors; skip type-check
-			}
 			langs, plats := testtargets.Targets()
 			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
@@ -1488,14 +1483,15 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 	}
 }
 
+// A shape hosts shapes without saying so: #[tree.kind("shape")] implies the
+// child kind, so a rect accepts a circle and the canvas accepts the rect.
 func TestCheckShapeType(t *testing.T) {
-	// canvas and rect both have list<shape> ChildrenType — rect used inside canvas.
 	expectNoErrors(t, `
-component canvas(width float, height float) list<shape> {}
-component rect(x float, y float, w float, h float) list<shape> {}
 component myWidget() {
-    canvas(width=400, height=300) {
-        rect(x=10, y=10, w=100, h=50) {}
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0) {
+            circle(cx=50.0, cy=50.0, r=30.0) {}
+        }
     }
 }
 `)
@@ -1503,23 +1499,23 @@ component myWidget() {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
-component canvas(width float, height float) list<shape> {}
 component notAShape() {}
 component myWidget() {
-    canvas(width=400, height=300) {
+    canvas(width=400px, height=300px) {
         notAShape() {}
     }
 }
-`, "expected shape component")
+`, "expected shape component in canvas, got notAShape")
 }
 
+// `shape` was a type name only so that `list<shape>` could stand in for a
+// polymorphism SNGL does not have. It names nothing now.
 func TestCheckShape_StandaloneRejected(t *testing.T) {
-	// shape must not be usable as a standalone type (field, param, var).
 	expectError(t, `
 component myWidget() {
     var bad shape = 0
 }
-`, "shape is only valid as a children type")
+`, "unknown type")
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {
@@ -1537,8 +1533,8 @@ component myWidget() {
 // A component-level func is desugared onto the component: a synthetic
 // declaration is built with a receiver prepended. The marks belong to the
 // declaration and not to its parameter list, so they are carried over — a mark
-// written in a component body would otherwise be accepted by the parser and by
-// the macro pass and reach the IR as nothing at all.
+// written in a component body would otherwise be accepted by the parser and
+// reach the IR as nothing at all.
 func TestComponentFuncKeepsItsMarks(t *testing.T) {
 	src := withStd(`
 component main {
@@ -1551,9 +1547,6 @@ component main {
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
-	}
-	for _, d := range expand.ExpandPre([]*ast.Document{doc}) {
-		t.Fatalf("expand: %s", d.Error())
 	}
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
 	for _, fn := range pkg.Funcs {

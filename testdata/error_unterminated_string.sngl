@@ -1,3 +1,9 @@
+// A literal newline is permitted inside a quoted string, so an unterminated
+// one runs to the end of the file. The diagnostic therefore belongs at the
+// quote that opened it, not at the end of the input -- and a comment cannot be
+// written on that line, because the string would swallow it. Hence the
+// position on the directive.
 import . "sngl://std"
 
-var x string = "hello // ERROR(parse) "expected"
+// ERROR(parse:9:16) "unterminated string"
+var x string = "hello

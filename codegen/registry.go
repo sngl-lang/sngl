@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"slices"
 	"sort"
 	"sync"
@@ -24,6 +25,7 @@ func RegisterLang(l LangTranslator) {
 		panic("codegen: duplicate lang registration: " + name)
 	}
 	langs[name] = l
+	checker.RegisterTargetPackage("languages/"+name, l)
 }
 
 // RegisterPlatform registers a platform generator. Panics on duplicate.
@@ -35,6 +37,7 @@ func RegisterPlatform(p PlatformGenerator) {
 		panic("codegen: duplicate platform registration: " + name)
 	}
 	platforms[name] = p
+	checker.RegisterTargetPackage("platforms/"+name, p)
 }
 
 // CollectPlatforms returns all registered platforms as checker.Platform slices,

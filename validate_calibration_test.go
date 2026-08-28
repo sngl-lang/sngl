@@ -58,7 +58,7 @@ func allLoweringCaps() sngl.Caps {
 		NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true,
 		NoTimer: true, StructComponents: true, StdlibContextParam: true,
 		FocusOrder: true, Canvas: true, ReactiveCanvas: true,
-		NoReactivity: true, NoDeclarative: true, NoStdlibWrappers: true,
+		NoReactivity: true, NoDeclarative: true,
 		NoListLambdas: true, NoInlineComponents: true, NoImplicitRecv: true,
 		NoStructSpread: true,
 	}

@@ -10,6 +10,14 @@
 // packages do not re-export a dot import, and neither should this one.
 import std "sngl://std"
 
+// `Macro` is the return type that makes `shape` a mark rather than a
+// function.
+import ir "sngl://internal/ir"
+
+// `shape` is this package's public spelling of `tree.kind("shape")`; the tree
+// marks themselves are internal to the compiler.
+import tree "sngl://internal/tree"
+
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
@@ -42,28 +50,44 @@ struct PathCmd {
 // declaration order — later shapes cover earlier ones. Coordinates are in
 // pixels from the top-left of the canvas, whatever measurement unit
 // `width` and `height` are given in.
-component canvas(width std.measurement, height std.measurement, style CanvasStyle, @click std.ClickEvent) list<shape> {}
+#[tree.children("shape")]
+component canvas(width std.measurement, height std.measurement, style CanvasStyle, @click std.ClickEvent) {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
-component rect(x float, y float, w float, h float, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component rect(x float, y float, w float, h float, style CanvasStyle) {}
 
 // Circle of radius r centred at cx, cy.
-component circle(cx float, cy float, r float, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component circle(cx float, cy float, r float, style CanvasStyle) {}
 
 // Ellipse centred at cx, cy with radii rx and ry.
-component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) {}
 
 // Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
 // meaningless on a line and is ignored.
-component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) {}
 
 // Arbitrary shape built from a list of PathCmd steps.
-component path(cmds list<PathCmd>, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component path(cmds list<PathCmd>, style CanvasStyle) {}
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
 // a program can import this package alongside `sngl://std`.
-component canvasText(x float, y float, content string, style CanvasStyle) list<shape> {}
+#[tree.kind("shape")]
+component canvasText(x float, y float, content string, style CanvasStyle) {}
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
-component canvasImage(x float, y float, w float, h float, src string) list<shape> {}
+#[tree.kind("shape")]
+component canvasImage(x float, y float, w float, h float, src string) {}
+
+// Marks a component as a shape: something a `canvas` hosts and paints rather
+// than a widget the layout places.
+//
+// A shape's children are shapes, so it declares no children type of its own,
+// and it may declare no events — a painted shape has nothing to raise one
+// from.
+func shape() ir.Macro {}

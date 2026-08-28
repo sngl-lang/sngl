@@ -67,6 +67,7 @@ type DeclIndex struct {
 	Constants     []DeclSummary
 	Data          []DeclSummary
 	Functions     []DeclSummary // free functions (no receiver)
+	Macros        []DeclSummary // `#[...]` marks: free funcs returning Macro
 	Overrides     []DeclSummary // sngl.* platform overrides
 	PlatformTypes []DeclSummary // "Options"-style platform structs
 	// Library is true for a package of the embedded SNGL library.
@@ -305,6 +306,18 @@ type target struct {
 	// allPackages is the merged view: everything a file can see without
 	// naming a package.
 	allPackages bool
+	// optionsDecl is the target's #[options]-marked struct, if it declares
+	// one. The mark is on the loaded IR, so it is resolved once here and the
+	// declaration is then recognised by identity.
+	optionsDecl *ast.StructDef
+}
+
+// optionsDeclOf returns the declaration sngl://<uri> marked #[options], or nil.
+func optionsDeclOf(uri string) *ast.StructDef {
+	if sd := checker.OptionsStruct(uri); sd != nil {
+		return sd.AST
+	}
+	return nil
 }
 
 func resolveTarget(cwd, path string) (*target, error) {
@@ -317,20 +330,21 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(lib.PublicPackages()...)
+		pd, stmts := stdlibPackageDocs(publicPackages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
-		if !checker.HasPackage(uri) {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(lib.PublicPackages(), ", "))
+		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(publicPackages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
-			title:   "sngl://" + uri,
-			pd:      pd,
-			stmts:   stmts,
-			library: true,
+			title:       "sngl://" + uri,
+			pd:          pd,
+			stmts:       stmts,
+			library:     true,
+			optionsDecl: optionsDeclOf(uri),
 		}, nil
 	}
 
@@ -375,14 +389,21 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Built-in platform / language names (android, html, fyne, bubbletea, go,
 	// kotlin, ...) — resolve via the codegen registry so they share the same
 	// Lookup code paths as the stdlib and scheme imports.
-	if plat := codegen.LookupPlatform(path); plat != nil {
-		if docs := plat.Package(); len(docs) > 0 {
-			return mergeDocsTarget(path, docs), nil
+	//
+	// The source comes from PackageSource rather than from PlatformDocs, even
+	// though both read the same files: optionsDecl is a pointer into the parse
+	// the checker loaded, and the classification below compares pointers. Two
+	// parses of one file share none, so reading the source a second way here
+	// silently unclassifies the target's whole option schema.
+	for _, tier := range []string{"platforms", "languages"} {
+		uri := tier + "/" + path
+		if !isRegisteredTarget(tier, path) {
+			continue
 		}
-	}
-	if lang := codegen.LookupLang(path); lang != nil {
-		if docs := lang.Package(); len(docs) > 0 {
-			return mergeDocsTarget(path, docs), nil
+		if docs := checker.PackageSource(uri); len(docs) > 0 {
+			t := mergeDocsTarget(path, docs)
+			t.optionsDecl = optionsDeclOf(uri)
+			return t, nil
 		}
 	}
 
@@ -459,9 +480,20 @@ func buildIndex(tgt *target) *DeclIndex {
 	}
 
 	// Split components into user vs platform-overrides.
+	//
+	// One entry per overridden component, not per override: a stdlib
+	// component is overridden by every platform that implements it, and each
+	// declares the override under the same `sngl.<name>`. They are the same
+	// page -- the href is built from the name -- so a second one is a
+	// collision rather than a second subject.
+	seenOverride := map[string]bool{}
 	for _, d := range tgt.pd.Components {
 		s := DeclSummary{Name: d.Name, Doc: d.Doc}
 		if strings.HasPrefix(d.Name, "sngl.") {
+			if seenOverride[d.Name] {
+				continue
+			}
+			seenOverride[d.Name] = true
 			idx.Overrides = append(idx.Overrides, s)
 		} else {
 			idx.Components = append(idx.Components, s)
@@ -471,7 +503,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	// Split structs into user vs Options-style platform types.
 	var userStructs []checker.DeclInfo
 	for _, d := range tgt.pd.Structs {
-		if d.Name == "Options" {
+		if sd, ok := d.Decl.(*ast.StructDef); ok && tgt.optionsDecl != nil && sd == tgt.optionsDecl {
 			idx.PlatformTypes = append(idx.PlatformTypes, DeclSummary{Name: d.Name, Doc: d.Doc})
 			continue
 		}
@@ -491,7 +523,12 @@ func buildIndex(tgt *target) *DeclIndex {
 		idx.Data = append(idx.Data, DeclSummary{Name: d.Name, Doc: d.Doc})
 	}
 	for _, d := range free {
-		idx.Functions = append(idx.Functions, DeclSummary{Name: d.Name, Doc: d.Doc})
+		s := DeclSummary{Name: d.Name, Doc: d.Doc}
+		if fd, ok := d.Decl.(*ast.FuncDef); ok && checker.IsMacroDecl(fd) {
+			idx.Macros = append(idx.Macros, s)
+			continue
+		}
+		idx.Functions = append(idx.Functions, s)
 	}
 
 	sortByName(idx.Components)
@@ -499,6 +536,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	sortByName(idx.Constants)
 	sortByName(idx.Data)
 	sortByName(idx.Functions)
+	sortByName(idx.Macros)
 	sortByName(idx.Overrides)
 	sortByName(idx.PlatformTypes)
 	return idx
@@ -787,12 +825,64 @@ func FirstSentence(doc string) string {
 // stdlibPackageDocs returns the declarations of the named embedded packages,
 // merged. Packages are directories on disk, so this reads the layout rather
 // than filtering a merged set.
+// isRegisteredTarget reports whether path names a registered platform or
+// language, and one usable here: an unavailable platform contributes no
+// package, which is a whole-package decision made by the plugin.
+func isRegisteredTarget(tier, path string) bool {
+	switch tier {
+	case "platforms":
+		return len(codegen.PlatformDocs(codegen.LookupPlatform(path))) > 0
+	case "languages":
+		return len(codegen.LangDocs(codegen.LookupLang(path))) > 0
+	}
+	return false
+}
+
+// providedPackageDocs is the source a registered target provides for its own
+// library package. A target carries its package rather than lib/ holding it, so
+// a package that exists only because a plugin is registered has to resolve
+// here the way it does in the checker.
+func providedPackageDocs(pkg string) []*ast.Document {
+	if name, ok := strings.CutPrefix(pkg, "platforms/"); ok {
+		return checker.ProvidedDocs(codegen.LookupPlatform(name))
+	}
+	if name, ok := strings.CutPrefix(pkg, "languages/"); ok {
+		return checker.ProvidedDocs(codegen.LookupLang(name))
+	}
+	return nil
+}
+
+// publicPackages is every package `sngl doc` can address: the embedded library
+// tiers, plus the one each registered target provides.
+func publicPackages() []string {
+	out := lib.PublicPackages()
+	for _, p := range codegen.CollectPlatforms() {
+		name := "platforms/" + p.PlatformIdentifier()
+		if len(providedPackageDocs(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	for _, l := range codegen.Langs() {
+		name := "languages/" + l
+		if len(providedPackageDocs(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
 	var docs []*ast.Document
 	for _, pkg := range pkgs {
-		docs = append(docs, checker.PackageDocsFor(pkg)...)
+		// PackageSource, not the two halves separately: a mark is read off the
+		// loaded IR and its declaration is then found here by pointer, and two
+		// parses of one file never share one. Reading a target's provided
+		// source fresh is why the #[options] struct of every target package
+		// was classified as an ordinary user type.
+		docs = append(docs, checker.PackageSource(pkg)...)
 	}
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)

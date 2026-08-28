@@ -14,7 +14,7 @@ import (
 //
 // Two modes share the substitution engine:
 //   - Optimization (always-on): inlines user-defined pure components.
-//   - Strict (Caps.NoStdlibWrappers): inlines platform-stdlib wrappers
+//   - Strict: inlines platform-stdlib wrappers
 //     and errors if any platform-stdlib component is impure.
 //
 // Runs between passToggle and passReactivity. Must run BEFORE
@@ -30,15 +30,15 @@ var passInlinePure = pass{
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
+func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &inlinePureState{
-		pkg:        pkg,
-		strictMode: caps.NoStdlibWrappers,
-		inFlight:   map[*ir.Component]bool{},
-		stack:      nil,
+		pkg:      pkg,
+		platform: opts.Platform,
+		inFlight: map[*ir.Component]bool{},
+		stack:    nil,
 	}
 	for _, comp := range pkg.Components {
 		body, err := st.inlineStmts(comp.Body)
@@ -71,21 +71,24 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, _ Options) error {
 }
 
 type inlinePureState struct {
-	pkg        *ir.Package
-	strictMode bool
-	inFlight   map[*ir.Component]bool
-	stack      []*ir.Component // active inline chain, for cycle-error messages
+	pkg *ir.Package
+	// platform is the target being lowered for, empty for a platform-agnostic
+	// caller (LSP, format), which leaves every library component abstract.
+	platform string
+	inFlight map[*ir.Component]bool
+	stack    []*ir.Component // active inline chain, for cycle-error messages
 }
 
-// isPure reports whether a component is structurally pure (no internal
-// state). nil component → false.
+// isPure reports whether a component carries no state of its own, which is
+// what makes substituting its body for a call to it sound. nil → false.
+//
+// An empty body is pure: it declares nothing, so nothing about substituting it
+// can go wrong. Whether there is anything worth substituting is a separate
+// question, and the caller's — for a primitive nothing is expected, for a
+// library component it means the target implemented nothing, and for a user
+// component it means the node renders nothing.
 func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
-		return false
-	}
-	// A component with no body is platform-resolved (e.g. stdlib widget
-	// stubs with Native metadata). Nothing to inline.
-	if len(c.Body) == 0 {
 		return false
 	}
 	return len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0
@@ -198,14 +201,49 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 
-	// Decide eligibility.
-	pure := st.isPure(comp)
-	strictApplies := st.strictMode && isPlatformStdlibComponent(st.pkg, comp)
-	if !pure && !strictApplies {
+	// A primitive is what every wrapper lowers *to* and has no body by design:
+	// #[intrinsic] for a platform widget, #[builtin] for a node kind the
+	// checker dispatches, a wildcard for a raw element, a tree kind for a
+	// member or host of a segmented tree.
+	if isPrimitiveComponent(comp) {
 		return []ir.Stmt{n}, nil
 	}
+
+	pure := st.isPure(comp)
+	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
 	if strictApplies && !pure {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
+	}
+
+	// Renders nothing *and* holds nothing: a component with state, a function
+	// or a timer is not empty even with no visual body, and dropping it takes
+	// its timer and its state with it. canInline asks the same four questions
+	// (inline_components.go), and asking only about Body here is how a
+	// timer-only component vanished from every platform with no diagnostic.
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+		// A user component declaring nothing at all renders nothing, so the
+		// node goes rather than reaching a codegen that has to guess what an
+		// empty component means — each platform guessed differently, and two
+		// grew a local workaround for it. A library component with no body is
+		// one the target implemented nothing for; that is a diagnostic waiting
+		// on the last platform to state its implementations declaratively, so
+		// for now it is left alone. Only when lowering for a target: with none,
+		// every library component is still abstract.
+		switch {
+		case strictApplies:
+			// A platform package's own component reaches here only unmarked:
+			// isPrimitiveComponent returned above for every marked one. So it
+			// is a primitive missing its mark, and nothing downstream can tell
+			// that from a wrapper that implements nothing.
+			return nil, fmt.Errorf("platform stdlib wrapper %q has no body to inline; mark it #[intrinsic] if it is a platform primitive (at %s)", comp.Name, compPos(comp))
+		case st.platform != "" && !comp.Stdlib:
+			return nil, nil
+		}
+		return []ir.Stmt{n}, nil
+	}
+
+	if !pure && !strictApplies {
+		return []ir.Stmt{n}, nil
 	}
 
 	// Recursive pure components (self-call directly or transitively) can't
@@ -281,6 +319,11 @@ func impurityReason(comp *ir.Component) string {
 	if len(comp.Timers) > 0 {
 		parts = append(parts, "timer")
 	}
+	if len(parts) == 0 {
+		// Unreachable: the caller asks only when isPure said no, and isPure
+		// says no only for one of the three above.
+		return "state"
+	}
 	return strings.Join(parts, ", ")
 }
 
@@ -339,11 +382,29 @@ func containsSelfRef(comp *ir.Component) bool {
 	return visit(comp.Body)
 }
 
+// isPrimitiveComponent reports whether a component is something a codegen
+// renders directly rather than a wrapper to be composed away. Each marker says
+// so in its own vocabulary, and none of them implies a body.
+func isPrimitiveComponent(comp *ir.Component) bool {
+	if comp == nil {
+		return false
+	}
+	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
+		comp.TreeKind != "" || comp.ChildKind != ""
+}
+
 // isPlatformStdlibComponent reports whether comp came from one of the
-// package's platform:// imports.
+// package's sngl://platforms/… imports.
 func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
+	// An intrinsic is the primitive the wrappers lower *to* — a raw element,
+	// a declared native widget — not a wrapper over one. It has no body to
+	// inline, so the strict check would read it as an impure wrapper and fail
+	// the build. A wildcard component is one by construction.
+	if comp != nil && (comp.Intrinsic != "" || comp.Wildcard != "") {
+		return false
+	}
 	for _, imp := range pkg.Imports {
-		if !strings.HasPrefix(imp.Path, "platform://") {
+		if !strings.HasPrefix(imp.Path, "sngl://platforms/") {
 			continue
 		}
 		if imp.Pkg == nil {
@@ -473,6 +534,9 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 					if h.Func != nil {
 						visit(h.Func.Block)
 					}
+				}
+				for _, f := range propLambdas(n) {
+					visit(f.Block)
 				}
 			case *ir.If:
 				visit(n.Body)
@@ -608,6 +672,12 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 		case *ir.NodeInst:
 			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
+			// A prop lambda is the enclosing scope of its own body: a
+			// parameter a user handler names but the emit passes no argument
+			// for is the one this lambda receives.
+			for _, f := range propLambdas(n) {
+				f.Block = substituteEventsIn(f.Block, handlers, f)
+			}
 			for _, h := range n.Handlers {
 				if h.Func == nil {
 					continue
@@ -644,12 +714,21 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return stmts
 	}
 	bindings := map[string]ir.Expr{}
+	// A wrapper that has the value but no event carries it as the argument:
+	// a platform callback reporting a change it is passed nothing for
+	// (Compose's RadioButton onClick, whose value is the option the override
+	// looped to) can only name the value. The payloads this applies to hold
+	// exactly that one field, so a read of it is the argument itself.
+	payloadValues := map[string]ir.Expr{}
 	for i, p := range params {
 		if p == nil || p.Name == "" {
 			continue
 		}
 		if i < len(args) {
 			bindings[p.Name] = args[i].Value
+			if f, ok := soleFieldGiven(p.Type, args[i].Value); ok {
+				payloadValues[p.Name+"."+f] = args[i].Value
+			}
 			continue
 		}
 		// No matching arg — the wrapper invoked @event() with fewer args
@@ -671,6 +750,15 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return stmts
 	}
 	walker := newExprWalker(func(e ir.Expr) ir.Expr {
+		if sel, ok := e.(*ir.Select); ok && len(payloadValues) > 0 {
+			if id, ok := sel.Operand.(*ir.Ident); ok {
+				if _, isParam := id.Sym.(*ir.Param); isParam {
+					if v, ok := payloadValues[id.Name+"."+sel.Field]; ok {
+						return deepCloneExpr(v)
+					}
+				}
+			}
+		}
 		id, ok := e.(*ir.Ident)
 		if !ok {
 			return e
@@ -684,6 +772,41 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		return e
 	})
 	return walker.stmts(stmts)
+}
+
+// soleFieldGiven reports the one field of the event payload p declares, when
+// arg is that field's value rather than the payload. A payload of one field
+// and a value of that field's type are the same information, and a wrapper
+// with no event to pass has only the second — so the handler's read of the
+// field resolves to it. Anything else (a payload passed as itself, a payload
+// of more than one field) is left to the ordinary parameter binding.
+func soleFieldGiven(payload *ir.Type, arg ir.Expr) (string, bool) {
+	if payload == nil || payload.Kind != ir.TypeStruct || arg == nil {
+		return "", false
+	}
+	sd, ok := payload.Decl.(*ir.StructDef)
+	if !ok || len(sd.Fields) != 1 {
+		return "", false
+	}
+	at := arg.ExprType()
+	if at == nil || at.Kind == ir.TypeStruct {
+		return "", false
+	}
+	return sd.Fields[0].Name, true
+}
+
+// propLambdas are the lambdas a node's arguments carry. A prop declared with a
+// func type takes one, and its body is code written in the component the call
+// site belongs to — so a walk over that component's statements has to reach it
+// or the body is invisible to every rewrite the walk performs.
+func propLambdas(n *ir.NodeInst) []*ir.Func {
+	var out []*ir.Func
+	for _, p := range n.Props {
+		if lam, ok := p.Value.(*ir.Lambda); ok && lam.Func != nil {
+			out = append(out, lam.Func)
+		}
+	}
+	return out
 }
 
 // deepCloneStmts produces a deep copy of stmts so substitution mutations

@@ -1,0 +1,55 @@
+# The options schema is assembled per target: sngl://std's Options are global,
+# while a platform's or language's own Options are in scope only for a build
+# selecting it. Guards the tier split — every platforms/ and languages/ package
+# declares an `Options`, so a merged scan of the library would hand one of
+# theirs to every target.
+sngl check ok.sngl
+stdout 'ok'
+
+! sngl check platform_leak.sngl
+stderr 'unknown option "stylesheet"'
+
+! sngl check lang_leak.sngl
+stderr 'unknown option "goVersion"'
+
+-- ok.sngl --
+import . "sngl://std"
+
+output {
+    none {
+        html(name="Demo", icon="favicon.png", stylesheet="app.css")
+    }
+    go {
+        bubbletea(goVersion="1.23")
+    }
+}
+
+component main {
+    text(value="hello")
+}
+
+-- platform_leak.sngl --
+import . "sngl://std"
+
+output {
+    go {
+        bubbletea(stylesheet="app.css")
+    }
+}
+
+component main {
+    text(value="hello")
+}
+
+-- lang_leak.sngl --
+import . "sngl://std"
+
+output {
+    none {
+        html(goVersion="1.23")
+    }
+}
+
+component main {
+    text(value="hello")
+}

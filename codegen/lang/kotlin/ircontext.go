@@ -758,7 +758,7 @@ func IRTypeToKt(t *ir.Type) string {
 		// use `dyn = null` for absent children).
 		return "Any?"
 	case ir.TypeVoid, ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam,
-		ir.TypeRef, ir.TypeShape, ir.TypeNative, ir.TypeInvalid:
+		ir.TypeRef, ir.TypeNative, ir.TypeInvalid:
 		// No first-class Kotlin spelling in emitted code. "Any" is what the
 		// former default arm produced for each of these, so listing them
 		// changes nothing today — it only lets the arm below catch a kind

@@ -36,6 +36,17 @@ type pipelineOpts struct {
 // runPipeline is the one parse→check→optimize→lower→generate path used by
 // generate, build, and run. The variation between commands is captured in
 // pipelineOpts.onTarget; everything before that is identical.
+// cliSelectedTargets is the target `--lang`/`--platform` name, or none when
+// neither was given. One or the other alone is still a target: a platform
+// selected without a language loads that platform's package, which is what
+// carries its overrides.
+func cliSelectedTargets(lang, plat string) []ir.StaticTarget {
+	if lang == "" && plat == "" {
+		return nil
+	}
+	return []ir.StaticTarget{{Platform: plat, Language: lang}}
+}
+
 func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 	cliLang, cliPlat, err := resolveLangPlat(p.cliLang, p.cliPlat)
 	if err != nil {
@@ -89,7 +100,9 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, dir, true)
+		// The flags name the target when they were given; without them the
+		// document's own output blocks do, which the checker reads itself.
+		pkg, err := checkDoc(doc, dir, true, cliSelectedTargets(cliLang, cliPlat)...)
 		if err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
@@ -158,7 +171,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 			}
 			caps := plat.Capabilities(lang).ToLowerCaps()
 			start = time.Now()
-			if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+			if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))

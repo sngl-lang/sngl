@@ -2,43 +2,28 @@
 package gtk4
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
-	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// gtk4NativeComponent is the gtk4-specific metadata attached to an
-// ir.Component resolved from GIR. Read by gtk4Translator at codegen
-// time; nil for non-GIR components.
-type gtk4NativeComponent struct {
-	CType       string // "GtkButton"
-	Constructor string // "gtk_button_new_with_label"
-	// CtorParams carries the GIR ConstructorInfo.Params for the
-	// chosen constructor. Codegen uses this to emit typed-zero
-	// argument placeholders so the cgo call type-checks; user-supplied
-	// prop values are applied immediately afterward via dedicated
-	// setter calls.
-	CtorParams []gir.ConstructorParam
-}
-
-// pickPrimaryConstructorInfo returns the full ConstructorInfo for the
-// first constructor in the class. Falls back to a synthetic
-// "gtk_<lower>_new" with no params when the class declared none in GIR.
+// pickPrimaryConstructorInfo returns the full ConstructorInfo for the first
+// constructor in the class, and the zero value when GIR declares none. There
+// is no name to derive for that case: GTK ships no gtk_<lower>_new for 46 of
+// the 47 classes without one, so a derived name would only move a link error
+// into the user's build. OnCreateNode refuses those with a diagnostic.
 func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	if len(info.Constructors) == 0 {
-		return gir.ConstructorInfo{Name: "gtk_" + lowerCType(info.CType) + "_new"}
+		return gir.ConstructorInfo{}
 	}
 	return info.Constructors[0]
 }
@@ -67,24 +52,6 @@ func girTypeIsNamedNonPrimitive(name string) bool {
 	return !strings.Contains(name, ".") && name[0] >= 'A' && name[0] <= 'Z'
 }
 
-// lowerCType maps "GtkLabel" → "label", "GtkApplicationWindow" → "application_window".
-func lowerCType(cType string) string {
-	bare := strings.TrimPrefix(cType, "Gtk")
-	var out strings.Builder
-	for i, r := range bare {
-		if i > 0 && unicode.IsUpper(r) {
-			out.WriteByte('_')
-		}
-		out.WriteRune(unicode.ToLower(r))
-	}
-	return out.String()
-}
-
-//go:embed gtk4.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 // girAutoPaths are the standard locations checked when --opt gir= is not set.
 var girAutoPaths = []string{
 	"/usr/share/gir-1.0/Gtk-4.0.gir",
@@ -93,11 +60,6 @@ var girAutoPaths = []string{
 }
 
 func init() {
-	doc, err := parser.Parse("gtk4.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform gtk4 init: parsing gtk4.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -106,40 +68,35 @@ type Generator struct {
 	once     sync.Once
 	registry *gir.TypeRegistry
 	initErr  error // set if autodetect GIR load fails
+	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
+	fsOnce   sync.Once
+	pkgFS    fs.FS
 }
 
 // Configure implements codegen.OptionConfigurable. Reads the "gir" option so
-// Resolve (called during type-check, before code generation) can honor the
-// CLI-supplied GIR path. Resets cached registry state so subsequent Resolve
-// calls re-load against the new path.
+// PackageFS (called during type-check, before code generation) can honor the
+// CLI-supplied GIR path. Resets the cached registry and the source built from
+// it so both re-load against the new path.
 func (g *Generator) Configure(opts map[string]string) error {
 	g.girOpt = opts["gir"]
 	g.once = sync.Once{}
+	g.fsOnce = sync.Once{}
 	g.registry = nil
 	g.initErr = nil
+	g.pkgFS = nil
 	return nil
 }
 
-func (g *Generator) PlatformIdentifier() string { return "gtk4" }
+// platformName is this platform's registry identifier, and the name a
+// diagnostic spells so the reader knows which target rejected their program.
+const platformName = "gtk4"
+
+func (g *Generator) PlatformIdentifier() string { return platformName }
 func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-
-// Package implements ir.Platform. With no GIR file to read, none of the
-// gtk4.Gtk* widget types gtk4.sngl builds its stdlib overrides from can be
-// resolved, so the platform contributes nothing at all rather than handing the
-// checker overrides it must reject. The checker merges every registered
-// platform's overrides irrespective of the build target, so contributing
-// unresolvable ones would turn a missing optional dependency into an
-// "unknown component" error on every compile, for every platform.
-func (g *Generator) Package() []*ast.Document {
-	if _, err := g.gir(); err != nil {
-		return nil
-	}
-	return pkgDocs
-}
 
 // Unavailable implements codegen.PlatformAvailability.
 func (g *Generator) Unavailable() error {
@@ -153,7 +110,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne uses.
 	f.Reactivity = false
 	f.Declarative = false
-	f.StdlibWrappers = false
 	f.InlineComponents = false
 	f.StructSpread = false
 	f.StructComponents = true
@@ -171,39 +127,86 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 // failure. Configure resets the cache when --opt gir= changes.
 func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	g.once.Do(func() {
-		p, err := resolveGIRPath(g.girOpt)
-		if err != nil {
-			g.initErr = err
-			return
-		}
-		g.registry, g.initErr = gir.ParseGIR(p)
+		g.registry, g.minimal, g.initErr = girRegistry(g.girOpt)
 	})
 	return g.registry, g.initErr
 }
 
-// Resolve looks up a GTK widget by its C type name (e.g. "GtkButton").
-// It lazy-loads the GIR file on first call. Returns nil if the GIR file is
-// not available on this machine or the identifier is not a known widget.
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	reg, err := g.gir()
-	if err != nil {
-		// GIR unavailable — caller gets nil. Package() withholds the gtk4
-		// overrides in this state, so nothing should be asking.
-		return nil
+// useGIR is how everything that needs the registry gets it, including the code
+// generator, which used to resolve its own. Passing the option rather than
+// reading it means one resolver, one cache and one answer: a caller holding a
+// Config built from the same --opt cannot end up with a different registry than
+// type-check used, which is what happened when there were two.
+//
+// A nil Generator answers from the resolver directly, for a test that builds a
+// compilation without one.
+func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
+	if g == nil {
+		reg, _, err := girRegistry(opt)
+		return reg, err
 	}
-	name := stripGtkPrefix(identifier)
-	info, ok := reg.Classes[name]
-	if !ok {
-		return nil
+	if opt != "" && opt != g.girOpt {
+		// A Config naming a GIR the generator was not configured with wins, and
+		// re-arms the cache so every later reader agrees with it.
+		g.girOpt = opt
+		g.once = sync.Once{}
+		g.fsOnce = sync.Once{}
+		g.registry, g.initErr, g.pkgFS = nil, nil, nil
 	}
-	return girClassToComponent(info)
+	return g.gir()
+}
+
+// girRegistry resolves the "gir" option to a widget registry, and reports
+// whether the result is the bundled subset. It is the one place that decides,
+// because the code generator used to resolve its own and the two could disagree
+// -- and the generator's copy discarded the parse error, so a path that did not
+// load left it with no registry and every widget reported as undeclared.
+//
+//   - "builtin": the bundled subset, whatever the host has.
+//   - any other non-empty value: that path, and a failure to load it is an
+//     error, since the caller named it.
+//   - empty: the host's Gtk-4.0.gir if the probe finds one, else the bundled
+//     subset -- a host without GTK 4 development files can still check and
+//     document the widgets codegen/platform/gtk4 wraps.
+func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
+	if opt == girBuiltin {
+		reg, err = gir.Minimal()
+		return reg, err == nil, err
+	}
+	if opt != "" {
+		// Through resolveGIRPath rather than straight to ParseGIR: a path the
+		// caller named and that is not there gets the message that says which
+		// option carried it and how to fix it.
+		p, perr := resolveGIRPath(opt)
+		if perr != nil {
+			return nil, false, perr
+		}
+		reg, err = gir.ParseGIR(p)
+		return reg, false, err
+	}
+	if p, perr := resolveGIRPath(""); perr == nil {
+		if reg, err = gir.ParseGIR(p); err == nil {
+			return reg, false, nil
+		}
+		return nil, false, err
+	}
+	reg, err = gir.Minimal()
+	return reg, err == nil, err
+}
+
+// usingMinimalGIR reports whether the registry is the bundled subset. A
+// diagnostic about a widget that is not declared says so, because the fix is to
+// install GTK rather than to correct the name.
+func (g *Generator) usingMinimalGIR() bool {
+	_, _ = g.gir()
+	return g.minimal
 }
 
 // Generate writes gtk4 source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// Targeting gtk4 without the GIR file is the one case that must be loud:
-	// Package() withheld the widget overrides, so generation would otherwise
+	// the widget overrides were withheld, so generation would otherwise
 	// silently emit an empty UI.
 	if _, err := g.gir(); err != nil {
 		return fmt.Errorf("platform gtk4 is unavailable here: %w", err)
@@ -390,6 +393,10 @@ func writeRawFile(sink codegen.Sink, name string, content []byte) error {
 	return wc.Close()
 }
 
+// girBuiltin selects the bundled subset explicitly, for a test that wants a
+// registry that does not vary with the host's GTK version.
+const girBuiltin = "builtin"
+
 // resolveGIRPath returns the path to the Gtk-4.0.gir file.
 // If girPath is non-empty it validates that path. Otherwise it probes the
 // standard autodetect locations.
@@ -410,85 +417,4 @@ func resolveGIRPath(girPath string) (string, error) {
 		" — install the GTK 4 development package (Debian/Ubuntu: libgtk-4-dev, " +
 		"Fedora: gtk4-devel, Arch: gtk4, macOS: brew install gtk4) " +
 		"or point at the file with --opt gir=/path/to/Gtk-4.0.gir")
-}
-
-// stripGtkPrefix removes the "Gtk" prefix so "GtkButton" → "Button".
-// Identifiers that don't start with "Gtk" are returned unchanged.
-func stripGtkPrefix(identifier string) string {
-	if strings.HasPrefix(identifier, "Gtk") {
-		return identifier[3:]
-	}
-	return identifier
-}
-
-// girClassToComponent converts GIR class metadata to an ir.Component.
-// Props become *ir.Prop entries; signals become *ir.EventDecl entries.
-func girClassToComponent(info *gir.ClassInfo) *ir.Component {
-	comp := &ir.Component{
-		Name:   info.CType,
-		Stdlib: true, // GIR-derived platform components: props are optional by convention
-		// GIR doesn't model "accepts children" — but every GTK
-		// container widget can take children, and rejecting children
-		// at the checker level would block GtkBox/GtkWindow/etc.
-		// Allow any children at the IR level; the gtk4 codegen knows
-		// which parent types actually have child-append APIs.
-		ChildrenType: &ir.Type{Kind: ir.TypeDyn},
-		Native: func() *gtk4NativeComponent {
-			ci := pickPrimaryConstructorInfo(info)
-			return &gtk4NativeComponent{
-				CType:       info.CType,
-				Constructor: ci.Name,
-				CtorParams:  ci.Params,
-			}
-		}(),
-	}
-	lower := lowerCType(info.CType)
-	for _, p := range info.Props {
-		t := p.IRType
-		if t == nil {
-			t = &ir.Type{Kind: ir.TypeDyn}
-		}
-		// Property names like "default-width" become C setter
-		// "gtk_<class>_set_default_width" (hyphens → underscores).
-		// Interface-inherited props (e.g. `orientation` on GtkBox via
-		// GtkOrientable) bind to the interface's namespaced setter
-		// (`gtk_orientable_set_orientation`), not the class's.
-		setterProp := strings.ReplaceAll(p.Name, "-", "_")
-		setterNS := lower
-		var recvType string
-		if p.InterfaceName != "" {
-			setterNS = lowerCType(p.InterfaceName)
-			recvType = "Gtk" + p.InterfaceName
-		}
-		// Map GIR raw type → cgo value type when it's a non-primitive
-		// (enum or struct): bare names like "Orientation" become
-		// "GtkOrientation". Primitives (utf8, gint, gboolean, …) stay
-		// empty so the setter falls back to IR-type-driven coercion.
-		var valType string
-		if gt := p.GIRType; gt != "" && girTypeIsNamedNonPrimitive(gt) {
-			valType = "Gtk" + gt
-		}
-		comp.Props = append(comp.Props, &ir.Prop{
-			Name:               p.Name,
-			Type:               t,
-			NativeSetter:       "gtk_" + setterNS + "_set_" + setterProp,
-			NativeReceiverType: recvType,
-			NativeValueType:    valType,
-		})
-	}
-	// SNGL `style` is forwarded onto every widget root by the stdlib wrapper
-	// bodies (`gtk4.GtkBox(..., style={...style})`). gtk4 has no style→GTK-CSS
-	// transform yet (deferred), so the prop is accepted for type-checking and
-	// skipped at codegen — it carries no NativeSetter.
-	comp.Props = append(comp.Props, &ir.Prop{
-		Name: "style",
-		Type: &ir.Type{Kind: ir.TypeDyn},
-	})
-	for _, s := range info.Signals {
-		comp.Events = append(comp.Events, &ir.EventDecl{
-			Name:         s.Name,
-			NativeSignal: s.Name,
-		})
-	}
-	return comp
 }

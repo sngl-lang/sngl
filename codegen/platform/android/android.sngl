@@ -1,13 +1,25 @@
 // Android (Jetpack Compose) platform package.
-// Raw Compose composables (Column, Row, Text, Button, etc.) are implicitly
-// available via APIResolver — any identifier is a valid @Composable.
 //
-// Each component sngl.X() overrides the stdlib abstract component with a
-// Compose-native implementation. Props are inherited from the stdlib
-// definition and available as local variables in the body.
+// The intrinsics below are the Compose composables compose_ir.go emits from
+// their declarations: #[intrinsic] names the composable and keeps the
+// inliner off the component, and each prop is named after the Compose
+// argument it becomes. They are ordinary components otherwise, so user code
+// can reach a composable this package wraps no wrapper for.
+//
+// A `component sngl.X { platform android { ... } }` override is inlined into
+// the caller at lower time, so its body is what the codegen sees.
+//
+// The four `component sngl.X()` bodies left below are not read at all — the
+// parens form is skipped by mergePlatformExtensions — and those four
+// components are still written by name in a switch in compose_ir.go. Each
+// needs something the generic intrinsic emitter cannot yet say; the comment
+// on each says which.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
+import . "sngl://internal/marks"
 
+#[options]
 struct Options {
     // Kotlin package / Android application ID.
     package string
@@ -38,223 +50,440 @@ struct Options {
     gradleVersion string
 }
 
-// ComposableProp is a key-value pair for composable lambda parameters.
-struct ComposableProp {
-    key string
-    value dyn
-}
+// --- The intrinsics ---
+//
+// A prop's name is the Compose argument it is emitted as, in declaration
+// order. Three names are the emitter's own: `modifier` takes a Style and
+// becomes the `Modifier` chain built from it, `chain` appends further Modifier
+// calls verbatim after those, and `args` is arguments spelled in Kotlin, for a
+// value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
+// has no way to write.
+//
+// A func-typed prop is a Compose lambda argument, and the override supplies
+// the lambda: its body is emitted where the argument goes, so what the callback
+// does is ordinary code in this file rather than a case in the codegen. A
+// parameter typed as an event payload is the SNGL event, built from the value
+// Compose passes; one typed as that value is the value. A callback Compose
+// passes nothing to has neither, so the override names the value itself and
+// builds the event from the value it does have — `change({value = opt})`
+// in radio below. An event is handed its payload, never a value to build one
+// from: a shorthand for a single-field payload would stop checking the moment
+// that payload gained a second field.
+//
+// The id is `android:` plus the composable's name — namespaced by the
+// platform whose codegen answers to it, so a platform primitive can never
+// collide with a stdlib intrinsic or with another platform's. It names no
+// Kotlin package: the platform codegen emits the call, not the language
+// translator.
 
-// Composable describes a composable lambda to emit for a Compose parameter
-// that expects @Composable () -> Unit. The codegen detects this struct in
-// prop values and emits { Name(key1 = val1, ...) } instead of a data value.
-struct Composable {
-    name string
-    props list<ComposableProp>
-}
+#[intrinsic("android:Column")]
+component Column(
+    modifier sngl.Style,
+    chain list<string>,
+) list<component> {}
+
+#[intrinsic("android:Box")]
+component Box(
+    modifier sngl.Style,
+    chain list<string>,
+) list<component> {}
+
+#[intrinsic("android:Row")]
+component Row(
+    modifier sngl.Style,
+    chain list<string>,
+    args list<string>,
+) list<component> {}
+
+#[intrinsic("android:Spacer")]
+component Spacer(
+    modifier sngl.Style,
+    chain list<string>,
+) {}
+
+#[intrinsic("android:Text")]
+component Text(
+    text string,
+    modifier sngl.Style,
+    // Typography, as Compose's own `style` argument: a TextStyle built from
+    // the Style's font and colour fields.
+    style sngl.Style,
+    args list<string>,
+) {}
+
+#[intrinsic("android:HorizontalDivider")]
+component HorizontalDivider(
+    modifier sngl.Style,
+) {}
+
+#[intrinsic("android:CircularProgressIndicator")]
+component CircularProgressIndicator(
+    modifier sngl.Style,
+) {}
+
+#[intrinsic("android:Button")]
+component Button(
+    onClick func(),
+    modifier sngl.Style,
+) list<component> {}
+
+#[intrinsic("android:Badge")]
+component Badge(
+    modifier sngl.Style,
+) list<component> {}
+
+#[intrinsic("android:Card")]
+component Card(
+    modifier sngl.Style,
+) list<component> {}
+
+#[intrinsic("android:TabRow")]
+component TabRow(
+    selectedTabIndex int,
+) list<component> {}
+
+#[intrinsic("android:Checkbox")]
+component Checkbox(
+    checked bool,
+    onCheckedChange func(bool),
+) {}
+
+#[intrinsic("android:Switch")]
+component Switch(
+    checked bool,
+    onCheckedChange func(bool),
+) {}
+
+#[intrinsic("android:RadioButton")]
+component RadioButton(
+    selected bool,
+    onClick func(),
+) {}
+
+#[intrinsic("android:OutlinedTextField")]
+component OutlinedTextField(
+    value string,
+    minLines int,
+    modifier sngl.Style,
+    // Compose passes the new text; the SNGL event a handler reads is built
+    // from it at the boundary, which is what declaring the payload says.
+    onValueChange func(e sngl.InputEvent),
+) {}
+
+#[intrinsic("android:Dialog")]
+component Dialog(
+    onDismissRequest func(),
+) list<component> {}
+
+#[intrinsic("android:Surface")]
+component Surface(
+    args list<string>,
+) list<component> {}
 
 // --- Core Layout ---
 
-component sngl.vbox() {
-    Column {
-        slot
+component sngl.vbox {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.hbox() {
-    Row {
-        slot
+component sngl.hbox {
+    platform android {
+        Row(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.stack() {
-    Box {
-        slot
+component sngl.stack {
+    platform android {
+        Box(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.spacer() {
-    Spacer {}
+component sngl.spacer {
+    platform android {
+        Spacer(modifier={...style}) {}
+    }
 }
 
-component sngl.scroll() {
-    Column {
-        slot
+component sngl.scroll {
+    platform android {
+        Column(
+            modifier={...style},
+            chain=["verticalScroll(rememberScrollState())"],
+        ) {
+            slot
+        }
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text() {
-    Text(text=value) {}
-}
-
-component sngl.button() {
-    Button {
-        Text(text=text) {}
+component sngl.text {
+    platform android {
+        Text(text=value, modifier={...style}, style={...style}) {}
     }
 }
 
-component sngl.image() {
-    Box {
-        Text(text=alt) {}
+component sngl.button {
+    platform android {
+        Button(onClick=func() { click() }, modifier={...style}) {
+            Text(text=text) {}
+        }
     }
 }
 
+// Compose has no image loader in the box: an `Image` needs a painter, and
+// every source SNGL accepts (a URL, an asset path) needs a different one, so
+// android draws no image yet. The emitter used to render a TODO comment,
+// which draws nothing; an unsized Spacer is the declared spelling of that.
+component sngl.image {
+    platform android {
+        Spacer(modifier={...style}) {}
+    }
+}
+
+// Not converted. The placeholder becomes Compose's `label`, which takes a
+// composable lambda — `label = { Text("...") }`. An intrinsic prop can carry a
+// value or a statement lambda, but nothing declares a *composable* lambda
+// argument, so the label cannot be written here.
 component sngl.input() {
     OutlinedTextField(value=value) {}
 }
 
-component sngl.checkbox() {
-    Row {
-        Checkbox(checked=checked, ) {}
-        if label != "" {
-            Text(text=label) {}
+component sngl.checkbox {
+    platform android {
+        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+            Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+            if label != "" {
+                Text(text=label) {}
+            }
         }
     }
 }
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio() {
-    Column {
-        slot
-    }
-}
-
-component sngl.toggle() {
-    Row {
-        Switch(checked=checked, ) {}
-        if label != "" {
-            Text(text=label) {}
-        }
-    }
-}
-
-component sngl.select() {
-    OutlinedTextField(value=value, readOnly=true) {}
-}
-
-component sngl.textarea() {
-    OutlinedTextField(value=value, minLines=3, @onValueChange { input() }) {}
-}
-
-component sngl.datepicker() {
-    OutlinedTextField(value=value, readOnly=true) {}
-}
-
-// --- Tier 2: Feedback & Navigation ---
-
-component sngl.progress() {
-    LinearProgressIndicator {}
-}
-
-component sngl.spinner() {
-    CircularProgressIndicator {}
-}
-
-component sngl.badge() {
-    Badge {
-        Text(text=value) {}
-    }
-}
-
-component sngl.divider() {
-    HorizontalDivider {}
-}
-
-component sngl.card() {
-    Card {
-        slot
-    }
-}
-
-component sngl.chip() {
-    AssistChip(label=Composable{name="Text", props=[{key="text", value=label}]}) {}
-}
-
-component sngl.link() {
-    TextButton(@onClick { click() }) {
-        Text(text=text) {}
-    }
-}
-
-component sngl.tabs() {
-    Column {
-        slot
-    }
-}
-
-component sngl.modal() {
-    if open {
-        Dialog(onDismissRequest=func(){}) {
-            Card {
-                Column {
-                    if title != "" {
-                        Text(text=title) {}
+// Compose's RadioButton is one option, so the group is the loop: the
+// container is the direction the prop asks for and each option is a button
+// beside its label. onClick is passed nothing, so the override builds the
+// ChangeEvent itself from the option it looped over.
+component sngl.radio {
+    platform android {
+        if direction == "horizontal" {
+            Row(modifier={...style}) {
+                for opt = options {
+                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                        Text(text=opt) {}
                     }
-                    slot
+                }
+            }
+        } else {
+            Column(modifier={...style}) {
+                for opt = options {
+                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                        Text(text=opt) {}
+                    }
                 }
             }
         }
     }
 }
 
-component sngl.drawer() {
-    Column {
-        slot
+component sngl.toggle {
+    platform android {
+        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+            Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+            if label != "" {
+                Text(text=label) {}
+            }
+        }
     }
 }
 
-component sngl.tooltip() {
-    Box {
-        slot
+// Not converted, for three reasons. The menu needs per-call-site state
+// (`var expanded by remember`), and expandCall hoists an override's vars into
+// the enclosing composable, so a select inside a `for` would share one
+// `expanded` across every row. DropdownMenuItem's `text` is a composable
+// lambda (see input). And the placeholder fallback needs Kotlin's
+// `isNotEmpty()`, which SNGL has no spelling for on a bound prop.
+component sngl.select() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+component sngl.textarea {
+    platform android {
+        OutlinedTextField(
+            value=value,
+            minLines=3,
+            modifier={...style},
+            // @input carries the InputEvent Compose's text is built into;
+            // @change carries a ChangeEvent, a different declaration, so it
+            // takes the value rather than the other event.
+            onValueChange=func(e) { input(e); change({value = e.value}) },
+        ) {}
     }
 }
 
-component sngl.popover() {
-    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
-        slot
+// Not converted. Same composable-lambda `label` as input.
+component sngl.datepicker() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+// Not converted. Compose's determinate/indeterminate split is by *presence* of
+// the `progress` argument, and the emitter picks by whether the call site gave
+// `value` at all — a distinction an override body cannot draw, since a prop it
+// reads is always there. `progress` is also a `() -> Float` lambda, and a
+// func-typed prop's body is emitted as statements, not as an expression.
+component sngl.progress() {
+    LinearProgressIndicator {}
+}
+
+component sngl.spinner {
+    platform android {
+        CircularProgressIndicator(modifier={...style}) {}
     }
 }
 
-component sngl.splitview() {
-    Row {
-        slot
+component sngl.badge {
+    platform android {
+        Badge(modifier={...style}) {
+            Text(text=value) {}
+        }
     }
 }
 
-component sngl.table() {
-    Column {
-        slot
+component sngl.divider {
+    platform android {
+        HorizontalDivider(modifier={...style}) {}
     }
 }
 
-component sngl.tree() {
-    Column {
-        slot
+component sngl.card {
+    platform android {
+        Card(modifier={...style}) {
+            slot
+        }
     }
 }
 
-component sngl.menu() {
-    DropdownMenu(expanded=open, onDismissRequest=func(){}) {
-        slot
+component sngl.chip {
+    platform android {
+        Text(text=label) {}
     }
 }
 
-component sngl.menubar() {
-    Row {
-        slot
+component sngl.link {
+    platform android {
+        Text(
+            text=text,
+            style={...style},
+            args=["color = MaterialTheme.colorScheme.primary"],
+        ) {}
     }
 }
 
-component sngl.toolbar() {
-    Row {
-        slot
+component sngl.tabs {
+    platform android {
+        TabRow(selectedTabIndex=selected) {
+            slot
+        }
     }
 }
 
-component sngl.avatar() {
-    Box {
-        Text(text=initials) {}
+component sngl.modal {
+    platform android {
+        if open {
+            Dialog(onDismissRequest=func() { close() }) {
+                Surface(args=["shape = MaterialTheme.shapes.medium"]) {
+                    Column(modifier={padding=16}) {
+                        if title != "" {
+                            Text(text=title) {}
+                        }
+                        slot
+                    }
+                }
+            }
+        }
+    }
+}
+
+component sngl.drawer {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.tooltip {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.popover {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.splitview {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.table {
+    platform android {
+        Text(text="") {}
+    }
+}
+
+component sngl.tree {
+    platform android {
+        Text(text="") {}
+    }
+}
+
+component sngl.menu {
+    platform android {
+        Text(text="") {}
+    }
+}
+
+component sngl.menubar {
+    platform android {
+        Text(text="") {}
+    }
+}
+
+component sngl.toolbar {
+    platform android {
+        Column(modifier={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.avatar {
+    platform android {
+        Text(text="") {}
     }
 }

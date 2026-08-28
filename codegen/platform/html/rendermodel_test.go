@@ -70,10 +70,14 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Raw: `"Save"`}}},
 		Handlers: []ir.EventHandler{handler},
 	}
+	// `textContent`, not `value`: lowering inlines sngl.text into html's
+	// `<span textContent=...>` before any render sees it, and `value` on an
+	// arbitrary element is an attribute -- writing it as a text node gave an
+	// <input> a child and no value.
 	textNode := &ir.NodeInst{
-		Name:  "text",
+		Name:  "span",
 		ID:    "__n0",
-		Props: []ir.Arg{{Name: "value", Value: binding}},
+		Props: []ir.Arg{{Name: "textContent", Value: binding}},
 	}
 	vbox := &ir.NodeInst{Name: "vbox", Children: []ir.Stmt{button, textNode}}
 
@@ -89,7 +93,10 @@ func TestBuildRenderModel(t *testing.T) {
 	pkg, win := routeFixture()
 
 	_, actionIdx := collectActions(pkg, win, buildNativeFuncMap(pkg, "go"))
-	rr := buildRenderModel(pkg, win, "/", actionIdx)
+	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
+	if err != nil {
+		t.Fatalf("buildRenderModel: %v", err)
+	}
 	if rr == nil {
 		t.Fatal("buildRenderModel returned nil")
 	}
@@ -221,7 +228,10 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 		t.Fatalf("node handler action index: want 1, got %d", got)
 	}
 
-	rr := buildRenderModel(pkg, win, "/", actionIdx)
+	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
+	if err != nil {
+		t.Fatalf("buildRenderModel: %v", err)
+	}
 	joined := strings.Join(rr.Chunks, "")
 	// The single emitted form (for the node handler) must carry _action="1".
 	if !strings.Contains(joined, `name="_action" value="1"`) {
@@ -229,29 +239,6 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	}
 	if strings.Contains(joined, `name="_action" value="0"`) {
 		t.Fatalf("form must not carry the var-handler's index 0 (desync):\n%s", joined)
-	}
-}
-
-// TestHTMLTagForFallback pins fix #5: known layout/text primitives map to real
-// tags, a namespaced platform-sngl wrapper (html.input) passes its suffix
-// through as the real tag, and an unrecognized bare name falls back to a safe
-// "div" rather than emitting a bogus <name> literal.
-func TestHTMLTagForFallback(t *testing.T) {
-	cases := map[string]string{
-		"vbox":       "div",
-		"hbox":       "div",
-		"text":       "span",
-		"label":      "span",
-		"button":     "button",
-		"html.input": "input", // platform-sngl wrapper: trust the suffix
-		"widget.svg": "svg",   // namespaced suffix passes through
-		"MyWidget":   "div",   // unknown bare component name → safe default
-		"frobnicate": "div",   // unknown bare element → safe default
-	}
-	for in, want := range cases {
-		if got := htmlTagFor(in); got != want {
-			t.Errorf("htmlTagFor(%q) = %q, want %q", in, got, want)
-		}
 	}
 }
 

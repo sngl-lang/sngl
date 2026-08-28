@@ -13,5 +13,5 @@ import . "sngl://std"
 component main {
     var count = 2
     func doubled() => count * 2
-    text(value=doubled)
+    text(value=string(doubled))
 }

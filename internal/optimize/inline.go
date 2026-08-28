@@ -446,8 +446,16 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		cp.Operand = cloneExpr(x.Operand)
 		return &cp
 	case *ir.Lambda:
-		// Don't deep-clone lambda bodies — treat as opaque.
+		// The body is not opaque any more — foldNodeInst folds a func-typed
+		// prop's lambda so an unrolled loop reaches it — so each copy needs
+		// its own. The parameters keep their identity: a reference in the
+		// cloned body still names the parameter it was checked against.
 		cp := *x
+		if x.Func != nil {
+			fn := *x.Func
+			fn.Block = cloneStmts(x.Func.Block)
+			cp.Func = &fn
+		}
 		return &cp
 	case *ir.Closure:
 		// Treat closures as opaque (matches Lambda).

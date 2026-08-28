@@ -106,7 +106,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		start := time.Now()
-		pkg, err := checkDoc(doc, dir, true)
+		targets, err := dumpCLITargets(cmd)
+		if err != nil {
+			return err
+		}
+		pkg, err := checkDoc(doc, dir, true, targets...)
 		if err != nil {
 			return err
 		}
@@ -119,7 +123,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		start := time.Now()
-		pkg, err := checkDoc(doc, dir, true)
+		targets, err := dumpCLITargets(cmd)
+		if err != nil {
+			return err
+		}
+		pkg, err := checkDoc(doc, dir, true, targets...)
 		if err != nil {
 			return err
 		}
@@ -140,7 +148,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
 				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -153,7 +161,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		start := time.Now()
-		pkg, err := checkDoc(doc, dir, true)
+		targets, err := dumpCLITargets(cmd)
+		if err != nil {
+			return err
+		}
+		pkg, err := checkDoc(doc, dir, true, targets...)
 		if err != nil {
 			return err
 		}
@@ -174,7 +186,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
 				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -195,7 +207,11 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 		return err
 	}
 	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true)
+	targets, err := dumpCLITargets(cmd)
+	if err != nil {
+		return err
+	}
+	pkg, err := checkDoc(doc, dir, true, targets...)
 	if err != nil {
 		return err
 	}
@@ -239,7 +255,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "stopAfter", stopAfter, "duration", time.Since(start))
@@ -254,7 +270,11 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 
 	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true)
+	targets, err := dumpCLITargets(cmd)
+	if err != nil {
+		return err
+	}
+	pkg, err := checkDoc(doc, dir, true, targets...)
 	if err != nil {
 		return err
 	}
@@ -296,7 +316,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 
 	caps := plat.Capabilities(lang).ToLowerCaps()
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
@@ -337,6 +357,22 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	sort.Strings(names)
 
 	return dumpCodegenOutput(names, files)
+}
+
+// dumpCLITargets is the target the --lang/--platform flags name, for the check
+// that precedes target resolution: a stage dump has to check against the same
+// target it then dumps for, or it reports a tree the build would never make.
+func dumpCLITargets(cmd *cobra.Command) ([]ir.StaticTarget, error) {
+	lang, _ := cmd.Flags().GetString("lang")
+	plat, _ := cmd.Flags().GetString("platform")
+	lang, plat, err := resolveLangPlat(lang, plat)
+	if err != nil {
+		// Returning no targets here checked against every registered one and
+		// dumped a tree for a target the caller never named; the flags are
+		// unusable, so say so instead.
+		return nil, err
+	}
+	return cliSelectedTargets(lang, plat), nil
 }
 
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {

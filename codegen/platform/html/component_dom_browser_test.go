@@ -113,6 +113,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 		IsMain:    true,
 		Resolver:  resolver,
 		Platforms: []ir.Platform{&Generator{}},
+		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {

@@ -4,28 +4,16 @@ import (
 	_ "embed"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 //go:embed preview.css
 var previewCSS string
 
-//go:embed fyne.sngl
-var pkgSource string
-
-var pkgDocs []*ast.Document
-
 func init() {
-	doc, err := parser.Parse("fyne.sngl", []byte(pkgSource))
-	if err != nil {
-		panic(fmt.Errorf("platform fyne init: parsing fyne.sngl: %w", err))
-	}
-	pkgDocs = []*ast.Document{doc}
 	codegen.RegisterPlatform(&Generator{})
 }
 
@@ -38,12 +26,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) Package() []*ast.Document { return pkgDocs }
-func (g *Generator) Resolve(identifier string) ir.Symbol {
-	// Fyne accepts any tag name; codegen reads metadata from blueprint
-	// .sngl bodies (Container/Label/Button/Entry/Check/Select/etc.).
-	return &ir.Component{Name: identifier}
-}
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>` Assigns
@@ -53,10 +35,6 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// create/append/attachHandler intrinsic-call sequences. fyne consumes
 	// the flat output via WalkLowered + fyneTranslator.
 	f.Declarative = false
-	// NoStdlibWrappers: inline fyne.sngl wrapper components at lowering time.
-	// fyne wrappers are pure blueprint-bearing NodeInsts; the translator
-	// reads the same Constructor/bindings props after inlining.
-	f.StdlibWrappers = false
 	f.InlineComponents = false
 	f.StructSpread = false
 	f.StructComponents = true
@@ -208,7 +186,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	body, imports, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	if err != nil {
 		return err
 	}
@@ -226,10 +204,22 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	type aliasImporter interface {
 		RequireImportAs(path, alias string) string
 	}
+	// The emitter is its own context, so an alias forced during translation
+	// does not reach it on its own. A widget package has to arrive under the
+	// selector its Spec's Go spellings are written with -- both the
+	// constructor call and the Model field's type string are emitted verbatim
+	// -- and the alias the emitter would derive is the package name guessed
+	// from the path, which for a /vN module is not even close.
 	for _, p := range imports {
 		if p == snglCanvasImportPath {
 			if ai, ok := e.(aliasImporter); ok {
 				ai.RequireImportAs(p, snglCanvasAlias)
+				continue
+			}
+		}
+		if alias := aliases[p]; alias != "" {
+			if ai, ok := e.(aliasImporter); ok {
+				ai.RequireImportAs(p, alias)
 				continue
 			}
 		}

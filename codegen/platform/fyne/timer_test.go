@@ -5,10 +5,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // A component with a timer must emit the fyne timer runtime (Ticker + Start/Stop
@@ -28,16 +25,7 @@ component main {
     }
 }
 `
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
-		}
-	}
+	pkg := checkForFyne(t, src)
 	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true, NoDeclarative: true}, lower.Options{Platform: "fyne"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

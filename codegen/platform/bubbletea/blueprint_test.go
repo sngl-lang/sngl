@@ -38,6 +38,7 @@ func compileBubbletea(t *testing.T, src string) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: plats,
+		Targets:   []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}},
 		Languages: langs,
 	})
 	if hasErrors(diags) {
@@ -68,14 +69,17 @@ component main {
 //
 // These construct the inlined primitive *ir.NodeInst directly. Phase 1 only
 // declares the blueprint vocabulary + extractor; the wrapper-body inlining that
-// produces these nodes at lower time (StdlibWrappers=false) lands in Phase 2,
+// produces these nodes at lower time lands in Phase 2,
 // so there is no inlined node to compile through the harness yet. The shapes
 // built here mirror exactly what the inlined primitives carry: struct-literal
 // props for Model/Focus, list-of-struct-literal props for binds/events, an
 // enum-member Ident for join, and string-literal props for content.
 
+// Raw is the value, not its source spelling — the lexer never puts the
+// delimiters there. This helper used to add them, which only read correctly
+// because IRLiteralString stripped a leading and trailing quote back off.
 func irStr(s string) *ir.Literal {
-	return &ir.Literal{Type: ir.TypString, Raw: `"` + s + `"`}
+	return &ir.Literal{Type: ir.TypString, Raw: s}
 }
 
 func irBool(b bool) *ir.Literal {

@@ -8,14 +8,16 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<vbox>
-  <text id="__n0" data-sngl-id="__n0">
-  </text>
-  <button id="$0" text="+3">
+<div style="display:flex;flex-direction:column">
+  <span id="__n0" data-sngl-id="__n0">
+  </span>
+  <button id="$1">
+    <span>+3</span>
   </button>
-  <button id="$1" text="-3">
+  <button id="$2">
+    <span>-3</span>
   </button>
-</vbox>
+</div>
 
 <script>
 (() => {
@@ -41,14 +43,14 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  $0.addEventListener("click", function() {
+  $1.addEventListener("click", function() {
     state.n = state.n + 3;
     __n0.textContent = main_display(state);
   });
-  $1.addEventListener("click", function() {
+  $2.addEventListener("click", function() {
     state.n = state.n - 3;
     __n0.textContent = main_display(state);
   });

@@ -1,5 +1,6 @@
 // Package imports provides shared import-path parsing and lightweight
-// alias resolution used by both the checker and the expand pass.
+// alias resolution used by the checker, for imports and for the packages that
+// `#[...]` marks name.
 package imports
 
 import (
@@ -34,8 +35,8 @@ func NamespaceFromPath(path string) string {
 }
 
 // ResolveAliases scans import declarations in docs and returns a map of
-// alias → ImportRef. No IR building; scheme and URI only. Used by the
-// expand pass to resolve #[alias.name] macro attributes before type-checking.
+// alias → ImportRef. No IR building; scheme and URI only. Used to resolve the
+// package a #[alias.name] mark names.
 func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 	// First pass: collect redirect declarations (import "A" => "B" with no alias).
 	// These are pure path redirects, not namespace-introducing imports.
@@ -66,7 +67,7 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 			// no namespace, so it contributes no macro alias. Deriving one from
 			// the path would let #[<pkg>.macro] resolve against a name that is
 			// not in scope. Its macros are reachable unqualified instead — see
-			// DotMacroPackages.
+			// DotPackages.
 			if imp.IsDot() {
 				continue
 			}
@@ -92,10 +93,10 @@ func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
 	return out
 }
 
-// DotMacroPackages returns the package URIs dot-imported by these documents,
-// in source order. A macro in one of them is written unqualified — the dot
+// DotPackages returns the package URIs dot-imported by these documents, in
+// source order. A macro one of them declares is written unqualified — the dot
 // import is what brings `#[builtin(...)]` into a file.
-func DotMacroPackages(docs []*ast.Document) []string {
+func DotPackages(docs []*ast.Document) []string {
 	var out []string
 	for _, doc := range docs {
 		for _, stmt := range doc.Stmts {

@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/docs/lookup"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -387,36 +386,6 @@ func StdlibLookup(name string) Component {
 		}
 	}
 	return Component{Name: name, Doc: "Component not found."}
-}
-
-func parseDir(dir string) (*ast.Document, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	var doc *ast.Document
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
-		if err != nil {
-			continue
-		}
-		d, err := parser.Parse(e.Name(), data)
-		if err != nil {
-			continue
-		}
-		if doc == nil {
-			doc = d
-		} else {
-			doc.Stmts = append(doc.Stmts, d.Stmts...)
-		}
-	}
-	if doc == nil {
-		return nil, fs.ErrNotExist
-	}
-	return doc, nil
 }
 
 // platformOrder defines the display order for platform tabs.

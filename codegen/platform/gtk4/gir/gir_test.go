@@ -271,3 +271,305 @@ func TestParseGIR_UnmappableType(t *testing.T) {
 		t.Errorf("expected TypeDyn fallback, got %v", info.Props)
 	}
 }
+
+// setterGIR exercises everything a property's setter reference has to carry:
+// a setter whose name is not derivable from the class and property names, a
+// setter whose value parameter is typed differently from the property, a
+// property with no setter at all, an enumeration, and an array-typed property.
+const setterGIR = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <enumeration name="Orientation" c:type="GtkOrientation">
+      <member name="horizontal" value="0" c:identifier="GTK_ORIENTATION_HORIZONTAL"/>
+      <member name="vertical" value="1" c:identifier="GTK_ORIENTATION_VERTICAL"/>
+    </enumeration>
+    <class name="Image" c:type="GtkImage">
+      <constructor name="new" c:identifier="gtk_image_new"/>
+      <method name="set_from_icon_name" c:identifier="gtk_image_set_from_icon_name">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="icon_name" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_column_spacing" c:identifier="gtk_image_set_column_spacing">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="spacing" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="icon-name" writable="1" setter="set_from_icon_name">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="column-spacing" writable="1" setter="set_column_spacing">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="file" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="orientation" writable="1" setter="set_missing">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+      <property name="artists" writable="1">
+        <array c:type="char**">
+          <type name="utf8" c:type="char*"/>
+        </array>
+      </property>
+    </class>
+  </namespace>
+</repository>`
+
+// TestParseGIR_SetterIsRead pins that a property's setter is the C function
+// GIR names it to be. gtk_image_set_from_icon_name is the standing example of
+// a setter no rule over the class and property names produces.
+func TestParseGIR_SetterIsRead(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(setterGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	props := map[string]gir.Prop{}
+	for _, p := range reg.ByCType["GtkImage"].Props {
+		props[p.Name] = p
+	}
+	if got := props["icon-name"].Setter; got != "gtk_image_set_from_icon_name" {
+		t.Errorf("icon-name setter = %q; want gtk_image_set_from_icon_name", got)
+	}
+	// The setter's value parameter, not the property, is what a call has to
+	// satisfy — here a guint against a gint property.
+	if got := props["column-spacing"].SetterCType; got != "guint" {
+		t.Errorf("column-spacing setter value C type = %q; want guint", got)
+	}
+	// A property GIR names no setter for has none, and one whose reference
+	// resolves to no method has none either.
+	if got := props["file"].Setter; got != "" {
+		t.Errorf("file setter = %q; want none", got)
+	}
+	if got := props["orientation"].Setter; got != "" {
+		t.Errorf("orientation setter = %q; want none — set_missing is not declared", got)
+	}
+	// An array property's inner <type> names its element, so the property
+	// keeps no GIR type that could be read as that element.
+	if got := props["artists"].GIRType; got != "" {
+		t.Errorf("artists GIR type = %q; want none", got)
+	}
+}
+
+// TestParseGIR_Enumerations pins the member table an enum-typed property is
+// set through: a SNGL string names a member, and the C identifier is what the
+// emitted call carries.
+func TestParseGIR_Enumerations(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(setterGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	e := reg.Enums["Orientation"]
+	if e == nil {
+		t.Fatal("Orientation enumeration not captured")
+	}
+	if e.CType != "GtkOrientation" {
+		t.Errorf("CType = %q; want GtkOrientation", e.CType)
+	}
+	if got := e.Members["vertical"]; got != "GTK_ORIENTATION_VERTICAL" {
+		t.Errorf("Members[vertical] = %q; want GTK_ORIENTATION_VERTICAL", got)
+	}
+}
+
+// arityGIR carries every setter and signal shape the fixed cgo call site and
+// the fixed C trampoline have to be held against: a one-value setter (the
+// only callable shape), a two-value one, a variadic one, a construct-only
+// property, and signals with arguments, with a return value, and with
+// neither.
+const arityGIR = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="TextBuffer" c:type="GtkTextBuffer">
+      <constructor name="new" c:identifier="gtk_text_buffer_new">
+        <parameters>
+          <parameter name="table" nullable="1">
+            <type name="TextTagTable" c:type="GtkTextTagTable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="text" writable="1" setter="set_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="modified" writable="1" setter="set_modified">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tag-table" writable="1" construct-only="1">
+        <type name="TextTagTable" c:type="GtkTextTagTable*"/>
+      </property>
+      <property name="target" writable="1" setter="set_target">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="set_text" c:identifier="gtk_text_buffer_set_text">
+        <parameters>
+          <instance-parameter name="buffer"><type name="TextBuffer" c:type="GtkTextBuffer*"/></instance-parameter>
+          <parameter name="text"><type name="utf8" c:type="const char*"/></parameter>
+          <parameter name="len"><type name="gint" c:type="int"/></parameter>
+        </parameters>
+      </method>
+      <method name="set_modified" c:identifier="gtk_text_buffer_set_modified">
+        <parameters>
+          <instance-parameter name="buffer"><type name="TextBuffer" c:type="GtkTextBuffer*"/></instance-parameter>
+          <parameter name="setting"><type name="gboolean" c:type="gboolean"/></parameter>
+        </parameters>
+      </method>
+      <method name="set_target" c:identifier="gtk_text_buffer_set_target" introspectable="0">
+        <parameters>
+          <instance-parameter name="buffer"><type name="TextBuffer" c:type="GtkTextBuffer*"/></instance-parameter>
+          <parameter name="format_string"><type name="utf8" c:type="const char*"/></parameter>
+          <parameter name="..."><varargs/></parameter>
+        </parameters>
+      </method>
+      <glib:signal name="changed">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </glib:signal>
+      <glib:signal name="insert-text">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <parameter name="location"><type name="TextIter" c:type="GtkTextIter*"/></parameter>
+          <parameter name="text"><type name="utf8" c:type="const char*"/></parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="close-request">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      </glib:signal>
+    </class>
+  </namespace>
+</repository>`
+
+func arityProps(t *testing.T, reg *gir.TypeRegistry) map[string]gir.Prop {
+	t.Helper()
+	cls := reg.ByCType["GtkTextBuffer"]
+	if cls == nil {
+		t.Fatal("GtkTextBuffer not captured")
+	}
+	out := map[string]gir.Prop{}
+	for _, p := range cls.Props {
+		out[p.Name] = p
+	}
+	return out
+}
+
+// TestParseGIR_SetterArity pins that only a setter taking exactly one value is
+// recorded. A cgo call site passes (receiver, value) and nothing else, so a
+// setter wanting two values or a variadic one would emit a call that does not
+// compile; the property has to fall through to the generic GObject path
+// instead. SetterValParams records what GIR said so the two reasons a
+// property has no setter stay distinguishable.
+func TestParseGIR_SetterArity(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(arityGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	props := arityProps(t, reg)
+	if got := props["modified"].Setter; got != "gtk_text_buffer_set_modified" {
+		t.Errorf("modified setter = %q; want gtk_text_buffer_set_modified", got)
+	}
+	if got := props["modified"].SetterValParams; got != 1 {
+		t.Errorf("modified setter value params = %d; want 1", got)
+	}
+	// Two values: gtk_text_buffer_set_text(buffer, text, len).
+	if got := props["text"].Setter; got != "" {
+		t.Errorf("text setter = %q; want none — the C function takes two values", got)
+	}
+	if got := props["text"].SetterValParams; got != 2 {
+		t.Errorf("text setter value params = %d; want 2", got)
+	}
+	// Variadic: cgo cannot call one at all, and <varargs/> counts as the
+	// second parameter.
+	if got := props["target"].Setter; got != "" {
+		t.Errorf("target setter = %q; want none — the C function is variadic", got)
+	}
+	if got := props["target"].SetterValParams; got != 2 {
+		t.Errorf("target setter value params = %d; want 2", got)
+	}
+}
+
+// TestParseGIR_ConstructOnly pins that GIR's construct-only flag reaches the
+// property. GObject refuses a post-construction write of one, so a consumer
+// that cannot pass it to g_object_new must not offer it at all.
+func TestParseGIR_ConstructOnly(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(arityGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	props := arityProps(t, reg)
+	if !props["tag-table"].ConstructOnly {
+		t.Error("tag-table is not marked construct-only")
+	}
+	if props["modified"].ConstructOnly {
+		t.Error("modified is marked construct-only; GIR says otherwise")
+	}
+}
+
+// TestParseGIR_SignalShape pins the arity and return type of each signal, and
+// Connectable as the single answer to whether the fixed (instance, user_data)
+// void trampoline is a correct callback for it.
+func TestParseGIR_SignalShape(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(arityGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	sigs := map[string]gir.Signal{}
+	for _, s := range reg.ByCType["GtkTextBuffer"].Signals {
+		sigs[s.Name] = s
+	}
+	if len(sigs) != 3 {
+		t.Fatalf("captured %d signals; want 3: %+v", len(sigs), sigs)
+	}
+	for _, tc := range []struct {
+		name        string
+		params      int
+		ret         string
+		connectable bool
+	}{
+		{"changed", 0, "none", true},
+		{"insert-text", 2, "none", false},
+		{"close-request", 0, "gboolean", false},
+	} {
+		got := sigs[tc.name]
+		if got.Params != tc.params || got.ReturnType != tc.ret {
+			t.Errorf("%s = %d param(s) returning %q; want %d, %q", tc.name, got.Params, got.ReturnType, tc.params, tc.ret)
+		}
+		if got.Connectable() != tc.connectable {
+			t.Errorf("%s Connectable() = %v; want %v", tc.name, got.Connectable(), tc.connectable)
+		}
+	}
+}
+
+// TestParseGIR_ConstructorParamCType pins that a constructor parameter keeps
+// the c:type GIR gave it. The trailing star is the only thing distinguishing a
+// pointer parameter, whose zero is nil, from an integer typedef of an equally
+// opaque name, whose zero is 0 — a caller cannot tell them apart from the GIR
+// name alone.
+func TestParseGIR_ConstructorParamCType(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(arityGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	ctor := reg.ByCType["GtkTextBuffer"].Constructors[0]
+	if len(ctor.Params) != 1 {
+		t.Fatalf("gtk_text_buffer_new has %d params; want 1", len(ctor.Params))
+	}
+	if got := ctor.Params[0].CType; got != "GtkTextTagTable*" {
+		t.Errorf("table param c:type = %q; want GtkTextTagTable*", got)
+	}
+	if got := ctor.Params[0].GIRType; got != "TextTagTable" {
+		t.Errorf("table param GIR type = %q; want TextTagTable", got)
+	}
+}

@@ -1,0 +1,61 @@
+# A `Style` field reaches CSS, and an enum member reaches it spelled the way
+# CSS spells it.
+#
+# Two bugs met here. The IR-enum arm that restored `display:flex` wrote the
+# member verbatim, so every multi-word member came out camelCase —
+# `display:inlineBlock`, `justify-content:spaceBetween` — turning a dropped
+# declaration into a wrong one. And seven declared fields had no prop→CSS
+# mapping at all and rendered as nothing, two of them added by the change that
+# needed them (docs/learn/tour.md styles with fontFamily, cursor and
+# borderLeft). internal/htmlutil's TestStyleFieldsAllReachCSS now enumerates
+# `Style`'s declared fields against the mapping so a new field cannot repeat it.
+
+sngl generate --platform html --lang none -o out style.sngl
+
+# A multi-word enum member is the CSS keyword, not the identifier.
+grep 'display:inline-block' out/index.html
+grep 'flex-direction:row-reverse' out/index.html
+grep 'justify-content:space-between' out/index.html
+grep 'border-style:dashed' out/index.html
+! grep 'inlineBlock' out/index.html
+! grep 'rowReverse' out/index.html
+! grep 'spaceBetween' out/index.html
+
+# The seven fields that had no mapping.
+grep 'min-width:120px' out/index.html
+grep 'font-family:Iosevka, monospace' out/index.html
+grep 'border-bottom:1px solid #ccc' out/index.html
+grep 'border-left:2px solid #000' out/index.html
+grep 'border-collapse:collapse' out/index.html
+grep 'cursor:pointer' out/index.html
+
+# The lowered path builds the element in JS, and a style struct is not a value
+# any DOM sink accepts: passed through it stringified to "[object Object]".
+grep 'setAttribute\("style", "cursor:pointer;display:inline-block"\)' out/index.html
+! grep 'setAttribute\("style", \{' out/index.html
+
+-- style.sngl --
+import . "sngl://std"
+
+component main {
+    var rows list<string> = ["a"]
+
+    window {
+        html.div(style = {
+            display = Display.inlineBlock,
+            flexDirection = FlexDirection.rowReverse,
+            justifyContent = Justification.spaceBetween,
+            alignItems = Alignment.stretch,
+            minWidth = 120,
+            fontFamily = "Iosevka, monospace",
+            borderBottom = "1px solid #ccc",
+            borderLeft = "2px solid #000",
+            borderCollapse = "collapse",
+            borderStyle = BorderStyle.dashed,
+            cursor = "pointer",
+        })
+        for r = rows {
+            html.span(textContent = r, style = { display = Display.inlineBlock, cursor = "pointer" })
+        }
+    }
+}

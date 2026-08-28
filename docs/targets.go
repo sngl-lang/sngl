@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -72,7 +73,7 @@ func Targets() TargetCatalog {
 	cat := TargetCatalog{
 		PlatformCapabilities: platformCapNames(),
 		LanguageCapabilities: languageCapNames(),
-		GlobalOptions:        optionsFromPackage(checker.StdlibDocs()),
+		GlobalOptions:        optionsForPackage("std"),
 	}
 
 	plats := codegen.Platforms()
@@ -89,7 +90,7 @@ func Targets() TargetCatalog {
 			Doc:          p.Description(),
 			Languages:    langs,
 			Capabilities: probePlatform(p),
-			Options:      optionsFromPackage(p.Package()),
+			Options:      optionsForPackage("platforms/" + name),
 		})
 	}
 
@@ -104,7 +105,7 @@ func Targets() TargetCatalog {
 			Name:         name,
 			Doc:          l.Description(),
 			Capabilities: probeLanguage(l),
-			Options:      optionsFromPackage(l.Package()),
+			Options:      optionsForPackage("languages/" + name),
 		})
 	}
 
@@ -202,34 +203,31 @@ func languageCapNames() []string {
 	return out
 }
 
-// optionsFromPackage extracts fields of a top-level `struct Options` from a
-// target's parsed .sngl source. Each field's type is formatted as source and
-// its doc string is pulled from the nearest comments: preceding line comments
-// immediately above the field, or a trailing comment on the same line as the
-// field. Returns nil if no Options struct is declared.
-func optionsFromPackage(pkgs []*ast.Document) []OptionDoc {
-	for _, d := range pkgs {
-		if d == nil {
+// optionsForPackage extracts the fields of sngl://<uri>'s #[options] struct.
+// Each field's type is formatted as source and its doc string is pulled from
+// the nearest comments: preceding line comments immediately above the field,
+// or a trailing comment on the same line. Returns nil if the package declares
+// no options schema.
+//
+// The mark is on the loaded IR, so the declaration is found there and the
+// parsed source is then read for the comments the IR does not carry.
+func optionsForPackage(uri string) []OptionDoc {
+	sd := checker.OptionsStruct(uri)
+	if sd == nil || sd.AST == nil {
+		return nil
+	}
+	for _, doc := range checker.PackageSource(uri) {
+		if doc == nil {
 			continue
 		}
-		if opts := extractOptionsStruct(d); opts != nil {
-			return opts
+		if slices.Contains(doc.Stmts, ast.Stmt(sd.AST)) {
+			return extractOptionsStruct(doc, sd.AST)
 		}
 	}
 	return nil
 }
 
-func extractOptionsStruct(doc *ast.Document) []OptionDoc {
-	var target *ast.StructDef
-	for _, s := range doc.Stmts {
-		if sd, ok := s.(*ast.StructDef); ok && sd.Name == "Options" {
-			target = sd
-			break
-		}
-	}
-	if target == nil {
-		return nil
-	}
+func extractOptionsStruct(doc *ast.Document, target *ast.StructDef) []OptionDoc {
 
 	// Collect comments by line. The parser emits comments inside a struct body
 	// as sibling Comment statements in the document (it doesn't attach them to

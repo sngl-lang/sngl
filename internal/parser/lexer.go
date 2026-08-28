@@ -65,11 +65,30 @@ func (l *lexer) advance() rune {
 }
 
 func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
+	if typ == ILLEGAL {
+		// encode() drops ILLEGAL from the stream the parser sees, so an
+		// ILLEGAL token with no lex error beside it is a failure nobody
+		// reports: the parse continues past the bad input and fails somewhere
+		// else, or succeeds. illegal() is the only way to build one.
+		panic("sngl/parser: ILLEGAL token built outside illegal(); the lex error would go unreported")
+	}
 	if typ != LINE_COMMENT && typ != BLOCK_COMMENT {
 		l.prevPrevTok = l.prevTok
 		l.prevTok = typ
 	}
 	return Token{Type: typ, Literal: lit, Line: line, Column: col}
+}
+
+// illegal records a positioned lex error and returns the ILLEGAL token for it.
+//
+// Both halves matter: encode() drops ILLEGAL tokens from the stream the parser
+// sees, so a token returned without the error is a failure nobody reports at
+// the place it happened -- an unterminated string was blamed on the first
+// string in the file, because the parse then ran to EOF.
+func (l *lexer) illegal(msg string, line, col int) Token {
+	l.errors = append(l.errors, fmt.Sprintf("%d:%d: %s", line, col, msg))
+	l.prevPrevTok, l.prevTok = l.prevTok, ILLEGAL
+	return Token{Type: ILLEGAL, Literal: msg, Line: line, Column: col}
 }
 
 // NextToken returns the next token from the source.
@@ -146,7 +165,7 @@ func (l *lexer) NextToken() Token {
 				}
 			}
 			if depth > 0 {
-				return l.tok(ILLEGAL, "unterminated block comment", startLine, startCol)
+				return l.illegal("unterminated block comment", startLine, startCol)
 			}
 			return l.tok(BLOCK_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
 		}
@@ -362,8 +381,7 @@ func (l *lexer) NextToken() Token {
 			}
 			return l.tok(PIPE, "|", startLine, startCol)
 		default:
-			l.errors = append(l.errors, fmt.Sprintf("%d:%d: unexpected character %q", startLine, startCol, string(ch)))
-			return l.tok(ILLEGAL, string(ch), startLine, startCol)
+			return l.illegal(fmt.Sprintf("unexpected character %q", string(ch)), startLine, startCol)
 		}
 	}
 }
@@ -576,9 +594,9 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 		l.advance()
 	}
 	if triple {
-		return l.tok(ILLEGAL, "unterminated triple-quoted string", startLine, startCol)
+		return l.illegal("unterminated triple-quoted string", startLine, startCol)
 	}
-	return l.tok(ILLEGAL, "unterminated string", startLine, startCol)
+	return l.illegal("unterminated string", startLine, startCol)
 }
 
 // scanCaseBodyContent scans a case body in an i18n plural/select placeholder.
@@ -658,7 +676,7 @@ func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) 
 		sb.WriteRune(ch)
 		l.advance()
 	}
-	return l.tok(ILLEGAL, "unterminated i18n case body", startLine, startCol)
+	return l.illegal("unterminated i18n case body", startLine, startCol)
 }
 
 func (l *lexer) scanTripleString(startLine, startCol int, i18n bool) Token {
@@ -680,7 +698,7 @@ func (l *lexer) scanRawString(startLine, startCol int) Token {
 		sb.WriteRune(ch)
 		l.advance()
 	}
-	return l.tok(ILLEGAL, "unterminated raw string", startLine, startCol)
+	return l.illegal("unterminated raw string", startLine, startCol)
 }
 
 func (l *lexer) scanHashToken(startLine, startCol int) Token {
@@ -692,7 +710,7 @@ func (l *lexer) scanHashToken(startLine, startCol int) Token {
 	}
 	name := string(l.input[start:l.pos])
 	if len(name) == 0 {
-		return l.tok(ILLEGAL, "#", startLine, startCol)
+		return l.illegal(`"#" names nothing: a color literal or an element reference follows it`, startLine, startCol)
 	}
 	// A single token for every `#…` form. Whether it is a color literal
 	// (#rrggbb / #rrggbbaa) or an element reference is decided downstream by

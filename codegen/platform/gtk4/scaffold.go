@@ -42,8 +42,11 @@ type templateData struct {
 	FunctionCode   string
 	Imports        map[string]bool
 	NeedsBoolToInt bool // emit boolToInt helper only when boolToGoInt was used
-	HasCanvas      bool // emit the cairo draw-func trampoline glue in callbacks.go
-	Wrapped        bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
+	// NeedsGObjectSet emits the g_object_set_property helpers, for the GTK
+	// properties that have no C setter of their own.
+	NeedsGObjectSet bool
+	HasCanvas       bool // emit the cairo draw-func trampoline glue in callbacks.go
+	Wrapped         bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 }
 
 type structData struct {

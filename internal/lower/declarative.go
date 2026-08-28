@@ -334,6 +334,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			h.Func.Name = handlerName
 			h.Func.LoweredFromTag = n.Name
 			h.Func.LoweredFromEvent = h.Name
+			h.Func.LoweredFromNode = id
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
 		}
@@ -380,11 +381,11 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 }
 
 // hasRealComponentBody reports whether comp carries SNGL-defined behavior
-// beyond a bare prop list. Native and empty-body wrappers (stdlib `text`,
-// `button`, platform-resolved components) return false: those are leaf
-// platform elements and are still lowered via CreateNode("name").
+// beyond a bare prop list. Empty-body wrappers (stdlib `text`, `button`, a
+// platform's declared primitives) return false: those are leaf platform
+// elements and are still lowered via CreateNode("name").
 func hasRealComponentBody(comp *ir.Component) bool {
-	if comp == nil || comp.Native != nil {
+	if comp == nil {
 		return false
 	}
 	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0

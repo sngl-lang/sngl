@@ -117,11 +117,29 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		cc.renderUserComponent(n)
 		return
 	}
-	if n.Component != nil {
-		cc.renderStdlibComposable(n)
+	if comp, composable := composeIntrinsic(n); comp != nil {
+		cc.renderIntrinsic(n, comp, composable)
 		return
 	}
-	cc.line("Text(\"[unknown: %s]\")", n.Name)
+	if n.Component != nil {
+		if cc.renderStdlibComposable(n) {
+			return
+		}
+		if !n.Component.Stdlib {
+			// A user component the optimizer eliminated — its body was empty,
+			// so there is no composable to call and nothing to draw. Lowering
+			// drops such a node now, so this is unreachable through a compile;
+			// it stays because the alternative below is a panic, and a panic is
+			// the wrong answer for a program that is merely empty.
+			return
+		}
+	}
+	// Every stdlib component either has an android override in
+	// codegen/platform/android or a body in renderStdlibComposable, so reaching
+	// here means the compiler lost track of a node — a compiler bug, not a
+	// program error. A panic reports it as one (and gives a fuzzer something
+	// to find); a rendered marker would ship the bug into the app instead.
+	panic(fmt.Sprintf("android: no composable for component %q (platform android has no override and no built-in body)", n.Name))
 }
 
 // emitInputHandlerCall lowers one @input/@change handler attached to
@@ -183,71 +201,14 @@ func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(cc.ctx.Pkg.Components, comp)
 }
 
-func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
+// renderStdlibComposable emits the components whose android body is still
+// written here rather than declared in codegen/platform/android. It reports
+// whether it recognised n; an unrecognised one is a missing override, which
+// renderNode panics on.
+func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 	style := cc.buildModifier(n)
 
 	switch n.Name {
-	case "vbox", "stack":
-		cc.line("Column(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "hbox":
-		cc.line("Row(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "scroll":
-		cc.line("Column(%s.verticalScroll(rememberScrollState())) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "text":
-		content := cc.resolveContent(n)
-		// Text takes a `modifier` param even though our style helper
-		// folds visual styling into TextStyle; the modifier carries
-		// the testTag, which is the only thing finders rely on.
-		mod := cc.buildModifier(n)
-		ts := cc.textStyle(n)
-		args := []string{"text = " + content, mod}
-		if ts != "" {
-			args = append(args, ts)
-		}
-		cc.line("Text(%s)", strings.Join(args, ", "))
-
-	case "button":
-		text := cc.resolveTextProp(n)
-		clickHandler := codegen.NodeHandler(n, "click")
-		if clickHandler != nil && clickHandler.Func != nil {
-			cc.line("Button(onClick = {")
-			cc.indent++
-			for _, stmt := range clickHandler.Func.Block {
-				for _, line := range cc.kc.EvalStmt(stmt) {
-					cc.line("%s", line)
-				}
-			}
-			cc.indent--
-			cc.line("}, %s) {", style)
-			cc.indent++
-			cc.line("Text(%s)", text)
-			cc.indent--
-			cc.line("}")
-		} else {
-			cc.line("Button(onClick = {}, %s) { Text(%s) }", style, text)
-		}
-
 	case "input":
 		// Resolve `value=...` for the controlled-input expression.
 		valueExpr := "\"\""
@@ -281,47 +242,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.line("modifier = %s", mod)
 		cc.indent--
 		cc.line(")")
-
-	case "textarea":
-		cc.line("OutlinedTextField(value = \"\", onValueChange = {}, %s, minLines = 3)", style)
-
-	case "checkbox":
-		label := cc.resolveTextProp(n)
-		changeHandler := codegen.NodeHandler(n, "change")
-		if changeHandler != nil && changeHandler.Func != nil {
-			cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-			cc.indent++
-			// Find the checked state variable
-			checkedVar := "false"
-			if len(changeHandler.Func.Block) > 0 {
-				if toggle, ok := changeHandler.Func.Block[0].(*ir.Toggle); ok {
-					checkedVar = cc.kc.EvalExpr(toggle.Target)
-				}
-			}
-			cc.line("Checkbox(checked = %s, onCheckedChange = {", checkedVar)
-			cc.indent++
-			for _, stmt := range changeHandler.Func.Block {
-				for _, line := range cc.kc.EvalStmt(stmt) {
-					cc.line("%s", line)
-				}
-			}
-			cc.indent--
-			cc.line("})")
-			cc.line("Text(%s)", label)
-			cc.indent--
-			cc.line("}")
-		} else {
-			cc.line("Checkbox(checked = false, onCheckedChange = {})")
-		}
-
-	case "toggle":
-		label := cc.resolveTextProp(n)
-		cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-		cc.indent++
-		cc.line("Text(%s)", label)
-		cc.line("Switch(checked = false, onCheckedChange = {})")
-		cc.indent--
-		cc.line("}")
 
 	case "select":
 		// Two-way `:value` dropdown. The binding pass synthesizes the
@@ -371,111 +291,20 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.indent--
 		cc.line("}")
 
-	case "radio":
-		// One-way `value` (the selected option) + @change. Each option is a
-		// RadioButton; selecting fires @change (no-op when unwired). direction
-		// "horizontal" lays them in a Row, otherwise a Column.
-		optionsExpr := "listOf<String>()"
-		if o := codegen.NodeProp(n, "options"); o != nil {
-			optionsExpr = cc.kc.EvalExpr(o)
-		}
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		container := "Column"
-		if d, ok := codegen.IRLiteralString(codegen.NodeProp(n, "direction")); ok && d == "horizontal" {
-			container = "Row"
-		}
-		cc.line("%s(%s) {", container, style)
-		cc.indent++
-		cc.line("%s.forEach { opt ->", optionsExpr)
-		cc.indent++
-		cc.line("Row(verticalAlignment = Alignment.CenterVertically) {")
-		cc.indent++
-		cc.line("RadioButton(selected = (%s == opt), onClick = {", valueExpr)
-		cc.indent++
-		emitInputHandlerCall(cc, n, "change", "opt")
-		cc.indent--
-		cc.line("})")
-		cc.line("Text(opt)")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-
 	case "progress":
+		// Compose's progress is 0..1, so the value is measured against max
+		// rather than passed through as if it already were a fraction. max
+		// defaults to 1, so a call site that gave only a value is unchanged.
 		if v := codegen.NodeProp(n, "value"); v != nil {
 			val := cc.kc.EvalExpr(v)
-			cc.line("LinearProgressIndicator(progress = { %s.toFloat() }, %s)", val, style)
+			frac := val + ".toFloat()"
+			if m := codegen.NodeProp(n, "max"); m != nil {
+				frac = "(" + val + " / " + cc.kc.EvalExpr(m) + ").toFloat()"
+			}
+			cc.line("LinearProgressIndicator(progress = { %s }, %s)", frac, style)
 		} else {
 			cc.line("LinearProgressIndicator(%s)", style)
 		}
-
-	case "spinner":
-		cc.line("CircularProgressIndicator(%s)", style)
-
-	case "divider":
-		cc.line("HorizontalDivider(%s)", style)
-
-	case "spacer":
-		cc.line("Spacer(%s)", style)
-
-	case "badge":
-		content := cc.resolveContent(n)
-		cc.line("Badge(%s) { Text(%s) }", style, content)
-
-	case "link":
-		text := cc.resolveTextProp(n)
-		cc.line("Text(%s, color = MaterialTheme.colorScheme.primary, %s)", text, cc.textStyle(n))
-
-	case "image":
-		cc.line("// TODO: Image composable")
-
-	case "card":
-		cc.line("Card(%s) {", style)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
-
-	case "modal":
-		openExpr := codegen.NodeProp(n, "open")
-		if openExpr != nil {
-			cond := cc.kc.EvalExpr(openExpr)
-			cc.line("if (%s) {", cond)
-			cc.indent++
-			cc.line("Dialog(onDismissRequest = {}) {")
-			cc.indent++
-			cc.line("Surface(shape = MaterialTheme.shapes.medium) {")
-			cc.indent++
-			cc.line("Column(modifier = Modifier.padding(16.dp)) {")
-			cc.indent++
-			for _, child := range n.Children {
-				cc.renderStmt(child)
-			}
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-			cc.indent--
-			cc.line("}")
-		}
-
-	case "tabs":
-		cc.line("TabRow(selectedTabIndex = 0) {")
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("}")
 
 	case "datepicker":
 		// One-way `value` (the date, a String on Android) + @change. Rendered
@@ -503,19 +332,9 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) {
 		cc.line(")")
 
 	default:
-		if len(n.Children) > 0 {
-			cc.line("Column(%s) {", style)
-			cc.indent++
-			for _, child := range n.Children {
-				cc.renderStmt(child)
-			}
-			cc.indent--
-			cc.line("}")
-		} else {
-			content := cc.resolveContent(n)
-			cc.line("Text(%s)", content)
-		}
+		return false
 	}
+	return true
 }
 
 func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
@@ -548,34 +367,23 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 
 // --- Helpers ---
 
-func (cc *irComposeContext) resolveContent(n *ir.NodeInst) string {
-	for _, name := range []string{"value", "text", "label", "content"} {
-		if v := codegen.NodeProp(n, name); v != nil {
-			return cc.kc.EvalExpr(v)
-		}
-	}
-	return `""`
-}
-
-func (cc *irComposeContext) resolveTextProp(n *ir.NodeInst) string {
-	for _, name := range []string{"text", "label", "value"} {
-		if v := codegen.NodeProp(n, name); v != nil {
-			return cc.kc.EvalExpr(v)
-		}
-	}
-	return `""`
-}
-
 // buildModifierRaw returns just the modifier expression (e.g., "Modifier.padding(16.dp)")
 // without the "modifier = " prefix. A user-authored #id (not the
 // synthetic __nN ids from passReactivity) attaches a `.testTag("<id>")`
 // so Compose UI tests can locate the node via `onNodeWithTag`.
 func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
+	return cc.modifierRaw(n, "style")
+}
+
+// modifierRaw is buildModifierRaw over a named style prop: a declared
+// intrinsic names its props after the Compose arguments it emits, so the
+// Style behind its Modifier is not called "style".
+func (cc *irComposeContext) modifierRaw(n *ir.NodeInst, styleProp string) string {
 	parts := []string{"Modifier"}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("testTag(%q)", id))
 	}
-	for _, sf := range codegen.NodeStyleFields(n) {
+	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
@@ -601,8 +409,8 @@ func userTestTag(n *ir.NodeInst) string {
 	return n.ID
 }
 
-func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
-	styleFields := codegen.NodeStyleFields(n)
+func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {
+	styleFields := codegen.NodeStyleFieldsOf(n, styleProp)
 	if styleFields == nil {
 		return ""
 	}
@@ -630,7 +438,7 @@ func (cc *irComposeContext) textStyle(n *ir.NodeInst) string {
 	if len(styleParts) == 0 {
 		return ""
 	}
-	return "style = TextStyle(" + strings.Join(styleParts, ", ") + ")"
+	return "TextStyle(" + strings.Join(styleParts, ", ") + ")"
 }
 
 // composeColorExpr converts an evaluated SNGL color value to a Compose Color
@@ -712,4 +520,197 @@ func composeModifier(prop, val string) string {
 		return ""
 	}
 	return ""
+}
+
+// --- Declared Compose intrinsics ---
+
+// intrinsicNS prefixes every intrinsic id this platform answers to, so a
+// primitive declared here can never collide with a stdlib intrinsic or with
+// another platform's.
+const intrinsicNS = "android:"
+
+// composeIntrinsic returns the composable name behind n when n is a component
+// marked #[intrinsic] in this platform's namespace. A stdlib component whose
+// android override is written in the extension form is inlined into its caller
+// at lower time, so what reaches codegen is the intrinsic the override named.
+func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
+	if n.Component == nil {
+		return nil, ""
+	}
+	name, ok := strings.CutPrefix(n.Component.Intrinsic, intrinsicNS)
+	if !ok || name == "" {
+		return nil, ""
+	}
+	return n.Component, name
+}
+
+// renderIntrinsic emits a declared composable from its declaration:
+// `composable` is the intrinsic id past the namespace, each declared prop is
+// the Compose argument of that name in declaration order, and children are a
+// trailing lambda. A func-typed prop is a callback, emitted as the Kotlin
+// lambda Compose takes there.
+//
+// Three prop names are this emitter's own — `modifier` builds the Modifier
+// chain from a Style, `chain` appends further Modifier calls to it, and `args`
+// is arguments already spelled in Kotlin — because none of the three is a
+// value Compose takes as written.
+func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
+	var args []string
+	for _, p := range comp.Props {
+		switch p.Name {
+		case "chain":
+		case "args":
+			args = append(args, irStringList(codegen.NodeProp(n, p.Name))...)
+		case "modifier":
+			args = append(args, "modifier = "+cc.intrinsicModifier(n))
+		default:
+			if isStyleType(p.Type) {
+				if ts := cc.textStyleExpr(n, p.Name); ts != "" {
+					args = append(args, p.Name+" = "+ts)
+				}
+				continue
+			}
+			v := codegen.NodeProp(n, p.Name)
+			if v == nil {
+				continue
+			}
+			if lam, ok := v.(*ir.Lambda); ok {
+				args = append(args, cc.lambdaArg(p.Name, lam))
+				continue
+			}
+			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
+		}
+	}
+	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
+	if comp.ChildrenType == nil {
+		cc.line("%s", call)
+		return
+	}
+	cc.line("%s {", call)
+	cc.indent++
+	for _, child := range n.Children {
+		cc.renderStmt(child)
+	}
+	cc.indent--
+	cc.line("}")
+}
+
+// intrinsicModifier builds the Modifier chain for a declared composable:
+// the styling and testTag every node gets, then the composable's own
+// `chain` entries, which are Modifier calls spelled in Kotlin because
+// Style has no field that names one.
+func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst) string {
+	var mod strings.Builder
+	mod.WriteString(cc.modifierRaw(n, "modifier"))
+	for _, call := range irStringList(codegen.NodeProp(n, "chain")) {
+		mod.WriteString("." + call)
+	}
+	return mod.String()
+}
+
+// rawCallbackValue names the value Compose hands a callback, in the emitted
+// Kotlin. It is a generated local: the declaration names the SNGL event built
+// from it, not the framework's own argument.
+const rawCallbackValue = "newValue"
+
+// lambdaArg emits a func-typed prop as the Kotlin lambda Compose takes in its
+// place. Compose spells a callback as an argument, so the body is written where
+// the argument goes and the whole call stays one expression even when the body
+// spans lines.
+//
+// A parameter is declared only where the body reads it: a Compose callback
+// lambda may leave the value it is passed unnamed, and every declaration here
+// is one the stdlib override wrote for whichever handlers a call site turned
+// out to supply.
+func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
+	if lam.Func == nil || len(lam.Func.Block) == 0 {
+		return name + " = {}"
+	}
+	kc := cc.kc
+	for _, p := range lam.Func.Params {
+		kc = kc.WithLocal(p.Name)
+	}
+	saved := cc.kc
+	cc.kc = kc
+	var body []string
+	for _, stmt := range lam.Func.Block {
+		body = append(body, cc.kc.EvalStmt(stmt)...)
+	}
+	cc.kc = saved
+	if len(body) == 0 {
+		return name + " = {}"
+	}
+
+	var params, prologue []string
+	for _, p := range lam.Func.Params {
+		if !readsParam(lam.Func.Block, p) {
+			continue
+		}
+		// A parameter declared as an event payload is the SNGL event, while
+		// Compose passes the changed value: the event is built from it here,
+		// the only place both are in view. SnglInputEvent is the holder this
+		// platform emits (compiler_ir.go).
+		if p.Type != nil && p.Type.Kind == ir.TypeStruct {
+			params = append(params, rawCallbackValue)
+			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
+			continue
+		}
+		params = append(params, p.Name)
+	}
+
+	outer := strings.Repeat("    ", cc.indent)
+	var b strings.Builder
+	b.WriteString(name + " = {")
+	if len(params) > 0 {
+		b.WriteString(" " + strings.Join(params, ", ") + " ->")
+	}
+	for _, line := range append(prologue, body...) {
+		b.WriteString("\n" + outer + "    " + line)
+	}
+	b.WriteString("\n" + outer + "}")
+	return b.String()
+}
+
+// readsParam reports whether stmts reference p. The parameter is declared only
+// then: what a callback's lambda receives is named for the body's sake, and a
+// name declared over an unused value would shadow whatever else carries it —
+// a call site binding a state var of the same name is exactly that case.
+func readsParam(stmts []ir.Stmt, p *ir.Param) bool {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == p {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// isStyleType reports whether t is a struct named Style — in practice the
+// stdlib's, which is the prop type
+// the TextStyle mapping is keyed on, since Compose spells typography as an
+// argument of its own rather than as a Modifier.
+func isStyleType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Name == "Style"
+}
+
+// irStringList reads a list-of-string-literal expression. A non-literal
+// element is skipped: the value is Kotlin source, so nothing else could be
+// emitted for it.
+func irStringList(e ir.Expr) []string {
+	lit, ok := e.(*ir.ListLit)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(lit.Elems))
+	for _, el := range lit.Elems {
+		if s, ok := codegen.IRLiteralString(el); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }

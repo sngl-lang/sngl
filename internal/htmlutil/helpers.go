@@ -17,6 +17,14 @@ func ExprToStaticValueIR(e ir.Expr) string {
 		}
 		return ""
 	}
+	// An enum member is static: `display` is typed `Display`, so `"flex"`
+	// reaches here as the member rather than as the string that was written.
+	// CSS spells a multi-word keyword kebab-case and SNGL spells an
+	// identifier camelCase, so `inlineBlock` is `inline-block` — the member
+	// is the value, not the text of the value.
+	if id, ok := e.(*ir.Ident); ok && id.Member != "" {
+		return kebabCase(id.Member)
+	}
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
 		return ""
@@ -105,4 +113,23 @@ func irLiteralStaticValue(lit *ir.Literal) string {
 		return ""
 	}
 	return lit.Raw
+}
+
+// kebabCase rewrites a camelCase identifier as the hyphenated keyword CSS
+// spells it with: `rowReverse` → `row-reverse`. A single-word member is
+// unchanged, which is every member of every enum CSS did not need two words
+// for.
+func kebabCase(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 4)
+	for i, r := range s {
+		if r >= 'A' && r <= 'Z' {
+			if i > 0 {
+				b.WriteByte('-')
+			}
+			r += 'a' - 'A'
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }

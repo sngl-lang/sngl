@@ -3,7 +3,6 @@ package fyne
 import (
 	"context"
 	"fmt"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -172,7 +171,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // returns it, the Go import paths it uses, and the cgo preamble (if any). The
 // caller feeds these to a FileEmitter, which owns package + import block +
 // gofmt + line directives.
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, string, error) {
+// The aliases returned alongside the imports are the selectors widget
+// packages must arrive under: the file emitter is a context of its own, so an
+// alias forced during translation does not reach it.
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -187,8 +189,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var entrySync []entrySyncRec
-	blueprintImports := map[string]bool{}
-	addBlueprintImport := func(p string) { blueprintImports[p] = true }
+	widgetImports := map[string]bool{}
+	addWidgetImport := func(p string) { widgetImports[p] = true }
 	singleRoot := true
 	var endLabel, endContainer int
 
@@ -201,6 +203,27 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	// windowCodes holds pre-rendered per-window build methods for multi-window.
 	var windowCodes []string
+
+	// Pre-scan every CreateNode: node-id → the widget Spec its instantiation
+	// carried. Package-wide because a promoted handler references nodes
+	// created in a sibling slot Func, so per-Func discovery would not see
+	// them.
+	allFuncs := ctx.AllFuncs()
+	for _, w := range wins {
+		// Skip synthetic windows: codegen.Windows() returns a synthetic
+		// WindowCtx with main.Funcs duplicated when no explicit window
+		// exists. Real windows have a non-nil Window pointer; their Funcs
+		// hold lowering-promoted node handlers attached to that window.
+		if w.Window == nil {
+			continue
+		}
+		allFuncs = append(allFuncs, w.Funcs...)
+	}
+	allFuncs = append(allFuncs, promotedHandlersInNonMainComponents(ctx, allFuncs)...)
+	nodeSpecs, err := collectNodes(ctx.Pkg, allFuncs)
+	if err != nil {
+		return "", nil, nil, "", err
+	}
 
 	// Pre-scan canvas elements: flattened `lower.CreateNode("canvas")`
 	// LocalVars carry a draw func + dimensions threaded through declarative
@@ -215,9 +238,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// via WalkLowered + fyneTranslator (matches slot-Func emission).
 		if len(wins) > 0 && len(wins[0].Body) > 0 {
 			bodyStmts := wins[0].Body
-			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addBlueprintImport).withLocalRefs(mainScopeLocalRefs(ctx))
+			}, addWidgetImport).withLocalRefs(mainScopeLocalRefs(ctx))
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
@@ -263,9 +286,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		for _, w := range wins {
 			buildFn := windowBuildFunc(w.Name)
 			var winBuf strings.Builder
-			tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addBlueprintImport).withLocalRefs(w.Window.LocalRefs)
+			}, addWidgetImport).withLocalRefs(w.Window.LocalRefs)
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
 			for _, stmt := range body {
@@ -305,7 +328,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
-			cc, ctx, gc, info, windowNames, endLabel, endContainer, addBlueprintImport,
+			cc, ctx, gc, info, windowNames, endLabel, endContainer, nodeSpecs, addWidgetImport,
 		)
 		componentCodes = append(componentCodes, code)
 		widgetFields = append(widgetFields, compFields...)
@@ -346,36 +369,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		})
 	}
 
-	// User functions. Includes pkg + main component funcs plus any
-	// per-window Funcs (declarative lowering promotes node-attached
-	// handlers into the surrounding Window.Funcs slice when a Window
-	// statement wraps the body).
-	allFuncs := ctx.AllFuncs()
-	for _, w := range wins {
-		// Skip synthetic windows: codegen.Windows() returns a synthetic
-		// WindowCtx with main.Funcs duplicated when no explicit window
-		// exists. Real windows have a non-nil Window pointer; their Funcs
-		// hold lowering-promoted node handlers attached to that window.
-		if w.Window == nil {
-			continue
-		}
-		allFuncs = append(allFuncs, w.Funcs...)
-	}
-
-	// Pre-scan: harvest (nodeID → tag) from every CreateNode call across
-	// synthesized slot Funcs. Promoted handlers reference nodes created
-	// in slot Funcs (e.g. an @input on __n0 created in __renderSlot0), so
-	// the handler's translator needs the full map up-front rather than
-	// the per-Func discovery that OnCreateNode does for slot bodies.
-	nodeTags := collectNodeTags(ctx.Pkg, allFuncs)
-
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
 		if cm := canvasByFunc[fn]; cm != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc, addBlueprintImport)
+			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc, nodeSpecs, addWidgetImport)
 			continue
 		}
 		// A promoted node handler (LoweredFromTag set) routes to
@@ -383,11 +383,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// writeback handler is both. Only genuine render/slot funcs (no
 		// LoweredFromTag) take the slot path.
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeTags, addBlueprintImport, canvasByFunc)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, addBlueprintImport, canvasByFunc)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -400,11 +400,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// rewrite and emits raw, unqualified `__n0.Value = …` that won't compile.
 	var timerDatas []timerData
 	for _, t := range info.Timers {
-		tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-		}, addBlueprintImport).withLocalRefs(t.LocalRefs)
+		}, addWidgetImport).withLocalRefs(t.LocalRefs)
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
-		maps.Copy(tr.idTags, nodeTags)
 		bodyStmts := codegen.WalkLowered(context.Background(), t.Body, tr)
 		var bodyBuf strings.Builder
 		for _, stmt := range bodyStmts {
@@ -421,7 +420,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	// --- Phase 3: Build template data and render ---
-	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, blueprintImports, funcBuf.String(), gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
 		// The canvas stdlib structs (Color/CanvasStyle/PathCmd) are package-scope
 		// and read by the synthesized draw funcs, so emitting them alongside the
@@ -430,7 +429,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 	}
 	if err != nil {
-		return "", nil, "", err
+		return "", nil, nil, "", err
 	}
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
@@ -456,7 +455,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	// Imports: structural ones tracked on td.Imports (go:// natives, blueprint
+	// Imports: structural ones tracked on td.Imports (go:// natives, widget
 	// paths, the Main entrypoint, lang helpers) unioned with everything the Go
 	// translator and emitFyneModel required on gc (framework packages, "math"
 	// for a float intrinsic, …).
@@ -465,10 +464,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		imports = append(imports, p)
 	}
 	imports = append(imports, gc.Imports()...)
-	return b.String(), imports, td.CgoPreamble, nil
+	return b.String(), imports, assignedAliases(gc), td.CgoPreamble, nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, blueprintImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
+func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -478,7 +477,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		FunctionCode: functionCode,
 	}
 
-	// Structural imports: native go:// imports, blueprint-declared paths,
+	// Structural imports: native go:// imports, widget constructor/type paths,
 	// the Main-only entrypoint packages, lang helpers, and conditional
 	// stdlib packages ("time" for time-typed vars, timers, or toasts).
 	// Framework/std dynamic imports are recorded at emit sites (emitFyneModel
@@ -491,7 +490,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for _, p := range info.gc.Imports() {
 		td.Imports[p] = true
 	}
-	for p := range blueprintImports {
+	for p := range widgetImports {
 		td.Imports[p] = true
 	}
 
@@ -695,6 +694,7 @@ func renderIRComponentMethod(
 	info *irAnalysis,
 	windowNames map[string]bool,
 	startLabel, startContainer int,
+	specs map[string]*fyneSpec,
 	importSink func(string),
 ) (code string, fields []irWidgetField, nextLabel, nextContainer int) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
@@ -717,7 +717,7 @@ func renderIRComponentMethod(
 	}
 
 	var compFields []irWidgetField
-	tr := newFyneTranslator(compGC, platformBlueprints(), func(name, goType string) {
+	tr := newFyneTranslator(compGC, specs, func(name, goType string) {
 		compFields = append(compFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(cc.Component.LocalRefs)
 
@@ -823,16 +823,54 @@ func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	return nil
 }
 
-func extractIRAssignTarget(stmts []ir.Stmt) string {
+// extractEventBindTarget returns the variable the synthesized two-way bind
+// writes, or "" when stmts does not begin with one.
+//
+// passPropBindings opens a bound node's handler with `<var> = <event>.<field>`.
+// A Fyne callback receives the unwrapped value rather than the SNGL event
+// struct, so the emitter replaces that statement with a read of the callback's
+// own parameter — which means it has to be certain it is looking at that
+// statement and not at the first line the user wrote.
+//
+// Recognising "an assignment" was not certain enough: a handler whose body
+// merely began with one had that line replaced and silently dropped. The bind
+// is identified by its whole shape instead — a plain assignment to a name,
+// reading a field off one of the handler's own parameters.
+func extractEventBindTarget(stmts []ir.Stmt, params []*ir.Param) string {
 	if len(stmts) == 0 {
 		return ""
 	}
-	if assign, ok := stmts[0].(*ir.Assign); ok {
-		if ident, ok := assign.Target.(*ir.Ident); ok {
-			return ident.Name
+	assign, ok := stmts[0].(*ir.Assign)
+	if !ok || assign.Op != ast.AssignSet {
+		return ""
+	}
+	target, ok := assign.Target.(*ir.Ident)
+	if !ok {
+		return ""
+	}
+	sel, ok := assign.Value.(*ir.Select)
+	if !ok || !isParamRef(sel.Operand, params) {
+		return ""
+	}
+	return target.Name
+}
+
+// isParamRef reports whether e reads one of params. Sym is the reliable answer;
+// the name is the fallback for an ident a pass rebuilt without re-resolving it.
+func isParamRef(e ir.Expr, params []*ir.Param) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	for _, p := range params {
+		if p == nil {
+			continue
+		}
+		if id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name) {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
 func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) []string {
@@ -877,21 +915,63 @@ func windowPascal(name string) string {
 func windowBuildFunc(name string) string { return "buildWindow" + windowPascal(name) }
 func windowBoxField(name string) string  { return "window" + windowPascal(name) + "Box" }
 
-// collectNodeTags walks every Func looking for `LocalVar __nX = lower.CreateNode("tag")`
-// pairs and returns a node-id → tag map. The lower pass emits these
-// inside __renderSlotN bodies; promoted node-attached handlers need
-// the map to resolve element refs in reactivity splices to their
-// blueprint binding even though those handlers live in separate Funcs.
-func collectNodeTags(pkg *ir.Package, funcs []*ir.Func) map[string]string {
-	out := map[string]string{}
+// promotedHandlersInNonMainComponents returns the node-attached event handlers
+// that lowering promoted to Funcs on a component other than the app root.
+//
+// ctx.AllFuncs() deliberately covers only pkg-level and main-component funcs,
+// and a window's promoted handlers are collected from its own Funcs slice. A
+// component that is neither has no other route into the emit loop, so its
+// handlers would be attached (`w.OnTapped = m.h`) with no method of that name
+// emitted. Only promoted handlers are added: a nested component *method* is
+// registered in pkg.Funcs as well and is already emitted from there.
+func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Func) []*ir.Func {
+	seen := make(map[*ir.Func]bool, len(have))
+	for _, fn := range have {
+		seen[fn] = true
+	}
+	var out []*ir.Func
+	for _, cc := range ctx.NonMainComponents() {
+		for _, fn := range cc.Component.Funcs {
+			if fn == nil || fn.LoweredFromTag == "" || seen[fn] {
+				continue
+			}
+			seen[fn] = true
+			out = append(out, fn)
+		}
+	}
+	return out
+}
+
+// collectNodes walks pkg and every Func looking for
+// `LocalVar __nX = lower.CreateNode("tag")` and returns node-id → the widget
+// Spec that instantiation carried.
+//
+// The map is keyed by node id, not by tag, because a tag now names one of the
+// three primitives rather than a widget: every Label in the program lowers to
+// `CreateNode("Widget")`, and what makes one a Label is the Spec record its
+// own `spec` prop holds.
+//
+// It is built package-wide because a promoted node-attached handler, and the
+// reactivity splices inside it, reference nodes created in a sibling Func.
+//
+// A node whose component is not a fyne primitive is absent, and the translator
+// emits nothing for it. One that *is* a primitive but carries no decodable
+// Spec is an error rather than an absence: skipping it would drop the widget
+// and leave the AppendChild naming it behind — issue #120's shape, a
+// successful build emitting Go that does not compile.
+func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, error) {
+	specs := map[string]*fyneSpec{}
+	var firstErr error
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
-		for _, s := range stmts {
+		for i, s := range stmts {
 			switch n := s.(type) {
 			case *ir.LocalVar:
 				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
-						out[n.Name] = lit.Raw
+						if err := harvestSpec(specs, n, lit.Raw, stmts[i+1:]); err != nil && firstErr == nil {
+							firstErr = err
+						}
 					}
 				}
 			case *ir.If:
@@ -911,9 +991,9 @@ func collectNodeTags(pkg *ir.Package, funcs []*ir.Func) map[string]string {
 			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 				// No CreateNode call to harvest.
 			case *ir.ContextProvider:
-				panic(fmt.Sprintf("fyne.collectNodeTags: ContextProvider should be lowered: %#v", n))
+				panic(fmt.Sprintf("fyne.collectNodes: ContextProvider should be lowered: %#v", n))
 			default:
-				panic(fmt.Sprintf("fyne.collectNodeTags: unhandled ir.Stmt %T", n))
+				panic(fmt.Sprintf("fyne.collectNodes: unhandled ir.Stmt %T", n))
 			}
 		}
 	}
@@ -931,59 +1011,99 @@ func collectNodeTags(pkg *ir.Package, funcs []*ir.Func) map[string]string {
 			walk(w.Body)
 		}
 	}
-	return out
+	return specs, firstErr
+}
+
+// harvestSpec decodes the Spec for one created node. rest is what follows the
+// CreateNode in the same statement list: lowering emits the node's prop
+// assignments there and nowhere else, so it is both where the `spec` record is
+// found and the only place a constructor-argument prop's expression is known
+// to be in scope.
+func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest []ir.Stmt) error {
+	if lv.Type == nil || lv.Type.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := lv.Type.Decl.(*ir.Component)
+	if !ok || fynePrimitive(comp) == "" {
+		return nil
+	}
+	props := map[string]ir.Expr{}
+	for _, s := range rest {
+		asn, ok := s.(*ir.Assign)
+		if !ok {
+			break
+		}
+		sel, ok := asn.Target.(*ir.Select)
+		if !ok {
+			break
+		}
+		id, ok := sel.Operand.(*ir.Ident)
+		if !ok || !id.IsElementRef || id.Name != lv.Name {
+			break
+		}
+		props[sel.Field] = asn.Value
+	}
+	sp, err := specFromProps(tag, props)
+	if err != nil {
+		return err
+	}
+	specs[lv.Name] = sp
+	return nil
 }
 
 // emitIRPromotedHandler emits a node-attached event handler that the
-// lower pass promoted to a top-level Func. The blueprint binding for
-// (LoweredFromTag, LoweredFromEvent) dictates the Go signature (e.g.
+// lower pass promoted to a top-level Func. The Handler record for
+// LoweredFromEvent on the node's Spec dictates the Go signature (e.g.
 // fyne's Entry.OnChanged is `func(s string)`, not `func(e InputEvent)`).
 // The first stmt of the handler body — the user's `var = e.<field>`
-// two-way bind — is rewritten to `m.<var> = <bindParam>`; subsequent
+// two-way bind — is rewritten to `m.<var> = <param>`; subsequent
 // stmts (reactive splices injected by passReactivity) flow through
 // the same WalkLowered + translator pipeline as slot bodies so they
 // pick up widget-setter rewrites via OnPropAssign.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeTags map[string]string, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
-	bp := platformBlueprints()[fn.LoweredFromTag]
-	var binding *bindMeta
-	if bp != nil {
-		for i := range bp.Bindings {
-			if bp.Bindings[i].matchesEvent(fn.LoweredFromEvent) {
-				binding = &bp.Bindings[i]
-				break
-			}
+//
+// The node is found by LoweredFromNode rather than LoweredFromTag: a tag
+// names one of three primitives, so it says which children contract the
+// widget has and nothing about its callbacks.
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+	var binding fyneHandler
+	if sp, ok := nodeSpecs[fn.LoweredFromNode]; ok {
+		binding = sp.Handlers[fn.LoweredFromEvent]
+	}
+
+	// One parse, shared with the Spec decode that validated it -- two
+	// readings of one signature is how a parameter got dropped from a
+	// signature the decoder had just accepted.
+	params := fn.Params
+	if binding.Signature != "" {
+		parsed, err := signatureParams("", fn.LoweredFromEvent, binding.Signature)
+		if err != nil {
+			// specFromProps rejected this already; reaching here means the two
+			// disagree, which is a bug in this package rather than in the Spec.
+			panic("fyne: " + err.Error())
 		}
+		params = parsed
 	}
 
-	var params []*ir.Param
-	if binding != nil && binding.Signature != "" {
-		params = parseSignatureParams(binding.Signature)
-	} else {
-		params = fn.Params
-	}
-
-	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
-	// Pre-populate idTags so OnPropAssign in reactivity splices can find
-	// the binding for nodes created in sibling slot Funcs.
-	maps.Copy(tr.idTags, nodeTags)
 
 	stmts := fn.Block
 
 	var prelude []ir.Stmt
-	if binding != nil && binding.BindParam != "" {
-		// Match view_ir.go's old declarative path: the first stmt is the
-		// synthesized `var = e.<field>` two-way bind — re-emit as a direct
-		// `m.<var> = <bindParam>` since the closure exposes the unwrapped
-		// fyne value.
-		bindVar := extractIRAssignTarget(stmts)
+	if binding.Param != "" {
+		// The synthesized `var = e.<field>` two-way bind, when the handler
+		// opens with one, is re-emitted as a direct `m.<var> = <param>` since
+		// the closure exposes the unwrapped fyne value. fn.Params is the SNGL
+		// signature the bind was written against, not the Fyne one that
+		// replaced it above.
+		bindVar := extractEventBindTarget(stmts, fn.Params)
 		if bindVar != "" {
 			prelude = []ir.Stmt{&ir.Assign{
 				Target: &ir.Ident{Name: bindVar},
 				Op:     ast.AssignSet,
-				Value:  &ir.Ident{Name: binding.BindParam},
+				Value:  &ir.Ident{Name: binding.Param},
 			}}
 			stmts = stmts[1:]
 		}
@@ -1005,41 +1125,14 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	b.WriteByte('\n')
 }
 
-// parseSignatureParams converts a binding signature like "func(s string)"
-// into IR params. Each comma-separated token is split on the first space
-// into "name" / "type"; the type is preserved as a TypeDyn with Meta set
-// so IRTypeToGo round-trips it as a raw Go type. Returns nil for an
-// empty parameter list.
-func parseSignatureParams(sig string) []*ir.Param {
-	sig = strings.TrimPrefix(sig, "func")
-	sig = strings.TrimPrefix(strings.TrimSuffix(sig, ")"), "(")
-	if strings.TrimSpace(sig) == "" {
-		return nil
-	}
-	parts := strings.Split(sig, ",")
-	out := make([]*ir.Param, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		tokens := strings.SplitN(p, " ", 2)
-		if len(tokens) != 2 {
-			continue
-		}
-		out = append(out, &ir.Param{
-			Name: strings.TrimSpace(tokens[0]),
-			Type: &ir.Type{Kind: ir.TypeDyn, Meta: strings.TrimSpace(tokens[1])},
-		})
-	}
-	return out
-}
-
 // emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
 // Func as a Model method. The body is a mix of plain Go statements
 // (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
 // codegen.WalkLowered routes intrinsic shapes through fyneTranslator
 // into ir.Stmt fragments; we then feed them through gc.EvalStmt at
 // the source-emission boundary.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
-	tr := newFyneTranslator(gc, platformBlueprints(), func(name, goType string) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(fn.LocalRefs)
 	tr.canvasByFunc = canvasByFunc
@@ -1097,4 +1190,19 @@ func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, window
 	for _, code := range windowCodes {
 		b.WriteString(code)
 	}
+}
+
+// assignedAliases is the alias every import must arrive under: whatever the
+// translation context assigned as it registered them. Read from the context
+// rather than from the Specs because the context is what de-conflicts two
+// packages wanting one name, and because its import order is the walk order
+// -- so the result is the same on every run of a build.
+func assignedAliases(gc *golang.GoIRContext) map[string]string {
+	out := map[string]string{}
+	for _, p := range gc.Imports() {
+		if a := gc.ForcedAlias(p); a != "" {
+			out[p] = a
+		}
+	}
+	return out
 }

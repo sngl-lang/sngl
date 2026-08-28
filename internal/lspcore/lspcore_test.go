@@ -1,6 +1,7 @@
 package lspcore_test
 
 import (
+	"slices"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -271,11 +272,11 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 	}
 }
 
-// The editor checks source the compiler has not run the macro pass over, so
-// the checker meets the attribute wrapper itself. A switch over statements
-// that reads the wrapper matches nothing: the declaration is never registered
-// and every use of it is reported as undefined — a file that builds, underlined
-// in red.
+// The editor takes the same route into the checker every other caller does,
+// marks included. While a marked declaration was a wrapper around itself, a
+// switch over statements matched nothing: the declaration was never registered
+// and every use of it was reported as undefined — a file that builds,
+// underlined in red.
 func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
 	content := `import . "sngl://std"
 
@@ -424,5 +425,25 @@ func TestExtractOutputPlatform(t *testing.T) {
 	}
 	for _, tt := range tests {
 		_ = tt
+	}
+}
+
+// A wildcard prop is not a completion. The checker rejects binding it under its
+// own name when a name its pattern covers is bound on the same call, and
+// completion cannot tell the two cases apart — it has one parsed document and
+// no checker — so it must not offer the name at all.
+func TestPropListCompletions_OmitsWildcardProp(t *testing.T) {
+	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map<string, string>,\n) {\n  text(value = label)\n}\ncomponent main {\n  window {\n    attrs()\n  }\n}\n"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	items := lspcore.PropListCompletions(content, doc, 9, 11)
+	var labels []string
+	for _, it := range items {
+		labels = append(labels, it.Label)
+	}
+	if !slices.Contains(labels, "label") {
+		t.Fatalf("expected the declared prop \"label\" among %v", labels)
+	}
+	if slices.Contains(labels, "data") {
+		t.Errorf("wildcard prop \"data\" offered as a completion: %v", labels)
 	}
 }

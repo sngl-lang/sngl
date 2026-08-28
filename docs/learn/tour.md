@@ -528,7 +528,7 @@ component main {
 The `import` statement pulls in code from outside the current file. A bare path names another directory inside your project (`import "widgets"`); everything else is addressed by scheme:
 
 - `import . "sngl://std"` — a package of the SNGL library. This is the one every lesson here opens with: the components, types and events an app is built from. `sngl://draw` holds the canvas and its shapes. Only `sngl://builtin` is in scope without being imported.
-- `import "platform://html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
+- `import "sngl://platforms/html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
 - `import "go://go/ast"` — a Go package; its types and pure functions become usable in SNGL. Non-pure calls compile into the Go target.
 - `import "file://public"` — a directory of static files; referenced paths are bundled into the build output.
 
@@ -538,7 +538,7 @@ The playground compiles to HTML, so this lesson imports the `html` platform and 
 
 ```sngl
 import . "sngl://std"
-import "platform://html"
+import "sngl://platforms/html"
 
 component main {
     vbox(style={gap = 6, padding = 16}) {
@@ -556,7 +556,7 @@ Aliases are purely local — the target package still owns its own name. Use the
 
 ```sngl
 import . "sngl://std"
-import h "platform://html"
+import h "sngl://platforms/html"
 
 component main {
     vbox(style={gap = 8, padding = 16}) {
@@ -585,7 +585,7 @@ Click a row to see the HTML block's interactivity. Then swap the `platform html 
 
 ```sngl
 import . "sngl://std"
-import "platform://html"
+import "sngl://platforms/html"
 
 component Collapsible(title = "", body = "") {
     vbox(style={gap = 4, padding = 10, background = #fff8dc, borderRadius = 6}) {
@@ -615,13 +615,13 @@ component main {
 
 ## Raw Platform Elements
 
-The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `platform://…` imports expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
+The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `sngl://platforms/…` packages expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
 
-Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
+A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
 
 ```sngl
 import . "sngl://std"
-import "platform://html"
+import "sngl://platforms/html"
 
 component main {
     var volume = 60

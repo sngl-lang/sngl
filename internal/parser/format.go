@@ -201,6 +201,9 @@ func (f *formatter) blockEndLine(start int, block *ast.StmtBlock) int {
 // --- top-level and block statements ---
 
 func (f *formatter) formatStmt(s ast.Stmt) {
+	if a, ok := s.(ast.Attributed); ok {
+		f.writeAttrs(a.MacroAttrs())
+	}
 	switch x := s.(type) {
 	case *ast.Import:
 		f.writeImport(x)
@@ -242,8 +245,6 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeComment(x)
 	case *ast.DisabledDecl:
 		f.writeDisabledDecl(x)
-	case *ast.AttrDecl:
-		f.writeAttrDecl(x)
 	}
 }
 
@@ -294,12 +295,10 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 }
 
 func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
+	if a, ok := item.(ast.Attributed); ok {
+		f.writeAttrs(a.MacroAttrs())
+	}
 	switch it := item.(type) {
-	case *ast.AttrDecl:
-		f.writeAttrs(it.Attrs)
-		if inner, ok := it.Inner.(ast.StructBodyItem); ok {
-			f.writeStructBodyItem(inner)
-		}
 	case *ast.StructField:
 		f.write(strings.Join(it.Names, ", "))
 		if it.Type != nil {
@@ -737,7 +736,7 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 				f.write(",")
 				f.newline()
 			}
-			f.writeParam(p)
+			f.writeParam(p, true)
 		}
 		f.write(",")
 		f.newline()
@@ -747,12 +746,13 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeParam(p)
+			f.writeParam(p, false)
 		}
 	}
 }
 
-func (f *formatter) writeParam(p ast.Param) {
+func (f *formatter) writeParam(p ast.Param, multiline bool) {
+	f.writeParamAttrs(p.Attrs, multiline)
 	if p.Bidirectional {
 		f.write(":")
 	}
@@ -778,7 +778,7 @@ func (f *formatter) writeProps(pl ast.PropList) {
 				f.write(",")
 				f.newline()
 			}
-			f.writePropOrEvent(p)
+			f.writePropOrEvent(p, true)
 		}
 		f.write(",")
 		f.newline()
@@ -788,16 +788,17 @@ func (f *formatter) writeProps(pl ast.PropList) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writePropOrEvent(p)
+			f.writePropOrEvent(p, false)
 		}
 	}
 }
 
-func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl) {
+func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 	switch v := p.(type) {
 	case ast.Param:
-		f.writeParam(v)
+		f.writeParam(v, multiline)
 	case ast.EventDecl:
+		f.writeParamAttrs(v.Attrs, multiline)
 		f.write("@")
 		f.write(v.Name)
 		if v.Type != nil {
@@ -1203,30 +1204,43 @@ func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 
 // --- attr ---
 
-func (f *formatter) writeAttrDecl(d *ast.AttrDecl) {
-	f.writeAttrs(d.Attrs)
-	f.formatStmt(d.Inner)
-}
-
 func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
 	for _, attr := range attrs {
-		f.write("#[")
-		if attr.Alias != "" {
-			f.write(attr.Alias)
-			f.write(".")
-		}
-		f.write(attr.Name)
-		if len(attr.Args) > 0 {
-			f.write("(")
-			for i, arg := range attr.Args {
-				if i > 0 {
-					f.write(", ")
-				}
-				f.writeExpr(arg)
-			}
-			f.write(")")
-		}
-		f.write("]")
+		f.writeAttr(attr)
 		f.newline()
+	}
+}
+
+func (f *formatter) writeAttr(attr ast.MacroAttr) {
+	f.write("#[")
+	if attr.Alias != "" {
+		f.write(attr.Alias)
+		f.write(".")
+	}
+	f.write(attr.Name)
+	if len(attr.Args) > 0 {
+		f.write("(")
+		for i, arg := range attr.Args {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.writeExpr(arg)
+		}
+		f.write(")")
+	}
+	f.write("]")
+}
+
+// writeParamAttrs places a parameter's marks the way the surrounding list
+// reads: each on its own line above the parameter when the list is multiline,
+// inline ahead of it when it is not.
+func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
+	for _, attr := range attrs {
+		f.writeAttr(attr)
+		if multiline {
+			f.newline()
+		} else {
+			f.write(" ")
+		}
 	}
 }

@@ -260,6 +260,15 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		if used[p.Name] {
 			continue
 		}
+		// A wildcard prop is never offered. It is a map of the names its
+		// pattern covers, and binding it under its own name is legal only when
+		// no covered name is written on the same call — which the checker
+		// rejects as a conflict, so offering the name here would suggest a
+		// spelling that may not compile. The names it does stand for are open
+		// by construction and cannot be enumerated.
+		if isWildcardProp(p) {
+			continue
+		}
 		detail := typeExprString(p.Type)
 		items = append(items, CompletionItem{
 			Label:            p.Name,
@@ -314,44 +323,34 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	// Build options are directive surface, not declarations the file imports:
 	// `output { none { html(name="X") } }` checks with no import at all, so
 	// these are read from the package that declares them rather than from
-	// whatever the file has in scope.
-	sources := checker.PackageDocsFor("std")
+	// whatever the file has in scope. The #[options] mark is on the loaded
+	// IR, so the package is loaded rather than only parsed.
+	uris := []string{"std"}
 	if langName != "" {
-		if lang := codegen.LookupLang(langName); lang != nil {
-			sources = append(sources, lang.Package()...)
-		}
+		uris = append(uris, "languages/"+langName)
 	}
 	if platformName != "" {
-		if plat := codegen.LookupPlatform(platformName); plat != nil {
-			sources = append(sources, plat.Package()...)
-		}
+		uris = append(uris, "platforms/"+platformName)
 	}
 
 	seen := map[string]bool{}
 	var items []CompletionItem
-	for _, doc := range sources {
-		if doc == nil {
+	for _, uri := range uris {
+		sd := checker.OptionsStruct(uri)
+		if sd == nil {
 			continue
 		}
-		for _, stmt := range doc.Stmts {
-			s, ok := stmt.(*ast.StructDef)
-			if !ok || s.Name != "Options" {
+		for _, f := range sd.Fields {
+			if seen[f.Name] {
 				continue
 			}
-			for _, f := range s.Fields() {
-				for _, name := range f.Names {
-					if seen[name] {
-						continue
-					}
-					seen[name] = true
-					items = append(items, CompletionItem{
-						Label:      name,
-						Kind:       CIKProperty,
-						Detail:     typeExprString(f.Type),
-						InsertText: name + "=",
-					})
-				}
-			}
+			seen[f.Name] = true
+			items = append(items, CompletionItem{
+				Label:      f.Name,
+				Kind:       CIKProperty,
+				Detail:     f.Type.String(),
+				InsertText: f.Name + "=",
+			})
 		}
 	}
 	return items
@@ -446,16 +445,12 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 
 	// Check if this is a registered platform or language
 	var pkgDoc *ast.Document
-	if plat := codegen.LookupPlatform(nsName); plat != nil {
-		if docs := plat.Package(); len(docs) > 0 {
-			pkgDoc = docs[0]
-		}
+	if docs := codegen.PlatformDocs(codegen.LookupPlatform(nsName)); len(docs) > 0 {
+		pkgDoc = docs[0]
 	}
 	if pkgDoc == nil {
-		if lang := codegen.LookupLang(nsName); lang != nil {
-			if docs := lang.Package(); len(docs) > 0 {
-				pkgDoc = docs[0]
-			}
+		if docs := codegen.LangDocs(codegen.LookupLang(nsName)); len(docs) > 0 {
+			pkgDoc = docs[0]
 		}
 	}
 
@@ -616,4 +611,22 @@ func enumThisItems(d *ast.EnumDef) []CompletionItem {
 		})
 	}
 	return items
+}
+
+// isWildcardProp reports whether a prop carries #[wildcard(...)].
+//
+// Matched by the mark's own name, which is all this can do and all it needs:
+// completion runs on one parsed document with no checker, so nothing here
+// resolves the macro to sngl://platforms, applies it, or knows the pattern it
+// compiled to. The name survives aliasing (`import p "sngl://platforms"` makes
+// it `#[p.wildcard]`, same Name), and the cost of a false positive — a user
+// macro of that name on an ordinary prop — is one withheld suggestion rather
+// than a wrong one.
+func isWildcardProp(p ast.Param) bool {
+	for _, a := range p.MacroAttrs() {
+		if a.Name == "wildcard" {
+			return true
+		}
+	}
+	return false
 }

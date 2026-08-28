@@ -87,6 +87,16 @@ func (c *checker) bindLib(pos ast.Pos, scope *ir.Scope, sym ir.Symbol) {
 	}
 }
 
+// bindLifted binds a name a dot import lifted. Unlike bindLib it does not lift
+// the symbol's wildcard pattern with it (ir.Scope.DeclareName): the import
+// names the declaration, not the open set of names that declaration also
+// answers to.
+func (c *checker) bindLifted(pos ast.Pos, scope *ir.Scope, sym ir.Symbol) {
+	if err := scope.DeclareName(sym); err != nil {
+		c.error(pos, "stdlib declares %s twice", sym.SymName())
+	}
+}
+
 // bindDeclared binds a top-level declaration once claimTopLevel has ruled on
 // the name. That rule permits exactly one rebinding — a declaration shadowing
 // a name a dot import lifted into this same scope — so the write is a
@@ -99,10 +109,29 @@ func (c *checker) bindDeclared(claimed bool, sym ir.Symbol) {
 	c.scope.Replace(sym)
 }
 
+// importScope is where an import binds the name it introduces: the file's own
+// scope, or — while a library package loads — the scope above that package's
+// root, so a dot import of the package does not lift its imports on.
+func (c *checker) importScope() *ir.Scope {
+	if c.libImportScope != nil {
+		return c.libImportScope
+	}
+	return c.scope
+}
+
+// bindImport binds the namespace an import declares, once claimTopLevel has
+// ruled on the alias.
+func (c *checker) bindImport(claimed bool, sym ir.Symbol) {
+	if !claimed {
+		return
+	}
+	c.importScope().Replace(sym)
+}
+
 // mergeInto binds a declaration into a package's surface as the package's
 // files are merged. Two files of one package declaring the same name is a
-// duplicate; it used to be a silent overwrite, so which file's declaration
-// the package exposed depended on the order they were read in.
+// duplicate: files are read in no guaranteed order, so tolerating one would
+// leave the exposed declaration up to that order.
 func (c *checker) mergeInto(pos ast.Pos, dst *ir.Scope, sym ir.Symbol) {
 	if err := dst.Declare(sym); err != nil {
 		c.error(pos, "%s is declared in more than one file of this package", sym.SymName())

@@ -1,0 +1,47 @@
+# A boolean attribute is present or absent, and setAttribute cannot say
+# absent: `setAttribute("open", false)` renders `open="false"`, which leaves a
+# <details> OPEN. Which props are boolean is what `element` declares, so both
+# the initial-render path and the JS-built path read the declaration instead of
+# each keeping a list — the two lists disagreed on hidden, readonly, selected
+# and innerText, `open` was in neither, and `readonly` was written with the
+# attribute's casing where the DOM property is readOnly.
+#
+# The prop the tag name binds to is read from the #[wildcard] mark's `into`
+# argument for the same reason: it names the element and is never an attribute.
+
+sngl generate --platform html --lang none -o out dom.sngl
+
+# Every boolean prop is a DOM property write, in the DOM's casing.
+grep '__n0\.open = state\.shown;' out/index.html
+grep '__n1\.readOnly = state\.locked;' out/index.html
+! grep 'setAttribute\("open"' out/index.html
+! grep 'setAttribute\("readonly"' out/index.html
+
+# The same holds where the element is built by JS.
+grep '__n2\.hidden = state\.shown;' out/index.html
+! grep 'setAttribute\("hidden"' out/index.html
+
+# The tag prop reaches no output on either path: it names the element.
+grep '<my-widget role="main">' out/index.html
+grep 'createElement\("li"\)' out/index.html
+! grep 'tag="' out/index.html
+! grep 'setAttribute\("tag"' out/index.html
+
+-- dom.sngl --
+import . "sngl://std"
+
+component main {
+    var shown bool = false
+    var locked bool = true
+    var rows list<string> = ["a"]
+
+    window {
+        html.details(open = shown) {
+            html.input(readonly = locked)
+        }
+        html.element(tag = "my-widget", role = "main")
+        for r = rows {
+            html.li(textContent = r, hidden = shown)
+        }
+    }
+}

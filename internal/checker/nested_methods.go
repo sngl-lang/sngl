@@ -177,6 +177,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 		// up by the normal top-level func path.
 		if _, _, isMethod := ast.SplitMethodName(n.Name); isMethod {
 			fn := c.buildFunc(n)
+			c.applyMarks(n, fn)
 			if prev := c.declareMethod(n.Pos, fn); prev != nil {
 				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 				continue
@@ -221,10 +222,10 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			// The marks are the declaration's, not the shape of its parameter
 			// list: desugaring the receiver must not drop what a mark said
 			// about the function it was written on.
-			Intrinsic: n.Intrinsic,
-			Foreign:   n.Foreign,
+			Attrs: n.Attrs,
 		}
 		fn := c.buildFunc(synthetic)
+		c.applyMarks(synthetic, fn)
 		if prev := c.declareMethod(n.Pos, fn); prev != nil {
 			noun := "type"
 			if typeDecl != nil {

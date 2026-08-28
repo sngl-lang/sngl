@@ -34,7 +34,10 @@ func encode(tokens []Token) (stream []byte, filtered []Token, comments []Token) 
 // n is the token-consumption index assigned by the egg RecScanner (0-based, whitespace skipped).
 func tokenAt(filtered []Token, n int32) Token {
 	if int(n) < 0 || int(n) >= len(filtered) {
-		return Token{Type: ILLEGAL, Literal: "<out of range>"}
+		// One past the end is an ordinary position in the tree -- an i18n
+		// template's closing segment lands there. EOF rather than ILLEGAL:
+		// ILLEGAL now means a lex error was recorded for it, and no error was.
+		return Token{Type: EOF}
 	}
 	return filtered[n]
 }

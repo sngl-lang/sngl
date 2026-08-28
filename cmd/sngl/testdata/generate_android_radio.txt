@@ -1,0 +1,49 @@
+# radio's android body is declarative: the group is a for over `options`,
+# the container is the one `direction` asks for, and each option is a
+# RadioButton beside its label. Nothing about radio is keyed on its name in
+# compose_ir.go any more, so what this asserts is the override's own shape.
+
+sngl generate --platform=android --lang=kotlin --out=out app.sngl
+
+# A literal `options` unrolls, so each option is its own pair of composables
+# and the selected test is against that option's own value.
+grep 'RadioButton\(selected = \(pick == "small"\), onClick = \{' out/MainScreen.kt
+grep 'RadioButton\(selected = \(pick == "large"\), onClick = \{' out/MainScreen.kt
+grep 'Text\(text = "small", modifier = Modifier\)' out/MainScreen.kt
+
+# Compose passes onClick nothing, so the override names the option itself:
+# the @change handler's `e.value` is the option that was clicked, and each
+# unrolled iteration carries its own.
+grep 'chosen = "small"$' out/MainScreen.kt
+grep 'chosen = "large"$' out/MainScreen.kt
+! grep 'val e = SnglInputEvent' out/MainScreen.kt
+
+# direction="horizontal" is a Row; the default (vertical) is a Column. Both
+# fold at build time, so no runtime branch survives.
+grep 'Row\(modifier = Modifier\.padding\(4\.dp\)\) \{' out/MainScreen.kt
+grep 'Column\(modifier = Modifier\.padding\(5\.dp\)\) \{' out/MainScreen.kt
+! grep '"horizontal" == "horizontal"' out/MainScreen.kt
+
+# Each option sits in a Row aligned on its centre.
+grep 'Row\(modifier = Modifier, verticalAlignment = Alignment\.CenterVertically\) \{' out/MainScreen.kt
+
+# A runtime `options` stays a loop rather than unrolling.
+grep 'for \(opt in more\) \{' out/MainScreen.kt
+grep 'RadioButton\(selected = \(pick == opt\), onClick = \{' out/MainScreen.kt
+
+-- app.sngl --
+import . "sngl://std"
+
+component main {
+    var pick = "medium"
+    var chosen = ""
+    var more = ["a", "b"]
+
+    vbox {
+        radio(style={padding=4}, direction="horizontal",
+              options=["small", "medium", "large"], value=pick,
+              @change(e) { chosen = e.value })
+        radio(style={padding=5}, options=["one", "two"], value=pick)
+        radio(options=more, value=pick)
+    }
+}

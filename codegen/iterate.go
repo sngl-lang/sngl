@@ -234,7 +234,47 @@ func NodeProp(n *ir.NodeInst, name string) ir.Expr {
 			return p.Value
 		}
 	}
-	return nil
+	// A name no prop declares may still have been written at the call site
+	// and collected by a wildcard prop, which binds under its own name.
+	return WildcardProps(n)[name]
+}
+
+// WildcardProps is the names a node's wildcard props collected, mapped to the
+// values written for them. A wildcard prop binds once, under its own name, and
+// holds the matched names as its keys — so this is where a backend that reads
+// props by the name the author wrote finds them.
+//
+// Returns nil for a node with no wildcard prop, which is nearly all of them.
+func WildcardProps(n *ir.NodeInst) map[string]ir.Expr {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	var out map[string]ir.Expr
+	for _, dp := range n.Component.Props {
+		if dp.Wildcard == "" {
+			continue
+		}
+		for _, p := range n.Props {
+			if p.Name != dp.Name {
+				continue
+			}
+			m, ok := p.Value.(*ir.MapLitIR)
+			if !ok {
+				continue
+			}
+			for _, e := range m.Entries {
+				k, ok := e.Key.(*ir.Literal)
+				if !ok {
+					continue
+				}
+				if out == nil {
+					out = map[string]ir.Expr{}
+				}
+				out[k.Raw] = e.Value
+			}
+		}
+	}
+	return out
 }
 
 // NodeHandler returns the event handler with the given name, or nil.
@@ -260,7 +300,14 @@ type StyleField struct {
 // preserving source order. Returns nil if there's no style prop or it isn't a
 // struct literal.
 func NodeStyleFields(n *ir.NodeInst) []StyleField {
-	style := NodeProp(n, "style")
+	return NodeStyleFieldsOf(n, "style")
+}
+
+// NodeStyleFieldsOf is NodeStyleFields over a differently named prop, for a
+// node that takes more than one Style — a declared native widget naming its
+// props after the host's own arguments.
+func NodeStyleFieldsOf(n *ir.NodeInst, prop string) []StyleField {
+	style := NodeProp(n, prop)
 	if style == nil {
 		return nil
 	}
@@ -278,7 +325,14 @@ func NodeStyleFields(n *ir.NodeInst) []StyleField {
 // --- IR literal extraction ---
 
 // IRLiteralString extracts a string value from an IR Literal expression.
-// Returns the raw string content (without quotes) and true, or ("", false).
+// Returns the value and true, or ("", false) for anything that is not a string
+// literal.
+//
+// Raw is the decoded content, carrying no delimiters: the lexer builds it from
+// a strings.Builder the quotes never reach, and a synthesized literal stores
+// the value a backend will quote for its own target. So there is nothing here
+// to unquote — a string whose content happens to begin and end with `"` is a
+// string like any other.
 func IRLiteralString(e ir.Expr) (string, bool) {
 	if e == nil {
 		return "", false
@@ -287,12 +341,7 @@ func IRLiteralString(e ir.Expr) (string, bool) {
 	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeString {
 		return "", false
 	}
-	// Raw includes quotes for string literals; strip them.
-	s := lit.Raw
-	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
-		s, _ = strconv.Unquote(s)
-	}
-	return s, true
+	return lit.Raw, true
 }
 
 // IRLiteralBool extracts a bool value from an IR Literal expression.

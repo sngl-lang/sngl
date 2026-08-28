@@ -180,9 +180,10 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	if err != nil {
 		if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
 			return []*codegen.TestResult{{
-				Desc:   "<launcher-skip>",
-				Passed: true,
-				Log:    []string{"SKIP: " + skip.Reason},
+				Desc:       "<launcher-skip>",
+				Skipped:    true,
+				SkipReason: skip.Reason,
+				Log:        []string{"SKIP: " + skip.Reason},
 			}}, nil
 		}
 		return nil, fmt.Errorf("launch: %w", err)
@@ -265,6 +266,8 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 			var p struct{ Test, Reason string }
 			_ = json.Unmarshal(m.Params, &p)
 			if cur := current[p.Test]; cur != nil {
+				cur.Skipped = true
+				cur.SkipReason = p.Reason
 				cur.Log = append(cur.Log, "SKIP: "+p.Reason)
 			}
 		case "testEnd":
@@ -279,6 +282,9 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 				cur = &codegen.TestResult{Desc: p.Test}
 			}
 			cur.Passed = p.Status == "pass"
+			if p.Status == "skip" {
+				cur.Skipped = true
+			}
 			cur.Duration = time.Duration(p.DurationMs) * time.Millisecond
 			results = append(results, cur)
 			delete(current, p.Test)

@@ -1,18 +1,21 @@
-// HTML platform package.
-// Raw HTML elements (div, span, button, input, etc.) are implicitly available
-// via APIResolver — any identifier is a valid HTML tag.
+// HTML output. Any lowercase identifier is a valid tag: `html.div`,
+// `html.dialog`.
+// The web element set is open — new standards keep adding to it — so a tag
+// resolves to the `element` component below rather than to a declaration of
+// its own. A tag no identifier can spell is written through that component's
+// `tag` prop: `html.element(tag="my-widget")`.
 //
-// Each component sngl.X() overrides the stdlib abstract component with an
-// HTML-native implementation. Props are inherited from the stdlib definition
-// and available as local variables in the body.
+// Each `component sngl.X` gives a stdlib component its HTML implementation.
+// The stdlib declares the props; the body reads them as locals.
 //
-// Inside `platform html { ... }` extension bodies, native HTML elements must
-// be qualified with `html.` (e.g. `html.input`) to disambiguate them from the
-// stdlib abstract components of the same name (which are themselves
-// body-bearing under Plan H).
+// Inside a `platform html { ... }` body a native element needs its `html.`
+// prefix: the stdlib component of the same name is in scope too, and carries
+// a body of its own.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
     preview bool
@@ -35,6 +38,100 @@ struct Options {
     // Disable content-hash filenames for emitted assets; produce stable paths.
     noCacheBust bool
 }
+
+// The element every tag resolves to. The web's element set is open — a new
+// standard adds to it, and a custom element is a tag nobody declared — so one
+// declaration answers to every tag name rather than one per tag existing.
+//
+// The typed props are the attributes whose value is not a string; everything
+// else is one, which is what the wildcard prop says. A tag-specific numeric
+// attribute missing from this list is accepted as a string rather than
+// rejected.
+// Lowercase, so a typo inside a `platform html { ... }` body -- where a bare
+// name reaches this wildcard -- is reported rather than emitted as an element
+// nobody has heard of.
+//
+// This rejects SVG, whose vocabulary is camelCase inside foreign content
+// (`linearGradient`, `clipPath`, `feGaussianBlur`). Reaching it by widening the
+// pattern would cost the misspelling check for every HTML tag, so SVG is left
+// for a tree kind of its own -- `#[tree.kind]` names a family of nodes and
+// says which host accepts them, which is what an SVG subtree is. Until then it
+// is written through `element(tag=..., attrs={...})`, which the diagnostics
+// below point at.
+#[wildcard("[a-z][a-z0-9]*", "tag")]
+component element(
+    // The name this resolved from — `html.div` binds "div" — and the tag to
+    // emit. Writing it is how a hyphenated custom element is reached, an
+    // identifier holding no hyphen: `html.element(tag="my-widget")`. It names
+    // the element rather than describing it, so it is never an attribute.
+    tag string,
+
+    style sngl.Style,
+    class string,
+    id string,
+    textContent string,
+    innerText string,
+    innerHTML string,
+
+    disabled bool,
+    checked bool,
+    readonly bool,
+    selected bool,
+    hidden bool,
+    open bool,
+
+    // An attribute is written as it is emitted, so a caller holding a number
+    // converts: `component sngl.progress` spells string(value). These were
+    // declared `int` and so were written by two paths that disagreed -- the
+    // static render rendered the literal and the server render had no string to
+    // write, because there is no attribute type here to convert through.
+    rows string,
+    width string,
+    height string,
+    value string,
+    max string,
+
+    // Every other attribute, keyed by the name it was written under -- an
+    // attribute a standard adds after this file was written among them.
+    //
+    // A hyphenated name (`data-*`, `aria-*`) does not reach the pattern at all:
+    // it is not an identifier, so it can only be written as a key of this map,
+    // and a key is taken as given. The pattern governs the names written as
+    // props, and is lowercase for the reason the tag pattern is: a camelCase
+    // name there is a DOM property or a misspelling of one, and the properties
+    // an element takes are declared above.
+    #[wildcard("[a-z][a-z0-9]*")]
+    attrs map<string, string>,
+
+    @click sngl.ClickEvent,
+    @input sngl.InputEvent,
+    @change sngl.ChangeEvent,
+    @focus sngl.FocusEvent,
+    @blur sngl.FocusEvent,
+    @submit sngl.SubmitEvent,
+    @scroll sngl.ScrollEvent,
+    @load sngl.LoadEvent,
+    @error sngl.ErrorEvent,
+    @close sngl.DismissEvent,
+    @select sngl.SelectEvent,
+
+    // Every other DOM event. The event set is as open as the element set and
+    // the attribute set, for the same reason: a standard adds to it. The
+    // events above are declared for their payload types, not as the whole
+    // list, so one that carries nothing SNGL can name reaches a handler here.
+    //
+    // Void, because a payload this cannot name is one a handler cannot read;
+    // an event whose payload matters is declared above.
+    //
+    // Lowercase, because these are DOM event types and that is how the DOM
+    // spells them. A stdlib component's SNGL name for an event -- `@scrollEnd`
+    // -- is mapped to the DOM one by the override that wraps it, which is what
+    // wrapping an element in SNGL is for. Accepting the SNGL spelling here
+    // instead would emit `addEventListener("scrollEnd")`, an event nothing
+    // fires.
+    #[wildcard("[a-z][a-z0-9]*")]
+    @event,
+) list<component> {}
 
 // --- Core Layout ---
 
@@ -68,9 +165,12 @@ component sngl.spacer {
     }
 }
 
+// `@scrollEnd` is the standard library's name for the event the DOM calls
+// `scrollend`. The names differ, so the override maps them: that is the half of
+// wrapping an element that a wildcard cannot do for itself.
 component sngl.scroll {
     platform html {
-        html.div(style={...style, overflow="auto"}) {
+        html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
             slot
         }
     }
@@ -84,9 +184,13 @@ component sngl.text {
     }
 }
 
+// `@longPress` maps to `contextmenu`, which is what a sustained touch press
+// fires -- and a right-click, which is not the same gesture. It stands in until
+// html synthesizes the real one from pointerdown and a timer; the alternative
+// was a declared event that reached nothing.
 component sngl.button {
     platform html {
-        html.button(disabled=disabled, style={...style}, @click { click() }) {
+        html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
             html.span(textContent=text) {}
             slot
         }
@@ -153,7 +257,7 @@ component sngl.select {
 
 component sngl.textarea {
     platform html {
-        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, style={...style}, @input { input() }, @change { change() }) {
+        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
             slot
         }
     }
@@ -163,7 +267,7 @@ component sngl.textarea {
 
 component sngl.progress {
     platform html {
-        html.progress(value=value, max=max, style={...style}) {}
+        html.progress(value=string(value), max=string(max), style={...style}) {}
     }
 }
 

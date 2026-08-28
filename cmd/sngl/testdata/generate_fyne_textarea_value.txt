@@ -8,6 +8,9 @@
 # Assign that mutates a tracked Var has explicit `m.entry0.SetText(...)`
 # updates spliced after it, so we look for that inline form rather than
 # the older per-widget updateEntry0 method.
+#
+# SetText takes the value unwrapped: the Entry intrinsic declares `text
+# string`, so a caller converts and no fmt.Sprint is emitted around it.
 
 sngl generate --platform=fyne --lang=go --opt=main=true --out=out app.sngl
 exists out/model.go
@@ -15,11 +18,14 @@ exists out/model.go
 # Init: SetText is emitted at BuildUI time for the textarea's value.
 # Post-Plan-C widget ids use the lowered __nN scheme rather than per-tag
 # counters; textarea is __n0 (vbox is __n1, button is __n2).
-grep 'm\.__n0\.SetText\(fmt\.Sprint\(m\.content\)\)' out/model.go
+grep 'm\.__n0\.SetText\(m\.content\)' out/model.go
 
 # Reactive update spliced into the button's @click handler by the
-# NoReactivity lowering pass (button is __n2).
-grep 'm\.content = "after click"' out/model.go
+# NoReactivity lowering pass (button is __n2). Asserted as the assignment
+# followed by the re-sync, because the re-sync is spelled identically to the
+# BuildUI-time SetText above -- a grep for it alone would pass on that one and
+# claim 2 would go untested.
+grep 'm\.content = "after click"\n\tm\.__n0\.SetText\(m\.content\)' out/model.go
 
 -- app.sngl --
 import . "sngl://std"

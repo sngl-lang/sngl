@@ -11,7 +11,7 @@ component sizedints {
     // In-range constant arithmetic folds to a plain literal.
     var sum = 3 + 4  // FOLD 7
 
-    text(value=a)
+    text(value=string(a))
 }
 
 func testWidthsHoldValues(t Test, c sizedints) {

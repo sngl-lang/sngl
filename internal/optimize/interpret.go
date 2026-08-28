@@ -129,10 +129,9 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 // such calls escape the compile-time interpreter so we refuse to fold any
 // function that transitively contains one.
 //
-// Env-impure intrinsics (i18n.DefaultLocale, file.Pick, file.PickFolder)
-// used to be blocklisted here; that workaround is no longer needed because
-// the checker now propagates their PurityReadonly mark up through stdlib
-// wrappers, which the evalCall purity gate naturally rejects.
+// Env-impure intrinsics (i18n.DefaultLocale, file.Pick, file.PickFolder) need
+// no blocklist: the checker propagates their PurityReadonly mark up through
+// stdlib wrappers, and the evalCall purity gate rejects them on that.
 func bodyUsesNativeCall(fn *ir.Func) bool {
 	var hasNative bool
 	var walkExpr func(e ir.Expr)

@@ -38,7 +38,7 @@ func ParseNativeValue(filename string, src []byte) (ast.Expr, error) {
 func parseTokens(filename string, tokens []Token, lexErrs []string) (doc *ast.Document, native ast.Expr, err error) {
 	var errs []error
 	for _, e := range lexErrs {
-		errs = append(errs, fmt.Errorf("%s: %s", filename, e))
+		errs = append(errs, fmt.Errorf("%s:%s", filename, e))
 	}
 
 	stream, filtered, comments := encode(tokens)
@@ -79,6 +79,21 @@ func parseTokens(filename string, tokens []Token, lexErrs []string) (doc *ast.Do
 
 // remapErrors translates byte-stream positions from the egg parser back to
 // source file line:column using the filtered token array.
+// inInterpolation reports whether the token at idx sits inside a `{...}` hole
+// of an interpolated string: the nearest preceding string segment token opened
+// a hole rather than closing one.
+func inInterpolation(filtered []Token, idx int) bool {
+	for i := idx - 1; i >= 0; i-- {
+		switch filtered[i].Type {
+		case STR_START, STR_RESUME, I18N_STR_START, I18N_STR_RESUME:
+			return true
+		case STR_END, I18N_STR_END:
+			return false
+		}
+	}
+	return false
+}
+
 func remapErrors(err error, filtered []Token) error {
 	errList, ok := err.(scanner.ErrList)
 	if !ok {
@@ -95,6 +110,14 @@ func remapErrors(err error, filtered []Token) error {
 			errList[i].Pos.Offset = 0
 		}
 		if errList[i].Err != nil {
+			// A hole in an interpolated string holds an expression, so the
+			// generic "expected one of <every expression token>" names forty
+			// alternatives and tells the reader nothing. What went wrong is
+			// that this is not an expression.
+			if inInterpolation(filtered, idx) {
+				errList[i].Err = errors.New("invalid expression in interpolation")
+				continue
+			}
 			errList[i].Err = errors.New(prettifyParseError(errList[i].Err.Error()))
 		}
 	}

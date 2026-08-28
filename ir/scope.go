@@ -1,6 +1,9 @@
 package ir
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 // Symbol is a named entity in the program. Implemented by all IR
 // declaration types (Func, Var, Component, StructDef, EnumDef, UnitDef,
@@ -21,9 +24,8 @@ func (v *LoopVar) SymType() *Type  { return v.Type }
 
 // Namespace is an import namespace alias pointing to a resolved package.
 type Namespace struct {
-	Name    string
-	Pkg     *Package
-	Resolve func(identifier string) Symbol // optional fallback for unknown members
+	Name string
+	Pkg  *Package
 }
 
 func (n *Namespace) SymName() string { return n.Name }
@@ -33,11 +35,71 @@ func (n *Namespace) SymType() *Type  { return nil }
 type Scope struct {
 	Parent  *Scope
 	Symbols map[string]Symbol
+	// Wildcards are the symbols in this scope that answer to names nobody
+	// declared. A declared name always wins, and a wildcard is consulted only
+	// when there is no name to find — and only by a caller resolving a
+	// position a wildcard stands in (WildcardMatches), never by Lookup.
+	Wildcards []Symbol
+}
+
+// WildcardSymbol is a symbol that also answers to every name its pattern
+// matches. The pattern is RE2, matched against a whole name.
+type WildcardSymbol interface {
+	Symbol
+	WildcardPattern() string
 }
 
 // NewScope creates a child scope.
 func NewScope(parent *Scope) *Scope {
 	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
+}
+
+// noteWildcard records sym among the scope's wildcards when it is one. Binding
+// a wildcard symbol binds its own name too: `element` is a name like any
+// other, and is what a declaration of it in an inner scope shadows.
+func (s *Scope) noteWildcard(sym Symbol) {
+	w, ok := sym.(WildcardSymbol)
+	if !ok || w.WildcardPattern() == "" {
+		return
+	}
+	if slices.Contains(s.Wildcards, sym) {
+		return
+	}
+	s.Wildcards = append(s.Wildcards, sym)
+}
+
+// WildcardMatches is every wildcard covering name in the innermost scope of
+// the chain that has one. A wildcard shadows an outer one exactly as a
+// declaration shadows an outer declaration, so the search stops at the first
+// scope that matches at all. More than one match in that scope is an ambiguity
+// the caller reports, which is why they are all returned rather than the first.
+func (s *Scope) WildcardMatches(name string) []Symbol {
+	for sc := s; sc != nil; sc = sc.Parent {
+		if m := sc.localWildcardMatches(name); len(m) > 0 {
+			return m
+		}
+	}
+	return nil
+}
+
+func (s *Scope) localWildcardMatches(name string) []Symbol {
+	var out []Symbol
+	for _, sym := range s.Wildcards {
+		w, ok := sym.(WildcardSymbol)
+		if !ok || !MatchesWildcard(w.WildcardPattern(), name) {
+			continue
+		}
+		out = append(out, sym)
+	}
+	return out
+}
+
+// lookupWildcard is LookupLocal's fallback. Lookup has none: see there.
+func (s *Scope) lookupWildcard(name string) (Symbol, bool) {
+	if m := s.localWildcardMatches(name); len(m) > 0 {
+		return m[0], true
+	}
+	return nil, false
 }
 
 // RedeclaredError reports that a name was already bound in the same scope.
@@ -61,6 +123,23 @@ func (s *Scope) Declare(sym Symbol) error {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
 	s.Symbols[name] = sym
+	s.noteWildcard(sym)
+	return nil
+}
+
+// DeclareName binds a symbol under its own name only, without lifting a
+// wildcard symbol's pattern into this scope. For a dot import: it lifts the
+// declarations of a package, and a wildcard component's declaration is the
+// name `element` — the open set of names it also answers to is reached by
+// naming the package (`html.div`) or by being inside its platform's body, both
+// of which go to the package's own scope. Lifting the set instead would mean
+// the importing file has no undeclared node name left to misspell.
+func (s *Scope) DeclareName(sym Symbol) error {
+	name := sym.SymName()
+	if prev, ok := s.Symbols[name]; ok && prev != sym {
+		return &RedeclaredError{Name: name, Prev: prev}
+	}
+	s.Symbols[name] = sym
 	return nil
 }
 
@@ -69,23 +148,39 @@ func (s *Scope) Declare(sym Symbol) error {
 // name, splicing a platform override over the stdlib declaration it extends.
 func (s *Scope) Replace(sym Symbol) {
 	s.Symbols[sym.SymName()] = sym
+	s.noteWildcard(sym)
 }
 
-// Lookup walks the parent chain for a name.
+// Lookup walks the parent chain for a name. Declared names only: it resolves
+// every identifier in the language — a type, a variable, a func, a method
+// receiver — and a wildcard stands for names in one specific position, a
+// visual node's, a prop's, an event's. Answering all of them with one would
+// make every misspelling a reference to it. The sites that resolve such a
+// position consult WildcardMatches themselves, having first missed here, which
+// is already how the qualified form works (`html.div`, via nsMember).
 func (s *Scope) Lookup(name string) (Symbol, bool) {
-	if sym, ok := s.Symbols[name]; ok {
-		return sym, true
-	}
-	if s.Parent != nil {
-		return s.Parent.Lookup(name)
+	for sc := s; sc != nil; sc = sc.Parent {
+		if sym, ok := sc.Symbols[name]; ok {
+			return sym, true
+		}
 	}
 	return nil, false
 }
 
-// LookupLocal checks only this scope, not parents.
-func (s *Scope) LookupLocal(name string) (Symbol, bool) {
+// LookupDeclaredLocal checks this scope's declared names only, skipping its
+// wildcards. For asking whether a particular name was declared here — which a
+// wildcard, standing for every name it matches, would always answer yes to.
+func (s *Scope) LookupDeclaredLocal(name string) (Symbol, bool) {
 	sym, ok := s.Symbols[name]
 	return sym, ok
+}
+
+// LookupLocal checks only this scope, not parents.
+func (s *Scope) LookupLocal(name string) (Symbol, bool) {
+	if sym, ok := s.Symbols[name]; ok {
+		return sym, true
+	}
+	return s.lookupWildcard(name)
 }
 
 // TypeSym represents a builtin type name in the base scope (int, string, etc.).
@@ -179,9 +274,40 @@ func (st *SymbolTable) LookupType(name string) (Symbol, bool) {
 	return nil, false
 }
 
-// LookupComponent finds a component declaration from the root scope outward.
+// LookupDeclaredComponent finds a component bound to exactly this name,
+// skipping wildcards. For callers that mean "is there a declaration called
+// this", which a wildcard would always answer yes to.
+func (st *SymbolTable) LookupDeclaredComponent(name string) (Symbol, bool) {
+	for s := st.Root; s != nil; s = s.Parent {
+		sym, ok := s.LookupDeclaredLocal(name)
+		if !ok {
+			continue
+		}
+		if c, isComp := sym.(*Component); isComp {
+			return c, true
+		}
+		return nil, false
+	}
+	return nil, false
+}
+
+// LookupComponent finds a component for this name from the root scope outward,
+// falling back to a wildcard component covering it. A component name is a node
+// position, which is one of the positions a wildcard stands in, so this is one
+// of the sites Scope.Lookup leaves the wildcard consult to. Callers asking
+// whether a name was *declared* want LookupDeclaredComponent.
+//
+// A name covered by two wildcards in one scope is an ambiguity, reported by
+// the checker paths that hold a position to report it at (scopeWildcard); here
+// the first still answers, as it did when Lookup itself fell back.
 func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
-	if sym, ok := st.Root.Lookup(name); ok {
+	sym, ok := st.Root.Lookup(name)
+	if !ok {
+		if m := st.Root.WildcardMatches(name); len(m) > 0 {
+			sym, ok = m[0], true
+		}
+	}
+	if ok {
 		if c, isComp := sym.(*Component); isComp {
 			return c, true
 		}

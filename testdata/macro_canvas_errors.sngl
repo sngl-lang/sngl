@@ -1,7 +1,10 @@
 import "sngl://draw"
 
-#[draw.shape] // ERROR(expand) "shape macro requires a component declaration"
+#[draw.shape] // ERROR(check) "#[draw.shape] requires a component declaration"
 var bad = 5
 
-#[draw.shape] // ERROR(expand) "shape components do not support event declarations"
+#[draw.shape] // ERROR(check) "shape components do not support event declarations"
 component badShape(@click) {}
+
+#[draw.shape] // ERROR(check) "shape components may only have shape children"
+component boxy(x int) list<component> {}

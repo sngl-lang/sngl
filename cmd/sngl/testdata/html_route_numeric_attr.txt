@@ -1,0 +1,43 @@
+# An attribute is a string, and a caller holding a number converts -- which is
+# what html.sngl says three lines below the props that did not. `rows`, `width`
+# and `height` were declared `int`, so the static render wrote the literal and
+# the server render had nothing to write and aborted the build. Both paths on one
+# program, so a divergence fails here rather than in one mode only.
+
+sngl generate --lang go --platform html --out route route.sngl
+grep 'rows=\\"4\\"' route/server.go
+grep 'width=\\"100\\"' route/server.go
+grep 'height=\\"50\\"' route/server.go
+
+# The same program, same attributes, on the static path.
+sngl generate --lang none --platform html --out static static.sngl
+grep 'rows="4"' static/index.html
+grep 'width="100"' static/index.html
+grep 'height="50"' static/index.html
+
+-- route.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+
+output {
+    go { html }
+}
+
+component main {
+    var n string = ""
+    window {
+        textarea(:value=n, rows=4)
+        html.img(src="a.png", width="100", height="50") {}
+    }
+}
+-- static.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+
+component main {
+    var n string = ""
+    window {
+        textarea(:value=n, rows=4)
+        html.img(src="a.png", width="100", height="50") {}
+    }
+}

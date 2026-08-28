@@ -165,10 +165,13 @@ struct Style {
     borderRadius measurement
     borderColor color
     borderWidth measurement
+    border string
     borderBottom string
+    borderLeft string
     borderCollapse string
     borderStyle BorderStyle
     opacity float
+    cursor string
 
     // Display
     display Display

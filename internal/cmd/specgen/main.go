@@ -16,8 +16,8 @@
 //	precedence                operator precedence table
 //	keywords                  reserved keywords + predeclared identifiers
 //
-// `go tool verify` runs specgen in check mode so the committed regions never
-// drift from internal/parser/sngl.ebnf.
+// specgen runs from docs/generate.go under `go generate`; its own test fails
+// when the committed regions have drifted from internal/parser/sngl.ebnf.
 //
 // Usage: go run ./internal/cmd/specgen
 package main
@@ -34,36 +34,47 @@ import (
 )
 
 func main() {
-	_, thisFile, _, _ := runtime.Caller(0)
-	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
-	ebnfPath := filepath.Join(root, "internal", "parser", "sngl.ebnf")
-	outPath := filepath.Join(root, "docs", "reference", "specification.md")
+	root := repoRoot()
+	if err := generate(root, filepath.Join(root, "docs", "reference", "specification.md")); err != nil {
+		fatalf("%v", err)
+	}
+}
 
-	prods := parseEBNF(ebnfPath)
+// repoRoot locates the project root from this source file's own path.
+func repoRoot() string {
+	_, thisFile, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
+}
+
+// generate rewrites the generated regions of the markdown file at outPath
+// from root's grammar. outPath is a parameter so a test can run the whole
+// pipeline, mdox included, over a copy and diff the result.
+func generate(root, outPath string) error {
+	prods := parseEBNF(filepath.Join(root, "internal", "parser", "sngl.ebnf"))
 	gen := newGenerator(prods)
 
 	src, err := os.ReadFile(outPath)
 	if err != nil {
-		fatalf("read %s: %v", outPath, err)
+		return err
 	}
-
 	out, err := gen.fillRegions(string(src))
 	if err != nil {
-		fatalf("%v", err)
+		return err
 	}
-
 	if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
-		fatalf("write %s: %v", outPath, err)
+		return err
 	}
 
 	// Run mdox fmt so the file matches the project's markdown style and
 	// `go tool verify -dry` doesn't flip-flop between generate and check.
 	cmd := exec.Command("go", "tool", "mdox", "fmt", "--soft-wraps", outPath)
+	cmd.Dir = root
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fatalf("mdox fmt %s: %v", outPath, err)
+		return fmt.Errorf("mdox fmt %s: %v", outPath, err)
 	}
+	return nil
 }
 
 // ── Region replacement ────────────────────────────────────────────────────────
@@ -184,7 +195,7 @@ var sections = []section{
 		"VarDecl", "VarSpec", "VarHandler",
 	}},
 	{"functions", []string{"FuncDecl", "FuncTail", "FuncBodyTail", "FuncName", "TypeParamList", "ParamList", "Param"}},
-	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamTail"}},
+	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamBody", "CompParamTail"}},
 	{"expressions", []string{
 		"Expr", "TernaryExpr", "OrExpr", "AndExpr",
 		"EqExpr", "CmpExpr", "AddExpr", "MulExpr",

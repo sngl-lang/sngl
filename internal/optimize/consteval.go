@@ -271,9 +271,9 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 	// ordinary const and folds to whatever it was declared as.
 	if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 		switch v.Builtin {
-		case ast.BuiltinPlatform:
+		case ir.BuiltinPlatform:
 			return ctx.platform, true
-		case ast.BuiltinLanguage:
+		case ir.BuiltinLanguage:
 			return ctx.language, true
 		}
 		if val, found := ctx.values[v]; found {

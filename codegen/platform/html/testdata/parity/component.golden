@@ -8,20 +8,21 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<vbox>
-  <text id="__n0" data-sngl-id="__n0">
-  </text>
-  <hbox>
-    <text id="__n1" data-sngl-id="__n1">
-    </text>
-  </hbox>
-  <hbox>
-    <text id="__n2" data-sngl-id="__n2">
-    </text>
-  </hbox>
-  <button id="$0" text="Click">
+<div style="display:flex;flex-direction:column">
+  <span id="__n0" data-sngl-id="__n0">
+  </span>
+  <div style="display:flex;flex-direction:row">
+    <span id="__n1" data-sngl-id="__n1">
+    </span>
+  </div>
+  <div style="display:flex;flex-direction:row">
+    <span id="__n2" data-sngl-id="__n2">
+    </span>
+  </div>
+  <button id="$3">
+    <span>Click</span>
   </button>
-</vbox>
+</div>
 
 <script>
 (() => {
@@ -36,11 +37,11 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $0 = document.getElementById("$0");
+  var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
-  $0.addEventListener("click", function() {
+  $3.addEventListener("click", function() {
     state.clicks = state.clicks + 1;
     __n1.textContent = "Clicks: " + String(state.clicks);
     __n2.textContent = "Doubled: " + String(main_doubled(state));

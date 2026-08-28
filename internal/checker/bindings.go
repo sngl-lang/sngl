@@ -25,6 +25,11 @@ func (c *checker) extractBindings(comp *ir.Component, props []ir.Arg, handlers [
 		p.Name = propName
 
 		if p.Value == nil || !isAssignableTarget(p.Value) {
+			c.error(p.NamePos, "cannot bind :%s: a binding writes the new value back, so its target must be assignable — a variable, a field, or an element", propName)
+			continue
+		}
+		if decl := declaredProp(comp, propName); decl != nil && !decl.Bidirectional {
+			c.error(p.NamePos, "cannot bind :%s: %s declares %s as a one-way prop; write it as `:%s` in the declaration to let a caller bind it", propName, comp.Name, propName, propName)
 			continue
 		}
 		bindings = append(bindings, ir.PropBinding{
@@ -34,6 +39,21 @@ func (c *checker) extractBindings(comp *ir.Component, props []ir.Arg, handlers [
 		})
 	}
 	return props, handlers, bindings
+}
+
+// declaredProp returns the prop a `:name` binding targets, or nil when the
+// component declares none under that name — a wildcard prop collected it, or
+// the name is unknown and validateVisualNodeProps has already reported it.
+func declaredProp(comp *ir.Component, name string) *ir.Prop {
+	if comp == nil {
+		return nil
+	}
+	for _, p := range comp.Props {
+		if p.Name == name && p.Wildcard == "" {
+			return p
+		}
+	}
+	return nil
 }
 
 // isAssignableTarget reports whether e is a valid lvalue for a prop binding:

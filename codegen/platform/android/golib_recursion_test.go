@@ -1,6 +1,7 @@
 package android
 
 import (
+	"git.duckfam.us/jonathan/sngl/ir"
 	"strings"
 	"testing"
 
@@ -29,7 +30,7 @@ component main {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}

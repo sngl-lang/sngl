@@ -1,0 +1,77 @@
+# #[wildcard] on a component says which names in its package's namespace
+# resolve to it — a package whose member set cannot be enumerated says so once
+# instead of every unknown name being either an error or silently accepted.
+#
+# This is a txtar rather than a fixture because a wildcard is consulted through
+# an imported package's namespace, and the checker's testdata harness resolves
+# directory imports through a stub.
+
+sngl check app.sngl
+stdout 'ok'
+
+# A declared name beats the wildcard: box() is box, not the wildcard.
+sngl check declared.sngl
+stdout 'ok'
+
+# The wildcard widens which names resolve; it does not stop their props being
+# checked. An undeclared prop on a wildcard-resolved component is still one.
+! sngl check badprop.sngl
+stderr 'unknown prop "nope" on component element'
+
+# A name no wildcard covers is still unknown.
+! sngl check nomatch.sngl
+stderr 'unknown component "Widget" in package w'
+
+-- app.sngl --
+import . "sngl://std"
+import "./widgets"
+
+component main() {
+    window {
+        widgets.marquee(tag = "marquee")
+        widgets.blink(tag = "blink")
+    }
+}
+
+-- declared.sngl --
+import . "sngl://std"
+import "./widgets"
+
+component main() {
+    window {
+        widgets.box(label = "declared")
+    }
+}
+
+-- badprop.sngl --
+import . "sngl://std"
+import "./widgets"
+
+component main() {
+    window {
+        widgets.marquee(tag = "marquee", nope = 1)
+    }
+}
+
+-- nomatch.sngl --
+import . "sngl://std"
+import w "./widgets"
+
+component main() {
+    window {
+        w.Widget(tag = "x")
+    }
+}
+
+-- widgets/widgets.sngl --
+import . "sngl://std"
+import . "sngl://platforms"
+
+#[wildcard("[a-z][a-z0-9]*")]
+component element(tag string) {
+    text(value = tag)
+}
+
+component box(label string) {
+    text(value = label)
+}

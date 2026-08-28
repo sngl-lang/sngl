@@ -27,7 +27,7 @@ func (c *checker) isContextDeclCallStmt(s *ast.CallStmt) bool {
 	// The stdlib's own load reaches here before the marks are collected, so
 	// read the mark off the declaration the name resolves to.
 	comp, isComp := sym.(*ir.Component)
-	return isComp && comp.Builtin == ast.BuiltinContext
+	return isComp && comp.Builtin == ir.BuiltinContext
 }
 
 // buildContextProvider checks `name(value) { children }` where name resolves

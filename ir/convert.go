@@ -692,8 +692,8 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			Field:   call.Func.Name,
 		}
 	} else if call.Receiver != nil {
-		// Namespaced component/element (html.div, docui.Foo) resolved via
-		// a namespace's Resolve() — preserve the "ns.Field" select form.
+		// Namespaced component/element (html.div, docui.Foo) — preserve the
+		// "ns.Field" select form.
 		if call.AST != nil {
 			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
 				funcExpr = &ast.SelectExpr{

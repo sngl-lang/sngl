@@ -528,69 +528,70 @@ func TestParseDisabledDecl(t *testing.T) {
 	}
 }
 
-func TestParseAttrDecl(t *testing.T) {
+func TestParseMarkedDecl(t *testing.T) {
 	src := `#[canvas.shape]
 component rect() {}`
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	comp, ok := doc.Stmts[0].(*ast.ComponentDecl)
 	if !ok {
-		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+		t.Fatalf("expected ComponentDecl, got %T", doc.Stmts[0])
 	}
-	if len(ad.Attrs) != 1 {
-		t.Fatalf("expected 1 attr, got %d", len(ad.Attrs))
+	if len(comp.Attrs) != 1 {
+		t.Fatalf("expected 1 attr, got %d", len(comp.Attrs))
 	}
-	attr := ad.Attrs[0]
+	attr := comp.Attrs[0]
 	if attr.Alias != "canvas" || attr.Name != "shape" {
 		t.Errorf("expected canvas.shape, got %s.%s", attr.Alias, attr.Name)
 	}
-	if _, ok := ad.Inner.(*ast.ComponentDecl); !ok {
-		t.Errorf("expected ComponentDecl inner, got %T", ad.Inner)
-	}
 }
 
-func TestParseAttrDeclWithArgs(t *testing.T) {
+func TestParseMarkedDeclWithArgs(t *testing.T) {
 	src := "#[canvas.shape(\"rect\", 1)]\ncomponent foo() {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	comp, ok := doc.Stmts[0].(*ast.ComponentDecl)
 	if !ok {
-		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+		t.Fatalf("expected ComponentDecl, got %T", doc.Stmts[0])
 	}
-	if len(ad.Attrs[0].Args) != 2 {
-		t.Errorf("expected 2 args, got %d", len(ad.Attrs[0].Args))
+	if len(comp.Attrs[0].Args) != 2 {
+		t.Errorf("expected 2 args, got %d", len(comp.Attrs[0].Args))
 	}
 }
 
-func TestParseAttrDeclBareNameNoAlias(t *testing.T) {
+func TestParseMarkedDeclBareNameNoAlias(t *testing.T) {
 	src := "#[shape]\ncomponent foo() {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	ad, ok := doc.Stmts[0].(*ast.AttrDecl)
+	comp, ok := doc.Stmts[0].(*ast.ComponentDecl)
 	if !ok {
-		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+		t.Fatalf("expected ComponentDecl, got %T", doc.Stmts[0])
 	}
-	attr := ad.Attrs[0]
+	attr := comp.Attrs[0]
 	if attr.Alias != "" || attr.Name != "shape" {
 		t.Errorf("expected bare name shape, got alias=%q name=%q", attr.Alias, attr.Name)
 	}
 }
 
-func TestParseAttrDeclNestedBrackets(t *testing.T) {
+func TestParseMarkedDeclNestedBrackets(t *testing.T) {
 	// #[ with args that contain subscript — must not trigger spurious semicolons
 	src := "#[canvas.items(arr)]\ncomponent foo() {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	if _, ok := doc.Stmts[0].(*ast.AttrDecl); !ok {
-		t.Fatalf("expected AttrDecl, got %T", doc.Stmts[0])
+	comp, ok := doc.Stmts[0].(*ast.ComponentDecl)
+	if !ok {
+		t.Fatalf("expected ComponentDecl, got %T", doc.Stmts[0])
+	}
+	if len(comp.Attrs) != 1 {
+		t.Fatalf("expected 1 attr, got %d", len(comp.Attrs))
 	}
 }
 
@@ -629,13 +630,6 @@ func TestParsePos(t *testing.T) {
 	if cd.Pos.Line != 1 || cd.Pos.Column != 1 {
 		t.Errorf("expected pos 1:1, got %d:%d", cd.Pos.Line, cd.Pos.Column)
 	}
-}
-
-func identNameTest(e ast.Expr) string {
-	if id, ok := e.(*ast.IdentExpr); ok {
-		return id.Name
-	}
-	return ""
 }
 
 func TestParseConstExpr(t *testing.T) {
@@ -938,7 +932,7 @@ func TestParseFuncTypeAnonParams(t *testing.T) {
 	}
 }
 
-func TestFormatAttrDecl(t *testing.T) {
+func TestFormatMarkedDecl(t *testing.T) {
 	// Empty-param list is elided by the formatter; use the canonical form.
 	src := "#[canvas.shape]\ncomponent rect {}"
 	doc, err := Parse("test.sngl", []byte(src))

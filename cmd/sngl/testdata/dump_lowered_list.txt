@@ -1,29 +1,30 @@
 # Verifies `dump --stage lowered --list` succeeds for every shipping platform.
-# InlinePure runs always-on (Plan G); fyne also opts into NoStdlibWrappers.
+# InlinePure runs always-on, and a platform-package override must inline to
+# declared primitives or the build fails.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoTernary → FocusOrder'
+stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoTernary → FocusOrder'
 
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
+stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoTernary,NoAsyncReactive,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → NoTernary → CanvasReactivity'
+stdout 'caps: NoTernary,NoAsyncReactive,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → NoTernary → CanvasReactivity'
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → CanvasReactivity'
+stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → CanvasReactivity'
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoStdlibWrappers,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
+stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
-stdout 'passes: PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

@@ -1,10 +1,13 @@
 # End-to-end gtk4 platform compile test.
 #
-# Uses an inline minimal GIR fixture (Button, Label, Box, ApplicationWindow)
-# passed via --opt gir= so the test runs deterministically without requiring
-# system GTK4 dev files.
+# Uses the bundled GIR (--opt gir=builtin) so the test runs
+# deterministically without requiring system GTK4 dev files. The fixture
+# declares a Widget base class the widgets descend from, because that is where
+# real GIR declares visible/sensitive/hexpand/tooltip-text and the stdlib
+# override bodies in lib/platforms/gtk4/gtk4.sngl are written against them —
+# so this archive also checks that the parent-chain merge reaches them.
 
-sngl generate --platform=gtk4 --lang=go --opt=main=true --opt=gir=Gtk-4.0-test.gir --out=out main.sngl
+sngl generate --platform=gtk4 --lang=go --opt=main=true --opt=gir=builtin --out=out main.sngl
 exists out/model.go
 exists out/callbacks.go
 
@@ -14,9 +17,31 @@ grep '#include <gtk/gtk.h>' out/model.go
 # cgo enabled
 grep 'import "C"' out/model.go
 
-# Button constructor from the inline GIR (gtk_button_new_with_label is the
-# first/only constructor in the fixture, exercising the GIR-driven ctor path).
-grep 'gtk_button_new_with_label' out/model.go
+# The setter for each prop is the C function the fixture GIR names, and the
+# enum value is the member's own C identifier.
+grep 'gtk_orientable_set_orientation' out/model.go
+grep 'C.GTK_ORIENTATION_VERTICAL' out/model.go
+grep 'gtk_button_set_label' out/model.go
+
+# GtkImage.file is a property real GIR names no setter for, so the platform's
+# own table answers for it — and it wins over the GIR name where both exist,
+# which is why a label is set with set_text and not the set_label GIR names.
+grep 'gtk_label_set_text' out/model.go
+! grep 'gtk_label_set_label' out/model.go
+
+# The constructor comes from the GIR rather than from the class name, and the
+# bundled subset names the same one the system GIR does -- gtk_button_new takes
+# no arguments, while gtk_button_new_with_label is a separate constructor the
+# emitter must not reach for.
+grep 'gtk_button_new\(\)' out/model.go
+! grep 'gtk_button_new_with_label' out/model.go
+
+# tooltip-text and sensitive are declared only on Widget, and reach GtkBox and
+# GtkButton down the parent chain. Their setters take a GtkWidget*, so the
+# emitted cast is to the ancestor that declares the property and not to the
+# widget's own class -- cgo rejects a GtkBox* where a GtkWidget* is wanted.
+grep 'C\.gtk_widget_set_tooltip_text\(\(\*C\.GtkWidget\)' out/model.go
+grep 'C\.gtk_widget_set_sensitive\(\(\*C\.GtkWidget\)' out/model.go
 
 # Box and ApplicationWindow constructors should also flow through.
 grep 'gtk_box_new' out/model.go
@@ -26,128 +51,6 @@ grep 'gtk_application_window_new' out/model.go
 # activate handler hooked to the GApplication).
 grep 'snglActivate' out/callbacks.go
 
--- Gtk-4.0-test.gir --
-<?xml version="1.0"?>
-<repository version="1.2"
-  xmlns="http://www.gtk.org/introspection/core/1.0"
-  xmlns:c="http://www.gtk.org/introspection/c/1.0"
-  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
-  <namespace name="Gtk" version="4.0">
-    <interface name="Orientable">
-      <property name="orientation" writable="1">
-        <type name="Orientation" c:type="GtkOrientation"/>
-      </property>
-    </interface>
-    <interface name="Editable">
-      <property name="text" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-      <glib:signal name="changed">
-        <return-value transfer-ownership="none">
-          <type name="none" c:type="void"/>
-        </return-value>
-      </glib:signal>
-    </interface>
-    <class name="Entry" c:type="GtkEntry">
-      <implements name="Editable"/>
-      <constructor name="new" c:identifier="gtk_entry_new"/>
-    </class>
-    <class name="Button" c:type="GtkButton">
-      <constructor name="new_with_label" c:identifier="gtk_button_new_with_label">
-        <parameters>
-          <parameter name="label" transfer-ownership="none" nullable="1">
-            <type name="utf8" c:type="const gchar*"/>
-          </parameter>
-        </parameters>
-      </constructor>
-      <property name="label" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-      <glib:signal name="clicked">
-        <return-value transfer-ownership="none">
-          <type name="none" c:type="void"/>
-        </return-value>
-      </glib:signal>
-    </class>
-    <class name="Label" c:type="GtkLabel">
-      <constructor name="new" c:identifier="gtk_label_new">
-        <parameters>
-          <parameter name="str" transfer-ownership="none" nullable="1">
-            <type name="utf8" c:type="const gchar*"/>
-          </parameter>
-        </parameters>
-      </constructor>
-      <property name="label" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-    </class>
-    <class name="Box" c:type="GtkBox">
-      <implements name="Orientable"/>
-      <constructor name="new" c:identifier="gtk_box_new">
-        <parameters>
-          <parameter name="orientation">
-            <type name="Orientation" c:type="GtkOrientation"/>
-          </parameter>
-          <parameter name="spacing">
-            <type name="gint" c:type="int"/>
-          </parameter>
-        </parameters>
-      </constructor>
-      <property name="spacing" writable="1">
-        <type name="gint" c:type="int"/>
-      </property>
-    </class>
-    <class name="CheckButton" c:type="GtkCheckButton">
-      <constructor name="new" c:identifier="gtk_check_button_new"/>
-      <constructor name="new_with_label" c:identifier="gtk_check_button_new_with_label">
-        <parameters>
-          <parameter name="label" transfer-ownership="none" nullable="1">
-            <type name="utf8" c:type="const gchar*"/>
-          </parameter>
-        </parameters>
-      </constructor>
-      <property name="active" writable="1">
-        <type name="gboolean" c:type="gboolean"/>
-      </property>
-      <property name="label" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-      <glib:signal name="toggled">
-        <return-value transfer-ownership="none">
-          <type name="none" c:type="void"/>
-        </return-value>
-      </glib:signal>
-    </class>
-    <class name="Image" c:type="GtkImage">
-      <constructor name="new" c:identifier="gtk_image_new"/>
-      <property name="file" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-    </class>
-    <class name="ScrolledWindow" c:type="GtkScrolledWindow">
-      <constructor name="new" c:identifier="gtk_scrolled_window_new"/>
-    </class>
-    <class name="ApplicationWindow" c:type="GtkApplicationWindow">
-      <constructor name="new" c:identifier="gtk_application_window_new">
-        <parameters>
-          <parameter name="application">
-            <type name="Application" c:type="GtkApplication*"/>
-          </parameter>
-        </parameters>
-      </constructor>
-      <property name="title" writable="1">
-        <type name="utf8" c:type="gchar*"/>
-      </property>
-      <property name="default-width" writable="1">
-        <type name="gint" c:type="int"/>
-      </property>
-      <property name="default-height" writable="1">
-        <type name="gint" c:type="int"/>
-      </property>
-    </class>
-  </namespace>
-</repository>
-
 -- main.sngl --
 import . "sngl://std"
 
@@ -156,9 +59,9 @@ component main {
 
     platform gtk4 {
         GtkApplicationWindow(title="Test") {
-            GtkBox(orientation="vertical") {
+            GtkBox(orientation="vertical", tooltipText="a box") {
                 GtkLabel(label="hello") {}
-                GtkButton(label="click me", @clicked { count = count + 1 }) {}
+                GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
             }
         }
     }

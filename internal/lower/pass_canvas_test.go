@@ -10,11 +10,13 @@ import (
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	t.Helper()
 	styleTyp := &ir.Type{Kind: ir.TypeStruct}
-	shapeListType := ir.ListOf(&ir.Type{Kind: ir.TypeShape})
+	childListType := ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 
 	rectComp := &ir.Component{
 		Name:         "rect",
-		ChildrenType: shapeListType,
+		TreeKind:     "shape",
+		ChildKind:    "shape",
+		ChildrenType: childListType,
 		Props: []*ir.Prop{
 			{Name: "x", Type: ir.TypFloat},
 			{Name: "y", Type: ir.TypFloat},
@@ -25,7 +27,8 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	canvasComp := &ir.Component{
 		Name:         "canvas",
-		ChildrenType: shapeListType,
+		ChildKind:    "shape",
+		ChildrenType: childListType,
 		Props: []*ir.Prop{
 			{Name: "width", Type: ir.TypFloat},
 			{Name: "height", Type: ir.TypFloat},
@@ -58,16 +61,16 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{mainComp},
-		UsesShapes: true,
+		TreeKinds:  map[string]bool{"shape": true},
 	}
 	return pkg, canvasInst
 }
 
-// A program with no list<shape> anywhere is not searched. Without the gate the
+// A program with no shape node anywhere is not searched. Without the gate the
 // pass walks every component of every program a canvas-capable target builds.
 func TestPassCanvas_SkipsProgramsWithoutShapes(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
-	pkg.UsesShapes = false
+	pkg.TreeKinds = nil
 
 	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
@@ -77,8 +80,8 @@ func TestPassCanvas_SkipsProgramsWithoutShapes(t *testing.T) {
 	}
 }
 
-// The gate is the construct, not the import. list<shape> is resolved by the
-// compiler rather than by sngl://draw, and inlining flattens a canvas out of
+// The gate is the declaration, not the import. A package may declare its own
+// shapes, and inlining flattens a canvas out of
 // the package that imported it, so gating on the import list dropped canvases
 // on the floor: the shapes survived as ordinary widget nodes and the generated
 // program failed to build.

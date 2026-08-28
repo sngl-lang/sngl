@@ -1,0 +1,60 @@
+# Route mode renders a raw element server-side from the same `element`
+# declaration the client render reads. It used to read none of it: every tag
+# came out as the fallback <div> with the tag carried alongside as an
+# attribute (`<div tag="span">`), the wildcard attribute map never unpacked
+# into the attributes it was written under, `textContent` was written as an
+# attribute rather than as the element's text, a style struct was dropped, and
+# a false boolean attribute was emitted as `open="false"` — which is open.
+
+sngl generate --platform=html --lang=go --opt=main=true --out=out app.sngl
+exists out/server.go
+
+# The tag prop names the element; it is the tag, and never an attribute.
+grep '<details>' out/server.go
+grep '<span>' out/server.go
+grep '<my-widget id=' out/server.go
+! grep 'tag=' out/server.go
+! grep '<element' out/server.go
+
+# An attribute nobody declared reaches the element through the wildcard prop,
+# under the name it was written with.
+grep 'role=' out/server.go
+
+# A style struct is a set of CSS declarations.
+grep 'display:inline-block;min-width:40px' out/server.go
+
+# textContent is the element's text, not an attribute of it.
+grep '<button>go</button>' out/server.go
+! grep 'textContent=' out/server.go
+
+# A false boolean attribute is absent, not `open="false"`.
+! grep 'open=' out/server.go
+
+-- go.mod --
+module example.com/route-raw
+
+go 1.23
+-- api/api.go --
+package api
+
+func Bump(n int) int { return n + 1 }
+-- app.sngl --
+import . "sngl://std"
+
+output { go { html } }
+
+import "go://example.com/route-raw/api"
+
+component main {
+    var n int = 0
+
+    window #app(title = "t", href = "/") {
+        html.div(role = "main", style = { display = Display.inlineBlock, minWidth = 40 }) {
+            html.details(open = false) {
+                html.button(textContent = "go", @click { n = api.Bump(n) })
+            }
+            html.span(textContent = "{string(n)}")
+            html.element(tag = "my-widget", id = "w")
+        }
+    }
+}

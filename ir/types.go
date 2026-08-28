@@ -27,7 +27,6 @@ const (
 	TypeUnit      // Decl set
 	TypeFunc      // Sig set
 	TypeComponent // Decl set
-	TypeShape     // virtual; IsShape components satisfy it
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
@@ -64,7 +63,6 @@ var (
 	TypString = &Type{Kind: TypeString}
 	TypNull   = &Type{Kind: TypeNull}
 	TypVoid   = &Type{Kind: TypeVoid}
-	TypShape  = &Type{Kind: TypeShape}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -189,14 +187,26 @@ func (t *Type) String() string {
 		}
 		return "unit"
 	case TypeFunc:
-		return "func"
+		// The signature, not the bare word: the two sides of a func-vs-func
+		// mismatch are the parameters and the return, so a diagnostic naming
+		// only the kind reads as if the types were equal.
+		if t.Sig == nil {
+			return "func"
+		}
+		params := make([]string, len(t.Sig.Params))
+		for i, p := range t.Sig.Params {
+			params[i] = p.Type.String()
+		}
+		sig := "func(" + strings.Join(params, ", ") + ")"
+		if t.Sig.Return != nil {
+			sig += " " + t.Sig.Return.String()
+		}
+		return sig
 	case TypeComponent:
 		if t.Decl != nil {
 			return t.Decl.SymName()
 		}
 		return "component"
-	case TypeShape:
-		return "shape"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:
@@ -491,7 +501,7 @@ func (t *Type) Equal(other *Type) bool {
 		a, aok := t.Meta.(NativeTypeRef)
 		b, bok := other.Meta.(NativeTypeRef)
 		return aok && bok && a == b
-	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeShape, TypeNull, TypeVoid:
+	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeNull, TypeVoid:
 		// Kinds carrying no distinguishing payload: the Kind comparison above
 		// has already settled them. Listed explicitly rather than defaulted so
 		// that a new kind with an identity field cannot be answered "equal" by
@@ -509,6 +519,13 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if target.Kind == TypeDyn {
+		return true
+	}
+	// Widening a number is lossless, so it needs no cast. An untyped numeric
+	// literal is an int until something asks otherwise, which is why this is
+	// stated here rather than at each assignment: `var x float = 1` and
+	// `progress(value=1)` are the same question.
+	if t.Kind == TypeInt && target.Kind == TypeFloat {
 		return true
 	}
 	if t.Kind == TypeNull && target.Kind == TypeOption {
@@ -553,16 +570,16 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	return false
 }
 
-// builtinOf returns the ast.BuiltinKind of t's backing StructDef, or
+// builtinOf returns the BuiltinKind of t's backing StructDef, or
 // BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
 // and generic behaviour travel with the type rather than with a hardcoded name.
-func builtinOf(t *Type) ast.BuiltinKind {
+func builtinOf(t *Type) BuiltinKind {
 	if t == nil || t.Kind != TypeStruct {
-		return ast.BuiltinNone
+		return BuiltinNone
 	}
 	sd, ok := t.Decl.(*StructDef)
 	if !ok {
-		return ast.BuiltinNone
+		return BuiltinNone
 	}
 	return sd.Builtin
 }
@@ -570,7 +587,7 @@ func builtinOf(t *Type) ast.BuiltinKind {
 // IsColorStruct reports whether t is the color value type. A colour is a
 // TypeStruct backed by its stdlib StructDef and marked #[builtin("color")];
 // call this to detect the shape.
-func IsColorStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinColor }
+func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
 
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.
@@ -580,9 +597,9 @@ func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
 // time/datetime value type. These three were formerly the TypeDate/TypeTime/
 // TypeDateTime kinds; they are now carried uniformly as TypeStruct backed by
 // the StructDef (like color).
-func IsDateStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinDate }
-func IsTimeStruct(t *Type) bool     { return builtinOf(t) == ast.BuiltinTime }
-func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == ast.BuiltinDateTime }
+func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
+func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
+func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
 // Registered stdlib datetime struct type. Populated by the checker once
 // lib/types.sngl is parsed, so non-checker phases (foreign-type importers,

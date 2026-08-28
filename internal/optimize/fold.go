@@ -261,6 +261,15 @@ func foldPlatformFilter(s *ir.PlatformFilter, ctx *evalCtx) ir.Stmt {
 
 func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	for i := range n.Props {
+		// A func-typed prop's lambda is a handler written as an argument, so
+		// its body folds the way a handler's does. foldExpr leaves a lambda
+		// alone — a lambda elsewhere is folded when its enclosing func is —
+		// and this one has no enclosing func to be reached from, so an
+		// unrolled loop would leave its own variable behind in the body.
+		if lam, ok := n.Props[i].Value.(*ir.Lambda); ok && lam.Func != nil {
+			lam.Func.Block = foldStmts(lam.Func.Block, ctx)
+			continue
+		}
 		n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
 	}
 	for i := range n.Handlers {

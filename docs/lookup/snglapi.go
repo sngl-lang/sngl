@@ -2,6 +2,7 @@ package lookup
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -56,9 +57,11 @@ type PackageView struct {
 	Enums            []Summary
 	Constants        []Summary
 	Data             []Summary
-	Functions        []Summary
-	Overrides        []Summary
-	PlatformTypes    []Summary
+	// Functions carries the package's macros too: the template has no macro
+	// section, and dropping them would lose them from the site entirely.
+	Functions     []Summary
+	Overrides     []Summary
+	PlatformTypes []Summary
 	// Has* booleans precomputed for SNGL `if` guards — lets the optimizer
 	// fold the section wrapper without needing to evaluate `list.length(…) > 0`
 	// against a struct-field list.
@@ -245,8 +248,7 @@ func StdlibPackages() []PackageEntry {
 	plats := codegen.Platforms()
 	sort.Strings(plats)
 	for _, name := range plats {
-		p := codegen.LookupPlatform(name)
-		if p == nil || len(p.Package()) == 0 {
+		if len(codegen.PlatformDocs(codegen.LookupPlatform(name))) == 0 {
 			continue
 		}
 		out = append(out, PackageEntry{Path: name, Title: name, Kind: "platform"})
@@ -254,8 +256,7 @@ func StdlibPackages() []PackageEntry {
 	langs := codegen.Langs()
 	sort.Strings(langs)
 	for _, name := range langs {
-		l := codegen.LookupLang(name)
-		if l == nil || len(l.Package()) == 0 {
+		if len(codegen.LangDocs(codegen.LookupLang(name))) == 0 {
 			continue
 		}
 		out = append(out, PackageEntry{Path: name, Title: name, Kind: "language"})
@@ -347,6 +348,9 @@ func AllDeclPages() []DeclPage {
 		}
 		for _, f := range idx.Functions {
 			add("functions", f.Name, "")
+		}
+		for _, m := range idx.Macros {
+			add("functions", m.Name, "")
 		}
 		for _, c := range idx.Constants {
 			add("constants", c.Name, "")
@@ -478,7 +482,7 @@ func mapIndex(idx *DeclIndex) PackageView {
 		Enums:         mapSummaries(idx.Enums),
 		Constants:     mapSummaries(idx.Constants),
 		Data:          mapSummaries(idx.Data),
-		Functions:     mapSummaries(idx.Functions),
+		Functions:     mapSummaries(append(slices.Clone(idx.Functions), idx.Macros...)),
 		Overrides:     mapSummaries(idx.Overrides),
 		PlatformTypes: mapSummaries(idx.PlatformTypes),
 	}
@@ -523,10 +527,6 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 	}
 	v := ComponentDetailView{Name: c.Name, Doc: c.Doc, Examples: append([]string(nil), c.Examples...)}
 	if c.Schema != nil {
-		type pe struct {
-			name string
-			ps   any
-		}
 		names := make([]string, 0, len(c.Schema.Props))
 		for n := range c.Schema.Props {
 			names = append(names, n)

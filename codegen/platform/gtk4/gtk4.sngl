@@ -1,21 +1,28 @@
 // GTK4 platform package.
 //
-// Each component overrides the corresponding stdlib abstract component with a
-// GTK4-native implementation. GIR-resolved widget types (GtkButton, GtkLabel,
-// etc.) are available as VisualNode identifiers inside component bodies; the
-// platform's Resolve() maps them from the Gtk-4.0.gir type registry.
+// Each component below overrides the corresponding stdlib abstract component
+// with a GTK4-native implementation. The widget types those bodies are written
+// against — `GtkButton`, `GtkLabel`, one per GTK class — are the other half of
+// this package: the platform generates them from the `Gtk-4.0.gir`
+// introspection data installed on the machine, since the widget set is a
+// property of the host and not of this repository. A GIR property becomes a
+// typed prop, a GLib signal an event, and `#[intrinsic("gtk4:<CType>")]` names
+// the C type the emitter reads the class's C API back out of the same GIR
+// under. With no GIR file the platform reports itself unavailable and
+// contributes nothing, this file included.
 //
-// Inside `platform gtk4 { ... }` extension bodies, native widget tags must be
-// qualified with `gtk4.` (e.g. `gtk4.GtkBox`) to disambiguate them from the
-// stdlib abstract components that they override (which are themselves
-// body-bearing under Plan H).
+// Inside a `platform gtk4 { ... }` body a native widget tag needs its `gtk4.`
+// prefix (e.g. `gtk4.GtkBox`): the stdlib component it overrides is in scope
+// too, and carries a body of its own.
 //
-// The view renderer (Task 5) walks each component body, finds the root
+// The view renderer walks each component body, finds the root
 // VisualNode, reads its widget type and prop/event bindings, and emits the
 // corresponding GTK4 Go code.
 
 import sngl "sngl://std"
+import . "sngl://platforms"
 
+#[options]
 struct Options {
     package string
     main bool
@@ -38,7 +45,7 @@ component sngl.button {
 
 component sngl.checkbox {
     platform gtk4 {
-        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change(checked) }) {}
+        gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
     }
 }
 
@@ -89,3 +96,108 @@ component sngl.scroll {
     }
 }
 
+// --- Indicators ---
+
+// GtkProgressBar's fraction is 0.0-1.0, which is the range the stdlib
+// `value` carries when `max` is left at its default. A `max` other than 1
+// would need `value/max`, and a division nothing guards against a zero
+// denominator is worse than the scale being wrong.
+component sngl.progress {
+    platform gtk4 {
+        // GTK's fraction is 0..1, so the value is measured against max here
+        // rather than passed through as if it already were one.
+        gtk4.GtkProgressBar(fraction=value/max, text=label, showText=showValue, style={...style}) {}
+    }
+}
+
+component sngl.spinner {
+    platform gtk4 {
+        gtk4.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
+    }
+}
+
+// `direction` is not forwarded: orientation is a GtkOrientation, and the
+// only SNGL value that reaches a GTK enum is a string literal naming one of
+// its members (see enumValueArg) — a prop reference has no compile-time
+// member to name. A separator is therefore horizontal, which is what
+// `direction` defaults to.
+component sngl.divider {
+    platform gtk4 {
+        gtk4.GtkSeparator(style={...style}) {}
+    }
+}
+
+component sngl.link {
+    platform gtk4 {
+        gtk4.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
+    }
+}
+
+// GtkSwitch reports its own changes through `state-set`, which returns a
+// gboolean, and through GObject's notify — neither of which the fixed
+// (instance, user_data) → void trampoline can carry. So `active` is bound
+// one way and `@change` is not connected; a toggle renders and follows the
+// model, and a user flip does not reach it.
+component sngl.toggle {
+    platform gtk4 {
+        gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}) {}
+    }
+}
+
+// `value`, `min` and `max` are `date`, a builtin struct with no fields, and
+// GtkCalendar takes the day, month and year as three separate ints (its own
+// `date` property is a GLib.DateTime, which no SNGL expression produces).
+// So the calendar is shown and its selection reported, and the bound value
+// does not reach it.
+component sngl.datepicker {
+    platform gtk4 {
+        gtk4.GtkCalendar(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
+    }
+}
+
+// --- Layout ---
+
+component sngl.spacer {
+    platform gtk4 {
+        gtk4.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
+    }
+}
+
+// The same shape html uses: a wrapper carrying the tooltip text, with the
+// wrapped content inside it.
+component sngl.tooltip {
+    platform gtk4 {
+        gtk4.GtkBox(tooltipText=text, style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.card {
+    platform gtk4 {
+        gtk4.GtkFrame(style={...style}) {
+            slot
+        }
+    }
+}
+
+component sngl.stack {
+    platform gtk4 {
+        gtk4.GtkStack(style={...style}) {
+            slot
+        }
+    }
+}
+
+// `open` reaches the popover as widget visibility rather than as
+// gtk_popover_popup: the emitter has one setter path per property and
+// popup/popdown is a pair of calls chosen by the value. `position` is a
+// GtkPositionType, so it is unreachable for the same reason as divider's
+// orientation.
+component sngl.popover {
+    platform gtk4 {
+        gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
+            slot
+        }
+    }
+}
