@@ -1,8 +1,8 @@
-# The route render and the static render have to agree on a prop's shape. The
-# guard that stopped the route render dropping a prop it could not express only
-# accepted a *string* literal, and `element` declares `rows`, `width` and
-# `height` as ints -- so a numeric attribute the static render emits aborted the
-# route build outright.
+# An attribute is a string, and a caller holding a number converts -- which is
+# what html.sngl says three lines below the props that did not. `rows`, `width`
+# and `height` were declared `int`, so the static render wrote the literal and
+# the server render had nothing to write and aborted the build. Both paths on one
+# program, so a divergence fails here rather than in one mode only.
 
 sngl generate --lang go --platform html --out route route.sngl
 grep 'rows=\\"4\\"' route/server.go
@@ -27,7 +27,7 @@ component main {
     var n string = ""
     window {
         textarea(:value=n, rows=4)
-        html.img(src="a.png", width=100, height=50) {}
+        html.img(src="a.png", width="100", height="50") {}
     }
 }
 -- static.sngl --
@@ -38,6 +38,6 @@ component main {
     var n string = ""
     window {
         textarea(:value=n, rows=4)
-        html.img(src="a.png", width=100, height=50) {}
+        html.img(src="a.png", width="100", height="50") {}
     }
 }

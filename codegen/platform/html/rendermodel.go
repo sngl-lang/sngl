@@ -199,12 +199,8 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			}
 			continue
 		}
-		// Any literal, not only a string one: `element` declares `rows`,
-		// `width` and `height` as ints, and an int literal accepted by the
-		// static render was rejected here -- the two paths disagreeing about
-		// the very shape this was meant to keep in step.
-		if v := codegen.IRLiteralAny(p.Value); v != nil {
-			rb.writeRaw(" " + p.Name + `="` + fmt.Sprint(v) + `"`)
+		if s, ok := codegen.IRLiteralString(p.Value); ok {
+			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 			continue
 		}
 		// Not reactive and not a literal: there is nothing to write and no hole

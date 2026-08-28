@@ -80,12 +80,14 @@ component element(
     hidden bool,
     open bool,
 
-    rows int,
-    width int,
-    height int,
-
     // An attribute is written as it is emitted, so a caller holding a number
-    // converts: `component sngl.progress` spells string(value).
+    // converts: `component sngl.progress` spells string(value). These were
+    // declared `int` and so were written by two paths that disagreed -- the
+    // static render rendered the literal and the server render had no string to
+    // write, because there is no attribute type here to convert through.
+    rows string,
+    width string,
+    height string,
     value string,
     max string,
 
@@ -255,7 +257,7 @@ component sngl.select {
 
 component sngl.textarea {
     platform html {
-        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=rows, style={...style}, @input { input() }, @change { change() }) {
+        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
             slot
         }
     }
