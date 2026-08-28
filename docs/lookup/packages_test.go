@@ -181,3 +181,20 @@ func TestFindInLibrary(t *testing.T) {
 		t.Errorf("unknown name resolved to %v", got)
 	}
 }
+
+// Every page the site generates is written to the href it carries, so two
+// pages sharing one href are one page overwriting the other -- which docsgen
+// reports as an output path collision rather than silently emitting the last.
+// A stdlib component overridden by five platforms is the shape that produced
+// it: five declarations of one `sngl.<name>`, one page.
+func TestAllDeclPageHrefsAreUnique(t *testing.T) {
+	seen := map[string]lookup.DeclPage{}
+	for _, p := range lookup.AllDeclPages() {
+		if prev, dup := seen[p.Href]; dup {
+			t.Errorf("href %q emitted twice: %s/%s and %s/%s",
+				p.Href, prev.Pkg, prev.Name, p.Pkg, p.Name)
+			continue
+		}
+		seen[p.Href] = p
+	}
+}

@@ -473,9 +473,20 @@ func buildIndex(tgt *target) *DeclIndex {
 	}
 
 	// Split components into user vs platform-overrides.
+	//
+	// One entry per overridden component, not per override: a stdlib
+	// component is overridden by every platform that implements it, and each
+	// declares the override under the same `sngl.<name>`. They are the same
+	// page -- the href is built from the name -- so a second one is a
+	// collision rather than a second subject.
+	seenOverride := map[string]bool{}
 	for _, d := range tgt.pd.Components {
 		s := DeclSummary{Name: d.Name, Doc: d.Doc}
 		if strings.HasPrefix(d.Name, "sngl.") {
+			if seenOverride[d.Name] {
+				continue
+			}
+			seenOverride[d.Name] = true
 			idx.Overrides = append(idx.Overrides, s)
 		} else {
 			idx.Components = append(idx.Components, s)
