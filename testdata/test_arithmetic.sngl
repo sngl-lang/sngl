@@ -7,7 +7,7 @@ component math {
         x = 0
     )
 
-    text(value=a)
+    text(value=string(a))
 }
 
 func testAddition(t Test, c math) {

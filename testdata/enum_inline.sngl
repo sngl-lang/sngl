@@ -3,5 +3,5 @@ import . "sngl://std"
 component main {
     var mode enum { light, dark } = light
 
-    text(value=mode)
+    text(value=string(mode))
 }

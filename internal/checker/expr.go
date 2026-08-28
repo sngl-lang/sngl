@@ -3429,7 +3429,7 @@ func propTypeMismatch(got, expected *ir.Type) bool {
 	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
 		return false
 	}
-	if got.IsAssignableTo(expected) || primitiveConvertible(got, expected) {
+	if got.IsAssignableTo(expected) {
 		return false
 	}
 	// An unresolved type parameter is the tail of an earlier error.

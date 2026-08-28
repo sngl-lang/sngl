@@ -1,12 +1,12 @@
 import . "sngl://std"
 
 component panel(mode enum { light, dark } = light) {
-    text(value=mode)
+    text(value=string(mode))
 }
 
 component main {
     var theme enum { red, green, blue } = red
 
     panel(mode=dark)
-    text(value=theme)
+    text(value=string(theme))
 }

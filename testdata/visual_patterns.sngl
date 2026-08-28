@@ -19,7 +19,7 @@ component main {
         input #searchBox(value=searchText, @change(e) { searchText = e })
         text #searchLabel(value="Search: " + searchText)
         for item, idx = items {
-            Card(subtitle=string(idx), title=item) {
+            Card(subtitle=string(idx), title=string(item)) {
                 text(value="content")
             }
         }

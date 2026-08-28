@@ -12,5 +12,5 @@ component main {
     var dir Direction = up
     var pt Point = {x = 1.0, y = 2.0}
 
-    text(value=mode)
+    text(value=string(mode))
 }

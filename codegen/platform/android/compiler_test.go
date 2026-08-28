@@ -67,7 +67,7 @@ func TestComputedNotDoubleEmitted(t *testing.T) {
 component main {
     var count = 0
     func doubled() => count * 2
-    text(value=doubled)
+    text(value=string(doubled))
 }`
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {

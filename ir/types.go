@@ -521,6 +521,13 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if target.Kind == TypeDyn {
 		return true
 	}
+	// Widening a number is lossless, so it needs no cast. An untyped numeric
+	// literal is an int until something asks otherwise, which is why this is
+	// stated here rather than at each assignment: `var x float = 1` and
+	// `progress(value=1)` are the same question.
+	if t.Kind == TypeInt && target.Kind == TypeFloat {
+		return true
+	}
 	if t.Kind == TypeNull && target.Kind == TypeOption {
 		return true
 	}

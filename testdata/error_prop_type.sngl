@@ -1,0 +1,24 @@
+// A prop assignment is an assignment: the value has to be assignable to the
+// prop's type. It used to be checked against the rule for an *explicit*
+// conversion, so every primitive coerced silently -- a string reached a bool
+// prop, an int reached a string one, and `html.div(hidden="yes")` type-checked.
+//
+// Widening a number is lossless and stays implicit, and a numeric literal is
+// untyped so it takes the type it is assigned to.
+import . "sngl://std"
+import "sngl://platforms/html"
+
+component main {
+    var n int = 3
+
+    // Fine: a literal is untyped, and int widens to float.
+    progress(value=1, max=5)
+    progress(value=n)
+
+    window {
+        html.div(hidden="yes") {} // ERROR(check) "cannot use string as bool for prop \"hidden\""
+        html.input(value=42) {}   // ERROR(check) "cannot use int as string for prop \"value\""
+        text(value=n)             // ERROR(check) "cannot use int as string for prop \"value\""
+        progress(value="x")       // ERROR(check) "cannot use string as float for prop \"value\""
+    }
+}

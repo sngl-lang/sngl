@@ -5,5 +5,5 @@ enum Status { active, inactive, pending }
 component main {
     var status Status = active
 
-    text(value=status)
+    text(value=string(status))
 }
