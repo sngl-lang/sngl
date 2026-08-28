@@ -1,0 +1,26 @@
+# A window's declared title reached no platform at all.
+#
+# And a child was added through a switch over C types -- two of them, actually:
+# the cgo path knew seven parents and the wrapped path three, so a frame or a
+# popover in wrapped mode fell through to raw cgo in a file built without cgo.
+# Both now come from the introspection data. The vbox nests so the append is a
+# real parent-child one; a top-level widget is parented to __root by BuildUI and
+# never reaches the append path at all.
+
+sngl generate --lang go --platform gtk4 --out out app.sngl
+
+grep 'WindowSetTitle\(win, "Counter"\)' out/model.go
+grep 'BoxAppend\(m.__n1, m.__n0\)' out/model.go
+
+-- app.sngl --
+import . "sngl://std"
+
+component main {
+    var count int = 0
+    window(title="Counter") {
+        vbox {
+            text(value=string(count))
+            button(text="+", @click { count = count + 1 })
+        }
+    }
+}

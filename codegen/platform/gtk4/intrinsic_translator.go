@@ -506,32 +506,24 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}}
 }
 
-// gtk4ChildAppendFn returns the bare C function name for adding a
-// child to a container of the given C type. Callers pass the result
-// to nativeCall, which prepends the "C." prefix at render time.
-func gtk4ChildAppendFn(parentCType string) string {
-	switch parentCType {
-	case "GtkBox":
-		return "gtk_box_append"
-	case "GtkScrolledWindow":
-		return "gtk_scrolled_window_set_child"
-	case "GtkWindow", "GtkApplicationWindow":
-		return "gtk_window_set_child"
-	// The single-child setters below back the stdlib overrides that host a
-	// slot in something other than a box. Each takes one child, so a second
-	// append replaces the first — which is what the GTK API does and what the
-	// stdlib component says (card and popover each wrap one region).
-	case "GtkFrame":
-		return "gtk_frame_set_child"
-	case "GtkPopover":
-		return "gtk_popover_set_child"
-	// gtk_stack_add_child returns the GtkStackPage it created; the emitted
-	// call is a statement and discards it, which is what a stack whose pages
-	// are never named by the program wants.
-	case "GtkStack":
-		return "gtk_stack_add_child"
+// childAdder is how a parent takes a child, read from the introspection data
+// the widget declarations were generated from.
+//
+// It was a switch over seven C types, and a class outside it returned nothing:
+// the child was then dropped while the walk still removed it from the top
+// level, so emitBuildUI appended it to the root instead. A GtkGrid rendered as
+// a grid with its children flattened beside it, from a build that succeeded.
+//
+// GTK's container APIs are not uniform enough for every class to be derivable
+// -- gtk_grid_attach takes four arguments and gtk_notebook_append_page takes a
+// tab label -- so a class with no single-widget way in is reported rather than
+// guessed at. What is derivable is the three shapes that take a widget and
+// nothing else; see gir.ChildAdder.
+func (t *gtk4Translator) childAdder(cType string) gir.ChildAdder {
+	if cls := t.classFor(cType); cls != nil {
+		return cls.ChildAdd
 	}
-	return ""
+	return gir.ChildAdder{}
 }
 
 func gtk4ChildRemoveFn(parentCType string) string {
@@ -574,10 +566,13 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if cType == "" {
 		cType = "GtkBox"
 	}
-	fn := gtk4ChildAppendFn(cType)
-	if fn == "" {
+	adder := t.childAdder(cType)
+	if adder.Func == "" {
+		t.shared.fail(fmt.Errorf("gtk4: %s hosts children through no single-widget call this platform can emit; "+
+			"its GTK API needs arguments a child append cannot supply", cType))
 		return nil
 	}
+	fn := adder.Func
 	// Remove appended child from topLevel.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
@@ -588,9 +583,15 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 	}
 	if t.wrapped {
-		if stmt, ok := rtChildAppendCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
-			return []ir.Stmt{stmt}
+		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
+		if !ok {
+			// A cgo call in a file built without cgo does not compile, so the
+			// gap is reported where it is rather than emitted.
+			t.shared.fail(fmt.Errorf("gtk4: %s adds its child through %s, which pkg/go/gtk4rt does not wrap; "+
+				"a wrapped build cannot emit the cgo call directly", cType, adder.Func))
+			return nil
 		}
+		return []ir.Stmt{stmt}
 	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))

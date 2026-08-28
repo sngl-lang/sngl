@@ -425,7 +425,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// calls from EvalExpr (e.g. for unsafe.Pointer casts) are captured before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped)
+	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc))
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 {
@@ -1001,6 +1001,17 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	tr.canvasByFunc = canvasByFunc
 	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
+	// The node C types, as the promoted-handler and component-method emitters
+	// do. Without them OnPropAssign has no widget to write through and returns
+	// nothing, so a prop assignment reaching this emitter would emit the model
+	// write and drop the setter.
+	//
+	// Unfalsified: every component function I could write inlines into its
+	// caller, so the assignment lands in a promoted handler, which already
+	// copies these. This is here because the three emitters should not disagree
+	// about what their translator knows, not because a program is known to
+	// reach it.
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	fnCopy := *fn
@@ -1038,6 +1049,17 @@ func isWindowClass(cType string) bool {
 	return false
 }
 
+// windowTitleGo is the Go expression for the window's `title` prop, or "" when
+// it declares none. A window's title was read by no platform and emitted
+// nowhere, so a declared prop reached the output as nothing.
+func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
+	wins := ctx.Windows()
+	if len(wins) == 0 || wins[0].Window == nil || wins[0].Window.Title == nil {
+		return ""
+	}
+	return gc.EvalExpr(wins[0].Window.Title)
+}
+
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget.
 // With NoDeclarative on, the body buffer is a flat stream of intrinsic
 // calls (CreateNode → m.<id> = ctor; AppendChild → gtk_box_append; etc.)
@@ -1050,9 +1072,9 @@ func isWindowClass(cType string) bool {
 // GtkApplicationWindow/GtkWindow at the root so there's no need for the
 // synthetic m.__root wrapper or a freshly-constructed
 // gtk_application_window_new.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title)
 		return
 	}
 	// Empty component: no tree to build; BuildUI just creates a window.
@@ -1134,6 +1156,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	}
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
 		fmt.Fprintf(b, "\t%s\n", line)
+	}
+	// The window's declared title. Not through gtk4rt: the cgo scaffold does
+	// not require this module, so importing it does not build. The string is
+	// allocated once at startup and not freed, as the snapshot harness does
+	// with its application id.
+	if title != "" {
+		fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString(%s))\n", title)
+		gc.RequireImport("unsafe")
 	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,

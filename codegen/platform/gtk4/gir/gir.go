@@ -125,6 +125,29 @@ type ClassInfo struct {
 	// A dotted name ("GObject.Object") is in another namespace, which this
 	// parser does not read, so the chain ends there.
 	Parent string
+	// ChildAdd is how this class takes a child widget, or the zero value when
+	// it takes none this way. Derived from the introspection data rather than
+	// listed in Go: a hard-coded list of container types silently re-parented
+	// the children of every class outside it.
+	ChildAdd ChildAdder
+}
+
+// ChildAdder is the C function a container's child is added through, and
+// whether it holds one child or many.
+//
+// GTK's container APIs are not uniform, so this covers the three shapes that
+// take a widget and nothing else: `append(child)` and `add_child(child)`,
+// which accumulate, and a writable `child` property, which replaces. A class
+// whose only way in needs more arguments -- gtk_grid_attach takes four, and
+// gtk_notebook_append_page takes a tab label -- is not expressible as one call
+// and is reported rather than guessed at.
+type ChildAdder struct {
+	// Func is the C identifier, e.g. "gtk_box_append".
+	Func string
+	// Single is true when the call replaces the child rather than appending:
+	// a second child takes the first one's place, which is what the GTK
+	// setter does.
+	Single bool
 }
 
 // InterfaceInfo holds resolved metadata for one GIR interface.
@@ -542,6 +565,25 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 		inherit(name)
 	}
 
+	// How each class takes a child, from the methods and properties parsed
+	// above. After the inherit pass, so a subclass reads its parent's answer:
+	// GtkApplicationWindow takes its child through GtkWindow's `child`.
+	for owner, cls := range reg.Classes {
+		cls.ChildAdd = childAdder(cls, methods[cls])
+		_ = owner
+	}
+	for _, cls := range reg.Classes {
+		if cls.ChildAdd.Func != "" {
+			continue
+		}
+		for p := reg.Classes[cls.Parent]; p != nil; p = reg.Classes[p.Parent] {
+			if p.ChildAdd.Func != "" {
+				cls.ChildAdd = p.ChildAdd
+				break
+			}
+		}
+	}
+
 	for _, cls := range reg.Classes {
 		if cls.CType != "" {
 			reg.ByCType[cls.CType] = cls
@@ -549,6 +591,35 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	}
 
 	return reg, nil
+}
+
+// childAdder picks the call a container's child is added through. An
+// accumulating method wins over the replacing property: a class declaring both
+// (GtkStack has add_child and no child property; GtkOverlay has both) holds
+// many children, and the property would silently drop all but the last.
+func childAdder(cls *ClassInfo, m map[string]*methodInfo) ChildAdder {
+	for _, name := range []string{"append", "add_child"} {
+		if mi := m[name]; mi != nil && mi.ident != "" && mi.valParams == 1 && isWidgetCType(mi.valCType) {
+			return ChildAdder{Func: mi.ident}
+		}
+	}
+	for _, p := range cls.Props {
+		if p.Name != "child" || p.Setter == "" || p.SetterValParams != 1 {
+			continue
+		}
+		if !isWidgetCType(p.SetterCType) {
+			continue
+		}
+		return ChildAdder{Func: p.Setter, Single: true}
+	}
+	return ChildAdder{}
+}
+
+// isWidgetCType reports whether a C type names a widget pointer. A container's
+// way in takes a widget; a method called `append` that takes a string is
+// GtkStringList's, and appending a child through it would not compile.
+func isWidgetCType(c string) bool {
+	return c == "GtkWidget*" || c == "GtkWidget"
 }
 
 // hasProp reports whether props already carries a property of this GIR name.

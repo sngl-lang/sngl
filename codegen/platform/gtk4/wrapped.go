@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"regexp"
 	"strings"
 
@@ -154,16 +155,22 @@ func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
 
 // rtChildAppendCall returns the gtk4rt container call for adding child to a
 // parent of the given C type, and ok=false if unmapped.
-func rtChildAppendCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
-	var fn string
-	switch parentCType {
-	case "GtkBox":
-		fn = "BoxAppend"
-	case "GtkScrolledWindow":
-		fn = "ScrolledWindowSetChild"
-	case "GtkWindow", "GtkApplicationWindow":
-		fn = "WindowSetChild"
-	default:
+// rtChildAppendWrappers are the gtk4rt wrappers that add a child, keyed by the
+// GTK function each one calls. The key comes from the introspection data
+// (gir.ChildAdder), so this says only which of those calls this runtime package
+// wraps -- a fact about pkg/go/gtk4rt, not about GTK. A C type switch said both
+// at once, and said the second one wrong: it knew three parents where the cgo
+// path knew seven, so a frame or a popover in wrapped mode fell through to raw
+// cgo in a file that compiles without cgo.
+var rtChildAppendWrappers = map[string]string{
+	"gtk_box_append":                "BoxAppend",
+	"gtk_window_set_child":          "WindowSetChild",
+	"gtk_scrolled_window_set_child": "ScrolledWindowSetChild",
+}
+
+func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) (ir.Stmt, bool) {
+	fn, ok := rtChildAppendWrappers[adder.Func]
+	if !ok {
 		return nil, false
 	}
 	return &ir.CallStmt{Call: rtCall(fn, parent, child)}, true
@@ -207,7 +214,7 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.
-func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) {
+func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string) {
 	mref := func(ref string) string { return "m." + ref }
 
 	// Empty component: BuildUI just creates a window.
@@ -245,6 +252,9 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 	b.WriteString("\tm.buildWidgetTree()\n")
 	b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
 	b.WriteString("\tgtk4rt.WindowSetDefaultSize(win, 480, 640)\n")
+	if title != "" {
+		fmt.Fprintf(b, "\tgtk4rt.WindowSetTitle(win, %s)\n", title)
+	}
 	b.WriteString("\tgtk4rt.WindowSetChild(win, m.__root)\n")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")

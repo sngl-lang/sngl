@@ -26,10 +26,19 @@ func seedWidget(tr *gtk4Translator, tag, cType, constructor string) {
 	if tr.registry == nil {
 		tr.registry = &gir.TypeRegistry{ByCType: map[string]*gir.ClassInfo{}}
 	}
-	tr.registry.ByCType[cType] = &gir.ClassInfo{
+	cls := &gir.ClassInfo{
 		CType:        cType,
 		Constructors: []gir.ConstructorInfo{{Name: constructor}},
 	}
+	// How the class takes a child comes from the introspection data, not from
+	// this stub: a hand-written zero value would let a translator that reads it
+	// pass here and drop every child in a real build.
+	if reg, err := gir.Minimal(); err == nil {
+		if real := reg.ByCType[cType]; real != nil {
+			cls.ChildAdd = real.ChildAdd
+		}
+	}
+	tr.registry.ByCType[cType] = cls
 }
 
 func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {

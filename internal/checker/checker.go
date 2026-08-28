@@ -2357,6 +2357,22 @@ func resolvePositionalArgs(args ast.ArgList, order []string) map[string]ast.Expr
 // already, so this sets its fields rather than binding a second symbol over
 // the first — references made before the body is checked and after it resolve
 // to the same declaration.
+// windowPropOrder is the positional order of a window's props: the order the
+// declaration writes them in. Duplicating it in Go was a second place for it
+// to be wrong.
+func windowPropOrder(comp *ir.Component) []string {
+	if comp == nil {
+		return []string{"title", "href", "favicon"}
+	}
+	out := make([]string, 0, len(comp.Props))
+	for _, p := range comp.Props {
+		if p != nil && p.Wildcard == "" {
+			out = append(out, p.Name)
+		}
+	}
+	return out
+}
+
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := c.hoistedWindow(vn.ID)
 	if w == nil {
@@ -2373,7 +2389,12 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	for _, v := range w.Vars {
 		c.declare(vn.Pos, v)
 	}
-	named := resolvePositionalArgs(vn.Args, []string{"title", "href", "favicon"})
+	// Checked against the declaration like any other component's node. A
+	// window took whatever it was given: `window(width=320)` named a prop the
+	// #[builtin("window")] component does not declare, and nothing said so --
+	// so it read as a prop gtk4 ignored rather than one nobody declared.
+	c.validateVisualNodeProps(vn, c.windowComp)
+	named := resolvePositionalArgs(vn.Args, windowPropOrder(c.windowComp))
 	if e, ok := named["href"]; ok {
 		w.Href = c.checkExpr(e)
 	}

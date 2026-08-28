@@ -190,6 +190,13 @@ func WindowSetDefaultSize(win Handle, width, height int) {
 }
 
 // WindowSetChild sets a window's single child.
+// WindowSetTitle sets a window's title bar text.
+func WindowSetTitle(win Handle, title string) {
+	cs := C.CString(title)
+	defer C.free(unsafe.Pointer(cs))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), cs)
+}
+
 func WindowSetChild(win, child Handle) {
 	C.gtk_window_set_child((*C.GtkWindow)(p(win)), widget(child))
 }
