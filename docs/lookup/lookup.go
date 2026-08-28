@@ -389,15 +389,22 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Built-in platform / language names (android, html, fyne, bubbletea, go,
 	// kotlin, ...) — resolve via the codegen registry so they share the same
 	// Lookup code paths as the stdlib and scheme imports.
-	if docs := codegen.PlatformDocs(codegen.LookupPlatform(path)); len(docs) > 0 {
-		t := mergeDocsTarget(path, docs)
-		t.optionsDecl = optionsDeclOf("platforms/" + path)
-		return t, nil
-	}
-	if docs := codegen.LangDocs(codegen.LookupLang(path)); len(docs) > 0 {
-		t := mergeDocsTarget(path, docs)
-		t.optionsDecl = optionsDeclOf("languages/" + path)
-		return t, nil
+	//
+	// The source comes from PackageSource rather than from PlatformDocs, even
+	// though both read the same files: optionsDecl is a pointer into the parse
+	// the checker loaded, and the classification below compares pointers. Two
+	// parses of one file share none, so reading the source a second way here
+	// silently unclassifies the target's whole option schema.
+	for _, tier := range []string{"platforms", "languages"} {
+		uri := tier + "/" + path
+		if !isRegisteredTarget(tier, path) {
+			continue
+		}
+		if docs := checker.PackageSource(uri); len(docs) > 0 {
+			t := mergeDocsTarget(path, docs)
+			t.optionsDecl = optionsDeclOf(uri)
+			return t, nil
+		}
 	}
 
 	// Alias lookup against cwd's imports.
@@ -818,6 +825,19 @@ func FirstSentence(doc string) string {
 // stdlibPackageDocs returns the declarations of the named embedded packages,
 // merged. Packages are directories on disk, so this reads the layout rather
 // than filtering a merged set.
+// isRegisteredTarget reports whether path names a registered platform or
+// language, and one usable here: an unavailable platform contributes no
+// package, which is a whole-package decision made by the plugin.
+func isRegisteredTarget(tier, path string) bool {
+	switch tier {
+	case "platforms":
+		return len(codegen.PlatformDocs(codegen.LookupPlatform(path))) > 0
+	case "languages":
+		return len(codegen.LangDocs(codegen.LookupLang(path))) > 0
+	}
+	return false
+}
+
 // providedPackageDocs is the source a registered target provides for its own
 // library package. A target carries its package rather than lib/ holding it, so
 // a package that exists only because a plugin is registered has to resolve
@@ -857,8 +877,12 @@ func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	var stmts []ast.Stmt
 	var docs []*ast.Document
 	for _, pkg := range pkgs {
-		docs = append(docs, checker.PackageDocsFor(pkg)...)
-		docs = append(docs, providedPackageDocs(pkg)...)
+		// PackageSource, not the two halves separately: a mark is read off the
+		// loaded IR and its declaration is then found here by pointer, and two
+		// parses of one file never share one. Reading a target's provided
+		// source fresh is why the #[options] struct of every target package
+		// was classified as an ordinary user type.
+		docs = append(docs, checker.PackageSource(pkg)...)
 	}
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)

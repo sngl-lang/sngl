@@ -215,7 +215,12 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
 	}
 
-	if len(comp.Body) == 0 {
+	// Renders nothing *and* holds nothing: a component with state, a function
+	// or a timer is not empty even with no visual body, and dropping it takes
+	// its timer and its state with it. canInline asks the same four questions
+	// (inline_components.go), and asking only about Body here is how a
+	// timer-only component vanished from every platform with no diagnostic.
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
 		// A user component declaring nothing at all renders nothing, so the
 		// node goes rather than reaching a codegen that has to guess what an
 		// empty component means — each platform guessed differently, and two

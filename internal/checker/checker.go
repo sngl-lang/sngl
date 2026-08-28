@@ -1755,7 +1755,9 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 		for _, spec := range s.Specs {
 			typ := c.resolveType(spec.Type)
 			for _, name := range spec.Names {
-				out = append(out, &ir.Var{AST: s, Name: name, Type: typ, IsConst: true})
+				v := &ir.Var{AST: s, Name: name, Type: typ, IsConst: true}
+				c.applyMarks(s, v)
+				out = append(out, v)
 			}
 		}
 	case *ast.VarDecl:
@@ -1763,6 +1765,11 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 			typ := c.resolveType(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
+				// A mark means the same thing wherever the declaration sits.
+				// Skipping this is how a macro written on a component-local
+				// var did nothing and said nothing, while the same mark on the
+				// same form at top level was an error.
+				c.applyMarks(s, v)
 				for i := range spec.Handlers {
 					h := &spec.Handlers[i]
 					v.Handlers = append(v.Handlers, &ir.EventHandler{
