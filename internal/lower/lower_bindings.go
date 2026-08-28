@@ -265,9 +265,19 @@ func lambdaReportsValueChange(f *ir.Func, candidates []string) bool {
 //
 // The parameter reaches the value either way: an event parameter carries it in
 // the field the event declares, and a callback parameter is the value.
-func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr) *ir.Emit {
+func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string) *ir.Emit {
 	if value == nil {
+		// A callback with no parameter of its own already carries the new value
+		// in the event it emits -- android's radio writes
+		// `onClick=func() { change({value = opt}) }`, where the value is the
+		// option the loop is on. Declaring a parameter on it instead invented
+		// one the caller never passes: Compose's onClick is `() -> Unit`, so the
+		// emitted Kotlin did not compile, and `opt` -- the whole point of the
+		// loop -- never reached the write-back.
 		if len(f.Params) == 0 {
+			if v := emittedValue(f.Block, candidates); v != nil {
+				return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: v}}}
+			}
 			f.Params = []*ir.Param{{Name: "__event", Type: evtType}}
 		}
 		p := f.Params[0]
@@ -285,7 +295,36 @@ func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr) *ir.E
 	return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: value}}}
 }
 
+// emittedValue is the value a body's emit of one of the candidate events
+// carries: the `value` field of a struct-literal payload, or the argument
+// itself. Nil when the body emits none of them, or emits one with no argument.
+func emittedValue(stmts []ir.Stmt, candidates []string) ir.Expr {
+	for _, st := range stmts {
+		e, ok := st.(*ir.Emit)
+		if !ok || !slices.Contains(candidates, e.Name) || len(e.Args) == 0 {
+			continue
+		}
+		arg := e.Args[0].Value
+		if sl, ok := arg.(*ir.StructLit); ok {
+			for _, f := range sl.Fields {
+				if f.Name == "value" {
+					return f.Value
+				}
+			}
+			continue
+		}
+		return arg
+	}
+	return nil
+}
+
+// injectEmitIntoHandlers injects into *every* handler that reports the change,
+// not the first. Stopping at the first put the write-back wherever the walk
+// reached it soonest, which for a platform body written as
+// `if direction == "horizontal" { ... } else { ... }` is the branch that is not
+// taken -- so the live one emitted `onClick = {}` and the binding did nothing.
 func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr) bool {
+	injected := false
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
@@ -295,8 +334,8 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 					continue
 				}
 				if handlerReportsValueChange(h, candidates) {
-					h.Func.Block = append([]ir.Stmt{emitFor(h.Func, propName, evtType, value)}, h.Func.Block...)
-					return true
+					h.Func.Block = append([]ir.Stmt{emitFor(h.Func, propName, evtType, value, candidates)}, h.Func.Block...)
+					injected = true
 				}
 			}
 			// A callback passed as a func-typed prop reports the change the
@@ -306,31 +345,31 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 				if !lambdaReportsValueChange(f, candidates) {
 					continue
 				}
-				f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value)}, f.Block...)
-				return true
+				f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value, candidates)}, f.Block...)
+				injected = true
 			}
 			// Recurse into children.
 			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value) {
-				return true
+				injected = true
 			}
 		case *ir.For:
 			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
-				return true
+				injected = true
 			}
 		case *ir.If:
 			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
-				return true
+				injected = true
 			}
 			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value) {
-				return true
+				injected = true
 			}
 		case *ir.PlatformFilter:
 			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
-				return true
+				injected = true
 			}
 		}
 	}
-	return false
+	return injected
 }
 
 // rewritePropMutationsToEmit rewrites every Assign/Toggle targeting propName

@@ -8,8 +8,13 @@ sngl generate --lang none --platform html --out out app.sngl
 grep 'addEventListener\("scrollend"' out/index.html
 grep 'addEventListener\("click"' out/index.html
 
-# The SNGL spelling must not reach the DOM: it is not an event type.
+# @longPress has no DOM event of its own; contextmenu is what a sustained touch
+# press fires, and stands in until html synthesizes the gesture.
+grep 'addEventListener\("contextmenu"' out/index.html
+
+# No SNGL spelling reaches the DOM: neither is an event type.
 ! grep 'addEventListener\("scrollEnd"' out/index.html
+! grep 'addEventListener\("longPress"' out/index.html
 
 -- app.sngl --
 import . "sngl://std"
@@ -19,5 +24,5 @@ component main {
     scroll(@scrollEnd { n = n + 1 }) {
         text(value=string(n))
     }
-    button(text="hit", @click { n = n + 1 })
+    button(text="hit", @longPress { n = 0 }, @click { n = n + 1 })
 }

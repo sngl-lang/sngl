@@ -182,9 +182,13 @@ component sngl.text {
     }
 }
 
+// `@longPress` maps to `contextmenu`, which is what a sustained touch press
+// fires -- and a right-click, which is not the same gesture. It stands in until
+// html synthesizes the real one from pointerdown and a timer; the alternative
+// was a declared event that reached nothing.
 component sngl.button {
     platform html {
-        html.button(disabled=disabled, style={...style}, @click { click() }) {
+        html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
             html.span(textContent=text) {}
             slot
         }
