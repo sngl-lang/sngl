@@ -35,6 +35,10 @@ func (n *Namespace) SymType() *Type  { return nil }
 type Scope struct {
 	Parent  *Scope
 	Symbols map[string]Symbol
+	// IsPackageRoot marks the root scope of a package, so a qualified lookup
+	// can tell a package boundary from the ambient scope every package's root
+	// eventually chains into. See SymbolTable.LookupMember.
+	IsPackageRoot bool
 	// Wildcards are the symbols in this scope that answer to names nobody
 	// declared. A declared name always wins, and a wildcard is consulted only
 	// when there is no name to find — and only by a caller resolving a
@@ -227,11 +231,38 @@ type SymbolTable struct {
 	Root *Scope
 }
 
+// LookupMember resolves a name qualified by a package -- `html.div`, and the
+// `html.platform` a target's identity const answers to. It walks the root's
+// parent chain only while each scope is another package's root, which is how
+// declareNS chains a target's package behind a stdlib namespace of the same
+// name.
+//
+// An unbounded Lookup would keep going past the last package into the lib
+// import scope, where every ambient declaration lives: `html.color` then
+// resolved to the built-in color type, and `html.platform` to the built-in
+// platform type rather than to html's own identity const.
+func (t *SymbolTable) LookupMember(name string) (Symbol, bool) {
+	if t == nil {
+		return nil, false
+	}
+	for sc := t.Root; sc != nil; sc = sc.Parent {
+		if sym, ok := sc.Symbols[name]; ok {
+			return sym, true
+		}
+		if sc.Parent == nil || !sc.Parent.IsPackageRoot {
+			return nil, false
+		}
+	}
+	return nil, false
+}
+
 func (SymbolTable) String() string { return "omitted" }
 
 // NewSymbolTable creates an empty symbol table.
 func NewSymbolTable() *SymbolTable {
-	return &SymbolTable{Root: NewScope(NewBaseScope())}
+	root := NewScope(NewBaseScope())
+	root.IsPackageRoot = true
+	return &SymbolTable{Root: root}
 }
 
 // EachSymbol ranges over every symbol reachable from the root scope, innermost
@@ -269,6 +300,17 @@ func IsTypeDecl(sym Symbol) bool {
 // declaration and does not answer here.
 func (st *SymbolTable) LookupType(name string) (Symbol, bool) {
 	if sym, ok := st.Root.Lookup(name); ok && IsTypeDecl(sym) {
+		return sym, true
+	}
+	return nil, false
+}
+
+// LookupMemberType is LookupType for a name qualified by a package -- the type
+// half of LookupMember, and bounded the same way. Unqualified resolution wants
+// the ambient scope at the end of the chain; `pkg.Type` must not, or every
+// package answers to every built-in type name.
+func (st *SymbolTable) LookupMemberType(name string) (Symbol, bool) {
+	if sym, ok := st.LookupMember(name); ok && IsTypeDecl(sym) {
 		return sym, true
 	}
 	return nil, false

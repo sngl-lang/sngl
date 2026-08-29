@@ -575,8 +575,6 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 		case *ast.FuncDef:
 			walkE(x.Body)
 			walkBlock(x.Block)
-		case *ast.PlatformStmt:
-			walkBlock(x.Body)
 		case *ast.ReturnStmt:
 			walkE(x.Value)
 		case *ast.CallStmt:

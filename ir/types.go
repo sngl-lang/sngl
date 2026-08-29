@@ -593,6 +593,12 @@ func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
 // (coerces to/from string): color, date, time, datetime.
 func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
 
+// TargetIDStruct reports whether t is a target-identity type (platform,
+// language). A value of one carries the target's registered name as its Raw,
+// which is what lets the optimizer fold a comparison against PLATFORM or
+// LANGUAGE the way it folded one against a string.
+func TargetIDStruct(t *Type) bool { return builtinOf(t).IsTargetID() }
+
 // IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the date/
 // time/datetime value type. These three were formerly the TypeDate/TypeTime/
 // TypeDateTime kinds; they are now carried uniformly as TypeStruct backed by

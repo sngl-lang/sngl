@@ -172,8 +172,6 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(n.Iter)
 			walkStmts(n.Body)
 			walkStmts(n.Else)
-		case *ir.PlatformFilter:
-			walkStmts(n.Body)
 		case *ir.NodeInst:
 			for i := range n.Props {
 				walkExpr(n.Props[i].Value)
@@ -349,8 +347,6 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		n.Iter = liftLambdas(n.Iter, l)
 		liftLambdasInStmts(n.Body, l)
 		liftLambdasInStmts(n.Else, l)
-	case *ir.PlatformFilter:
-		liftLambdasInStmts(n.Body, l)
 	case *ir.Emit:
 		for i := range n.Args {
 			n.Args[i].Value = liftLambdas(n.Args[i].Value, l)
@@ -628,8 +624,6 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		n.Iter = l.rewriteExpr(n.Iter, captureField, captureMutable)
 		l.rewriteStmts(n.Body, captureField, captureMutable)
 		l.rewriteStmts(n.Else, captureField, captureMutable)
-	case *ir.PlatformFilter:
-		l.rewriteStmts(n.Body, captureField, captureMutable)
 	case *ir.Emit:
 		for i := range n.Args {
 			n.Args[i].Value = l.rewriteExpr(n.Args[i].Value, captureField, captureMutable)

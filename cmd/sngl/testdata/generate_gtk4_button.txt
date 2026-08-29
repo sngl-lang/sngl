@@ -53,16 +53,15 @@ grep 'snglActivate' out/callbacks.go
 
 -- main.sngl --
 import . "sngl://std"
+import "sngl://platforms/gtk4"
 
 component main {
     var count int
 
-    platform gtk4 {
-        GtkApplicationWindow(title="Test") {
-            GtkBox(orientation="vertical", tooltipText="a box") {
-                GtkLabel(label="hello") {}
-                GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
-            }
+    gtk4.GtkApplicationWindow(title="Test") {
+        gtk4.GtkBox(orientation="vertical", tooltipText="a box") {
+            gtk4.GtkLabel(label="hello") {}
+            gtk4.GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
         }
     }
 }

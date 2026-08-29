@@ -163,10 +163,6 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		for _, c := range n.Else {
 			t.collectFromStmt(c)
 		}
-	case *ir.PlatformFilter:
-		for _, c := range n.Body {
-			t.collectFromStmt(c)
-		}
 	case *ir.ErrorBoundary:
 		for _, c := range n.Children {
 			t.collectFromStmt(c)

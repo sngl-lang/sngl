@@ -41,10 +41,6 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		cc.renderIf(s)
 	case *ir.For:
 		cc.renderFor(s)
-	case *ir.PlatformFilter:
-		for _, bs := range s.Body {
-			cc.renderStmt(bs)
-		}
 	case *ir.SlotInst:
 		cc.line("slotContent()")
 	case *ir.ErrorBoundary:

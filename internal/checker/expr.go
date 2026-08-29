@@ -950,7 +950,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if ns.Pkg != nil {
-					if fsym, ok := ns.Pkg.Symbols.Root.Lookup(sel.Field); ok {
+					if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
 						if c.rejectUnexported(sel.Pos, fsym) {
 							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 						}
@@ -1306,10 +1306,6 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
 				return comp
 			}
-		case *ast.PlatformStmt:
-			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
-				return comp
-			}
 		}
 	}
 	return nil
@@ -1372,8 +1368,6 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 			case *ast.ForStmt:
 				walk(n.Body.Stmts)
 				walk(n.Else.Stmts)
-			case *ast.PlatformStmt:
-				walk(n.Body.Stmts)
 			}
 		}
 	}
@@ -1456,7 +1450,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if ns, ok := sym.(*ir.Namespace); ok {
 					if ns.Pkg != nil {
-						if fsym, ok := ns.Pkg.Symbols.Root.Lookup(x.Field); ok {
+						if fsym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
 							if c.rejectUnexported(x.Pos, fsym) {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
@@ -1475,7 +1469,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}
-					// A name the package does not declare.
+					// A name the package does not declare. A wildcard may still
+					// answer to it -- html's element set is open, so `html.div`
+					// is a name nobody declared and still resolves.
 					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
 						t := resolved.SymType()
 						if t == nil {
@@ -1483,6 +1479,14 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						}
 						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 					}
+					// Nothing declares it and no wildcard covers it. Reported
+					// rather than typed dyn: a package's members are a closed
+					// set unless it says otherwise, and a dyn here made every
+					// misspelled member of every target package compile.
+					if isExportedMemberName(x.Field) {
+						c.error(x.Pos, "undefined: %s.%s", ident.Name, x.Field)
+					}
+					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 				}
 			}
 		}
@@ -1654,7 +1658,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// Qualified: pkg.Struct{...}
 		if sym, ok := c.scope.Lookup(x.Package); ok {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
-				if tsym, ok := ns.Pkg.Symbols.LookupType(x.Name); ok {
+				if tsym, ok := ns.Pkg.Symbols.LookupMemberType(x.Name); ok {
 					if c.rejectUnexported(x.Pos, tsym) {
 						return &ir.Literal{Type: TypDyn}
 					}
@@ -2830,8 +2834,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		c.popScope()
 		return &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
-	case *ast.PlatformStmt:
-		return c.checkPlatformStmtIR(x)
 	case *ast.VisualNode:
 		return c.checkVisualNodeIR(x)
 	case *ast.ConstDecl:
@@ -2955,7 +2957,7 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		return false
 	}
 	if nsSym.Pkg != nil {
-		if _, ok := nsSym.Pkg.Symbols.Root.Lookup(field); ok {
+		if _, ok := nsSym.Pkg.Symbols.LookupMember(field); ok {
 			return true
 		}
 	}
@@ -3062,25 +3064,6 @@ func (c *checker) errorEventType() *ir.Type {
 		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
 	}
 	return nil
-}
-
-func (c *checker) checkPlatformStmtIR(s *ast.PlatformStmt) ir.Stmt {
-	// Skip body when target platform is known and doesn't match.
-	if !c.targetsPlatform(s.Platform) {
-		return nil
-	}
-
-	// Inject platform package scope as fallback between current scope and its parent.
-	platformScope := c.buildPlatformPkgScope(s.Platform)
-	if platformScope != nil {
-		savedParent := c.scope.Parent
-		platformScope.Parent = savedParent
-		c.scope.Parent = platformScope
-		defer func() { c.scope.Parent = savedParent }()
-	}
-
-	body := c.checkBlockIR(&s.Body)
-	return &ir.PlatformFilter{AST: s, Platform: s.Platform, Body: body}
 }
 
 // checkVisualNodeIR validates a visual node and returns the appropriate IR statement.
@@ -3313,7 +3296,7 @@ func (c *checker) lookupQualified(name string) (ir.Symbol, bool) {
 	if !isNS || ns.Pkg == nil || ns.Pkg.Symbols == nil {
 		return nil, false
 	}
-	return ns.Pkg.Symbols.Root.LookupLocal(member)
+	return ns.Pkg.Symbols.LookupMember(member)
 }
 
 // withFieldDefaults appends the declared default of every field the literal
@@ -4071,8 +4054,6 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 		c.collectForLoopWindowIDs(&n.Else, seen, vars)
 	case *ast.ForStmt:
 		// Inner for-loops hoist their own ids; don't double-declare here.
-	case *ast.PlatformStmt:
-		c.collectForLoopWindowIDs(&n.Body, seen, vars)
 	}
 }
 

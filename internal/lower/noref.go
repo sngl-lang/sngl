@@ -394,8 +394,6 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		n.ElemType = r.rewriteType(n.ElemType)
 		r.rewriteStmts(n.Body)
 		r.rewriteStmts(n.Else)
-	case *ir.PlatformFilter:
-		r.rewriteStmts(n.Body)
 	case *ir.NodeInst:
 		for i := range n.Props {
 			n.Props[i].Value = r.rewriteExpr(n.Props[i].Value)
@@ -566,10 +564,6 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 			seedAddressedVarsInStmt(t, set)
 		}
 		for _, t := range n.Else {
-			seedAddressedVarsInStmt(t, set)
-		}
-	case *ir.PlatformFilter:
-		for _, t := range n.Body {
 			seedAddressedVarsInStmt(t, set)
 		}
 	case *ir.NodeInst:

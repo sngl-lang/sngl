@@ -12,11 +12,6 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 grep 'Title:' out/index.html
 ! grep 'title:' out/index.html
 
-# A platform block is the other body a declaration can be written in.
-sngl generate --lang=none --platform=html --out=outp platform.sngl
-grep 'Title:' outp/index.html
-! grep 'title:' outp/index.html
-
 # A component-level func carrying the mark resolves too: the symptom was the
 # call site reporting the name it declares as undefined.
 sngl check fn.sngl
@@ -32,22 +27,6 @@ component main {
         title string
     }
 
-    var e = Entry{title = "hello"}
-    text(value=e.title)
-}
-
--- platform.sngl --
-import . "sngl://std"
-
-platform html {
-    #[foreign("js://example.com/api", "Entry")]
-    struct Entry {
-        #[foreign("Title")]
-        title string
-    }
-}
-
-component main {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }

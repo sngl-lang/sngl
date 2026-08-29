@@ -237,10 +237,6 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		vc.renderIf(s, resultVar)
 	case *ir.For:
 		vc.renderFor(s, resultVar)
-	case *ir.PlatformFilter:
-		for _, bs := range s.Body {
-			vc.renderStmt(bs, resultVar)
-		}
 	case *ir.SlotInst:
 		// Slot in a user component body — substitute the caller's joined
 		// children, threaded in as slotVar when the view function was opened.
@@ -420,7 +416,7 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 // renderBlueprint renders one inlined blueprint primitive (Layout, Styled, or
 // Widget) off the blueprint record extracted from its props, rather than keying
 // on a stdlib component name. The primitives are produced when a stdlib
-// component's `platform bubbletea { ... }` body is inlined (see bubbletea.sngl).
+// component's bubbletea override body is inlined (see bubbletea.sngl).
 func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	bp := extractBlueprint(n)
 	styleFields := codegen.NodeStyleFields(n)

@@ -8,16 +8,16 @@ import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
 // SummaryRow is one entry in a decl list: name + one-line doc. Renders as a
 // link in html when `href` is set; `active` highlights the current row.
 component SummaryRow(name = "", doc = "", href = "", active = false) {
-    hbox(style={gap=8, padding=4}) {
-        text(value=active ? "> " + name : "  " + name,
-             style={fontWeight=active ? "bold" : "normal", minWidth=140})
-        text(value=doc, style={color="#888"})
-    }
-
-    platform html {
+    if PLATFORM == html.platform {
         html.li(class=active ? "doc-row active" : "doc-row") {
             html.a(href=href, innerText=name, class="doc-row-name")
             html.span(innerText=doc, class="doc-row-doc")
+        }
+    } else {
+        hbox(style={gap=8, padding=4}) {
+            text(value=active ? "> " + name : "  " + name,
+                 style={fontWeight=active ? "bold" : "normal", minWidth=140})
+            text(value=doc, style={color="#888"})
         }
     }
 }
@@ -200,7 +200,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
             text(value="Example", style={fontWeight="bold", paddingTop=8})
             for src = detail.examples {
                 text(value=src, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
-                platform html {
+                if PLATFORM == html.platform {
                     html.pre { html.code(class="language-sngl", innerText=src) }
                 }
             }

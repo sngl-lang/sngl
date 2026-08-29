@@ -81,7 +81,10 @@ func TestSnglName_RewritesKeywords(t *testing.T) {
 		{"default-width", "defaultWidth"},
 		{"unit", "unit_"},
 		{"for", "for_"},
-		{"platform", "platform_"},
+		// `platform` is a declared type in lib/builtin, not a keyword, so it
+		// is not rewritten -- which is the point of driving this off the lexer
+		// rather than a list.
+		{"platform", "platform"},
 		{"icon_name", "iconName"},
 	} {
 		got, ok := snglName(tc.gir)

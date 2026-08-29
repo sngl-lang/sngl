@@ -6,8 +6,8 @@ package ir
 // package and the optimizer read it. BuiltinNone ("") is an ordinary
 // declaration.
 //
-// Type kinds (primitive, string-repr, generic) mark a struct; node kinds mark a
-// component. A declaration is at most one kind, so a single field carries them
+// Type kinds (primitive, string-repr, generic, target-identity) mark a struct;
+// node kinds mark a component. A declaration is at most one kind, so a single field carries them
 // all, and the value doubles as the generic-constructor id.
 //
 // The kind classifies one declaration — it does not make two declarations the
@@ -56,13 +56,33 @@ const (
 	BuiltinSlot          BuiltinKind = "slot"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 
-	// Predeclared constants. These annotate a const declaration whose written
-	// value is a placeholder: the real one is not known until a build picks a
-	// target, so the compiler supplies it.
-	BuiltinNull     BuiltinKind = "null"
+	// Target identities. An opaque value type each of whose values is a const
+	// the compiler synthesizes into one target's package -- html.platform,
+	// go.language. There is no literal, so a string cannot stand in for one,
+	// which is the reason the type exists rather than the name being a string.
 	BuiltinPlatform BuiltinKind = "platform"
 	BuiltinLanguage BuiltinKind = "language"
+
+	// Predeclared constants. These annotate a const declaration whose written
+	// value is a placeholder: the real one is not known until a build picks a
+	// target, so the compiler supplies it. The two target kinds are named for
+	// what they hold -- the target -- because the identity types above own the
+	// bare names.
+	BuiltinNull           BuiltinKind = "null"
+	BuiltinTargetPlatform BuiltinKind = "targetPlatform"
+	BuiltinTargetLanguage BuiltinKind = "targetLanguage"
 )
+
+// IsTargetID reports whether the kind marks a target-identity type. Its values
+// are synthesized, one per registered target, so nothing declares them and no
+// literal spells one.
+func (b BuiltinKind) IsTargetID() bool {
+	switch b {
+	case BuiltinPlatform, BuiltinLanguage:
+		return true
+	}
+	return false
+}
 
 // IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
 func (b BuiltinKind) IsPrimitive() bool {
@@ -113,7 +133,7 @@ func (b BuiltinKind) IsNode() bool {
 // type and value.
 func (b BuiltinKind) IsConst() bool {
 	switch b {
-	case BuiltinNull, BuiltinPlatform, BuiltinLanguage:
+	case BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage:
 		return true
 	}
 	return false
@@ -127,12 +147,13 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
 		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext,
-		BuiltinNull, BuiltinPlatform, BuiltinLanguage,
+		BuiltinPlatform, BuiltinLanguage,
+		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
 
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() || b.IsNode() || b.IsConst()
+	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() || b.IsNode() || b.IsTargetID() || b.IsConst()
 }

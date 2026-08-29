@@ -135,253 +135,201 @@ component element(
 
 // --- Core Layout ---
 
-component sngl.vbox {
-    platform html {
-        html.div(style={...style, display="flex", flexDirection="column"}) {
-            slot
-        }
+component sngl.vbox[html.platform] {
+    html.div(style={...style, display="flex", flexDirection="column"}) {
+        slot
     }
 }
 
-component sngl.hbox {
-    platform html {
-        html.div(style={...style, display="flex", flexDirection="row"}) {
-            slot
-        }
+component sngl.hbox[html.platform] {
+    html.div(style={...style, display="flex", flexDirection="row"}) {
+        slot
     }
 }
 
-component sngl.stack {
-    platform html {
-        html.div(style={...style, position="relative"}) {
-            slot
-        }
+component sngl.stack[html.platform] {
+    html.div(style={...style, position="relative"}) {
+        slot
     }
 }
 
-component sngl.spacer {
-    platform html {
-        html.div(style={...style, flex=1}) {}
-    }
+component sngl.spacer[html.platform] {
+    html.div(style={...style, flex=1}) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
 // `scrollend`. The names differ, so the override maps them: that is the half of
 // wrapping an element that a wildcard cannot do for itself.
-component sngl.scroll {
-    platform html {
-        html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
-            slot
-        }
+component sngl.scroll[html.platform] {
+    html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
+        slot
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text {
-    platform html {
-        html.span(textContent=value, style={...style}) {}
-    }
+component sngl.text[html.platform] {
+    html.span(textContent=value, style={...style}) {}
 }
 
 // `@longPress` maps to `contextmenu`, which is what a sustained touch press
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-component sngl.button {
-    platform html {
-        html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
-            html.span(textContent=text) {}
-            slot
-        }
+component sngl.button[html.platform] {
+    html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
+        html.span(textContent=text) {}
+        slot
     }
 }
 
-component sngl.image {
-    platform html {
-        html.img(src=src, alt=alt, style={...style}) {}
-    }
+component sngl.image[html.platform] {
+    html.img(src=src, alt=alt, style={...style}) {}
 }
 
-component sngl.input {
-    platform html {
-        html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
-    }
+component sngl.input[html.platform] {
+    html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
 }
 
-component sngl.checkbox {
-    platform html {
-        html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
-            html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
-            html.span(textContent=label) {}
-        }
+component sngl.checkbox[html.platform] {
+    html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
+        html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
+        html.span(textContent=label) {}
     }
 }
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio {
-    platform html {
-        html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
-            for opt = options {
-                html.label(style={display="inline-flex", alignItems="center", gap=4}) {
-                    html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
-                    html.span(textContent=opt)
-                }
+component sngl.radio[html.platform] {
+    html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
+        for opt = options {
+            html.label(style={display="inline-flex", alignItems="center", gap=4}) {
+                html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
+                html.span(textContent=opt)
             }
         }
     }
 }
 
-component sngl.toggle {
-    platform html {
-        html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
-            html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
-            html.span(textContent=label) {}
+component sngl.toggle[html.platform] {
+    html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
+        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
+        html.span(textContent=label) {}
+    }
+}
+
+component sngl.select[html.platform] {
+    html.select(disabled=disabled, style={...style}, @change { change() }) {
+        if placeholder != "" {
+            html.option(value="", disabled=true, selected=true, textContent=placeholder)
+        }
+        for opt = options {
+            html.option(value=opt, selected=(opt == value), textContent=opt)
         }
     }
 }
 
-component sngl.select {
-    platform html {
-        html.select(disabled=disabled, style={...style}, @change { change() }) {
-            if placeholder != "" {
-                html.option(value="", disabled=true, selected=true, textContent=placeholder)
-            }
-            for opt = options {
-                html.option(value=opt, selected=(opt == value), textContent=opt)
-            }
-        }
-    }
-}
-
-component sngl.textarea {
-    platform html {
-        html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
-            slot
-        }
+component sngl.textarea[html.platform] {
+    html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
+        slot
     }
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress {
-    platform html {
-        html.progress(value=string(value), max=string(max), style={...style}) {}
+component sngl.progress[html.platform] {
+    html.progress(value=string(value), max=string(max), style={...style}) {}
+}
+
+component sngl.spinner[html.platform] {
+    html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
+        html.span(class="sngl-spinner") {}
+        html.span(textContent=label) {}
     }
 }
 
-component sngl.spinner {
-    platform html {
-        html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
-            html.span(class="sngl-spinner") {}
-            html.span(textContent=label) {}
-        }
+component sngl.badge[html.platform] {
+    html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
+        html.span(textContent=value) {}
     }
 }
 
-component sngl.badge {
-    platform html {
-        html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
-            html.span(textContent=value) {}
-        }
-    }
-}
-
-component sngl.tabs {
-    platform html {
-        html.div(style={...style, display="flex", flexDirection="column"}) {
-            html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
-                for label = items {
-                    html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
-                }
-            }
-            html.div(role="tabpanel") {
-                slot
+component sngl.tabs[html.platform] {
+    html.div(style={...style, display="flex", flexDirection="column"}) {
+        html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
+            for label = items {
+                html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
             }
         }
-    }
-}
-
-component sngl.link {
-    platform html {
-        html.a(href=href, style={...style}, @click { click() }) {
-            html.span(textContent=text) {}
+        html.div(role="tabpanel") {
+            slot
         }
     }
 }
 
-component sngl.divider {
-    platform html {
-        html.hr(style={...style}) {}
+component sngl.link[html.platform] {
+    html.a(href=href, style={...style}, @click { click() }) {
+        html.span(textContent=text) {}
     }
+}
+
+component sngl.divider[html.platform] {
+    html.hr(style={...style}) {}
 }
 
 // --- Tier 3: Overlays & Layout ---
 
-component sngl.modal {
-    platform html {
-        html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
-            html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
-                if title != "" {
-                    html.h3(textContent=title, style={margin="0 0 16px"})
-                }
-                slot
+component sngl.modal[html.platform] {
+    html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
+        html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
+            if title != "" {
+                html.h3(textContent=title, style={margin="0 0 16px"})
             }
-        }
-    }
-}
-
-component sngl.drawer {
-    platform html {
-        html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
             slot
         }
     }
 }
 
-component sngl.tooltip {
-    platform html {
-        html.div(title=text, style={...style}) {
-            slot
-        }
+component sngl.drawer[html.platform] {
+    html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
+        slot
     }
 }
 
-component sngl.popover {
-    platform html {
-        html.div(style={...style, position="relative"}) {
-            slot
-        }
+component sngl.tooltip[html.platform] {
+    html.div(title=text, style={...style}) {
+        slot
     }
 }
 
-component sngl.splitview {
-    platform html {
-        html.div(style={...style, display="flex"}) {
-            slot
-        }
+component sngl.popover[html.platform] {
+    html.div(style={...style, position="relative"}) {
+        slot
+    }
+}
+
+component sngl.splitview[html.platform] {
+    html.div(style={...style, display="flex"}) {
+        slot
     }
 }
 
 // --- Tier 4: Data & Desktop ---
 
-component sngl.table {
-    platform html {
-        html.table(style={width="100%", borderCollapse="collapse", ...style}) {
-            html.thead {
+component sngl.table[html.platform] {
+    html.table(style={width="100%", borderCollapse="collapse", ...style}) {
+        html.thead {
+            html.tr {
+                for col = columns {
+                    html.th(textContent=col, style={textAlign="left", padding=8, borderBottom="2px solid #ddd"})
+                }
+            }
+        }
+        html.tbody {
+            for row = rows {
                 html.tr {
-                    for col = columns {
-                        html.th(textContent=col, style={textAlign="left", padding=8, borderBottom="2px solid #ddd"})
-                    }
-                }
-            }
-            html.tbody {
-                for row = rows {
-                    html.tr {
-                        for cell = row {
-                            html.td(textContent=cell, style={padding=8, borderBottom="1px solid #eee"})
-                        }
+                    for cell = row {
+                        html.td(textContent=cell, style={padding=8, borderBottom="1px solid #eee"})
                     }
                 }
             }
@@ -389,68 +337,52 @@ component sngl.table {
     }
 }
 
-component sngl.tree {
-    platform html {
-        html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
-            for item = items {
-                html.li(textContent=item)
-            }
+component sngl.tree[html.platform] {
+    html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
+        for item = items {
+            html.li(textContent=item)
         }
     }
 }
 
-component sngl.menu {
-    platform html {
-        html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
-            slot
-        }
+component sngl.menu[html.platform] {
+    html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+        slot
     }
 }
 
-component sngl.menubar {
-    platform html {
-        html.nav(style={...style, display="flex", gap=4}) {
-            slot
-        }
+component sngl.menubar[html.platform] {
+    html.nav(style={...style, display="flex", gap=4}) {
+        slot
     }
 }
 
-component sngl.toolbar {
-    platform html {
-        html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
-            slot
-        }
+component sngl.toolbar[html.platform] {
+    html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
+        slot
     }
 }
 
 // --- Tier 5: Mobile & Specialized ---
 
-component sngl.datepicker {
-    platform html {
-        html.input(type="date", value=value, disabled=disabled, style={...style}, @change { change() }) {}
+component sngl.datepicker[html.platform] {
+    html.input(type="date", value=value, disabled=disabled, style={...style}, @change { change() }) {}
+}
+
+component sngl.chip[html.platform] {
+    html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
+        html.span(textContent=label) {}
     }
 }
 
-component sngl.chip {
-    platform html {
-        html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
-            html.span(textContent=label) {}
-        }
+component sngl.avatar[html.platform] {
+    html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
+        html.span(textContent=initials) {}
     }
 }
 
-component sngl.avatar {
-    platform html {
-        html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
-            html.span(textContent=initials) {}
-        }
-    }
-}
-
-component sngl.card {
-    platform html {
-        html.div(style={borderRadius=8, padding=16, ...style}) {
-            slot
-        }
+component sngl.card[html.platform] {
+    html.div(style={borderRadius=8, padding=16, ...style}) {
+        slot
     }
 }

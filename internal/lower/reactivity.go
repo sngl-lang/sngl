@@ -292,8 +292,6 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 					h.Func.Block = st.rewriteReactiveStructures(h.Func.Block, parentRef)
 				}
 			}
-		case *ir.PlatformFilter:
-			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 		case *ir.SlotInst:
 			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
 		case *ir.ErrorBoundary:
@@ -499,8 +497,6 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
 			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
 		}
-	case *ir.PlatformFilter:
-		st.collectFromStmts(n.Body)
 	case *ir.SlotInst:
 		st.collectFromStmts(n.Children)
 	case *ir.ErrorBoundary:
@@ -592,8 +588,6 @@ func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) 
 				addDep(n.Iter)
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.SlotInst:
 				walk(n.Children)
 			case *ir.ErrorBoundary:
@@ -824,8 +818,6 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.For:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
-		case *ir.PlatformFilter:
-			n.Body = st.injectIntoStmts(n.Body)
 		case *ir.NodeInst:
 			n.Children = st.injectIntoStmts(n.Children)
 			for i := range n.Handlers {
@@ -1392,8 +1384,6 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 						walk(h.Func.Block)
 					}
 				}
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.SlotInst:
 				walk(n.Children)
 			case *ir.ErrorBoundary:

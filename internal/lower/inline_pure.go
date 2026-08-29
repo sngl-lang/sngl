@@ -139,13 +139,6 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		n.Body = body
 		n.Else = els
 		return []ir.Stmt{n}, nil
-	case *ir.PlatformFilter:
-		body, err := st.inlineStmts(n.Body)
-		if err != nil {
-			return nil, err
-		}
-		n.Body = body
-		return []ir.Stmt{n}, nil
 	case *ir.SlotInst:
 		ch, err := st.inlineStmts(n.Children)
 		if err != nil {
@@ -355,10 +348,6 @@ func containsSelfRef(comp *ir.Component) bool {
 				if visit(n.Body) || visit(n.Else) {
 					return true
 				}
-			case *ir.PlatformFilter:
-				if visit(n.Body) {
-					return true
-				}
 			case *ir.SlotInst:
 				if visit(n.Children) {
 					return true
@@ -544,8 +533,6 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 			case *ir.For:
 				visit(n.Body)
 				visit(n.Else)
-			case *ir.PlatformFilter:
-				visit(n.Body)
 			case *ir.SlotInst:
 				visit(n.Children)
 			case *ir.ErrorBoundary:
@@ -596,8 +583,6 @@ func substituteSlots(stmts []ir.Stmt, children []ir.Stmt) []ir.Stmt {
 		case *ir.For:
 			n.Body = substituteSlots(n.Body, children)
 			n.Else = substituteSlots(n.Else, children)
-		case *ir.PlatformFilter:
-			n.Body = substituteSlots(n.Body, children)
 		case *ir.NodeInst:
 			n.Children = substituteSlots(n.Children, children)
 		case *ir.ErrorBoundary:
@@ -668,8 +653,6 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 		case *ir.For:
 			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 			n.Else = substituteEventsIn(n.Else, handlers, enclosing)
-		case *ir.PlatformFilter:
-			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
 		case *ir.NodeInst:
 			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
 			// A prop lambda is the enclosing scope of its own body: a
@@ -854,10 +837,6 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		clone.Iter = deepCloneExpr(n.Iter)
 		clone.Body = deepCloneStmts(n.Body)
 		clone.Else = deepCloneStmts(n.Else)
-		return &clone
-	case *ir.PlatformFilter:
-		clone := *n
-		clone.Body = deepCloneStmts(n.Body)
 		return &clone
 	case *ir.SlotInst:
 		clone := *n
@@ -1117,8 +1096,6 @@ func (w *exprWalker) stmt(s ir.Stmt) {
 		n.Iter = w.expr(n.Iter)
 		w.stmts(n.Body)
 		w.stmts(n.Else)
-	case *ir.PlatformFilter:
-		w.stmts(n.Body)
 	case *ir.SlotInst:
 		w.stmts(n.Children)
 	case *ir.Assign:

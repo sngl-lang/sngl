@@ -233,8 +233,6 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefsExpr(n.Iter, info)
 		collectScopeRefs(n.Body, info)
 		collectScopeRefs(n.Else, info)
-	case *ir.PlatformFilter:
-		collectScopeRefs(n.Body, info)
 	case *ir.NodeInst:
 		// A surviving NodeInst (e.g. canvas shape) — its props/children may
 		// reference refs. Children are still tree-shaped here only in pre-

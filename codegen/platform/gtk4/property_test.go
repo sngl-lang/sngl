@@ -67,7 +67,7 @@ func checkGtk4(t *testing.T, src string) []string {
 // gtk4Window wraps one platform-gtk4 body in the smallest program that
 // reaches the emitter.
 func gtk4Window(body string) string {
-	return "\nimport . \"sngl://std\"\n\ncomponent main {\n    window(title=\"t\") {\n        platform gtk4 {\n" + body + "\n        }\n    }\n}\n"
+	return "\nimport . \"sngl://std\"\n\ncomponent main {\n    window(title=\"t\") {\n" + body + "\n    }\n}\n"
 }
 
 // setterlessSource sets four GTK properties GIR names no setter for — one of
@@ -81,13 +81,11 @@ import . "sngl://std"
 
 component main {
     window(title="t") {
-        platform gtk4 {
-            gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
-            gtk4.GtkLabel(label="hi", accessibleRole="button") {}
-            gtk4.GtkTextBuffer(text="hi") {}
-            gtk4.GtkCellRendererText(alignSet=true, scale=0.25) {}
-            gtk4.GtkGrid(columnSpacing=4) {}
-        }
+        gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
+        gtk4.GtkLabel(label="hi", accessibleRole="button") {}
+        gtk4.GtkTextBuffer(text="hi") {}
+        gtk4.GtkCellRendererText(alignSet=true, scale=0.25) {}
+        gtk4.GtkGrid(columnSpacing=4) {}
     }
 }
 `
@@ -154,9 +152,7 @@ import . "sngl://std"
 
 component main {
     window(title="t") {
-        platform gtk4 {
-            gtk4.GtkGrid(columnSpacing=4) {}
-        }
+        gtk4.GtkGrid(columnSpacing=4) {}
     }
 }
 `)
@@ -183,9 +179,7 @@ import . "sngl://std"
 
 component main {
     window(title="t") {
-        platform gtk4 {
-            gtk4.GtkLabel(label="hi", ellipsize="end") {}
-        }
+        gtk4.GtkLabel(label="hi", ellipsize="end") {}
     }
 }
 `)
@@ -208,9 +202,7 @@ import . "sngl://std"
 
 component main {
     window(title="t") {
-        platform gtk4 {
-            gtk4.GtkLabel(label="hi", justify="middle") {}
-        }
+        gtk4.GtkLabel(label="hi", justify="middle") {}
     }
 }
 `)

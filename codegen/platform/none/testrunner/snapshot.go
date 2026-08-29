@@ -72,12 +72,6 @@ func (w *snapWriter) stmt(env *interp.Env, s ir.Stmt, depth int) error {
 	case *ir.For:
 		return w.forStmt(env, n, depth)
 
-	case *ir.PlatformFilter:
-		if n.Platform == "" || n.Platform == "none" {
-			return w.stmts(env, n.Body, depth)
-		}
-		return nil
-
 	case *ir.SlotInst:
 		return w.stmts(env, n.Children, depth)
 

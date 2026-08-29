@@ -47,8 +47,6 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.For:
 			n.Body = rewriteToggleStmts(n.Body)
 			n.Else = rewriteToggleStmts(n.Else)
-		case *ir.PlatformFilter:
-			n.Body = rewriteToggleStmts(n.Body)
 		case *ir.NodeInst:
 			n.Children = rewriteToggleStmts(n.Children)
 			for j := range n.Handlers {

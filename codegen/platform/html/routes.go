@@ -342,8 +342,6 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.For:
 			walkInstances(n.Body, fn)
 			walkInstances(n.Else, fn)
-		case *ir.PlatformFilter:
-			walkInstances(n.Body, fn)
 		case *ir.SlotInst:
 			walkInstances(n.Children, fn)
 		case *ir.ErrorBoundary:

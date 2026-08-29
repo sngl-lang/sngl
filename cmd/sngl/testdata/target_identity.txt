@@ -1,0 +1,116 @@
+# A build target is named by a value of its own type, not by a string:
+# `platform` and `language` are declared in lib/builtin, and each registered
+# target carries one const of that type in its own package. PLATFORM and
+# LANGUAGE are typed, so a target name cannot be misspelled into a branch that
+# is silently never taken.
+
+# The comparison folds, and the branch not taken is removed. This needs a real
+# build target, which is why it is here and not a testdata fixture: the
+# optimize and parser harnesses register no platforms, so a target's identity
+# const does not exist for them to fold.
+sngl generate --platform bubbletea --lang go -o out_bt gate.sngl
+grep 'always' out_bt/model.go
+! grep 'html-only' out_bt/model.go
+grep 'go-only' out_bt/model.go
+
+sngl generate --platform html --lang none -o out_html gate.sngl
+grep 'html-only' out_html/index.html
+! grep 'go-only' out_html/index.html
+
+# A string is not a platform. This is the misspelling the type exists to catch:
+# `PLATFORM == "htlm"` was a branch nobody took and nobody was told about.
+! sngl check string_compare.sngl
+stderr 'operator == not defined for platform and string'
+
+# An unregistered target has no package and so no identity const to name.
+! sngl check unknown_target.sngl
+stderr 'undefined: htlm'
+
+# A misspelled member of a real target. A package's members are a closed set,
+# so this is reported rather than typed dyn -- which is what let every
+# misspelled target name compile into a branch nobody took.
+! sngl check misspelled_member.sngl
+stderr 'undefined: bubbletea.pltform'
+
+# Except where the package says its names are open: html's element set is the
+# web's, so `html.marquee` is a tag nobody declared and still resolves -- to
+# the wildcard element, which is not a platform.
+! sngl check html_wildcard.sngl
+stderr 'operator == not defined for platform and element'
+
+# A qualified lookup stops at the last package. It used to walk on into the
+# scope every ambient declaration lives in, so `html.color` answered with the
+# built-in color type -- and `html.platform` with the built-in platform type
+# rather than with html's own identity const, which is how the fold above
+# stopped happening.
+! sngl check ambient_leak.sngl
+stderr 'unknown type "color" in namespace "html"'
+
+-- gate.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        if PLATFORM == html.platform {
+            text(value="html-only")
+        }
+        if LANGUAGE == go.language {
+            text(value="go-only")
+        }
+        text(value="always")
+    }
+}
+
+-- string_compare.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        if PLATFORM == "html" {
+            text(value="x")
+        }
+    }
+}
+
+-- unknown_target.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        if PLATFORM == htlm.platform {
+            text(value="x")
+        }
+    }
+}
+
+-- misspelled_member.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        if PLATFORM == bubbletea.pltform {
+            text(value="x")
+        }
+    }
+}
+
+-- html_wildcard.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        if PLATFORM == html.marquee {
+            text(value="x")
+        }
+    }
+}
+
+-- ambient_leak.sngl --
+import . "sngl://std"
+
+component main {
+    window #w(title="t") {
+        var c html.color = #ff0000
+        text(value="x")
+    }
+}

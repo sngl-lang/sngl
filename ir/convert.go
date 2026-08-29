@@ -492,11 +492,6 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 			fs.Else = c.convertStmtBlock(s.Else)
 		}
 		return fs
-	case *PlatformFilter:
-		return &ast.PlatformStmt{
-			Platform: s.Platform,
-			Body:     c.convertStmtBlock(s.Body),
-		}
 	case *Window:
 		return c.convertWindow(s)
 	case *ContextProvider:

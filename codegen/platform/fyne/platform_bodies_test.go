@@ -75,12 +75,12 @@ component main {
 `
 
 // TestEveryStdlibComponentHasAFyneBody is bar one of the redesign: each stdlib
-// component must carry a `component sngl.X { platform fyne { ... } }` body,
+// component must carry a `component sngl.X { ... }` body in fyne.sngl,
 // and that body must implement something.
 //
 // The emptiness check is the point. mergePlatformExtensions reserves
 // PlatformBodies[platform] before checking the block, so an override written
-// as `platform fyne {}` records a *present* entry that renders nothing — a
+// with an empty body records a *present* entry that renders nothing — a
 // node whose stdlib name reaches codegen, matches no widget, and is dropped
 // while its AppendChild is still emitted (issue #120's failure mode). Presence
 // alone is therefore not the assertion; a non-empty statement list is.

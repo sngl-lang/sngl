@@ -13,7 +13,7 @@ import (
 )
 
 // extStubPlatform is a minimal ir.Platform used by extension-merge tests. It
-// ships a single new-form `component sngl.text { platform extstub { ... } }`
+// ships a single new-form `component sngl.text { ... }`
 // extension so the merge pass has something to splice into the stdlib's
 // abstract `text` component. There is no lib/platforms/extstub directory, so
 // the source is handed to the checker through Config.LibSources.
@@ -40,7 +40,7 @@ func extStubConfig(t *testing.T, source string) *checker.Config {
 
 // TestExtensionMergeBasic exercises the platform-agnostic checker collection
 // + lower-time swap. An extension platform ships a new-form
-// `component sngl.text { platform extstub { ... } }` declaration. The checker
+// `component sngl.text { ... }` declaration. The checker
 // stashes the checked IR body under stdText.PlatformBodies["extstub"]; the
 // stdlib `text` component's own Body stays empty after Check (the checker
 // does not know which platform is active). After running Lower with
@@ -51,10 +51,8 @@ func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
 import sngl "sngl://std"
 
-component sngl.text {
-    platform extstub {
-        image(src=value)
-    }
+component sngl.text[extstub.platform] {
+    image(src=value)
 }
 `
 	const userSource = `
@@ -137,25 +135,21 @@ func TestExtensionBodyVars(t *testing.T) {
 	const extA = `
 import sngl "sngl://std"
 
-component sngl.text {
-    platform stubA {
-        const label string = "L"
-        var flip bool = false
-        vbox {
-            image(src="{label}{flip}")
-        }
+component sngl.text[stubA.platform] {
+    const label string = "L"
+    var flip bool = false
+    vbox {
+        image(src="{label}{flip}")
     }
 }
 `
 	const extB = `
 import sngl "sngl://std"
 
-component sngl.text {
-    platform stubB {
-        var other int = 7
-        vbox {
-            image(src="{other}")
-        }
+component sngl.text[stubB.platform] {
+    var other int = 7
+    vbox {
+        image(src="{other}")
     }
 }
 `

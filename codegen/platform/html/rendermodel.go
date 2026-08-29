@@ -112,12 +112,6 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 		if syn := nodeFromIRCallStmt(n); syn != nil {
 			rb.walkNode(syn, path)
 		}
-	case *ir.PlatformFilter:
-		if n.Platform == "html" {
-			for _, c := range n.Body {
-				rb.walkStmt(c, path)
-			}
-		}
 	case *ir.SlotInst:
 		for _, c := range n.Children {
 			rb.walkStmt(c, path)

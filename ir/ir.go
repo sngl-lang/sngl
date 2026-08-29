@@ -251,6 +251,11 @@ type Func struct {
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
+	// PlatformBodies holds the body each target overrides this function with,
+	// keyed by platform. The checker is platform-agnostic and collects every
+	// registered target's; lower's passPlatformExtensionBody swaps the active
+	// one into Block. Empty for a function nobody overrides.
+	PlatformBodies map[string][]Stmt `json:",omitempty"`
 	Purity         Purity
 	IsTest         bool
 	Reads          []*Var // vars read (directly or via called functions)

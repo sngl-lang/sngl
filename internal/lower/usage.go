@@ -126,10 +126,6 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			if stmtsUseErrorHandling(x.Body) || stmtsUseErrorHandling(x.Else) {
 				return true
 			}
-		case *ir.PlatformFilter:
-			if stmtsUseErrorHandling(x.Body) {
-				return true
-			}
 		case *ir.SlotInst:
 			if stmtsUseErrorHandling(x.Children) {
 				return true
