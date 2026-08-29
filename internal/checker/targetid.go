@@ -233,3 +233,119 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 	}
 	return comp, ns, local
 }
+
+// pendingFuncOverride is one `func f[target] { ... }` body, checked after
+// pass1 the way a component override's is and for the same reason: it may be
+// written above the declaration it overrides.
+type pendingFuncOverride struct {
+	fn       *ir.Func
+	platform string
+	decl     *ast.FuncDef
+}
+
+// collectFuncOverrides merges each `func f[target] { ... }` a program declares
+// into the function it names. The body is checked against the *base*
+// declaration's signature -- an override inherits the params and the return
+// type, and declaring either is what it means to declare a different function.
+func (c *checker) collectFuncOverrides() {
+	for _, decl := range c.userFuncOverrides {
+		plat, kind, ok := c.resolveTargetIndex(decl.Target)
+		if !ok {
+			continue
+		}
+		if kind != ir.BuiltinPlatform {
+			c.error(decl.Pos, "a function may be overridden for a platform, not for a language")
+			continue
+		}
+		if len(decl.Params.Params) > 0 {
+			c.error(decl.Pos, "override %q may not declare params (inherited from the declaration it overrides)", decl.Name)
+			continue
+		}
+		if decl.ReturnType != nil {
+			c.error(decl.Pos, "override %q may not declare a return type (inherited from the declaration it overrides)", decl.Name)
+			continue
+		}
+		base := c.funcOverrideBase(decl)
+		if base == nil {
+			continue
+		}
+		if base.PlatformBodies == nil {
+			base.PlatformBodies = map[string][]ir.Stmt{}
+		}
+		if _, dup := base.PlatformBodies[plat]; dup {
+			c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
+			continue
+		}
+		// Reserve the key so a duplicate is caught even when the body check
+		// contributes nothing, as addPlatformBody does for a component.
+		base.PlatformBodies[plat] = nil
+		c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, decl: decl})
+	}
+}
+
+// funcOverrideBase resolves the function an override names: one this program
+// declares, one a library package declares (`i18n.tr`), or a method on a type
+// (`int.max`) -- the three ways a function has a name.
+func (c *checker) funcOverrideBase(decl *ast.FuncDef) *ir.Func {
+	dot := strings.IndexByte(decl.Name, '.')
+	if dot <= 0 {
+		sym, found := c.scope.Lookup(decl.Name)
+		if !found {
+			c.error(decl.Pos, "override names unknown function %q", decl.Name)
+			return nil
+		}
+		fn, isFunc := sym.(*ir.Func)
+		if !isFunc {
+			c.error(decl.Pos, "%q is not a function", decl.Name)
+			return nil
+		}
+		return fn
+	}
+	prefix, local := decl.Name[:dot], decl.Name[dot+1:]
+	if sym, found := c.scope.Lookup(prefix); found {
+		if ns, isNS := sym.(*ir.Namespace); isNS && ns.Pkg != nil && ns.Pkg.Symbols != nil {
+			member, found := ns.Pkg.Symbols.LookupMember(local)
+			if !found {
+				c.error(decl.Pos, "override %q references unknown function %q in %s", decl.Name, local, prefix)
+				return nil
+			}
+			fn, isFunc := member.(*ir.Func)
+			if !isFunc {
+				c.error(decl.Pos, "%s.%s is not a function", prefix, local)
+				return nil
+			}
+			return fn
+		}
+	}
+	// Not a namespace: a receiver, so the name is a method on that type.
+	fn, found := c.lookupMethod(prefix, local)
+	if !found {
+		c.error(decl.Pos, "override names unknown function %q", decl.Name)
+		return nil
+	}
+	return fn
+}
+
+// checkPendingFuncOverrides checks each override body against the signature of
+// the function it overrides, and stashes the result under its platform.
+//
+// The body is checked with the base's AST in place of the override's so the
+// params and the return type in scope are the ones the override inherits: the
+// override declares neither, and checkFuncBody reads both off the declaration.
+func (c *checker) checkPendingFuncOverrides() {
+	for _, po := range c.pendingFuncOverrides {
+		saved := po.fn.AST
+		savedBlock := po.fn.Block
+		if saved != nil {
+			swapped := *saved
+			swapped.Body = po.decl.Body
+			swapped.Block = po.decl.Block
+			po.fn.AST = &swapped
+		}
+		po.fn.Block = nil
+		c.checkFuncBody(po.fn)
+		po.fn.PlatformBodies[po.platform] = po.fn.Block
+		po.fn.AST = saved
+		po.fn.Block = savedBlock
+	}
+}

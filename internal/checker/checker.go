@@ -112,6 +112,7 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	// written above the declaration it overrides, and may name a component
 	// this file declares further down.
 	c.collectUserOverrides()
+	c.collectFuncOverrides()
 	// Body-check pending stdlib platform extensions after user pass1 so that
 	// user-declared symbols are in scope when the platform body resolves
 	// identifiers. Collection (the AST walk that enumerates pending bodies)
@@ -119,6 +120,10 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	// Component's PlatformBodies map.
 	c.checkPendingExtensions()
 	c.pass2()
+	// After pass2: an override body is checked against the base's signature,
+	// which pass2 has finished resolving, and may name anything the program
+	// declares.
+	c.checkPendingFuncOverrides()
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
@@ -262,9 +267,11 @@ type checker struct {
 	// declarations are in lib/builtin and are shadowable like any other.
 	platformType *ir.StructDef
 	languageType *ir.StructDef
-	// userOverrides are the program's own `component X[target]` declarations,
-	// merged after pass1 by collectUserOverrides.
-	userOverrides []*ast.ComponentDecl
+	// userOverrides and userFuncOverrides are the program's own
+	// `X[target]` declarations, merged after pass1 by collectUserOverrides.
+	userOverrides        []*ast.ComponentDecl
+	userFuncOverrides    []*ast.FuncDef
+	pendingFuncOverrides []pendingFuncOverride
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -1529,6 +1536,13 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 }
 
 func (c *checker) registerFunc(f *ast.FuncDef) {
+	// An override implements one declaration for one target and says which on
+	// its own name, exactly as a component override does. It declares nothing
+	// of its own, so it registers nothing here.
+	if f.Target != nil {
+		c.userFuncOverrides = append(c.userFuncOverrides, f)
+		return
+	}
 	fn := c.buildFunc(f)
 	c.applyMarks(f, fn)
 

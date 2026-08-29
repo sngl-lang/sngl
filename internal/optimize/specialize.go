@@ -57,16 +57,6 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if ctx.inlining[comp] >= maxInlineDepth {
 		return nil
 	}
-	// A component the build target overrides is not this body: lower's
-	// passPlatformExtensionBody swaps the override in, and inlining the
-	// declaration's own body here would splice the one the override replaces.
-	// Library components have no body to inline at this point, so this only
-	// ever mattered once a program could override its own.
-	if ctx.platform != "" && comp.PlatformBodies != nil {
-		if _, overridden := comp.PlatformBodies[ctx.platform]; overridden {
-			return nil
-		}
-	}
 	// Stateful components (Vars/Funcs/Timers) carry per-instance state that
 	// must be hoisted into the surrounding scope's state container. The
 	// optimizer's body-substitution path doesn't clone state — it only
