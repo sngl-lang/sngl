@@ -364,11 +364,14 @@ CompParamBody =
     | ident [ CompParamTail ]
     .
 
-# A named slot: a region of UI the caller supplies, declared alongside the props
-# and events so a component's whole API is one list. Types only, no parameter
-# names — the names belong to whoever writes the body, which is the populator,
-# exactly as for a func type.
-SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
+# A slot: a region of UI the caller supplies, declared alongside the props and
+# events so a component's whole API is one list. Types only, no parameter names —
+# those belong to whoever writes the body, exactly as for a func type.
+#
+# Without an identifier it declares the default slot, the one the caller fills
+# with ordinary children. That form takes no parameters: there is no population
+# site to bind them at.
+SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] ] .
 
 CompParamTail =
       assign Expr

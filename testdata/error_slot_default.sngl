@@ -1,0 +1,17 @@
+// The default slot says what the `list<component>` children type says, and sits
+// where the rest of a component's contract already does. Two ways to say one
+// thing is one too many, and saying it twice is a mistake either way.
+
+import . "sngl://std"
+
+component twice(slot, slot) { // ERROR(check) "declares the default slot twice"
+    vbox {
+        slot
+    }
+}
+
+component both(slot) list<component> { // ERROR(check) "the slot replaces it"
+    vbox {
+        slot
+    }
+}

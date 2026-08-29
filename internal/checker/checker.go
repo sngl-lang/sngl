@@ -1738,8 +1738,14 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			irComp.Events = append(irComp.Events, evt)
 		case ast.SlotDecl:
 			slot := &ir.SlotDecl{Name: pd.Name}
+			// The grammar reaches a parameter list only past an identifier, so
+			// the default slot cannot carry one and nothing checks for it here.
 			for _, t := range pd.Params {
 				slot.Params = append(slot.Params, c.resolveType(t))
+			}
+			if pd.Name == "" && findSlot(irComp, "") != nil {
+				c.error(pd.Pos, "component %s declares the default slot twice", irComp.Name)
+				continue
 			}
 			c.applySlotMarks(pd, slot)
 			irComp.Slots = append(irComp.Slots, slot)
@@ -1751,6 +1757,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
+	c.finishDefaultSlot(comp, irComp)
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
@@ -3298,4 +3305,19 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 		c.bindLifted(imp.Pos, dst, sym)
 	}
+}
+
+// finishDefaultSlot derives the children contract from a `slot` written in the
+// parameter list. It says what the `list<component>` return type says and sits
+// where the rest of a component's contract already does, so the two are
+// alternatives rather than a pair.
+func (c *checker) finishDefaultSlot(decl *ast.ComponentDecl, comp *ir.Component) {
+	if findSlot(comp, "") == nil {
+		return
+	}
+	if decl.ChildrenType != nil {
+		c.error(decl.Pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
+		return
+	}
+	comp.ChildrenType = ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 }

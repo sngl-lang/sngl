@@ -6079,16 +6079,20 @@ state6:
 
 // SlotParam grammar:
 //
-//	# A named slot: a region of UI the caller supplies, declared alongside the props
-//	# and events so a component's whole API is one list. Types only, no parameter
-//	# names — the names belong to whoever writes the body, which is the populator,
-//	# exactly as for a func type.
-//	SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
+//	# A slot: a region of UI the caller supplies, declared alongside the props and
+//	# events so a component's whole API is one list. Types only, no parameter names —
+//	# those belong to whoever writes the body, exactly as for a func type.
+//	#
+//	# Without an identifier it declares the default slot, the one the caller fills
+//	# with ordinary children. That form takes no parameters: there is no population
+//	# site to bind them at.
+//	SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] ] .
 //
 //	State 0
 //		on  kw_slot
 //			shift and goto state 1
 //	State 1
+//		Accept
 //		on  ident
 //			shift and goto state 2
 //	State 2
@@ -6119,7 +6123,7 @@ func (p *Parser) SlotParam() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 85
+	accept, errorSet = true, 85
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		r = append(r, p.shift())
