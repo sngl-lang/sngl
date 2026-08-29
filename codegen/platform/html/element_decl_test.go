@@ -26,15 +26,10 @@ func checkedPkgForTest(t *testing.T, src string) *ir.Package {
 	return pkg
 }
 
-// The element declaration describes the package, so a compilation resolves it
-// once however many windows it emits. It used to be memoized on the generator,
-// of which there is one per window, and the fallback path is a walk of the
-// whole IR -- 789 walks for the docs site, and the dominant cost of building
-// it.
-//
-// The memo is poisoned between the two generators rather than counted: a
-// second generator that resolved the declaration for itself would find the
-// real one and never see this.
+// A compilation resolves the element declaration once, however many windows it
+// emits. The memo is poisoned between the two generators rather than counted:
+// one that resolved the declaration for itself would find the real one and
+// never see the poison.
 func TestRawElementResolvedOncePerCompilation(t *testing.T) {
 	pkg := checkedPkgForTest(t, "import . \"sngl://std\"\nimport html \"sngl://platforms/html\"\n\nwindow(\"a\") {\n    html.div {}\n}\n\nwindow(\"b\") {\n    html.span {}\n}\n")
 

@@ -71,8 +71,7 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
 // path is the route URL the form posts to.
-// rawElem is passed in rather than resolved here: it describes the package, and
-// this runs once per route.
+// rawElem is passed in because it describes the package and this runs per route.
 func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int, rawElem *ir.Component) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
