@@ -35,11 +35,6 @@ type renderBuilder struct {
 	cur       strings.Builder
 	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
-	// rawElem is the `element` declaration every HTML tag resolves to. The
-	// server render reads the same declaration the client render does, so the
-	// two agree on the tag, on which props are boolean, and on which prop
-	// holds the tag rather than describing the element.
-	rawElem *ir.Component
 
 	// err is the first thing the server render could not express. It has no
 	// error return -- it builds a skeleton -- so the failure is carried out and
@@ -61,6 +56,29 @@ func (rb *renderBuilder) pushHole(h codegen.RouteHole) {
 	rb.holes = append(rb.holes, h)
 }
 
+// sub renders a nested skeleton -- the body of a request-dependent if or for.
+// names are identifiers the enclosing hole binds (a loop variable), which the
+// server has a value for inside the hole and the nested render may therefore
+// use.
+func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *codegen.RouteRender {
+	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx}
+	if len(names) > 0 {
+		child.state = maps.Clone(rb.state)
+		for _, n := range names {
+			if n != "" {
+				child.state[n] = true
+			}
+		}
+	}
+	for _, s := range stmts {
+		child.walkStmt(s, path)
+	}
+	if child.err != nil {
+		rb.fail("%w", child.err)
+	}
+	return child.finish()
+}
+
 func (rb *renderBuilder) finish() *codegen.RouteRender {
 	rb.chunks = append(rb.chunks, rb.cur.String())
 	rb.cur.Reset()
@@ -74,9 +92,8 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
-		state:     stateVarNames(pkg),
+		state:     stateVarNames(pkg, win),
 		actionIdx: actionIdx,
-		rawElem:   rawElementDecl(pkg),
 	}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
@@ -104,6 +121,17 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.If:
+		// A condition the optimizer could settle is already gone. One that is
+		// left depends on the request, so both arms are skeletons the server
+		// chooses between -- rendering them one after the other emitted both.
+		if rb.exprIsReactive(n.Cond) {
+			h := codegen.RouteHole{Kind: codegen.HoleIf, Expr: n.Cond, Then: rb.sub(n.Body, path)}
+			if len(n.Else) > 0 {
+				h.Else = rb.sub(n.Else, path)
+			}
+			rb.pushHole(h)
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
@@ -111,6 +139,22 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.For:
+		// Same: a loop still here did not unroll, so its length is the
+		// request's. Walking the body once left the loop variable bound to
+		// nothing, and every expression over it read as unrenderable -- which
+		// is how a whole route was refused for markup the server can write.
+		//
+		// The two-variable form has no HoleFor spelling (the emitter ranges a
+		// single name), so it keeps the old walk.
+		if n.Value == "" && n.Key != "" {
+			rb.pushHole(codegen.RouteHole{
+				Kind: codegen.HoleFor,
+				Expr: n.Iter,
+				Key:  n.Key,
+				Then: rb.sub(n.Body, path, n.Key),
+			})
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
@@ -141,15 +185,11 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			path, actionIdx))
 	}
 
-	decl := n.Component
-	if decl == nil || decl.Wildcard == "" {
-		decl = rb.rawElem
-	}
 	// A node the declaration cannot name a tag for is rendered as a container
 	// rather than as a bogus <name> literal, so a user component keeps
 	// rendering instead of emitting invalid markup.
 	tag := "div"
-	if t, ok := rawElementTag(decl, n); ok {
+	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
 	rb.writeRaw("<" + tag)
@@ -162,7 +202,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
 	var rawBinding *ir.Arg
-	for _, p := range rb.elementAttrs(decl, n) {
+	for _, p := range rb.elementAttrs(n) {
 		switch contentProp(p.Name) {
 		case textContentKind:
 			textBinding = p
@@ -179,21 +219,22 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			}
 			continue
 		}
-		if rb.exprIsReactive(p.Value) {
+		val := p.Value
+		if rb.exprIsReactive(val) {
 			rb.writeRaw(" " + p.Name + `="`)
-			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: p.Value, Attr: p.Name})
+			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: val, Attr: p.Name})
 			rb.writeRaw(`"`)
 			continue
 		}
 		// A boolean attribute is present or absent; `open="false"` leaves a
 		// <details> open, so a false one is written as nothing.
-		if bv, ok := codegen.IRLiteralBool(p.Value); ok {
+		if bv, ok := codegen.IRLiteralBool(val); ok {
 			if bv {
 				rb.writeRaw(" " + p.Name)
 			}
 			continue
 		}
-		if s, ok := codegen.IRLiteralString(p.Value); ok {
+		if s, ok := codegen.IRLiteralString(val); ok {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 			continue
 		}
@@ -279,20 +320,11 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 // element rather than describing it) and minus the wildcard container, whose
 // entries are unpacked back into the attribute names they were written under
 // and appended sorted.
-func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
-	into := tagPropName(decl)
-	wildcard := map[string]bool{}
-	if decl != nil {
-		for _, dp := range decl.Props {
-			if dp != nil && dp.Wildcard != "" {
-				wildcard[dp.Name] = true
-			}
-		}
-	}
+func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == into || wildcard[p.Name] {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
 			continue
 		}
 		out = append(out, p)
@@ -336,10 +368,25 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 }
 
 // stateVarNames returns the set of (non-synthesized) state var names.
-func stateVarNames(pkg *ir.Package) map[string]bool {
+// stateVarNames is the set of names a route's markup may depend on: the
+// server State struct's fields, plus the window's own vars.
+//
+// A window's vars are what its URL template declares -- `/p/{pkg}` puts `pkg`
+// in scope for the body (checker.go, buildWindow). Those are known per request
+// exactly as state is, so an expression over one renders into a hole. Left
+// out, `class=active ? "active" : ""` where `active` came from the path was
+// neither a literal nor state-dependent, and the route was refused.
+func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg) {
 		out[v.Name] = true
+	}
+	if win != nil {
+		for _, v := range win.Vars {
+			if v != nil && !v.IsConst {
+				out[v.Name] = true
+			}
+		}
 	}
 	return out
 }

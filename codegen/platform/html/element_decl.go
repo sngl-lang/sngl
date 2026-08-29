@@ -10,82 +10,73 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// rawElementDecl returns the wildcard component every HTML tag resolves to —
-// `element` in codegen/platform/html. It is found by its mark rather than by its
-// name: a wildcard component with a prop to bind the matched name into is
-// exactly the declaration that answers to a tag.
-//
-// The package's own components come first, then its imports', so a program
-// shadowing the platform's element with one of its own is read from its own.
-// The IR walk is the fallback for a compilation that never names the platform
-// package in an import — every stdlib wrapper's body inlines raw elements, and
-// those NodeInsts carry the declaration they resolved to.
-func rawElementDecl(pkg *ir.Package) *ir.Component {
-	if pkg == nil {
-		return nil
-	}
-	if c := wildcardComponent(pkg.Components); c != nil {
-		return c
-	}
-	for _, imp := range pkg.Imports {
-		if imp == nil || imp.Pkg == nil {
-			continue
-		}
-		if c := wildcardComponent(imp.Pkg.Components); c != nil {
-			return c
-		}
-	}
-	var found *ir.Component
-	ir.WalkStmts(pkg, func(s ir.Stmt) error {
-		if found != nil {
-			return nil
-		}
-		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil {
-			if n.Component.Wildcard != "" && n.Component.WildcardInto != "" {
-				found = n.Component
-			}
-		}
-		return nil
-	})
-	return found
-}
-
-func wildcardComponent(comps []*ir.Component) *ir.Component {
-	for _, c := range comps {
-		if c != nil && c.Wildcard != "" && c.WildcardInto != "" {
-			return c
-		}
-	}
-	return nil
-}
-
 // elementDecl is the declaration a node's props and events are read from: the
 // node's own component when it has one, else the package's raw-element
 // declaration.
 func (g *htmlGen) elementDecl(n *ir.NodeInst) *ir.Component {
-	if n != nil && n.Component != nil && n.Component.Wildcard != "" {
-		return n.Component
+	if n == nil {
+		return nil
 	}
-	return g.rawElement()
+	return n.Component
 }
 
-// rawElement returns the package's raw-element declaration, resolved once.
-func (g *htmlGen) rawElement() *ir.Component {
-	if !g.rawElemDone {
-		g.rawElemDone = true
-		g.rawElem = rawElementDecl(g.pkg)
+// tagProp is the prop the matched tag name binds to. It is html's own prop on
+// html's own `element`, declared in html.sngl beside this file, so it is named
+// here rather than read back off the declaration at run time.
+// TestElementDeclaresTagProp keeps the two in step.
+//
+// A node's `tag=` names the element rather than describing it, so it is never
+// emitted as an attribute.
+const tagProp = "tag"
+
+// attrsProp is the prop html's `element` collects every attribute it does not
+// declare into, keyed by the name it was written under. Named here for the
+// reason tagProp is: it is html's own prop, and TestElementDeclaresTagProp
+// holds it to the declaration.
+//
+// The collecting is the checker's — a name matching the prop's #[wildcard]
+// pattern lands in the map, and binding both forms at one call site is an
+// error there. What reaches codegen is the map, and codegen.WildcardProps
+// unpacks it back into the names it was written under.
+const attrsProp = "attrs"
+
+// isElement reports whether a component is html's `element`. It is recognised
+// by the two props html gave it, for the reason their names are constants
+// here: they are html's own, and nothing else html renders declares them.
+// TestElementDeclaresTagProp holds this to the declaration.
+func isElement(c *ir.Component) bool {
+	if c == nil {
+		return false
 	}
-	return g.rawElem
+	var tag, attrs bool
+	for _, p := range c.Props {
+		switch {
+		case p == nil:
+		case p.Name == tagProp:
+			tag = true
+		case p.Name == attrsProp:
+			attrs = true
+		}
+	}
+	return tag && attrs
 }
 
-// tagPropName is the prop the matched tag name binds to — the `into` argument
-// of the element's #[wildcard] mark. A node's `tag=` prop names the element
-// rather than describing it, so it is never emitted as an attribute.
-func tagPropName(comp *ir.Component) string {
-	if comp == nil {
-		return ""
+// isDOMEventName reports whether a name is one the DOM fires. `element`
+// declares its payload-bearing events by name and accepts every other DOM
+// event, and DOM event names are lowercase — so a camelCase name is a SNGL
+// spelling that the override wrapping the element should have mapped, and
+// attaching a listener for it would listen for an event nothing fires.
+func isDOMEventName(s string) bool {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return false
 	}
-	return comp.WildcardInto
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
 }
 
 // elementProp returns the element's declaration of prop, or nil when the prop
@@ -95,7 +86,7 @@ func elementProp(comp *ir.Component, prop string) *ir.Prop {
 		return nil
 	}
 	for _, p := range comp.Props {
-		if p != nil && p.Wildcard == "" && p.Name == prop {
+		if p != nil && p.Name == prop && p.Name != attrsProp {
 			return p
 		}
 	}
@@ -158,15 +149,12 @@ func domEventName(comp *ir.Component, event string) string {
 		return event
 	}
 	for _, e := range comp.Events {
-		if e == nil {
-			continue
-		}
-		if e.Name == event {
+		if e != nil && e.Name == event {
 			return event
 		}
-		if e.Wildcard != "" && ir.MatchesWildcard(e.Wildcard, event) {
-			return event
-		}
+	}
+	if isDOMEventName(event) {
+		return event
 	}
 	return ""
 }
@@ -227,18 +215,6 @@ func eventPayloadFields(comp *ir.Component, event string) []string {
 // wildcardPropNamed reports whether prop is the declaration's wildcard prop --
 // the map every name it matched was collected into. Such a prop names no
 // attribute of its own, so a caller writing one has to unpack it first.
-func wildcardPropNamed(decl *ir.Component, prop string) bool {
-	if decl == nil || prop == "" {
-		return false
-	}
-	for _, p := range decl.Props {
-		if p.Name == prop && p.Wildcard != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // voidElements are the tags that hold no content: the HTML parser closes them
 // itself, and a close tag for one -- `</input>` -- is invalid markup. The
 // static and route renders read this same list; the route render had none, and

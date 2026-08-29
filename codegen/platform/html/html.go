@@ -36,6 +36,20 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
+	// A platform has the last word, and html's output is HTML and JS: the
+	// language emits the server half of route mode, not the markup or the
+	// script. So a restriction that exists because the *language* lacks a
+	// construct does not apply to what html itself renders -- Go has no
+	// ternary and asks for NoTernary, which rewrote `class=cond ? "a" : ""`
+	// into a temporary the render model could not see through, for an
+	// expression the JS that fills the hole writes verbatim.
+	//
+	// ListLambdas is the same: Go withdraws it for a lambda behind an
+	// interface surface, but the emitter writes an inline one directly (a
+	// typed IIFE over the slice), so a `.filter` in a server action compiles
+	// either way -- and lowering it built the same kind of temporary.
+	f.Ternary = true
+	f.ListLambdas = true
 	f.AsyncReactive = false
 	f.ImplicitRecv = false
 	f.InlineComponents = false
@@ -530,17 +544,17 @@ type htmlGen struct {
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
 
+	// elemDecl is the declaration this window's raw elements resolved to,
+	// taken from the tree during prewalkNodes. It answers for the nodes the
+	// lowering creates after that walk, which carry no id it could key on.
+	elemDecl *ir.Component
+
 	// loweredRefs are the __n* ids a reactive-update Assign targets. Each gets
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
 	loweredRefs map[string]bool
 
 	canvasSetups []canvasSetup
-
-	// rawElem is the `element` declaration every HTML tag resolves to;
-	// rawElemDone separates "not looked up yet" from "there is none".
-	rawElem     *ir.Component
-	rawElemDone bool
 }
 
 type componentParam struct {
@@ -709,6 +723,13 @@ func (g *htmlGen) prewalkNodes() {
 			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
+			}
+			// A node the lowering creates later — a `for` body's — gets its
+			// id then, so it never reaches idToNode. Every raw element of a
+			// package shares one declaration, so keeping the one seen here
+			// answers for those too.
+			if g.elemDecl == nil && isElement(n.Component) {
+				g.elemDecl = n.Component
 			}
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
@@ -1229,10 +1250,9 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component == nil || n.Component.AST == nil {
 		return false
 	}
-	// A wildcard component answers to every tag name, so the node's name is a
-	// tag rather than a reference to it; inlining its empty body renders
-	// nothing at all.
-	if n.Component.Wildcard != "" {
+	// `element` answers to every tag name, so the node's name is a tag rather
+	// than a reference to it; inlining its empty body renders nothing at all.
+	if isElement(n.Component) {
 		return false
 	}
 	if n.Component.Stdlib {
@@ -1440,7 +1460,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// its `tag` prop, and a call site that wrote one of its own — the way a
 	// hyphenated custom element is reached — replaced it there. n.Name is the
 	// fallback for a node that resolved to no component at all.
-	if t, ok := rawElementTag(decl, n); ok {
+	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
 
@@ -1473,10 +1493,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
-	// The prop the matched tag name binds to names the element rather than
-	// being one of its attributes. The element's #[wildcard] mark says which
-	// prop that is; the name "tag" does not.
-	delete(props, tagPropName(decl))
+	// The tag names the element rather than being one of its attributes.
+	delete(props, tagProp)
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""
