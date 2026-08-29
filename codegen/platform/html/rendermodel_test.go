@@ -93,7 +93,7 @@ func TestBuildRenderModel(t *testing.T) {
 	pkg, win := routeFixture()
 
 	_, actionIdx := collectActions(pkg, win, buildNativeFuncMap(pkg, "go"))
-	rr, err := buildRenderModel(pkg, win, "/", actionIdx, rawElementDecl(pkg))
+	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
 	if err != nil {
 		t.Fatalf("buildRenderModel: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 		t.Fatalf("node handler action index: want 1, got %d", got)
 	}
 
-	rr, err := buildRenderModel(pkg, win, "/", actionIdx, rawElementDecl(pkg))
+	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
 	if err != nil {
 		t.Fatalf("buildRenderModel: %v", err)
 	}

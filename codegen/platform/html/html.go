@@ -196,11 +196,6 @@ type windowShared struct {
 	usedComponents map[string]bool
 	prewalked      map[string]*ir.NodeInst
 	slotsRewritten bool
-	// rawElem is the `element` declaration every HTML tag resolves to (see
-	// element_decl.go). rawElemDone separates "not looked up yet" from
-	// "looked up, and this package declares none".
-	rawElem     *ir.Component
-	rawElemDone bool
 }
 
 func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {

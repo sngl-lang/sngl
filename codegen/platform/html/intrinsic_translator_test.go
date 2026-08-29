@@ -58,7 +58,7 @@ func elementDeclForTest(t *testing.T) *ir.Component {
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}
-	c := rawElementDecl(pkg)
+	c := pkg.Wildcard
 	if c == nil {
 		t.Fatal("no wildcard element declaration found in codegen/platform/html")
 	}

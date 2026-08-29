@@ -10,53 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// rawElementDecl returns the wildcard component every HTML tag resolves to —
-// `element` in codegen/platform/html. It is found by its mark rather than by its
-// name: a wildcard component with a prop to bind the matched name into is
-// exactly the declaration that answers to a tag.
-//
-// The package's own components come first, then its imports', so a program
-// shadowing the platform's element with one of its own is read from its own.
-// The IR walk is the fallback for a compilation that never names the platform
-// package in an import — every stdlib wrapper's body inlines raw elements, and
-// those NodeInsts carry the declaration they resolved to.
-func rawElementDecl(pkg *ir.Package) *ir.Component {
-	if pkg == nil {
-		return nil
-	}
-	if c := wildcardComponent(pkg.Components); c != nil {
-		return c
-	}
-	for _, imp := range pkg.Imports {
-		if imp == nil || imp.Pkg == nil {
-			continue
-		}
-		if c := wildcardComponent(imp.Pkg.Components); c != nil {
-			return c
-		}
-	}
-	var found *ir.Component
-	ir.WalkStmts(pkg, func(s ir.Stmt) error {
-		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil {
-			if n.Component.Wildcard != "" && n.Component.WildcardInto != "" {
-				found = n.Component
-				return ir.SkipAll
-			}
-		}
-		return nil
-	})
-	return found
-}
-
-func wildcardComponent(comps []*ir.Component) *ir.Component {
-	for _, c := range comps {
-		if c != nil && c.Wildcard != "" && c.WildcardInto != "" {
-			return c
-		}
-	}
-	return nil
-}
-
 // elementDecl is the declaration a node's props and events are read from: the
 // node's own component when it has one, else the package's raw-element
 // declaration.
@@ -67,15 +20,12 @@ func (g *htmlGen) elementDecl(n *ir.NodeInst) *ir.Component {
 	return g.rawElement()
 }
 
-// rawElement returns the package's raw-element declaration. The memo is on
-// windowShared, not the generator: there is one generator per window, and the
-// answer describes the package.
+// rawElement returns the package's raw-element declaration.
 func (g *htmlGen) rawElement() *ir.Component {
-	if !g.shared.rawElemDone {
-		g.shared.rawElemDone = true
-		g.shared.rawElem = rawElementDecl(g.pkg)
+	if g.pkg == nil {
+		return nil
 	}
-	return g.shared.rawElem
+	return g.pkg.Wildcard
 }
 
 // tagPropName is the prop the matched tag name binds to — the `into` argument
