@@ -304,20 +304,20 @@ func (c *checker) collectFuncOverrides() {
 		if base == nil {
 			continue
 		}
-		bodies := &base.PlatformBodies
+		overrides := &base.Overrides
 		if kind == ir.BuiltinLanguage {
-			bodies = &base.LanguageBodies
+			overrides = &base.LanguageOverrides
 		}
-		if *bodies == nil {
-			*bodies = map[string][]ir.Stmt{}
+		if *overrides == nil {
+			*overrides = map[string]ir.Body{}
 		}
-		if _, dup := (*bodies)[plat]; dup {
+		if _, dup := (*overrides)[plat]; dup {
 			c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
 			continue
 		}
 		// Reserve the key so a duplicate is caught even when the body check
 		// contributes nothing, as addOverrideBody does for a component.
-		(*bodies)[plat] = nil
+		(*overrides)[plat] = ir.Body{}
 		c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl})
 	}
 }
@@ -384,9 +384,9 @@ func (c *checker) checkPendingFuncOverrides() {
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
 		if po.kind == ir.BuiltinLanguage {
-			po.fn.LanguageBodies[po.platform] = po.fn.Block
+			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
 		} else {
-			po.fn.PlatformBodies[po.platform] = po.fn.Block
+			po.fn.Overrides[po.platform] = ir.Body{Stmts: po.fn.Block}
 		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock

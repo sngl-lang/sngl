@@ -3,8 +3,8 @@ package lower
 import "git.duckfam.us/jonathan/sngl/ir"
 
 // passPlatformExtensionBody specializes each *ir.Component whose
-// PlatformBodies map has an entry for the active platform by swapping
-// that entry into Component.Body, and its PlatformVars entry into
+// Overrides map has an entry for the active platform by swapping
+// that entry into Component.Body, and its Overrides entry into
 // Component.Vars. The checker is platform-agnostic and
 // collects every registered platform's `component sngl.X { platform <p>
 // { ... } }` body into the map; the active platform is chosen here.

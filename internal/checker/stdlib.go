@@ -1132,8 +1132,8 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 
 // mergeTargetExtensions collects the `component sngl.X` overrides one target's
 // package declares, checking each `platform <name> { ... }` block into the
-// stdlib *ir.Component's PlatformBodies map. The lowering pass
-// passPlatformExtensionBody reads PlatformBodies[opts.Platform] and swaps it
+// stdlib *ir.Component's Overrides map. The lowering pass
+// passPlatformExtensionBody reads Overrides[opts.Platform] and swaps it
 // into Component.Body before any other pass runs.
 //
 // A target's package is loaded the way a side-effect import is, and for the
@@ -1250,23 +1250,20 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
-	bodies, vars := &comp.PlatformBodies, &comp.PlatformVars
+	overrides := &comp.Overrides
 	if kind == ir.BuiltinLanguage {
-		bodies, vars = &comp.LanguageBodies, &comp.LanguageVars
+		overrides = &comp.LanguageOverrides
 	}
-	if *bodies == nil {
-		*bodies = map[string][]ir.Stmt{}
+	if *overrides == nil {
+		*overrides = map[string]ir.Body{}
 	}
-	if _, dup := (*bodies)[target]; dup {
+	if _, dup := (*overrides)[target]; dup {
 		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, target)
 		return
 	}
-	if *vars == nil {
-		*vars = map[string][]*ir.Var{}
-	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
-	(*bodies)[target] = nil
+	(*overrides)[target] = ir.Body{}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		platform:  target,
@@ -1312,7 +1309,7 @@ func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
-// needs to be checked into IR and stashed under stdComp.PlatformBodies.
+// needs to be checked into IR and stashed under stdComp.Overrides.
 // Body-checking is deferred until after user pass1 so user-declared symbols
 // are in scope when the platform body resolves identifiers.
 type pendingExtension struct {
@@ -1408,12 +1405,11 @@ func (c *checker) checkPendingExtensions() {
 			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
 			pe.comp.Vars = vars
 			c.checkComponentBody(pe.comp)
+			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body}
 			if pe.kind == ir.BuiltinLanguage {
-				pe.comp.LanguageBodies[pe.platform] = pe.comp.Body
-				pe.comp.LanguageVars[pe.platform] = pe.comp.Vars
+				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
-				pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
-				pe.comp.PlatformVars[pe.platform] = pe.comp.Vars
+				pe.comp.Overrides[pe.platform] = checked
 			}
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody

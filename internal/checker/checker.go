@@ -117,7 +117,7 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	// user-declared symbols are in scope when the platform body resolves
 	// identifiers. Collection (the AST walk that enumerates pending bodies)
 	// happened in newChecker; checkPendingExtensions populates each stdlib
-	// Component's PlatformBodies map.
+	// Component's Overrides map.
 	c.checkPendingExtensions()
 	c.pass2()
 	// After pass2: an override body is checked against the base's signature,
@@ -287,7 +287,7 @@ type checker struct {
 	// Platform extension bodies enqueued by mergePlatformExtensions for IR
 	// check after user pass1 (so platform-body identifiers can resolve against
 	// the full user scope chain). Each entry produces one
-	// stdComp.PlatformBodies[platformName] = checkedIRBody mapping.
+	// stdComp.Overrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
 
 	// Deferred const(expr) assertions. Const-ness can depend on function

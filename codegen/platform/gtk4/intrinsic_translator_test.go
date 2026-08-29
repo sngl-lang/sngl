@@ -98,10 +98,10 @@ func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) 
 	// #[intrinsic] C type, and no gtk4 entry in the overrides the checker
 	// collected across every registered platform.
 	tr.tagComponent["avatar"] = &ir.Component{
-		Name:           "avatar",
-		Stdlib:         true,
-		Pkg:            "sngl://std",
-		PlatformBodies: map[string][]ir.Stmt{"html": nil},
+		Name:      "avatar",
+		Stdlib:    true,
+		Pkg:       "sngl://std",
+		Overrides: map[string]ir.Body{"html": {}},
 	}
 	if stmts := tr.OnCreateNode(context.Background(), "__n0", "avatar"); len(stmts) != 0 {
 		t.Errorf("expected no stmts; got %d", len(stmts))

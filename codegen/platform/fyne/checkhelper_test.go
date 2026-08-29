@@ -14,7 +14,7 @@ import (
 //
 // The platform is not optional. mergePlatformExtensions is what collects
 // `component sngl.X { ... }` in fyne.sngl into each stdlib component's
-// PlatformBodies, and it returns immediately when Config.Platforms is empty.
+// Overrides, and it returns immediately when Config.Platforms is empty.
 // A test that omits it leaves every stdlib component with an empty body, so
 // nodes reach codegen under their stdlib names, match no widget, and are
 // dropped — while their AppendChild is still emitted. That is issue #120's
