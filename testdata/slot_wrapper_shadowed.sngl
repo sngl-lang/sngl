@@ -1,0 +1,27 @@
+// The count wrappers are recognised by their #[builtin] kind, never by name, so
+// a user declaration of either name shadows them like any other built-in.
+//
+// `option` here is an ordinary generic struct: unmarked, so the slot takes any
+// number of them rather than none-or-one, and two nodes are accepted. Matching
+// by name would reject them.
+
+import . "sngl://std"
+
+struct option<T> {
+    v T
+}
+
+component frame(slot badge option<component>) {
+    vbox {
+        badge {}
+    }
+}
+
+component main {
+    frame() {
+        slot badge {
+            text(value = "a")
+            text(value = "b")
+        }
+    }
+}
