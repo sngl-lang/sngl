@@ -35,11 +35,6 @@ type renderBuilder struct {
 	cur       strings.Builder
 	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
-	// rawElem is the `element` declaration every HTML tag resolves to. The
-	// server render reads the same declaration the client render does, so the
-	// two agree on the tag, on which props are boolean, and on which prop
-	// holds the tag rather than describing the element.
-	rawElem *ir.Component
 
 	// err is the first thing the server render could not express. It has no
 	// error return -- it builds a skeleton -- so the failure is carried out and
@@ -76,7 +71,6 @@ func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, acti
 		pkg:       pkg,
 		state:     stateVarNames(pkg),
 		actionIdx: actionIdx,
-		rawElem:   pkg.Wildcard,
 	}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
@@ -147,10 +141,6 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			path, actionIdx))
 	}
 
-	decl := n.Component
-	if decl == nil || decl.Wildcard == "" {
-		decl = rb.rawElem
-	}
 	// A node the declaration cannot name a tag for is rendered as a container
 	// rather than as a bogus <name> literal, so a user component keeps
 	// rendering instead of emitting invalid markup.
