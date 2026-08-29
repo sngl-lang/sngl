@@ -22,20 +22,19 @@ type htmlTranslator struct {
 	jc       *javascript.JsIRContext
 	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
 	topLevel []string          // ids not yet AppendChild'd
-	// idToNode maps an element id to the originating NodeInst so
-	// OnPropAssign can translate SNGL component props (e.g. text.value)
-	// to the correct DOM property (textContent). Caller-supplied; nil
-	// is fine — OnPropAssign falls back to the DOM-name fast path.
+	// idToNode maps an element id to the NodeInst it was built from. A
+	// lowered node op names its node by id and carries nothing else, so this
+	// is where the op's element and its declaration are recovered — which
+	// prop is a DOM property, which SNGL prop maps to which DOM one, and
+	// which events the element has.
 	idToNode map[string]*ir.NodeInst
-	// rawElem is the `element` declaration every HTML tag resolves to. By
-	// the time a tree is lowered to node ops the NodeInsts are gone, but
-	// the declaration is one for every tag, so holding it is enough to
-	// answer which props are boolean and which events exist.
-	rawElem *ir.Component
+	// elem answers for an op whose node predates no prewalk entry — see
+	// htmlGen.elemDecl.
+	elem *ir.Component
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}, rawElem: g.rawElement()}
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, elem: g.elemDecl}
 }
 
 // newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
@@ -49,6 +48,16 @@ func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNod
 }
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
+
+// declOf is the declaration of the element an op targets.
+func (t *htmlTranslator) declOf(node ir.Expr) *ir.Component {
+	if id, ok := node.(*ir.Ident); ok {
+		if n := t.idToNode[id.Name]; n != nil {
+			return n.Component
+		}
+	}
+	return t.elem
+}
 
 func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	// passInlinePure substitutes stdlib wrapper components (vbox, text,
@@ -108,7 +117,7 @@ func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	domEvent := domEventName(t.rawElem, event)
+	domEvent := domEventName(t.declOf(node), event)
 	if domEvent == "" {
 		return nil
 	}
@@ -139,7 +148,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	// The prop the tag name binds to names the element; the tag already
 	// reached OnCreateNode, and there is no attribute to write it as.
-	if prop != "" && prop == tagPropName(t.rawElem) {
+	if prop == tagProp {
 		return nil
 	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {
@@ -169,7 +178,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// whose value stringifies to "[object Map]", and loses every name in it.
 	// The two markup paths (nodeProps, elementAttrs) already unpack it; this is
 	// the third, and the one a node inside a `for` or a reactive slot takes.
-	if wc := wildcardPropNamed(t.rawElem, prop); wc {
+	if prop == attrsProp {
 		m, ok := value.(*ir.MapLitIR)
 		if !ok {
 			return nil
@@ -184,7 +193,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 		return out
 	}
-	if field, ok := domPropForProp(t.rawElem, prop); ok {
+	if field, ok := domPropForProp(t.declOf(node), prop); ok {
 		// node.<field> = value
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},

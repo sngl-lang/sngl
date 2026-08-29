@@ -25,33 +25,23 @@ func validateRawElements(pkg *ir.Package) error {
 		if !ok || n.Component == nil || bad != nil {
 			return nil
 		}
-		decl := n.Component
-		if decl.Wildcard == "" {
+		if !isElement(n.Component) {
 			return nil
 		}
-		if into := decl.WildcardInto; into != "" {
-			expr := codegen.NodeProp(n, into)
-			if expr == nil {
-				bad = fmt.Errorf("%s: a raw element needs its %q prop to name a tag", nodePos(n), into)
-				return nil
-			}
-			if tag, ok := codegen.IRLiteralString(expr); !ok || tag == "" {
-				bad = fmt.Errorf("%s: %q must be a string literal: the tag names the element to create, and this one is not known until it runs",
-					nodePos(n), into)
-				return nil
-			}
+		expr := codegen.NodeProp(n, tagProp)
+		if expr == nil {
+			bad = fmt.Errorf("%s: a raw element needs its %q prop to name a tag", nodePos(n), tagProp)
+			return nil
 		}
-		for _, p := range decl.Props {
-			if p == nil || p.Wildcard == "" {
-				continue
-			}
-			expr := codegen.NodeProp(n, p.Name)
-			if expr == nil {
-				continue
-			}
-			if _, ok := expr.(*ir.MapLitIR); !ok {
+		if tag, ok := codegen.IRLiteralString(expr); !ok || tag == "" {
+			bad = fmt.Errorf("%s: %q must be a string literal: the tag names the element to create, and this one is not known until it runs",
+				nodePos(n), tagProp)
+			return nil
+		}
+		if attrs := codegen.NodeProp(n, attrsProp); attrs != nil {
+			if _, ok := attrs.(*ir.MapLitIR); !ok {
 				bad = fmt.Errorf("%s: %q must be a map literal: each attribute is written by name, and these names are not known until it runs",
-					nodePos(n), p.Name)
+					nodePos(n), attrsProp)
 				return nil
 			}
 		}
