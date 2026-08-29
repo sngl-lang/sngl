@@ -70,6 +70,11 @@ type libCache struct {
 	// macroSigs records the macro declarations whose parameter types have
 	// been resolved; see resolveMacroSig.
 	macroSigs map[*ir.Func]bool
+	// targetIDs is the identity const injected into each target's package.
+	// Shared for the same reason `extended` is: the packages are shared, so a
+	// later check must re-bind the same symbol rather than a second one, which
+	// Declare would rightly call a redeclaration.
+	targetIDs map[*ir.Package]*ir.Var
 }
 
 // libCache returns the library-package cache a check runs against: the one an
@@ -78,7 +83,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, targetIDs: map[*ir.Package]*ir.Var{}}
 }
 
 type ImportResolver interface {
@@ -103,6 +108,11 @@ type ImportResolver interface {
 func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(doc, cfg)
 	c.pass1()
+	// A program's own overrides resolve after pass1: an override may be
+	// written above the declaration it overrides, and may name a component
+	// this file declares further down.
+	c.collectUserOverrides()
+	c.collectFuncOverrides()
 	// Body-check pending stdlib platform extensions after user pass1 so that
 	// user-declared symbols are in scope when the platform body resolves
 	// identifiers. Collection (the AST walk that enumerates pending bodies)
@@ -110,6 +120,10 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	// Component's PlatformBodies map.
 	c.checkPendingExtensions()
 	c.pass2()
+	// After pass2: an override body is checked against the base's signature,
+	// which pass2 has finished resolving, and may name anything the program
+	// declares.
+	c.checkPendingFuncOverrides()
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
@@ -248,6 +262,17 @@ type checker struct {
 	// registered for phases that have no scope — see ir.DurationType.
 	durationUnit *ir.UnitDef
 
+	// The target-identity types. Held so PLATFORM and LANGUAGE can be typed
+	// and so a target's synthesized identity const has a type to carry; the
+	// declarations are in lib/builtin and are shadowable like any other.
+	platformType *ir.StructDef
+	languageType *ir.StructDef
+	// userOverrides and userFuncOverrides are the program's own
+	// `X[target]` declarations, merged after pass1 by collectUserOverrides.
+	userOverrides        []*ast.ComponentDecl
+	userFuncOverrides    []*ast.FuncDef
+	pendingFuncOverrides []pendingFuncOverride
+
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
 	// overwrite; resolution itself goes through the scope chain like any
@@ -326,6 +351,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 		panic("sngl: embedded stdlib declares no #[builtin(\"window\")] component")
 	}
 	c.windowType = c.windowComp.SymType()
+	c.typeTargetConsts()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -374,9 +400,11 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 			continue
 		}
 		declareNS(p.PlatformIdentifier(), "platforms/"+p.PlatformIdentifier())
+		c.synthesizeTargetID(c.targetNSPkg("platforms/"+p.PlatformIdentifier()), c.platformType, p.PlatformIdentifier())
 	}
 	for _, l := range cfg.Languages {
 		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier())
+		c.synthesizeTargetID(c.targetNSPkg("languages/"+l.LanguageIdentifier()), c.languageType, l.LanguageIdentifier())
 	}
 
 	// Splice the build target's extension bodies into the stdlib components
@@ -696,8 +724,6 @@ func (c *checker) pass1() {
 			c.registerFunc(s)
 		case *ast.VisualNode:
 			c.registerRootVisualNode(s)
-		case *ast.PlatformStmt:
-			c.pass1PlatformStmt(s)
 		case *ast.CallStmt:
 			if c.isContextDeclCallStmt(s) {
 				c.registerRootContextDecl(s)
@@ -1510,6 +1536,13 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 }
 
 func (c *checker) registerFunc(f *ast.FuncDef) {
+	// An override implements one declaration for one target and says which on
+	// its own name, exactly as a component override does. It declares nothing
+	// of its own, so it registers nothing here.
+	if f.Target != nil {
+		c.userFuncOverrides = append(c.userFuncOverrides, f)
+		return
+	}
 	fn := c.buildFunc(f)
 	c.applyMarks(f, fn)
 
@@ -1637,45 +1670,28 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
-	// Component extensions: `component sngl.X { platform <name> { ... } }`.
-	// A parens form with nothing in them declares no extension: android.sngl
-	// writes `component sngl.X() { body }`, whose body the platform reads
-	// itself rather than merging as an extension.
+	// An override implements one declaration for one target, and says which
+	// target on its own name: `component sngl.button[html.platform] { ... }`.
+	// It is not a declaration of its own, so it registers nothing here --
+	// collectUserOverrides merges it into the declaration it names, after
+	// pass1 has registered everything it might name.
+	//
+	// A parens form with nothing in them is neither: android.sngl writes
+	// `component sngl.X() { body }`, whose body the platform reads itself.
 	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	if comp.Target != nil && !bare {
+		c.userOverrides = append(c.userOverrides, comp)
+		return
+	}
 	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !bare {
 		namespace := comp.Name[:dot]
 		if !c.isLibraryNamespace(namespace) {
 			c.error(comp.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", namespace, namespace, "sngl://std")
 			return
 		}
-		if len(comp.Props.Props) > 0 {
-			pos := comp.Pos
-			switch p := comp.Props.Props[0].(type) {
-			case ast.Param:
-				pos = p.Pos
-			case ast.EventDecl:
-				pos = p.Pos
-			}
-			c.error(pos, "component extension %q may not declare props (inherited from stdlib)", comp.Name)
-			return
-		}
-		if comp.ChildrenType != nil {
-			c.error(comp.Pos, "component extension %q may not declare children type (inherited from stdlib)", comp.Name)
-			return
-		}
-		for _, s := range comp.Body.Stmts {
-			switch s.(type) {
-			case *ast.PlatformStmt, *ast.Comment:
-				continue
-			}
-			pos := comp.Pos
-			if sp := s.StmtPos(); sp != nil {
-				pos = *sp
-			}
-			c.error(pos, "component extension %q body must contain only platform blocks", comp.Name)
-			return
-		}
-		// Suppress normal registration — mergePlatformExtensions owns it.
+		// Naming another package's declaration is only meaningful as an
+		// override of it, and an override names its target.
+		c.error(comp.Pos, "override %q must name the target it implements, e.g. component %s[html.platform]", comp.Name, comp.Name)
 		return
 	}
 
@@ -2233,36 +2249,6 @@ func (c *checker) targetsPlatform(name string) bool {
 	return !named
 }
 
-// pass1PlatformStmt registers declarations inside a platform block.
-// Skipped when the target platform is known and doesn't match.
-func (c *checker) pass1PlatformStmt(s *ast.PlatformStmt) {
-	if !c.targetsPlatform(s.Platform) {
-		return
-	}
-	for _, stmt := range s.Body.Stmts {
-		switch inner := stmt.(type) {
-		case *ast.Import:
-			c.registerImport(inner)
-		case *ast.EnumDef:
-			c.registerEnum(inner)
-		case *ast.StructDef:
-			c.registerStruct(inner)
-		case *ast.UnitDef:
-			c.registerUnit(inner)
-		case *ast.ConstDecl:
-			c.registerConsts(inner)
-		case *ast.VarDecl:
-			c.registerVars(inner)
-		case *ast.FuncDef:
-			c.registerFunc(inner)
-		case *ast.ComponentDecl:
-			c.registerComponent(inner)
-		case *ast.VisualNode:
-			c.registerRootVisualNode(inner)
-		}
-	}
-}
-
 // buildOptionsStructLit type-checks each named arg against the merged options
 // schema and returns an *ir.StructLit suitable for storing on ir.Output.Options.
 // Unknown option names are reported as diagnostics. Args that don't fit the
@@ -2802,7 +2788,7 @@ func lastStmtMayDiverge(stmts []ir.Stmt) bool {
 		return false
 	}
 	switch stmts[len(stmts)-1].(type) {
-	case *ir.CallStmt, *ir.PlatformFilter, *ir.ErrorBoundary, *ir.SlotInst, *ir.ContextProvider, *ir.NodeInst:
+	case *ir.CallStmt, *ir.ErrorBoundary, *ir.SlotInst, *ir.ContextProvider, *ir.NodeInst:
 		return true
 	}
 	return false
@@ -3064,8 +3050,6 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	case *ast.ForStmt:
 		c.declareNodeIDsIn(&n.Body, true)
 		c.declareNodeIDsIn(&n.Else, true)
-	case *ast.PlatformStmt:
-		c.declareNodeIDsIn(&n.Body, inLoop)
 	}
 }
 

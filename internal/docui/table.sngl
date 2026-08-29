@@ -3,18 +3,12 @@ import . "sngl://std"
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.
 component Table() list<component> {
-    vbox(style={gap=0}) {
-        slot
-    }
-
-    platform html {
+    if PLATFORM == html.platform {
         html.table {
             slot
         }
-    }
-
-    platform http {
-        html.table(style={width="100%", borderCollapse="collapse"}) {
+    } else {
+        vbox(style={gap=0}) {
             slot
         }
     }
@@ -22,41 +16,27 @@ component Table() list<component> {
 
 // Table header row.
 component HeaderRow() list<component> {
-    hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
-        slot
-    }
-
-    platform html {
+    if PLATFORM == html.platform {
         html.thead {
             html.tr {
                 slot
             }
         }
-    }
-
-    platform http {
-        html.thead {
-            html.tr {
-                slot
-            }
+    } else {
+        hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
+            slot
         }
     }
 }
 
 // Table body row.
 component Row() list<component> {
-    hbox(style={gap=16, padding=4}) {
-        slot
-    }
-
-    platform html {
+    if PLATFORM == html.platform {
         html.tr {
             slot
         }
-    }
-
-    platform http {
-        html.tr {
+    } else {
+        hbox(style={gap=16, padding=4}) {
             slot
         }
     }
@@ -64,43 +44,29 @@ component Row() list<component> {
 
 // Table cell.
 component Cell(value = "") {
-    text(value=value, style={minWidth=80})
-
-    platform html {
+    if PLATFORM == html.platform {
         html.td(innerText=value)
-    }
-
-    platform http {
-        html.td(innerText=value)
+    } else {
+        text(value=value, style={minWidth=80})
     }
 }
 
 // Table header cell.
 component HeaderCell(value = "") {
-    text(value=value, style={minWidth=80, fontWeight="bold"})
-
-    platform html {
+    if PLATFORM == html.platform {
         html.th(innerText=value)
-    }
-
-    platform http {
-        html.th(innerText=value)
+    } else {
+        text(value=value, style={minWidth=80, fontWeight="bold"})
     }
 }
 
 // Code-styled table cell (for property names etc.)
 component CodeCell(value = "") {
-    text(value=value, style={minWidth=80, fontFamily="monospace"})
-
-    platform html {
+    if PLATFORM == html.platform {
         html.td {
             html.code(innerText=value)
         }
-    }
-
-    platform http {
-        html.td {
-            html.code(innerText=value)
-        }
+    } else {
+        text(value=value, style={minWidth=80, fontFamily="monospace"})
     }
 }

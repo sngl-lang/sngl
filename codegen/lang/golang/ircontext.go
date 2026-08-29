@@ -38,6 +38,10 @@ type GoIRContext struct {
 	// function, producing Go that does not compile.
 	FreeFuncScope bool
 
+	// MethodRecvType, when set, emits EmitFuncDef's output as a method on that
+	// Go type rather than as a free function or a Model method.
+	MethodRecvType string
+
 	// EmitLineDirectives prepends `//line file:line` at statement boundaries,
 	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
@@ -442,7 +446,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 
 	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
-		return "m"
+		return gc.recvName()
 	}
 
 	name := n.Name
@@ -456,7 +460,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameLocal:
 		return gc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return "m." + name + "()"
+		return gc.recvName() + "." + name + "()"
 	case codegen.NameStateVar:
 		if gc.Ctx.StateReceiver != "" {
 			return gc.Ctx.StateReceiver + "." + ExportName(name)
@@ -470,7 +474,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return name
 	case codegen.NameFunc:
-		return "m." + ExportName(name)
+		// Named as a value -- `xs.filter(keep)` -- this is a Go method value,
+		// which carries its receiver and matches the callback's signature.
+		return gc.recvName() + "." + ExportName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return "m." + ExportName(name)
 	default:
@@ -533,7 +539,13 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			if gc.FreeFuncScope {
 				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
-			return "m." + fname + "(" + strings.Join(args, ", ") + ")"
+			// Route mode emits these as State methods under their exported
+			// name, which is also what a reference to one as a value renders
+			// (NameFunc below); the Model path keeps the name as written.
+			if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
+				return gc.recvName() + "." + ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			}
+			return gc.recvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		codegen.RequireIntrinsicFallback(langGo, n.Func)
@@ -685,10 +697,14 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
-		if len(args) >= 1 && args[0] == "m" {
-			return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+		name := method
+		if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
+			name = ExportName(method)
 		}
-		return "m." + method + "(" + strings.Join(args, ", ") + ")"
+		if len(args) >= 1 && args[0] == gc.recvName() {
+			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
+		}
+		return gc.recvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
 	}
 
 	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
@@ -1314,6 +1330,18 @@ func irAssignOp(op ast.AssignOp) string {
 // Returns the source as a slice of lines (each line WITHOUT trailing
 // newline). The caller joins with "\n" or writes each line followed by
 // its own newline.
+// recvName is the identifier a component's own members dispatch through. It
+// is the Model receiver `m` in every host that emits a Model, and the
+// per-request State value in html's route mode, which has none: there the
+// component's funcs are methods on State and its vars are State fields, so
+// one name answers for both.
+func (gc *GoIRContext) recvName() string {
+	if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
+		return gc.Ctx.StateReceiver
+	}
+	return "m"
+}
+
 func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	var lines []string
 
@@ -1337,12 +1365,33 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	}
 
 	sig := "func "
-	if fn.Receiver != "" {
+	switch {
+	case gc.MethodRecvType != "":
+		// Emitted as a method on a type the host names, with the receiver the
+		// rest of this context dispatches through. html's route mode uses it
+		// to put a component's funcs on the per-request State, which is the
+		// only receiver that file has.
+		sig += "(" + gc.recvName() + " *" + gc.MethodRecvType + ") "
+		if len(params) > 0 && fn.Receiver != "" {
+			// The component receiver arrives as an ordinary first parameter
+			// (passNoImplicitRecv). As a Go method it is the receiver, so it
+			// is not also an argument.
+			params = params[1:]
+		}
+		sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
+		lines = append(lines, sig)
+		return gc.emitFuncBody(lines, fn, params)
+	case fn.Receiver != "":
 		sig += "(m *" + fn.Receiver + ") "
 	}
 	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
 	lines = append(lines, sig)
 
+	return gc.emitFuncBody(lines, fn, params)
+}
+
+// emitFuncBody appends a function's statements and its closing brace.
+func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []string {
 	bodyGC := gc
 	for _, p := range fn.Params {
 		bodyGC = bodyGC.WithLocal(p.Name)
@@ -1352,7 +1401,5 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 			lines = append(lines, "\t"+line)
 		}
 	}
-
-	lines = append(lines, "}")
-	return lines
+	return append(lines, "}")
 }

@@ -97,31 +97,21 @@ component main {
 	}
 }
 
-func TestOptimize_PlatformElimination(t *testing.T) {
-	src := `
-component main {
-	platform html {
-		text(value="html only")
-	}
-	platform bubbletea {
-		text(value="bubbletea only")
-	}
-}
-`
-	_, doc := checkAndOptimize(t, src, "html", "js")
-	out := formatDoc(doc)
-	if !strings.Contains(out, "html only") {
-		t.Error("expected 'html only' to be kept")
-	}
-	if strings.Contains(out, "bubbletea only") {
-		t.Error("expected 'bubbletea only' to be removed")
-	}
-}
+// Target-conditional elimination -- `PLATFORM == html.platform` keeping one
+// branch and dropping the other -- is in cmd/sngl/testdata/target_identity.txt.
+// It needs registered platforms for a target's identity const to exist, and
+// this harness registers none.
 
+// A const-true condition keeps its body. The platform-gated form of this --
+// `PLATFORM == html.platform` -- is in cmd/sngl/testdata/target_identity.txt
+// instead: this harness registers no platforms, so no target's identity const
+// exists here to compare against.
 func TestOptimize_IfConstTrue(t *testing.T) {
 	src := `
+const gate = "html"
+
 component main {
-	if PLATFORM == "html" {
+	if gate == "html" {
 		text(value="yes")
 	}
 }
@@ -135,8 +125,10 @@ component main {
 
 func TestOptimize_IfConstFalse(t *testing.T) {
 	src := `
+const gate = "html"
+
 component main {
-	if PLATFORM == "bubbletea" {
+	if gate == "bubbletea" {
 		text(value="no")
 	}
 }
@@ -602,8 +594,6 @@ func assertNoFor(t *testing.T, where string, stmts []ir.Stmt) {
 		case *ir.If:
 			assertNoFor(t, where, n.Body)
 			assertNoFor(t, where, n.Else)
-		case *ir.PlatformFilter:
-			assertNoFor(t, where, n.Body)
 		}
 	}
 }

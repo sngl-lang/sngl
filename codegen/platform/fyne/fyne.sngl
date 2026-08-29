@@ -362,60 +362,46 @@ component VScroll(style sngl.Style) component {
 
 // --- Layout containers ---
 
-component sngl.vbox {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.vbox[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.hbox {
-    platform fyne {
-        HBox(style={...style}) {
-            slot
-        }
+component sngl.hbox[fyne.platform] {
+    HBox(style={...style}) {
+        slot
     }
 }
 
 // Fyne has no layered container in the widget set this platform builds from,
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
-component sngl.stack {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.stack[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.scroll {
-    platform fyne {
-        VScroll(style={...style}) {
-            slot
-        }
+component sngl.scroll[fyne.platform] {
+    VScroll(style={...style}) {
+        slot
     }
 }
 
-component sngl.spacer {
-    platform fyne {
-        Spacer(style={...style}) {}
+component sngl.spacer[fyne.platform] {
+    Spacer(style={...style}) {}
+}
+
+component sngl.card[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.card {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
-    }
-}
-
-component sngl.splitview {
-    platform fyne {
-        HBox(style={...style}) {
-            slot
-        }
+component sngl.splitview[fyne.platform] {
+    HBox(style={...style}) {
+        slot
     }
 }
 
@@ -426,37 +412,29 @@ component sngl.splitview {
 // constructor arguments. So an overlay renders inline with its content
 // visible.
 
-component sngl.modal {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.modal[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.drawer {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.drawer[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.popover {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.popover[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
 // The shape html uses: a box carrying the tooltip text, with the wrapped
 // content inside it.
-component sngl.tooltip {
-    platform fyne {
-        VBox(style={...style}) {
-            slot
-        }
+component sngl.tooltip[fyne.platform] {
+    VBox(style={...style}) {
+        slot
     }
 }
 
@@ -467,32 +445,24 @@ component sngl.tooltip {
 // arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no `Arg` can
 // build out of a SNGL prop.
 
-component sngl.tabs {
-    platform fyne {
-        HBox(style={...style}) {
-            slot
-        }
+component sngl.tabs[fyne.platform] {
+    HBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.toolbar {
-    platform fyne {
-        HBox(style={...style}) {
-            slot
-        }
+component sngl.toolbar[fyne.platform] {
+    HBox(style={...style}) {
+        slot
     }
 }
 
-component sngl.menubar {
-    platform fyne {
-        HBox(style={...style}) {}
-    }
+component sngl.menubar[fyne.platform] {
+    HBox(style={...style}) {}
 }
 
-component sngl.menu {
-    platform fyne {
-        VBox(style={...style}) {}
-    }
+component sngl.menu[fyne.platform] {
+    VBox(style={...style}) {}
 }
 
 // --- Data display ---
@@ -501,133 +471,95 @@ component sngl.menu {
 // as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
 // no way to spell. Each renders as its container, empty.
 
-component sngl.table {
-    platform fyne {
-        VBox(style={...style}) {}
-    }
+component sngl.table[fyne.platform] {
+    VBox(style={...style}) {}
 }
 
-component sngl.tree {
-    platform fyne {
-        VBox(style={...style}) {}
-    }
+component sngl.tree[fyne.platform] {
+    VBox(style={...style}) {}
 }
 
-component sngl.radio {
-    platform fyne {
-        VBox(style={...style}) {}
-    }
+component sngl.radio[fyne.platform] {
+    VBox(style={...style}) {}
 }
 
 // --- Text ---
 
-component sngl.text {
-    platform fyne {
-        Label(text=value, style={...style}) {}
-    }
+component sngl.text[fyne.platform] {
+    Label(text=value, style={...style}) {}
 }
 
-component sngl.badge {
-    platform fyne {
-        Label(text=value, style={...style}) {}
-    }
+component sngl.badge[fyne.platform] {
+    Label(text=value, style={...style}) {}
 }
 
-component sngl.chip {
-    platform fyne {
-        Label(text=label, style={...style}) {}
-    }
+component sngl.chip[fyne.platform] {
+    Label(text=label, style={...style}) {}
 }
 
-component sngl.divider {
-    platform fyne {
-        Label(text=label, style={...style}) {}
-    }
+component sngl.divider[fyne.platform] {
+    Label(text=label, style={...style}) {}
 }
 
 // `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
 // is the half of an avatar this platform can render.
-component sngl.avatar {
-    platform fyne {
-        Label(text=initials, style={...style}) {}
-    }
+component sngl.avatar[fyne.platform] {
+    Label(text=initials, style={...style}) {}
 }
 
-component sngl.spinner {
-    platform fyne {
-        Label(text=label, style={...style}) {}
-    }
+component sngl.spinner[fyne.platform] {
+    Label(text=label, style={...style}) {}
 }
 
 // `value` is a float and the label is text, so the conversion is spelled
 // here rather than left to the Spec, which binds a prop to a setter and
 // converts nothing.
-component sngl.progress {
-    platform fyne {
-        Label(text=string(value), style={...style}) {}
-    }
+component sngl.progress[fyne.platform] {
+    Label(text=string(value), style={...style}) {}
 }
 
 // `value`, `min` and `max` are `date`, which no SNGL expression converts to a
 // string, so the picker shows its `placeholder` and its selection does not
 // reach the bound value.
-component sngl.datepicker {
-    platform fyne {
-        Label(text=placeholder, style={...style}) {}
-    }
+component sngl.datepicker[fyne.platform] {
+    Label(text=placeholder, style={...style}) {}
 }
 
 // --- Controls ---
 
-component sngl.button {
-    platform fyne {
-        Button(text=text, style={...style}, @click { click() }) {}
-    }
+component sngl.button[fyne.platform] {
+    Button(text=text, style={...style}, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
-component sngl.link {
-    platform fyne {
-        Hyperlink(style={...style}) {}
-    }
+component sngl.link[fyne.platform] {
+    Hyperlink(style={...style}) {}
 }
 
-component sngl.image {
-    platform fyne {
-        Image(style={...style}) {}
-    }
+component sngl.image[fyne.platform] {
+    Image(style={...style}) {}
 }
 
-component sngl.checkbox {
-    platform fyne {
-        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
-    }
+component sngl.checkbox[fyne.platform] {
+    Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
-component sngl.toggle {
-    platform fyne {
-        Check(text=label, checked=checked, style={...style}, @change { change() }) {}
-    }
+component sngl.toggle[fyne.platform] {
+    Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
-component sngl.select {
-    platform fyne {
-        Select(selected=value, options=options, style={...style}, @change { change() }) {}
-    }
+component sngl.select[fyne.platform] {
+    Select(selected=value, options=options, style={...style}, @change { change() }) {}
 }
 
 // --- Text entry ---
 
-component sngl.input {
-    platform fyne {
-        Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
-    }
+component sngl.input[fyne.platform] {
+    Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
 }
 
-component sngl.textarea {
-    platform fyne {
-        MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
-    }
+component sngl.textarea[fyne.platform] {
+    MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
 }

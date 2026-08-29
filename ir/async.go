@@ -36,8 +36,6 @@ func stmtHasFuncvarAsyncCall(s Stmt, pts *PointsToInfo) bool {
 		return exprHasFuncvarAsyncCall(x.Iter, pts) ||
 			BlockHasFuncvarAsyncCall(x.Body, pts) ||
 			BlockHasFuncvarAsyncCall(x.Else, pts)
-	case *PlatformFilter:
-		return BlockHasFuncvarAsyncCall(x.Body, pts)
 	}
 	return false
 }
@@ -168,8 +166,6 @@ func StmtHasAsyncCall(s Stmt) bool {
 		return ExprHasAsyncCall(x.Cond) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
 	case *For:
 		return ExprHasAsyncCall(x.Iter) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
-	case *PlatformFilter:
-		return BlockHasAsyncCall(x.Body)
 	}
 	return false
 }

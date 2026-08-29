@@ -483,12 +483,6 @@ func (cv *componentValue) childComponentByID(stmts []ir.Stmt, id string) *compon
 			if w := cv.childComponentByID(branch, id); w != nil {
 				return w
 			}
-		case *ir.PlatformFilter:
-			if n.Platform == "" || n.Platform == "none" {
-				if w := cv.childComponentByID(n.Body, id); w != nil {
-					return w
-				}
-			}
 		}
 	}
 	return nil
@@ -533,12 +527,6 @@ func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
 			} else {
 				out = append(out, cv.walkChildren(n.Else)...)
 			}
-		case *ir.PlatformFilter:
-			if n.Platform == "" || n.Platform == "none" {
-				out = append(out, cv.walkChildren(n.Body)...)
-			}
-			// *ir.For: out of scope per spec; components inside for loops
-			// need per-iteration child envs. Skipped here.
 		}
 	}
 	return out

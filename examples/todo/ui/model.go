@@ -173,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.todos = append(m.todos, Todo{Text: m.newTodo})
+			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			for index, _ := range m.todos {
@@ -183,7 +183,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
-			m.todos = append(m.todos[:(len(m.todos)-1)], m.todos[(len(m.todos)-1)+1:]...)
+			if __i := (len(m.todos) - 1); __i >= 0 && __i < len(m.todos) {
+				m.todos = append(m.todos[:__i], m.todos[__i+1:]...)
+			}
 		}
 	}
 	if m.__focusID == 0 {

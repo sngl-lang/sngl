@@ -99,7 +99,6 @@ const (
 	KW_BREAK    TokenType = 0x3F // reserved
 	KW_RETURN   TokenType = 0x40
 	KW_CONTINUE TokenType = 0x41 // reserved
-	KW_PLATFORM TokenType = 0x42
 	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
@@ -154,7 +153,6 @@ var keywords = map[string]TokenType{
 	"break":     KW_BREAK,
 	"return":    KW_RETURN,
 	"continue":  KW_CONTINUE,
-	"platform":  KW_PLATFORM,
 	"slot":      KW_SLOT,
 	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
 }

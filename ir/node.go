@@ -38,7 +38,6 @@ func (*LocalVar) irNode()         {}
 func (*Return) irNode()           {}
 func (*If) irNode()               {}
 func (*For) irNode()              {}
-func (*PlatformFilter) irNode()   {}
 func (*ContextProvider) irNode()  {}
 func (*Window) irNode()           {}
 func (*CanvasRedrawStmt) irNode() {}

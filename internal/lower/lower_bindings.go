@@ -46,8 +46,6 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.For:
 			n.Body = rewritePropBindingStmts(n.Body)
 			n.Else = rewritePropBindingStmts(n.Else)
-		case *ir.PlatformFilter:
-			n.Body = rewritePropBindingStmts(n.Body)
 		case *ir.SlotInst:
 			n.Children = rewritePropBindingStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -157,10 +155,6 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 			}
 		case *ir.For:
 			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
-				return true
-			}
-		case *ir.PlatformFilter:
-			if bodyHasEmitFor(n.Body, name) {
 				return true
 			}
 		case *ir.SlotInst:
@@ -363,10 +357,6 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value) {
 				injected = true
 			}
-		case *ir.PlatformFilter:
-			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
-				injected = true
-			}
 		}
 	}
 	return injected
@@ -442,8 +432,6 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 			f.Block = walk(f.Block)
 		}
 		x.Children = walk(x.Children)
-	case *ir.PlatformFilter:
-		x.Body = walk(x.Body)
 	case *ir.SlotInst:
 		x.Children = walk(x.Children)
 	case *ir.ErrorBoundary:

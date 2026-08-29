@@ -46,7 +46,15 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	}
 	items, ok := val.([]any)
 	if !ok {
-		return nil
+		// A nil is an absent list, not an unevaluable one: a pure native call
+		// returning an empty (or nil) slice evaluates fine and iterates zero
+		// times. Reporting "could not evaluate" instead left the loop in the
+		// tree with its body unfolded.
+		if val == nil {
+			items, ok = nil, true
+		} else {
+			return nil
+		}
 	}
 
 	// Find the LoopVar symbols for the for statement's key and value.
@@ -122,8 +130,6 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 		case *ir.For:
 			collectWindowStructValues(n.Body, result)
 			collectWindowStructValues(n.Else, result)
-		case *ir.PlatformFilter:
-			collectWindowStructValues(n.Body, result)
 		case *ir.ContextProvider:
 			collectWindowStructValues(n.Children, result)
 		case *ir.SlotInst:
@@ -217,8 +223,6 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		walkAllExprs(n.Href, visit)
 		walkAllExprs(n.Title, visit)
 		walkAllExprs(n.Favicon, visit)
-		walkForBody(n.Body, visit)
-	case *ir.PlatformFilter:
 		walkForBody(n.Body, visit)
 	case *ir.SlotInst:
 		walkForBody(n.Children, visit)

@@ -94,3 +94,18 @@ struct option<T> {}
 // Used by NoLambda lowering for mutable captures; T is the referent type.
 #[builtin("ref")]
 struct ref<T> {}
+
+// The identity of a build target: one platform, named. Its values are not
+// declared anywhere — the compiler synthesizes one const per registered
+// platform into that platform's own package, so `html.platform` is the html
+// target and there is no second way to name it.
+//
+// There is no literal, so a string is never mistaken for a platform. Compare
+// `PLATFORM` against one of these rather than against `"html"`.
+#[builtin("platform")]
+struct platform {}
+
+// The identity of a build target's output language, the `platform` type's
+// counterpart: `go.language`, `js.language`. Compare `LANGUAGE` against one.
+#[builtin("language")]
+struct language {}

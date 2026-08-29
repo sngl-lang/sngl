@@ -1192,35 +1192,55 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if !ok {
 					continue
 				}
-				// Duplicate keys across all registered platforms for the same
-				// stdlib component are an error.
-				for i := range decl.Body.Stmts {
-					pl, ok := decl.Body.Stmts[i].(*ast.PlatformStmt)
-					if !ok {
-						continue
-					}
-					if stdComp.PlatformBodies == nil {
-						stdComp.PlatformBodies = map[string][]ir.Stmt{}
-					}
-					if _, dup := stdComp.PlatformBodies[pl.Platform]; dup {
-						c.error(pl.Pos, "component %s.%s has duplicate platform block for %q", ns, local, pl.Platform)
-						continue
-					}
-					if stdComp.PlatformVars == nil {
-						stdComp.PlatformVars = map[string][]*ir.Var{}
-					}
-					// Reserve the key first so duplicate-detection works even
-					// when the body check appends nothing (e.g., empty body).
-					stdComp.PlatformBodies[pl.Platform] = nil
-					c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
-						comp:     stdComp,
-						platform: pl.Platform,
-						body:     pl.Body,
-					})
+				// An override names the target it implements, here as
+				// everywhere: a platform package is not an exception, so the
+				// one rule covers a package's own overrides and a program's.
+				if decl.Target == nil {
+					c.error(decl.Pos, "override %q must name the target it implements: component %s[%s.platform]", decl.Name, decl.Name, name)
+					continue
 				}
+				plat, kind, ok := c.resolveTargetIndex(decl.Target)
+				if !ok {
+					continue
+				}
+				if kind != ir.BuiltinPlatform || plat != name {
+					// A platform package implements its own target. Naming
+					// another would register an override that only merges when
+					// this package loads, which is when the *other* target is
+					// not the one being built.
+					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
+					continue
+				}
+				c.addPlatformBody(decl.Pos, stdComp, plat, ns, local, decl.Body, false)
 			}
 		}
 	}
+}
+
+// addPlatformBody records body as comp's implementation for platform, or
+// reports that one is already recorded. A duplicate is an error rather than a
+// silent overwrite: two implementations of one component for one target are
+// two answers to a question with one.
+func (c *checker) addPlatformBody(pos ast.Pos, comp *ir.Component, platform, ns, local string, body ast.StmtBlock, user bool) {
+	if comp.PlatformBodies == nil {
+		comp.PlatformBodies = map[string][]ir.Stmt{}
+	}
+	if _, dup := comp.PlatformBodies[platform]; dup {
+		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, platform)
+		return
+	}
+	if comp.PlatformVars == nil {
+		comp.PlatformVars = map[string][]*ir.Var{}
+	}
+	// Reserve the key first so duplicate detection works even when the body
+	// check appends nothing (an empty body).
+	comp.PlatformBodies[platform] = nil
+	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
+		comp:     comp,
+		platform: platform,
+		body:     body,
+		user:     user,
+	})
 }
 
 // collectExtensionVars pre-registers the vars and consts a platform extension
@@ -1243,6 +1263,11 @@ type pendingExtension struct {
 	comp     *ir.Component
 	platform string
 	body     ast.StmtBlock
+	// user marks an override a program declared rather than a target package.
+	// Its body is the program's own source and resolves in the program's
+	// scope, where the file's imports are; a target package's body is
+	// compiler-internal and deliberately resolves where they are not.
+	user bool
 }
 
 // Runs after user pass1, so user-declared symbols are in scope. Each extension
@@ -1287,7 +1312,16 @@ func (c *checker) checkPendingExtensions() {
 			c.scope = ps
 		}
 		c.pushScope()
+		libBodyScope := c.scope
 		for _, pe := range byPlatform[platform] {
+			// A program's override resolves against the program: the names its
+			// body reaches are the ones its own file imported.
+			if pe.user {
+				c.scope = c.symtab.Root
+				c.pushScope()
+			} else {
+				c.scope = libBodyScope
+			}
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
 			savedVars := pe.comp.Vars
@@ -1308,7 +1342,11 @@ func (c *checker) checkPendingExtensions() {
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars
+			if pe.user {
+				c.popScope()
+			}
 		}
+		c.scope = libBodyScope
 		c.popScope()
 	}
 }
@@ -1443,10 +1481,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			}
 		case *ir.SlotInst:
 			for _, c := range x.Children {
-				walkStmt(c)
-			}
-		case *ir.PlatformFilter:
-			for _, c := range x.Body {
 				walkStmt(c)
 			}
 		case *ir.ErrorBoundary:

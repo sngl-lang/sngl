@@ -115,8 +115,6 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	case *ir.For:
 		collectCalleesInStmts(out, n.Body)
 		collectCalleesInStmts(out, n.Else)
-	case *ir.PlatformFilter:
-		collectCalleesInStmts(out, n.Body)
 	case *ir.SlotInst:
 		collectCalleesInStmts(out, n.Children)
 	case *ir.ErrorBoundary:

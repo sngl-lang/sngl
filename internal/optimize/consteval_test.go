@@ -381,7 +381,7 @@ func buildTargetConst(name string, kind ir.BuiltinKind) *ir.Ident {
 
 func TestEvalExpr_Platform(t *testing.T) {
 	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
-	got, ok := evalExpr(buildTargetConst("PLATFORM", ir.BuiltinPlatform), ctx)
+	got, ok := evalExpr(buildTargetConst("PLATFORM", ir.BuiltinTargetPlatform), ctx)
 	if !ok || got != "html" {
 		t.Errorf("PLATFORM = (%v, %v), want (html, true)", got, ok)
 	}
@@ -389,7 +389,7 @@ func TestEvalExpr_Platform(t *testing.T) {
 
 func TestEvalExpr_Language(t *testing.T) {
 	ctx := &evalCtx{platform: "html", language: "js", values: map[ir.Symbol]any{}}
-	got, ok := evalExpr(buildTargetConst("LANGUAGE", ir.BuiltinLanguage), ctx)
+	got, ok := evalExpr(buildTargetConst("LANGUAGE", ir.BuiltinTargetLanguage), ctx)
 	if !ok || got != "js" {
 		t.Errorf("LANGUAGE = (%v, %v), want (js, true)", got, ok)
 	}
@@ -517,7 +517,7 @@ func TestEvalExpr_PlatformEq(t *testing.T) {
 	expr := &ir.Binary{
 		Op:    ast.BinEq,
 		Type:  ir.TypBool,
-		Left:  buildTargetConst("PLATFORM", ir.BuiltinPlatform),
+		Left:  buildTargetConst("PLATFORM", ir.BuiltinTargetPlatform),
 		Right: &ir.Literal{Type: ir.TypString, Raw: "html"},
 	}
 	got, ok := evalExpr(expr, ctx)

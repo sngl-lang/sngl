@@ -107,8 +107,6 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 		case *ast.FuncDef:
 			walkE(x.Body)
 			walkBlock(x.Block)
-		case *ast.PlatformStmt:
-			walkBlock(x.Body)
 		case *ast.ReturnStmt:
 			walkE(x.Value)
 		case *ast.CallStmt:

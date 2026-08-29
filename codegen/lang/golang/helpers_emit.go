@@ -268,8 +268,6 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 				}
 			}
 			recordStmtHelpers(h, n.Children)
-		case *ir.PlatformFilter:
-			recordStmtHelpers(h, n.Body)
 		case *ir.SlotInst:
 			recordStmtHelpers(h, n.Children)
 		case *ir.ErrorBoundary:

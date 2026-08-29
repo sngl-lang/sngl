@@ -60,10 +60,6 @@ func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any
 				child.Set(n.ValueSym, i)
 				child.collectByStmts(n.Body, id, out)
 			}
-		case *ir.PlatformFilter:
-			if n.Platform == "" || n.Platform == "none" {
-				env.collectByStmts(n.Body, id, out)
-			}
 		case *ir.SlotInst:
 			env.collectByStmts(n.Children, id, out)
 		case *ir.ErrorBoundary:

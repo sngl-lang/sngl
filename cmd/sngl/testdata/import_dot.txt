@@ -56,10 +56,16 @@ stdout 'localstd.sngl: ok'
 ! sngl check badext.sngl
 stderr 'extension namespace "notstd" is not an imported library package'
 
-# Any library package can be extended, not just std: a platform needs to style
-# draw.canvas as much as std.vbox.
+# Any library package can be overridden, not just std: a program needs to draw
+# draw.canvas as much as std.vbox. A program declares one the same way a
+# platform package does, by naming the target on the declaration.
 sngl check extdraw.sngl
 stdout 'extdraw.sngl: ok'
+
+# Naming another package's declaration without saying which target it
+# implements is not a declaration of anything.
+! sngl check extdraw_untargeted.sngl
+stderr 'must name the target it implements'
 
 # Only sngl://std exists so far.
 ! sngl check stdunknown.sngl
@@ -157,9 +163,7 @@ func greet() => "local package named std"
 import sngl "sngl://std"
 
 component notstd.text {
-    platform html {
-        span(textContent=value) {}
-    }
+    span(textContent=value) {}
 }
 
 component main {
@@ -201,8 +205,13 @@ component main {
 import s "sngl://std"
 import d "sngl://draw"
 
+component d.canvas[html.platform] {
+    s.text(value="styled")
+}
+-- extdraw_untargeted.sngl --
+import s "sngl://std"
+import d "sngl://draw"
+
 component d.canvas {
-    platform html {
-        s.text(value="styled")
-    }
+    s.text(value="styled")
 }

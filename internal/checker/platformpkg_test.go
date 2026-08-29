@@ -65,9 +65,7 @@ import "sngl://platforms/extstub"
 
 component main {
     text(value="hi")
-    platform extstub {
-        Wrap {}
-    }
+    extstub.Wrap {}
 }
 `
 	doc, err := parser.Parse("main.sngl", []byte(userSource))
@@ -115,9 +113,9 @@ component main {
 		t.Errorf("text inside the platform package is %p; the program holds %p — two identities", inst.Component, userText)
 	}
 
-	// The `platform extstub { ... }` block resolves through
-	// buildPlatformPkgScope, a second entry point into the platform package.
-	// It has to reach the memoized instance: before, it built its own.
+	// Naming the package's component from user code resolves through the
+	// namespace, a second entry point into the platform package. It has to
+	// reach the memoized instance: before, it built its own.
 	var main *ir.Component
 	for _, comp := range pkg.Components {
 		if comp.Name == "main" {
@@ -129,21 +127,15 @@ component main {
 	}
 	var blockWrap *ir.Component
 	for _, stmt := range main.Body {
-		pf, ok := stmt.(*ir.PlatformFilter)
-		if !ok {
-			continue
-		}
-		for _, s := range pf.Body {
-			if n, ok := s.(*ir.NodeInst); ok {
-				blockWrap = n.Component
-			}
+		if n, ok := stmt.(*ir.NodeInst); ok && n.Component != nil && n.Component.Name == "Wrap" {
+			blockWrap = n.Component
 		}
 	}
 	if blockWrap == nil {
-		t.Fatal("platform block resolved no component")
+		t.Fatal("extstub.Wrap resolved no component")
 	}
 	if blockWrap != wrap {
-		t.Errorf("Wrap in a platform block is %p; the imported package holds %p — loaded twice", blockWrap, wrap)
+		t.Errorf("Wrap named from user code is %p; the imported package holds %p — loaded twice", blockWrap, wrap)
 	}
 }
 

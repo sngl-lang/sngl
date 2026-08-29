@@ -273,8 +273,6 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildIfNode(it.enter())
 		case ForNode:
 			return b.buildForNode(it.enter())
-		case PlatformNode:
-			return b.buildPlatformNode(it.enter())
 		case SlotNode:
 			return b.buildSlotNode(it.enter())
 		case VisualOrStmt:
@@ -664,16 +662,31 @@ func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {
 // --- Functions ---
 
 func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
-	// FuncDecl = kw_func FuncName FuncTail .
+	// FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	f := &ast.FuncDef{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncName {
 		b.buildFuncName(it.enter(), f)
 	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+		f.Target = b.buildTargetIndex(it.enter())
+	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncTail {
 		b.buildFuncTail(it.enter(), f)
 	}
 	return f
+}
+
+// buildTargetIndex builds the `[expr]` index that names the target a
+// declaration implements.
+func (b *builder) buildTargetIndex(it nodeIter) ast.Expr {
+	// TargetIndex = lbracket Expr rbracket .
+	it.skip() // lbracket
+	var e ast.Expr
+	if !it.done() && it.isNonTerminal() && it.symbol() == Expr {
+		e = b.buildExpr(it.enter())
+	}
+	return e
 }
 
 func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
@@ -815,7 +828,7 @@ func (b *builder) buildParam(it nodeIter) ast.Param {
 // --- Components ---
 
 func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
-	// ComponentDecl = kw_component ident [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+	// ComponentDecl = kw_component ident [ dot ident ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
 	c.Name = it.shift().Literal // ident
@@ -823,6 +836,9 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
 		it.skip() // dot
 		c.Name = c.Name + "." + it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+		c.Target = b.buildTargetIndex(it.enter())
 	}
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
@@ -1294,17 +1310,6 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 		if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 			stmt.Else = b.buildStmtBlock(it.enter())
 		}
-	}
-	return stmt
-}
-
-func (b *builder) buildPlatformNode(it nodeIter) *ast.PlatformStmt {
-	// PlatformNode = kw_platform ident StmtBlock .
-	pos := b.posFromToken(it.shift()) // kw_platform
-	stmt := &ast.PlatformStmt{Pos: ast.Pos(pos)}
-	stmt.Platform = it.shift().Literal // ident
-	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
-		stmt.Body = b.buildStmtBlock(it.enter())
 	}
 	return stmt
 }

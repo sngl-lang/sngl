@@ -1,13 +1,7 @@
 import . "sngl://std"
 
 component Sidebar(homeHref = "/", logo = "") list<component> {
-    vbox(style={width=260, padding=8, gap=4}) {
-        link(text="SNGL", href=homeHref, style={fontWeight="bold", fontSize=16, padding=8})
-        divider
-        slot
-    }
-
-    platform html {
+    if PLATFORM == html.platform {
         html.nav {
             html.div(class="sidebar-header") {
                 html.a(href=homeHref, class="nav-brand") {
@@ -16,6 +10,12 @@ component Sidebar(homeHref = "/", logo = "") list<component> {
                 }
                 html.button(id="theme-toggle", class="theme-toggle", type="button", title="Toggle theme", innerHTML="&#9788;")
             }
+            slot
+        }
+    } else {
+        vbox(style={width=260, padding=8, gap=4}) {
+            link(text="SNGL", href=homeHref, style={fontWeight="bold", fontSize=16, padding=8})
+            divider
             slot
         }
     }

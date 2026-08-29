@@ -56,8 +56,6 @@ func Collect(pkg *ir.Package, funcs []*ir.Func) (byID map[string]*Meta, byFunc m
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.Window:

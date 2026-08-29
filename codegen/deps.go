@@ -414,10 +414,6 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 				w.walkStmt(c)
 			}
 		}
-	case *ir.PlatformFilter:
-		for _, c := range n.Body {
-			w.walkStmt(c)
-		}
 	case *ir.Window:
 		w.walkExpr(n.Href)
 		w.walkExpr(n.Title)

@@ -34,8 +34,6 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 			n.Iter = rewrite(n.Iter)
 			n.Body = rewriteStmtExprs(n.Body, rewrite)
 			n.Else = rewriteStmtExprs(n.Else, rewrite)
-		case *ir.PlatformFilter:
-			n.Body = rewriteStmtExprs(n.Body, rewrite)
 		case *ir.NodeInst:
 			for i := range n.Props {
 				if n.Props[i].Value != nil {

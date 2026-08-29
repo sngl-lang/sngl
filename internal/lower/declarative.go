@@ -118,8 +118,6 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		case *ir.For:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
-		case *ir.PlatformFilter:
-			st.scanStmts(n.Body)
 		case *ir.SlotInst:
 			st.scanStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -191,9 +189,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.For:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
 			n.Else = st.processStmtsForParent(n.Else, funcs, parentID)
-			out = append(out, n)
-		case *ir.PlatformFilter:
-			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
 			out = append(out, n)
 		case *ir.SlotInst:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)

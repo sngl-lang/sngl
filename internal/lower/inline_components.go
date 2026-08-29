@@ -192,8 +192,6 @@ func collectCalleeEdges(stmts []ir.Stmt, out map[*ir.Component]bool) {
 		case *ir.For:
 			collectCalleeEdges(n.Body, out)
 			collectCalleeEdges(n.Else, out)
-		case *ir.PlatformFilter:
-			collectCalleeEdges(n.Body, out)
 		case *ir.SlotInst:
 			collectCalleeEdges(n.Children, out)
 		case *ir.ErrorBoundary:
@@ -458,13 +456,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		n.Body = body
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
-	case *ir.PlatformFilter:
-		body, ch, err := st.inlineStmtsCtx(n.Body, inReactive)
-		if err != nil {
-			return nil, false, err
-		}
-		n.Body = body
-		return []ir.Stmt{n}, ch, nil
 	case *ir.SlotInst:
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
 		if err != nil {

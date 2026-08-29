@@ -254,10 +254,14 @@ type FuncDef struct {
 	TypeParams     []string // method-level generic type parameters, e.g., ["T", "U"]
 	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
 	Params         ParamList
-	ReturnType     TypeExpr    // nil for void/action functions
-	Body           Expr        // single-expression form (=> expr)
-	Block          StmtBlock   // block form ({ ... })
-	Attrs          []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+	// Target is the `[expr]` index on the declaration name: the build target
+	// this declaration implements, written by whoever overrides one. nil on an
+	// ordinary declaration. See ComponentDecl.Target.
+	Target     Expr
+	ReturnType TypeExpr    // nil for void/action functions
+	Body       Expr        // single-expression form (=> expr)
+	Block      StmtBlock   // block form ({ ... })
+	Attrs      []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // IsTest returns true if this function is a test function.
@@ -286,8 +290,15 @@ func SplitMethodName(name string) (typeName, method string, ok bool) {
 
 // ComponentDecl declares a component with props and a body.
 type ComponentDecl struct {
-	Pos          Pos
-	Name         string
+	Pos  Pos
+	Name string
+	// Target is the `[expr]` index on the declaration name --
+	// `component sngl.button[html.platform](text) { ... }`. It names the build
+	// target this declaration implements, and is nil on an ordinary one. The
+	// expression must fold to a target identity, which only a target's own
+	// package supplies, so the target cannot be misspelled into an override
+	// nothing ever selects.
+	Target       Expr
 	Props        PropList
 	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr
@@ -396,14 +407,6 @@ type ForStmt struct {
 	Else     StmtBlock // zero value if no else
 }
 
-// PlatformStmt: platform ident { body }.
-// Conditional on the target platform; also injects the platform's package as a fallback scope.
-type PlatformStmt struct {
-	Pos      Pos
-	Platform string // "html", "bubbletea", etc.
-	Body     StmtBlock
-}
-
 // --- StmtPos implementations ---
 
 func (s *StructDef) StmtPos() *Pos { return &s.Pos }
@@ -422,6 +425,5 @@ func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
 func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
 func (s *SlotNode) StmtPos() *Pos      { return &s.Pos }
 func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
-func (s *PlatformStmt) StmtPos() *Pos  { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }

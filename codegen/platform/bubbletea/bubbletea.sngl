@@ -112,314 +112,276 @@ component Overlay(
 
 // --- Core Layout ---
 
-component sngl.vbox {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+component sngl.vbox[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
-component sngl.hbox {
-    platform bubbletea {
-        Layout(join=JoinDir.horizontal, style={...style}) {
-            slot
-        }
+component sngl.hbox[bubbletea.platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        slot
     }
 }
 
-component sngl.stack {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+component sngl.stack[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
-component sngl.spacer {
-    platform bubbletea {
-        Styled(content="", style={...style}) {}
-    }
+component sngl.spacer[bubbletea.platform] {
+    Styled(content="", style={...style}) {}
 }
 
-component sngl.scroll {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+component sngl.scroll[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text {
-    platform bubbletea {
-        Styled(content=value, style={...style}) {}
-    }
+component sngl.text[bubbletea.platform] {
+    Styled(content=value, style={...style}) {}
 }
 
-component sngl.button {
-    platform bubbletea {
-        Styled(
-            content=text,
-            focus=Focus{enabled=true},
-            events=[Event{on="click", key="enter"}],
-            style={...style}
-        ) {}
-    }
+component sngl.button[bubbletea.platform] {
+    Styled(
+        content=text,
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
+        style={...style}
+    ) {}
 }
 
-component sngl.image {
-    platform bubbletea {
-        Styled(content="[image]", style={...style}) {}
-    }
+component sngl.image[bubbletea.platform] {
+    Styled(content="[image]", style={...style}) {}
 }
 
-component sngl.input {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="textinput.Model",
-                new="textinput.New()",
-                view=".View()",
-                update=".Update(msg)",
-                init="textinput.Blink",
-                pkg="charm.land/bubbles/v2/textinput",
-                resize=".SetWidth($\{w\})"
-            },
-            focus=Focus{enabled=true},
-            binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
-            placeholder=placeholder,
-            style={...style}
-        ) {}
-    }
+component sngl.input[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="textinput.Model",
+            new="textinput.New()",
+            view=".View()",
+            update=".Update(msg)",
+            init="textinput.Blink",
+            pkg="charm.land/bubbles/v2/textinput",
+            resize=".SetWidth($\{w\})"
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
+        placeholder=placeholder,
+        style={...style}
+    ) {}
 }
 
-component sngl.checkbox {
-    platform bubbletea {
-        Styled(
-            content=label,
-            focus=Focus{enabled=true},
-            events=[Event{on="change", key="space"}],
-            style={...style}
-        ) {}
-    }
+component sngl.checkbox[bubbletea.platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
+        style={...style}
+    ) {}
 }
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
+component sngl.radio[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
-component sngl.toggle {
-    platform bubbletea {
-        Styled(
-            content=label,
-            focus=Focus{enabled=true},
-            events=[Event{on="change", key="space"}],
-            style={...style}
-        ) {}
-    }
+component sngl.toggle[bubbletea.platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
+        style={...style}
+    ) {}
 }
 
-component sngl.select {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="list.Model",
-                new="tui.NewList(tui.StringItems($\{options\}), 40, 10)",
-                view=".View()",
-                update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/list",
-                resize=".SetSize($\{w\}, $\{h\})"
-            },
-            focus=Focus{enabled=true},
-            binds=[Bind{prop="value", get="tui.SelectedString"}],
-            options=options,
-            style={...style}
-        ) {}
-    }
+component sngl.select[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="list.Model",
+            new="tui.NewList(tui.StringItems($\{options\}), 40, 10)",
+            view=".View()",
+            update=".Update(msg)",
+            pkg="charm.land/bubbles/v2/list",
+            resize=".SetSize($\{w\}, $\{h\})"
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get="tui.SelectedString"}],
+        options=options,
+        style={...style}
+    ) {}
 }
 
-component sngl.textarea {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="textarea.Model",
-                new="textarea.New()",
-                view=".View()",
-                update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/textarea",
-                resize=".SetWidth($\{w\})"
-            },
-            focus=Focus{enabled=true},
-            binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
-            style={...style}
-        ) {}
-    }
+component sngl.textarea[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="textarea.Model",
+            new="textarea.New()",
+            view=".View()",
+            update=".Update(msg)",
+            pkg="charm.land/bubbles/v2/textarea",
+            resize=".SetWidth($\{w\})"
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
+        style={...style}
+    ) {}
 }
 
-component sngl.datepicker {
-    platform bubbletea {
-        Styled(content=string(value), style={...style}) {}
-    }
+component sngl.datepicker[bubbletea.platform] {
+    Styled(content=string(value), style={...style}) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="progress.Model",
-                new="progress.New()",
-                view=".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
-                pkg="charm.land/bubbles/v2/progress",
-                resize=".SetWidth($\{w\})"
-            },
-            value=value,
-            max=max,
-            style={...style}
-        ) {}
+component sngl.progress[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="progress.Model",
+            new="progress.New()",
+            view=".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+            pkg="charm.land/bubbles/v2/progress",
+            resize=".SetWidth($\{w\})"
+        },
+        value=value,
+        max=max,
+        style={...style}
+    ) {}
+}
+
+component sngl.spinner[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="spinner.Model",
+            new="spinner.New()",
+            view=".View()",
+            update=".Update(msg)",
+            init="$\{self\}.Tick",
+            pkg="charm.land/bubbles/v2/spinner"
+        },
+        style={...style}
+    ) {}
+}
+
+component sngl.badge[bubbletea.platform] {
+    Styled(content=value, style={...style}) {}
+}
+
+component sngl.divider[bubbletea.platform] {
+    Styled(content="─", style={...style}) {}
+}
+
+component sngl.card[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
-component sngl.spinner {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="spinner.Model",
-                new="spinner.New()",
-                view=".View()",
-                update=".Update(msg)",
-                init="$\{self\}.Tick",
-                pkg="charm.land/bubbles/v2/spinner"
-            },
-            style={...style}
-        ) {}
+component sngl.chip[bubbletea.platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
+        style={...style}
+    ) {}
+}
+
+component sngl.link[bubbletea.platform] {
+    Styled(content=text, style={...style}) {}
+}
+
+component sngl.tabs[bubbletea.platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        slot
     }
 }
 
-component sngl.badge {
-    platform bubbletea {
-        Styled(content=value, style={...style}) {}
-    }
-}
-
-component sngl.divider {
-    platform bubbletea {
-        Styled(content="─", style={...style}) {}
-    }
-}
-
-component sngl.card {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
+component sngl.modal[bubbletea.platform] {
+    if open {
+        Overlay(placement="center", dim=true, style={...style}) {
             slot
         }
     }
 }
 
-component sngl.chip {
-    platform bubbletea {
-        Styled(
-            content=label,
-            focus=Focus{enabled=true},
-            events=[Event{on="click", key="enter"}],
-            style={...style}
-        ) {}
-    }
-}
-
-component sngl.link {
-    platform bubbletea {
-        Styled(content=text, style={...style}) {}
-    }
-}
-
-component sngl.tabs {
-    platform bubbletea {
-        Layout(join=JoinDir.horizontal, style={...style}) {
+component sngl.drawer[bubbletea.platform] {
+    if open {
+        Overlay(placement=side, dim=true, style={...style}) {
             slot
         }
     }
 }
 
-component sngl.modal {
-    platform bubbletea {
-        if open {
-            Overlay(placement="center", dim=true, style={...style}) {
-                slot
-            }
-        }
+component sngl.tooltip[bubbletea.platform] {
+    // Render the trigger child, then reveal `text` (dim, below) only while
+    // the wrapped trigger is focused. The `tooltip` prop carries the body
+    // text to the Layout renderer, which appends it gated on the focusable
+    // descendant's focus expression (see renderBlueprint in view_ir.go).
+    Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
+        slot
     }
 }
 
-component sngl.drawer {
-    platform bubbletea {
-        if open {
-            Overlay(placement=side, dim=true, style={...style}) {
-                slot
-            }
-        }
+component sngl.popover[bubbletea.platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        slot
     }
 }
 
-component sngl.tooltip {
-    platform bubbletea {
-        // Render the trigger child, then reveal `text` (dim, below) only while
-        // the wrapped trigger is focused. The `tooltip` prop carries the body
-        // text to the Layout renderer, which appends it gated on the focusable
-        // descendant's focus expression (see renderBlueprint in view_ir.go).
-        Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
-            slot
-        }
+component sngl.splitview[bubbletea.platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        slot
     }
 }
 
-component sngl.popover {
-    platform bubbletea {
-        Layout(join=JoinDir.vertical, style={...style}) {
-            slot
-        }
-    }
+component sngl.table[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="table.Model",
+            new="tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
+            view=".View()",
+            update=".Update(msg)",
+            pkg="charm.land/bubbles/v2/table",
+            resize=".SetWidth($\{w\})"
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.Cursor"}],
+        columns=columns,
+        rows=rows,
+        style={...style}
+    ) {}
 }
 
-component sngl.splitview {
-    platform bubbletea {
-        Layout(join=JoinDir.horizontal, style={...style}) {
-            slot
-        }
-    }
+component sngl.tree[bubbletea.platform] {
+    Widget(
+        model=Model{
+            type="list.Model",
+            new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+            view=".View()",
+            update=".Update(msg)",
+            pkg="charm.land/bubbles/v2/list",
+            resize=".SetSize($\{w\}, $\{h\})"
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.SelectedString"}],
+        items=items,
+        style={...style}
+    ) {}
 }
 
-component sngl.table {
-    platform bubbletea {
-        Widget(
-            model=Model{
-                type="table.Model",
-                new="tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
-                view=".View()",
-                update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/table",
-                resize=".SetWidth($\{w\})"
-            },
-            focus=Focus{enabled=true},
-            binds=[Bind{prop="selected", get="tui.Cursor"}],
-            columns=columns,
-            rows=rows,
-            style={...style}
-        ) {}
-    }
-}
-
-component sngl.tree {
-    platform bubbletea {
+component sngl.menu[bubbletea.platform] {
+    if open {
+        // menu surfaces selection via @select only — its stdlib signature
+        // has no `selected` prop, so there's no two-way selection var to
+        // bind. (Read-back would be inert: findBidiProp finds nothing.)
         Widget(
             model=Model{
                 type="list.Model",
@@ -430,54 +392,24 @@ component sngl.tree {
                 resize=".SetSize($\{w\}, $\{h\})"
             },
             focus=Focus{enabled=true},
-            binds=[Bind{prop="selected", get="tui.SelectedString"}],
             items=items,
             style={...style}
         ) {}
     }
 }
 
-component sngl.menu {
-    platform bubbletea {
-        if open {
-            // menu surfaces selection via @select only — its stdlib signature
-            // has no `selected` prop, so there's no two-way selection var to
-            // bind. (Read-back would be inert: findBidiProp finds nothing.)
-            Widget(
-                model=Model{
-                    type="list.Model",
-                    new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
-                    view=".View()",
-                    update=".Update(msg)",
-                    pkg="charm.land/bubbles/v2/list",
-                    resize=".SetSize($\{w\}, $\{h\})"
-                },
-                focus=Focus{enabled=true},
-                items=items,
-                style={...style}
-            ) {}
-        }
+component sngl.menubar[bubbletea.platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        slot
     }
 }
 
-component sngl.menubar {
-    platform bubbletea {
-        Layout(join=JoinDir.horizontal, style={...style}) {
-            slot
-        }
+component sngl.toolbar[bubbletea.platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        slot
     }
 }
 
-component sngl.toolbar {
-    platform bubbletea {
-        Layout(join=JoinDir.horizontal, style={...style}) {
-            slot
-        }
-    }
-}
-
-component sngl.avatar {
-    platform bubbletea {
-        Styled(content=initials, style={...style}) {}
-    }
+component sngl.avatar[bubbletea.platform] {
+    Styled(content=initials, style={...style}) {}
 }

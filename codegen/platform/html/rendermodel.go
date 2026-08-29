@@ -56,6 +56,29 @@ func (rb *renderBuilder) pushHole(h codegen.RouteHole) {
 	rb.holes = append(rb.holes, h)
 }
 
+// sub renders a nested skeleton -- the body of a request-dependent if or for.
+// names are identifiers the enclosing hole binds (a loop variable), which the
+// server has a value for inside the hole and the nested render may therefore
+// use.
+func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *codegen.RouteRender {
+	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx}
+	if len(names) > 0 {
+		child.state = maps.Clone(rb.state)
+		for _, n := range names {
+			if n != "" {
+				child.state[n] = true
+			}
+		}
+	}
+	for _, s := range stmts {
+		child.walkStmt(s, path)
+	}
+	if child.err != nil {
+		rb.fail("%w", child.err)
+	}
+	return child.finish()
+}
+
 func (rb *renderBuilder) finish() *codegen.RouteRender {
 	rb.chunks = append(rb.chunks, rb.cur.String())
 	rb.cur.Reset()
@@ -69,7 +92,7 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
-		state:     stateVarNames(pkg),
+		state:     stateVarNames(pkg, win),
 		actionIdx: actionIdx,
 	}
 	for _, s := range win.Body {
@@ -89,12 +112,6 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 		if syn := nodeFromIRCallStmt(n); syn != nil {
 			rb.walkNode(syn, path)
 		}
-	case *ir.PlatformFilter:
-		if n.Platform == "html" {
-			for _, c := range n.Body {
-				rb.walkStmt(c, path)
-			}
-		}
 	case *ir.SlotInst:
 		for _, c := range n.Children {
 			rb.walkStmt(c, path)
@@ -104,6 +121,17 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.If:
+		// A condition the optimizer could settle is already gone. One that is
+		// left depends on the request, so both arms are skeletons the server
+		// chooses between -- rendering them one after the other emitted both.
+		if rb.exprIsReactive(n.Cond) {
+			h := codegen.RouteHole{Kind: codegen.HoleIf, Expr: n.Cond, Then: rb.sub(n.Body, path)}
+			if len(n.Else) > 0 {
+				h.Else = rb.sub(n.Else, path)
+			}
+			rb.pushHole(h)
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
@@ -111,6 +139,22 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.For:
+		// Same: a loop still here did not unroll, so its length is the
+		// request's. Walking the body once left the loop variable bound to
+		// nothing, and every expression over it read as unrenderable -- which
+		// is how a whole route was refused for markup the server can write.
+		//
+		// The two-variable form has no HoleFor spelling (the emitter ranges a
+		// single name), so it keeps the old walk.
+		if n.Value == "" && n.Key != "" {
+			rb.pushHole(codegen.RouteHole{
+				Kind: codegen.HoleFor,
+				Expr: n.Iter,
+				Key:  n.Key,
+				Then: rb.sub(n.Body, path, n.Key),
+			})
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
@@ -175,21 +219,22 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			}
 			continue
 		}
-		if rb.exprIsReactive(p.Value) {
+		val := p.Value
+		if rb.exprIsReactive(val) {
 			rb.writeRaw(" " + p.Name + `="`)
-			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: p.Value, Attr: p.Name})
+			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: val, Attr: p.Name})
 			rb.writeRaw(`"`)
 			continue
 		}
 		// A boolean attribute is present or absent; `open="false"` leaves a
 		// <details> open, so a false one is written as nothing.
-		if bv, ok := codegen.IRLiteralBool(p.Value); ok {
+		if bv, ok := codegen.IRLiteralBool(val); ok {
 			if bv {
 				rb.writeRaw(" " + p.Name)
 			}
 			continue
 		}
-		if s, ok := codegen.IRLiteralString(p.Value); ok {
+		if s, ok := codegen.IRLiteralString(val); ok {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 			continue
 		}
@@ -323,10 +368,25 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 }
 
 // stateVarNames returns the set of (non-synthesized) state var names.
-func stateVarNames(pkg *ir.Package) map[string]bool {
+// stateVarNames is the set of names a route's markup may depend on: the
+// server State struct's fields, plus the window's own vars.
+//
+// A window's vars are what its URL template declares -- `/p/{pkg}` puts `pkg`
+// in scope for the body (checker.go, buildWindow). Those are known per request
+// exactly as state is, so an expression over one renders into a hole. Left
+// out, `class=active ? "active" : ""` where `active` came from the path was
+// neither a literal nor state-dependent, and the route was refused.
+func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg) {
 		out[v.Name] = true
+	}
+	if win != nil {
+		for _, v := range win.Vars {
+			if v != nil && !v.IsConst {
+				out[v.Name] = true
+			}
+		}
 	}
 	return out
 }

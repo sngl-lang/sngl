@@ -279,9 +279,6 @@ func (s *stripper) stripStmt(st Stmt) {
 		st.KeySym, st.ValueSym = nil, nil // cross-references
 		s.stripStmts(st.Body)
 		s.stripStmts(st.Else)
-	case *PlatformFilter:
-		st.AST = nil
-		s.stripStmts(st.Body)
 	}
 }
 

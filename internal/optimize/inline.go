@@ -174,12 +174,6 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 				return true
 			}
 		}
-	case *ir.PlatformFilter:
-		for _, s := range n.Body {
-			if callsFuncStmt(s, target) {
-				return true
-			}
-		}
 	case *ir.NodeInst:
 		for _, p := range n.Props {
 			if callsFunc(p.Value, target) {
@@ -503,10 +497,6 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp.Iter = cloneExpr(n.Iter)
 		cp.Body = cloneStmts(n.Body)
 		cp.Else = cloneStmts(n.Else)
-		return &cp
-	case *ir.PlatformFilter:
-		cp := *n
-		cp.Body = cloneStmts(n.Body)
 		return &cp
 	case *ir.Assign:
 		cp := *n

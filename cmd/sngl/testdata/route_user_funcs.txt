@@ -1,0 +1,49 @@
+# Route mode has no Model: state is the per-request State struct. A function the
+# program declared inside a component therefore has nowhere else to live, and
+# the call site used to render `m.keep(x)` -- a receiver this file has no
+# binding for, calling a function it never wrote. Neither compiled.
+#
+# They are emitted as methods on the route's State, so they dispatch through
+# the same `s` the state fields do.
+
+sngl generate --lang go --platform html -o out app.sngl
+
+# The function is there, as a State method, under the name the call uses.
+grep 'State\) Keep\(n int\) bool' out/server.go
+grep 's\.Keep\(' out/server.go
+
+# One that reads state works for the same reason: the receiver carries it.
+grep 'State\) Biggest\(\) int' out/server.go
+grep 's\.Biggest\(\)' out/server.go
+
+# And nothing dispatches through a Model that route mode does not have.
+! grep 'm\.' out/server.go
+
+-- go.mod --
+module routefuncs
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl://std"
+import "go://routefuncs/srv"
+
+component main {
+    var nums list<int> = [1, 2, 3]
+    var total = 0
+
+    func keep(n int) bool { return n > 1 }
+    func biggest() int { return nums.length() + total }
+
+    window #home(title="t", href="/") {
+        html.button(innerText="go", @click {
+            total = srv.Bump(nums.filter(keep).length() + biggest())
+        })
+        html.span(innerText=string(total))
+    }
+}

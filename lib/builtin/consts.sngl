@@ -18,14 +18,18 @@ const (
 #[builtin("null")]
 const null = 0
 
-// The platform this build targets, by name: "html", "bubbletea", "fyne",
-// "gtk4", "android", "none". Compare it against a literal to gate code on the
-// target; the comparison folds at build time and the branch not taken is
-// removed. The compiler supplies the value.
-#[builtin("platform")]
+// The platform this build targets. Compare it against a platform's own
+// identity const — `PLATFORM == html.platform` — to gate code on the target;
+// the comparison folds at build time and the branch not taken is removed. The
+// compiler supplies the value.
+//
+// Its type is `platform`, not `string`: `PLATFORM == "html"` does not compile,
+// so a target name cannot be misspelled into a branch that is silently never
+// taken.
+#[builtin("targetPlatform")]
 const PLATFORM = ""
 
-// The language this build emits, by name: "go", "js", "kotlin", "none".
-// Behaves like PLATFORM in every respect.
-#[builtin("language")]
+// The language this build emits: `LANGUAGE == go.language`. Behaves like
+// PLATFORM in every respect.
+#[builtin("targetLanguage")]
 const LANGUAGE = ""

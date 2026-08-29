@@ -8,15 +8,9 @@ import "go://git.duckfam.us/jonathan/sngl/docs"
 // args are const, so the page ships pre-rendered markup with no runtime
 // highlighting work.
 component CodeBlock(code = "", language = "") {
-    text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
-
-    platform html {
+    if PLATFORM == html.platform {
         html.div(innerHTML=docs.Highlight(code, language), class="hl-code")
-    }
-
-    platform http {
-        html.pre(style={padding="12px", background="#1e1e1e", color="#d4d4d4", borderRadius="4px", overflow="auto"}) {
-            html.code(innerText=code)
-        }
+    } else {
+        text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
     }
 }

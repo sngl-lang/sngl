@@ -172,8 +172,6 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 	switch n := s.(type) {
 	case *ir.If:
 		return foldIfStmt(n, ctx)
-	case *ir.PlatformFilter:
-		return foldPlatformFilter(n, ctx)
 	case *ir.NodeInst:
 		return foldNodeInst(n, ctx)
 	case *ir.For:
@@ -248,14 +246,6 @@ func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 
 	s.Body = foldStmts(s.Body, ctx)
 	s.Else = foldStmts(s.Else, ctx)
-	return s
-}
-
-func foldPlatformFilter(s *ir.PlatformFilter, ctx *evalCtx) ir.Stmt {
-	if ctx.platform != "" && ctx.platform != s.Platform {
-		return nil // non-matching platform: eliminate
-	}
-	s.Body = foldStmts(s.Body, ctx)
 	return s
 }
 

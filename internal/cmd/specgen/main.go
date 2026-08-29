@@ -171,7 +171,7 @@ type section struct {
 
 var sections = []section{
 	{"document", []string{"Document", "StmtBlock"}},
-	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "PlatformNode", "SlotNode", "SlotArgList", "AssignOp", "IncDecOp"}},
+	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "SlotNode", "SlotArgList", "AssignOp", "IncDecOp"}},
 	{"imports", []string{"ImportDecl"}},
 	{"type-declarations", []string{"StructDecl", "StructField", "EnumDecl", "UnitDecl"}},
 	{"constants-variables", []string{
@@ -257,7 +257,7 @@ var tokenReplacements = map[string]string{
 	"kw_const": `"const"`, "kw_var": `"var"`, "kw_component": `"component"`,
 	"kw_if": `"if"`, "kw_for": `"for"`, "kw_else": `"else"`,
 	"kw_func": `"func"`, "kw_unit": `"unit"`, "kw_return": `"return"`,
-	"kw_platform": `"platform"`, "kw_slot": `"slot"`,
+	"kw_slot":   `"slot"`,
 	"slashdash": `"/-"`, "semi": `";"`,
 	"str_start": "STR_START", "str_end": "STR_END", "str_resume": "STR_RESUME",
 	"triple_start": "TRIPLE_START", "triple_end": "TRIPLE_END",

@@ -127,7 +127,6 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// runs, so the override must be resolved now while the component boundary is
 	// still intact. passPlatformFilter handles every other path (lower-inlined
 	// and non-inlined component bodies); both apply the same override rule.
-	cloned = applyPlatformOverride(cloned, ctx.platform)
 
 	// Bind non-const props by substituting their parameter references with the
 	// call-site argument expressions. Const props are bound via childCtx.values
@@ -208,8 +207,6 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		}
 	case *ir.Toggle:
 		n.Target = substituteParams(n.Target, subs)
-	case *ir.PlatformFilter:
-		substituteParamsInStmts(n.Body, subs)
 	case *ir.SlotInst:
 		substituteParamsInStmts(n.Children, subs)
 	case *ir.ContextProvider:
@@ -227,39 +224,6 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 	default:
 		panic(fmt.Sprintf("substituteParamsInStmt: unhandled stmt %T", n))
 	}
-}
-
-// applyPlatformOverride mirrors codegen's irPlatformBody: if the cloned
-// component body contains any platform-filter override, drop the
-// cross-platform default statements so only the override survives. Without
-// this, splicing the inlined body straight into the parent statement slice
-// causes the default and the override to both render — unlike codegen's
-// component path, which routes through irPlatformBody at every call.
-func applyPlatformOverride(stmts []ir.Stmt, platform string) []ir.Stmt {
-	if platform == "" {
-		return stmts
-	}
-	hasFilter := false
-	for _, s := range stmts {
-		if _, ok := s.(*ir.PlatformFilter); ok {
-			hasFilter = true
-			break
-		}
-	}
-	if !hasFilter {
-		return stmts
-	}
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		pf, ok := s.(*ir.PlatformFilter)
-		if !ok {
-			continue // drop cross-platform default; the filter wins
-		}
-		if pf.Platform == platform {
-			out = append(out, pf.Body...)
-		}
-	}
-	return out
 }
 
 // bodyHasFoldableParamUse reports whether stmts contain a use of one of the
@@ -393,8 +357,6 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				visitExpr(n.Cond)
 				visitStmts(n.Body)
 				visitStmts(n.Else)
-			case *ir.PlatformFilter:
-				visitStmts(n.Body)
 			case *ir.SlotInst:
 				visitStmts(n.Children)
 			case *ir.Window:
@@ -538,8 +500,6 @@ func substituteSlotsInStmt(s ir.Stmt, callsite *ir.NodeInst) ir.Stmt {
 	case *ir.For:
 		n.Body = substituteSlots(n.Body, callsite)
 		n.Else = substituteSlots(n.Else, callsite)
-	case *ir.PlatformFilter:
-		n.Body = substituteSlots(n.Body, callsite)
 	case *ir.Window:
 		n.Body = substituteSlots(n.Body, callsite)
 	case *ir.ContextProvider:
