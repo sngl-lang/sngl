@@ -1568,6 +1568,43 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 // declares. Missing that one import is the most common way a file fails to
 // check, and "unknown component \"vbox\"" on its own does not say so.
 func (c *checker) stdlibHint(name string) string {
+	return c.stdlibHintFor(name, hintAny)
+}
+
+// hintRole is what the unresolved name was being read as, so the hint can
+// prefer a package declaring that rather than the first package binding the
+// name in any role at all. `time` is the case that forced this: sngl:i18n has
+// a `time` formatter and sorts before sngl:time, so a missing import of the
+// type was reported against the wrong package.
+type hintRole int
+
+const (
+	hintAny hintRole = iota
+	hintType
+	hintComponent
+)
+
+// declaresAs reports whether pkg binds name in the role want.
+func declaresAs(pkg *ir.Package, name string, want hintRole) bool {
+	sym, ok := pkg.Symbols.Root.LookupLocal(name)
+	if !ok {
+		return false
+	}
+	switch want {
+	case hintComponent:
+		_, is := sym.(*ir.Component)
+		return is
+	case hintType:
+		switch sym.(type) {
+		case *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
+			return true
+		}
+		return false
+	}
+	return true
+}
+
+func (c *checker) stdlibHintFor(name string, want hintRole) string {
 	// A macro is declared in lib/ but never registered as a function, so it is
 	// never in scope: the only way to reach one is a `#[...]` mark. Saying so
 	// beats "undefined", which is true but reads as a missing import.
@@ -1589,6 +1626,9 @@ func (c *checker) stdlibHint(name string) string {
 	// PublicPackages, not Packages: a hint names an import a program could
 	// write, so the compiler's own tier and the per-target platform/language
 	// packages are not candidates.
+	// A package binding the name in the role asked for wins; one binding it in
+	// some other role is the fallback, since it is still better than silence.
+	var fallback string
 	for _, libName := range lib.PublicPackages() {
 		if libName == "builtin" {
 			continue // ambient; a miss here is not a missing import
@@ -1597,6 +1637,21 @@ func (c *checker) stdlibHint(name string) string {
 		if _, ok := pkg.Symbols.Root.LookupLocal(name); !ok {
 			continue
 		}
+		if want != hintAny && !declaresAs(pkg, name, want) {
+			if fallback == "" {
+				fallback = c.hintFor(name, libName, pkg)
+			}
+			continue
+		}
+		return c.hintFor(name, libName, pkg)
+	}
+	return fallback
+}
+
+// hintFor phrases the hint for a name this package declares, saying how to
+// reach it rather than only which package has it.
+func (c *checker) hintFor(name, libName string, pkg *ir.Package) string {
+	{
 		path := "sngl:" + libName
 		// Already imported under an alias: the name is reachable, just not bare.
 		for _, imp := range c.pkg.Imports {
@@ -1609,7 +1664,6 @@ func (c *checker) stdlibHint(name string) string {
 		}
 		return fmt.Sprintf("; %s declares it, add import . %q", path, path)
 	}
-	return ""
 }
 
 // isLibraryNamespace reports whether name is in scope as a namespace bound to

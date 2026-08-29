@@ -3203,7 +3203,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	if comp == nil && name != "" {
 		if _, inScope := c.scope.Lookup(name); !inScope {
 			if !c.resolveQualifiedIdent(name) {
-				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHint(name))
+				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHintFor(name, hintComponent))
 			}
 		}
 	}

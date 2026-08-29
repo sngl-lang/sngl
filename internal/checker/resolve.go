@@ -136,14 +136,22 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	switch t.Name {
 	case "color", "date", "time", "datetime":
 		// These are uniformly carried as TypeStructs backed by their stdlib
-		// StructDefs (lib/types.sngl). Look up via the scope chain.
+		// StructDefs. Look up via the scope chain.
 		if sym, ok := c.scope.Lookup(t.Name); ok {
 			if typ := sym.SymType(); typ != nil {
 				return typ
 			}
 		}
-		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
-		return TypDyn
+		if c.inLibSource() {
+			// Library source naming one of these before the declaration is
+			// registered: the stdlib is mid-bootstrap and dyn is the only
+			// answer available.
+			return TypDyn
+		}
+		// In user source a miss is a missing import, not a bootstrap gap --
+		// `time` is declared by sngl:time and is not ambient. Falling through
+		// reports that; returning dyn here silently typed the declaration as
+		// dyn and let the program build.
 	}
 
 	// Generic built-in constructors resolve through scope: a #[builtin]-marked
@@ -179,7 +187,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 
-	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHint(t.Name))
+	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
 	return TypDyn
 }
 
