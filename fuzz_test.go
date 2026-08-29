@@ -588,8 +588,6 @@ func (v *irValidator) walkStmt(s ir.Stmt) {
 		}
 		v.walkStmts(n.Body)
 		v.walkStmts(n.Else)
-	case *ir.PlatformFilter:
-		v.walkStmts(n.Body)
 	}
 }
 

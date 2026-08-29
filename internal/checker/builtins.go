@@ -41,16 +41,21 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 			bound = true
 		}
 	case ir.BuiltinPlatform:
+		bound = bindBuiltin(c, &c.platformType, kind, sym) != nil
+	case ir.BuiltinLanguage:
+		bound = bindBuiltin(c, &c.languageType, kind, sym) != nil
+	case ir.BuiltinTargetPlatform:
 		if v := bindBuiltin(c, &c.platformConst, kind, sym); v != nil {
 			// No initializer: the value arrives when a build picks a target,
-			// and the optimizer reads it off the mark.
-			v.Type = TypString
+			// and the optimizer reads it off the mark. The type is filled in
+			// by typeTargetConsts once both halves are registered — the two
+			// declarations are in different files of lib/builtin and nothing
+			// orders them.
 			v.Init = nil
 			bound = true
 		}
-	case ir.BuiltinLanguage:
+	case ir.BuiltinTargetLanguage:
 		if v := bindBuiltin(c, &c.languageConst, kind, sym); v != nil {
-			v.Type = TypString
 			v.Init = nil
 			bound = true
 		}

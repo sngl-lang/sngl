@@ -274,8 +274,6 @@ func (w *irTokenWalker) stmt(s ir.Stmt) {
 		w.expr(x.Iter)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
-	case *ir.PlatformFilter:
-		w.stmts(x.Body)
 	case *ir.Window:
 		w.window(x)
 	}

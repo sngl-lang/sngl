@@ -221,7 +221,7 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 		// Native import — accept as dyn.
 		return TypDyn
 	}
-	if tsym, ok := ns.Pkg.Symbols.LookupType(name); ok {
+	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(ast.Pos{}, tsym) {
 			return TypDyn
 		}

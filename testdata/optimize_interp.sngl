@@ -11,9 +11,6 @@ component interpfold {
     // Chained operations
     var chain = (2 + 3) * 4 // FOLD 20
 
-    // Platform-conditional ternary
-    var platLabel = PLATFORM == "html" ? "web" : "other" // FOLD "web"
-
     text(value=string(chain))
 }
 

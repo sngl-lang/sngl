@@ -436,8 +436,6 @@ func collectContextReadsInStmt(s ir.Stmt, out map[*ir.Context]bool) {
 		for _, a := range n.Args {
 			collectContextReadsInExpr(a.Value, out)
 		}
-	case *ir.PlatformFilter:
-		collectContextReadsInStmts(n.Body, out)
 	case *ir.SlotInst:
 		collectContextReadsInStmts(n.Children, out)
 	case *ir.ErrorBoundary:
@@ -582,8 +580,6 @@ func callsInStmt(s ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
 		calls = append(calls, callsInBody(n.Body, shadow)...)
 		calls = append(calls, callsInBody(n.Else, shadow)...)
 		return calls
-	case *ir.PlatformFilter:
-		return callsInBody(n.Body, shadow)
 	case *ir.SlotInst:
 		return callsInBody(n.Children, shadow)
 	case *ir.ErrorBoundary:
@@ -1278,10 +1274,6 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 			n.Iter = lowerInExpr(n.Iter, active, reach, hidden)
 			n.Body = lowerInStmts(n.Body, active, reach, hidden)
 			n.Else = lowerInStmts(n.Else, active, reach, hidden)
-			out = append(out, n)
-
-		case *ir.PlatformFilter:
-			n.Body = lowerInStmts(n.Body, active, reach, hidden)
 			out = append(out, n)
 
 		case *ir.SlotInst:

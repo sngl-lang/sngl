@@ -86,22 +86,22 @@ component main {
 	}
 }
 
-// Transitive purity must see impure calls nested inside container statements
-// (here a platform block), not just top-level call statements. Regression:
-// highestCalledPurity's walker had no case for PlatformFilter, so the call was
-// never seen and the wrapper stayed PurityPure (const-foldable).
-func TestTransitivePurityThroughPlatformBlock(t *testing.T) {
+// Transitive purity must see impure calls nested inside container statements,
+// not just top-level call statements. Regression: highestCalledPurity's walker
+// had no case for the container it was written with, so the call was never
+// seen and the wrapper stayed PurityPure (const-foldable).
+func TestTransitivePurityThroughIfBranch(t *testing.T) {
 	pkg := checkMainOK(t, `
 component main {
     var count = 0
     func bump() { count = count + 1 }
-    func gated() { platform html { bump() } }
+    func gated() { if count >= 0 { bump() } }
     button(text="x", @click { gated() })
     text(value="{count}")
 }
 `)
 	if fn := findCompFunc(t, pkg, "main", "gated"); fn.Purity == ir.PurityPure {
-		t.Errorf("gated calls an impure func inside a platform block but was typed PurityPure")
+		t.Errorf("gated calls an impure func inside an if body but was typed PurityPure")
 	}
 }
 

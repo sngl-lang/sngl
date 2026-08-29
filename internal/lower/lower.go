@@ -86,7 +86,6 @@ type pass struct {
 var passes = []pass{
 	passForeignPrimitive,
 	passPlatformExtensionBody,
-	passPlatformFilter,
 	passPropBindings,
 	passRefLoop,
 	passUnit,

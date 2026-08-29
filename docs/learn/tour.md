@@ -571,35 +571,36 @@ component main {
 
 ## Customising Components Per Platform
 
-A `platform <name> { … }` block inside a component replaces the default body when compiling for that target. This is the escape hatch for "mostly shared, slightly different per target" — a real `<details>` widget on the web, an inline print on a TUI, the default flexbox layout everywhere else. You can stack multiple `platform` blocks inside one component — one per target you want to override.
+`PLATFORM` is the target this build is for, and every target's package carries its own identity — `html.platform`, `bubbletea.platform` — so `if PLATFORM == html.platform { … }` gates a body on the target. The comparison folds at build time and the branch not taken is removed, which makes this the escape hatch for "mostly shared, slightly different per target": a real `<details>` widget on the web, an inline print on a TUI, the default flexbox layout everywhere else.
 
-The default body acts as a fallback: if no `platform` block matches, SNGL uses it.
+`PLATFORM` is not a string, so `PLATFORM == "html"` does not compile — a misspelled target name is an error rather than a branch that is silently never taken.
 
 `Collapsible` below ships three renderings:
 
-- **default** — an always-visible styled card (what Fyne and Android pick up).
-- **`platform html`** — a real `<details>` / `<summary>` pair, so you can click the row to expand. That's what the playground on the right renders.
-- **`platform bubbletea`** — a single inline line for the terminal target.
+- **`else`** — an always-visible styled card (what Fyne and Android pick up).
+- **`html.platform`** — a real `<details>` / `<summary>` pair, so you can click the row to expand. That's what the playground on the right renders.
+- **`bubbletea.platform`** — a single inline line for the terminal target.
 
-Click a row to see the HTML block's interactivity. Then swap the `platform html { … }` body for the default by commenting it out — the cards reappear with their non-expandable yellow styling.
+Click a row to see the HTML branch's interactivity.
 
 ```sngl
 import . "sngl://std"
 import "sngl://platforms/html"
+import "sngl://platforms/bubbletea"
 
 component Collapsible(title = "", body = "") {
-    vbox(style={gap = 4, padding = 10, background = #fff8dc, borderRadius = 6}) {
-        text(value="▸ " + title, style={fontWeight = "bold"})
-        text(value=body, style={color = #555555})
-    }
-    platform html {
+    if PLATFORM == html.platform {
         html.details(style={padding = "8px", background = "#e0f7fa", borderRadius = "6px"}) {
             html.summary(innerText=title, style={cursor = "pointer", fontWeight = "bold"})
             html.p(innerText=body, style={margin = "6px 0 0", color = "#555555"})
         }
-    }
-    platform bubbletea {
+    } else if PLATFORM == bubbletea.platform {
         text(value="[" + title + "] " + body)
+    } else {
+        vbox(style={gap = 4, padding = 10, background = #fff8dc, borderRadius = 6}) {
+            text(value="▸ " + title, style={fontWeight = "bold"})
+            text(value=body, style={color = #555555})
+        }
     }
 }
 
@@ -607,7 +608,7 @@ component main {
     vbox(style={gap = 8, padding = 16}) {
         text(value="Each row renders differently per platform.", style={color = #555555})
         text(value="In this HTML playground: click to expand.", style={color = #555555})
-        Collapsible(title="Why platform blocks?", body="One component adapts without forking the whole tree.")
+        Collapsible(title="Why gate on PLATFORM?", body="One component adapts without forking the whole tree.")
         Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; Fyne and Android use the default body.")
     }
 }
@@ -617,7 +618,7 @@ component main {
 
 The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `sngl://platforms/…` packages expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
 
-A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use a `platform html { html.div(innerHTML="<… raw markup …>") }` block when you need them, or stick to the camelCase equivalents SNGL supports natively.
+A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use `html.div(innerHTML="<… raw markup …>")` when you need them, or stick to the camelCase equivalents SNGL supports natively.
 
 ```sngl
 import . "sngl://std"

@@ -122,8 +122,6 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 		case *ir.For:
 			collectWindowStructValues(n.Body, result)
 			collectWindowStructValues(n.Else, result)
-		case *ir.PlatformFilter:
-			collectWindowStructValues(n.Body, result)
 		case *ir.ContextProvider:
 			collectWindowStructValues(n.Children, result)
 		case *ir.SlotInst:
@@ -217,8 +215,6 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		walkAllExprs(n.Href, visit)
 		walkAllExprs(n.Title, visit)
 		walkAllExprs(n.Favicon, visit)
-		walkForBody(n.Body, visit)
-	case *ir.PlatformFilter:
 		walkForBody(n.Body, visit)
 	case *ir.SlotInst:
 		walkForBody(n.Children, visit)

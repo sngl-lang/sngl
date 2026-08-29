@@ -174,8 +174,6 @@ func (f *formatter) endLine(s ast.Stmt) int {
 			return f.blockEndLine(x.Pos.Line, &x.Else)
 		}
 		return f.blockEndLine(x.Pos.Line, &x.Body)
-	case *ast.PlatformStmt:
-		return f.blockEndLine(x.Pos.Line, &x.Body)
 	case *ast.StructDef:
 		if x.IsMultiline {
 			return x.Pos.Line + len(x.Body) + 1
@@ -227,8 +225,6 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeIfStmt(x)
 	case *ast.ForStmt:
 		f.writeForStmt(x)
-	case *ast.PlatformStmt:
-		f.writePlatformStmt(x)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -494,6 +490,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 		f.write(strings.Join(fn.TypeParams, ", "))
 		f.write(">")
 	}
+	f.writeTargetIndex(fn.Target)
 	f.write("(")
 	f.writeParams(fn.Params)
 	f.write(")")
@@ -514,9 +511,21 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 
 // --- component ---
 
+// writeTargetIndex writes the `[target]` index naming what a declaration
+// overrides. Nothing when the declaration overrides nothing.
+func (f *formatter) writeTargetIndex(target ast.Expr) {
+	if target == nil {
+		return
+	}
+	f.write("[")
+	f.writeExpr(target)
+	f.write("]")
+}
+
 func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 	f.write("component ")
 	f.write(c.Name)
+	f.writeTargetIndex(c.Target)
 	if len(c.Props.Props) > 0 {
 		f.write("(")
 		f.writeProps(c.Props)
@@ -592,13 +601,6 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 		f.write(" else ")
 		f.writeBlock(&s.Else)
 	}
-}
-
-func (f *formatter) writePlatformStmt(s *ast.PlatformStmt) {
-	f.write("platform ")
-	f.write(s.Platform)
-	f.write(" ")
-	f.writeBlock(&s.Body)
 }
 
 // --- block statements ---

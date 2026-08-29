@@ -260,8 +260,6 @@ func normalizeStmt(s Stmt) Stmt {
 		normalizeExpr(n.Iter)
 		n.Body = normalizeStmts(n.Body)
 		n.Else = normalizeStmts(n.Else)
-	case *PlatformFilter:
-		n.Body = normalizeStmts(n.Body)
 	case *NodeInst:
 		for i := range n.Props {
 			normalizeExpr(n.Props[i].Value)

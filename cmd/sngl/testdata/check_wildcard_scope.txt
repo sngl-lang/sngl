@@ -9,16 +9,16 @@ sngl dump --stage checked --lang none --platform html spread.sngl
 stdout 'td\(attrs=\{"bgcolor" = '
 ! stdout 'td\(bgcolor='
 
-# 2. An HTML tag name is lowercase, so a camelCase identifier inside a
-# `platform html { ... }` body — where a bare name reaches the element
-# wildcard — is a misspelling rather than a tag nobody has standardised yet.
+# 2. An HTML tag name is lowercase, so a camelCase identifier reaching the
+# element wildcard is a misspelling rather than a tag nobody has standardised
+# yet. The wildcard is reached by naming the package, which is the only way
+# now that nothing injects it as a fallback scope.
 ! sngl dump --stage checked --lang none --platform html typo.sngl
-stderr 'unknown component "thisIsATypoNotATag"'
+stderr 'unknown component "html.thisIsATypoNotATag"'
 
 # 3. A dot import lifts a package's declarations. A wildcard component's
 # declaration is its own name; the open set of names it also answers to
-# belongs to the package, and is reached by naming it (`html.div`) or from
-# inside its platform's body. Lifted, it left the importing file with no
+# belongs to the package, and is reached by naming it (`html.div`). Lifted, it left the importing file with no
 # undeclared node name to misspell and no undefined identifier at all. The
 # name below is a real tag, so only the lift can make it resolve here.
 ! sngl dump --stage checked --lang none --platform html dotimport.sngl
@@ -43,9 +43,7 @@ struct tdAttrs {
 
 component main() {
     std.window {
-        platform html {
-            html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
-        }
+        html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
 }
 -- typo.sngl --
@@ -53,9 +51,7 @@ import . "sngl://std"
 
 component main() {
     window {
-        platform html {
-            thisIsATypoNotATag(id = "x") { }
-        }
+        html.thisIsATypoNotATag(id = "x") { }
     }
 }
 -- dotimport.sngl --

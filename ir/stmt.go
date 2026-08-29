@@ -240,15 +240,6 @@ func DeriveIterKind(n *For) IterKind {
 	return IterElement
 }
 
-// PlatformFilter is a type-checked platform statement with IR body.
-type PlatformFilter struct {
-	AST      *ast.PlatformStmt
-	Platform string // "html", "bubbletea", etc.
-	Body     []Stmt
-}
-
-func (*PlatformFilter) stmtNode() {}
-
 // CanvasRedrawStmt is injected by passCanvasReactivity into handler/timer
 // bodies that mutate state vars read by a canvas draw function. Each platform
 // translates this to its native "clear and redraw the canvas" operation.

@@ -128,15 +128,6 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return env.execFor(n)
 	case *ir.Return:
 		return nil // caller handles return bodies
-	case *ir.PlatformFilter:
-		if n.Platform == "" || n.Platform == "none" {
-			for _, st := range n.Body {
-				if err := env.Exec(st); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
 	case *ir.NodeInst:
 		// Visual nodes don't execute in statement position in the headless
 		// interpreter (they're rendered elsewhere). Skipping preserves

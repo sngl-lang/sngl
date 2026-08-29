@@ -807,8 +807,6 @@ func (g *htmlGen) prewalkNodes() {
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
 			visitStmts(n.Children)
-		case *ir.PlatformFilter:
-			visitStmts(n.Body)
 		case *ir.ContextProvider:
 			visitStmts(n.Children)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
@@ -936,8 +934,6 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
 			visitStmts(n.Children)
-		case *ir.PlatformFilter:
-			visitStmts(n.Body)
 		case *ir.ContextProvider:
 			visitStmts(n.Children)
 		default:
@@ -1243,13 +1239,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
 		g.renderIRNode(b, n, depth)
-	case *ir.PlatformFilter:
-		if n.Platform != "html" {
-			return
-		}
-		for _, bs := range n.Body {
-			g.renderIRStmt(b, bs, depth)
-		}
 	case *ir.SlotInst:
 		for _, child := range g.irSlotChildren {
 			g.renderIRStmt(b, child, depth)
@@ -1552,26 +1541,6 @@ func mainIRComponent(pkg *ir.Package) *ir.Component {
 		}
 	}
 	return nil
-}
-
-// irPlatformBody returns the platform-specific override body if any
-// PlatformFilter entries match platform; otherwise returns the original
-// statements (with any non-matching PlatformFilters dropped).
-func irPlatformBody(stmts []ir.Stmt, platform string) []ir.Stmt {
-	var matches []ir.Stmt
-	hasFilter := false
-	for _, s := range stmts {
-		if pf, ok := s.(*ir.PlatformFilter); ok {
-			hasFilter = true
-			if pf.Platform == platform {
-				matches = append(matches, pf.Body...)
-			}
-		}
-	}
-	if hasFilter {
-		return matches
-	}
-	return stmts
 }
 
 // preservesWhitespace reports whether a raw HTML tag treats whitespace in
@@ -2003,7 +1972,7 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 		g.addIRTimer(t)
 	}
 
-	for _, s := range irPlatformBody(comp.Body, "html") {
+	for _, s := range comp.Body {
 		g.renderIRStmt(b, s, depth)
 	}
 
@@ -2868,10 +2837,6 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 		}
 	case *ir.Toggle:
 		walk(n.Target)
-	case *ir.PlatformFilter:
-		for _, c := range n.Body {
-			walkStmtExprs(c, walk)
-		}
 	}
 }
 
@@ -3118,10 +3083,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		}
 	case *ir.Toggle:
 		walkExpr(n.Target)
-	case *ir.PlatformFilter:
-		for _, b := range n.Body {
-			g.collectLoweredRefs(b)
-		}
 	case *ir.NodeInst:
 		for _, p := range n.Props {
 			walkExpr(p.Value)

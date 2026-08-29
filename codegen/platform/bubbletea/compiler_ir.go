@@ -1099,8 +1099,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.If:
 			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay)
 			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay)
-		case *ir.PlatformFilter:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay)
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay)
 		case *ir.NodeInst:
@@ -1156,8 +1154,6 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 			collectOverlays(n.Body, n, gc, out)
 			collectOverlays(n.Else, gate, gc, out)
 		case *ir.For:
-			collectOverlays(n.Body, gate, gc, out)
-		case *ir.PlatformFilter:
 			collectOverlays(n.Body, gate, gc, out)
 		case *ir.ErrorBoundary:
 			collectOverlays(n.Children, gate, gc, out)

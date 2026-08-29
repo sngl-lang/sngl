@@ -759,7 +759,7 @@ several specifications inside parentheses. A `var` declaration may carry
 <!-- BEGIN GENERATED: grammar-functions -->
 
 ```ebnf
-FuncDecl = "func" FuncName FuncTail
+FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -1097,7 +1097,6 @@ Stmt =
     | "return" [ Expr ]
     | IfNode
     | ForNode
-    | PlatformNode
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -1105,8 +1104,6 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
-
-PlatformNode = "platform" IDENT StmtBlock
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1189,7 +1186,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
@@ -1437,7 +1434,6 @@ Stmt =
     | "return" [ Expr ]
     | IfNode
     | ForNode
-    | PlatformNode
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -1445,8 +1441,6 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
-
-PlatformNode = "platform" IDENT StmtBlock
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1490,7 +1484,7 @@ VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 ```
 
 ```ebnf
-FuncDecl = "func" FuncName FuncTail
+FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -1511,7 +1505,7 @@ Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 

@@ -207,8 +207,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Else, fn, depth)
 		case *ir.For:
 			walkVisual(n.Body, fn, depth)
-		case *ir.PlatformFilter:
-			walkVisual(n.Body, fn, depth)
 		case *ir.SlotInst:
 			walkVisual(n.Children, fn, depth)
 		case *ir.ErrorBoundary:

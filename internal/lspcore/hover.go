@@ -671,10 +671,6 @@ func visitArgListSites(doc *ast.Document, fn func(compName string, args ast.ArgL
 			for _, c := range x.Body.Stmts {
 				walkStmt(c)
 			}
-		case *ast.PlatformStmt:
-			for _, c := range x.Body.Stmts {
-				walkStmt(c)
-			}
 		}
 	}
 	for _, s := range doc.Stmts {

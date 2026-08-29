@@ -109,8 +109,6 @@ func stmtHasErrorOp(s ir.Stmt) bool {
 			return true
 		}
 		return blockHasErrorOp(x.Body) || blockHasErrorOp(x.Else)
-	case *ir.PlatformFilter:
-		return blockHasErrorOp(x.Body)
 	}
 	return false
 }
@@ -214,8 +212,6 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 		case *ir.For:
 			walkVisualErrors(x.Body, scope)
 			walkVisualErrors(x.Else, scope)
-		case *ir.PlatformFilter:
-			walkVisualErrors(x.Body, scope)
 		case *ir.SlotInst:
 			walkVisualErrors(x.Children, scope)
 		case *ir.CallStmt:
@@ -247,8 +243,6 @@ func resolveCallsInBlock(stmts []ir.Stmt, scope []*ir.EventHandler, bubble bool)
 			resolveCallsInExpr(x.Iter, scope, bubble)
 			resolveCallsInBlock(x.Body, scope, bubble)
 			resolveCallsInBlock(x.Else, scope, bubble)
-		case *ir.PlatformFilter:
-			resolveCallsInBlock(x.Body, scope, bubble)
 		}
 	}
 }

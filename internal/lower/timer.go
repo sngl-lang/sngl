@@ -174,8 +174,6 @@ func (st *timerState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.For:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
-		case *ir.PlatformFilter:
-			n.Body = st.injectIntoStmts(n.Body)
 		case *ir.NodeInst:
 			n.Children = st.injectIntoStmts(n.Children)
 			for i := range n.Handlers {

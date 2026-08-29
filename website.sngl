@@ -101,15 +101,7 @@ component PlatformCarousel() {
 }
 
 component PageLayout(title = "", currentHref = "") list<component> {
-	hbox {
-		NavSidebar(currentHref=currentHref)
-		vbox(style={padding=24, flex=1}) {
-			text(value=title, style={fontSize=28, fontWeight="bold"})
-			slot
-		}
-	}
-
-	platform html {
+	if PLATFORM == html.platform {
 		html.div(class="site") {
 			html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
 			NavSidebar(currentHref=currentHref)
@@ -131,13 +123,19 @@ component PageLayout(title = "", currentHref = "") list<component> {
 				}
 			}
 		}
+	} else {
+		hbox {
+			NavSidebar(currentHref=currentHref)
+			vbox(style={padding=24, flex=1}) {
+				text(value=title, style={fontSize=28, fontWeight="bold"})
+				slot
+			}
+		}
 	}
 }
 
 component PlaygroundContent() {
-	text(value="Interactive playground — available in browser only.")
-
-	platform html {
+	if PLATFORM == html.platform {
 		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
 		html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
 		html.div(class="playground-toolbar") {
@@ -181,13 +179,13 @@ component PlaygroundContent() {
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js")
 		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-kotlin.min.js")
 		html.script(type="module", src=pgAssets.path("playground.js"))
+	} else {
+		text(value="Interactive playground — available in browser only.")
 	}
 }
 
 component TutorialContent() {
-	text(value="Interactive tutorial — available in browser only.")
-
-	platform html {
+	if PLATFORM == html.platform {
 		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
 		html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
 		html.div(class="tutorial-layout") {
@@ -222,6 +220,8 @@ component TutorialContent() {
 		html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
 		html.script(src=pgAssets.path("wasm_exec.js"))
 		html.script(type="module", src=pgAssets.path("tutorial.js"))
+	} else {
+		text(value="Interactive tutorial — available in browser only.")
 	}
 }
 

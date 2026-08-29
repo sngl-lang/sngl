@@ -139,8 +139,6 @@ func hoistInStmt(h *hoister, s ir.Stmt) {
 	case *ir.For:
 		hoistInStmts(h, n.Body)
 		hoistInStmts(h, n.Else)
-	case *ir.PlatformFilter:
-		hoistInStmts(h, n.Body)
 	case *ir.SlotInst:
 		hoistInStmts(h, n.Children)
 	case *ir.ErrorBoundary:

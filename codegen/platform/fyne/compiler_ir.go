@@ -980,8 +980,6 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.NodeInst:

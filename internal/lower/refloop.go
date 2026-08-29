@@ -109,8 +109,6 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 		if n.Handler != nil && n.Handler.Func != nil {
 			st.stmts(n.Handler.Func.Block)
 		}
-	case *ir.PlatformFilter:
-		st.stmts(n.Body)
 	case *ir.ContextProvider:
 		st.stmts(n.Children)
 	case *ir.Window:
@@ -318,8 +316,6 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		if n.Handler != nil && n.Handler.Func != nil {
 			r.stmtSlice(n.Handler.Func.Block)
 		}
-	case *ir.PlatformFilter:
-		r.stmtSlice(n.Body)
 	case *ir.ContextProvider:
 		n.Value = r.expr(n.Value)
 		r.stmtSlice(n.Children)

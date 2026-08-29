@@ -66,7 +66,6 @@
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
 # kw_return     0x40  KW_RETURN
-# kw_platform   0x42  KW_PLATFORM
 # slashdash     0x46  SLASHDASH /-
 # str_start        0x49  STR_START         "text{
 # str_end          0x4A  STR_END           }text"
@@ -148,7 +147,6 @@ kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
 kw_return    = `\x40` .
-kw_platform  = `\x42` .
 slashdash    = `\x46` .
 str_start    = `\x49` .
 str_end      = `\x4A` .
@@ -226,7 +224,6 @@ Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ sem
 #   kw_return     → return statement
 #   kw_if         → IfNode
 #   kw_for        → ForNode
-#   kw_platform   → PlatformNode
 #   everything else → VisualOrStmt (visual nodes, calls, assignments, emits)
 
 Stmt =
@@ -241,7 +238,6 @@ Stmt =
     | kw_return [ Expr ]
     | IfNode
     | ForNode
-    | PlatformNode
     | VisualOrStmt
     .
 
@@ -306,7 +302,12 @@ VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName FuncTail .
+FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+
+# The target a declaration overrides, indexed off the name it overrides:
+# `component sngl.button[html.platform](text) { ... }`. The expression must
+# fold to a target identity, which only a target's own package can supply.
+TargetIndex = lbracket Expr rbracket .
 
 FuncTail =
       lparen [ ParamList ] rparen FuncBodyTail
@@ -344,7 +345,7 @@ Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
-ComponentDecl = kw_component ident [ dot ident ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+ComponentDecl = kw_component ident [ dot ident ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 
 CompParamList = CompParam { comma CompParam } [ comma ] .
 
@@ -412,8 +413,6 @@ StatementPrimary =
 IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 
 ForNode = kw_for [ amp ] ident [ comma [ amp ] ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
-
-PlatformNode = kw_platform ident StmtBlock .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 

@@ -2,13 +2,9 @@ import . "sngl://std"
 import "sngl://platforms/html"
 
 component Markdown(src = "") {
-    text(value=src)
-
-    platform html {
+    if PLATFORM == html.platform {
         html.div(innerHTML=src)
-    }
-
-    platform http {
-        html.div(innerHTML=src)
+    } else {
+        text(value=src)
     }
 }

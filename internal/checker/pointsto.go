@@ -101,8 +101,6 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 		w.walkExpr(x.Iter)
 		w.walkStmts(x.Body)
 		w.walkStmts(x.Else)
-	case *ir.PlatformFilter:
-		w.walkStmts(x.Body)
 	case *ir.CallStmt:
 		w.walkExpr(x.Call)
 	case *ir.NodeInst:

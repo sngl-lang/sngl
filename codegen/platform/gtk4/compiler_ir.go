@@ -754,8 +754,6 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.NodeInst:
@@ -834,8 +832,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.PlatformFilter:
-				walk(n.Body)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.NodeInst:

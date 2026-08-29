@@ -143,8 +143,6 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 			walkForSlots(n.Else, slots)
 		case *ir.Window:
 			walkForSlots(n.Body, slots)
-		case *ir.PlatformFilter:
-			walkForSlots(n.Body, slots)
 		case *ir.SlotInst:
 			walkForSlots(n.Children, slots)
 		case *ir.ErrorBoundary:
@@ -170,10 +168,6 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			}
 		case *ir.If:
 			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
-				return true
-			}
-		case *ir.PlatformFilter:
-			if hasFocusableNodes(n.Body) {
 				return true
 			}
 		case *ir.SlotInst:
@@ -266,8 +260,6 @@ func walkInjectFocused(
 			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, inLoop)
 
 		case *ir.Window:
-			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
-		case *ir.PlatformFilter:
 			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
 		case *ir.SlotInst:
 			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)

@@ -184,8 +184,6 @@ func scanStmt(s ir.Stmt, visit func(ir.Expr)) {
 		scanExpr(n.Title, visit)
 		scanExpr(n.Favicon, visit)
 		scanStmts(n.Body, visit)
-	case *ir.PlatformFilter:
-		scanStmts(n.Body, visit)
 	case *ir.SlotInst:
 		scanStmts(n.Children, visit)
 	case *ir.ContextProvider:

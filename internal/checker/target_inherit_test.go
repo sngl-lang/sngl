@@ -80,35 +80,3 @@ component main {
 		t.Errorf("building for html loaded the tgtstub overrides through the subdirectory import: %v", got)
 	}
 }
-
-// A `platform` block is registered only for a platform the build targets, and
-// an imported document targets whatever the root does. Two blocks declaring
-// one name is the shape that exposes it: unfiltered, both are registered and
-// the second is a redeclaration of the first.
-func TestPlatformBlocksAreFilteredInAnImportedDocument(t *testing.T) {
-	const sub = `import . "sngl://std"
-
-platform tgtstub {
-    const shared = 1
-}
-
-platform html {
-    const shared = 2
-}
-
-component Sub() {
-    text(value="sub")
-}
-`
-	const main = `import . "sngl://std"
-import "./sub"
-
-component main {
-    Sub()
-}
-`
-	diags := checkWithSub(t, main, sub, ir.StaticTarget{Platform: "html"})
-	if got := errorsMentioning(diags, "shared"); len(got) > 0 {
-		t.Errorf("both platform blocks were registered in the imported document: %v", got)
-	}
-}

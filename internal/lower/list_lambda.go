@@ -101,8 +101,6 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		pre, n.Iter = st.transformExpr(n.Iter)
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
-	case *ir.PlatformFilter:
-		n.Body = st.transformBlock(n.Body)
 	case *ir.NodeInst:
 		for i := range n.Props {
 			if n.Props[i].Value != nil {

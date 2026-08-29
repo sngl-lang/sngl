@@ -209,8 +209,6 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 		case *ir.For:
 			collectUsedIRStmts(n.Body, used)
 			collectUsedIRStmts(n.Else, used)
-		case *ir.PlatformFilter:
-			collectUsedIRStmts(n.Body, used)
 		case *ir.ErrorBoundary:
 			collectUsedIRStmts(n.Children, used)
 		case *ir.ContextProvider:

@@ -182,60 +182,46 @@ component Surface(
 
 // --- Core Layout ---
 
-component sngl.vbox {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
+component sngl.vbox[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.hbox {
-    platform android {
-        Row(modifier={...style}) {
-            slot
-        }
+component sngl.hbox[android.platform] {
+    Row(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.stack {
-    platform android {
-        Box(modifier={...style}) {
-            slot
-        }
+component sngl.stack[android.platform] {
+    Box(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.spacer {
-    platform android {
-        Spacer(modifier={...style}) {}
-    }
+component sngl.spacer[android.platform] {
+    Spacer(modifier={...style}) {}
 }
 
-component sngl.scroll {
-    platform android {
-        Column(
-            modifier={...style},
-            chain=["verticalScroll(rememberScrollState())"],
-        ) {
-            slot
-        }
+component sngl.scroll[android.platform] {
+    Column(
+        modifier={...style},
+        chain=["verticalScroll(rememberScrollState())"],
+    ) {
+        slot
     }
 }
 
 // --- Core Text & Media ---
 
-component sngl.text {
-    platform android {
-        Text(text=value, modifier={...style}, style={...style}) {}
-    }
+component sngl.text[android.platform] {
+    Text(text=value, modifier={...style}, style={...style}) {}
 }
 
-component sngl.button {
-    platform android {
-        Button(onClick=func() { click() }, modifier={...style}) {
-            Text(text=text) {}
-        }
+component sngl.button[android.platform] {
+    Button(onClick=func() { click() }, modifier={...style}) {
+        Text(text=text) {}
     }
 }
 
@@ -243,10 +229,8 @@ component sngl.button {
 // every source SNGL accepts (a URL, an asset path) needs a different one, so
 // android draws no image yet. The emitter used to render a TODO comment,
 // which draws nothing; an unsized Spacer is the declared spelling of that.
-component sngl.image {
-    platform android {
-        Spacer(modifier={...style}) {}
-    }
+component sngl.image[android.platform] {
+    Spacer(modifier={...style}) {}
 }
 
 // Not converted. The placeholder becomes Compose's `label`, which takes a
@@ -257,13 +241,11 @@ component sngl.input() {
     OutlinedTextField(value=value) {}
 }
 
-component sngl.checkbox {
-    platform android {
-        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-            Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
-            if label != "" {
-                Text(text=label) {}
-            }
+component sngl.checkbox[android.platform] {
+    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+        Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+        if label != "" {
+            Text(text=label) {}
         }
     }
 }
@@ -274,37 +256,33 @@ component sngl.checkbox {
 // container is the direction the prop asks for and each option is a button
 // beside its label. onClick is passed nothing, so the override builds the
 // ChangeEvent itself from the option it looped over.
-component sngl.radio {
-    platform android {
-        if direction == "horizontal" {
-            Row(modifier={...style}) {
-                for opt = options {
-                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
-                        Text(text=opt) {}
-                    }
+component sngl.radio[android.platform] {
+    if direction == "horizontal" {
+        Row(modifier={...style}) {
+            for opt = options {
+                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    Text(text=opt) {}
                 }
             }
-        } else {
-            Column(modifier={...style}) {
-                for opt = options {
-                    Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                        RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
-                        Text(text=opt) {}
-                    }
+        }
+    } else {
+        Column(modifier={...style}) {
+            for opt = options {
+                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    Text(text=opt) {}
                 }
             }
         }
     }
 }
 
-component sngl.toggle {
-    platform android {
-        Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-            Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
-            if label != "" {
-                Text(text=label) {}
-            }
+component sngl.toggle[android.platform] {
+    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+        Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+        if label != "" {
+            Text(text=label) {}
         }
     }
 }
@@ -319,18 +297,16 @@ component sngl.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-component sngl.textarea {
-    platform android {
-        OutlinedTextField(
-            value=value,
-            minLines=3,
-            modifier={...style},
-            // @input carries the InputEvent Compose's text is built into;
-            // @change carries a ChangeEvent, a different declaration, so it
-            // takes the value rather than the other event.
-            onValueChange=func(e) { input(e); change({value = e.value}) },
-        ) {}
-    }
+component sngl.textarea[android.platform] {
+    OutlinedTextField(
+        value=value,
+        minLines=3,
+        modifier={...style},
+        // @input carries the InputEvent Compose's text is built into;
+        // @change carries a ChangeEvent, a different declaration, so it
+        // takes the value rather than the other event.
+        onValueChange=func(e) { input(e); change({value = e.value}) },
+    ) {}
 }
 
 // Not converted. Same composable-lambda `label` as input.
@@ -349,141 +325,105 @@ component sngl.progress() {
     LinearProgressIndicator {}
 }
 
-component sngl.spinner {
-    platform android {
-        CircularProgressIndicator(modifier={...style}) {}
+component sngl.spinner[android.platform] {
+    CircularProgressIndicator(modifier={...style}) {}
+}
+
+component sngl.badge[android.platform] {
+    Badge(modifier={...style}) {
+        Text(text=value) {}
     }
 }
 
-component sngl.badge {
-    platform android {
-        Badge(modifier={...style}) {
-            Text(text=value) {}
-        }
+component sngl.divider[android.platform] {
+    HorizontalDivider(modifier={...style}) {}
+}
+
+component sngl.card[android.platform] {
+    Card(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.divider {
-    platform android {
-        HorizontalDivider(modifier={...style}) {}
+component sngl.chip[android.platform] {
+    Text(text=label) {}
+}
+
+component sngl.link[android.platform] {
+    Text(
+        text=text,
+        style={...style},
+        args=["color = MaterialTheme.colorScheme.primary"],
+    ) {}
+}
+
+component sngl.tabs[android.platform] {
+    TabRow(selectedTabIndex=selected) {
+        slot
     }
 }
 
-component sngl.card {
-    platform android {
-        Card(modifier={...style}) {
-            slot
-        }
-    }
-}
-
-component sngl.chip {
-    platform android {
-        Text(text=label) {}
-    }
-}
-
-component sngl.link {
-    platform android {
-        Text(
-            text=text,
-            style={...style},
-            args=["color = MaterialTheme.colorScheme.primary"],
-        ) {}
-    }
-}
-
-component sngl.tabs {
-    platform android {
-        TabRow(selectedTabIndex=selected) {
-            slot
-        }
-    }
-}
-
-component sngl.modal {
-    platform android {
-        if open {
-            Dialog(onDismissRequest=func() { close() }) {
-                Surface(args=["shape = MaterialTheme.shapes.medium"]) {
-                    Column(modifier={padding=16}) {
-                        if title != "" {
-                            Text(text=title) {}
-                        }
-                        slot
+component sngl.modal[android.platform] {
+    if open {
+        Dialog(onDismissRequest=func() { close() }) {
+            Surface(args=["shape = MaterialTheme.shapes.medium"]) {
+                Column(modifier={padding=16}) {
+                    if title != "" {
+                        Text(text=title) {}
                     }
+                    slot
                 }
             }
         }
     }
 }
 
-component sngl.drawer {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
+component sngl.drawer[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.tooltip {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
+component sngl.tooltip[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.popover {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
+component sngl.popover[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.splitview {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
+component sngl.splitview[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.table {
-    platform android {
-        Text(text="") {}
+component sngl.table[android.platform] {
+    Text(text="") {}
+}
+
+component sngl.tree[android.platform] {
+    Text(text="") {}
+}
+
+component sngl.menu[android.platform] {
+    Text(text="") {}
+}
+
+component sngl.menubar[android.platform] {
+    Text(text="") {}
+}
+
+component sngl.toolbar[android.platform] {
+    Column(modifier={...style}) {
+        slot
     }
 }
 
-component sngl.tree {
-    platform android {
-        Text(text="") {}
-    }
-}
-
-component sngl.menu {
-    platform android {
-        Text(text="") {}
-    }
-}
-
-component sngl.menubar {
-    platform android {
-        Text(text="") {}
-    }
-}
-
-component sngl.toolbar {
-    platform android {
-        Column(modifier={...style}) {
-            slot
-        }
-    }
-}
-
-component sngl.avatar {
-    platform android {
-        Text(text="") {}
-    }
+component sngl.avatar[android.platform] {
+    Text(text="") {}
 }

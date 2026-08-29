@@ -1,0 +1,115 @@
+# An override implements one declaration for one target, and names the target
+# on its own declaration line: `component X[html.platform] { ... }`. The rule
+# is the same wherever the override is written -- a platform package's own
+# overrides in codegen/platform/*/*.sngl say it the same way.
+
+# A program overrides its own component. On the named target the override is
+# the body; everywhere else the declaration's own body is.
+sngl generate --platform html --lang none -o out_html app.sngl
+grep '<img' out_html/index.html
+! grep 'avatar fallback' out_html/index.html
+
+sngl generate --platform bubbletea --lang go -o out_bt app.sngl
+grep 'avatar fallback' out_bt/model.go
+
+# The target is resolved, not read as text: only a target whose package this
+# build loaded can be named, so a misspelling is reported where it is written
+# rather than becoming an override nothing selects.
+! sngl check typo.sngl
+stderr 'undefined: htlm'
+
+# And it has to be a target identity. Anything else the name resolves to is
+# refused rather than taken for one.
+! sngl check nottarget.sngl
+stderr 'is not a target identity'
+
+# Two implementations of one declaration for one target are two answers to a
+# question with one. The html platform package already implements sngl.badge.
+! sngl check duplicate.sngl
+stderr 'already has an implementation for "html"'
+
+# An override inherits the props of what it overrides and may not restate them.
+! sngl check declaresprops.sngl
+stderr 'may not declare props'
+
+-- app.sngl --
+import . "sngl://std"
+
+component Avatar(url string, size int) {
+    text(value="avatar fallback: " + url)
+}
+
+component Avatar[html.platform] {
+    html.img(src=url, alt="avatar")
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png", size=32)
+    }
+}
+
+-- typo.sngl --
+import . "sngl://std"
+
+component Avatar(url string) {
+    text(value=url)
+}
+
+component Avatar[htlm.platform] {
+    text(value=url)
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png")
+    }
+}
+
+-- nottarget.sngl --
+import . "sngl://std"
+
+component Avatar(url string) {
+    text(value=url)
+}
+
+component Avatar[html.element] {
+    text(value=url)
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png")
+    }
+}
+
+-- duplicate.sngl --
+import sngl "sngl://std"
+import . "sngl://std"
+
+component sngl.badge[html.platform] {
+    html.span(textContent=value)
+}
+
+component main {
+    window #w(title="t") {
+        badge(value="7")
+    }
+}
+
+-- declaresprops.sngl --
+import . "sngl://std"
+
+component Avatar(url string) {
+    text(value=url)
+}
+
+component Avatar[html.platform](url string) {
+    text(value=url)
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png")
+    }
+}

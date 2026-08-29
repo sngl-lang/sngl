@@ -235,7 +235,7 @@ component main {
 		t.Fatalf("parse: %v", err)
 	}
 	// Configured with the platform it then generates for. Without it, html's
-	// package never loads, no `component sngl.text { platform html { ... } }`
+	// package never loads, no `component sngl.text { ... }`
 	// override is merged, and `text` reaches codegen abstract -- which no real
 	// build produces and which kept a name-matching fallback alive.
 	pkg, diags := checker.Check(doc, &checker.Config{

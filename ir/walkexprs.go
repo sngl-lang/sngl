@@ -280,8 +280,6 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Else = w.stmts(n.Else)
 	case *SlotInst:
 		n.Children = w.stmts(n.Children)
-	case *PlatformFilter:
-		n.Body = w.stmts(n.Body)
 	case *ErrorBoundary:
 		n.Children = w.stmts(n.Children)
 	case *Window:
