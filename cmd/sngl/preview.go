@@ -365,7 +365,11 @@ func exprToPropJSON(e ast.Expr, typeName string, enum []string) propJSON {
 	p := propJSON{Set: true, Type: typeName, Enum: enum}
 	switch v := e.(type) {
 	case *ast.LiteralExpr:
-		p.Literal = v.Raw
+		if sv, ok := v.StringValue(); ok {
+			p.Literal = sv
+		} else {
+			p.Literal = v.Raw
+		}
 	default:
 		p.Expr = parser.FormatExpr(e)
 	}
@@ -646,7 +650,7 @@ func parseSNGLValue(s string) ast.Expr {
 	if strings.HasPrefix(s, "#") {
 		return &ast.LiteralExpr{Kind: ast.LiteralColor, Raw: s}
 	}
-	return &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: `"` + s + `"`}
+	return ast.NewStringLiteral(s)
 }
 
 func setArg(vn *ast.VisualNode, name string, val ast.Expr) {

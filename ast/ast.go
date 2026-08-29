@@ -57,6 +57,17 @@ type MacroAttr struct {
 // Document is the top-level container for a .sngl file.
 type Document struct {
 	Stmts []Stmt
+	// BlankLines holds the 1-based lines the source left empty. It is what
+	// lets the formatter keep the spacing an author chose without deducing
+	// where each statement ended — a question no AST node answers, and one
+	// every multi-line literal, argument list and nested block got wrong.
+	// A document the compiler synthesized has none, and formats unspaced.
+	BlankLines map[int]bool `json:"-"`
+}
+
+// BlankBefore reports whether the source left the line above line empty.
+func (d *Document) BlankBefore(line int) bool {
+	return line > 1 && d.BlankLines[line-1]
 }
 
 // --- Type declarations ---
@@ -75,6 +86,11 @@ type EnumBodyItem interface {
 
 func (*EnumMember) enumBodyItem() {}
 func (*FuncDef) enumBodyItem()    {}
+
+// A comment written inside an enum body is one of its items: there is nowhere
+// else for it to live, and moving it out of the braces on a format would be
+// moving it away from what it describes.
+func (*Comment) enumBodyItem() {}
 
 // EnumDef declares an enum type. Name is empty for anonymous enum types.
 type EnumDef struct {
@@ -115,6 +131,7 @@ type StructBodyItem interface {
 
 func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
+func (*Comment) structBodyItem()     {}
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
@@ -235,6 +252,12 @@ type Param struct {
 	// anything there is the checker's to say, and it refuses the rest where it
 	// registers the parameter.
 	Attrs []MacroAttr `json:",omitempty"`
+	// Leading and Trailing are the comments written above the parameter and
+	// after it on its line. A parameter is not a statement, so its comments
+	// have no statement list to live in; only a list written across lines can
+	// hold them.
+	Leading  []*Comment `json:",omitempty"`
+	Trailing *Comment   `json:",omitempty"`
 }
 
 // ParamList is an ordered list of parameters.
@@ -328,9 +351,12 @@ type SlotDecl struct {
 	Pos    Pos
 	Name   string
 	Params []TypeExpr
-	// Type is what the slot accepts. Absent means list<component>.
-	Type  TypeExpr
-	Attrs []MacroAttr `json:",omitempty"`
+	// Type is the tree the slot accepts, wrapped in whatever bounds the count.
+	// Absent, it accepts any number of the tree its component belongs to.
+	Type     TypeExpr
+	Attrs    []MacroAttr `json:",omitempty"`
+	Leading  []*Comment  `json:",omitempty"`
+	Trailing *Comment    `json:",omitempty"`
 }
 
 // EventDecl declares an event on a component: @click, @change Type.
@@ -340,7 +366,9 @@ type EventDecl struct {
 	Type TypeExpr // optional type annotation
 	// Attrs are the #[...] macro attributes written before the event, read
 	// the same way a Param's are.
-	Attrs []MacroAttr `json:",omitempty"`
+	Attrs    []MacroAttr `json:",omitempty"`
+	Leading  []*Comment  `json:",omitempty"`
+	Trailing *Comment    `json:",omitempty"`
 }
 
 // EventHandler is an event handler: @name[(params)] { body }.
@@ -371,6 +399,10 @@ type VisualNode struct {
 	Args   ArgList
 	ID     string // element ID from #id syntax
 	Block  StmtBlock
+	// HasParens records that the node was written with `()`, which an empty
+	// argument list cannot say on its own — `vbox()` and `vbox` are the same
+	// node, and the parens are the author's.
+	HasParens bool
 }
 
 // --- Control flow ---

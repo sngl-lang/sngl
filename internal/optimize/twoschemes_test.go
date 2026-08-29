@@ -65,7 +65,7 @@ func TestBatchSpansTwoSchemes(t *testing.T) {
 			continue
 		}
 		lit, _ := v.(*ir.Literal)
-		if lit == nil || lit.Raw != c.want[1:len(c.want)-1] {
+		if lit == nil || lit.Value != c.want[1:len(c.want)-1] {
 			t.Errorf("%s:// %s folded to %#v, want %s", c.scheme, c.fn.Foreign.Name, v, c.want)
 		}
 	}

@@ -17,9 +17,9 @@ func testIncrements(t Test, c counter) {
     c.count += 1
     t.assert(c.count == 1)
     t.test("multiple increments", func(t, c) {
-    c.count += 5
-    t.assert(c.count == 6)
-})
+        c.count += 5
+        t.assert(c.count == 6)
+    })
 }
 
 func testStartsFreshEachTest(t Test, c counter) {

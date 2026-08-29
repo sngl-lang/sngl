@@ -51,8 +51,8 @@ import . "sngl://std"
 
 component main {
     var name = "world"
-    vbox(style={gap = 8, padding = 16}) {
-        text(value="Hello, {name}!", style={fontSize = 24})
+    vbox(style={gap=8, padding=16}) {
+        text(value="Hello, {name}!", style={fontSize=24})
         input(:value=name, placeholder="Type a name")
     }
 }
@@ -70,11 +70,11 @@ import . "sngl://std"
 component main {
     var name = "world"
     func isLong() => name.length > 3
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         text(value="Hello, {name}!")
         input(:value=name, placeholder="Name")
         if isLong {
-            text(value="That's a long name.", style={color = #667788})
+            text(value="That's a long name.", style={color=#667788})
         }
     }
 }
@@ -92,8 +92,8 @@ import . "sngl://std"
 component main {
     const greeting = "Hello, SNGL!"
     const accent color = #2196f3
-    vbox(style={padding = 16, gap = 8}) {
-        text(value=greeting, style={fontSize = 24, color = accent})
+    vbox(style={padding=16, gap=8}) {
+        text(value=greeting, style={fontSize=24, color=accent})
         text(value="Length: {greeting.length}")
     }
 }
@@ -133,7 +133,7 @@ import . "sngl://std"
 component main {
     var a = 7
     var b = 3
-    vbox(style={gap = 4, padding = 16, fontFamily = "monospace"}) {
+    vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
         text(value="a + b = {a + b}")
         text(value="a - b = {a - b}")
         text(value="a * b = {a * b}")
@@ -157,7 +157,7 @@ component main {
     var enabled = true
     func positive() => n > 0
     func inRange() => n >= 0 && n <= 10
-    vbox(style={gap = 4, padding = 16}) {
+    vbox(style={gap=4, padding=16}) {
         text(value="n = {n}, positive? {positive}, inRange? {inRange}")
         button(text="Toggle", @click { enabled!! })
         text(value="enabled: {enabled}")
@@ -177,9 +177,9 @@ import . "sngl://std"
 component main {
     var count = 0
     func label() => count == 0 ? "empty" : (count == 1 ? "one item" : "{count} items")
-    vbox(style={gap = 8, padding = 16}) {
-        text(value=label, style={fontSize = 20})
-        hbox(style={gap = 8}) {
+    vbox(style={gap=8, padding=16}) {
+        text(value=label, style={fontSize=20})
+        hbox(style={gap=8}) {
             button(text="+", @click { count += 1 })
             button(text="-", @click { count -= 1 }, disabled=count <= 0)
         }
@@ -198,16 +198,16 @@ import . "sngl://std"
 
 component main {
     var age = 17
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         text(value="Age: {age}")
-        hbox(style={gap = 8}) {
+        hbox(style={gap=8}) {
             button(text="-", @click { age -= 1 })
             button(text="+", @click { age += 1 })
         }
         if age >= 18 {
-            text(value="Adult", style={color = #228B22})
+            text(value="Adult", style={color=#228B22})
         } else {
-            text(value="Minor", style={color = #CC5500})
+            text(value="Minor", style={color=#CC5500})
         }
     }
 }
@@ -225,9 +225,9 @@ import . "sngl://std"
 component main {
     var items list<string> = ["apples", "bread", "cheese"]
     var next = ""
-    vbox(style={gap = 8, padding = 16}) {
-        hbox(style={gap = 8}) {
-            input(:value=next, placeholder="Add an item", style={flex = 1})
+    vbox(style={gap=8, padding=16}) {
+        hbox(style={gap=8}) {
+            input(:value=next, placeholder="Add an item", style={flex=1})
             button(text="Add", @click {
                 items.push(next)
                 next = ""
@@ -236,7 +236,7 @@ component main {
         for item = items {
             text(value="• {item}")
         } else {
-            text(value="List is empty", style={color = #888888})
+            text(value="List is empty", style={color=#888888})
         }
     }
 }
@@ -258,11 +258,11 @@ component main {
         var lo = x < 0 ? 0 : x
         return lo > 10 ? 10 : lo
     }
-    vbox(style={gap = 4, padding = 16, fontFamily = "monospace"}) {
+    vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
         text(value="n = {n}")
         text(value="doubler(n) = {doubler(n)}")
         text(value="clamp(n * 5) = {clamp(n * 5)}")
-        hbox(style={gap = 8}) {
+        hbox(style={gap=8}) {
             button(text="+", @click { n += 1 })
             button(text="-", @click { n -= 1 })
         }
@@ -287,9 +287,9 @@ struct User {
 }
 
 component main {
-    var u User = User{name = "Ada", score = 42}
-    vbox(style={gap = 4, padding = 16}) {
-        text(value=u.name, style={fontSize = 20})
+    var u User = User{name="Ada", score=42}
+    vbox(style={gap=4, padding=16}) {
+        text(value=u.name, style={fontSize=20})
         text(value="Score: {u.score}")
         button(text="+10", @click { u.score += 10 })
     }
@@ -310,9 +310,9 @@ enum Status { draft, published, archived }
 component main {
     var status Status = Status.draft
     func clr() => status == Status.published ? #228B22 : (status == Status.archived ? #888888 : #CC5500)
-    vbox(style={gap = 8, padding = 16}) {
-        text(value="Status: {status}", style={color = clr, fontSize = 20})
-        hbox(style={gap = 8}) {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Status: {status}", style={color=clr, fontSize=20})
+        hbox(style={gap=8}) {
             button(text="Draft", @click { status = Status.draft })
             button(text="Publish", @click { status = Status.published })
             button(text="Archive", @click { status = Status.archived })
@@ -338,18 +338,18 @@ struct Task {
 }
 
 component main {
-    var tasks list<Task> = [{label = "Write tests"}, {label = "Ship it", done = true}, {label = "Celebrate"}]
+    var tasks list<Task> = [{label="Write tests"}, {label="Ship it", done=true}, {label="Celebrate"}]
     var next = ""
     func remainingCount() => tasks.filter(func(x) => !x.done).length
-    vbox(style={gap = 6, padding = 16}) {
-        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight = "bold"})
+    vbox(style={gap=6, padding=16}) {
+        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight="bold"})
         for &t = tasks {
             checkbox(:checked=t.done, label=t.label)
         }
-        hbox(style={gap = 6}) {
-            input(:value=next, placeholder="New task", style={flex = 1})
+        hbox(style={gap=6}) {
+            input(:value=next, placeholder="New task", style={flex=1})
             button(text="Add", @click {
-                tasks.push(Task{label = next})
+                tasks.push(Task{label=next})
                 next = ""
             })
         }
@@ -369,9 +369,9 @@ import . "sngl://std"
 component main {
     const accent color = #2196f3
     const padding measurement = 16px
-    vbox(style={gap = 8, padding = padding, background = #f5f5f5}) {
-        text(value="Accent colour", style={color = accent, fontSize = 20, fontWeight = "bold"})
-        text(value="Padded at 16px", style={color = #333333})
+    vbox(style={gap=8, padding=padding, background=#f5f5f5}) {
+        text(value="Accent colour", style={color=accent, fontSize=20, fontWeight="bold"})
+        text(value="Padded at 16px", style={color=#333333})
     }
 }
 ```
@@ -388,14 +388,14 @@ Naming is Pascal-case for user components, lower-case for stdlib primitives.
 import . "sngl://std"
 
 component Card(title = "", body = "") {
-    vbox(style={gap = 4, padding = 12, background = #ffffff, borderRadius = 6}) {
-        text(value=title, style={fontWeight = "bold", fontSize = 18})
-        text(value=body, style={color = #555555})
+    vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=6}) {
+        text(value=title, style={fontWeight="bold", fontSize=18})
+        text(value=body, style={color=#555555})
     }
 }
 
 component main {
-    vbox(style={gap = 8, padding = 16, background = #eeeeee}) {
+    vbox(style={gap=8, padding=16, background=#eeeeee}) {
         Card(title="One", body="First card")
         Card(title="Two", body="Second card")
         Card(title="Three", body="Third card")
@@ -412,15 +412,15 @@ import . "sngl://std"
 
 component Counter(label = "") {
     var count = 0
-    hbox(style={gap = 8, alignItems = "center"}) {
-        text(value="{label}: {count}", style={flex = 1})
+    hbox(style={gap=8, alignItems="center"}) {
+        text(value="{label}: {count}", style={flex=1})
         button(text="+", @click { count += 1 })
         button(text="-", @click { count -= 1 })
     }
 }
 
 component main {
-    vbox(style={gap = 6, padding = 16}) {
+    vbox(style={gap=6, padding=16}) {
         Counter(label="Apples")
         Counter(label="Oranges")
         Counter(label="Pears")
@@ -438,14 +438,14 @@ Slots let you build reusable shells — dialogs, cards, panels — without coupl
 import . "sngl://std"
 
 component Panel(title = "") list<component> {
-    vbox(style={gap = 8, padding = 12, background = #ffffff, borderRadius = 8}) {
-        text(value=title, style={fontWeight = "bold", fontSize = 18, color = #333333})
+    vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
+        text(value=title, style={fontWeight="bold", fontSize=18, color=#333333})
         slot
     }
 }
 
 component main {
-    vbox(style={gap = 10, padding = 16, background = #f0f2f5}) {
+    vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Panel(title="Profile") {
             text(value="Name: Ada")
             text(value="Role: Engineer")
@@ -470,7 +470,7 @@ import . "sngl://std"
 component main {
     var query = ""
     var results list<string>
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         input(@input(e) { query = e.value }, placeholder="Type to search")
         button(text="Add match", @click {
             if query.length > 0 {
@@ -481,7 +481,7 @@ component main {
         for r = results {
             text(value="• {r}")
         } else {
-            text(value="No results yet", style={color = #888888})
+            text(value="No results yet", style={color=#888888})
         }
     }
 }
@@ -499,21 +499,21 @@ Inside the library itself, components are just normal declarations. The example 
 import . "sngl://std"
 
 component Card(title = "") list<component> {
-    vbox(style={gap = 6, padding = 12, background = #ffffff, borderRadius = 8}) {
-        text(value=title, style={fontWeight = "bold", fontSize = 18})
+    vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
+        text(value=title, style={fontWeight="bold", fontSize=18})
         slot
     }
 }
 
 component Stat(label = "", value = 0) {
-    hbox(style={gap = 12, alignItems = "center"}) {
-        text(value=label, style={flex = 1, color = #555555})
-        text(value=string(value), style={fontWeight = "bold"})
+    hbox(style={gap=12, alignItems="center"}) {
+        text(value=label, style={flex=1, color=#555555})
+        text(value=string(value), style={fontWeight="bold"})
     }
 }
 
 component main {
-    vbox(style={gap = 10, padding = 16, background = #f0f2f5}) {
+    vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Card(title="Today") {
             Stat(label="Visitors", value=248)
             Stat(label="Signups", value=17)
@@ -541,9 +541,9 @@ import . "sngl://std"
 import "sngl://platforms/html"
 
 component main {
-    vbox(style={gap = 6, padding = 16}) {
+    vbox(style={gap=6, padding=16}) {
         text(value="Hand-rolled link:")
-        html.a(href="https://example.com", innerText="example.com", style={color = "#2196f3"})
+        html.a(href="https://example.com", innerText="example.com", style={color="#2196f3"})
     }
 }
 ```
@@ -559,9 +559,9 @@ import . "sngl://std"
 import h "sngl://platforms/html"
 
 component main {
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         text(value="Aliased raw HTML access:")
-        h.details(style={padding = "6px", background = "#f5f5f5"}) {
+        h.details(style={padding="6px", background="#f5f5f5"}) {
             h.summary(innerText="Click to expand")
             h.p(innerText="This paragraph was hidden until you clicked.")
         }
@@ -590,24 +590,24 @@ import "sngl://platforms/bubbletea"
 
 component Collapsible(title = "", body = "") {
     if PLATFORM == html.platform {
-        html.details(style={padding = "8px", background = "#e0f7fa", borderRadius = "6px"}) {
-            html.summary(innerText=title, style={cursor = "pointer", fontWeight = "bold"})
-            html.p(innerText=body, style={margin = "6px 0 0", color = "#555555"})
+        html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
+            html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
+            html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
         }
     } else if PLATFORM == bubbletea.platform {
         text(value="[" + title + "] " + body)
     } else {
-        vbox(style={gap = 4, padding = 10, background = #fff8dc, borderRadius = 6}) {
-            text(value="▸ " + title, style={fontWeight = "bold"})
-            text(value=body, style={color = #555555})
+        vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
+            text(value="▸ " + title, style={fontWeight="bold"})
+            text(value=body, style={color=#555555})
         }
     }
 }
 
 component main {
-    vbox(style={gap = 8, padding = 16}) {
-        text(value="Each row renders differently per platform.", style={color = #555555})
-        text(value="In this HTML playground: click to expand.", style={color = #555555})
+    vbox(style={gap=8, padding=16}) {
+        text(value="Each row renders differently per platform.", style={color=#555555})
+        text(value="In this HTML playground: click to expand.", style={color=#555555})
         Collapsible(title="Why gate on PLATFORM?", body="One component adapts without forking the whole tree.")
         Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; Fyne and Android use the default body.")
     }
@@ -626,16 +626,16 @@ import "sngl://platforms/html"
 
 component main {
     var volume = 60
-    vbox(style={gap = 10, padding = 16}) {
-        text(value="Native browser widgets:", style={fontWeight = "bold"})
-        html.progress(value=string(volume), max="100", style={width = "100%"})
-        hbox(style={gap = 8}) {
+    vbox(style={gap=10, padding=16}) {
+        text(value="Native browser widgets:", style={fontWeight="bold"})
+        html.progress(value=string(volume), max="100", style={width="100%"})
+        hbox(style={gap=8}) {
             button(text="-10", @click { volume = volume - 10 })
             button(text="+10", @click { volume = volume + 10 })
-            text(value="{volume}%", style={fontFamily = "monospace"})
+            text(value="{volume}%", style={fontFamily="monospace"})
         }
         html.hr
-        html.blockquote(style={borderLeft = "3px solid #2196f3", padding = "4 12", color = "#555555"}) {
+        html.blockquote(style={borderLeft="3px solid #2196f3", padding="4 12", color="#555555"}) {
             html.span(innerText="“Everything in the browser is one html.tagname away.”")
         }
     }
@@ -659,9 +659,9 @@ component main {
     timer(interval=1000ms, enabled=running, @tick {
         seconds += 1
     })
-    vbox(style={gap = 8, padding = 16, alignItems = "center"}) {
-        text(value="{seconds} s", style={fontSize = 36, fontFamily = "monospace"})
-        hbox(style={gap = 8}) {
+    vbox(style={gap=8, padding=16, alignItems="center"}) {
+        text(value="{seconds} s", style={fontSize=36, fontFamily="monospace"})
+        hbox(style={gap=8}) {
             button(text=running ? "Pause" : "Start", @click { running!! })
             button(text="Reset", @click { seconds = 0 })
         }
@@ -679,9 +679,9 @@ The example below builds a small stats dashboard from a `Stat` component. Adjust
 import . "sngl://std"
 
 component Stat(label = "", value = 0, accent color = #2196f3) {
-    vbox(style={gap = 4, padding = 12, background = #ffffff, borderRadius = 8}) {
-        text(value=label, style={color = #888888})
-        text(value=string(value), style={fontSize = 28, fontWeight = "bold", color = accent})
+    vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
+        text(value=label, style={color=#888888})
+        text(value=string(value), style={fontSize=28, fontWeight="bold", color=accent})
     }
 }
 
@@ -689,13 +689,13 @@ component main {
     var posts = 12
     var followers = 348
     var likes = 1024
-    vbox(style={gap = 8, padding = 16, background = #f0f2f5}) {
-        hbox(style={gap = 8}) {
+    vbox(style={gap=8, padding=16, background=#f0f2f5}) {
+        hbox(style={gap=8}) {
             Stat(label="Posts", value=posts, accent=#2196f3)
             Stat(label="Followers", value=followers, accent=#228B22)
             Stat(label="Likes", value=likes, accent=#CC5500)
         }
-        hbox(style={gap = 8}) {
+        hbox(style={gap=8}) {
             button(text="Post", @click { posts += 1 })
             button(text="Follow", @click { followers += 1 })
             button(text="Like", @click { likes += 1 })
@@ -716,12 +716,12 @@ import . "sngl://std"
 context #theme("light")
 
 component Card(label = "") {
-    text(value="{label}: {theme}", style={padding = 12})
+    text(value="{label}: {theme}", style={padding=12})
 }
 
 component main {
     var dark = false
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         button(text="toggle theme", @click { dark = !dark })
         theme(dark ? "dark" : "light") {
             Card(label="A")
@@ -747,7 +747,7 @@ import . "sngl://std"
 import "sngl://i18n"
 
 component Cart(count = 0, price = 0) {
-    vbox(style={gap = 4, padding = 8}) {
+    vbox(style={gap=4, padding=8}) {
         text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
         text(value="total: " + i18n.numberInt(price, "decimal"))
     }
@@ -756,12 +756,12 @@ component Cart(count = 0, price = 0) {
 component main {
     var count = 3
     var price = 1499
-    vbox(style={gap = 12, padding = 16}) {
+    vbox(style={gap=12, padding=16}) {
         Cart(count=count, price=price)
         i18n.locale("es-MX") {
             Cart(count=count, price=price)
         }
-        hbox(style={gap = 8}) {
+        hbox(style={gap=8}) {
             button(text="+ item", @click { count += 1 })
             button(text="+ cost", @click { price += 100 })
         }
@@ -783,11 +783,11 @@ component main {
     var last = ""
     var subscribed = false
     func fullName() => string.trim(first + " " + last)
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         input(:value=first, placeholder="First name")
         input(:value=last, placeholder="Last name")
         checkbox(:checked=subscribed, label="Subscribe to the newsletter")
-        text(value="Hi, {fullName}!", style={fontSize = 20})
+        text(value="Hi, {fullName}!", style={fontSize=20})
         text(value=subscribed ? "You're on the list." : "You'll stay off the list.")
     }
 }
@@ -805,9 +805,9 @@ You've seen the core of SNGL: components, reactive state, derived funcs, lists, 
 import . "sngl://std"
 
 component main {
-    vbox(style={gap = 8, padding = 24, alignItems = "center"}) {
-        text(value="Happy building!", style={fontSize = 28, fontWeight = "bold"})
-        text(value="Open the Playground, Component Gallery, or Reference docs.", style={color = #555555})
+    vbox(style={gap=8, padding=24, alignItems="center"}) {
+        text(value="Happy building!", style={fontSize=28, fontWeight="bold"})
+        text(value="Open the Playground, Component Gallery, or Reference docs.", style={color=#555555})
     }
 }
 ```

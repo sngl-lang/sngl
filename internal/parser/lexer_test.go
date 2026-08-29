@@ -54,12 +54,14 @@ func TestStringFull(t *testing.T) {
 	})
 }
 
+// An escaped brace does not open an interpolation, and the token carries the
+// escape as written — the token is a spelling, not a value.
 func TestStringEscapedBrace(t *testing.T) {
 	assertTokens(t, `"price \{100}"`, []tokExpect{
-		{STR_FULL, "price {100}"},
+		{STR_FULL, `price \{100}`},
 	})
 	assertTokens(t, `"\{}\{}"`, []tokExpect{
-		{STR_FULL, "{}{}"},
+		{STR_FULL, `\{}\{}`},
 	})
 }
 

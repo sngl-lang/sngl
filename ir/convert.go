@@ -733,14 +733,19 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 		return &ast.UnitLiteral{
 			LiteralExpr: ast.LiteralExpr{
 				Kind: ast.LiteralUnit,
-				Raw:  lit.Raw,
+				Raw:  lit.Value,
 			},
 			Suffix: lit.Suffix,
 		}
 	}
+	kind := literalKindFromType(lit.Type)
+	// The IR holds the value; a literal expression holds the spelling of one.
+	if style, isString := ast.StringStyleOf(kind); isString {
+		return &ast.LiteralExpr{Kind: kind, Raw: ast.EscapeString(lit.Value, style)}
+	}
 	return &ast.LiteralExpr{
-		Kind: literalKindFromType(lit.Type),
-		Raw:  lit.Raw,
+		Kind: kind,
+		Raw:  lit.Value,
 	}
 }
 

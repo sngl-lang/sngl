@@ -182,10 +182,10 @@ component Wrapper(
 component Label(text string, style sngl.Style) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
-            args=[Arg{raw=`""`}],
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Label"},
-            setters=[Setter{prop="text", call="SetText"}],
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
+            args = [Arg{raw=`""`}],
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Label"},
+            setters = [Setter{prop="text", call="SetText"}],
         },
         text=text,
         style={...style},
@@ -195,11 +195,11 @@ component Label(text string, style sngl.Style) {
 component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
-            args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Button"},
-            setters=[Setter{prop="text", call="SetText"}],
-            handlers=[Handler{on="click", field="OnTapped", signature="func()"}],
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
+            args = [Arg{raw=`""`}, Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Button"},
+            setters = [Setter{prop="text", call="SetText"}],
+            handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
         },
         text=text,
         style={...style},
@@ -210,13 +210,13 @@ component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
 component Entry(text string, placeholder string, style sngl.Style, @input sngl.InputEvent) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
-            setters=[
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
-            handlers=[Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
         },
         text=text,
         placeholder=placeholder,
@@ -228,14 +228,14 @@ component Entry(text string, placeholder string, style sngl.Style, @input sngl.I
 component MultiLineEntry(text string, placeholder string, rows int, style sngl.Style, @input sngl.InputEvent) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
-            setters=[
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
                 Setter{prop="number", call="SetMinRowsVisible"},
             ],
-            handlers=[Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
         },
         text=text,
         placeholder=placeholder,
@@ -248,14 +248,14 @@ component MultiLineEntry(text string, placeholder string, rows int, style sngl.S
 component Check(text string, checked bool, style sngl.Style, @change sngl.ChangeEvent) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
-            args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Check"},
-            setters=[
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
+            args = [Arg{raw=`""`}, Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Check"},
+            setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="flag", call="SetChecked"},
             ],
-            handlers=[Handler{on="change", field="OnChanged", signature="func(b bool)", param="b"}],
+            handlers = [Handler{on="change", field="OnChanged", signature="func(b bool)", param="b"}],
         },
         text=text,
         flag=checked,
@@ -270,11 +270,11 @@ component Check(text string, checked bool, style sngl.Style, @change sngl.Change
 component Select(selected string, options list<string>, style sngl.Style, @change sngl.ChangeEvent) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
-            args=[Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Select"},
-            setters=[Setter{prop="text", call="SetSelected"}],
-            handlers=[Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
+            args = [Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
+            setters = [Setter{prop="text", call="SetSelected"}],
+            handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
         },
         text=selected,
         options=options,
@@ -289,9 +289,9 @@ component Select(selected string, options list<string>, style sngl.Style, @chang
 component Hyperlink(style sngl.Style) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
-            args=[Arg{raw=`""`}, Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
+            args = [Arg{raw=`""`}, Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
         },
         style={...style},
     ) {}
@@ -302,9 +302,9 @@ component Hyperlink(style sngl.Style) {
 component Image(style sngl.Style) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
-            args=[Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
+            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
+            args = [Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
         style={...style},
     ) {}
@@ -313,8 +313,8 @@ component Image(style sngl.Style) {
 component Spacer(style sngl.Style) {
     Widget(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
-            goType=Native{path="fyne.io/fyne/v2", name="CanvasObject"},
+            new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
+            goType = Native{path="fyne.io/fyne/v2", name="CanvasObject"},
         },
         style={...style},
     ) {}
@@ -323,9 +323,9 @@ component Spacer(style sngl.Style) {
 component VBox(style sngl.Style) list<component> {
     Container(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
-            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
-            add="Add",
+            new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
+            goType = Native{path="fyne.io/fyne/v2", name="*Container"},
+            add = "Add",
         },
         style={...style},
     ) {
@@ -336,9 +336,9 @@ component VBox(style sngl.Style) list<component> {
 component HBox(style sngl.Style) list<component> {
     Container(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
-            goType=Native{path="fyne.io/fyne/v2", name="*Container"},
-            add="Add",
+            new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
+            goType = Native{path="fyne.io/fyne/v2", name="*Container"},
+            add = "Add",
         },
         style={...style},
     ) {
@@ -349,10 +349,10 @@ component HBox(style sngl.Style) list<component> {
 component VScroll(style sngl.Style) component {
     Wrapper(
         spec=Spec{
-            new=Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
-            args=[Arg{raw="nil"}],
-            goType=Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
-            content="Content",
+            new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
+            args = [Arg{raw="nil"}],
+            goType = Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
+            content = "Content",
         },
         style={...style},
     ) {

@@ -14,7 +14,7 @@ import (
 func litNode(props map[string]string) *ir.NodeInst {
 	n := &ir.NodeInst{Name: "Widget"}
 	for name, raw := range props {
-		n.Props = append(n.Props, ir.Arg{Name: name, Value: &ir.Literal{Raw: raw}})
+		n.Props = append(n.Props, ir.Arg{Name: name, Value: &ir.Literal{Value: raw}})
 	}
 	return n
 }

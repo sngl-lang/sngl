@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Start with `testdata/`.** Every language feature in SNGL has at least one fixture in `testdata/*.sngl` that exercises it. Reading those fixtures is the fastest way to understand what a change is meant to do and to spot gaps. When proposing a feature, write the fixture first and let the test framework drive the implementation. Fixtures use directives like `// ERROR(check) "msg"` and `// FOLD(...)` to assert behavior at specific compiler phases — see `internal/testutil/sample.go` for the framework.
 
+Every fixture is written the way `sngl fmt` writes it, and
+`TestTestdataIsFormatted` says so, so add one with `sngl fmt` rather than by
+hand. A fixture whose exact layout is the thing under test opts out with
+`// NOFMT "reason"`; the directive exempts it from that test only, so do not
+run `sngl fmt` over the tree while one is in it. An `// ERROR(...)` directive
+names the line it sits on, which is why the formatter keeps a comment on the
+line it was written on.
+
 ## Function syntax
 
 Two valid forms — no third:
@@ -85,6 +93,14 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 ### Key Internal Packages
 
 - **`ir/`** — typed IR produced by the checker. `ir.Package`, `ir.Component`, `ir.NodeInst`, `ir.Expr`, `ir.Stmt`. Phases after the checker work from IR rather than re-reading the source, but IR is not AST-free: an operator is still an `ast.BinaryOp`/`ast.AssignOp`, and `ir.NodeInst` and `ir.VarDecl` keep the `ast.Stmt` they came from for positions and diagnostics. That is why `internal/lower`, `internal/optimize` and every platform import `ast`.
+
+  The AST and the IR divide a literal between them: `ast.LiteralExpr.Raw` is
+  the source spelling — a backslash and an `n` — and
+  `ir.Literal.Value` is what it stands for (a newline). The formatter reprints
+  the spelling verbatim, so the checker decodes on the way in
+  (`ast.LiteralExpr.StringValue`) and `ir.Convert` re-spells on the way out
+  (`ast.EscapeString`). Decoding in the lexer instead is what let `sngl fmt`
+  rewrite `"a\nb"` with a raw newline in it.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions)
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness

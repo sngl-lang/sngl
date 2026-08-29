@@ -18,8 +18,8 @@ component table(rows list<Row>, slot cell(Row)) {
         // An insertion passes values positionally: the declaration carries
         // types and no names, so there is nothing for a named argument to
         // bind to.
-        cell(value = r) // ERROR(check) "takes positional arguments"
-        cell()          // ERROR(check) "takes 1 argument(s), got 0"
+        cell(value=r) // ERROR(check) "takes positional arguments"
+        cell()        // ERROR(check) "takes 1 argument(s), got 0"
     }
 }
 
@@ -31,7 +31,7 @@ component collidesWithFunc(slot ping) list<component> { // ERROR(check) "already
     func ping() {}
     vbox {
         ping {
-            text(value = "fb")
+            text(value="fb")
         }
     }
 }
@@ -39,28 +39,28 @@ component collidesWithFunc(slot ping) list<component> { // ERROR(check) "already
 component main {
     // A declaration written outside the parameter list.
     slot stray { // ERROR(check) "populated only inside a call to it"
-        text(value = "x")
+        text(value="x")
     }
 
-    table(rows = []) {
+    table(rows=[]) {
         slot cell(row) {
-            text(value = row.title)
+            text(value=row.title)
         }
         // Two populations of one slot: the second has nowhere to go.
         slot cell(row) { // ERROR(check) "is already populated"
-            text(value = row.title)
+            text(value=row.title)
         }
         // A name the callee does not declare.
         slot nope { // ERROR(check) "has no slot"
-            text(value = "x")
+            text(value="x")
         }
     }
 
-    table(rows = []) {
+    table(rows=[]) {
         // A population binds names to the insertion's arguments, so the
         // count has to match what the slot declares.
         slot cell(row, extra) { // ERROR(check) "binds 2 parameter(s), but declares 1"
-            text(value = row.title)
+            text(value=row.title)
         }
     }
 }

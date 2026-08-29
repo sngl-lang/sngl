@@ -5,7 +5,7 @@ import . "sngl://std"
 
 component iterLoop {
     var nums list<int> = [1, 2, 3, 4, 5]
-    var scores map<string, int> = {alice = 10, bob = 20}
+    var scores map<string, int> = {alice=10, bob=20}
     text(value="{nums.length()}")
 }
 

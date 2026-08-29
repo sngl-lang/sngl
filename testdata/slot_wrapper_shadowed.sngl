@@ -20,8 +20,8 @@ component frame(slot badge option<component>) {
 component main {
     frame() {
         slot badge {
-            text(value = "a")
-            text(value = "b")
+            text(value="a")
+            text(value="b")
         }
     }
 }

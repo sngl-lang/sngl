@@ -9,7 +9,7 @@ import . "sngl://std"
 
 component card(caption string, slot _) {
     vbox {
-        text(value = caption)
+        text(value=caption)
         slot
     }
 }
@@ -17,20 +17,20 @@ component card(caption string, slot _) {
 component panel(slot _, slot header) {
     vbox {
         header {
-            text(value = "(untitled)")
+            text(value="(untitled)")
         }
         slot
     }
 }
 
 component main {
-    card(caption = "hi") {
-        text(value = "child")
+    card(caption="hi") {
+        text(value="child")
     }
     panel() {
         slot header {
-            text(value = "Head")
+            text(value="Head")
         }
-        text(value = "body")
+        text(value="body")
     }
 }

@@ -28,8 +28,8 @@ func TestIRFromValue_Primitives(t *testing.T) {
 			if !ok {
 				t.Fatalf("got %T, want *ir.Literal", got)
 			}
-			if lit.Raw != tt.want {
-				t.Errorf("Raw = %q, want %q", lit.Raw, tt.want)
+			if lit.Value != tt.want {
+				t.Errorf("Raw = %q, want %q", lit.Value, tt.want)
 			}
 		})
 	}
@@ -65,7 +65,7 @@ func TestIRFromValue_Struct(t *testing.T) {
 	if len(names) != 4 || names[0] != "r" || names[1] != "g" || names[2] != "b" || names[3] != "a" {
 		t.Errorf("fields = %v, want them in the order they were set", names)
 	}
-	if lit, ok := sl.Fields[0].Value.(*ir.Literal); !ok || lit.Raw != "255" {
+	if lit, ok := sl.Fields[0].Value.(*ir.Literal); !ok || lit.Value != "255" {
 		t.Errorf("r = %v", sl.Fields[0].Value)
 	}
 }
@@ -82,7 +82,7 @@ func TestIRFromValue_Map(t *testing.T) {
 	if len(ml.Entries) != 2 {
 		t.Fatalf("Entries count = %d, want 2", len(ml.Entries))
 	}
-	if k, ok := ml.Entries[0].Key.(*ir.Literal); !ok || k.Raw != "a" {
+	if k, ok := ml.Entries[0].Key.(*ir.Literal); !ok || k.Value != "a" {
 		t.Errorf("first key = %v, want the smallest — a map has no order of its own", ml.Entries[0].Key)
 	}
 }
@@ -102,7 +102,7 @@ func TestIRFromValue_Slice(t *testing.T) {
 func TestIRFromValue_Nil(t *testing.T) {
 	got := irFromValue(nil, nil)
 	lit, ok := got.(*ir.Literal)
-	if !ok || lit.Raw != "null" {
+	if !ok || lit.Value != "null" {
 		t.Errorf("got %v, want null Literal", got)
 	}
 }
@@ -308,7 +308,7 @@ func textValuesInMain(t *testing.T, pkg *ir.Package) []string {
 			if !ok {
 				t.Fatalf("text.value not folded to *ir.Literal, got %T", p.Value)
 			}
-			vals = append(vals, lit.Raw)
+			vals = append(vals, lit.Value)
 		}
 	}
 	return vals

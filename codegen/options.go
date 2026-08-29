@@ -76,7 +76,7 @@ func OptionBool(opts *ir.StructLit, name string) bool {
 		return false
 	}
 	lit, _ := v.(*ir.Literal)
-	return lit != nil && lit.Raw == "true"
+	return lit != nil && lit.Value == "true"
 }
 
 // OptionString reads a string-valued option from opts, returning "" if absent
@@ -92,7 +92,7 @@ func OptionString(opts *ir.StructLit, name string) string {
 	if lit == nil {
 		return ""
 	}
-	raw := lit.Raw
+	raw := lit.Value
 	if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
 		raw = raw[1 : len(raw)-1]
 	}
@@ -182,7 +182,7 @@ func assignValue(dst reflect.Value, e ir.Expr) error {
 }
 
 func assignLiteral(dst reflect.Value, lit *ir.Literal) error {
-	raw := lit.Raw
+	raw := lit.Value
 	if dst.Kind() == reflect.Pointer {
 		if dst.IsNil() {
 			dst.Set(reflect.New(dst.Type().Elem()))
@@ -260,17 +260,17 @@ func literalFromGo(v any) ir.Expr {
 	case ir.Expr:
 		return x
 	case string:
-		return &ir.Literal{Type: ir.TypString, Raw: x}
+		return &ir.Literal{Type: ir.TypString, Value: x}
 	case bool:
-		return &ir.Literal{Type: ir.TypBool, Raw: strconv.FormatBool(x)}
+		return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(x)}
 	case int:
-		return &ir.Literal{Type: ir.TypInt, Raw: strconv.Itoa(x)}
+		return &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(x)}
 	case int64:
-		return &ir.Literal{Type: ir.TypInt, Raw: strconv.FormatInt(x, 10)}
+		return &ir.Literal{Type: ir.TypInt, Value: strconv.FormatInt(x, 10)}
 	case float64:
-		return &ir.Literal{Type: ir.TypFloat, Raw: strconv.FormatFloat(x, 'g', -1, 64)}
+		return &ir.Literal{Type: ir.TypFloat, Value: strconv.FormatFloat(x, 'g', -1, 64)}
 	}
-	return &ir.Literal{Type: ir.TypString, Raw: fmt.Sprintf("%v", v)}
+	return &ir.Literal{Type: ir.TypString, Value: fmt.Sprintf("%v", v)}
 }
 
 // unquoteString strips the surrounding delimiters from a raw literal source

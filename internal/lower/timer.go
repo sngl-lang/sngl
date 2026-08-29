@@ -145,7 +145,7 @@ func (st *timerState) processOwner(funcs *[]*ir.Func, timers *[]*ir.Timer, body 
 // interval literals are plain int Literals.
 func extractIntervalMs(e ir.Expr) int {
 	if lit, ok := e.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeInt {
-		if n, err := strconv.Atoi(lit.Raw); err == nil {
+		if n, err := strconv.Atoi(lit.Value); err == nil {
 			return n
 		}
 	}
@@ -253,7 +253,7 @@ func (st *timerState) gatedUpdatersFor(s ir.Stmt) []ir.Stmt {
 
 func intLiteralLit(n int) *ir.Literal {
 	return &ir.Literal{
-		Type: ir.TypInt,
-		Raw:  strconv.Itoa(n),
+		Type:  ir.TypInt,
+		Value: strconv.Itoa(n),
 	}
 }

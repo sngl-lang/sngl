@@ -183,7 +183,7 @@ func TestBatchEvaluation(t *testing.T) {
 // litRaw is the raw text of a literal expression, or "" for anything else.
 func litRaw(e ir.Expr) string {
 	if lit, ok := e.(*ir.Literal); ok {
-		return lit.Raw
+		return lit.Value
 	}
 	return ""
 }
@@ -291,7 +291,7 @@ func TestNestedCallTakesASecondRound(t *testing.T) {
 			},
 		}
 	}
-	inner := mkConst("inner", &ir.Literal{Type: ir.TypInt, Raw: "13"})
+	inner := mkConst("inner", &ir.Literal{Type: ir.TypInt, Value: "13"})
 	outer := mkConst("outer", &ir.Ident{Name: "inner", Sym: inner, Type: ir.TypInt})
 	pkg := &ir.Package{
 		Consts: []*ir.Var{inner, outer},
@@ -312,8 +312,8 @@ func TestNestedCallTakesASecondRound(t *testing.T) {
 	if !ok {
 		t.Fatalf("nested const did not fold: %T", outer.Init)
 	}
-	if lit.Raw != "52" {
-		t.Errorf("Double(Double(13)) folded to %q, want 52", lit.Raw)
+	if lit.Value != "52" {
+		t.Errorf("Double(Double(13)) folded to %q, want 52", lit.Value)
 	}
 }
 
@@ -460,7 +460,7 @@ func TestUnresolvedNativeCallGate(t *testing.T) {
 				Field:   "Double",
 			}},
 			Type: ir.TypInt,
-			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypInt, Raw: "21"}}},
+			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypInt, Value: "21"}}},
 		},
 	}
 	pkg := &ir.Package{
@@ -757,7 +757,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 			body = []ir.Stmt{&ir.NodeInst{
 				Name:      "wrapped",
 				Component: comp,
-				Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Raw: "x"}}},
+				Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Value: "x"}}},
 			}}
 		} else {
 			// main { for name = ["x"] { text(value = purepkg.BoomWith(name)) } }
@@ -768,7 +768,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 				KeySym:   loop,
 				Iter: &ir.ListLit{
 					Type:  &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}},
-					Elems: []ir.Expr{&ir.Literal{Type: ir.TypString, Raw: "x"}},
+					Elems: []ir.Expr{&ir.Literal{Type: ir.TypString, Value: "x"}},
 				},
 				Body: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
 					Name:  "value",

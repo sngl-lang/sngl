@@ -29,23 +29,23 @@ component strip(slot _ component) {
 component main {
     frame() {
         slot body {
-            text(value = "one")
+            text(value="one")
         }
     }
     frame() {
         slot body {
-            text(value = "one")
+            text(value="one")
         }
         slot badge {
-            text(value = "b")
+            text(value="b")
         }
         slot rows {
-            text(value = "a")
-            text(value = "b")
+            text(value="a")
+            text(value="b")
         }
     }
     strip() {
-        text(value = "a")
-        text(value = "b")
+        text(value="a")
+        text(value="b")
     }
 }

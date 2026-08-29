@@ -40,13 +40,13 @@ func TestValidateAcceptsSynthesizedIdentWithSym(t *testing.T) {
 		Block: []ir.Stmt{
 			&ir.Assign{
 				Target: &ir.Ident{Name: "__slot0", Sym: slot, Synthesized: true},
-				Value:  &ir.Literal{Raw: "1"},
+				Value:  &ir.Literal{Value: "1"},
 			},
 			// Element refs name a node in the emitted tree, not a
 			// declaration, so they carry no symbol.
 			&ir.Assign{
 				Target: &ir.Ident{Name: "__n0", IsElementRef: true, Synthesized: true},
-				Value:  &ir.Literal{Raw: "1"},
+				Value:  &ir.Literal{Value: "1"},
 			},
 		},
 	}
@@ -62,7 +62,7 @@ func TestValidateCatchesSynthesizedIdentWithoutSym(t *testing.T) {
 		Block: []ir.Stmt{
 			&ir.Assign{
 				Target: &ir.Ident{Name: "__slot0", Synthesized: true},
-				Value:  &ir.Literal{Raw: "1"},
+				Value:  &ir.Literal{Value: "1"},
 			},
 		},
 	}

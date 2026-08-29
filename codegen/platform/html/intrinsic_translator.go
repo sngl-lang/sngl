@@ -72,7 +72,7 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Type:     ir.TypDyn,
 		Receiver: &ir.Ident{Name: "document"},
 		Func:     &ir.Func{Name: "createElement"},
-		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: tag}}},
+		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 	}
 	return []ir.Stmt{&ir.LocalVar{
 		Name: id,
@@ -126,7 +126,7 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Receiver: node,
 		Func:     &ir.Func{Name: "addEventListener"},
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Type: ir.TypString, Raw: domEvent}},
+			{Value: &ir.Literal{Type: ir.TypString, Value: domEvent}},
 			{Value: handler},
 		},
 	}}}
@@ -157,7 +157,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			Receiver: node,
 			Func:     &ir.Func{Name: "setAttribute"},
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Raw: name}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: name}},
 				{Value: v},
 			},
 		}}}
@@ -170,7 +170,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			if css == "" {
 				return nil
 			}
-			return setAttr(prop, &ir.Literal{Type: ir.TypString, Raw: css})
+			return setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 		}
 	}
 	// A wildcard prop is a map of the names it collected, not a name of its
@@ -189,7 +189,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			if !ok {
 				continue
 			}
-			out = append(out, t.OnPropAssign(ctx, node, k.Raw, e.Value)...)
+			out = append(out, t.OnPropAssign(ctx, node, k.Value, e.Value)...)
 		}
 		return out
 	}
@@ -229,7 +229,7 @@ func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, 
 				Type:     ir.TypDyn,
 				Receiver: node,
 				Func:     &ir.Func{Name: "querySelector"},
-				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "input"}}},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "input"}}},
 			}
 			return []ir.Stmt{&ir.Assign{
 				Target: &ir.Select{Operand: inner, Field: "checked", Type: ir.TypDyn},
@@ -244,8 +244,8 @@ func domWriteForIR(componentName, prop string, node, value ir.Expr) ([]ir.Stmt, 
 			displaySel := &ir.Select{Operand: styleSel, Field: "display", Type: ir.TypDyn}
 			tern := &ir.Ternary{
 				Cond: value,
-				Then: &ir.Literal{Type: ir.TypString, Raw: ""},
-				Else: &ir.Literal{Type: ir.TypString, Raw: "none"},
+				Then: &ir.Literal{Type: ir.TypString, Value: ""},
+				Else: &ir.Literal{Type: ir.TypString, Value: "none"},
 			}
 			return []ir.Stmt{&ir.Assign{
 				Target: displaySel,

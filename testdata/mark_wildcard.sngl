@@ -10,8 +10,8 @@ component attrs(
     label string = "",
     #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,
 ) {
-    text(value = label)
-    text(value = "{data.length()}")
+    text(value=label)
+    text(value="{data.length()}")
 }
 
 // #[wildcard] on an event declaration says which event names nobody declared
@@ -22,7 +22,7 @@ component surface(
     @click ClickEvent,
     #[wildcard("on[A-Z][A-Za-z]*")] @event,
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 // #[wildcard] on a component says which node names nobody declared still
@@ -31,7 +31,7 @@ component surface(
 // are looked for.
 #[wildcard("box[A-Za-z0-9]*", "which")]
 component anyBox(which string = "") {
-    text(value = which)
+    text(value=which)
 }
 
 struct rowAttrs {
@@ -40,7 +40,7 @@ struct rowAttrs {
 
 component main() {
     window {
-        attrs(label = "hi", dataRole = "row", dataIndex7 = "3")
+        attrs(label="hi", dataRole="row", dataIndex7="3")
         // A name the wildcard covers reaches the component it belongs to, and
         // arrives in the prop `into` named.
         boxRed()
@@ -50,9 +50,9 @@ component main() {
         // dropped.
         attrs(...rowAttrs{})
         // A declared event and two the wildcard covers, on one node.
-        surface(@click { }, @onHover { }, @onDragEnd { })
+        surface(@click {}, @onHover {}, @onDragEnd {})
         // The declared name still binds: a wildcard adds names, it does not
         // take its own away.
-        attrs(data = {dataRole = "plain"})
+        attrs(data={dataRole="plain"})
     }
 }

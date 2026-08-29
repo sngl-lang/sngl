@@ -87,7 +87,7 @@ component sngl.scroll[gtk4.platform] {
 component sngl.progress[gtk4.platform] {
     // GTK's fraction is 0..1, so the value is measured against max here
     // rather than passed through as if it already were one.
-    gtk4.GtkProgressBar(fraction=value/max, text=label, showText=showValue, style={...style}) {}
+    gtk4.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
 }
 
 component sngl.spinner[gtk4.platform] {

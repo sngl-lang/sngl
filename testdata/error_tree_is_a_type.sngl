@@ -19,15 +19,15 @@ component main {
     var bad block = 0 // ERROR(check) "names a tree, which has no values"
 
     document() {
-        bold(weight = 700) // ERROR(check) "expected block component in document, got bold"
+        bold(weight=700) // ERROR(check) "expected block component in document, got bold"
     }
 
     document() {
         para() {
             // A member with no slot hosts nothing: the old "a shape contains
             // shapes without saying so" rule is gone.
-            bold(weight = 1) { // ERROR(check) "does not accept children"
-                bold(weight = 2)
+            bold(weight=1) { // ERROR(check) "does not accept children"
+                bold(weight=2)
             }
         }
     }

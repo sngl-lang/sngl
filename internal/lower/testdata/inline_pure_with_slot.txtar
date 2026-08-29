@@ -16,12 +16,12 @@ component main {
 -- expected.sngl --
 import . "sngl://std"
 component card list<component> {
-    vbox(style=Style{padding = 16}) {
+    vbox(style=Style{padding=16}) {
         slot
     }
 }
 component main {
-    vbox(style=Style{padding = 16}) {
+    vbox(style=Style{padding=16}) {
         text(value="hello")
     }
 }

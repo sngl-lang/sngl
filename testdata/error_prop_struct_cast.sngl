@@ -15,8 +15,8 @@ component main {
     // Not only structs. A prop is checked like anything else now: an enum
     // prop takes a member, not the string that spells one. This used to be
     // accepted and the html backend dropped the attribute on the floor.
-    image(src="a.png", alt="x", fit="cover")       // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
-    image(src="a.png", alt="x", fit="notamember")  // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
+    image(src="a.png", alt="x", fit="cover")      // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
+    image(src="a.png", alt="x", fit="notamember") // ERROR(check) "cannot use string as ObjectFit for prop \"fit\" on component image"
 
     // The member itself is fine.
     image(src="a.png", alt="x", fit=ObjectFit.cover)

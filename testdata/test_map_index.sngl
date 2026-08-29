@@ -3,7 +3,7 @@
 import . "sngl://std"
 
 component mapIndex {
-    var scores map<string, int> = {alice = 10, bob = 20}
+    var scores map<string, int> = {alice=10, bob=20}
     var aliceScore = scores["alice"]
     text(value="{aliceScore}")
 }

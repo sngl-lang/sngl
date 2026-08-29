@@ -226,7 +226,7 @@ func nodeIntProp(n *ir.NodeInst, name string) int {
 			continue
 		}
 		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := strings.TrimSuffix(lit.Raw, lit.Suffix)
+			raw := strings.TrimSuffix(lit.Value, lit.Suffix)
 			if v, err := strconv.Atoi(raw); err == nil {
 				return v
 			}
@@ -274,7 +274,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			Receiver: lowerNSIdent(),
 			Func:     st.intrinsics["CreateNode"],
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Raw: n.Name}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
 			},
 		},
 	}
@@ -341,7 +341,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 				Func:     st.intrinsics["AttachHandler"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-					{Value: &ir.Literal{Type: ir.TypString, Raw: h.Name}},
+					{Value: &ir.Literal{Type: ir.TypString, Value: h.Name}},
 					{Value: handlerArg},
 				},
 			},

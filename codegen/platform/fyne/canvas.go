@@ -164,8 +164,8 @@ func newCanvasContextCall(w, h int) *ir.Call {
 		Receiver: &ir.Ident{Name: snglCanvasAlias},
 		Func:     &ir.Func{Foreign: ir.Foreign{Path: snglCanvasImportPath, Name: snglCanvasAlias + ".New"}},
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(w)}},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(h)}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}},
 		},
 	}
 }

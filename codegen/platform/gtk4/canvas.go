@@ -101,8 +101,8 @@ func dbl(e ir.Expr) ir.Expr { return nativeCall("double", e) }
 // Spelled out so no "math" import is needed in the cgo file.
 const twoPiLit = "6.283185307179586"
 
-func twoPi() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Raw: twoPiLit} }
-func zeroF() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Raw: "0"} }
+func twoPi() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: twoPiLit} }
+func zeroF() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: "0"} }
 
 // goHelperCall builds `<helper>(args...)` as a plain Go function call (not a
 // cgo C call) — used for the _snglCairo* runtime helpers emitted in model.go.
@@ -193,9 +193,9 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 		rxN, rxV := mk("rx", arg(2))
 		ryN, ryV := mk("ry", arg(3))
 		oxN, oxV := mk("ox", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
-			Left: &ir.Ident{Name: rxN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Raw: kappa}})
+			Left: &ir.Ident{Name: rxN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Value: kappa}})
 		oyN, oyV := mk("oy", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
-			Left: &ir.Ident{Name: ryN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Raw: kappa}})
+			Left: &ir.Ident{Name: ryN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Value: kappa}})
 		f := func(name string) ir.Expr { return &ir.Ident{Name: name, Type: ir.TypFloat} }
 		add := func(a, b string) ir.Expr {
 			return &ir.Binary{Op: ast.BinAdd, Type: ir.TypFloat, Left: f(a), Right: f(b)}
@@ -253,7 +253,7 @@ func (t *gtk4Translator) translatePath(cr, cmds ir.Expr) []ir.Stmt {
 	}
 	cmdIf := func(op string, then ir.Stmt) *ir.If {
 		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Raw: op}},
+			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Value: op}},
 			Body: []ir.Stmt{then},
 		}
 	}
@@ -312,8 +312,8 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	ctor := cgoCast("GtkDrawingArea", nativeCall("gtk_drawing_area_new"))
 	stmts := []ir.Stmt{
 		&ir.Assign{Target: daField, Op: ast.AssignSet, Value: ctor},
-		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_width", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(w)}))},
-		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_height", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Raw: fmt.Sprint(h)}))},
+		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_width", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}))},
+		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_height", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}))},
 	}
 
 	// Register the draw callback through the trampoline registry:
@@ -336,7 +336,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 		Func: &ir.Func{Name: "len"},
 		Args: []ir.CallArg{{Value: cbList}},
 	}
-	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Raw: "1"}})
+	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
 	widgetPtr := cgoCast("", daField) // unsafe.Pointer(m.<id>)
 	stmts = append(stmts, &ir.CallStmt{Call: nativeCall("sngl_drawing_area_set_draw", widgetPtr, idx)})
 

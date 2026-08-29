@@ -79,7 +79,7 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 	// i18n.GetTranslator().Plural("i18n", count) which was the pre-fix output.
 	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
-	countLit := &ir.Literal{Raw: "3", Type: ir.TypInt}
+	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{
 		Func:     fn,
@@ -105,7 +105,7 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// path must emit i18n.Exactly(0) — NOT i18n.Exactly("i18n").
 	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
-	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
+	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
 		Func:     fn,
 		Receiver: receiverExpr,

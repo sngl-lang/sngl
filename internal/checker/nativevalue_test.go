@@ -17,11 +17,11 @@ func enumType(members ...*ir.EnumMember) *ir.Type {
 }
 
 func numMember(name, raw string) *ir.EnumMember {
-	return &ir.EnumMember{Name: name, Value: &ir.Literal{Type: ir.TypFloat, Raw: raw}}
+	return &ir.EnumMember{Name: name, Value: &ir.Literal{Type: ir.TypFloat, Value: raw}}
 }
 
 func strMember(name, raw string) *ir.EnumMember {
-	return &ir.EnumMember{Name: name, Value: &ir.Literal{Type: ir.TypString, Raw: raw}}
+	return &ir.EnumMember{Name: name, Value: &ir.Literal{Type: ir.TypString, Value: raw}}
 }
 
 func num(raw string) ast.Expr {

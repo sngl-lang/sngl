@@ -7,6 +7,6 @@ import . "sngl://std"
 
 component collides(header string, slot header) { // ERROR(check) "name is already declared as a prop"
     vbox {
-        text(value = header)
+        text(value=header)
     }
 }

@@ -179,16 +179,16 @@ component main {
 				if p.Name == "value" {
 					// Should be folded to literal "42" (string, raw chars `42`).
 					if lit, ok := p.Value.(*ir.Literal); ok {
-						if lit.Raw == "42" {
+						if lit.Value == "42" {
 							return // success
 						}
-						t.Errorf("expected literal 42, got %s", lit.Raw)
+						t.Errorf("expected literal 42, got %s", lit.Value)
 						return
 					}
 					// Might be a Conversion wrapping a literal.
 					if conv, ok := p.Value.(*ir.Conversion); ok {
 						if lit, ok := conv.Operand.(*ir.Literal); ok {
-							if lit.Raw == "42" {
+							if lit.Value == "42" {
 								return // success — string(42) not fully folded, but inline worked
 							}
 						}
@@ -375,7 +375,7 @@ component main {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
 					if lit, ok := p.Value.(*ir.Literal); ok {
-						values = append(values, lit.Raw)
+						values = append(values, lit.Value)
 					}
 				}
 			}
@@ -572,7 +572,7 @@ component List() {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
 					if lit, ok := p.Value.(*ir.Literal); ok {
-						values = append(values, lit.Raw)
+						values = append(values, lit.Value)
 					}
 				}
 			}
@@ -689,23 +689,23 @@ func collectVarsByLine(pkg *ir.Package) map[int]*ir.Var {
 
 func litValue(lit *ir.Literal) any {
 	if lit == nil || lit.Type == nil {
-		return lit.Raw
+		return lit.Value
 	}
 	switch lit.Type.Kind {
 	case ir.TypeInt:
 		var i int
-		_, _ = fmt.Sscanf(lit.Raw, "%d", &i)
+		_, _ = fmt.Sscanf(lit.Value, "%d", &i)
 		return i
 	case ir.TypeFloat:
 		var f float64
-		_, _ = fmt.Sscanf(lit.Raw, "%g", &f)
+		_, _ = fmt.Sscanf(lit.Value, "%g", &f)
 		return f
 	case ir.TypeBool:
-		return lit.Raw == "true"
+		return lit.Value == "true"
 	case ir.TypeString:
-		return lit.Raw
+		return lit.Value
 	}
-	return lit.Raw
+	return lit.Value
 }
 
 func irExprDescr(e ir.Expr) string {

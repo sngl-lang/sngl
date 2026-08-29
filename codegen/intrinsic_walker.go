@@ -128,7 +128,7 @@ func isLowerIntrinsic(call *ir.Call, name string) bool {
 
 func extractStringLit(e ir.Expr) (string, bool) {
 	if l, ok := e.(*ir.Literal); ok && l.Type == ir.TypString {
-		return l.Raw, true
+		return l.Value, true
 	}
 	return "", false
 }

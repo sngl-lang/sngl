@@ -487,29 +487,29 @@ func parseLiteral(lit *ir.Literal) any {
 	}
 	switch lit.Type.Kind {
 	case ir.TypeBool:
-		return lit.Raw == "true"
+		return lit.Value == "true"
 	case ir.TypeNull:
 		return nil
 	case ir.TypeInt:
-		n, err := strconv.Atoi(lit.Raw)
+		n, err := strconv.Atoi(lit.Value)
 		if err != nil {
 			return nil
 		}
 		return n
 	case ir.TypeFloat:
-		f, err := strconv.ParseFloat(lit.Raw, 64)
+		f, err := strconv.ParseFloat(lit.Value, 64)
 		if err != nil {
 			return 0.0
 		}
 		return f
 	case ir.TypeString:
-		return lit.Raw
+		return lit.Value
 	case ir.TypeStruct:
 		// A target identity is opaque to the program but is a name to the
 		// compiler, so `PLATFORM == html.platform` folds the way the string
 		// comparison it replaced did.
 		if ir.TargetIDStruct(lit.Type) {
-			return lit.Raw
+			return lit.Value
 		}
 	}
 	return nil
@@ -520,21 +520,21 @@ func parseLiteral(lit *ir.Literal) any {
 func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	switch v := val.(type) {
 	case string:
-		return &ir.Literal{Type: ir.TypString, Raw: v}
+		return &ir.Literal{Type: ir.TypString, Value: v}
 	case int:
-		return &ir.Literal{Type: intLitType(typ), Raw: intToStr(v)}
+		return &ir.Literal{Type: intLitType(typ), Value: intToStr(v)}
 	case uint64:
-		return &ir.Literal{Type: intLitType(typ), Raw: strconv.FormatUint(v, 10)}
+		return &ir.Literal{Type: intLitType(typ), Value: strconv.FormatUint(v, 10)}
 	case float64:
-		return &ir.Literal{Type: floatLitType(typ), Raw: floatToStr(v)}
+		return &ir.Literal{Type: floatLitType(typ), Value: floatToStr(v)}
 	case bool:
 		raw := "false"
 		if v {
 			raw = "true"
 		}
-		return &ir.Literal{Type: ir.TypBool, Raw: raw}
+		return &ir.Literal{Type: ir.TypBool, Value: raw}
 	case nil:
-		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
+		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	}
 	return nil
 }

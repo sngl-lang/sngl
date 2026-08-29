@@ -13,7 +13,7 @@ func Format(doc *ast.Document) string {
 	var buf strings.Builder
 	f := newFormatter(&buf)
 	f.formatDocument(doc)
-	return buf.String()
+	return alignTrailingComments(buf.String(), f.trailing)
 }
 
 // FormatTo writes the formatted document to w.
@@ -21,7 +21,7 @@ func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	var buf strings.Builder
 	f := newFormatter(&buf)
 	f.formatDocument(doc)
-	return io.WriteString(w, buf.String())
+	return io.WriteString(w, alignTrailingComments(buf.String(), f.trailing))
 }
 
 // FormatExpr formats a single expression.
@@ -52,6 +52,18 @@ type formatter struct {
 	indent       int
 	atLineStart  bool
 	pendingBlank bool
+	// doc is the document being formatted, read for the blank lines its
+	// source had. Nil when a fragment is formatted on its own.
+	doc *ast.Document
+	// attrTrailer is a comment written after a declaration's mark, held while
+	// the declaration is formatted so writeAttrs can put it back on that line.
+	attrTrailer *ast.Comment
+	// line counts the newlines written so far, and lineStart is where the
+	// current line begins in buf. Together they place a trailing comment for
+	// the alignment pass, which runs once every width is known.
+	line      int
+	lineStart int
+	trailing  []trailingMark
 }
 
 func newFormatter(buf *strings.Builder) *formatter {
@@ -83,6 +95,8 @@ func (f *formatter) newline() {
 	f.buf.WriteByte('\n')
 	f.atLineStart = true
 	f.pendingBlank = false
+	f.line++
+	f.lineStart = f.buf.Len()
 }
 
 func (f *formatter) blankLine() {
@@ -91,6 +105,61 @@ func (f *formatter) blankLine() {
 	}
 	f.buf.WriteByte('\n')
 	f.pendingBlank = true
+	f.line++
+	f.lineStart = f.buf.Len()
+}
+
+// trailingMark records where a comment was written after code on its line.
+type trailingMark struct {
+	line int // 0-based line index in the output
+	col  int // bytes of code before the comment
+}
+
+// writeTrailing writes a comment after the code on the current line, and notes
+// where it landed so the alignment pass can line it up with its neighbours.
+func (f *formatter) writeTrailing(c *ast.Comment) {
+	if c == nil {
+		return
+	}
+	f.trailing = append(f.trailing, trailingMark{line: f.line, col: f.buf.Len() - f.lineStart})
+	f.write(" ")
+	f.writeComment(c)
+}
+
+// alignTrailingComments lines up the comments on a run of consecutive lines,
+// the way they are written by hand: one space past the longest line in the
+// run. A run of one gets a single space, having nothing to line up with.
+func alignTrailingComments(out string, marks []trailingMark) string {
+	if len(marks) == 0 {
+		return out
+	}
+	lines := strings.Split(out, "\n")
+	pad := make(map[int]int, len(marks))
+	for i := 0; i < len(marks); {
+		j := i + 1
+		for j < len(marks) && marks[j].line == marks[j-1].line+1 {
+			j++
+		}
+		width := 0
+		for _, m := range marks[i:j] {
+			if m.col > width {
+				width = m.col
+			}
+		}
+		for _, m := range marks[i:j] {
+			pad[m.line] = width - m.col
+		}
+		i = j
+	}
+	for _, m := range marks {
+		n := pad[m.line]
+		if n <= 0 || m.line >= len(lines) || m.col > len(lines[m.line]) {
+			continue
+		}
+		line := lines[m.line]
+		lines[m.line] = line[:m.col] + strings.Repeat(" ", n) + line[m.col:]
+	}
+	return strings.Join(lines, "\n")
 }
 
 // --- operator string tables ---
@@ -130,72 +199,70 @@ var assignOpStr = [...]string{
 // --- document ---
 
 func (f *formatter) formatDocument(doc *ast.Document) {
+	f.doc = doc
+	f.formatStmtSeq(doc.Stmts)
+}
+
+// formatStmtSeq writes a run of statements one per line, keeping a single
+// blank line wherever the source left one or more. Two statements the source
+// wrote apart stay apart, in a block as at the top level. A comment that
+// trailed a statement is written back on that statement's line.
+func (f *formatter) formatStmtSeq(stmts []ast.Stmt) {
 	prevLine := 0
-	for i, s := range doc.Stmts {
+	for i := 0; i < len(stmts); i++ {
+		s := stmts[i]
 		pos := s.StmtPos()
 
-		if i > 0 && prevLine > 0 {
-			if pos != nil && pos.Line > prevLine+1 {
-				f.blankLine()
+		// Two statements the source wrote on one line are not separated by
+		// the blank line above that line — only the first of them is.
+		if i > 0 && pos != nil && pos.Line > prevLine && f.doc != nil && f.doc.BlankBefore(pos.Line) {
+			f.blankLine()
+		}
+		if pos != nil {
+			prevLine = pos.Line
+		}
+
+		c, hasTrailer := trailingComment(stmts, i)
+		if hasTrailer {
+			i++
+			// A comment on a mark's line belongs to the mark, not to the
+			// declaration below it — `#[options] // ERROR(check) …` names the
+			// line the diagnostic lands on.
+			if markLine(s) == c.Pos.Line {
+				f.attrTrailer = c
+				c = nil
 			}
 		}
-
 		f.formatStmt(s)
+		f.writeTrailing(c)
 		f.newline()
-
-		if pos != nil && pos.Line > 0 {
-			prevLine = f.endLine(s)
-		}
 	}
 }
 
-// endLine estimates the last line of a statement for blank-line spacing.
-func (f *formatter) endLine(s ast.Stmt) int {
-	switch x := s.(type) {
-	case *ast.FuncDef:
-		if x.Block.IsDefined() {
-			return f.blockEndLine(x.Pos.Line, &x.Block)
-		}
-		return x.Pos.Line
-	case *ast.ComponentDecl:
-		return f.blockEndLine(x.Pos.Line, &x.Body)
-	case *ast.VisualNode:
-		if x.Block.IsDefined() {
-			return f.blockEndLine(x.Pos.Line, &x.Block)
-		}
-		return x.Pos.Line
-	case *ast.IfStmt:
-		if x.Else.IsDefined() {
-			return f.blockEndLine(x.Pos.Line, &x.Else)
-		}
-		return f.blockEndLine(x.Pos.Line, &x.Body)
-	case *ast.ForStmt:
-		if x.Else.IsDefined() {
-			return f.blockEndLine(x.Pos.Line, &x.Else)
-		}
-		return f.blockEndLine(x.Pos.Line, &x.Body)
-	case *ast.SlotNode:
-		return f.blockEndLine(x.Pos.Line, &x.Block)
-	case *ast.StructDef:
-		if x.IsMultiline {
-			return x.Pos.Line + len(x.Body) + 1
-		}
-	case *ast.EnumDef:
-		if x.IsMultiline {
-			return x.Pos.Line + len(x.Body) + 1
-		}
+// markLine is the line a statement's last mark was written on, or 0 when it
+// carries none.
+func markLine(s ast.Stmt) int {
+	a, ok := s.(ast.Attributed)
+	if !ok {
+		return 0
 	}
-	if p := s.StmtPos(); p != nil {
-		return p.Line
+	attrs := a.MacroAttrs()
+	if len(attrs) == 0 {
+		return 0
 	}
-	return 0
+	return attrs[len(attrs)-1].Pos.Line
 }
 
-func (f *formatter) blockEndLine(start int, block *ast.StmtBlock) int {
-	if block.IsMultiline {
-		return start + len(block.Stmts) + 1
+// trailingComment returns the comment written after stmts[i] on its line.
+func trailingComment(stmts []ast.Stmt, i int) (*ast.Comment, bool) {
+	if i+1 >= len(stmts) {
+		return nil, false
 	}
-	return start
+	c, ok := stmts[i+1].(*ast.Comment)
+	if !ok || !c.Inline {
+		return nil, false
+	}
+	return c, true
 }
 
 // --- top-level and block statements ---
@@ -286,12 +353,68 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("{")
 	f.newline()
 	f.indent++
-	for _, item := range s.Body {
-		f.writeStructBodyItem(item)
+	for i := 0; i < len(s.Body); i++ {
+		f.blankBeforeBodyItem(i, bodyItemLine(s.Body[i]))
+		if f.writeBodyComment(s.Body[i]) {
+			continue
+		}
+		f.writeStructBodyItem(s.Body[i])
+		if i+1 < len(s.Body) {
+			if c, ok := s.Body[i+1].(*ast.Comment); ok && c.Inline {
+				f.writeTrailing(c)
+				i++
+			}
+		}
 		f.newline()
 	}
 	f.indent--
 	f.write("}")
+}
+
+// leadLine is the first line an item occupies, comments and marks included:
+// the blank line an author left sits above those, not above the declaration.
+func leadLine(line int, leading []*ast.Comment, attrs []ast.MacroAttr) int {
+	if len(leading) > 0 && leading[0].Pos.Line > 0 {
+		return leading[0].Pos.Line
+	}
+	if len(attrs) > 0 && attrs[0].Pos.Line > 0 {
+		return attrs[0].Pos.Line
+	}
+	return line
+}
+
+// propLeadLine is leadLine for a component prop, whichever form it takes.
+func propLeadLine(p ast.ParamOrEventDecl) int {
+	switch v := p.(type) {
+	case ast.Param:
+		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
+	case ast.EventDecl:
+		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
+	case ast.SlotDecl:
+		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
+	}
+	return 0
+}
+
+// blankBeforeBodyItem keeps the blank line the source left above a struct or
+// enum body item — the grouping in a long field list is the author's.
+func (f *formatter) blankBeforeBodyItem(i, line int) {
+	if i > 0 && line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
+		f.blankLine()
+	}
+}
+
+// writeBodyComment writes a struct or enum body item that is a comment on a
+// line of its own, and reports whether it did. A trailing one is written by
+// the loop that just wrote the item it trails.
+func (f *formatter) writeBodyComment(item any) bool {
+	c, ok := item.(*ast.Comment)
+	if !ok || c.Inline {
+		return false
+	}
+	f.writeComment(c)
+	f.newline()
+	return true
 }
 
 func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
@@ -334,7 +457,12 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	if e.IsMultiline || hasFuncs {
 		f.newline()
 		f.indent++
-		for _, item := range e.Body {
+		for i := 0; i < len(e.Body); i++ {
+			f.blankBeforeBodyItem(i, bodyItemLine(e.Body[i]))
+			if f.writeBodyComment(e.Body[i]) {
+				continue
+			}
+			item := e.Body[i]
 			switch it := item.(type) {
 			case *ast.EnumMember:
 				f.write(it.Name)
@@ -345,6 +473,12 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			case *ast.FuncDef:
 				f.writeFuncDef(it)
 			}
+			if i+1 < len(e.Body) {
+				if c, ok := e.Body[i+1].(*ast.Comment); ok && c.Inline {
+					f.writeTrailing(c)
+					i++
+				}
+			}
 			f.newline()
 		}
 		f.indent--
@@ -352,8 +486,12 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		return
 	}
 	// Single-line form: members only (no funcs by construction).
-	f.write(" ")
 	members := e.Members()
+	if len(members) == 0 {
+		f.write("}")
+		return
+	}
+	f.write(" ")
 	for i, m := range members {
 		if i > 0 {
 			f.write(", ")
@@ -530,7 +668,10 @@ func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 	f.write("component ")
 	f.write(c.Name)
 	f.writeTargetIndex(c.Target)
-	if len(c.Props.Props) > 0 {
+	// An empty prop list is written when the source wrote one: `component X()`
+	// and `component X` are the same declaration, and the parens are the
+	// author's.
+	if len(c.Props.Props) > 0 || c.HasParens {
 		f.write("(")
 		f.writeProps(c.Props)
 		f.write(")")
@@ -551,7 +692,7 @@ func (f *formatter) writeVisualNode(vn *ast.VisualNode) {
 		f.write(" #")
 		f.write(vn.ID)
 	}
-	if len(vn.Args.Args) > 0 {
+	if len(vn.Args.Args) > 0 || vn.HasParens {
 		f.write("(")
 		f.writeArgs(vn.Args)
 		f.write(")")
@@ -656,13 +797,19 @@ func (f *formatter) writeReturnStmt(s *ast.ReturnStmt) {
 
 func (f *formatter) writeBlock(block *ast.StmtBlock) {
 	f.write("{")
+	stmts := block.Stmts
 	if block.IsMultiline {
+		// A comment on the opening brace's line trails the brace, not the
+		// first statement inside.
+		if len(stmts) > 0 {
+			if c, ok := stmts[0].(*ast.Comment); ok && c.Inline {
+				f.writeTrailing(c)
+				stmts = stmts[1:]
+			}
+		}
 		f.newline()
 		f.indent++
-		for _, s := range block.Stmts {
-			f.formatStmt(s)
-			f.newline()
-		}
+		f.formatStmtSeq(stmts)
 		f.indent--
 		f.write("}")
 	} else {
@@ -738,14 +885,12 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 		f.newline()
 		f.indent++
 		for i, p := range pl.Params {
-			if i > 0 {
-				f.write(",")
-				f.newline()
-			}
+			f.blankBeforeBodyItem(i, leadLine(p.Pos.Line, p.Leading, p.Attrs))
 			f.writeParam(p, true)
+			f.write(",")
+			f.writeTrailing(p.Trailing)
+			f.newline()
 		}
-		f.write(",")
-		f.newline()
 		f.indent--
 	} else {
 		for i, p := range pl.Params {
@@ -758,7 +903,8 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 }
 
 func (f *formatter) writeParam(p ast.Param, multiline bool) {
-	f.writeParamAttrs(p.Attrs, multiline)
+	f.writeLeadingComments(p.Leading)
+	f.writeParamAttrs(p.Attrs, p.Pos, multiline)
 	if p.Bidirectional {
 		f.write(":")
 	}
@@ -775,19 +921,38 @@ func (f *formatter) writeParam(p ast.Param, multiline bool) {
 
 // --- props (component params) ---
 
+// propComment is the comment written after a component prop on its line.
+func propComment(p ast.ParamOrEventDecl) *ast.Comment {
+	switch v := p.(type) {
+	case ast.Param:
+		return v.Trailing
+	case ast.EventDecl:
+		return v.Trailing
+	case ast.SlotDecl:
+		return v.Trailing
+	}
+	return nil
+}
+
+// writeLeadingComments writes comments above whatever follows, one per line.
+func (f *formatter) writeLeadingComments(comments []*ast.Comment) {
+	for _, c := range comments {
+		f.writeComment(c)
+		f.newline()
+	}
+}
+
 func (f *formatter) writeProps(pl ast.PropList) {
 	if pl.IsMultiline {
 		f.newline()
 		f.indent++
 		for i, p := range pl.Props {
-			if i > 0 {
-				f.write(",")
-				f.newline()
-			}
+			f.blankBeforeBodyItem(i, propLeadLine(p))
 			f.writePropOrEvent(p, true)
+			f.write(",")
+			f.writeTrailing(propComment(p))
+			f.newline()
 		}
-		f.write(",")
-		f.newline()
 		f.indent--
 	} else {
 		for i, p := range pl.Props {
@@ -804,7 +969,8 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 	case ast.Param:
 		f.writeParam(v, multiline)
 	case ast.EventDecl:
-		f.writeParamAttrs(v.Attrs, multiline)
+		f.writeLeadingComments(v.Leading)
+		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("@")
 		f.write(v.Name)
 		if v.Type != nil {
@@ -812,7 +978,8 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 			f.writeType(v.Type)
 		}
 	case ast.SlotDecl:
-		f.writeParamAttrs(v.Attrs, multiline)
+		f.writeLeadingComments(v.Leading)
+		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("slot ")
 		f.write(v.Name)
 		if len(v.Params) > 0 {
@@ -911,10 +1078,8 @@ func (f *formatter) writeExpr(e ast.Expr) {
 func (f *formatter) writeLiteral(lit *ast.LiteralExpr) {
 	switch lit.Kind {
 	case ast.LiteralStringQuoted:
-		// Re-escape via the interpolation rules so that bare `{`/`}` in the
-		// decoded literal don't reparse as the start of an interpolation.
 		f.write(`"`)
-		f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
+		f.write(lit.Raw)
 		f.write(`"`)
 	case ast.LiteralStringBackticked:
 		f.write("`")
@@ -959,7 +1124,7 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 				f.write(",")
 				f.newline()
 			}
-			f.writeStructFieldLit(field)
+			f.writeStructFieldLit(field, true)
 		}
 		if len(x.Fields) > 0 {
 			f.write(",")
@@ -972,31 +1137,58 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeStructFieldLit(field)
+			f.writeStructFieldLit(field, false)
 		}
 		f.write("}")
 	}
 }
 
-func (f *formatter) writeStructFieldLit(field ast.StructFieldLit) {
+// writeStructFieldLit writes one field of a struct literal. A literal written
+// on one line is nearly always an argument, where the surrounding list already
+// spells `name=value`; spacing the `=` there would put both spellings a few
+// characters apart on one line. Written across lines each field stands alone,
+// and reads as the assignment it is.
+func (f *formatter) writeStructFieldLit(field ast.StructFieldLit, multiline bool) {
 	if field.Spread {
 		f.write("...")
 		f.writeExpr(field.Value)
-	} else {
-		f.write(field.Name)
-		f.write(" = ")
-		f.writeExpr(field.Value)
+		return
 	}
+	f.write(field.Name)
+	f.write(fieldAssign(multiline))
+	f.writeExpr(field.Value)
+}
+
+// fieldAssign is the `=` of a struct or map literal field, spaced or not.
+func fieldAssign(multiline bool) string {
+	if multiline {
+		return " = "
+	}
+	return "="
 }
 
 func (f *formatter) writeMapLit(x *ast.MapLit) {
 	f.write("{")
+	if x.Multiline {
+		f.newline()
+		f.indent++
+		for _, e := range x.Entries {
+			f.writeExpr(e.Key)
+			f.write(fieldAssign(true))
+			f.writeExpr(e.Value)
+			f.write(",")
+			f.newline()
+		}
+		f.indent--
+		f.write("}")
+		return
+	}
 	for i, e := range x.Entries {
 		if i > 0 {
 			f.write(", ")
 		}
 		f.writeExpr(e.Key)
-		f.write(" = ")
+		f.write(fieldAssign(false))
 		f.writeExpr(e.Value)
 	}
 	f.write("}")
@@ -1042,7 +1234,7 @@ func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
 	}
 	for _, part := range x.Parts {
 		if lit, ok := part.(*ast.LiteralExpr); ok {
-			f.write(escapeInterpLiteral(lit.Raw, x.Style))
+			f.write(lit.Raw)
 		} else {
 			f.write("{")
 			f.writeExpr(part)
@@ -1069,7 +1261,7 @@ func (f *formatter) writeI18nInterp(x *ast.I18nInterpExpr) {
 	}
 	for _, part := range x.Parts {
 		if lit, ok := part.(*ast.LiteralExpr); ok {
-			f.write(escapeInterpLiteral(lit.Raw, x.Style))
+			f.write(lit.Raw)
 		} else {
 			f.write("{")
 			f.writeExpr(part)
@@ -1095,16 +1287,12 @@ func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
 		f.write(x.Style)
 	}
 	if len(x.Cases) > 0 {
-		f.write(", ")
-		for i, c := range x.Cases {
-			if i > 0 {
-				f.write(" ")
-			}
+		writeCase := func(c ast.I18nCase) {
 			f.write(c.Selector)
 			f.write("{")
 			for _, p := range c.Body {
 				if lit, ok := p.(*ast.LiteralExpr); ok {
-					f.write(escapeInterpLiteral(lit.Raw, ast.StyleDouble))
+					f.write(lit.Raw)
 				} else {
 					f.write("{")
 					f.writeExpr(p)
@@ -1113,38 +1301,31 @@ func (f *formatter) writeI18nPlaceholder(x *ast.I18nPlaceholderExpr) {
 			}
 			f.write("}")
 		}
-	}
-}
-
-// escapeInterpLiteral re-escapes a literal segment of an interpolated string
-// so that round-tripping through Format → Parse preserves meaning. Brace
-// escapes (`\{`, `\}`) get added back: lexed segments hold the decoded
-// content, so a literal `{` in the segment would otherwise be re-parsed as
-// the start of an interpolation and a `\` as a stray escape.
-func escapeInterpLiteral(s string, style ast.StringStyle) string {
-	if style == ast.StyleRaw {
-		return s
-	}
-	var b strings.Builder
-	for _, r := range s {
-		switch r {
-		case '\\':
-			b.WriteString(`\\`)
-		case '{':
-			b.WriteString(`\{`)
-		case '}':
-			b.WriteString(`\}`)
-		case '"':
-			if style == ast.StyleTriple {
-				b.WriteRune(r)
-			} else {
-				b.WriteString(`\"`)
+		if x.Multiline {
+			// The closing brace is the caller's, and lands back at this
+			// indent once the cases are done.
+			f.write(",")
+			f.indent++
+			for _, c := range x.Cases {
+				for _, cm := range c.Leading {
+					f.newline()
+					f.writeComment(cm)
+				}
+				f.newline()
+				writeCase(c)
 			}
-		default:
-			b.WriteRune(r)
+			f.indent--
+			f.newline()
+			return
+		}
+		f.write(", ")
+		for i, c := range x.Cases {
+			if i > 0 {
+				f.write(" ")
+			}
+			writeCase(c)
 		}
 	}
-	return b.String()
 }
 
 func (f *formatter) writeLambda(x *ast.LambdaExpr) {
@@ -1229,8 +1410,12 @@ func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 // --- attr ---
 
 func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
-	for _, attr := range attrs {
+	for i, attr := range attrs {
 		f.writeAttr(attr)
+		if i == len(attrs)-1 && f.attrTrailer != nil {
+			f.writeTrailing(f.attrTrailer)
+			f.attrTrailer = nil
+		}
 		f.newline()
 	}
 }
@@ -1255,13 +1440,20 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 	f.write("]")
 }
 
-// writeParamAttrs places a parameter's marks the way the surrounding list
-// reads: each on its own line above the parameter when the list is multiline,
-// inline ahead of it when it is not.
-func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
+// writeParamAttrs places a parameter's marks where the source put them: on
+// their own line above the parameter, or inline ahead of it. A multiline list
+// is not the question — `#[wildcard(...)] data map<string, string>` reads as
+// one parameter whichever way the list is written.
+func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, multiline bool) {
 	for _, attr := range attrs {
 		f.writeAttr(attr)
-		if multiline {
+		ownLine := multiline
+		if attr.Pos.IsSet() && declPos.IsSet() {
+			// A synthesized declaration has no source to follow; one that was
+			// written says where its marks go.
+			ownLine = attr.Pos.Line < declPos.Line
+		}
+		if ownLine {
 			f.newline()
 		} else {
 			f.write(" ")

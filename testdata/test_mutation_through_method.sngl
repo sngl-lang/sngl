@@ -4,7 +4,7 @@ component main {
     var x = 0
 
     func reset() { x = 0 }
-    func bump()  { x += 1 }
+    func bump() { x += 1 }
 
     button #bump(text="+", @click { bump() })
     button #reset(text="0", @click { reset() })

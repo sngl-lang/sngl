@@ -33,14 +33,14 @@ func NumericLiteral(n *ir.Literal) (string, bool) {
 	switch n.Type.Kind {
 	case ir.TypeInt:
 		if n.Type.Bits == 64 {
-			return n.Raw + "n", true
+			return n.Value + "n", true
 		}
-		return n.Raw, true
+		return n.Value, true
 	case ir.TypeFloat:
 		if n.Type.Bits == 32 {
-			return "Math.fround(" + n.Raw + ")", true
+			return "Math.fround(" + n.Value + ")", true
 		}
-		return n.Raw, true
+		return n.Value, true
 	}
 	return "", false
 }

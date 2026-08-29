@@ -103,8 +103,8 @@ func TestParseConstResultsScalars(t *testing.T) {
 		t.Fatalf("s = %T", got["s"])
 	}
 	// Raw holds the unquoted content: the escapes the encoder added are gone.
-	if lit.Raw != "a\"b\\c\nd{e}" {
-		t.Errorf("s = %q", lit.Raw)
+	if lit.Value != "a\"b\\c\nd{e}" {
+		t.Errorf("s = %q", lit.Value)
 	}
 	if lit.Type == nil || lit.Type.Kind != ir.TypeString {
 		t.Errorf("s typed %v, want string", lit.Type)
@@ -210,8 +210,8 @@ func TestTimeFoldsToDateTime(t *testing.T) {
 	if !ok {
 		t.Fatalf("got %T", checkResults(t, "Stamp0", `"2026-08-24T09:30:00Z"`))
 	}
-	if lit.Raw != "2026-08-24T09:30:00Z" {
-		t.Errorf("Stamp0() folded to %q", lit.Raw)
+	if lit.Value != "2026-08-24T09:30:00Z" {
+		t.Errorf("Stamp0() folded to %q", lit.Value)
 	}
 	if !lit.Type.IsAssignableTo(want) {
 		t.Errorf("Stamp0() folded to %v, which does not fit the declared %v", lit.Type, want)

@@ -2,5 +2,5 @@
 
 import . "sngl://std"
 
-var m map<string, int> = {a = 1}
+var m map<string, int> = {a=1}
 var x = m[42] // ERROR(check) "key type"

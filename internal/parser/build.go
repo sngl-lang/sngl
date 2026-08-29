@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -12,7 +14,14 @@ type builder struct {
 	file     string
 	filtered []Token
 	comments []Token
-	errors   []string
+	// firstCodeCol maps a line to the column its leftmost code token starts
+	// at, which is how a trailing comment is told from one on its own line.
+	firstCodeCol map[int]int
+	// claimed marks comments an expression took for itself — inside an i18n
+	// placeholder, where there is no statement list for them to land in — so
+	// that the statement-level pass does not place them a second time.
+	claimed map[int]bool
+	errors  []string
 	// native holds the expression of a native-value parse; nil for a document.
 	native ast.Expr
 	// nativeMode is set for that parse, and is the whole of what keeps an
@@ -21,7 +30,16 @@ type builder struct {
 }
 
 func newBuilder(file string, filtered, comments []Token) *builder {
-	return &builder{file: file, filtered: filtered, comments: comments}
+	b := &builder{file: file, filtered: filtered, comments: comments}
+	if len(comments) > 0 {
+		b.firstCodeCol = make(map[int]int, len(filtered))
+		for _, tok := range filtered {
+			if c, ok := b.firstCodeCol[tok.Line]; !ok || tok.Column < c {
+				b.firstCodeCol[tok.Line] = tok.Column
+			}
+		}
+	}
+	return b
 }
 
 func (b *builder) errorf(pos ast.Pos, format string, args ...any) {
@@ -204,36 +222,93 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 		}
 	}
 	b.injectComments(doc)
+	doc.BlankLines = b.blankLines()
 	return doc
 }
 
-// injectComments inserts comment tokens into doc.Stmts at positions
-// determined by their source line numbers.
+// blankLines finds the lines the source left empty, by looking for a gap
+// between one token's last line and the next token's first. A line inside a
+// triple-quoted string is not a gap, which is why the scan measures the token
+// it just passed rather than counting line numbers.
+func (b *builder) blankLines() map[int]bool {
+	toks := make([]Token, 0, len(b.filtered)+len(b.comments))
+	toks = append(toks, b.filtered...)
+	toks = append(toks, b.comments...)
+	sort.SliceStable(toks, func(i, j int) bool {
+		if toks[i].Line != toks[j].Line {
+			return toks[i].Line < toks[j].Line
+		}
+		return toks[i].Column < toks[j].Column
+	})
+	blank := map[int]bool{}
+	prevEnd := 0
+	for _, tok := range toks {
+		if prevEnd > 0 && tok.Line-prevEnd >= 2 {
+			blank[tok.Line-1] = true
+		}
+		if end := tok.Line + strings.Count(tok.Literal, "\n"); end > prevEnd {
+			prevEnd = end
+		}
+	}
+	return blank
+}
+
+// injectComments inserts comment tokens into the statement lists they were
+// written in, at positions determined by their source line numbers. Comments
+// arrive in one document-order list because the grammar does not carry them;
+// placing them means walking the tree in the same order and handing each block
+// the comments that fall inside its braces.
 func (b *builder) injectComments(doc *ast.Document) {
 	if len(b.comments) == 0 {
 		return
 	}
-	var merged []ast.Stmt
 	ci := 0
-	for _, s := range doc.Stmts {
-		pos := s.StmtPos()
+	doc.Stmts = b.placeComments(doc.Stmts, &ci, math.MaxInt)
+}
+
+// placeComments merges every comment up to endLine into stmts, descending into
+// each statement's blocks so that a block takes the comments written between
+// its braces. A comment written after a statement starts but before one of its
+// blocks opens — on a mark's line, or inside a parameter list — belongs to
+// neither, and follows the statement.
+func (b *builder) placeComments(stmts []ast.Stmt, ci *int, endLine int) []ast.Stmt {
+	merged := make([]ast.Stmt, 0, len(stmts)+1)
+	take := func(before int) {
+		for *ci < len(b.comments) && b.comments[*ci].Line < before {
+			if !b.claimed[*ci] {
+				merged = append(merged, b.commentToStmt(b.comments[*ci]))
+			}
+			*ci++
+		}
+	}
+	for _, s := range stmts {
 		line := 0
-		if pos != nil {
+		if pos := s.StmtPos(); pos != nil {
 			line = pos.Line
 		}
-		// Insert all comments before this statement.
-		for ci < len(b.comments) && (line == 0 || b.comments[ci].Line < line) {
-			merged = append(merged, b.commentToStmt(b.comments[ci]))
-			ci++
+		if line == 0 {
+			// A statement with no position cannot order comments against
+			// itself; the comments still standing go ahead of it.
+			take(endLine)
+		} else {
+			take(line)
 		}
 		merged = append(merged, s)
+
+		blocks, commit := stmtBlocks(s)
+		for _, block := range blocks {
+			// A block the parser synthesized has no closing brace to bound
+			// it, so nothing inside it can be claimed.
+			if !block.EndPos.IsSet() {
+				continue
+			}
+			take(block.Pos.Line)
+			block.Stmts = b.placeComments(block.Stmts, ci, block.EndPos.Line)
+		}
+		commit()
 	}
-	// Trailing comments after all statements.
-	for ci < len(b.comments) {
-		merged = append(merged, b.commentToStmt(b.comments[ci]))
-		ci++
-	}
-	doc.Stmts = merged
+	take(endLine)
+	return merged
 }
 
 func (b *builder) commentToStmt(tok Token) *ast.Comment {
@@ -241,8 +316,17 @@ func (b *builder) commentToStmt(tok Token) *ast.Comment {
 		Pos:    ast.Pos(b.posFromToken(tok)),
 		Text:   tok.Literal,
 		Block:  tok.Type == BLOCK_COMMENT,
-		Inline: false, // TODO: detect inline comments
+		Inline: b.isInlineComment(tok),
 	}
+}
+
+// isInlineComment reports whether code precedes tok on its line, which makes
+// it a comment about that line rather than about what follows. The difference
+// is load-bearing in testdata, where an `// ERROR(check)` directive names the
+// line it sits on.
+func (b *builder) isInlineComment(tok Token) bool {
+	col, ok := b.firstCodeCol[tok.Line]
+	return ok && col < tok.Column
 }
 
 // --- Stmt dispatch ---
@@ -332,7 +416,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
 		s.TypeParams = b.buildTypeParamList(it.enter())
 	}
-	lbraceLine := 0
+	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
 		lbraceLine = it.token().Line
 	}
@@ -344,6 +428,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 			}
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == RBRACE {
+				rbraceLine = it.token().Line
 				if it.token().Line > lbraceLine {
 					s.IsMultiline = true
 				}
@@ -351,7 +436,54 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 			it.skip() // rbrace or semi
 		}
 	}
+	s.Body = interleaveComments(b, lbraceLine, rbraceLine, s.Body,
+		func(i ast.StructBodyItem) int { return bodyItemLine(i) },
+		func(c *ast.Comment) ast.StructBodyItem { return c })
 	return s
+}
+
+// bodyItemLine is the source line a struct or enum body item starts on.
+func bodyItemLine(item any) int {
+	if s, ok := item.(ast.Stmt); ok {
+		if p := s.StmtPos(); p != nil {
+			return p.Line
+		}
+	}
+	if m, ok := item.(*ast.EnumMember); ok {
+		return m.Pos.Line
+	}
+	return 0
+}
+
+// interleaveComments puts the comments written inside a braced body among its
+// items. A struct or enum body is a list of declarations rather than of
+// statements, so the statement-level pass cannot reach into it — left alone,
+// a comment on a field ends up below the closing brace.
+func interleaveComments[T any](b *builder, openLine, closeLine int, items []T, line func(T) int, wrap func(*ast.Comment) T) []T {
+	if openLine == 0 || closeLine <= openLine || len(b.comments) == 0 {
+		return items
+	}
+	out := make([]T, 0, len(items))
+	prev := openLine
+	for _, item := range items {
+		at := line(item)
+		if at == 0 {
+			out = append(out, item)
+			continue
+		}
+		for _, c := range b.claimComments(prev, at) {
+			out = append(out, wrap(c))
+		}
+		out = append(out, item)
+		if c := b.claimInlineComment(at); c != nil {
+			out = append(out, wrap(c))
+		}
+		prev = at + 1
+	}
+	for _, c := range b.claimComments(prev, closeLine) {
+		out = append(out, wrap(c))
+	}
+	return out
 }
 
 func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
@@ -429,6 +561,10 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		e.Name = it.shift().Literal
 	}
+	lbraceLine, rbraceLine := 0, 0
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
+		lbraceLine = it.token().Line
+	}
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == EnumBodyItem {
@@ -442,10 +578,24 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 				}
 			}
 		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				e.IsMultiline = true
+			if !it.isNonTerminal() {
+				switch tok := it.token(); tok.Type {
+				case SEMICOLON:
+					e.IsMultiline = true
+				case RBRACE:
+					rbraceLine = tok.Line
+				}
 			}
 			it.skip() // comma or semi or rbrace
+		}
+	}
+	e.Body = interleaveComments(b, lbraceLine, rbraceLine, e.Body,
+		func(i ast.EnumBodyItem) int { return bodyItemLine(i) },
+		func(c *ast.Comment) ast.EnumBodyItem { return c })
+	for _, item := range e.Body {
+		if _, ok := item.(*ast.Comment); ok {
+			// A comment needs a line of its own, so the body needs lines.
+			e.IsMultiline = true
 		}
 	}
 	return e
@@ -740,9 +890,9 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 func (b *builder) buildFuncTail(it nodeIter, f *ast.FuncDef) {
 	// FuncTail = lparen [ ParamList ] rparen FuncBodyTail | FuncBodyTail .
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
-		it.skip() // lparen
+		open := it.shift() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
-			f.Params = b.buildParamList(it.enter())
+			f.Params = b.buildParamList(it.enter(), open.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -783,9 +933,10 @@ func (b *builder) buildTypeParamList(it nodeIter) []string {
 	return params
 }
 
-func (b *builder) buildParamList(it nodeIter) ast.ParamList {
+func (b *builder) buildParamList(it nodeIter, openLine int) ast.ParamList {
 	// ParamList = Param { comma Param } .
 	var pl ast.ParamList
+	var lines []int
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == Param {
 			sub := it.enter()
@@ -794,6 +945,7 @@ func (b *builder) buildParamList(it nodeIter) ast.ParamList {
 				pl.Pos = p.Pos
 			}
 			pl.Params = append(pl.Params, p)
+			lines = append(lines, p.Pos.Line)
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
 				pl.IsMultiline = true
@@ -801,6 +953,8 @@ func (b *builder) buildParamList(it nodeIter) ast.ParamList {
 			it.skip() // comma or semi
 		}
 	}
+	pl.IsMultiline = pl.IsMultiline || spansLines(openLine, lines)
+	b.attachParamComments(openLine, &pl)
 	return pl
 }
 
@@ -843,9 +997,9 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		c.HasParens = true
-		it.skip() // lparen
+		open := it.shift() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == CompParamList {
-			c.Props = b.buildCompParamList(it.enter())
+			c.Props = b.buildCompParamList(it.enter(), open.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -860,13 +1014,15 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	return c
 }
 
-func (b *builder) buildCompParamList(it nodeIter) ast.PropList {
+func (b *builder) buildCompParamList(it nodeIter, openLine int) ast.PropList {
 	// CompParamList = CompParam { comma CompParam } .
 	var pl ast.PropList
+	var lines []int
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == CompParam {
 			p := b.buildCompParam(it.enter())
 			pl.Props = append(pl.Props, p)
+			lines = append(lines, propPos(p).Line)
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
 				pl.IsMultiline = true
@@ -874,7 +1030,91 @@ func (b *builder) buildCompParamList(it nodeIter) ast.PropList {
 			it.skip() // comma or semi
 		}
 	}
+	pl.IsMultiline = pl.IsMultiline || spansLines(openLine, lines)
+	b.attachPropComments(openLine, &pl)
 	return pl
+}
+
+// claimInlineComment takes the comment written after code on line, if there is
+// one that nothing else has claimed.
+func (b *builder) claimInlineComment(line int) *ast.Comment {
+	if b.claimed == nil {
+		b.claimed = map[int]bool{}
+	}
+	for i, tok := range b.comments {
+		if tok.Line > line {
+			break
+		}
+		if tok.Line != line || b.claimed[i] || !b.isInlineComment(tok) {
+			continue
+		}
+		b.claimed[i] = true
+		return b.commentToStmt(tok)
+	}
+	return nil
+}
+
+// attachPropComments hands the props of a list written across lines the
+// comments written among them. A list written on one line shares its line with
+// whatever follows it, so a comment there is not the list's to take.
+func (b *builder) attachPropComments(openLine int, pl *ast.PropList) {
+	if !pl.IsMultiline || openLine == 0 {
+		return
+	}
+	prev := openLine
+	for i, p := range pl.Props {
+		line := propPos(p).Line
+		if line == 0 {
+			continue
+		}
+		leading := b.claimComments(prev, line)
+		trailing := b.claimInlineComment(line)
+		prev = line
+		if leading == nil && trailing == nil {
+			continue
+		}
+		switch v := p.(type) {
+		case ast.Param:
+			v.Leading, v.Trailing = leading, trailing
+			pl.Props[i] = v
+		case ast.EventDecl:
+			v.Leading, v.Trailing = leading, trailing
+			pl.Props[i] = v
+		case ast.SlotDecl:
+			v.Leading, v.Trailing = leading, trailing
+			pl.Props[i] = v
+		}
+	}
+}
+
+// attachParamComments is attachPropComments for a function's parameters.
+func (b *builder) attachParamComments(openLine int, pl *ast.ParamList) {
+	if !pl.IsMultiline || openLine == 0 {
+		return
+	}
+	prev := openLine
+	for i := range pl.Params {
+		line := pl.Params[i].Pos.Line
+		if line == 0 {
+			continue
+		}
+		pl.Params[i].Leading = b.claimComments(prev, line)
+		pl.Params[i].Trailing = b.claimInlineComment(line)
+		prev = line
+	}
+}
+
+// propPos is the source position of a component prop, whichever form it takes.
+func propPos(p ast.ParamOrEventDecl) ast.Pos {
+	switch v := p.(type) {
+	case ast.Param:
+		return v.Pos
+	case ast.EventDecl:
+		return v.Pos
+	case ast.SlotDecl:
+		return v.Pos
+	}
+	return ast.Pos{}
 }
 
 func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
@@ -1056,12 +1296,14 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 			}
 			vn.Args = call.Args
 			vn.ID = call.ID
+			vn.HasParens = true
 		} else {
 			if target, ok := base.(ast.TargetExpr); ok {
 				vn.Target = target
 			}
 			if args != nil {
 				vn.Args = *args
+				vn.HasParens = true
 			}
 			vn.ID = elemID
 		}
@@ -1105,7 +1347,7 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 			block := b.buildStmtBlock(it.enter())
 			return base, &block, lastArgs, ""
 		case ArgList:
-			args := b.buildArgList(it.enter())
+			args := b.buildArgList(it.enter(), 0)
 			return base, lastBlock, &args, ""
 		}
 		it.skip()
@@ -1153,7 +1395,7 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 			Func: base,
 		}
 		if !it.done() && it.isNonTerminal() && it.symbol() == ArgList {
-			call.Args = b.buildArgList(it.enter())
+			call.Args = b.buildArgList(it.enter(), tok.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -1201,6 +1443,7 @@ func (b *builder) buildStmtBlock(it nodeIter) ast.StmtBlock {
 				if tok.Line > block.Pos.Line {
 					block.IsMultiline = true
 				}
+				block.EndPos = ast.Pos(b.posFromToken(tok))
 				it.skip()
 				continue
 			}
@@ -1723,7 +1966,7 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 		switch sym {
 		case ArgList:
 			call := &ast.CallExpr{Pos: ast.Pos(*base.ExprPos()), Func: base}
-			call.Args = b.buildArgList(it.enter())
+			call.Args = b.buildArgList(it.enter(), 0)
 			return call
 		case StructLitBody:
 			// StructLitBody after dot ident — qualified struct lit
@@ -1790,7 +2033,7 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 		it.skip() // lparen
 		call := &ast.CallExpr{Pos: ast.Pos(b.posFromToken(tok)), Func: base}
 		if !it.done() && it.isNonTerminal() && it.symbol() == ArgList {
-			call.Args = b.buildArgList(it.enter())
+			call.Args = b.buildArgList(it.enter(), tok.Line)
 		}
 		// rparen
 		return call
@@ -1866,12 +2109,17 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 		}
 		return &ast.ParenExpr{Pos: ast.Pos(b.posFromToken(tok)), Inner: inner}
 	case LBRACKET:
-		pos := b.posFromToken(it.shift()) // lbracket
-		le := &ast.ListExpr{Pos: ast.Pos(pos)}
+		open := it.shift() // lbracket
+		le := &ast.ListExpr{Pos: ast.Pos(b.posFromToken(open))}
 		if !it.done() && it.isNonTerminal() && it.symbol() == ListBody {
 			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 		}
 		if !it.done() {
+			// The brackets say whether the list was written across lines; a
+			// trailing comma inserts no semicolon for the body to see.
+			if !it.isNonTerminal() && it.token().Line > open.Line {
+				le.IsMultiline = true
+			}
 			it.skip() // rbracket
 		}
 		return le
@@ -1922,13 +2170,23 @@ func (b *builder) buildImportExpr(it nodeIter) *ast.StructExpr {
 func (b *builder) buildStructLitFields(it nodeIter, multiline *bool) []ast.StructFieldLit {
 	// StructLitBody = lbrace [ AnonField { (comma | semi) AnonField } ] rbrace .
 	var fields []ast.StructFieldLit
+	openLine := 0
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
 			fields = append(fields, r.StructField)
 		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+			switch tok := it.token(); tok.Type {
+			case SEMICOLON:
 				*multiline = true
+			case LBRACE:
+				openLine = tok.Line
+			case RBRACE:
+				// The braces say whether the literal was written across
+				// lines; a trailing comma inserts no semicolon to see.
+				if openLine > 0 && tok.Line > openLine {
+					*multiline = true
+				}
 			}
 			it.skip() // lbrace, rbrace, comma, semi
 		}
@@ -1950,7 +2208,8 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 	var pos ast.Pos
 	var fields []ast.StructFieldLit
 	var entries []ast.MapEntry
-	anyNonIdent, sawSemi := false, false
+	anyNonIdent, multiline := false, false
+	openLine := 0
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == AnonField {
 			r := b.buildAnonField(it.enter())
@@ -1964,12 +2223,20 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 				fields = append(fields, r.StructField)
 			}
 		} else {
-			tok := it.token()
-			if tok.Type == LBRACE && !pos.IsSet() {
-				pos = ast.Pos(b.posFromToken(tok))
-			}
-			if tok.Type == SEMICOLON {
-				sawSemi = true
+			switch tok := it.token(); tok.Type {
+			case LBRACE:
+				openLine = tok.Line
+				if !pos.IsSet() {
+					pos = ast.Pos(b.posFromToken(tok))
+				}
+			case SEMICOLON:
+				multiline = true
+			case RBRACE:
+				// The braces say whether the literal was written across
+				// lines; a trailing comma inserts no semicolon to see.
+				if openLine > 0 && tok.Line > openLine {
+					multiline = true
+				}
 			}
 			it.skip() // lbrace, rbrace, comma, semi
 		}
@@ -1983,9 +2250,9 @@ func (b *builder) buildAnonStructLit(it nodeIter) ast.Expr {
 			allEntries = append(allEntries, ast.MapEntry{Key: &ast.IdentExpr{Name: f.Name}, Value: f.Value})
 		}
 		allEntries = append(allEntries, entries...)
-		return &ast.MapLit{Pos: pos, Entries: allEntries}
+		return &ast.MapLit{Pos: pos, Entries: allEntries, Multiline: multiline}
 	}
-	s := &ast.StructExpr{Pos: pos, Fields: fields, Multiline: sawSemi}
+	s := &ast.StructExpr{Pos: pos, Fields: fields, Multiline: multiline}
 	return s
 }
 
@@ -2173,6 +2440,26 @@ func (b *builder) buildI18nTriple(it nodeIter) ast.Expr {
 	return &ast.I18nInterpExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
 }
 
+// claimComments takes the comments written between two lines for an expression
+// that will carry them itself, and hides them from the statement-level pass.
+func (b *builder) claimComments(fromLine, beforeLine int) []*ast.Comment {
+	var out []*ast.Comment
+	if b.claimed == nil {
+		b.claimed = map[int]bool{}
+	}
+	for i, tok := range b.comments {
+		if tok.Line >= beforeLine {
+			break
+		}
+		if tok.Line < fromLine || b.claimed[i] {
+			continue
+		}
+		b.claimed[i] = true
+		out = append(out, b.commentToStmt(tok))
+	}
+	return out
+}
+
 func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
 	// I18nPlaceholder = Expr [ comma ident [ comma I18nThirdArg ] ] .
 	ph := &ast.I18nPlaceholderExpr{}
@@ -2201,7 +2488,26 @@ func (b *builder) buildI18nPlaceholder(it nodeIter) ast.Expr {
 			}
 		}
 	}
+	b.attachCaseComments(ph)
 	return ph
+}
+
+// attachCaseComments hands each case the comments written above it and records
+// whether the cases were written one per line.
+func (b *builder) attachCaseComments(ph *ast.I18nPlaceholderExpr) {
+	if len(ph.Cases) == 0 {
+		return
+	}
+	lines := make([]int, len(ph.Cases))
+	for i, c := range ph.Cases {
+		lines[i] = c.Pos.Line
+	}
+	ph.Multiline = spansLines(ph.Pos.Line, lines)
+	prev := ph.Pos.Line
+	for i := range ph.Cases {
+		ph.Cases[i].Leading = b.claimComments(prev, ph.Cases[i].Pos.Line)
+		prev = ph.Cases[i].Pos.Line
+	}
 }
 
 // buildI18nThirdArg populates ph.Style or ph.Cases from an I18nThirdArg node.
@@ -2351,11 +2657,31 @@ func (b *builder) buildMsgBodyInto(c *ast.I18nCase, it nodeIter) {
 	}
 }
 
+// spansLines reports whether a bracketed list was written across lines: its
+// first item below the opening bracket, or its items on lines of their own.
+// The closing bracket is not the test — `button(text="x", @click { … })` puts
+// it on a later line without breaking the argument list up.
+func spansLines(openLine int, itemLines []int) bool {
+	if len(itemLines) == 0 {
+		return false
+	}
+	if openLine > 0 && itemLines[0] > openLine {
+		return true
+	}
+	for _, line := range itemLines[1:] {
+		if line != itemLines[0] {
+			return true
+		}
+	}
+	return false
+}
+
 // --- Argument lists ---
 
-func (b *builder) buildArgList(it nodeIter) ast.ArgList {
+func (b *builder) buildArgList(it nodeIter, openLine int) ast.ArgList {
 	// ArgList = Arg { (comma | semi) Arg } .
 	var al ast.ArgList
+	var lines []int
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == Arg {
 			sub := it.enter()
@@ -2365,6 +2691,7 @@ func (b *builder) buildArgList(it nodeIter) ast.ArgList {
 					al.Pos = ast.Pos(argPos(a))
 				}
 				al.Args = append(al.Args, a)
+				lines = append(lines, argPos(a).Line)
 			}
 		} else {
 			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
@@ -2373,6 +2700,7 @@ func (b *builder) buildArgList(it nodeIter) ast.ArgList {
 			it.skip() // comma or semi
 		}
 	}
+	al.IsMultiline = al.IsMultiline || spansLines(openLine, lines)
 	return al
 }
 
@@ -2836,9 +3164,9 @@ func (b *builder) buildFuncLit(it nodeIter) *ast.LambdaExpr {
 	pos := b.posFromToken(it.shift()) // kw_func
 	lam := &ast.LambdaExpr{Pos: ast.Pos(pos)}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
-		it.skip() // lparen
+		open := it.shift() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
-			lam.Params = b.buildParamList(it.enter())
+			lam.Params = b.buildParamList(it.enter(), open.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen

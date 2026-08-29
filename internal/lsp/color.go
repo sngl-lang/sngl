@@ -225,7 +225,7 @@ func colorFromIRStructLit(sl *ir.StructLit) (Color, bool) {
 		if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeInt {
 			return Color{}, false
 		}
-		n, err := strconv.Atoi(lit.Raw)
+		n, err := strconv.Atoi(lit.Value)
 		if err != nil {
 			return Color{}, false
 		}

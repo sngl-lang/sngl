@@ -17,12 +17,12 @@ component main {
 
     frame() {
         slot body { // ERROR(check) "takes exactly one node, got 2"
-            text(value = "one")
-            text(value = "two")
+            text(value="one")
+            text(value="two")
         }
         slot badge { // ERROR(check) "takes at most one node, got 2"
-            text(value = "a")
-            text(value = "b")
+            text(value="a")
+            text(value="b")
         }
     }
 }

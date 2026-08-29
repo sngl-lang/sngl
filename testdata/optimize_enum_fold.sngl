@@ -10,9 +10,9 @@ enum Color { red, green, blue }
 const picked = Color.red
 
 component enumfold {
-    var isRed = picked == Color.red      // FOLD true
-    var isBlue = picked == Color.blue    // FOLD false
-    var notBlue = picked != Color.blue   // FOLD true
+    var isRed = picked == Color.red    // FOLD true
+    var isBlue = picked == Color.blue  // FOLD false
+    var notBlue = picked != Color.blue // FOLD true
 
     var current Color = picked
 

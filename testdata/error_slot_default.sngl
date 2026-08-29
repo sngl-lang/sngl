@@ -35,7 +35,7 @@ component card(slot _) {
 component main {
     card() {
         slot _ { // ERROR(check) "filled by ordinary children, not by name"
-            text(value = "x")
+            text(value="x")
         }
     }
 }

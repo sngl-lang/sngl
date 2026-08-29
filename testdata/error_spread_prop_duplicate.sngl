@@ -1,6 +1,8 @@
 import . "sngl://std"
 
-struct Opts { text string }
+struct Opts {
+    text string
+}
 component Button(text string) {}
 
 component main {

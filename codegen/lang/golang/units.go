@@ -127,7 +127,7 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 	if suf == nil {
 		return "", false
 	}
-	num, ok := parseUnitNumber(lit.Raw, lit.Suffix)
+	num, ok := parseUnitNumber(lit.Value, lit.Suffix)
 	if !ok {
 		return "", false
 	}
@@ -228,11 +228,11 @@ func LowerTypedLiteralGo(lit *ir.Literal, target *ir.Type) (string, bool) {
 	}
 	switch {
 	case ir.IsDateStruct(target):
-		return fmt.Sprintf("mustParseDate(%q)", lit.Raw), true
+		return fmt.Sprintf("mustParseDate(%q)", lit.Value), true
 	case ir.IsTimeStruct(target):
-		return fmt.Sprintf("mustParseTime(%q)", lit.Raw), true
+		return fmt.Sprintf("mustParseTime(%q)", lit.Value), true
 	case ir.IsDateTimeStruct(target):
-		return fmt.Sprintf("mustParseDateTime(%q)", lit.Raw), true
+		return fmt.Sprintf("mustParseDateTime(%q)", lit.Value), true
 	}
 	return "", false
 }

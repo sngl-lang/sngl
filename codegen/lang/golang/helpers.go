@@ -22,14 +22,14 @@ func translateIRLiteral(n *ir.Literal) string {
 		}
 		// Non-unit literal that carries a suffix (shouldn't normally
 		// happen) — fall back to a quoted "raw+suffix" string.
-		return fmt.Sprintf("%q", n.Raw)
+		return fmt.Sprintf("%q", n.Value)
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-			return n.Raw
+			return n.Value
 		case ir.TypeNull:
 			return "nil"
 		case ir.TypeStruct:
@@ -37,11 +37,11 @@ func translateIRLiteral(n *ir.Literal) string {
 				return out
 			}
 			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Raw)
+				return fmt.Sprintf("%q", n.Value)
 			}
 		}
 	}
-	return n.Raw
+	return n.Value
 }
 
 // ExportName capitalizes the first letter for Go exported names.

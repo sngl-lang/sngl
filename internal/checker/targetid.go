@@ -62,7 +62,7 @@ func (c *checker) synthesizeTargetID(pkg *ir.Package, typ *ir.StructDef, name st
 		sym = &ir.Var{
 			Name:        member,
 			Type:        typ.SymType(),
-			Init:        &ir.Literal{Type: typ.SymType(), Raw: name},
+			Init:        &ir.Literal{Type: typ.SymType(), Value: name},
 			IsConst:     true,
 			Synthesized: true,
 			Doc:         "The " + name + " " + member + ", as a value: compare " + targetConstName(member) + " against it.",
@@ -145,7 +145,7 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 	if !isLit {
 		return "", ir.BuiltinNone, false
 	}
-	return lit.Raw, k, true
+	return lit.Value, k, true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program

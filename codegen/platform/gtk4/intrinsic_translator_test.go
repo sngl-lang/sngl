@@ -169,7 +169,7 @@ func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
-	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
+	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
 	// gtk4.sngl maps stdlib `value` prop onto `label` for GtkLabel; the
 	// translator's value/text → label fallback covers that.
 	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", val))
@@ -294,7 +294,7 @@ func TestGtk4Translator_OnPropAssign_RefusesConstructOnly(t *testing.T) {
 	shared := seedShared(tr)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkAssistant")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
-	val := &ir.Literal{Type: ir.TypInt, Raw: "1"}
+	val := &ir.Literal{Type: ir.TypInt, Value: "1"}
 
 	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "useHeaderBar", val)); got != "" {
 		t.Errorf("emitted a set for a construct-only property: %s", got)

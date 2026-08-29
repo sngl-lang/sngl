@@ -31,7 +31,7 @@ func TestEmitJSFunc_AsyncKeyword(t *testing.T) {
 		Name:    "loadAll",
 		IsAsync: true,
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Raw: `"x"`}},
+			&ir.Return{Value: &ir.Literal{Value: `"x"`}},
 		},
 	}
 	var b strings.Builder
@@ -48,7 +48,7 @@ func TestEmitJSFunc_NoAsyncKeywordWhenSync(t *testing.T) {
 		Name:    "loadAll",
 		IsAsync: false,
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Raw: `"x"`}},
+			&ir.Return{Value: &ir.Literal{Value: `"x"`}},
 		},
 	}
 	var b strings.Builder

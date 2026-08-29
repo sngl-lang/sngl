@@ -1,7 +1,6 @@
 import . "sngl://std"
 
-struct Empty {
-}
+struct Empty {}
 
 component main {
     var e Empty = Empty{}

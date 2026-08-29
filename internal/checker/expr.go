@@ -181,7 +181,9 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	case ast.LiteralFloat:
 		typ = c.typeFloatLiteral(c.expected)
 	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
-		typ = TypString
+		// The AST carries the source spelling; the IR carries what it stands for.
+		v, _ := x.StringValue()
+		return &ir.Literal{AST: x, Type: TypString, Value: v}
 	case ast.LiteralBool:
 		typ = TypBool
 	case ast.LiteralNull:
@@ -191,7 +193,7 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	default:
 		typ = TypDyn
 	}
-	return &ir.Literal{AST: x, Type: typ, Raw: x.Raw}
+	return &ir.Literal{AST: x, Type: typ, Value: x.Raw}
 }
 
 // lowerHexLiteral converts a hex color literal like #ff8040 to a
@@ -203,20 +205,20 @@ func (c *checker) lowerHexLiteral(x *ast.LiteralExpr) ir.Expr {
 	r, g, b, a, ok := parseHexChannels(x.Raw)
 	if !ok {
 		c.error(x.Pos, "invalid color literal %q", x.Raw)
-		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
+		return &ir.Literal{AST: x, Type: TypString, Value: x.Raw}
 	}
 	sym, ok := c.scope.Lookup("color")
 	if !ok {
 		// Stdlib not yet registered. Carry the raw hex as a string literal;
 		// callers in this state are bootstrap paths that don't propagate.
-		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
+		return &ir.Literal{AST: x, Type: TypString, Value: x.Raw}
 	}
 	sd, ok := sym.(*ir.StructDef)
 	if !ok {
-		return &ir.Literal{AST: x, Type: TypString, Raw: x.Raw}
+		return &ir.Literal{AST: x, Type: TypString, Value: x.Raw}
 	}
 	intLit := func(n int) *ir.Literal {
-		return &ir.Literal{Type: TypInt, Raw: strconv.Itoa(n)}
+		return &ir.Literal{Type: TypInt, Value: strconv.Itoa(n)}
 	}
 	return &ir.StructLit{
 		AST:  &ast.StructExpr{Pos: x.Pos, Name: "color"},
@@ -302,9 +304,9 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	ud, ok := c.unitBySuffix[x.Suffix]
 	if !ok {
 		c.error(x.Pos, "unknown unit suffix %q", x.Suffix)
-		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Raw: x.Raw, Suffix: x.Suffix}
+		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: x.Raw, Suffix: x.Suffix}
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Raw: x.Raw, Suffix: x.Suffix}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: x.Raw, Suffix: x.Suffix}
 }
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
@@ -692,10 +694,10 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			switch lit.Kind {
 			case ast.LiteralInt:
 				typ := c.typeIntLiteral(x.Pos, lit.Raw, true, c.expected)
-				return &ir.Literal{AST: lit, Type: typ, Raw: "-" + lit.Raw}
+				return &ir.Literal{AST: lit, Type: typ, Value: "-" + lit.Raw}
 			case ast.LiteralFloat:
 				typ := c.typeFloatLiteral(c.expected)
-				return &ir.Literal{AST: lit, Type: typ, Raw: "-" + lit.Raw}
+				return &ir.Literal{AST: lit, Type: typ, Value: "-" + lit.Raw}
 			}
 		}
 	}
@@ -1783,8 +1785,8 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 		}
 		var keyIR ir.Expr
 		if keyT.Kind == ir.TypeString {
-			keyLit := &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: f.Name}
-			keyIR = &ir.Literal{AST: keyLit, Type: TypString, Raw: f.Name}
+			keyLit := ast.NewStringLiteral(f.Name)
+			keyIR = &ir.Literal{AST: keyLit, Type: TypString, Value: f.Name}
 		} else {
 			// A non-string key type means the name is not a name: it is an
 			// expression written where a field name would go, and it has to
@@ -1958,7 +1960,8 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 	for _, part := range x.Parts {
 		var partExpr ir.Expr
 		if lit, ok := part.(*ast.LiteralExpr); ok {
-			partExpr = &ir.Literal{AST: lit, Type: TypString, Raw: lit.Raw}
+			v, _ := lit.StringValue()
+			partExpr = &ir.Literal{AST: lit, Type: TypString, Value: v}
 		} else {
 			partExpr = c.interpolateStringify(part, c.checkExpr(part), *part.ExprPos())
 		}
@@ -1969,9 +1972,9 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 		}
 	}
 	if chain == nil {
-		// Raw is the value, not its source spelling — `""` here would be the
+		// Value is the value, not its source spelling — `""` here would be the
 		// two-character string, which Go codegen duly renders as "\"\"".
-		return &ir.Literal{Type: TypString, Raw: ""}
+		return &ir.Literal{Type: TypString, Value: ""}
 	}
 	return chain
 }
@@ -3518,7 +3521,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		if wildcardFirstName == nil {
 			wildcardFirstName = map[string]string{}
 		}
-		key := &ir.Literal{Type: TypString, Raw: name}
+		key := &ir.Literal{Type: TypString, Value: name}
 		wildcardEntries[wc.Name] = append(wildcardEntries[wc.Name], ir.MapEntry{Key: key, Value: val})
 		if _, had := wildcardFirstName[wc.Name]; !had {
 			wildcardFirstName[wc.Name] = name
@@ -4028,7 +4031,7 @@ func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg 
 	}
 	return append(props, ir.Arg{
 		Name:  comp.WildcardInto,
-		Value: &ir.Literal{Type: TypString, Raw: name},
+		Value: &ir.Literal{Type: TypString, Value: name},
 	})
 }
 

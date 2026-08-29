@@ -64,7 +64,7 @@ func TestHexColorLowersToStructLit(t *testing.T) {
 			continue
 		}
 		n := 0
-		fmt.Sscanf(lit.Raw, "%d", &n)
+		fmt.Sscanf(lit.Value, "%d", &n)
 		if n != w {
 			t.Errorf("field %s = %d, want %d", f.Name, n, w)
 		}
@@ -88,7 +88,7 @@ func colorChannels(t *testing.T, literal string) map[string]int {
 	got := map[string]int{}
 	for _, f := range sl.Fields {
 		n := 0
-		fmt.Sscanf(f.Value.(*ir.Literal).Raw, "%d", &n)
+		fmt.Sscanf(f.Value.(*ir.Literal).Value, "%d", &n)
 		got[f.Name] = n
 	}
 	return got
@@ -132,7 +132,7 @@ func TestHexColorEightDigitIncludesAlpha(t *testing.T) {
 	for _, f := range sl.Fields {
 		lit := f.Value.(*ir.Literal)
 		n := 0
-		fmt.Sscanf(lit.Raw, "%d", &n)
+		fmt.Sscanf(lit.Value, "%d", &n)
 		if n != want[f.Name] {
 			t.Errorf("field %s = %d, want %d", f.Name, n, want[f.Name])
 		}

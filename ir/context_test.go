@@ -26,7 +26,7 @@ func TestConvertContextDecl(t *testing.T) {
 		{
 			Name:    "theme",
 			Typ:     &Type{Kind: TypeString},
-			Default: &Literal{Type: &Type{Kind: TypeString}, Raw: "light"},
+			Default: &Literal{Type: &Type{Kind: TypeString}, Value: "light"},
 		},
 	}}
 	doc := Convert(pkg)
@@ -53,7 +53,7 @@ func TestConvertContextProvider(t *testing.T) {
 	ctx := &Context{Name: "theme", Typ: &Type{Kind: TypeString}}
 	prov := &ContextProvider{
 		Ref:   ctx,
-		Value: &Literal{Type: &Type{Kind: TypeString}, Raw: "dark"},
+		Value: &Literal{Type: &Type{Kind: TypeString}, Value: "dark"},
 	}
 	s := ConvertStmt(prov)
 	vn, ok := s.(*ast.VisualNode)

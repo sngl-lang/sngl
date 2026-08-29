@@ -6,7 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func intLit(n string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Raw: n} }
+func intLit(n string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: n} }
 
 // names returns the field names of a flat struct literal in order.
 func names(sl *ir.StructLit) []string {
@@ -31,7 +31,7 @@ func TestFlattenStructLitLiteralSpread(t *testing.T) {
 	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("field names: got %v want [a b]", got)
 	}
-	if a := out.Fields[0]; a.Spread || a.Value.(*ir.Literal).Raw != "0" {
+	if a := out.Fields[0]; a.Spread || a.Value.(*ir.Literal).Value != "0" {
 		t.Fatalf("a should be 0 (last write wins), got %+v", a)
 	}
 }
@@ -43,7 +43,7 @@ func TestFlattenStructLitExplicitZeroWins(t *testing.T) {
 		{Name: "a", Value: intLit("0")},
 	}}
 	out := flattenSpreadExprCtx(in, &ir.Package{}).(*ir.StructLit)
-	if len(out.Fields) != 1 || out.Fields[0].Value.(*ir.Literal).Raw != "0" {
+	if len(out.Fields) != 1 || out.Fields[0].Value.(*ir.Literal).Value != "0" {
 		t.Fatalf("want {a=0}, got %+v", out.Fields)
 	}
 }

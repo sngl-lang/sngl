@@ -12,7 +12,7 @@ component badge(label string = "none", count int = 0) {
 component main {
     var shown string = ""
     badge()
-    badge(label = "set")
+    badge(label="set")
     text(value=shown)
 }
 

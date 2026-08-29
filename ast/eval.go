@@ -21,8 +21,8 @@ func EvalString(e Expr) (string, error) {
 	case *LiteralExpr:
 		switch x.Kind {
 		case LiteralStringQuoted, LiteralStringBackticked, LiteralStringTrippleQuoted:
-			// Raw holds the lexer's string content (quotes already stripped).
-			return x.Raw, nil
+			v, _ := x.StringValue()
+			return v, nil
 		default:
 			return "", fmt.Errorf("expected a string literal, got a %s literal", x.Kind)
 		}

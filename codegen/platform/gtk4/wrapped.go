@@ -53,7 +53,7 @@ func rtConst(name string) *ir.Ident {
 	return &ir.Ident{Name: "gtk4rt." + name, Type: ir.TypDyn}
 }
 
-func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Raw: v} }
+func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: v} }
 
 // gtk4rtHandleIRType is an ir.Type that renders as the bare gtk4rt.Handle.
 func gtk4rtHandleIRType() *ir.Type { return ir.NativeGoNamed(gtk4rtHandleType) }
@@ -95,7 +95,7 @@ func rtCtorForCType(cType string) (ir.Expr, bool) {
 	case "GtkBox":
 		return rtCall("BoxNew", rtConst("OrientationHorizontal"), intLit("0")), true
 	case "GtkLabel":
-		return rtCall("LabelNew", &ir.Literal{Type: ir.TypString, Raw: ""}), true
+		return rtCall("LabelNew", &ir.Literal{Type: ir.TypString, Value: ""}), true
 	case "GtkButton":
 		return rtCall("ButtonNew"), true
 	case "GtkCheckButton":
@@ -147,7 +147,7 @@ func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
 		return value, true
 	case rtOrient:
 		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-			return rtOrientationConst(lit.Raw)
+			return rtOrientationConst(lit.Value)
 		}
 	}
 	return nil, false

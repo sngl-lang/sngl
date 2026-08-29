@@ -12,9 +12,12 @@ type Expr interface {
 
 // Literal is a constant value: int, float, string, bool, null, color, unit.
 type Literal struct {
-	AST    *ast.LiteralExpr
-	Type   *Type
-	Raw    string // source text for codegen
+	AST  *ast.LiteralExpr
+	Type *Type
+	// Value is what the literal stands for, not how it was written: a string
+	// carries its decoded content, and AST.Raw the spelling it was decoded
+	// from. A number carries its digits, which are the same either way.
+	Value  string
 	Suffix string // unit suffix ("px") if unit; empty otherwise
 }
 

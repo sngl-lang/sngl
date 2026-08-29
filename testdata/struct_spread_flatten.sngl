@@ -10,6 +10,6 @@ struct S {
 }
 
 component main {
-    var x S = {a = 1, ...{a = 0, b = 2}}
+    var x S = {a=1, ...{a=0, b=2}}
     text(value=string(x.a) + "/" + string(x.b))
 }

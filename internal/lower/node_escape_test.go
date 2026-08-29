@@ -17,7 +17,7 @@ func createNodeLV(id, tag string) *ir.LocalVar {
 			Type:     ir.TypDyn,
 			Receiver: &ir.Ident{Name: "lower"},
 			Func:     &ir.Func{Name: "CreateNode"},
-			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: tag}}},
+			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 		},
 	}
 }
@@ -75,7 +75,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 			&ir.Assign{
 				Target: &ir.Select{Operand: elemRef("__n1"), Field: "value", Type: ir.TypDyn},
 				Op:     ast.AssignSet,
-				Value:  &ir.Literal{Type: ir.TypString, Raw: "x"},
+				Value:  &ir.Literal{Type: ir.TypString, Value: "x"},
 			},
 		},
 	}

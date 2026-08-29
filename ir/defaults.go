@@ -8,17 +8,17 @@ func ZeroExpr(t *Type) Expr {
 	}
 	switch t.Kind {
 	case TypeBool:
-		return &Literal{Type: t, Raw: "false"}
+		return &Literal{Type: t, Value: "false"}
 	case TypeInt:
-		return &Literal{Type: t, Raw: "0"}
+		return &Literal{Type: t, Value: "0"}
 	case TypeFloat:
-		return &Literal{Type: t, Raw: "0.0"}
+		return &Literal{Type: t, Value: "0.0"}
 	case TypeString:
-		return &Literal{Type: t, Raw: ""}
+		return &Literal{Type: t, Value: ""}
 	case TypeNull:
-		return &Literal{Type: TypNull, Raw: "null"}
+		return &Literal{Type: TypNull, Value: "null"}
 	case TypeOption:
-		return &Literal{Type: TypNull, Raw: "null"}
+		return &Literal{Type: TypNull, Value: "null"}
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
 	case TypeStruct:
@@ -27,11 +27,11 @@ func ZeroExpr(t *Type) Expr {
 		// than an empty struct literal.
 		switch {
 		case IsDateStruct(t):
-			return &Literal{Type: t, Raw: "0001-01-01"}
+			return &Literal{Type: t, Value: "0001-01-01"}
 		case IsTimeStruct(t):
-			return &Literal{Type: t, Raw: "00:00:00"}
+			return &Literal{Type: t, Value: "00:00:00"}
 		case IsDateTimeStruct(t):
-			return &Literal{Type: t, Raw: "0001-01-01 00:00:00"}
+			return &Literal{Type: t, Value: "0001-01-01 00:00:00"}
 		}
 		sd, _ := t.Decl.(*StructDef)
 		return &StructLit{Type: t, Def: sd, Fields: nil}
@@ -52,7 +52,7 @@ func ZeroExpr(t *Type) Expr {
 				}
 			}
 		}
-		return &Literal{Type: t, Raw: "0" + suffix, Suffix: suffix}
+		return &Literal{Type: t, Value: "0" + suffix, Suffix: suffix}
 	case TypeFunc:
 		return zeroFuncExpr(t)
 	}

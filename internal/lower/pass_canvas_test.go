@@ -48,18 +48,18 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 		Name:      "rect",
 		Component: rectComp,
 		Props: []ir.Arg{
-			{Name: "x", Value: &ir.Literal{Type: ir.TypFloat, Raw: "10"}},
-			{Name: "y", Value: &ir.Literal{Type: ir.TypFloat, Raw: "10"}},
-			{Name: "w", Value: &ir.Literal{Type: ir.TypFloat, Raw: "100"}},
-			{Name: "h", Value: &ir.Literal{Type: ir.TypFloat, Raw: "50"}},
+			{Name: "x", Value: &ir.Literal{Type: ir.TypFloat, Value: "10"}},
+			{Name: "y", Value: &ir.Literal{Type: ir.TypFloat, Value: "10"}},
+			{Name: "w", Value: &ir.Literal{Type: ir.TypFloat, Value: "100"}},
+			{Name: "h", Value: &ir.Literal{Type: ir.TypFloat, Value: "50"}},
 		},
 	}
 	canvasInst := &ir.NodeInst{
 		Name:      "canvas",
 		Component: canvasComp,
 		Props: []ir.Arg{
-			{Name: "width", Value: &ir.Literal{Type: ir.TypFloat, Raw: "400"}},
-			{Name: "height", Value: &ir.Literal{Type: ir.TypFloat, Raw: "300"}},
+			{Name: "width", Value: &ir.Literal{Type: ir.TypFloat, Value: "400"}},
+			{Name: "height", Value: &ir.Literal{Type: ir.TypFloat, Value: "300"}},
 		},
 		Children: []ir.Stmt{rectInst},
 	}

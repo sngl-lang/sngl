@@ -1,6 +1,6 @@
 import . "sngl://std"
 
-foobar something // ERROR(check) "unexpected root-level visual node"
+foobar // ERROR(check) "unexpected root-level visual node"
 
 component main {
 }

@@ -11,6 +11,6 @@ component edit(onEdit func(s string)) {
 component main {
     var log = ""
 
-    edit(onEdit=func(s) => s)                // ERROR(check) "cannot use func(string) string as func(string)"
-    edit(onEdit=func(s string, n int) { })   // ERROR(check) "cannot use func(string, int) as func(string)"
+    edit(onEdit=func(s) => s)             // ERROR(check) "cannot use func(string) string as func(string)"
+    edit(onEdit=func(s string, n int) {}) // ERROR(check) "cannot use func(string, int) as func(string)"
 }

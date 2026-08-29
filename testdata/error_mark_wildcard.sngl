@@ -8,33 +8,33 @@ import . "sngl://platforms"
 component attrs(
     #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 component styled(
     #[wildcard("theme[A-Za-z]+")] theme map<string, Style>,
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 component twice(
     #[wildcard("ax+")] a map<string, string>,
     #[wildcard("a+x")] b map<string, string>,
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 component badPattern(
     #[wildcard("data(")] c map<string, string>, // ERROR(check) "#[wildcard(\"data(\")]"
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 component doubled(
     #[wildcard("p.*")]
     #[wildcard("q.*")] d map<string, string>, // ERROR(check) "already a wildcard"
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 // A wildcard prop stands for many names, so one call site can bind it many
@@ -42,7 +42,7 @@ component doubled(
 component scalar(
     #[wildcard("z.*")] e string = "", // ERROR(check) "declare it map<string, V>"
 ) {
-    text(value = e)
+    text(value=e)
 }
 
 // An event wildcard widens which event names are accepted; a name it does not
@@ -52,14 +52,14 @@ component evts(
     #[wildcard("on[A-Z][A-Za-z]*")] @event,
     #[wildcard("go.*", "somewhere")] @other, // ERROR(check) "already carries the name"
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 component twoEvts(
     #[wildcard("ax+")] @a,
     #[wildcard("a+x")] @b,
 ) {
-    text(value = "x")
+    text(value="x")
 }
 
 // A wildcard says which names stand in one position — here a visual node's.
@@ -67,7 +67,7 @@ component twoEvts(
 // anywhere else, a name it covers is a misspelling like any other.
 #[wildcard("box[A-Za-z0-9]*", "which")]
 component anyBox(which string = "") {
-    text(value = which)
+    text(value=which)
 }
 
 func boxedTypo() => boxSomething // ERROR(check) "undefined: boxSomething"
@@ -77,12 +77,12 @@ component main() {
         // A wildcard prop is bound under its own name or by a name its pattern
         // covers. Both on one call are two spellings of one map, and the
         // second silently replaced the first.
-        attrs(data = {dataRole = "plain"}, dataIndex = "3") // ERROR(check) "bound directly and as \"dataIndex\""
-        evts(@onHover { })
-        evts(@hover { }) // ERROR(check) "unknown event \"hover\" on component evts"
-        twoEvts(@ax { }) // ERROR(check) "matches both wildcard events"
-        attrs(dateRole = "row") // ERROR(check) "unknown prop \"dateRole\" on component attrs"
-        styled(themeMain = "big") // ERROR(check) "cannot use string as Style for prop \"themeMain\""
-        twice(ax = "?") // ERROR(check) "matches both wildcard props"
+        attrs(data={dataRole="plain"}, dataIndex="3") // ERROR(check) "bound directly and as \"dataIndex\""
+        evts(@onHover {})
+        evts(@hover {})         // ERROR(check) "unknown event \"hover\" on component evts"
+        twoEvts(@ax {})         // ERROR(check) "matches both wildcard events"
+        attrs(dateRole="row")   // ERROR(check) "unknown prop \"dateRole\" on component attrs"
+        styled(themeMain="big") // ERROR(check) "cannot use string as Style for prop \"themeMain\""
+        twice(ax="?")           // ERROR(check) "matches both wildcard props"
     }
 }

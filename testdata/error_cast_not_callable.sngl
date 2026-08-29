@@ -18,6 +18,6 @@ component main {
     var c = px(5)           // ERROR(check) "cannot cast to unit px"
     var d = option(5)       // ERROR(check) "cannot cast to option"
     var n = 5
-    var e = n()             // ERROR(check) "int is not a function"
+    var e = n() // ERROR(check) "int is not a function"
     text(value="x")
 }

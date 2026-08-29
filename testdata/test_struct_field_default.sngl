@@ -13,10 +13,10 @@ struct P {
 component main { text(value="x") }
 
 func testOmittedFieldTakesItsDefault(t Test, c main) {
-    var p P = {y = 1}
+    var p P = {y=1}
     t.assert(p.x == 7)
     t.assert(p.tag == "none")
 
     // Writing the default out gives the same value.
-    t.assert(p == P{x = 7, y = 1, tag = "none"})
+    t.assert(p == P{x=7, y=1, tag="none"})
 }

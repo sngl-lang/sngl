@@ -30,7 +30,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 		Type:    ir.TypInt,
 		IsConst: true,
 		Init: &ir.Call{AST: callAST, Type: ir.TypInt, Args: []ir.CallArg{
-			{Value: &ir.Literal{AST: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "21"}, Type: ir.TypInt, Raw: "21"}},
+			{Value: &ir.Literal{AST: &ast.LiteralExpr{Kind: ast.LiteralInt, Raw: "21"}, Type: ir.TypInt, Value: "21"}},
 		}},
 	}
 	pkg := &ir.Package{
@@ -57,7 +57,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 	if !ok {
 		t.Fatalf("const did not fold to a literal on kotlin target: got %T", c.Init)
 	}
-	if lit.Raw != "42" {
-		t.Errorf("expected folded value 42, got %q", lit.Raw)
+	if lit.Value != "42" {
+		t.Errorf("expected folded value 42, got %q", lit.Value)
 	}
 }

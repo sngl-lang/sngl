@@ -36,13 +36,13 @@ component plain(slot _ tr.default) {}
 component main {
     document() {
         para() {
-            bold(weight = 700)
+            bold(weight=700)
             span() {
-                bold(weight = 400)
+                bold(weight=400)
             }
         }
     }
     plain() {
-        text(value = "anything goes here")
+        text(value="anything goes here")
     }
 }

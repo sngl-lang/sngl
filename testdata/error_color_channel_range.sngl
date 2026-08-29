@@ -4,7 +4,7 @@ import . "sngl://std"
 // backends' agreement. It was an int, nothing checked it, and the JS emitter
 // formatted 300 as "12c" — a seven-digit "#12c8000".
 component main {
-    var over color = color{r = 300, g = 0, b = 0}   // ERROR(check) "integer literal 300 overflows uint8"
-    var under color = color{r = 0, g = -1, b = 0}   // ERROR(check) "integer literal -1 overflows uint8"
+    var over color = color{r=300, g=0, b=0} // ERROR(check) "integer literal 300 overflows uint8"
+    var under color = color{r=0, g=-1, b=0} // ERROR(check) "integer literal -1 overflows uint8"
     text(value=over.hex() + under.hex())
 }

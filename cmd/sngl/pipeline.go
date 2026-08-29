@@ -383,7 +383,7 @@ func optionBool(opts *ir.StructLit, name string) bool {
 	if !ok {
 		return false
 	}
-	return lit.Raw == "true"
+	return lit.Value == "true"
 }
 
 func optionFieldType(opts *ir.StructLit, name string) *ir.Type {
@@ -405,20 +405,20 @@ func parseConstOption(raw string, t *ir.Type) (*ir.Literal, error) {
 	case ir.TypeBool:
 		switch raw {
 		case "true", "false":
-			return &ir.Literal{Type: ir.TypBool, Raw: raw}, nil
+			return &ir.Literal{Type: ir.TypBool, Value: raw}, nil
 		}
 		return nil, fmt.Errorf("expected bool, got %q", raw)
 	case ir.TypeInt:
-		return &ir.Literal{Type: ir.TypInt, Raw: raw}, nil
+		return &ir.Literal{Type: ir.TypInt, Value: raw}, nil
 	case ir.TypeFloat:
-		return &ir.Literal{Type: ir.TypFloat, Raw: raw}, nil
+		return &ir.Literal{Type: ir.TypFloat, Value: raw}, nil
 	}
 	if ir.IsColorStruct(t) {
 		// A colour arrives as a raw hex string, which is what ApplyOptions
-		// reads out of .Raw anyway.
-		return &ir.Literal{Type: ir.TypString, Raw: raw}, nil
+		// reads out of .Value anyway.
+		return &ir.Literal{Type: ir.TypString, Value: raw}, nil
 	}
-	return &ir.Literal{Type: t, Raw: raw}, nil
+	return &ir.Literal{Type: t, Value: raw}, nil
 }
 
 func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDir string, fileAssets []codegen.FileAsset, q bool) error {

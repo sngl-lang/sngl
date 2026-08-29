@@ -30,7 +30,7 @@ func TestStyleFieldsAllReachCSS(t *testing.T) {
 	// the six multi-declaration props were listed as supported by hand, so
 	// deleting one of their arms went undetected.
 	for _, name := range fields {
-		if css := htmlutil.StylePropToCSSIR(name, &ir.Literal{Type: ir.TypInt, Raw: "1"}); css == "" {
+		if css := htmlutil.StylePropToCSSIR(name, &ir.Literal{Type: ir.TypInt, Value: "1"}); css == "" {
 			t.Errorf("Style.%s is declared in lib/std and renders as nothing", name)
 		}
 	}
