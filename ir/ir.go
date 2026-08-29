@@ -586,22 +586,16 @@ func (p *Param) SymType() *Type  { return p.Type }
 // TypeParam is one generic parameter of a declaration. Default is what an
 // argument list that stops short falls back to.
 type TypeParam struct {
+	Pos     ast.Pos `json:"-"`
 	Name    string
 	Default *Type `json:"-"`
 }
 
-// TypeParamNames is the parameters' names, for the places that bind them into
-// scope and care about nothing else.
-func TypeParamNames(ps []TypeParam) []string {
-	if len(ps) == 0 {
-		return nil
-	}
-	out := make([]string, len(ps))
-	for i, p := range ps {
-		out[i] = p.Name
-	}
-	return out
-}
+// ParamName satisfies ast.Named; see the note there.
+func (p TypeParam) ParamName() string { return p.Name }
+
+// ParamPos satisfies ast.Named; see the note there.
+func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {

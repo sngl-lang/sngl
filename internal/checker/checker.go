@@ -144,7 +144,6 @@ type checker struct {
 	symtab *ir.SymbolTable
 
 	// Type resolution context.
-	typeParams []string // active generic type params (set during function checking)
 
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
@@ -2748,9 +2747,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 
-	prevTypeParams := c.typeParams
-	c.typeParams = ir.TypeParamNames(fn.TypeParams)
-	defer func() { c.typeParams = prevTypeParams }()
+	defer pushTypeParams(c, fn.TypeParams)()
 
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body

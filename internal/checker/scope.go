@@ -161,3 +161,16 @@ func declPos(sym ir.Symbol) ast.Pos {
 	}
 	return ast.Pos{}
 }
+
+// pushTypeParams opens a scope holding the type parameters and returns the pop.
+// A free function rather than a method because Go allows no type parameters on
+// one, and the two packages' parameters differ only in the name they answer to.
+func pushTypeParams[T ast.Named](c *checker, groups ...[]T) func() {
+	c.pushScope()
+	for _, g := range groups {
+		for _, p := range g {
+			c.declare(p.ParamPos(), &ir.TypeParamSym{Name: p.ParamName()})
+		}
+	}
+	return c.popScope
+}

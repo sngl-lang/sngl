@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 
@@ -160,11 +159,6 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return &ir.Type{Kind: ir.TypeComponent}
 	}
 
-	// Type parameter (checked before scope so generic params shadow types like T).
-	if slices.Contains(c.typeParams, t.Name) {
-		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
-	}
-
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if c.rejectUnexported(t.Pos, sym) {
 			return TypDyn
@@ -312,7 +306,7 @@ func typeParamShells(ps []ast.TypeParam) []ir.TypeParam {
 	}
 	out := make([]ir.TypeParam, len(ps))
 	for i, p := range ps {
-		out[i] = ir.TypeParam{Name: p.Name}
+		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
 	}
 	return out
 }
@@ -324,7 +318,7 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	}
 	out := make([]ir.TypeParam, len(ps))
 	for i, p := range ps {
-		out[i] = ir.TypeParam{Name: p.Name}
+		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
 		if p.Default != nil {
 			out[i].Default = c.resolveType(p.Default)
 		}
@@ -337,12 +331,8 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 // first (making the name visible for forward/mutually-recursive references)
 // and resolve fields in a second sub-pass once every type shell exists.
 func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
-	// Push struct-level type params into scope so field types like T resolve.
-	prevTypeParams := c.typeParams
-	if len(s.TypeParams) > 0 {
-		c.typeParams = append(append([]string(nil), c.typeParams...), ast.TypeParamNames(s.TypeParams)...)
-	}
-	defer func() { c.typeParams = prevTypeParams }()
+	// Struct-level type params, so a field type like T resolves.
+	defer pushTypeParams(c, s.TypeParams)()
 
 	var fields []*ir.StructField
 	seen := make(map[string]struct{})
@@ -593,12 +583,8 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	// Set type params so T resolves during param/return type resolution.
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
 	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
-	prevTypeParams := c.typeParams
-	combined := ast.TypeParamNames(f.TypeParams)
-	if len(f.RecvTypeParams) > 0 {
-		combined = append(ast.TypeParamNames(f.RecvTypeParams), combined...)
-	}
-	c.typeParams = combined
+	// Receiver parameters come first so the receiver type `list<T>` resolves.
+	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
 	// leave Return nil here so checkFuncBody can infer from a `=>` body without
 	// conflating it with an explicit `dyn` return annotation.
@@ -616,7 +602,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		IsTest:         f.IsTest(),
 	}
 	c.refuseParamMarks(f.Params.Params)
-	c.typeParams = prevTypeParams
+	popTypeParams()
 	if isMethod {
 		fn.Receiver = typeName
 		fn.Name = methodName

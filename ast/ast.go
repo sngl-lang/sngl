@@ -136,21 +136,22 @@ func (*Comment) structBodyItem()     {}
 // TypeParam is one generic parameter of a declaration. Default is what an
 // argument list that stops short falls back to.
 type TypeParam struct {
+	Pos     Pos `json:"-"`
 	Name    string
 	Default TypeExpr `json:",omitempty"`
 }
 
-// TypeParamNames is the parameters' names, for the places that bind them into
-// scope and care about nothing else.
-func TypeParamNames(ps []TypeParam) []string {
-	if len(ps) == 0 {
-		return nil
-	}
-	out := make([]string, len(ps))
-	for i, p := range ps {
-		out[i] = p.Name
-	}
-	return out
+// ParamName is what a type parameter is called. Declared so one helper can walk
+// either package's parameters -- ir.TypeParam answers to it too.
+func (p TypeParam) ParamName() string { return p.Name }
+
+// ParamPos is where it was written, so a redeclaration reports there.
+func (p TypeParam) ParamPos() Pos { return p.Pos }
+
+// Named is a type parameter of either package's shape.
+type Named interface {
+	ParamName() string
+	ParamPos() Pos
 }
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.

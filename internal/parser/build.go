@@ -946,7 +946,8 @@ func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
 			continue
 		}
 		if it.tokenType() == IDENT && tp.Name == "" {
-			tp.Name = it.shift().Literal
+			tok := it.shift()
+			tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
 			continue
 		}
 		it.skip() // assign

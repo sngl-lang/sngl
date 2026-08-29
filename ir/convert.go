@@ -130,6 +130,7 @@ func (c *converter) convertImport(imp *Import) *ast.Import {
 func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 	def := &ast.StructDef{
 		Name:        s.Name,
+		TypeParams:  c.convertTypeParams(s.TypeParams),
 		IsMultiline: len(s.Fields) > 1,
 	}
 	for _, f := range s.Fields {
@@ -581,7 +582,7 @@ func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	}
 	out := make([]ast.TypeParam, len(ps))
 	for i, p := range ps {
-		out[i] = ast.TypeParam{Name: p.Name, Default: c.convertType(p.Default)}
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Default: c.convertType(p.Default)}
 	}
 	return out
 }
@@ -968,6 +969,13 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		nt := &ast.NamedType{Name: name}
 		if t.Package != "" {
 			nt.Package = t.Package
+		}
+		// A parameterized struct holds its bound arguments in Elems, in the
+		// declaration order the spelling wants them back in.
+		if sd, ok := t.Decl.(*StructDef); ok && len(sd.TypeParams) > 0 {
+			for _, e := range t.Elems {
+				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
+			}
 		}
 		return nt
 	case TypeFunc:

@@ -8,12 +8,12 @@ import (
 // synthRecvTypeExpr returns an ast.TypeExpr referring to `name`, with type
 // parameters instantiated as themselves. Used to produce the synthetic `this`
 // param's declared type when desugaring nested methods.
-func synthRecvTypeExpr(pos ast.Pos, name string, typeParams []string) ast.TypeExpr {
+func synthRecvTypeExpr[T ast.Named](pos ast.Pos, name string, typeParams []T) ast.TypeExpr {
 	nt := &ast.NamedType{Pos: pos, Name: name}
 	if len(typeParams) > 0 {
 		args := make([]ast.TypeExpr, len(typeParams))
 		for i, tp := range typeParams {
-			args[i] = &ast.NamedType{Pos: pos, Name: tp}
+			args[i] = &ast.NamedType{Pos: pos, Name: tp.ParamName()}
 		}
 		nt.TypeArgs = args
 	}
@@ -198,7 +198,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			continue
 		}
 
-		thisType := synthRecvTypeExpr(n.Pos, recvName, ast.TypeParamNames(typeParams))
+		thisType := synthRecvTypeExpr(n.Pos, recvName, typeParams)
 		thisParam := ast.Param{
 			Pos:  n.Pos,
 			Name: ir.ReceiverParam,

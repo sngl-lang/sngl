@@ -359,16 +359,17 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	}
 	// Struct fields require semicolons (ASI newlines), so always multiline.
 	f.write("{")
+	body := takeHeaderComment(f, s.Body)
 	f.newline()
 	f.indent++
-	for i := 0; i < len(s.Body); i++ {
-		f.blankBeforeBodyItem(i, bodyItemLine(s.Body[i]))
-		if f.writeBodyComment(s.Body[i]) {
+	for i := 0; i < len(body); i++ {
+		f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+		if f.writeBodyComment(body[i]) {
 			continue
 		}
-		f.writeStructBodyItem(s.Body[i])
-		if i+1 < len(s.Body) {
-			if c, ok := s.Body[i+1].(*ast.Comment); ok && c.Inline {
+		f.writeStructBodyItem(body[i])
+		if i+1 < len(body) {
+			if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
 				f.writeTrailing(c)
 				i++
 			}
@@ -410,6 +411,19 @@ func (f *formatter) blankBeforeBodyItem(i, line int) {
 	if i > 0 && line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
 		f.blankLine()
 	}
+}
+
+// takeHeaderComment writes a comment sitting on the opening brace's line as a
+// trailer on the brace and returns the body without it. It trails the brace,
+// not the first item inside, which is where a body loop would otherwise put it.
+func takeHeaderComment[T any](f *formatter, body []T) []T {
+	if len(body) > 0 {
+		if c, ok := any(body[0]).(*ast.Comment); ok && c.Inline {
+			f.writeTrailing(c)
+			return body[1:]
+		}
+	}
+	return body
 }
 
 // writeBodyComment writes a struct or enum body item that is a comment on a
@@ -462,15 +476,17 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			break
 		}
 	}
+	body := e.Body
 	if e.IsMultiline || hasFuncs {
+		body = takeHeaderComment(f, body)
 		f.newline()
 		f.indent++
-		for i := 0; i < len(e.Body); i++ {
-			f.blankBeforeBodyItem(i, bodyItemLine(e.Body[i]))
-			if f.writeBodyComment(e.Body[i]) {
+		for i := 0; i < len(body); i++ {
+			f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+			if f.writeBodyComment(body[i]) {
 				continue
 			}
-			item := e.Body[i]
+			item := body[i]
 			switch it := item.(type) {
 			case *ast.EnumMember:
 				f.write(it.Name)
@@ -481,8 +497,8 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			case *ast.FuncDef:
 				f.writeFuncDef(it)
 			}
-			if i+1 < len(e.Body) {
-				if c, ok := e.Body[i+1].(*ast.Comment); ok && c.Inline {
+			if i+1 < len(body) {
+				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
 					f.writeTrailing(c)
 					i++
 				}
