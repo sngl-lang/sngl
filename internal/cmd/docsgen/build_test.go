@@ -14,11 +14,15 @@ import (
 // compiling those packages to wasm; if that evaluation breaks, the sidebar
 // (also data-driven) can still render while every page body comes up empty.
 // This test guards against that whole-site-goes-blank regression.
+//
+// It does not skip in -short, unlike the other heavy tests: those need a
+// browser, an Android SDK or a display, and this needs none of them. It is
+// merely slow -- ~80s, of which the wasm evaluation its old skip message
+// blamed is 6s and emitting the 789 pages is the rest. That is ~11% on a
+// twelve-minute run, against a regression that otherwise reaches the default
+// branch and breaks the published docs, because `pages` is the only other job
+// that builds the site and it runs nowhere else.
 func TestWebsiteProducesContent(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping website build (compiles wasm) in -short mode")
-	}
-
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
