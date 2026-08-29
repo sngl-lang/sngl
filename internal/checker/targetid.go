@@ -304,7 +304,7 @@ func (c *checker) collectFuncOverrides() {
 		if base == nil {
 			continue
 		}
-		overrides := &base.Overrides
+		overrides := &base.PlatformOverrides
 		if kind == ir.BuiltinLanguage {
 			overrides = &base.LanguageOverrides
 		}
@@ -386,7 +386,7 @@ func (c *checker) checkPendingFuncOverrides() {
 		if po.kind == ir.BuiltinLanguage {
 			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
 		} else {
-			po.fn.Overrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
 		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock

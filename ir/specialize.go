@@ -59,7 +59,7 @@ func pick[T any](t target, byPlatform, byLanguage map[string]T) (T, bool) {
 	return zero, false
 }
 
-// specializePkgBodies swaps each component's Overrides[platform] entry
+// specializePkgBodies swaps each component's PlatformOverrides[platform] entry
 // into its Body, for pkg and every package it imports (transitively).
 // Imported packages carry their own stdlib *Component instances — distinct
 // pointers from the main package's — so a component referenced inside an
@@ -75,7 +75,7 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 	}
 	seen[pkg] = struct{}{}
 
-	// Overrides lives on stdlib *Component pointers, which are in
+	// PlatformOverrides lives on stdlib *Component pointers, which are in
 	// scope but not in pkg.Components (that list holds only user-package
 	// components). Walk the symbol table so stdlib extensions get
 	// specialized too.
@@ -145,7 +145,7 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 	if bodiedOnly && len(fn.Block) == 0 {
 		return
 	}
-	if body, ok := pick(t, fn.Overrides, fn.LanguageOverrides); ok {
+	if body, ok := pick(t, fn.PlatformOverrides, fn.LanguageOverrides); ok {
 		fn.Block = body.Stmts
 	}
 }
@@ -167,7 +167,7 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if bodiedOnly && len(comp.Body) == 0 {
 		return
 	}
-	body, ok := pick(t, comp.Overrides, comp.LanguageOverrides)
+	body, ok := pick(t, comp.PlatformOverrides, comp.LanguageOverrides)
 	if !ok {
 		return
 	}

@@ -123,7 +123,7 @@ type Options struct {
 
 	// Platform is the active build target's platform identifier (e.g.
 	// "html", "gtk4", "fyne"). passPlatformExtensionBody uses it to
-	// swap each *ir.Component's matching Overrides entry into
+	// swap each *ir.Component's matching PlatformOverrides entry into
 	// Component.Body. Empty string disables the swap — appropriate for
 	// platform-agnostic tools (LSP, format) that should leave abstract
 	// stdlib components abstract.

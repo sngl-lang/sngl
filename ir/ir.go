@@ -251,13 +251,13 @@ type Func struct {
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
-	// Overrides holds the body each target implements this function with,
-	// keyed by platform. The checker collects every registered target's;
+	// PlatformOverrides holds the body each target implements this function
+	// with, keyed by platform. The checker collects every registered target's;
 	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
 	// function nobody overrides. A function has no state of its own, so the
 	// Body's Vars are always empty -- it shares the type so one collapse rule
 	// covers a component and a function alike.
-	Overrides map[string]Body `json:",omitempty"`
+	PlatformOverrides map[string]Body `json:",omitempty"`
 	// LanguageOverrides is the same, keyed by language. A declaration may be
 	// overridden on either axis; the platform's wins where both apply.
 	LanguageOverrides map[string]Body `json:",omitempty"`
@@ -414,8 +414,9 @@ type Component struct {
 	Funcs        []*Func
 	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
-	// Overrides holds the body each target implements this component with,
-	// keyed by platform, and LanguageOverrides the same keyed by language --
+	// PlatformOverrides holds the body each target implements this component
+	// with, keyed by platform, and LanguageOverrides the same keyed by
+	// language --
 	// a declaration may be overridden on either axis, and the platform's wins
 	// where both apply.
 	//
@@ -423,7 +424,7 @@ type Component struct {
 	// know which one a build picks; ir.SpecializeForTarget swaps the chosen
 	// one into the declaration before the passes that read a body run. nil for
 	// a component nobody overrides.
-	Overrides         map[string]Body `json:"-"`
+	PlatformOverrides map[string]Body `json:"-"`
 	LanguageOverrides map[string]Body `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)

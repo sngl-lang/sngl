@@ -41,7 +41,7 @@ func extStubConfig(t *testing.T, source string) *checker.Config {
 // TestExtensionMergeBasic exercises the platform-agnostic checker collection
 // + lower-time swap. An extension platform ships a new-form
 // `component sngl.text { ... }` declaration. The checker
-// stashes the checked IR body under stdText.Overrides["extstub"]; the
+// stashes the checked IR body under stdText.PlatformOverrides["extstub"]; the
 // stdlib `text` component's own Body stays empty after Check (the checker
 // does not know which platform is active). After running Lower with
 // Options.Platform="extstub", the swap pass moves the platform body into
@@ -80,14 +80,14 @@ component main {
 		t.Fatal("stdlib text component missing from symbol table")
 	}
 
-	// Checker contract: Overrides has the extstub entry; the live
+	// Checker contract: PlatformOverrides has the extstub entry; the live
 	// Component.Body stays empty until the lowering swap runs.
-	if stdText.Overrides == nil {
-		t.Fatal("expected Overrides populated, got nil")
+	if stdText.PlatformOverrides == nil {
+		t.Fatal("expected PlatformOverrides populated, got nil")
 	}
-	body, ok := stdText.Overrides["extstub"]
+	body, ok := stdText.PlatformOverrides["extstub"]
 	if !ok {
-		t.Fatalf("expected Overrides[\"extstub\"], have keys %v", keys(stdText.Overrides))
+		t.Fatalf("expected PlatformOverrides[\"extstub\"], have keys %v", keys(stdText.PlatformOverrides))
 	}
 	if len(body.Stmts) == 0 {
 		t.Errorf("expected stashed extstub body to be non-empty, got %d stmts", len(body.Stmts))
@@ -199,23 +199,23 @@ component main {
 		platform string
 		names    []string
 	}{{"stubA", []string{"label", "flip"}}, {"stubB", []string{"other"}}} {
-		over, ok := stdText.Overrides[want.platform]
+		over, ok := stdText.PlatformOverrides[want.platform]
 		if !ok {
-			t.Fatalf("expected Overrides[%q], have %v", want.platform, stdText.Overrides)
+			t.Fatalf("expected PlatformOverrides[%q], have %v", want.platform, stdText.PlatformOverrides)
 		}
 		vars := over.Vars
 		if !slices.Equal(varNames(vars), want.names) {
-			t.Fatalf("Overrides[%q] = %v, want %v", want.platform, varNames(vars), want.names)
+			t.Fatalf("PlatformOverrides[%q] = %v, want %v", want.platform, varNames(vars), want.names)
 		}
 		for _, v := range vars {
 			if v.Init == nil {
-				t.Errorf("Overrides[%q] %q has nil Init: the initializer was never checked", want.platform, v.Name)
+				t.Errorf("PlatformOverrides[%q] %q has nil Init: the initializer was never checked", want.platform, v.Name)
 			}
 		}
 	}
 	// A `const` in the extension body travels the same road: pass1 records it
 	// as a Var with IsConst, and nothing here distinguishes the two.
-	if v := stdText.Overrides["stubA"].Vars[0]; !v.IsConst {
+	if v := stdText.PlatformOverrides["stubA"].Vars[0]; !v.IsConst {
 		t.Errorf("expected %q to be a const", v.Name)
 	}
 	if len(stdText.Vars) != 0 {

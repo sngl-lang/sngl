@@ -320,10 +320,10 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 // the platform being lowered for. With no platform (LSP, format) nothing is
 // specialized and nothing qualifies.
 func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
-	if st.platform == "" || comp.Overrides == nil {
+	if st.platform == "" || comp.PlatformOverrides == nil {
 		return false
 	}
-	_, ok := comp.Overrides[st.platform]
+	_, ok := comp.PlatformOverrides[st.platform]
 	return ok
 }
 

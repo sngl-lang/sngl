@@ -1132,8 +1132,8 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 
 // mergeTargetExtensions collects the `component sngl.X` overrides one target's
 // package declares, checking each `platform <name> { ... }` block into the
-// stdlib *ir.Component's Overrides map. The lowering pass
-// passPlatformExtensionBody reads Overrides[opts.Platform] and swaps it
+// stdlib *ir.Component's PlatformOverrides map. The lowering pass
+// passPlatformExtensionBody reads PlatformOverrides[opts.Platform] and swaps it
 // into Component.Body before any other pass runs.
 //
 // A target's package is loaded the way a side-effect import is, and for the
@@ -1250,7 +1250,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
-	overrides := &comp.Overrides
+	overrides := &comp.PlatformOverrides
 	if kind == ir.BuiltinLanguage {
 		overrides = &comp.LanguageOverrides
 	}
@@ -1309,7 +1309,7 @@ func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
-// needs to be checked into IR and stashed under stdComp.Overrides.
+// needs to be checked into IR and stashed under stdComp.PlatformOverrides.
 // Body-checking is deferred until after user pass1 so user-declared symbols
 // are in scope when the platform body resolves identifiers.
 type pendingExtension struct {
@@ -1409,7 +1409,7 @@ func (c *checker) checkPendingExtensions() {
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
-				pe.comp.Overrides[pe.platform] = checked
+				pe.comp.PlatformOverrides[pe.platform] = checked
 			}
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
