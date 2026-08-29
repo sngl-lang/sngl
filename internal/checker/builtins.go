@@ -93,7 +93,6 @@ func bindBuiltin[T ir.Symbol](c *checker, dst *T, kind ir.BuiltinKind, sym ir.Sy
 	return got
 }
 
-// symPos is the declaration position of a symbol, for diagnostics.
 func symPos(sym ir.Symbol) ast.Pos {
 	switch d := sym.(type) {
 	case *ir.Component:

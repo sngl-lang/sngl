@@ -1,0 +1,71 @@
+# A `sngl://` URI addresses a package everywhere a positional argument is
+# taken, not only in `sngl doc`. It used to reach os.Stat and fail as a path.
+
+# dump, at the stage the issue was found on. A library package is handed back
+# as the checker built it rather than re-checked as a document: gtk4.sngl
+# imports sngl://internal/marks, which only lib source may.
+sngl dump --stage checked sngl://platforms/gtk4
+stdout 'component GtkButton'
+stdout 'component GtkLabel'
+
+# The widget declarations are synthesized from introspection data and have no
+# file on disk, so a path-based read could not see them even in principle.
+# They are still source, which is what --stage parsed prints.
+sngl dump --stage parsed sngl://platforms/gtk4
+stdout 'component GtkButton'
+
+sngl dump --stage parsed sngl://draw
+stdout 'component canvas'
+
+sngl dump --stage checked sngl://std
+stdout 'component button'
+
+# check reports on the package as a whole.
+sngl check sngl://std
+stdout 'sngl://std: ok'
+
+sngl check sngl://platforms/gtk4
+stdout 'sngl://platforms/gtk4: ok'
+
+# A package argument is the whole input: naming one does not also walk the
+# current directory.
+sngl check sngl://std
+! stdout 'main.sngl'
+
+# Packages and paths mix in one invocation.
+sngl check sngl://draw main.sngl
+stdout 'sngl://draw: ok'
+stdout 'main.sngl: ok'
+
+# generate runs the pipeline over the package's own declarations.
+sngl generate --lang go --platform gtk4 -o out sngl://platforms/gtk4
+exists out/model.go
+
+# fmt rewrites files in place and a package has none, so it says so rather
+# than failing as a missing path.
+! sngl fmt sngl://std
+stderr 'fmt works on files'
+
+! sngl fmt --check sngl://std
+stderr 'fmt works on files'
+
+# The package set is the one the process can actually reach, and an unknown
+# name lists it.
+! sngl dump --stage checked sngl://nope
+stderr 'unknown package "sngl://nope"'
+stderr 'platforms/gtk4'
+
+# Only the sngl scheme names a package of source. A foreign one used to reach
+# os.Stat and report the URI as a missing file.
+! sngl dump --stage checked go://example.com/api
+stderr 'only the sngl scheme names a source package'
+
+! sngl check go://example.com/api
+stderr 'only the sngl scheme names a source package'
+
+-- main.sngl --
+import . "sngl://std"
+
+component main {
+    text(value="hello")
+}

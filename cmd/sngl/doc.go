@@ -71,7 +71,6 @@ func init() {
 func runDoc(cmd *cobra.Command, args []string) error {
 	httpAddr, _ := cmd.Flags().GetString("http")
 
-	// --http mode: serve docs dynamically
 	if httpAddr != "" {
 		dir := "."
 		if len(args) > 0 {
@@ -95,8 +94,6 @@ func runDoc(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Primary: shared Lookup handles stdlib, dirs, scheme URIs, aliases, and
-	// the ident chain (type.field, component.prop, etc.).
 	res, err := lookup.Lookup(first, args[1:]...)
 	if err == nil {
 		return renderResult(res)
@@ -105,7 +102,6 @@ func runDoc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// CLI-only fallbacks for single-arg queries that aren't import paths.
 	if len(args) == 1 {
 		// path.Decl form: "examples/todo.Todo"
 		if dotIdx := strings.LastIndex(first, "."); dotIdx > 0 {
@@ -124,12 +120,10 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			return showPlatformDocs(first, plat)
 		}
 
-		// Decl in the current directory
 		if r, err := lookup.Lookup(".", first); err == nil {
 			return renderResult(r)
 		}
 
-		// Documentation markdown topic
 		docsDir, _ := findDocsDir()
 		if docsDir != "" {
 			if err := showTopic(docsDir, first); err == nil {
@@ -137,9 +131,8 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// A library declaration named without its package. Resolve it
-		// through the packages rather than a flat merged registry, so the
-		// answer can say where the name lives and what importing it costs.
+		// Resolved through the packages rather than a flat merged registry, so
+		// the answer can say where the name lives and what importing it costs.
 		if origins := lookup.FindInLibrary(first); len(origins) > 0 {
 			if len(origins) > 1 {
 				return ambiguousLibraryName(first, origins)
@@ -152,7 +145,6 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			return renderResult(r)
 		}
 
-		// Stdlib component reference (fuzzy match)
 		return showComponentDoc(first)
 	}
 
@@ -180,7 +172,6 @@ func ambiguousLibraryName(name string, origins []lookup.LibraryOrigin) error {
 	return errors.New(sb.String())
 }
 
-// renderResult dispatches a lookup.Result to the matching CLI renderer.
 func renderResult(res lookup.Result) error {
 	switch res.Kind {
 	case lookup.KindIndex:
@@ -205,8 +196,6 @@ func renderResult(res lookup.Result) error {
 	return fmt.Errorf("unknown lookup result kind: %d", res.Kind)
 }
 
-// resolvePackageDir resolves a path to a package directory.
-// Returns "" if the path doesn't point to a valid directory or .sngl file.
 func resolvePackageDir(path string) string {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -221,7 +210,6 @@ func resolvePackageDir(path string) string {
 	return ""
 }
 
-// showPlatformDocs shows the declarations from a platform's Package.
 func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	docs := codegen.PlatformDocs(plat)
 	if len(docs) == 0 {
@@ -238,7 +226,6 @@ func showPlatformDocs(name string, plat codegen.PlatformGenerator) error {
 	sb.WriteString(fmt.Sprintf("# Platform: %s\n\n", name))
 	sb.WriteString(fmt.Sprintf("Available as `%s.X` in your code.\n\n", name))
 
-	// Separate overrides from platform-local components
 	var local, overrides []checker.DeclInfo
 	for _, d := range pd.Components {
 		if strings.HasPrefix(d.Name, "sngl.") {
@@ -369,7 +356,6 @@ func writeDeclSection(sb *strings.Builder, title string, items []checker.DeclInf
 	sb.WriteString("\n")
 }
 
-// renderIndexMD renders a lookup.DeclIndex as CLI markdown.
 func renderIndexMD(idx *lookup.DeclIndex) string {
 	var sb strings.Builder
 	if idx.Library {
@@ -600,7 +586,6 @@ func renderStructDoc(s *ast.StructDef, fieldName, doc string) string {
 	}
 
 	if fieldName != "" {
-		// Show specific field
 		for _, f := range s.Fields() {
 			for _, name := range f.Names {
 				if name == fieldName {
@@ -659,7 +644,6 @@ func renderFuncDoc(f *ast.FuncDef, doc string) string {
 	}
 	sb.WriteString(fmt.Sprintf("# func %s\n\n", f.Name))
 
-	// Signature on one line in a code block
 	var sig strings.Builder
 	sig.WriteString("func " + f.Name)
 	if len(f.TypeParams) > 0 {
@@ -704,7 +688,6 @@ func renderFuncDoc(f *ast.FuncDef, doc string) string {
 	return sb.String()
 }
 
-// serveDocHTTP starts the web documentation browser.
 func serveDocHTTP(addr, dir string) error {
 	fmt.Fprintf(os.Stderr, "SNGL docs → http://%s\n", addr)
 	return http.ListenAndServe(addr, docbrowser.Handler())
@@ -737,7 +720,6 @@ func runDocServe(cmd *cobra.Command, args []string) error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), http.FileServer(http.Dir(outDir)))
 }
 
-// findDocsDir walks up from cwd looking for a docs/ directory.
 func findDocsDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -758,7 +740,6 @@ func findDocsDir() (string, error) {
 }
 
 func showTopic(docsDir, topic string) error {
-	// Search for a matching markdown file
 	candidates := []string{
 		filepath.Join(docsDir, topic+".md"),
 		filepath.Join(docsDir, topic, "index.md"),
@@ -786,7 +767,6 @@ func showTopic(docsDir, topic string) error {
 		return renderToTerminal(sb.String())
 	}
 
-	// If topic is a directory, list its contents
 	dirPath := filepath.Join(docsDir, topic)
 	if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
 		return showDirTopic(docsDir, dirPath, topic)
@@ -795,8 +775,6 @@ func showTopic(docsDir, topic string) error {
 	return fmt.Errorf("not found")
 }
 
-// showComponentDoc displays component reference for a component or
-// component.prop query.
 func showComponentDoc(query string) error {
 	registry, _, err := checker.LoadStdlib()
 	if err != nil {
@@ -827,7 +805,6 @@ func showComponentDoc(query string) error {
 		return fmt.Errorf("%q not found. Run 'sngl doc' to see available topics and components", query)
 	}
 
-	// Show specific property.
 	if propName != "" {
 		return showPropDoc(compName, propName, schema)
 	}
@@ -849,8 +826,6 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 		sb.WriteString("\n\n")
 	}
 
-	// Show ANSI snapshot if available
-	// Look for ANSI snapshot relative to the stdlib source
 	snapshotDir := filepath.Join("lib", "snapshots")
 	if ansi, err := os.ReadFile(filepath.Join(snapshotDir, name+"_bubbletea.txt")); err == nil {
 		sb.WriteString("## Preview\n\n```\n")
@@ -858,7 +833,6 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 		sb.WriteString("\n```\n\n")
 	}
 
-	// Show example source if available
 	examples, _ := checker.StdlibExamples()
 	if srcs, ok := examples[name]; ok && len(srcs) > 0 {
 		sb.WriteString("## Example\n\n```sngl\n")
@@ -919,7 +893,6 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 func showPropDoc(compName, propName string, schema *checker.ComponentSchema) error {
 	ps, ok := schema.Props[propName]
 	if !ok {
-		// Check events too.
 		payload, ok := schema.Events[propName]
 		if ok {
 			var sb strings.Builder
@@ -987,7 +960,6 @@ func showDirTopic(docsDir, dirPath, topic string) error {
 	return renderToTerminal(sb.String())
 }
 
-// findWebsiteSNGL walks up from cwd looking for a website.sngl file.
 func findWebsiteSNGL() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -1007,7 +979,6 @@ func findWebsiteSNGL() string {
 	return ""
 }
 
-// runSNGLCompile shells out to sngl generate to build a .sngl file.
 func runSNGLCompile(snglFile, outDir string) error {
 	cmd := exec.Command(os.Args[0], "generate", "--out", outDir, snglFile)
 	cmd.Stdout = os.Stdout
@@ -1021,7 +992,6 @@ func renderToTerminal(md string) error {
 		glamour.WithWordWrap(100),
 	)
 	if err != nil {
-		// Fall back to plain output
 		fmt.Print(md)
 		return nil
 	}

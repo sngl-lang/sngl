@@ -22,7 +22,6 @@ const (
 	OriginDocs     = "docs"
 )
 
-// Sample is a single SNGL test fixture from testdata or docs.
 type Sample struct {
 	Name     string           // subtest name, e.g. "component_simple"
 	Source   string           // complete SNGL source ready to hand to any parser
@@ -36,7 +35,6 @@ type Sample struct {
 	writeback func(*ast.Document) // set by iterator; nil if read-only
 }
 
-// ExpectsError reports whether any error directives exist for the given phase.
 func (s Sample) ExpectsError(phase string) bool {
 	for _, e := range s.Errors {
 		if e.Phase == phase {
@@ -46,7 +44,6 @@ func (s Sample) ExpectsError(phase string) bool {
 	return false
 }
 
-// PhaseErrors returns error directives filtered to the given phase.
 func (s Sample) PhaseErrors(phase string) []ErrorDirective {
 	return Filter(s.Errors, phase)
 }
@@ -59,7 +56,6 @@ var projectRoot = sync.OnceValue(func() string {
 	return filepath.Join(filepath.Dir(thisFile), "..", "..")
 })
 
-// TestdataSamples returns an iterator over testdata/*.sngl samples.
 func TestdataSamples(t testing.TB) iter.Seq[Sample] {
 	root := projectRoot()
 	testdataDir := filepath.Join(root, "testdata")
@@ -107,7 +103,6 @@ func TestdataSamples(t testing.TB) iter.Seq[Sample] {
 	}
 }
 
-// DocSamples returns an iterator over SNGL code blocks embedded in docs.
 func DocSamples(t testing.TB) iter.Seq[Sample] {
 	root := projectRoot()
 	docsDir := filepath.Join(root, "docs")
@@ -133,11 +128,9 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 					continue
 				}
 
-				// Assemble full source with wrapping
 				src := block.Prelude
 				var checkFS fs.FS = os.DirFS(root)
 
-				// Handle txtar preludes
 				var replacements []string
 				if strings.Contains(block.Prelude, "-- ") && strings.Contains(block.Prelude, " --") {
 					ar := txtar.Parse([]byte(block.Prelude))
@@ -178,7 +171,6 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 					src = strings.Replace(src, "...", r, 1)
 				}
 
-				// Build name relative to docs dir
 				relPath, _ := filepath.Rel(root, file)
 				name := relPath + "#" + strconv.Itoa(i+1)
 
@@ -201,7 +193,6 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 					Origin:   OriginDocs,
 					writeback: func(doc *ast.Document) {
 						formatted := parser.Format(doc)
-						// Unwrap based on annotation
 						var snippet string
 						switch annotation {
 						case "component":
@@ -227,7 +218,6 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 	}
 }
 
-// docEditor accumulates write-back edits for markdown files.
 type docEditor struct {
 	edits map[string][]docEdit // markdown path → pending edits
 }
@@ -306,8 +296,7 @@ func libImports(src string) string {
 	return "import . \"sngl://std\"\nimport . \"sngl://draw\"\n"
 }
 
-// hoistImports splits the leading run of import declarations off a block body.
-// Returns the imports and the remaining body.
+// Splits the leading run of import declarations off a block body.
 func hoistImports(body string) (imports, rest string) {
 	lines := strings.Split(body, "\n")
 	cut := 0

@@ -24,8 +24,6 @@ var markImpls = map[markKey]markImpl{
 	{"draw", "shape"}:               markShape,
 }
 
-// --- #[builtin] ---
-
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
 // construct a declaration dispatches to.
 //
@@ -64,8 +62,6 @@ func builtinKindNames() []string {
 	}
 	return names
 }
-
-// --- #[intrinsic] ---
 
 // The flags #[intrinsic] accepts after the id, declared as ir.IntrinsicFlag in
 // lib/internal/ir. The checker validates them against that enum; these are the
@@ -124,8 +120,6 @@ func markIntrinsic(m *mark) error {
 	}
 	return nil
 }
-
-// --- #[foreign] ---
 
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
@@ -229,8 +223,6 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 	return flags, nil
 }
 
-// --- #[options] ---
-
 // markOptions implements #[options], which says the struct it annotates is a
 // target's build-option schema — the fields an `output(...)` block may name.
 //
@@ -249,8 +241,6 @@ func markOptions(m *mark) error {
 	sd.Options = true
 	return nil
 }
-
-// --- #[tree.kind] / #[tree.children] / #[draw.shape] ---
 
 func markTreeKind(m *mark) error {
 	return applyTreeMark(m, "kind", m.args.String("name"), setTreeKind)
@@ -312,8 +302,6 @@ func markShape(m *mark) error {
 	}
 	return applyTreeMark(m, "kind", shapeKind, setTreeKind)
 }
-
-// --- #[wildcard] ---
 
 // markWildcard implements #[platforms.wildcard("pattern")], which says what a
 // name nobody declared resolves to: a component reached by any matching name

@@ -44,6 +44,15 @@ func resolveDumpFormat(cmd *cobra.Command) (dumpFormat, error) {
 	}
 }
 
+// analysis dumps derived facts about a program rather than the program, so it
+// has no source form and the sngl default would fail on a flag nobody set.
+func dumpDefaultFormat(cmd *cobra.Command, stage string, f dumpFormat) dumpFormat {
+	if stage == "analysis" && !cmd.Flags().Changed("format") {
+		return dumpFormatJSON
+	}
+	return f
+}
+
 func resolveColor(cmd *cobra.Command) error {
 	raw, _ := cmd.Flags().GetString("color")
 	switch raw {
@@ -73,7 +82,7 @@ func dumpDocument(f dumpFormat, doc any) error {
 		case *ir.Package:
 			text = sngl.Format(ir.Convert(doc))
 		default:
-			return fmt.Errorf("unable to format output of type %T as sngl source", doc)
+			return fmt.Errorf("cannot render %T as sngl source: only a parsed document or a checked package has one — try --format json or --format spew", doc)
 		}
 		lexer = "SNGL"
 	case dumpFormatSpew:

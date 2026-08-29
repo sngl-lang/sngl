@@ -103,7 +103,6 @@ func (c *checker) nativeStructDef(x *ast.StructExpr, want *ir.StructDef) (bad bo
 	return false, named
 }
 
-// expectedStructDef returns the struct declaration t names, or nil.
 func expectedStructDef(t *ir.Type) *ir.StructDef {
 	if t == nil || t.Kind != ir.TypeStruct {
 		return nil
@@ -112,7 +111,6 @@ func expectedStructDef(t *ir.Type) *ir.StructDef {
 	return sd
 }
 
-// expectedEnumDef returns the enum declaration t names, or nil.
 func expectedEnumDef(t *ir.Type) *ir.EnumDef {
 	if t == nil || t.Kind != ir.TypeEnum {
 		return nil

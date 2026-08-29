@@ -33,10 +33,8 @@ func init() {
 	testCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
 }
 
-// parseTestOpts converts the --opt key=value slice into a SNGL StructLit
-// suitable for codegen.ApplyOptions. Unlike compile, test does not
-// validate against per-target option schemas — unknown keys are passed
-// through and individual platforms ignore what they don't recognize.
+// Unlike compile, test validates nothing against the per-target option
+// schemas: an unknown key passes through for the platform to ignore.
 func parseTestOpts(raw []string) *ir.StructLit {
 	if len(raw) == 0 {
 		return nil
@@ -67,10 +65,9 @@ func runTest(cmd *cobra.Command, args []string) error {
 	if len(files) == 0 {
 		return fmt.Errorf("no .sngl files found")
 	}
-	// Test mode: every discovered fixture is standalone. Sibling-merging
-	// only makes sense when the user names a single file from a real
-	// package; for `sngl test ./...` or `sngl test testdata/`, merging
-	// would cascade intentional-error fixtures into every other file.
+	// Every discovered fixture is standalone: under `sngl test ./...`,
+	// sibling-merging would cascade an intentional-error fixture into every
+	// other file.
 	explicitFiles := make(map[string]bool, len(files))
 	for _, f := range files {
 		abs, _ := filepath.Abs(f)
@@ -106,10 +103,6 @@ func runTest(cmd *cobra.Command, args []string) error {
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
 
-// runTestAll fans out across every registered platform that implements
-// TestRunner. Platforms whose TestProber reports unavailable are skipped
-// with a SKIP banner; available platforms run the full file set and their
-// results are aggregated.
 func runTestAll(language string, files []string, explicitFiles map[string]bool, runFilter string, verbose bool, format string, opts *ir.StructLit) error {
 	names := codegen.Platforms()
 	var ran, skipped, failedPlats int
@@ -119,12 +112,9 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 	for _, name := range names {
 		plat := codegen.LookupPlatform(name)
 		runner, _ := plat.(codegen.TestRunner)
-		// Skip if neither legacy runner nor launcher path is available.
-		// Lang-level launcher resolution requires the lang, looked up below.
 		if runner == nil {
-			// resolveLauncher needs lang; resolve provisionally to see if
-			// a lang launcher exists. If lang lookup fails we'll handle
-			// it normally below; here just skip if both paths are absent.
+			// Provisional: a lang lookup failure is handled below, this only
+			// skips the platform when neither test path exists.
 			lang, _ := resolveTestLang(plat, language)
 			if resolveLauncher(plat, lang) == nil {
 				continue
@@ -169,10 +159,7 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 	return nil
 }
 
-// resolveTestLang picks the LangTranslator for a test invocation. An
-// explicit --language flag wins; otherwise the platform's first
-// SupportedLang is used. A platform with no supported langs (e.g. `none`)
-// is fine and returns nil.
+// A platform with no supported langs (`none`) is fine, and returns nil.
 func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.LangTranslator, error) {
 	if language != "" {
 		lang := codegen.LookupLang(language)
@@ -189,11 +176,9 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 	return nil, nil
 }
 
-// runOnPlatform executes all test files against a single platform runner
-// and returns aggregated counts plus the per-test results. Parse and
-// check failures count as test failures — `./...` already skips
-// `testdata/` and `.`/`_`-prefixed directories, so walked files are
-// expected to be valid SNGL.
+// A parse or check failure counts as a test failure: `./...` already skips
+// `testdata/` and `.`/`_`-prefixed directories, so a walked file is expected
+// to be valid SNGL.
 func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -265,9 +250,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// resolve sibling `<fixture>.snapshots/<name>.sngl` goldens.
 		pkg.SourcePath = absFilename
 
-		// Prefer the TestLauncher path whenever the platform/lang pair
-		// resolves a launcher (today: any go-backed platform). Otherwise
-		// fall back to the legacy runner.RunTests path (e.g. `none`).
+		// runner.RunTests is the fallback for a pair with no launcher (`none`).
 		var results []*codegen.TestResult
 		if resolveLauncher(plat, lang) != nil {
 			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename), filepath.Base(filename))
@@ -275,11 +258,9 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 			results, err = safeRunTests(runner, pkg, lang, opts)
 		}
 		if err != nil {
-			// A component this target does not implement is not a failure of
-			// the fixture: the matrix runs every platform over every file, and
-			// a target that supports fewer components would otherwise make
-			// every program using one of them red. Reported as a skip naming
-			// the component, so the gap stays visible.
+			// The matrix runs every platform over every file, so a target
+			// supporting fewer components would otherwise turn every program
+			// using one of them red. Skip, naming the component.
 			if missing, ok := errors.AsType[*codegen.UnimplementedComponent](err); ok {
 				allResults = append(allResults, &codegen.TestResult{
 					Component: filepath.Base(filename),
@@ -306,9 +287,8 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 	return totalTests, totalFail, allResults
 }
 
-// safeRunTests calls runner.RunTests and converts a panic into an error so
-// a single buggy fixture on one platform doesn't take down the whole
-// matrix. Useful when running --platform=all across many fixtures.
+// A panic becomes an error so one buggy fixture on one platform does not take
+// down a --platform=all matrix.
 func safeRunTests(runner codegen.TestRunner, pkg *ir.Package, lang codegen.LangTranslator, opts *ir.StructLit) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -318,9 +298,6 @@ func safeRunTests(runner codegen.TestRunner, pkg *ir.Package, lang codegen.LangT
 	return runner.RunTests(pkg, lang, opts)
 }
 
-// reportResults prints aggregated test output in either text or JSON form
-// and returns a non-nil error when any test failed. Shared between
-// single-platform and --platform=all paths.
 func reportResults(allResults []*codegen.TestResult, totalTests, totalFail int, format string, verbose bool) error {
 	if format == "json" {
 		return printJSON(allResults, totalTests, totalFail)

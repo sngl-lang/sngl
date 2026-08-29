@@ -74,8 +74,6 @@ func init() {
 	rootCmd.AddCommand(dumpCmd)
 }
 
-// hasPathPrefix reports whether p is under the directory prefix.
-// It uses filepath.Rel to handle separators and clean paths correctly.
 func hasPathPrefix(p, prefix string) bool {
 	rel, err := filepath.Rel(prefix, p)
 	if err != nil {
@@ -84,8 +82,6 @@ func hasPathPrefix(p, prefix string) bool {
 	return !strings.HasPrefix(rel, "..")
 }
 
-// isUnderGoCache reports whether the given executable path is inside
-// the Go build cache or a Go temporary build directory.
 func isUnderGoCache(selfPath string) bool {
 	goCache := os.Getenv("GOCACHE")
 	if goCache == "" {
@@ -97,7 +93,6 @@ func isUnderGoCache(selfPath string) bool {
 		return true
 	}
 	// go tool builds to <tempdir>/go-build<digits>/... when running on the fly.
-	// Match any directory in tempdir that starts with "go-build".
 	tmpDir := filepath.Clean(os.TempDir())
 	dir := selfPath
 	for {
@@ -112,16 +107,12 @@ func isUnderGoCache(selfPath string) bool {
 	}
 }
 
-// proxyToGoTool checks if "go tool sngl" is available and execs into it.
-// The SNGL_NO_PROXY env var prevents infinite recursion.
-// If the current binary is already in the Go cache, proxying is skipped.
+// SNGL_NO_PROXY prevents infinite recursion through the exec below.
 func proxyToGoTool() {
 	if os.Getenv("SNGL_NO_PROXY") != "" || (len(os.Args) > 1 && os.Args[1] == "completion") {
 		return
 	}
 
-	// If we're already running from the Go cache or a Go temp build dir,
-	// no need to proxy.
 	selfPath, err := os.Executable()
 	if err == nil {
 		selfPath = filepath.Clean(selfPath)
@@ -135,7 +126,6 @@ func proxyToGoTool() {
 		return
 	}
 
-	// Resolve the "go tool sngl" binary path.
 	toolPath := exec.Command(goPath, "tool", "-n", "sngl")
 	toolPath.Env = append(os.Environ(), "SNGL_NO_PROXY=1")
 	toolOut, err := toolPath.Output()
@@ -153,11 +143,9 @@ func proxyToGoTool() {
 	}
 }
 
-// startProfiling honours SNGL_CPUPROFILE and SNGL_MEMPROFILE. Both name a
-// file to write; the returned func must run before the process exits.
-// Profiling is env-driven rather than a flag so it can be turned on for a
-// build driven by another tool (docsgen, go tool sngl) without threading a
-// flag through it.
+// The returned func must run before the process exits. Profiling is
+// env-driven (SNGL_CPUPROFILE, SNGL_MEMPROFILE) rather than a flag so another
+// tool driving a build (docsgen, go tool sngl) need not thread one through.
 func startProfiling() func() {
 	var stop []func()
 	if path := os.Getenv("SNGL_CPUPROFILE"); path != "" {

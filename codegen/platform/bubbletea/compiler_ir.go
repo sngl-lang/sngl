@@ -46,10 +46,9 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-// widgetInfo describes one inlined Widget blueprint primitive (e.g. an `input`
-// backed by textinput, a `textarea` backed by textarea). It is model-meta-driven
-// — the field type, constructor, view/update methods, and init cmd all come from
-// the node's `Model` record rather than from the stdlib component name.
+// widgetInfo describes one inlined Widget blueprint primitive. Everything —
+// field type, constructor, view/update methods, init cmd — comes from the
+// node's `Model` record, never from the stdlib component name.
 type widgetInfo struct {
 	fieldName   string
 	model       modelMeta
@@ -69,17 +68,15 @@ type widgetBind struct {
 	set    string
 }
 
-// bindReadBack builds the Go expression that reads a widget's current value out
-// of model field `field`, given the Bind record's `get`. Two shapes are
-// supported:
+// bindReadBack builds the Go expression reading a widget's value out of model
+// field `field`:
 //
-//	get = ".Value()"          → m.<field>.Value()            (method chain)
-//	get = "tui.SelectedString" → tui.SelectedString(m.<field>) (converter wrap)
+//	get = ".Value()"           → m.<field>.Value()
+//	get = "tui.SelectedString" → tui.SelectedString(m.<field>)
 //
-// The converter-wrap form (any get starting with "tui.") lets a list-backed
-// widget read its selection through a nil-safe helper — m.<field>.SelectedItem()
-// can be nil, so a bare ".SelectedItem().FilterValue()" chain would panic on an
-// empty list. Wrapping centralizes the nil guard in pkg/go/tui.
+// A "tui." get is the converter wrap, which centralizes a nil guard: a
+// list-backed widget's SelectedItem() is nil on an empty list, so the bare
+// method chain would panic.
 func bindReadBack(field, get string) string {
 	if strings.HasPrefix(get, "tui.") {
 		return get + "(m." + field + ")"
@@ -87,31 +84,18 @@ func bindReadBack(field, get string) string {
 	return "m." + field + get
 }
 
-// widgetSyncGoTypes is the set of Go types a bubbles widget value may round-trip
-// through. A bind is only synced (seeded in the constructor, pushed on Set,
-// pulled back in Update) when its target model field has one of these types.
-//
-//   - string: two-way value widgets (input/textarea) via SetValue(string) /
-//     Value() string, and read-only list-backed widgets via SelectedString.
-//   - int: the read-only `selected` cursor bind on `table` (read back via
-//     tui.Cursor / .Cursor()). Int binds are read-only in practice — the three
-//     push sites (constructor seed, Set* setter, mutated-handler sync) are all
-//     additionally gated on `set != ""`, so only the Update reverse-sync
-//     (m.target = m.field.Cursor()) is emitted, which is valid int Go.
-//
-// Types outside this set aren't synced — wiring them would emit type-mismatched
-// Go. A follow-on could carry the widget's value type in the Bind record so
-// binds of arbitrary types are coerced or rejected explicitly.
+// widgetSyncGoTypes is the set of Go types a bubbles widget value may
+// round-trip through; a bind whose target has any other type is not synced,
+// because wiring it would emit type-mismatched Go. An int bind is read-only in
+// practice: every push site is additionally gated on `set != ""`.
 var widgetSyncGoTypes = map[string]struct{}{
 	"string": {},
 	"int":    {},
 }
 
-// bindTargetSyncs reports whether a widget bind targeting model field `target`
-// may be synced to/from the widget — true only when the target's Go type is one
-// the widget value engine supports (string or int). Keeps the constructor seed,
-// the Set* setter, and the Update reverse-sync consistent so an unsupported bind
-// type never emits type-mismatched Go.
+// bindTargetSyncs keeps the constructor seed, the Set* setter and the Update
+// reverse-sync consistent, so an unsupported bind type never emits
+// type-mismatched Go.
 func bindTargetSyncs(binds []irBind, target string) bool {
 	if target == "" {
 		return false
@@ -122,29 +106,24 @@ func bindTargetSyncs(binds []irBind, target string) bool {
 			return ok
 		}
 	}
-	// Target not found among model binds (shouldn't happen for a real two-way
-	// bind); be conservative and don't emit a sync.
 	return false
 }
 
-// CompileIR generates a Go source file from IR using the new CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
 
-	// Assemble through the language FileEmitter so import rendering, gofmt,
-	// and the package clause are owned by the code writer. A MemSink lets us
-	// keep returning bytes (android's go path + tests consume them); the
-	// generated-by header is added by the caller's emitter (Source left empty).
+	// The MemSink keeps this returning bytes, which android's go path and the
+	// tests consume; the caller's emitter adds the generated-by header, so
+	// Source is left empty.
 	mem := codegen.NewMemSink()
 	e := (&golang.Translator{}).NewFileEmitter(mem, codegen.FileOptions{
 		Name:        "model.go",
 		PackageName: cfg.Package,
 	})
-	// The SNGL canvas runtime (pkg/go/canvas) default-aliases to "canvas"; the
-	// draw-func selectors reference it as snglcanvas (*snglcanvas.Context,
-	// snglcanvas.New), so force that alias.
+	// pkg/go/canvas default-aliases to "canvas", but the draw-func selectors
+	// reference it as snglcanvas.
 	type aliasImporter interface {
 		RequireImportAs(path, alias string) string
 	}
@@ -170,7 +149,6 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	return out, nil
 }
 
-// irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {
 	*codegen.CommonAnalysis
 	binds     []irBind
@@ -182,12 +160,9 @@ type irAnalysis struct {
 	gc        *golang.GoIRContext
 }
 
-// overlayInfo records one modal/drawer Overlay primitive for the Update()
-// focus-capture logic. openExpr is the Go boolean expression that is true while
-// the overlay is open (the `if open` gate condition — e.g. "m.showModal").
-// closeVar is the Model field name to set false on dismiss (Escape), recovered
-// when the gate condition is a simple assignable var ident; "" when the gate is
-// a compound expression we can't invert into a single assignment.
+// overlayInfo records one modal/drawer Overlay primitive for Update()'s
+// focus-capture logic. closeVar is recovered only when the gate condition is a
+// simple assignable var ident, and is "" for a compound one.
 type overlayInfo struct {
 	openExpr string
 	closeVar string
@@ -224,14 +199,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	pkg := ctx.Pkg
 
-	// Collect Go imports declared by SNGL (go:// natives, i18n runtime).
 	for _, imp := range golang.BaseImports(pkg) {
 		gc.RequireImport(imp.Path)
 	}
 
-	// After NoInlineComponents, every non-main component has been inlined
-	// into main. Walk pkg.Vars + pkg.Consts + main.Vars only — there are
-	// no remaining child-component vars to collect.
+	// NoInlineComponents inlined every non-main component into main, so there
+	// are no remaining child-component vars to collect.
 	var allVars []*ir.Var
 	for _, v := range pkg.Vars {
 		allVars = append(allVars, v)
@@ -243,10 +216,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		allVars = append(allVars, main.Vars...)
 	}
 	for _, v := range allVars {
-		// Consts emit as Model fields too: tests read them via `c.<name>`
-		// and component-method bodies via `m.<name>`. Top-level consts
-		// also get a file-scope `var` emission earlier in the file so
-		// top-level free funcs (not Model methods) can reach them.
+		// A const is a Model field as well, so `c.<name>` and `m.<name>`
+		// reach it; a top-level one also gets a file-scope `var` for the
+		// free functions, which are not Model methods.
 		goType := golang.VarGoType(v)
 		initVal := irVarInit(v, gc)
 		if strings.HasPrefix(goType, "time.") {
@@ -261,8 +233,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	// Collect computed functions. pkg.Funcs and main.Funcs overlap for nested
-	// component methods (registered in both since T7); dedupe by pointer.
+	// pkg.Funcs and main.Funcs overlap for nested component methods, which are
+	// registered in both; dedupe by pointer.
 	allFuncs := pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
@@ -283,18 +255,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Timer analysis
 	for _, t := range info.Timers {
 		if t.IntervalMs > 0 {
 			gc.RequireImport("time")
 		}
 	}
 
-	// Walk visual tree for Widget blueprint primitives. Each carries a Model
-	// record (field type, constructor, view/update methods, init cmd, import) so
-	// the subsystem is model-meta-driven rather than keyed on a stdlib name. The
-	// __focused prop injected by passFocusOrder is evaluated to a Go expression;
-	// "" means focus tracking is not active.
+	// An empty __focused prop (passFocusOrder did not run) means focus
+	// tracking is not active.
 	wins := ctx.Windows()
 	for _, win := range wins {
 		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
@@ -310,12 +278,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
 				placeholder = s
 			}
-			// Two-way binds: find the Model var the bind syncs to. A `:value`
-			// bind lowers to a handler named after the prop ("value"); an
-			// explicit live-update handler (@input/@change) carries the same
-			// write. Check the prop-named handler first, then the live-update
-			// events, taking the first whose body assigns to a var. Pair that
-			// target with the model getter declared in the Bind record.
+			// A `:value` bind lowers to a handler named after the prop, and an
+			// explicit @input/@change handler carries the same write; take the
+			// first whose body assigns to a var, prop-named handler first.
 			var binds []widgetBind
 			for _, bm := range bp.Binds {
 				target := ""
@@ -332,20 +297,16 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			if bp.Model.Pkg != "" {
 				gc.RequireImport(bp.Model.Pkg)
 			}
-			// Expand `${prop}`/`${prop|conv}` template tokens in the Model
-			// strings against this node's props. No-token strings (input,
-			// textarea) pass through unchanged, so their output stays
-			// byte-identical. Converter tokens require the pkg/go/tui import.
+			// A no-token string passes through unchanged, so its output stays
+			// byte-identical.
 			model := bp.Model
 			model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
 			model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
 			model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
 			model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
 			model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
-			// A model string may reference a pkg/go/tui helper inline (e.g.
-			// progress's `tui.Percent(...)`) without going through a `|conv`
-			// token, so the converter path's RequireImport doesn't fire. Pull
-			// the import in whenever any expanded string names the tui package.
+			// A model string may name a pkg/go/tui helper inline, without the
+			// `|conv` token whose path would have required the import.
 			for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
 				if strings.Contains(s, "tui.") {
 					gc.RequireImport(tuiImportPath)
@@ -363,13 +324,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	// Collect modal/drawer overlays and their `if open` gate conditions so
-	// Update() can freeze the background and Escape-close the open overlay.
 	for _, win := range wins {
 		collectOverlays(win.Body, nil, gc, &info.overlays)
 	}
 
-	// Detect whether passFocusOrder ran by checking for the __focusID var.
 	for _, b := range info.binds {
 		if b.name == "__focusID" {
 			info.hasFocus = true
@@ -384,33 +342,22 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	return info
 }
 
-// emitIR renders the model file body (no package clause or import block) and
-// returns it along with the Go import paths it uses. Imports are recorded at
-// their emit sites: the bubbletea framework packages are required structurally
-// here (every model has Init/Update/View, which reference tea + lipgloss +
-// fmt); dynamic imports (e.g. "math" for a float intrinsic) accumulate on gc
-// as the body is translated; go:// natives, "time", and var-init imports
-// arrive via info.gc (accumulated during analyzeIR). The caller feeds these to
-// a FileEmitter, which renders the package clause + import block, gofmt, and
-// source-map directives.
+// emitIR renders the model file body — no package clause or import block —
+// and the Go import paths it uses. Imports are recorded at their emit sites,
+// some structurally here and the rest accumulated on gc and info.gc; the
+// caller feeds them to a FileEmitter.
 func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []string) {
 	var b strings.Builder
 	gc := info.gc
 
-	// Structural framework import: every model's Init/Update/View shells
-	// reference tea. "lipgloss" and "fmt" are NOT structural — a view that
-	// renders only through a bubbles Widget (e.g. a lone textarea/input) emits
-	// neither, so both are required at the end gated on the rendered body
-	// referencing them.
+	// Every model's Init/Update/View shells reference tea. "lipgloss" and "fmt"
+	// are not structural — a view rendering only through a bubbles Widget emits
+	// neither — so they are required at the end, gated on the rendered body.
 	gc.RequireImport("charm.land/bubbletea/v2")
 	if cfg.Main {
 		gc.RequireImport("os")
 		gc.RequireImport("fmt") // main() prints errors via fmt.Fprintf
 	}
-	// Widget model packages are required during analyzeIR (info.gc accumulates
-	// each Model.Pkg), so no structural widget import is needed here.
-
-	// Lang-tracked helpers (mustParse*) — picked up via HelpersNeeded.
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {
 		gc.RequireImport(imp)
@@ -418,10 +365,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString(helpers.Emit())
 	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
 
-	// Unit types (excluding the special-cased `duration`).
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
 
-	// Struct types
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", golang.ExportName(sd.Name))
 		for _, f := range sd.Fields {
@@ -431,26 +376,22 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
-	// Canvas stdlib structs (Color/CanvasStyle/PathCmd) are read by the
-	// synthesized draw funcs (style.Fill.R etc.) but aren't carried on
-	// pkg.Structs for the Go path, so declare them here when any canvas node is
-	// present. Skip any name a user struct already declares to avoid duplicates.
+	// The canvas stdlib structs are read by the synthesized draw funcs but are
+	// not carried on pkg.Structs for the Go path. Skip a name a user struct
+	// already declares.
 	if hasCanvasNodes(ctx.Pkg) {
 		b.WriteString(canvasStdlibDecls(info.Structs))
 	}
 
-	// ErrorEvent is emitted when any error-handling construct is present.
-	// The stdlib defines the struct but codegen doesn't flow stdlib types
-	// into user output, so it needs to materialise here.
+	// The stdlib defines ErrorEvent, but codegen does not flow stdlib types
+	// into user output, so it materialises here.
 	if ctx.Pkg.UsesErrorHandling {
 		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
 	}
 
-	// Top-level const decls are emitted at file scope as Go `var` so
-	// free-function bodies (which are top-level Go funcs, not Model
-	// methods) can reference them by bare name. Component-level consts
-	// don't get a file-scope emission — they only live as Model fields,
-	// reached via `m.<name>` from any component method.
+	// A top-level const gets a file-scope Go `var` so the free functions, which
+	// are not Model methods, can name it. A component-level const lives only as
+	// a Model field.
 	if len(ctx.Pkg.Consts) > 0 {
 		for _, c := range ctx.Pkg.Consts {
 			init := golang.LowerVarInit(c, gc)
@@ -460,7 +401,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 
-	// Timer tick messages
 	for _, t := range info.Timers {
 		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
 	}
@@ -468,13 +408,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 
-	// Toast
 	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
 		b.WriteString("type toastDismissMsg struct{}\n\n")
 	}
 
-	// Model struct
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
 	b.WriteString("type Model struct {\n")
 	for _, bind := range info.binds {
@@ -498,10 +436,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("\twidth, height int\n")
 	b.WriteString("}\n\n")
 
-	// New(). Binds are initialized sequentially so later inits can
-	// reference earlier fields via `m.<name>` (e.g. interpolated
-	// `$"Hello, {nm}!"` reading `m.nm`). A pre-fix struct-literal init
-	// left `m` undefined inside the literal.
+	// Binds are initialized sequentially so a later init can read an earlier
+	// field as `m.<name>`; a struct-literal init leaves `m` undefined.
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
 	b.WriteString("\tm := Model{}\n")
@@ -520,30 +456,25 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			}
 		}
 		if firstFocusable && w.focusExpr != "" {
-			// This widget occupies the first focusable slot (where __focusID
-			// starts). Only emit a construction-time .Focus() if it actually
-			// has the method; either way mark the slot consumed so a later
-			// method-having widget (e.g. an input after a list/table) isn't
-			// wrongly focused while __focusID still points here.
+			// This widget holds the first focusable slot, where __focusID
+			// starts. Mark the slot consumed even without a .Focus() method,
+			// or a later widget that has one is wrongly focused.
 			if modelHasFocusMethods(w.model.Type) {
 				fmt.Fprintf(&b, "\tm.%s.Focus()\n", w.fieldName)
 			}
 			firstFocusable = false
 		}
 	}
-	// Size widgets to the initial terminal extent. m.width/m.height are still
-	// zero here (no WindowSizeMsg yet), so resizeWidgets falls back to its
-	// defaults — but emitting it keeps construction consistent with the post-
-	// resize state and primes any widget whose default size is 0.
+	// m.width/m.height are still zero here, so resizeWidgets falls back to its
+	// defaults; emitting it primes any widget whose default size is 0.
 	if widgetsHaveResize(info.widgets) {
 		b.WriteString("\tm.resizeWidgets()\n")
 	}
 	b.WriteString("\treturn m\n")
 	b.WriteString("}\n\n")
 
-	// SetTerminalSize. Also resizes the bubbles widgets: the snapshot harness
-	// calls New() + SetTerminalSize(w,h) + View() with no WindowSizeMsg, so this
-	// is the only place widget sizing happens on that path.
+	// SetTerminalSize also resizes the bubbles widgets: the snapshot harness
+	// sends no WindowSizeMsg, so this is the only sizing on that path.
 	b.WriteString("// SetTerminalSize sets the terminal dimensions and resizes widgets.\n")
 	b.WriteString("func (m *Model) SetTerminalSize(w, h int) {\n")
 	b.WriteString("\tm.width = w\n")
@@ -553,10 +484,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 	b.WriteString("}\n\n")
 
-	// resizeWidgets applies each widget's resize template against the current
-	// m.width/m.height. Called from New(), SetTerminalSize(), and the
-	// tea.WindowSizeMsg case so widgets stay sized to the terminal on every
-	// path. Omitted entirely when no widget declares a resize template.
+	// resizeWidgets is called from New(), SetTerminalSize() and the
+	// tea.WindowSizeMsg case, so widgets stay sized on every path.
 	if widgetsHaveResize(info.widgets) {
 		b.WriteString("// resizeWidgets sizes each bubbles widget to the current terminal extent.\n")
 		b.WriteString("func (m *Model) resizeWidgets() {\n")
@@ -569,10 +498,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
-	// Computed methods. Single-Return bodies emit `return <expr>` for
-	// minimal output; multi-statement bodies (e.g. those introduced by
-	// passNoListLambdas hoisting `var __listN ...; for ...; return ...`)
-	// emit the full block.
 	for _, comp := range info.computeds {
 		fmt.Fprintf(&b, "func (m Model) %s() %s {\n", comp.name, comp.goType)
 		emitted := false
@@ -596,10 +521,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
-	// Canvas2D draw funcs (passCanvas-synthesized `_canvasDrawN(ctx)`). These
-	// are emitted specially as `func (m Model) _canvasDrawN(ctx
-	// *snglcanvas.Context)` with their bodies routed through the shared canvas
-	// Context translator, so they're excluded from the generic user-func loop.
+	// Routed through the shared canvas Context translator, so they are excluded
+	// from the generic user-func loop below.
 	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
 	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
 	hasCanvas := hasCanvasNodes(ctx.Pkg)
@@ -607,7 +530,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
 	}
 
-	// User-defined functions (dedupe overlap between pkg.Funcs and main.Funcs).
 	allFuncs := ctx.Pkg.Funcs
 	if main := ctx.MainComponent(); main != nil {
 		allFuncs = append(allFuncs, main.Funcs...)
@@ -624,11 +546,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitIRFunc(&b, fn, gc)
 	}
 
-	// Getters/Setters
 	emitIRGettersSetters(&b, info, ctx, gc)
 
-	// Init()
-	// Widget init cmds (e.g. textinput.Blink) — deduped, model-meta-driven.
 	var widgetInits []string
 	seenInit := map[string]bool{}
 	for _, w := range info.widgets {
@@ -647,19 +566,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		for _, t := range info.Timers {
 			tick := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
 			if t.ActiveVar != "" {
-				// Gated timer: only start when its active condition holds.
 				fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
 				fmt.Fprintf(&b, "\t\t%s\n", tick)
 				b.WriteString("\t}\n")
 			} else {
-				// Always-on timer (no active condition): start unconditionally.
-				// Emitting "if m. {" (empty ActiveVar) would be invalid Go.
+				// An empty ActiveVar would emit "if m. {", which is invalid Go.
 				fmt.Fprintf(&b, "\t%s\n", tick)
 			}
 		}
 		if hasCanvas {
-			// Transmit each canvas's pixels on first paint (out of band, so the
-			// kitty image data isn't dropped by the cell compositor).
+			// Out of band, so the kitty image data is not dropped by the cell
+			// compositor.
 			fmt.Fprintf(&b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 		}
 		b.WriteString("\treturn tea.Batch(cmds...)\n")
@@ -678,18 +595,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 	b.WriteString("}\n\n")
 
-	// Update()
 	emitIRUpdate(&b, info, ctx, gc, cfg)
 
-	// View()
 	emitIRView(&b, info, ctx, gc, cfg)
 
-	// Component render methods
 	for _, cc := range ctx.NonMainComponents() {
 		emitIRComponentMethod(&b, cc, ctx, gc, cfg)
 	}
 
-	// main()
 	if cfg.Main {
 		b.WriteString("func main() {\n")
 		b.WriteString("\tp := tea.NewProgram(New())\n")
@@ -1299,8 +1212,6 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 		}
 	}
 }
-
-// --- helpers ---
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
 	return golang.LowerVarInit(v, gc)

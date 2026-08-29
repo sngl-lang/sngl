@@ -38,10 +38,8 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Dry-run target resolve to know whether to append "-<platform>" to
-	// binary names. Duplicates a parse+check, but keeps onTarget local;
-	// the alternative is a callback from runPipeline post-resolve, which
-	// would complicate its API for one consumer.
+	// Duplicates a parse+check, but keeps onTarget local; the alternative is a
+	// post-resolve callback out of runPipeline, for one consumer.
 	multiTarget := isMultiTarget(args, cliLang, cliPlat, optSlice)
 
 	return runPipeline(cmd, args, pipelineOpts{
@@ -80,11 +78,8 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	})
 }
 
-// binaryName derives the on-disk filename for a built artifact. Default base
-// is Options.name, lowercased and with non-alphanumeric runes replaced by '-'.
-// When the build emits more than one target, "-<platform>" is appended so
-// concurrent targets don't overwrite each other's binary. The ".exe"
-// extension is added for windows.
+// "-<platform>" is appended on a multi-target build so the targets don't
+// overwrite each other's binary.
 func binaryName(opts *ir.StructLit, platform string, multiTarget bool, windows bool) string {
 	base := optionString(opts, "name")
 	if base == "" {
@@ -100,8 +95,6 @@ func binaryName(opts *ir.StructLit, platform string, multiTarget bool, windows b
 	return base
 }
 
-// sanitizeBinaryBase lowercases s and replaces any non-alphanumeric rune
-// with '-'. Consecutive '-' are collapsed and leading/trailing '-' trimmed.
 func sanitizeBinaryBase(s string) string {
 	var b strings.Builder
 	prevDash := false
@@ -118,8 +111,6 @@ func sanitizeBinaryBase(s string) string {
 	return strings.TrimRight(out, "-")
 }
 
-// optionString reads a string-valued option from opts, returning "" if absent
-// or non-string. Mirrors optionBool in pipeline.go.
 func optionString(opts *ir.StructLit, name string) string {
 	v, ok := codegen.OptionField(opts, name)
 	if !ok {
@@ -139,10 +130,6 @@ func optionString(opts *ir.StructLit, name string) string {
 	return raw
 }
 
-// isMultiTarget returns true when the resolved set of build targets for
-// `args` contains more than one target. Implemented by parsing the first
-// file's outputs in isolation; if cliLang+cliPlat are both set, there is
-// always exactly one target.
 func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bool {
 	if cliLang != "" && cliPlat != "" {
 		return false
@@ -176,15 +163,11 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 	return len(targets) > 1
 }
 
-// isWindowsTarget reports whether the target's options indicate a windows
-// build. Today no platform sets an explicit GOOS option; this is a
-// forward-compat hook that returns false unless someone wires up goos.
+// No platform sets a goos option yet, so this is false until one does.
 func isWindowsTarget(target outputTarget) bool {
 	return optionString(target.Options, "goos") == "windows"
 }
 
-// moveFile relocates src to dst. Falls back to copy+remove if Rename fails
-// (cross-device).
 func moveFile(src, dst string) error {
 	if err := os.Rename(src, dst); err == nil {
 		return nil

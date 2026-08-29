@@ -11,7 +11,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// irAnalysis is the IR-based replacement for analysisResult.
 type irAnalysis struct {
 	*codegen.CommonAnalysis
 	binds      []irBind
@@ -58,9 +57,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc.RequireImport(imp.Path)
 	}
 
-	// After NoInlineComponents, every non-main component has been inlined
-	// into main. Walk pkg.Vars + main.Vars only — there are no remaining
-	// child-component vars to collect.
+	// NoInlineComponents inlined every non-main component into main, so there
+	// are no remaining child-component vars to collect.
 	var allVars []*ir.Var
 	for _, v := range pkg.Vars {
 		allVars = append(allVars, v)
@@ -71,9 +69,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	for _, v := range allVars {
 		if v.IsConst {
-			// Consts emit as read-only Model fields (reached via m.<name> /
-			// c.<name>); skip getter/setter so the field name doesn't collide
-			// with an exported accessor (APP_NAME field + APP_NAME() method).
+			// Consts skip getter/setter: the field name would collide with
+			// the accessor (APP_NAME field + APP_NAME() method).
 			info.binds = append(info.binds, irBind{
 				name:        v.Name,
 				goType:      golang.VarGoType(v),
@@ -84,10 +81,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		if v.Synthesized {
 			if v.Name == "__root" {
-				// Plan B's __root sentinel: a stable *fyne.Container the
-				// renderSlot updaters operate on, and which BuildUI returns.
-				// It is built through a native call so that rendering this
-				// init registers the container import.
+				// The __root sentinel is built through a native call so that
+				// rendering this init registers the container import.
 				initCall := &ir.Call{
 					Type:     ir.TypDyn,
 					Receiver: &ir.Ident{Name: "container"},
@@ -101,11 +96,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				})
 				continue
 			}
-			// NoContext-synthesized hidden context state lands here too:
-			// `__ctx_<name>` Vars carry the active context value (typed per
-			// the *ir.Context.Typ — usually a primitive). Emit a plain field
-			// (no getter/setter) keyed off the Var's declared type so calls
-			// like `i18n.NumberInt(m.__ctx_locale, ...)` see a concrete type.
+			// NoContext's `__ctx_<name>` vars get a plain field of their
+			// declared type, so a call reading one sees a concrete type.
 			if strings.HasPrefix(v.Name, "__ctx_") {
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -115,11 +107,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				})
 				continue
 			}
-			// Plan A's __slot<N> list<dyn> vars hold widget refs at runtime.
-			// Emit as []fyne.CanvasObject so the renderSlot teardown loop
-			// (range over the slice, container.Remove each entry) compiles.
-			// noAccessors=true: getter/setter would conflict with the field name
-			// since ExportName("__slot0") == "__slot0" (unchanged).
+			// __slot<N> vars hold widget refs for the renderSlot teardown loop.
+			// noAccessors because ExportName("__slot0") is unchanged, so an
+			// accessor would collide with the field.
 			info.binds = append(info.binds, irBind{
 				name:        v.Name,
 				goType:      "[]fyne.CanvasObject",
@@ -143,7 +133,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	// Computed functions
 	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
 		if codegen.IsComputed(f) {
@@ -167,13 +156,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	return info
 }
 
-// emitIR renders the model file body (no package clause or import block) and
-// returns it, the Go import paths it uses, and the cgo preamble (if any). The
-// caller feeds these to a FileEmitter, which owns package + import block +
-// gofmt + line directives.
-// The aliases returned alongside the imports are the selectors widget
-// packages must arrive under: the file emitter is a context of its own, so an
-// alias forced during translation does not reach it.
+// emitIR renders the model file body — no package clause or import block —
+// with its Go import paths and cgo preamble, for the caller's FileEmitter.
+// The aliases come back alongside because the file emitter is a context of its
+// own: an alias forced during translation does not reach it.
 func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
@@ -182,10 +168,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
 
-	// Structural: every fyne file's BuildUI returns fyne.CanvasObject.
 	gc.RequireImport("fyne.io/fyne/v2")
 
-	// --- Phase 1: Render BuildUI into buffer, collecting widget fields ---
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var entrySync []entrySyncRec
@@ -194,26 +178,21 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	singleRoot := true
 	var endLabel, endContainer int
 
-	// Window name set for link-interception in multi-window apps.
 	wins := ctx.Windows()
 	windowNames := make(map[string]bool)
 	for _, w := range wins {
 		windowNames[w.Name] = true
 	}
 
-	// windowCodes holds pre-rendered per-window build methods for multi-window.
 	var windowCodes []string
 
-	// Pre-scan every CreateNode: node-id → the widget Spec its instantiation
-	// carried. Package-wide because a promoted handler references nodes
-	// created in a sibling slot Func, so per-Func discovery would not see
-	// them.
+	// Package-wide because a promoted handler references nodes created in a
+	// sibling slot Func, which per-Func discovery would not see.
 	allFuncs := ctx.AllFuncs()
 	for _, w := range wins {
-		// Skip synthetic windows: codegen.Windows() returns a synthetic
-		// WindowCtx with main.Funcs duplicated when no explicit window
-		// exists. Real windows have a non-nil Window pointer; their Funcs
-		// hold lowering-promoted node handlers attached to that window.
+		// codegen.Windows() returns a synthetic WindowCtx duplicating
+		// main.Funcs when no explicit window exists; a real one has a
+		// non-nil Window pointer.
 		if w.Window == nil {
 			continue
 		}
@@ -225,17 +204,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		return "", nil, nil, "", err
 	}
 
-	// Pre-scan canvas elements: flattened `lower.CreateNode("canvas")`
-	// LocalVars carry a draw func + dimensions threaded through declarative
-	// lowering. Shared into every translator so OnCreateNode builds the
-	// raster-backed widget and OnDefault wires reactive redraws. Funcs
-	// scanned here cover window-body slot/handler funcs created by lowering.
+	// Shared into every translator so OnCreateNode builds the raster-backed
+	// widget and OnDefault wires reactive redraws.
 	canvasByID, canvasByFunc := collectCanvases(ctx.Pkg, ctx.AllFuncs())
 	hasCanvas := len(canvasByID) > 0
 
 	if len(wins) <= 1 {
-		// Single-window: render wins[0] body into BuildUI buffer directly
-		// via WalkLowered + fyneTranslator (matches slot-Func emission).
 		if len(wins) > 0 && len(wins[0].Body) > 0 {
 			bodyStmts := wins[0].Body
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -248,23 +222,20 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 					fmt.Fprintf(&buildBuf, "\t%s\n", line)
 				}
 			}
-			// Translator's topLevel slice holds widget ids not yet
-			// consumed by an AppendChild — those are the window roots.
+			// topLevel holds the widget ids no AppendChild consumed — the
+			// window roots.
 			tops := tr.topLevel
 			switch len(tops) {
 			case 0:
-				// No top-level widgets — e.g. body is purely reactive
-				// (synthesized __root + slot updaters). Reactivity-pass
-				// emits __root; presence of any synthesized __root bind
-				// drives emitIRBuildUI to return m.__root. Fall back to
-				// an empty label otherwise.
+				// A purely reactive body has no top-level widgets; a
+				// synthesized __root bind then drives emitIRBuildUI to return
+				// m.__root, and an empty label is the fallback.
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
 			case 1:
 				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				singleRoot = false
-				// BuildUI wraps the parts in container.NewVBox(parts...).
 				gc.RequireImport("fyne.io/fyne/v2/container")
 				buildBuf.WriteString("\tvar parts []fyne.CanvasObject\n")
 				for _, ref := range tops {
@@ -273,10 +244,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			}
 		}
 	} else {
-		// Multi-window: add navigation fields and pre-render each window into
-		// its own buildWindowX() method. BuildUI and navigate() are emitted
-		// later by emitIRMultiWindowCode, which wraps windows in
-		// container.NewStack.
 		gc.RequireImport("fyne.io/fyne/v2/container")
 		widgetFields = append(widgetFields, irWidgetField{"activeWindow", "string"})
 		for _, w := range wins {
@@ -322,9 +289,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		}
 	}
 
-	// --- Phase 1b: Pre-render component methods with continued counters ---
-	// Collect widget fields from sub-components BEFORE building template
-	// data so the Model struct declares every field they reference.
+	// Sub-component widget fields are collected before the template data is
+	// built, so the Model struct declares every field they reference.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
@@ -336,9 +302,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		endContainer = nextContainer
 	}
 
-	// --- Phase 2: Pre-render dynamic parts ---
-
-	// Computed bodies
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
 		var body string
@@ -348,9 +311,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			}
 		}
 		if body == "" && comp.fn != nil {
-			// Block-bodied computed (e.g. a for-loop accumulator): render
-			// the whole statement list so a non-string return type doesn't
-			// degrade to a bogus `return ""`.
+			// A block-bodied computed renders its whole statement list, so a
+			// non-string return type does not degrade to `return ""`.
 			var lines []string
 			for _, stmt := range comp.fn.Block {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -378,10 +340,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc, nodeSpecs, addWidgetImport)
 			continue
 		}
-		// A promoted node handler (LoweredFromTag set) routes to
-		// emitIRPromotedHandler even when Synthesized — the two-way-bind
-		// writeback handler is both. Only genuine render/slot funcs (no
-		// LoweredFromTag) take the slot path.
+		// A promoted node handler routes to emitIRPromotedHandler even when
+		// Synthesized: the two-way-bind writeback handler is both.
 		if fn.LoweredFromTag != "" {
 			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
 			continue
@@ -393,11 +353,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRFyneFunc(&funcBuf, fn, gc)
 	}
 
-	// Timer bodies. The tick body carries reactivity-injected widget updates
-	// (e.g. `__n0.value = …`) just like handler and slot bodies, so it must go
-	// through WalkLowered + fyneTranslator to rewrite them into the widget API
-	// (`m.__n0.SetText(…)`). Feeding t.Body straight to gc.EvalStmt skips that
-	// rewrite and emits raw, unqualified `__n0.Value = …` that won't compile.
+	// A tick body carries reactivity-injected widget updates like a handler
+	// body, so it must go through WalkLowered; gc.EvalStmt alone emits raw,
+	// unqualified `__n0.Value = …` that will not compile.
 	var timerDatas []timerData
 	for _, t := range info.Timers {
 		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -419,13 +377,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		})
 	}
 
-	// --- Phase 3: Build template data and render ---
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
-		// The canvas stdlib structs (Color/CanvasStyle/PathCmd) are package-scope
-		// and read by the synthesized draw funcs, so emitting them alongside the
-		// lang helpers is fine. Skip any struct the user already declared (in
-		// td.Structs) to avoid a duplicate type decl.
+		// Skip any struct the user already declared, to avoid a duplicate
+		// type decl.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 	}
 	if err != nil {
@@ -434,14 +389,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	td.Computeds = computedDatas
 	td.Timers = timerDatas
 
-	// Emit the structural model file body directly to Go (no template) so
-	// every framework reference registers its import through gc as it's
-	// written. The caller assembles package + imports + gofmt via the
-	// FileEmitter.
+	// Emitted directly rather than through a template, so every framework
+	// reference registers its import through gc as it is written.
 	var b strings.Builder
 	emitFyneModel(&b, &td, gc)
 
-	// --- Phase 4: Append dynamic code ---
 	if len(wins) <= 1 {
 		emitIRBuildUI(&b, info, &buildBuf, singleRoot, gc)
 	} else {
@@ -455,10 +407,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRMain(&b, cfg, info)
 	}
 
-	// Imports: structural ones tracked on td.Imports (go:// natives, widget
-	// paths, the Main entrypoint, lang helpers) unioned with everything the Go
-	// translator and emitFyneModel required on gc (framework packages, "math"
-	// for a float intrinsic, …).
 	imports := make([]string, 0, len(td.Imports)+8)
 	for p := range td.Imports {
 		imports = append(imports, p)
@@ -477,11 +425,8 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		FunctionCode: functionCode,
 	}
 
-	// Structural imports: native go:// imports, widget constructor/type paths,
-	// the Main-only entrypoint packages, lang helpers, and conditional
-	// stdlib packages ("time" for time-typed vars, timers, or toasts).
-	// Framework/std dynamic imports are recorded at emit sites (emitFyneModel
-	// / requireTypeImports / gc) and unioned in emitIR.
+	// The structural imports only; the dynamic ones are recorded at their emit
+	// sites and unioned in emitIR.
 	td.Imports = map[string]bool{}
 	if cfg.Main {
 		td.Imports["os"] = true
@@ -494,19 +439,15 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		td.Imports[p] = true
 	}
 
-	// Units (excluding the special-cased `duration` which maps to
-	// time.Duration). Single-base units become `type X float64`,
-	// multi-base units become `type X struct { Base1, Base2 float64 }`.
+	// `duration` is special-cased to time.Duration.
 	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units)
 
-	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {
 		td.Imports[imp] = true
 	}
 	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(ctx.Pkg.MergeStructs)
 
-	// Structs
 	for _, sd := range info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
@@ -518,7 +459,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		td.Structs = append(td.Structs, s)
 	}
 
-	// Binds
 	for _, bind := range info.binds {
 		getter := golang.ExportName(bind.name)
 		initStr := "nil"
@@ -528,10 +468,9 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 				renderGC = gc
 			}
 			if bind.varRef != nil {
-				// Real state var: route through LowerVarInit so the var's
-				// declared type drives temporal literal lowering (e.g. a
-				// `date` var initialized from a string literal emits
-				// mustParseDate(...) rather than a bare string).
+				// Routed through LowerVarInit so the declared type drives
+				// temporal literal lowering: a `date` var initialized from a
+				// string emits mustParseDate(...) rather than a bare string.
 				initStr = golang.LowerVarInit(bind.varRef, renderGC)
 			} else {
 				initStr = renderGC.EvalExpr(bind.init)
@@ -548,13 +487,11 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		}
 
 		var extra strings.Builder
-		// Entry sync — populated during render walk via vc.entrySync.
 		for _, sync := range entrySync {
 			if sync.varName == bind.name && bind.goType == "string" {
 				fmt.Fprintf(&extra, "\tm.%s%s(v)\n", sync.fieldName, sync.target)
 			}
 		}
-		// @change handlers
 		if handlers, ok := info.dataEvents[bind.name]; ok {
 			for _, h := range handlers {
 				if h.Name == "change" && h.Func != nil {
@@ -570,7 +507,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		td.Binds = append(td.Binds, bd)
 	}
 
-	// Externs
 	for _, ext := range info.externs {
 		td.Externs = append(td.Externs, externData{
 			Name:   golang.ExportName(ext.name),
@@ -578,7 +514,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
-	// Widget fields
 	for _, wf := range widgetFields {
 		td.WidgetFields = append(td.WidgetFields, widgetFieldData{
 			Name:   wf.name,
@@ -586,7 +521,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
-	// Detect C native imports and emit the cgo preamble.
 	var cNativeImports []*ir.NativeImport
 	for _, imp := range ctx.Pkg.Imports {
 		if imp.Native == nil {
@@ -656,8 +590,7 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 			b.WriteString("\treturn content\n")
 		}
 	} else {
-		// Multi-part body: when __root is synthesized (component has
-		// reactive slots), reuse it as the returned container so slot
+		// A synthesized __root is reused as the returned container, so slot
 		// updaters operating on m.__root mutate the displayed tree.
 		if hasRoot {
 			b.WriteString("\tm.__root.Objects = parts\n")
@@ -682,11 +615,9 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 	b.WriteString("}\n\n")
 }
 
-// renderIRComponentMethod pre-renders one user-defined component to a string,
-// returning the generated code, any widget fields it allocated, and the
-// updated rolling counters. Counters continue from startLabel/startContainer
-// so that m.fieldN names in component methods never collide with fields in
-// the main BuildUI or earlier component methods.
+// renderIRComponentMethod pre-renders one user-defined component. The counters
+// continue from startLabel/startContainer so that m.fieldN names never collide
+// with the main BuildUI's or an earlier component method's.
 func renderIRComponentMethod(
 	cc *codegen.ComponentCtx,
 	ctx *codegen.CodegenCtx,
@@ -751,8 +682,8 @@ func renderIRComponentMethod(
 		Block:    bodyStmts,
 	}
 	lines := compGC.EmitFuncDef(synthesized)
-	// EmitFuncDef emits "<sig> {", body lines, then "}". Inject the
-	// return-form trailer before the closing brace.
+	// EmitFuncDef emits "<sig> {", body lines, then "}", so the return-form
+	// trailer goes in before the closing brace.
 	var b strings.Builder
 	for i, line := range lines {
 		if i == len(lines)-1 {
@@ -788,11 +719,9 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 	b.WriteString("}\n")
 }
 
-// --- helpers ---
-
-// elementRef builds an ir.Ident for a widget field name. The
+// elementRef builds an ir.Ident for a widget field name. Its
 // IsElementRef+Synthesized flags route through evalIdent's m.<name>
-// qualification path, so callers don't hand-emit the "m." prefix.
+// qualification, so callers do not hand-emit the "m." prefix.
 func elementRef(name string) *ir.Ident {
 	return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
 }
@@ -891,10 +820,7 @@ func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) [
 	return []string{"// unsupported Alert." + method}
 }
 
-// --- Multi-window helpers ---
-
-// windowPascal converts a window Name (e.g. "app", "/foo", "window_L42") to
-// a PascalCase identifier fragment for function/field names.
+// windowPascal converts a window Name to a PascalCase identifier fragment.
 func windowPascal(name string) string {
 	clean := strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {

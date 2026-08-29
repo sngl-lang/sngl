@@ -168,7 +168,6 @@ func exprContainsFallibleCall(e ir.Expr, skipPerCallAbsorbed bool) bool {
 	return false
 }
 
-// callIsFallible reports whether this call can raise an error.
 func callIsFallible(call *ir.Call) bool {
 	if call == nil || call.Func == nil {
 		return false

@@ -124,7 +124,6 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	}
 }
 
-// collectCalleesInExpr walks expr and records every directly-called *ir.Func.
 func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
 	if e == nil {
 		return
@@ -207,14 +206,12 @@ func collectCalleesInFuncStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	}
 }
 
-// checkReservedPrefixAt emits an error if name starts with a reserved prefix.
 func checkReservedPrefixAt(c *checker, name string, pos ast.Pos) {
 	if strings.HasPrefix(name, "__async_") || strings.HasPrefix(name, "__hoist_") {
 		c.error(pos, "name %q uses reserved prefix", name)
 	}
 }
 
-// varDeclPos extracts the position from an ir.Var's AST node.
 func varDeclPos(stmt ast.Stmt) ast.Pos {
 	if stmt == nil {
 		return ast.Pos{}

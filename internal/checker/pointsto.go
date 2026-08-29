@@ -57,7 +57,6 @@ func (w *pointsToWalker) walkVarInit(v *ir.Var) {
 	if v.Init == nil {
 		return
 	}
-	// If the var itself is funcvar-typed, bind the RHS.
 	if isFuncType(v.Type) {
 		w.bindRHS(ir.SlotVarKey(v), v.Init)
 	}
@@ -271,8 +270,6 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 	// Other shapes: skip conservatively.
 }
 
-// --- Type helpers ---
-
 func isFuncType(t *ir.Type) bool {
 	return t != nil && t.Kind == ir.TypeFunc
 }
@@ -281,7 +278,6 @@ func exprIsFuncTyped(e ir.Expr) bool {
 	return isFuncType(exprType(e))
 }
 
-// slotKeyForAssignTarget maps an assignment target expression to its PointsToKey.
 func slotKeyForAssignTarget(t ir.Expr) (ir.PointsToKey, bool) {
 	switch x := t.(type) {
 	case *ir.Ident:
@@ -313,7 +309,6 @@ func structFieldKey(t *ir.Type, name string) (ir.PointsToKey, bool) {
 	return ir.SlotFieldKey(t, name), true
 }
 
-// slotListElemKeyForListType returns the PointsToKey for the element slot of a list type.
 func slotListElemKeyForListType(t *ir.Type) (ir.PointsToKey, bool) {
 	if t == nil || t.Kind != ir.TypeList {
 		return ir.PointsToKey{}, false

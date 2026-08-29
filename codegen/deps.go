@@ -7,21 +7,18 @@ import (
 )
 
 // DepTracker tracks reactive dependencies between vars and computed funcs.
-// All set fields are keyed on *ir.Var pointers (not names) so that
-// same-named vars in different scopes don't collide.
+// All set fields are keyed on *ir.Var pointers, not names, so that same-named
+// vars in different scopes don't collide.
 type DepTracker struct {
 	ModelVars     map[*ir.Var]struct{}
 	ComputedFuncs map[*ir.Func]struct{}
 	ComputedDeps  map[*ir.Func]map[*ir.Var]struct{}
 
-	// Components is the list of all components in the package, used to
-	// resolve `this.<field>` when walking inside a tracked context whose
-	// owning component is known.
+	// Components resolves `this.<field>` when the owning component is known.
 	Components []*ir.Component
 }
 
-// NewDepTracker creates a DepTracker. The caller's maps are retained; the
-// tracker does not copy them.
+// NewDepTracker retains the caller's maps rather than copying them.
 func NewDepTracker(modelVars map[*ir.Var]struct{}, computedFuncs map[*ir.Func]struct{}, computedDeps map[*ir.Func]map[*ir.Var]struct{}) *DepTracker {
 	return &DepTracker{
 		ModelVars:     modelVars,
@@ -30,13 +27,16 @@ func NewDepTracker(modelVars map[*ir.Var]struct{}, computedFuncs map[*ir.Func]st
 	}
 }
 
-// NewDepTrackerFromPkg derives a DepTracker from an ir.Package. State vars
-// come from Pkg.Vars and each component's Vars; computed funcs are zero-param
-// pure funcs whose dependencies are taken from Func.Reads.
+// NewDepTrackerFromPkg derives a DepTracker from an ir.Package. Computed funcs
+// are the zero-param pure funcs, their deps taken from Func.Reads.
 func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 	model := make(map[*ir.Var]struct{})
 	computed := make(map[*ir.Func]struct{})
 	computedDeps := make(map[*ir.Func]map[*ir.Var]struct{})
+
+	if pkg == nil {
+		return &DepTracker{ModelVars: model, ComputedFuncs: computed, ComputedDeps: computedDeps}
+	}
 
 	for _, v := range pkg.Vars {
 		model[v] = struct{}{}
@@ -75,10 +75,8 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 }
 
 // ExprDeps returns the set of model vars that a tracked expression reads,
-// expanded transitively through computed funcs.
-//
-// currentComp is the component owning the tracked context (used to resolve
-// implicit `this`); pass nil if the context isn't inside a component.
+// expanded transitively through computed funcs. currentComp resolves implicit
+// `this` and may be nil outside a component.
 func (dt *DepTracker) ExprDeps(currentComp *ir.Component, expr ir.Expr) map[*ir.Var]struct{} {
 	if expr == nil {
 		return nil
@@ -89,8 +87,7 @@ func (dt *DepTracker) ExprDeps(currentComp *ir.Component, expr ir.Expr) map[*ir.
 }
 
 // ExpandDeps copies the input set and unions in the dependencies of every
-// computed func whose own deps overlap. For now we don't iterate to a fixed
-// point — the existing tracker didn't either.
+// computed func whose own deps overlap. It does not iterate to a fixed point.
 func (dt *DepTracker) ExpandDeps(deps map[*ir.Var]struct{}) map[*ir.Var]struct{} {
 	result := make(map[*ir.Var]struct{}, len(deps))
 	for v := range deps {
@@ -112,8 +109,7 @@ func (dt *DepTracker) ExpandDeps(deps map[*ir.Var]struct{}) map[*ir.Var]struct{}
 	return result
 }
 
-// MutatedFields returns the set of model vars mutated by a statement
-// (including writes that reach a var through called helpers).
+// MutatedFields includes writes that reach a var through called helpers.
 func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[*ir.Var]struct{} {
 	if s == nil || dt == nil {
 		return nil
@@ -123,10 +119,8 @@ func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[*ir
 	return w.mutated
 }
 
-// --- substituting walker ---
-
-// depExtractor is the substituting dep walker. One instance per top-level
-// entry into ExprDeps/MutatedFields; recurses into Call bodies with cloned
+// depExtractor is the substituting dep walker: one instance per top-level
+// entry into ExprDeps/MutatedFields, recursing into Call bodies with cloned
 // frames that share deps/mutated/visited.
 type depExtractor struct {
 	tracker      *DepTracker
@@ -137,9 +131,8 @@ type depExtractor struct {
 	implicitThis *ir.Component
 	tracking     bool
 
-	// paramTypes captures the declared types of the params currently in
-	// scope (matched with bindings). Used to decide whether writes through
-	// a param propagate (component/ref/list/map: yes; value types: no).
+	// paramTypes decides whether a write through a param propagates:
+	// component/ref/list/map do, value types do not.
 	paramTypes map[string]*ir.Type
 }
 
@@ -154,9 +147,8 @@ func newExtractor(dt *DepTracker, currentComp *ir.Component, tracking bool) *dep
 	}
 }
 
-// cloneFrame returns a sibling extractor for a recursive call. It shares
-// deps/mutated/visited with the caller; bindings and paramTypes are reset
-// (the caller fills them from the callee's params).
+// cloneFrame shares deps/mutated/visited with the caller; bindings and
+// paramTypes are reset for the caller to fill from the callee's params.
 func (w *depExtractor) cloneFrame() *depExtractor {
 	return &depExtractor{
 		tracker:      w.tracker,
@@ -168,10 +160,9 @@ func (w *depExtractor) cloneFrame() *depExtractor {
 	}
 }
 
-// peelRoot walks left through Select/Index, returning the leftmost Ident
-// and the field name immediately adjacent to it. For `this.p.x` returns
-// (Ident{this}, "p") — the field rooted on the component is what matters;
-// deeper field accesses are subsumed by whole-var deps on the root var.
+// peelRoot returns the leftmost Ident and the field adjacent to it: for
+// `this.p.x`, (Ident{this}, "p"). Deeper accesses are subsumed by the
+// whole-var dep on the root var.
 func peelRoot(e ir.Expr) (root *ir.Ident, field string) {
 	for {
 		switch n := e.(type) {
@@ -188,18 +179,14 @@ func peelRoot(e ir.Expr) (root *ir.Ident, field string) {
 	}
 }
 
-// resolveVar returns the *ir.Var that an expression ultimately accesses,
-// or nil if it doesn't bottom out in a var. Chases through param bindings
-// and resolves implicit `this` against the owning component.
+// resolveVar returns the *ir.Var an expression ultimately accesses, or nil.
 func (w *depExtractor) resolveVar(e ir.Expr) *ir.Var {
 	return w.resolveVarGuarded(e, nil)
 }
 
-// resolveVarGuarded is the recursive worker. seen tracks names whose
-// bindings are currently being expanded in this resolution chain; if a
-// binding cycles back to a name we're already expanding, we stop and
-// fall through to the non-binding branches so a self-referencing
-// binding doesn't blow the stack.
+// resolveVarGuarded tracks in seen the names whose bindings are currently
+// being expanded, so a self-referencing binding falls through to the
+// non-binding branches instead of blowing the stack.
 func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) *ir.Var {
 	root, field := peelRoot(e)
 	if root == nil {
@@ -322,13 +309,8 @@ func (w *depExtractor) walkExpr(e ir.Expr) {
 	case *ir.Call:
 		w.walkCall(n)
 	default:
-		// Skipping an unknown kind is not conservative, whatever the comment
-		// that used to sit here said: this walk collects the model vars an
-		// expression reads, and missing one under-counts the dependency set.
-		// The result is a view that never re-renders when that var changes —
-		// silent at build time and hard to trace at run time. Every kind is
-		// listed above, so reaching here means a new ir.Expr was added; it must
-		// be given an arm rather than skipped.
+		// Skipping an unknown kind is not conservative: a missed read
+		// under-counts the deps and yields a view that never re-renders.
 		panic(fmt.Sprintf("codegen: depExtractor.walkExpr: unhandled ir.Expr %T", e))
 	}
 }
@@ -356,9 +338,7 @@ func (w *depExtractor) walkCall(c *ir.Call) {
 		}
 		sub.paramTypes[p.Name] = p.Type
 	}
-	// If the callee is a component method (receiver is a component), set
-	// implicitThis to that component so `this.x` references inside the body
-	// resolve to the right component's vars.
+	// A component method's body resolves `this.x` against its own component.
 	if fn.Receiver != "" {
 		for _, comp := range w.tracker.Components {
 			if comp.Name == fn.Receiver {
@@ -447,21 +427,17 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 			w.walkStmt(c)
 		}
 	case *ir.CanvasRedrawStmt:
-		// Carries NodeInst and Func pointers only — no expression can read a
-		// model var through it. Listed rather than defaulted so the arm below
-		// catches a genuinely new statement kind.
+		// Carries NodeInst and Func pointers only; listed rather than
+		// defaulted so the arm below catches a genuinely new statement kind.
 	default:
-		// As in walkExpr: skipping a statement is not conservative here. A
-		// statement this walk does not descend into hides every read inside it,
-		// under-counting the dependency set and producing a view that never
-		// re-renders.
+		// As in walkExpr: a statement not descended into hides every read
+		// inside it.
 		panic(fmt.Sprintf("codegen: depExtractor.walkStmt: unhandled ir.Stmt %T", s))
 	}
 }
 
-// recordWrite records a mutation on the target's resolved var, gated on
-// SNGL's value-vs-ref parameter semantics: writes through value-typed
-// params don't propagate to the caller.
+// recordWrite is gated on SNGL's parameter semantics: a write through a
+// value-typed param does not propagate to the caller.
 func (w *depExtractor) recordWrite(target ir.Expr) {
 	if target == nil {
 		return
@@ -484,8 +460,7 @@ func (w *depExtractor) recordWrite(target ir.Expr) {
 }
 
 // propagatesWrite reports whether writes through a param of this type
-// propagate to the caller. Component, ref<T>, list, and map are reference
-// semantics; struct and primitives are value semantics.
+// propagate to the caller.
 func propagatesWrite(t *ir.Type) bool {
 	if t == nil {
 		return false
@@ -497,9 +472,8 @@ func propagatesWrite(t *ir.Type) bool {
 	return false
 }
 
-// opaqueFunc reports whether a function should not be recursed into.
-// Stdlib intrinsics, native/scheme-imported funcs, and any func lacking
-// an AST source are opaque.
+// opaqueFunc reports whether a function should not be recursed into: stdlib
+// intrinsics, native/scheme-imported funcs, and any func lacking an AST source.
 func opaqueFunc(fn *ir.Func) bool {
 	if fn == nil {
 		return true

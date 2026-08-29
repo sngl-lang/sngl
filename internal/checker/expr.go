@@ -33,7 +33,6 @@ func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
 	return false
 }
 
-// checkExpr infers the type of an expression and returns its IR form.
 func (c *checker) checkExpr(e ast.Expr) ir.Expr {
 	if e == nil {
 		return nil
@@ -93,7 +92,6 @@ func isAddressableListExpr(e ir.Expr) bool {
 	return false
 }
 
-// inferExpr dispatches on expression type to infer its type.
 func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
@@ -607,7 +605,6 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
 
-// binOpStr returns the source representation of a binary operator.
 func binOpStr(op ast.BinaryOp) string {
 	switch op {
 	case ast.BinAdd:
@@ -765,7 +762,6 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
-	// Check if it's a method call (callee is SelectExpr).
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -831,7 +827,6 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		}
 	}
 
-	// Regular function call.
 	calleeExpr := c.checkExpr(x.Func)
 	calleeType := exprType(calleeExpr)
 
@@ -862,7 +857,6 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
 	}
 
-	// Infer generic type params from arguments.
 	if sig != nil && len(sig.TypeParams) > 0 {
 		sig = c.inferTypeParams(sig, x.Args)
 	}
@@ -973,7 +967,6 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							c.validateCallStmtComponentArgs(call, comp)
 							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
 						}
-						// Regular function in namespace.
 						t := fsym.SymType()
 						var sig *ir.FuncSig
 						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
@@ -1008,14 +1001,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 					args := c.checkCallArgs(call.Args, nil)
 					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
 				}
-				// Nothing found in namespace.
 				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
 				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 			}
 		}
 	}
 
-	// Type-attached method call.
 	typeName := receiver.String()
 	if receiver.Decl != nil {
 		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
@@ -1514,7 +1505,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
-		// Struct field access.
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
 				// Build type-arg substitution bindings if the struct is generic and
@@ -1649,7 +1639,6 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 }
 
 func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
-	// Look up struct type.
 	var sd *ir.StructDef
 	if c.nativeValues {
 		// The declaration is the one the importer built: named by the value
@@ -1697,7 +1686,6 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		}
 	}
 
-	// Check field values.
 	var fields []ir.FieldInit
 	for _, f := range x.Fields {
 		if f.Spread {
@@ -1992,7 +1980,6 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		Return: ret,
 	}
 
-	// Type-check the lambda body in a child scope.
 	c.pushScope()
 	for _, p := range fn.Params {
 		c.declare(x.Pos, p)
@@ -2022,7 +2009,6 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 // argument types against parameter types, then returns a substituted FuncSig.
 func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
 	bindings := make(map[string]*ir.Type)
-	// Match positional args to params.
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
@@ -2162,7 +2148,6 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		}
 
 		if arg.Name == "" {
-			// Positional arg.
 			if seenNamed {
 				c.error(*arg.Value.ExprPos(), "positional argument after named argument")
 				ok = false
@@ -2180,7 +2165,6 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			bound[positional] = &expr
 			positional++
 		} else {
-			// Named arg.
 			seenNamed = true
 			idx := -1
 			for i, p := range sig.Params {
@@ -2190,7 +2174,6 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				}
 			}
 			if idx == -1 {
-				// Check if any param has an empty name (anonymous func type).
 				hasUnnamed := false
 				for _, p := range sig.Params {
 					if p.Name == "" {
@@ -2237,7 +2220,6 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	return bound, ok
 }
 
-// checkArgExpr type-checks a single call argument against a target param.
 func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 	expr := c.checkExprExpecting(value, p.Type)
 	actual := exprType(expr)
@@ -2373,8 +2355,6 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	return result
 }
 
-// --- Statement checking ---
-
 // checkBlock type-checks all statements in a StmtBlock (legacy, does not return IR).
 func (c *checker) checkBlock(block *ast.StmtBlock) {
 	if block == nil || !block.IsDefined() {
@@ -2387,7 +2367,6 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 	}
 }
 
-// checkBlockIR type-checks a StmtBlock and returns typed IR statements.
 func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	if block == nil || !block.IsDefined() {
 		return nil
@@ -2467,7 +2446,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		targetType := exprType(targetExpr)
 		valueExpr := c.checkExprExpecting(x.Value, targetType)
 		valueType := exprType(valueExpr)
-		// Const reassignment check.
 		if ident, ok := x.Target.(*ast.IdentExpr); ok {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if v, ok := sym.(*ir.Var); ok && v.IsConst {
@@ -2480,7 +2458,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		// Type checking.
 		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
@@ -2938,7 +2915,6 @@ func (c *checker) nsMember(pos ast.Pos, ns *ir.Namespace, name string) ir.Symbol
 	return c.scopeWildcard(pos, nsScope(ns), name)
 }
 
-// nsScope is the scope a namespace's members are looked up in, or nil.
 func nsScope(ns *ir.Namespace) *ir.Scope {
 	if ns == nil || ns.Pkg == nil || ns.Pkg.Symbols == nil {
 		return nil
@@ -3083,7 +3059,6 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
 }
 
-// errorEventType returns the resolved stdlib ErrorEvent type, or nil if unavailable.
 func (c *checker) errorEventType() *ir.Type {
 	if sd := structDecl(c.symtab, "ErrorEvent"); sd != nil {
 		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
@@ -3216,7 +3191,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 	}
 
-	// Validate props on known components.
 	if comp != nil {
 		c.validateVisualNodeProps(vn, comp)
 	}
@@ -3352,7 +3326,6 @@ func withFieldDefaults(sd *ir.StructDef, fields []ir.FieldInit) []ir.FieldInit {
 	return fields
 }
 
-// componentPropType returns the type of a named prop on a component, or nil.
 func componentPropType(comp *ir.Component, name string) *ir.Type {
 	for _, p := range comp.Props {
 		if p.Name == name {
@@ -3429,7 +3402,6 @@ func onComponent(comp *ir.Component) string {
 	return " on component " + comp.Name
 }
 
-// componentEventType returns the payload type of a named event on a component, or nil.
 func componentEventType(comp *ir.Component, name string) *ir.Type {
 	for _, e := range comp.Events {
 		if e.Name == name {
@@ -3439,9 +3411,7 @@ func componentEventType(comp *ir.Component, name string) *ir.Type {
 	return nil
 }
 
-// validateVisualNodeProps validates props and events against a component definition.
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
-	// Validate args match props/events.
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
@@ -3623,7 +3593,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					positional++
 				}
 			} else {
-				// Named.
 				resolvedName = arg.Name
 				propName := resolvedName
 				if strings.HasPrefix(propName, ":") {
@@ -3864,7 +3833,6 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			}
 
 			if arg.Value != nil {
-				// Duplicate prop check.
 				boundKey := resolvedName
 				if strings.HasPrefix(boundKey, ":") {
 					boundKey = boundKey[1:]

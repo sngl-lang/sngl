@@ -52,33 +52,24 @@ func (s *emitShared) fail(err error) {
 	s.errs = append(s.errs, err)
 }
 
-// gtk4Translator implements codegen.IntrinsicTranslator for gtk4.
-// Emits IR fragments whose Call.Func values carry Foreign.Path="C" /
-// Foreign.Name="<bare C ident>" so gc.EvalExpr (via the namespace-call
-// path) renders the cgo source verbatim — the renderer prepends the
-// "C." prefix.
-//
-// Cgo type casts of the shape (*C.X)(unsafe.Pointer(y)) are produced
-// via ir.Conversion to an ir.NativePointerOf("X") type (see cgoCast);
-// the Go renderer's evalConversion path emits the cgo cast pattern.
+// gtk4Translator implements codegen.IntrinsicTranslator for gtk4. It emits IR
+// fragments whose Call.Func carries Foreign.Path="C", which gc.EvalExpr
+// renders as cgo source; a cgo cast is an ir.Conversion to a
+// NativePointerOf type (see cgoCast).
 type gtk4Translator struct {
 	gc        *golang.GoIRContext
 	pkg       *ir.Package // optional; used to consult GIR-resolved native metadata
 	fieldSink func(name, cType string)
-	// localRefs is the set of synthesized widget ref ids that the lower
-	// pass passNodeEscape determined do NOT escape this scope. For these
-	// ids OnCreateNode/OnCreateComponent emit a function-local `__nN := ...`
-	// declaration rather than a shared Model field, and qualifyNodeExpr
-	// renders the bare local name rather than `m.__nN`. Escaping ids (not
-	// in this set) keep the Model-field behavior. nil → every id is a field.
+	// localRefs are the ref ids passNodeEscape found not to escape this scope;
+	// they are emitted as function-locals rather than Model fields. nil means
+	// every id is a field.
 	localRefs map[string]bool
 	idCTypes  map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped   map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
 	topLevel  []string
-	// wrapped selects wrapped-mode emission: widget ops become pkg/go/gtk4rt
-	// calls over gtk4rt.Handle instead of inline cgo. Unmapped ops fall through
-	// to the cgo emission (leaving a `C.` that triggers the whole-program
-	// fallback in emitIR). See wrapped.go.
+	// wrapped emits widget ops as pkg/go/gtk4rt calls instead of inline cgo.
+	// An unmapped op falls through to cgo, leaving a `C.` that triggers
+	// emitIR's whole-program fallback. See wrapped.go.
 	wrapped      bool
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
 	// registry is the GIR data the widget declarations were generated from.
@@ -91,12 +82,8 @@ type gtk4Translator struct {
 	// could not be emitted at all. nil in scopes that emit no widgets.
 	shared *emitShared
 
-	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
-	// (LocalVar.CanvasDraw) to their GtkDrawingArea Model field + draw func,
-	// shared into every translator that may create a canvas or emit a redraw.
-	// pendingCanvasStyle holds the CanvasStyle local bound by a
-	// CanvasApplyStyle while translating the following draw primitive;
-	// canvasStyleCounter names the per-shape `_styleN` temporaries.
+	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
+	// while the following draw primitive is translated.
 	canvasByID         map[string]*canvasMeta
 	canvasByFunc       map[*ir.Func]*canvasMeta
 	pendingCanvasStyle ir.Expr
@@ -113,48 +100,37 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 	}
 }
 
-// withLocalRefs sets the non-escaping ref-id set for the scope this
-// translator emits. See gtk4Translator.localRefs.
 func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	t.localRefs = local
 	return t
 }
 
-// isLocalRef reports whether id is a non-escaping ref that should be emitted
-// as a function-local variable rather than a Model field.
 func (t *gtk4Translator) isLocalRef(id string) bool {
 	return t.localRefs != nil && t.localRefs[id]
 }
 
-// withPkg attaches the package being emitted.
 func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
 	t.pkg = pkg
 	return t
 }
 
-// withRegistry attaches the GIR data behind the widget declarations.
 func (t *gtk4Translator) withRegistry(reg *gir.TypeRegistry) *gtk4Translator {
 	t.registry = reg
 	return t
 }
 
-// withShared points the translator at the per-file accumulator described on
-// gtk4Translator.shared.
 func (t *gtk4Translator) withShared(s *emitShared) *gtk4Translator {
 	t.shared = s
 	return t
 }
 
-// withWrapped selects wrapped-mode emission (pkg/go/gtk4rt calls) when on.
 func (t *gtk4Translator) withWrapped(on bool) *gtk4Translator {
 	t.wrapped = on
 	return t
 }
 
-// collectTagComponents pre-walks lowered body stmts and records each
-// CreateNode tag's resolved ir.Component (carried on LocalVar.Type for
-// component-typed nodes). Lets OnCreateNode reach the Native metadata
-// without re-querying GIR.
+// collectTagComponents records each CreateNode tag's resolved ir.Component, so
+// OnCreateNode reaches the Native metadata without re-querying GIR.
 func (t *gtk4Translator) collectTagComponents(stmts []ir.Stmt) {
 	for _, s := range stmts {
 		t.collectFromStmt(s)
@@ -200,7 +176,6 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 			t.collectFromStmt(c)
 		}
 	case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
-		// No component-typed LocalVar to harvest.
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("gtk4.collectFromStmt: ContextProvider should be lowered: %#v", n))
 	default:
@@ -226,13 +201,11 @@ func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
 // unresolvedTagError explains why a node tag resolved to no GTK widget, or
 // returns nil when emitting nothing for it is correct.
 //
-// Every case is read off the declaration rather than matched against a list of
-// names. A library component is abstract — it renders only through the
-// `platform gtk4 { ... }` body in codegen/platform/gtk4/gtk4.sngl that
-// passPlatformExtensionBody swaps in and passInlinePure then inlines away — so
-// one arriving here still bearing its own name is one this platform never
-// implemented. A component of the user's own with an empty body is the
-// program's own statement that it draws nothing, and is left alone.
+// Every case is read off the declaration, never matched against a list of
+// names. A library component is abstract, rendering only through the gtk4.sngl
+// override that gets inlined away, so one arriving here under its own name is
+// one this platform never implemented. A user component with an empty body
+// says it draws nothing and is left alone.
 func (t *gtk4Translator) unresolvedTagError(tag string) error {
 	comp := t.tagComponent[tag]
 	if comp == nil {
@@ -242,24 +215,20 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
 	}
 	if !comp.Stdlib {
-		// A user component that renders nothing. Lowering drops such a node
-		// before codegen, so this is unreachable through a compile — but this
-		// function is the translator's entry point, and the alternative to
-		// answering here is telling a user their own component has no gtk4
-		// implementation, which is not what is wrong.
+		// Lowering drops such a node, so this is unreachable through a
+		// compile; answering here beats telling a user their own component
+		// has no gtk4 implementation.
 		return nil
 	}
-	// PlatformBodies survives passPlatformExtensionBody — the pass swaps the
-	// active platform's entry into Body and leaves the map — so it is still the
-	// record of which platforms declared an override, and a gtk4 entry here
-	// means the override existed but did not reach a widget.
+	// PlatformBodies survives passPlatformExtensionBody, so it is still the
+	// record of which platforms declared an override: a gtk4 entry here means
+	// the override existed but did not reach a widget.
 	if _, ok := comp.PlatformBodies[platformName]; ok {
 		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
 	}
 	return &codegen.UnimplementedComponent{Component: tag, Platform: platformName}
 }
 
-// classFor returns the GIR entry for a C type the walk already resolved.
 func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 	if t.registry == nil {
 		return nil
@@ -269,17 +238,13 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
-// nativeFunc constructs an *ir.Func that gc.EvalExpr's namespace-call branch
-// emits as cgo source, `C.<identifier>`. Callers pass a bare name like
-// "gtk_label_new": the renderer adds the "C." prefix, and one written in
-// survives only as a compatibility case.
+// nativeFunc constructs an *ir.Func that renders as `C.<identifier>`. Callers
+// pass a bare name; the renderer adds the "C." prefix.
 func nativeFunc(nativeName string) *ir.Func {
 	return &ir.Func{Foreign: ir.Foreign{Path: "C", Name: nativeName}, Name: nativeName}
 }
 
-// nativeCall builds a single-level cgo C-API call. The receiver
-// (`C`) drives the renderer into evalNamespaceCall, which emits
-// `C.<identifier>(args)`.
+// nativeCall builds a single-level cgo C-API call.
 func nativeCall(nativeName string, args ...ir.Expr) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
@@ -293,13 +258,8 @@ func nativeCall(nativeName string, args ...ir.Expr) *ir.Call {
 	}
 }
 
-// cgoCast wraps an expression in a cgo pointer cast:
-//
-//	(*C.<typeName>)(unsafe.Pointer(expr))
-//
-// Implemented as an ir.Conversion to a NativePointer type; the Go
-// renderer (lang/golang) recognises the shape and emits the cgo
-// cast pattern via evalConversion.
+// cgoCast wraps an expression in `(*C.<typeName>)(unsafe.Pointer(expr))`, as
+// an ir.Conversion to a NativePointer type that evalConversion recognises.
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	return &ir.Conversion{
 		Type:    ir.NativePointerOf(typeName),
@@ -307,11 +267,9 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	}
 }
 
-// boolToGoInt wraps a Go bool expression in `boolToInt(expr)` so the result
-// is a Go int. cgo cannot convert bool directly to a named C integer typedef
-// like gboolean — `C.gboolean(boolVar)` fails to compile — so callers wrap
-// the bool first, then pass the int through C.gboolean.
-// boolToInt is emitted into model.go only when this is called.
+// boolToGoInt exists because cgo cannot convert a bool to a named C integer
+// typedef: `C.gboolean(boolVar)` does not compile, so the bool becomes an int
+// first. boolToInt is emitted into model.go only when this is called.
 func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
 	t.shared.needBoolToInt()
 	return &ir.Call{
@@ -322,39 +280,29 @@ func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
-	// Canvas: a `canvas` CreateNode carries a draw func threaded through
-	// declarative flattening (LocalVar.CanvasDraw). It has no GIR-native
-	// widget, so intercept it before the native-tag lookup and build a
-	// GtkDrawingArea with a cairo draw callback.
+	// A `canvas` has no GIR-native widget, so it is intercepted before the
+	// native-tag lookup and built as a GtkDrawingArea with a cairo callback.
 	if tag == "canvas" {
 		if _, ok := t.canvasByID[id]; ok {
 			return t.emitCanvasCreate(id)
 		}
 	}
-	// passInlinePure substitutes stdlib wrapper components (vbox, text,
-	// button, ...) with their gtk4.sngl-defined native widget bodies
-	// before this translator runs, so every tag landing here is a
-	// GIR-resolved native widget name (GtkButton, GtkLabel, GtkBox, ...).
+	// passInlinePure already substituted the stdlib wrappers with their
+	// gtk4.sngl bodies, so every tag here is a GIR-resolved widget name.
 	cType, info := t.widgetClass(tag)
 	if info == nil {
-		// Nothing here can be emitted. When the tag names a declaration this
-		// platform was supposed to implement, the build has to fail: dropping
-		// the node emits a window missing the widgets its source asked for and
-		// says so nowhere.
+		// The build has to fail: dropping the node emits a window missing the
+		// widgets its source asked for and says so nowhere.
 		if err := t.unresolvedTagError(tag); err != nil {
 			t.shared.fail(err)
 		}
-		// Record the id as skipped so later AppendChild/PropAssign/
-		// AttachHandler references to it are dropped rather than emitting
-		// `m.<id>` for a field that was never declared on Model. A diagnostic
-		// only reaches the caller if the rest of the walk does not panic.
+		// Recorded so later references are dropped rather than emitting
+		// `m.<id>` for a field never declared on Model.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
 	ctorInfo := pickPrimaryConstructorInfo(info)
-	// gtk_application_window_new requires the GtkApplication;
-	// special-case so it gets the `app` parameter passed into
-	// BuildUI rather than nil.
+	// gtk_application_window_new needs BuildUI's `app` parameter, not nil.
 	if ctorInfo.Name == "gtk_application_window_new" {
 		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
 		if t.wrapped {
@@ -362,26 +310,20 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		}
 		return t.emitConstructorAssign(id, cType, nativeCall("gtk_application_window_new", appRef))
 	}
-	// Wrapped mode: emit a gtk4rt constructor when the widget is in the
-	// bounded surface. Unmapped widgets fall through to the cgo ctor below,
-	// leaving a `C.` that triggers the whole-program fallback.
 	if t.wrapped {
 		if ctor, ok := rtCtorForCType(cType); ok {
 			return t.emitConstructorAssign(id, cType, ctor)
 		}
 	}
-	// GIR describes no constructor for this class at all. The name derived
-	// from the class is not one GTK ships for any of them — 46 of the 47
-	// such classes are abstract bases and interior helpers (GtkWidget,
-	// GtkRange, GtkListItem) — so emitting the call would leave a link
-	// error in the user's build instead of a compiler diagnostic here.
+	// GIR describes no constructor for this class, and the name derived from
+	// the class is not one GTK ships, so emitting the call would leave a link
+	// error in the user's build instead of a diagnostic here.
 	if len(info.Constructors) == 0 {
 		t.shared.fail(fmt.Errorf("gtk4: %s cannot be constructed: GTK declares no constructor for it", cType))
 		return nil
 	}
-	// Pass a typed-zero value for each required constructor parameter
-	// so the cgo call type-checks. OnPropAssign immediately rewrites
-	// any user-supplied prop values via the dedicated setter.
+	// A typed zero per required parameter, so the cgo call type-checks;
+	// OnPropAssign immediately rewrites any user-supplied value.
 	args := []ir.Expr{}
 	for _, p := range ctorInfo.Params {
 		arg, err := ctorZeroArg(t.registry, p)
@@ -417,8 +359,6 @@ func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error)
 	case "gdouble", "gfloat":
 		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Raw: "0"}), nil
 	}
-	// A Gtk enumeration or bitfield: an integer, and a bare 0 coerces into
-	// the named cgo type.
 	if reg != nil && reg.Enums[p.GIRType] != nil {
 		return &ir.Literal{Type: ir.TypInt, Raw: "0"}, nil
 	}
@@ -447,17 +387,14 @@ func ctorScalarCast(p gir.ConstructorParam) string {
 	return p.GIRType
 }
 
-// OnCreateComponent promotes a recursive/non-inlinable user component
-// instance to a Model field typed as the opaque GtkWidget pointer, then
-// assigns the translated `m.render<Comp>(props...)` call. Keeps `m.<id>`
-// references (parent append, etc.) resolvable, mirroring OnCreateNode.
+// OnCreateComponent promotes a non-inlinable user component instance to a
+// Model field, so `m.<id>` references stay resolvable as in OnCreateNode.
 func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
 	t.idCTypes[id] = "GtkWidget"
 	t.topLevel = append(t.topLevel, id)
 	if t.isLocalRef(id) {
-		// Non-escaping: declare as a function-local `__nN := m.render<Comp>(...)`
-		// so each recursion frame keeps its own widget rather than clobbering
-		// a shared Model field.
+		// A function-local, so each recursion frame keeps its own widget
+		// rather than clobbering a shared Model field.
 		return []ir.Stmt{&ir.LocalVar{
 			Name: id,
 			Type: ir.NativePointerOf("GtkWidget"),
@@ -472,21 +409,17 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
-// emitConstructorAssign records the new widget's id↔cType mapping and
-// emits `m.<id> = (*C.<cType>)(unsafe.Pointer(ctor))`.
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = cType
 	t.topLevel = append(t.topLevel, id)
-	// Wrapped mode: ctor already yields a gtk4rt.Handle — no cgo cast, and the
-	// field/local is Handle-typed (LocalVar renders `id := ctor`, ignoring the
-	// type; the field goType is set to gtk4rt.Handle by the fieldSink closure).
+	// ctor already yields a gtk4rt.Handle, so no cgo cast; the fieldSink
+	// closure gives the field its Handle type.
 	initVal := ctor
 	if !t.wrapped {
 		initVal = cgoCast(cType, ctor)
 	}
 	if t.isLocalRef(id) {
-		// Non-escaping: declare a function-local `__nN := ...` rather than a
-		// shared Model field. Each call frame gets its own widget temp —
+		// A function-local, so each call frame gets its own widget temp —
 		// required for recursive component render methods.
 		return []ir.Stmt{&ir.LocalVar{
 			Name: id,
@@ -505,15 +438,11 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 // childAdder is how a parent takes a child, read from the introspection data
 // the widget declarations were generated from.
 //
-// It was a switch over seven C types, and a class outside it returned nothing:
-// the child was then dropped while the walk still removed it from the top
-// level, so emitBuildUI appended it to the root instead. A GtkGrid rendered as
-// a grid with its children flattened beside it, from a build that succeeded.
-//
 // GTK's container APIs are not uniform enough for every class to be derivable
 // -- gtk_grid_attach takes four arguments and gtk_notebook_append_page takes a
 // tab label -- so a class with no single-widget way in is reported rather than
-// guessed at. What is derivable is the three shapes that take a widget and
+// guessed at, since a dropped child is silently reparented to the root by
+// emitBuildUI. What is derivable is the three shapes that take a widget and
 // nothing else; see gir.ChildAdder.
 func (t *gtk4Translator) childAdder(cType string) gir.ChildAdder {
 	if cls := t.classFor(cType); cls != nil {
@@ -530,7 +459,6 @@ func gtk4ChildRemoveFn(parentCType string) string {
 	return ""
 }
 
-// parentCType extracts the C type from a node Ident.
 func (t *gtk4Translator) parentCType(e ir.Expr) string {
 	if id, ok := e.(*ir.Ident); ok {
 		if id.Name == "container" || id.Name == "parent" {
@@ -541,10 +469,8 @@ func (t *gtk4Translator) parentCType(e ir.Expr) string {
 	return ""
 }
 
-// isSkipped reports whether the expression refers to a synthesized
-// widget id whose OnCreateNode emitted nothing (no Model field exists
-// for it). Later refs to such ids must be dropped to keep the emitted
-// model.go consistent.
+// isSkipped reports whether the expression refers to a widget id OnCreateNode
+// emitted nothing for; later refs to it must be dropped.
 func (t *gtk4Translator) isSkipped(e ir.Expr) bool {
 	if id, ok := e.(*ir.Ident); ok {
 		if _, ok := t.skipped[id.Name]; ok {
@@ -569,7 +495,6 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		return nil
 	}
 	fn := adder.Func
-	// Remove appended child from topLevel.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
 			if name == id.Name {
@@ -616,20 +541,16 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
 }
 
-// qualifyNodeExpr re-qualifies a synthesized widget ident ("__n0") as a
-// Model field reference. Non-synth idents (e.g. slot-function "container"
-// or "parent") pass through.
+// qualifyNodeExpr re-qualifies a synthesized widget ident as a Model field
+// reference; a non-synth ident passes through.
 func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
-		// The __renderSlotN parent container is a function parameter, not a
-		// Model widget field — pass it through even though lowerNodeForSlot
-		// marks the AppendChild target ident IsElementRef+Synthesized (which
-		// would otherwise rewrite it to a bogus `m.Parent`).
+		// The __renderSlotN parent is a function parameter, but lowerNodeForSlot
+		// marks it IsElementRef+Synthesized, which would rewrite it to a bogus
+		// `m.Parent`.
 		if id.Name == "parent" || id.Name == "container" {
 			return e
 		}
-		// Non-escaping refs are function-local variables; render the bare
-		// name rather than a Model-field selector.
 		if t.isLocalRef(id.Name) {
 			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
@@ -662,25 +583,20 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	info := t.classFor(cType)
 	p, hasProp := girProp(info, prop)
 
-	// gtkSetterTable is the platform's deliberate choice, so it wins: it
-	// picks gtk_label_set_text over the gtk_label_set_label GIR names, and
-	// it answers for props GIR names no setter for (GtkImage.file). GIR's
-	// `setter=` answers the rest.
+	// gtkSetterTable wins over GIR's `setter=`: it is the platform's deliberate
+	// choice of gtk_label_set_text over gtk_label_set_label, and it answers for
+	// props GIR names no setter for.
 	entry := gtkSetterFor(cType, prop)
 	if entry.Setter == "" {
-		// Stdlib-mapped name: most "value"/"text" props flow into the
-		// underlying GTK "label" setter on labels & buttons.
 		switch prop {
 		case "value", "text":
 			entry = gtkSetterFor(cType, "label")
 		}
 	}
-	// A construct-only property has no reachable write: the widget already
-	// exists by the time any prop is assigned, and GObject answers a later
-	// g_object_set_property with a g_critical and no change. declgen
-	// withholds these, so reaching here means the prop arrived some other
-	// way — refuse rather than emit a call that silently does nothing.
-	// A static-table entry naming a real setter still wins, above.
+	// A construct-only property has no reachable write — the widget exists by
+	// the time any prop is assigned, and GObject answers with a g_critical.
+	// declgen withholds these, so reaching here means the prop arrived some
+	// other way; refuse rather than emit a call that silently does nothing.
 	if entry.Setter == "" && hasProp && p.ConstructOnly {
 		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
 		return nil
@@ -688,11 +604,8 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if entry.Setter == "" && hasProp {
 		entry = girSetter(info, p)
 	}
-	// Wrapped mode: emit a gtk4rt setter over the Handle with the raw
-	// Go-native value, before anything cgo-shaped is built — a coercion
-	// records that its helper is needed, and here nothing would use it.
-	// Setters that surface does not have fall through to cgo, leaving a `C.`
-	// that triggers the whole-program fallback.
+	// Before anything cgo-shaped is built: a coercion records that its helper
+	// is needed, and here nothing would use it.
 	if t.wrapped && entry.Setter != "" {
 		if rt, ok := rtSetterTable[entry.Setter]; ok {
 			if arg, ok := rtSetterValue(rt.kind, value); ok {
@@ -706,13 +619,10 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if !hasProp {
 		if entry.Setter == "" {
-			// Not a GTK property at all — nothing to set.
 			return nil
 		}
-		// A static-table prop GIR does not describe on this class, because
-		// the parse merges interface properties but not inherited ones
-		// (GtkApplicationWindow's title). The SNGL value type is all there
-		// is to coerce by.
+		// The parse merges interface properties but not inherited ones, so the
+		// SNGL value type is all there is to coerce by.
 		return t.emitSetterCall(node, recvType, entry.Setter, t.coerceSetterValue(entry.Setter, value))
 	}
 	kind := propKind(t.registry, p)
@@ -731,8 +641,6 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	return t.emitSetterCall(node, recvType, entry.Setter, valArg)
 }
 
-// emitSetterCall is the call to a C setter: the widget cast to the type that
-// setter takes as its receiver, then the cgo-coerced value.
 func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, cast, valArg)}}
@@ -770,8 +678,6 @@ func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propV
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, obj, name, valArg)}}
 }
 
-// setterValueArg is the value argument for the C setter of a property GIR
-// describes: the cgo cast that matches the C parameter type.
 func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
 	switch kind {
 	case propString:
@@ -788,15 +694,11 @@ func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType 
 		if isMember {
 			return member, nil
 		}
-		// An int flows through the named cgo type, which the setter's
-		// parameter is declared as.
 		return nativeCall(valType, member), nil
 	}
 	return nil, fmt.Errorf("no value of this type can be set")
 }
 
-// gObjectValueArg is the value argument for one of the gObjectSetFn helpers,
-// whose parameters are plain C scalars.
 func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value ir.Expr) (ir.Expr, error) {
 	switch kind {
 	case propString:
@@ -871,7 +773,6 @@ func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr
 	return nativeCall("CString", value)
 }
 
-// exprIRType returns the IR type carried by an Expr when available.
 func exprIRType(e ir.Expr) *ir.Type {
 	switch n := e.(type) {
 	case *ir.Literal:
@@ -890,8 +791,6 @@ func exprIRType(e ir.Expr) *ir.Type {
 	return nil
 }
 
-// gtk4SignalFor maps a SNGL event name on a given C type to the
-// corresponding GTK signal name (no "g_signal_connect_" prefix).
 func gtk4SignalFor(cType, event string) string {
 	switch cType {
 	case "GtkButton":
@@ -918,18 +817,14 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	cType := t.idCTypes[bare]
 	signal := gtk4SignalFor(cType, event)
 	if signal == "" {
-		// The declared event is the SNGL spelling of a GLib signal name.
 		sig, ok := girSignal(t.classFor(cType), event)
 		if !ok {
 			return nil
 		}
-		// The trampoline this connects is (instance, user_data) returning
-		// void. A signal of any other shape would hand its first argument to
-		// the dispatcher in place of the callback index, so refuse the build
-		// naming it rather than emit a connection that misfires. declgen
-		// withholds these from the declaration, so reaching here means the
-		// event arrived some other way — a static table entry, or a stdlib
-		// override written against a signal that is not connectable.
+		// The trampoline is (instance, user_data) returning void; a signal of
+		// any other shape hands its first argument to the dispatcher in place
+		// of the callback index. declgen withholds these, so reaching here
+		// means the event arrived some other way.
 		if !sig.Connectable() {
 			t.shared.fail(fmt.Errorf("gtk4: %s.%s: the %q signal passes %d argument(s) and returns %s; only a void signal with none can be connected",
 				cType, event, sig.Name, sig.Params, girSignalReturnLabel(sig)))
@@ -937,8 +832,8 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		}
 		signal = sig.Name
 	}
-	// Wrapped mode: gtk4rt.Connect registers the handler in cbind and wires the
-	// GTK signal in one call — no per-program snglCallbacks slice or cgo.
+	// gtk4rt.Connect registers the handler and wires the signal in one call —
+	// no per-program snglCallbacks slice or cgo.
 	if t.wrapped {
 		sigLit := &ir.Literal{Type: ir.TypString, Raw: signal}
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", t.qualifyNodeExpr(node), sigLit, handler)}}
@@ -958,8 +853,8 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}
-	// C.sngl_connect(widget, "<signal>", C.int(len(snglCallbacks)-1))
-	// C signature is `void *widget`, so cgo expects unsafe.Pointer.
+	// sngl_connect's C signature is `void *widget`, so cgo expects
+	// unsafe.Pointer.
 	widget := cgoCast("", t.qualifyNodeExpr(node))
 	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: signal})
 	lenCall := &ir.Call{
@@ -989,8 +884,6 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
 	slotRef := codegen.ModelFieldRef(slot.Name)
-	// Wrapped mode: the slot holds []gtk4rt.Handle, so append the handle
-	// directly with no cgo cast.
 	childArg := ir.Expr(cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 	if t.wrapped {
 		childArg = t.qualifyNodeExpr(child)

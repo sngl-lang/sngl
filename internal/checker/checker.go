@@ -14,7 +14,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 )
 
-// Config holds checker configuration.
 type Config struct {
 	FS        fs.FS          // filesystem for resolving relative imports
 	Dir       string         // OS directory for scheme imports
@@ -87,7 +86,6 @@ func (cfg *Config) libCache() *libCache {
 	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, targetIDs: map[*ir.Package]*ir.Var{}}
 }
 
-// ImportResolver resolves import paths to parsed documents or native declarations.
 type ImportResolver interface {
 	// Resolve resolves a directory import to parsed AST documents.
 	Resolve(fsys fs.FS, importPath string) ([]*ast.Document, error)
@@ -131,7 +129,6 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	return c.pkg, c.diags
 }
 
-// checker is the internal state for a single Check invocation.
 type checker struct {
 	doc *ast.Document
 	cfg *Config
@@ -484,17 +481,13 @@ func (c *checker) warn(pos ast.Pos, format string, args ...any) {
 	})
 }
 
-// pushScope creates a child scope and makes it current.
 func (c *checker) pushScope() {
 	c.scope = NewScope(c.scope)
 }
 
-// popScope restores the parent scope.
 func (c *checker) popScope() {
 	c.scope = c.scope.Parent
 }
-
-// --- pass1: declaration registration ---
 
 // topLevelKind distinguishes how a file-scope name was bound. Only a
 // declaration written in the file may shadow an imported name; every other
@@ -731,9 +724,7 @@ func (c *checker) pass1() {
 				c.error(s.Pos, "unexpected top-level call statement")
 			}
 		case *ast.DisabledDecl:
-			// Skip disabled declarations.
 		case *ast.Comment:
-			// Skip comments.
 		default:
 			// IfStmt, ForStmt at top level are checked in pass2.
 		}
@@ -878,7 +869,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 			irImport.Native = native
 			if native != nil {
-				// Register native declarations under the namespace.
 				nsPkg := &ir.Package{
 					Structs:        native.Structs,
 					Enums:          native.Enums,
@@ -904,7 +894,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 		}
 	} else if c.cfg.Resolver != nil {
-		// Directory import.
 		if c.visited[imp.Path] {
 			c.error(imp.Pos, "import cycle detected: %q", imp.Path)
 		} else {
@@ -997,7 +986,6 @@ func (c *checker) importOwner() *ir.Package {
 	return c.pkg
 }
 
-// mergePkgInto merges all declarations from src into dst, registering symbols.
 func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	if src == nil {
 		return
@@ -1083,7 +1071,6 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	c.applyMarks(u, ud)
 	c.pkg.Units = append(c.pkg.Units, ud)
 	c.bindDeclared(claimed, ud)
-	// Populate reverse suffix lookup.
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
@@ -1109,7 +1096,6 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 					c.error(decl.Pos, "const initializer references non-const %q", name)
 				}
 			}
-			// Type check initializer.
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initType := exprType(initExpr)
 			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
@@ -1402,7 +1388,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
 		var initExpr ir.Expr
-		// Type check initializer.
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			// Capturing a context into a var would freeze the value and miss
@@ -1441,7 +1426,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				Type: typ,
 				Init: initExpr,
 			}
-			// Build event handlers.
 			for i := range spec.Handlers {
 				h := &spec.Handlers[i]
 				handler := &ir.EventHandler{
@@ -1491,7 +1475,6 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				typ = initType
 			}
 		}
-		// Update the pre-registered ir.Var's type and init.
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
 				if v.Name == name {
@@ -1533,7 +1516,6 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 				typ = initType
 			}
 		}
-		// Update the pre-registered ir.Var's type and init.
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
 				if v.Name == name {
@@ -1676,7 +1658,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 	c.applyMarks(comp, irComp)
 
-	// Resolve props and events from PropList.
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
@@ -1701,7 +1682,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
-	// Resolve children type.
 	finishTreeMarks(comp, irComp, c.pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
@@ -1950,7 +1930,6 @@ func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
 		return out
 	case *ast.CallStmt:
 		out := &ir.Output{Lang: lang}
-		// Extract platform name from call target.
 		if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
 			out.Platform = ident.Name
 		} else {
@@ -2013,7 +1992,6 @@ func (c *checker) validateOutputArgs(vn *ast.VisualNode) {
 	}
 }
 
-// outputHasLangPlatform reports whether the output node uses flat form with explicit lang/platform args.
 func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
 	for _, a := range vn.Args.Args {
 		if arg, ok := a.(ast.Arg); ok && (arg.Name == "lang" || arg.Name == "platform") {
@@ -2427,11 +2405,9 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 	return t
 }
 
-// literalString extracts the string value from a literal expression.
 func literalString(e ast.Expr) string {
 	if lit, ok := e.(*ast.LiteralExpr); ok {
 		raw := lit.Raw
-		// Strip quotes.
 		if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
 			raw = raw[1 : len(raw)-1]
 		}
@@ -2476,8 +2452,6 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 	}
 }
 
-// --- pass2: type checking ---
-
 func (c *checker) pass2() {
 	// Pre-pass: check component nested-method bodies so their return types
 	// are inferred before any top-level func body that calls them (test
@@ -2516,7 +2490,6 @@ func (c *checker) pass2() {
 		c.checkFuncBody(fn)
 	}
 
-	// Check component bodies.
 	for _, comp := range c.pkg.Components {
 		c.checkComponentBody(comp)
 	}
@@ -2534,7 +2507,6 @@ func (c *checker) pass2() {
 		c.checkTimerBody(t)
 	}
 
-	// Check top-level var handler bodies.
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
 
@@ -2712,7 +2684,6 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		if fn.Return == nil {
 			fn.Return = bodyType
 		}
-		// Expression-body return type check.
 		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
 			pos := *body.ExprPos()
 			c.error(pos, "cannot return %s as %s", bodyType, fn.Return)
@@ -2871,7 +2842,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
 
-	// Declare component-level vars and funcs.
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
 	}
@@ -2932,7 +2902,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Check var handler bodies within component scope so handlers can reference component vars.
 	c.checkVarHandlerBodies(comp.Vars)
 
-	// Check remaining component body statements.
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		seenWindowIDs := map[string]bool{}
 		for _, stmt := range comp.AST.Body.Stmts {

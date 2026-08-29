@@ -58,9 +58,8 @@ func init() {
 	rootCmd.AddCommand(pkgCmd)
 }
 
-// capturingResolver wraps cliResolver and records every FS-scheme URI it
-// sees so commands like `pkg update` can iterate them afterwards. The record
-// is de-duplicated and kept in discovery order.
+// Records every FS-scheme URI resolved, de-duplicated and in discovery order,
+// so `pkg update` can iterate them afterwards.
 type capturingResolver struct {
 	*cliResolver
 	mu     sync.Mutex
@@ -91,10 +90,9 @@ func (r *capturingResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Doc
 	return r.cliResolver.ResolveSchemeFS(scheme, uri, dir)
 }
 
-// walkMains runs checker.Check on each main with the given resolver, relying
-// on the checker's transitive import resolution to populate caches. Errors
-// from the checker are logged but don't abort the walk — a bad hash on one
-// dep should not prevent downloading the others.
+// The caches are populated as a side effect of the checker's transitive import
+// resolution. A checker error is logged rather than fatal: a bad hash on one
+// dep must not prevent downloading the others.
 func walkMains(files []string, resolver checker.ImportResolver, dir string) {
 	langs, plats := collectTargets()
 	for _, filename := range files {
@@ -127,9 +125,8 @@ func walkMains(files []string, resolver checker.ImportResolver, dir string) {
 	}
 }
 
-// mainFiles filters the argv-derived file list down to those that appear to
-// declare a `component main`. pkg commands only drive from mains because
-// library files should not trigger remote fetches on their own.
+// pkg commands drive from mains only: a library file should not trigger remote
+// fetches on its own.
 func mainFiles(files []string) ([]string, error) {
 	var mains []string
 	for _, filename := range files {
@@ -137,8 +134,8 @@ func mainFiles(files []string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", filename, err)
 		}
-		// Cheap textual check — full type check would double the work and
-		// isn't needed to just decide "is this a main?".
+		// Textual, because a type check to answer only "is this a main?" would
+		// double the work.
 		if strings.Contains(string(data), "component main") {
 			mains = append(mains, filename)
 		}

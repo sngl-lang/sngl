@@ -43,7 +43,6 @@ const (
 	KindMember // enum member
 )
 
-// Result is the discriminated union returned by Lookup.
 type Result struct {
 	Kind      Kind
 	Index     *DeclIndex
@@ -57,7 +56,6 @@ type Result struct {
 	Member    *MemberDetail
 }
 
-// DeclIndex is the surface-agnostic outline of a package.
 type DeclIndex struct {
 	Title         string
 	Description   string
@@ -70,33 +68,28 @@ type DeclIndex struct {
 	Macros        []DeclSummary // `#[...]` marks: free funcs returning Macro
 	Overrides     []DeclSummary // sngl.* platform overrides
 	PlatformTypes []DeclSummary // "Options"-style platform structs
-	// Library is true for a package of the embedded SNGL library.
-	Library bool
-	Native  *ir.NativeImport // non-nil for scheme-native packages
+	Library       bool
+	Native        *ir.NativeImport // non-nil for scheme-native packages
 }
 
-// DeclSummary is a name + doc pair. Callers call FirstSentence on Doc if they
-// want a compact blurb; the raw doc is preserved for renderers that show more.
+// Doc is the raw comment; FirstSentence trims it for a compact blurb.
 type DeclSummary struct {
 	Name string
 	Doc  string
 }
 
-// TypeEntry is a type with its methods folded in.
 type TypeEntry struct {
 	Name    string
 	Doc     string
 	Methods []MethodEntry
 }
 
-// MethodEntry is a type method. ShortName is the part after the receiver dot.
 type MethodEntry struct {
 	ShortName string // "darken"
 	FullName  string // "color.darken"
 	Doc       string
 }
 
-// ComponentDetail is the payload for KindComponent.
 type ComponentDetail struct {
 	Name     string
 	Doc      string
@@ -105,7 +98,6 @@ type ComponentDetail struct {
 	Examples []string                 // raw example sources (stdlib only)
 }
 
-// TypeDetail is the payload for KindType.
 type TypeDetail struct {
 	Name    string
 	Doc     string
@@ -156,7 +148,6 @@ type MemberDetail struct {
 	Doc  string
 }
 
-// PackageKind classifies a PackageRef.
 type PackageKind int
 
 const (
@@ -166,8 +157,7 @@ const (
 	PackageScheme                         // go://…, file://…, etc.
 )
 
-// PackageRef names one package reachable from a cwd. Path is a valid first
-// argument to Lookup.
+// Path is a valid first argument to Lookup.
 type PackageRef struct {
 	Title string
 	Alias string
@@ -175,20 +165,15 @@ type PackageRef struct {
 	Kind  PackageKind
 }
 
-// RegisterResolver installs a factory the package uses to build a
-// checker.ImportResolver for scheme-based paths (go://, git://, …). Callers
-// that only query the stdlib or local directories don't need to register one.
-//
-// The CLI typically calls this once at startup with its own cliResolver
-// constructor. Subsequent LookupIn(cwd, …) calls build a fresh resolver per
-// cwd via the factory.
+// The factory builds a checker.ImportResolver per cwd, for scheme-based paths
+// (go://, git://, …). Callers that only query the stdlib or local directories
+// don't need to register one.
 //
 //sngl:pure
 func RegisterResolver(f func(cwd string) checker.ImportResolver) { resolverFactory = f }
 
 var resolverFactory func(cwd string) checker.ImportResolver
 
-// ErrNotFound means the path or ident chain didn't resolve to any decl.
 var ErrNotFound = errors.New("doc target not found")
 
 // Lookup is LookupIn scoped to the process cwd.
@@ -202,8 +187,7 @@ func Lookup(path string, idents ...string) (Result, error) {
 	return LookupIn(cwd, path, idents...)
 }
 
-// LookupIn resolves a doc path + ident chain against a specific cwd. Results
-// are memoized by (cwd, path, idents).
+// Results are memoized by (cwd, path, idents).
 //
 //sngl:pure
 func LookupIn(cwd, path string, idents ...string) (Result, error) {
@@ -241,7 +225,7 @@ func Index() []PackageRef {
 }
 
 // IndexIn enumerates the stdlib, the cwd's own package, and each aliased
-// import declared in the cwd's .sngl files. Results are memoized per cwd.
+// import declared in the cwd's .sngl files. Memoized per cwd.
 //
 //sngl:pure
 func IndexIn(cwd string) []PackageRef {
@@ -291,9 +275,7 @@ func indexInUncached(cwd string) []PackageRef {
 	return refs
 }
 
-// --- Internal resolution ---
-
-// target bundles the resolved package. Exactly one of (pd, native) is non-nil.
+// Exactly one of (pd, native) is non-nil.
 type target struct {
 	title  string
 	pd     *checker.PackageDocs
@@ -312,7 +294,6 @@ type target struct {
 	optionsDecl *ast.StructDef
 }
 
-// optionsDeclOf returns the declaration sngl://<uri> marked #[options], or nil.
 func optionsDeclOf(uri string) *ast.StructDef {
 	if sd := checker.OptionsStruct(uri); sd != nil {
 		return sd.AST
@@ -330,13 +311,13 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// name it is the compiler's intrinsics package, which has nothing to do
 	// with sngl://std.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(publicPackages()...)
+		pd, stmts := stdlibPackageDocs(checker.Packages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
 	}
 
 	if scheme == "sngl" {
 		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
-			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(publicPackages(), ", "))
+			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(checker.Packages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
@@ -407,7 +388,6 @@ func resolveTarget(cwd, path string) (*target, error) {
 		}
 	}
 
-	// Alias lookup against cwd's imports.
 	if cwd != "" {
 		if doc, err := parseDir(cwd); err == nil {
 			for _, stmt := range doc.Stmts {
@@ -437,8 +417,6 @@ func resolveTarget(cwd, path string) (*target, error) {
 	return nil, ErrNotFound
 }
 
-// mergeDocsTarget merges a slice of parsed Documents (e.g. all .sngl files for
-// a scheme import or a platform's API package) into a single resolved target.
 func mergeDocsTarget(title string, docs []*ast.Document) *target {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
@@ -454,8 +432,6 @@ func mergeDocsTarget(title string, docs []*ast.Document) *target {
 	}
 	return &target{title: title, pd: merged, stmts: stmts}
 }
-
-// --- Index building ---
 
 func buildIndex(tgt *target) *DeclIndex {
 	idx := &DeclIndex{Title: tgt.title, Library: tgt.library, Native: tgt.native}
@@ -479,8 +455,6 @@ func buildIndex(tgt *target) *DeclIndex {
 		return idx
 	}
 
-	// Split components into user vs platform-overrides.
-	//
 	// One entry per overridden component, not per override: a stdlib
 	// component is overridden by every platform that implements it, and each
 	// declares the override under the same `sngl.<name>`. They are the same
@@ -500,7 +474,6 @@ func buildIndex(tgt *target) *DeclIndex {
 		}
 	}
 
-	// Split structs into user vs Options-style platform types.
 	var userStructs []checker.DeclInfo
 	for _, d := range tgt.pd.Structs {
 		if sd, ok := d.Decl.(*ast.StructDef); ok && tgt.optionsDecl != nil && sd == tgt.optionsDecl {
@@ -615,8 +588,6 @@ func populateNativeIndex(idx *DeclIndex, ni *ir.NativeImport) {
 	sortByName(idx.Data)
 }
 
-// --- Ident walk ---
-
 func walkSNGL(tgt *target, idents []string) (Result, error) {
 	if len(idents) > 2 {
 		return Result{}, fmt.Errorf("too many identifiers: %v", idents)
@@ -652,8 +623,6 @@ func walkSNGL(tgt *target, idents []string) (Result, error) {
 	return narrow(tgt, info, idents[1])
 }
 
-// synthesizedReceiver handles primitive-type receivers (int, float, string,
-// list) that don't have a struct decl but collect methods via "name." prefix.
 // Returns (_, false) when the receiver has no methods.
 func synthesizedReceiver(tgt *target, recv string, rest []string) (Result, bool) {
 	methods, _ := groupFunctionsByReceiver(tgt.pd.Functions)
@@ -670,7 +639,6 @@ func synthesizedReceiver(tgt *target, recv string, rest []string) (Result, bool)
 		}
 		return Result{Kind: KindType, Type: td}, true
 	}
-	// One ident beyond the receiver: must name a method.
 	want := recv + "." + rest[0]
 	if fn := tgt.pd.FindDecl(want); fn != nil {
 		res, err := primary(tgt, fn)
@@ -682,12 +650,10 @@ func synthesizedReceiver(tgt *target, recv string, rest []string) (Result, bool)
 	return Result{}, false
 }
 
-// primary wraps a top-level decl in its matching Result kind.
 func primary(tgt *target, info *checker.DeclInfo) (Result, error) {
 	switch decl := info.Decl.(type) {
 	case *ast.ComponentDecl:
 		cd := &ComponentDetail{Name: info.Name, Doc: info.Doc, AST: decl}
-		// Attach stdlib schema + examples when available.
 		if reg, _, err := checker.LoadStdlib(); err == nil {
 			if schema, ok := reg[info.Name]; ok {
 				cd.Schema = schema
@@ -775,7 +741,6 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 	return Result{}, fmt.Errorf("cannot narrow into %T (%s)", info.Decl, info.Name)
 }
 
-// walkNative handles ident walks on scheme-native imports (go://, etc.).
 func walkNative(tgt *target, idents []string) (Result, error) {
 	if len(idents) > 1 {
 		return Result{}, fmt.Errorf("native imports support at most one identifier: %v", idents)
@@ -804,10 +769,7 @@ func walkNative(tgt *target, idents []string) (Result, error) {
 	return Result{}, fmt.Errorf("%w: %s", ErrNotFound, name)
 }
 
-// --- Helpers ---
-
-// FirstSentence trims a doc string to its first sentence (". " boundary) or
-// first line. Renderers call this when they want a compact blurb.
+// FirstSentence trims a doc string at the first ". " boundary, or the first line.
 func FirstSentence(doc string) string {
 	doc = strings.TrimSpace(doc)
 	if doc == "" {
@@ -822,9 +784,6 @@ func FirstSentence(doc string) string {
 	return doc
 }
 
-// stdlibPackageDocs returns the declarations of the named embedded packages,
-// merged. Packages are directories on disk, so this reads the layout rather
-// than filtering a merged set.
 // isRegisteredTarget reports whether path names a registered platform or
 // language, and one usable here: an unavailable platform contributes no
 // package, which is a whole-package decision made by the plugin.
@@ -850,26 +809,6 @@ func providedPackageDocs(pkg string) []*ast.Document {
 		return checker.ProvidedDocs(codegen.LookupLang(name))
 	}
 	return nil
-}
-
-// publicPackages is every package `sngl doc` can address: the embedded library
-// tiers, plus the one each registered target provides.
-func publicPackages() []string {
-	out := lib.PublicPackages()
-	for _, p := range codegen.CollectPlatforms() {
-		name := "platforms/" + p.PlatformIdentifier()
-		if len(providedPackageDocs(name)) > 0 {
-			out = append(out, name)
-		}
-	}
-	for _, l := range codegen.Langs() {
-		name := "languages/" + l
-		if len(providedPackageDocs(name)) > 0 {
-			out = append(out, name)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
@@ -977,7 +916,6 @@ func sortByName(xs []DeclSummary) {
 	sort.Slice(xs, func(i, j int) bool { return xs[i].Name < xs[j].Name })
 }
 
-// libraryPaths returns the embedded library packages as import paths.
 func libraryPaths() []string {
 	out := make([]string, 0, len(lib.PublicPackages()))
 	for _, p := range lib.PublicPackages() {
@@ -1004,11 +942,10 @@ func (o LibraryOrigin) ImportLine() string {
 	return `import . ` + quote(o.Pkg)
 }
 
-// FindInLibrary reports every public library package declaring name. A bare
-// name is not a lookup path — only sngl://builtin is in scope without an
-// import — so a caller resolving one has to say which package it found and
-// what importing that package costs. Two packages may declare the same name;
-// the caller decides between them rather than being handed the first.
+// FindInLibrary reports every public library package declaring name. Only
+// sngl://builtin is in scope without an import, so the caller has to know which
+// package it found and what importing it costs; two packages may declare the
+// same name, and the caller decides between them.
 func FindInLibrary(name string) []LibraryOrigin {
 	var out []LibraryOrigin
 	for _, pkg := range lib.PublicPackages() {

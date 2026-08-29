@@ -21,14 +21,11 @@ type JsIRContext struct {
 	// codegen.ExprCtx.
 	EventParam ir.Symbol
 
-	// EmitPositionMarkers controls whether EvalStmt prepends inline
-	// `/*@SNGL:file:line@*/` markers at statement boundaries. Populated
-	// from ExprCtx.Maps. Downstream, renderJSSourceMap scans the body for
-	// these markers, builds a source-map v3 sidecar, and strips them.
+	// EmitPositionMarkers prepends inline `/*@SNGL:file:line@*/` markers at
+	// statement boundaries, which renderJSSourceMap later scans and strips.
 	EmitPositionMarkers bool
 }
 
-// NewIRContext creates a JsIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *JsIRContext {
 	jc := &JsIRContext{Ctx: ctx}
 	if ctx != nil {
@@ -37,13 +34,9 @@ func NewIRContext(ctx *codegen.ExprCtx) *JsIRContext {
 	return jc
 }
 
-// EvalExpr translates an IR expression into a JavaScript expression string.
 func (jc *JsIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(jc, e) }
 
-// EvalStmt translates an IR statement into JS statement strings.
 func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(jc, s) }
-
-// --- irwalk.Renderer implementation ---
 
 func (jc *JsIRContext) NilExpr() string              { return "null" }
 func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) }
@@ -73,12 +66,10 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
-	// Predeclared PluralKey constants lower to JS string literals.
 	if s := snglI18n.PluralKeyConstString(n); s != "" {
 		return s
 	}
-	// Native bundled namespace (js://): emit the esbuild alias and register
-	// the module so the platform emits the `import * as` prelude.
+	// Registered so the platform emits the `import * as` prelude.
 	if ident, ok := n.Operand.(*ir.Ident); ok {
 		if _, ok := ident.Sym.(*ir.Namespace); ok {
 			if jsAlias, importPath := nativeBundledNamespaceAliasCtx(jc.Ctx, ident.Name); jsAlias != "" {
@@ -87,9 +78,8 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 			}
 		}
 	}
-	// A field flagged in MethodFields is surfaced by codegen as a zero-arg
-	// method (computeds). In test-harness scope `c.greeting` must invoke it,
-	// not compare the function object. Mirrors the Go/Kotlin testlowers.
+	// A MethodFields field is a zero-arg method, so `c.greeting` must invoke
+	// it rather than compare the function object.
 	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
 		return operand + "." + n.Field + "()"
 	}
@@ -158,14 +148,12 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 }
 
 // jsFieldKey is the property name a field is written under in JavaScript. For
-// a struct read out of a JavaScript module, that is the name the module
-// declared: the importer lowers a leading capital to reach a SNGL field name,
-// so a PascalCase TypeScript property is spelled one way in SNGL source and
-// another in the object the module reads.
+// a struct read out of a JavaScript module that is the name the module
+// declared, since the importer lowered its leading capital to reach the SNGL
+// field name.
 //
-// Only that scheme's declarations. A go:// struct also records native names,
-// and they are Go's — nothing in a generated page reads them, so a page built
-// around a `go://` value must keep spelling its fields the SNGL way.
+// Only that scheme's declarations: a go:// struct's native names are Go's, and
+// nothing in a generated page reads them.
 func jsFieldKey(sd *ir.StructDef, name string) string {
 	if sd == nil || !jsscheme.DeclaredHere(sd.Foreign) {
 		return name
@@ -216,18 +204,14 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 	switch n.IterKind {
 	case ir.IterMapEntries:
-		// Map iteration: for (const [k, v] of m.entries()) { ... }
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iter)
 	case ir.IterIndexed:
-		// Two-var list/iter: Key is the index, Value the element. A list's
-		// .entries() yields [index, element], matching that order.
 		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, n.Value, iter)
 	default:
-		// Single-var list / iter<T>: for (const x of list) { ... }
 		return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
 	}
 }
@@ -237,13 +221,10 @@ func (jc *JsIRContext) BlockEnd() string                    { return "}" }
 func (jc *JsIRContext) Indent() string                      { return "\t" }
 
 func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
-	// Synthesized refs from lowering passes (__slotN accumulators, __root,
-	// etc.) are emitted as plain module-scoped locals, not state fields — the
-	// read path (evalIdent) treats them the same way. Without this, a reset
-	// like `__slotN = []` was emitted as `state.__slotN = []`, which never
-	// cleared the real `var __slotN` accumulator: the slot's removeChild loop
-	// then operated on already-removed nodes and threw on the second update
-	// (reactive if/for transitioned once, then froze).
+	// A synthesized ref is a plain module-scoped local, not a state field, as
+	// evalIdent's read path also treats it. Emitting `state.__slotN = []` never
+	// clears the real accumulator, and the slot's removeChild loop then throws
+	// on the second update.
 	if n.Synthesized {
 		return n.Name
 	}
@@ -272,9 +253,8 @@ func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
 func (jc *JsIRContext) Scoped(name string) irwalk.Renderer { return jc.WithLocal(name) }
 
 // evalErrorAwareCall emits JS statements for a fallible call whose error
-// handler was resolved by effect analysis. Mirrors the Go translator;
-// only error.raise is recognised in MVP. Returns nil to signal no
-// specialised emission (fallback to normal call path).
+// handler effect analysis resolved. Only error.raise is recognised; anything
+// else returns nil and falls back to the normal call path.
 func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
@@ -294,8 +274,8 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble: no fallible-signature lowering in MVP. Throw so the
-		// enclosing scope (if any) surfaces the error natively.
+		// ErrorBubble has no fallible-signature lowering; throw so the
+		// enclosing scope surfaces the error natively.
 		return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -311,8 +291,8 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
-// emitHandlerInvoke inlines the handler body in a JS block scope.
-// See Go emitHandlerInvoke docs — same MVP limitation on terminate.
+// emitHandlerInvoke inlines the handler body in a JS block scope. It emits no
+// terminate, as in the Go translator.
 func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
@@ -332,9 +312,8 @@ func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	return lines
 }
 
-// evalLiteral renders an ir.Literal to JS. The rendering lives in the package-
-// level translateIRLiteral so the IRContext path and the lang-translator path
-// (TranslateIRLiteral) stay identical.
+// evalLiteral defers to the package-level translateIRLiteral so the IRContext
+// and lang-translator paths stay identical.
 func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
 	return translateIRLiteral(n)
 }
@@ -346,24 +325,17 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
-	// Synthesized refs from lowering passes (__nN widget refs,
-	// __slotN slot accumulators, __root sentinel, __entry loop var):
-	// emit as bare identifier — JS has no Model receiver.
+	// A synthesized ref is a bare identifier: JS has no Model receiver.
 	if n.Synthesized {
 		return n.Name
 	}
-	// NOTE: IsElementRef → document.querySelector(...) is intentionally NOT
-	// handled here. In the htmlTranslator slot/handler pipeline, element-ref
-	// idents are bound to local JS vars (created __nN nodes, slot-render
-	// `parent` params) and must stay bare; the IR does not reliably mark these
-	// Synthesized, so a blanket IsElementRef branch wrongly wraps them in a
-	// querySelector against a not-yet-attached node. User element-ref *reads*
-	// in migrated user functions (Phase 3) need querySelector and will be
-	// handled at that point with local-aware discrimination.
-	// Component-self ident: synthesized by passNoImplicitRecv as the
-	// implicit receiver of a desugared component method. The JS emission
-	// uses `state` for per-instance state of the currently-emitting
-	// component.
+	// IsElementRef deliberately does NOT become a querySelector here: in the
+	// htmlTranslator pipeline those idents are bound to local JS vars and must
+	// stay bare, and the IR does not reliably mark them Synthesized, so a
+	// blanket branch wraps them in a querySelector against a not-yet-attached
+	// node.
+	//
+	// passNoImplicitRecv's synthesized receiver renders as `state`.
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return "state"
 	}
@@ -380,12 +352,9 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameStateVar:
 		return "state." + name
 	case codegen.NameConst:
-		// A component-scoped const is materialized as a per-instance state
-		// field (e.g. a `regex` const needs runtime construction), so reads
-		// inside component code reference it as `state.NAME`. Package-level
-		// consts stay bare top-level vars. This mirrors the html legacy path,
-		// where main-component vars (consts included) are ModelFields while
-		// package consts are registered as LocalVars (bare).
+		// A component-scoped const is a per-instance state field, since it may
+		// need runtime construction; a package-level const stays a bare
+		// top-level var.
 		if jc.Ctx.Component != nil {
 			for _, v := range jc.Ctx.Component.Vars {
 				if v == sym {
