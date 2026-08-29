@@ -1,0 +1,45 @@
+// A slot declares what it accepts, and the shape of that type bounds the count
+// the way a children type does: list<T> any number, option<T> none or one, a
+// bare T exactly one. Absent, it is list<component>.
+//
+// A slot bounded to exactly one has no spelling for being absent, so it must be
+// populated; option<T> and list<T> are the two that permit omission.
+
+import . "sngl://std"
+
+component frame(slot body component, slot badge option<component>) {
+    vbox {
+        body {}
+        badge {}
+    }
+}
+
+// The default slot carries a type the same way, written `slot()` rather than a
+// bare `slot`: an optional name followed by an optional type is not LL(1), so
+// the empty parameter list is what tells the two apart.
+component strip(slot() list<component>) {
+    vbox {
+        slot
+    }
+}
+
+component main {
+    frame() {
+        slot body {
+            text(value = "one")
+        }
+    }
+    frame() {
+        slot body {
+            text(value = "one")
+        }
+        slot badge {
+            text(value = "b")
+        }
+    }
+    strip() {
+        text(value = "a")
+        text(value = "b")
+    }
+    strip()
+}

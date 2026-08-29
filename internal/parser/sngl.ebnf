@@ -365,13 +365,16 @@ CompParamBody =
     .
 
 # A slot: a region of UI the caller supplies, declared alongside the props and
-# events so a component's whole API is one list. Types only, no parameter names —
-# those belong to whoever writes the body, exactly as for a func type.
+# events so a component's whole API is one list. Parenthesised types are what the
+# slot is *invoked* with; the trailing Type is what it *accepts*, and its shape
+# bounds the count — list<T> any, option<T> none-or-one, bare T exactly one.
 #
 # Without an identifier it declares the default slot, the one the caller fills
-# with ordinary children. That form takes no parameters: there is no population
-# site to bind them at.
-SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] ] .
+# with ordinary children, and takes no invocation parameters: there is no
+# population site to bind them at. `slot()` rather than a bare `slot` when it
+# carries a type, because an optional name followed by an optional type is not
+# LL(1) — both start with ident, and the generator rejects the ambiguity.
+SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] [ Type ] | lparen rparen [ Type ] ] .
 
 CompParamTail =
       assign Expr

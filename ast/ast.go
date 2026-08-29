@@ -328,7 +328,9 @@ type SlotDecl struct {
 	Pos    Pos
 	Name   string
 	Params []TypeExpr
-	Attrs  []MacroAttr `json:",omitempty"`
+	// Type is what the slot accepts. Absent means list<component>.
+	Type  TypeExpr
+	Attrs []MacroAttr `json:",omitempty"`
 }
 
 // EventDecl declares an event on a component: @click, @change Type.

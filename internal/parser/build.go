@@ -1324,8 +1324,15 @@ func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDec
 		d.Name = nameTok.Literal
 	}
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == TypeList {
-			d.Params = b.buildTypeList(it.enter())
+		if it.isNonTerminal() {
+			switch it.symbol() {
+			case TypeList:
+				d.Params = b.buildTypeList(it.enter())
+			case Type:
+				d.Type = b.buildType(it.enter())
+			default:
+				it.skip()
+			}
 			continue
 		}
 		it.skip() // lparen / rparen

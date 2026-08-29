@@ -477,6 +477,9 @@ type EventDecl struct {
 type SlotDecl struct {
 	Name   string
 	Params []*Type `json:",omitempty"`
+	// Content is what the slot accepts; its shape bounds the count the way a
+	// component's children type does.
+	Content *Type `json:",omitempty"`
 	// ChildKind names the segmented tree the supplied content must be members
 	// of, from #[tree.children] on the declaration. Empty for a slot that
 	// accepts ordinary components.

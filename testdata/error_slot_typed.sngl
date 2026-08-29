@@ -1,0 +1,27 @@
+// What a slot's declared type refuses.
+
+import . "sngl://std"
+
+component frame(slot body component, slot badge option<component>) {
+    vbox {
+        body {}
+        badge {}
+    }
+}
+
+component main {
+    // Bounded to exactly one, so it cannot be absent — option<T> and list<T>
+    // are the two spellings that permit that.
+    frame() // ERROR(check) "requires slot \"body\" to be populated"
+
+    frame() {
+        slot body { // ERROR(check) "requires exactly one node, got 2"
+            text(value = "one")
+            text(value = "two")
+        }
+        slot badge { // ERROR(check) "accepts at most one node, got 2"
+            text(value = "a")
+            text(value = "b")
+        }
+    }
+}

@@ -1729,6 +1729,9 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			irComp.Events = append(irComp.Events, evt)
 		case ast.SlotDecl:
 			slot := &ir.SlotDecl{Name: pd.Name}
+			if pd.Type != nil {
+				slot.Content = c.resolveType(pd.Type)
+			}
 			// The grammar reaches a parameter list only past an identifier, so
 			// the default slot cannot carry one and nothing checks for it here.
 			for _, t := range pd.Params {
@@ -3303,12 +3306,13 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 // where the rest of a component's contract already does, so the two are
 // alternatives rather than a pair.
 func (c *checker) finishDefaultSlot(decl *ast.ComponentDecl, comp *ir.Component) {
-	if findSlot(comp, "") == nil {
+	slot := findSlot(comp, "")
+	if slot == nil {
 		return
 	}
 	if decl.ChildrenType != nil {
 		c.error(decl.Pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
 		return
 	}
-	comp.ChildrenType = ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
+	comp.ChildrenType = slotContentType(slot)
 }

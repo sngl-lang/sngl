@@ -2656,6 +2656,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// the same stdlib-lenient / user-component-strict arg checking.
 		if comp != nil && x.Call.ID == "" {
 			c.validateCallStmtComponentArgs(x.Call, comp)
+			c.checkRequiredSlots(x.Pos, comp, nil)
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
 			var keyExpr ir.Expr
 			for _, a := range x.Call.Args.Args {
@@ -4252,7 +4253,23 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 		}
 		content[sn.Name] = c.checkSlotContent(sn, decl)
 	}
+	c.checkRequiredSlots(vn.Pos, comp, content)
 	return content, rest
+}
+
+// checkRequiredSlots reports the named slots a call site left unpopulated that
+// its type gives no way to omit: list<T> and option<T> are the two spellings
+// that permit absence, and a fallback is what an optional slot renders rather
+// than a default for a required one.
+func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content map[string]*ir.SlotContent) {
+	for _, slot := range comp.Slots {
+		if slot.Name == "" || content[slot.Name] != nil {
+			continue
+		}
+		if t := slotContentType(slot); t.Kind != ir.TypeList && t.Kind != ir.TypeOption {
+			c.error(pos, "component %s requires slot %q to be populated", comp.Name, slot.Name)
+		}
+	}
 }
 
 // checkSlotContent checks one population. The bound names are the caller's own,
@@ -4282,6 +4299,7 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.Slot
 	}
 	sc.Body = c.checkBlockIR(&sn.Block)
 	c.popScope()
+	c.checkSlotArity(sn.Pos, decl, len(sc.Body), "slot \""+sn.Name+"\"")
 	// A slot marked #[tree.children("k")] hosts a segmented tree, so the
 	// supplied content is held to the same rule a marked component's children
 	// are: every node must carry #[tree.kind("k")].
@@ -4301,4 +4319,27 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.Slot
 		}
 	}
 	return sc
+}
+
+// slotContentType is what a slot accepts, defaulting to any number of
+// components when the declaration names nothing.
+func slotContentType(slot *ir.SlotDecl) *ir.Type {
+	if slot.Content != nil {
+		return slot.Content
+	}
+	return ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
+}
+
+// checkSlotArity holds supplied content to the count its declared type allows,
+// the same three shapes a children type has: list<T> any, option<T> none-or-one,
+// bare T exactly one.
+func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
+	t := slotContentType(slot)
+	switch {
+	case t.Kind == ir.TypeList:
+	case t.Kind == ir.TypeOption && n > 1:
+		c.error(pos, "%s accepts at most one node, got %d", what, n)
+	case t.Kind != ir.TypeOption && t.Kind != ir.TypeList && n != 1:
+		c.error(pos, "%s requires exactly one node, got %d", what, n)
+	}
 }
