@@ -18,6 +18,12 @@ grep 'HandleFunc' out_tern/server.go
 sngl generate --lang none --platform html -o out_static ternary.sngl
 exists out_static/index.html
 
+# ListLambdas is the language's other withdrawal, and html takes it back for
+# the same reason: `.filter`/`.map` in markup are rendered by html, and the Go
+# emitter writes an inline lambda directly where it does emit one.
+sngl generate --lang go --platform html -o out_lambda lambda.sngl
+grep 'HandleFunc' out_lambda/server.go
+
 -- param.sngl --
 import . "sngl://std"
 
@@ -34,5 +40,15 @@ component main {
     var active = true
     window #home(title="t", href="/") {
         html.a(class=active ? "on" : "off", innerText="x")
+    }
+}
+
+-- lambda.sngl --
+import . "sngl://std"
+
+component main {
+    var nums list<int> = [1, 2, 3]
+    window #home(title="t", href="/") {
+        html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
     }
 }
