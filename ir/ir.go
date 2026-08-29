@@ -58,17 +58,6 @@ type Package struct {
 	// honest signal.
 	TreeKinds map[string]bool `json:",omitempty"`
 
-	// Wildcard is the component this package's tag names resolved to — html's
-	// `element`, which answers to every name its pattern covers. A node
-	// carries the declaration it resolved to, so this is here for the lowered
-	// form, where the nodes are gone and the node ops that replaced them still
-	// need to know which of its props are boolean and which events it has.
-	//
-	// Recorded where a tag resolves rather than derived from the components,
-	// so it is the declaration actually used: a program declaring its own
-	// shadows an imported one, and the resolution already settled that.
-	Wildcard *Component `json:"-"`
-
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
 	// state-struct field name that aliases it. NoReactivity reads this

@@ -2656,7 +2656,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					break
 				}
 			}
-			c.noteWildcard(comp)
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      compName,
@@ -3259,7 +3258,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		emitName = qualifiedLocal
 	}
 	props = bindWildcardName(comp, emitName, props)
-	c.noteWildcard(comp)
 	return &ir.NodeInst{
 		AST:       vn,
 		Name:      emitName,
@@ -4007,18 +4005,6 @@ func componentDeclaresEventNamed(comp *ir.Component, name string) bool {
 // name it otherwise has no way to read — `html.div` resolves `element`, and
 // nothing downstream could say which tag that was. A name the call site wrote
 // itself wins: that is how a name no identifier can spell is given.
-// noteWildcard records on the package the wildcard component a tag resolved
-// to. importOwner rather than c.pkg: while a library package loads, its own
-// nodes are its own.
-func (c *checker) noteWildcard(comp *ir.Component) {
-	if comp == nil || comp.Wildcard == "" || comp.WildcardInto == "" {
-		return
-	}
-	if pkg := c.importOwner(); pkg != nil {
-		pkg.Wildcard = comp
-	}
-}
-
 func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg {
 	if comp == nil || comp.Wildcard == "" || comp.WildcardInto == "" || name == "" {
 		return props

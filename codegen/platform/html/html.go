@@ -530,6 +530,11 @@ type htmlGen struct {
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
 
+	// elemDecl is the declaration this window's raw elements resolved to,
+	// taken from the tree during prewalkNodes. It answers for the nodes the
+	// lowering creates after that walk, which carry no id it could key on.
+	elemDecl *ir.Component
+
 	// loweredRefs are the __n* ids a reactive-update Assign targets. Each gets
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
@@ -704,6 +709,13 @@ func (g *htmlGen) prewalkNodes() {
 			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
+			}
+			// A node the lowering creates later — a `for` body's — gets its
+			// id then, so it never reaches idToNode. Every raw element of a
+			// package shares one declaration, so keeping the one seen here
+			// answers for those too.
+			if g.elemDecl == nil && isElement(n.Component) {
+				g.elemDecl = n.Component
 			}
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
@@ -1235,10 +1247,9 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component == nil || n.Component.AST == nil {
 		return false
 	}
-	// A wildcard component answers to every tag name, so the node's name is a
-	// tag rather than a reference to it; inlining its empty body renders
-	// nothing at all.
-	if n.Component.Wildcard != "" {
+	// `element` answers to every tag name, so the node's name is a tag rather
+	// than a reference to it; inlining its empty body renders nothing at all.
+	if isElement(n.Component) {
 		return false
 	}
 	if n.Component.Stdlib {

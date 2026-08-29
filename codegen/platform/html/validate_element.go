@@ -25,8 +25,7 @@ func validateRawElements(pkg *ir.Package) error {
 		if !ok || n.Component == nil || bad != nil {
 			return nil
 		}
-		decl := n.Component
-		if decl.Wildcard == "" {
+		if !isElement(n.Component) {
 			return nil
 		}
 		expr := codegen.NodeProp(n, tagProp)

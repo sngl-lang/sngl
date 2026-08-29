@@ -14,18 +14,10 @@ import (
 // node's own component when it has one, else the package's raw-element
 // declaration.
 func (g *htmlGen) elementDecl(n *ir.NodeInst) *ir.Component {
-	if n != nil && n.Component != nil && n.Component.Wildcard != "" {
-		return n.Component
-	}
-	return g.rawElement()
-}
-
-// rawElement returns the package's raw-element declaration.
-func (g *htmlGen) rawElement() *ir.Component {
-	if g.pkg == nil {
+	if n == nil {
 		return nil
 	}
-	return g.pkg.Wildcard
+	return n.Component
 }
 
 // tagProp is the prop the matched tag name binds to. It is html's own prop on
@@ -48,6 +40,45 @@ const tagProp = "tag"
 // unpacks it back into the names it was written under.
 const attrsProp = "attrs"
 
+// isElement reports whether a component is html's `element`. It is recognised
+// by the two props html gave it, for the reason their names are constants
+// here: they are html's own, and nothing else html renders declares them.
+// TestElementDeclaresTagProp holds this to the declaration.
+func isElement(c *ir.Component) bool {
+	if c == nil {
+		return false
+	}
+	var tag, attrs bool
+	for _, p := range c.Props {
+		switch {
+		case p == nil:
+		case p.Name == tagProp:
+			tag = true
+		case p.Name == attrsProp:
+			attrs = true
+		}
+	}
+	return tag && attrs
+}
+
+// isDOMEventName reports whether a name is one the DOM fires. `element`
+// declares its payload-bearing events by name and accepts every other DOM
+// event, and DOM event names are lowercase — so a camelCase name is a SNGL
+// spelling that the override wrapping the element should have mapped, and
+// attaching a listener for it would listen for an event nothing fires.
+func isDOMEventName(s string) bool {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
+}
+
 // elementProp returns the element's declaration of prop, or nil when the prop
 // is one the wildcard accepted (an attribute nobody declared).
 func elementProp(comp *ir.Component, prop string) *ir.Prop {
@@ -55,7 +86,7 @@ func elementProp(comp *ir.Component, prop string) *ir.Prop {
 		return nil
 	}
 	for _, p := range comp.Props {
-		if p != nil && p.Wildcard == "" && p.Name == prop {
+		if p != nil && p.Name == prop && p.Name != attrsProp {
 			return p
 		}
 	}
@@ -118,15 +149,12 @@ func domEventName(comp *ir.Component, event string) string {
 		return event
 	}
 	for _, e := range comp.Events {
-		if e == nil {
-			continue
-		}
-		if e.Name == event {
+		if e != nil && e.Name == event {
 			return event
 		}
-		if e.Wildcard != "" && ir.MatchesWildcard(e.Wildcard, event) {
-			return event
-		}
+	}
+	if isDOMEventName(event) {
+		return event
 	}
 	return ""
 }

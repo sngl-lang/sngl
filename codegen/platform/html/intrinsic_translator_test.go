@@ -7,8 +7,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -35,34 +33,22 @@ func renderStmts(jc *javascript.JsIRContext, stmts []ir.Stmt) string {
 // let the two drift apart silently — the bug these tests now cover.
 func newTranslatorForTest(t *testing.T, jc *javascript.JsIRContext) *htmlTranslator {
 	t.Helper()
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}, rawElem: elementDeclForTest(t)}
+	// The declaration reaches the translator through the node an op targets,
+	// so every id these tests address has to resolve to one carrying it.
+	decl := elementDeclForTest(t)
+	nodes := map[string]*ir.NodeInst{}
+	for _, id := range []string{"__n0", "__n1", "__root", "__entry"} {
+		nodes[id] = &ir.NodeInst{Name: "div", Component: decl}
+	}
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: nodes}
 }
 
-// elementDeclForTest checks a one-line program that names the html platform
-// package, then pulls the wildcard element declaration back out of its IR.
+// elementDeclForTest is the real `element` declaration, taken from a checked
+// program the way codegen takes it: off the node that resolved to it.
 func elementDeclForTest(t *testing.T) *ir.Component {
 	t.Helper()
 	const src = "import . \"sngl://std\"\nimport html \"sngl://platforms/html\"\n\nwindow(\"t\") {\n    html.div {}\n}\n"
-	doc, err := parser.Parse("elemdecl.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	// The html platform is passed in directly: an internal test in this
-	// package cannot import internal/testtargets without closing an import
-	// cycle back through codegen/platform.
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: []ir.Platform{&Generator{}},
-		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
-	})
-	if len(diags) > 0 {
-		t.Fatalf("check: %v", diags[0])
-	}
-	c := pkg.Wildcard
-	if c == nil {
-		t.Fatal("no wildcard element declaration found in codegen/platform/html")
-	}
-	return c
+	return firstElementDecl(t, checkedPkgForTest(t, src))
 }
 
 // synthNodeRef builds the IR shape the walker passes to the

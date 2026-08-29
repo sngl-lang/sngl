@@ -1,0 +1,41 @@
+# The lowered node ops carry no declaration, so html reads each element's off
+# the node the op targets. Miss that and a boolean attribute regresses to
+# setAttribute, which cannot express absence: setAttribute("hidden", false)
+# renders hidden="false" and the element stays hidden.
+
+sngl generate --platform html --lang none -o out reactive.sngl
+grep '\.hidden = ' out/index.html
+! grep 'setAttribute\("hidden"' out/index.html
+
+# A program naming no platform package reaches raw elements only by inlining
+# the stdlib wrappers it did use, which happens after the check. The elements
+# still have to render.
+sngl generate --platform html --lang none -o out2 stdlib.sngl
+grep '<div' out2/index.html
+grep 'hello' out2/index.html
+
+-- reactive.sngl --
+import . "sngl://std"
+import html "sngl://platforms/html"
+
+output { none { html() } }
+
+var shown = false
+
+window("t") {
+    html.div(hidden=shown) {
+        html.span(id="s")
+    }
+    html.button(@click { shown = !shown })
+}
+
+-- stdlib.sngl --
+import . "sngl://std"
+
+output { none { html() } }
+
+window("t") {
+    vbox {
+        text(value="hello")
+    }
+}
