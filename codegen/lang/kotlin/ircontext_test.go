@@ -19,7 +19,7 @@ func ktTestCtx() *KtIRContext {
 // interpolation. This routes through the type-method call path.
 func TestKtIRContext_I18nTr(t *testing.T) {
 	fn := &ir.Func{Name: "tr", Receiver: "i18n"}
-	keyLit := &ir.Literal{Raw: "Hello, {name}!", Type: ir.TypString}
+	keyLit := &ir.Literal{Value: "Hello, {name}!", Type: ir.TypString}
 	argsMap := &ir.MapLitIR{}
 	call := &ir.Call{
 		Func: fn,
@@ -39,7 +39,7 @@ func TestKtIRContext_I18nTr(t *testing.T) {
 func TestKtIRContext_I18nPlural(t *testing.T) {
 	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
-	countLit := &ir.Literal{Raw: "3", Type: ir.TypInt}
+	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{
 		Func:     fn,
@@ -60,7 +60,7 @@ func TestKtIRContext_I18nPlural(t *testing.T) {
 func TestKtIRContext_I18nExactly(t *testing.T) {
 	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
-	nLit := &ir.Literal{Raw: "0", Type: ir.TypInt}
+	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
 		Func:     fn,
 		Receiver: receiverExpr,
@@ -86,7 +86,7 @@ func TestKtIRContext_PluralKeyMapLit(t *testing.T) {
 		Field:   "one",
 		Type:    keyType,
 	}
-	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
+	valExpr := &ir.Literal{Value: "# item", Type: ir.TypString}
 
 	m := &ir.MapLitIR{
 		Type: mapType,

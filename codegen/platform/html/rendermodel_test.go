@@ -32,7 +32,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 		}},
 	}
 
-	countVar := &ir.Var{Name: "count", Type: ir.TypInt, Init: &ir.Literal{Type: ir.TypInt, Raw: "0"}}
+	countVar := &ir.Var{Name: "count", Type: ir.TypInt, Init: &ir.Literal{Type: ir.TypInt, Value: "0"}}
 	pkg.Vars = []*ir.Var{countVar}
 
 	countRef := func() ir.Expr { return &ir.Ident{Name: "count", Type: ir.TypInt} }
@@ -40,7 +40,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 	// value binding: "count " + count
 	binding := &ir.Binary{
 		Op:    ast.BinAdd,
-		Left:  &ir.Literal{Type: ir.TypString, Raw: `"count "`},
+		Left:  &ir.Literal{Type: ir.TypString, Value: `"count "`},
 		Right: &ir.Conversion{Operand: countRef(), Type: ir.TypString},
 	}
 
@@ -52,7 +52,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 		Op:     ast.AssignSet,
 		Value: &ir.Call{
 			Func: persist,
-			Args: []ir.CallArg{{Value: &ir.Binary{Op: ast.BinAdd, Left: countRef(), Right: &ir.Literal{Type: ir.TypInt, Raw: "1"}}}},
+			Args: []ir.CallArg{{Value: &ir.Binary{Op: ast.BinAdd, Left: countRef(), Right: &ir.Literal{Type: ir.TypInt, Value: "1"}}}},
 		},
 	}
 	domPatch := &ir.Assign{
@@ -67,7 +67,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 
 	button := &ir.NodeInst{
 		Name:     "button",
-		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Raw: `"Save"`}}},
+		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Value: `"Save"`}}},
 		Handlers: []ir.EventHandler{handler},
 	}
 	// `textContent`, not `value`: lowering inlines sngl.text into html's
@@ -190,7 +190,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 			Native: &ir.NativeImport{ImportPath: importPath, Funcs: []*ir.Func{persist}},
 		}},
 	}
-	countVar := &ir.Var{Name: "count", Type: ir.TypInt, Init: &ir.Literal{Type: ir.TypInt, Raw: "0"}}
+	countVar := &ir.Var{Name: "count", Type: ir.TypInt, Init: &ir.Literal{Type: ir.TypInt, Value: "0"}}
 	pkg.Vars = []*ir.Var{countVar}
 
 	backendBody := func() []ir.Stmt {
@@ -212,7 +212,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	nodeHandler := ir.EventHandler{Name: "click", Func: &ir.Func{Block: backendBody()}}
 	button := &ir.NodeInst{
 		Name:     "button",
-		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Raw: `"Save"`}}},
+		Props:    []ir.Arg{{Name: "text", Value: &ir.Literal{Type: ir.TypString, Value: `"Save"`}}},
 		Handlers: []ir.EventHandler{nodeHandler},
 	}
 	vbox := &ir.NodeInst{Name: "vbox", Children: []ir.Stmt{button}}

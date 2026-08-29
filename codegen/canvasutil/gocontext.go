@@ -97,7 +97,7 @@ func pathStmts(ctx, cmds ir.Expr) []ir.Stmt {
 	}
 	cmdIf := func(op string, then ir.Stmt) *ir.If {
 		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Raw: op}},
+			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Value: op}},
 			Body: []ir.Stmt{then},
 		}
 	}

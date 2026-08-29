@@ -264,7 +264,7 @@ func WildcardProps(n *ir.NodeInst) map[string]ir.Expr {
 				if out == nil {
 					out = map[string]ir.Expr{}
 				}
-				out[k.Raw] = e.Value
+				out[k.Value] = e.Value
 			}
 		}
 	}
@@ -333,7 +333,7 @@ func IRLiteralString(e ir.Expr) (string, bool) {
 	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeString {
 		return "", false
 	}
-	return lit.Raw, true
+	return lit.Value, true
 }
 
 // IRLiteralBool extracts a bool value from an IR Literal expression.
@@ -345,7 +345,7 @@ func IRLiteralBool(e ir.Expr) (bool, bool) {
 	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
 		return false, false
 	}
-	return lit.Raw == "true", true
+	return lit.Value == "true", true
 }
 
 // IRIsLiteral reports whether an expression is a compile-time literal.
@@ -391,18 +391,18 @@ func IRLiteralAny(e ir.Expr) any {
 			if s, ok := IRLiteralString(e); ok {
 				return s
 			}
-			return lit.Raw
+			return lit.Value
 		case ir.TypeBool:
-			return lit.Raw == "true"
+			return lit.Value == "true"
 		case ir.TypeInt:
-			n, _ := strconv.Atoi(lit.Raw)
+			n, _ := strconv.Atoi(lit.Value)
 			return n
 		case ir.TypeFloat:
-			f, _ := strconv.ParseFloat(lit.Raw, 64)
+			f, _ := strconv.ParseFloat(lit.Value, 64)
 			return f
 		case ir.TypeNull:
 			return nil
 		}
 	}
-	return lit.Raw
+	return lit.Value
 }

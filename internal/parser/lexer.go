@@ -504,12 +504,14 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 			return l.tok(STR_START, sb.String(), startLine, startCol)
 		}
 
-		// ICU apostrophe quoting (i18n mode only).
+		// ICU apostrophe quoting (i18n mode only). It decides where a
+		// placeholder starts — 'X' hides a metachar from the lexer — so it is
+		// scanned here, but ICU is the runtime's syntax and the quoting is
+		// copied through for the runtime to decode.
 		// '' → literal '; 'X' where X starts with a metachar → literal run; bare ' → literal '.
 		if i18n && ch == '\'' {
 			if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
-				// Doubled '' — emit single literal apostrophe.
-				sb.WriteByte('\'')
+				sb.WriteString("''")
 				l.advance()
 				l.advance()
 				continue
@@ -520,16 +522,17 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 			}
 			if next == '{' || next == '}' || next == '#' || next == '|' {
 				// 'X' quoted run — X starts with a metachar; consume interior literally.
+				sb.WriteByte('\'')
 				l.advance() // consume opening '
 				for l.pos < len(l.input) {
 					if l.input[l.pos] == '\'' {
 						if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
-							// '' inside a quoted run → literal '
-							sb.WriteByte('\'')
+							sb.WriteString("''")
 							l.advance()
 							l.advance()
 							continue
 						}
+						sb.WriteByte('\'')
 						l.advance() // consume closing '
 						break
 					}
@@ -544,42 +547,29 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 			continue
 		}
 
-		// Escape sequences
+		// Escape sequences. The token carries the spelling, not the character
+		// it stands for — ast.UnescapeString decodes it. The scan still has to
+		// consume the escape, both to report a bad one and so that `\"` does
+		// not end the string.
 		if ch == '\\' {
 			l.advance()
 			if l.pos < len(l.input) {
 				esc := l.input[l.pos]
 				l.advance()
 				switch esc {
-				case 'n':
-					sb.WriteRune('\n')
-				case 't':
-					sb.WriteRune('\t')
-				case 'r':
-					sb.WriteRune('\r')
-				case '"':
-					sb.WriteRune('"')
-				case '\\':
+				case 'n', 't', 'r', '"', '\\', '{', '}', '0':
 					sb.WriteRune('\\')
-				case '{':
-					sb.WriteRune('{')
-				case '}':
-					sb.WriteRune('}')
-				case '0':
-					sb.WriteRune(0)
+					sb.WriteRune(esc)
 				case 'x':
-					if l.pos+1 < len(l.input) {
-						hi := hexVal(l.input[l.pos])
-						lo := hexVal(l.input[l.pos+1])
-						if hi >= 0 && lo >= 0 {
-							sb.WriteRune(rune(hi*16 + lo))
-							l.advance()
-							l.advance()
-						} else {
-							l.errors = append(l.errors, fmt.Sprintf("%d:%d: invalid hex escape", l.line, l.col))
-							sb.WriteRune('\\')
-							sb.WriteRune('x')
-						}
+					if l.pos+1 < len(l.input) && hexVal(l.input[l.pos]) >= 0 && hexVal(l.input[l.pos+1]) >= 0 {
+						sb.WriteString(`\x`)
+						sb.WriteRune(l.input[l.pos])
+						sb.WriteRune(l.input[l.pos+1])
+						l.advance()
+						l.advance()
+					} else {
+						l.errors = append(l.errors, fmt.Sprintf("%d:%d: invalid hex escape", l.line, l.col))
+						sb.WriteString(`\x`)
 					}
 				default:
 					l.errors = append(l.errors, fmt.Sprintf("%d:%d: unknown escape \\%c", l.line, l.col, esc))
@@ -639,8 +629,7 @@ func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) 
 		// ICU apostrophe quoting inside case bodies.
 		if ch == '\'' {
 			if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
-				// Doubled '' → literal '.
-				sb.WriteByte('\'')
+				sb.WriteString("''")
 				l.advance()
 				l.advance()
 				continue
@@ -651,15 +640,17 @@ func (l *lexer) scanCaseBodyContentResume(resume bool, startLine, startCol int) 
 			}
 			if next == '{' || next == '}' || next == '#' || next == '|' {
 				// 'X' quoted run.
+				sb.WriteByte('\'')
 				l.advance() // consume opening '
 				for l.pos < len(l.input) {
 					if l.input[l.pos] == '\'' {
 						if l.pos+1 < len(l.input) && l.input[l.pos+1] == '\'' {
-							sb.WriteByte('\'')
+							sb.WriteString("''")
 							l.advance()
 							l.advance()
 							continue
 						}
+						sb.WriteByte('\'')
 						l.advance() // consume closing '
 						break
 					}

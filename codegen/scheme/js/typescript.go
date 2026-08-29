@@ -285,14 +285,14 @@ func (w *walker) enumMemberValue(init *snglts.Node) ir.Expr {
 	// is spelled is what classifies it: a closing quote ends a string, and
 	// anything else counts only if it reads as a number.
 	if q := raw[len(raw)-1]; q == '"' || q == '\'' || q == '`' {
-		return &ir.Literal{Type: ir.TypString, Raw: init.Text()}
+		return &ir.Literal{Type: ir.TypString, Value: init.Text()}
 	}
 	if _, err := strconv.ParseFloat(raw, 64); err == nil {
-		return &ir.Literal{Type: ir.TypFloat, Raw: raw}
+		return &ir.Literal{Type: ir.TypFloat, Value: raw}
 	}
 	// 0x/0o/0b forms are numbers TypeScript accepts and ParseFloat does not.
 	if n, err := strconv.ParseInt(raw, 0, 64); err == nil {
-		return &ir.Literal{Type: ir.TypFloat, Raw: strconv.FormatInt(n, 10)}
+		return &ir.Literal{Type: ir.TypFloat, Value: strconv.FormatInt(n, 10)}
 	}
 	return nil
 }

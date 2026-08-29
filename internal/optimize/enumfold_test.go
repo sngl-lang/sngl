@@ -55,7 +55,7 @@ component keeps {
 	}
 	if lit, ok := current.Init.(*ir.Literal); ok {
 		t.Fatalf("enum member folded to a %s literal %q; it must stay an Ident",
-			lit.Type, lit.Raw)
+			lit.Type, lit.Value)
 	}
 	id, ok := current.Init.(*ir.Ident)
 	if !ok {

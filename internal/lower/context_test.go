@@ -10,7 +10,7 @@ import (
 
 // makeStringLit returns a string literal expression.
 func makeStringLit(s string) *ir.Literal {
-	return &ir.Literal{Type: ir.TypString, Raw: `"` + s + `"`}
+	return &ir.Literal{Type: ir.TypString, Value: `"` + s + `"`}
 }
 
 // makeContext creates a context declaration with a string default.
@@ -404,7 +404,7 @@ func TestLowerProviders_Basic(t *testing.T) {
 		t.Error("NodeInst after lowerProviders missing __ctx_theme arg")
 	} else {
 		lit, ok := val.(*ir.Literal)
-		if !ok || lit.Raw != `"dark"` {
+		if !ok || lit.Value != `"dark"` {
 			t.Errorf("__ctx_theme arg = %v; want Literal(\"dark\")", val)
 		}
 	}
@@ -443,7 +443,7 @@ func TestLowerProviders_RootDefault(t *testing.T) {
 		t.Error("NodeInst at window root missing __ctx_theme arg (should get default)")
 	} else {
 		lit, ok := val.(*ir.Literal)
-		if !ok || lit.Raw != `"light"` {
+		if !ok || lit.Value != `"light"` {
 			t.Errorf("root default arg = %v; want Literal(\"light\")", val)
 		}
 	}
@@ -510,7 +510,7 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 			return "<nil>"
 		}
 		if l, ok := v.(*ir.Literal); ok {
-			return l.Raw
+			return l.Value
 		}
 		return "<non-literal>"
 	}
@@ -635,7 +635,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 	val := findArgInNodeInst(ni, "__ctx_theme")
 	if val == nil {
 		t.Error("Toolbar NodeInst missing __ctx_theme arg")
-	} else if lit, ok := val.(*ir.Literal); !ok || lit.Raw != `"dark"` {
+	} else if lit, ok := val.(*ir.Literal); !ok || lit.Value != `"dark"` {
 		t.Errorf("__ctx_theme = %v; want Literal(\"dark\")", val)
 	}
 }
@@ -649,7 +649,7 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: makeContextRead(ctx)}},
 		},
 	)
-	cond := &ir.Literal{Type: ir.TypBool, Raw: "true"}
+	cond := &ir.Literal{Type: ir.TypBool, Value: "true"}
 	win := &ir.Window{
 		Name: "home",
 		Body: []ir.Stmt{
@@ -698,7 +698,7 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 	val := findArgInNodeInst(ni, "__ctx_theme")
 	if val == nil {
 		t.Error("NodeInst inside if.Body missing __ctx_theme arg")
-	} else if lit, ok := val.(*ir.Literal); !ok || lit.Raw != `"themed"` {
+	} else if lit, ok := val.(*ir.Literal); !ok || lit.Value != `"themed"` {
 		t.Errorf("__ctx_theme = %v; want Literal(\"themed\")", val)
 	}
 }

@@ -122,7 +122,7 @@ func argVal(ni *ir.NodeInst, name string) ir.Expr {
 			return ni.Props[i].Value
 		}
 	}
-	return &ir.Literal{Type: ir.TypFloat, Raw: "0"}
+	return &ir.Literal{Type: ir.TypFloat, Value: "0"}
 }
 
 // hasArg reports whether a named prop is present on a NodeInst.

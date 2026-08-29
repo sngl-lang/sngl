@@ -16,7 +16,7 @@ func TestJsEmitFuncDef_PlainFunc(t *testing.T) {
 		Name:   "greet",
 		Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Value: "hi"}},
 		},
 	}
 	got := strings.Join(jc.EmitFuncDef(fn), "\n")
@@ -33,8 +33,8 @@ func TestJsBinary_IntDivisionTruncates(t *testing.T) {
 	jc := NewIRContext(ctx)
 	expr := &ir.Binary{
 		Op:    ast.BinDiv,
-		Left:  &ir.Literal{Type: ir.TypInt, Raw: "7"},
-		Right: &ir.Literal{Type: ir.TypInt, Raw: "2"},
+		Left:  &ir.Literal{Type: ir.TypInt, Value: "7"},
+		Right: &ir.Literal{Type: ir.TypInt, Value: "2"},
 	}
 	got := jc.EvalExpr(expr)
 	if got != "Math.trunc(7 / 2)" {
@@ -79,7 +79,7 @@ func TestJsCall_RegexBuiltin(t *testing.T) {
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
 		Func: &ir.Func{Name: "regex"},
-		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "ab+c"}}},
+		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "ab+c"}}},
 	}
 	got := jc.EvalExpr(call)
 	if got != `new RegExp("ab+c")` {
@@ -110,7 +110,7 @@ func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 		Field:   "one",
 		Type:    keyType,
 	}
-	valExpr := &ir.Literal{Raw: "# item", Type: ir.TypString}
+	valExpr := &ir.Literal{Value: "# item", Type: ir.TypString}
 	m := &ir.MapLitIR{
 		Type: mapType,
 		Entries: []ir.MapEntry{
@@ -157,7 +157,7 @@ func TestJsLiteral_QuotedScalarTypes(t *testing.T) {
 		"datetime": ir.BuiltinDateTime,
 	} {
 		typ := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: name, Builtin: kind}}
-		lit := &ir.Literal{Type: typ, Raw: "val"}
+		lit := &ir.Literal{Type: typ, Value: "val"}
 		got := jc.evalLiteral(lit)
 		if got != `"val"` {
 			t.Errorf("struct %s: got %q, want \"val\"", name, got)
@@ -225,7 +225,7 @@ func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "Badge", Sym: comp}},
 			{Value: &ir.StructLit{Fields: []ir.FieldInit{
-				{Name: "label", Value: &ir.Literal{Type: ir.TypString, Raw: "Clicks"}},
+				{Name: "label", Value: &ir.Literal{Type: ir.TypString, Value: "Clicks"}},
 			}}},
 		},
 	}
@@ -395,7 +395,7 @@ func TestJsEmitI18nTr(t *testing.T) {
 	call := &ir.Call{
 		Func: &ir.Func{Name: "tr", Receiver: "i18n"},
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Raw: "Hello, {name}!", Type: ir.TypString}},
+			{Value: &ir.Literal{Value: "Hello, {name}!", Type: ir.TypString}},
 			{Value: &ir.MapLitIR{}},
 		},
 	}
@@ -413,7 +413,7 @@ func TestJsEmitI18nPlural(t *testing.T) {
 		Func:     &ir.Func{Name: "plural", Receiver: "i18n"},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Raw: "3", Type: ir.TypInt}},
+			{Value: &ir.Literal{Value: "3", Type: ir.TypInt}},
 			{Value: &ir.MapLitIR{}},
 		},
 	}
@@ -431,7 +431,7 @@ func TestJsEmitI18nExactly(t *testing.T) {
 		Func:     &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Raw: "0", Type: ir.TypInt}},
+			{Value: &ir.Literal{Value: "0", Type: ir.TypInt}},
 		},
 	}
 	got := jc.EvalExpr(call)
@@ -484,22 +484,22 @@ func TestJsEvalIdent_ElementRefStaysBare(t *testing.T) {
 func TestJsSizedNumericEmission(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	i8 := func(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt8, Raw: raw} }
+	i8 := func(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt8, Value: raw} }
 	cases := []struct {
 		name string
 		expr ir.Expr
 		want string
 	}{
 		{"int8 add masks", &ir.Binary{Type: ir.TypInt8, Op: ast.BinAdd, Left: i8("100"), Right: i8("100")}, "(((100 + 100)) << 24 >> 24)"},
-		{"uint8 sub masks", &ir.Binary{Type: ir.TypUint8, Op: ast.BinSub, Left: &ir.Literal{Type: ir.TypUint8, Raw: "0"}, Right: &ir.Literal{Type: ir.TypUint8, Raw: "1"}}, "(((0 - 1)) & 0xFF)"},
-		{"uint32 add masks", &ir.Binary{Type: ir.TypUint32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint32, Raw: "1"}, Right: &ir.Literal{Type: ir.TypUint32, Raw: "2"}}, "(((1 + 2)) >>> 0)"},
+		{"uint8 sub masks", &ir.Binary{Type: ir.TypUint8, Op: ast.BinSub, Left: &ir.Literal{Type: ir.TypUint8, Value: "0"}, Right: &ir.Literal{Type: ir.TypUint8, Value: "1"}}, "(((0 - 1)) & 0xFF)"},
+		{"uint32 add masks", &ir.Binary{Type: ir.TypUint32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint32, Value: "1"}, Right: &ir.Literal{Type: ir.TypUint32, Value: "2"}}, "(((1 + 2)) >>> 0)"},
 		{"int64 literal is bigint", i8Bit64("5"), "5n"},
-		{"uint64 add wraps via asUintN", &ir.Binary{Type: ir.TypUint64, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint64, Raw: "1"}, Right: &ir.Literal{Type: ir.TypUint64, Raw: "2"}}, "BigInt.asUintN(64, (1n + 2n))"},
-		{"float32 literal frounds", &ir.Literal{Type: ir.TypFloat32, Raw: "0.1"}, "Math.fround(0.1)"},
-		{"float32 add frounds", &ir.Binary{Type: ir.TypFloat32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypFloat32, Raw: "0.1"}, Right: &ir.Literal{Type: ir.TypFloat32, Raw: "0.2"}}, "Math.fround((Math.fround(0.1) + Math.fround(0.2)))"},
-		{"conv to int8 masks", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt, Raw: "300"}}, "((300) << 24 >> 24)"},
-		{"conv int64 to int8 bridges", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt64, Raw: "5000000000"}}, "((Number(5000000000n)) << 24 >> 24)"},
-		{"conv number to uint64 lifts", &ir.Conversion{Type: ir.TypUint64, Operand: &ir.Literal{Type: ir.TypInt, Raw: "5"}}, "BigInt.asUintN(64, BigInt(Math.trunc(5)))"},
+		{"uint64 add wraps via asUintN", &ir.Binary{Type: ir.TypUint64, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypUint64, Value: "1"}, Right: &ir.Literal{Type: ir.TypUint64, Value: "2"}}, "BigInt.asUintN(64, (1n + 2n))"},
+		{"float32 literal frounds", &ir.Literal{Type: ir.TypFloat32, Value: "0.1"}, "Math.fround(0.1)"},
+		{"float32 add frounds", &ir.Binary{Type: ir.TypFloat32, Op: ast.BinAdd, Left: &ir.Literal{Type: ir.TypFloat32, Value: "0.1"}, Right: &ir.Literal{Type: ir.TypFloat32, Value: "0.2"}}, "Math.fround((Math.fround(0.1) + Math.fround(0.2)))"},
+		{"conv to int8 masks", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt, Value: "300"}}, "((300) << 24 >> 24)"},
+		{"conv int64 to int8 bridges", &ir.Conversion{Type: ir.TypInt8, Operand: &ir.Literal{Type: ir.TypInt64, Value: "5000000000"}}, "((Number(5000000000n)) << 24 >> 24)"},
+		{"conv number to uint64 lifts", &ir.Conversion{Type: ir.TypUint64, Operand: &ir.Literal{Type: ir.TypInt, Value: "5"}}, "BigInt.asUintN(64, BigInt(Math.trunc(5)))"},
 	}
 	for _, tc := range cases {
 		if got := jc.EvalExpr(tc.expr); got != tc.want {
@@ -508,7 +508,7 @@ func TestJsSizedNumericEmission(t *testing.T) {
 	}
 }
 
-func i8Bit64(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt64, Raw: raw} }
+func i8Bit64(raw string) *ir.Literal { return &ir.Literal{Type: ir.TypInt64, Value: raw} }
 
 // Every path that emits a generic call refuses a bodyless #[intrinsic] this
 // backend has no emitter for. Each is reached by a different call shape, and

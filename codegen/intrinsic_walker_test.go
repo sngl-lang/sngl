@@ -62,7 +62,7 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 			Init: &ir.Call{
 				Receiver: &ir.Ident{Name: "lower"},
 				Func:     createFunc,
-				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "vbox"}}},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
 			},
 		},
 	}
@@ -79,7 +79,7 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 		// var __n0 dyn = lower.CreateNode("vbox")
 		&ir.LocalVar{Name: "__n0", Type: ir.TypDyn, Init: &ir.Call{
 			Func: &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"},
-			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "vbox"}}},
+			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
 		}},
 		// #__n0.text = "hi"
 		&ir.Assign{
@@ -87,14 +87,14 @@ func TestWalkLoweredDispatchesAll(t *testing.T) {
 				Operand: &ir.Ident{Name: "__n0", IsElementRef: true},
 				Field:   "text",
 			},
-			Value: &ir.Literal{Type: ir.TypString, Raw: "hi"},
+			Value: &ir.Literal{Type: ir.TypString, Value: "hi"},
 		},
 		// lower.AttachHandler(#__n0, "click", h)
 		&ir.CallStmt{Call: &ir.Call{
 			Func: &ir.Func{Name: "AttachHandler", Intrinsic: "AttachHandler"},
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "__n0", IsElementRef: true}},
-				{Value: &ir.Literal{Type: ir.TypString, Raw: "click"}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: "click"}},
 				{Value: &ir.Ident{Name: "h"}},
 			},
 		}},

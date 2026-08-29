@@ -51,7 +51,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Cond = foldExpr(x.Cond, ctx)
 		// Short-circuit if cond folded to literal bool.
 		if lit, ok := x.Cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
-			if lit.Raw == "true" {
+			if lit.Value == "true" {
 				return foldExpr(x.Then, ctx)
 			}
 			return foldExpr(x.Else, ctx)
@@ -149,7 +149,7 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 		if ifs, ok := s.(*ir.If); ok {
 			cond := foldExpr(ifs.Cond, ctx)
 			if lit, ok := cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
-				if lit.Raw == "true" {
+				if lit.Value == "true" {
 					out = append(out, foldStmts(ifs.Body, ctx)...)
 				} else {
 					out = append(out, foldStmts(ifs.Else, ctx)...)
@@ -235,7 +235,7 @@ func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 	s.Cond = foldExpr(s.Cond, ctx)
 
 	if lit, ok := s.Cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
-		if lit.Raw == "true" {
+		if lit.Value == "true" {
 			// Always true — inline body.
 			s.Cond = nil
 		} else {

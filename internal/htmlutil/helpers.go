@@ -70,7 +70,7 @@ func colorStructToCSS(sl *ir.StructLit) (string, bool) {
 		if !ok || lit == nil {
 			return "", false
 		}
-		n, err := strconv.Atoi(strings.TrimSpace(lit.Raw))
+		n, err := strconv.Atoi(strings.TrimSpace(lit.Value))
 		if err != nil {
 			return "", false
 		}
@@ -94,14 +94,14 @@ func irLiteralStaticValue(lit *ir.Literal) string {
 	}
 	// Unit literals carry their suffix separately (e.g. "16"+"px").
 	if lit.Suffix != "" {
-		return lit.Raw
+		return lit.Value
 	}
 	if lit.Type == nil {
-		return lit.Raw
+		return lit.Value
 	}
 	switch lit.Type.Kind {
 	case ir.TypeString:
-		raw := lit.Raw
+		raw := lit.Value
 		if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) && len(raw) >= 6 {
 			return raw[3 : len(raw)-3]
 		}
@@ -112,7 +112,7 @@ func irLiteralStaticValue(lit *ir.Literal) string {
 	case ir.TypeNull:
 		return ""
 	}
-	return lit.Raw
+	return lit.Value
 }
 
 // kebabCase rewrites a camelCase identifier as the hyphenated keyword CSS

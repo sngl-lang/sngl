@@ -116,8 +116,9 @@ func TestLexI18nEscapeSequences(t *testing.T) {
 	if tok.Type != I18N_STR_FULL {
 		t.Errorf("Type = %v, want I18N_STR_FULL", tok.Type)
 	}
-	if tok.Literal != "line\nnewline" {
-		t.Errorf("Literal = %q, want \"line\\nnewline\"", tok.Literal)
+	// The token holds the source spelling; ast.UnescapeString decodes it.
+	if tok.Literal != `line\nnewline` {
+		t.Errorf("Literal = %q, want %q", tok.Literal, `line\nnewline`)
 	}
 }
 

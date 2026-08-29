@@ -49,6 +49,17 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			for _, p := range x.Parts {
 				walkE(p)
 			}
+		case *ast.I18nInterpExpr:
+			for _, p := range x.Parts {
+				walkE(p)
+			}
+		case *ast.I18nPlaceholderExpr:
+			walkE(x.Value)
+			for _, c := range x.Cases {
+				for _, p := range c.Body {
+					walkE(p)
+				}
+			}
 		case *ast.ParenExpr:
 			walkE(x.Inner)
 		case *ast.ConstExpr:

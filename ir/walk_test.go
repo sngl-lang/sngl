@@ -13,7 +13,7 @@ import (
 func buildWalkPkg() *ir.Package {
 	v := &ir.Var{
 		Name: "x",
-		Init: &ir.Binary{Left: &ir.Literal{Raw: "1"}, Right: &ir.Literal{Raw: "2"}},
+		Init: &ir.Binary{Left: &ir.Literal{Value: "1"}, Right: &ir.Literal{Value: "2"}},
 	}
 	fn := &ir.Func{
 		Name: "f",
@@ -21,7 +21,7 @@ func buildWalkPkg() *ir.Package {
 			&ir.If{
 				Cond: &ir.Ident{Name: "cond"},
 				Body: []ir.Stmt{
-					&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Raw: "3"}},
+					&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Value: "3"}},
 				},
 			},
 			&ir.CallStmt{Call: &ir.Call{Func: &ir.Func{Name: "g"}}},
@@ -143,7 +143,7 @@ func TestWalkExprsSubtreePrune(t *testing.T) {
 	// (1+2) * x : Binary(Mul, Binary(Add,1,2), Ident x). Prune the inner
 	// Add subtree; expect to still visit the outer Binary, the inner Binary,
 	// and the Ident sibling — but not the two Literals inside the pruned Add.
-	inner := &ir.Binary{Left: &ir.Literal{Raw: "1"}, Right: &ir.Literal{Raw: "2"}}
+	inner := &ir.Binary{Left: &ir.Literal{Value: "1"}, Right: &ir.Literal{Value: "2"}}
 	root := &ir.Binary{Left: inner, Right: &ir.Ident{Name: "x"}}
 	var lits, idents, bins int
 	ir.WalkExprs(root, func(e ir.Expr) error {
@@ -187,7 +187,7 @@ func TestWalkSkipAllSwallowed(t *testing.T) {
 func TestRewriteReplacesExprInPlace(t *testing.T) {
 	root := &ir.Binary{
 		Left:  &ir.Ident{Name: "a"},
-		Right: &ir.Binary{Left: &ir.Ident{Name: "a"}, Right: &ir.Literal{Raw: "1"}},
+		Right: &ir.Binary{Left: &ir.Ident{Name: "a"}, Right: &ir.Literal{Value: "1"}},
 	}
 	err := ir.RewriteExprs(root, func(e ir.Expr) (ir.Expr, error) {
 		if id, ok := e.(*ir.Ident); ok && id.Name == "a" {

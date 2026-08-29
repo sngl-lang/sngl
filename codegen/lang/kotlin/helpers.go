@@ -18,21 +18,21 @@ func translateIRLiteral(n *ir.Literal) string {
 		return "null"
 	}
 	if n.Suffix != "" {
-		return fmt.Sprintf("%q", n.Raw+n.Suffix)
+		return fmt.Sprintf("%q", n.Value+n.Suffix)
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		case ir.TypeStruct:
 			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Raw)
+				return fmt.Sprintf("%q", n.Value)
 			}
-			return n.Raw
+			return n.Value
 		case ir.TypeInt, ir.TypeBool:
-			return n.Raw
+			return n.Value
 		case ir.TypeFloat:
-			s := n.Raw
+			s := n.Value
 			if !strings.Contains(s, ".") {
 				s += ".0"
 			}
@@ -41,5 +41,5 @@ func translateIRLiteral(n *ir.Literal) string {
 			return "null"
 		}
 	}
-	return n.Raw
+	return n.Value
 }

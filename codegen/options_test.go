@@ -16,11 +16,11 @@ func TestApplyOptions_Primitives(t *testing.T) {
 	}
 	opts := &ir.StructLit{
 		Fields: []ir.FieldInit{
-			{Name: "package", Value: &ir.Literal{Type: ir.TypString, Raw: `"com.example"`}},
-			{Name: "main", Value: &ir.Literal{Type: ir.TypBool, Raw: "true"}},
-			{Name: "count", Value: &ir.Literal{Type: ir.TypInt, Raw: "42"}},
-			{Name: "ratio", Value: &ir.Literal{Type: ir.TypFloat, Raw: "0.5"}},
-			{Name: "color", Value: &ir.Literal{Type: ir.TypString, Raw: "#abc123"}},
+			{Name: "package", Value: &ir.Literal{Type: ir.TypString, Value: `"com.example"`}},
+			{Name: "main", Value: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+			{Name: "count", Value: &ir.Literal{Type: ir.TypInt, Value: "42"}},
+			{Name: "ratio", Value: &ir.Literal{Type: ir.TypFloat, Value: "0.5"}},
+			{Name: "color", Value: &ir.Literal{Type: ir.TypString, Value: "#abc123"}},
 		},
 	}
 	var c cfg
@@ -44,8 +44,8 @@ func TestApplyOptions_NestedStruct(t *testing.T) {
 	opts := &ir.StructLit{
 		Fields: []ir.FieldInit{
 			{Name: "theme", Value: &ir.StructLit{Fields: []ir.FieldInit{
-				{Name: "primary", Value: &ir.Literal{Type: ir.TypString, Raw: `"#fff"`}},
-				{Name: "secondary", Value: &ir.Literal{Type: ir.TypString, Raw: `"#000"`}},
+				{Name: "primary", Value: &ir.Literal{Type: ir.TypString, Value: `"#fff"`}},
+				{Name: "secondary", Value: &ir.Literal{Type: ir.TypString, Value: `"#000"`}},
 			}}},
 		},
 	}
@@ -65,8 +65,8 @@ func TestApplyOptions_List(t *testing.T) {
 	opts := &ir.StructLit{
 		Fields: []ir.FieldInit{
 			{Name: "tags", Value: &ir.ListLit{Elems: []ir.Expr{
-				&ir.Literal{Type: ir.TypString, Raw: `"a"`},
-				&ir.Literal{Type: ir.TypString, Raw: `"b"`},
+				&ir.Literal{Type: ir.TypString, Value: `"a"`},
+				&ir.Literal{Type: ir.TypString, Value: `"b"`},
 			}}},
 		},
 	}
@@ -88,8 +88,8 @@ func TestApplyOptions_UnknownField(t *testing.T) {
 	}
 	opts := &ir.StructLit{
 		Fields: []ir.FieldInit{
-			{Name: "known", Value: &ir.Literal{Type: ir.TypString, Raw: `"yes"`}},
-			{Name: "unknown", Value: &ir.Literal{Type: ir.TypString, Raw: `"x"`}},
+			{Name: "known", Value: &ir.Literal{Type: ir.TypString, Value: `"yes"`}},
+			{Name: "unknown", Value: &ir.Literal{Type: ir.TypString, Value: `"x"`}},
 		},
 	}
 	var c cfg
@@ -117,7 +117,7 @@ func TestApplyOptions_TypeMismatch(t *testing.T) {
 		N int
 	}
 	opts := &ir.StructLit{Fields: []ir.FieldInit{
-		{Name: "n", Value: &ir.Literal{Type: ir.TypString, Raw: `"abc"`}},
+		{Name: "n", Value: &ir.Literal{Type: ir.TypString, Value: `"abc"`}},
 	}}
 	var c cfg
 	err := ApplyOptions(&c, opts)
@@ -155,7 +155,7 @@ func TestOptionField(t *testing.T) {
 	if !ok {
 		t.Fatal("expected x to be present")
 	}
-	if l, ok := v.(*ir.Literal); !ok || l.Raw != "hello" {
+	if l, ok := v.(*ir.Literal); !ok || l.Value != "hello" {
 		t.Errorf("unexpected value %#v", v)
 	}
 	if _, ok := OptionField(lit, "missing"); ok {
@@ -172,7 +172,7 @@ func TestSetOptionField(t *testing.T) {
 		t.Fatalf("expected 2 fields, got %d: %+v", len(lit.Fields), lit.Fields)
 	}
 	v, _ := OptionField(lit, "a")
-	if v.(*ir.Literal).Raw != "y" {
+	if v.(*ir.Literal).Value != "y" {
 		t.Errorf("a should be y, got %v", v)
 	}
 }

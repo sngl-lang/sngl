@@ -265,9 +265,9 @@ func IntervalToMs(expr ir.Expr) int {
 		return 0
 	}
 	if lit.Suffix == "" {
-		return int(parseNumber(lit.Raw))
+		return int(parseNumber(lit.Value))
 	}
-	num := parseNumber(lit.Raw)
+	num := parseNumber(lit.Value)
 	switch lit.Suffix {
 	case "ms":
 		return int(num)

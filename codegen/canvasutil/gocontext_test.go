@@ -31,7 +31,7 @@ func intrinsicCall(name string, args ...ir.Expr) *ir.CallStmt {
 
 func TestRectEmitsContextCall(t *testing.T) {
 	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
-	f := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypFloat, Raw: v} }
+	f := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: v} }
 	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasDrawRect", ctx, f("1"), f("2"), f("3"), f("4")), nil))
 	if !strings.Contains(got, "ctx.Rect(") {
 		t.Errorf("want ctx.Rect(...), got:\n%s", got)
@@ -69,8 +69,8 @@ func TestSaveRestore(t *testing.T) {
 
 func TestDrawPrimitives(t *testing.T) {
 	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
-	f := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypFloat, Raw: v} }
-	s := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypString, Raw: v} }
+	f := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: v} }
+	s := func(v string) ir.Expr { return &ir.Literal{Type: ir.TypString, Value: v} }
 	cases := []struct {
 		intrinsic string
 		args      []ir.Expr

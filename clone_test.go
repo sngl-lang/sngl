@@ -120,7 +120,7 @@ func TestClonePackageIndependence(t *testing.T) {
 // singletons stay shared, so pointer-identity comparisons (e.g. against
 // ir.TypString in codegen) still hold across a clone.
 func TestClonePackagePreservesTypeSingletons(t *testing.T) {
-	lit := &ir.Literal{Raw: "hi", Type: ir.TypString}
+	lit := &ir.Literal{Value: "hi", Type: ir.TypString}
 	fn := &ir.Func{Name: "f", Block: []ir.Stmt{&ir.Return{Value: lit}}}
 	pkg := &ir.Package{Funcs: []*ir.Func{fn}}
 

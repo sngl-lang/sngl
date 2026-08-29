@@ -173,7 +173,7 @@ func orNullLiteral(init ir.Expr, elem *ir.Type) ir.Expr {
 	if init != nil {
 		return init
 	}
-	return &ir.Literal{Type: elem, Raw: "null"}
+	return &ir.Literal{Type: elem, Value: "null"}
 }
 
 // collectAllVars returns every *ir.Var declared in pkg (top-level, components,

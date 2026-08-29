@@ -983,7 +983,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		if !ok {
 			return
 		}
-		slotIdx, err := strconv.Atoi(lit.Raw)
+		slotIdx, err := strconv.Atoi(lit.Value)
 		if err != nil {
 			return
 		}
@@ -1190,7 +1190,7 @@ func nodeFocusSlotIdx(n *ir.NodeInst) int {
 	if !ok {
 		return -1
 	}
-	id, err := strconv.Atoi(lit.Raw)
+	id, err := strconv.Atoi(lit.Value)
 	if err != nil {
 		return -1
 	}

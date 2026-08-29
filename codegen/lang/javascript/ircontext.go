@@ -394,16 +394,16 @@ func nativeEnumMemberJS(t *ir.Type, member string) (string, bool) {
 			continue
 		}
 		lit, _ := m.Value.(*ir.Literal)
-		if lit == nil || lit.Raw == "" || lit.Type == nil {
+		if lit == nil || lit.Value == "" || lit.Type == nil {
 			return "", false
 		}
 		if lit.Type.Kind == ir.TypeString {
-			return fmt.Sprintf("%q", lit.Raw), true
+			return fmt.Sprintf("%q", lit.Value), true
 		}
-		if _, err := strconv.ParseFloat(lit.Raw, 64); err != nil {
+		if _, err := strconv.ParseFloat(lit.Value, 64); err != nil {
 			return "", false
 		}
-		return lit.Raw, true
+		return lit.Value, true
 	}
 	return "", false
 }

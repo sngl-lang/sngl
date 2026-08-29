@@ -151,8 +151,9 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 	var shown string
 	switch lit.Kind {
 	case ast.LiteralStringQuoted, ast.LiteralStringBackticked, ast.LiteralStringTrippleQuoted:
-		shown = strconv.Quote(lit.Raw)
-		match = func(v *ir.Literal) bool { return isStringLit(v) && v.Raw == lit.Raw }
+		want, _ := lit.StringValue()
+		shown = strconv.Quote(want)
+		match = func(v *ir.Literal) bool { return isStringLit(v) && v.Value == want }
 	case ast.LiteralInt, ast.LiteralFloat:
 		n, err := strconv.ParseFloat(lit.Raw, 64)
 		if err != nil {
@@ -166,7 +167,7 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 			if isStringLit(v) {
 				return false
 			}
-			m, err := strconv.ParseFloat(v.Raw, 64)
+			m, err := strconv.ParseFloat(v.Value, 64)
 			return err == nil && m == n
 		}
 	default:

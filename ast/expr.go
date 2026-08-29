@@ -127,7 +127,9 @@ type FuncType struct {
 type LiteralExpr struct {
 	Pos  Pos
 	Kind LiteralKind
-	Raw  string // original source text
+	// Raw is the source spelling between the delimiters — a string's escapes
+	// unprocessed. StringValue decodes it; ir.Literal.Value is that decode.
+	Raw string
 }
 
 // UnitLiteral is the value stored in a LiteralExpr with Kind == LiteralUnit.

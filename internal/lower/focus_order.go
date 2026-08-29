@@ -503,7 +503,7 @@ func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 				for _, f := range sl.Fields {
 					if f.Name == "enabled" {
 						if lit, ok := f.Value.(*ir.Literal); ok {
-							return lit.Raw == "true"
+							return lit.Value == "true"
 						}
 						return true
 					}
@@ -515,7 +515,7 @@ func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 	for _, p := range n.Props {
 		if p.Name == "focusable" {
 			if lit, ok := p.Value.(*ir.Literal); ok {
-				return lit.Raw == "true"
+				return lit.Value == "true"
 			}
 			return true
 		}
@@ -526,7 +526,7 @@ func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 	for _, p := range n.Component.Props {
 		if p.Name == "focusable" && p.Default != nil {
 			if lit, ok := p.Default.(*ir.Literal); ok {
-				return lit.Raw == "true"
+				return lit.Value == "true"
 			}
 		}
 	}

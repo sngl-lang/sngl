@@ -728,15 +728,15 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 		return env.makeUnitValue(e)
 	}
 	if e.Type == nil {
-		return e.Raw, nil
+		return e.Value, nil
 	}
 	switch e.Type.Kind {
 	case ir.TypeBool:
-		return e.Raw == "true", nil
+		return e.Value == "true", nil
 	case ir.TypeNull:
 		return nil, nil
 	case ir.TypeInt:
-		raw := strings.ReplaceAll(e.Raw, "_", "")
+		raw := strings.ReplaceAll(e.Value, "_", "")
 		if e.Type.Unsigned && e.Type.Bits == 64 {
 			// uint64 carries as Go uint64 to keep the range above 2^63 exact.
 			u, err := strconv.ParseUint(raw, 0, 64)
@@ -751,7 +751,7 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 		}
 		return int(n), nil
 	case ir.TypeFloat:
-		raw := strings.ReplaceAll(e.Raw, "_", "")
+		raw := strings.ReplaceAll(e.Value, "_", "")
 		f, _ := strconv.ParseFloat(raw, 64)
 		if e.Type.Bits == 32 {
 			// Pre-round to single precision so float32 arithmetic matches
@@ -760,14 +760,9 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 		}
 		return f, nil
 	case ir.TypeString:
-		if e.AST != nil {
-			if s, ok := literalString(e.AST); ok {
-				return s, nil
-			}
-		}
-		return unquoteString(e.Raw), nil
+		return e.Value, nil
 	}
-	return e.Raw, nil
+	return e.Value, nil
 }
 
 func (env *Env) evalIdent(e *ir.Ident) (any, error) {
@@ -2092,14 +2087,14 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 // makeUnitValue converts a unit literal to a unitValue.
 func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	suffix := lit.Suffix
-	raw := lit.Raw
+	raw := lit.Value
 	if before, ok := strings.CutSuffix(raw, suffix); ok {
 		raw = before
 	}
 	raw = strings.ReplaceAll(raw, "_", "")
 	num, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Raw, err)
+		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Value, err)
 	}
 	table := env.Units[suffix]
 	baseAmount := num
@@ -2297,25 +2292,4 @@ func zeroValueForValue(v any) any {
 		return ""
 	}
 	return nil
-}
-
-func literalString(e *ast.LiteralExpr) (string, bool) {
-	if e == nil {
-		return "", false
-	}
-	raw := e.Raw
-	return unquoteString(raw), true
-}
-
-func unquoteString(raw string) string {
-	if len(raw) >= 2 {
-		if (raw[0] == '"' && raw[len(raw)-1] == '"') ||
-			(raw[0] == '`' && raw[len(raw)-1] == '`') {
-			return raw[1 : len(raw)-1]
-		}
-		if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) && len(raw) >= 6 {
-			return raw[3 : len(raw)-3]
-		}
-	}
-	return raw
 }

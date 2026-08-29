@@ -13,7 +13,7 @@ func makeKickerFunc(name string) *ir.Func {
 		Name:    name,
 		IsAsync: true,
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Raw: `"placeholder"`}},
+			&ir.Return{Value: &ir.Literal{Value: `"placeholder"`}},
 		},
 	}
 }

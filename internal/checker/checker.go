@@ -2472,11 +2472,10 @@ func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
 
 func literalString(e ast.Expr) string {
 	if lit, ok := e.(*ast.LiteralExpr); ok {
-		raw := lit.Raw
-		if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
-			raw = raw[1 : len(raw)-1]
+		if v, ok := lit.StringValue(); ok {
+			return v
 		}
-		return raw
+		return lit.Raw
 	}
 	return ""
 }
@@ -3128,7 +3127,8 @@ func hrefPathParams(vn *ast.VisualNode) []string {
 		}
 		switch v := arg.Value.(type) {
 		case *ast.LiteralExpr:
-			return extractBraceParams(strings.Trim(v.Raw, "\""))
+			href, _ := v.StringValue()
+			return extractBraceParams(href)
 		case *ast.InterpolationExpr:
 			var out []string
 			for _, part := range v.Parts {
@@ -3178,7 +3178,7 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	if !ok || lit.Type.Kind != ir.TypeString {
 		return
 	}
-	val := lit.Raw
+	val := lit.Value
 
 	// color/date/time/datetime are StructDef-backed; detect by name and apply
 	// the same canonical-form validation that the kind-based types use below.
