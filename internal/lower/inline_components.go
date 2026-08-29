@@ -22,8 +22,16 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
+	// main may be nil: a program declaring windows at top level has no
+	// `component main`, and its visual tree lives in pkg.Windows instead.
+	// Bailing here used to leave every user component un-inlined for that
+	// form, so a platform that relies on the pass (fyne) met IR it does not
+	// handle -- an ir.SlotInst reaching codegen, where irwalk panics.
 	main := mainComponent(pkg)
-	if main == nil {
+	if main == nil && len(pkg.Windows) == 0 {
+		// No root to inline into. Every component is its own entry point, so
+		// there is nothing to flatten and nothing is unreachable -- running
+		// the pass anyway would retain an empty keep set and drop them all.
 		return nil
 	}
 	cycles := findRecursiveCycles(pkg)
@@ -37,8 +45,15 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 }
 
 type inlineCompState struct {
-	pkg         *ir.Package
-	main        *ir.Component
+	pkg  *ir.Package
+	main *ir.Component
+	// hoist is where the state of the component currently being inlined
+	// lands. Flattening a callee into its caller makes the caller's scope hold
+	// what the callee declared, and that scope is not one place: a `component
+	// main` program keeps vars, funcs and timers on the component, while a
+	// window keeps vars and funcs on itself and has no timers of its own --
+	// those belong to the package. Set per container as run() walks.
+	hoist       hoistTarget
 	cycles      map[*ir.Component]bool
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
@@ -46,43 +61,72 @@ type inlineCompState struct {
 	instCounter int
 }
 
+// hoistTarget names the three slices an inlined component's own declarations
+// are appended to. Pointers rather than values because the append has to be
+// visible to whatever owns them.
+type hoistTarget struct {
+	vars   *[]*ir.Var
+	funcs  *[]*ir.Func
+	timers *[]*ir.Timer
+}
+
+func componentHoist(c *ir.Component) hoistTarget {
+	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, timers: &c.Timers}
+}
+
+// A window has no timers of its own: the checker files a timer declared
+// outside a component on the package, so that is where a hoisted one goes too.
+func windowHoist(w *ir.Window, pkg *ir.Package) hoistTarget {
+	return hoistTarget{vars: &w.Vars, funcs: &w.Funcs, timers: &pkg.Timers}
+}
+
 func (st *inlineCompState) run() error {
-	st.keep = map[*ir.Component]bool{st.main: true}
+	st.keep = map[*ir.Component]bool{}
+	if st.main != nil {
+		st.keep[st.main] = true
+	}
 	for c := range st.cycles {
 		st.keep[c] = true
 	}
 	for {
-		body, ch, err := st.inlineStmts(st.main.Body)
-		if err != nil {
-			return err
-		}
-		st.main.Body = body
-		anyFuncCh := false
-		for _, f := range st.main.Funcs {
-			fbody, fch, err := st.inlineStmts(f.Block)
+		ch, anyFuncCh := false, false
+		if st.main != nil {
+			st.hoist = componentHoist(st.main)
+			body, mch, err := st.inlineStmts(st.main.Body)
 			if err != nil {
 				return err
 			}
-			f.Block = fbody
-			anyFuncCh = anyFuncCh || fch
+			st.main.Body = body
+			ch = mch
+			// Indexed: inlining a call inside a func body appends to this very
+			// slice, and the appended clones need walking too.
+			for i := 0; i < len(st.main.Funcs); i++ {
+				fbody, fch, err := st.inlineStmts(st.main.Funcs[i].Block)
+				if err != nil {
+					return err
+				}
+				st.main.Funcs[i].Block = fbody
+				anyFuncCh = anyFuncCh || fch
+			}
 		}
 		// Walk pkg.Windows: the visual tree for window-declaring apps lives
 		// in Window.Body / Window.Funcs, not in main.Body. Components
 		// instantiated inside windows must also be inlined.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
+			st.hoist = windowHoist(w, st.pkg)
 			wbody, wch, err := st.inlineStmts(w.Body)
 			if err != nil {
 				return err
 			}
 			w.Body = wbody
 			anyWinCh = anyWinCh || wch
-			for _, f := range w.Funcs {
-				fbody, fch, err := st.inlineStmts(f.Block)
+			for i := 0; i < len(w.Funcs); i++ {
+				fbody, fch, err := st.inlineStmts(w.Funcs[i].Block)
 				if err != nil {
 					return err
 				}
-				f.Block = fbody
+				w.Funcs[i].Block = fbody
 				anyWinCh = anyWinCh || fch
 			}
 		}
@@ -296,7 +340,7 @@ func substituteParamsExpr(e ir.Expr, bindings map[string]ir.Expr) ir.Expr {
 }
 
 func (st *inlineCompState) inlinable(comp *ir.Component) bool {
-	if comp == nil || comp == st.main {
+	if comp == nil || (st.main != nil && comp == st.main) {
 		return false
 	}
 	if st.cycles[comp] {
@@ -543,7 +587,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
 
-	varStart := len(st.main.Vars)
+	hoist := st.hoist
+	varStart := len(*hoist.vars)
 	for _, v := range comp.Vars {
 		clone := cloneVarShallow(v)
 		clone.Name = v.Name + suffix
@@ -561,18 +606,18 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		renames[v] = clone.Name
 		symRenames[v] = clone
-		st.main.Vars = append(st.main.Vars, clone)
+		*hoist.vars = append(*hoist.vars, clone)
 	}
-	funcStart := len(st.main.Funcs)
+	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
 		clone := cloneFuncShallow(f)
 		clone.Name = f.Name + suffix
 		clone.Block = deepCloneStmts(f.Block)
 		renames[f] = clone.Name
 		symRenames[f] = clone
-		st.main.Funcs = append(st.main.Funcs, clone)
+		*hoist.funcs = append(*hoist.funcs, clone)
 	}
-	timerStart := len(st.main.Timers)
+	timerStart := len(*hoist.timers)
 	for _, t := range comp.Timers {
 		clone := *t
 		clone.Interval = deepCloneExpr(t.Interval)
@@ -582,20 +627,20 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			h.Block = deepCloneStmts(t.Handler.Block)
 			clone.Handler = &h
 		}
-		st.main.Timers = append(st.main.Timers, &clone)
+		*hoist.timers = append(*hoist.timers, &clone)
 	}
 
 	// Apply renames to every hoisted block.
-	for i := varStart; i < len(st.main.Vars); i++ {
-		if st.main.Vars[i].Init != nil {
-			st.main.Vars[i].Init = renameInExpr(st.main.Vars[i].Init, renames, symRenames)
+	for i := varStart; i < len(*hoist.vars); i++ {
+		if (*hoist.vars)[i].Init != nil {
+			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
 	}
-	for i := funcStart; i < len(st.main.Funcs); i++ {
-		st.main.Funcs[i].Block = renameIdents(st.main.Funcs[i].Block, renames, symRenames)
+	for i := funcStart; i < len(*hoist.funcs); i++ {
+		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
 	}
-	for i := timerStart; i < len(st.main.Timers); i++ {
-		t := st.main.Timers[i]
+	for i := timerStart; i < len(*hoist.timers); i++ {
+		t := (*hoist.timers)[i]
 		if t.Handler != nil {
 			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
 		}
@@ -623,14 +668,14 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	body = substituteParams(body, bindings)
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs/Timers too.
-	for i := varStart; i < len(st.main.Vars); i++ {
-		st.main.Vars[i].Init = substituteParamsExpr(st.main.Vars[i].Init, bindings)
+	for i := varStart; i < len(*hoist.vars); i++ {
+		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 	}
-	for i := funcStart; i < len(st.main.Funcs); i++ {
-		st.main.Funcs[i].Block = substituteParams(st.main.Funcs[i].Block, bindings)
+	for i := funcStart; i < len(*hoist.funcs); i++ {
+		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
-	for i := timerStart; i < len(st.main.Timers); i++ {
-		t := st.main.Timers[i]
+	for i := timerStart; i < len(*hoist.timers); i++ {
+		t := (*hoist.timers)[i]
 		t.Interval = substituteParamsExpr(t.Interval, bindings)
 		t.Enabled = substituteParamsExpr(t.Enabled, bindings)
 		if t.Handler != nil {
@@ -638,7 +683,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 
-	body = substituteSlots(body, n.Children)
+	body = substituteSlots(body, n)
 	body = substituteEvents(body, n.Handlers)
 
 	if n.ID != "" {
