@@ -1,0 +1,54 @@
+# A route's markup is built at compile time, so anything it renders has to be a
+# literal or an expression over something known per request.
+
+# A window's URL template declares vars -- `/p/{pkg}` puts `pkg` in scope for
+# the body. Those are known per request exactly as state is, so markup over one
+# renders into a hole rather than being refused.
+sngl generate --lang go --platform html -o out_param param.sngl
+grep 'HandleFunc' out_param/server.go
+
+# A ternary in markup is html's to render, not the language's. Go has no
+# ternary and asks for it to be lowered into a temporary; that rewrote the
+# expression into a name the render model could not resolve, and the route was
+# refused for markup the JS filling the hole writes verbatim.
+sngl generate --lang go --platform html -o out_tern ternary.sngl
+grep 'HandleFunc' out_tern/server.go
+
+# The same source under the static backend, which never had the restriction.
+sngl generate --lang none --platform html -o out_static ternary.sngl
+exists out_static/index.html
+
+# ListLambdas is the language's other withdrawal, and html takes it back for
+# the same reason: `.filter`/`.map` in markup are rendered by html, and the Go
+# emitter writes an inline lambda directly where it does emit one.
+sngl generate --lang go --platform html -o out_lambda lambda.sngl
+grep 'HandleFunc' out_lambda/server.go
+
+-- param.sngl --
+import . "sngl://std"
+
+component main {
+    window #pkg(title="t", href="/p/{pkg}") {
+        html.a(href="/p/" + pkg, innerText=pkg)
+    }
+}
+
+-- ternary.sngl --
+import . "sngl://std"
+
+component main {
+    var active = true
+    window #home(title="t", href="/") {
+        html.a(class=active ? "on" : "off", innerText="x")
+    }
+}
+
+-- lambda.sngl --
+import . "sngl://std"
+
+component main {
+    var nums list<int> = [1, 2, 3]
+    window #home(title="t", href="/") {
+        html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
+    }
+}

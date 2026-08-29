@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // CompileHTTP implements codegen.HTTPCompiler for Go. Produces a single
@@ -88,6 +89,62 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	return []*codegen.OutputFile{codegen.BytesFile("server.go", body.Bytes())}, nil
 }
 
+// writeRouteFuncs emits the user functions a route's markup or actions call,
+// as methods on that route's State.
+//
+// Route mode has no Model — state is the per-request State struct — so a
+// component-scoped func has nowhere else to live, and the call site rendered
+// `m.keep(x)` against a receiver this file has no binding for and a function
+// it never wrote. As State methods they dispatch through the same `s` the
+// state fields do, and one named as a value (`xs.filter(keep)`) is a Go method
+// value, which already carries its receiver and matches the callback type.
+func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext) {
+	fns := routeEmittableFuncs(req.Pkg)
+	if len(fns) == 0 {
+		return
+	}
+	gc := newRouteGC(req, shared)
+	gc.MethodRecvType = routeStateType(r)
+	for _, fn := range fns {
+		fnCopy := *fn
+		fnCopy.Name = ExportName(fn.Name)
+		fmt.Fprintln(b)
+		for _, line := range gc.EmitFuncDef(&fnCopy) {
+			fmt.Fprintln(b, line)
+		}
+	}
+	fmt.Fprintln(b)
+}
+
+// routeEmittableFuncs is the component- and window-scoped funcs a route file
+// carries, computeds included: route mode emits neither anywhere else, and a
+// computed is reached by the same `s.Name()` call a plain func is.
+func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
+	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
+	add := func(fns []*ir.Func) {
+		for _, fn := range fns {
+			if fn == nil || seen[fn] || len(fn.Block) == 0 {
+				continue
+			}
+			if fn.IsTest {
+				continue
+			}
+			seen[fn] = true
+			out = append(out, fn)
+		}
+	}
+	if main := mainComponent(pkg); main != nil {
+		add(main.Funcs)
+	}
+	for _, w := range pkg.Windows {
+		if w != nil {
+			add(w.Funcs)
+		}
+	}
+	return out
+}
+
 func writeHandler(b *bytes.Buffer, req *codegen.HTTPRequest) {
 	fmt.Fprintln(b, `// Handler returns an http.Handler wired with every route.`)
 	fmt.Fprintln(b, `func Handler() http.Handler {`)
@@ -122,6 +179,7 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	gc := newRouteGC(req, shared)
 
 	emitState(b, r)
+	writeRouteFuncs(b, req, r, shared)
 	renderFn := emitRenderRoute(b, req, r, gc)
 
 	loader := "load" + ExportName(r.Name) + "State"

@@ -36,6 +36,20 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
+	// A platform has the last word, and html's output is HTML and JS: the
+	// language emits the server half of route mode, not the markup or the
+	// script. So a restriction that exists because the *language* lacks a
+	// construct does not apply to what html itself renders -- Go has no
+	// ternary and asks for NoTernary, which rewrote `class=cond ? "a" : ""`
+	// into a temporary the render model could not see through, for an
+	// expression the JS that fills the hole writes verbatim.
+	//
+	// ListLambdas is the same: Go withdraws it for a lambda behind an
+	// interface surface, but the emitter writes an inline one directly (a
+	// typed IIFE over the slice), so a `.filter` in a server action compiles
+	// either way -- and lowering it built the same kind of temporary.
+	f.Ternary = true
+	f.ListLambdas = true
 	f.AsyncReactive = false
 	f.ImplicitRecv = false
 	f.InlineComponents = false

@@ -10,9 +10,14 @@ sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
 stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
+# html emits HTML and JS; the language emits only the server half of route
+# mode. So a restriction that exists because the language lacks a construct is
+# not html's -- NoTernary and NoListLambdas are absent here for the same reason
+# they are absent under --lang none, even though Go asks for both. html+go and
+# html+none now lower identically.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoTernary,NoAsyncReactive,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → NoTernary → CanvasReactivity'
+stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
+stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PlatformFilter → PropBindings → RefLoop → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → CanvasReactivity'
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
