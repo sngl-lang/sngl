@@ -825,6 +825,10 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 			}
 			f.write(")")
 		}
+		if v.Type != nil {
+			f.write(" ")
+			f.writeType(v.Type)
+		}
 	}
 }
 

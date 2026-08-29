@@ -15,7 +15,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl://std"
-component card list<dyn> {
+component card list<component> {
     vbox(style=Style{padding = 16}) {
         slot
     }

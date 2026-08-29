@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -30,12 +31,23 @@ func ConvertStmt(s Stmt) ast.Stmt {
 	return c.convertStmt(s)
 }
 
-type converter struct{}
+type converter struct {
+	// treeAlias is what this package imported sngl://tree under, so a slot's
+	// count wrapper is spelled the way the source spells it.
+	treeAlias string
+}
 
 // --- Package → Document ---
 
 func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
+
+	for _, imp := range pkg.Imports {
+		if imp.Path == "sngl://tree" {
+			c.treeAlias = imp.Alias
+			break
+		}
+	}
 
 	for _, imp := range pkg.Imports {
 		// Macro-package imports are injected by the library load, not written
@@ -235,6 +247,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 		props = append(props, ed)
 	}
+	for _, s := range comp.Slots {
+		sd := ast.SlotDecl{Name: s.Name, Type: c.convertSlotContent(s)}
+		for _, p := range s.Params {
+			sd.Params = append(sd.Params, c.convertType(p))
+		}
+		props = append(props, sd)
+	}
 	if len(props) > 0 {
 		cd.Props = ast.PropList{
 			IsMultiline: len(props) > 3,
@@ -242,7 +261,9 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 	}
 
-	if comp.ChildrenType != nil {
+	// A default slot already says what ChildrenType says — it is what set it —
+	// and a declaration carrying both is refused on the way back in.
+	if comp.ChildrenType != nil && findSlotDecl(comp, DefaultSlot) == nil {
 		cd.ChildrenType = c.convertType(comp.ChildrenType)
 	}
 
@@ -546,10 +567,61 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		}
 	}
 
-	if len(n.Children) > 0 {
+	if len(n.Children) > 0 || len(n.Slots) > 0 {
 		vn.Block = c.convertStmtBlock(n.Children)
+		vn.Block.Stmts = append(c.convertSlotContents(n), vn.Block.Stmts...)
+		vn.Block.IsMultiline = true
 	}
 	return vn
+}
+
+// convertSlotContents renders what a call site supplied for each named slot.
+// Sorted, because the IR holds them in a map and a dump has to be stable.
+func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
+	names := make([]string, 0, len(n.Slots))
+	for name := range n.Slots {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]ast.Stmt, 0, len(names))
+	for _, name := range names {
+		sc := n.Slots[name]
+		sn := &ast.SlotNode{Name: name, Block: c.convertStmtBlock(sc.Body)}
+		for _, p := range sc.Params {
+			sn.Args = append(sn.Args, &ast.IdentExpr{Name: p.Name})
+		}
+		out = append(out, sn)
+	}
+	return out
+}
+
+// convertSlotContent is a slot's declared type: the element type, rewrapped in
+// whatever the count was read from.
+func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
+	if s.Content == nil {
+		return nil
+	}
+	elem := c.convertType(s.Content)
+	switch s.Card {
+	case SlotOne:
+		pkg := c.treeAlias
+		if pkg == "" {
+			pkg = "tree"
+		}
+		return &ast.NamedType{Package: pkg, Name: "one", TypeArgs: []ast.TypeExpr{elem}}
+	case SlotOptional:
+		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
+	}
+	return elem
+}
+
+func findSlotDecl(comp *Component, name string) *SlotDecl {
+	for _, s := range comp.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
 }
 
 func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
@@ -837,9 +909,14 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
+		// Bare `component` carries no declaration — it is the widest component
+		// type, not an unresolved one, so it has a spelling of its own.
 		name := "dyn" // anonymous/unresolved declaration
-		if t.Decl != nil {
+		switch {
+		case t.Decl != nil:
 			name = t.Decl.SymName()
+		case t.Kind == TypeComponent:
+			name = "component"
 		}
 		nt := &ast.NamedType{Name: name}
 		if t.Package != "" {

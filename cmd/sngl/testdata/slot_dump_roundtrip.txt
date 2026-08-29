@@ -1,0 +1,54 @@
+# `sngl dump --format sngl` prints IR back as source, so what it prints has to be
+# source. Slots gave it three ways not to be: the declarations live in
+# Component.Slots rather than Props, so the parameter list came out empty; a
+# population lives in NodeInst.Slots rather than Children, so it vanished; and a
+# component whose default slot set ChildrenType printed both, which is refused on
+# the way back in.
+#
+# The check is the round trip, not the text: dump it, check the dump.
+
+sngl dump --stage checked --format sngl slots.sngl
+stdout 'slot header tr.one<component>'
+stdout 'slot _ component'
+stdout 'slot cell\(Row\)'
+
+cp stdout out.sngl
+sngl check out.sngl
+stdout 'out.sngl: ok'
+
+-- slots.sngl --
+import . "sngl://std"
+import tr "sngl://tree"
+
+struct Row {
+    title string
+}
+
+component table(
+    rows list<Row>,
+    slot _ component,
+    slot header tr.one<component>,
+    slot cell(Row),
+) {
+    vbox {
+        header {
+            text(value="(untitled)")
+        }
+        for r = rows {
+            cell(r)
+        }
+        slot
+    }
+}
+
+component main {
+    table(rows=[Row{title = "a"}]) {
+        slot header {
+            text(value="Rows")
+        }
+        slot cell(row) {
+            text(value=row.title)
+        }
+        text(value="ordinary")
+    }
+}
