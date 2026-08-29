@@ -10,7 +10,18 @@ component frame(slot body tr.one, slot badge option<tr.default>) {
     }
 }
 
+// The default slot's count binds a bodyless call too: that path builds its
+// NodeInst without going through the visual-node one, where a children count is
+// what gets read.
+component one(slot _ tr.one) {
+    vbox {
+        slot
+    }
+}
+
 component main {
+    one() // ERROR(check) "takes exactly one node, got 0"
+
     // Exactly one has no spelling for being absent — option<T> and a bare type
     // are what permit that.
     frame() // ERROR(check) "requires slot \"body\" to be populated"

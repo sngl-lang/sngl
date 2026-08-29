@@ -44,13 +44,10 @@ const (
 	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
-	// TreeDefault is the tree an ordinary component belongs to. Naming it is
-	// the same as naming no tree, so it is recognised here rather than compared
-	// against a reserved name.
+	// TreeDefault is the tree an ordinary component belongs to; naming it is
+	// the same as naming no tree.
 	BuiltinTreeDefault BuiltinKind = "treeDefault"
-	// TreeOne narrows a slot's content to exactly one member. Read where a
-	// slot's type is resolved, not by the type system: it says how many, and
-	// the type argument says of what.
+	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
@@ -115,9 +112,9 @@ func (b BuiltinKind) IsUnit() bool {
 	return b == BuiltinDuration
 }
 
-// IsSlotBound reports whether the kind marks a wrapper read as a slot's count
-// rather than constructed as a type. Its own role, not a generic: nothing
-// builds an ir.Type from it, and the only reader is a slot declaration.
+// IsSlotBound reports whether the kind marks a wrapper read where a slot's type
+// is resolved rather than constructed as a type. Nothing builds an ir.Type from
+// one, which is why it is not IsGeneric.
 func (b BuiltinKind) IsSlotBound() bool {
 	return b == BuiltinTreeOne || b == BuiltinTreeDefault
 }

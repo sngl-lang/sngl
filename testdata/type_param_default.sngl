@@ -4,7 +4,6 @@
 
 import . "sngl://std"
 import tr "sngl://tree"
-import tr "sngl://tree"
 
 struct Pair<A, B = string> {
     left A
@@ -13,6 +12,17 @@ struct Pair<A, B = string> {
 
 struct Boxed<T = int> {
     v T
+}
+
+// A default is a type reference, so it may name a declaration further down the
+// file the way a field may. Resolving it when the shell is registered reported
+// this as unknown.
+struct Forward<T = Later> {
+    v T
+}
+
+struct Later {
+    n int
 }
 
 // `Pair<int>` fills B from its default; `Boxed` fills its only parameter and

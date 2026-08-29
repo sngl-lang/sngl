@@ -368,15 +368,11 @@ CompParamBody =
     | ident [ CompParamTail ]
     .
 
-# A slot: a region of UI the caller supplies, declared alongside the props and
-# events so a component's whole API is one list. Parenthesised types are what the
-# slot is *invoked* with; the trailing Type is what it *accepts*, and its shape
-# bounds the count — list<T> any, option<T> none-or-one, bare T exactly one.
-#
-# The default slot is named `_`, so every slot has the one shape and the name is
-# never optional: `slot` followed by an optional name would be ambiguous with a
-# type, since both are idents. It is filled by the caller's ordinary children
-# rather than by a population, so it takes no invocation parameters.
+# A slot: a region of UI the caller supplies. Parenthesised types are what the
+# slot is *invoked* with; the trailing Type is the tree it *accepts*, bare for
+# any number and wrapped to narrow the count. The default slot is named `_`, so
+# the name is never optional — `slot` followed by an optional name could not be
+# told from a type, both being idents.
 SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] [ Type ] .
 
 CompParamTail =

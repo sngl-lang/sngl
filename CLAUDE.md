@@ -115,7 +115,7 @@ The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/draw/` → `sngl://draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it.
 - **`lib/tree/` → `sngl://tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
 - **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Only the vocabulary: `sngl://platforms/<name>` and `sngl://languages/<name>` are not under `lib/` at all — a target carries its own package, described below.
@@ -163,15 +163,15 @@ mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[draw.shape]` needs `import "sngl://draw"`, and the unqualified
+`#[tree.kind]` needs `import "sngl://tree"`, and the unqualified
 `#[builtin("...")]` and `#[intrinsic("...")]` need
 `import . "sngl://internal/marks"` — which is why every `lib/` file carrying a
 mark declares it. The alias is an
-ordinary file-scope binding, so the mark follows it: `import d "sngl://draw"`
-means `#[d.shape]`.
+ordinary file-scope binding, so the mark follows it: `import t "sngl://tree"`
+means `#[t.kind]`.
 
-A lib package may carry macros alongside its declarations — `sngl://draw`
-ships the `shape` mark next to the shape components it applies to — so the
+A lib package may carry macros alongside its declarations — `sngl://tree`
+ships the `kind` mark next to the default tree it applies to — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
 makes a package exist, macro-only ones included. `sngl://internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
@@ -207,12 +207,12 @@ to, recognised by its `#[builtin]` kind; naming it is the same as naming none.
 A tree struct holds nothing and no value of it exists.
 
 The facts land on `ir.Component.Tree` at registration and on
-`ir.Package.TreeKinds` for the lowering passes to gate on. `#[draw.shape]`
-keeps only the rules that are about drawing rather than about trees — a
-painted shape declares no events — since membership is the return position and
-the mark no longer confers it. Nothing about a mark reaches the AST: the source
-carries the `#[...]` as written and the checker applies it where it registers
-the declaration.
+`ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
+on. A drawing rule rides along there: a painted shape declares no events, which
+`finishTreeMarks` enforces for every member of `sngl://draw`'s tree, because
+membership is the return position and no mark is written to opt in. Nothing
+about a mark reaches the AST: the source carries the `#[...]` as written and the
+checker applies it where it registers the declaration.
 
 **Slots are declared in the parameter list**, beside the props and events, so a
 component's whole API is one list. The default slot is named `_`; a named one

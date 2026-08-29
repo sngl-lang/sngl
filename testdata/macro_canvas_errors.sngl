@@ -1,7 +1,9 @@
+// A painted shape has nothing to raise an event from. The rule used to ride on
+// #[draw.shape], which is what conferred membership; membership is the return
+// position now, so the rule sits where that is read and holds for every member
+// rather than only for one that opted into a mark.
+
+import . "sngl://std"
 import "sngl://draw"
 
-#[draw.shape] // ERROR(check) "#[draw.shape] requires a component declaration"
-var bad = 5
-
-#[draw.shape] // ERROR(check) "shape components do not support event declarations"
-component badShape(@click) {}
+component badShape(x float, @click ClickEvent) draw.shape {} // ERROR(check) "a shape supports no event declarations"

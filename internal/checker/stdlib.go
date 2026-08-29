@@ -1660,15 +1660,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		case ast.SlotDecl:
-			slot := &ir.SlotDecl{Name: pd.Name}
-			if pd.Type != nil {
-				slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
-			}
-			for _, t := range pd.Params {
-				slot.Params = append(slot.Params, c.resolveType(t))
-			}
-			c.applySlotMarks(pd, slot)
-			irComp.Slots = append(irComp.Slots, slot)
+			irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd))
 		}
 	}
 

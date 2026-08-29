@@ -12,7 +12,7 @@
 // what a component declaration cannot express as data:
 //
 //   Widget     no children      — a leaf.
-//   Container  a default slot  — children attach through a method (`Add`).
+//   Container  a default slot        — children attach through a method (`Add`).
 //   Wrapper    component        — the child is assigned to a field (`Content`).
 //
 // Everything below Widget/Container/Wrapper — Label, Button, VBox and the rest

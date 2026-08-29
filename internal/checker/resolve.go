@@ -193,14 +193,16 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 		switch {
 		case i < len(args):
 			elems = append(elems, c.resolveType(args[i]))
-		case c.typeParamDefault(sd, i) != nil:
-			elems = append(elems, c.typeParamDefault(sd, i))
 		default:
-			c.error(pos, "type %s requires a type argument for %s, which has no default",
-				sd.Name, sd.TypeParams[i].Name)
-			// The unparameterized base rather than dyn, so downstream code can
-			// still see the struct shape.
-			return base
+			def := c.typeParamDefault(sd, i)
+			if def == nil {
+				c.error(pos, "type %s requires a type argument for %s, which has no default",
+					sd.Name, sd.TypeParams[i].Name)
+				// The unparameterized base rather than dyn, so downstream code
+				// can still see the struct shape.
+				return base
+			}
+			elems = append(elems, def)
 		}
 	}
 	if len(args) > len(sd.TypeParams) {
@@ -235,6 +237,9 @@ func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *i
 			if sd, ok := typ.Decl.(*ir.StructDef); ok && len(sd.TypeParams) > 0 {
 				return c.applyStructTypeArgs(ast.Pos{}, typ, sd, args)
 			}
+		}
+		if len(args) > 0 {
+			c.error(ast.Pos{}, "type %q in namespace %q takes no type arguments", name, pkg)
 		}
 		return typ
 	}
@@ -296,6 +301,20 @@ func (c *checker) typeParamDefault(sd *ir.StructDef, i int) *ir.Type {
 		return nil
 	}
 	return c.resolveType(sd.AST.TypeParams[i].Default)
+}
+
+// typeParamShells records the names before any other declaration exists. A
+// default may name a type declared further down the file, so it is left to
+// resolveStructBody the way a field is.
+func typeParamShells(ps []ast.TypeParam) []ir.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ir.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ir.TypeParam{Name: p.Name}
+	}
+	return out
 }
 
 // resolveTypeParams resolves each parameter's written default, if it has one.
@@ -654,9 +673,22 @@ func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
 		return c.resolveType(t), ir.SlotAny
 	}
 	if card, elem := c.slotWrapper(nt); card != ir.SlotAny {
-		return elem, card
+		return c.requireTree(nt.Pos, elem), card
 	}
-	return c.resolveType(t), ir.SlotAny
+	return c.requireTree(nt.Pos, c.resolveType(t)), ir.SlotAny
+}
+
+// requireTree holds a slot's content to naming a tree. What lands in a slot is
+// components, so a value type there says nothing a caller could satisfy.
+func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
+	if t == nil || t.Kind == ir.TypeDyn {
+		return t
+	}
+	if sd, ok := t.Decl.(*ir.StructDef); ok && (sd.IsTree || sd.Builtin == ir.BuiltinTreeDefault) {
+		return t
+	}
+	c.error(pos, "a slot accepts a tree, and %s is not one", t)
+	return nil
 }
 
 // slotWrapper reports the count a wrapper names, and the type it wraps. The

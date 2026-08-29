@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if !pkg.UsesTree("shape") {
+	if !pkg.UsesTree(drawPkg, shapeTree) {
 		return nil
 	}
 	var counter int
@@ -53,32 +53,40 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 // isShapeContainer reports whether a NodeInst hosts shapes without being one:
 // a canvas, not a rect. A shape's own children are drawn by the emitter that
 // draws it, so only the outermost host becomes a draw function.
+// drawPkg and shapeTree identify sngl://draw's own tree. The pass emits that
+// package's drawing primitives, so a tree declared elsewhere is not its
+// business however it is spelled.
+const (
+	drawPkg   = "sngl://draw"
+	shapeTree = "shape"
+)
+
 func isShapeContainer(ni *ir.NodeInst) bool {
 	return ni.Component != nil &&
 		ni.Component.Tree == nil &&
-		treeHosted(ni.Component) == "shape"
+		ir.IsTreeNamed(treeHosted(ni.Component), drawPkg, shapeTree)
 }
 
-// treeHosted names the segmented tree a component's default slot accepts, or ""
-// for the default tree. A canvas hosts "shape"; a rect, being one, hosts its own
-// and is not a container.
-func treeHosted(comp *ir.Component) string {
+// treeHosted is the segmented tree a component's default slot accepts, or nil.
+// A canvas hosts shapes; a rect, being one, hosts its own and is not a
+// container.
+func treeHosted(comp *ir.Component) *ir.StructDef {
 	for _, s := range comp.Slots {
 		if s.Name != ir.DefaultSlot || s.Content == nil || s.Content.Kind != ir.TypeStruct {
 			continue
 		}
 		if sd, ok := s.Content.Decl.(*ir.StructDef); ok && sd.IsTree {
-			return sd.Name
+			return sd
 		}
 	}
-	return ""
+	return nil
 }
 
 // hostsTree reports whether a component's default slot accepts a segmented
 // tree, which is what makes it a rendered position rather than a wrapper the
 // inliner may compose away.
 func hostsTree(comp *ir.Component) bool {
-	return treeHosted(comp) != ""
+	return treeHosted(comp) != nil
 }
 
 // buildDrawFunc generates a draw function for a set of shape children.

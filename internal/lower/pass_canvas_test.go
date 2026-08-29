@@ -13,7 +13,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	childListType := ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 
 	// The tree is a declaration, so both the member and its host name this one.
-	shapeTree := &ir.StructDef{Name: "shape", IsTree: true}
+	shapeTree := &ir.StructDef{Name: "shape", Pkg: "sngl://draw", IsTree: true}
 	shapeSlot := func() []*ir.SlotDecl {
 		return []*ir.SlotDecl{{
 			Name:    ir.DefaultSlot,
@@ -70,7 +70,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{mainComp},
-		TreeKinds:  map[string]bool{"shape": true},
+		TreeKinds:  map[*ir.StructDef]bool{shapeTree: true},
 	}
 	return pkg, canvasInst
 }

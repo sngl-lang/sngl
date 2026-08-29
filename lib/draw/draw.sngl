@@ -1,5 +1,5 @@
-// 2D shapes and the canvas that hosts them. Importing this package brings both
-// the shape components and the `#[draw.shape]` mark that declares new ones.
+// 2D shapes and the canvas that hosts them, and the `shape` tree they are
+// members of. A component joins it by naming that tree in its return position.
 //
 // The shapes live here rather than in `sngl://std` because `canvas`, `rect`,
 // `line` and `path` are names an application usually wants for itself.
@@ -9,10 +9,6 @@
 // names it declares and would be re-lifted by `import . "sngl://draw"`. User
 // packages do not re-export a dot import, and neither should this one.
 import std "sngl://std"
-
-// `Macro` is the return type that makes `shape` a mark rather than a
-// function.
-import ir "sngl://internal/ir"
 
 // `#[tree.kind]` is what marks the shape struct below as naming a tree.
 import tree "sngl://tree"
@@ -86,11 +82,3 @@ component canvasText(x float, y float, content string, style CanvasStyle) shape 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
 component canvasImage(x float, y float, w float, h float, src string) shape {}
-
-// Marks a component as a shape: something a `canvas` hosts and paints rather
-// than a widget the layout places.
-//
-// A shape's children are shapes, so it declares no children type of its own,
-// and it may declare no events — a painted shape has nothing to raise one
-// from.
-func shape() ir.Macro {}

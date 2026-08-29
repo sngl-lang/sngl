@@ -11,7 +11,7 @@ var passCanvasReactivity = pass{
 }
 
 func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
-	if !pkg.UsesTree("shape") {
+	if !pkg.UsesTree(drawPkg, shapeTree) {
 		return nil
 	}
 	for _, comp := range pkg.Components {

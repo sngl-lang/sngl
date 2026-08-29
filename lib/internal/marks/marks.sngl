@@ -3,7 +3,7 @@
 // dispatches to, and `intrinsic`, which names the native implementation that
 // may replace a function's body.
 //
-// Unlike a user-facing mark such as `#[draw.shape]` these annotate the library
+// Unlike a user-facing mark such as `#[platforms.wildcard]` these annotate the library
 // source itself: the checker reads them off a declaration as it registers it.
 //
 // The path is `sngl://internal/marks` and not `.../builtin`: `sngl://builtin`

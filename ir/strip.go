@@ -14,6 +14,9 @@ type stripper struct{}
 
 func (s *stripper) stripPackage(pkg *Package) {
 	pkg.Symbols = nil
+	// A derived index keyed by declaration. DeepEqual compares map keys by
+	// pointer, so a clone's own declarations could never match the original's.
+	pkg.TreeKinds = nil
 
 	// Remove component-scoped window stubs (empty, checked=true).
 	pkg.Windows = slices.DeleteFunc(pkg.Windows, func(w *Window) bool {

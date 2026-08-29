@@ -13,6 +13,12 @@
 sngl check main.sngl
 stdout 'main.sngl: ok'
 
+# A qualified type that is not generic takes no arguments. The Type production
+# only started admitting `pkg.Name<Args>` here, and resolveQualifiedType
+# discarded whatever it was handed.
+! sngl check arity/main.sngl
+stderr 'takes no type arguments'
+
 # Still out of reach: a qualified generic in *expression* position.
 # ExprPostfixOp is `dot ident [ StructLitBody ]` with no type arguments, so
 # `b.Holder<int>{…}` reads `<` as less-than. Unrelated to the Type production.
@@ -45,4 +51,15 @@ import b "box"
 component main {
     var h b.Holder<int> = b.Holder<int>{item = 3}
     text(value="{h.item}")
+}
+-- arity/box/box.sngl --
+struct Plain {
+    n int
+}
+-- arity/main.sngl --
+import . "sngl://std"
+import b "box"
+
+component show(p b.Plain<int>) {
+    text(value="{p.n}")
 }

@@ -24,6 +24,18 @@ func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	return io.WriteString(w, alignTrailingComments(buf.String(), f.trailing))
 }
 
+// FormatTypeParams formats a parameter list as it is written, defaults
+// included. Empty when there are none, so it appends to a name unconditionally.
+func FormatTypeParams(ps []ast.TypeParam) string {
+	if len(ps) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	f := newFormatter(&buf)
+	f.writeTypeParams(ps)
+	return buf.String()
+}
+
 // FormatExpr formats a single expression.
 func FormatExpr(e ast.Expr) string {
 	var buf strings.Builder

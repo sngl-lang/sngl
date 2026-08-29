@@ -32,9 +32,9 @@ func ConvertStmt(s Stmt) ast.Stmt {
 }
 
 type converter struct {
-	// treeAlias is what this package imported sngl://tree under, so a slot's
-	// count wrapper is spelled the way the source spells it.
-	treeAlias string
+	// aliases maps a library package's URI to what this file imported it as,
+	// so a name from one is spelled the way the source spells it.
+	aliases map[string]string
 }
 
 // --- Package → Document ---
@@ -42,10 +42,10 @@ type converter struct {
 func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
 
+	c.aliases = map[string]string{}
 	for _, imp := range pkg.Imports {
-		if imp.Path == "sngl://tree" {
-			c.treeAlias = imp.Alias
-			break
+		if uri, ok := strings.CutPrefix(imp.Path, "sngl://"); ok && imp.Alias != "" && imp.Alias != "." {
+			c.aliases[uri] = imp.Alias
 		}
 	}
 
@@ -261,14 +261,10 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 	}
 
-	// The return position is the tree the component is a member of, and only a
-	// legacy children type otherwise. A default slot already says what that
-	// type says, and a declaration carrying both is refused on the way back in.
-	switch {
-	case comp.Tree != nil:
-		cd.ChildrenType = &ast.NamedType{Name: comp.Tree.Name}
-	case comp.ChildrenType != nil && findSlotDecl(comp, DefaultSlot) == nil:
-		cd.ChildrenType = c.convertType(comp.ChildrenType)
+	// The return position is the tree the component is a member of. Its
+	// children type is derived from the default slot, which prints itself.
+	if comp.Tree != nil {
+		cd.ChildrenType = c.treeName(comp.Tree)
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -579,9 +575,6 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	return vn
 }
 
-// convertSlotContents renders what a call site supplied for each named slot.
-// Sorted, because the IR holds them in a map and a dump has to be stable.
-// convertTypeParams writes each parameter back with its default, if it has one.
 func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	if len(ps) == 0 {
 		return nil
@@ -593,6 +586,8 @@ func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	return out
 }
 
+// convertSlotContents renders what a call site supplied for each named slot.
+// Sorted, because the IR holds them in a map and a dump has to be stable.
 func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 	names := make([]string, 0, len(n.Slots))
 	for name := range n.Slots {
@@ -617,15 +612,13 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
 		return nil
 	}
-	isDefault := false
-	if sd, ok := s.Content.Decl.(*StructDef); ok && sd.Builtin == BuiltinTreeDefault {
-		isDefault = true
-	}
+	sd, _ := s.Content.Decl.(*StructDef)
+	isDefault := sd != nil && sd.Builtin == BuiltinTreeDefault
 	var elem ast.TypeExpr
-	if isDefault {
-		// The default tree is declared in the tree package, so it has to be
-		// spelled through whatever this file imported that package as.
-		elem = &ast.NamedType{Package: c.treePkg(), Name: "default"}
+	if sd != nil {
+		// A tree is spelled through whatever this file imported its package as;
+		// convertType reads the name off the declaration and loses that.
+		elem = c.treeName(sd)
 	} else {
 		elem = c.convertType(s.Content)
 	}
@@ -648,21 +641,29 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	return elem
 }
 
-// treePkg is what this package imported sngl://tree as.
-func (c *converter) treePkg() string {
-	if c.treeAlias != "" {
-		return c.treeAlias
+// treePkg is what this file imported sngl://tree as.
+func (c *converter) treePkg() string { return c.aliasFor("tree") }
+
+// aliasFor is what this file imported a library package as, defaulting to the
+// last segment of its URI — which is the alias an unaliased import binds.
+func (c *converter) aliasFor(uri string) string {
+	if a := c.aliases[uri]; a != "" {
+		return a
 	}
-	return "tree"
+	if i := strings.LastIndexByte(uri, '/'); i >= 0 {
+		return uri[i+1:]
+	}
+	return uri
 }
 
-func findSlotDecl(comp *Component, name string) *SlotDecl {
-	for _, s := range comp.Slots {
-		if s.Name == name {
-			return s
-		}
+// treeName spells a tree the way the file that names it does: qualified when it
+// was declared elsewhere, bare when it was declared here.
+func (c *converter) treeName(sd *StructDef) *ast.NamedType {
+	nt := &ast.NamedType{Name: sd.Name}
+	if sd.Pkg != "" {
+		nt.Package = c.aliasFor(sd.Pkg)
 	}
-	return nil
+	return nt
 }
 
 func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {

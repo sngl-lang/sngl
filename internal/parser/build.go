@@ -3044,9 +3044,8 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 			nt.Package = nt.Name
 			nt.Name = it.shift().Literal
 		}
-		// Type arguments follow either form: `list<int>` and `tree.one<shape>`
-		// are both spellable, so the qualified branch above falls through here
-		// rather than returning.
+		// `list<int>` and `tree.one<shape>` are both spellable, so the
+		// qualified branch above falls through rather than returning.
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
 			it.skip() // lt
 			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {

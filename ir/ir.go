@@ -50,13 +50,13 @@ type Package struct {
 	Contexts []*Context
 	Symbols  *SymbolTable
 
-	// TreeKinds records the segmented trees (see Component.TreeKind) whose
-	// nodes this package declares or imports. The lowering pass for a tree
-	// gates on it: an import of sngl://draw is neither necessary (a package
-	// may declare its own shapes) nor sufficient (inlining flattens a canvas
-	// out of the package that imported it), so the declarations are the only
-	// honest signal.
-	TreeKinds map[string]bool `json:",omitempty"`
+	// TreeKinds records the segmented trees whose members
+	// this package declares or imports. The lowering pass for a tree gates on
+	// it: an import of sngl://draw is neither necessary (a package may declare
+	// its own shapes) nor sufficient (inlining flattens a canvas out of the
+	// package that imported it), so the declarations are the only honest
+	// signal.
+	TreeKinds map[*StructDef]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -118,22 +118,36 @@ func (p *Package) IsMain() bool {
 	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
 }
 
-// UsesTree reports whether any component of the named segmented tree reaches
-// this package. See Package.TreeKinds.
-func (p *Package) UsesTree(kind string) bool {
-	return p != nil && p.TreeKinds[kind]
+// UsesTree reports whether a member of the tree that pkg declares as name
+// reaches this package. Matched on the declaring package as well as the name,
+// because a tree is its declaration: a program's own `struct shape` is not the
+// one sngl://draw paints.
+func (p *Package) UsesTree(pkg, name string) bool {
+	if p == nil {
+		return false
+	}
+	for sd := range p.TreeKinds {
+		if sd.Pkg == pkg && sd.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
-// NoteTreeKind records that a component of the named tree reaches this
-// package.
-func (p *Package) NoteTreeKind(kind string) {
-	if p == nil || kind == "" {
+// NoteTreeKind records that a member of a tree reaches this package.
+func (p *Package) NoteTreeKind(sd *StructDef) {
+	if p == nil || sd == nil {
 		return
 	}
 	if p.TreeKinds == nil {
-		p.TreeKinds = map[string]bool{}
+		p.TreeKinds = map[*StructDef]bool{}
 	}
-	p.TreeKinds[kind] = true
+	p.TreeKinds[sd] = true
+}
+
+// IsTreeNamed reports whether sd is the tree that pkg declares as name.
+func IsTreeNamed(sd *StructDef, pkg, name string) bool {
+	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
 }
 
 // Import records a resolved import.
@@ -478,10 +492,6 @@ type SlotDecl struct {
 	// accepted. Absent, a slot takes any number of components.
 	Content *Type    `json:",omitempty"`
 	Card    SlotCard `json:",omitempty"`
-	// ChildKind names the segmented tree the supplied content must be members
-	// of, from #[tree.children] on the declaration. Empty for a slot that
-	// accepts ordinary components.
-	ChildKind string `json:",omitempty"`
 }
 
 // DefaultSlot is the name of the slot a caller fills with ordinary children.
@@ -574,8 +584,7 @@ func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
 
 // TypeParam is one generic parameter of a declaration. Default is what an
-// argument list that stops short falls back to; a constraint would live here
-// too, which is why this is a struct rather than a name and a parallel slice.
+// argument list that stops short falls back to.
 type TypeParam struct {
 	Name    string
 	Default *Type `json:"-"`

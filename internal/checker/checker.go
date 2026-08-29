@@ -1055,7 +1055,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: c.resolveTypeParams(s.TypeParams)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams)}
 	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
@@ -1677,6 +1677,23 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 	}
 }
 
+// buildSlotDecl resolves one slot declaration, for either registration path.
+func (c *checker) buildSlotDecl(pd ast.SlotDecl) *ir.SlotDecl {
+	slot := &ir.SlotDecl{Name: pd.Name}
+	if pd.Type != nil {
+		slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
+	}
+	if pd.Name == ir.DefaultSlot && len(pd.Params) > 0 {
+		// Its content is written as ordinary children, which have no binding
+		// site, so there is nowhere to collect a parameter.
+		c.error(pd.Pos, "the default slot takes no parameters: its content is written as ordinary children")
+	}
+	for _, t := range pd.Params {
+		slot.Params = append(slot.Params, c.resolveType(t))
+	}
+	return slot
+}
+
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// An override implements one declaration for one target, and says which
 	// target on its own name: `component sngl.button[html.platform] { ... }`.
@@ -1731,20 +1748,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		case ast.SlotDecl:
-			slot := &ir.SlotDecl{Name: pd.Name}
-			if pd.Type != nil {
-				slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
-			}
-			if pd.Name == ir.DefaultSlot && len(pd.Params) > 0 {
-				// Its content is written as ordinary children, which have no
-				// binding site, so there is nowhere to collect a parameter.
-				c.error(pd.Pos, "the default slot takes no parameters: its content is written as ordinary children")
-			}
-			for _, t := range pd.Params {
-				slot.Params = append(slot.Params, c.resolveType(t))
-			}
-			c.applySlotMarks(pd, slot)
-			irComp.Slots = append(irComp.Slots, slot)
+			irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd))
 		}
 	}
 
@@ -3307,10 +3311,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 }
 
-// finishDefaultSlot derives the children contract from a `slot` written in the
-// parameter list. It says what the `list<component>` return type says and sits
-// where the rest of a component's contract already does, so the two are
-// alternatives rather than a pair.
+// finishDefaultSlot derives the children contract from the `_` slot.
 func (c *checker) finishDefaultSlot(comp *ir.Component) {
 	slot := findSlot(comp, ir.DefaultSlot)
 	if slot == nil {

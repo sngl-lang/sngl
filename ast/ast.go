@@ -134,8 +134,7 @@ func (*FuncDef) structBodyItem()     {}
 func (*Comment) structBodyItem()     {}
 
 // TypeParam is one generic parameter of a declaration. Default is what an
-// argument list that stops short falls back to; a constraint would live here
-// too, which is why this is a struct rather than a name and a parallel slice.
+// argument list that stops short falls back to.
 type TypeParam struct {
 	Name    string
 	Default TypeExpr `json:",omitempty"`

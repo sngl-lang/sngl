@@ -20,7 +20,6 @@ var markImpls = map[markKey]markImpl{
 	{"platforms", "options"}:        markOptions,
 	{"platforms", "wildcard"}:       markWildcard,
 	{"std", "foreign"}:              markForeign,
-	{"draw", "shape"}:               markShape,
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
@@ -250,23 +249,6 @@ func markTreeKind(m *mark) error {
 		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
 	}
 	sd.IsTree = true
-	return nil
-}
-
-// #[draw.shape] keeps the rules that are about drawing rather than about trees.
-// Membership is the return position now — a shape says `component rect(…) shape`
-// — so the mark no longer confers it.
-func markShape(m *mark) error {
-	decl, ok := m.decl.(*ast.ComponentDecl)
-	if !ok {
-		return fmt.Errorf("#[draw.shape] requires a component declaration")
-	}
-	// A painted shape has nothing to raise an event from.
-	for _, prop := range decl.Props.Props {
-		if _, isEvent := prop.(ast.EventDecl); isEvent {
-			return fmt.Errorf("shape components do not support event declarations")
-		}
-	}
 	return nil
 }
 

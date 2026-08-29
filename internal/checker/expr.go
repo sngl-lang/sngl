@@ -2692,6 +2692,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if comp != nil && x.Call.ID == "" {
 			c.validateCallStmtComponentArgs(x.Call, comp)
 			c.checkRequiredSlots(x.Pos, comp, nil)
+			if slot := findSlot(comp, ir.DefaultSlot); slot != nil {
+				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
+			}
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
 			var keyExpr ir.Expr
 			for _, a := range x.Call.Args.Args {
@@ -4271,10 +4274,8 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 	return content, rest
 }
 
-// checkRequiredSlots reports the named slots a call site left unpopulated that
-// its type gives no way to omit: list<T> and option<T> are the two spellings
-// that permit absence, and a fallback is what an optional slot renders rather
-// than a default for a required one.
+// checkRequiredSlots reports the named slots a call site left unpopulated whose
+// count gives no way to omit them.
 func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content map[string]*ir.SlotContent) {
 	for _, slot := range comp.Slots {
 		if slot.Name == ir.DefaultSlot || content[slot.Name] != nil {
@@ -4350,10 +4351,8 @@ func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what str
 // slotTree is the segmented tree a slot accepts, or nil for the default tree —
 // the one whose members are interchangeable.
 //
-// owner is the component the slot is declared on. A slot that names no tree
-// accepts the one its component belongs to, so a member hosts its own family
-// without saying so; declaring a slot at all is still what makes it host
-// anything.
+// owner is the component the slot is declared on: a slot naming no tree accepts
+// the owner's.
 func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 	if slot == nil {
 		return nil
@@ -4372,6 +4371,15 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 		return nil
 	}
 	return sd
+}
+
+// stmtPos is a statement's position, or nil for a synthesized node that has no
+// AST to take one from.
+func stmtPos(s ast.Stmt) *ast.Pos {
+	if s == nil {
+		return nil
+	}
+	return s.StmtPos()
 }
 
 // checkTreeMembership holds every supplied node to the tree the position
@@ -4403,7 +4411,7 @@ func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.S
 			}
 			// The offending child is a better place to point than the position
 			// that hosts it.
-			if sp := ni.AST.StmtPos(); sp != nil {
+			if sp := stmtPos(ni.AST); sp != nil {
 				at = *sp
 			}
 		}
