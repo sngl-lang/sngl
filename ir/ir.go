@@ -573,6 +573,27 @@ type Param struct {
 func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
 
+// TypeParam is one generic parameter of a declaration. Default is what an
+// argument list that stops short falls back to; a constraint would live here
+// too, which is why this is a struct rather than a name and a parallel slice.
+type TypeParam struct {
+	Name    string
+	Default *Type `json:"-"`
+}
+
+// TypeParamNames is the parameters' names, for the places that bind them into
+// scope and care about nothing else.
+func TypeParamNames(ps []TypeParam) []string {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.Name
+	}
+	return out
+}
+
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
 	// IsTree is set by #[tree.kind]: this struct names a segmented tree rather
@@ -580,12 +601,9 @@ type StructDef struct {
 	IsTree     bool `json:",omitempty"`
 	AST        *ast.StructDef
 	Name       string
-	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
-	// TypeParamDefaults is aligned with TypeParams; a nil entry has no default.
-	// An argument list that stops short falls back to them.
-	TypeParamDefaults []*Type `json:"-"`
-	Fields            []*StructField
-	Foreign           `json:"Foreign,omitzero"`
+	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
+	Fields     []*StructField
+	Foreign    `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package
 	// whose identity is global — today the embedded library's "sngl://std",
 	// "sngl://builtin", "sngl://draw". Empty for a program's own

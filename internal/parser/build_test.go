@@ -714,7 +714,7 @@ func TestParseGenericStruct(t *testing.T) {
 	if s.Name != "list" {
 		t.Errorf("Name = %q, want list", s.Name)
 	}
-	if len(s.TypeParams) != 1 || s.TypeParams[0] != "T" {
+	if len(s.TypeParams) != 1 || s.TypeParams[0].Name != "T" {
 		t.Errorf("TypeParams = %v, want [T]", s.TypeParams)
 	}
 }
@@ -726,7 +726,7 @@ func TestParseGenericStructTwoParams(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	s := doc.Stmts[0].(*ast.StructDef)
-	if len(s.TypeParams) != 2 || s.TypeParams[0] != "K" || s.TypeParams[1] != "V" {
+	if len(s.TypeParams) != 2 || s.TypeParams[0].Name != "K" || s.TypeParams[1].Name != "V" {
 		t.Errorf("TypeParams = %v, want [K V]", s.TypeParams)
 	}
 }

@@ -133,16 +133,35 @@ func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
 func (*Comment) structBodyItem()     {}
 
+// TypeParam is one generic parameter of a declaration. Default is what an
+// argument list that stops short falls back to; a constraint would live here
+// too, which is why this is a struct rather than a name and a parallel slice.
+type TypeParam struct {
+	Name    string
+	Default TypeExpr `json:",omitempty"`
+}
+
+// TypeParamNames is the parameters' names, for the places that bind them into
+// scope and care about nothing else.
+func TypeParamNames(ps []TypeParam) []string {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.Name
+	}
+	return out
+}
+
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
-	// TypeParamDefaults is aligned with TypeParams; a nil entry has no default.
-	TypeParamDefaults []TypeExpr `json:",omitempty"`
-	Pos               Pos
-	Name              string
-	TypeParams        []string // generic type parameters: ["T"] for `struct list<T> {}`
-	Body              []StructBodyItem
-	IsMultiline       bool
-	Attrs             []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+	Pos         Pos
+	Name        string
+	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list<T> {}`
+	Body        []StructBodyItem
+	IsMultiline bool
+	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // Fields returns just the *StructField items from Body, in source order.

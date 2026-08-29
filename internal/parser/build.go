@@ -414,7 +414,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 		s.Name = it.shift().Literal
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-		s.TypeParams, s.TypeParamDefaults = b.buildTypeParams(it.enter())
+		s.TypeParams = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -920,49 +920,44 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 	}
 }
 
+// buildTypeParamList is for the declarations that bind names and nothing else:
+// a function's own and a receiver's, which carry no default yet.
 func (b *builder) buildTypeParamList(it nodeIter) []string {
-	names, _ := b.buildTypeParams(it)
-	return names
+	return ast.TypeParamNames(b.buildTypeParams(it))
 }
 
-// buildTypeParams returns the parameter names and their defaults, the defaults
-// aligned with the names and nil where one is absent.
-func (b *builder) buildTypeParams(it nodeIter) ([]string, []ast.TypeExpr) {
+func (b *builder) buildTypeParams(it nodeIter) []ast.TypeParam {
 	// TypeParamList = lt TypeParam { comma TypeParam } gt .
-	var names []string
-	var defaults []ast.TypeExpr
+	var out []ast.TypeParam
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == TypeParam {
-			name, def := b.buildTypeParam(it.enter())
-			names = append(names, name)
-			defaults = append(defaults, def)
+			out = append(out, b.buildTypeParam(it.enter()))
 			continue
 		}
 		it.skip() // lt, gt, comma
 	}
-	return names, defaults
+	return out
 }
 
-func (b *builder) buildTypeParam(it nodeIter) (string, ast.TypeExpr) {
+func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
 	// TypeParam = ident [ assign Type ] .
-	var name string
-	var def ast.TypeExpr
+	var tp ast.TypeParam
 	for !it.done() {
 		if it.isNonTerminal() {
 			if it.symbol() == Type {
-				def = b.buildType(it.enter())
+				tp.Default = b.buildType(it.enter())
 				continue
 			}
 			it.skip()
 			continue
 		}
-		if it.tokenType() == IDENT && name == "" {
-			name = it.shift().Literal
+		if it.tokenType() == IDENT && tp.Name == "" {
+			tp.Name = it.shift().Literal
 			continue
 		}
 		it.skip() // assign
 	}
-	return name, def
+	return tp
 }
 
 func (b *builder) buildParamList(it nodeIter, openLine int) ast.ParamList {

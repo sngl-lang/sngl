@@ -1532,8 +1532,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				var typeArgBindings map[string]*ir.Type
 				if len(sd.TypeParams) > 0 && len(operand.Elems) == len(sd.TypeParams) {
 					typeArgBindings = make(map[string]*ir.Type, len(sd.TypeParams))
-					for i, name := range sd.TypeParams {
-						typeArgBindings[name] = operand.Elems[i]
+					for i, tp := range sd.TypeParams {
+						typeArgBindings[tp.Name] = operand.Elems[i]
 					}
 				}
 				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {

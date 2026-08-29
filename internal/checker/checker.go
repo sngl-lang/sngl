@@ -1046,7 +1046,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
-	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
+	c.registerNestedMethods(sd.Name, ir.TypeParamNames(sd.TypeParams), s.Funcs())
 }
 
 // registerStructShell registers a struct's name and type parameters without
@@ -1055,7 +1055,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: c.resolveTypeParams(s.TypeParams)}
 	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
@@ -1066,8 +1066,8 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	sd.Fields = c.resolveStructFields(sd.AST)
 	// A default is a type reference, so it waits for the same every-shell-exists
 	// condition the fields do.
-	sd.TypeParamDefaults = c.resolveTypeParamDefaults(sd.AST.TypeParamDefaults)
-	c.registerNestedMethods(sd.Name, sd.TypeParams, sd.AST.Funcs())
+	sd.TypeParams = c.resolveTypeParams(sd.AST.TypeParams)
+	c.registerNestedMethods(sd.Name, ir.TypeParamNames(sd.TypeParams), sd.AST.Funcs())
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {

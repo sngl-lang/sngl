@@ -344,10 +344,10 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 				if k > 0 {
 					f.write(", ")
 				}
-				f.write(tp)
-				if k < len(s.TypeParamDefaults) && s.TypeParamDefaults[k] != nil {
+				f.write(tp.Name)
+				if tp.Default != nil {
 					f.write(" = ")
-					f.writeType(s.TypeParamDefaults[k])
+					f.writeType(tp.Default)
 				}
 			}
 			f.write(">")
