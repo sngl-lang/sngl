@@ -43,6 +43,7 @@
 //   theme/layout implementation needs; today the assignment is dropped.
 
 import sngl "sngl://std"
+import tr "sngl://tree"
 import . "sngl://platforms"
 import . "sngl://internal/marks"
 
@@ -155,7 +156,8 @@ component Container(
     @click sngl.ClickEvent,
     @change sngl.ChangeEvent,
     @input sngl.InputEvent,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
@@ -169,7 +171,8 @@ component Wrapper(
     @click sngl.ClickEvent,
     @change sngl.ChangeEvent,
     @input sngl.InputEvent,
-) component {}
+    slot _ tr.one<tr.default>,
+) {}
 
 // --- The Fyne widgets ---
 //
@@ -320,7 +323,7 @@ component Spacer(style sngl.Style) {
     ) {}
 }
 
-component VBox(style sngl.Style) list<component> {
+component VBox(style sngl.Style, slot _) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -333,7 +336,7 @@ component VBox(style sngl.Style) list<component> {
     }
 }
 
-component HBox(style sngl.Style) list<component> {
+component HBox(style sngl.Style, slot _) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -346,7 +349,7 @@ component HBox(style sngl.Style) list<component> {
     }
 }
 
-component VScroll(style sngl.Style) component {
+component VScroll(style sngl.Style, slot _ tr.one<tr.default>) {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},

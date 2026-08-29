@@ -131,7 +131,8 @@ component element(
     // fires.
     #[wildcard("[a-z][a-z0-9]*")]
     @event,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Core Layout ---
 

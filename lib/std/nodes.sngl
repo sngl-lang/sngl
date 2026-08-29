@@ -11,7 +11,8 @@ import . "sngl://internal/marks"
 #[builtin("errorBoundary")]
 component errorBoundary(
     @error ErrorEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // A top-level window — the entry point of a UI. `href` is the route the
 // window is served at (URL template params like `{name}` bind as string
@@ -28,7 +29,8 @@ component window(
     href string,
     favicon string,
     @error ErrorEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Periodic callback. Fires `@tick` every `interval` while `enabled`
 // is true. Toggling `enabled` is the idiomatic way to start and stop

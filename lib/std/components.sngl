@@ -1,3 +1,5 @@
+import tr "sngl://tree"
+
 // Vertical box layout container. Children are stacked top to bottom and
 // laid out along the cross axis via `style.alignItems`. Enable `scroll`
 // to make overflow scrollable; set `refreshing` alongside `@refresh`
@@ -8,7 +10,8 @@ component vbox(
     scroll bool,
     refreshing bool,
     @refresh RefreshEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Horizontal box layout container. Children are placed side by side
 // along the main axis and aligned via `style.alignItems` /
@@ -17,7 +20,8 @@ component vbox(
 component hbox(
     style Style,
     scroll bool,
-) list<component> {}
+    slot _,
+) {}
 
 // Layered container where children overlap in the order they are declared.
 // Later children paint over earlier ones. Useful for overlays, badges
@@ -26,7 +30,8 @@ component hbox(
 // placement.
 component stack(
     style Style,
-) list<component> {}
+    slot _,
+) {}
 
 // Displays a text string. `value` is the content; set `selectable=true`
 // to allow the platform to offer copy. Typography (size, weight, color,
@@ -51,7 +56,8 @@ component button(
     focusable bool = true,
     @click ClickEvent,
     @longPress LongPressEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Single-line text input field. `value` is a two-way bound prop — write
 // to update the field, read to observe edits. `placeholder` shows when
@@ -104,7 +110,8 @@ component scroll(
     showScrollbar string,
     @scroll ScrollEvent,
     @scrollEnd ScrollEvent,
-) component {}
+    slot _ tr.one<tr.default>,
+) {}
 
 // Flexible empty space. With `style.flex=1` it expands to absorb
 // available room between siblings, which is the common way to
@@ -243,7 +250,8 @@ component tabs(
     selected int,
     variant string,
     @change SelectEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Navigational hyperlink. `href` is the destination — an external
 // URL, an in-app route, or a file path depending on the platform.
@@ -283,7 +291,8 @@ component modal(
     closable bool,
     size string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Slide-out panel anchored to a side of the viewport. `side` is "left",
 // "right", "top", or "bottom". `size` is a length or a preset ("small",
@@ -295,7 +304,8 @@ component drawer(
     side string,
     size string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Informational popup on hover or focus. Wraps a single child (the
 // trigger); `text` is the tooltip body. `position` hints at placement
@@ -306,7 +316,8 @@ component tooltip(
     text string,
     position string,
     delay int,
-) component {}
+    slot _ tr.one<tr.default>,
+) {}
 
 // Floating content panel anchored to a trigger. Children include the
 // trigger and the panel contents; `open` controls visibility and is
@@ -319,7 +330,8 @@ component popover(
     position string,
     openOn string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Resizable two-pane layout. Exactly two children define the panes.
 // `direction` is "horizontal" (side-by-side) or "vertical". `position`
@@ -334,7 +346,8 @@ component splitview(
     maxPosition float,
     resizable bool,
     @resize ResizeEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Data & Desktop ---
 
@@ -404,7 +417,8 @@ component toolbar(
     style Style,
     items list<string>,
     @select MenuEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Mobile & Specialized ---
 
@@ -463,7 +477,8 @@ component card(
     variant string,
     clickable bool,
     @click ClickEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Examples ---
 
