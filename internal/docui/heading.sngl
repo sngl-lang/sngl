@@ -3,6 +3,7 @@
 // the codegen having to evaluate a reactive `level` param at compile time.
 
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component Heading1(value = "") {
     if PLATFORM == html.platform {

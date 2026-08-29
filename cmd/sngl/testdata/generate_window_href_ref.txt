@@ -4,6 +4,7 @@ exists out/about.html
 
 -- site.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 output { none { html } }
 

@@ -29,6 +29,7 @@ grep 'createElement\("li"\)' out/index.html
 
 -- dom.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     var shown bool = false

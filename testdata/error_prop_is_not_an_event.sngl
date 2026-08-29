@@ -4,6 +4,7 @@
 // event of exactly that name; matching the wildcard is not enough, or a
 // misspelled DOM property would satisfy "any event name" perfectly well.
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window {

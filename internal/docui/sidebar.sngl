@@ -1,4 +1,5 @@
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component Sidebar(homeHref = "/", logo = "") list<component> {
     if PLATFORM == html.platform {

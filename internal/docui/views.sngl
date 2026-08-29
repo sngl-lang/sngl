@@ -4,6 +4,7 @@ import . "sngl://std"
 // the lookup façade and renders it across bubbletea/html — no data fetching
 // inside the components themselves.
 import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
+import "sngl://platforms/html"
 
 // SummaryRow is one entry in a decl list: name + one-line doc. Renders as a
 // link in html when `href` is set; `active` highlights the current row.

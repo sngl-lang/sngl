@@ -24,6 +24,7 @@ grep '<div' out/index.html
 
 -- badname.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window {
@@ -32,6 +33,7 @@ component main {
 }
 -- badtype.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window {
@@ -40,6 +42,7 @@ component main {
 }
 -- custom.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window {

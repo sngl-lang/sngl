@@ -1,4 +1,5 @@
 import sngl "sngl://std"
+import "sngl://platforms/html"
 
 component sngl.text[html.platform](extra string) { // ERROR(check) "may not declare props"
     span(textContent=value) {}

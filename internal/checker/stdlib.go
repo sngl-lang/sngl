@@ -366,6 +366,17 @@ func (c *checker) adoptLib(name string, pkg *ir.Package) {
 
 // inLibSource reports whether the declarations being registered come from
 // lib/ rather than from a program. Every path into lib/ source runs through
+// targetNamespaceName is the namespace a target's package is reached through,
+// which is the target's own name: sngl://platforms/html is `html`.
+func targetNamespaceName(pkgName string) (string, bool) {
+	for _, prefix := range []string{"platforms/", "languages/"} {
+		if name, ok := strings.CutPrefix(pkgName, prefix); ok {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 // loadStdlibPackage, including the nested loads an import inside lib/ starts,
 // so the counter covers transitive loads too.
 func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
@@ -386,6 +397,14 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// The package's imports go one scope above its root: reachable while it
 	// loads, absent from what a dot import of it lifts.
 	c.libImportScope = NewScope(savedScope)
+	// A target's own source reaches its own declarations through its own
+	// namespace -- `html.div` inside html.sngl, where the prefix separates the
+	// element from the stdlib component of the same name. That namespace is in
+	// scope while the package loads and nowhere else: a program reaches it by
+	// importing the package, like any other.
+	if nsName, ok := targetNamespaceName(pkgName); ok {
+		c.bindLib(ast.Pos{}, c.libImportScope, &ir.Namespace{Name: nsName, Pkg: stdlibPkg})
+	}
 	stdlibPkg.Symbols.Root.Parent = c.libImportScope
 	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
 	defer func() {
@@ -1150,6 +1169,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		return
 	}
 	{
+		// An override names its target, and a target package's own source is
+		// no exception -- but it reaches its namespace the way its bodies do,
+		// from the package itself, not from the program's scope, which is
+		// where this runs and where a target is only in scope if imported.
+		c.pushScope()
+		if pkg := c.libPkg(pkgName); pkg != nil {
+			c.bindLib(ast.Pos{}, c.scope, &ir.Namespace{Name: name, Pkg: pkg})
+		}
+		defer c.popScope()
 		for _, doc := range c.libDocs(pkgName) {
 			// The extension prefix is whatever alias this document imported the
 			// stdlib under. Platform docs are not registered into the checker's

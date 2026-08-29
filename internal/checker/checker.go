@@ -361,49 +361,21 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// also declare a namespace of the same name (lib/std/html.sngl declares
 	// `html` for the html.frontend/html.backend placement directives); the
 	// target's package goes behind that one rather than shadowing it.
-	declareNS := func(name, uri string) {
-		pkg := c.targetNSPkg(uri)
-		attach := func(ns *ir.Namespace) {
-			// A namespace's members are its package's declarations, and a
-			// target ships a package like anything else. The stdlib may
-			// already have declared a namespace of this name for its own
-			// members (lib/std/html.sngl declares `html` for the placement
-			// directives), so the target's package goes behind it in the
-			// scope chain rather than replacing it: a name std declares wins,
-			// then the target's, then the target's wildcards.
-			switch {
-			case pkg == nil:
-			case ns.Pkg == nil:
-				ns.Pkg = pkg
-			case ns.Pkg != pkg && ns.Pkg.Symbols != nil:
-				ns.Pkg.Symbols.Root.Parent = pkg.Symbols.Root
-			}
-		}
-		if existing, ok := c.stdlibPkg.Symbols.Root.LookupLocal(name); ok {
-			if ns, ok := existing.(*ir.Namespace); ok {
-				attach(ns)
-			}
-		}
-		if existing, ok := stdlibScope.LookupLocal(name); ok {
-			if ns, ok := existing.(*ir.Namespace); ok {
-				attach(ns)
-				return
-			}
-		}
-		ns := &ir.Namespace{Name: name}
-		attach(ns)
-		c.bindLib(ast.Pos{}, stdlibScope, ns)
-	}
+	// A target's package is reached by importing it, like any other. It used
+	// to be bound here for every registered target, so `html.div` resolved in
+	// a file that imported nothing -- and a misspelled tag reached the element
+	// wildcard of a package the program never named. The package's own source
+	// binds the namespace while it loads (loadStdlibPackage); an override's
+	// target index binds it for the merge (mergeTargetExtensions).
+	_ = stdlibScope
+
 	for _, p := range cfg.Platforms {
 		if targetUnavailable(p) != nil {
-			declareNS(p.PlatformIdentifier(), "")
 			continue
 		}
-		declareNS(p.PlatformIdentifier(), "platforms/"+p.PlatformIdentifier())
 		c.synthesizeTargetID(c.targetNSPkg("platforms/"+p.PlatformIdentifier()), c.platformType, p.PlatformIdentifier())
 	}
 	for _, l := range cfg.Languages {
-		declareNS(l.LanguageIdentifier(), "languages/"+l.LanguageIdentifier())
 		c.synthesizeTargetID(c.targetNSPkg("languages/"+l.LanguageIdentifier()), c.languageType, l.LanguageIdentifier())
 	}
 
@@ -980,7 +952,26 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 	c.markForeign(irImport.Pkg)
-	c.bindImport(c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path), ns)
+	claimed := c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
+	// One name, two packages: `html` is sngl://std's namespace for the
+	// placement directives and the html platform's for its elements, and a
+	// file that dot-imports std and imports the platform means both. The
+	// imported package goes behind the one already in scope, so a name std
+	// declares wins and the platform's -- including its wildcard -- is reached
+	// after.
+	//
+	// Only once the alias is this file's to bind: two imports claiming one
+	// alias is still two meanings for a name, which claimTopLevel reports.
+	if claimed && ns.Pkg != nil && ns.Pkg.Symbols != nil {
+		if existing, ok := c.scope.Lookup(alias); ok {
+			if existingNS, isNS := existing.(*ir.Namespace); isNS &&
+				existingNS.Pkg != nil && existingNS.Pkg != ns.Pkg && existingNS.Pkg.Symbols != nil {
+				existingNS.Pkg.Symbols.Root.Parent = ns.Pkg.Symbols.Root
+				return
+			}
+		}
+	}
+	c.bindImport(claimed, ns)
 }
 
 // importOwner is the package an import belongs to. While a library package
