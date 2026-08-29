@@ -1239,7 +1239,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
 					continue
 				}
-				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false)
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, nil)
 			}
 		}
 	}
@@ -1249,7 +1249,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 // reports that one is already recorded. A duplicate is an error rather than a
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
-func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool) {
+func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
 	bodies, vars := &comp.PlatformBodies, &comp.PlatformVars
 	if kind == ir.BuiltinLanguage {
 		bodies, vars = &comp.LanguageBodies, &comp.LanguageVars
@@ -1268,12 +1268,35 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	// check appends nothing (an empty body).
 	(*bodies)[target] = nil
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
-		comp:     comp,
-		platform: target,
-		kind:     kind,
-		body:     body,
-		user:     user,
+		comp:      comp,
+		platform:  target,
+		kind:      kind,
+		body:      body,
+		user:      user,
+		selection: selection,
 	})
+}
+
+// selectProps is the props and events an override named, in the declaring
+// component's order. A name it did not name is not in scope for its body.
+func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.EventDecl) {
+	want := make(map[string]bool, len(selection))
+	for _, n := range selection {
+		want[n] = true
+	}
+	var props []*ir.Prop
+	for _, p := range comp.Props {
+		if want[p.Name] {
+			props = append(props, p)
+		}
+	}
+	var events []*ir.EventDecl
+	for _, e := range comp.Events {
+		if want["@"+e.Name] {
+			events = append(events, e)
+		}
+	}
+	return props, events
 }
 
 // collectExtensionVars pre-registers the vars and consts a platform extension
@@ -1300,6 +1323,9 @@ type pendingExtension struct {
 	// and so which of the component's two override maps the checked body
 	// belongs in.
 	kind ir.BuiltinKind
+	// selection is the props the override's body reads, when it listed them.
+	// nil means it listed none and reads all of them.
+	selection []string
 	// user marks an override a program declared rather than a target package.
 	// Its body is the program's own source and resolves in the program's
 	// scope, where the file's imports are; a target package's body is
@@ -1362,6 +1388,14 @@ func (c *checker) checkPendingExtensions() {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
 			savedVars := pe.comp.Vars
+			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+			// An override that listed the props it consumes reads those and no
+			// others: the list is what makes the names in its body traceable
+			// to a declaration rather than appearing from the surrounding
+			// component. One that listed none reads them all.
+			if pe.selection != nil {
+				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+			}
 			pe.comp.AST.Body = pe.body
 			pe.comp.Body = nil
 			// checkComponentBody declares comp.Vars into the body scope and
@@ -1384,6 +1418,7 @@ func (c *checker) checkPendingExtensions() {
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars
+			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
 				c.popScope()
 			}
