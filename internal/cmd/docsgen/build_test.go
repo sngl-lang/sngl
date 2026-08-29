@@ -15,10 +15,6 @@ import (
 // (also data-driven) can still render while every page body comes up empty.
 // This test guards against that whole-site-goes-blank regression.
 func TestWebsiteProducesContent(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping website build (compiles wasm) in -short mode")
-	}
-
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -57,5 +53,23 @@ func TestWebsiteProducesContent(t *testing.T) {
 	// declared output options.
 	if !strings.Contains(html, `rel="stylesheet"`) {
 		t.Error("components/index.html has no <link rel=\"stylesheet\"> — site CSS dropped")
+	}
+}
+
+// TestWebsiteTypeChecks is the cheap half of TestWebsiteProducesContent: it
+// stops at the checker, so a type error is reported at once rather than after
+// the full build.
+func TestWebsiteTypeChecks(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The platform must be named: a `platform html { ... }` body is checked
+	// against the html package only when html is a target of the build.
+	cmd := exec.Command("go", "tool", "sngl", "dump", "--stage", "checked",
+		"--platform", "html", "--lang", "none", "website.sngl")
+	cmd.Dir = repoRoot
+	if combined, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("website.sngl does not type-check against the html platform: %v\n%s", err, combined)
 	}
 }
