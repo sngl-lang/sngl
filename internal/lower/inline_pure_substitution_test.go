@@ -88,7 +88,7 @@ func TestInlinePure_EmittedHandlerNotDoubleTransferred(t *testing.T) {
 	clickHandler := ir.EventHandler{
 		Name: "click",
 		Func: &ir.Func{Block: []ir.Stmt{
-			&ir.Assign{Target: &ir.Ident{Name: marker}, Value: &ir.Literal{Raw: "1"}},
+			&ir.Assign{Target: &ir.Ident{Name: marker}, Value: &ir.Literal{Value: "1"}},
 		}},
 	}
 	main := &ir.Component{
@@ -227,7 +227,7 @@ func TestInlinePure_OmittedParamGetsZeroValue(t *testing.T) {
 	if !ok {
 		t.Fatalf("data-flag value: got %T, want *ir.Literal", val)
 	}
-	if lit.Raw != "false" {
-		t.Errorf("data-flag zero-value: got %q, want \"false\"", lit.Raw)
+	if lit.Value != "false" {
+		t.Errorf("data-flag zero-value: got %q, want \"false\"", lit.Value)
 	}
 }

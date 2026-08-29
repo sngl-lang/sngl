@@ -4,11 +4,11 @@ struct Vec2 {
     x, y int
 }
 
-func Vec2.dot(a Vec2, b Vec2) => a.x*b.x + a.y*b.y
+func Vec2.dot(a Vec2, b Vec2) => a.x * b.x + a.y * b.y
 
 component main {
-    var u = Vec2{x = 1, y = 2}
-    var v = Vec2{x = 3, y = 4}
+    var u = Vec2{x=1, y=2}
+    var v = Vec2{x=3, y=4}
     text(value=string(u.dot(v)))
 }
 

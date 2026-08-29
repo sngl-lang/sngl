@@ -14,15 +14,15 @@ component main {
     ]
 
     var cfg = Config{
-        name="test",
-        count=5,
-        enabled=true,
+        name = "test",
+        count = 5,
+        enabled = true,
     }
 
     var cfg2 = Config{
-        name="alt";
-        count=7;
-        enabled=false;
+        name = "alt",
+        count = 7,
+        enabled = false,
     }
 
     text(value=string(cfg.count))

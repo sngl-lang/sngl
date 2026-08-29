@@ -85,8 +85,8 @@ func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 	call := &ir.Call{
 		Func: add,
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Raw: "1"}},
-			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Raw: "2"}},
+			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "1"}},
+			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "2"}},
 		},
 	}
 	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.Return{Value: call}}}

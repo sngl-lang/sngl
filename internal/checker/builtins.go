@@ -30,7 +30,7 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 			// Neither the type nor the value can be spelled, so the written
 			// ones are placeholders the compiler replaces.
 			v.Type = TypNull
-			v.Init = &ir.Literal{Type: TypNull, Raw: "null"}
+			v.Init = &ir.Literal{Type: TypNull, Value: "null"}
 			bound = true
 		}
 	case ir.BuiltinDuration:

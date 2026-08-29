@@ -123,6 +123,39 @@ func ParseDirectives(path string) ([]ErrorDirective, error) {
 	return dirs, s.Err()
 }
 
+// nofmtRE matches a `// NOFMT "reason"` directive, which exempts a fixture
+// from the check that it is written the way `sngl fmt` writes it.
+var nofmtRE = regexp.MustCompile(`//\s*NOFMT\b\s*(".*")?`)
+
+// ParseNoFmt reports whether a fixture carries a NOFMT directive, and the
+// reason written with it. A fixture that says something the formatter would
+// rewrite — an odd layout a test is about, or output the formatter cannot
+// reproduce yet — opts out here rather than by weakening the check.
+func ParseNoFmt(path string) (bool, string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, "", err
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		m := nofmtRE.FindStringSubmatch(s.Text())
+		if m == nil {
+			continue
+		}
+		if m[1] == "" {
+			return true, "", nil
+		}
+		reason, err := strconv.Unquote(m[1])
+		if err != nil {
+			return false, "", fmt.Errorf("%s: NOFMT directive: %w", path, err)
+		}
+		return true, reason, nil
+	}
+	return false, "", s.Err()
+}
+
 func Filter(dirs []ErrorDirective, phase string) []ErrorDirective {
 	var out []ErrorDirective
 	for _, d := range dirs {

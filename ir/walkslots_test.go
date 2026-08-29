@@ -61,7 +61,7 @@ func exprSlots() []string {
 
 // mark returns a Literal that names the slot it was placed in, so a walk can
 // report which slots it reached.
-func mark(slot string) Expr { return &Literal{Type: TypString, Raw: slot} }
+func mark(slot string) Expr { return &Literal{Type: TypString, Value: slot} }
 
 // markedPackage puts a distinct marker in every Expr slot exprSlots reports.
 // Keep it in step with that list: an unpopulated slot shows up as a failure
@@ -154,8 +154,8 @@ func TestRewriteVisitsEveryExprSlot(t *testing.T) {
 	pkg := markedPackage()
 	seen := map[string]bool{}
 	if err := Walk(pkg, func(n Node) error {
-		if lit, ok := n.(*Literal); ok && lit.Raw != "" {
-			seen[lit.Raw] = true
+		if lit, ok := n.(*Literal); ok && lit.Value != "" {
+			seen[lit.Value] = true
 		}
 		return nil
 	}); err != nil {

@@ -18,7 +18,7 @@ component main {
     var flag = true
     var label = "hello"
     var items = [10, 20, 30]
-    var pair Pair = {key = "key", val = 5}
+    var pair Pair = {key="key", val=5}
 
     func interp() => "val: {string(count)}"
     func list() => [count, count + 1]

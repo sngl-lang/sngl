@@ -14,7 +14,7 @@ func isLiteralIntZero(expr ir.Expr) bool {
 	if lit.Type == nil || lit.Type.Kind != ir.TypeInt {
 		return false
 	}
-	return lit.Raw == "0"
+	return lit.Value == "0"
 }
 
 // adaptLiteralZero wraps a literal `0` in an ir.Conversion to a unit target.

@@ -1,14 +1,14 @@
 import . "sngl://std"
 
 component main {
-	var count = 0
+    var count = 0
 
-	window #home(title="Home", href="/") {
-		text(value="Count: {count}")
-		button(text="+", @click { count += 1 })
-	}
+    window #home(title="Home", href="/") {
+        text(value="Count: {count}")
+        button(text="+", @click { count += 1 })
+    }
 
-	window #settings(title="Settings", href="/settings.html") {
-		text(value="Config")
-	}
+    window #settings(title="Settings", href="/settings.html") {
+        text(value="Config")
+    }
 }

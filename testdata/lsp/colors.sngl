@@ -1,11 +1,11 @@
 import . "sngl://std"
 
 window #demo(title="Demo", href="/") {
-    vbox(style={gap = 8, padding = 16}) {
-        text(value="hi", style={color = #ff0000})
-        text(value="hi", style={color = #00ff00})
-        vbox(style={background = #aabbcc}) {}
-        vbox(style={background = #11223344}) {}
+    vbox(style={gap=8, padding=16}) {
+        text(value="hi", style={color=#ff0000})
+        text(value="hi", style={color=#00ff00})
+        vbox(style={background=#aabbcc}) {}
+        vbox(style={background=#11223344}) {}
         var label = "hex value #cafe in string"
         var fromCall = color.rgb(255, 128, 64)
         var withAlpha = color.rgba(10, 20, 30, 200)

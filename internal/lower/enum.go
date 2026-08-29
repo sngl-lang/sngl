@@ -146,7 +146,7 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 
 func intLiteral(n int) *ir.Literal {
 	return &ir.Literal{
-		Type: ir.TypInt,
-		Raw:  strconv.Itoa(n),
+		Type:  ir.TypInt,
+		Value: strconv.Itoa(n),
 	}
 }

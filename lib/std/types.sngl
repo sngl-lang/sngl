@@ -1,4 +1,3 @@
-
 // Receiver type for test-only helpers. Used by the stdlib test runner:
 // each test function declares `t Test` as its first parameter and the
 // runner injects a value that carries the assertion facility. Tests

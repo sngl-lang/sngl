@@ -1,10 +1,12 @@
 import . "sngl://std"
 
-func sumPair(p struct { a int; b int; }) => p.a + p.b
+func sumPair(p struct {
+    a int
+    b int
+}) => p.a + p.b
 
 component main {
     var total = sumPair({a=3, b=4})
 
     text(value=string(total))
 }
-

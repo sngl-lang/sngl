@@ -261,7 +261,7 @@ component sngl.radio[android.platform] {
         Row(modifier={...style}) {
             for opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}
                 }
             }
@@ -270,7 +270,7 @@ component sngl.radio[android.platform] {
         Column(modifier={...style}) {
             for opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}
                 }
             }
@@ -302,11 +302,14 @@ component sngl.textarea[android.platform] {
         value=value,
         minLines=3,
         modifier={...style},
-        // @input carries the InputEvent Compose's text is built into;
-        // @change carries a ChangeEvent, a different declaration, so it
-        // takes the value rather than the other event.
-        onValueChange=func(e) { input(e); change({value = e.value}) },
+        onValueChange=func(e) {
+            input(e)
+            change({value=e.value})
+        },
     ) {}
+    // @input carries the InputEvent Compose's text is built into;
+    // @change carries a ChangeEvent, a different declaration, so it
+    // takes the value rather than the other event.
 }
 
 // Not converted. Same composable-lambda `label` as input.

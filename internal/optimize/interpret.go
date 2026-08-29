@@ -27,7 +27,7 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	}
 	switch v := val.(type) {
 	case nil:
-		return &ir.Literal{Type: ir.TypNull, Raw: "null"}
+		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	case bool, int, uint64, float64, string:
 		return irLiteral(v, typ)
 	case *interp.Struct:
@@ -54,7 +54,7 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 				valType = typ.Elems[1]
 			}
 			entries = append(entries, ir.MapEntry{
-				Key:   &ir.Literal{Type: ir.TypString, Raw: k},
+				Key:   &ir.Literal{Type: ir.TypString, Value: k},
 				Value: irFromValue(v[k], valType),
 			})
 		}

@@ -85,7 +85,7 @@ func TestLowerAsyncReactive_NamedComputedTransformation(t *testing.T) {
 		lit, ok := stateVar.Init.(*ir.Literal)
 		if !ok {
 			t.Errorf("stateVar.Init type = %T; want *ir.Literal", stateVar.Init)
-		} else if lit.Raw != "" {
+		} else if lit.Value != "" {
 			// ZeroExpr for string returns Raw:"" but the Raw IS "", so no error.
 			// Just confirm it's a Literal.
 			_ = lit
@@ -166,7 +166,7 @@ func TestLowerAsyncReactive_NonAsyncComputedIsSkipped(t *testing.T) {
 		Name:   "formatDate",
 		Return: ir.TypString,
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "2026-01-01"}},
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Value: "2026-01-01"}},
 		},
 		AST: &ast.FuncDef{Body: &ast.LiteralExpr{}},
 	}
@@ -245,7 +245,7 @@ func TestIsReactiveAsyncComputed(t *testing.T) {
 			fn: &ir.Func{
 				Name:  "foo",
 				AST:   &ast.FuncDef{Body: &ast.LiteralExpr{}},
-				Block: []ir.Stmt{&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: ""}}},
+				Block: []ir.Stmt{&ir.Return{Value: &ir.Literal{Type: ir.TypString, Value: ""}}},
 			},
 			want: false,
 		},
@@ -278,7 +278,7 @@ func makeAsyncComputedWithStatePkg() (*ir.Package, *ir.Var, *ir.Func) {
 	userIdVar := &ir.Var{
 		Name: "userId",
 		Type: ir.TypString,
-		Init: &ir.Literal{Type: ir.TypString, Raw: "alice"},
+		Init: &ir.Literal{Type: ir.TypString, Value: "alice"},
 	}
 	fetchUser := &ir.Func{
 		Name:    "fetchUser",
@@ -420,7 +420,7 @@ func TestLowerAsyncReactive_InlineHoist(t *testing.T) {
 	textExpr := &ir.Binary{
 		Type:  ir.TypString,
 		Op:    ast.BinAdd,
-		Left:  &ir.Literal{Type: ir.TypString, Raw: `"Hello, "`},
+		Left:  &ir.Literal{Type: ir.TypString, Value: `"Hello, "`},
 		Right: asyncCall,
 	}
 	// A NodeInst (e.g. div) with a text prop containing the async expression.

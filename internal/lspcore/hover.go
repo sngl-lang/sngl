@@ -157,11 +157,25 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 	if doc == nil {
 		return ""
 	}
-	// Collect all comments from doc.Stmts.
+	// Collect all comments: the document's own, and those a struct or enum
+	// body holds, which is where a comment on a field lives.
 	var comments []*ast.Comment
 	for _, s := range doc.Stmts {
-		if c, ok := s.(*ast.Comment); ok {
-			comments = append(comments, c)
+		switch x := s.(type) {
+		case *ast.Comment:
+			comments = append(comments, x)
+		case *ast.StructDef:
+			for _, item := range x.Body {
+				if c, ok := item.(*ast.Comment); ok {
+					comments = append(comments, c)
+				}
+			}
+		case *ast.EnumDef:
+			for _, item := range x.Body {
+				if c, ok := item.(*ast.Comment); ok {
+					comments = append(comments, c)
+				}
+			}
 		}
 	}
 	if len(comments) == 0 {

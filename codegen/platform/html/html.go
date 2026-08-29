@@ -3039,18 +3039,18 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 					return s
 				}
 			case ir.TypeBool:
-				return lit.Raw
+				return lit.Value
 			case ir.TypeNull:
 				return "null"
 			case ir.TypeUnit:
-				return fmt.Sprintf("%q", lit.Raw)
+				return fmt.Sprintf("%q", lit.Value)
 			case ir.TypeStruct:
 				if ir.StringReprStruct(lit.Type) {
-					return fmt.Sprintf("%q", lit.Raw)
+					return fmt.Sprintf("%q", lit.Value)
 				}
 			}
 		}
-		return lit.Raw
+		return lit.Value
 	}
 	return g.exprToJS(expr)
 }

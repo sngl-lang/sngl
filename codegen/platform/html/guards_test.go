@@ -39,7 +39,7 @@ func backendHandlerPkg() *ir.Package {
 	btn := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{handler}}
 	win := &ir.Window{
 		Name: "app",
-		Href: &ir.Literal{Raw: `"/"`, Type: ir.TypString},
+		Href: &ir.Literal{Value: `"/"`, Type: ir.TypString},
 		Body: []ir.Stmt{btn},
 	}
 	return &ir.Package{
@@ -85,7 +85,7 @@ func directivePkg(binding ir.Expr) *ir.Package {
 // TestBackendConstExprErrors pins Task 6.2: html.backend wrapping a constant
 // (non-func) expression is a clear not-yet-implemented error.
 func TestBackendConstExprErrors(t *testing.T) {
-	binding := intrinsicCall("html.backend", &ir.Literal{Raw: "42", Type: ir.TypInt})
+	binding := intrinsicCall("html.backend", &ir.Literal{Value: "42", Type: ir.TypInt})
 	err := checkPlacementDirectives(directivePkg(binding))
 	if err == nil {
 		t.Fatal("expected error for html.backend(const), got nil")

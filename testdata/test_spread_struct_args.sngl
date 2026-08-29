@@ -1,8 +1,18 @@
 import . "sngl://std"
 
-struct Config { name string; greeting string }
-struct Point { x int; y int; z int }
-struct ItemProps { label string; count int }
+struct Config {
+    name string
+    greeting string
+}
+struct Point {
+    x int
+    y int
+    z int
+}
+struct ItemProps {
+    label string
+    count int
+}
 
 func greet(name string, greeting string) string { return greeting + ", " + name }
 func addInts(x int, y int) int { return x + y }

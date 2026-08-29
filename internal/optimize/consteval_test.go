@@ -348,21 +348,21 @@ func TestEvalExpr_Literal(t *testing.T) {
 		lit  *ir.Literal
 		want any
 	}{
-		{&ir.Literal{Type: ir.TypInt, Raw: "42"}, 42},
-		{&ir.Literal{Type: ir.TypFloat, Raw: "3.14"}, 3.14},
-		{&ir.Literal{Type: ir.TypString, Raw: "hello"}, "hello"},
-		{&ir.Literal{Type: ir.TypBool, Raw: "true"}, true},
-		{&ir.Literal{Type: ir.TypBool, Raw: "false"}, false},
-		{&ir.Literal{Type: ir.TypNull, Raw: "null"}, nil},
+		{&ir.Literal{Type: ir.TypInt, Value: "42"}, 42},
+		{&ir.Literal{Type: ir.TypFloat, Value: "3.14"}, 3.14},
+		{&ir.Literal{Type: ir.TypString, Value: "hello"}, "hello"},
+		{&ir.Literal{Type: ir.TypBool, Value: "true"}, true},
+		{&ir.Literal{Type: ir.TypBool, Value: "false"}, false},
+		{&ir.Literal{Type: ir.TypNull, Value: "null"}, nil},
 	}
 	for _, tc := range tests {
 		got, ok := evalExpr(tc.lit, ctx)
 		if !ok {
-			t.Errorf("evalExpr(%s) returned !ok", tc.lit.Raw)
+			t.Errorf("evalExpr(%s) returned !ok", tc.lit.Value)
 			continue
 		}
 		if got != tc.want {
-			t.Errorf("evalExpr(%s) = %v, want %v", tc.lit.Raw, got, tc.want)
+			t.Errorf("evalExpr(%s) = %v, want %v", tc.lit.Value, got, tc.want)
 		}
 	}
 }
@@ -396,7 +396,7 @@ func TestEvalExpr_Language(t *testing.T) {
 }
 
 func TestEvalExpr_ConstVar(t *testing.T) {
-	v := &ir.Var{Name: "x", IsConst: true, Init: &ir.Literal{Type: ir.TypInt, Raw: "42"}}
+	v := &ir.Var{Name: "x", IsConst: true, Init: &ir.Literal{Type: ir.TypInt, Value: "42"}}
 	ctx := &evalCtx{values: map[ir.Symbol]any{}}
 	got, ok := evalExpr(&ir.Ident{Name: "x", Type: ir.TypInt, Sym: v}, ctx)
 	if !ok || got != 42 {
@@ -405,7 +405,7 @@ func TestEvalExpr_ConstVar(t *testing.T) {
 }
 
 func TestEvalExpr_NonConstVar(t *testing.T) {
-	v := &ir.Var{Name: "x", IsConst: false, Init: &ir.Literal{Type: ir.TypInt, Raw: "42"}}
+	v := &ir.Var{Name: "x", IsConst: false, Init: &ir.Literal{Type: ir.TypInt, Value: "42"}}
 	ctx := &evalCtx{values: map[ir.Symbol]any{}}
 	_, ok := evalExpr(&ir.Ident{Name: "x", Type: ir.TypInt, Sym: v}, ctx)
 	if ok {
@@ -418,8 +418,8 @@ func TestEvalExpr_BinaryAdd(t *testing.T) {
 	expr := &ir.Binary{
 		Op:    ast.BinAdd,
 		Type:  ir.TypInt,
-		Left:  &ir.Literal{Type: ir.TypInt, Raw: "3"},
-		Right: &ir.Literal{Type: ir.TypInt, Raw: "4"},
+		Left:  &ir.Literal{Type: ir.TypInt, Value: "3"},
+		Right: &ir.Literal{Type: ir.TypInt, Value: "4"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != 7 {
@@ -431,9 +431,9 @@ func TestEvalExpr_TernaryTrue(t *testing.T) {
 	ctx := &evalCtx{values: map[ir.Symbol]any{}}
 	expr := &ir.Ternary{
 		Type: ir.TypString,
-		Cond: &ir.Literal{Type: ir.TypBool, Raw: "true"},
-		Then: &ir.Literal{Type: ir.TypString, Raw: "a"},
-		Else: &ir.Literal{Type: ir.TypString, Raw: "b"},
+		Cond: &ir.Literal{Type: ir.TypBool, Value: "true"},
+		Then: &ir.Literal{Type: ir.TypString, Value: "a"},
+		Else: &ir.Literal{Type: ir.TypString, Value: "b"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != "a" {
@@ -445,9 +445,9 @@ func TestEvalExpr_TernaryFalse(t *testing.T) {
 	ctx := &evalCtx{values: map[ir.Symbol]any{}}
 	expr := &ir.Ternary{
 		Type: ir.TypString,
-		Cond: &ir.Literal{Type: ir.TypBool, Raw: "false"},
-		Then: &ir.Literal{Type: ir.TypString, Raw: "a"},
-		Else: &ir.Literal{Type: ir.TypString, Raw: "b"},
+		Cond: &ir.Literal{Type: ir.TypBool, Value: "false"},
+		Then: &ir.Literal{Type: ir.TypString, Value: "a"},
+		Else: &ir.Literal{Type: ir.TypString, Value: "b"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != "b" {
@@ -460,7 +460,7 @@ func TestEvalExpr_UnaryNeg(t *testing.T) {
 	expr := &ir.Unary{
 		Op:      ast.UnaryNeg,
 		Type:    ir.TypInt,
-		Operand: &ir.Literal{Type: ir.TypInt, Raw: "42"},
+		Operand: &ir.Literal{Type: ir.TypInt, Value: "42"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != -42 {
@@ -473,7 +473,7 @@ func TestEvalExpr_UnaryNot(t *testing.T) {
 	expr := &ir.Unary{
 		Op:      ast.UnaryNot,
 		Type:    ir.TypBool,
-		Operand: &ir.Literal{Type: ir.TypBool, Raw: "true"},
+		Operand: &ir.Literal{Type: ir.TypBool, Value: "true"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != false {
@@ -486,8 +486,8 @@ func TestEvalExpr_ListLit(t *testing.T) {
 	expr := &ir.ListLit{
 		Type: ir.ListOf(ir.TypInt),
 		Elems: []ir.Expr{
-			&ir.Literal{Type: ir.TypInt, Raw: "1"},
-			&ir.Literal{Type: ir.TypInt, Raw: "2"},
+			&ir.Literal{Type: ir.TypInt, Value: "1"},
+			&ir.Literal{Type: ir.TypInt, Value: "2"},
 		},
 	}
 	got, ok := evalExpr(expr, ctx)
@@ -504,7 +504,7 @@ func TestEvalExpr_Conversion(t *testing.T) {
 	ctx := &evalCtx{values: map[ir.Symbol]any{}}
 	expr := &ir.Conversion{
 		Type:    ir.TypInt,
-		Operand: &ir.Literal{Type: ir.TypFloat, Raw: "3.14"},
+		Operand: &ir.Literal{Type: ir.TypFloat, Value: "3.14"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != 3 {
@@ -518,7 +518,7 @@ func TestEvalExpr_PlatformEq(t *testing.T) {
 		Op:    ast.BinEq,
 		Type:  ir.TypBool,
 		Left:  buildTargetConst("PLATFORM", ir.BuiltinTargetPlatform),
-		Right: &ir.Literal{Type: ir.TypString, Raw: "html"},
+		Right: &ir.Literal{Type: ir.TypString, Value: "html"},
 	}
 	got, ok := evalExpr(expr, ctx)
 	if !ok || got != true {
@@ -545,8 +545,8 @@ func TestIrLiteral(t *testing.T) {
 			t.Errorf("irLiteral(%v) returned nil", tc.val)
 			continue
 		}
-		if lit.Raw != tc.raw {
-			t.Errorf("irLiteral(%v).Raw = %q, want %q", tc.val, lit.Raw, tc.raw)
+		if lit.Value != tc.raw {
+			t.Errorf("irLiteral(%v).Raw = %q, want %q", tc.val, lit.Value, tc.raw)
 		}
 		if lit.Type.Kind != tc.kind {
 			t.Errorf("irLiteral(%v).Type.Kind = %v, want %v", tc.val, lit.Type.Kind, tc.kind)

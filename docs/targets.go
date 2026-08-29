@@ -218,20 +218,25 @@ func optionsForPackage(uri string) []OptionDoc {
 
 func extractOptionsStruct(doc *ast.Document, target *ast.StructDef) []OptionDoc {
 
-	// Collect comments by line. The parser emits comments inside a struct body
-	// as sibling Comment statements in the document (it doesn't attach them to
-	// fields), so we scan every Comment in the doc and look up by line.
+	// Collect comments by line and look a field's up by position. A comment
+	// written inside the struct is one of its body items; one written above
+	// the declaration is a statement of the document.
 	commentByLine := map[int]string{}
+	record := func(c *ast.Comment) {
+		if c.Block {
+			return
+		}
+		text := strings.TrimPrefix(c.Text, "//")
+		commentByLine[c.Pos.Line] = strings.TrimPrefix(text, " ")
+	}
 	for _, s := range doc.Stmts {
-		if c, ok := s.(*ast.Comment); ok && !c.Block {
-			text := c.Text
-			if len(text) >= 2 && text[:2] == "//" {
-				text = text[2:]
-			}
-			if len(text) > 0 && text[0] == ' ' {
-				text = text[1:]
-			}
-			commentByLine[c.Pos.Line] = text
+		if c, ok := s.(*ast.Comment); ok {
+			record(c)
+		}
+	}
+	for _, item := range target.Body {
+		if c, ok := item.(*ast.Comment); ok {
+			record(c)
 		}
 	}
 

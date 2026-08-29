@@ -19,7 +19,7 @@ func translateIRLiteral(n *ir.Literal) string {
 	}
 	// Unit literal (e.g. 500ms): emit as quoted string carrying the suffix.
 	if n.Suffix != "" {
-		return strconv.Quote(n.Raw + n.Suffix)
+		return strconv.Quote(n.Value + n.Suffix)
 	}
 	if s, ok := NumericLiteral(n); ok {
 		return s
@@ -27,20 +27,20 @@ func translateIRLiteral(n *ir.Literal) string {
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeBool:
-			return n.Raw
+			return n.Value
 		case ir.TypeNull:
 			return "null"
 		case ir.TypeString:
-			// ir.Literal.Raw mirrors ast.LiteralExpr.Raw — the unquoted text.
-			return strconv.Quote(n.Raw)
+			// Value is the decoded string; JS quoting is applied here.
+			return strconv.Quote(n.Value)
 		case ir.TypeStruct:
 			// color/date/time/datetime: string-representable stdlib structs.
 			if ir.StringReprStruct(n.Type) {
-				return strconv.Quote(n.Raw)
+				return strconv.Quote(n.Value)
 			}
 		}
 	}
-	return n.Raw
+	return n.Value
 }
 
 // factoryName returns the JS factory function name for a component.

@@ -42,7 +42,7 @@ func TestInlinedNativeCallReachesTheBatch(t *testing.T) {
 	site := &ir.NodeInst{
 		Name:      "wrapped",
 		Component: comp,
-		Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Raw: "inlined"}}},
+		Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Value: "inlined"}}},
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{comp},
@@ -92,7 +92,7 @@ func TestExpandedNativeCallReachesTheBatch(t *testing.T) {
 		ElemType: ir.TypString,
 		Iter: &ir.ListLit{
 			Type:  &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}},
-			Elems: []ir.Expr{&ir.Literal{Type: ir.TypString, Raw: "a"}, &ir.Literal{Type: ir.TypString, Raw: "b"}},
+			Elems: []ir.Expr{&ir.Literal{Type: ir.TypString, Value: "a"}, &ir.Literal{Type: ir.TypString, Value: "b"}},
 		},
 		KeySym: loop,
 		Body: []ir.Stmt{&ir.NodeInst{

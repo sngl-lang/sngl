@@ -74,8 +74,8 @@ func TestEnumMemberKeepsSnglNameForOtherSchemes(t *testing.T) {
 	ed := &ir.EnumDef{
 		Name: "Color",
 		Members: []*ir.EnumMember{
-			{Name: "Red", Value: &ir.Literal{Raw: "0", Type: &ir.Type{Kind: ir.TypeInt}}},
-			{Name: "Green", Value: &ir.Literal{Raw: "1", Type: &ir.Type{Kind: ir.TypeInt}}},
+			{Name: "Red", Value: &ir.Literal{Value: "0", Type: &ir.Type{Kind: ir.TypeInt}}},
+			{Name: "Green", Value: &ir.Literal{Value: "1", Type: &ir.Type{Kind: ir.TypeInt}}},
 		},
 	}
 	if src, ok := nativeEnumMemberJS(&ir.Type{Kind: ir.TypeEnum, Decl: ed}, "Green"); ok {

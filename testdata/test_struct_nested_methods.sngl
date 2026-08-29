@@ -2,8 +2,7 @@ import . "sngl://std"
 
 struct Point {
     x, y int
-
-    func magnitude2() => this.x*this.x + this.y*this.y
+    func magnitude2() => this.x * this.x + this.y * this.y
     func translate(dx int, dy int) {
         this.x += dx
         this.y += dy
@@ -13,7 +12,7 @@ struct Point {
 }
 
 component main {
-    var p = Point{x = 3, y = 4}
+    var p = Point{x=3, y=4}
     text(value=p.describe())
 }
 

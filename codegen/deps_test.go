@@ -68,7 +68,7 @@ func TestExtractor_SubstituteOneCall(t *testing.T) {
 			Operand: &ir.Ident{Name: "c", Sym: cParam},
 			Field:   "x",
 		},
-		Right: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Raw: "2"},
+		Right: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "2"},
 	}
 	double := &ir.Func{
 		Name:     "double",
@@ -122,7 +122,7 @@ func TestExtractor_WriteThroughCompParam(t *testing.T) {
 			Operand: &ir.Ident{Name: "c", Sym: cParam},
 			Field:   "x",
 		},
-		Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Raw: "0"},
+		Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "0"},
 	}
 	reset := &ir.Func{
 		Name:     "reset",
@@ -161,7 +161,7 @@ func TestExtractor_WriteThroughValueStructParam(t *testing.T) {
 	arg := &ir.Param{Name: "arg", Type: pointType}
 	body := &ir.Assign{
 		Target: &ir.Select{Operand: &ir.Ident{Name: "arg", Sym: arg}, Field: "x"},
-		Value:  &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Raw: "0"},
+		Value:  &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "0"},
 	}
 	mutate := &ir.Func{
 		Name:   "mutate",

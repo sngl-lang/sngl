@@ -144,7 +144,7 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 			if comp, ok := n.Type.Decl.(*ir.Component); ok && comp != nil {
 				if call, ok := n.Init.(*ir.Call); ok && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
-						t.tagComponent[lit.Raw] = comp
+						t.tagComponent[lit.Value] = comp
 					}
 				}
 			}
@@ -355,12 +355,12 @@ func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error)
 	case "utf8", "filename", "gchararray":
 		return &ir.Literal{Type: ir.TypNull}, nil
 	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
-		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Raw: "0"}), nil
+		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
 	case "gdouble", "gfloat":
-		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Raw: "0"}), nil
+		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Value: "0"}), nil
 	}
 	if reg != nil && reg.Enums[p.GIRType] != nil {
-		return &ir.Literal{Type: ir.TypInt, Raw: "0"}, nil
+		return &ir.Literal{Type: ir.TypInt, Value: "0"}, nil
 	}
 	// gpointer is void*, which cgo renders as unsafe.Pointer — nil, not 0,
 	// even though the c:type carries no star.
@@ -674,7 +674,7 @@ func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propV
 	}
 	t.shared.needGObjectSet()
 	obj := cgoCast("", t.qualifyNodeExpr(node))
-	name := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: p.Name})
+	name := nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: p.Name})
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, obj, name, valArg)}}
 }
 
@@ -725,9 +725,9 @@ func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value i
 // already typed and needs no cast.
 func (t *gtk4Translator) enumValueArg(p gir.Prop, value ir.Expr) (arg ir.Expr, isMember bool, err error) {
 	if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-		cst := girEnumMember(t.registry, p.GIRType, lit.Raw)
+		cst := girEnumMember(t.registry, p.GIRType, lit.Value)
 		if cst == "" {
-			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Raw, p.GIRType)
+			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Value, p.GIRType)
 		}
 		return &ir.Ident{Name: cst, Type: ir.TypDyn}, true, nil
 	}
@@ -835,7 +835,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
 	if t.wrapped {
-		sigLit := &ir.Literal{Type: ir.TypString, Raw: signal}
+		sigLit := &ir.Literal{Type: ir.TypString, Value: signal}
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", t.qualifyNodeExpr(node), sigLit, handler)}}
 	}
 	// snglCallbacks = append(snglCallbacks, handler)
@@ -856,7 +856,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// sngl_connect's C signature is `void *widget`, so cgo expects
 	// unsafe.Pointer.
 	widget := cgoCast("", t.qualifyNodeExpr(node))
-	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Raw: signal})
+	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: signal})
 	lenCall := &ir.Call{
 		Type: ir.TypInt,
 		Func: &ir.Func{Name: "len"},
@@ -865,7 +865,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	idxExpr := &ir.Binary{
 		Op:    ast.BinSub,
 		Left:  lenCall,
-		Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
+		Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
 	}
 	idxArg := nativeCall("int", idxExpr)
 	connectStmt := &ir.CallStmt{

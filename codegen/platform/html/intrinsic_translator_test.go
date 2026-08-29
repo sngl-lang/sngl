@@ -122,7 +122,7 @@ func TestHTMLTranslator_OnPropAssign_TextValue(t *testing.T) {
 	// post-inline the prop landing here is "textContent" directly.
 	_ = tr.OnCreateNode(context.Background(), "__n0", "span")
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
+	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
 	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "textContent", val))
 	if !strings.Contains(got, `__n0.textContent = "hi"`) {
 		t.Errorf("expected __n0.textContent = \"hi\"; got: %s", got)
@@ -134,7 +134,7 @@ func TestHTMLTranslator_OnPropAssign_InputValue(t *testing.T) {
 	tr := newTranslatorForTest(t, jc)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "input")
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypString, Raw: "x"}
+	val := &ir.Literal{Type: ir.TypString, Value: "x"}
 	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "value", val))
 	if !strings.Contains(got, `__n0.value = "x"`) {
 		t.Errorf("expected __n0.value = \"x\"; got: %s", got)
@@ -146,7 +146,7 @@ func TestHTMLTranslator_OnPropAssign_CheckboxChecked(t *testing.T) {
 	tr := newTranslatorForTest(t, jc)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "checkbox")
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypBool, Raw: "true"}
+	val := &ir.Literal{Type: ir.TypBool, Value: "true"}
 	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "checked", val))
 	if !strings.Contains(got, "__n0.checked = true") {
 		t.Errorf("expected __n0.checked = true; got: %s", got)
@@ -158,7 +158,7 @@ func TestHTMLTranslator_OnPropAssign_FallbackSetAttribute(t *testing.T) {
 	tr := newTranslatorForTest(t, jc)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "text")
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypString, Raw: "abc"}
+	val := &ir.Literal{Type: ir.TypString, Value: "abc"}
 	got := renderStmts(jc, tr.OnPropAssign(context.Background(), node, "data-x", val))
 	if !strings.Contains(got, `__n0.setAttribute("data-x", "abc")`) {
 		t.Errorf("expected setAttribute fallback; got: %s", got)
@@ -249,7 +249,7 @@ func TestHTMLTranslator_OnCond_Passthrough(t *testing.T) {
 func TestHTMLTranslator_OnDefault_Passthrough(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newTranslatorForTest(t, jc)
-	stmt := &ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "x"}}
+	stmt := &ir.Return{Value: &ir.Literal{Type: ir.TypString, Value: "x"}}
 	got := tr.OnDefault(context.Background(), stmt)
 	if len(got) != 1 || got[0] != stmt {
 		t.Errorf("expected single-element passthrough; got: %v", got)

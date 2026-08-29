@@ -20,9 +20,9 @@ component main {
     // Multi-line with style
     vbox(
         style={
-            padding=16,
-            gap=8,
-            background=#f0f0f0,
+            padding = 16,
+            gap = 8,
+            background = #f0f0f0,
         },
     ) {
         text(value="inside")

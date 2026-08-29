@@ -658,7 +658,7 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			case *ir.LocalVar:
 				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
-						tag := lit.Raw
+						tag := lit.Value
 						// After passInlinePure every tag here is a GIR-resolved
 						// native widget name.
 						if strings.HasPrefix(tag, "Gtk") {
@@ -988,7 +988,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		Func:     nativeFunc("gtk_box_new"),
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: "6"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
 		},
 	}
 	rootInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootCtorCall}
@@ -1023,8 +1023,8 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		Func:     nativeFunc("gtk_window_set_default_size"),
 		Args: []ir.CallArg{
 			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWindow"), Operand: winRef}},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: "480"}},
-			{Value: &ir.Literal{Type: ir.TypInt, Raw: "640"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: "480"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: "640"}},
 		},
 	}
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
@@ -1109,7 +1109,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 			Func:     nativeFunc("gtk_box_new"),
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-				{Value: &ir.Literal{Type: ir.TypInt, Raw: "6"}},
+				{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
 			},
 		}
 		boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxCtorCall}

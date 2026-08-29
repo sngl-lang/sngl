@@ -24,7 +24,7 @@ func TestGoIRContext_ContextVar_NativeCall(t *testing.T) {
 			Foreign:       ir.Foreign{Path: "svc", Name: "svc.Fetch"},
 			HasContextArg: true,
 		},
-		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "id"}}},
+		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "id"}}},
 	}
 	got := gc.EvalExpr(call)
 	want := `svc.Fetch(r.Context(), "id")`
@@ -133,7 +133,7 @@ func TestGoIRContext_MethodFields_ListRefPropRead(t *testing.T) {
 	sel := &ir.Select{
 		Operand: &ir.Index{
 			Operand: &ir.Select{Operand: &ir.Ident{Name: "c"}, Field: "rows"},
-			Idx:     &ir.Literal{Type: ir.TypInt, Raw: "0"},
+			Idx:     &ir.Literal{Type: ir.TypInt, Value: "0"},
 		},
 		Field: "text",
 	}
@@ -205,7 +205,7 @@ func TestGoBinary_MultiBaseUnit_ScalarOperand(t *testing.T) {
 	ut := multiBaseUnitType()
 	mul := &ir.Binary{
 		Op:    ast.BinMul,
-		Left:  &ir.Literal{Type: ir.TypInt, Raw: "2"},
+		Left:  &ir.Literal{Type: ir.TypInt, Value: "2"},
 		Right: &ir.Ident{Name: "b", Type: ut},
 		Type:  ut,
 	}
@@ -219,11 +219,11 @@ func TestGoBinary_MultiBaseUnit_ScalarOperand(t *testing.T) {
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{
-		Cond: &ir.Literal{Type: ir.TypBool, Raw: "true"},
+		Cond: &ir.Literal{Type: ir.TypBool, Value: "true"},
 		Body: []ir.Stmt{
 			&ir.Assign{
 				Target: &ir.Ident{Name: "x"},
-				Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
+				Value:  &ir.Literal{Type: ir.TypInt, Value: "1"},
 			},
 		},
 	}
@@ -243,9 +243,9 @@ func TestEvalStmt_If(t *testing.T) {
 func TestEvalStmt_IfElse(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{
-		Cond: &ir.Literal{Type: ir.TypBool, Raw: "true"},
-		Body: []ir.Stmt{&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Type: ir.TypInt, Raw: "1"}}},
-		Else: []ir.Stmt{&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Type: ir.TypInt, Raw: "2"}}},
+		Cond: &ir.Literal{Type: ir.TypBool, Value: "true"},
+		Body: []ir.Stmt{&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Type: ir.TypInt, Value: "1"}}},
+		Else: []ir.Stmt{&ir.Assign{Target: &ir.Ident{Name: "x"}, Value: &ir.Literal{Type: ir.TypInt, Value: "2"}}},
 	}
 	joined := strings.Join(gc.EvalStmt(stmt), "\n")
 	if !strings.Contains(joined, "} else {") {
@@ -319,7 +319,7 @@ func TestEmitFuncDef_PlainFunc(t *testing.T) {
 		Params: []*ir.Param{{Name: "name", Type: ir.TypString}},
 		Return: ir.TypString,
 		Block: []ir.Stmt{
-			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Raw: "hi"}},
+			&ir.Return{Value: &ir.Literal{Type: ir.TypString, Value: "hi"}},
 		},
 	}
 	got := strings.Join(gc.EmitFuncDef(fn), "\n")

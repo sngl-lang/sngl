@@ -148,7 +148,7 @@ func TestFyneTranslator_OnPropAssign_LabelText(t *testing.T) {
 	_ = tr.OnCreateNode(context.Background(), "__n0", "Label")
 
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypString, Raw: "hi"}
+	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
 	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "text", val))
 	want := `m.__n0.SetText("hi")`
 	if got != want {
@@ -161,7 +161,7 @@ func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 	tr := newFyneTranslator(gc, specsAt(map[string]*fyneSpec{"__n0": labelSpec(), "__n5": labelSpec()}), func(_, _ string) {}, nil)
 	_ = tr.OnCreateNode(context.Background(), "__n0", "Label")
 	node := synthNodeRef("__n0")
-	val := &ir.Literal{Type: ir.TypString, Raw: "x"}
+	val := &ir.Literal{Type: ir.TypString, Value: "x"}
 	got := tr.OnPropAssign(context.Background(), node, "wibble", val)
 	if len(got) != 0 {
 		t.Errorf("expected empty emission for unknown prop; got %v", got)
@@ -284,7 +284,7 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 				Init: &ir.Call{
 					Receiver: &ir.Ident{Name: "lower"},
 					Func:     createNode,
-					Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Raw: "Label"}}},
+					Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "Label"}}},
 				},
 			},
 			&ir.CallStmt{Call: &ir.Call{

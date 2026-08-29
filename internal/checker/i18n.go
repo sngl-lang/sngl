@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -38,7 +39,15 @@ func (b *templateBuilder) writeParts(parts []ast.Expr) {
 	for _, p := range parts {
 		switch v := p.(type) {
 		case *ast.LiteralExpr:
-			b.sb = append(b.sb, v.Raw...)
+			raw := v.Raw
+			if len(parts) == 1 {
+				// A whole triple-quoted string carries the indentation it was
+				// written under; a segment of an interpolated one carries only
+				// part of it, and the whole is what dedent is defined over.
+				style, _ := ast.StringStyleOf(v.Kind)
+				raw = ast.Dedent(raw, style)
+			}
+			b.sb = append(b.sb, icuText(raw)...)
 		case *ast.I18nPlaceholderExpr:
 			b.writePlaceholder(v)
 		}
@@ -259,16 +268,16 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 	if trFn == nil {
 		// Already errored; return a string-typed placeholder so type-checking
 		// can continue without cascading failures.
-		return &ir.Literal{Type: TypString, Raw: ""}
+		return &ir.Literal{Type: TypString, Value: ""}
 	}
 
 	// Build the args map<string, dyn>: placeholder name → checked value expression.
-	// Raw stores the unquoted value; language codegen (e.g. evalLiteral) applies
+	// Value is the decoded value; language codegen (e.g. evalLiteral) applies
 	// target-language quoting.
 	var entries []ir.MapEntry
 	for _, a := range b.args {
 		entries = append(entries, ir.MapEntry{
-			Key:   &ir.Literal{Type: TypString, Raw: a.name},
+			Key:   &ir.Literal{Type: TypString, Value: a.name},
 			Value: c.checkExpr(a.expr),
 		})
 	}
@@ -285,8 +294,8 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// synthesized call has to carry what a written one would.
 		Receiver: i18nReceiver(c, trNS),
 		Args: []ir.CallArg{
-			{Value: &ir.Literal{Type: TypString, Raw: template}},
-			{Value: &ir.Literal{Type: TypString, Raw: template}},
+			{Value: &ir.Literal{Type: TypString, Value: template}},
+			{Value: &ir.Literal{Type: TypString, Value: template}},
 			{Value: argsMap},
 		},
 	}
@@ -350,6 +359,41 @@ func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {
 		`add import %q, or import . %q to write tr unqualified`,
 		i18nImportPath, i18nImportPath, i18nImportPath)
 	return nil, ""
+}
+
+// icuText turns a literal part's source spelling into ICU MessageFormat text.
+// The two syntaxes overlap: SNGL's escapes are decoded here, ICU's apostrophe
+// quoting is copied through for the runtime formatter to decode. A character
+// an escape stood for is re-quoted for ICU when it is a metachar there — `\{`
+// means a literal brace, and unquoted it would open a placeholder at runtime.
+func icuText(raw string) string {
+	if !strings.ContainsRune(raw, '\\') {
+		return raw
+	}
+	var b strings.Builder
+	b.Grow(len(raw))
+	for i := 0; i < len(raw); i++ {
+		if raw[i] != '\\' || i+1 >= len(raw) {
+			b.WriteByte(raw[i])
+			continue
+		}
+		n := 2
+		if raw[i+1] == 'x' && i+4 <= len(raw) {
+			n = 4
+		}
+		for _, r := range ast.UnescapeString(raw[i:i+n], ast.StyleDouble) {
+			switch r {
+			case '{', '}', '#', '|', '\'':
+				b.WriteByte('\'')
+				b.WriteRune(r)
+				b.WriteByte('\'')
+			default:
+				b.WriteRune(r)
+			}
+		}
+		i += n - 1
+	}
+	return b.String()
 }
 
 // hasStaticText reports whether any part contains literal non-whitespace text,

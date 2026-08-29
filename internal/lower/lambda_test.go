@@ -30,7 +30,7 @@ func TestAnalyzeCapturesMutableWrite(t *testing.T) {
 	body := []ir.Stmt{
 		&ir.Assign{
 			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-			Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
+			Value:  &ir.Literal{Type: ir.TypInt, Value: "1"},
 		},
 	}
 	caps := analyzeCaptures(body, nil)
@@ -134,7 +134,7 @@ func TestLifterMutableCaptureUsesRefType(t *testing.T) {
 	body := []ir.Stmt{
 		&ir.Assign{
 			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-			Value:  &ir.Literal{Type: ir.TypInt, Raw: "1"},
+			Value:  &ir.Literal{Type: ir.TypInt, Value: "1"},
 		},
 	}
 	l := &lifter{pkg: pkg}
@@ -183,7 +183,7 @@ func TestAnalyzeCapturesNestedLambda(t *testing.T) {
 			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
 			Value: &ir.Binary{
 				Left:  &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-				Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
+				Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
 				Type:  ir.TypInt,
 			},
 		},
@@ -227,7 +227,7 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 			Target: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
 			Value: &ir.Binary{
 				Left:  &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt},
-				Right: &ir.Literal{Type: ir.TypInt, Raw: "1"},
+				Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
 				Type:  ir.TypInt,
 			},
 		},

@@ -123,15 +123,20 @@ func TestParseParamAttrForms(t *testing.T) {
 }
 
 func TestFormatParamAttrs(t *testing.T) {
-	// A param list written across lines still formats on one line: nothing
-	// sets ParamList.IsMultiline from source, so the attr goes inline.
+	// A mark goes where it was written: inline ahead of its parameter, or on
+	// its own line above it. Whether the list is written across lines is a
+	// separate question, and the list keeps that too.
 	assertFormat(t,
 		`func f(#[some.mark("x")] a string, b int) { }`,
 		`func f(#[some.mark("x")] a string, b int) {}`)
 
 	assertFormat(t,
 		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}",
-		`component element(tag string, #[some.mark("^data-")] attributes map<string, string>) {}`)
+		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}")
+
+	assertFormat(t,
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}",
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}")
 
 	assertFormat(t,
 		`component c(#[m] #[n(1)] :a int = 2) {}`,
@@ -142,8 +147,8 @@ func TestFormatParamAttrs(t *testing.T) {
 		`func f() => func(#[m] a int) => a`)
 }
 
-// The multiline branch is unreachable from source today, so drive it from a
-// hand-built AST: an attr belongs on its own line above its param there.
+// A hand-built AST carries no positions, so the list's own form decides: in a
+// multiline list an attr belongs on its own line above its param.
 func TestFormatParamAttrsMultiline(t *testing.T) {
 	mark := ast.MacroAttr{Name: "mark", Args: []ast.Expr{
 		&ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: "^data-"},

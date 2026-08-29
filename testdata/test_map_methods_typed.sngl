@@ -3,7 +3,7 @@
 import . "sngl://std"
 
 component mapMethods {
-    var scores map<string, int> = {alice = 10, bob = 20, charlie = 30}
+    var scores map<string, int> = {alice=10, bob=20, charlie=30}
     text(value="{scores.length()}")
 }
 

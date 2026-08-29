@@ -31,7 +31,7 @@ component main {
     var n = 10
     var active = true
     var things = [1, 2, 3]
-    var cfg Config = {name = "hello", value = 5}
+    var cfg Config = {name="hello", value=5}
 
     Widget(title="test", count=n, active=active, items=things, config=cfg)
     text(value=string(n))

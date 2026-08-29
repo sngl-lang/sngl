@@ -6,11 +6,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// ir.Literal.Raw holds a string's *decoded content* — the lexer builds it from
-// a strings.Builder that never receives the delimiters, and every construction
-// site in the compiler stores an unquoted value (see the note beside the i18n
-// args map: "Raw stores the unquoted value; language codegen applies
-// target-language quoting").
+// ir.Literal.Value holds a string's *decoded content* — the checker decodes the
+// spelling the AST carries, and never the delimiters, which are not in the AST
+// either (see the note beside the i18n args map: "Value is the decoded value;
+// language codegen applies target-language quoting").
 //
 // IRLiteralString used to strip a leading and trailing quote from it anyway, so
 // a string whose own content began and ended with `"` lost them — and when what
@@ -31,7 +30,7 @@ func TestIRLiteralStringReturnsTheValueAsWritten(t *testing.T) {
 		{"leading quote only", `"open`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, ok := IRLiteralString(&ir.Literal{Type: ir.TypString, Raw: tc.raw})
+			got, ok := IRLiteralString(&ir.Literal{Type: ir.TypString, Value: tc.raw})
 			if !ok {
 				t.Fatalf("not recognised as a string literal")
 			}
@@ -48,8 +47,8 @@ func TestIRLiteralStringRejectsNonStrings(t *testing.T) {
 		e    ir.Expr
 	}{
 		{"nil", nil},
-		{"int literal", &ir.Literal{Type: ir.TypInt, Raw: "3"}},
-		{"untyped literal", &ir.Literal{Raw: "x"}},
+		{"int literal", &ir.Literal{Type: ir.TypInt, Value: "3"}},
+		{"untyped literal", &ir.Literal{Value: "x"}},
 		{"not a literal", &ir.Ident{Name: "x"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

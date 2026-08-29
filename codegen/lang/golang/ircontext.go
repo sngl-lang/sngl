@@ -412,30 +412,30 @@ func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal
 
 func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
-		return n.Raw
+		return n.Value
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Raw)
+		return fmt.Sprintf("%q", n.Value)
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return n.Raw
+		return n.Value
 	case ir.TypeNull:
 		return "nil"
 	case ir.TypeUnit:
 		if out, ok := LowerUnitLiteralGo(n); ok {
 			return out
 		}
-		return n.Raw
+		return n.Value
 	case ir.TypeStruct:
 		if out, ok := LowerTimeLiteralGo(n); ok {
 			return out
 		}
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		}
-		return n.Raw
+		return n.Value
 	default:
-		return n.Raw
+		return n.Value
 	}
 }
 
@@ -1207,30 +1207,30 @@ func IRLiteralToGo(e ir.Expr) string {
 		return IRLiteralToGo(n.Operand)
 	case *ir.Literal:
 		if n.Type == nil {
-			return n.Raw
+			return n.Value
 		}
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-			return n.Raw
+			return n.Value
 		case ir.TypeNull:
 			return "nil"
 		case ir.TypeUnit:
 			if out, ok := LowerUnitLiteralGo(n); ok {
 				return out
 			}
-			return n.Raw
+			return n.Value
 		case ir.TypeStruct:
 			if out, ok := LowerTimeLiteralGo(n); ok {
 				return out
 			}
 			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Raw)
+				return fmt.Sprintf("%q", n.Value)
 			}
-			return n.Raw
+			return n.Value
 		default:
-			return n.Raw
+			return n.Value
 		}
 	case *ir.ListLit:
 		parts := make([]string, len(n.Elems))

@@ -20,9 +20,9 @@ func untypedNumericConst(expr ir.Expr) (raw string, isFloat, ok bool) {
 		}
 		switch e.Type.Kind {
 		case ir.TypeInt:
-			return e.Raw, false, true
+			return e.Value, false, true
 		case ir.TypeFloat:
-			return e.Raw, true, true
+			return e.Value, true, true
 		}
 	case *ir.Unary:
 		if e.Op == ast.UnaryNeg {
@@ -167,5 +167,5 @@ func (c *checker) adaptNumericOperand(expr ir.Expr, target *ir.Type, pos ast.Pos
 			c.checkIntFits(pos, value, target)
 		}
 	}
-	return &ir.Literal{Type: target, Raw: raw}
+	return &ir.Literal{Type: target, Value: raw}
 }

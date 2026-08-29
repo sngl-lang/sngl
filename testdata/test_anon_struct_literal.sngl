@@ -23,4 +23,3 @@ func testAnonLiteralAssign(t Test, c main) {
 func testAnonLiteralInferred(t Test, c main) {
     t.assert(c.inline.x == 1)
 }
-

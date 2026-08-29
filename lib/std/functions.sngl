@@ -46,7 +46,6 @@ func File.pick() string { return "" }
 #[intrinsic("File.pickFolder", readonly)]
 func File.pickFolder() string { return "" }
 
-
 // --- error ---
 
 // Raises a runtime error. The error propagates to the nearest
@@ -57,4 +56,3 @@ func File.pickFolder() string { return "" }
 // "network", "validation", "internal").
 #[intrinsic("error.raise")]
 func error.raise(message string, kind string) {}
-

@@ -895,7 +895,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			case *ir.LocalVar:
 				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
-						if err := harvestSpec(specs, n, lit.Raw, stmts[i+1:]); err != nil && firstErr == nil {
+						if err := harvestSpec(specs, n, lit.Value, stmts[i+1:]); err != nil && firstErr == nil {
 							firstErr = err
 						}
 					}

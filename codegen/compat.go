@@ -1,45 +1,16 @@
 package codegen
 
 import (
-	"strconv"
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/ast"
 )
 
-// ExprLiteralString extracts a string value from a LiteralExpr.
+// ExprLiteralString extracts the value of a string literal expression.
 func ExprLiteralString(e ast.Expr) (string, bool) {
-	if e == nil {
-		return "", false
-	}
 	lit, ok := e.(*ast.LiteralExpr)
-	if !ok {
+	if !ok || lit == nil {
 		return "", false
 	}
-	switch lit.Kind {
-	case ast.LiteralStringQuoted:
-		if s, err := strconv.Unquote(lit.Raw); err == nil {
-			return s, true
-		}
-		raw := lit.Raw
-		if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
-			return raw[1 : len(raw)-1], true
-		}
-		return lit.Raw, true
-	case ast.LiteralStringBackticked:
-		raw := lit.Raw
-		if len(raw) >= 2 && raw[0] == '`' && raw[len(raw)-1] == '`' {
-			return raw[1 : len(raw)-1], true
-		}
-		return lit.Raw, true
-	case ast.LiteralStringTrippleQuoted:
-		raw := lit.Raw
-		if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) {
-			return raw[3 : len(raw)-3], true
-		}
-		return lit.Raw, true
-	}
-	return "", false
+	return lit.StringValue()
 }
 
 // CompParams extracts Param entries from a ComponentDecl's Props.

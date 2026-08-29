@@ -14,8 +14,8 @@ component main {
 import . "sngl://std"
 import i18n "sngl://i18n"
 component greet(name string = "") {
-    text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name" = name}))
+    text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name"=name}))
 }
 component main {
-    text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name" = "Alice"}))
+    text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name"="Alice"}))
 }

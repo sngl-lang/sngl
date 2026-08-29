@@ -3,5 +3,5 @@ import . "sngl://std"
 // An anonymous window must not get a "window_L<line>" name. The checker
 // should leave Name empty; the platform decides what to do.
 window(title="A", href="/a.html") {
-	text(value="a")
+    text(value="a")
 }

@@ -4,4 +4,4 @@ component main {
     text(value="x")
 }
 
-func add(x, y int) => x + y  // ERROR(check) "type annotation required for parameter"
+func add(x, y int) => x + y // ERROR(check) "type annotation required for parameter"

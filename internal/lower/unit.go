@@ -131,26 +131,26 @@ func scaleUnitLiteral(lit *ir.Literal) (*ir.Literal, bool) {
 		}
 	}
 
-	raw := strings.TrimSuffix(lit.Raw, lit.Suffix)
+	raw := strings.TrimSuffix(lit.Value, lit.Suffix)
 
 	if i, err := strconv.ParseInt(raw, 10, 64); err == nil {
 		scaled := float64(i) * factor
 		if scaled == float64(int64(scaled)) {
 			return &ir.Literal{
-				Type: ir.TypInt,
-				Raw:  strconv.FormatInt(int64(scaled), 10),
+				Type:  ir.TypInt,
+				Value: strconv.FormatInt(int64(scaled), 10),
 			}, true
 		}
 		return &ir.Literal{
-			Type: ir.TypFloat,
-			Raw:  strconv.FormatFloat(scaled, 'g', -1, 64),
+			Type:  ir.TypFloat,
+			Value: strconv.FormatFloat(scaled, 'g', -1, 64),
 		}, true
 	}
 	if f, err := strconv.ParseFloat(raw, 64); err == nil {
 		scaled := f * factor
 		return &ir.Literal{
-			Type: ir.TypFloat,
-			Raw:  strconv.FormatFloat(scaled, 'g', -1, 64),
+			Type:  ir.TypFloat,
+			Value: strconv.FormatFloat(scaled, 'g', -1, 64),
 		}, true
 	}
 	return nil, false

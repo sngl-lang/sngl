@@ -258,30 +258,30 @@ func (kc *KtIRContext) Scoped(name string) irwalk.Renderer { return kc.WithLocal
 
 func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
-		return n.Raw
+		return n.Value
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Raw)
+		return fmt.Sprintf("%q", n.Value)
 	case ir.TypeInt:
-		return n.Raw
+		return n.Value
 	case ir.TypeFloat:
-		s := n.Raw
+		s := n.Value
 		if !strings.Contains(s, ".") {
 			s += ".0"
 		}
 		return s
 	case ir.TypeBool:
-		return n.Raw
+		return n.Value
 	case ir.TypeNull:
 		return "null"
 	case ir.TypeStruct:
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		}
-		return n.Raw
+		return n.Value
 	default:
-		return n.Raw
+		return n.Value
 	}
 }
 
@@ -778,30 +778,30 @@ func IRLiteralToKt(e ir.Expr) string {
 	switch n := e.(type) {
 	case *ir.Literal:
 		if n.Type == nil {
-			return n.Raw
+			return n.Value
 		}
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Raw)
+			return fmt.Sprintf("%q", n.Value)
 		case ir.TypeInt:
-			return n.Raw
+			return n.Value
 		case ir.TypeFloat:
-			s := n.Raw
+			s := n.Value
 			if !strings.Contains(s, ".") {
 				s += ".0"
 			}
 			return s
 		case ir.TypeBool:
-			return n.Raw
+			return n.Value
 		case ir.TypeNull:
 			return "null"
 		case ir.TypeStruct:
 			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Raw)
+				return fmt.Sprintf("%q", n.Value)
 			}
-			return n.Raw
+			return n.Value
 		default:
-			return n.Raw
+			return n.Value
 		}
 	case *ir.ListLit:
 		if len(n.Elems) == 0 {

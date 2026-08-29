@@ -258,7 +258,6 @@ func color.darken(c color, pct float) color {
     return ret
 }
 
-
 // --- map ---
 
 // Number of entries currently in m.
@@ -282,4 +281,3 @@ func map<K, V>.contains(key K) bool { return false }
 // declared value type.
 #[intrinsic("map.get")]
 func map<K, V>.get(key K, default V) V { return default }
-
