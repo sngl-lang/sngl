@@ -1,6 +1,7 @@
 // leading top-level line comment
 
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 /* leading top-level block comment */
 

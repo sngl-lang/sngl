@@ -19,7 +19,7 @@ import ir "sngl:internal/ir"
 // type kind (`int`, `color`, `list`, …) marks a struct; a node kind (`window`,
 // `timer`, `slot`, `errorBoundary`) marks a component. The kind says which
 // construct, never which tier: the built-in visual nodes are declared in
-// `sngl:std`.
+// `sngl:ui`.
 //
 // A kind classifies one declaration and does not alias two — type identity is
 // per-declaration — so a duplicated kind is an error rather than a silent

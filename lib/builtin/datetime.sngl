@@ -1,0 +1,22 @@
+// Calendar and clock values.
+
+import . "sngl:internal/marks"
+
+// Calendar date in canonical "YYYY-MM-DD" form. Like `color`, a date is
+// string-representable: a string literal in the canonical form coerces to
+// `date` and a `date` coerces back to its string form. Platform codegen
+// maps it to the native date/time type (Go `time.Time`, JS/Kotlin string).
+#[builtin("date")]
+struct date {}
+
+// Wall-clock time in "HH:MM" or "HH:MM:SS" form. String-representable like
+// `date`; coerces to/from its canonical string form. Platform codegen maps
+// it to the native date/time type.
+#[builtin("time")]
+struct time {}
+
+// ISO-8601 date-time. String-representable like `date`/`time`; coerces
+// to/from its canonical string form. Platform codegen maps it to the
+// native date/time type (Go `time.Time`, JS/Kotlin string).
+#[builtin("datetime")]
+struct datetime {}

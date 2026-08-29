@@ -15,7 +15,7 @@ grep '\.size' out/MainScreen.kt
 grep '\.getOrDefault\(' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 output { kotlin { android } }
 

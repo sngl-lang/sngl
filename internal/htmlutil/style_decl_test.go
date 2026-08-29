@@ -31,30 +31,30 @@ func TestStyleFieldsAllReachCSS(t *testing.T) {
 	// deleting one of their arms went undetected.
 	for _, name := range fields {
 		if css := htmlutil.StylePropToCSSIR(name, &ir.Literal{Type: ir.TypInt, Value: "1"}); css == "" {
-			t.Errorf("Style.%s is declared in lib/std and renders as nothing", name)
+			t.Errorf("Style.%s is declared in lib/ui and renders as nothing", name)
 		}
 	}
 }
 
-// styleFields returns the field names of the `Style` struct as lib/std
+// styleFields returns the field names of the `Style` struct as lib/ui
 // declares it.
 func styleFields(t *testing.T) []string {
 	t.Helper()
-	entries, err := lib.FS.ReadDir("std")
+	entries, err := lib.FS.ReadDir("ui")
 	if err != nil {
-		t.Fatalf("read lib/std: %v", err)
+		t.Fatalf("read lib/ui: %v", err)
 	}
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		src, err := lib.FS.ReadFile("std/" + e.Name())
+		src, err := lib.FS.ReadFile("ui/" + e.Name())
 		if err != nil {
-			t.Fatalf("read lib/std/%s: %v", e.Name(), err)
+			t.Fatalf("read lib/ui/%s: %v", e.Name(), err)
 		}
 		doc, err := parser.Parse(e.Name(), src)
 		if err != nil {
-			t.Fatalf("parse lib/std/%s: %v", e.Name(), err)
+			t.Fatalf("parse lib/ui/%s: %v", e.Name(), err)
 		}
 		for _, d := range doc.Stmts {
 			sd, ok := d.(*ast.StructDef)

@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:test"
 
 component main {
     var x = 5

@@ -29,8 +29,8 @@ grep 'Column\(modifier = Modifier\.verticalScroll\(rememberScrollState\(\)\)\) \
 grep 'Box\(modifier = Modifier\.padding\(3\.dp\)\) \{' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl:std"
-import android "sngl:platforms/android"
+import . "sngl:ui"
+import android "sngl:platform/android"
 
 component main {
     android.Column(chain=["fillMaxSize()"]) {

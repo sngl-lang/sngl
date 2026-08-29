@@ -207,11 +207,11 @@ struct Tiny {}
 	wantMarkErr(t, errs, "only a component is a node in a tree")
 }
 
-// #[foreign] is declared in sngl:std, so it is the one compiler mark a
+// #[foreign] is declared in sngl:macro, so it is the one compiler mark a
 // program can write for itself.
 func checkForeign(t *testing.T, body string) (*ir.Package, []string) {
 	t.Helper()
-	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl:std\"\n"+body))
+	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl:macro\"\n"+body))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

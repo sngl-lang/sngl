@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // modal: state-binding fixture — toggling the bound `open` var
 // opens/closes the dialog.

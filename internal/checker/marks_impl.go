@@ -18,10 +18,10 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"internal/tree", "kind"}:       markTreeKind,
 	{"internal/tree", "children"}:   markTreeChildren,
-	{"platforms", "options"}:        markOptions,
-	{"platforms", "wildcard"}:       markWildcard,
-	{"std", "foreign"}:              markForeign,
-	{"draw", "shape"}:               markShape,
+	{"macro", "options"}:            markOptions,
+	{"macro", "wildcard"}:           markWildcard,
+	{"macro", "foreign"}:            markForeign,
+	{"ui/draw", "shape"}:            markShape,
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
@@ -294,7 +294,7 @@ func applyTreeMark(m *mark, name, kind string, set func(*ir.Component, string) e
 	return nil
 }
 
-// shapeKind is the tree sngl:draw's components form. #[draw.shape] is the
+// shapeKind is the tree sngl:ui/draw's components form. #[draw.shape] is the
 // public spelling of #[tree.kind("shape")]: the tree marks are internal to the
 // compiler, so a user declaring a shape reaches them only through this one.
 const shapeKind = "shape"
@@ -318,7 +318,7 @@ func markShape(m *mark) error {
 	return applyTreeMark(m, "kind", shapeKind, setTreeKind)
 }
 
-// markWildcard implements #[platforms.wildcard("pattern")], which says what a
+// markWildcard implements #[macro.wildcard("pattern")], which says what a
 // name nobody declared resolves to: a component reached by any matching name
 // in its package's namespace, or a prop bound by any matching prop name.
 //

@@ -33,7 +33,8 @@ stderr 'pure, async'
 stderr 'which describes a call'
 
 -- pure.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:./api", "add", pure)]
 func add(a int, b int) => a + b
@@ -43,7 +44,8 @@ component main {
 }
 
 -- stub.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:./api", "add")]
 func add(a int, b int) => 0
@@ -53,7 +55,8 @@ component main {
 }
 
 -- async.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:./api", "fetchHello", async)]
 func fetchHello(name string) => "hi " + name
@@ -65,7 +68,8 @@ component main {
 }
 
 -- typo.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:./api", "add", puer)]
 func add(a int, b int) => a + b
@@ -75,7 +79,8 @@ component main {
 }
 
 -- onstruct.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:./api", "Entry", pure)]
 struct Entry {

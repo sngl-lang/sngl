@@ -16,7 +16,8 @@ grep 'Entry\{Title: "hello"\}' out/model.go
 ! grep 'example.com/api' out/model.go
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("go:example.com/api", "api.Item")]
 struct Entry {

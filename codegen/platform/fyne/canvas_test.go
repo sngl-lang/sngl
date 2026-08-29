@@ -21,8 +21,8 @@ import (
 // Refreshes on a state-mutating handler.
 func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 	src := `
-import . "sngl:std"
-import . "sngl:draw"
+import . "sngl:ui"
+import . "sngl:ui/draw"
 output { none { html } }
 component main {
     var radius = 50.0
@@ -126,8 +126,8 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	}
 
 	src := `
-import . "sngl:std"
-import . "sngl:draw"
+import . "sngl:ui"
+import . "sngl:ui/draw"
 output { none { html } }
 component main {
     var radius = 60.0

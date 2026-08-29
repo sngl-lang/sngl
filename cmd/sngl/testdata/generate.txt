@@ -38,7 +38,7 @@ stdout 'out3/index.html'
 exists out3/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var count = 0
@@ -46,25 +46,25 @@ component main {
     text(value="Count: {count}")
 }
 -- bad.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 not valid sngl
 -- empty/.gitkeep --
 -- myapp/app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var count = 0
     Counter(initial=count)
 }
 -- myapp/counter.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component Counter(initial = 0) {
     text(value="Count: " + string(initial))
 }
 -- badoutput/app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 output js html
 

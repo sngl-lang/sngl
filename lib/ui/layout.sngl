@@ -1,0 +1,172 @@
+// Containers. These place their children; what a child looks like is
+// the child's business.
+
+// Vertical box layout container. Children are stacked top to bottom and
+// laid out along the cross axis via `style.alignItems`. Enable `scroll`
+// to make overflow scrollable; set `refreshing` alongside `@refresh`
+// to opt in to pull-to-refresh on platforms that support it. Use
+// `style.gap` to control spacing between children.
+component vbox(
+    style Style,
+    scroll bool,
+    refreshing bool,
+    @refresh RefreshEvent,
+) list<component> {}
+
+component _example_vbox {
+    vbox(style={gap=8, padding=16}) {
+        text(value="First")
+        text(value="Second")
+        text(value="Third")
+    }
+}
+
+// Horizontal box layout container. Children are placed side by side
+// along the main axis and aligned via `style.alignItems` /
+// `style.justifyContent`. Enable `scroll` to make horizontal overflow
+// scrollable. Use `style.gap` for spacing between children.
+component hbox(
+    style Style,
+    scroll bool,
+) list<component> {}
+
+component _example_hbox {
+    hbox(style={gap=8, padding=16}) {
+        text(value="Left")
+        text(value="Center")
+        text(value="Right")
+    }
+}
+
+// Layered container where children overlap in the order they are declared.
+// Later children paint over earlier ones. Useful for overlays, badges
+// pinned to a corner, or background/foreground composition. Children
+// size independently; use `style.position` inside a child for precise
+// placement.
+component stack(
+    style Style,
+) list<component> {}
+
+component _example_stack {
+    stack {
+        text(value="Behind", style={padding=16})
+        text(value="In front", style={padding=32, color=#FF0000})
+    }
+}
+
+// Scrollable viewport that wraps a single child. `direction` is
+// "vertical", "horizontal", or "both". `scrollX`/`scrollY` are
+// two-way bound scroll offsets, useful for programmatic scrolling or
+// scroll-linked effects. `showScrollbar` is "auto", "always", or
+// "never". `@scroll` fires continuously while scrolling; `@scrollEnd`
+// fires once motion settles.
+component scroll(
+    style Style,
+    direction string,
+    scrollX float,
+    scrollY float,
+    showScrollbar string,
+    @scroll ScrollEvent,
+    @scrollEnd ScrollEvent,
+) component {}
+
+component _example_scroll {
+    scroll(direction="vertical", style={height=120}) {
+        vbox(style={gap=4, padding=8}) {
+            text(value="Line 1")
+            text(value="Line 2")
+            text(value="Line 3")
+            text(value="Line 4")
+            text(value="Line 5")
+            text(value="Line 6")
+            text(value="Line 7")
+            text(value="Line 8")
+        }
+    }
+}
+
+// Flexible empty space. With `style.flex=1` it expands to absorb
+// available room between siblings, which is the common way to
+// right-align content in an `hbox`. `size` gives a fixed length
+// when flex expansion is not wanted.
+component spacer(
+    style Style,
+    size string,
+) {}
+
+component _example_spacer {
+    hbox(style={padding=16}) {
+        text(value="Left")
+        spacer
+        text(value="Right")
+    }
+}
+
+// Visual separator line. `direction` is "horizontal" (default) or
+// "vertical". `label` inserts a centered caption inside the rule,
+// commonly rendered as "text with lines on either side".
+component divider(
+    style Style,
+    direction string,
+    label string,
+) {}
+
+component _example_divider {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Section 1")
+        divider
+        text(value="Section 2")
+        divider(label="OR")
+        text(value="Section 3")
+    }
+}
+
+// Resizable two-pane layout. Exactly two children define the panes.
+// `direction` is "horizontal" (side-by-side) or "vertical". `position`
+// is the split location as a 0.0-1.0 fraction and is two-way bound;
+// `minPosition`/`maxPosition` clamp user drags. Set `resizable=false`
+// to lock the split.
+component splitview(
+    style Style,
+    direction string,
+    position float,
+    minPosition float,
+    maxPosition float,
+    resizable bool,
+    @resize ResizeEvent,
+) list<component> {}
+
+component _example_splitview {
+    splitview(direction="horizontal", style={height=120}) {
+        vbox(style={padding=12}) {
+            text(value="Left pane")
+        }
+        vbox(style={padding=12}) {
+            text(value="Right pane")
+        }
+    }
+}
+
+// Styled container for grouping related content. `variant` selects
+// the surface treatment ("outlined", "elevated", "filled"). Set
+// `clickable=true` to make the entire card respond to `@click` —
+// useful for building tappable list items.
+component card(
+    style Style,
+    variant string,
+    clickable bool,
+    @click ClickEvent,
+) list<component> {}
+
+component _example_card {
+    hbox(style={gap=16, padding=16}) {
+        card(variant="outlined") {
+            text(value="Outlined", style={fontWeight="bold"})
+            text(value="With a border")
+        }
+        card(variant="elevated") {
+            text(value="Elevated", style={fontWeight="bold"})
+            text(value="With a shadow")
+        }
+    }
+}

@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // splitview: A-tier — declaration validates parse + check.
 component main {

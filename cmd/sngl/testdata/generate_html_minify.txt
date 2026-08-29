@@ -29,7 +29,7 @@ grep '\(\(\)=>\{' min/index.html
 grep 'function [a-z]\([a-z],[a-z]\)\{return [a-z]\+[a-z]\}' min/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 component main {

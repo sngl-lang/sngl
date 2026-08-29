@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 func parse(_input string, _index int) => _input
 

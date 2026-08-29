@@ -3,7 +3,8 @@
 // TypeStruct, so the check has to compare declarations: while it normalized
 // them onto a single string-domain kind, every pair looked like an identity
 // cast and `date(aColor)` type-checked.
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 window #home(title="Home", href="/") {
     const c = #ff8040

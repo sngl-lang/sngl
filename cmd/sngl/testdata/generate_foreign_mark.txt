@@ -25,7 +25,8 @@ grep 'title:' outgo/index.html
 stderr 'example.com/api'
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("js:example.com/api", "Entry")]
 struct Entry {
@@ -39,7 +40,8 @@ component main {
 }
 
 -- goapp.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:macro"
 
 #[foreign("go:example.com/api", "api.Entry")]
 struct Entry {
@@ -53,7 +55,7 @@ component main {
 }
 
 -- needsimport.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import api "js:example.com/api"
 
 component main {

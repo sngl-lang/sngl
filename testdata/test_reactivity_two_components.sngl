@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // Two components with the same-named var prove pointer-keyed deps
 // don't cross-subscribe.

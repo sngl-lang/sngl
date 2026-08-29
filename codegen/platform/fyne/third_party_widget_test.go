@@ -21,8 +21,8 @@ import (
 // three primitives fyne.sngl's own widgets use, with no `#[intrinsic]` of its
 // own and nothing registered on the Go side.
 const thirdPartyWidgetSrc = `
-import . "sngl:std"
-import "sngl:platforms/fyne"
+import . "sngl:ui"
+import "sngl:platform/fyne"
 
 var reading int = 42
 
@@ -125,8 +125,8 @@ func generateFyneGo(t *testing.T, src string) string {
 // issue #120's shape.
 func TestFynePrimitiveWithoutASpecIsAnError(t *testing.T) {
 	src := `
-import . "sngl:std"
-import "sngl:platforms/fyne"
+import . "sngl:ui"
+import "sngl:platform/fyne"
 
 component main {
     vbox {
@@ -154,8 +154,8 @@ component main {
 // the module's Go source calls itself; `v2` is what the path ends with, and
 // `fyne-charts` is what stripping the version leaves.
 const versionedWidgetSrc = `
-import . "sngl:std"
-import "sngl:platforms/fyne"
+import . "sngl:ui"
+import "sngl:platform/fyne"
 
 var reading int = 42
 

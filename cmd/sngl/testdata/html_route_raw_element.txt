@@ -39,12 +39,13 @@ package api
 
 func Bump(n int) int { return n + 1 }
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { go { html } }
 
 import "go:example.com/route-raw/api"
-import "sngl:platforms/html"
+import "sngl:platform/html"
 
 component main {
     var n int = 0

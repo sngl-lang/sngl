@@ -87,7 +87,7 @@ func Targets() TargetCatalog {
 			Doc:          p.Description(),
 			Languages:    langs,
 			Capabilities: probePlatform(p),
-			Options:      optionsForPackage("platforms/" + name),
+			Options:      optionsForPackage("platform/" + name),
 		})
 	}
 
@@ -102,7 +102,7 @@ func Targets() TargetCatalog {
 			Name:         name,
 			Doc:          l.Description(),
 			Capabilities: probeLanguage(l),
-			Options:      optionsForPackage("languages/" + name),
+			Options:      optionsForPackage("language/" + name),
 		})
 	}
 

@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // HOVER(#ff0000) "rgb(255, 0, 0)"
 // HOVER(#ff0000) "#ff0000"

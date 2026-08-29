@@ -25,9 +25,9 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// SNGL struct name → lib source file. The Kotlin decl name is the
 	// SNGL name except `color` → `Color` (capitalized data class).
 	want := map[string]string{
-		"CanvasStyle": "draw/draw.sngl",
-		"PathCmd":     "draw/draw.sngl",
-		"color":       "builtin/types.sngl",
+		"CanvasStyle": "ui/draw/draw.sngl",
+		"PathCmd":     "ui/draw/draw.sngl",
+		"color":       "builtin/color.sngl",
 	}
 	// SNGL struct name → Kotlin data class name as emitted by canvasKotlinDecls.
 	kotlinName := map[string]string{

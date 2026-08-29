@@ -23,7 +23,7 @@ grep 'i18n.Selectordinal\(m.__ctx_locale, ' out/model.go
 grep 'i18n\.PluralFew' out/model.go
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 output { go { bubbletea } }

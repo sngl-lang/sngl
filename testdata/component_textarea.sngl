@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // textarea: state-binding fixture — mutating the bound `value`
 // var propagates to the textarea editor.

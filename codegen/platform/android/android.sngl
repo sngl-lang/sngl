@@ -15,8 +15,8 @@
 // needs something the generic intrinsic emitter cannot yet say; the comment
 // on each says which.
 
-import sngl "sngl:std"
-import . "sngl:platforms"
+import sngl "sngl:ui"
+import . "sngl:macro"
 import . "sngl:internal/marks"
 
 #[options]

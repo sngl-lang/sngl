@@ -153,9 +153,9 @@ func TestFindInLibrary(t *testing.T) {
 		ambient bool
 		kind    string
 	}{
-		{"circle", "sngl:draw", false, "component"},
-		{"button", "sngl:std", false, "component"},
-		{"Style", "sngl:std", false, "type"},
+		{"circle", "sngl:ui/draw", false, "component"},
+		{"button", "sngl:ui", false, "component"},
+		{"Style", "sngl:ui", false, "type"},
 		{"color", "sngl:builtin", true, "type"},
 	} {
 		got := lookup.FindInLibrary(tc.name)

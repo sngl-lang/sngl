@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 func testPureExpressionFunctions(t Test, c main) {
     t.assert(c.add(2, 3) == 5)

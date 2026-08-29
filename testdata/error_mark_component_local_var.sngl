@@ -1,7 +1,8 @@
 // A mark means the same thing wherever the declaration sits. A component-local
 // var and const carry one just as a top-level one does, and an unknown macro
 // on either is the same error.
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 component main {
     #[nosuchmacro] // ERROR(check) "unknown macro \"nosuchmacro\""

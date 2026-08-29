@@ -17,7 +17,8 @@ int add(int a, int b);
 int sub(int a, int b);
 
 -- main.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 import clib "c:lib/math.h"
 
 component main {

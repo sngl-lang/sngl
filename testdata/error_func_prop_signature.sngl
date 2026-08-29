@@ -2,7 +2,7 @@
 // both signatures: an expression-bodied lambda always returns a value, so it is
 // not a callback declared to return none.
 
-import . "sngl:std"
+import . "sngl:ui"
 
 component edit(onEdit func(s string)) {
     text(value="x")

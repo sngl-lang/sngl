@@ -13,7 +13,7 @@
 // Manifest: i18n.manifest.json next to this file. Translations included
 // for English (manifest fallback), French, and Spanish.
 
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 output {

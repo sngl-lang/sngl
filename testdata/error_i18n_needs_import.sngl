@@ -1,7 +1,7 @@
 // $"..." lowers to a call on sngl:i18n, so a file that writes one needs the
 // import. i18n used to arrive with the standard library, which meant a program
 // got translation whether it asked for it or not.
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var n int = 1

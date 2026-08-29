@@ -27,8 +27,8 @@ import (
 // the stdlib override doing it.
 func TestUserWrittenIntrinsicBuildsItsWidget(t *testing.T) {
 	src := `
-import . "sngl:std"
-import "sngl:platforms/fyne"
+import . "sngl:ui"
+import "sngl:platform/fyne"
 
 component main {
     vbox {

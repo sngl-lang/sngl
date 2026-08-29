@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 component tree(label = "", depth = 0) {
     text(value=label)

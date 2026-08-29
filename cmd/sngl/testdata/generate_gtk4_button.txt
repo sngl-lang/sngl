@@ -52,8 +52,8 @@ grep 'gtk_application_window_new' out/model.go
 grep 'snglActivate' out/callbacks.go
 
 -- main.sngl --
-import . "sngl:std"
-import "sngl:platforms/gtk4"
+import . "sngl:test"
+import "sngl:platform/gtk4"
 
 component main {
     var count int

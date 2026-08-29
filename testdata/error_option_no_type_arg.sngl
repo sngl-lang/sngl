@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var maybe option = null // ERROR(check) "option requires a type argument"

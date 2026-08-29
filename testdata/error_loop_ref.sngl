@@ -2,7 +2,7 @@
 // Over a computed list, a const list, or a non-list iterable it is rejected
 // at check time: there is no live element to write back to.
 
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     const frozen list<int> = [1, 2, 3]

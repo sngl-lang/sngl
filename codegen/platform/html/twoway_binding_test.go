@@ -13,7 +13,7 @@ import (
 // initial value rather than being empty.
 func TestTwoWayBindingUsesEventTargetValue(t *testing.T) {
 	src := `
-import . "sngl:std"
+import . "sngl:ui"
 output { none { html() } }
 component main {
     var name = "World"

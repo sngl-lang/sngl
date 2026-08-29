@@ -5,7 +5,7 @@
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
-stderr 'unknown macro package "draw": import it with import "sngl:draw"'
+stderr 'unknown macro package "draw": import it with import "sngl:ui/draw"'
 
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
@@ -15,7 +15,7 @@ stdout 'qualified.sngl: ok'
 stderr 'unknown macro "builtin": no dot-imported package declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
-# sngl:draw brings both the shape components and the mark that declares new
+# sngl:ui/draw brings both the shape components and the mark that declares new
 # ones. Nothing collides: the canvas components live in draw, not std.
 sngl check with_std.sngl
 stdout 'with_std.sngl: ok'
@@ -34,7 +34,7 @@ stderr 'unknown macro "shape": package "sngl:i18n" declares none of that name'
 #[draw.shape]
 component blob(x float, y float) {}
 -- qualified.sngl --
-import "sngl:draw"
+import "sngl:ui/draw"
 
 #[draw.shape]
 component blob(x float, y float) {}
@@ -44,8 +44,8 @@ struct Fake {
     v int
 }
 -- with_std.sngl --
-import . "sngl:std"
-import "sngl:draw"
+import . "sngl:ui"
+import "sngl:ui/draw"
 
 #[draw.shape]
 component blob(x float, y float) {}
@@ -56,8 +56,8 @@ component main {
     }
 }
 -- aliased.sngl --
-import . "sngl:std"
-import d "sngl:draw"
+import . "sngl:ui"
+import d "sngl:ui/draw"
 
 #[d.shape]
 component blob(x float, y float) {}

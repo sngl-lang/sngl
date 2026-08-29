@@ -1,6 +1,7 @@
 caps: NoTimer, NoUnit
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 component main {
     var n int = 0
@@ -12,7 +13,8 @@ component main {
     text(value=string(n))
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 component main {
     var n int = 0
     func __timer0_handler() void {

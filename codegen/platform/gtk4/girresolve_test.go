@@ -98,7 +98,8 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 // generated code differs by host and nothing says so. Asserted as the absence of
 // that fallback across every override, which needs no system GIR to check.
 func TestBundledGIRLosesNoSetter(t *testing.T) {
-	const src = `import . "sngl:std"
+	const src = `import . "sngl:ui"
+import . "sngl:app"
 component main() {
     window(title="t") {
         vbox {

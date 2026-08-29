@@ -1,6 +1,7 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 import "go:git.duckfam.us/jonathan/sngl/docs"
-import "sngl:platforms/html"
+import "sngl:platform/html"
 
 const searchFilterJS = `window.snglFilterSearch = function(input) {
   var q = input.value.trim().toLowerCase();

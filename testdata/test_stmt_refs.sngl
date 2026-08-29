@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 func testCallExpressionAndCallStatementRefs(t Test, c main) {
     t.assert(c.count == 0)

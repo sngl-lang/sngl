@@ -7,8 +7,8 @@
 // no macro is reported as the unknown macro it is rather than as an illegal
 // position.
 
-import . "sngl:std"
-import "sngl:draw"
+import . "sngl:ui"
+import "sngl:ui/draw"
 
 func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
 

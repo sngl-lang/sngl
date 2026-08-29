@@ -21,7 +21,7 @@ import (
 // has no file to re-read at all.
 type snglInput struct {
 	Path string
-	// URI is the library package name — "std", "platforms/gtk4" — when Path
+	// URI is the library package name — "std", "platform/gtk4" — when Path
 	// used the sngl scheme. Empty for a filesystem path.
 	URI string
 	// Docs, Pkg and Diags are set only for a URI. A caller reporting on the

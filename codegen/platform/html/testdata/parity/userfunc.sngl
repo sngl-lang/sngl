@@ -1,7 +1,7 @@
 // userfunc.sngl — exercises a multi-statement user function with a local var
 // declaration, an if statement, and a return.
 
-import . "sngl:std"
+import . "sngl:ui"
 
 func clamp(x int, lo int, hi int) int {
     var result int = x

@@ -17,7 +17,7 @@ import (
 // const it was read from is then unread, and dead-code elimination drops it,
 // so the surviving read is where a string-literal rewrite would show up.
 func TestOptimize_EnumMemberKeepsIdent(t *testing.T) {
-	const src = `import . "sngl:std"
+	const src = `import . "sngl:ui"
 
 enum Color { red, green, blue }
 

@@ -24,7 +24,7 @@ grep '1\.5' out/index.html
 ! grep 'charAt' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 const who = lib.profile("ada", "lovelace")

@@ -3,7 +3,8 @@
 // so every written `duration` annotation got a different type from the one a
 // `5s` literal produces -- "cannot initialize duration with duration". Only
 // the alias form (`s.duration`) and inference worked.
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 var annotated duration = 5s
 var zero duration = 0

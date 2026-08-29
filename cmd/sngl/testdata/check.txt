@@ -6,11 +6,11 @@ stdout 'minimal.sngl: ok'
 ! sngl check bad.sngl
 
 -- minimal.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
 }
 -- bad.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 not valid sngl

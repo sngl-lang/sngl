@@ -14,7 +14,8 @@ import (
 // assertion on it — and the value is read into a component var so it survives
 // as an initializer rather than folding into the string measuring it.
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
-	const src = `import . "sngl:std"
+	const src = `import . "sngl:ui"
+import . "sngl:app"
 import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
 
 const items = lib.Anything()

@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 unit duration { ms, s = 1000ms }
 unit distance { mm, cm = 10mm, m = 100cm }

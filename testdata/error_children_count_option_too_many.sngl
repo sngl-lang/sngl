@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // Component declares optional child (option<T>).
 // Two children: error.

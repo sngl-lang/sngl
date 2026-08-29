@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // spacer: A-tier — no testable state. Declaration validates
 // parse + check + lower.

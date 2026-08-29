@@ -1,7 +1,7 @@
 // Plural / selectordinal require a numeric value. A string here should
 // produce a check-time error.
 
-import . "sngl:std"
+import . "sngl:app"
 import "sngl:i18n"
 
 var name = "Alice"

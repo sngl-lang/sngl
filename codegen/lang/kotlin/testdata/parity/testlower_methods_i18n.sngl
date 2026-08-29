@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 import "sngl:i18n"
 
 // Exercises the kotlin test-lowering legacy surface (testlower.go's

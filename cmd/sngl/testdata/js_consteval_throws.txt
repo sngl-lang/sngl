@@ -18,7 +18,7 @@ stderr 'compile-time evaluation of boom produced no value'
 ! stderr 'exit status'
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 const bad = lib.boom()

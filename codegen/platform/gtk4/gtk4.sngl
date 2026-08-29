@@ -19,8 +19,8 @@
 // VisualNode, reads its widget type and prop/event bindings, and emits the
 // corresponding GTK4 Go code.
 
-import sngl "sngl:std"
-import . "sngl:platforms"
+import sngl "sngl:ui"
+import . "sngl:macro"
 
 #[options]
 struct Options {

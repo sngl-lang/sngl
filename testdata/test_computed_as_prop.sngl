@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // A zero-argument function named where its result is expected is called.
 // It only worked when the return type already matched: `doubled` returns an

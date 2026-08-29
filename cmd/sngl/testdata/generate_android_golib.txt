@@ -20,7 +20,7 @@ grep 'import golib\.Golib' out/MainScreen.kt
 ! grep 'fun fib' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 func fib(n int) int {
     if n < 2 { return n }

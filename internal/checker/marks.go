@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // markTarget is a syntax form a mark can be written on. The AST knows only
@@ -66,7 +67,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // is a position rather than a node. The mark implementation is what holds a
 // tree.children written on an ordinary prop to that rule.
 var paramMarks = map[markKey]bool{
-	{"platforms", "wildcard"}:     true,
+	{"macro", "wildcard"}:         true,
 	{"internal/tree", "children"}: true,
 }
 
@@ -149,6 +150,15 @@ func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok 
 func macroImportHint(alias string) string {
 	if HasPackage(alias) {
 		return "sngl:" + alias
+	}
+	// A macro package need not be top-level -- sngl:ui/draw declares `shape` --
+	// so match on the last segment, which is the alias an import binds. Public
+	// packages first: `draw` names both sngl:ui/draw and the compiler's own
+	// sngl:internal/draw, and only one of them is a program's to import.
+	for _, p := range lib.PublicPackages() {
+		if p[strings.LastIndex(p, "/")+1:] == alias {
+			return "sngl:" + p
+		}
 	}
 	return "sngl:internal/" + alias
 }

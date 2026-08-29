@@ -2,7 +2,7 @@
 // including names that match predeclared identifiers like `date` or
 // `select`. The parser must not panic.
 
-import . "sngl:std"
+import . "sngl:ui"
 
 struct widget {}
 

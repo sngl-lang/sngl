@@ -15,7 +15,7 @@ env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 stderr 'is not the value of any member of Color'
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 const c = lib.pick()

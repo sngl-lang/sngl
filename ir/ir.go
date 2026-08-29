@@ -53,7 +53,7 @@ type Package struct {
 
 	// TreeKinds records the segmented trees (see Component.TreeKind) whose
 	// nodes this package declares or imports. The lowering pass for a tree
-	// gates on it: an import of sngl:draw is neither necessary (a package
+	// gates on it: an import of sngl:ui/draw is neither necessary (a package
 	// may declare its own shapes) nor sufficient (inlining flattens a canvas
 	// out of the package that imported it), so the declarations are the only
 	// honest signal.
@@ -567,8 +567,8 @@ type StructDef struct {
 	Fields     []*StructField
 	Foreign    `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package
-	// whose identity is global — today the embedded library's "sngl:std",
-	// "sngl:builtin", "sngl:draw". Empty for a program's own
+	// whose identity is global — today the embedded library's "sngl:ui",
+	// "sngl:builtin", "sngl:ui/draw". Empty for a program's own
 	// declarations, whose names are only meaningful relative to a build.
 	// See sameDecl: Pkg and Name are a named type's identity.
 	Pkg     string

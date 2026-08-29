@@ -7,7 +7,7 @@ exists out/MainScreen.kt
 grep 'for .* in ' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 output { kotlin { android } }
 

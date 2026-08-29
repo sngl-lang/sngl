@@ -5,7 +5,7 @@
 // Initial label is a literal to avoid state-initializer self-reference; the
 // click handler re-computes it via $"..." so the i18n runtime is exercised.
 
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 component main {

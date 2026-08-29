@@ -12,7 +12,7 @@ grep 'addEventListener.*async function' out/index.html
 grep 'await handler()' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import api "js:./api"
 
 var handler func() string = api.fetchHello

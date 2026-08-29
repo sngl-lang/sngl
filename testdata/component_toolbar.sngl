@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // toolbar: A-tier — declaration only.
 component main {

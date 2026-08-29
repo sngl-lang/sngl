@@ -265,7 +265,7 @@ func TestServer_ExecuteCommandOpenPreview(t *testing.T) {
 	}
 
 	// didOpen with a window
-	go send(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/x.sngl","languageId":"sngl","version":1,"text":"import . \"sngl:std\"\nwindow #home(title=\"Home\", href=\"/\") {\n  text(value=\"hi\")\n}\n"}}}`)
+	go send(`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/x.sngl","languageId":"sngl","version":1,"text":"import . \"sngl:ui\"\nimport . \"sngl:app\"\nwindow #home(title=\"Home\", href=\"/\") {\n  text(value=\"hi\")\n}\n"}}}`)
 	// Drain diagnostics notification.
 	line, _ := br.ReadString('\n')
 	ln := 0

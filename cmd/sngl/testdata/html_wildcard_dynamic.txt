@@ -19,7 +19,7 @@ grep 'setAttribute\("type", "checkbox"\)' out/index.html
 ! grep 'object Map' out/index.html
 
 -- loop.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var items = ["a", "b"]

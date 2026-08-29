@@ -1,12 +1,12 @@
 caps: NoLambda
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var doubler func(int) int = func(x int) => x * 2
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 struct __lambda0_caps {}
 func __lambda0(state __lambda0_caps, x int) int {
     return x * 2

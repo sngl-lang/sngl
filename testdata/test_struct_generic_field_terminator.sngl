@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // A field whose type ends in `>` is terminated by the newline like any other.
 // It was not: `>` may continue a comparison, so it gets no ASI, and the struct

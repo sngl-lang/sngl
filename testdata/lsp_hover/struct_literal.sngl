@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // HOVER(r=255) "color.r:"
 // HOVER(r=255) "int"

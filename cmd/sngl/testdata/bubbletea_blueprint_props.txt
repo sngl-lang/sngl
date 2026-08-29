@@ -1,5 +1,5 @@
 # The blueprint primitives a bubbletea override renders through are declared
-# in sngl:platforms/bubbletea, so a call against one is checked like any
+# in sngl:platform/bubbletea, so a call against one is checked like any
 # other. Before, the platform's Resolve() minted a component
 # for whatever name was written, carrying one untyped wildcard prop: every prop
 # name, every prop value and every event name passed unchecked.
@@ -22,29 +22,29 @@ stderr 'cannot use string as JoinDir for prop "join" on component Layout'
 sngl check good.sngl
 
 -- badprop.sngl --
-import . "sngl:std"
-import bt "sngl:platforms/bubbletea"
+import . "sngl:ui"
+import bt "sngl:platform/bubbletea"
 
 component main {
     bt.Styled(content = "hi", styl = {}) {}
 }
 -- badevent.sngl --
-import . "sngl:std"
-import bt "sngl:platforms/bubbletea"
+import . "sngl:ui"
+import bt "sngl:platform/bubbletea"
 
 component main {
     bt.Layout(join = bt.JoinDir.vertical, @bogus { }) {}
 }
 -- badtype.sngl --
-import . "sngl:std"
-import bt "sngl:platforms/bubbletea"
+import . "sngl:ui"
+import bt "sngl:platform/bubbletea"
 
 component main {
     bt.Layout(join = "vertical") {}
 }
 -- good.sngl --
-import . "sngl:std"
-import bt "sngl:platforms/bubbletea"
+import . "sngl:ui"
+import bt "sngl:platform/bubbletea"
 
 component main {
     bt.Layout(join = bt.JoinDir.vertical) {

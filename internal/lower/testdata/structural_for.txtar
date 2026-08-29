@@ -1,6 +1,6 @@
 caps: NoReactivity
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var items list<int> = [1, 2, 3]
@@ -10,7 +10,7 @@ component main {
     }
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 component main {
     var items list<int> = [1, 2, 3]
     var __root dyn

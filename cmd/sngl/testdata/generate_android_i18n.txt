@@ -30,7 +30,7 @@ sngl generate --platform=android --lang=kotlin --opt=main=true --out=out2 app_wi
 exists out2/app/src/main/assets/i18n.manifest.json
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 output { kotlin { android } }
@@ -46,7 +46,7 @@ component main {
 }
 
 -- app_with_manifest.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 output { kotlin { android } }

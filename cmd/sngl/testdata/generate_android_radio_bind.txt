@@ -22,7 +22,7 @@ grep 'pick = "b"' v/MainScreen.kt
 ! grep 'onClick = \{\}' v/MainScreen.kt
 
 -- horizontal.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var pick string = "a"
@@ -30,7 +30,7 @@ component main {
     text(value=pick)
 }
 -- vertical.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var pick string = "a"

@@ -13,7 +13,7 @@ grep 'async function run' out/index.html
 grep 'await f()' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import api "js:./api"
 
 func syncHello() string {

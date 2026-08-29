@@ -210,7 +210,7 @@ func injectExamples(outDir string) error {
 		htmlData = []byte(html)
 		log.Printf("playground: %d examples injected", len(examples))
 	} else {
-		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">import . \"sngl:std\"\n\ncomponent main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
+		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">import . \"sngl:ui\"\n\ncomponent main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
 	}
 
 	pgHTMLStr := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)

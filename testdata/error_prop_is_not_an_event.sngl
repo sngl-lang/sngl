@@ -3,8 +3,8 @@
 // prop is accepted only when the component declares a prop of that name, or an
 // event of exactly that name; matching the wildcard is not enough, or a
 // misspelled DOM property would satisfy "any event name" perfectly well.
-import . "sngl:std"
-import "sngl:platforms/html"
+import . "sngl:app"
+import "sngl:platform/html"
 
 component main {
     window {

@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 component Greeting(name string = 123) { // ERROR(check) "does not match"
     text(value=name)

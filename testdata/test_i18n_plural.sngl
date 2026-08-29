@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 import "sngl:i18n"
 
 // Plural form with =N exact match, CLDR keyword, and # for the bound count.

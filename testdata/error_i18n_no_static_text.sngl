@@ -1,7 +1,8 @@
 // A translatable string with no literal text gives translators nothing
 // to work with. Should produce a check-time warning, not an error.
 
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 import "sngl:i18n"
 
 var n = 5

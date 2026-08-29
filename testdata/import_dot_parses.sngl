@@ -1,7 +1,7 @@
 // `import . "p"` puts the dot in the alias slot; the grammar makes an
 // identifier and the dot mutually exclusive there. Round-trips through the
 // formatter, including alongside a replace clause.
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     text(value="x")

@@ -4,13 +4,14 @@
 // asserts that generalising type identity to (package, name) did not make a
 // shadowing declaration equal to the one it shadows. The diagnostic has to say
 // which is which: "cannot initialize duration with duration" named neither.
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 unit duration {
     tick
 }
 
-var shadowed duration = 3ms // ERROR(check) "with duration (sngl:std)"
+var shadowed duration = 3ms // ERROR(check) "with duration (sngl:app)"
 
 component main {
     text(value="{shadowed.string()}")

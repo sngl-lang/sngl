@@ -1,14 +1,14 @@
 // 2D shapes and the canvas that hosts them. Importing this package brings both
 // the shape components and the `#[draw.shape]` mark that declares new ones.
 //
-// The shapes live here rather than in `sngl:std` because `canvas`, `rect`,
+// The shapes live here rather than in `sngl:ui` because `canvas`, `rect`,
 // `line` and `path` are names an application usually wants for itself.
 
 // std is qualified rather than dot-imported: a lib package is loaded into the
 // checker's own symbol table, so names it lifts become indistinguishable from
-// names it declares and would be re-lifted by `import . "sngl:draw"`. User
+// names it declares and would be re-lifted by `import . "sngl:ui/draw"`. User
 // packages do not re-export a dot import, and neither should this one.
-import std "sngl:std"
+import std "sngl:ui"
 
 // `Macro` is the return type that makes `shape` a mark rather than a
 // function.
@@ -75,7 +75,7 @@ component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) {}
 component path(cmds list<PathCmd>, style CanvasStyle) {}
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
-// a program can import this package alongside `sngl:std`.
+// a program can import this package alongside `sngl:ui`.
 #[tree.kind("shape")]
 component canvasText(x float, y float, content string, style CanvasStyle) {}
 

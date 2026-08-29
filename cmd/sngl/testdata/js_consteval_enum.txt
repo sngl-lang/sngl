@@ -39,7 +39,7 @@ grep 'code = -1' out/index.html
 ! grep 'code = 1' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 const c = lib.pickColor()

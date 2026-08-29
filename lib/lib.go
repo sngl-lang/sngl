@@ -5,14 +5,21 @@
 // Nothing enumerates them in Go — add a directory and it exists.
 //
 //	builtin/    ambient built-ins, dot-imported into every file implicitly
-//	draw/       2D shapes and the canvas, plus the `shape` mark
-//	std/        the standard library, brought in by an explicit import
+//	ui/         the components an application is built from, and the Style
+//	            and event vocabulary every one of them refers to
+//	ui/draw/    the 2D canvas and its shapes, one specialised surface under ui
+//	app/        window, timer, errorBoundary and the error they carry
+//	dialog/     host-native notifications and file choosers
+//	test/       the receiver a test function's first parameter carries
+//	i18n/       the translation surface `$"..."` lowers to
+//	macro/      the marks a package writes to describe its own declarations
 //	internal/   the compiler's own primitives, declared so that what the
 //	            compiler knows about them is written where they are
-//	platforms/  one package per registered platform, naming its native
-//	            primitives and overriding the stdlib components for it
-//	languages/  one package per registered language, named by the
-//	            language's own identifier (Go's is `go`, not `golang`)
+//
+// A target's package is not here: `sngl:platform/<name>` and
+// `sngl:language/<name>` are served by the registered plugin, whose source
+// sits beside it.
+
 package lib
 
 import (
@@ -65,7 +72,7 @@ func Packages() []string {
 // the plugin registry instead. The `platforms` and `languages` packages
 // themselves are ordinary public vocabulary and stay.
 func PublicPackages() []string {
-	perTarget := []string{"platforms", "languages"}
+	perTarget := []string{"platform", "language"}
 	out := make([]string, 0, len(Packages()))
 	for _, p := range Packages() {
 		if p == "internal" || strings.HasPrefix(p, "internal/") {

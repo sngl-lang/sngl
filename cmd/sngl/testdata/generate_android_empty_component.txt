@@ -15,7 +15,7 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 grep 'Text\(text = "x", modifier = Modifier\)' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component blank(value string) {
 }

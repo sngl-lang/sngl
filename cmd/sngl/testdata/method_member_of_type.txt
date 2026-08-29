@@ -13,7 +13,8 @@ cp dup.sngl.txt main.sngl
 stderr 'duplicate declaration of "shifted" on type Point'
 
 -- main.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 import d "./geom"
 
 component main {
@@ -25,7 +26,7 @@ func testCrossPackageMethod(t Test, c main) {
     t.assert(c.out.value == "2")
 }
 -- geom/geom.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 struct Point {
     x int = 0
@@ -33,7 +34,7 @@ struct Point {
 
 func Point.shifted(p Point) => p.x + 1
 -- dup.sngl.txt --
-import . "sngl:std"
+import . "sngl:ui"
 import . "./geom"
 
 func Point.shifted(p Point) => p.x + 99

@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 import "sngl:i18n"
 
 // Simple identifier interpolation.

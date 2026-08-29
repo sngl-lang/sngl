@@ -8,5 +8,5 @@ func withStd(src string) string {
 	if strings.Contains(src, "sngl:") {
 		return src
 	}
-	return "import . \"sngl:std\"\nimport . \"sngl:draw\"\nimport \"sngl:i18n\"\n" + src
+	return "import . \"sngl:ui\"\nimport . \"sngl:app\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\nimport \"sngl:i18n\"\n" + src
 }

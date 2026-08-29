@@ -13,7 +13,7 @@ import (
 // const props — the non-const `value` param ref dangled in the inlined body.
 func TestComponentNonConstPropReactivity(t *testing.T) {
 	src := `
-import . "sngl:std"
+import . "sngl:ui"
 output { none { html() } }
 component Stat(label = "", value = 0) {
     vbox {

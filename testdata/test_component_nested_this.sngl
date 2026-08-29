@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:test"
 
 // Component funcs use closure semantics (pre-T7), not desugared methods.
 // Bare field access works; explicit `this.` is reserved for struct/enum

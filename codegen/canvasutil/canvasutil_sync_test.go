@@ -24,8 +24,8 @@ import (
 // field is added/renamed in the .sngl but not in StructDecls, this fails.
 func TestStructDeclsInSync(t *testing.T) {
 	want := map[string]string{
-		"CanvasStyle": "draw/draw.sngl",
-		"PathCmd":     "draw/draw.sngl",
+		"CanvasStyle": "ui/draw/draw.sngl",
+		"PathCmd":     "ui/draw/draw.sngl",
 	}
 
 	files := map[string][]string{}
@@ -88,11 +88,11 @@ func TestStructDeclsInSync(t *testing.T) {
 // ColorGoType) mirrors as R,G,B,A. If the SNGL color gains/loses a channel,
 // the shared Go runtime type must be updated to match.
 func TestColorFieldsInSync(t *testing.T) {
-	src, err := lib.FS.ReadFile("builtin/types.sngl")
+	src, err := lib.FS.ReadFile("builtin/color.sngl")
 	if err != nil {
 		t.Fatalf("read lib/types.sngl: %v", err)
 	}
-	doc, err := parser.Parse("builtin/types.sngl", src)
+	doc, err := parser.Parse("builtin/color.sngl", src)
 	if err != nil {
 		t.Fatalf("parse lib/types.sngl: %v", err)
 	}

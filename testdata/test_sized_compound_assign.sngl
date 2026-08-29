@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:test"
 
 // Compound assignment (+=, -=, *=) on sized integers wraps at the declared
 // width, not at 64 bits. The target's declared type drives the width.

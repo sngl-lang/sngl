@@ -16,7 +16,7 @@ grep 'function __sngl_init' out/index.html
 ! grep 'state\.__ctx_locale' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 component Cart(count = 0) {

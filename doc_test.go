@@ -251,7 +251,7 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 }
 
 // TestPlatformSourcesPassChecker verifies that each platform's
-// lib/platforms/<name>/ source passes the type checker (no bare expression
+// lib/platform/<name>/ source passes the type checker (no bare expression
 // statements, etc.).
 func TestPlatformSourcesPassChecker(t *testing.T) {
 	tests := []struct {

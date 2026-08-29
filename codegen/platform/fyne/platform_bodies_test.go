@@ -14,7 +14,7 @@ import (
 // responsible for, one per line of the source below.
 //
 // The list is written out rather than derived, so it catches an override that
-// went missing and NOT a component added to sngl:std -- adding one there with
+// went missing and NOT a component added to sngl:ui -- adding one there with
 // no override anywhere leaves every test here green. Making that a failure
 // wants the bodyless-declaration syntax in #123, which turns "a target must
 // implement this" into something the compiler can see rather than something
@@ -32,8 +32,8 @@ var stdlibComponentsUnderFyne = []string{
 // allComponentsSrc instantiates every name in stdlibComponentsUnderFyne so the
 // checked IR carries a NodeInst pointing at each stdlib *ir.Component.
 const allComponentsSrc = `
-import . "sngl:std"
-import "sngl:platforms/fyne"
+import . "sngl:ui"
+import "sngl:platform/fyne"
 output { go { fyne() } }
 component main {
     vbox {

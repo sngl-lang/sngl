@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // HTTP route window whose @click calls a go: native func (api.Persist),
 // exercising html route mode (--lang go) end-to-end through the golang

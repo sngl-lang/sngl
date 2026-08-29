@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 // Number placeholder with style argument.

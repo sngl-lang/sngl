@@ -26,7 +26,7 @@ grep 'folded-pure-hash' out/index.html
 ! grep 'function pureHash' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 component main {

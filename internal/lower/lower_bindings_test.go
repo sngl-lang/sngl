@@ -15,7 +15,7 @@ import (
 // it. It used to emit a reference to nothing, which only went unnoticed
 // because Validate exempted any identifier called "event".
 func TestPropBindings_EventNamesTheHandlersParam(t *testing.T) {
-	src := `import . "sngl:std"
+	src := `import . "sngl:ui"
 
 component field(:value string) {
     input(value=value, @input { })

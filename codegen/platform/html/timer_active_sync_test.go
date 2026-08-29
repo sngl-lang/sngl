@@ -13,7 +13,8 @@ import (
 // the side effect of `running` changing — was not.
 func TestTimerActiveVarMutationSyncsTimer(t *testing.T) {
 	src := `
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 output { none { html() } }
 component main {
     var seconds = 0

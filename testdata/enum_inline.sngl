@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var mode enum { light, dark } = light

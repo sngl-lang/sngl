@@ -1,6 +1,7 @@
 caps: NoInlineComponents
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 component Ticker(rate = 1s) {
     var tick = 0
@@ -11,7 +12,8 @@ component main {
     Ticker(rate=2s)
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 component main {
     var tick__inst0 int = 0
     timer(2s) {

@@ -16,12 +16,12 @@ func TestPackageDoc(t *testing.T) {
 		src  string
 		want string
 	}{
-		{"blank line separates", "// Package prose.\n// More prose.\n\nimport . \"sngl:std\"\n", "Package prose. More prose."},
+		{"blank line separates", "// Package prose.\n// More prose.\n\nimport . \"sngl:ui\"\n", "Package prose. More prose."},
 		{"no blank line documents the decl", "// Doc for the struct.\nstruct Box { v int }\n", ""},
-		{"second block after the run is not included", "// Package prose.\n\n// Note about the import.\nimport . \"sngl:std\"\n", "Package prose."},
+		{"second block after the run is not included", "// Package prose.\n\n// Note about the import.\nimport . \"sngl:ui\"\n", "Package prose."},
 		{"file of only comments", "// Package prose.\n// More.\n", "Package prose. More."},
-		{"no leading comment", "import . \"sngl:std\"\n", ""},
-		{"block comment is not a package comment", "/* nope */\n\nimport . \"sngl:std\"\n", ""},
+		{"no leading comment", "import . \"sngl:ui\"\n", ""},
+		{"block comment is not a package comment", "/* nope */\n\nimport . \"sngl:ui\"\n", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestPackageDoc(t *testing.T) {
 // Every library package documents itself; the doc lookup reads these rather
 // than hardcoding a blurb for one of them.
 func TestLibraryPackagesHaveDocs(t *testing.T) {
-	for _, pkg := range []string{"builtin", "draw", "std"} {
+	for _, pkg := range []string{"builtin", "ui", "ui/draw", "app", "dialog", "test", "macro"} {
 		var found string
 		for _, d := range PackageDocsFor(pkg) {
 			if s := PackageDoc(d); s != "" {

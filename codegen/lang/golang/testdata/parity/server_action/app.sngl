@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // Server-action fixture for Phase 4. A @click handler calls a go: native func
 // (api.Persist), so under --lang go the html placement pass classifies the

@@ -1,6 +1,6 @@
 caps: NoEnum
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 enum Color {
     red
@@ -18,7 +18,7 @@ component main {
     }
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 enum Color {
     red
     green

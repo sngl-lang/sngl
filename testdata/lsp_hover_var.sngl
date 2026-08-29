@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     var count int = 0           //@ hover("count", "var count int")

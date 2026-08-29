@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // Component declares exactly one child (bare type T).
 // Zero children: error.

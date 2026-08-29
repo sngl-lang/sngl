@@ -20,7 +20,7 @@ func TestPrimitivesCarryTheirIntrinsicID(t *testing.T) {
 	// checker reads a target's source from the fs.FS the target provides.
 	docs := checker.ProvidedDocs(&Generator{})
 	if len(docs) == 0 {
-		t.Fatal("no sngl:platforms/bubbletea source; nothing below would be checked")
+		t.Fatal("no sngl:platform/bubbletea source; nothing below would be checked")
 	}
 
 	marks := map[string][]string{}
@@ -47,7 +47,7 @@ func TestPrimitivesCarryTheirIntrinsicID(t *testing.T) {
 
 	for _, name := range btPrimitives {
 		if !declared[name] {
-			t.Errorf("%s: not declared in sngl:platforms/bubbletea", name)
+			t.Errorf("%s: not declared in sngl:platform/bubbletea", name)
 			continue
 		}
 		got := marks[name]

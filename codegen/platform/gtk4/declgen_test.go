@@ -180,7 +180,7 @@ func TestSnglName_NoCollisions(t *testing.T) {
 }
 
 // TestPackageFS_LoadsAsAPackage pins that the generated source is loadable
-// library source and not just text: the checker builds sngl:platforms/gtk4
+// library source and not just text: the checker builds sngl:platform/gtk4
 // from it, the widget declarations come back with their marks and types
 // applied, and the `component sngl.X` overrides in gtk4.sngl — which are
 // written against those declarations — check clean against them.
@@ -190,7 +190,7 @@ func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 	if docs := checker.ProvidedDocs(g); len(docs) != 2 {
 		t.Fatalf("ProvidedDocs = %d docs; want 2 (the written half and the generated one)", len(docs))
 	}
-	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platforms/gtk4\"\n"))
+	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platform/gtk4\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,12 +200,12 @@ func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 	}
 	var loaded *ir.Package
 	for _, imp := range pkg.Imports {
-		if imp.Path == "sngl:platforms/gtk4" {
+		if imp.Path == "sngl:platform/gtk4" {
 			loaded = imp.Pkg
 		}
 	}
 	if loaded == nil {
-		t.Fatal("sngl:platforms/gtk4 did not load")
+		t.Fatal("sngl:platform/gtk4 did not load")
 	}
 	var box *ir.Component
 	for _, c := range loaded.Components {
@@ -214,7 +214,7 @@ func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 		}
 	}
 	if box == nil {
-		t.Fatal("sngl:platforms/gtk4 declares no GtkBox")
+		t.Fatal("sngl:platform/gtk4 declares no GtkBox")
 	}
 	if box.Intrinsic != intrinsicPrefix+"GtkBox" {
 		t.Errorf("GtkBox.Intrinsic = %q; want %s", box.Intrinsic, intrinsicPrefix+"GtkBox")

@@ -14,9 +14,9 @@ import (
 // with nothing anywhere reporting it.
 func TestRawElementEventKeepsItsName(t *testing.T) {
 	src := `
-import . "sngl:std"
-import "sngl:platforms/html"
-import "sngl:platforms/html"
+import . "sngl:ui"
+import "sngl:platform/html"
+import "sngl:platform/html"
 output { none { html() } }
 component main {
     var hits = 0
@@ -45,9 +45,9 @@ func TestRawElementKnownEventsUnchanged(t *testing.T) {
 	} {
 		t.Run(tt.sngl, func(t *testing.T) {
 			src := `
-import . "sngl:std"
-import "sngl:platforms/html"
-import "sngl:platforms/html"
+import . "sngl:ui"
+import "sngl:platform/html"
+import "sngl:platform/html"
 output { none { html() } }
 component main {
     var hits = 0

@@ -11,7 +11,7 @@ grep 'a/b/c.txt' out/index.html
 ! grep 'node:path' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 const p = lib.joined()

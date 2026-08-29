@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // Arithmetic between two different numeric types is rejected: the operands
 // must be brought to a common type with an explicit cast first. This keeps

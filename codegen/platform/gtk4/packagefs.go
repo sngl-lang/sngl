@@ -6,14 +6,14 @@ import (
 	"testing/fstest"
 )
 
-// snglsrc is the written half of sngl:platforms/gtk4: the overrides and
+// snglsrc is the written half of sngl:platform/gtk4: the overrides and
 // primitives this platform declares by hand. See
 // codegen/platform/html/packagefs.go for why a plugin carries its own source.
 //
 //go:embed *.sngl
 var snglsrc embed.FS
 
-// PackageFS is the whole of sngl:platforms/gtk4: what this package embeds,
+// PackageFS is the whole of sngl:platform/gtk4: what this package embeds,
 // plus one component declaration per GTK widget class the host's introspection
 // data describes.
 //

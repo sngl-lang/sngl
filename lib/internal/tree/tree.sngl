@@ -8,7 +8,7 @@
 //
 // The path is `sngl:internal/tree`, so only library source may import it. A
 // package that wants to hand the vocabulary to users declares its own mark on
-// top, the way `sngl:draw` declares `shape`.
+// top, the way `sngl:ui/draw` declares `shape`.
 
 import ir "sngl:internal/ir"
 

@@ -15,7 +15,7 @@ import (
 // handler fired.
 func TestStringHelperEmittedFromHandler(t *testing.T) {
 	src := `
-import . "sngl:std"
+import . "sngl:ui"
 component main {
     var count = 0
     var label = ""
@@ -43,7 +43,7 @@ component main {
 // the regression (the setter's flag would arrive too late).
 func TestStringHelperEmittedFromSetter(t *testing.T) {
 	src := `
-import . "sngl:std"
+import . "sngl:ui"
 component main {
     var label = ""
     var tracked = 0 @change {

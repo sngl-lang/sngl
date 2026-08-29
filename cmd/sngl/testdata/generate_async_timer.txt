@@ -12,7 +12,8 @@ grep 'async function \$timer_0_tick' out/index.html
 grep 'await fetchHello' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 import api "js:./api"
 
 component main {

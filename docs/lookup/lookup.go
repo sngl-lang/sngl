@@ -309,7 +309,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	//
 	// sngl:internal/stdlib is deliberately not an alias for this: despite the
 	// name it is the compiler's intrinsics package, which has nothing to do
-	// with sngl:std.
+	// with sngl:ui.
 	if path == "sngl" {
 		pd, stmts := stdlibPackageDocs(checker.Packages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
@@ -376,7 +376,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// the checker loaded, and the classification below compares pointers. Two
 	// parses of one file share none, so reading the source a second way here
 	// silently unclassifies the target's whole option schema.
-	for _, tier := range []string{"platforms", "languages"} {
+	for _, tier := range []string{"platform", "language"} {
 		uri := tier + "/" + path
 		if !isRegisteredTarget(tier, path) {
 			continue
@@ -789,9 +789,9 @@ func FirstSentence(doc string) string {
 // package, which is a whole-package decision made by the plugin.
 func isRegisteredTarget(tier, path string) bool {
 	switch tier {
-	case "platforms":
+	case "platform":
 		return len(codegen.PlatformDocs(codegen.LookupPlatform(path))) > 0
-	case "languages":
+	case "language":
 		return len(codegen.LangDocs(codegen.LookupLang(path))) > 0
 	}
 	return false
@@ -802,10 +802,10 @@ func isRegisteredTarget(tier, path string) bool {
 // a package that exists only because a plugin is registered has to resolve
 // here the way it does in the checker.
 func providedPackageDocs(pkg string) []*ast.Document {
-	if name, ok := strings.CutPrefix(pkg, "platforms/"); ok {
+	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
 		return checker.ProvidedDocs(codegen.LookupPlatform(name))
 	}
-	if name, ok := strings.CutPrefix(pkg, "languages/"); ok {
+	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
 		return checker.ProvidedDocs(codegen.LookupLang(name))
 	}
 	return nil
@@ -928,7 +928,7 @@ func quote(s string) string { return "\"" + s + "\"" }
 
 // LibraryOrigin is a library package that declares a given name.
 type LibraryOrigin struct {
-	Pkg     string // package path, e.g. "sngl:draw"
+	Pkg     string // package path, e.g. "sngl:ui/draw"
 	Ambient bool   // in scope without an import
 	Kind    string // "component", "type", "func", …
 }

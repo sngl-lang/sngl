@@ -47,7 +47,7 @@ func newTranslatorForTest(t *testing.T, jc *javascript.JsIRContext) *htmlTransla
 // program the way codegen takes it: off the node that resolved to it.
 func elementDeclForTest(t *testing.T) *ir.Component {
 	t.Helper()
-	const src = "import . \"sngl:std\"\nimport html \"sngl:platforms/html\"\n\nwindow(\"t\") {\n    html.div {}\n}\n"
+	const src = "import . \"sngl:ui\"\nimport . \"sngl:app\"\nimport html \"sngl:platform/html\"\n\nwindow(\"t\") {\n    html.div {}\n}\n"
 	return firstElementDecl(t, checkedPkgForTest(t, src))
 }
 

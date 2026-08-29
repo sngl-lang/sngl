@@ -14,7 +14,7 @@ sngl generate --platform html --lang none -o outplain plain.sngl
 grep '\["one"\]: "one item"' outplain/index.html
 
 -- alias.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import t "sngl:i18n"
 
 component main {
@@ -22,7 +22,7 @@ component main {
     text(value=t.plural(n, {t.one = "one item", t.other = "many items"}))
 }
 -- plain.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 component main {

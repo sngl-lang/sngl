@@ -248,7 +248,7 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 	}
 	ns, local = decl.Name[:dot], decl.Name[dot+1:]
 	if !c.isLibraryNamespace(ns) {
-		c.error(decl.Pos, "override namespace %q is not an imported library package; import it, e.g. import %s %q", ns, ns, "sngl:std")
+		c.error(decl.Pos, "override namespace %q is not an imported library package; import it, e.g. import %s %q", ns, ns, "sngl:ui")
 		return nil, "", ""
 	}
 	// The package the namespace binds, not the user symtab: a library package

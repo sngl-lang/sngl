@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 // HOVER(value) "text.value:"
 // HOVER(value) "string"

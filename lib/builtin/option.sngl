@@ -1,0 +1,21 @@
+// A value that may be absent, and a mutable cell holding one.
+
+import . "sngl:internal/marks"
+
+// Optional value: `option<T>` is either a `T` or absent. Constructed by the
+// compiler; T is the wrapped type.
+#[builtin("option")]
+struct option<T> {}
+
+// Mutable reference cell: `ref<T>` is a write-through handle to a `T`.
+// Used by NoLambda lowering for mutable captures; T is the referent type.
+#[builtin("ref")]
+struct ref<T> {}
+
+// The absence of a value. Assignable to any `option<T>`, and what a bare
+// `option<T>` holds until one is given.
+//
+// The written value is a placeholder the compiler replaces: `null` has no
+// literal to be declared with, and its type is not one that can be spelled.
+#[builtin("null")]
+const null = 0

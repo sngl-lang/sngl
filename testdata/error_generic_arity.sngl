@@ -1,4 +1,4 @@
-import . "sngl:std"
+import . "sngl:ui"
 
 func pair<A, B>(a A, b B) A {
     return a

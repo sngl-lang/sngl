@@ -1,13 +1,13 @@
 caps: NoDeclarative
 -- input.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     text(value="hello")
     button(text="+")
 }
 -- expected.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 component main {
     var __n0 text = lower.CreateNode("text")
     __n0.value = "hello"

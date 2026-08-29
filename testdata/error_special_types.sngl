@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 component main {
     var d date = "not-a-date"       // ERROR(check) "invalid date"

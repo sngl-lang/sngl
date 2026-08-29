@@ -10,4 +10,4 @@ stderr 'cannot mark an import'
 import . "sngl:internal/marks"
 
 #[builtin("int")]
-import _ "sngl:std"
+import _ "sngl:ui"

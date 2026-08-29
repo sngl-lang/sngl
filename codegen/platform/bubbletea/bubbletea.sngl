@@ -6,8 +6,8 @@
 // these off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
 // primitive lowers to lipgloss / bubbles model code.
 
-import sngl "sngl:std"
-import . "sngl:platforms"
+import sngl "sngl:ui"
+import . "sngl:macro"
 import . "sngl:internal/marks"
 
 #[options]

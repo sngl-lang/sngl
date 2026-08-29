@@ -71,7 +71,8 @@ grep 'delta body' rev/delta.html
 ! grep 'addEventListener' rev/delta.html
 
 -- site.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { none { html } }
 
@@ -100,7 +101,8 @@ component main {
     }
 }
 -- reversed.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { none { html } }
 

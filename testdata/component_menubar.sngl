@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:dialog"
 
 // menubar: A-tier — declaration only.
 component main {

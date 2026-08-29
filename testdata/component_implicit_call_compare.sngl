@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // Regression: a bare zero-arg computed used in an expression must be
 // implicitly called. `count > 0` previously failed typecheck with

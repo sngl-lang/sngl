@@ -47,7 +47,7 @@ func (m *mockResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document
 func newTestResolver() *mockResolver {
 	return &mockResolver{pkgs: map[string]string{
 		"widgets": `
-import . "sngl:std"
+import . "sngl:ui"
 
 component Counter(label = "") {
     var count = 0
@@ -679,7 +679,7 @@ func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Docume
 // counterPkg is the stock imported package for the resolver tests: one
 // exported component, nothing else. Shared so a test's own body shows only
 // what it is actually testing.
-const counterPkg = `import . "sngl:std"
+const counterPkg = `import . "sngl:ui"
 
 component Counter(label = "") {
     text(value=label)
@@ -1022,7 +1022,7 @@ func TestStdlibQualifiedAccess(t *testing.T) {
 	// A stdlib import's alias qualifies the stdlib even when the user shadows
 	// the same name unqualified.
 	expectNoErrors(t, `
-import sngl "sngl:std"
+import sngl "sngl:ui"
 
 component text() {}
 component main {

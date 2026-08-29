@@ -46,7 +46,7 @@ func TestBrowser_FuncvarStoredAsyncUpdatesDOM(t *testing.T) {
 	// click body calls handler(), which must be awaited because points-to
 	// analysis propagates the Async color through the funcvar slot.
 	const snglSrc = `
-import . "sngl:std"
+import . "sngl:ui"
 import api "js:./api"
 
 component main {

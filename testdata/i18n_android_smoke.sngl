@@ -2,7 +2,7 @@
 // Exercises: i18n plural forms, state mutation, Compose update on click.
 // Used by cmd/sngl/testdata/compile_android_i18n.txt.
 
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 component main {

@@ -16,11 +16,11 @@ import (
 // is built from the checker's answer rather than from a second scan of the
 // source.
 func TestOptionsForPackageReadsTheMarkedStruct(t *testing.T) {
-	sd := checker.OptionsStruct("std")
+	sd := checker.OptionsStruct("app")
 	if sd == nil {
-		t.Fatal("sngl:std declares no #[options] struct")
+		t.Fatal("sngl:app declares no #[options] struct")
 	}
-	opts := optionsForPackage("std")
+	opts := optionsForPackage("app")
 	if len(opts) != len(sd.Fields) {
 		t.Fatalf("optionsForPackage documented %d fields, the marked struct has %d", len(opts), len(sd.Fields))
 	}

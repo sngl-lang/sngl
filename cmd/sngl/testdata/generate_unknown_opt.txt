@@ -9,7 +9,7 @@ stderr 'unknown --opt "port"'
 sngl generate --opt listen=127.0.0.1:9000 --out=out app.sngl
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 output {
     none { html }

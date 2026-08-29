@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output {
 	none {
@@ -12,7 +13,7 @@ import "file:public"
 import pgAssets "file:internal/playground/assets"
 import "internal/docui"
 import "internal/learn"
-import "sngl:platforms/html"
+import "sngl:platform/html"
 
 const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()

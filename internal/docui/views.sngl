@@ -1,10 +1,11 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // View components for SNGL documentation. Each takes a plain-struct prop from
 // the lookup façade and renders it across bubbletea/html — no data fetching
 // inside the components themselves.
 import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
-import "sngl:platforms/html"
+import "sngl:platform/html"
 
 // SummaryRow is one entry in a decl list: name + one-line doc. Renders as a
 // link in html when `href` is set; `active` highlights the current row.

@@ -40,8 +40,8 @@ stdout 'element\(tag="div"\)'
 stderr 'undefined: someUndefinedIdentifier'
 
 -- spread.sngl --
-import std "sngl:std"
-import html "sngl:platforms/html"
+import std "sngl:app"
+import html "sngl:platform/html"
 
 struct tdAttrs {
     bgcolor string
@@ -54,8 +54,8 @@ component main() {
     }
 }
 -- typo.sngl --
-import . "sngl:std"
-import "sngl:platforms/html"
+import . "sngl:app"
+import "sngl:platform/html"
 
 component main() {
     window {
@@ -63,7 +63,8 @@ component main() {
     }
 }
 -- unimported.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 component main() {
     window {
@@ -71,8 +72,8 @@ component main() {
     }
 }
 -- dotimport.sngl --
-import std "sngl:std"
-import . "sngl:platforms/html"
+import std "sngl:app"
+import . "sngl:platform/html"
 
 component main() {
     std.window {
@@ -80,8 +81,9 @@ component main() {
     }
 }
 -- dotexpr.sngl --
-import std "sngl:std"
-import . "sngl:platforms/html"
+import std "sngl:ui"
+import app "sngl:app"
+import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
 
@@ -91,8 +93,8 @@ component main() {
     }
 }
 -- dotdecl.sngl --
-import std "sngl:std"
-import . "sngl:platforms/html"
+import std "sngl:app"
+import . "sngl:platform/html"
 
 component main() {
     std.window {

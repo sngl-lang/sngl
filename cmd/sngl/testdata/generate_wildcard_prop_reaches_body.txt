@@ -23,8 +23,8 @@ stdout 'textContent="plain"'
 stdout 'tag="div"'
 
 -- app.sngl --
-import . "sngl:std"
-import . "sngl:platforms"
+import . "sngl:ui"
+import . "sngl:macro"
 
 component badge(
     label string = "",

@@ -30,7 +30,8 @@ grep 'windowSettingsBox\.Hide' out/model.go
 # grep 'm\.navigate\("settings"\)' out/model.go
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { go { fyne } }
 

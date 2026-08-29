@@ -24,7 +24,7 @@ grep '\$compute___hoist_0()' out/index.html
 grep 'await fetchHello' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import api "js:./api"
 
 func greeting() => api.fetchHello("world")

@@ -1,7 +1,7 @@
 // Second-position identifier must be a known ICU type keyword
 // (plural / select / selectordinal / date / time / dateTime / number).
 
-import . "sngl:std"
+import . "sngl:ui"
 import "sngl:i18n"
 
 var n = 5

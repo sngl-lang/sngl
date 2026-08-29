@@ -3,8 +3,9 @@ exists out/index.html
 exists out/about.html
 
 -- site.sngl --
-import . "sngl:std"
-import "sngl:platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
 
 output { none { html } }
 

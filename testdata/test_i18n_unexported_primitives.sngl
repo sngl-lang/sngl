@@ -1,4 +1,5 @@
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:test"
 import "sngl:i18n"
 
 // The formatting primitives live in sngl:i18n as unexported members, so a

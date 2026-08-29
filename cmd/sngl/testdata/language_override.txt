@@ -23,9 +23,10 @@ grep 'default x' out_ak/MainScreen.kt
 stderr 'already has an implementation for "go"'
 
 -- app.sngl --
-import . "sngl:std"
-import "sngl:platforms/html"
-import "sngl:languages/go"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
+import "sngl:language/go"
 
 component Badge(value string) {
     text(value="default " + value)
@@ -46,8 +47,9 @@ component main {
 }
 
 -- dup_language.sngl --
-import . "sngl:std"
-import "sngl:languages/go"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:language/go"
 
 component Badge(value string) {
     text(value=value)

@@ -4,7 +4,7 @@ sngl check app.sngl
 stdout 'app.sngl: ok'
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 output { js { html } }
 

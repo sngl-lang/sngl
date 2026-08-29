@@ -12,7 +12,7 @@ grep 'toUpperCase' out/index.html
 ! grep 'HELLO WORLD' out/index.html
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 import lib "js:./lib"
 
 component main {

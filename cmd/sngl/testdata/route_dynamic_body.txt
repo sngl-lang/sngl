@@ -35,9 +35,10 @@ func Rows(pkg string) []Row { return []Row{{Name: pkg}} }
 func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
-import . "sngl:std"
+import . "sngl:ui"
+import . "sngl:app"
 import "go:dynbody/srv"
-import "sngl:platforms/html"
+import "sngl:platform/html"
 
 component main {
     var hits = 0

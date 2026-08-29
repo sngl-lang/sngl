@@ -5,7 +5,7 @@ sngl generate --lang=none --platform=html --opt maps=true --out=out main.sngl
 exists out/index.html
 
 -- main.sngl --
-import . "sngl:std"
+import . "sngl:ui"
 
 component main {
     text(value="hello")
