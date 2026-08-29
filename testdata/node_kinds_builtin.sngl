@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 
 // The built-in visual nodes, unshadowed: each dispatches to its own compiler

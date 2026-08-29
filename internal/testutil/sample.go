@@ -303,7 +303,7 @@ func libImports(src string) string {
 	if strings.Contains(src, "sngl:") {
 		return ""
 	}
-	return "import . \"sngl:ui\"\nimport . \"sngl:app\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\n"
+	return "import . \"sngl:ui\"\nimport . \"sngl:app\"\nimport . \"sngl:time\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\n"
 }
 
 // Splits the leading run of import declarations off a block body.

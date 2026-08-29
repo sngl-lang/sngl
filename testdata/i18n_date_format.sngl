@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import . "sngl:time"
 import "sngl:i18n"
 
 // Date placeholder with style argument.

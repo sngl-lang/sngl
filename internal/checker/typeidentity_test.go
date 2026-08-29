@@ -111,7 +111,39 @@ component main { text(value="x") }`)))
 	if !strings.Contains(joined, "cannot initialize duration (test.sngl:") {
 		t.Errorf("diagnostic does not say where the program's duration was declared:\n%s", joined)
 	}
-	if !strings.Contains(joined, "with duration (sngl:app)") {
+	if !strings.Contains(joined, "with duration (sngl:time)") {
 		t.Errorf("diagnostic does not say the other duration is the library's:\n%s", joined)
+	}
+}
+
+// `time` is declared by sngl:time and is not ambient, so naming it without
+// that import is an error rather than a silent `dyn`. The resolver used to
+// return dyn for the string-representable types whenever they were not in
+// scope -- a fallback meant for stdlib bootstrap that also swallowed a missing
+// import in user source, typing the declaration as dyn and building anyway.
+func TestUnimportedTimeIsAnErrorNotDyn(t *testing.T) {
+	doc, err := parser.Parse("test.sngl", []byte("component main {\n    var x time\n}\n"))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	var msg string
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			msg = d.Msg
+			break
+		}
+	}
+	if msg == "" {
+		t.Fatal("naming an unimported `time` checked clean; it must not resolve to dyn")
+	}
+	// The hint names the package that declares the type. sngl:i18n binds a
+	// `time` formatter and sorts first, so a hint that ignores the role the
+	// name was read in points at the wrong import.
+	if !strings.Contains(msg, `sngl:time`) {
+		t.Errorf("hint = %q, want it to name sngl:time", msg)
+	}
+	if strings.Contains(msg, "sngl:i18n") {
+		t.Errorf("hint = %q, names i18n's `time` formatter rather than the type", msg)
 	}
 }

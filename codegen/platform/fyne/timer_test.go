@@ -15,6 +15,7 @@ import (
 func TestTimerEmitsTickerRuntime(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 component main {
     var seconds = 0

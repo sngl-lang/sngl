@@ -18,6 +18,7 @@ import (
 func TestReactiveSlot_TimerRefiresIntoAnchor(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 component Car() {
     var a = 0

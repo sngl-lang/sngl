@@ -622,9 +622,9 @@ names shadows it — the grammar reserves none of them.
 
 Everything else the standard library provides is imported. The components,
 event payload types, style enums and `Style` belong to `sngl:ui`; `window`,
-`timer`, `errorBoundary` and `error` to `sngl:app`; `Alert` and `File` to
-`sngl:dialog`; `Test` to `sngl:test`; and the translation surface to
-`sngl:i18n`:
+`errorBoundary` and `error` to `sngl:app`; `time`, `duration` and `timer` to
+`sngl:time`; `Alert` and `File` to `sngl:dialog`; `Test` to `sngl:test`; and
+the translation surface to `sngl:i18n`:
 
 ```sngl
 import . "sngl:ui"

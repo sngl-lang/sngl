@@ -1,4 +1,8 @@
-// Calendar and clock values.
+// Calendar values.
+//
+// A wall-clock `time` is not here: reading the clock is something a program
+// asks for, so it lives in `sngl:time` with `duration` and `timer`. These two
+// stay ambient because they are what a stored value is typed as.
 
 import . "sngl:internal/marks"
 
@@ -8,12 +12,6 @@ import . "sngl:internal/marks"
 // maps it to the native date/time type (Go `time.Time`, JS/Kotlin string).
 #[builtin("date")]
 struct date {}
-
-// Wall-clock time in "HH:MM" or "HH:MM:SS" form. String-representable like
-// `date`; coerces to/from its canonical string form. Platform codegen maps
-// it to the native date/time type.
-#[builtin("time")]
-struct time {}
 
 // ISO-8601 date-time. String-representable like `date`/`time`; coerces
 // to/from its canonical string form. Platform codegen maps it to the

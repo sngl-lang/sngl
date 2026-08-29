@@ -1,6 +1,7 @@
 caps: NoTimer, NoUnit
 -- input.sngl --
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 
 component main {
@@ -14,6 +15,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 component main {
     var n int = 0

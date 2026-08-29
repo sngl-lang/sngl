@@ -548,7 +548,7 @@ component main {
 
 The `import` statement pulls in code from outside the current file. A bare path names another directory inside your project (`import "widgets"`); everything else is addressed by scheme:
 
-- `import . "sngl:ui"` — a package of the SNGL library. This is the one every lesson here opens with: the components an app is built from, and the `Style` and event types they take. Its siblings hold the rest: `sngl:app` the `window` and `timer` an app is hung on, `sngl:dialog` the host's alerts and file pickers, `sngl:ui/draw` the canvas and its shapes. Only `sngl:builtin` is in scope without being imported.
+- `import . "sngl:ui"` — a package of the SNGL library. This is the one every lesson here opens with: the components an app is built from, and the `Style` and event types they take. Its siblings hold the rest: `sngl:app` the `window` an app is hung on, `sngl:time` the `timer` and the `duration` it counts, `sngl:dialog` the host's alerts and file pickers, `sngl:ui/draw` the canvas and its shapes. Only `sngl:builtin` is in scope without being imported.
 - `import "sngl:platform/html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
 - `import "go:go/ast"` — a Go package; its types and pure functions become usable in SNGL. Non-pure calls compile into the Go target.
 - `import "file:public"` — a directory of static files; referenced paths are bundled into the build output.

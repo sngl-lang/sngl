@@ -8,7 +8,9 @@
 //	ui/         the components an application is built from, and the Style
 //	            and event vocabulary every one of them refers to
 //	ui/draw/    the 2D canvas and its shapes, one specialised surface under ui
-//	app/        window, timer, errorBoundary and the error they carry
+//	app/        window, errorBoundary and the error they carry
+//	time/       the clock: `time`, `duration` and the `timer` that fires
+//	            every duration -- none of it ambient
 //	dialog/     host-native notifications and file choosers
 //	test/       the receiver a test function's first parameter carries
 //	i18n/       the translation surface `$"..."` lowers to

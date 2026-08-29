@@ -13,6 +13,7 @@ grep 'await fetchHello' out/index.html
 
 -- app.sngl --
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 import api "js:./api"
 

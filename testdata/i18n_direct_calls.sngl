@@ -3,6 +3,7 @@
 // Note: the "i18n" namespace is predeclared; no import statement needed.
 
 import . "sngl:ui"
+import . "sngl:time"
 import "sngl:i18n"
 
 func test() {

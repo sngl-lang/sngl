@@ -4,6 +4,7 @@
 // `5s` literal produces -- "cannot initialize duration with duration". Only
 // the alias form (`s.duration`) and inference worked.
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 
 var annotated duration = 5s

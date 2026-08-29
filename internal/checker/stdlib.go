@@ -140,12 +140,15 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	// they are built.
 	builtinPkg = c.libPkg("builtin")
 	c.adoptAmbient(builtinPkg)
-	// sngl:app is loaded but not bound: its declarations carry the node kinds
-	// the checker dispatches a visual node on (`window`, `timer`,
-	// `errorBoundary`), and a kind is registered when the marked declaration
-	// is. Nothing here puts those names in scope -- a program still imports
-	// sngl:app to write one.
+	// Loaded but not bound: these carry node kinds the checker dispatches a
+	// visual node on (`window` and `errorBoundary` in sngl:app, `timer` in
+	// sngl:time) and type kinds a foreign importer hands out where it has no
+	// scope to resolve a name in (`duration`). A kind is registered when the
+	// marked declaration is, so the package has to load even when nothing
+	// imported it. Nothing here puts those names in scope -- a program still
+	// imports sngl:app to write a window, and sngl:time to write a timer.
 	c.libPkg(appPkg)
+	c.libPkg(timePkg)
 	return builtinPkg, c.libPkg("ui")
 }
 
@@ -623,6 +626,7 @@ const i18nPkg = "i18n"
 // dispatches on -- and, with them, the top-level Options schema.
 const (
 	appPkg     = "app"
+	timePkg    = "time"
 	optionsPkg = appPkg
 )
 

@@ -14,6 +14,7 @@ import (
 func TestTimerActiveVarMutationSyncsTimer(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:app"
 output { none { html() } }
 component main {
