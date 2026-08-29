@@ -1,0 +1,70 @@
+// Named slots: a region of UI the caller supplies, declared in the parameter
+// list beside the props and events so a component's whole API is one list.
+//
+// Three sites, three jobs. `slot header` declares the contract; `header { ... }`
+// is the insertion point, written as an ordinary node because the name is in
+// scope from the declaration, and its block is the fallback; `slot header { ... }`
+// at a call site supplies the content, marked with the keyword so it reads as
+// supplied rather than rendered.
+//
+// A slot declares types and no parameter names: the names belong to whoever
+// writes the body, which is the populator, exactly as for a func type. So the
+// insertion passes values positionally and the population names them.
+
+import . "sngl://std"
+
+struct Row {
+    title string
+}
+
+component table(
+    rows list<Row>,
+    slot header,
+    slot cell(Row),
+) list<component> {
+    vbox {
+        header {
+            text(value = "(untitled)")
+        }
+        for r = rows {
+            cell(r)
+        }
+        slot
+    }
+}
+
+// A slot may be declared alongside props and events without colliding: the
+// three are read differently (a slot is a tag, a prop a value, an event a
+// handler) and only share the one list they are written in.
+component labelled(caption string, slot body, @click ClickEvent) {
+    vbox {
+        text(value = caption)
+        body {}
+    }
+}
+
+component main {
+    table(rows = [Row{title = "alpha"}, Row{title = "beta"}]) {
+        slot header {
+            text(value = "Rows")
+        }
+        slot cell(row) {
+            text(value = row.title)
+        }
+        text(value = "goes to the anonymous slot")
+    }
+
+    // A slot with no population renders its insertion's block instead, so a
+    // fallback needs no separate syntax.
+    table(rows = []) {
+        slot cell(row) {
+            text(value = row.title)
+        }
+    }
+
+    labelled(caption = "hi", @click { }) {
+        slot body {
+            text(value = "supplied")
+        }
+    }
+}

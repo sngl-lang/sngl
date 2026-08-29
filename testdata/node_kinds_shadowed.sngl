@@ -3,17 +3,12 @@ import . "sngl://std"
 // The built-in visual nodes are shadowable (design doc D3). A user component
 // resolves before the #[builtin] declaration, so each of these instantiates as
 // an ordinary node instance rather than as the compiler's own construct — no
-// package timer is registered, no slot projection, no error boundary.
+// package timer is registered, no error boundary.
 //
-// Shadowing `slot` is safe because platform-extension bodies, which reference
-// bare `slot` heavily, are checked against the stdlib scope rather than the
-// user root — so a user declaration cannot capture the name out from under the
-// compiler's own source.
+// `slot` is not in this family and is absent on purpose: it is a keyword in the
+// declaration family (func, component, struct, enum, unit), not a #[builtin]
+// node resolved by name, so there is nothing for a user declaration to shadow.
 component timer(label string) list<component> {
-    text(value=label)
-}
-
-component slot(label string) list<component> {
     text(value=label)
 }
 
@@ -23,6 +18,5 @@ component errorBoundary(label string) list<component> {
 
 component main {
     timer(label="ordinary")
-    slot(label="ordinary")
     errorBoundary(label="ordinary")
 }

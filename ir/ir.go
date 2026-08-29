@@ -394,6 +394,7 @@ type Component struct {
 	Pkg          string
 	Props        []*Prop
 	Events       []*EventDecl
+	Slots        []*SlotDecl `json:",omitempty"`
 	ChildrenType *Type
 	Vars         []*Var
 	Funcs        []*Func
@@ -460,6 +461,17 @@ type EventDecl struct {
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
+}
+
+// SlotDecl is a resolved named-slot declaration. Params are types only, so an
+// insertion matches them by position.
+type SlotDecl struct {
+	Name   string
+	Params []*Type `json:",omitempty"`
+	// ChildKind names the segmented tree the supplied content must be members
+	// of, from #[tree.children] on the declaration. Empty for a slot that
+	// accepts ordinary components.
+	ChildKind string `json:",omitempty"`
 }
 
 // EventHandler is a resolved event handler. The handler body is represented

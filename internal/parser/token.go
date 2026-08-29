@@ -91,10 +91,10 @@ const (
 	KW_ELSE      TokenType = 0x3B
 	KW_FUNC      TokenType = 0x3C
 	KW_UNIT      TokenType = 0x3D
-	// 0x3E freed: timer is now a pre-declared identifier
-	KW_BREAK    TokenType = 0x3F // reserved
-	KW_RETURN   TokenType = 0x40
-	KW_CONTINUE TokenType = 0x41 // reserved
+	KW_SLOT      TokenType = 0x3E
+	KW_BREAK     TokenType = 0x3F // reserved
+	KW_RETURN    TokenType = 0x40
+	KW_CONTINUE  TokenType = 0x41 // reserved
 	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
@@ -149,6 +149,7 @@ var keywords = map[string]TokenType{
 	"break":     KW_BREAK,
 	"return":    KW_RETURN,
 	"continue":  KW_CONTINUE,
+	"slot":      KW_SLOT,
 	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
 }
 
@@ -173,7 +174,9 @@ func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, UNIT_LITERAL, HASH,
 		STR_END, TRIPLE_END, I18N_STR_FULL, I18N_TRIPLE_FULL, I18N_STR_END, I18N_TRIPLE_END,
-		KW_RETURN,
+		// Both have an optional tail, so each can be a whole statement: without
+		// ASI a bare `slot` takes the next line's identifier as its name.
+		KW_RETURN, KW_SLOT,
 		AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:
 		return true
 	}

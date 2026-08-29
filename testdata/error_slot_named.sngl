@@ -1,0 +1,66 @@
+// What a named slot rejects.
+//
+// The declaration is in the parameter list, so `slot` appearing anywhere else
+// is either a population inside a call to the declaring component, or a
+// declaration written in the wrong place. Nothing else.
+
+import . "sngl://std"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, slot cell(Row)) {
+    vbox {
+        for r = rows {
+            cell(r)
+        }
+        // An insertion passes values positionally: the declaration carries
+        // types and no names, so there is nothing for a named argument to
+        // bind to.
+        cell(value = r) // ERROR(check) "takes positional arguments"
+        cell()          // ERROR(check) "takes 1 argument(s), got 0"
+    }
+}
+
+// A slot is resolved as a tag from anywhere in the body, so a func or var of
+// the same name is a collision the parameter list on its own cannot see. Left
+// unreported, the call in a handler became a slot insertion nothing renders and
+// codegen panicked on it.
+component collidesWithFunc(slot ping) list<component> { // ERROR(check) "already declared as a slot"
+    func ping() {}
+    vbox {
+        ping {
+            text(value = "fb")
+        }
+    }
+}
+
+component main {
+    // A declaration written outside the parameter list.
+    slot stray { // ERROR(check) "populated only inside a call to it"
+        text(value = "x")
+    }
+
+    table(rows = []) {
+        slot cell(row) {
+            text(value = row.title)
+        }
+        // Two populations of one slot: the second has nowhere to go.
+        slot cell(row) { // ERROR(check) "is already populated"
+            text(value = row.title)
+        }
+        // A name the callee does not declare.
+        slot nope { // ERROR(check) "has no slot"
+            text(value = "x")
+        }
+    }
+
+    table(rows = []) {
+        // A population binds names to the insertion's arguments, so the
+        // count has to match what the slot declares.
+        slot cell(row, extra) { // ERROR(check) "binds 2 parameter(s), but declares 1"
+            text(value = row.title)
+        }
+    }
+}

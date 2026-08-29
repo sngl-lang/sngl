@@ -256,7 +256,22 @@ func setTreeKind(c *ir.Component, name string) error {
 }
 
 func markTreeChildren(m *mark) error {
-	return applyTreeMark(m, "children", m.args.String("name"), func(c *ir.Component, name string) error {
+	kind := m.args.String("name")
+	// A named slot hosts a tree the same way a component's children do: the
+	// mark says which family the caller's content must belong to. #[tree.kind]
+	// has no slot form -- kind says what a node *is*, and a slot is a position
+	// rather than a node.
+	if slot, ok := m.sym.(*ir.SlotDecl); ok {
+		if kind == "" {
+			return fmt.Errorf("#[tree.children] requires a non-empty tree name")
+		}
+		if slot.ChildKind != "" {
+			return fmt.Errorf("#[tree.children(%q)]: slot content is already restricted to %q", kind, slot.ChildKind)
+		}
+		slot.ChildKind = kind
+		return nil
+	}
+	return applyTreeMark(m, "children", kind, func(c *ir.Component, name string) error {
 		if c.ChildKind != "" {
 			return fmt.Errorf("children are already restricted to %q", c.ChildKind)
 		}

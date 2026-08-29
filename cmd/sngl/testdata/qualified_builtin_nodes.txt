@@ -1,13 +1,21 @@
-# The four built-in nodes (window, timer, slot, errorBoundary) dispatch on the
-# #[builtin] mark of whatever the target resolves to. That resolution has to
-# follow a qualified target too: under `import s "sngl://std"` the node is
-# written `s.slot`, and resolving it by bare name silently produced an ordinary
-# empty component that dropped its children.
+# The built-in nodes (window, timer, errorBoundary) dispatch on the #[builtin]
+# mark of whatever the target resolves to. That resolution has to follow a
+# qualified target too: under `import s "sngl://std"` the node is written
+# `s.window`, and resolving it by bare name silently produced an ordinary empty
+# component that dropped its children.
+#
+# `slot` is not in this family: it is a keyword, not a declaration reached
+# through a package, so `s.slot` does not parse and bare `slot` is the only
+# spelling. slot.sngl holds that pair — a qualified window hosting a component
+# whose projection point is the unqualified keyword.
 
 sngl check slot.sngl
 stdout 'slot.sngl: ok'
 sngl generate --out slotout slot.sngl
 grep 'inner' slotout/index.html
+
+! sngl check qualslot.sngl
+stderr 'expected identifier'
 
 sngl check window.sngl
 stdout 'window.sngl: ok'
@@ -21,7 +29,7 @@ sngl check boundary.sngl
 stdout 'boundary.sngl: ok'
 
 # Dispatch follows the resolved declaration, not the spelling: another
-# package's ordinary `slot` component reached through its own alias is a plain
+# package's ordinary `timer` component reached through its own alias is a plain
 # component, not the built-in node.
 sngl generate --out shadowout shadowed.sngl
 grep 'from widgets' shadowout/index.html
@@ -31,7 +39,7 @@ import s "sngl://std"
 
 component Card() list<component> {
     s.vbox {
-        s.slot
+        slot
     }
 }
 
@@ -44,6 +52,14 @@ component main {
 }
 
 output { none { html } }
+-- qualslot.sngl --
+import s "sngl://std"
+
+component Card() list<component> {
+    s.vbox {
+        s.slot
+    }
+}
 -- window.sngl --
 import s "sngl://std"
 
@@ -75,7 +91,7 @@ component main {
 -- widgets/lib.sngl --
 import . "sngl://std"
 
-component slot() {
+component timer() {
     text(value="from widgets")
 }
 -- shadowed.sngl --
@@ -84,7 +100,7 @@ import w "widgets"
 
 component main {
     s.window #w2(href="/index.html") {
-        w.slot
+        w.timer
     }
 }
 

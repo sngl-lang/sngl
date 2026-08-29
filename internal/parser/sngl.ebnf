@@ -65,6 +65,7 @@
 # kw_else       0x3B  KW_ELSE
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
+# kw_slot       0x3E  KW_SLOT
 # kw_return     0x40  KW_RETURN
 # slashdash     0x46  SLASHDASH /-
 # str_start        0x49  STR_START         "text{
@@ -146,6 +147,7 @@ kw_for       = `\x3A` .
 kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
+kw_slot      = `\x3E` .
 kw_return    = `\x40` .
 slashdash    = `\x46` .
 str_start    = `\x49` .
@@ -235,6 +237,7 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
+    | SlotNode
     | kw_return [ Expr ]
     | IfNode
     | ForNode
@@ -357,8 +360,15 @@ CompParam = { MacroAttr } CompParamBody .
 CompParamBody =
       colon ident [ Type ] [ assign Expr ]
     | at ident [ Type ]
+    | SlotParam
     | ident [ CompParamTail ]
     .
+
+# A named slot: a region of UI the caller supplies, declared alongside the props
+# and events so a component's whole API is one list. Types only, no parameter
+# names — the names belong to whoever writes the body, which is the populator,
+# exactly as for a func type.
+SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
 
 CompParamTail =
       assign Expr
@@ -413,6 +423,19 @@ StatementPrimary =
 IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 
 ForNode = kw_for [ amp ] ident [ comma [ amp ] ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
+
+# `slot` in statement position. Bare, it is the anonymous slot's insertion point
+# — the one place the keyword means "render here". Named, it populates a slot of
+# the component whose block this is, and the marker is what says the node is
+# being supplied rather than rendered (a named slot renders as `name(args)`,
+# ordinary node syntax, with no keyword at all).
+#
+# The parenthesised list is expressions at both sites: insertion passes values,
+# population binds names, and an ident is an expression — so one production
+# parses both and the checker rules on which site it is.
+SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
+
+SlotArgList = Expr { comma Expr } [ comma ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 

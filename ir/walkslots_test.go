@@ -40,6 +40,7 @@ func exprSlots() []string {
 		reflect.TypeFor[ListLit](), reflect.TypeFor[MapLitIR](),
 		reflect.TypeFor[Spread](), reflect.TypeFor[Lambda](),
 		reflect.TypeFor[Closure](),
+		reflect.TypeFor[SlotInst](), reflect.TypeFor[NodeInst](),
 	}
 	want := reflect.TypeFor[Expr]()
 	var out []string
@@ -120,10 +121,20 @@ func markedPackage() *Package {
 		}},
 		Components: []*Component{{
 			Props: []*Prop{{Name: "p", Default: mark("Prop.Default")}},
-			Body: []Stmt{&ContextProvider{
-				Value:    mark("ContextProvider.Value"),
-				Children: []Stmt{},
-			}},
+			Body: []Stmt{
+				&ContextProvider{
+					Value:    mark("ContextProvider.Value"),
+					Children: []Stmt{},
+				},
+				&NodeInst{
+					Key: mark("NodeInst.Key"),
+					Ref: mark("NodeInst.Ref"),
+					Slots: map[string]*SlotContent{
+						"s": {Body: []Stmt{&Return{Value: mark("SlotContent.Body")}}},
+					},
+				},
+				&SlotInst{Args: []Expr{mark("SlotInst.Args")}},
+			},
 		}},
 		Timers: []*Timer{{
 			Interval: mark("Timer.Interval"),

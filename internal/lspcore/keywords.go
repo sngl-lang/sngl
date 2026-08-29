@@ -16,7 +16,7 @@ var keywordDocs = map[string]string{
 	"for":       "Iteration over a list, map, or iterator.",
 	"return":    "Returns a value from a function.",
 	"import":    "Imports a module.",
-	"platform":  "Conditional block for platform-specific code.",
+	"slot":      "Declares or populates a named slot — a region of UI the caller supplies.",
 	"true":      "Boolean literal.",
 	"false":     "Boolean literal.",
 	"nil":       "Null literal.",

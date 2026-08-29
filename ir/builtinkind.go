@@ -47,13 +47,12 @@ const (
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
-	// matching compiler construct (ir.Window, ir.Timer, ir.SlotInst,
-	// ir.ErrorBoundary) when its target resolves to the marked component,
+	// matching compiler construct (ir.Window, ir.Timer, ir.ErrorBoundary) when
+	// its target resolves to the marked component,
 	// rather than matching a literal name.
 	BuiltinWindow        BuiltinKind = "window"
 	BuiltinTimer         BuiltinKind = "timer"
 	BuiltinContext       BuiltinKind = "context"
-	BuiltinSlot          BuiltinKind = "slot"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 
 	// Target identities. An opaque value type each of whose values is a const
@@ -122,7 +121,7 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext:
+	case BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext:
 		return true
 	}
 	return false
@@ -146,7 +145,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
-		BuiltinWindow, BuiltinTimer, BuiltinSlot, BuiltinErrorBoundary, BuiltinContext,
+		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}

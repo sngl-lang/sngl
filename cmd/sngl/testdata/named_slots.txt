@@ -1,0 +1,156 @@
+# A named slot's content has to reach the generated output, which is what the
+# checker alone cannot say: a component value in a prop position used to type
+# check and then vanish. Each assertion here is a position in the rendered tree.
+#
+# `header` is populated and renders the supplied content; `cell` is a scoped
+# slot inside a `for`, so it renders once per row with the loop's value bound to
+# the populator's own name; the anonymous slot takes the ordinary children.
+
+sngl generate --out out table.sngl
+grep 'Rows' out/index.html
+grep 'alpha' out/index.html
+grep 'beta' out/index.html
+grep 'ordinary child' out/index.html
+
+# An unpopulated named slot renders the insertion's own block, while the
+# anonymous slot beside it still takes the ordinary children. A name-blind
+# substitution puts the children in both positions, so "untitled" disappearing
+# is what this catches -- and without it a fallback is parsed, checked and
+# silently dropped.
+sngl generate --out fbout fallback.sngl
+grep 'untitled' fbout/index.html
+grep 'ordinary' fbout/index.html
+
+# A scoped slot whose argument is a prop rather than a loop variable. The
+# argument is an expression the callee's own param substitution has to reach,
+# so SlotInst.Args must be walked like any other expression slot; when it was
+# not, "CAP" was substituted nowhere and vanished from the output.
+sngl generate --out argout propargs.sngl
+grep 'CAP' argout/index.html
+
+# Two instances of a component that populates a slot with state-reading
+# content. The slot body belongs to the caller, so the per-instance rename has
+# to reach it: while NodeInst.Slots was invisible to the IR walkers, both
+# instances aliased one SlotContent and wrote the same binding.
+sngl generate --out instout instances.sngl
+grep 'label__inst0 = state.label__inst0' instout/index.html
+grep 'label__inst1 = state.label__inst1' instout/index.html
+
+# fmt has to round-trip a slot declaration. Without a case for it the parameter
+# list formatted as `component card(caption string, , )`, so formatting a valid
+# file produced one that does not parse.
+sngl fmt propargs.sngl
+sngl check propargs.sngl
+stdout 'propargs.sngl: ok'
+grep 'slot heading\(string\)' propargs.sngl
+
+-- table.sngl --
+import . "sngl://std"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, slot header, slot cell(Row)) list<component> {
+    vbox {
+        header {
+            text(value="(untitled)")
+        }
+        for r = rows {
+            cell(r)
+        }
+        slot
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
+            slot header {
+                text(value="Rows")
+            }
+            slot cell(row) {
+                text(value=row.title)
+            }
+            text(value="ordinary child")
+        }
+    }
+}
+
+output { none { html } }
+-- fallback.sngl --
+import . "sngl://std"
+
+component card(slot heading) list<component> {
+    vbox {
+        heading {
+            text(value="untitled")
+        }
+        slot
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        card() {
+            text(value="ordinary")
+        }
+    }
+}
+
+output { none { html } }
+-- propargs.sngl --
+import . "sngl://std"
+
+component card(caption string, slot heading(string)) list<component> {
+    vbox {
+        heading(caption) {
+            text(value="fallback")
+        }
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        card(caption="CAP") {
+            slot heading(c) {
+                text(value=c)
+            }
+        }
+    }
+}
+
+output { none { html } }
+-- instances.sngl --
+import . "sngl://std"
+
+component card(slot heading) list<component> {
+    var open = true
+    vbox {
+        heading {
+            text(value="fallbk")
+        }
+        button(text="t", @click { open = !open })
+    }
+}
+
+component wrapper(start string) list<component> {
+    var label = start
+    vbox {
+        card() {
+            slot heading {
+                text(value=label)
+                button(text="bump", @click { label = label + "!" })
+            }
+        }
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        wrapper(start="AAA")
+        wrapper(start="BBB")
+    }
+}
+
+output { none { html } }

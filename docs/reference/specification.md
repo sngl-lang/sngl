@@ -1094,6 +1094,7 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
+    | SlotNode
     | "return" [ Expr ]
     | IfNode
     | ForNode
@@ -1104,6 +1105,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+
+SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
+
+SlotArgList = Expr { "," Expr } [ "," ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1195,7 +1200,10 @@ CompParam = { MacroAttr } CompParamBody
 CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
+    | SlotParam
     | IDENT [ CompParamTail ]
+
+SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ]
 
 CompParamTail = 
     "=" Expr
@@ -1431,6 +1439,7 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
+    | SlotNode
     | "return" [ Expr ]
     | IfNode
     | ForNode
@@ -1441,6 +1450,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+
+SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
+
+SlotArgList = Expr { "," Expr } [ "," ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1514,7 +1527,10 @@ CompParam = { MacroAttr } CompParamBody
 CompParamBody = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "@" IDENT [ Type ]
+    | SlotParam
     | IDENT [ CompParamTail ]
+
+SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ]
 
 CompParamTail = 
     "=" Expr

@@ -174,6 +174,8 @@ func (f *formatter) endLine(s ast.Stmt) int {
 			return f.blockEndLine(x.Pos.Line, &x.Else)
 		}
 		return f.blockEndLine(x.Pos.Line, &x.Body)
+	case *ast.SlotNode:
+		return f.blockEndLine(x.Pos.Line, &x.Block)
 	case *ast.StructDef:
 		if x.IsMultiline {
 			return x.Pos.Line + len(x.Body) + 1
@@ -225,6 +227,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeIfStmt(x)
 	case *ast.ForStmt:
 		f.writeForStmt(x)
+	case *ast.SlotNode:
+		f.writeSlotNode(x)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -807,6 +811,20 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 			f.write(" ")
 			f.writeType(v.Type)
 		}
+	case ast.SlotDecl:
+		f.writeParamAttrs(v.Attrs, multiline)
+		f.write("slot ")
+		f.write(v.Name)
+		if len(v.Params) > 0 {
+			f.write("(")
+			for i, t := range v.Params {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.writeType(t)
+			}
+			f.write(")")
+		}
 	}
 }
 
@@ -1244,5 +1262,27 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
 		} else {
 			f.write(" ")
 		}
+	}
+}
+
+func (f *formatter) writeSlotNode(s *ast.SlotNode) {
+	f.write("slot")
+	if s.Name != "" {
+		f.write(" ")
+		f.write(s.Name)
+	}
+	if len(s.Args) > 0 {
+		f.write("(")
+		for i, a := range s.Args {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.writeExpr(a)
+		}
+		f.write(")")
+	}
+	if s.Block.IsDefined() {
+		f.write(" ")
+		f.writeBlock(&s.Block)
 	}
 }

@@ -320,6 +320,16 @@ type ParamOrEventDecl interface {
 
 func (Param) paramOrEventDecl()     {}
 func (EventDecl) paramOrEventDecl() {}
+func (SlotDecl) paramOrEventDecl()  {}
+
+// SlotDecl declares a named slot in a component's parameter list. Params are
+// types only: the names belong to whoever writes the body, which is the caller.
+type SlotDecl struct {
+	Pos    Pos
+	Name   string
+	Params []TypeExpr
+	Attrs  []MacroAttr `json:",omitempty"`
+}
 
 // EventDecl declares an event on a component: @click, @change Type.
 type EventDecl struct {
@@ -337,6 +347,17 @@ type EventHandler struct {
 	Name   string
 	Params ParamList
 	Body   StmtBlock
+}
+
+// SlotNode is `slot` in statement position: bare it is the anonymous slot's
+// insertion point, named it populates a slot of the component whose block it
+// sits in. Args are binding names for a population and values for an insertion;
+// both parse as expressions and the checker rules on which site it is.
+type SlotNode struct {
+	Pos   Pos
+	Name  string // "" for the anonymous slot
+	Args  []Expr
+	Block StmtBlock
 }
 
 // --- Visual nodes ---
@@ -388,6 +409,7 @@ func (i *Import) StmtPos() *Pos        { return &i.Pos }
 func (c *ComponentDecl) StmtPos() *Pos { return &c.Pos }
 func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
 func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
+func (s *SlotNode) StmtPos() *Pos      { return &s.Pos }
 func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }
