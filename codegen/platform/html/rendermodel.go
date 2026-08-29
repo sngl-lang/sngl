@@ -74,7 +74,7 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
-		state:     stateVarNames(pkg),
+		state:     stateVarNames(pkg, win),
 		actionIdx: actionIdx,
 		rawElem:   rawElementDecl(pkg),
 	}
@@ -185,21 +185,22 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			}
 			continue
 		}
-		if rb.exprIsReactive(p.Value) {
+		val := p.Value
+		if rb.exprIsReactive(val) {
 			rb.writeRaw(" " + p.Name + `="`)
-			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: p.Value, Attr: p.Name})
+			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: val, Attr: p.Name})
 			rb.writeRaw(`"`)
 			continue
 		}
 		// A boolean attribute is present or absent; `open="false"` leaves a
 		// <details> open, so a false one is written as nothing.
-		if bv, ok := codegen.IRLiteralBool(p.Value); ok {
+		if bv, ok := codegen.IRLiteralBool(val); ok {
 			if bv {
 				rb.writeRaw(" " + p.Name)
 			}
 			continue
 		}
-		if s, ok := codegen.IRLiteralString(p.Value); ok {
+		if s, ok := codegen.IRLiteralString(val); ok {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 			continue
 		}
@@ -342,10 +343,25 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 }
 
 // stateVarNames returns the set of (non-synthesized) state var names.
-func stateVarNames(pkg *ir.Package) map[string]bool {
+// stateVarNames is the set of names a route's markup may depend on: the
+// server State struct's fields, plus the window's own vars.
+//
+// A window's vars are what its URL template declares -- `/p/{pkg}` puts `pkg`
+// in scope for the body (checker.go, buildWindow). Those are known per request
+// exactly as state is, so an expression over one renders into a hole. Left
+// out, `class=active ? "active" : ""` where `active` came from the path was
+// neither a literal nor state-dependent, and the route was refused.
+func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg) {
 		out[v.Name] = true
+	}
+	if win != nil {
+		for _, v := range win.Vars {
+			if v != nil && !v.IsConst {
+				out[v.Name] = true
+			}
+		}
 	}
 	return out
 }
