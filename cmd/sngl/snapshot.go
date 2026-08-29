@@ -96,7 +96,6 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		return err
 	}
 
-	// Determine platforms: from flag, or from the file's output {} block.
 	platforms := flagPlatforms
 	if len(platforms) == 0 {
 		pkg, err := checkDoc(doc, filepath.Dir(path), true)
@@ -110,7 +109,6 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		return nil
 	}
 
-	// Determine output directory.
 	fileDir := filepath.Dir(path)
 	effectiveOutDir := outOverride
 	if effectiveOutDir == "" {
@@ -128,7 +126,6 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 
 	var docs []snapshot.DocEntry
 
-	// Examples: snapshot each example_* prefixed component.
 	examples := checker.PrefixedExamples(doc)
 	for name, src := range examples {
 		if !force && snapshotAllExist(effectiveOutDir, name, platforms) {
@@ -138,7 +135,6 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 			continue
 		}
 
-		// Wrap with an output block if the example doesn't include one.
 		if !strings.Contains(src, "output {") {
 			var wrapped strings.Builder
 			wrapped.WriteString("output {\n")
@@ -157,10 +153,8 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		docs = append(docs, snapshot.DocEntry{ID: name, SourceFile: tmpFile})
 	}
 
-	// Main app: if the file has an output {} block, snapshot it too.
-	// Without this guard, stdlib-style files (lib/components.sngl, etc.) that
-	// hold only component definitions would be added as a main doc and fail
-	// to type-check.
+	// Without the output {} guard, a file holding only component definitions
+	// would be added as a main doc and fail to type-check.
 	if len(platforms) > 0 && strings.Contains(string(data), "output {") {
 		basename := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if !force && snapshotAllExist(effectiveOutDir, basename, platforms) {
@@ -192,7 +186,6 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 	return nil
 }
 
-// snapshotAllExist reports whether all platform PNG outputs already exist for id.
 func snapshotAllExist(outDir, id string, platforms []string) bool {
 	for _, plat := range platforms {
 		if _, err := os.Stat(filepath.Join(outDir, id+"_"+plat+".png")); err != nil {

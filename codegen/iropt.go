@@ -116,8 +116,6 @@ func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[str
 	return static
 }
 
-// --- internal helpers ---
-
 func deduplicateUpdaters(us []Updater) []Updater {
 	last := make(map[string]int)
 	for i, u := range us {

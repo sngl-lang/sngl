@@ -120,7 +120,6 @@ func validPluralSelector(s string) bool {
 	return false
 }
 
-// checkI18nPlaceholder type-checks Value and validates Type/Cases.
 func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 	valExpr := c.checkExpr(ph.Value)
 	vT := exprType(valExpr)
@@ -160,7 +159,6 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if vT != nil {
 			switch vT.Kind {
 			case ir.TypeString, ir.TypeDyn:
-				// ok
 			case ir.TypeEnum:
 				if d, ok := vT.Decl.(*ir.EnumDef); ok {
 					enumDecl = d
@@ -309,7 +307,6 @@ func i18nReceiver(c *checker, ns string) ir.Expr {
 	return &ir.Ident{Name: ns, Sym: c.namespaceNamed(ns)}
 }
 
-// namespaceNamed returns the namespace symbol bound under name, or nil.
 func (c *checker) namespaceNamed(name string) ir.Symbol {
 	if sym, ok := c.scope.Lookup(name); ok {
 		return sym

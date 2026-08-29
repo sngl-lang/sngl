@@ -14,14 +14,6 @@ import (
 // compiling those packages to wasm; if that evaluation breaks, the sidebar
 // (also data-driven) can still render while every page body comes up empty.
 // This test guards against that whole-site-goes-blank regression.
-//
-// It does not skip in -short, unlike the other heavy tests: those need a
-// browser, an Android SDK or a display, and this needs none of them. It is
-// merely slow -- ~80s, of which the wasm evaluation its old skip message
-// blamed is 6s and emitting the 789 pages is the rest. That is ~11% on a
-// twelve-minute run, against a regression that otherwise reaches the default
-// branch and breaks the published docs, because `pages` is the only other job
-// that builds the site and it runs nowhere else.
 func TestWebsiteProducesContent(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -64,25 +56,16 @@ func TestWebsiteProducesContent(t *testing.T) {
 	}
 }
 
-// TestWebsiteTypeChecks is TestWebsiteProducesContent's cheap half, and the
-// only one that runs in -short mode -- which is the mode CI's `go tool verify
-// -dry` uses. Checking the site against the html platform costs under a
-// second, because the go:// consts are evaluated by the optimizer and this
-// stops at the checker; the full build compiles them to wasm and costs a
-// minute, which is why it skips.
-//
-// Without this the website is only ever built by the `pages` job, and `pages`
-// runs on the default branch alone: a type error in a `platform html` body
-// reached main and broke the docs deploy, having passed every pipeline on the
-// way in.
+// TestWebsiteTypeChecks is the cheap half of TestWebsiteProducesContent: it
+// stops at the checker, so a type error is reported at once rather than after
+// the full build.
 func TestWebsiteTypeChecks(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The platform must be named: a `platform html { ... }` body is checked
-	// against the html package only when html is a target of the build, so
-	// `sngl check` with no platform walks straight past the thing that broke.
+	// against the html package only when html is a target of the build.
 	cmd := exec.Command("go", "tool", "sngl", "dump", "--stage", "checked",
 		"--platform", "html", "--lang", "none", "website.sngl")
 	cmd.Dir = repoRoot

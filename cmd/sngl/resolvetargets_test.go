@@ -7,12 +7,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// TestResolveTargets_CLIFlagsPreserveDeclaredOptions guards a regression where
-// passing both --platform and --lang on the CLI built the target with empty
-// options, silently discarding the options declared in the source's
-// `output { ... }` block (e.g. stylesheet="..."). That dropped the site's CSS.
-// Selecting a declared target by flag must inherit that target's options; CLI
-// -o/--opt values still override.
+// Selecting a declared target by flag must inherit that target's options: both
+// flags together once built an empty one, dropping the declared stylesheet and
+// with it the site's CSS. --opt still overrides.
 func TestResolveTargets_CLIFlagsPreserveDeclaredOptions(t *testing.T) {
 	pkg := &ir.Package{
 		Outputs: []*ir.Output{{
@@ -35,8 +32,6 @@ func TestResolveTargets_CLIFlagsPreserveDeclaredOptions(t *testing.T) {
 	}
 }
 
-// TestResolveTargets_CLIFlagsUndeclaredTarget confirms selecting a target NOT
-// present in any output block still works (empty base options).
 func TestResolveTargets_CLIFlagsUndeclaredTarget(t *testing.T) {
 	pkg := &ir.Package{} // no output decls
 	targets, err := resolveTargets(pkg, "go", "bubbletea", nil)

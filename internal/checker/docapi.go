@@ -10,8 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// --- Doc API types ---
-
 // ComponentSchema describes a stdlib component for documentation.
 // Only exported components appear in the schema registry.
 type ComponentSchema struct {
@@ -21,23 +19,19 @@ type ComponentSchema struct {
 	Children *ir.Type // nil = no children
 }
 
-// PropSchema describes a single component property.
 type PropSchema struct {
 	Type ir.Type
 	Doc  string
 	Enum []string
 }
 
-// StylePropSchema describes a style property.
 type StylePropSchema struct {
 	Type ir.Type
 	Enum []string
 }
 
-// SchemaRegistry maps component names to their schemas.
 type SchemaRegistry = map[string]*ComponentSchema
 
-// PackageDocs holds extracted documentation for all declarations in a package.
 type PackageDocs struct {
 	// Doc is the package comment, from the first file that carries one.
 	Doc string
@@ -50,7 +44,6 @@ type PackageDocs struct {
 	Functions  []DeclInfo
 }
 
-// FindDecl searches all declaration categories for the given name.
 func (pd *PackageDocs) FindDecl(name string) *DeclInfo {
 	for i := range pd.Components {
 		if pd.Components[i].Name == name {
@@ -93,8 +86,6 @@ type DeclInfo struct {
 	Decl ast.Stmt // the AST node
 }
 
-// --- Public functions ---
-
 var (
 	stdlibSchemaOnce     sync.Once
 	stdlibSchemaRegistry SchemaRegistry
@@ -103,7 +94,6 @@ var (
 	stdlibIRPackage      *ir.Package
 )
 
-// LoadStdlib returns the stdlib component schemas and style property schemas.
 func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 	stdlibSchemaOnce.Do(func() {
 		docs := StdlibDocs()
@@ -114,7 +104,6 @@ func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
 			return
 		}
 
-		// Merge all stdlib docs into one for checking.
 		merged := &ast.Document{}
 		for _, d := range docs {
 			merged.Stmts = append(merged.Stmts, d.Stmts...)

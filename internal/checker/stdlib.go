@@ -14,16 +14,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 )
 
-// Cached parsed stdlib ASTs. Parsed once, reused across Check() calls.
 var (
 	stdlibOnce     sync.Once
 	stdlibDocs     []*ast.Document
 	stdlibTierDocs map[string][]*ast.Document
 )
 
-// PackageDocsFor returns the parsed documents of the embedded package
-// `sngl://<name>`. Packages are directories on disk, so the set follows the
-// layout rather than a list maintained in Go.
+// Packages are directories on disk, so the set follows the layout rather than
+// a list maintained in Go.
 func PackageDocsFor(name string) []*ast.Document {
 	parseStdlibDocs()
 	return slices.Clone(stdlibTierDocs[name])
@@ -55,7 +53,6 @@ var (
 	packageSourceCache = map[string][]*ast.Document{}
 )
 
-// HasPackage reports whether `sngl://<name>` names an embedded package.
 func HasPackage(name string) bool {
 	parseStdlibDocs()
 	_, ok := stdlibTierDocs[name]
@@ -68,7 +65,6 @@ func HasPackage(name string) bool {
 // mutually exclusive (each declares its own `Options`), so merging them into
 // one corpus produces collisions no program could ever hit. Reach one through
 // PackageDocsFor, or import it.
-// The results are cached after the first call.
 //
 // Returns a copy of the cached slice so a caller that appends can't write into
 // the shared package-global backing array (bugs.md #12).
@@ -76,8 +72,8 @@ func StdlibDocs() []*ast.Document {
 	return slices.Clone(parseStdlibDocs())
 }
 
-// targetTier reports whether a package path names a platform or language
-// package — one contributed by a codegen plugin rather than by the library.
+// A platform or language package: one contributed by a codegen plugin rather
+// than by the library.
 func targetTier(pkg string) bool {
 	return strings.HasPrefix(pkg, "platforms/") || strings.HasPrefix(pkg, "languages/")
 }
@@ -287,7 +283,6 @@ func ProvidedDocs(t any) []*ast.Document {
 	return docs
 }
 
-// hasLibPkg reports whether name resolves to a lib package for this check.
 func (c *checker) hasLibPkg(name string) bool {
 	if c.cfg != nil {
 		if _, ok := c.cfg.LibSources[name]; ok {
@@ -690,10 +685,9 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	}
 }
 
-// buildHtmlNamespacePkg constructs a synthetic ir.Package for the "html"
-// namespace, exposing the html.* placement directives (frontend/backend),
-// declared as methods on receiver "html", as free functions so calls like
-// html.frontend(v) resolve.
+// The html.* placement directives are declared as methods on receiver "html";
+// a synthetic package republishes them as free functions so html.frontend(v)
+// resolves.
 func (c *checker) buildHtmlNamespacePkg(stdlibFuncs []*ir.Func) *ir.Package {
 	pkg := &ir.Package{
 		Symbols:        NewSymbolTable(),
@@ -777,7 +771,6 @@ func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
 	}
-	// Stdlib package.
 	pkg.Units = append(pkg.Units, ud)
 	c.bindLib(u.Pos, pkg.Symbols.Root, ud)
 }
@@ -917,7 +910,6 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 		}
 	}
 
-	// Handle expression-body functions (=> expr)
 	if f.Body != nil {
 		bodyExpr := c.checkExpr(f.Body)
 		if bodyExpr == nil {
@@ -949,7 +941,6 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 			Value: bodyExpr,
 		}}
 	} else if f.Block.IsDefined() {
-		// Handle block-body functions ({ ... })
 		fn.Block = c.checkBlockIR(&f.Block)
 	}
 
@@ -1177,9 +1168,6 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if dot <= 0 {
 					continue
 				}
-				// An unmatched prefix is an error, not a skip: silently
-				// ignoring these drops every override the file declares and
-				// still produces a successful build with unstyled output.
 				ns := decl.Name[:dot]
 				pkgName, ok := aliases[ns]
 				if !ok {
@@ -1204,9 +1192,8 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if !ok {
 					continue
 				}
-				// Walk each platform block; collect every (platformName → body)
-				// pairing this decl declares. Duplicate keys across all
-				// registered platforms for the same stdlib component error.
+				// Duplicate keys across all registered platforms for the same
+				// stdlib component are an error.
 				for i := range decl.Body.Stmts {
 					pl, ok := decl.Body.Stmts[i].(*ast.PlatformStmt)
 					if !ok {
@@ -1258,13 +1245,11 @@ type pendingExtension struct {
 	body     ast.StmtBlock
 }
 
-// checkPendingExtensions runs after user pass1. For each pending extension,
-// temporarily install the platform block as the stdlib component's AST.Body,
-// invoke checkComponentBody, capture the resulting IR Body into the
-// PlatformBodies map, and restore the component's Body slot for the next
-// extension (or the final pass2). The stdlib component's AST.Body and Body
-// are left empty after this routine — the active platform's IR body is
-// swapped in by lower's passPlatformExtensionBody.
+// Runs after user pass1, so user-declared symbols are in scope. Each extension
+// body is checked with the platform block temporarily installed as the stdlib
+// component's AST.Body, then the slot is restored: the component is left with
+// an empty Body, and lower's passPlatformExtensionBody swaps the active
+// platform's in.
 func (c *checker) checkPendingExtensions() {
 	if len(c.pendingExtensions) == 0 {
 		return
@@ -1328,10 +1313,8 @@ func (c *checker) checkPendingExtensions() {
 	}
 }
 
-// highestCalledPurity walks fn.Block looking at every function call and
-// returns the max purity among the called functions. Returns PurityPure
-// when the body contains no function calls or all called functions are
-// pure. Used by the Phase 2b stdlib propagation pass.
+// The max purity among the functions fn's body calls, PurityPure when it calls
+// none. Drives the Phase 2b propagation above.
 func highestCalledPurity(fn *ir.Func) ir.Purity {
 	if fn == nil || len(fn.Block) == 0 {
 		return ir.PurityPure
@@ -1581,9 +1564,8 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 	c.bindLib(comp.Pos, pkg.Symbols.Root, irComp)
 }
 
-// stdlibImportAlias returns the alias a document binds the standard library
-// under, or "" if it does not import it. Platform sources use this alias as
-// the `component <alias>.X` extension prefix.
+// Platform sources use a library import's alias as the `component <alias>.X`
+// extension prefix.
 func libImportAliases(doc *ast.Document) map[string]string {
 	out := map[string]string{}
 	for _, stmt := range doc.Stmts {
@@ -1611,11 +1593,18 @@ func libImportAliases(doc *ast.Document) map[string]string {
 
 // Loaded library packages for callers outside a check — the documentation
 // tools and the language server. A lib package is immutable once built and
-// costs a full load, so one instance is shared.
+// costs a full load, so one instance is shared. The diagnostics are cached
+// with it: the load happens once, so a later caller asking for them cannot
+// re-run it.
 var (
 	libPkgMu    sync.Mutex
-	libPkgCache = map[string]*ir.Package{}
+	libPkgCache = map[string]libPkgEntry{}
 )
+
+type libPkgEntry struct {
+	pkg   *ir.Package
+	diags []ir.Diagnostic
+}
 
 // LibPackage returns the built IR of the embedded package `sngl://<name>`, or
 // nil when no such package exists.
@@ -1625,21 +1614,54 @@ var (
 // source says only what was written. Loading is memoized: the packages are the
 // compiler's own and do not change within a process.
 func LibPackage(name string) *ir.Package {
+	pkg, _ := CheckLibPackage(name)
+	return pkg
+}
+
+// CheckLibPackage is LibPackage plus the diagnostics the load produced, for a
+// caller reporting on the package rather than reading it — `sngl check
+// sngl://platforms/gtk4`.
+//
+// Loading a lib package is not the same as checking its source as a document:
+// it runs with the lib-source rules that permit the `sngl://internal/` imports
+// a platform package writes, and it sees the declarations a target synthesizes
+// and never wrote to a file. Both are why this is the only way to check one.
+func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	if !HasPackage(name) && registeredTarget(name) == nil {
-		return nil
+		return nil, nil
 	}
 	libPkgMu.Lock()
 	defer libPkgMu.Unlock()
-	if pkg, ok := libPkgCache[name]; ok {
-		return pkg
+	if e, ok := libPkgCache[name]; ok {
+		return e.pkg, e.diags
 	}
 	// Through LibSources so the IR is built from the same documents
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
-	pkg := newChecker(&ast.Document{}, cfg).libPkg(name)
-	libPkgCache[name] = pkg
-	return pkg
+	c := newChecker(&ast.Document{}, cfg)
+	pkg := c.libPkg(name)
+	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
+	return pkg, c.diags
+}
+
+// Packages lists the `sngl://` packages this process can reach: the public
+// tiers embedded under lib/, plus the package each registered target serves
+// for itself. A target that cannot serve one — gtk4 with no introspection
+// data — contributes nothing, so the list is what is actually addressable
+// here rather than what the build could in principle offer.
+func Packages() []string {
+	out := lib.PublicPackages()
+	targetPkgMu.RLock()
+	names := slices.Collect(maps.Keys(targetPkgs))
+	targetPkgMu.RUnlock()
+	for _, name := range names {
+		if len(PackageSource(name)) > 0 {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // OptionsStruct returns the #[options]-marked struct of `sngl://<name>`, or

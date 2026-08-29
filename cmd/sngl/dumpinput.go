@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -50,8 +48,6 @@ func resolveDumpInput(cmd *cobra.Command, args []string) (dumpInput, error) {
 	}
 }
 
-// dumpParseInput parses input according to the given source mode.
-// Returns the parsed document and the directory context for imports.
 func dumpParseInput(input dumpInput, args []string) (*ast.Document, string, error) {
 	switch input {
 	case dumpInputSNGL:
@@ -72,40 +68,12 @@ func dumpParseInput(input dumpInput, args []string) (*ast.Document, string, erro
 	return nil, "", fmt.Errorf("unhandled input source %q", input)
 }
 
-// dumpParseAndMerge parses the input file/directory and merges siblings.
 func dumpParseAndMerge(args []string) (*ast.Document, string, error) {
 	target := "."
 	if len(args) > 0 {
 		target = args[0]
 	}
-
-	info, err := os.Stat(target)
-	if err != nil {
-		return nil, "", err
-	}
-
-	start := time.Now()
-	if info.IsDir() {
-		doc, err := parseDir(target)
-		if err != nil {
-			return nil, "", err
-		}
-		slog.Info("parse", "dir", target, "duration", time.Since(start))
-		return doc, target, nil
-	}
-
-	f, err := os.Open(target)
-	if err != nil {
-		return nil, "", err
-	}
-	doc, err := parseSNGL(target, f)
-	f.Close()
-	if err != nil {
-		return nil, "", err
-	}
-	slog.Info("parse", "file", target, "duration", time.Since(start))
-
-	return doc, filepath.Dir(target), nil
+	return parsePathInput(target)
 }
 
 func dumpParseStdin() (*ast.Document, string, error) {
@@ -242,7 +210,6 @@ func extractMarkdownSNGL(path string) ([]mdBlock, error) {
 	return blocks, nil
 }
 
-// mdFindAnnotation looks backward from fenceLine to find a <!-- SNGL-... --> comment.
 func mdFindAnnotation(lines []string, fenceLine int) (annotation, prelude string) {
 	i := fenceLine - 1
 	for i >= 0 && strings.TrimSpace(lines[i]) == "" {

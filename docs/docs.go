@@ -26,7 +26,6 @@ import (
 //go:embed *.md learn reference
 var content embed.FS
 
-// Page holds the data for a single documentation page.
 type Page struct {
 	Title       string
 	Slug        string // URL slug, e.g. "learn/installation"
@@ -38,8 +37,6 @@ type Page struct {
 	IsIndex     bool   // true if this page is the section's index.md (or root index.md)
 }
 
-// Pages returns all documentation pages with rendered HTML bodies.
-//
 //sngl:pure
 func Pages() []Page {
 	var pages []Page
@@ -118,7 +115,6 @@ func Pages() []Page {
 	return pages
 }
 
-// NavLink is a single sidebar entry.
 type NavLink struct {
 	Title string
 	Href  string
@@ -151,14 +147,10 @@ var navExtras = []struct {
 	{"", NavLink{Title: "Playground", Href: "/playground.html", Order: 1000}},
 }
 
-// NavTree returns the resolved sidebar tree. The structure mirrors the docs
-// directory: each subdirectory with an index.md becomes a section heading,
-// other markdown files in that subdirectory become items under it. Top-level
-// entries (Home, Playground) come from navExtras with Section "".
-//
-// Pages with no parent index.md (e.g. docs/index.md) are still emitted but
-// stay out of the sidebar — link to them explicitly from another page if you
-// want them reachable.
+// The sidebar mirrors the docs directory: a subdirectory with an index.md is a
+// section heading, its other markdown files the items. A page with no parent
+// index.md (e.g. docs/index.md) is still emitted but stays out of the sidebar,
+// so link to it explicitly from another page.
 //
 //sngl:pure
 func NavTree() []NavGroup {
@@ -198,8 +190,6 @@ func NavTree() []NavGroup {
 		})
 	}
 
-	// navExtras: top-level entries go straight to the output; section
-	// extras attach to an existing section.
 	type topEntry struct {
 		isSection bool
 		order     int
@@ -218,7 +208,6 @@ func NavTree() []NavGroup {
 		s.items = append(s.items, e.Link)
 	}
 
-	// Skip sections that have no index.md — they're considered hidden.
 	for name, s := range sections {
 		if !s.seen {
 			delete(sections, name)
@@ -261,7 +250,6 @@ func NavTree() []NavGroup {
 	return groups
 }
 
-// Component holds metadata for a single stdlib component.
 type Component struct {
 	Name            string
 	Doc             string // full doc string
@@ -275,27 +263,22 @@ type Component struct {
 	PreviewHTML     string   // compiled HTML for interactive iframe preview
 }
 
-// ComponentProp describes a component property.
 type ComponentProp struct {
 	Name string
 	Type string
 	Doc  string
 }
 
-// ComponentEvent describes a component event.
 type ComponentEvent struct {
 	Name        string
 	PayloadType string
 }
 
-// Tier groups components by their tier for the gallery.
 type Tier struct {
 	Name       string
 	Components []Component
 }
 
-// StdlibComponents returns metadata for all stdlib components.
-//
 //sngl:pure
 func StdlibComponents() []Component {
 	registry, _, err := checker.LoadStdlib()
@@ -341,7 +324,6 @@ func StdlibComponents() []Component {
 		comps = append(comps, c)
 	}
 
-	// Sort by tier order then name.
 	tierIdx := map[string]int{}
 	for i, t := range docsite.TierOrder {
 		tierIdx[t] = i
@@ -358,8 +340,6 @@ func StdlibComponents() []Component {
 	return comps
 }
 
-// ComponentsByTier returns stdlib components grouped by tier for the gallery.
-//
 //sngl:pure
 func ComponentsByTier() []Tier {
 	comps := StdlibComponents()
@@ -376,8 +356,6 @@ func ComponentsByTier() []Tier {
 	return tiers
 }
 
-// StdlibLookup returns the stdlib component with the given name.
-//
 //sngl:pure
 func StdlibLookup(name string) Component {
 	for _, c := range StdlibComponents() {
@@ -388,10 +366,8 @@ func StdlibLookup(name string) Component {
 	return Component{Name: name, Doc: "Component not found."}
 }
 
-// platformOrder defines the display order for platform tabs.
 var platformOrder = []string{"html", "android", "bubbletea", "fyne"}
 
-// platformDisplayName returns a human-readable label for a platform.
 var platformDisplayName = map[string]string{
 	"html":      "HTML (Interactive)",
 	"android":   "Android",
@@ -399,9 +375,6 @@ var platformDisplayName = map[string]string{
 	"fyne":      "Fyne",
 }
 
-// detectPlatforms scans the stdlib snapshots directory and returns the
-// platforms that have a .png snapshot for the given component name,
-// sorted by platformOrder.
 func detectPlatforms(name string) []string {
 	dir := filepath.Join("lib", "snapshots")
 	var platforms []string
@@ -413,15 +386,12 @@ func detectPlatforms(name string) []string {
 	return platforms
 }
 
-// buildPreviewSection generates the full tabbed preview HTML including
-// interactive iframe and per-platform screenshot tabs.
 func buildPreviewSection(name, source string, platforms []string) string {
 	iframeHTML := compilePreview(source)
 	if iframeHTML == "" {
 		return ""
 	}
 
-	// Use html.EscapeString for srcdoc attribute
 	escaped := strings.ReplaceAll(iframeHTML, "&", "&amp;")
 	escaped = strings.ReplaceAll(escaped, "\"", "&quot;")
 	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
@@ -462,9 +432,8 @@ func buildPreviewSection(name, source string, platforms []string) string {
 	return b.String()
 }
 
-// compilePreview compiles a .sngl example to HTML for iframe preview.
-// The source is a full `component main { ... }` block (as returned by
-// checker.PrefixedExamples).
+// source is a full `component main { ... }` block, as checker.PrefixedExamples
+// returns.
 func compilePreview(source string) string {
 	doc, err := parser.Parse("example.sngl", []byte(source))
 	if err != nil {
@@ -511,8 +480,7 @@ func compilePreview(source string) string {
 	return ""
 }
 
-// firstSentence trims a doc to its first sentence (". " boundary) or first
-// line. Used for one-line blurbs on index/card lists.
+// firstSentence trims a doc at the first ". " boundary, or the first line.
 func firstSentence(doc string) string {
 	return lookup.FirstSentence(doc)
 }
@@ -525,10 +493,8 @@ func autoTitle(name string) string {
 	return strings.ToUpper(name[:1]) + name[1:]
 }
 
-// Highlight runs Chroma over a source string for the given lexer name and
-// returns the resulting HTML. Pure so SNGL components can call it inline;
-// the optimizer folds it to a literal at compile time when both args are
-// const.
+// Pure so SNGL components can call it inline: the optimizer folds it to a
+// literal at compile time when both args are const.
 //
 //sngl:pure
 func Highlight(src, language string) string { return docsite.Highlight(src, language) }

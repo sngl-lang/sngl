@@ -7,17 +7,12 @@ import (
 	"testing"
 )
 
-// A compile-time value whose declared type says nothing — a Go func returning
-// []any — carries its own type ref, and the declaration that resolves must
-// still be there when Go is emitted. Reading the const through an ident used
-// to go out through the interpreter's value model and come back as a naked
-// struct literal, so the emitted field initializer was
-// `[]any{struct{}{Name: "alpha", Value: 1}}`: not compilable Go, and not
-// visible at the checker seam where the value is built.
-//
-// The assertion is on the emitted source for that reason. The value is read
-// into a component var so it survives as an initializer rather than folding
-// into the string it is measured by.
+// A value from a Go func returning []any carries its own type ref, and reading
+// the const through an ident used to lose it in the interpreter's value model:
+// the emitted initializer came back as `[]any{struct{}{Name: "alpha"...}}`,
+// which is not compilable Go. Only the emitted source shows that, hence the
+// assertion on it — and the value is read into a component var so it survives
+// as an initializer rather than folding into the string measuring it.
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
 	const src = `import . "sngl://std"
 import lib "go://git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
@@ -65,7 +60,6 @@ component main {
 	}
 }
 
-// repoRoot returns the directory of the go.mod above the test's own package.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	cwd, err := os.Getwd()

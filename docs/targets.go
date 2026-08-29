@@ -33,7 +33,6 @@ type OptionDoc struct {
 	Doc  string
 }
 
-// PlatformTarget describes a registered platform generator for the docs site.
 type PlatformTarget struct {
 	Name         string
 	Doc          string
@@ -42,7 +41,6 @@ type PlatformTarget struct {
 	Options      []OptionDoc
 }
 
-// LanguageTarget describes a registered language translator for the docs site.
 type LanguageTarget struct {
 	Name         string
 	Doc          string
@@ -64,9 +62,8 @@ type TargetCatalog struct {
 	Languages     []LanguageTarget
 }
 
-// Targets enumerates built-in platforms and languages, probing each for the
-// optional codegen interfaces it implements. Called at compile time from
-// website.sngl to render the /targets reference page.
+// Probes every built-in target for the optional codegen interfaces it
+// implements. Called at compile time from website.sngl.
 //
 //sngl:pure
 func Targets() TargetCatalog {
@@ -112,15 +109,12 @@ func Targets() TargetCatalog {
 	return cat
 }
 
-// --- capability probes ---
-
 type platformProbe struct {
 	name string
 	doc  string
 	eval func(codegen.PlatformGenerator) string
 }
 
-// check returns "✓" when ok, "" otherwise — the boolean probe shortcut.
 func check(ok bool) string {
 	if ok {
 		return "✓"
@@ -203,14 +197,9 @@ func languageCapNames() []string {
 	return out
 }
 
-// optionsForPackage extracts the fields of sngl://<uri>'s #[options] struct.
-// Each field's type is formatted as source and its doc string is pulled from
-// the nearest comments: preceding line comments immediately above the field,
-// or a trailing comment on the same line. Returns nil if the package declares
-// no options schema.
-//
-// The mark is on the loaded IR, so the declaration is found there and the
-// parsed source is then read for the comments the IR does not carry.
+// The #[options] mark is on the loaded IR, so the declaration is found there
+// and the parsed source is then read for the comments the IR does not carry.
+// Nil when the package declares no options schema.
 func optionsForPackage(uri string) []OptionDoc {
 	sd := checker.OptionsStruct(uri)
 	if sd == nil || sd.AST == nil {
@@ -259,9 +248,8 @@ func extractOptionsStruct(doc *ast.Document, target *ast.StructDef) []OptionDoc 
 	return out
 }
 
-// fieldDocString returns the documentation for a field declared on line. It
-// prefers a run of preceding comment lines immediately above; falls back to
-// an inline comment on the same line.
+// Prefers a run of comment lines immediately above the field; falls back to an
+// inline comment on the same line.
 func fieldDocString(line int, commentByLine map[int]string) string {
 	var preceding []string
 	for l := line - 1; l > 0; l-- {
@@ -291,9 +279,8 @@ func joinDocLines(lines []string) string {
 	return out.String()
 }
 
-// formatType renders an ast.TypeExpr to a short human-readable string. Covers
-// the named-type case used in Options structs; non-trivial shapes fall back
-// to a generic "type" label.
+// Covers the named-type case Options structs use; anything else falls back to
+// a generic "type" label.
 func formatType(t ast.TypeExpr) string {
 	if t == nil {
 		return ""

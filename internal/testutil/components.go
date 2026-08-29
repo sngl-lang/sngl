@@ -82,10 +82,8 @@ func RunComponentFixtures(t *testing.T, platform string) {
 	}
 }
 
-// fixtureHasTestFunc reports whether the fixture contains at least one
-// top-level `func test...` definition. Declaration-only fixtures still
-// run through generate; this lets the agent path short-circuit fixtures
-// that have nothing to assert.
+// Declaration-only fixtures still run through generate; this lets the agent
+// path short-circuit fixtures that have nothing to assert.
 func fixtureHasTestFunc(path string) bool {
 	f, err := os.Open(path)
 	if err != nil {
@@ -115,8 +113,7 @@ func hasErrorDirective(path string) bool {
 	return len(dirs) > 0
 }
 
-// langForPlatform returns the lang to pair with the platform for the
-// native mode. Matches each platform's first SupportedLangs entry.
+// Matches each platform's first SupportedLangs entry.
 func langForPlatform(platform string) string {
 	switch platform {
 	case "android":
@@ -129,8 +126,6 @@ func langForPlatform(platform string) string {
 	}
 }
 
-// runComponentNative drives the "compile and run native target tests"
-// path: `sngl generate --opt test=true` → run the host toolchain.
 func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 	t.Helper()
 
@@ -172,7 +167,6 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 	}
 }
 
-// runComponentAgent drives the "sngl test --platform=X" path.
 func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 	t.Helper()
 
@@ -256,9 +250,6 @@ func skipReasonFromOutput(out string) (string, bool) {
 // stdlib component it declares no implementation for.
 var unimplementedComponent = regexp.MustCompile(`component "([^"]+)" has no (\S+) implementation`)
 
-// unsupportedComponentReason reports that the fixture asked for a stdlib
-// component the target platform does not implement.
-//
 // Deliberately separate from skipReasonFromOutput, whose signals are all
 // "this machine is missing a tool": that is a gap in the environment, this is
 // a gap in the platform, and reading them off one list would let a genuinely
@@ -274,9 +265,7 @@ func unsupportedComponentReason(out string) (string, bool) {
 	return m[2] + " does not implement " + m[1], true
 }
 
-// nativeSkipReason reports a platform's static skip reason for the
-// "native" mode (host toolchain compile + run), or "" if the platform
-// participates.
+// "" when the platform participates in native mode (host toolchain compile + run).
 func nativeSkipReason(platform string) string {
 	switch platform {
 	case "html":
@@ -318,9 +307,7 @@ func nativeSkipReason(platform string) string {
 	return ""
 }
 
-// agentSkipReason reports a platform's static skip reason for the
-// "agent" mode (sngl test --platform=X), or "" if the platform
-// participates.
+// "" when the platform participates in agent mode (sngl test --platform=X).
 func agentSkipReason(platform string) string {
 	switch platform {
 	case "bubbletea", "fyne":
@@ -366,10 +353,8 @@ func agentSkipReason(platform string) string {
 	return ""
 }
 
-// runNativeTarget runs the native target's test command in `dir` (the
-// directory containing the just-emitted source). Returns *skipErr when
-// the host toolchain reveals an unavailability we'd rather surface as a
-// skip.
+// dir holds the just-emitted source. Returns *skipErr when the host toolchain
+// reveals an unavailability better surfaced as a skip.
 func runNativeTarget(t *testing.T, platform, dir string) error {
 	t.Helper()
 	switch platform {
@@ -383,9 +368,8 @@ func runNativeTarget(t *testing.T, platform, dir string) error {
 	return fmt.Errorf("no native-target runner wired for platform %s", platform)
 }
 
-// runGoTest synthesises go.mod (mirroring the launcher path), then runs
-// `go mod tidy` and `go test ./...` in dir. Returns *skipErr when
-// output reveals a missing native dep (e.g. gtk4 pkg-config).
+// Returns *skipErr when the output reveals a missing native dep (e.g. gtk4
+// pkg-config).
 func runGoTest(dir string) error {
 	if err := writeTempGoMod(dir); err != nil {
 		return err
@@ -409,10 +393,8 @@ func runGoTest(dir string) error {
 	return nil
 }
 
-// writeTempGoMod synthesises go.mod for a temp go-target build dir.
-// Mirrors codegen/lang/golang/launcher.go:writeTestGoMod so the helper
-// emits the same module configuration the launcher would use, including
-// any host-discovered replace directives.
+// Mirrors codegen/lang/golang/launcher.go:writeTestGoMod, host-discovered
+// replace directives included, so the helper builds what the launcher would.
 func writeTempGoMod(dir string) error {
 	goVersion, extra := codegen.DetectHostGoMod()
 	if goVersion == "" {
