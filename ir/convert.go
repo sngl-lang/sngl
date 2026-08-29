@@ -605,18 +605,43 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
 		return nil
 	}
-	elem := c.convertType(s.Content)
+	isDefault := false
+	if sd, ok := s.Content.Decl.(*StructDef); ok && sd.Builtin == BuiltinTreeDefault {
+		isDefault = true
+	}
+	var elem ast.TypeExpr
+	if isDefault {
+		// The default tree is declared in the tree package, so it has to be
+		// spelled through whatever this file imported that package as.
+		elem = &ast.NamedType{Package: c.treePkg(), Name: "default"}
+	} else {
+		elem = c.convertType(s.Content)
+	}
 	switch s.Card {
 	case SlotOne:
-		pkg := c.treeAlias
-		if pkg == "" {
-			pkg = "tree"
+		nt := &ast.NamedType{Package: c.treePkg(), Name: "one"}
+		// tree.one's own parameter defaults to the default tree, so naming it
+		// would be spelling out what the declaration already says.
+		if !isDefault {
+			nt.TypeArgs = []ast.TypeExpr{elem}
 		}
-		return &ast.NamedType{Package: pkg, Name: "one", TypeArgs: []ast.TypeExpr{elem}}
+		return nt
 	case SlotOptional:
 		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
 	}
+	if isDefault {
+		// A slot naming the default tree accepts what a bare one accepts.
+		return nil
+	}
 	return elem
+}
+
+// treePkg is what this package imported sngl://tree as.
+func (c *converter) treePkg() string {
+	if c.treeAlias != "" {
+		return c.treeAlias
+	}
+	return "tree"
 }
 
 func findSlotDecl(comp *Component, name string) *SlotDecl {

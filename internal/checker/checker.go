@@ -1752,7 +1752,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
-	finishTreeMarks(comp, irComp, c.pkg)
+	c.finishTreeMarks(comp, irComp, c.pkg)
 	c.finishDefaultSlot(irComp)
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
@@ -3314,14 +3314,6 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 func (c *checker) finishDefaultSlot(comp *ir.Component) {
 	slot := findSlot(comp, ir.DefaultSlot)
 	if slot == nil {
-		return
-	}
-	if comp.ChildrenType != nil {
-		pos := ast.Pos{}
-		if comp.AST != nil {
-			pos = comp.AST.Pos
-		}
-		c.error(pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
 		return
 	}
 	comp.ChildrenType = childrenTypeFor(slot)

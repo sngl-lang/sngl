@@ -21,7 +21,8 @@ component table(
     rows list<Row>,
     slot header,
     slot cell(Row),
-) list<component> {
+    slot _,
+) {
     vbox {
         header {
             text(value="(untitled)")

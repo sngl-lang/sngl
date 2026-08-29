@@ -6,12 +6,13 @@
 // by name would reject them.
 
 import . "sngl://std"
+import tr "sngl://tree"
 
 struct option<T> {
     v T
 }
 
-component frame(slot badge option<component>) {
+component frame(slot badge option<tr.default>) {
     vbox {
         badge {}
     }

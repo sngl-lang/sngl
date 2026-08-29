@@ -12,12 +12,6 @@ component twice(slot _, slot _) { // ERROR(check) "name is already declared as a
     }
 }
 
-component both(slot _) list<component> { // ERROR(check) "the slot replaces it"
-    vbox {
-        slot
-    }
-}
-
 // A scoped default slot has nowhere to collect its arguments: the content is
 // written as ordinary children, with no binding site.
 component scoped(slot _(string)) { // ERROR(check) "default slot takes no parameters"

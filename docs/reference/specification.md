@@ -1241,17 +1241,22 @@ A component parameter is one of three kinds:
 
 ### Children
 
-The children type, written after the parameter list, governs what may nest
-inside an instance:
+A component accepts children by declaring the default slot, named `_`, in its
+parameter list. Its type says which family the children belong to and how many
+are accepted:
 
-- *omitted* — the component accepts no children;
-- `component` — exactly one child;
-- `list<component>` — zero or more children;
-- `option<component>` — zero or one child.
+- *no slot declared* — the component accepts no children;
+- `slot _` — any number, of whatever family the component itself belongs to;
+- `slot _ shape` — any number of that tree's members;
+- `slot _ tree.one<T>` — exactly one;
+- `slot _ option<T>` — zero or one.
 
-Within the body, the predeclared `slot` projects the caller-supplied children
-into position. When a slot appears inside a conditional or loop, the
-surrounding structure is rendered per the reactive rules below.
+Within the body, `slot` projects the caller-supplied children into position.
+When it appears inside a conditional or loop, the surrounding structure is
+rendered per the reactive rules below.
+
+A named slot is declared the same way and populated by name at the call site
+(`slot header { … }`), rendering where its name is written as an ordinary node.
 
 ### Instantiation and visual nodes
 
@@ -1676,7 +1681,6 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 ```ebnf
 Type = 
     IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" ]
-    | "component"
     | "func" "(" [ FuncTypeParamList ] ")" [ Type ]
     | StructDecl
     | EnumDecl

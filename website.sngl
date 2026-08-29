@@ -101,7 +101,7 @@ component PlatformCarousel() {
 	}
 }
 
-component PageLayout(title = "", currentHref = "") list<component> {
+component PageLayout(title = "", currentHref = "", slot _) {
 	if PLATFORM == html.platform {
 		html.div(class="site") {
 			html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")

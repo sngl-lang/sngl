@@ -1,8 +1,9 @@
 import . "sngl://std"
+import tr "sngl://tree"
 
 // Component declares optional child (option<T>).
 // Two children: error.
-component OptionalOne() option<component> {
+component OptionalOne(slot _ option<tr.default>) {
     vbox {
         slot
     }

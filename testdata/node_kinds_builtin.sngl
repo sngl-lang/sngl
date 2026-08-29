@@ -9,7 +9,7 @@ component main {
     }
 }
 
-component wrapper() list<component> {
+component wrapper(slot _) {
     vbox {
         slot
     }

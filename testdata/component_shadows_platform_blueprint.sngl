@@ -10,7 +10,7 @@ import . "sngl://std"
 // own source. Resolving through the flat symtab map instead let this file break
 // the compiler's own platform source with `unknown prop "model" on component
 // Widget`.
-component Widget(title string) list<component> {
+component Widget(title string, slot _) {
     text(value=title)
 }
 

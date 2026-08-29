@@ -79,7 +79,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go://` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
-- **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (`list<component>`, children attach through a method) and `Wrapper` (`component`, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
+- **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
 - **android** — generates Android app code; supports `kotlin` and `golang`.
@@ -115,7 +115,8 @@ The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas` and the 2D shapes it hosts, plus the `shape` macro that marks a component as one (the public spelling of `#[tree.kind("shape")]`). It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/draw/` → `sngl://draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is also the worked example of a package shipping a mark alongside the declarations it applies to.
+- **`lib/tree/` → `sngl://tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
 - **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Only the vocabulary: `sngl://platforms/<name>` and `sngl://languages/<name>` are not under `lib/` at all — a target carries its own package, described below.
 - **`lib/internal/` → `sngl://internal/<name>`** — the compiler's own tier, importable only from lib source.
@@ -177,22 +178,50 @@ the compiler's own tier: a package there may contribute macros, declarations,
 or both. `internal/marks` declares only macros; `internal/draw` declares the
 drawing primitives passCanvas emits, the intrinsic half of `sngl://draw`.
 
-**`#[tree.kind]` / `#[tree.children]` describe a segmented component tree.**
-`sngl://internal/tree` names a family of nodes — `kind("shape")` says a
-component is a member, `children("shape")` says it hosts members — and the
-checker rejects a child whose kind does not match. The names are opaque:
-drawing is the first user, rich text and menus are the next, and nothing in
-the mechanism knows what a shape is. A member with no children type of its own
-hosts its own kind, so a shape contains shapes without saying so.
+**A tree is a declared type, and `#[tree.kind]` marks the struct that names
+one.** `sngl://tree` describes a segmented component tree: a family whose
+members are not interchangeable widgets, where a container accepts only its
+own family. Drawing is the first user, rich text and menus are the next, and
+nothing in the mechanism knows what a shape is.
 
-The package is internal, so users reach it through a package that wraps it:
-`#[draw.shape]` is `sngl://draw`'s public spelling of `#[tree.kind("shape")]`,
-and it keeps the rules that are about drawing rather than about trees — a
-painted shape declares no events. The facts land on `ir.Component.TreeKind`
-and `.ChildKind` at registration, and on `ir.Package.TreeKinds` for the
-lowering passes to gate on. Nothing about a mark reaches the AST: the source
+```sngl
+#[tree.kind]
+struct shape {}
+
+component circle(…)     shape {}   // is a shape
+component canvas(slot _ shape) {}  // hosts shapes, is not one
+component group(slot _) shape {}   // is one, and hosts its own family
+```
+
+The **return position says what a component is**; what it *hosts* is its
+default slot's type, which is how a member hosts a different family. A slot
+naming no tree accepts the one its component belongs to, so a member hosts its
+own without saying so — but declaring a slot at all is what makes it host
+anything. Naming something that is not a tree in the return position is an
+error: a children contract is a slot's to declare.
+
+The tree is the *declaration*, not its name, so a misspelling is an unresolved
+name where it is written, and two packages each declaring `struct shape`
+declare two trees. `tree.default` is the family an ordinary component belongs
+to, recognised by its `#[builtin]` kind; naming it is the same as naming none.
+A tree struct holds nothing and no value of it exists.
+
+The facts land on `ir.Component.Tree` at registration and on
+`ir.Package.TreeKinds` for the lowering passes to gate on. `#[draw.shape]`
+keeps only the rules that are about drawing rather than about trees — a
+painted shape declares no events — since membership is the return position and
+the mark no longer confers it. Nothing about a mark reaches the AST: the source
 carries the `#[...]` as written and the checker applies it where it registers
 the declaration.
+
+**Slots are declared in the parameter list**, beside the props and events, so a
+component's whole API is one list. The default slot is named `_`; a named one
+is populated at the call site with `slot name { … }` and renders where its name
+is written, as an ordinary node. A slot's type is the tree it accepts, wrapped
+in whatever bounds the count: bare is any number, `tree.one<T>` exactly one,
+`option<T>` none or one. `component` is no longer a type — it was the widest
+children type before slots and trees, and the keyword now only introduces a
+declaration.
 
 **`#[intrinsic]` on a component is a platform primitive.** On a function the
 mark names a signature in `ir.Intrinsics` that every language backend must

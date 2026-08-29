@@ -1,8 +1,9 @@
 import . "sngl://std"
+import tr "sngl://tree"
 
 // Component declares exactly one child (bare type T).
 // Zero children: error.
-component RequiresOne() component {
+component RequiresOne(slot _ tr.one) {
     vbox {
         slot
     }

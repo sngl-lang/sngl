@@ -639,9 +639,10 @@ NonIdentPrimary =
 
 # ── Types ─────────────────────────────────────────────────────────────────────
 
+# `component` is not a type. It was the widest children type before slots and
+# trees, and the keyword now only introduces a declaration.
 Type =
       ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
-    | kw_component
     | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
     | StructDecl
     | EnumDecl

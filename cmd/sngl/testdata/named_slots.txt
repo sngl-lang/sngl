@@ -51,7 +51,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot header, slot cell(Row)) list<component> {
+component table(rows list<Row>, slot header, slot cell(Row), slot _) {
     vbox {
         header {
             text(value="(untitled)")
@@ -81,7 +81,7 @@ output { none { html } }
 -- fallback.sngl --
 import . "sngl://std"
 
-component card(slot heading) list<component> {
+component card(slot heading, slot _) {
     vbox {
         heading {
             text(value="untitled")
@@ -102,7 +102,7 @@ output { none { html } }
 -- propargs.sngl --
 import . "sngl://std"
 
-component card(caption string, slot heading(string)) list<component> {
+component card(caption string, slot heading(string), slot _) {
     vbox {
         heading(caption) {
             text(value="fallback")
@@ -124,7 +124,7 @@ output { none { html } }
 -- instances.sngl --
 import . "sngl://std"
 
-component card(slot heading) list<component> {
+component card(slot heading, slot _) {
     var open = true
     vbox {
         heading {
@@ -134,7 +134,7 @@ component card(slot heading) list<component> {
     }
 }
 
-component wrapper(start string) list<component> {
+component wrapper(start string, slot _) {
     var label = start
     vbox {
         card() {

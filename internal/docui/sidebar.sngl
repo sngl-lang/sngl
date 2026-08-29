@@ -1,7 +1,7 @@
 import . "sngl://std"
 import "sngl://platforms/html"
 
-component Sidebar(homeHref = "/", logo = "") list<component> {
+component Sidebar(homeHref = "/", logo = "", slot _) {
     if PLATFORM == html.platform {
         html.nav {
             html.div(class="sidebar-header") {

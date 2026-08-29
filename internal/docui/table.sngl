@@ -3,7 +3,7 @@ import "sngl://platforms/html"
 
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.
-component Table() list<component> {
+component Table(slot _) {
     if PLATFORM == html.platform {
         html.table {
             slot
@@ -16,7 +16,7 @@ component Table() list<component> {
 }
 
 // Table header row.
-component HeaderRow() list<component> {
+component HeaderRow(slot _) {
     if PLATFORM == html.platform {
         html.thead {
             html.tr {
@@ -31,7 +31,7 @@ component HeaderRow() list<component> {
 }
 
 // Table body row.
-component Row() list<component> {
+component Row(slot _) {
     if PLATFORM == html.platform {
         html.tr {
             slot

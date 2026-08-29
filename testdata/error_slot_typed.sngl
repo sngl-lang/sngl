@@ -3,7 +3,7 @@
 import . "sngl://std"
 import tr "sngl://tree"
 
-component frame(slot body tr.one<component>, slot badge option<component>) {
+component frame(slot body tr.one, slot badge option<tr.default>) {
     vbox {
         body {}
         badge {}

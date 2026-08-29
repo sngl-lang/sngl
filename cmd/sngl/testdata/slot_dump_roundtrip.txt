@@ -8,8 +8,8 @@
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
-stdout 'slot header tr.one<component>'
-stdout 'slot _ component'
+stdout 'slot header tr.one'
+stdout 'slot _,'
 stdout 'slot cell\(Row\)'
 
 cp stdout out.sngl
@@ -26,8 +26,8 @@ struct Row {
 
 component table(
     rows list<Row>,
-    slot _ component,
-    slot header tr.one<component>,
+    slot _ tr.default,
+    slot header tr.one,
     slot cell(Row),
 ) {
     vbox {

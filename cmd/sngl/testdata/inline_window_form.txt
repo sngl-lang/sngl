@@ -24,7 +24,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>) list<component> {
+component table(rows list<Row>, slot _) {
     vbox {
         for r = rows {
             text(value=r.title)

@@ -4,6 +4,7 @@
 
 import . "sngl://std"
 import tr "sngl://tree"
+import tr "sngl://tree"
 
 struct Pair<A, B = string> {
     left A
@@ -20,7 +21,7 @@ component show(
     p Pair<int> = {left=1, right="s"},
     q Pair<int, bool> = {left=2, right=true},
     b Boxed = {v=3},
-    // tree.one's parameter defaults to the tree an ordinary component belongs
+    // tr.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
     slot body tr.one,
 ) {

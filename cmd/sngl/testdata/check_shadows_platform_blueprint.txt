@@ -22,7 +22,7 @@ import . "sngl://std"
 
 output { none { html } }
 
-component Widget(title string) list<component> {
+component Widget(title string, slot _) {
     text(value=title)
 }
 

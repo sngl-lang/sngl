@@ -1676,7 +1676,7 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
-	finishTreeMarks(comp, irComp, pkg)
+	c.finishTreeMarks(comp, irComp, pkg)
 	c.finishDefaultSlot(irComp)
 
 	c.bindLib(comp.Pos, c.scope, irComp)

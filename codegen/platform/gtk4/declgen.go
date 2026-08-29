@@ -82,7 +82,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// GIR does not say which widgets accept children, and declaring a
 		// bound would refuse either every container or every leaf. The
 		// emitter knows which parent types have a child-append API.
-		b.WriteString(") list<component> {}\n")
+		b.WriteString("    slot _,\n) {}\n")
 	}
 	return []byte(b.String())
 }
