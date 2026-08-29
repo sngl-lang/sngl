@@ -30,20 +30,8 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 	// map is unpacked back into them here — where html turns props
 	// into names.
 	maps.Copy(out, codegen.WildcardProps(n))
-	for _, dp := range componentProps(n) {
-		if dp.Wildcard != "" {
-			delete(out, dp.Name)
-		}
-	}
+	delete(out, attrsProp)
 	return out
-}
-
-// componentProps is the props a node's component declares, or nil.
-func componentProps(n *ir.NodeInst) []*ir.Prop {
-	if n == nil || n.Component == nil {
-		return nil
-	}
-	return n.Component.Props
 }
 
 // rawElementTag reports the tag the element's tag prop names — the prop the
@@ -51,12 +39,8 @@ func componentProps(n *ir.NodeInst) []*ir.Prop {
 // which a call site writing a tag no identifier can spell (a hyphenated custom
 // element) replaces. Only a literal is one: a computed tag would have to be
 // resolved at runtime, and nothing downstream can do that.
-func rawElementTag(decl *ir.Component, n *ir.NodeInst) (string, bool) {
-	into := tagPropName(decl)
-	if into == "" {
-		return "", false
-	}
-	expr := codegen.NodeProp(n, into)
+func rawElementTag(n *ir.NodeInst) (string, bool) {
+	expr := codegen.NodeProp(n, tagProp)
 	if expr == nil {
 		return "", false
 	}

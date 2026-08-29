@@ -35,11 +35,6 @@ type renderBuilder struct {
 	cur       strings.Builder
 	state     map[string]bool          // names of state vars (reactive bindings read these)
 	actionIdx map[*ir.EventHandler]int // backend handler → action index (shared source of truth with collectActions)
-	// rawElem is the `element` declaration every HTML tag resolves to. The
-	// server render reads the same declaration the client render does, so the
-	// two agree on the tag, on which props are boolean, and on which prop
-	// holds the tag rather than describing the element.
-	rawElem *ir.Component
 
 	// err is the first thing the server render could not express. It has no
 	// error return -- it builds a skeleton -- so the failure is carried out and
@@ -99,7 +94,6 @@ func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, acti
 		pkg:       pkg,
 		state:     stateVarNames(pkg, win),
 		actionIdx: actionIdx,
-		rawElem:   rawElementDecl(pkg),
 	}
 	for _, s := range win.Body {
 		rb.walkStmt(s, path)
@@ -197,15 +191,11 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 			path, actionIdx))
 	}
 
-	decl := n.Component
-	if decl == nil || decl.Wildcard == "" {
-		decl = rb.rawElem
-	}
 	// A node the declaration cannot name a tag for is rendered as a container
 	// rather than as a bogus <name> literal, so a user component keeps
 	// rendering instead of emitting invalid markup.
 	tag := "div"
-	if t, ok := rawElementTag(decl, n); ok {
+	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
 	rb.writeRaw("<" + tag)
@@ -218,7 +208,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
 	var rawBinding *ir.Arg
-	for _, p := range rb.elementAttrs(decl, n) {
+	for _, p := range rb.elementAttrs(n) {
 		switch contentProp(p.Name) {
 		case textContentKind:
 			textBinding = p
@@ -336,20 +326,11 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 // element rather than describing it) and minus the wildcard container, whose
 // entries are unpacked back into the attribute names they were written under
 // and appended sorted.
-func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
-	into := tagPropName(decl)
-	wildcard := map[string]bool{}
-	if decl != nil {
-		for _, dp := range decl.Props {
-			if dp != nil && dp.Wildcard != "" {
-				wildcard[dp.Name] = true
-			}
-		}
-	}
+func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == into || wildcard[p.Name] {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
 			continue
 		}
 		out = append(out, p)
