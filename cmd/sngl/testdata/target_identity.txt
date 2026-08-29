@@ -47,9 +47,9 @@ stderr 'operator == not defined for platform and element'
 stderr 'unknown type "color" in namespace "html"'
 
 -- gate.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
-import "sngl://languages/go"
+import . "sngl:std"
+import "sngl:platforms/html"
+import "sngl:languages/go"
 
 component main {
     window #w(title="t") {
@@ -64,7 +64,7 @@ component main {
 }
 
 -- string_compare.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     window #w(title="t") {
@@ -75,7 +75,7 @@ component main {
 }
 
 -- unknown_target.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     window #w(title="t") {
@@ -86,8 +86,8 @@ component main {
 }
 
 -- misspelled_member.sngl --
-import . "sngl://std"
-import "sngl://platforms/bubbletea"
+import . "sngl:std"
+import "sngl:platforms/bubbletea"
 
 component main {
     window #w(title="t") {
@@ -98,8 +98,8 @@ component main {
 }
 
 -- html_wildcard.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     window #w(title="t") {
@@ -110,7 +110,7 @@ component main {
 }
 
 -- ambient_leak.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     window #w(title="t") {

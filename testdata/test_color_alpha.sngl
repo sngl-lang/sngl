@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A colour is its complete value, alpha included. hex() dropped alpha in
 // every backend while the interpreter kept it, so an assertion on a

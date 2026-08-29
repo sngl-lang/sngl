@@ -3,8 +3,8 @@
 // every name it matched, keyed by that name, so the body can read them —
 // without that the values are accepted and then reach nothing.
 
-import . "sngl://std"
-import . "sngl://platforms"
+import . "sngl:std"
+import . "sngl:platforms"
 
 component attrs(
     label string = "",

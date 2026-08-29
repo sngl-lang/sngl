@@ -16,7 +16,7 @@ import (
 // exports, mapping each to an ir.Func, ir.StructDef, ir.EnumDef, or ir.Var.
 // abs is the resolved virtual absolute path (used by typescript-go's
 // parser, which requires absolute filenames); rel is the matching
-// io/fs.FS path used to read bytes; spec is the original js:// spec.
+// io/fs.FS path used to read bytes; spec is the original js: spec.
 func loadTypeScript(spec, abs, rel string, fsys fs.FS) (*ir.NativeImport, error) {
 	src, err := fs.ReadFile(fsys, rel)
 	if err != nil {
@@ -412,7 +412,7 @@ func DeclaredHere(f ir.Foreign) bool {
 // A declaration this importer read has a module path and nothing else to say;
 // a marked one has only what the mark wrote, so it is routed here when the
 // mark named this language and left alone when it named another. Without that
-// second case a go:// mark would rewrite a JavaScript call to a name no
+// second case a go: mark would rewrite a JavaScript call to a name no
 // JavaScript declares.
 func CallsHere(f ir.Foreign) bool {
 	if f.Marked {

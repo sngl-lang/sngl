@@ -14,7 +14,7 @@ import (
 
 // macroDeclRE matches a macro declaration: a func whose return type is
 // `Macro`, qualified or not. The qualified form is what lib/ actually writes —
-// sngl://internal/ir is imported under an alias so that a dot import of the
+// sngl:internal/ir is imported under an alias so that a dot import of the
 // mark's package does not lift the type on — but the unqualified form is legal
 // and should count too.
 var macroDeclRE = regexp.MustCompile(`(?m)^func\s+([A-Za-z_]\w*)\s*\([^)]*\)\s+(?:\w+\.)?Macro\b`)
@@ -39,7 +39,7 @@ func TestEveryDeclaredMacroIsImplemented(t *testing.T) {
 		for _, m := range pkg.Macros {
 			declared++
 			if !checker.MacroIsImplemented(name, m.Name) {
-				t.Errorf("sngl://%s declares `func %s(...) Macro` but the compiler implements no mark for it; "+
+				t.Errorf("sngl:%s declares `func %s(...) Macro` but the compiler implements no mark for it; "+
 					"#[%s] would resolve and then fail at every use site", name, m.Name, m.Name)
 			}
 		}

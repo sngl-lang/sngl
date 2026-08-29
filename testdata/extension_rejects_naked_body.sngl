@@ -1,4 +1,4 @@
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 // An override implements one declaration for one target and says which on its
 // own name. Naming another package's declaration without one is not a

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Built-ins are shadowable (design doc D3). A user `component window`
 // resolves before the #[builtin("window")] declaration, so this

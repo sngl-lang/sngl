@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Test event declarations and bidirectional bindings
 // Component with an event in ()

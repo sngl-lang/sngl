@@ -1,6 +1,6 @@
 caps: NoTimer, NoUnit
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var running bool = false
@@ -13,7 +13,7 @@ component main {
     button(@click { running = true })
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 component main {
     var running bool = false
     var n int = 0

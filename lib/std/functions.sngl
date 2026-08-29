@@ -1,4 +1,4 @@
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // --- Alert ---
 

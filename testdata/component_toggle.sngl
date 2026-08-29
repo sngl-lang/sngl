@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // toggle: state-binding fixture — flipping the bound `checked` var
 // propagates to the switch, and the label sits after the switch.

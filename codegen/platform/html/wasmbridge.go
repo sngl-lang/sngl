@@ -18,7 +18,7 @@ type wasmPackage struct {
 // collectWASMPackages scans imports for scheme-based packages that expose
 // impure functions. Such functions cannot be evaluated at compile time.
 //
-// Per the placement model (GitLab #27), a non-js:// func defaults to BACKEND
+// Per the placement model (GitLab #27), a non-js: func defaults to BACKEND
 // and is NOT shipped to the browser. WASM exposure is opt-in: a func is
 // compiled to WASM and exposed via window.__sngl_externs ONLY when the author
 // forces it client-side with html.frontend(...). collectWASMPackages therefore
@@ -32,7 +32,7 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 	if len(frontend) == 0 {
 		// Every package below is admitted only by a lookup in frontend, so an
 		// empty one admits nothing — and returning here spares the scan a
-		// scheme resolve per import, which for go:// is a Go package load.
+		// scheme resolve per import, which for go: is a Go package load.
 		return nil
 	}
 	var out []wasmPackage
@@ -44,7 +44,7 @@ func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmP
 		if scheme == "" {
 			continue
 		}
-		// js:// modules run as JS in the browser via the esbuild bundle
+		// js: modules run as JS in the browser via the esbuild bundle
 		// (see jsbundle.go). They never need a WASM extern bridge.
 		if scheme == "js" {
 			continue

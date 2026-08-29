@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A method's first parameter is the receiver when its type is the type the
 // method is attached to, whatever the parameter is called. The convention used

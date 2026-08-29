@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 output {
 	none {
@@ -6,13 +6,13 @@ output {
 	}
 }
 
-import "go://git.duckfam.us/jonathan/sngl/docs"
-import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
-import "file://public"
-import pgAssets "file://internal/playground/assets"
+import "go:git.duckfam.us/jonathan/sngl/docs"
+import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
+import "file:public"
+import pgAssets "file:internal/playground/assets"
 import "internal/docui"
 import "internal/learn"
-import "sngl://platforms/html"
+import "sngl:platforms/html"
 
 const pages = docs.Pages()
 const tiers = docs.ComponentsByTier()

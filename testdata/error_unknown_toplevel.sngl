@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 foobar // ERROR(check) "unexpected root-level visual node"
 

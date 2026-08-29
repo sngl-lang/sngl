@@ -35,8 +35,8 @@ grep 'addEventListener\("mouseover", function\(\) \{' out/index.html
 grep 'addEventListener\("mouseover", \(\) => \{' out/index.html
 
 -- events.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     var msg string = ""

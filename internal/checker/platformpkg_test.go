@@ -16,15 +16,15 @@ import (
 // package could be arbitrarily broken and every build still succeeded.
 func TestPlatformPackageDiagnosticsAreReported(t *testing.T) {
 	const platSource = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component Wrap() {
     sngl.text(value=nosuchthing)
 }
 `
 	const userSource = `
-import . "sngl://std"
-import "sngl://platforms/extstub"
+import . "sngl:std"
+import "sngl:platforms/extstub"
 
 component main {
     text(value="hi")
@@ -45,7 +45,7 @@ component main {
 
 // TestPlatformPackageSharesStdlibIdentity pins the other half: the platform
 // package and the program must resolve one `text` component, not two. The old
-// path ran a nested Check that loaded its own sngl://std, so a platform
+// path ran a nested Check that loaded its own sngl:std, so a platform
 // wrapper's body pointed at a different *ir.Component than user code held —
 // which is why the extension merge had to bypass it entirely.
 //
@@ -53,15 +53,15 @@ component main {
 // declaration must know the package it came from.
 func TestPlatformPackageSharesStdlibIdentity(t *testing.T) {
 	const platSource = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component Wrap() {
     sngl.text(value="x")
 }
 `
 	const userSource = `
-import . "sngl://std"
-import "sngl://platforms/extstub"
+import . "sngl:std"
+import "sngl:platforms/extstub"
 
 component main {
     text(value="hi")
@@ -87,7 +87,7 @@ component main {
 
 	var wrap *ir.Component
 	for _, imp := range pkg.Imports {
-		if imp.Path != "sngl://platforms/extstub" || imp.Pkg == nil {
+		if imp.Path != "sngl:platforms/extstub" || imp.Pkg == nil {
 			continue
 		}
 		for _, comp := range imp.Pkg.Components {
@@ -99,8 +99,8 @@ component main {
 	if wrap == nil {
 		t.Fatal("platform package contributed no Wrap component")
 	}
-	if wrap.Pkg != "sngl://platforms/extstub" {
-		t.Errorf("Wrap.Pkg = %q; want sngl://platforms/extstub", wrap.Pkg)
+	if wrap.Pkg != "sngl:platforms/extstub" {
+		t.Errorf("Wrap.Pkg = %q; want sngl:platforms/extstub", wrap.Pkg)
 	}
 	if len(wrap.Body) == 0 {
 		t.Fatal("Wrap has no checked body")
@@ -155,8 +155,8 @@ func (unavailStubPlatform) Unavailable() error {
 // the import says what is missing instead.
 func TestImportUnavailablePlatformIsAnError(t *testing.T) {
 	const userSource = `
-import . "sngl://std"
-import "sngl://platforms/unavailstub"
+import . "sngl:std"
+import "sngl:platforms/unavailstub"
 
 component main {
     text(value="hi")

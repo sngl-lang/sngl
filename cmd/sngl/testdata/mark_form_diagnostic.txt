@@ -7,7 +7,7 @@ stderr 'cannot mark an import'
 ! stderr 'ast\.'
 
 -- app.sngl --
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 #[builtin("int")]
-import _ "sngl://std"
+import _ "sngl:std"

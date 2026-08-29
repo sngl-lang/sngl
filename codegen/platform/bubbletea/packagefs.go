@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// snglsrc is this platform's own library package, `sngl://platforms/bubbletea`.
+// snglsrc is this platform's own library package, `sngl:platforms/bubbletea`.
 // See codegen/platform/html/packagefs.go for why a plugin carries its own
 // source rather than the standard library holding it.
 //

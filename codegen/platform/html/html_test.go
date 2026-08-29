@@ -224,7 +224,7 @@ func TestFullFixture(t *testing.T) {
 }
 
 func TestLoweredReactivityWiring(t *testing.T) {
-	const src = `import . "sngl://std"
+	const src = `import . "sngl:std"
 component main {
     var n int = 0
     text(value=string(n))

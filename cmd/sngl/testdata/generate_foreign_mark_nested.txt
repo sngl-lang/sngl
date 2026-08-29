@@ -18,10 +18,10 @@ sngl check fn.sngl
 stdout 'ok'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
-    #[foreign("js://example.com/api", "Entry")]
+    #[foreign("js:example.com/api", "Entry")]
     struct Entry {
         #[foreign("Title")]
         title string
@@ -32,10 +32,10 @@ component main {
 }
 
 -- fn.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
-    #[foreign("js://./api", "compute", pure)]
+    #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 
     text(value=string(compute(2, 3)))

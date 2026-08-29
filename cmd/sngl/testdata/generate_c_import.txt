@@ -1,4 +1,4 @@
-# Verify that c:// imports produce a cgo preamble in fyne codegen.
+# Verify that c: imports produce a cgo preamble in fyne codegen.
 #
 sngl generate --platform=fyne --lang=go --out=out main.sngl
 exists out/model.go
@@ -17,8 +17,8 @@ int add(int a, int b);
 int sub(int a, int b);
 
 -- main.sngl --
-import . "sngl://std"
-import clib "c://lib/math.h"
+import . "sngl:std"
+import clib "c:lib/math.h"
 
 component main {
   var result int

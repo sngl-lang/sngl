@@ -1,6 +1,6 @@
 caps: NoInlineComponents
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component Counter(start = 0) {
     var n = start
@@ -11,7 +11,7 @@ component main {
     Counter(start=10)
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 component main {
     var n__inst0 int = 5
     var n__inst1 int = 10

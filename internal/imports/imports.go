@@ -16,12 +16,39 @@ type ImportRef struct {
 }
 
 // ParseScheme extracts the scheme and URI from an import path.
-// Returns ("go", "pkg/path") for "go://pkg/path", or ("", path) for directory imports.
+//
+// The scheme is everything before the first colon and the URI is everything
+// after it, authority marker included: "sngl:ui" is ("sngl", "ui") and
+// "http://example.com/x" is ("http", "//example.com/x"). Whether a "//"
+// follows is the scheme handler's business, not this function's -- which is
+// what lets a URI carry another URI, as in
+// "openapi3:https://example.com/spec.json".
+//
+// A path with no colon, or whose prefix is not a well-formed scheme name, is a
+// directory import and comes back as ("", path).
 func ParseScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
+	before, after, ok := strings.Cut(path, ":")
+	if !ok || !isSchemeName(before) {
+		return "", path
 	}
-	return "", path
+	return before, after
+}
+
+// isSchemeName reports whether s is a URI scheme name (RFC 3986): a letter
+// followed by letters, digits, "+", "-" or ".".
+func isSchemeName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
+		case i > 0 && (r >= '0' && r <= '9' || r == '+' || r == '-' || r == '.'):
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // NamespaceFromPath derives a namespace alias from an import path.

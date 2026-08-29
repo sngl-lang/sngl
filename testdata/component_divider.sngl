@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // divider: A-tier — only style/direction/label, no testable state.
 component main {

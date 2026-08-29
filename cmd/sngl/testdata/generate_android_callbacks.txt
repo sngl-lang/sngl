@@ -62,8 +62,8 @@ stop 'see #124: a value-returning func prop emits Kotlin that does not compile'
 ! grep 'Text\(text = \{ s -> \(s \+ "!"\) \}\("hi"\)' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
-import android "sngl://platforms/android"
+import . "sngl:std"
+import android "sngl:platforms/android"
 
 component tapper(onTap func(), decorate func(s string) string) {
     button(text=decorate("hi"), @click { onTap() })

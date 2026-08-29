@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 struct Inner {
     value int = 0

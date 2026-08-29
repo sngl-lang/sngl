@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // image: state-binding fixture — mutating the bound `src` var
 // propagates to the image component.

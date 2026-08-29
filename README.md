@@ -11,7 +11,7 @@
 Write your UI once. SNGL compiles it to Web, TUI, Desktop, and Mobile targets.
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 struct Todo {
     text string = ""

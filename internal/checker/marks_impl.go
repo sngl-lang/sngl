@@ -294,7 +294,7 @@ func applyTreeMark(m *mark, name, kind string, set func(*ir.Component, string) e
 	return nil
 }
 
-// shapeKind is the tree sngl://draw's components form. #[draw.shape] is the
+// shapeKind is the tree sngl:draw's components form. #[draw.shape] is the
 // public spelling of #[tree.kind("shape")]: the tree marks are internal to the
 // compiler, so a user declaring a shape reaches them only through this one.
 const shapeKind = "shape"

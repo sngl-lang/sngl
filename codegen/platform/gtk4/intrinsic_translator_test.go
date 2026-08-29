@@ -100,7 +100,7 @@ func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) 
 	tr.tagComponent["avatar"] = &ir.Component{
 		Name:              "avatar",
 		Stdlib:            true,
-		Pkg:               "sngl://std",
+		Pkg:               "sngl:std",
 		PlatformOverrides: map[string]ir.Body{"html": {}},
 	}
 	if stmts := tr.OnCreateNode(context.Background(), "__n0", "avatar"); len(stmts) != 0 {

@@ -2,7 +2,7 @@
 // second name: reads inside the component see the inner one and reads outside
 // it see the outer one, and a write to either leaves the other alone.
 
-import . "sngl://std"
+import . "sngl:std"
 
 var total = 10
 

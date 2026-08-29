@@ -67,12 +67,12 @@ stdout 'extdraw.sngl: ok'
 ! sngl check extdraw_untargeted.sngl
 stderr 'must name the target it implements'
 
-# Only sngl://std exists so far.
+# Only sngl:std exists so far.
 ! sngl check stdunknown.sngl
 stderr 'unknown stdlib package "widgets"'
 
 -- widgets/lib.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 struct Card {
     title string = ""
@@ -83,7 +83,7 @@ func Greet(who string) => "hello " + who
 func _helper() => "internal"
 
 -- main.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import . "widgets"
 
 component main {
@@ -92,7 +92,7 @@ component main {
     text(value=c.title + g)
 }
 -- plain.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import "widgets"
 
 component main {
@@ -100,7 +100,7 @@ component main {
     text(value=c.title)
 }
 -- unexported.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import . "widgets"
 
 component main {
@@ -108,7 +108,7 @@ component main {
     text(value=h)
 }
 -- shadow.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { none { html } }
 
@@ -122,19 +122,19 @@ component main {
     }
 }
 -- std.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     text(value="x")
 }
 -- stdbare.sngl --
-import "sngl://std"
+import "sngl:std"
 
 component main {
     std.text(value="x")
 }
 -- stdalias.sngl --
-import lib "sngl://std"
+import lib "sngl:std"
 
 component text() {}
 
@@ -143,24 +143,24 @@ component main {
     text()
 }
 -- stdunimported.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     sngl.text(value="x")
 }
 -- localstd.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import "std"
 
 component main {
     text(value=std.greet())
 }
 -- std/helper.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 func greet() => "local package named std"
 -- badext.sngl --
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component notstd.text {
     span(textContent=value) {}
@@ -170,13 +170,13 @@ component main {
     text(value="x")
 }
 -- other/lib.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 struct Card {
     subtitle string = ""
 }
 -- ambiguous.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import . "widgets"
 import . "other"
 
@@ -185,7 +185,7 @@ component main {
     text(value=c.title)
 }
 -- disambiguated.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import . "widgets"
 import o "other"
 
@@ -195,23 +195,23 @@ component main {
     text(value=c.title + d.subtitle)
 }
 -- stdunknown.sngl --
-import . "sngl://std"
-import "sngl://widgets"
+import . "sngl:std"
+import "sngl:widgets"
 
 component main {
     text(value="x")
 }
 -- extdraw.sngl --
-import s "sngl://std"
-import d "sngl://draw"
-import "sngl://platforms/html"
+import s "sngl:std"
+import d "sngl:draw"
+import "sngl:platforms/html"
 
 component d.canvas[html.platform] {
     s.text(value="styled")
 }
 -- extdraw_untargeted.sngl --
-import s "sngl://std"
-import d "sngl://draw"
+import s "sngl:std"
+import d "sngl:draw"
 
 component d.canvas {
     s.text(value="styled")

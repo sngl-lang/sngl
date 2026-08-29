@@ -17,7 +17,7 @@ grep 'addEventListener\("contextmenu"' out/index.html
 ! grep 'addEventListener\("longPress"' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var n = 0

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // int.parse is an intrinsic whose declared body is the placeholder `return 0`,
 // and the interpreter answers it from its own implementation instead.

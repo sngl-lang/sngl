@@ -1,9 +1,9 @@
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:std"
+import . "sngl:draw"
 
 // A macro is declared in lib/ as a func returning Macro, but the checker
 // registers no function for it: the only way to reach one is a `#[...]` mark.
 func test() {
-    var a = foreign("go://example.com/api", "Get") // ERROR(check) "foreign is a macro"
-    var b = shape()                                // ERROR(check) "shape is a macro"
+    var a = foreign("go:example.com/api", "Get") // ERROR(check) "foreign is a macro"
+    var b = shape()                              // ERROR(check) "shape is a macro"
 }

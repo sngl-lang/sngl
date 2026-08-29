@@ -35,8 +35,8 @@ grep 'setAttribute\("style", "cursor:pointer;display:inline-block"\)' out/index.
 ! grep 'setAttribute\("style", \{' out/index.html
 
 -- style.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     var rows list<string> = ["a"]

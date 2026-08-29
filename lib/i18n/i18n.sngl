@@ -1,8 +1,8 @@
 // Translation and locale-aware formatting.
 //
-// This package is imported like any other — `import "sngl://i18n"` — and a
+// This package is imported like any other — `import "sngl:i18n"` — and a
 // `$"..."` literal needs it in scope: the syntax lowers to a call to `tr`,
-// and nothing is ambient but sngl://builtin.
+// and nothing is ambient but sngl:builtin.
 //
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
@@ -12,7 +12,7 @@
 // NoContext sees the `locale` read and adds the hidden `__ctx_locale` param
 // and the call-site argument that fills it.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // --- Locale context ---
 

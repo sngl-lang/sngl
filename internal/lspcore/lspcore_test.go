@@ -278,10 +278,10 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 // and every use of it was reported as undefined — a file that builds,
 // underlined in red.
 func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
-	content := `import . "sngl://std"
+	content := `import . "sngl:std"
 
 component main {
-    #[foreign("js://./api", "compute", pure)]
+    #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 
     text(value=string(compute(2, 3)))

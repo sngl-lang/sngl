@@ -46,9 +46,9 @@ stderr 'unknown component "helper" in package w'
 
 # The shapes are their own package. std no longer declares them, so a name an
 # application wants for itself -- rect, line, path -- is free unless the file
-# asks for sngl://draw.
+# asks for sngl:draw.
 ! sngl check draw_unimported.sngl
-stderr 'unknown component "canvas"; sngl://draw declares it'
+stderr 'unknown component "canvas"; sngl:draw declares it'
 
 sngl check draw_imported.sngl
 stdout 'draw_imported.sngl: ok'
@@ -66,7 +66,7 @@ component main {
     text(value="x")
 }
 -- withstd.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     text(value="x")
@@ -80,14 +80,14 @@ component main {
     var d date = "2026-08-21"
 }
 -- importbuiltin.sngl --
-import . "sngl://builtin"
+import . "sngl:builtin"
 
 component main {
     var n int = 1
 }
 -- rawelem.sngl --
-import "sngl://platforms/html"
-import "sngl://platforms/gtk4"
+import "sngl:platforms/html"
+import "sngl:platforms/gtk4"
 
 component Foo() {
     html.marquee() {}
@@ -101,7 +101,7 @@ component Bar() {
     gtk4.GtkLabel(label="x") {}
 }
 -- aliased_expr.sngl --
-import ui "sngl://std"
+import ui "sngl:std"
 
 func render() => ui.text(value="x")
 
@@ -109,7 +109,7 @@ component main {
     ui.text(value="y")
 }
 -- private.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import w "widgets"
 
 func render() => w.helper()
@@ -118,26 +118,26 @@ component main {
     text(value="x")
 }
 -- widgets/widgets.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component helper() {
     text(value="private")
 }
 -- aliased.sngl --
-import ui "sngl://std"
+import ui "sngl:std"
 
 component main {
     ui.text(value="x")
 }
 -- draw_unimported.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     canvas(width=100px, height=100px) {}
 }
 -- draw_imported.sngl --
-import . "sngl://std"
-import d "sngl://draw"
+import . "sngl:std"
+import d "sngl:draw"
 
 component main {
     d.canvas(width=100px, height=100px) {
@@ -145,8 +145,8 @@ component main {
     }
 }
 -- draw_both_dotted.sngl --
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:std"
+import . "sngl:draw"
 
 component main {
     canvas(width=100px, height=100px) {
@@ -154,7 +154,7 @@ component main {
     }
 }
 -- draw_names_free.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component rect(label string) {
     text(value=label)

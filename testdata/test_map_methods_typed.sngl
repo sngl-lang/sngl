@@ -1,6 +1,6 @@
 // Map methods preserve K and V through their signatures, not list<dyn>.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component mapMethods {
     var scores map<string, int> = {alice=10, bob=20, charlie=30}

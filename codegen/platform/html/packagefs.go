@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// snglsrc is this platform's own library package, `sngl://platforms/html`.
+// snglsrc is this platform's own library package, `sngl:platforms/html`.
 //
 // It lives here rather than under lib/ because it is this plugin's, not the
 // standard library's: a platform is the thing that knows what it declares, and

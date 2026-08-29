@@ -134,16 +134,16 @@ func TestLookupSnglOmitsInternalTier(t *testing.T) {
 
 // Naming one still resolves, as an internal Go package does.
 func TestLookupInternalPackageByName(t *testing.T) {
-	res, err := lookup.Lookup("sngl://internal/draw")
+	res, err := lookup.Lookup("sngl:internal/draw")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.Index == nil || len(res.Index.Functions) == 0 {
-		t.Fatal("sngl://internal/draw resolved to nothing")
+		t.Fatal("sngl:internal/draw resolved to nothing")
 	}
 }
 
-// A bare name is not a lookup path: everything outside sngl://builtin needs
+// A bare name is not a lookup path: everything outside sngl:builtin needs
 // an import before a program can write it, so resolving one has to report
 // the package it came from.
 func TestFindInLibrary(t *testing.T) {
@@ -153,10 +153,10 @@ func TestFindInLibrary(t *testing.T) {
 		ambient bool
 		kind    string
 	}{
-		{"circle", "sngl://draw", false, "component"},
-		{"button", "sngl://std", false, "component"},
-		{"Style", "sngl://std", false, "type"},
-		{"color", "sngl://builtin", true, "type"},
+		{"circle", "sngl:draw", false, "component"},
+		{"button", "sngl:std", false, "component"},
+		{"Style", "sngl:std", false, "type"},
+		{"color", "sngl:builtin", true, "type"},
 	} {
 		got := lookup.FindInLibrary(tc.name)
 		if len(got) != 1 {

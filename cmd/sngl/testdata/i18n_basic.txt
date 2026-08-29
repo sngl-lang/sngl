@@ -4,8 +4,8 @@ sngl check app.sngl
 stdout 'app.sngl: ok'
 
 -- app.sngl --
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 output { go { bubbletea } }
 

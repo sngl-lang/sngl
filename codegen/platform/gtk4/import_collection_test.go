@@ -20,7 +20,7 @@ import (
 func TestIntegration_ComputedBodyImportCollected(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 component main {
     var n = 3
     func double() => n * 2

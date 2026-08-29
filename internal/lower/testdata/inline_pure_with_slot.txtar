@@ -1,6 +1,6 @@
 caps:
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component card() list<component> {
     vbox(style={padding=16}) {
@@ -14,7 +14,7 @@ component main {
     }
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 component card list<dyn> {
     vbox(style=Style{padding=16}) {
         slot

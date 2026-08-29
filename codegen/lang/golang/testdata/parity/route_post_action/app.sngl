@@ -1,6 +1,6 @@
-import . "sngl://std"
+import . "sngl:std"
 
-// HTTP route window whose @click calls a go:// native func (api.Persist),
+// HTTP route window whose @click calls a go: native func (api.Persist),
 // exercising html route mode (--lang go) end-to-end through the golang
 // HTTP-compiler path. NOTE: this parity harness's optimize+lower inlines the
 // handler to client-side JS, so server.golden pins the GET/client output, NOT
@@ -10,7 +10,7 @@ import . "sngl://std"
 // across the http.go→GoIRContext migration by direct CLI comparison.)
 output { go { html } }
 
-import "go://example.com/route-post/api"
+import "go:example.com/route-post/api"
 
 component main {
     var count = 0

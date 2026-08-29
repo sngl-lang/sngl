@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // HOVER(add) "func add(a int, b int) int"
 // HOVER(add) "Adds two integers."

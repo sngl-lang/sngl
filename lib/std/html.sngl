@@ -1,9 +1,9 @@
 // Placement directives (GitLab #27). Identity functions that instruct the html
 // code generator where the wrapped expression runs. No effect on value or type.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
-// Force v to run client-side (front-end). For code imported from non-js://
+// Force v to run client-side (front-end). For code imported from non-js:
 // languages this compiles the dependency to a front-end WASM asset instead of a
 // server call. No effect for static-site builds. Build fails if the logic cannot
 // run in the browser or depends on server-side values.

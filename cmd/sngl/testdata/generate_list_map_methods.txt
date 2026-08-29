@@ -21,7 +21,7 @@ sngl build --lang=go --platform=bubbletea --opt name=lm bt.sngl
 exists lm
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var xs list<int> = [3, 1, 2]
@@ -43,7 +43,7 @@ component main {
     text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
 -- bt.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { bubbletea } }
 

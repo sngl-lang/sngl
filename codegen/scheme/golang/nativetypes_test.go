@@ -28,7 +28,7 @@ func withNativeType(t *testing.T, qualifiedName string, fn func() *ir.Type) {
 func TestRegisteredTypeBeatsUnderlying(t *testing.T) {
 	imp := &GoImporter{}
 
-	ni, err := imp.Resolve("go://"+testpkgPath, ".")
+	ni, err := imp.Resolve(testpkgPath, ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestRegisteredTypeBeatsUnderlying(t *testing.T) {
 		t.Error("the type function ran at registration; it must not, since the stdlib may not be loaded yet")
 	}
 
-	ni, err = imp.Resolve("go://"+testpkgPath, ".")
+	ni, err = imp.Resolve(testpkgPath, ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -78,7 +78,7 @@ func returnKind(t *testing.T, ni *ir.NativeImport, name string) ir.TypeKind {
 // package, which the importer would otherwise call unusable — so this pins the
 // half of the pair that moved into the registry alongside Duration.
 func TestRegisteredStructTypeIsUsable(t *testing.T) {
-	ni, err := (&GoImporter{}).Resolve("go://"+testpkgPath, ".")
+	ni, err := (&GoImporter{}).Resolve(testpkgPath, ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

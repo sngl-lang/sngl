@@ -1,5 +1,5 @@
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component Stepper(:count = 0) {
     button(text="+", @click { count += 1 })
@@ -13,7 +13,7 @@ component main {
     text(value="steps={steps}")
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 component Stepper(:count int = 0, @count int) {
     button(text="+", @click {
         count(count + 1)

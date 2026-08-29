@@ -1,7 +1,7 @@
 // #[options] marks the struct that declares a build-option schema. A form with
 // no fields to check an output() argument against refuses it.
 
-import . "sngl://platforms"
+import . "sngl:platforms"
 
 #[options] // ERROR(check) "#[options] cannot mark"
 var bad = 5

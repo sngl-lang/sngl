@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Bug: unknown method on list typechecks silently.
 component main {

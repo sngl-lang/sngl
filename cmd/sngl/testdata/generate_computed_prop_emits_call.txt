@@ -8,7 +8,7 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 grep 'main_doubled\(state\)' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var count = 2

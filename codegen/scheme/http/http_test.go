@@ -60,7 +60,7 @@ func TestHTTPImporterFetchesAndCaches(t *testing.T) {
 	t.Setenv("HOME", tmp) // fallback path if XDG_CACHE_HOME gets cleared elsewhere
 
 	imp := &Importer{scheme: "http"}
-	trimmed := strings.TrimPrefix(srv.URL, "http://")
+	trimmed := strings.TrimPrefix(srv.URL, "http:")
 	uri := trimmed + "/widgets.tar.gz#" + expectHash
 
 	fsys, err := imp.ResolveFS(uri, "")
@@ -98,7 +98,7 @@ func TestHTTPImporterHashMismatch(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
 	imp := &Importer{scheme: "http"}
-	uri := strings.TrimPrefix(srv.URL, "http://") + "/a.tar.gz#deadbeef"
+	uri := strings.TrimPrefix(srv.URL, "http:") + "/a.tar.gz#deadbeef"
 	_, err := imp.ResolveFS(uri, "")
 	if err == nil || !strings.Contains(err.Error(), "hash mismatch") {
 		t.Errorf("expected hash mismatch error, got %v", err)
@@ -114,7 +114,7 @@ func TestHTTPImporterSkipsHashWithDash(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
 	imp := &Importer{scheme: "http"}
-	uri := strings.TrimPrefix(srv.URL, "http://") + "/a.tar.gz#-"
+	uri := strings.TrimPrefix(srv.URL, "http:") + "/a.tar.gz#-"
 	if _, err := imp.ResolveFS(uri, ""); err != nil {
 		t.Fatalf("expected success with #-, got %v", err)
 	}
@@ -122,7 +122,7 @@ func TestHTTPImporterSkipsHashWithDash(t *testing.T) {
 
 func TestHTTPImporterRejectsNonArchive(t *testing.T) {
 	imp := &Importer{scheme: "http"}
-	_, err := imp.ResolveFS("example.com/not-an-archive.txt#-", "")
+	_, err := imp.ResolveFS("//example.com/not-an-archive.txt#-", "")
 	if err == nil || !strings.Contains(err.Error(), "unsupported archive extension") {
 		t.Errorf("expected unsupported-extension error, got %v", err)
 	}

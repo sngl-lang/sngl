@@ -1,22 +1,22 @@
 # The bare stdlib keyword is every public package merged into one listing —
-# not what a file sees, since only sngl://builtin is in scope unimported.
-# `button` comes from sngl://std, `color` from sngl://builtin.
+# not what a file sees, since only sngl:builtin is in scope unimported.
+# `button` comes from sngl:std, `color` from sngl:builtin.
 sngl doc sngl
 stdout '# sngl'
 stdout 'button'
 stdout 'color'
 
 # Each tier is addressable on its own, and the two are disjoint.
-sngl doc sngl://std
+sngl doc sngl:std
 stdout 'button'
 ! stdout '\*\*color\*\*'
 
-sngl doc sngl://builtin
+sngl doc sngl:builtin
 stdout 'color'
 ! stdout '\*\*button\*\*'
 
 # The package set follows the lib/ directories, so an unknown one is named.
-! sngl doc sngl://nope
+! sngl doc sngl:nope
 stderr 'unknown stdlib package "nope"'
 
 # Stdlib decl lookup.
@@ -38,21 +38,21 @@ stdout 'Counter'
 # says which one it found and what importing it costs — the name alone is not
 # enough to write the program.
 sngl doc circle
-stdout 'sngl://draw'
-stdout 'import \. "sngl://draw"'
+stdout 'sngl:draw'
+stdout 'import \. "sngl:draw"'
 stdout '# circle'
 
 sngl doc button
-stdout 'sngl://std'
-stdout 'import \. "sngl://std"'
+stdout 'sngl:std'
+stdout 'import \. "sngl:std"'
 
-# Except in sngl://builtin, which is the one package needing no import.
+# Except in sngl:builtin, which is the one package needing no import.
 sngl doc color
-stdout 'sngl://builtin \(ambient\)'
+stdout 'sngl:builtin \(ambient\)'
 ! stdout 'import'
 
 
-# $"..." lowers to a call on sngl://i18n, and the import names the package —
+# $"..." lowers to a call on sngl:i18n, and the import names the package —
 # not one particular alias for it.
 sngl check aliased_i18n.sngl
 stdout 'aliased_i18n.sngl: ok'
@@ -61,21 +61,21 @@ stdout 'aliased_i18n.sngl: ok'
 ! sngl doc StrUpper
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import w "./widgets"
 component main {
     w.Counter(count = 1)
 }
 -- widgets/widgets.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component Counter(count int) {
     text { value = "count: ${count}" }
 }
 
 -- aliased_i18n.sngl --
-import . "sngl://std"
-import tr "sngl://i18n"
+import . "sngl:std"
+import tr "sngl:i18n"
 
 component main {
     var n int = 1

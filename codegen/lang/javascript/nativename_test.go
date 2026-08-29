@@ -15,9 +15,9 @@ import (
 func jsStructDef(t *testing.T, src, name string) *ir.StructDef {
 	t.Helper()
 	fsys := fstest.MapFS{"lib/index.ts": &fstest.MapFile{Data: []byte(src)}}
-	ni, err := (&jsscheme.JSImporter{}).ResolveFS("js://./lib", fsys, "")
+	ni, err := (&jsscheme.JSImporter{}).ResolveFS("./lib", fsys, "")
 	if err != nil {
-		t.Fatalf("resolving js://./lib: %v", err)
+		t.Fatalf("resolving js:./lib: %v", err)
 	}
 	for _, sd := range ni.Structs {
 		if sd.Name == name {
@@ -43,7 +43,7 @@ func TestStructLitUsesTypeScriptPropertyNames(t *testing.T) {
 	}
 }
 
-// A go:// struct records native names too, and they are Go's. Nothing in a
+// A go: struct records native names too, and they are Go's. Nothing in a
 // generated page reads them — no Go runs in a browser — so the page has to keep
 // spelling the fields the SNGL way, which is what the rest of it reads.
 func TestStructLitKeepsSnglNamesForOtherSchemes(t *testing.T) {

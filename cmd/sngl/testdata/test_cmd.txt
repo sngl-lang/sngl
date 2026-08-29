@@ -34,7 +34,7 @@ stdout 'PASS'
 ! sngl test --platform=dos passing.sngl
 
 -- passing.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component math {
     var x = 0
@@ -56,7 +56,7 @@ func testMul(t Test, c math) {
     t.assert(c.x == 21)
 }
 -- failing.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component counter {
     var n = 0
@@ -67,12 +67,12 @@ func testShouldFail(t Test, c counter) {
     t.assert(c.n == 999)
 }
 -- notests.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
 }
 -- bad.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component broken {
     var x = unknownFunc()

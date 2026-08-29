@@ -1,4 +1,4 @@
-// Package marshalpkg is a go:// package for sngltest's own tests: one type per
+// Package marshalpkg is a go: package for sngltest's own tests: one type per
 // way a Go value can reach SNGL, including one whose halves disagree.
 package marshalpkg
 

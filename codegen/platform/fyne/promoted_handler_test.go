@@ -16,7 +16,7 @@ import (
 func TestPromotedHandlerRewritesOnlyTheSynthesizedBind(t *testing.T) {
 	t.Run("a bound prop still writes back from the callback parameter", func(t *testing.T) {
 		out := generateFyneGo(t, `
-import . "sngl://std"
+import . "sngl:std"
 var name string = ""
 component main {
     vbox {
@@ -36,7 +36,7 @@ component main {
 
 	t.Run("an unbound handler keeps the assignment it opens with", func(t *testing.T) {
 		out := generateFyneGo(t, `
-import . "sngl://std"
+import . "sngl:std"
 var hits int = 0
 component main {
     vbox {

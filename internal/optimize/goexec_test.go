@@ -54,7 +54,7 @@ var (
 	}, ir.TypString)
 )
 
-// purepkgCtx is an evalCtx whose go:// import is the purepkg test package,
+// purepkgCtx is an evalCtx whose go: import is the purepkg test package,
 // with a fresh request set and a fresh cache — one test's evaluations are not
 // another's.
 func purepkgCtx(dir string) *evalCtx {
@@ -74,7 +74,7 @@ func purepkgCtx(dir string) *evalCtx {
 	}
 }
 
-// purepkgPackage is a package importing purepkg through the real go://
+// purepkgPackage is a package importing purepkg through the real go:
 // importer, or nil where the import does not resolve — the same condition
 // importedFunc skips on.
 func purepkgPackage() *ir.Package {
@@ -83,7 +83,7 @@ func purepkgPackage() *ir.Package {
 		return nil
 	}
 	return &ir.Package{Imports: []*ir.Import{{
-		Path:   "go://" + purepkgPath,
+		Path:   "go:" + purepkgPath,
 		Alias:  "purepkg",
 		Native: ni,
 	}}}
@@ -262,10 +262,10 @@ func TestUnrunnableSchemeFails(t *testing.T) {
 	ctx := purepkgCtx(projectDir())
 	_, state, err := requestPureNativeFunc(ctx, "c", purepkgPath, fnGreet, []any{"x"})
 	if state != nativeFailed || err == nil {
-		t.Fatalf("c:// call accepted: state=%v err=%v", state, err)
+		t.Fatalf("c: call accepted: state=%v err=%v", state, err)
 	}
 	if len(ctx.native.order) != 0 {
-		t.Error("c:// call was added to the batch")
+		t.Error("c: call was added to the batch")
 	}
 }
 
@@ -296,7 +296,7 @@ func TestNestedCallTakesASecondRound(t *testing.T) {
 	pkg := &ir.Package{
 		Consts: []*ir.Var{inner, outer},
 		Imports: []*ir.Import{{
-			Path:  "go://" + purepkgPath,
+			Path:  "go:" + purepkgPath,
 			Alias: "purepkg",
 			Native: &ir.NativeImport{
 				ImportPath: purepkgPath,
@@ -338,7 +338,7 @@ func TestConstEvalSource(t *testing.T) {
 }
 
 // A pure func with no result is still called; the fold takes null for its
-// value rather than failing (which on a target that cannot call go:// at
+// value rather than failing (which on a target that cannot call go: at
 // runtime would abort the build).
 func TestVoidCallFoldsToNull(t *testing.T) {
 	dir := projectDir()
@@ -466,7 +466,7 @@ func TestUnresolvedNativeCallGate(t *testing.T) {
 	pkg := &ir.Package{
 		Consts: []*ir.Var{c},
 		Imports: []*ir.Import{{
-			Path:  "go://" + purepkgPath,
+			Path:  "go:" + purepkgPath,
 			Alias: "purepkg",
 			Native: &ir.NativeImport{
 				ImportPath: purepkgPath,
@@ -476,7 +476,7 @@ func TestUnresolvedNativeCallGate(t *testing.T) {
 	}
 	cfg := &Config{Platform: "html", Language: "none", Dir: dir}
 	if !hasUnresolvedNativeCall(pkg, cfg) {
-		t.Fatal("a pure go:// call in a const was not seen")
+		t.Fatal("a pure go: call in a const was not seen")
 	}
 	if err := Optimize(pkg, cfg); err != nil {
 		t.Fatalf("Optimize: %v", err)
@@ -720,7 +720,7 @@ func TestBatchFailureIsNotCached(t *testing.T) {
 // A fatal fold error inside a nested scope — an inlined component body, a
 // for-loop iteration — is the child context's, and the child is what folds the
 // call that fails. Reporting it is the parent's job: this target cannot call
-// go:// at runtime, so a dropped error is a page rendered with the value
+// go: at runtime, so a dropped error is a page rendered with the value
 // missing.
 func TestNestedFoldErrorIsReported(t *testing.T) {
 	dir := projectDir()
@@ -780,7 +780,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 		return &ir.Package{
 			Components: comps,
 			Imports: []*ir.Import{{
-				Path:  "go://" + purepkgPath,
+				Path:  "go:" + purepkgPath,
 				Alias: "purepkg",
 				Native: &ir.NativeImport{
 					ImportPath: purepkgPath,

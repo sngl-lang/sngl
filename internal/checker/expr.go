@@ -2875,7 +2875,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 }
 
 // buildPlatformPkgScope builds (and caches) a scope containing declarations
-// from the named platform's sngl://platforms/<n> package.
+// from the named platform's sngl:platforms/<n> package.
 func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[platform]; ok {
@@ -2896,7 +2896,7 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 		return nil
 	}
 	// The same instance user code imports: a `platform x { ... }` block and an
-	// `import "sngl://platforms/x"` must name one declaration, not two.
+	// `import "sngl:platforms/x"` must name one declaration, not two.
 	pkg := c.libPkg(uri)
 
 	scope := NewScope(nil)

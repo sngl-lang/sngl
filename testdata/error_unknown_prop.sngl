@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     text(foo="bar") // ERROR(check) "unknown prop"

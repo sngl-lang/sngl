@@ -12,8 +12,8 @@ sngl generate --lang kotlin --platform android --out out2 app.sngl
 exists out2/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
-import "sngl://platforms/android"
+import . "sngl:std"
+import "sngl:platforms/android"
 
 component main {
     vbox {

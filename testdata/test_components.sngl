@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component badge(label = "default", count = 0) {
     func display() => label

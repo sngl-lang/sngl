@@ -59,7 +59,7 @@ func funcImportScheme(pkg *ir.Package, fn *ir.Func) string {
 //     inside it.)
 //   - Otherwise the expression is Backend iff any subexpression is a call to
 //     a native func whose import scheme is non-empty and not "js" (i.e. a
-//     non-js:// import, which cannot run in the browser by default); else
+//     non-js: import, which cannot run in the browser by default); else
 //     Frontend.
 func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
 	if c, ok := e.(*ir.Call); ok && c.Func != nil {
@@ -77,7 +77,7 @@ func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
 }
 
 // exprIsBackendByDefault reports whether e (or any subexpression) calls a
-// non-js:// native func, ignoring directive wrappers (a directive pins its own
+// non-js: native func, ignoring directive wrappers (a directive pins its own
 // subtree, so we do not descend into it for the default rule).
 func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 	found := false
@@ -136,7 +136,7 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 //     explicitly pinned server-side (it wraps an html.backend(...) subtree) is
 //     a contradiction and cannot be honored (Task 6.3).
 //
-// Note (6.3 simplification): a bare go:// call under html.frontend is allowed —
+// Note (6.3 simplification): a bare go: call under html.frontend is allowed —
 // it compiles to WASM (Phase 5). The only "server-only value" this v1 rule
 // recognizes is one explicitly pinned with a nested html.backend directive.
 // Inferring server-only *state* (vars mutated solely by backend routes) is left
@@ -200,7 +200,7 @@ func isFuncValue(e ir.Expr) bool {
 }
 
 // nativeFuncKey identifies a native (scheme-imported) func by its originating
-// import path and name. Used to decide WASM opt-in: a go:// func is shipped to
+// import path and name. Used to decide WASM opt-in: a go: func is shipped to
 // the browser only if some use of it is forced Frontend via html.frontend.
 type nativeFuncKey struct {
 	importPath string
@@ -209,9 +209,9 @@ type nativeFuncKey struct {
 
 // frontendNativeFuncs collects, across the whole package, the set of native
 // funcs that are used inside an html.frontend(...) wrapper — i.e. funcs the
-// author explicitly forced to run client-side. These are the ONLY non-js://
+// author explicitly forced to run client-side. These are the ONLY non-js:
 // funcs eligible for WASM compilation; bare (default-backend) usage ships no
-// WASM. js:// funcs are excluded (they run as bundled JS, never WASM).
+// WASM. js: funcs are excluded (they run as bundled JS, never WASM).
 func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
 	out := map[nativeFuncKey]bool{}
 	if pkg == nil {

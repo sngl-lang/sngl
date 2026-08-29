@@ -51,8 +51,8 @@ func TestFormatImport(t *testing.T) {
 	// The dot occupies the alias slot, so it round-trips through the same
 	// prefix path as an identifier alias — including with a replace clause.
 	assertFormat(t,
-		`import . "sngl://std"`,
-		`import . "sngl://std"`)
+		`import . "sngl:std"`,
+		`import . "sngl:std"`)
 
 	assertFormat(t,
 		`import . "widgets"`,

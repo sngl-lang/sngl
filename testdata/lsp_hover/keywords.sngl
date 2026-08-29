@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // HOVER(func) "Declares a function"
 // HOVER(component) "Declares a UI component"

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component panel(mode enum { light, dark } = light) {
     text(value=string(mode))

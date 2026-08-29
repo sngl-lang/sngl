@@ -35,7 +35,7 @@ stdout 'passes: ForeignPrimitive → PlatformExtensionBody → PropBindings → 
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl
 
 -- main.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     text(value="hello")

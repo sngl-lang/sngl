@@ -13,14 +13,14 @@ stdout 'ok.sngl: ok'
 ! sngl check twomarks.sngl
 stderr 'cannot pass A as B'
 
-# A mark and the js:// import it names: still two types.
+# A mark and the js: import it names: still two types.
 ! sngl check markvsimport.sngl
 stderr 'cannot pass Entry as'
 
 -- ok.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://example.com/api", "Entry")]
+#[foreign("js:example.com/api", "Entry")]
 struct A {
     title string
 }
@@ -32,14 +32,14 @@ component main {
 }
 
 -- twomarks.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://example.com/api", "Entry")]
+#[foreign("js:example.com/api", "Entry")]
 struct A {
     title string
 }
 
-#[foreign("js://example.com/api", "Entry")]
+#[foreign("js:example.com/api", "Entry")]
 struct B {
     title string
 }
@@ -51,10 +51,10 @@ component main {
 }
 
 -- markvsimport.sngl --
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:std"
+import api "js:./api"
 
-#[foreign("js://./api", "Entry")]
+#[foreign("js:./api", "Entry")]
 struct Entry {
     title string
 }

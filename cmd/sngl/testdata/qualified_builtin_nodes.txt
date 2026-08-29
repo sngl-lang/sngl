@@ -1,6 +1,6 @@
 # The built-in nodes (window, timer, errorBoundary) dispatch on the #[builtin]
 # mark of whatever the target resolves to. That resolution has to follow a
-# qualified target too: under `import s "sngl://std"` the node is written
+# qualified target too: under `import s "sngl:std"` the node is written
 # `s.window`, and resolving it by bare name silently produced an ordinary empty
 # component that dropped its children.
 #
@@ -35,7 +35,7 @@ sngl generate --out shadowout shadowed.sngl
 grep 'from widgets' shadowout/index.html
 
 -- slot.sngl --
-import s "sngl://std"
+import s "sngl:std"
 
 component Card() list<component> {
     s.vbox {
@@ -53,7 +53,7 @@ component main {
 
 output { none { html } }
 -- qualslot.sngl --
-import s "sngl://std"
+import s "sngl:std"
 
 component Card() list<component> {
     s.vbox {
@@ -61,7 +61,7 @@ component Card() list<component> {
     }
 }
 -- window.sngl --
-import s "sngl://std"
+import s "sngl:std"
 
 component main {
     s.window #home(href="/index.html") {
@@ -71,7 +71,7 @@ component main {
 
 output { none { html } }
 -- timer.sngl --
-import s "sngl://std"
+import s "sngl:std"
 
 component main {
     var n int = 0
@@ -81,7 +81,7 @@ component main {
     s.text(value="tick")
 }
 -- boundary.sngl --
-import s "sngl://std"
+import s "sngl:std"
 
 component main {
     s.errorBoundary(@error(e) {}) {
@@ -89,13 +89,13 @@ component main {
     }
 }
 -- widgets/lib.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component timer() {
     text(value="from widgets")
 }
 -- shadowed.sngl --
-import s "sngl://std"
+import s "sngl:std"
 import w "widgets"
 
 component main {

@@ -18,7 +18,7 @@ sngl generate --out lone lone.sngl
 grep 'standalone' lone/model.go
 
 -- anon.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 struct Row {
     title string
@@ -41,7 +41,7 @@ window #w(href="/index.html", title="x") {
 
 output { go { fyne } }
 -- lone.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component standalone {
     vbox {

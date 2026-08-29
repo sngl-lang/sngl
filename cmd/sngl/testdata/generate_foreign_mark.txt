@@ -1,5 +1,5 @@
 # A #[foreign] mark reaches codegen. The struct and its fields are named the
-# way the mark says — the same path a js:// import's declarations take — and
+# way the mark says — the same path a js: import's declarations take — and
 # nothing was imported to say so: example.com/api does not exist.
 
 sngl generate --lang=none --platform=html --out=out app.sngl
@@ -12,7 +12,7 @@ grep '\.Title' out/index.html
 # ... and not SNGL's.
 ! grep 'title:' out/index.html
 
-# The mark names the language it speaks for. The same mark under a go:// path
+# The mark names the language it speaks for. The same mark under a go: path
 # leaves JavaScript alone — a field name from another language would be a name
 # nothing in the generated program answers to.
 sngl generate --lang=none --platform=html --out=outgo goapp.sngl
@@ -25,9 +25,9 @@ grep 'title:' outgo/index.html
 stderr 'example.com/api'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://example.com/api", "Entry")]
+#[foreign("js:example.com/api", "Entry")]
 struct Entry {
     #[foreign("Title")]
     title string
@@ -39,9 +39,9 @@ component main {
 }
 
 -- goapp.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("go://example.com/api", "api.Entry")]
+#[foreign("go:example.com/api", "api.Entry")]
 struct Entry {
     #[foreign("Title")]
     title string
@@ -53,8 +53,8 @@ component main {
 }
 
 -- needsimport.sngl --
-import . "sngl://std"
-import api "js://example.com/api"
+import . "sngl:std"
+import api "js:example.com/api"
 
 component main {
     text(value=string(api.anything()))

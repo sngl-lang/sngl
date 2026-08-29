@@ -9,9 +9,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// TestOptimize_GoImportConstFoldsOnKotlin confirms a pure go:// call used as a
+// TestOptimize_GoImportConstFoldsOnKotlin confirms a pure go: call used as a
 // const folds to a literal at build time even when the target language is
-// kotlin (which cannot call go:// at runtime). The folded value is all the
+// kotlin (which cannot call go: at runtime). The folded value is all the
 // target needs — no surviving call — so this must keep working regardless of
 // any scheme/target runtime-support guard.
 func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
@@ -51,7 +51,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 	}
 
 	if err := Optimize(pkg, &Config{Platform: "android", Language: "kotlin", Dir: dir}); err != nil {
-		t.Fatalf("kotlin build must not fail on a foldable go:// const: %v", err)
+		t.Fatalf("kotlin build must not fail on a foldable go: const: %v", err)
 	}
 	lit, ok := c.Init.(*ir.Literal)
 	if !ok {

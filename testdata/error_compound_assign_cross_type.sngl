@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Bug: compound assignment `+=` of float into int passes typecheck.
 // Per audit (internal/checker/expr.go:1270-1278): compound assignment checks

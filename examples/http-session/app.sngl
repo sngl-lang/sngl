@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 output {
     go {
@@ -6,7 +6,7 @@ output {
     }
 }
 
-import "go://git.duckfam.us/jonathan/sngl/examples/http-session/session"
+import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
 
 component main {
     var sidebarOpen = false

@@ -2,7 +2,7 @@
 // nearest boundary or window handler, with per-call @error able to
 // absorb inline. Tests drive the `none` interpreter.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component boundaryCatches {
     var caught = ""

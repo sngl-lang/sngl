@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A field a literal omits takes its declared default. The checker installed a
 // placeholder at declaration time and nothing ever replaced it, so the default

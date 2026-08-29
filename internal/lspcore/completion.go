@@ -617,8 +617,8 @@ func enumThisItems(d *ast.EnumDef) []CompletionItem {
 //
 // Matched by the mark's own name, which is all this can do and all it needs:
 // completion runs on one parsed document with no checker, so nothing here
-// resolves the macro to sngl://platforms, applies it, or knows the pattern it
-// compiled to. The name survives aliasing (`import p "sngl://platforms"` makes
+// resolves the macro to sngl:platforms, applies it, or knows the pattern it
+// compiled to. The name survives aliasing (`import p "sngl:platforms"` makes
 // it `#[p.wildcard]`, same Name), and the cost of a false positive — a user
 // macro of that name on an ordinary prop — is one withheld suggestion rather
 // than a wrong one.

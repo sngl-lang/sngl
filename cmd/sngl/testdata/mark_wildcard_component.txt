@@ -23,7 +23,7 @@ stderr 'unknown prop "nope" on component element'
 stderr 'unknown component "Widget" in package w'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import "./widgets"
 
 component main() {
@@ -34,7 +34,7 @@ component main() {
 }
 
 -- declared.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import "./widgets"
 
 component main() {
@@ -44,7 +44,7 @@ component main() {
 }
 
 -- badprop.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import "./widgets"
 
 component main() {
@@ -54,7 +54,7 @@ component main() {
 }
 
 -- nomatch.sngl --
-import . "sngl://std"
+import . "sngl:std"
 import w "./widgets"
 
 component main() {
@@ -64,8 +64,8 @@ component main() {
 }
 
 -- widgets/widgets.sngl --
-import . "sngl://std"
-import . "sngl://platforms"
+import . "sngl:std"
+import . "sngl:platforms"
 
 #[wildcard("[a-z][a-z0-9]*")]
 component element(tag string) {

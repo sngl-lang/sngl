@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component Counter(label string, :count int, @click) {
     var internal int

@@ -364,14 +364,14 @@ func TestGettingStartedSnippetsCheck(t *testing.T) {
 }
 
 // importsForeignScheme reports whether src imports under a scheme other than
-// sngl://, which means it names a package the reader supplies.
+// sngl:, which means it names a package the reader supplies.
 func importsForeignScheme(src string) bool {
 	for line := range strings.SplitSeq(src, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "import ") {
 			continue
 		}
-		if strings.Contains(line, "://") && !strings.Contains(line, "sngl://") {
+		if strings.Contains(line, "://") && !strings.Contains(line, "sngl:") {
 			return true
 		}
 	}

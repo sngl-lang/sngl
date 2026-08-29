@@ -13,7 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
 )
 
-// mapping is one Go type and the SNGL type a go:// import gives it.
+// mapping is one Go type and the SNGL type a go: import gives it.
 type mapping struct {
 	rt   reflect.Type // the type under test
 	base reflect.Type // the declared type at the bottom of it, past any slice or pointer
@@ -22,7 +22,7 @@ type mapping struct {
 	baseWant *ir.Type // the SNGL type of base
 }
 
-// resolve maps rt the way a go:// import of its package does: the importer
+// resolve maps rt the way a go: import of its package does: the importer
 // loads the package, and the SNGL type comes back from the same goTypeToIR
 // the compiler runs. Nothing here restates that rule, so a test cannot pass
 // against a mapping the compiler does not make.
@@ -68,10 +68,10 @@ func peel(rt reflect.Type) (reflect.Type, func(types.Type) types.Type, error) {
 		case reflect.Pointer:
 			wrap = func(t types.Type) types.Type { return inner(types.NewPointer(t)) }
 		default:
-			return nil, nil, fmt.Errorf(`%s has no name, so there is no declaration for the go:// importer to read.
+			return nil, nil, fmt.Errorf(`%s has no name, so there is no declaration for the go: importer to read.
 
 Only a declared type, a predeclared one, and slices and pointers of those can
-be resolved — which is also what a go:// function has to return for the
+be resolved — which is also what a go: function has to return for the
 importer to say anything about it. Name the type and check that:
 
     type X %s`, rt, rt)
@@ -86,9 +86,9 @@ func (m *mapping) unusable() error {
 	return fmt.Errorf(`%s has no SNGL type.
 
     Go type       %s
-    imports as    %s, which the go:// importer marks unusable
+    imports as    %s, which the go: importer marks unusable
 
-Every declaration that mentions this type is rejected, so a go:// function
+Every declaration that mentions this type is rejected, so a go: function
 returning it cannot be called from SNGL at all — whatever its MarshalSNGL
 writes. Return a type the importer models (a struct declared in the same
 package, a scalar, or a slice of those), or map this one to a SNGL type with

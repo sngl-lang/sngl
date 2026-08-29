@@ -30,9 +30,9 @@ package srv
 func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
-import . "sngl://std"
-import "go://routefuncs/srv"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "go:routefuncs/srv"
+import "sngl:platforms/html"
 
 component main {
     var nums list<int> = [1, 2, 3]

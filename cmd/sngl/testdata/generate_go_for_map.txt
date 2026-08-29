@@ -7,7 +7,7 @@ exists out/model.go
 grep 'for .* := range' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { bubbletea } }
 

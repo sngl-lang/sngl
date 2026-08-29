@@ -1,7 +1,7 @@
 // Anonymous windows distinguish themselves via their literal href —
 // the html platform derives the output filename from the folded href.
 
-import . "sngl://std"
+import . "sngl:std"
 
 window(title="A", href="/") {
     text(value="a")

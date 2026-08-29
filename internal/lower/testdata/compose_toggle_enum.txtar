@@ -1,6 +1,6 @@
 caps: NoToggle, NoEnum
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 enum Mode {
     off
@@ -18,7 +18,7 @@ component main {
     button(@click { tick() })
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 enum Mode {
     off
     on

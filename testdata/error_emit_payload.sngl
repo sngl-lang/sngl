@@ -10,7 +10,7 @@
 // day that struct gained a second field, every such call site would stop being
 // checked. The argument is checked against the payload, so an anonymous
 // literal is typed by the declaration and names nothing.
-import . "sngl://std"
+import . "sngl:std"
 
 struct Payload {
     value string

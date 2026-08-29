@@ -1,4 +1,4 @@
-// Package file registers the file:// import scheme for directory-based
+// Package file registers the file: import scheme for directory-based
 // static assets.
 package file
 
@@ -16,13 +16,13 @@ func init() {
 	codegen.RegisterScheme(&Importer{})
 }
 
-// Importer resolves file:// scheme imports for directory-based static assets.
+// Importer resolves file: scheme imports for directory-based static assets.
 type Importer struct{}
 
 func (f *Importer) Scheme() string { return "file" }
 
 func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
-	relPath := strings.TrimPrefix(uri, "file://")
+	relPath := uri
 	absDir := filepath.Join(dir, relPath)
 
 	// Guard against path traversal: the resolved path must stay under the
@@ -30,14 +30,14 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	// is rejected up front.
 	cleanDir, derr := filepath.Abs(filepath.Clean(dir))
 	if derr != nil {
-		return nil, fmt.Errorf("file:// resolve: %w", derr)
+		return nil, fmt.Errorf("file: resolve: %w", derr)
 	}
 	cleanAbs, aerr := filepath.Abs(filepath.Clean(absDir))
 	if aerr != nil {
-		return nil, fmt.Errorf("file:// resolve: %w", aerr)
+		return nil, fmt.Errorf("file: resolve: %w", aerr)
 	}
 	if cleanAbs != cleanDir && !strings.HasPrefix(cleanAbs, cleanDir+string(filepath.Separator)) {
-		return nil, fmt.Errorf("file:// import %q escapes project directory", relPath)
+		return nil, fmt.Errorf("file: import %q escapes project directory", relPath)
 	}
 
 	info, err := os.Stat(absDir)
@@ -45,7 +45,7 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		return nil, fmt.Errorf("file asset directory %q not found: %w", relPath, err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("file:// import %q is not a directory", relPath)
+		return nil, fmt.Errorf("file: import %q is not a directory", relPath)
 	}
 
 	fileFunc := func(name string) *ir.Func {

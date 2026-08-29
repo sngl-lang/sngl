@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component counter {
     var n = 0

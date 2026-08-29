@@ -17,7 +17,7 @@ import (
 // Model-receiver method (`m.fib(...)`) — there is no `m` in scope inside the
 // free function, so the latter produced Go that does not compile.
 func TestGoLibRecursiveFuncFreeCall(t *testing.T) {
-	src := `import . "sngl://std"
+	src := `import . "sngl:std"
 func fib(n int) int {
     if n < 2 { return n }
     return fib(n - 1) + fib(n - 2)

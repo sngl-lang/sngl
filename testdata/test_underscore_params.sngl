@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     // _-prefix params: usable in body, not targetable by name at call site.

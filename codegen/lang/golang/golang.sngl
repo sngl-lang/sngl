@@ -1,7 +1,7 @@
 // Go language package. Declarations here are visible at every output target
 // that selects --lang go.
 
-import . "sngl://platforms"
+import . "sngl:platforms"
 
 #[options]
 struct Options {

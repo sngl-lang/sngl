@@ -1,6 +1,6 @@
 caps: NoUnit
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 unit length { px, em = 16px }
 
@@ -9,7 +9,7 @@ component main {
     var pad length = 2em
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 unit length {
     px
     em = 16

@@ -191,7 +191,7 @@ func (e errCapsName) Error() string {
 }
 
 // testStubPlatform is a minimal in-test ir.Platform registration so
-// golden fixtures can use `import "sngl://platforms/teststub"` to exercise the
+// golden fixtures can use `import "sngl:platforms/teststub"` to exercise the
 // strict-mode branch of passInlinePure. The
 // platform exposes two wrapper components — one pure, one impure — and
 // nothing else.
@@ -202,7 +202,7 @@ func (testStubPlatform) Description() string        { return "in-test platform s
 func (testStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 const testStubSource = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component Cleanwrap(value string) {
     sngl.text(value=value)
@@ -214,7 +214,7 @@ component Statefulwrap() {
 }
 `
 
-// testStubDocs is the stub's sngl://platforms/teststub source. There is no
+// testStubDocs is the stub's sngl:platforms/teststub source. There is no
 // lib/platforms/teststub directory, so it reaches the checker through
 // Config.LibSources.
 func testStubDocs() map[string][]*ast.Document {

@@ -9,10 +9,10 @@ import (
 )
 
 // TestServerAction drives the FULL CLI generate path (with the Go toolchain
-// import resolver) so that the go:// api.Persist call resolves to a real
+// import resolver) so that the go: api.Persist call resolves to a real
 // backend func and the html placement pass classifies the @click handler as
 // server-side. The in-package parity harness (TestParityGolden) cannot do this
-// because it has no import resolver, so go:// calls there stay client-side JS.
+// because it has no import resolver, so go: calls there stay client-side JS.
 //
 // It asserts the emitted server.go is a CORRECT server-side action handler:
 //   - a per-route State struct with `Count int`
@@ -56,7 +56,7 @@ func TestServerAction(t *testing.T) {
 	// Phase 5: the api.Persist call is backend (no html.frontend wrapper), so
 	// it must NOT be compiled to a client WASM asset.
 	if wasm, _ := filepath.Glob(filepath.Join(out, "assets", "*.wasm")); len(wasm) != 0 {
-		t.Errorf("backend go:// call must not emit client WASM, found: %v", wasm)
+		t.Errorf("backend go: call must not emit client WASM, found: %v", wasm)
 	}
 
 	serverPath := filepath.Join(out, "server.go")

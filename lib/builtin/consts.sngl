@@ -3,7 +3,7 @@
 // Declarations rather than names the parser knows, so they resolve through the
 // scope chain and a declaration of your own by any of these names shadows
 // them, like any other name.
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 const (
     true = 0 == 0

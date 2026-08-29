@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 const LIMIT = 100
 

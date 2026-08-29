@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // datepicker: state-binding fixture — mutating the bound `value`
 // (date) propagates to the picker.

@@ -47,8 +47,8 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	}
 
 	src := `
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:std"
+import . "sngl:draw"
 component main {
     var radius = 60.0
     canvas(width=200px, height=200px) {

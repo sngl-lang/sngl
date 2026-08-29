@@ -12,8 +12,8 @@
 // prefix: the stdlib component of the same name is in scope too, and carries
 // a body of its own.
 
-import sngl "sngl://std"
-import . "sngl://platforms"
+import sngl "sngl:std"
+import . "sngl:platforms"
 
 #[options]
 struct Options {

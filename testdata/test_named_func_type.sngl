@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     // Named func-type variable: type carries param names, named calls OK.

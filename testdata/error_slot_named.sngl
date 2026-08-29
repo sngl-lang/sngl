@@ -4,7 +4,7 @@
 // is either a population inside a call to the declaring component, or a
 // declaration written in the wrong place. Nothing else.
 
-import . "sngl://std"
+import . "sngl:std"
 
 struct Row {
     title string

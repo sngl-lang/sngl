@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component errs {
     var count = 0

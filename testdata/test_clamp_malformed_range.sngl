@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // clamp is max(lo, min(x, hi)), so a malformed range answers lo. The three
 // backends disagreed: Go and JS composed it the other way round (hi wins) and

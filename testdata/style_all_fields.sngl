@@ -4,7 +4,7 @@
 // each field is spelled and typed the way a caller writes it, on every
 // registered platform.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     vbox(style={

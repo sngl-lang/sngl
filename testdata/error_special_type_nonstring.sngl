@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var bg color = 123 // ERROR(check) "cannot initialize color with int"

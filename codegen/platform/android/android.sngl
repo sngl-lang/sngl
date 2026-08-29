@@ -15,9 +15,9 @@
 // needs something the generic intrinsic emitter cannot yet say; the comment
 // on each says which.
 
-import sngl "sngl://std"
-import . "sngl://platforms"
-import . "sngl://internal/marks"
+import sngl "sngl:std"
+import . "sngl:platforms"
+import . "sngl:internal/marks"
 
 #[options]
 struct Options {

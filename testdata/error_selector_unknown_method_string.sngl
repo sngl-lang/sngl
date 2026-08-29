@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Bug: unknown method on string typechecks silently.
 // String has built-in methods (length, contains, etc.) but unknown ones

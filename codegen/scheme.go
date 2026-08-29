@@ -7,7 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// SchemeImporter resolves a scheme-based import URI (e.g., "go://pkg/path")
+// SchemeImporter resolves a scheme-based import URI (e.g., "go:pkg/path")
 // into fully-typed SNGL IR declarations. Language plugins register importers
 // for their native source formats.
 type SchemeImporter interface {

@@ -300,10 +300,10 @@ func (e *docEditor) flush(t testing.TB) {
 // unqualified. Nothing is added when the snippet imports for itself, so a
 // snippet demonstrating the alias form keeps its own spelling.
 func libImports(src string) string {
-	if strings.Contains(src, "sngl://") {
+	if strings.Contains(src, "sngl:") {
 		return ""
 	}
-	return "import . \"sngl://std\"\nimport . \"sngl://draw\"\n"
+	return "import . \"sngl:std\"\nimport . \"sngl:draw\"\n"
 }
 
 // Splits the leading run of import declarations off a block body.

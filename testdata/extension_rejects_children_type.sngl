@@ -1,5 +1,5 @@
-import sngl "sngl://std"
-import "sngl://platforms/html"
+import sngl "sngl:std"
+import "sngl:platforms/html"
 
 component sngl.text[html.platform] list<dyn> { // ERROR(check) "may not declare children type"
     span(textContent=value) {}

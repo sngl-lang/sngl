@@ -1,14 +1,14 @@
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-import "sngl://platforms/teststub"
+import "sngl:platforms/teststub"
 
 component main {
     teststub.Cleanwrap(value="hi")
 }
 -- expected.sngl --
-import . "sngl://std"
-import teststub "sngl://platforms/teststub"
+import . "sngl:std"
+import teststub "sngl:platforms/teststub"
 component main {
     sngl.text(value="hi")
 }

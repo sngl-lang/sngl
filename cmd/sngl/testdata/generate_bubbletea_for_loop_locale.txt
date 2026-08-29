@@ -16,8 +16,8 @@ grep 'i18n\.NumberInt\(l, m\.n, "decimal"\)' out/model.go
 ! grep 'i18n\.GetTranslator' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 output { go { bubbletea } }
 

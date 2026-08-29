@@ -24,7 +24,7 @@ func (extStubPlatform) Description() string        { return "extension-merge tes
 func (extStubPlatform) Resolve(string) ir.Symbol   { return nil }
 
 // extStubConfig builds a Config registering the stub platform with source as
-// its sngl://platforms/extstub package.
+// its sngl:platforms/extstub package.
 func extStubConfig(t *testing.T, source string) *checker.Config {
 	t.Helper()
 	doc, err := parser.Parse("extstub.sngl", []byte(withStd(source)))
@@ -49,7 +49,7 @@ func extStubConfig(t *testing.T, source string) *checker.Config {
 // stdlib component. User code uses bare `text(...)` and must type-check.
 func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component sngl.text[extstub.platform] {
     image(src=value)
@@ -133,7 +133,7 @@ func (namedStubPlatform) Resolve(string) ir.Symbol     { return nil }
 // var declared by a platform that is not the build target must not survive.
 func TestExtensionBodyVars(t *testing.T) {
 	const extA = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component sngl.text[stubA.platform] {
     const label string = "L"
@@ -144,7 +144,7 @@ component sngl.text[stubA.platform] {
 }
 `
 	const extB = `
-import sngl "sngl://std"
+import sngl "sngl:std"
 
 component sngl.text[stubB.platform] {
     var other int = 7

@@ -50,14 +50,14 @@ func findFunc(pkg *ir.Package, name string) *ir.Func {
 // after analyzeAsync() runs.
 func TestAsyncPropagatesThroughLambda(t *testing.T) {
 	src := `
-import api "go://api"
+import api "go:api"
 
 func outer() {
     var f = func() { api.fetchHello("x") }
     f()
 }
 `
-	pkg, diags := checkPkgWithImports(src, asyncNativeImport("go://api", "fetchHello"))
+	pkg, diags := checkPkgWithImports(src, asyncNativeImport("go:api", "fetchHello"))
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Logf("diagnostic: %s", d.Error())

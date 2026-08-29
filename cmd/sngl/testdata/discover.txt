@@ -7,12 +7,12 @@ sngl check
 stdout 'app.sngl: ok'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
 }
 -- single/app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
 }

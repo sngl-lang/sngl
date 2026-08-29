@@ -2,8 +2,8 @@
 // run of characters that would otherwise be interpreted as metachars.
 // '' (two single quotes) emits one literal apostrophe.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 // Bare apostrophe in a literal run (no metachars after).
 var msg1 = $"It's a fine day"

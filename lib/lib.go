@@ -1,7 +1,7 @@
 // Package lib embeds the SNGL standard library source so it can be read at
 // runtime without depending on the filesystem layout.
 //
-// Each subdirectory is one importable package: lib/<path> is `sngl://<path>`.
+// Each subdirectory is one importable package: lib/<path> is `sngl:<path>`.
 // Nothing enumerates them in Go — add a directory and it exists.
 //
 //	builtin/    ambient built-ins, dot-imported into every file implicitly
@@ -29,7 +29,7 @@ var FS embed.FS
 
 // Packages returns the embedded package paths, sorted. A directory holding
 // .sngl files is a package, at whatever depth — lib/internal/stdlib is
-// `sngl://internal/stdlib`. Order is not load order: packages import each
+// `sngl:internal/stdlib`. Order is not load order: packages import each
 // other and are loaded on demand.
 func Packages() []string {
 	seen := map[string]bool{}

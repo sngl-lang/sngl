@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Bug: checker silently accepts unknown method calls on primitive types.
 // `int` has no method `bogusMethod`, but the selector resolution falls through

@@ -1,7 +1,7 @@
 // A unit declaration hosts methods like any other named type: `func Len.x()`
 // attaches to the unit, and a unit-valued receiver dispatches to it.
 
-import . "sngl://std"
+import . "sngl:std"
 
 unit Len { mm, cm = 10mm }
 

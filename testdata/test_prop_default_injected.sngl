@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A prop the call omits is supplied by the checker, so every consumer reads
 // one list of arguments instead of evaluating the declaration's defaults for

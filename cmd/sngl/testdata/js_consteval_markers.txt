@@ -26,8 +26,8 @@ grep 'folded-pure-hash' out/index.html
 ! grep 'function pureHash' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:std"
+import lib "js:./lib"
 
 component main {
     // Bound to state rather than used inline: an unfolded call is shipped as

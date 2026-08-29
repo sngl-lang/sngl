@@ -12,7 +12,7 @@ sngl build --lang=go --platform=bubbletea --opt name=sd bt.sngl
 exists sd
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 struct P {
     x int = 7
@@ -25,7 +25,7 @@ component main {
     text(value="{p.x}{c.hex()}")
 }
 -- bt.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { bubbletea } }
 

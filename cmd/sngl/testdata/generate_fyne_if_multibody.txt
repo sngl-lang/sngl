@@ -30,7 +30,7 @@ grep 'container\.Add\(__n1\)' out/model.go
 grep 'container\.Add\(__n2\)' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { fyne } }
 

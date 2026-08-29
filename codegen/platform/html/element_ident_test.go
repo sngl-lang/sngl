@@ -52,7 +52,7 @@ func firstElementDecl(t *testing.T, pkg *ir.Package) *ir.Component {
 // off the declaration. Something has to hold the two spellings together, and
 // this is it.
 func TestElementDeclarationMatchesWhatHTMLAssumes(t *testing.T) {
-	const src = "import . \"sngl://std\"\nimport html \"sngl://platforms/html\"\n\nwindow(\"t\") {\n    html.div {}\n}\n"
+	const src = "import . \"sngl:std\"\nimport html \"sngl:platforms/html\"\n\nwindow(\"t\") {\n    html.div {}\n}\n"
 	decl := firstElementDecl(t, checkedPkgForTest(t, src))
 
 	if got := decl.WildcardInto; got != tagProp {

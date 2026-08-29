@@ -1,7 +1,7 @@
 // Built-in visual nodes. Each carries a #[builtin("...")] mark that the
 // checker dispatches on to the matching IR construct.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // Catches errors raised in children's event handlers and expressions.
 // When a descendant calls `error.raise` or throws during evaluation,

@@ -111,7 +111,7 @@ component main { text(value="x") }`)))
 	if !strings.Contains(joined, "cannot initialize duration (test.sngl:") {
 		t.Errorf("diagnostic does not say where the program's duration was declared:\n%s", joined)
 	}
-	if !strings.Contains(joined, "with duration (sngl://std)") {
+	if !strings.Contains(joined, "with duration (sngl:std)") {
 		t.Errorf("diagnostic does not say the other duration is the library's:\n%s", joined)
 	}
 }

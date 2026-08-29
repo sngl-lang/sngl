@@ -3,7 +3,7 @@
 // is eliminated. The member itself has no literal form — its canonical IR is
 // the identifier — so `picked` below must survive unfolded; TestOptimize_
 // EnumMemberKeepsIdent asserts that half, which no FOLD directive can express.
-import . "sngl://std"
+import . "sngl:std"
 
 enum Color { red, green, blue }
 

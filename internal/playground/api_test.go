@@ -7,16 +7,16 @@ import (
 )
 
 // TestCompileTxtarJSImport drives Compile() with a txtar archive that
-// includes a sibling `lib/index.ts` and a `js://` import. The bundled
+// includes a sibling `lib/index.ts` and a `js:` import. The bundled
 // output must include the imported function body, proving the FS
 // plumbing reaches both the checker (resolution) and the html platform
 // (esbuild plugin via fsys).
 func TestCompileTxtarJSImport(t *testing.T) {
 	const source = `output { js { html } }
 
-import lib "js://./lib"
+import lib "js:./lib"
 
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var n = 0.0
@@ -50,7 +50,7 @@ export function add(a: number, b: number): number {
 // TestCompileBareSource is the degenerate case: no `-- name --` markers,
 // the editor buffer is one SNGL file. Must still compile.
 func TestCompileBareSource(t *testing.T) {
-	const source = `import . "sngl://std"
+	const source = `import . "sngl:std"
 component main {
     text(value="hello")
 }

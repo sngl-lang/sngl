@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // HOVER(Counter) "component Counter"
 component Counter(label string) { vbox {} }

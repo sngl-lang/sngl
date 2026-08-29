@@ -102,7 +102,7 @@ var fyneFrameworkPkgs = map[string]string{
 
 // fyneImportPath returns the full Go import path for a fyne package selector,
 // or "" if the selector isn't a known framework package (so callers leave it
-// unchanged — e.g. std "strings", or a go:// native already carrying a path).
+// unchanged — e.g. std "strings", or a go: native already carrying a path).
 func fyneImportPath(sel string) string {
 	if p, ok := fyneFrameworkPkgs[sel]; ok && p != sel {
 		return p

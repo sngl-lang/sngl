@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component box {
     var maybe option<int> = null

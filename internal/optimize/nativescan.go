@@ -113,7 +113,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 // isEvaluableNativeCall reports whether call is a call to a pure native
 // function the evaluator could run. It matches what evalNativeCall accepts —
 // resolution is by AST selector and native import, not by ir.Func, which the
-// checker may or may not have attached — minus the file:// scheme, which the
+// checker may or may not have attached — minus the file: scheme, which the
 // folder reads directly off disk.
 func isEvaluableNativeCall(call *ir.Call, ctx *evalCtx) bool {
 	name, ns, ok := nativeCallTarget(call, ctx)

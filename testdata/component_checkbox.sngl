@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // checkbox: state-binding fixture — toggling the bound `checked`
 // var propagates to the checkbox.

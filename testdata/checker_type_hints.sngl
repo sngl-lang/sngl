@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 enum Direction { up, down, left, right }
 

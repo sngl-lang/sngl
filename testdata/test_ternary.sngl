@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component choice {
     var x = 10

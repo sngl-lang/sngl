@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Regression: a block-bodied computed that calls a sibling computed must
 // thread the component receiver, not a literal `this`. The checker's

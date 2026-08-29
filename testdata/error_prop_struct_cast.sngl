@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A prop value that is not assignable to a struct-typed prop is a type error,
 // not a cast. `text`'s first prop is `style Style`, so a positional string

@@ -3,7 +3,7 @@
 // event as a handler — but the reader of the declaration has only the one list
 // to go on, so a name repeated across them is a collision here.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component collides(header string, slot header) { // ERROR(check) "name is already declared as a prop"
     vbox {

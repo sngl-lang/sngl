@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 func isEven(n int) bool {
     return n == 0 ? true : isOdd(n - 1)

@@ -2,7 +2,7 @@
 // because its users are outside the compiler: a language plugin generating
 // marked SNGL to describe a foreign API, a platform package naming its host
 // types.
-import ir "sngl://internal/ir"
+import ir "sngl:internal/ir"
 
 // Records what a declaration corresponds to outside SNGL: the import path it
 // comes from and its name there, written the way an import line writes them.

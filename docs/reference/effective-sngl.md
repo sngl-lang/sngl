@@ -15,7 +15,7 @@ Every `.sngl` file is a flat list of top-level declarations. Order does not matt
 The `output` block declares which language and platform combinations the file targets:
 
 <!-- SNGL-top
-import . "sngl://std"
+import . "sngl:std"
 
 component main { text(value="") }
 -->
@@ -35,7 +35,7 @@ struct Widget { name string = "" }
 -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 import "shared"
 
 component main {
@@ -47,8 +47,8 @@ component main {
 Scheme imports pull in types from host-language packages:
 
 ```sngl
-import . "sngl://std"
-import "go://go/ast"
+import . "sngl:std"
+import "go:go/ast"
 
 component main {
     var file ast.File
@@ -97,8 +97,8 @@ They are accepted because a package in `node_modules` cannot be annotated by
 the person compiling it, and honoring only `@sngl-pure` would mean no
 dependency could ever fold.
 
-A marked function has to be runnable during the build: `go://` folding needs
-the Go toolchain and `js://` folding needs `node`. When the tool is missing,
+A marked function has to be runnable during the build: `go:` folding needs
+the Go toolchain and `js:` folding needs `node`. When the tool is missing,
 the value falls back to a runtime call on a target that can make one, and the
 build fails on a target that cannot.
 
@@ -108,14 +108,14 @@ an enum folds, and node's own type stripping never comes into it.
 
 Where the function's declared return type says what the value is, that type is
 what makes it well-typed. Where it does not — a Go `[]any`, a TypeScript
-`any[]` — a `go://` value still arrives typed, because the Go runtime can name
+`any[]` — a `go:` value still arrives typed, because the Go runtime can name
 the type it is: `reflect` gives the declaring package and the name in it, which
-is exactly what the `go://` importer keyed its declarations by. It writes that
-as `import("go://path/to/pkg").Type{…}`, which is not source you can write —
+is exactly what the `go:` importer keyed its declarations by. It writes that
+as `import("go:path/to/pkg").Type{…}`, which is not source you can write —
 only the reader the compiler points at a folded value accepts an import in
-expression position. A `js://` value cannot. A JavaScript value carries no link to the module that declared its
+expression position. A `js:` value cannot. A JavaScript value carries no link to the module that declared its
 type, a class name alone does not identify one, and a TypeScript interface has
-no runtime constructor at all — so an untyped `js://` element stays `dyn`, with
+no runtime constructor at all — so an untyped `js:` element stays `dyn`, with
 the field names the source language used.
 
 A folded value crosses as SNGL source, and a class can choose its own form with
@@ -128,7 +128,7 @@ The top-level declarations available are: `import`, `output`, `struct`, `enum`, 
 A complete minimal file needs only a `component main`:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
 }
@@ -137,7 +137,7 @@ component main {
 A realistic minimal file looks like this:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 output {
     js { html }
@@ -169,7 +169,7 @@ The standard library provides `color`, `date`, `time`, and `datetime`, which are
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var names list<string> = []
 var scores = [100, 95, 87]
 ```
@@ -183,7 +183,7 @@ struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var name option<string>
 var count option<int> = 5
 var todo option<Todo> = null
@@ -196,7 +196,7 @@ Check for presence with `== null` / `!= null`. Concrete values of `T` are implic
 Structs are value types. They cannot be null. Fields have zero-value defaults when not specified:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 struct Todo {
     text string = ""
@@ -209,7 +209,7 @@ struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var todo Todo
 var todo2 = Todo{text="Buy eggs", done=false}
 ```
@@ -221,7 +221,7 @@ Accessing and mutating fields uses dot notation: `todo.text`, `todo.done = true`
 Named enums declare a fixed set of string values:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 enum Status { active, inactive, pending }
 ```
@@ -231,7 +231,7 @@ Inline enums skip the top-level declaration when you need a one-off constraint:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var mode enum { light, dark } = light
 ```
 
@@ -242,7 +242,7 @@ A member is written bare where the expected type makes it unambiguous, and quali
 Units declare named suffixes with optional conversion factors:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
@@ -260,7 +260,7 @@ enum Status { active, inactive, pending }
 -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 var name = "World"
 var bg = #ff0000
@@ -278,7 +278,7 @@ Function types use `func(ParamTypes) ReturnType` syntax. Omit the return type fo
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var handler func() = null
 var transform func(string) string = null
 var callback func(string) int = null
@@ -293,7 +293,7 @@ var callback func(string) int = null
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 func _a() => string(42)
 func _b() => string(3.14)
 func _c() => string(true)
@@ -353,7 +353,7 @@ Inside `"{expr}"`, a primitive, string-representable type, enum, unit, `null`, l
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 struct Point {
     x int = 0
     y int = 0
@@ -376,7 +376,7 @@ Removing the `Point.string` method makes the `{origin}` interpolation a compile 
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var (
     count = 0
     name = "World"
@@ -391,7 +391,7 @@ var (
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 const (
     MAX_ITEMS = 100
     DEFAULT_NAME = "unnamed"
@@ -409,7 +409,7 @@ Zero-arg functions serve as derived state -- they auto-update reactively and are
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 func doubled() => count * 2
 func label() => "Count: {count}"
@@ -449,7 +449,7 @@ Structs cannot be null (`var todo Todo = null` is a compile error; use `var todo
 For single-expression pure functions, the body follows the parameter list directly:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 func add(a int, b int) => a + b
 func greet(name string) => "Hello, {name}!"
@@ -460,7 +460,7 @@ func greet(name string) => "Hello, {name}!"
 For multi-step logic, use a body with `return`:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 func clamp(val int, lo int, hi int) int {
     var clamped = val < lo ? lo : val
@@ -476,7 +476,7 @@ Functions with no return type are void. They can mutate component state and are 
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 func reset() {
     count = 0
@@ -493,7 +493,7 @@ Void functions can only appear inside a `component` block. Pure functions (with 
 Attach a function to a type with a dotted name. The first parameter is the receiver:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 func int.double(x int) => x * 2
 func string.shout(s string) => "{s}!"
@@ -586,7 +586,7 @@ Pure functions cannot mutate state. Void functions cannot return values. Attempt
 A component groups params, state, functions, and visual nodes:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component Counter(label = "", start = 0) {
     var count = start
@@ -606,7 +606,7 @@ component Counter(label = "", start = 0) {
 Params are the component's public API. They are declared in parentheses after the component name and accept values from parent components:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) {
     text(value=label)
@@ -736,7 +736,7 @@ input(:value=name)
 Bidirectional bindings work with custom components too. Declare a parameter with the `:` prefix:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component Stepper(:count = 0) {
     button(text="+", @click { count += 1 })
@@ -771,7 +771,7 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var active = true
 if active {
     text(value="Active", style={color=#007700})
@@ -786,7 +786,7 @@ if !active {
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var items = ["a", "b", "c"]
 for item = items {
     text(value=item)
@@ -805,7 +805,7 @@ The `else` block renders when the list is empty. It works with both `for item = 
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var items list<string> = []
 for item = items {
     text(value=item)
@@ -821,7 +821,7 @@ Tag a node with `#id` to reference it in tests:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 button #inc(text="+", @click { count += 1 })
 text #display(value="Count: {count}")
@@ -836,7 +836,7 @@ text #display(value="Count: {count}")
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 var label = ""
 button(text="+5", @click { count += 5 })
@@ -850,7 +850,7 @@ button(text="tag", @click { label += " tagged" })
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var active = true
 button(text="Toggle", @click { active!! })
 ```
@@ -862,7 +862,7 @@ Method syntax mutates in place. Function syntax returns a new list:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var items = [1, 2, 3]
 button(text="Add", @click { items.push(4) })
 button(text="Remove first", @click { items.remove(0) })
@@ -875,7 +875,7 @@ Separate statements with semicolons inside event handlers:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var (
     a = 0
     b = 0
@@ -892,7 +892,7 @@ Fire a component event to notify the parent. The event is declared on the
 component with `@name`, and firing it is an ordinary call on that name:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component SaveButton(label = "Save", @save) {
     button(text=label, @click { save() })
@@ -912,7 +912,7 @@ Mutations are only allowed in event handlers and void functions. You cannot muta
 ## Timers
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var (
@@ -959,7 +959,7 @@ There is no `style` declaration and no `class` prop. A reusable style is a
 `Style` constant, applied through the same `style=` prop as an inline one:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
 const secondary Style = Style{color=#777777, fontStyle="italic"}
@@ -991,7 +991,7 @@ Style property names are camelCase: `fontSize`, `fontWeight`, `borderRadius`. No
 Tests target a specific component and get a fresh copy of its state:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component counter {
     var count = 0
@@ -1021,7 +1021,7 @@ Tag nodes with `#id`, then access props and fire events in tests:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 var count = 0
 button #inc(text="+", @click { count += 1 })
 text #display(value="Count: {count}")
@@ -1044,7 +1044,7 @@ Each test block starts with fresh state. Mutations in one test do not leak to an
 Subtests inherit parent state but get their own snapshot. Changes in the subtest do not affect the outer scope:
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component app {
     var x = 0
@@ -1089,7 +1089,7 @@ Each platform maps stdlib components to native widgets. Core components (`vbox`,
 ### Todo list
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 struct Todo {
     text string = ""
@@ -1123,7 +1123,7 @@ component main {
 ### Form with validation
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var email = ""
@@ -1141,7 +1141,7 @@ component main {
 ### Modal open/close
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var showModal = false
@@ -1158,7 +1158,7 @@ component main {
 ### Timer animation
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var (
@@ -1182,7 +1182,7 @@ component main {
 ### Filtered list
 
 ```sngl
-import . "sngl://std"
+import . "sngl:std"
 
 struct Todo {
     text string = ""

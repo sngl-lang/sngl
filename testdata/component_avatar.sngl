@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // avatar: A-tier — declaration + src/initials fallback.
 component main {

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 func foo() int {
     return "hello" // ERROR(check) "cannot return string as int"

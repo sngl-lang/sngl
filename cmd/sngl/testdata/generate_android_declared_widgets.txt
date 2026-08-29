@@ -46,7 +46,7 @@ grep 'Column\(modifier = Modifier\.padding\(9\.dp\)\) \{$' out/MainScreen.kt
 grep 'Text\(text = "", modifier = Modifier\)$' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var n = 0

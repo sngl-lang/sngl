@@ -6,8 +6,8 @@
 stderr 'async expression not allowed in parameterized reactive context'
 
 -- app.sngl --
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:std"
+import api "js:./api"
 
 func greet(name string) => api.fetchHello(name)
 

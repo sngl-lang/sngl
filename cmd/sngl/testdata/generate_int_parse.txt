@@ -18,14 +18,14 @@ sngl build --lang=go --platform=bubbletea --opt name=np bt.sngl
 exists np
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
 }
 -- bt.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { bubbletea } }
 

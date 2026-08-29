@@ -3,14 +3,14 @@
 // enums, `Alert`, `File`, `Test`, `error`, and the `i18n` and `html`
 // namespaces.
 //
-// Nothing here is in scope until it is imported. `import . "sngl://std"`
-// writes its declarations unqualified; `import <alias> "sngl://std"` qualifies
+// Nothing here is in scope until it is imported. `import . "sngl:std"`
+// writes its declarations unqualified; `import <alias> "sngl:std"` qualifies
 // them, and is also how a platform overrides a component (`component
 // <alias>.vbox`).
 //
 // It also carries the `#[foreign]` mark, which records what a declaration
 // corresponds to outside SNGL: the import path it comes from and its name
-// there -- `#[foreign("js://example.com/api", "Entry")]` -- or, given one
+// there -- `#[foreign("js:example.com/api", "Entry")]` -- or, given one
 // argument, the name alone, which is all a struct field can say
 // (`#[foreign("Title")]`). A struct, a struct field and a function may carry
 // it. It imports nothing, is checked against nothing, and confers no type
@@ -20,7 +20,7 @@
 // the language it names, and a backend generating another language ignores it
 // rather than emitting a name that language has never heard of.
 //
-// A function's mark may add flags: `#[foreign("js://./api", "add", pure)]`.
+// A function's mark may add flags: `#[foreign("js:./api", "add", pure)]`.
 // They state what a call costs, which is what SNGL cannot read off a body that
 // describes the foreign declaration rather than implementing it. `async` says
 // the declaration returns a promise its caller awaits. `pure` is not metadata

@@ -41,7 +41,7 @@ func TestIRTypeToGo_TypeRef(t *testing.T) {
 func TestEmitCHeader_Basic(t *testing.T) {
 	tr := &Translator{}
 	ni := &ir.NativeImport{
-		ImportPath: "c:///usr/include/test.h",
+		ImportPath: "c:/usr/include/test.h",
 		LinkFlags:  []string{"-ltest"},
 	}
 	got := tr.EmitCHeader([]*ir.NativeImport{ni})

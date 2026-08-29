@@ -2,7 +2,7 @@
 // Any field declared here is recognized in every output() block; platforms
 // pick up the values they care about through their own Options structs.
 
-import . "sngl://platforms"
+import . "sngl:platforms"
 
 #[options]
 struct Options {

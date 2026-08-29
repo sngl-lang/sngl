@@ -36,8 +36,8 @@ stderr 'already has an implementation for "html"'
 stderr 'override names unknown function "nope"'
 
 -- app.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func label(n int) string {
     return "tui n=" + string(n)
@@ -54,8 +54,8 @@ component main {
 }
 
 -- method.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func int.describe(n int) string {
     return "tui " + string(n)
@@ -72,8 +72,8 @@ component main {
 }
 
 -- params.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func label(n int) string { return "base" }
 
@@ -86,8 +86,8 @@ component main {
 }
 
 -- rettype.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func label(n int) string { return "base" }
 
@@ -100,8 +100,8 @@ component main {
 }
 
 -- duplicate.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func label(n int) string { return "base" }
 
@@ -116,8 +116,8 @@ component main {
 }
 
 -- unknown.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 func nope[html.platform] { return "x" }
 

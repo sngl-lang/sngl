@@ -47,8 +47,8 @@ sngl check noselection.sngl
 stdout 'noselection.sngl: ok'
 
 -- app.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string, size int) {
     text(value="avatar fallback: " + url)
@@ -65,7 +65,7 @@ component main {
 }
 
 -- typo.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component Avatar(url string) {
     text(value=url)
@@ -82,8 +82,8 @@ component main {
 }
 
 -- nottarget.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string) {
     text(value=url)
@@ -100,9 +100,9 @@ component main {
 }
 
 -- duplicate.sngl --
-import sngl "sngl://std"
-import . "sngl://std"
-import "sngl://platforms/html"
+import sngl "sngl:std"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component sngl.badge[html.platform] {
     html.span(textContent=value)
@@ -115,8 +115,8 @@ component main {
 }
 
 -- declaresprops.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string) {
     text(value=url)
@@ -133,8 +133,8 @@ component main {
 }
 
 -- selectsunknown.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string) {
     text(value=url)
@@ -151,8 +151,8 @@ component main {
 }
 
 -- unselected.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string, size int) {
     text(value=url)
@@ -169,8 +169,8 @@ component main {
 }
 
 -- noselection.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Avatar(url string, size int) {
     text(value=url)

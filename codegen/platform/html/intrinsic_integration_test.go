@@ -18,7 +18,7 @@ import (
 // intrinsics leaking through.
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var visible bool = true
@@ -66,7 +66,7 @@ component main {
 // slot accumulator for teardown on the next render.
 func TestIntegration_ReactiveForEmitsRenderSlot(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var items list<string> = ["a", "b"]

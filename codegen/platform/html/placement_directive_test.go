@@ -20,8 +20,8 @@ import (
 // survive optimize+lower carrying Func.Intrinsic == "html.frontend".
 func TestHtmlDirectiveSurvivesWithPlatformActive(t *testing.T) {
 	src := `
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 output { js { html } }
 component main {
     var n = 0

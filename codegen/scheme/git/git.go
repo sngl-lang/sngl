@@ -72,7 +72,7 @@ type gitURI struct {
 }
 
 func parseGitURI(uri string) (*gitURI, error) {
-	rest := strings.TrimPrefix(uri, "git://")
+	rest := strings.TrimPrefix(uri, "//")
 
 	// Split hash
 	hash := "-"

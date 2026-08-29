@@ -15,8 +15,8 @@ import (
 // thing that keeps it type-correct.
 func TestFynePackageTypeChecks(t *testing.T) {
 	src := `
-import . "sngl://std"
-import "sngl://platforms/fyne"
+import . "sngl:std"
+import "sngl:platforms/fyne"
 output { go { fyne() } }
 component main {
     text(value="hi")
@@ -37,7 +37,7 @@ component main {
 	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: plats, Languages: langs, Targets: []ir.StaticTarget{{Platform: "fyne", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
-			t.Errorf("sngl://platforms/fyne: %s: %s", d.Pos, d.Msg)
+			t.Errorf("sngl:platforms/fyne: %s: %s", d.Pos, d.Msg)
 		}
 	}
 }

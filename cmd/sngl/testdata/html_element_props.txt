@@ -1,4 +1,4 @@
-# A raw HTML element resolves to the `element` component sngl://platforms/html
+# A raw HTML element resolves to the `element` component sngl:platforms/html
 # declares, so a call against it is checked like any other. Before, the
 # platform's Resolve() minted a nameless component with no props and the
 # checker skipped validation entirely: every prop name and every value passed.
@@ -23,8 +23,8 @@ grep '<my-widget' out/index.html
 grep '<div' out/index.html
 
 -- badname.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     window {
@@ -32,8 +32,8 @@ component main {
     }
 }
 -- badtype.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     window {
@@ -41,8 +41,8 @@ component main {
     }
 }
 -- custom.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component main {
     window {

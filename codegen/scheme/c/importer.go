@@ -27,18 +27,18 @@ func init() {
 	codegen.RegisterScheme(&CImporter{})
 }
 
-// CImporter resolves c:// scheme imports by parsing C headers.
+// CImporter resolves c: scheme imports by parsing C headers.
 type CImporter struct{}
 
 func (c *CImporter) Scheme() string { return "c" }
 
 // Resolve handles two URI forms:
-//   - c://path/to/header.h — absolute header file path
-//   - c://pkg:name         — pkg-config managed library
+//   - c:path/to/header.h — absolute header file path
+//   - c:pkg:name         — pkg-config managed library
 func (c *CImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
-	path := strings.TrimPrefix(uri, "c://")
+	path := uri
 	if path == "" {
-		return nil, fmt.Errorf("c scheme requires a path (e.g. c:///usr/include/SDL2/SDL.h or c://pkg:sdl2)")
+		return nil, fmt.Errorf("c scheme requires a path (e.g. c:/usr/include/SDL2/SDL.h or c:pkg:sdl2)")
 	}
 
 	if after, ok := strings.CutPrefix(path, "pkg:"); ok {
@@ -50,7 +50,7 @@ func (c *CImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 // resolvePkgConfig uses pkg-config to find include paths and the primary header.
 func (c *CImporter) resolvePkgConfig(libName, dir string) (*ir.NativeImport, error) {
 	if _, err := exec.LookPath("pkg-config"); err != nil {
-		return nil, fmt.Errorf("pkg-config required for c://pkg: imports — install it or use a direct header path")
+		return nil, fmt.Errorf("pkg-config required for c:pkg: imports — install it or use a direct header path")
 	}
 
 	cflagsOut, err := exec.Command("pkg-config", "--cflags", libName).Output()
@@ -68,7 +68,7 @@ func (c *CImporter) resolvePkgConfig(libName, dir string) (*ir.NativeImport, err
 	syntheticInclude := inferPkgHeader(libName)
 	syntheticSrc := fmt.Sprintf("#include <%s>\n", syntheticInclude)
 
-	ni, err := c.resolveHeaderWithIncludes(syntheticSrc, includePaths, "c://pkg:"+libName)
+	ni, err := c.resolveHeaderWithIncludes(syntheticSrc, includePaths, "c:pkg:"+libName)
 	if err != nil {
 		return nil, err
 	}

@@ -1,12 +1,12 @@
 // The ambient built-ins: always in scope, and never imported -- importing
-// `sngl://builtin` explicitly is an error. This is the only implicit import in
+// `sngl:builtin` explicitly is an error. This is the only implicit import in
 // the language.
 //
 // Every name here is shadowable by a declaration of the same name, because the
 // compiler identifies a built-in by the `#[builtin("kind")]` mark on its
 // declaration rather than by matching its name.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // 64-bit signed integer. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver

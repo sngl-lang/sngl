@@ -1,6 +1,6 @@
 caps: NoInlineComponents
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component Tree(name = "leaf") {
     text(value=name)
@@ -10,7 +10,7 @@ component main {
     Tree(name="root")
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:std"
 component Tree(name string = "leaf") {
     text(value=name)
     Tree(name="child")

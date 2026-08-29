@@ -24,7 +24,7 @@ sngl generate --platform=android --lang=kotlin --out=a app.sngl
 grep 'LinearProgressIndicator\(progress = \{ \(2\.0 / 10\.0\)\.toFloat\(\) \}' a/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     window(title="t") {

@@ -24,7 +24,7 @@ func TestNonMainComponentPromotedHandlersAreEmitted(t *testing.T) {
 	// the only place its promoted handlers live. That is the arrangement
 	// testdata/focus_order_loop.sngl has.
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 component focusLoop {
     vbox {
         button(text="before", focusable=true)

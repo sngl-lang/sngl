@@ -1,5 +1,5 @@
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 
 component Markdown(src = "") {
     if PLATFORM == html.platform {

@@ -1,7 +1,7 @@
 // elemref.sngl — exercises element-ref: value is read in an expression and
 // written inside a click handler.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var name string = ""

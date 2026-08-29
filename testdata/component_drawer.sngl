@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // drawer: state-binding fixture — toggling bound `open` slides the
 // drawer in/out.

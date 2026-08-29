@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // Unsigned integer types, including full-range uint64 fidelity in the
 // interpreter/const-folder (values above 2^63 are modeled exactly, not as

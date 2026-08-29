@@ -16,12 +16,12 @@ func TestPackageDoc(t *testing.T) {
 		src  string
 		want string
 	}{
-		{"blank line separates", "// Package prose.\n// More prose.\n\nimport . \"sngl://std\"\n", "Package prose. More prose."},
+		{"blank line separates", "// Package prose.\n// More prose.\n\nimport . \"sngl:std\"\n", "Package prose. More prose."},
 		{"no blank line documents the decl", "// Doc for the struct.\nstruct Box { v int }\n", ""},
-		{"second block after the run is not included", "// Package prose.\n\n// Note about the import.\nimport . \"sngl://std\"\n", "Package prose."},
+		{"second block after the run is not included", "// Package prose.\n\n// Note about the import.\nimport . \"sngl:std\"\n", "Package prose."},
 		{"file of only comments", "// Package prose.\n// More.\n", "Package prose. More."},
-		{"no leading comment", "import . \"sngl://std\"\n", ""},
-		{"block comment is not a package comment", "/* nope */\n\nimport . \"sngl://std\"\n", ""},
+		{"no leading comment", "import . \"sngl:std\"\n", ""},
+		{"block comment is not a package comment", "/* nope */\n\nimport . \"sngl:std\"\n", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestLibraryPackagesHaveDocs(t *testing.T) {
 			}
 		}
 		if found == "" {
-			t.Errorf("sngl://%s has no package comment", pkg)
+			t.Errorf("sngl:%s has no package comment", pkg)
 		}
 	}
 }

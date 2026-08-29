@@ -1,4 +1,4 @@
-# js:// imports get bundled by esbuild into the inline <script>.
+# js: imports get bundled by esbuild into the inline <script>.
 # The button click handler calls lib.add(2,3); after compilation the
 # imported function body must be inlined and the handler must reference
 # the bundled symbol.
@@ -18,8 +18,8 @@ grep 'function add' out/index.html
 grep '\(\(\) => \{' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:std"
+import lib "js:./lib"
 
 component main {
     var n = 0.0

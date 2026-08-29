@@ -18,7 +18,7 @@ import (
 func TestOptionsForPackageReadsTheMarkedStruct(t *testing.T) {
 	sd := checker.OptionsStruct("std")
 	if sd == nil {
-		t.Fatal("sngl://std declares no #[options] struct")
+		t.Fatal("sngl:std declares no #[options] struct")
 	}
 	opts := optionsForPackage("std")
 	if len(opts) != len(sd.Fields) {

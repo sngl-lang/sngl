@@ -14,8 +14,8 @@ import (
 // Written as a branch there is nothing to infer and nothing to leak.
 func TestPlatformOverrideDropsDefault(t *testing.T) {
 	src := `
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:std"
+import "sngl:platforms/html"
 component Layout() list<component> {
     if PLATFORM == html.platform {
         html.div(class="site") {

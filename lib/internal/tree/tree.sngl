@@ -6,11 +6,11 @@
 // runs) and menus (items, separators) are others. The marks carry only a name,
 // and the compiler compares names — nothing here knows what a shape is.
 //
-// The path is `sngl://internal/tree`, so only library source may import it. A
+// The path is `sngl:internal/tree`, so only library source may import it. A
 // package that wants to hand the vocabulary to users declares its own mark on
-// top, the way `sngl://draw` declares `shape`.
+// top, the way `sngl:draw` declares `shape`.
 
-import ir "sngl://internal/ir"
+import ir "sngl:internal/ir"
 
 // Names the tree this component is a member of.
 //

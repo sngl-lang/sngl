@@ -2,8 +2,8 @@
 // (date/time/datetime/select — not the dateStr/timeStr/etc workarounds).
 // Note: the "i18n" namespace is predeclared; no import statement needed.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 func test() {
     // Translation entry points.

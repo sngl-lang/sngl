@@ -39,7 +39,7 @@ struct Macro {}
 enum IntrinsicFlag { usable, mutates, readonly, mutatesReceiver }
 
 // What a call to a foreign function costs. Written as bare identifiers after
-// the name: `#[foreign("go://example.com/api", "Get", pure, async)]`.
+// the name: `#[foreign("go:example.com/api", "Get", pure, async)]`.
 //
 // `pure` says a call has no effects and no dependence on host state, so the
 // compiler may evaluate one at build time — the sharp edge of the mark, since

@@ -33,9 +33,9 @@ stderr 'pure, async'
 stderr 'which describes a call'
 
 -- pure.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://./api", "add", pure)]
+#[foreign("js:./api", "add", pure)]
 func add(a int, b int) => a + b
 
 component main {
@@ -43,9 +43,9 @@ component main {
 }
 
 -- stub.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://./api", "add")]
+#[foreign("js:./api", "add")]
 func add(a int, b int) => 0
 
 component main {
@@ -53,9 +53,9 @@ component main {
 }
 
 -- async.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://./api", "fetchHello", async)]
+#[foreign("js:./api", "fetchHello", async)]
 func fetchHello(name string) => "hi " + name
 
 func greeting() => fetchHello("world")
@@ -65,9 +65,9 @@ component main {
 }
 
 -- typo.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://./api", "add", puer)]
+#[foreign("js:./api", "add", puer)]
 func add(a int, b int) => a + b
 
 component main {
@@ -75,9 +75,9 @@ component main {
 }
 
 -- onstruct.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
-#[foreign("js://./api", "Entry", pure)]
+#[foreign("js:./api", "Entry", pure)]
 struct Entry {
     title string
 }

@@ -1,4 +1,4 @@
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // Time quantity used by `timer.interval` and animation APIs. Unit
 // literals: `ms`, `s`, `m`, `h`.

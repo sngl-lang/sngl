@@ -1,5 +1,5 @@
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 // Simple identifier interpolation.
 component i18nInterp {

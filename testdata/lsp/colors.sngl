@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 window #demo(title="Demo", href="/") {
     vbox(style={gap=8, padding=16}) {

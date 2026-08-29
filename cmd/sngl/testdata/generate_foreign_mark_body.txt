@@ -13,11 +13,11 @@ grep 'func \(m Model\) label\(\) string' out/model.go
 grep 'return \("theme=" \+ m.__ctx_theme\)' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 context #theme("light")
 
-#[foreign("js://./api", "label")]
+#[foreign("js:./api", "label")]
 func label() string {
     return "theme=" + theme
 }

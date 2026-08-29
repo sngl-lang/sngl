@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // The built-in visual nodes are shadowable (design doc D3). A user component
 // resolves before the #[builtin] declaration, so each of these instantiates as

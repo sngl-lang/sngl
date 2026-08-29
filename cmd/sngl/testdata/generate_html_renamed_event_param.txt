@@ -27,7 +27,7 @@ grep '__n0.value = state.name' out/index.html
 grep '__n1.textContent = state.name' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { none { html } }
 

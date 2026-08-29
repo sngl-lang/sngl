@@ -1,5 +1,5 @@
 // Package consteval carries the JavaScript runtime for SNGL's compile-time
-// evaluation of pure js:// functions. The runtime itself is consteval.mjs; the
+// evaluation of pure js: functions. The runtime itself is consteval.mjs; the
 // Go here exists only so the compiler can reach those bytes.
 //
 // Unlike pkg/go/consteval, which the generated program imports by module path,

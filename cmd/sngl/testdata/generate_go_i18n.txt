@@ -28,8 +28,8 @@ grep '"git.duckfam.us/jonathan/sngl/pkg/go/i18n"' outalias/model.go
 grep 'i18n.NumberInt\(m.__ctx_locale, ' outalias/model.go
 
 -- alias.sngl --
-import . "sngl://std"
-import t "sngl://i18n"
+import . "sngl:std"
+import t "sngl:i18n"
 
 output { go { bubbletea } }
 
@@ -39,8 +39,8 @@ component main {
     text(value=s)
 }
 -- app.sngl --
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 output { go { bubbletea } }
 

@@ -1,5 +1,5 @@
 // The declaration forms the compiler recognises by mark rather than by name.
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 // Declares a reactive context: `context #name(default)` binds `name`, and
 // `name(value) { ... }` overrides it for a subtree. A context is ambient

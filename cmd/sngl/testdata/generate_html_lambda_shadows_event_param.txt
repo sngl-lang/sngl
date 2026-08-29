@@ -13,7 +13,7 @@ grep 'filter\(\(e2\) => e2 > 1\)' out/index.html
 grep 'state.name = e.target.value' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var xs list<int> = [1, 2, 3]

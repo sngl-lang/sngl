@@ -459,7 +459,7 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 }
 
 // ParseScheme extracts the scheme and URI from an import path.
-// Returns ("go", "pkg/path") for "go://pkg/path", or ("", path) for directory imports.
+// Returns ("go", "pkg/path") for "go:pkg/path", or ("", path) for directory imports.
 func ParseScheme(path string) (scheme, uri string) {
 	return imports.ParseScheme(path)
 }

@@ -92,7 +92,7 @@ func isPluralKeyMapType(t *ir.Type) bool {
 
 // isBundledImport reports whether a native import is routed through the JS
 // bundler (esbuild) instead of the WASM extern bridge. Decided by the source
-// scheme: js:// is bundled, others (go://, etc.) go through WASM extern.
+// scheme: js: is bundled, others (go:, etc.) go through WASM extern.
 func isBundledImport(imp *ir.Import) bool {
 	if imp == nil || imp.AST == nil {
 		return false
@@ -102,7 +102,7 @@ func isBundledImport(imp *ir.Import) bool {
 }
 
 // isBundledNativePkg reports whether a native package path corresponds to a
-// bundled js:// import in pkg.
+// bundled js: import in pkg.
 func isBundledNativePkg(pkg *ir.Package, nativePkg string) bool {
 	if pkg == nil || nativePkg == "" {
 		return false
@@ -120,7 +120,7 @@ func isBundledNativePkg(pkg *ir.Package, nativePkg string) bool {
 }
 
 // nativeBundledNamespaceAliasCtx resolves a namespace alias name to the
-// esbuild-compatible JS identifier when it maps to a bundled js:// native
+// esbuild-compatible JS identifier when it maps to a bundled js: native
 // import. ExprCtx analogue of nativeBundledNamespaceAlias. Returns ("","")
 // when not applicable.
 func nativeBundledNamespaceAliasCtx(ctx *codegen.ExprCtx, nsName string) (jsAlias, importPath string) {

@@ -1,6 +1,6 @@
 // intdiv.sngl — exercises integer division in a reactive computed func.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var a int = 10

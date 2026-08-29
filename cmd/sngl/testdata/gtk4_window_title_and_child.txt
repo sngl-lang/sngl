@@ -13,7 +13,7 @@ grep 'WindowSetTitle\(win, "Counter"\)' out/model.go
 grep 'BoxAppend\(m.__n1, m.__n0\)' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var count int = 0

@@ -15,7 +15,7 @@ sngl test --platform=bubbletea app.sngl
 stdout 'PASS'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 output { go { bubbletea } }
 

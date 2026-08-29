@@ -1,8 +1,8 @@
 // Plural / selectordinal require a numeric value. A string here should
 // produce a check-time error.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 var name = "Alice"
 var bad = $"{name, plural, one{x} other{y}}" // ERROR(check) "numeric"

@@ -12,8 +12,8 @@ import (
 // call, so the canvas redraws whenever the state changes.
 func TestCanvasReactiveRedraw(t *testing.T) {
 	src := `
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:std"
+import . "sngl:draw"
 output { none { html() } }
 component main {
     var size float = 100.0
@@ -42,8 +42,8 @@ component main {
 // and the _snglColor color helper function.
 func TestCanvasIntegration(t *testing.T) {
 	src := `
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:std"
+import . "sngl:draw"
 output { none { html() } }
 component main {
     window(title="Canvas Test", href="/index.html") {

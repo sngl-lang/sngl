@@ -1,6 +1,6 @@
 // asynclambda.sngl — exercises list .map() and .filter() with lambda expressions.
 
-import . "sngl://std"
+import . "sngl:std"
 
 component main {
     var xs list<int> = [1, 2, 3, 4, 5]

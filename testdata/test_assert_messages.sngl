@@ -5,7 +5,7 @@
 // Backslash-escaped quotes inside the directive are honored (the
 // substring is decoded with strconv.Unquote).
 
-import . "sngl://std"
+import . "sngl:std"
 
 component box {
     var count = 0

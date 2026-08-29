@@ -2,8 +2,8 @@
 // them being checked. A name no wildcard covers is still unknown, and a value
 // is still checked against the wildcard prop's value type.
 
-import . "sngl://std"
-import . "sngl://platforms"
+import . "sngl:std"
+import . "sngl:platforms"
 
 component attrs(
     #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,

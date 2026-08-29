@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component Pair(first string, second string) {
     func both() => first + "+" + second

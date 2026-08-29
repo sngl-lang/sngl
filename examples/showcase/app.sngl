@@ -14,8 +14,8 @@
 // =====================================================================
 
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:std"
+import "sngl:i18n"
 
 // ----- 1. Output -----------------------------------------------------
 // `output` declares which (language, platform) pairs this file builds

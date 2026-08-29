@@ -128,7 +128,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 	return nil
 }
 
-// Split out because a package addressed by `sngl://<uri>` arrives already
+// Split out because a package addressed by `sngl:<uri>` arrives already
 // checked, the checker having built it under the lib-source rules its own
 // imports need: the two entry points share everything after the check and
 // nothing before it.

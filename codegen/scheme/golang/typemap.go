@@ -19,7 +19,7 @@ type TypeMapper struct {
 	structs map[string]*ir.StructDef
 }
 
-// LoadTypes loads the Go package at pkgPath — resolved from dir, as a go://
+// LoadTypes loads the Go package at pkgPath — resolved from dir, as a go:
 // import of it would be — and returns a mapper over its types.
 //
 // A pkgPath of "" yields a mapper over no package, which still resolves the
@@ -57,7 +57,7 @@ func (m *TypeMapper) Lookup(name string) (types.Type, error) {
 }
 
 // Type maps a Go type to the SNGL type it imports as, and reports whether that
-// type is usable: a false second result is what makes the go:// importer mark
+// type is usable: a false second result is what makes the go: importer mark
 // a declaration Unusable, so no value of the type can reach a program.
 func (m *TypeMapper) Type(t types.Type) (*ir.Type, bool) {
 	return goTypeToIR(t, m.path, m.structs)

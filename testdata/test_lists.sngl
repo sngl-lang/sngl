@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 component items {
     var list = [1, 2, 3]

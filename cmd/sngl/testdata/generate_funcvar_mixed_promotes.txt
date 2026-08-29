@@ -12,8 +12,8 @@ grep 'addEventListener.*async function' out/index.html
 grep 'await state\.handler()' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:std"
+import api "js:./api"
 
 func syncFetch() string {
     return "sync"

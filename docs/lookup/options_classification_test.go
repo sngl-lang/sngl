@@ -16,7 +16,7 @@ import (
 // an earlier test that called PackageSource directly passed throughout, while
 // `sngl doc html` classified Options as an ordinary type.
 func TestATargetsOptionsStructIsClassifiedAsItsSchema(t *testing.T) {
-	for _, name := range []string{"html", "go", "sngl://platforms/html", "sngl://languages/go", "sngl://std"} {
+	for _, name := range []string{"html", "go", "sngl:platforms/html", "sngl:languages/go", "sngl:std"} {
 		t.Run(name, func(t *testing.T) {
 			res, err := lookup.Lookup(name)
 			if err != nil {

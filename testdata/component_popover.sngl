@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // popover: state-binding fixture — toggling bound `open` shows
 // or hides the popover panel.

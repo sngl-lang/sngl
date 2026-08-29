@@ -6,7 +6,7 @@
 # the function returns matches no member, and the key fails naming the enum and
 # the value rather than resolving to Red by position or surviving as a float.
 #
-# html under --lang=none cannot call js:// at runtime, so a key that cannot be
+# html under --lang=none cannot call js: at runtime, so a key that cannot be
 # folded fails the build.
 [!node] skip
 env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
@@ -15,8 +15,8 @@ env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 stderr 'is not the value of any member of Color'
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:std"
+import lib "js:./lib"
 
 const c = lib.pick()
 

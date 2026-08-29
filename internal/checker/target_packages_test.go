@@ -11,7 +11,7 @@ import (
 )
 
 // A target's library package is loaded as though the document had written
-// `import _ "sngl://platforms/<it>"`, and loading it checks the overrides it
+// `import _ "sngl:platforms/<it>"`, and loading it checks the overrides it
 // declares. So whether a package loaded is observable as whether a fault inside
 // one of its overrides is reported -- which is the point of loading it, and the
 // only thing that distinguishes "loaded" from "named in an import statement".
@@ -19,7 +19,7 @@ import (
 // tgtstub's override is deliberately broken: its body reads a name nothing
 // declares. Every case below is the same document checked three ways, and the
 // diagnostic is present exactly when the package is in the target set.
-const tgtStubSource = `import sngl "sngl://std"
+const tgtStubSource = `import sngl "sngl:std"
 
 component sngl.text[tgtstub.platform] {
     sngl.text(value=noSuchIdentifierAnywhere)
@@ -62,7 +62,7 @@ func brokenOverrideReported(t *testing.T, src string, targets ...ir.StaticTarget
 	return false
 }
 
-const plainMain = `import . "sngl://std"
+const plainMain = `import . "sngl:std"
 
 output {
     none { html }
@@ -73,8 +73,8 @@ component main {
 }
 `
 
-const importsStub = `import . "sngl://std"
-import _ "sngl://platforms/tgtstub"
+const importsStub = `import . "sngl:std"
+import _ "sngl:platforms/tgtstub"
 
 output {
     none { html }
@@ -106,7 +106,7 @@ func TestTargetPackages(t *testing.T) {
 		// the caller names html. Overriding means tgtstub is not in the set, so
 		// its faults are not reported. Adding the two together instead would
 		// load it and report -- which is what this catches.
-		const declaresStub = `import . "sngl://std"
+		const declaresStub = `import . "sngl:std"
 
 output {
     none { tgtstub }
@@ -138,8 +138,8 @@ component main {
 		// registerImport resolves `=>` before it looks at the scheme, so this
 		// has to as well: an import redirected at a target package names it,
 		// and one redirected away from a target package does not.
-		const intoStub = `import . "sngl://std"
-import _ "sngl://platforms/nowhere" => "sngl://platforms/tgtstub"
+		const intoStub = `import . "sngl:std"
+import _ "sngl:platforms/nowhere" => "sngl:platforms/tgtstub"
 
 component main {
     text(value="hi")
@@ -149,8 +149,8 @@ component main {
 			t.Error("an import replaced with a target package did not load it")
 		}
 
-		const awayFromStub = `import . "sngl://std"
-import _ "sngl://platforms/tgtstub" => "sngl://std"
+		const awayFromStub = `import . "sngl:std"
+import _ "sngl:platforms/tgtstub" => "sngl:std"
 
 component main {
     text(value="hi")
@@ -164,7 +164,7 @@ component main {
 	t.Run("naming nothing loads everything", func(t *testing.T) {
 		// No flag, no output block, no import: there is no build to restrict
 		// to, so every registered platform loads -- what a bare check wants.
-		const noOutput = "import . \"sngl://std\"\n\ncomponent main {\n    text(value=\"hi\")\n}\n"
+		const noOutput = "import . \"sngl:std\"\n\ncomponent main {\n    text(value=\"hi\")\n}\n"
 		if !brokenOverrideReported(t, noOutput) {
 			t.Error("a check naming no target did not load the registered platforms")
 		}

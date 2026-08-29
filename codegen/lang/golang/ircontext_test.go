@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// TestGoIRContext_ContextVar_NativeCall verifies that a native (go://) call
+// TestGoIRContext_ContextVar_NativeCall verifies that a native (go:) call
 // whose imported signature has a context arg receives gc.Ctx.ContextVar as
 // its first argument — mirroring legacy translateIRNativeCall.
 func TestGoIRContext_ContextVar_NativeCall(t *testing.T) {

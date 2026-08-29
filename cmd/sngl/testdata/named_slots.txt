@@ -45,7 +45,7 @@ stdout 'propargs.sngl: ok'
 grep 'slot heading\(string\)' propargs.sngl
 
 -- table.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 struct Row {
     title string
@@ -79,7 +79,7 @@ component main {
 
 output { none { html } }
 -- fallback.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component card(slot heading) list<component> {
     vbox {
@@ -100,7 +100,7 @@ component main {
 
 output { none { html } }
 -- propargs.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component card(caption string, slot heading(string)) list<component> {
     vbox {
@@ -122,7 +122,7 @@ component main {
 
 output { none { html } }
 -- instances.sngl --
-import . "sngl://std"
+import . "sngl:std"
 
 component card(slot heading) list<component> {
     var open = true

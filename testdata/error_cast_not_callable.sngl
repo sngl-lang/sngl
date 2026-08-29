@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:std"
 
 // A cast to a type that has no cast is an error, not a silent dyn. Casting is
 // one value to one type; the paren form here is the struct-literal syntax the

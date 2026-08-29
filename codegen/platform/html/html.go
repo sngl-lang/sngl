@@ -104,7 +104,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 		// Static mode has no server to host the route's POST handler.
 		if win, ok := backendHandlerWindow(req.Pkg, codegen.NewCodegenCtx(req, "html").Windows()); ok {
-			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js:// import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
+			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
 		}
 		c := &compilation{}
 		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
@@ -181,7 +181,7 @@ type compilation struct {
 // below is a function of them, so no cache key has to carry them.
 type windowShared struct {
 	projectDir string
-	// projectFS is the FS the js:// virtual root is mounted on; it is the OS
+	// projectFS is the FS the js: virtual root is mounted on; it is the OS
 	// filesystem for the CLI and an in-memory one for the playground.
 	projectFS fs.FS
 

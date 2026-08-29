@@ -11,7 +11,7 @@ import (
 
 func TestKotlinLowerTestFile_agentModeEmitsRegisterAll(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 component box {
     var count = 0
     text(value="x")
@@ -61,7 +61,7 @@ func testFoo(t Test, c box) {
 
 func TestKotlinLowerTestFile_nativeModeEmitsJUnitClass(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 component box {
     var count = 0
     text(value="x")
@@ -109,7 +109,7 @@ func testFoo(t Test, c box) {
 
 func TestKotlinLowerTestFile_nativeDeviceUsesAndroidJUnit4(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:std"
 component box {
     var count = 0
     text(value="x")
