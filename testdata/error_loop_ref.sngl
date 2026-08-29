@@ -7,7 +7,7 @@ import . "sngl://std"
 component main {
     const frozen list<int> = [1, 2, 3]
     var xs list<int> = [1, 2, 3]
-    var m map<string, int> = {"a" = 1}
+    var m map<string, int> = {"a"=1}
 
     // computed list (filter result) is not addressable
     func a() {

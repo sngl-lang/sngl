@@ -20,8 +20,8 @@ component emitter(
     @one Payload,
     @none FocusEvent,
 ) {
-    text(value="a", @click { one({value = "x"}) })
-    text(value="b", @click { one(Payload{value = "y"}) })
+    text(value="a", @click { one({value="x"}) })
+    text(value="b", @click { one(Payload{value="y"}) })
     text(value="c", @click { none() })
 }
 
@@ -46,5 +46,5 @@ component emptyPayloadWrongType(@none FocusEvent) {
 }
 
 component tooManyArgs(@one Payload) {
-    text(value="h", @click { one({value = "a"}, {value = "b"}) }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
+    text(value="h", @click { one({value="a"}, {value="b"}) }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
 }

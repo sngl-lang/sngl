@@ -11,13 +11,13 @@ component card(name = "") {
 
 component main {
     var items list<Item> = [
-        {name = "a"},
-        {name = "b"},
+        {name="a"},
+        {name="b"},
     ]
     for item = items {
         card(name=item.name)
     }
-    button #add(text="add", @click { items.push({name = "x"}) })
+    button #add(text="add", @click { items.push({name="x"}) })
 }
 
 func testLoopComponentMountsInstances(t Test, c main) {

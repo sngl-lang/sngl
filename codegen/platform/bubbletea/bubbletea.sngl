@@ -151,8 +151,8 @@ component sngl.text[bubbletea.platform] {
 component sngl.button[bubbletea.platform] {
     Styled(
         content=text,
-        focus=Focus{enabled = true},
-        events=[Event{on = "click", key = "enter"}],
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
         style={...style},
     ) {}
 }
@@ -172,8 +172,8 @@ component sngl.input[bubbletea.platform] {
             pkg = "charm.land/bubbles/v2/textinput",
             resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled = true},
-        binds=[Bind{prop = "value", get = ".Value()", set = ".SetValue"}],
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder=placeholder,
         style={...style},
     ) {}
@@ -182,8 +182,8 @@ component sngl.input[bubbletea.platform] {
 component sngl.checkbox[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled = true},
-        events=[Event{on = "change", key = "space"}],
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
         style={...style},
     ) {}
 }
@@ -199,8 +199,8 @@ component sngl.radio[bubbletea.platform] {
 component sngl.toggle[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled = true},
-        events=[Event{on = "change", key = "space"}],
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
         style={...style},
     ) {}
 }
@@ -215,8 +215,8 @@ component sngl.select[bubbletea.platform] {
             pkg = "charm.land/bubbles/v2/list",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus=Focus{enabled = true},
-        binds=[Bind{prop = "value", get = "tui.SelectedString"}],
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get="tui.SelectedString"}],
         options=options,
         style={...style},
     ) {}
@@ -232,8 +232,8 @@ component sngl.textarea[bubbletea.platform] {
             pkg = "charm.land/bubbles/v2/textarea",
             resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled = true},
-        binds=[Bind{prop = "value", get = ".Value()", set = ".SetValue"}],
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
         style={...style},
     ) {}
 }
@@ -290,8 +290,8 @@ component sngl.card[bubbletea.platform] {
 component sngl.chip[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled = true},
-        events=[Event{on = "click", key = "enter"}],
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
         style={...style},
     ) {}
 }
@@ -354,8 +354,8 @@ component sngl.table[bubbletea.platform] {
             pkg = "charm.land/bubbles/v2/table",
             resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled = true},
-        binds=[Bind{prop = "selected", get = "tui.Cursor"}],
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.Cursor"}],
         columns=columns,
         rows=rows,
         style={...style},
@@ -372,8 +372,8 @@ component sngl.tree[bubbletea.platform] {
             pkg = "charm.land/bubbles/v2/list",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus=Focus{enabled = true},
-        binds=[Bind{prop = "selected", get = "tui.SelectedString"}],
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.SelectedString"}],
         items=items,
         style={...style},
     ) {}
@@ -393,7 +393,7 @@ component sngl.menu[bubbletea.platform] {
                 pkg = "charm.land/bubbles/v2/list",
                 resize = ".SetSize($\{w\}, $\{h\})",
             },
-            focus=Focus{enabled = true},
+            focus=Focus{enabled=true},
             items=items,
             style={...style},
         ) {}

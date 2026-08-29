@@ -468,7 +468,7 @@ component card(
 // --- Examples ---
 
 component _example_vbox {
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         text(value="First")
         text(value="Second")
         text(value="Third")
@@ -476,7 +476,7 @@ component _example_vbox {
 }
 
 component _example_hbox {
-    hbox(style={gap = 8, padding = 16}) {
+    hbox(style={gap=8, padding=16}) {
         text(value="Left")
         text(value="Center")
         text(value="Right")
@@ -485,23 +485,23 @@ component _example_hbox {
 
 component _example_stack {
     stack {
-        text(value="Behind", style={padding = 16})
-        text(value="In front", style={padding = 32, color = #FF0000})
+        text(value="Behind", style={padding=16})
+        text(value="In front", style={padding=32, color=#FF0000})
     }
 }
 
 component _example_text {
-    vbox(style={gap = 8, padding = 16}) {
-        text(value="Hello, World!", style={fontSize = 24, fontWeight = "bold"})
+    vbox(style={gap=8, padding=16}) {
+        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
         text(value="Regular text")
-        text(value="Colored text", style={color = #0066CC})
+        text(value="Colored text", style={color=#0066CC})
     }
 }
 
 component _example_button {
     var count = 0
-    vbox(style={gap = 8, padding = 16}) {
-        hbox(style={gap = 8}) {
+    vbox(style={gap=8, padding=16}) {
+        hbox(style={gap=8}) {
             button(text="Click me", @click { count += 1 })
             button(text="Reset", @click { count = 0 })
             button(text="Disabled", disabled=true)
@@ -512,7 +512,7 @@ component _example_button {
 
 component _example_input {
     var name = ""
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
         input(placeholder="Password", type="password")
         input(placeholder="Search...", type="search")
@@ -521,14 +521,14 @@ component _example_input {
 }
 
 component _example_image {
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
     }
 }
 
 component _example_scroll {
-    scroll(direction="vertical", style={height = 120}) {
-        vbox(style={gap = 4, padding = 8}) {
+    scroll(direction="vertical", style={height=120}) {
+        vbox(style={gap=4, padding=8}) {
             text(value="Line 1")
             text(value="Line 2")
             text(value="Line 3")
@@ -542,7 +542,7 @@ component _example_scroll {
 }
 
 component _example_spacer {
-    hbox(style={padding = 16}) {
+    hbox(style={padding=16}) {
         text(value="Left")
         spacer
         text(value="Right")
@@ -551,7 +551,7 @@ component _example_spacer {
 
 component _example_checkbox {
     var darkMode = false
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
         text(value=darkMode ? "Dark mode on" : "Dark mode off")
     }
@@ -559,7 +559,7 @@ component _example_checkbox {
 
 component _example_radio {
     var size = "medium"
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         radio(options=["small", "medium", "large"], value=size, direction="horizontal")
         text(value="Selected: " + size)
     }
@@ -567,7 +567,7 @@ component _example_radio {
 
 component _example_toggle {
     var notifications = false
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         toggle(checked=notifications, label="Notifications", @change { notifications!! })
         text(value=notifications ? "Enabled" : "Disabled")
     }
@@ -575,7 +575,7 @@ component _example_toggle {
 
 component _example_select {
     var fruit = ""
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", value=fruit)
         text(value="Selected: " + fruit)
     }
@@ -583,28 +583,28 @@ component _example_select {
 
 component _example_textarea {
     var notes = ""
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
         text(value="Length: " + string(notes.length()))
     }
 }
 
 component _example_progress {
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         progress(value=0.7, max=1, label="70% complete", showValue=true)
         progress(value=3, max=10)
     }
 }
 
 component _example_spinner {
-    hbox(style={gap = 16, padding = 16, alignItems = "center"}) {
+    hbox(style={gap=16, padding=16, alignItems="center"}) {
         spinner(label="Loading...")
         spinner(variant="circle", size="large")
     }
 }
 
 component _example_badge {
-    hbox(style={gap = 8, padding = 16, alignItems = "center"}) {
+    hbox(style={gap=8, padding=16, alignItems="center"}) {
         badge(value="3", variant="primary")
         badge(value="New", variant="success")
         badge(value="Error", variant="error")
@@ -613,7 +613,7 @@ component _example_badge {
 
 component _example_tabs {
     var selected = 0
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         tabs(items=["Overview", "Details", "Settings"], selected=selected) {
             text(value="Overview content")
             text(value="Detail content")
@@ -623,14 +623,14 @@ component _example_tabs {
 }
 
 component _example_link {
-    hbox(style={gap = 16, padding = 16}) {
+    hbox(style={gap=16, padding=16}) {
         link(href="https://example.com", text="Example Site")
         link(href="https://example.com", text="New Tab", target="blank")
     }
 }
 
 component _example_divider {
-    vbox(style={gap = 8, padding = 16}) {
+    vbox(style={gap=8, padding=16}) {
         text(value="Section 1")
         divider
         text(value="Section 2")
@@ -641,7 +641,7 @@ component _example_divider {
 
 component _example_modal {
     var showModal = false
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         button(text="Open Modal", @click { showModal = true })
         modal(open=showModal, title="Example Modal", closable=true) {
             text(value="Modal content goes here.")
@@ -652,11 +652,11 @@ component _example_modal {
 
 component _example_drawer {
     var showDrawer = false
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         button(text="Open Drawer", @click { showDrawer = true })
         drawer(open=showDrawer, side="right") {
-            vbox(style={gap = 8, padding = 16}) {
-                text(value="Drawer Content", style={fontWeight = "bold"})
+            vbox(style={gap=8, padding=16}) {
+                text(value="Drawer Content", style={fontWeight="bold"})
                 button(text="Close", @click { showDrawer = false })
             }
         }
@@ -664,7 +664,7 @@ component _example_drawer {
 }
 
 component _example_tooltip {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
         }
@@ -673,7 +673,7 @@ component _example_tooltip {
 
 component _example_popover {
     var showPop = false
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         popover(open=showPop, position="bottom", openOn="click") {
             button(text="Toggle", @click { showPop!! })
         }
@@ -681,44 +681,44 @@ component _example_popover {
 }
 
 component _example_splitview {
-    splitview(direction="horizontal", style={height = 120}) {
-        vbox(style={padding = 12}) {
+    splitview(direction="horizontal", style={height=120}) {
+        vbox(style={padding=12}) {
             text(value="Left pane")
         }
-        vbox(style={padding = 12}) {
+        vbox(style={padding=12}) {
             text(value="Right pane")
         }
     }
 }
 
 component _example_table {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         table(columns=["Name", "Role", "Status"])
     }
 }
 
 component _example_tree {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         tree(items=["Documents", "Photos", "Music", "Videos"])
     }
 }
 
 component _example_menu {
     var showMenu = false
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         button(text="Show Menu", @click { showMenu = true })
         menu(items=["Cut", "Copy", "Paste"], open=showMenu)
     }
 }
 
 component _example_menubar {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         menubar(items=["File", "Edit", "View", "Help"])
     }
 }
 
 component _example_toolbar {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         toolbar {
             button(text="New")
             button(text="Open")
@@ -730,13 +730,13 @@ component _example_toolbar {
 }
 
 component _example_datepicker {
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         datepicker(placeholder="Select a date")
     }
 }
 
 component _example_chip {
-    hbox(style={gap = 8, padding = 16}) {
+    hbox(style={gap=8, padding=16}) {
         chip(label="Tag")
         chip(label="Removable", removable=true)
         chip(label="Success", variant="success")
@@ -744,7 +744,7 @@ component _example_chip {
 }
 
 component _example_avatar {
-    hbox(style={gap = 8, padding = 16}) {
+    hbox(style={gap=8, padding=16}) {
         avatar(initials="JD")
         avatar(initials="AB", variant="square")
         avatar(initials="XY", size="large")
@@ -752,13 +752,13 @@ component _example_avatar {
 }
 
 component _example_card {
-    hbox(style={gap = 16, padding = 16}) {
+    hbox(style={gap=16, padding=16}) {
         card(variant="outlined") {
-            text(value="Outlined", style={fontWeight = "bold"})
+            text(value="Outlined", style={fontWeight="bold"})
             text(value="With a border")
         }
         card(variant="elevated") {
-            text(value="Elevated", style={fontWeight = "bold"})
+            text(value="Elevated", style={fontWeight="bold"})
             text(value="With a shadow")
         }
     }

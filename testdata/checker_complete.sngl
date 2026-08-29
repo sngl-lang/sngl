@@ -21,7 +21,7 @@ component main {
         count = 0
         name = "World"
         active = true
-        conf = Config{name = "test", count = 0}
+        conf = Config{name="test", count=0}
     )
 
     const (

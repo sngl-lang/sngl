@@ -22,8 +22,8 @@ import tree "sngl://internal/tree"
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
 struct CanvasStyle {
-    fill color = color{a = 0}
-    stroke color = color{a = 0}
+    fill color = color{a=0}
+    stroke color = color{a=0}
     strokeWidth float = 1.0
     lineCap string = "butt"
     lineJoin string = "miter"

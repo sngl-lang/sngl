@@ -26,7 +26,7 @@ component main {
     var flag = true
     var ratio float = 1.5
     var items = [1, 2, 3]
-    var pt Point = {x = 1.0, y = 2.0}
+    var pt Point = {x=1.0, y=2.0}
     var status Status = active
 
     func total() => count + MAX
@@ -43,7 +43,7 @@ component main {
             text(value=string(item), key=string(i))
         }
         if flag {
-            text(value=string(total), style={color = #ff0000, padding = 8})
+            text(value=string(total), style={color=#ff0000, padding=8})
         }
         text(value=desc)
     }

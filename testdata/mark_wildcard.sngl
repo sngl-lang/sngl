@@ -53,6 +53,6 @@ component main() {
         surface(@click {}, @onHover {}, @onDragEnd {})
         // The declared name still binds: a wildcard adds names, it does not
         // take its own away.
-        attrs(data={dataRole = "plain"})
+        attrs(data={dataRole="plain"})
     }
 }

@@ -12,7 +12,7 @@ struct Task {
 }
 
 component main {
-    var tasks list<Task> = [{label = "a", done = false}, {label = "b", done = true}]
+    var tasks list<Task> = [{label="a", done=false}, {label="b", done=true}]
     var nums list<int> = [1, 2, 3]
 
     // struct-field write through a ref element

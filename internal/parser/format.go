@@ -1120,7 +1120,7 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 				f.write(",")
 				f.newline()
 			}
-			f.writeStructFieldLit(field)
+			f.writeStructFieldLit(field, true)
 		}
 		if len(x.Fields) > 0 {
 			f.write(",")
@@ -1133,21 +1133,34 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeStructFieldLit(field)
+			f.writeStructFieldLit(field, false)
 		}
 		f.write("}")
 	}
 }
 
-func (f *formatter) writeStructFieldLit(field ast.StructFieldLit) {
+// writeStructFieldLit writes one field of a struct literal. A literal written
+// on one line is nearly always an argument, where the surrounding list already
+// spells `name=value`; spacing the `=` there would put both spellings a few
+// characters apart on one line. Written across lines each field stands alone,
+// and reads as the assignment it is.
+func (f *formatter) writeStructFieldLit(field ast.StructFieldLit, multiline bool) {
 	if field.Spread {
 		f.write("...")
 		f.writeExpr(field.Value)
-	} else {
-		f.write(field.Name)
-		f.write(" = ")
-		f.writeExpr(field.Value)
+		return
 	}
+	f.write(field.Name)
+	f.write(fieldAssign(multiline))
+	f.writeExpr(field.Value)
+}
+
+// fieldAssign is the `=` of a struct or map literal field, spaced or not.
+func fieldAssign(multiline bool) string {
+	if multiline {
+		return " = "
+	}
+	return "="
 }
 
 func (f *formatter) writeMapLit(x *ast.MapLit) {
@@ -1157,7 +1170,7 @@ func (f *formatter) writeMapLit(x *ast.MapLit) {
 		f.indent++
 		for _, e := range x.Entries {
 			f.writeExpr(e.Key)
-			f.write(" = ")
+			f.write(fieldAssign(true))
 			f.writeExpr(e.Value)
 			f.write(",")
 			f.newline()
@@ -1171,7 +1184,7 @@ func (f *formatter) writeMapLit(x *ast.MapLit) {
 			f.write(", ")
 		}
 		f.writeExpr(e.Key)
-		f.write(" = ")
+		f.write(fieldAssign(false))
 		f.writeExpr(e.Value)
 	}
 	f.write("}")

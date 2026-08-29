@@ -12,7 +12,7 @@ struct Other {
 }
 
 component main {
-    var o = Other{x = "hi"}
-    var p = Pair{...o, a = 1} // ERROR(check) "spread"
+    var o = Other{x="hi"}
+    var p = Pair{...o, a=1} // ERROR(check) "spread"
     text(value="x")
 }

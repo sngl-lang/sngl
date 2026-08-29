@@ -9,7 +9,7 @@ component main {
     const (
         MSG = "count: {string(10)}"
         ITEMS = [1, 2, 3]
-        PT = Pair{key = "a", val = 1}
+        PT = Pair{key="a", val=1}
         UPPER = "hello".upper()
         LIST_METHOD = string.length("test")
     )
@@ -18,11 +18,11 @@ component main {
     var flag = true
     var label = "hello"
     var items = [10, 20, 30]
-    var pair Pair = {key = "key", val = 5}
+    var pair Pair = {key="key", val=5}
 
     func interp() => "val: {string(count)}"
     func list() => [count, count + 1]
-    func structVal() => Pair{key = label, val = count}
+    func structVal() => Pair{key=label, val=count}
     func elemType() => items[0]
     func fieldType() => pair.key
 

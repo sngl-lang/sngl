@@ -16,5 +16,5 @@ func __lambda0(state __lambda0_caps, x int) int {
 }
 component main {
     var k int = 5
-    var addK func(int) int = __closure(__lambda0, __lambda0_caps{k = k})
+    var addK func(int) int = __closure(__lambda0, __lambda0_caps{k=k})
 }

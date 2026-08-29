@@ -261,7 +261,7 @@ component sngl.radio[android.platform] {
         Row(modifier={...style}) {
             for opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}
                 }
             }
@@ -270,7 +270,7 @@ component sngl.radio[android.platform] {
         Column(modifier={...style}) {
             for opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value = opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}
                 }
             }
@@ -304,7 +304,7 @@ component sngl.textarea[android.platform] {
         modifier={...style},
         onValueChange=func(e) {
             input(e)
-            change({value = e.value})
+            change({value=e.value})
         },
     ) {}
     // @input carries the InputEvent Compose's text is built into;
@@ -370,7 +370,7 @@ component sngl.modal[android.platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(args=["shape = MaterialTheme.shapes.medium"]) {
-                Column(modifier={padding = 16}) {
+                Column(modifier={padding=16}) {
                     if title != "" {
                         Text(text=title) {}
                     }

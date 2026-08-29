@@ -8,7 +8,7 @@ struct Theme {
     primary string
     density int
 }
-context #theme(Theme{primary = "blue", density = 1})
+context #theme(Theme{primary="blue", density=1})
 
 enum Mode { light, dark }
 context #mode(Mode.light)

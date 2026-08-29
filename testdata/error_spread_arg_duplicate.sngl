@@ -7,6 +7,6 @@ struct Pair {
 func f(x int, y int) int { return x + y }
 
 component main {
-    var p = Pair{x = 1, y = 2}
+    var p = Pair{x=1, y=2}
     var bad = f(x=5, ...p) // ERROR(check) "already provided"
 }

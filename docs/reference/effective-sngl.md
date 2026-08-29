@@ -211,7 +211,7 @@ struct Todo { text string = ""; done bool = false }
 ```sngl
 import . "sngl://std"
 var todo Todo
-var todo2 = Todo{text = "Buy eggs", done = false}
+var todo2 = Todo{text="Buy eggs", done=false}
 ```
 
 Accessing and mutating fields uses dot notation: `todo.text`, `todo.done = true`.
@@ -361,7 +361,7 @@ struct Point {
 func Point.string(p Point) => "({p.x},{p.y})"
 var count = 42
 var active = true
-var origin = Point{x = 0, y = 0}
+var origin = Point{x=0, y=0}
 func label() => "count={count}, active={active}, origin={origin}"
 ```
 
@@ -541,7 +541,7 @@ struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
+var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => todos.filter(func(t) => !t.done)
 func labels() => todos.map(func(t) => t.text)
 ```
@@ -557,7 +557,7 @@ struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-var todos = [Todo{text = "a", done = true}, Todo{text = "b", done = false}]
+var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => todos.filter(func(t) => !t.done)
 func labels() => todos.map(func(t) => t.text)
 ```
@@ -651,7 +651,7 @@ Visual nodes are component instances rendered as UI elements:
 <!-- SNGL-component -->
 
 ```sngl
-text(value="hello", style={fontSize = 24})
+text(value="hello", style={fontSize=24})
 ```
 
 Both `()` and `{}` are optional:
@@ -704,7 +704,7 @@ var (
     todos list<Todo> = []
 )
 button(text="Add", @click {
-    todos.push(Todo{text = newTodo, done = false})
+    todos.push(Todo{text=newTodo, done=false})
     newTodo = ""
 })
 ```
@@ -760,8 +760,8 @@ Apply styles directly on any node:
 <!-- SNGL-component -->
 
 ```sngl
-vbox(style={padding = 16, gap = 12})
-text(value="hello", style={color = #007700, fontSize = 24, fontWeight = "bold"})
+vbox(style={padding=16, gap=12})
+text(value="hello", style={color=#007700, fontSize=24, fontWeight="bold"})
 ```
 
 ### Conditional rendering
@@ -774,10 +774,10 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 import . "sngl://std"
 var active = true
 if active {
-    text(value="Active", style={color = #007700})
+    text(value="Active", style={color=#007700})
 }
 if !active {
-    text(value="Inactive", style={color = #CC0000})
+    text(value="Inactive", style={color=#CC0000})
 }
 ```
 
@@ -948,9 +948,9 @@ All styles are applied via the `style` param:
 <!-- SNGL-component -->
 
 ```sngl
-vbox(style={gap = 12, padding = 16})
-text(value="bold", style={fontWeight = "bold", color = #007700, fontSize = 24})
-button(text="go", style={margin = 4, background = #ff0000, padding = 8})
+vbox(style={gap=12, padding=16})
+text(value="bold", style={fontWeight="bold", color=#007700, fontSize=24})
+button(text="go", style={margin=4, background=#ff0000, padding=8})
 ```
 
 ### Named styles
@@ -961,8 +961,8 @@ There is no `style` declaration and no `class` prop. A reusable style is a
 ```sngl
 import . "sngl://std"
 
-const primary Style = Style{color = #0000ff, fontWeight = "bold", fontSize = 16}
-const secondary Style = Style{color = #777777, fontStyle = "italic"}
+const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
+const secondary Style = Style{color=#777777, fontStyle="italic"}
 
 component main {
     vbox {
@@ -1101,16 +1101,16 @@ component main {
         newTodo = ""
         todos list<Todo> = []
     )
-    vbox(style={padding = 16, gap = 8}) {
-        hbox(style={gap = 8}) {
+    vbox(style={padding=16, gap=8}) {
+        hbox(style={gap=8}) {
             input(value=newTodo, placeholder="New todo", @input(e) { newTodo = e.value })
             button(text="Add", disabled=newTodo == "", @click {
-                todos.push(Todo{text = newTodo, done = false})
+                todos.push(Todo{text=newTodo, done=false})
                 newTodo = ""
             })
         }
         for idx, todo = todos {
-            hbox(key=idx, style={gap = 8}) {
+            hbox(key=idx, style={gap=8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
                 button(text="x", @click { todos.remove(idx) })
@@ -1128,10 +1128,10 @@ import . "sngl://std"
 component main {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
-    vbox(style={padding = 16, gap = 8}) {
+    vbox(style={padding=16, gap=8}) {
         input(value=email, placeholder="Email", type="email", @input(e) { email = e.value })
         if !valid {
-            text(value="Enter a valid email", style={color = #CC0000, fontSize = 12})
+            text(value="Enter a valid email", style={color=#CC0000, fontSize=12})
         }
         button(text="Submit", disabled=!valid)
     }
@@ -1145,7 +1145,7 @@ import . "sngl://std"
 
 component main {
     var showModal = false
-    vbox(style={padding = 16}) {
+    vbox(style={padding=16}) {
         button(text="Open", @click { showModal = true })
         modal(open=showModal, title="Settings", @close { showModal = false }) {
             text(value="Content goes here")
@@ -1168,7 +1168,7 @@ component main {
     timer(interval=50ms, enabled=running, @tick {
         progress += 0.01
     })
-    vbox(style={padding = 16, gap = 8}) {
+    vbox(style={padding=16, gap=8}) {
         progress(value=progress, max=1.0, showValue=true)
         button(text=running ? "Pause" : "Start", @click { running!! })
         button(text="Reset", @click {
@@ -1190,10 +1190,10 @@ struct Todo {
 }
 
 component main {
-    var todos = [Todo{text = "Write docs", done = true}, Todo{text = "Fix bug", done = false}]
+    var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
     func active() => todos.filter(func(t) => !t.done)
     func activeCount() => active().length()
-    vbox(style={padding = 16, gap = 8}) {
+    vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")
         for idx, todo = todos {
             checkbox(key=idx, checked=todo.done, label=todo.text, @change { todos[idx].done!! })

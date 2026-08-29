@@ -44,7 +44,7 @@ component labelled(caption string, slot body, @click ClickEvent) {
 }
 
 component main {
-    table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
+    table(rows=[Row{title="alpha"}, Row{title="beta"}]) {
         slot header {
             text(value="Rows")
         }

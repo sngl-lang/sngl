@@ -12,12 +12,12 @@ func Box<T>.same(b Box<T>) Box<T> { return b }
 func int.twice(n int) int { return n * 2 }
 
 component main {
-    var b Box<int> = {value = 1}
+    var b Box<int> = {value=1}
     text(value="{b.value}")
 }
 
 func testReceiverIsTheFirstParam(t Test, c main) {
-    var b Box<int> = {value = 1}
+    var b Box<int> = {value=1}
 
     // Reached as a method on the value...
     t.assert(b.same().value == 1)

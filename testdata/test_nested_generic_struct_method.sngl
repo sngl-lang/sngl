@@ -6,7 +6,7 @@ struct box<T> {
 }
 
 component main {
-    var b box<int> = {v = 42}
+    var b box<int> = {v=42}
     text(value=string(b.get()))
 }
 

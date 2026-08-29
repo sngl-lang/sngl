@@ -13,7 +13,7 @@ sngl dump --stage lowered --lang none --platform html app.sngl
 
 # The body's `data` reference became the map built from the call site, so the
 # name that matched and the value written for it both arrived.
-stdout 'for k, v = \{"dataRole" = "row-7"\}'
+stdout 'for k, v = \{"dataRole"="row-7"\}'
 
 # The declared prop still binds under its own name, and is not collected.
 stdout 'textContent="plain"'

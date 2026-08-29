@@ -5,12 +5,12 @@ struct Inner {
 }
 
 struct Outer {
-    inner Inner = Inner{value = 0}
+    inner Inner = Inner{value=0}
     label string = ""
 }
 
 component main {
-    var nested Outer = {inner = {value = 5}, label = "hi"}
+    var nested Outer = {inner={value=5}, label="hi"}
 
     text(value=string(nested.inner.value))
 }

@@ -5,7 +5,7 @@ component main {
     var name = ""
 
     // Single-line props — should stay on one line
-    text(value="hello", style={color = #ff0000})
+    text(value="hello", style={color=#ff0000})
 
     // Multi-line props — should stay multi-line
     input(

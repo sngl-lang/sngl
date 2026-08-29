@@ -24,10 +24,10 @@ component main {
     //     3   8
     //    /
     //   1
-    var leaf1 = TreeNode{value = 1}
-    var node3 = TreeNode{value = 3, left = leaf1}
-    var node8 = TreeNode{value = 8}
-    var root = TreeNode{value = 5, left = node3, right = node8}
+    var leaf1 = TreeNode{value=1}
+    var node3 = TreeNode{value=3, left=leaf1}
+    var node8 = TreeNode{value=8}
+    var root = TreeNode{value=5, left=node3, right=node8}
 
     tree_view(node=root)
 }
@@ -43,7 +43,7 @@ func testRecursiveComponentRendersChildren(t Test, c main) {
 }
 
 func testRecursiveComponentMutation(t Test, c main) {
-    c.node3.right = TreeNode{value = 4}
+    c.node3.right = TreeNode{value=4}
     t.assert(c.val[3].value == "4")
     t.assert(c.val[4].value == "8")
 }

@@ -13,11 +13,11 @@ component main {
     //     3   8
     //    / \
     //   1   4
-    var leaf1 = TreeNode{value = 1}
-    var leaf4 = TreeNode{value = 4}
-    var node3 = TreeNode{value = 3, left = leaf1, right = leaf4}
-    var node8 = TreeNode{value = 8}
-    var root = TreeNode{value = 5, left = node3, right = node8}
+    var leaf1 = TreeNode{value=1}
+    var leaf4 = TreeNode{value=4}
+    var node3 = TreeNode{value=3, left=leaf1, right=leaf4}
+    var node8 = TreeNode{value=8}
+    var root = TreeNode{value=5, left=node3, right=node8}
 
     // Recursive tree sum
     func treeSum(node dyn) int {
@@ -60,7 +60,7 @@ func testTreeContains(t Test, c main) {
 }
 
 func testTreeMutation(t Test, c main) {
-    c.node8.left = TreeNode{value = 7}
+    c.node8.left = TreeNode{value=7}
     t.assert(c.treeSum(c.root) == 28)
     t.assert(c.treeDepth(c.root) == 3)
     t.assert(c.treeContains(c.root, 7) == true)

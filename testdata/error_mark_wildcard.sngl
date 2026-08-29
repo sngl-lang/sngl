@@ -77,7 +77,7 @@ component main() {
         // A wildcard prop is bound under its own name or by a name its pattern
         // covers. Both on one call are two spellings of one map, and the
         // second silently replaced the first.
-        attrs(data={dataRole = "plain"}, dataIndex="3") // ERROR(check) "bound directly and as \"dataIndex\""
+        attrs(data={dataRole="plain"}, dataIndex="3") // ERROR(check) "bound directly and as \"dataIndex\""
         evts(@onHover {})
         evts(@hover {})         // ERROR(check) "unknown event \"hover\" on component evts"
         twoEvts(@ax {})         // ERROR(check) "matches both wildcard events"

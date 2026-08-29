@@ -9,7 +9,7 @@ func test() {
     // Translation entry points.
     var hello = i18n.tr("Hello, world!", {})
     var name = "Alice"
-    var formatted = i18n.format("Hello, {name}!", {name = name})
+    var formatted = i18n.format("Hello, {name}!", {name=name})
 
     // Direct number formatters.
     var n int = 1234

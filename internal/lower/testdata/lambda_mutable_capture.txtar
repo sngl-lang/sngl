@@ -16,5 +16,5 @@ func __lambda0(state __lambda0_caps) {
 }
 component main {
     var n int = 0
-    var inc func() = __closure(__lambda0, __lambda0_caps{n = &n})
+    var inc func() = __closure(__lambda0, __lambda0_caps{n=&n})
 }

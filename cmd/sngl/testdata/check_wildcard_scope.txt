@@ -6,7 +6,7 @@
 # named after a prop no component declares. As a bare argument it named
 # nothing and every backend dropped it.
 sngl dump --stage checked --lang none --platform html spread.sngl
-stdout 'td\(attrs=\{"bgcolor" = '
+stdout 'td\(attrs=\{"bgcolor"='
 ! stdout 'td\(bgcolor='
 
 # 2. An HTML tag name is lowercase, so a camelCase identifier reaching the

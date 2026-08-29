@@ -18,6 +18,6 @@ func __lambda0(state __lambda0_caps) {
     state.count.value = state.count.value + 1
 }
 component main {
-    var count __ref_int = __ref_int{value = 0}
-    var inc func() = __closure(__lambda0, __lambda0_caps{count = count})
+    var count __ref_int = __ref_int{value=0}
+    var inc func() = __closure(__lambda0, __lambda0_caps{count=count})
 }
