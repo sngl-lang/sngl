@@ -1,18 +1,29 @@
-// Clock values and the passage of time: the `time` a value is read at, the
-// `duration` between two of them, and the `timer` that fires every duration.
+// Dates, clock values and the passage of time: the `date` or `time` a value
+// falls on, the `duration` between two of them, and the `timer` that fires
+// every duration.
 //
 // None of this is ambient. A program that never asks what time it is never
-// names these, which is why they are imported rather than in scope
-// everywhere -- `date` and `datetime` stay in `sngl:builtin` because they
-// are what a stored value is typed as rather than a clock to read.
+// names any of it, which is why these are imported rather than in scope
+// everywhere.
+//
+// `date`, `time` and `datetime` are string-representable, as `color` is: a
+// string literal in the canonical form coerces to one, and one coerces back
+// to that form. Platform codegen maps all three to the host's native
+// date/time type (Go `time.Time`, JS/Kotlin string).
 
 import . "sngl:internal/marks"
 
-// Wall-clock time in "HH:MM" or "HH:MM:SS" form. String-representable like
-// `date`; coerces to/from its canonical string form. Platform codegen maps
-// it to the native date/time type.
+// Calendar date in canonical "YYYY-MM-DD" form.
+#[builtin("date")]
+struct date {}
+
+// Wall-clock time in "HH:MM" or "HH:MM:SS" form.
 #[builtin("time")]
 struct time {}
+
+// ISO-8601 date and time together.
+#[builtin("datetime")]
+struct datetime {}
 
 // Time quantity used by `timer.interval` and animation APIs. Unit
 // literals: `ms`, `s`, `m`, `h`.

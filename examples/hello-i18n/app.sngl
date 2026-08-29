@@ -14,6 +14,7 @@
 // for English (manifest fallback), French, and Spanish.
 
 import . "sngl:ui"
+import . "sngl:time"
 import "sngl:i18n"
 
 output {

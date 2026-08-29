@@ -10,6 +10,18 @@ stdout 'withstd.sngl: ok'
 sngl check builtins.sngl
 stdout 'builtins.sngl: ok'
 
+# The calendar types are not among them. Reading a clock is something a program
+# asks for, so date/time/datetime live in sngl:time and a file that wants one
+# says so. This used to resolve to `dyn` rather than fail: the resolver fell
+# back to dyn for the string-representable types whenever they were not in
+# scope, so a missing import silently typed the declaration and built.
+! sngl check dateunimported.sngl
+stderr 'unknown type "date"'
+stderr 'sngl:time'
+
+sngl check dateimported.sngl
+stdout 'dateimported.sngl: ok'
+
 # And cannot be imported: naming an ambient package would imply it were
 # optional.
 ! sngl check importbuiltin.sngl
@@ -77,7 +89,18 @@ component main {
     var f float = float.sqrt(2.0)
     var s string = string.upper("hi")
     var c color = color.rgb(1, 2, 3)
+}
+-- dateunimported.sngl --
+component main {
     var d date = "2026-08-21"
+}
+-- dateimported.sngl --
+import . "sngl:time"
+
+component main {
+    var d date = "2026-08-21"
+    var t time = "09:30"
+    var dt datetime = "2026-08-21T09:30:00"
 }
 -- importbuiltin.sngl --
 import . "sngl:builtin"

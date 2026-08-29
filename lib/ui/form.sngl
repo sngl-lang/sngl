@@ -1,6 +1,8 @@
 // Controls the user edits. Each carries a two-way bound value prop, so a
 // form is state plus the controls that name it.
 
+import time "sngl:time"
+
 // Clickable button that triggers an action. Supply `text` for a label,
 // or nest components inside the body for custom content. Set
 // `disabled=true` to suppress input and render the disabled styling.
@@ -180,9 +182,9 @@ component _example_select {
 // the user picks a date.
 component datepicker(
     style Style,
-    value date,
-    min date,
-    max date,
+    value time.date,
+    min time.date,
+    max time.date,
     disabled bool,
     placeholder string,
     @change DateEvent,

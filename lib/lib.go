@@ -9,7 +9,8 @@
 //	            and event vocabulary every one of them refers to
 //	ui/draw/    the 2D canvas and its shapes, one specialised surface under ui
 //	app/        window, errorBoundary and the error they carry
-//	time/       the clock: `time`, `duration` and the `timer` that fires
+//	time/       dates and the clock: `date`, `time`, `datetime`, the
+//	            `duration` between two of them and the `timer` that fires
 //	            every duration -- none of it ambient
 //	dialog/     host-native notifications and file choosers
 //	test/       the receiver a test function's first parameter carries

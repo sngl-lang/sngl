@@ -179,6 +179,7 @@ component main {
 // bare Text). select must write its two-way :value on selection.
 func TestSelectRadioDatepickerWidgets(t *testing.T) {
 	src := `import . "sngl:ui"
+import . "sngl:time"
 import . "sngl:dialog"
 component main {
     var fruit = ""

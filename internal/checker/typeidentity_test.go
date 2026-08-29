@@ -147,3 +147,35 @@ func TestUnimportedTimeIsAnErrorNotDyn(t *testing.T) {
 		t.Errorf("hint = %q, names i18n's `time` formatter rather than the type", msg)
 	}
 }
+
+// The i18n formatters take the types they format, not `dyn`.
+//
+// Moving `time` out of the ambient tier made this fail silently: lib/i18n
+// declares a func named `time`, so the bare type name resolved to that
+// declaration, and the string-representable fallback typed the parameter
+// `dyn` rather than reporting the missing import. The package qualifies the
+// three types now; this asserts the result rather than the import, so it
+// holds however they are reached.
+func TestI18nFormattersTakeTheirOwnTypes(t *testing.T) {
+	want := map[string]string{"date": "date", "time": "time", "datetime": "datetime"}
+	pkg := checker.LibPackage("i18n")
+	if pkg == nil {
+		t.Fatal("sngl:i18n did not load")
+	}
+	seen := map[string]bool{}
+	for _, fn := range pkg.Funcs {
+		w, ok := want[fn.Name]
+		if !ok || len(fn.Params) == 0 {
+			continue
+		}
+		seen[fn.Name] = true
+		if got := fn.Params[0].Type.String(); got != w {
+			t.Errorf("i18n.%s takes %s, want %s", fn.Name, got, w)
+		}
+	}
+	for name := range want {
+		if !seen[name] {
+			t.Errorf("no i18n.%s formatter found", name)
+		}
+	}
+}

@@ -103,6 +103,7 @@ func TestStdlibOverrides_EmitTheirWidgets(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
+import . "sngl:time"
 component main {
     var frac = 0.25
     var on = false
