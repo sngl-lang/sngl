@@ -1316,12 +1316,15 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 
 func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDecl {
 	// SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
-	slotTok := it.shift() // kw_slot
-	d := ast.SlotDecl{Pos: ast.Pos(b.posFromToken(slotTok)), Attrs: attrs}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
-		nameTok := it.shift()
-		d.Pos = ast.Pos(b.posFromToken(nameTok))
-		d.Name = nameTok.Literal
+	it.skip() // kw_slot
+	if it.done() {
+		return ast.SlotDecl{Attrs: attrs}
+	}
+	nameTok := it.shift()
+	d := ast.SlotDecl{
+		Pos:   ast.Pos(b.posFromToken(nameTok)),
+		Name:  nameTok.Literal,
+		Attrs: attrs,
 	}
 	for !it.done() {
 		if it.isNonTerminal() {

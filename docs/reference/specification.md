@@ -1203,7 +1203,7 @@ CompParamBody =
     | SlotParam
     | IDENT [ CompParamTail ]
 
-SlotParam = "slot" [ IDENT [ "(" [ TypeList ] ")" ] [ Type ] | "(" ")" [ Type ] ]
+SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ] [ Type ]
 
 CompParamTail = 
     "=" Expr
@@ -1530,7 +1530,7 @@ CompParamBody =
     | SlotParam
     | IDENT [ CompParamTail ]
 
-SlotParam = "slot" [ IDENT [ "(" [ TypeList ] ")" ] [ Type ] | "(" ")" [ Type ] ]
+SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ] [ Type ]
 
 CompParamTail = 
     "=" Expr

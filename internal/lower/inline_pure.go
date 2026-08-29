@@ -577,16 +577,14 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 // because the names they bind to are the populator's and the values are the
 // insertion's -- the two only meet once the body is being spliced into place.
 func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
-	if si.Name == "" {
-		if len(callsite.Children) == 0 {
-			return deepCloneStmts(si.Children)
-		}
-		// Cloned, not shared: two insertions of `slot` in one body would
-		// otherwise alias the same IR nodes.
-		return deepCloneStmts(callsite.Children)
-	}
 	sc := callsite.Slots[si.Name]
 	if sc == nil {
+		// The default slot's content arrives as ordinary children rather than
+		// through the map. Cloned, not shared: two insertions in one body would
+		// otherwise alias the same IR nodes.
+		if si.Name == ir.DefaultSlot && len(callsite.Children) > 0 {
+			return deepCloneStmts(callsite.Children)
+		}
 		return deepCloneStmts(si.Children)
 	}
 	body := deepCloneStmts(sc.Body)

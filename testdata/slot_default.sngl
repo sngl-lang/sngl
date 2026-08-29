@@ -1,21 +1,20 @@
-// The default slot is declared in the parameter list too, written like a named
-// one with the identifier omitted. A component's whole contract is then the one
-// list: props, events, the default slot and any named ones.
+// The default slot is declared in the parameter list too, under the name `_`.
+// A component's whole contract is then the one list: props, events, and slots,
+// with nothing to distinguish the default one but its name.
 //
-// It takes no parameters — the grammar reaches a parameter list only past an
-// identifier — because the caller fills it with ordinary children, and there is
-// no population site to bind anything at.
+// It takes no invocation parameters, because the caller fills it with ordinary
+// children and there is no population site to bind anything at.
 
 import . "sngl://std"
 
-component card(caption string, slot) {
+component card(caption string, slot _) {
     vbox {
         text(value = caption)
         slot
     }
 }
 
-component panel(slot, slot header) {
+component panel(slot _, slot header) {
     vbox {
         header {
             text(value = "(untitled)")

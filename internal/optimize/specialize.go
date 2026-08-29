@@ -444,14 +444,11 @@ func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
 }
 
 func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
-	if si.Name == "" {
-		if len(callsite.Children) == 0 {
-			return cloneStmts(si.Children)
-		}
-		return cloneStmts(callsite.Children)
-	}
 	sc := callsite.Slots[si.Name]
 	if sc == nil {
+		if si.Name == ir.DefaultSlot && len(callsite.Children) > 0 {
+			return cloneStmts(callsite.Children)
+		}
 		return cloneStmts(si.Children)
 	}
 	body := cloneStmts(sc.Body)

@@ -487,6 +487,11 @@ type SlotDecl struct {
 	ChildKind string `json:",omitempty"`
 }
 
+// DefaultSlot is the name of the slot a caller fills with ordinary children.
+// It is a slot like any other; only its content arrives as sugar, which is why
+// it cannot be populated by name.
+const DefaultSlot = "_"
+
 // SlotCard is how many nodes a slot accepts.
 type SlotCard string
 

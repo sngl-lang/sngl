@@ -17,10 +17,10 @@ component frame(slot body tr.one<component>, slot badge option<component>, slot 
     }
 }
 
-// The default slot carries a type the same way, written `slot()` rather than a
-// bare `slot`: an optional name followed by an optional type is not LL(1), so
-// the empty parameter list is what tells the two apart.
-component strip(slot() component) {
+// The default slot carries a type the same way. It is named `_`, so every slot
+// has the one shape and the name is never optional — `slot` followed by an
+// optional name would be ambiguous with a type, both being idents.
+component strip(slot _ component) {
     vbox {
         slot
     }

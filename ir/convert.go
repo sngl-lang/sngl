@@ -558,8 +558,10 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 }
 
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
+	// The default slot's insertion is spelled `slot`, not by its name: `_` is
+	// what the declaration calls it, and the body has the keyword for it.
 	name := s.Name
-	if name == "" {
+	if name == "" || name == DefaultSlot {
 		name = "slot"
 	}
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}

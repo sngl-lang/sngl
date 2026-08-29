@@ -369,12 +369,11 @@ CompParamBody =
 # slot is *invoked* with; the trailing Type is what it *accepts*, and its shape
 # bounds the count — list<T> any, option<T> none-or-one, bare T exactly one.
 #
-# Without an identifier it declares the default slot, the one the caller fills
-# with ordinary children, and takes no invocation parameters: there is no
-# population site to bind them at. `slot()` rather than a bare `slot` when it
-# carries a type, because an optional name followed by an optional type is not
-# LL(1) — both start with ident, and the generator rejects the ambiguity.
-SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] [ Type ] | lparen rparen [ Type ] ] .
+# The default slot is named `_`, so every slot has the one shape and the name is
+# never optional: `slot` followed by an optional name would be ambiguous with a
+# type, since both are idents. It is filled by the caller's ordinary children
+# rather than by a population, so it takes no invocation parameters.
+SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] [ Type ] .
 
 CompParamTail =
       assign Expr

@@ -1732,14 +1732,13 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			if pd.Type != nil {
 				slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
 			}
-			// The grammar reaches a parameter list only past an identifier, so
-			// the default slot cannot carry one and nothing checks for it here.
+			if pd.Name == ir.DefaultSlot && len(pd.Params) > 0 {
+				// Its content is written as ordinary children, which have no
+				// binding site, so there is nowhere to collect a parameter.
+				c.error(pd.Pos, "the default slot takes no parameters: its content is written as ordinary children")
+			}
 			for _, t := range pd.Params {
 				slot.Params = append(slot.Params, c.resolveType(t))
-			}
-			if pd.Name == "" && findSlot(irComp, "") != nil {
-				c.error(pd.Pos, "component %s declares the default slot twice", irComp.Name)
-				continue
 			}
 			c.applySlotMarks(pd, slot)
 			irComp.Slots = append(irComp.Slots, slot)
@@ -3306,7 +3305,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 // where the rest of a component's contract already does, so the two are
 // alternatives rather than a pair.
 func (c *checker) finishDefaultSlot(decl *ast.ComponentDecl, comp *ir.Component) {
-	slot := findSlot(comp, "")
+	slot := findSlot(comp, ir.DefaultSlot)
 	if slot == nil {
 		return
 	}

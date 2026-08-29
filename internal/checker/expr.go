@@ -4155,7 +4155,7 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 	if len(x.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
 	}
-	return &ir.SlotInst{Children: c.checkBlockIR(&x.Block)}
+	return &ir.SlotInst{Name: ir.DefaultSlot, Children: c.checkBlockIR(&x.Block)}
 }
 
 // enclosingSlot returns the slot of the component being checked that name
@@ -4239,6 +4239,10 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 			rest.Stmts = append(rest.Stmts, s)
 			continue
 		}
+		if sn.Name == ir.DefaultSlot {
+			c.error(sn.Pos, "the default slot is filled by ordinary children, not by name")
+			continue
+		}
 		decl := findSlot(comp, sn.Name)
 		if decl == nil {
 			c.error(sn.Pos, "component %s has no slot %q", comp.Name, sn.Name)
@@ -4263,7 +4267,7 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 // than a default for a required one.
 func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content map[string]*ir.SlotContent) {
 	for _, slot := range comp.Slots {
-		if slot.Name == "" || content[slot.Name] != nil {
+		if slot.Name == ir.DefaultSlot || content[slot.Name] != nil {
 			continue
 		}
 		if slot.Card == ir.SlotOne {
