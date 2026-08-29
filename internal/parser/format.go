@@ -338,20 +338,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("struct ")
 	if s.Name != "" {
 		f.write(s.Name)
-		if len(s.TypeParams) > 0 {
-			f.write("<")
-			for k, tp := range s.TypeParams {
-				if k > 0 {
-					f.write(", ")
-				}
-				f.write(tp.Name)
-				if tp.Default != nil {
-					f.write(" = ")
-					f.writeType(tp.Default)
-				}
-			}
-			f.write(">")
-		}
+		f.writeTypeParams(s.TypeParams)
 		f.write(" ")
 	}
 	if len(s.Body) == 0 {
@@ -623,24 +610,36 @@ func (f *formatter) writeVarSpec(spec ast.VarSpec) {
 
 // --- func ---
 
+func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
+	if len(ps) == 0 {
+		return
+	}
+	f.write("<")
+	for i, p := range ps {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.write(p.Name)
+		if p.Default != nil {
+			f.write(" = ")
+			f.writeType(p.Default)
+		}
+	}
+	f.write(">")
+}
+
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
 		// recv<T>.method form: Name is "recv.method", split and insert type params.
 		dot := strings.IndexByte(fn.Name, '.')
 		f.write(fn.Name[:dot])
-		f.write("<")
-		f.write(strings.Join(fn.RecvTypeParams, ", "))
-		f.write(">")
+		f.writeTypeParams(fn.RecvTypeParams)
 		f.write(fn.Name[dot:]) // ".method"
 	} else {
 		f.write(fn.Name)
 	}
-	if len(fn.TypeParams) > 0 {
-		f.write("<")
-		f.write(strings.Join(fn.TypeParams, ", "))
-		f.write(">")
-	}
+	f.writeTypeParams(fn.TypeParams)
 	f.writeTargetIndex(fn.Target)
 	f.write("(")
 	f.writeParams(fn.Params)

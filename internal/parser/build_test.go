@@ -215,7 +215,7 @@ func TestParseFuncMethod(t *testing.T) {
 func TestParseFuncGeneric(t *testing.T) {
 	doc := mustParse(t, `func identity<T>(x T) => x`)
 	fd := doc.Stmts[0].(*ast.FuncDef)
-	if len(fd.TypeParams) != 1 || fd.TypeParams[0] != "T" {
+	if len(fd.TypeParams) != 1 || fd.TypeParams[0].Name != "T" {
 		t.Errorf("expected type param T, got %v", fd.TypeParams)
 	}
 }
@@ -763,7 +763,7 @@ func TestParseGenericReceiverMethod(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := firstFuncDef(t, doc)
-	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0].Name != "T" {
 		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
 	}
 	if len(fn.TypeParams) != 0 {
@@ -778,7 +778,7 @@ func TestParseGenericReceiverWithTwoParams(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := firstFuncDef(t, doc)
-	if len(fn.RecvTypeParams) != 2 || fn.RecvTypeParams[0] != "K" || fn.RecvTypeParams[1] != "V" {
+	if len(fn.RecvTypeParams) != 2 || fn.RecvTypeParams[0].Name != "K" || fn.RecvTypeParams[1].Name != "V" {
 		t.Errorf("RecvTypeParams = %v, want [K V]", fn.RecvTypeParams)
 	}
 }
@@ -802,7 +802,7 @@ func TestParseGenericFunctionStillWorks(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := doc.Stmts[0].(*ast.FuncDef)
-	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "T" {
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0].Name != "T" {
 		t.Errorf("TypeParams = %v, want [T]", fn.TypeParams)
 	}
 	if len(fn.RecvTypeParams) != 0 {
@@ -826,10 +826,10 @@ func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
 	if fn == nil {
 		t.Fatal("no FuncDef")
 	}
-	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0].Name != "T" {
 		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
 	}
-	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "U" {
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0].Name != "U" {
 		t.Errorf("TypeParams = %v, want [U]", fn.TypeParams)
 	}
 }

@@ -33,10 +33,24 @@ component show(
     }
 }
 
+// A function's parameters take defaults the same way, and from the same struct:
+// `empty` has no argument to infer T from, so it falls back rather than staying
+// unbound.
+func empty<T = string>() list<T> {
+    return []
+}
+
+func pick<T = string>(v T) T {
+    return v
+}
+
 component main {
+    var names list<string> = empty()
+    var greeting = pick("hi")
+
     show() {
         slot body {
-            text(value="one")
+            text(value="{names.length()}{greeting}")
         }
     }
 }

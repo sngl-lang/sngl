@@ -913,7 +913,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// Receiver type parameters (the `<T>` in `list<T>.push`) plus any
 	// method-level ones must be in scope to resolve the receiver type and the
 	// body. RecvTypeParams come first so the receiver type `list<T>` resolves.
-	c.typeParams = append(append([]string{}, fn.RecvTypeParams...), fn.TypeParams...)
+	c.typeParams = append(ir.TypeParamNames(fn.RecvTypeParams), ir.TypeParamNames(fn.TypeParams)...)
 	defer func() { c.typeParams = prevTypeParams }()
 
 	// Implicit-receiver methods (generic receiver, e.g. list<T>.push) carry no
@@ -927,7 +927,7 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	// type here would spuriously trip the map-key comparability check on the
 	// abstract key type parameter.
 	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
+		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, ir.TypeParamNames(fn.RecvTypeParams))); thisType != nil {
 			c.declare(f.Pos, &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
 		}
 	}

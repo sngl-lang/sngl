@@ -167,7 +167,7 @@ func typeKindNoun(d ir.Symbol) string {
 //
 // recvName is the type name (struct/enum/component).
 // typeParams is the receiver type's type parameters (empty for enum/component).
-func (c *checker) registerNestedMethods(recvName string, typeParams []string, nested []*ast.FuncDef) []*ir.Func {
+func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypeParam, nested []*ast.FuncDef) []*ir.Func {
 	out := make([]*ir.Func, 0, len(nested))
 	for _, n := range nested {
 		// Funcs with an explicit method receiver (e.g. `func int.double`
@@ -198,7 +198,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			continue
 		}
 
-		thisType := synthRecvTypeExpr(n.Pos, recvName, typeParams)
+		thisType := synthRecvTypeExpr(n.Pos, recvName, ast.TypeParamNames(typeParams))
 		thisParam := ast.Param{
 			Pos:  n.Pos,
 			Name: ir.ReceiverParam,
@@ -213,7 +213,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			Pos:            n.Pos,
 			Name:           recvName + "." + n.Name,
 			TypeParams:     n.TypeParams,
-			RecvTypeParams: append([]string(nil), typeParams...),
+			RecvTypeParams: append([]ast.TypeParam(nil), typeParams...),
 			Params:         newParams,
 			ReturnType:     n.ReturnType,
 			Body:           n.Body,

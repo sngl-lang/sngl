@@ -1066,8 +1066,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		if !recvParamStyle && !isStatic {
 			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
 			if len(receiver.Elems) == len(sig.RecvTypeParams) {
-				for i, name := range sig.RecvTypeParams {
-					bindings[name] = receiver.Elems[i]
+				for i, tp := range sig.RecvTypeParams {
+					bindings[tp.Name] = receiver.Elems[i]
 				}
 			} else {
 				// Receiver kind matches but no concrete elems (e.g. bare "list" in
@@ -1105,7 +1105,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		// `Box.same(b)` mean what `b.same()` means.
 		if isStatic && len(sig.RecvTypeParams) > 0 {
 			merged := *sig
-			merged.TypeParams = append(append([]string(nil), sig.RecvTypeParams...), sig.TypeParams...)
+			merged.TypeParams = append(append([]ir.TypeParam(nil), sig.RecvTypeParams...), sig.TypeParams...)
 			merged.RecvTypeParams = nil
 			sig = &merged
 		}
@@ -2045,6 +2045,16 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 			bindTypeParams(sig.Params[pos].Type, argType, bindings)
 		}
 		pos++
+	}
+	// A parameter the arguments did not pin falls back to its default, the way
+	// a struct's does when the type-argument list stops short.
+	for _, tp := range sig.TypeParams {
+		if tp.Default == nil {
+			continue
+		}
+		if _, bound := bindings[tp.Name]; !bound {
+			bindings[tp.Name] = tp.Default
+		}
 	}
 	if len(bindings) == 0 {
 		return sig

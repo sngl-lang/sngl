@@ -295,8 +295,8 @@ type ParamList struct {
 type FuncDef struct {
 	Pos            Pos
 	Name           string
-	TypeParams     []string // method-level generic type parameters, e.g., ["T", "U"]
-	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
+	TypeParams     []TypeParam // method-level generic parameters, e.g. ["T", "U"]
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         ParamList
 	// Target is the `[expr]` index on the declaration name: the build target
 	// this declaration implements, written by whoever overrides one. nil on an

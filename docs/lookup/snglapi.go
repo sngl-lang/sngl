@@ -769,7 +769,7 @@ func snglFuncSig(f *ast.FuncDef) string {
 	var sb strings.Builder
 	sb.WriteString("func " + f.Name)
 	if len(f.TypeParams) > 0 {
-		sb.WriteString("<" + strings.Join(f.TypeParams, ", ") + ">")
+		sb.WriteString("<" + strings.Join(ast.TypeParamNames(f.TypeParams), ", ") + ">")
 	}
 	sb.WriteString("(")
 	for i, p := range f.Params.Params {

@@ -210,7 +210,7 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 	}
 	fd := &ast.FuncDef{
 		Name:       name,
-		TypeParams: f.TypeParams,
+		TypeParams: c.convertTypeParams(f.TypeParams),
 		Params:     c.convertParamList(f.Params),
 	}
 	if f.Return != nil {
@@ -581,6 +581,18 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 
 // convertSlotContents renders what a call site supplied for each named slot.
 // Sorted, because the IR holds them in a map and a dump has to be stable.
+// convertTypeParams writes each parameter back with its default, if it has one.
+func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ast.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ast.TypeParam{Name: p.Name, Default: c.convertType(p.Default)}
+	}
+	return out
+}
+
 func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 	names := make([]string, 0, len(n.Slots))
 	for name := range n.Slots {

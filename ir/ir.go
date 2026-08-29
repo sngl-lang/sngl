@@ -246,8 +246,8 @@ type Func struct {
 	AST            *ast.FuncDef // nil for lambdas and event handlers
 	Name           string       // empty for lambdas and event handlers
 	Receiver       string       // "int" for int.abs (empty for plain funcs)
-	TypeParams     []string
-	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
+	TypeParams     []TypeParam
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)

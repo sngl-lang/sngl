@@ -575,9 +575,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
 	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
 	prevTypeParams := c.typeParams
-	combined := f.TypeParams
+	combined := ast.TypeParamNames(f.TypeParams)
 	if len(f.RecvTypeParams) > 0 {
-		combined = append(append([]string(nil), f.RecvTypeParams...), f.TypeParams...)
+		combined = append(ast.TypeParamNames(f.RecvTypeParams), combined...)
 	}
 	c.typeParams = combined
 	// nil ReturnType means void (block body) or pending-inference (expression body);
@@ -590,8 +590,8 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
-		TypeParams:     f.TypeParams,
-		RecvTypeParams: f.RecvTypeParams,
+		TypeParams:     c.resolveTypeParams(f.TypeParams),
+		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),

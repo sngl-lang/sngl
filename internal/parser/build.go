@@ -857,7 +857,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 		return
 	}
 	if it.isNonTerminal() && it.symbol() == TypeParamList {
-		params := b.buildTypeParamList(it.enter())
+		params := b.buildTypeParams(it.enter())
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
 			// recv<T>.method[<U>] — receiver-level type params
 			it.skip() // dot
@@ -865,7 +865,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 			f.Name = first + "." + it.shift().Literal
 			// optional method-level type params after the method name
 			if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-				f.TypeParams = b.buildTypeParamList(it.enter())
+				f.TypeParams = b.buildTypeParams(it.enter())
 			}
 		} else {
 			// name<T> — function-level type params only
@@ -879,7 +879,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 		f.Name = first + "." + it.shift().Literal
 		// optional method-level type params after the method name
 		if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-			f.TypeParams = b.buildTypeParamList(it.enter())
+			f.TypeParams = b.buildTypeParams(it.enter())
 		}
 		return
 	}
@@ -918,12 +918,6 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 		f.Block = b.buildStmtBlock(it.enter())
 	}
-}
-
-// buildTypeParamList is for the declarations that bind names and nothing else:
-// a function's own and a receiver's, which carry no default yet.
-func (b *builder) buildTypeParamList(it nodeIter) []string {
-	return ast.TypeParamNames(b.buildTypeParams(it))
 }
 
 func (b *builder) buildTypeParams(it nodeIter) []ast.TypeParam {
