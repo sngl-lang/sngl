@@ -79,7 +79,7 @@ component main {
 // and that body must implement something.
 //
 // The emptiness check is the point. mergePlatformExtensions reserves
-// PlatformBodies[platform] before checking the block, so an override written
+// PlatformOverrides[platform] before checking the block, so an override written
 // with an empty body records a *present* entry that renders nothing — a
 // node whose stdlib name reaches codegen, matches no widget, and is dropped
 // while its AppendChild is still emitted (issue #120's failure mode). Presence
@@ -102,12 +102,12 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 			missingNode = append(missingNode, name)
 			continue
 		}
-		body, ok := comp.PlatformBodies["fyne"]
+		body, ok := comp.PlatformOverrides["fyne"]
 		if !ok {
 			missingBody = append(missingBody, name)
 			continue
 		}
-		if len(body) == 0 {
+		if len(body.Stmts) == 0 {
 			emptyBody = append(emptyBody, name)
 		}
 	}
@@ -115,10 +115,10 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 		t.Fatalf("fixture did not instantiate %v — the source, not the platform, is wrong", missingNode)
 	}
 	if len(missingBody) > 0 {
-		t.Errorf("no PlatformBodies[\"fyne\"] entry for %v", missingBody)
+		t.Errorf("no PlatformOverrides[\"fyne\"] entry for %v", missingBody)
 	}
 	if len(emptyBody) > 0 {
-		t.Errorf("PlatformBodies[\"fyne\"] is present but empty for %v", emptyBody)
+		t.Errorf("PlatformOverrides[\"fyne\"] is present but empty for %v", emptyBody)
 	}
 	if n := len(stdlibComponentsUnderFyne); n != 34 {
 		t.Errorf("stdlibComponentsUnderFyne has %d entries, want the 34 stdlib components", n)
@@ -152,7 +152,7 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 		if comp == nil {
 			t.Fatalf("fixture did not instantiate %q", name)
 		}
-		prims := fynePrimitiveNodes(comp.PlatformBodies["fyne"])
+		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
 		if len(prims) == 0 {
 			t.Errorf("%s: fyne body reaches no fyne primitive", name)
 			continue

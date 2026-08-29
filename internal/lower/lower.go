@@ -123,11 +123,16 @@ type Options struct {
 
 	// Platform is the active build target's platform identifier (e.g.
 	// "html", "gtk4", "fyne"). passPlatformExtensionBody uses it to
-	// swap each *ir.Component's matching PlatformBodies entry into
+	// swap each *ir.Component's matching PlatformOverrides entry into
 	// Component.Body. Empty string disables the swap — appropriate for
 	// platform-agnostic tools (LSP, format) that should leave abstract
 	// stdlib components abstract.
 	Platform string
+
+	// Language is the active target's language identifier ("go", "js",
+	// "kotlin"). A declaration may be overridden on either axis, and the
+	// swap prefers the platform's where both apply.
+	Language string
 
 	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
 	// component id from another platform's namespace. A platform primitive is

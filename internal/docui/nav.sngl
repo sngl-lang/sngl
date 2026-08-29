@@ -1,4 +1,5 @@
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component NavItem(href = "", text = "", active = false) {
     if PLATFORM == html.platform {

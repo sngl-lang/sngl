@@ -1,5 +1,6 @@
 import . "sngl://std"
 import "go://git.duckfam.us/jonathan/sngl/docs"
+import "sngl://platforms/html"
 
 // CodeBlock renders a fenced-code-block-style snippet. Source is run through
 // chroma at compile time using the named lexer (sngl, go, kotlin, bash, js,

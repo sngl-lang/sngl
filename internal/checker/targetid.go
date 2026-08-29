@@ -162,24 +162,6 @@ func (c *checker) collectUserOverrides() {
 		if !ok {
 			continue
 		}
-		if kind != ir.BuiltinPlatform {
-			// A language override has nowhere to be stored: a component's
-			// bodies are keyed by platform. Refused where it is written rather
-			// than registered under a key nothing reads.
-			c.error(decl.Pos, "a component may be overridden for a platform, not for a language")
-			continue
-		}
-		if len(decl.Props.Props) > 0 {
-			pos := decl.Pos
-			switch p := decl.Props.Props[0].(type) {
-			case ast.Param:
-				pos = p.Pos
-			case ast.EventDecl:
-				pos = p.Pos
-			}
-			c.error(pos, "override %q may not declare props (inherited from the declaration it overrides)", decl.Name)
-			continue
-		}
 		if decl.ChildrenType != nil {
 			c.error(decl.Pos, "override %q may not declare children type (inherited from the declaration it overrides)", decl.Name)
 			continue
@@ -188,8 +170,64 @@ func (c *checker) collectUserOverrides() {
 		if base == nil {
 			continue
 		}
-		c.addPlatformBody(decl.Pos, base, plat, ns, local, decl.Body, true)
+		selection, ok := c.overrideSelection(decl, base)
+		if !ok {
+			continue
+		}
+		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection)
 	}
+}
+
+// overrideSelection reads an override's prop list: the props of the
+// declaration it overrides that its body consumes. The list is a selection,
+// not a declaration -- the base owns the types, and restating one is a thing
+// that can drift -- so each entry is a bare name, and `@name` selects an event.
+//
+// The list is optional. Without one the override reads every prop the base
+// declares, which is what an override written before this could do and all a
+// platform package's do today.
+func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) ([]string, bool) {
+	if !decl.HasParens {
+		return nil, true
+	}
+	declared := map[string]bool{}
+	for _, p := range base.Props {
+		declared[p.Name] = true
+	}
+	for _, e := range base.Events {
+		declared["@"+e.Name] = true
+	}
+	out := make([]string, 0, len(decl.Props.Props))
+	ok := true
+	for _, p := range decl.Props.Props {
+		var name string
+		var pos ast.Pos
+		switch pd := p.(type) {
+		case ast.Param:
+			name, pos = pd.Name, pd.Pos
+			if pd.Type != nil || pd.Default != nil {
+				c.error(pos, "override %q selects prop %q; its type belongs to the declaration being overridden", decl.Name, name)
+				ok = false
+				continue
+			}
+		case ast.EventDecl:
+			name, pos = "@"+pd.Name, pd.Pos
+			if pd.Type != nil {
+				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
+				ok = false
+				continue
+			}
+		default:
+			continue
+		}
+		if !declared[name] {
+			c.error(pos, "override %q selects %q, which %s does not declare", decl.Name, name, decl.Name)
+			ok = false
+			continue
+		}
+		out = append(out, name)
+	}
+	return out, ok
 }
 
 // overrideBase resolves the declaration an override names, qualified
@@ -240,6 +278,7 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 type pendingFuncOverride struct {
 	fn       *ir.Func
 	platform string
+	kind     ir.BuiltinKind
 	decl     *ast.FuncDef
 }
 
@@ -251,10 +290,6 @@ func (c *checker) collectFuncOverrides() {
 	for _, decl := range c.userFuncOverrides {
 		plat, kind, ok := c.resolveTargetIndex(decl.Target)
 		if !ok {
-			continue
-		}
-		if kind != ir.BuiltinPlatform {
-			c.error(decl.Pos, "a function may be overridden for a platform, not for a language")
 			continue
 		}
 		if len(decl.Params.Params) > 0 {
@@ -269,17 +304,21 @@ func (c *checker) collectFuncOverrides() {
 		if base == nil {
 			continue
 		}
-		if base.PlatformBodies == nil {
-			base.PlatformBodies = map[string][]ir.Stmt{}
+		overrides := &base.PlatformOverrides
+		if kind == ir.BuiltinLanguage {
+			overrides = &base.LanguageOverrides
 		}
-		if _, dup := base.PlatformBodies[plat]; dup {
+		if *overrides == nil {
+			*overrides = map[string]ir.Body{}
+		}
+		if _, dup := (*overrides)[plat]; dup {
 			c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
 			continue
 		}
 		// Reserve the key so a duplicate is caught even when the body check
-		// contributes nothing, as addPlatformBody does for a component.
-		base.PlatformBodies[plat] = nil
-		c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, decl: decl})
+		// contributes nothing, as addOverrideBody does for a component.
+		(*overrides)[plat] = ir.Body{}
+		c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl})
 	}
 }
 
@@ -344,7 +383,11 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
-		po.fn.PlatformBodies[po.platform] = po.fn.Block
+		if po.kind == ir.BuiltinLanguage {
+			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+		} else {
+			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
 	}

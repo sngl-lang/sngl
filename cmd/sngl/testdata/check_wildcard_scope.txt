@@ -16,6 +16,13 @@ stdout 'td\(attrs=\{"bgcolor" = '
 ! sngl dump --stage checked --lang none --platform html typo.sngl
 stderr 'unknown component "html.thisIsATypoNotATag"'
 
+# And the wildcard is only reachable through the package, which a file has to
+# import. Registered platforms used to be ambient, so a name reached html's
+# open element set in a file that never asked for html -- the misspelling above
+# would have been reported against a package the program does not use.
+! sngl dump --stage checked --lang none --platform html unimported.sngl
+stderr 'undefined: bubbletea'
+
 # 3. A dot import lifts a package's declarations. A wildcard component's
 # declaration is its own name; the open set of names it also answers to
 # belongs to the package, and is reached by naming it (`html.div`). Lifted, it left the importing file with no
@@ -48,10 +55,19 @@ component main() {
 }
 -- typo.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main() {
     window {
         html.thisIsATypoNotATag(id = "x") { }
+    }
+}
+-- unimported.sngl --
+import . "sngl://std"
+
+component main() {
+    window {
+        text(value=string(bubbletea.JoinDir.vertical))
     }
 }
 -- dotimport.sngl --

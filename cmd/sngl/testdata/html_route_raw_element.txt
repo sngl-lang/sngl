@@ -44,6 +44,7 @@ import . "sngl://std"
 output { go { html } }
 
 import "go://example.com/route-raw/api"
+import "sngl://platforms/html"
 
 component main {
     var n int = 0

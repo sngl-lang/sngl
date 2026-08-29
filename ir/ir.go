@@ -251,16 +251,21 @@ type Func struct {
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
-	// PlatformBodies holds the body each target overrides this function with,
-	// keyed by platform. The checker is platform-agnostic and collects every
-	// registered target's; lower's passPlatformExtensionBody swaps the active
-	// one into Block. Empty for a function nobody overrides.
-	PlatformBodies map[string][]Stmt `json:",omitempty"`
-	Purity         Purity
-	IsTest         bool
-	Reads          []*Var // vars read (directly or via called functions)
-	Writes         []*Var // vars mutated (directly or via called functions)
-	Intrinsic      string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
+	// PlatformOverrides holds the body each target implements this function
+	// with, keyed by platform. The checker collects every registered target's;
+	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
+	// function nobody overrides. A function has no state of its own, so the
+	// Body's Vars are always empty -- it shares the type so one collapse rule
+	// covers a component and a function alike.
+	PlatformOverrides map[string]Body `json:",omitempty"`
+	// LanguageOverrides is the same, keyed by language. A declaration may be
+	// overridden on either axis; the platform's wins where both apply.
+	LanguageOverrides map[string]Body `json:",omitempty"`
+	Purity            Purity
+	IsTest            bool
+	Reads             []*Var // vars read (directly or via called functions)
+	Writes            []*Var // vars mutated (directly or via called functions)
+	Intrinsic         string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
 	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
 	// in the encoder and neither is written.
 	Foreign        `json:"Foreign,omitzero"`
@@ -355,6 +360,16 @@ func (v *Var) SymType() *Type  { return v.Type }
 // public API.
 func (v *Var) IsExported() bool { return isExportedName(v.Name) }
 
+// Body is what a declaration renders: its statements and the state they read.
+// The two travel together -- a var belongs to the body that declares it, and a
+// body swapped in without its vars reads names nothing declared -- so an
+// override carries one of these rather than an entry in each of two maps that
+// have to be kept in step.
+type Body struct {
+	Vars  []*Var
+	Stmts []Stmt
+}
+
 // Component represents a resolved component declaration.
 type Component struct {
 	AST  *ast.ComponentDecl
@@ -400,24 +415,18 @@ type Component struct {
 	Funcs        []*Func
 	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
-	// PlatformBodies holds checked IR bodies for `component sngl.X`
-	// extensions, keyed by platform name (the identifier from
-	// PlatformGenerator.PlatformIdentifier). Populated by the checker's
-	// mergePlatformExtensions across *all* registered platforms; consumed
-	// by lower's passPlatformExtensionBody, which swaps the active
-	// platform's body into Component.Body before remaining lowering
-	// passes run. nil for components with no extension declarations.
-	PlatformBodies map[string][]Stmt `json:"-"`
-	// PlatformVars holds the vars and consts declared by each extension
-	// body, keyed the same way as PlatformBodies and swapped into
-	// Component.Vars by the same lowering pass. It is per-platform for the
-	// reason the bodies are: the checker checks every registered platform's
-	// extension, so two platforms may declare different state on one stdlib
-	// component, and only the build target's may reach codegen. Each entry
-	// is the whole var list the specialized component has (the component's
-	// own vars first, then the body's), so the swap is a replacement rather
-	// than an append and stays idempotent.
-	PlatformVars map[string][]*Var `json:"-"`
+	// PlatformOverrides holds the body each target implements this component
+	// with, keyed by platform, and LanguageOverrides the same keyed by
+	// language --
+	// a declaration may be overridden on either axis, and the platform's wins
+	// where both apply.
+	//
+	// The checker fills these for every registered target, because it does not
+	// know which one a build picks; ir.SpecializeForTarget swaps the chosen
+	// one into the declaration before the passes that read a body run. nil for
+	// a component nobody overrides.
+	PlatformOverrides map[string]Body `json:"-"`
+	LanguageOverrides map[string]Body `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other

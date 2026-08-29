@@ -204,6 +204,7 @@ component main {
 -- extdraw.sngl --
 import s "sngl://std"
 import d "sngl://draw"
+import "sngl://platforms/html"
 
 component d.canvas[html.platform] {
     s.text(value="styled")

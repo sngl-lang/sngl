@@ -366,6 +366,17 @@ func (c *checker) adoptLib(name string, pkg *ir.Package) {
 
 // inLibSource reports whether the declarations being registered come from
 // lib/ rather than from a program. Every path into lib/ source runs through
+// targetNamespaceName is the namespace a target's package is reached through,
+// which is the target's own name: sngl://platforms/html is `html`.
+func targetNamespaceName(pkgName string) (string, bool) {
+	for _, prefix := range []string{"platforms/", "languages/"} {
+		if name, ok := strings.CutPrefix(pkgName, prefix); ok {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 // loadStdlibPackage, including the nested loads an import inside lib/ starts,
 // so the counter covers transitive loads too.
 func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
@@ -386,6 +397,14 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// The package's imports go one scope above its root: reachable while it
 	// loads, absent from what a dot import of it lifts.
 	c.libImportScope = NewScope(savedScope)
+	// A target's own source reaches its own declarations through its own
+	// namespace -- `html.div` inside html.sngl, where the prefix separates the
+	// element from the stdlib component of the same name. That namespace is in
+	// scope while the package loads and nowhere else: a program reaches it by
+	// importing the package, like any other.
+	if nsName, ok := targetNamespaceName(pkgName); ok {
+		c.bindLib(ast.Pos{}, c.libImportScope, &ir.Namespace{Name: nsName, Pkg: stdlibPkg})
+	}
 	stdlibPkg.Symbols.Root.Parent = c.libImportScope
 	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
 	defer func() {
@@ -1113,8 +1132,8 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 
 // mergeTargetExtensions collects the `component sngl.X` overrides one target's
 // package declares, checking each `platform <name> { ... }` block into the
-// stdlib *ir.Component's PlatformBodies map. The lowering pass
-// passPlatformExtensionBody reads PlatformBodies[opts.Platform] and swaps it
+// stdlib *ir.Component's PlatformOverrides map. The lowering pass
+// passPlatformExtensionBody reads PlatformOverrides[opts.Platform] and swaps it
 // into Component.Body before any other pass runs.
 //
 // A target's package is loaded the way a side-effect import is, and for the
@@ -1150,6 +1169,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		return
 	}
 	{
+		// An override names its target, and a target package's own source is
+		// no exception -- but it reaches its namespace the way its bodies do,
+		// from the package itself, not from the program's scope, which is
+		// where this runs and where a target is only in scope if imported.
+		c.pushScope()
+		if pkg := c.libPkg(pkgName); pkg != nil {
+			c.bindLib(ast.Pos{}, c.scope, &ir.Namespace{Name: name, Pkg: pkg})
+		}
+		defer c.popScope()
 		for _, doc := range c.libDocs(pkgName) {
 			// The extension prefix is whatever alias this document imported the
 			// stdlib under. Platform docs are not registered into the checker's
@@ -1211,7 +1239,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
 					continue
 				}
-				c.addPlatformBody(decl.Pos, stdComp, plat, ns, local, decl.Body, false)
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, nil)
 			}
 		}
 	}
@@ -1221,26 +1249,51 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 // reports that one is already recorded. A duplicate is an error rather than a
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
-func (c *checker) addPlatformBody(pos ast.Pos, comp *ir.Component, platform, ns, local string, body ast.StmtBlock, user bool) {
-	if comp.PlatformBodies == nil {
-		comp.PlatformBodies = map[string][]ir.Stmt{}
+func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
+	overrides := &comp.PlatformOverrides
+	if kind == ir.BuiltinLanguage {
+		overrides = &comp.LanguageOverrides
 	}
-	if _, dup := comp.PlatformBodies[platform]; dup {
-		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, platform)
+	if *overrides == nil {
+		*overrides = map[string]ir.Body{}
+	}
+	if _, dup := (*overrides)[target]; dup {
+		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, target)
 		return
-	}
-	if comp.PlatformVars == nil {
-		comp.PlatformVars = map[string][]*ir.Var{}
 	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
-	comp.PlatformBodies[platform] = nil
+	(*overrides)[target] = ir.Body{}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
-		comp:     comp,
-		platform: platform,
-		body:     body,
-		user:     user,
+		comp:      comp,
+		platform:  target,
+		kind:      kind,
+		body:      body,
+		user:      user,
+		selection: selection,
 	})
+}
+
+// selectProps is the props and events an override named, in the declaring
+// component's order. A name it did not name is not in scope for its body.
+func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.EventDecl) {
+	want := make(map[string]bool, len(selection))
+	for _, n := range selection {
+		want[n] = true
+	}
+	var props []*ir.Prop
+	for _, p := range comp.Props {
+		if want[p.Name] {
+			props = append(props, p)
+		}
+	}
+	var events []*ir.EventDecl
+	for _, e := range comp.Events {
+		if want["@"+e.Name] {
+			events = append(events, e)
+		}
+	}
+	return props, events
 }
 
 // collectExtensionVars pre-registers the vars and consts a platform extension
@@ -1256,13 +1309,20 @@ func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
-// needs to be checked into IR and stashed under stdComp.PlatformBodies.
+// needs to be checked into IR and stashed under stdComp.PlatformOverrides.
 // Body-checking is deferred until after user pass1 so user-declared symbols
 // are in scope when the platform body resolves identifiers.
 type pendingExtension struct {
 	comp     *ir.Component
 	platform string
 	body     ast.StmtBlock
+	// kind says which axis the target names -- a platform or a language --
+	// and so which of the component's two override maps the checked body
+	// belongs in.
+	kind ir.BuiltinKind
+	// selection is the props the override's body reads, when it listed them.
+	// nil means it listed none and reads all of them.
+	selection []string
 	// user marks an override a program declared rather than a target package.
 	// Its body is the program's own source and resolves in the program's
 	// scope, where the file's imports are; a target package's body is
@@ -1325,6 +1385,14 @@ func (c *checker) checkPendingExtensions() {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
 			savedVars := pe.comp.Vars
+			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+			// An override that listed the props it consumes reads those and no
+			// others: the list is what makes the names in its body traceable
+			// to a declaration rather than appearing from the surrounding
+			// component. One that listed none reads them all.
+			if pe.selection != nil {
+				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+			}
 			pe.comp.AST.Body = pe.body
 			pe.comp.Body = nil
 			// checkComponentBody declares comp.Vars into the body scope and
@@ -1337,11 +1405,16 @@ func (c *checker) checkPendingExtensions() {
 			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
 			pe.comp.Vars = vars
 			c.checkComponentBody(pe.comp)
-			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
-			pe.comp.PlatformVars[pe.platform] = pe.comp.Vars
+			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body}
+			if pe.kind == ir.BuiltinLanguage {
+				pe.comp.LanguageOverrides[pe.platform] = checked
+			} else {
+				pe.comp.PlatformOverrides[pe.platform] = checked
+			}
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars
+			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
 				c.popScope()
 			}

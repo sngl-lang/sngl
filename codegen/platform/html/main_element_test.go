@@ -24,6 +24,7 @@ import (
 func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 	src := `
 import . "sngl://std"
+import "sngl://platforms/html"
 output { none { html() } }
 component main {
     window(title="Home", href="/index.html") {

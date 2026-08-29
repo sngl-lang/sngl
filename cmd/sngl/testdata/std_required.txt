@@ -26,11 +26,19 @@ stdout 'aliased.sngl: ok'
 sngl check aliased_expr.sngl
 stdout 'aliased_expr.sngl: ok'
 
-# Raw platform elements are ambient for every platform alike. html is the one
-# whose name the stdlib also declares (for html.frontend/html.backend), and it
-# must not become the only platform whose elements need an import.
+# A target's package is reached by importing it, like any other -- raw platform
+# elements included. They used to be ambient for every registered platform, so
+# `html.marquee` resolved in a file that named nothing, and a misspelling
+# reached the element wildcard of a package the program never asked for.
 sngl check rawelem.sngl
 stdout 'rawelem.sngl: ok'
+
+# Without the import the name is not in scope at all. html is the one whose
+# name the stdlib also declares (for html.frontend/html.backend), so there the
+# namespace resolves and the member is what is missing; every other platform
+# fails on the namespace.
+! sngl check rawelem_unimported.sngl
+stderr 'unknown component "gtk4.GtkLabel"'
 
 # That filter still applies to a real user package.
 ! sngl check private.sngl
@@ -78,10 +86,17 @@ component main {
     var n int = 1
 }
 -- rawelem.sngl --
+import "sngl://platforms/html"
+import "sngl://platforms/gtk4"
+
 component Foo() {
     html.marquee() {}
 }
 
+component Bar() {
+    gtk4.GtkLabel(label="x") {}
+}
+-- rawelem_unimported.sngl --
 component Bar() {
     gtk4.GtkLabel(label="x") {}
 }
