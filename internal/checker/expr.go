@@ -2563,7 +2563,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// `output` is matched by name: it is a build directive with its
 			// own data structure, not a component, so nothing in scope
 			// resolves to it (see registerRootVisualNode).
-			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone || id.Name == "output"
+			// A named slot's insertion is written as an ordinary node, so a
+			// bodyless one (`cell(r)`) parses as a call like any other and has
+			// to come back through the node path to be recognised.
+			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone || id.Name == "output" ||
+				c.enclosingSlot(id.Name) != nil
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -2832,6 +2836,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		return &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
 	case *ast.PlatformStmt:
 		return c.checkPlatformStmtIR(x)
+	case *ast.SlotNode:
+		return c.checkSlotNodeIR(x)
 	case *ast.VisualNode:
 		return c.checkVisualNodeIR(x)
 	case *ast.ConstDecl:
@@ -3106,12 +3112,18 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 			c.pkg.Timers = append(c.pkg.Timers, t)
 		}
 		return nil
-	case ir.BuiltinSlot:
-		children := c.checkBlockIR(&vn.Block)
-		return &ir.SlotInst{AST: vn, Children: children}
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
 	}
+	// A named slot renders as an ordinary node: the tag is the slot's name and
+	// the arguments are the values passed to it. Resolved before components so
+	// a slot wins inside the body that declares it, which is what makes the
+	// insertion unmarked; a slot sharing a component's name shadows it there,
+	// as an inner-scope binding does anywhere else.
+	if slot := c.enclosingSlot(name); slot != nil {
+		return c.checkSlotInsertion(vn, slot)
+	}
+
 	// `output` is not a component (see registerRootVisualNode), so it stays a
 	// literal-name match rather than resolving through scope.
 	if name == "output" {
@@ -3212,7 +3224,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.validateVisualNodeProps(vn, comp)
 	}
 
-	children := c.checkBlockIR(&vn.Block)
+	// A named slot's content is written in the callsite's block beside the
+	// ordinary children, marked with `slot` so it reads as supplied rather
+	// than rendered. Peel those off before the children are checked, so the
+	// arity and tree-kind rules below see only what the anonymous slot gets.
+	slotContent, childBlock := c.checkSlotPopulations(vn, comp)
+	children := c.checkBlockIR(&childBlock)
 	if comp != nil && comp.AST != nil {
 		ct := comp.ChildrenType
 		n := len(children)
@@ -3228,6 +3245,15 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		// every child must be a node marked #[tree.kind("k")].
 		if comp.ChildKind != "" {
 			for _, child := range children {
+				// A slot insertion is a position, not a node: what lands there
+				// is whatever the caller supplies, so the slot's own declared
+				// kind is what has to match. Checking the supplied content
+				// against it is the population's job.
+				if si, isSlot := child.(*ir.SlotInst); isSlot {
+					if slot := c.enclosingSlot(si.Name); slot != nil && slot.ChildKind == comp.ChildKind {
+						continue
+					}
+				}
 				ni, ok := child.(*ir.NodeInst)
 				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
 					continue
@@ -3266,6 +3292,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Handlers:  handlers,
 		Bindings:  bindings,
 		Children:  children,
+		Slots:     slotContent,
 		ID:        vn.ID,
 		Key:       keyExpr,
 	}
@@ -4128,4 +4155,183 @@ func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, b
 		return nil, false
 	}
 	return sym, true
+}
+
+// checkSlotNodeIR checks `slot` in statement position.
+//
+// Bare, it is the anonymous slot's insertion point: the caller's ordinary
+// children render here, and the block is the fallback for when there are none.
+// Named, it populates a slot of the component whose block it sits in, which is
+// only meaningful inside that component's call — a named `slot` anywhere else
+// is a declaration written in the wrong place, and says so.
+func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
+	if x.Name != "" {
+		c.error(x.Pos, "slot %q: a slot is declared in the component's parameter list, and populated only inside a call to it", x.Name)
+		return nil
+	}
+	if len(x.Args) > 0 {
+		c.error(x.Pos, "the anonymous slot takes no arguments")
+	}
+	return &ir.SlotInst{Children: c.checkBlockIR(&x.Block)}
+}
+
+// enclosingSlot returns the slot of the component being checked that name
+// refers to, or nil. Only the component that declares a slot may insert it:
+// the insertion is where the supplied content lands, and nothing outside the
+// declaration has a position to land it in.
+func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
+	if c.currentComponent == nil || name == "" {
+		return nil
+	}
+	for _, s := range c.currentComponent.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
+// checkSlotInsertion checks a named slot's insertion point: the arguments it
+// passes and the fallback it renders when the caller supplies nothing.
+//
+// Arguments are positional against the declaration's types, because a slot
+// declares types and no names -- the names belong to the populator, so there
+// is nothing here for a named argument to bind to.
+func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
+	inst := &ir.SlotInst{AST: vn, Name: slot.Name}
+	var args []ast.Expr
+	for _, a := range vn.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok || arg.Value == nil {
+			continue
+		}
+		if arg.Name != "" {
+			c.error(vn.Pos, "slot %q takes positional arguments: it declares types, and the names belong to whoever populates it", slot.Name)
+			continue
+		}
+		args = append(args, arg.Value)
+	}
+	if len(args) != len(slot.Params) {
+		c.error(vn.Pos, "slot %q takes %d argument(s), got %d", slot.Name, len(slot.Params), len(args))
+	}
+	for i, a := range args {
+		var want *ir.Type
+		if i < len(slot.Params) {
+			want = slot.Params[i]
+		}
+		e := c.checkExprExpecting(a, want)
+		if want != nil {
+			if got := exprType(e); got != nil && !got.IsAssignableTo(want) {
+				c.error(*a.ExprPos(), "cannot use %s as %s for argument %d of slot %q", got, want, i+1, slot.Name)
+			}
+		}
+		inst.Args = append(inst.Args, e)
+	}
+	inst.Children = c.checkBlockIR(&vn.Block)
+	return inst
+}
+
+// findSlot returns comp's slot of that name, or nil.
+func findSlot(comp *ir.Component, name string) *ir.SlotDecl {
+	if comp == nil {
+		return nil
+	}
+	for _, s := range comp.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
+// checkSlotPopulations pulls the `slot name(bindings) { ... }` entries out of a
+// callsite's block and checks each against the callee's declarations, returning
+// the content by slot name and the block with those entries removed -- what is
+// left are the ordinary children, which go to the anonymous slot.
+//
+// A population is the only place a `slot` keyword appears outside a component's
+// own parameter list, so an entry naming nothing the callee declares is caught
+// here rather than reaching the statement checker as a stray declaration.
+func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (map[string]*ir.SlotContent, ast.StmtBlock) {
+	rest := vn.Block
+	if comp == nil {
+		// A platform element has no declarations to populate; a `slot` written
+		// in its block falls through to the statement checker, which reports it.
+		return nil, rest
+	}
+	rest.Stmts = nil
+	var content map[string]*ir.SlotContent
+	for _, s := range vn.Block.Stmts {
+		sn, ok := s.(*ast.SlotNode)
+		if !ok || sn.Name == "" {
+			rest.Stmts = append(rest.Stmts, s)
+			continue
+		}
+		decl := findSlot(comp, sn.Name)
+		if decl == nil {
+			c.error(sn.Pos, "component %s has no slot %q", comp.Name, sn.Name)
+			continue
+		}
+		if _, dup := content[sn.Name]; dup {
+			c.error(sn.Pos, "slot %q is already populated on component %s", sn.Name, comp.Name)
+			continue
+		}
+		if content == nil {
+			content = map[string]*ir.SlotContent{}
+		}
+		content[sn.Name] = c.checkSlotContent(sn, decl)
+	}
+	return content, rest
+}
+
+// checkSlotContent checks one population: the names it binds the insertion's
+// arguments to, and the content it supplies.
+//
+// The names are the populator's, matched by position against the declaration's
+// types -- a slot declares types and no names, so this is where the parameters
+// of a scoped slot get called anything at all. They are ordinary block-scoped
+// bindings and shadow like any other.
+func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.SlotContent {
+	if len(sn.Args) != len(decl.Params) {
+		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))
+	}
+	sc := &ir.SlotContent{}
+	c.pushScope()
+	for i, a := range sn.Args {
+		id, ok := a.(*ast.IdentExpr)
+		if !ok {
+			c.error(*a.ExprPos(), "slot %q: a population binds names, not expressions", sn.Name)
+			continue
+		}
+		var typ *ir.Type
+		if i < len(decl.Params) {
+			typ = decl.Params[i]
+		} else {
+			typ = TypDyn
+		}
+		p := &ir.Param{Name: id.Name, Type: typ}
+		c.declare(id.Pos, p)
+		sc.Params = append(sc.Params, p)
+	}
+	sc.Body = c.checkBlockIR(&sn.Block)
+	c.popScope()
+	// A slot marked #[tree.children("k")] hosts a segmented tree, so the
+	// supplied content is held to the same rule a marked component's children
+	// are: every node must carry #[tree.kind("k")].
+	if decl.ChildKind != "" {
+		for _, st := range sc.Body {
+			ni, ok := st.(*ir.NodeInst)
+			if ok && ni.Component != nil && ni.Component.TreeKind == decl.ChildKind {
+				continue
+			}
+			name := "unknown"
+			if ok && ni.Component != nil {
+				name = ni.Component.Name
+			} else if ok {
+				name = ni.Name
+			}
+			c.error(sn.Pos, "expected %s component in slot %q, got %s", decl.ChildKind, sn.Name, name)
+		}
+	}
+	return sc
 }

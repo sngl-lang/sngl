@@ -121,7 +121,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		}
 	}
 
-	cloned = substituteSlots(cloned, n.Children)
+	cloned = substituteSlots(cloned, n)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's passPlatformFilter
 	// runs, so the override must be resolved now while the component boundary is
@@ -462,38 +462,90 @@ func findParamSyms(stmts []ir.Stmt, propNames map[string]bool) map[string]*ir.Pa
 	return out
 }
 
-// substituteSlots replaces *ir.SlotInst nodes in stmts with the call site's
-// children. Operates on cloned IR, so mutation is safe.
-func substituteSlots(stmts []ir.Stmt, slotChildren []ir.Stmt) []ir.Stmt {
+// slotBody is what one insertion point renders: the content the call site
+// supplied for it, or the insertion's own children as the fallback when it
+// supplied none.
+//
+// A scoped slot's parameters are bound here rather than at the call site,
+// because the names are the populator's and the values are the insertion's --
+// the two only meet when the body is spliced into place.
+func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
+	if si.Name == "" {
+		if len(callsite.Children) == 0 {
+			return cloneStmts(si.Children)
+		}
+		return cloneStmts(callsite.Children)
+	}
+	sc := callsite.Slots[si.Name]
+	if sc == nil {
+		return cloneStmts(si.Children)
+	}
+	body := cloneStmts(sc.Body)
+	if len(sc.Params) > 0 {
+		bindings := make(map[string]ir.Expr, len(sc.Params))
+		for i, prm := range sc.Params {
+			if i < len(si.Args) {
+				bindings[prm.Name] = si.Args[i]
+			}
+		}
+		body = substituteSlotParams(body, bindings)
+	}
+	return body
+}
+
+// substituteSlotParams rewrites references to a population's declared
+// parameters into the expressions the insertion passed for them.
+func substituteSlotParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
+	for _, s := range stmts {
+		_ = ir.RewriteExprs(s, func(e ir.Expr) (ir.Expr, error) {
+			id, ok := e.(*ir.Ident)
+			if !ok {
+				return e, nil
+			}
+			if _, isParam := id.Sym.(*ir.Param); !isParam {
+				return e, nil
+			}
+			if bound, ok := bindings[id.Name]; ok {
+				return cloneExpr(bound), nil
+			}
+			return e, nil
+		})
+	}
+	return stmts
+}
+
+// substituteSlots replaces *ir.SlotInst nodes in stmts with what the call site
+// supplied. Operates on cloned IR, so mutation is safe.
+func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 	var out []ir.Stmt
 	for _, s := range stmts {
-		if _, ok := s.(*ir.SlotInst); ok {
-			out = append(out, cloneStmts(slotChildren)...)
+		if si, ok := s.(*ir.SlotInst); ok {
+			out = append(out, slotBody(si, callsite)...)
 			continue
 		}
-		out = append(out, substituteSlotsInStmt(s, slotChildren))
+		out = append(out, substituteSlotsInStmt(s, callsite))
 	}
 	return out
 }
 
-func substituteSlotsInStmt(s ir.Stmt, slotChildren []ir.Stmt) ir.Stmt {
+func substituteSlotsInStmt(s ir.Stmt, callsite *ir.NodeInst) ir.Stmt {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		n.Children = substituteSlots(n.Children, slotChildren)
+		n.Children = substituteSlots(n.Children, callsite)
 	case *ir.If:
-		n.Body = substituteSlots(n.Body, slotChildren)
-		n.Else = substituteSlots(n.Else, slotChildren)
+		n.Body = substituteSlots(n.Body, callsite)
+		n.Else = substituteSlots(n.Else, callsite)
 	case *ir.For:
-		n.Body = substituteSlots(n.Body, slotChildren)
-		n.Else = substituteSlots(n.Else, slotChildren)
+		n.Body = substituteSlots(n.Body, callsite)
+		n.Else = substituteSlots(n.Else, callsite)
 	case *ir.PlatformFilter:
-		n.Body = substituteSlots(n.Body, slotChildren)
+		n.Body = substituteSlots(n.Body, callsite)
 	case *ir.Window:
-		n.Body = substituteSlots(n.Body, slotChildren)
+		n.Body = substituteSlots(n.Body, callsite)
 	case *ir.ContextProvider:
-		n.Children = substituteSlots(n.Children, slotChildren)
+		n.Children = substituteSlots(n.Children, callsite)
 	case *ir.ErrorBoundary:
-		n.Children = substituteSlots(n.Children, slotChildren)
+		n.Children = substituteSlots(n.Children, callsite)
 	case *ir.SlotInst:
 		// Handled in substituteSlots above; if we land here it's a
 		// nested slot we don't substitute through.

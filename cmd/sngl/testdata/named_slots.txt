@@ -1,0 +1,78 @@
+# A named slot's content has to reach the generated output, which is what the
+# checker alone cannot say: a component value in a prop position used to type
+# check and then vanish. Each assertion here is a position in the rendered tree.
+#
+# `header` is populated and renders the supplied content; `cell` is a scoped
+# slot inside a `for`, so it renders once per row with the loop's value bound to
+# the populator's own name; the anonymous slot takes the ordinary children.
+
+sngl generate --out out table.sngl
+grep 'Rows' out/index.html
+grep 'alpha' out/index.html
+grep 'beta' out/index.html
+grep 'ordinary child' out/index.html
+
+# An unpopulated named slot renders the insertion's own block, while the
+# anonymous slot beside it still takes the ordinary children. A name-blind
+# substitution puts the children in both positions, so "untitled" disappearing
+# is what this catches -- and without it a fallback is parsed, checked and
+# silently dropped.
+sngl generate --out fbout fallback.sngl
+grep 'untitled' fbout/index.html
+grep 'ordinary' fbout/index.html
+
+-- table.sngl --
+import . "sngl://std"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, slot header, slot cell(Row)) list<component> {
+    vbox {
+        header {
+            text(value="(untitled)")
+        }
+        for r = rows {
+            cell(r)
+        }
+        slot
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
+            slot header {
+                text(value="Rows")
+            }
+            slot cell(row) {
+                text(value=row.title)
+            }
+            text(value="ordinary child")
+        }
+    }
+}
+
+output { none { html } }
+-- fallback.sngl --
+import . "sngl://std"
+
+component card(slot heading) list<component> {
+    vbox {
+        heading {
+            text(value="untitled")
+        }
+        slot
+    }
+}
+
+component main {
+    window #w(href="/index.html") {
+        card() {
+            text(value="ordinary")
+        }
+    }
+}
+
+output { none { html } }

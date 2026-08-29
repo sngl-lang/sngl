@@ -11,6 +11,6 @@ component main {
 
 component wrapper() list<component> {
     vbox {
-        slot()
+        slot
     }
 }

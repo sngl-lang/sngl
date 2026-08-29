@@ -16,17 +16,33 @@ type Stmt interface {
 // NodeInst is a resolved component or platform-element instantiation.
 // Component is non-nil when instantiating a user-defined component.
 type NodeInst struct {
-	AST        ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
-	Name       string         // resolved element/component name
-	Component  *Component     // non-nil for user component; nil for platform element
-	Props      []Arg          // property assignments (positional and named)
-	Handlers   []EventHandler // inline event handlers
-	Bindings   []PropBinding  // first-class bidi prop bindings; consumed by lowering
-	Children   []Stmt         // type-checked body
-	ID         string         // #id binding
-	Key        Expr           // key expression for list diffing (nil → implicit index)
-	Ref        Expr           // ref binding (nil if none)
-	CanvasDraw *Func          // non-nil for canvas containers after passCanvas
+	AST       ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	Name      string         // resolved element/component name
+	Component *Component     // non-nil for user component; nil for platform element
+	Props     []Arg          // property assignments (positional and named)
+	Handlers  []EventHandler // inline event handlers
+	Bindings  []PropBinding  // first-class bidi prop bindings; consumed by lowering
+	Children  []Stmt         // type-checked body
+	// Slots is the content supplied for the component's named slots, keyed by
+	// slot name. The ordinary Children go to the anonymous slot; these go to
+	// the insertion point that names them.
+	Slots      map[string]*SlotContent `json:",omitempty"`
+	ID         string                  // #id binding
+	Key        Expr                    // key expression for list diffing (nil → implicit index)
+	Ref        Expr                    // ref binding (nil if none)
+	CanvasDraw *Func                   // non-nil for canvas containers after passCanvas
+}
+
+// SlotContent is what a callsite supplies for one named slot: the statements to
+// splice at the insertion point, and the parameters the populator chose to bind
+// the insertion's arguments to.
+//
+// The parameters are the populator's own names, matched by position against the
+// slot declaration's types, so lowering binds them to the argument expressions
+// written at the insertion rather than substituting statements blindly.
+type SlotContent struct {
+	Params []*Param
+	Body   []Stmt
 }
 
 // Arg is a property assignment in a node instantiation.
@@ -60,7 +76,15 @@ func (*CallStmt) stmtNode() {}
 
 // SlotInst is the slot pseudo-element.
 type SlotInst struct {
-	AST      *ast.VisualNode
+	AST *ast.VisualNode
+	// Name is the slot this instance projects. Empty for the anonymous slot,
+	// whose content is the caller's ordinary children.
+	Name string `json:",omitempty"`
+	// Args are the values passed to a scoped slot at this insertion point. The
+	// populator binds them to names of its own choosing, so they are matched by
+	// position against the declaration's types.
+	Args []Expr `json:",omitempty"`
+	// Children is the fallback: what renders when the caller supplies nothing.
 	Children []Stmt
 }
 

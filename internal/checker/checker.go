@@ -1607,6 +1607,35 @@ func (c *checker) isLibraryNamespace(name string) bool {
 	return false
 }
 
+// claimComponentAPI holds a component's parameter list to one name per entry.
+// Props, events and slots are written in one list, so a name repeated across
+// them is a collision there whatever the three mean afterwards: a slot is read
+// as a tag and a prop as a value, but the reader of the declaration has only
+// the one list to go on.
+func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
+	seen := make(map[string]string, len(comp.Props)+len(comp.Events)+len(comp.Slots))
+	claim := func(name, kind string, pos ast.Pos) {
+		if name == "" {
+			return
+		}
+		if prev, dup := seen[name]; dup {
+			c.error(pos, "%s %q on component %s: name is already declared as a %s", kind, name, comp.Name, prev)
+			return
+		}
+		seen[name] = kind
+	}
+	for _, p := range decl.Props.Props {
+		switch pd := p.(type) {
+		case ast.Param:
+			claim(pd.Name, "prop", pd.Pos)
+		case ast.EventDecl:
+			claim(pd.Name, "event", pd.Pos)
+		case ast.SlotDecl:
+			claim(pd.Name, "slot", pd.Pos)
+		}
+	}
+}
+
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// Component extensions: `component sngl.X { platform <name> { ... } }`.
 	// A parens form with nothing in them declares no extension: android.sngl
@@ -1677,8 +1706,16 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
+		case ast.SlotDecl:
+			slot := &ir.SlotDecl{Name: pd.Name}
+			for _, t := range pd.Params {
+				slot.Params = append(slot.Params, c.resolveType(t))
+			}
+			c.applySlotMarks(pd, slot)
+			irComp.Slots = append(irComp.Slots, slot)
 		}
 	}
+	c.claimComponentAPI(comp, irComp)
 
 	finishTreeMarks(comp, irComp, c.pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)

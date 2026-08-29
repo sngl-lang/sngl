@@ -386,9 +386,13 @@ type Component struct {
 	// the component was resolved by a name it has no way to read.
 	WildcardInto string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg          string
-	Props        []*Prop
-	Events       []*EventDecl
+	Pkg    string
+	Props  []*Prop
+	Events []*EventDecl
+	// Slots are the named slots declared in the parameter list: regions of UI
+	// the caller supplies. They sit beside Props and Events because that is
+	// where they are written — a component's whole API is one list.
+	Slots        []*SlotDecl `json:",omitempty"`
 	ChildrenType *Type
 	Vars         []*Var
 	Funcs        []*Func
@@ -455,6 +459,22 @@ type EventDecl struct {
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
+}
+
+// SlotDecl is a resolved named-slot declaration on a component: a region of UI
+// the caller supplies, declared in the parameter list beside the props and
+// events.
+//
+// Params are types and nothing else. A slot's parameter names are chosen by
+// whoever writes the body, which is the populator, so an insertion matches
+// them by position exactly as for a func type.
+type SlotDecl struct {
+	Name   string
+	Params []*Type `json:",omitempty"`
+	// ChildKind names the segmented tree the supplied content must be members
+	// of, from #[tree.children] on the declaration. Empty for a slot that
+	// accepts ordinary components.
+	ChildKind string `json:",omitempty"`
 }
 
 // EventHandler is a resolved event handler. The handler body is represented

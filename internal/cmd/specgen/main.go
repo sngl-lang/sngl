@@ -171,7 +171,7 @@ type section struct {
 
 var sections = []section{
 	{"document", []string{"Document", "StmtBlock"}},
-	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "PlatformNode", "AssignOp", "IncDecOp"}},
+	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "PlatformNode", "SlotNode", "SlotArgList", "AssignOp", "IncDecOp"}},
 	{"imports", []string{"ImportDecl"}},
 	{"type-declarations", []string{"StructDecl", "StructField", "EnumDecl", "UnitDecl"}},
 	{"constants-variables", []string{
@@ -179,7 +179,7 @@ var sections = []section{
 		"VarDecl", "VarSpec", "VarHandler",
 	}},
 	{"functions", []string{"FuncDecl", "FuncTail", "FuncBodyTail", "FuncName", "TypeParamList", "ParamList", "Param"}},
-	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamBody", "CompParamTail"}},
+	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamBody", "SlotParam", "CompParamTail"}},
 	{"expressions", []string{
 		"Expr", "TernaryExpr", "OrExpr", "AndExpr",
 		"EqExpr", "CmpExpr", "AddExpr", "MulExpr",
@@ -257,8 +257,8 @@ var tokenReplacements = map[string]string{
 	"kw_const": `"const"`, "kw_var": `"var"`, "kw_component": `"component"`,
 	"kw_if": `"if"`, "kw_for": `"for"`, "kw_else": `"else"`,
 	"kw_func": `"func"`, "kw_unit": `"unit"`, "kw_return": `"return"`,
-	"kw_platform": `"platform"`,
-	"slashdash":   `"/-"`, "semi": `";"`,
+	"kw_platform": `"platform"`, "kw_slot": `"slot"`,
+	"slashdash": `"/-"`, "semi": `";"`,
 	"str_start": "STR_START", "str_end": "STR_END", "str_resume": "STR_RESUME",
 	"triple_start": "TRIPLE_START", "triple_end": "TRIPLE_END",
 	"i18n_str_full": "I18N_STR_FULL", "i18n_triple_full": "I18N_TRIPLE_FULL",

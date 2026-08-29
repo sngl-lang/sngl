@@ -37,6 +37,8 @@ func (p Param) MacroAttrs() []MacroAttr { return p.Attrs }
 
 func (e EventDecl) MacroAttrs() []MacroAttr { return e.Attrs }
 
+func (s SlotDecl) MacroAttrs() []MacroAttr { return s.Attrs }
+
 func (s *StructDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)     { s.Attrs, s.Pos = attrs, pos }
 func (f *StructField) SetMacroAttrs(pos Pos, attrs []MacroAttr)   { f.Attrs, f.Pos = attrs, pos }
 func (f *FuncDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { f.Attrs, f.Pos = attrs, pos }

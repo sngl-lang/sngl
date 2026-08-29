@@ -176,6 +176,8 @@ func (f *formatter) endLine(s ast.Stmt) int {
 		return f.blockEndLine(x.Pos.Line, &x.Body)
 	case *ast.PlatformStmt:
 		return f.blockEndLine(x.Pos.Line, &x.Body)
+	case *ast.SlotNode:
+		return f.blockEndLine(x.Pos.Line, &x.Block)
 	case *ast.StructDef:
 		if x.IsMultiline {
 			return x.Pos.Line + len(x.Body) + 1
@@ -229,6 +231,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeForStmt(x)
 	case *ast.PlatformStmt:
 		f.writePlatformStmt(x)
+	case *ast.SlotNode:
+		f.writeSlotNode(x)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -1242,5 +1246,31 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
 		} else {
 			f.write(" ")
 		}
+	}
+}
+
+// writeSlotNode formats `slot` in statement position: bare for the anonymous
+// slot's insertion point, named with an optional binding list when it populates
+// a slot from a callsite. The block is written only when there is one, so a
+// bare `slot` stays a single word.
+func (f *formatter) writeSlotNode(s *ast.SlotNode) {
+	f.write("slot")
+	if s.Name != "" {
+		f.write(" ")
+		f.write(s.Name)
+	}
+	if len(s.Args) > 0 {
+		f.write("(")
+		for i, a := range s.Args {
+			if i > 0 {
+				f.write(", ")
+			}
+			f.writeExpr(a)
+		}
+		f.write(")")
+	}
+	if s.Block.IsDefined() {
+		f.write(" ")
+		f.writeBlock(&s.Block)
 	}
 }

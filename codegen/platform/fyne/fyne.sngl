@@ -329,7 +329,7 @@ component VBox(style sngl.Style) list<component> {
         },
         style={...style},
     ) {
-        sngl.slot
+        slot
     }
 }
 
@@ -342,7 +342,7 @@ component HBox(style sngl.Style) list<component> {
         },
         style={...style},
     ) {
-        sngl.slot
+        slot
     }
 }
 
@@ -356,7 +356,7 @@ component VScroll(style sngl.Style) component {
         },
         style={...style},
     ) {
-        sngl.slot
+        slot
     }
 }
 

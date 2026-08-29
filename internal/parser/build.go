@@ -275,6 +275,8 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildForNode(it.enter())
 		case PlatformNode:
 			return b.buildPlatformNode(it.enter())
+		case SlotNode:
+			return b.buildSlotNode(it.enter())
 		case VisualOrStmt:
 			return b.buildVisualOrStmt(it.enter())
 		}
@@ -869,9 +871,12 @@ func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
 }
 
 func (b *builder) buildCompParamBody(it nodeIter, attrs []ast.MacroAttr) ast.ParamOrEventDecl {
-	// CompParamBody = colon ident [Type] [assign Expr] | at ident [Type] | ident [CompParamTail] .
+	// CompParamBody = colon ident [Type] [assign Expr] | at ident [Type] | SlotParam | ident [CompParamTail] .
 	if it.done() {
 		return ast.Param{Attrs: attrs}
+	}
+	if it.isNonTerminal() && it.symbol() == SlotParam {
+		return b.buildSlotParam(it.enter(), attrs)
 	}
 	if !it.isNonTerminal() {
 		switch it.tokenType() {
@@ -1302,6 +1307,74 @@ func (b *builder) buildPlatformNode(it nodeIter) *ast.PlatformStmt {
 		stmt.Body = b.buildStmtBlock(it.enter())
 	}
 	return stmt
+}
+
+// buildSlotParam builds a named-slot declaration from a component's parameter
+// list. The parenthesised list is types only: the names belong to whoever
+// writes the body, which is the populator.
+func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDecl {
+	// SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
+	it.skip() // kw_slot
+	if it.done() {
+		return ast.SlotDecl{Attrs: attrs}
+	}
+	nameTok := it.shift()
+	d := ast.SlotDecl{
+		Pos:   ast.Pos(b.posFromToken(nameTok)),
+		Name:  nameTok.Literal,
+		Attrs: attrs,
+	}
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == TypeList {
+			d.Params = b.buildTypeList(it.enter())
+			continue
+		}
+		it.skip() // lparen / rparen
+	}
+	return d
+}
+
+// buildSlotNode builds `slot` in statement position — the anonymous insertion
+// point when bare, a population when named. Which one it is is the checker's to
+// say; both spell their arguments as expressions.
+func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
+	// SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
+	pos := b.posFromToken(it.shift()) // kw_slot
+	n := &ast.SlotNode{Pos: ast.Pos(pos)}
+	for !it.done() {
+		if it.isNonTerminal() {
+			switch it.symbol() {
+			case SlotArgList:
+				n.Args = b.buildSlotArgList(it.enter())
+			case StmtBlock:
+				n.Block = b.buildStmtBlock(it.enter())
+			default:
+				it.skip()
+			}
+			continue
+		}
+		if it.tokenType() == IDENT {
+			n.Name = it.shift().Literal
+			continue
+		}
+		it.skip() // lparen / rparen
+	}
+	return n
+}
+
+func (b *builder) buildSlotArgList(it nodeIter) []ast.Expr {
+	// SlotArgList = Expr { comma Expr } [ comma ] .
+	var out []ast.Expr
+	for !it.done() {
+		if it.isNonTerminal() {
+			if e := b.buildExpr(it.enter()); e != nil {
+				out = append(out, e)
+			}
+			continue
+		}
+		it.skip() // comma
+	}
+	return out
 }
 
 // --- Expressions ---
