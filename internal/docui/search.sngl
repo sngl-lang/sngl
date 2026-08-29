@@ -36,7 +36,7 @@ component SearchBox(entries list<docs.SearchEntry> = []) {
         html.div(class="search-box") {
             html.input(class="search-input", type="search", placeholder="Search docs…", autocomplete="off", spellcheck="false",
                 oninput="window.snglFilterSearch(this)")
-            html.div(class="search-results", hidden="") {
+            html.div(class="search-results", hidden=true) {
                 for entry = entries {
                     html.a(href=entry.href, class="search-hit") {
                         html.div(innerText=entry.title, class="hit-title")
