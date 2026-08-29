@@ -61,7 +61,7 @@ func (rb *renderBuilder) pushHole(h codegen.RouteHole) {
 // server has a value for inside the hole and the nested render may therefore
 // use.
 func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *codegen.RouteRender {
-	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx, rawElem: rb.rawElem}
+	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx}
 	if len(names) > 0 {
 		child.state = maps.Clone(rb.state)
 		for _, n := range names {
