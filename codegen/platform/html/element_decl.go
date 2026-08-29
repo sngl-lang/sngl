@@ -37,6 +37,17 @@ func (g *htmlGen) rawElement() *ir.Component {
 // emitted as an attribute.
 const tagProp = "tag"
 
+// attrsProp is the prop html's `element` collects every attribute it does not
+// declare into, keyed by the name it was written under. Named here for the
+// reason tagProp is: it is html's own prop, and TestElementDeclaresTagProp
+// holds it to the declaration.
+//
+// The collecting is the checker's — a name matching the prop's #[wildcard]
+// pattern lands in the map, and binding both forms at one call site is an
+// error there. What reaches codegen is the map, and codegen.WildcardProps
+// unpacks it back into the names it was written under.
+const attrsProp = "attrs"
+
 // elementProp returns the element's declaration of prop, or nil when the prop
 // is one the wildcard accepted (an attribute nobody declared).
 func elementProp(comp *ir.Component, prop string) *ir.Prop {
@@ -176,18 +187,6 @@ func eventPayloadFields(comp *ir.Component, event string) []string {
 // wildcardPropNamed reports whether prop is the declaration's wildcard prop --
 // the map every name it matched was collected into. Such a prop names no
 // attribute of its own, so a caller writing one has to unpack it first.
-func wildcardPropNamed(decl *ir.Component, prop string) bool {
-	if decl == nil || prop == "" {
-		return false
-	}
-	for _, p := range decl.Props {
-		if p.Name == prop && p.Wildcard != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // voidElements are the tags that hold no content: the HTML parser closes them
 // itself, and a close tag for one -- `</input>` -- is invalid markup. The
 // static and route renders read this same list; the route render had none, and

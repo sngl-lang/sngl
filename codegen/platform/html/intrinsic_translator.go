@@ -169,7 +169,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// whose value stringifies to "[object Map]", and loses every name in it.
 	// The two markup paths (nodeProps, elementAttrs) already unpack it; this is
 	// the third, and the one a node inside a `for` or a reactive slot takes.
-	if wc := wildcardPropNamed(t.rawElem, prop); wc {
+	if prop == attrsProp {
 		m, ok := value.(*ir.MapLitIR)
 		if !ok {
 			return nil

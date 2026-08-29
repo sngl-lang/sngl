@@ -39,17 +39,10 @@ func validateRawElements(pkg *ir.Package) error {
 				nodePos(n), tagProp)
 			return nil
 		}
-		for _, p := range decl.Props {
-			if p == nil || p.Wildcard == "" {
-				continue
-			}
-			expr := codegen.NodeProp(n, p.Name)
-			if expr == nil {
-				continue
-			}
-			if _, ok := expr.(*ir.MapLitIR); !ok {
+		if attrs := codegen.NodeProp(n, attrsProp); attrs != nil {
+			if _, ok := attrs.(*ir.MapLitIR); !ok {
 				bad = fmt.Errorf("%s: %q must be a map literal: each attribute is written by name, and these names are not known until it runs",
-					nodePos(n), p.Name)
+					nodePos(n), attrsProp)
 				return nil
 			}
 		}

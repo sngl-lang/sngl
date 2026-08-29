@@ -168,7 +168,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
 	var rawBinding *ir.Arg
-	for _, p := range rb.elementAttrs(decl, n) {
+	for _, p := range rb.elementAttrs(n) {
 		switch contentProp(p.Name) {
 		case textContentKind:
 			textBinding = p
@@ -285,20 +285,11 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 // element rather than describing it) and minus the wildcard container, whose
 // entries are unpacked back into the attribute names they were written under
 // and appended sorted.
-func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
-	into := tagProp
-	wildcard := map[string]bool{}
-	if decl != nil {
-		for _, dp := range decl.Props {
-			if dp != nil && dp.Wildcard != "" {
-				wildcard[dp.Name] = true
-			}
-		}
-	}
+func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == into || wildcard[p.Name] {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
 			continue
 		}
 		out = append(out, p)

@@ -30,20 +30,8 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 	// map is unpacked back into them here — where html turns props
 	// into names.
 	maps.Copy(out, codegen.WildcardProps(n))
-	for _, dp := range componentProps(n) {
-		if dp.Wildcard != "" {
-			delete(out, dp.Name)
-		}
-	}
+	delete(out, attrsProp)
 	return out
-}
-
-// componentProps is the props a node's component declares, or nil.
-func componentProps(n *ir.NodeInst) []*ir.Prop {
-	if n == nil || n.Component == nil {
-		return nil
-	}
-	return n.Component.Props
 }
 
 // rawElementTag reports the tag the element's tag prop names — the prop the
