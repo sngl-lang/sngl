@@ -1730,7 +1730,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		case ast.SlotDecl:
 			slot := &ir.SlotDecl{Name: pd.Name}
 			if pd.Type != nil {
-				slot.Content = c.resolveType(pd.Type)
+				slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
 			}
 			// The grammar reaches a parameter list only past an identifier, so
 			// the default slot cannot carry one and nothing checks for it here.
@@ -3314,5 +3314,5 @@ func (c *checker) finishDefaultSlot(decl *ast.ComponentDecl, comp *ir.Component)
 		c.error(decl.Pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
 		return
 	}
-	comp.ChildrenType = slotContentType(slot)
+	comp.ChildrenType = childrenTypeFor(slot)
 }

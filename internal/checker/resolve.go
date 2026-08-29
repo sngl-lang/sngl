@@ -202,7 +202,7 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
-func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.Type {
+func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
@@ -221,7 +221,13 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 		if c.rejectUnexported(ast.Pos{}, tsym) {
 			return TypDyn
 		}
-		return tsym.SymType()
+		typ := tsym.SymType()
+		if typ != nil && typ.Kind == ir.TypeStruct {
+			if sd, ok := typ.Decl.(*ir.StructDef); ok && len(sd.TypeParams) > 0 {
+				return c.applyStructTypeArgs(ast.Pos{}, typ, sd, args)
+			}
+		}
+		return typ
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
 	return TypDyn
@@ -599,4 +605,68 @@ func isComparable(t *ir.Type) bool {
 		return true
 	}
 	return false
+}
+
+// resolveSlotContent reads a slot's declared type as what each supplied node
+// must be, plus how many are accepted. Bare `T` takes any number; the two
+// wrappers narrow it, and neither is a type the slot content ever has — they
+// say a count, so they are read here rather than constructed as types.
+func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
+	nt, ok := t.(*ast.NamedType)
+	if !ok {
+		return c.resolveType(t), ir.SlotAny
+	}
+	if card, elem := c.slotWrapper(nt); card != ir.SlotAny {
+		return elem, card
+	}
+	return c.resolveType(t), ir.SlotAny
+}
+
+// slotWrapper reports the count a wrapper names, and the type it wraps. The
+// wrappers are recognised by their #[builtin] kind so a user declaration of
+// either name shadows them like any other built-in.
+func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
+	name := nt.Name
+	var sym ir.Symbol
+	if nt.Package != "" {
+		name = nt.Package + "." + nt.Name
+		nsSym, ok := c.scope.Lookup(nt.Package)
+		if !ok {
+			return ir.SlotAny, nil
+		}
+		ns, ok := nsSym.(*ir.Namespace)
+		if !ok {
+			return ir.SlotAny, nil
+		}
+		if ns.Pkg == nil {
+			return ir.SlotAny, nil
+		}
+		var found bool
+		if sym, found = ns.Pkg.Symbols.LookupMemberType(nt.Name); !found {
+			return ir.SlotAny, nil
+		}
+	} else {
+		var ok bool
+		if sym, ok = c.scope.Lookup(nt.Name); !ok {
+			return ir.SlotAny, nil
+		}
+	}
+	sd, ok := sym.(*ir.StructDef)
+	if !ok {
+		return ir.SlotAny, nil
+	}
+	var card ir.SlotCard
+	switch sd.Builtin {
+	case ir.BuiltinTreeOne:
+		card = ir.SlotOne
+	case ir.BuiltinOption:
+		card = ir.SlotOptional
+	default:
+		return ir.SlotAny, nil
+	}
+	if len(nt.TypeArgs) != 1 {
+		c.error(nt.Pos, "%s takes exactly one type argument", name)
+		return card, &ir.Type{Kind: ir.TypeComponent}
+	}
+	return card, c.resolveType(nt.TypeArgs[0])
 }

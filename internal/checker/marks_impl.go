@@ -16,8 +16,8 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"internal/tree", "kind"}:       markTreeKind,
-	{"internal/tree", "children"}:   markTreeChildren,
+	{"tree", "kind"}:                markTreeKind,
+	{"tree", "children"}:            markTreeChildren,
 	{"platforms", "options"}:        markOptions,
 	{"platforms", "wildcard"}:       markWildcard,
 	{"std", "foreign"}:              markForeign,

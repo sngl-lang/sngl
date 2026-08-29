@@ -6082,12 +6082,15 @@ state6:
 // SlotParam grammar:
 //
 //	# A slot: a region of UI the caller supplies, declared alongside the props and
-//	# events so a component's whole API is one list. Types only, no parameter names —
-//	# those belong to whoever writes the body, exactly as for a func type.
+//	# events so a component's whole API is one list. Parenthesised types are what the
+//	# slot is *invoked* with; the trailing Type is what it *accepts*, and its shape
+//	# bounds the count — list<T> any, option<T> none-or-one, bare T exactly one.
 //	#
 //	# Without an identifier it declares the default slot, the one the caller fills
-//	# with ordinary children. That form takes no parameters: there is no population
-//	# site to bind them at.
+//	# with ordinary children, and takes no invocation parameters: there is no
+//	# population site to bind them at. `slot()` rather than a bare `slot` when it
+//	# carries a type, because an optional name followed by an optional type is not
+//	# LL(1) — both start with ident, and the generator rejects the ambiguity.
 //	SlotParam = kw_slot [ ident [ lparen [ TypeList ] rparen ] [ Type ] | lparen rparen [ Type ] ] .
 //
 //	State 0
@@ -7175,7 +7178,7 @@ state3:
 //	# ── Types ─────────────────────────────────────────────────────────────────────
 //
 //	Type =
-//	      ident [ dot ident | lt TypeList gt ]
+//	      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
 //	    | kw_component
 //	    | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
 //	    | StructDecl
@@ -7187,15 +7190,15 @@ state3:
 //		on  ident
 //			shift and goto state 1
 //		on  kw_component
-//			shift and goto state 3
-//		on  kw_func
 //			shift and goto state 6
+//		on  kw_func
+//			shift and goto state 7
 //		on  kw_unit
-//			call UnitDecl and goto state 3
+//			call UnitDecl and goto state 6
 //		on  kw_struct
-//			call StructDecl and goto state 3
+//			call StructDecl and goto state 6
 //		on  kw_enum
-//			call EnumDecl and goto state 3
+//			call EnumDecl and goto state 6
 //	State 1
 //		Accept
 //		on  dot
@@ -7207,27 +7210,31 @@ state3:
 //			shift and goto state 3
 //	State 3
 //		Accept
+//		on  lt
+//			shift and goto state 4
 //	State 4
 //		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call TypeList and goto state 5
 //	State 5
 //		on  gt
-//			shift and goto state 3
+//			shift and goto state 6
 //	State 6
-//		on  lparen
-//			shift and goto state 7
+//		Accept
 //	State 7
-//		on  rparen
+//		on  lparen
 //			shift and goto state 8
-//		on  ident, kw_enum, kw_func, kw_struct, kw_unit
-//			call FuncTypeParamList and goto state 9
 //	State 8
+//		on  rparen
+//			shift and goto state 9
+//		on  ident, kw_enum, kw_func, kw_struct, kw_unit
+//			call FuncTypeParamList and goto state 10
+//	State 9
 //		Accept
 //		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
-//			call Type and goto state 3
-//	State 9
+//			call Type and goto state 6
+//	State 10
 //		on  rparen
-//			shift and goto state 8
+//			shift and goto state 9
 //
 // Type is used internally from Parse.
 func (p *Parser) Type() (r []int32) {
@@ -7241,19 +7248,19 @@ func (p *Parser) Type() (r []int32) {
 		goto state1
 	case kw_component:
 		r = append(r, p.shift())
-		goto state3
+		goto state6
 	case kw_func:
 		r = append(r, p.shift())
-		goto state6
+		goto state7
 	case kw_unit:
 		r = p.add(r, p.UnitDecl())
-		goto state3
+		goto state6
 	case kw_struct:
 		r = p.add(r, p.StructDecl())
-		goto state3
+		goto state6
 	case kw_enum:
 		r = p.add(r, p.EnumDecl())
-		goto state3
+		goto state6
 	}
 	return p.stop(r, accept, errorSet)
 state1:
@@ -7276,7 +7283,12 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = true, 0
+	accept, errorSet = true, 133
+	switch Symbol(p.tok.Ch) {
+	case lt:
+		r = append(r, p.shift())
+		goto state4
+	}
 	return p.stop(r, accept, errorSet)
 state4:
 	accept, errorSet = false, 72
@@ -7291,42 +7303,45 @@ state5:
 	switch Symbol(p.tok.Ch) {
 	case gt:
 		r = append(r, p.shift())
-		goto state3
+		goto state6
 	}
 	return p.stop(r, accept, errorSet)
 state6:
+	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+state7:
 	accept, errorSet = false, 132
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
-		goto state7
+		goto state8
 	}
 	return p.stop(r, accept, errorSet)
-state7:
+state8:
 	accept, errorSet = false, 75
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
-		goto state8
+		goto state9
 	case ident, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.FuncTypeParamList())
-		goto state9
+		goto state10
 	}
 	return p.stop(r, accept, errorSet)
-state8:
+state9:
 	accept, errorSet = true, 73
 	switch Symbol(p.tok.Ch) {
 	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
-		goto state3
+		goto state6
 	}
 	return p.stop(r, accept, errorSet)
-state9:
+state10:
 	accept, errorSet = false, 141
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
-		goto state8
+		goto state9
 	}
 	return p.stop(r, accept, errorSet)
 }

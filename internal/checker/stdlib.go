@@ -329,7 +329,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// Library source has its own file scopes, but loading is lazy: it happens
 	// part-way through the importing document's pass1, whose claims are still
 	// in c.topLevel. A lib file's import alias would otherwise collide with a
-	// name the user's dot imports lifted — `import tree "sngl://internal/tree"`
+	// name the user's dot imports lifted — `import tree "sngl://tree"`
 	// against std's `tree` component.
 	savedTopLevel := c.topLevel
 	c.topLevel = nil

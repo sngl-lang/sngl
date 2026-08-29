@@ -154,7 +154,7 @@ struct Tiny {}
 // The alias is the file's, and the mark follows it like any other qualified
 // name.
 func TestTreeMarksFollowTheImportAlias(t *testing.T) {
-	pkg, errs := checkMarkStub(t, `import t "sngl://internal/tree"
+	pkg, errs := checkMarkStub(t, `import t "sngl://tree"
 
 #[t.kind("block")]
 #[t.children("inline")]
@@ -168,7 +168,7 @@ component para() {}
 }
 
 func TestTreeKindRejectsAnEmptyName(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://internal/tree"
+	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
 #[t.kind("")]
 component para() {}
@@ -178,7 +178,7 @@ component para() {}
 
 // A component is a node of one tree; a second mark would make it two.
 func TestTreeKindRefusesASecondMark(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://internal/tree"
+	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
 #[t.kind("block")]
 #[t.kind("inline")]
@@ -188,7 +188,7 @@ component para() {}
 }
 
 func TestTreeChildrenRefusesASecondMark(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://internal/tree"
+	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
 #[t.children("block")]
 #[t.children("inline")]
@@ -199,7 +199,7 @@ component doc() {}
 
 // Only a component is a node in a tree.
 func TestTreeKindCannotMarkAStruct(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://internal/tree"
+	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
 #[t.kind("block")]
 struct Tiny {}

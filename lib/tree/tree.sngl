@@ -1,16 +1,17 @@
-// Package tree declares the marks that describe a segmented component tree:
-// one whose nodes are not interchangeable widgets but members of a named
-// family, where a container accepts only its own family's members.
+// Package tree describes a segmented component tree: one whose nodes are not
+// interchangeable widgets but members of a named family, where a container
+// accepts only its own family's members.
 //
 // A canvas and its shapes are one such tree; rich text (paragraphs, inline
-// runs) and menus (items, separators) are others. The marks carry only a name,
-// and the compiler compares names — nothing here knows what a shape is.
+// runs) and menus (items, separators) are others. Nothing here knows what a
+// shape is — the compiler compares declarations.
 //
-// The path is `sngl://internal/tree`, so only library source may import it. A
-// package that wants to hand the vocabulary to users declares its own mark on
-// top, the way `sngl://draw` declares `shape`.
+// A slot declares which family its content belongs to by naming that family's
+// type, and how many of them it takes by wrapping it: bare is any number,
+// `tree.one<T>` is exactly one, `option<T>` is none or one.
 
 import ir "sngl://internal/ir"
+import . "sngl://internal/marks"
 
 // Names the tree this component is a member of.
 //
@@ -25,3 +26,8 @@ func kind(name string) ir.Macro {}
 // hosts shapes but is not one. Written alongside `kind` it makes a member that
 // hosts a different family, which is how a rich-text block holds inline runs.
 func children(name string) ir.Macro {}
+
+// Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
+// any number, so this is what narrows it; `option<T>` is the other narrowing.
+#[builtin("treeOne")]
+struct one<T> {}

@@ -16,7 +16,7 @@ import ir "sngl://internal/ir"
 
 // `shape` is this package's public spelling of `tree.kind("shape")`; the tree
 // marks themselves are internal to the compiler.
-import tree "sngl://internal/tree"
+import tree "sngl://tree"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and

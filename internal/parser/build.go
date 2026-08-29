@@ -2687,21 +2687,21 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 	case IDENT:
 		nameTok := it.shift()
 		nt := &ast.NamedType{Pos: b.posFromToken(nameTok), Name: nameTok.Literal}
-		if !it.done() && !it.isNonTerminal() {
-			next := it.tokenType()
-			switch next {
-			case DOT:
-				it.skip() // dot
-				nt.Package = nt.Name
-				nt.Name = it.shift().Literal
-			case LT:
-				it.skip() // lt
-				if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-					nt.TypeArgs = b.buildTypeList(it.enter())
-				}
-				if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
-					it.skip() // gt
-				}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+			it.skip() // dot
+			nt.Package = nt.Name
+			nt.Name = it.shift().Literal
+		}
+		// Type arguments follow either form: `list<int>` and `tree.one<shape>`
+		// are both spellable, so the qualified branch above falls through here
+		// rather than returning.
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
+			it.skip() // lt
+			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
+				nt.TypeArgs = b.buildTypeList(it.enter())
+			}
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
+				it.skip() // gt
 			}
 		}
 		return nt

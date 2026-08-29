@@ -1,0 +1,48 @@
+# A qualified generic type. `Type` allowed `pkg.Name` or `Name<Args>` and never
+# both, so a generic reached through a namespace could not be written at all —
+# and resolveQualifiedType discarded the type arguments it was handed, because
+# nothing could supply any.
+#
+# Both halves are fixed: the production admits `pkg.Name<Args>`, the builder
+# reads the arguments after the dot-ident rather than returning, and the
+# qualified path applies them the way the unqualified one does.
+#
+# The argument has to reach the field, not just parse. Interpolating `h.item`
+# is what asserts that: an unsubstituted `T` reports "type has no string()
+# method", so this checking clean is the substitution working.
+sngl check main.sngl
+stdout 'main.sngl: ok'
+
+# Still out of reach: a qualified generic in *expression* position.
+# ExprPostfixOp is `dot ident [ StructLitBody ]` with no type arguments, so
+# `b.Holder<int>{…}` reads `<` as less-than. Unrelated to the Type production.
+! sngl check lit/main.sngl
+stderr 'operator < not defined'
+
+-- box/box.sngl --
+struct Holder<T> {
+    item T
+}
+-- main.sngl --
+import . "sngl://std"
+import b "box"
+
+component show(h b.Holder<int>) {
+    text(value="holding {h.item}")
+}
+
+component main {
+    text(value="x")
+}
+-- lit/box/box.sngl --
+struct Holder<T> {
+    item T
+}
+-- lit/main.sngl --
+import . "sngl://std"
+import b "box"
+
+component main {
+    var h b.Holder<int> = b.Holder<int>{item = 3}
+    text(value="{h.item}")
+}

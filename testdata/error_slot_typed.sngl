@@ -1,8 +1,9 @@
-// What a slot's declared type refuses.
+// What a slot's declared count refuses.
 
 import . "sngl://std"
+import tr "sngl://tree"
 
-component frame(slot body component, slot badge option<component>) {
+component frame(slot body tr.one<component>, slot badge option<component>) {
     vbox {
         body {}
         badge {}
@@ -10,16 +11,16 @@ component frame(slot body component, slot badge option<component>) {
 }
 
 component main {
-    // Bounded to exactly one, so it cannot be absent — option<T> and list<T>
-    // are the two spellings that permit that.
+    // Exactly one has no spelling for being absent — option<T> and a bare type
+    // are what permit that.
     frame() // ERROR(check) "requires slot \"body\" to be populated"
 
     frame() {
-        slot body { // ERROR(check) "requires exactly one node, got 2"
+        slot body { // ERROR(check) "takes exactly one node, got 2"
             text(value = "one")
             text(value = "two")
         }
-        slot badge { // ERROR(check) "accepts at most one node, got 2"
+        slot badge { // ERROR(check) "takes at most one node, got 2"
             text(value = "a")
             text(value = "b")
         }

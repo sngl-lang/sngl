@@ -66,8 +66,8 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // is a position rather than a node. The mark implementation is what holds a
 // tree.children written on an ordinary prop to that rule.
 var paramMarks = map[markKey]bool{
-	{"platforms", "wildcard"}:     true,
-	{"internal/tree", "children"}: true,
+	{"platforms", "wildcard"}: true,
+	{"tree", "children"}:      true,
 }
 
 // applyParamMarks resolves and runs the marks written on a component prop.

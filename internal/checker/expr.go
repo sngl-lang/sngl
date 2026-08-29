@@ -4266,7 +4266,7 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 		if slot.Name == "" || content[slot.Name] != nil {
 			continue
 		}
-		if t := slotContentType(slot); t.Kind != ir.TypeList && t.Kind != ir.TypeOption {
+		if slot.Card == ir.SlotOne {
 			c.error(pos, "component %s requires slot %q to be populated", comp.Name, slot.Name)
 		}
 	}
@@ -4321,25 +4321,31 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.Slot
 	return sc
 }
 
-// slotContentType is what a slot accepts, defaulting to any number of
-// components when the declaration names nothing.
-func slotContentType(slot *ir.SlotDecl) *ir.Type {
-	if slot.Content != nil {
-		return slot.Content
+// childrenTypeFor is the children contract a default slot stands for, in the
+// shape the existing arity checks read.
+func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
+	elem := slot.Content
+	if elem == nil {
+		elem = &ir.Type{Kind: ir.TypeComponent}
 	}
-	return ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
+	switch slot.Card {
+	case ir.SlotOne:
+		return elem
+	case ir.SlotOptional:
+		return ir.OptionOf(elem)
+	}
+	return ir.ListOf(elem)
 }
 
-// checkSlotArity holds supplied content to the count its declared type allows,
-// the same three shapes a children type has: list<T> any, option<T> none-or-one,
-// bare T exactly one.
 func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
-	t := slotContentType(slot)
-	switch {
-	case t.Kind == ir.TypeList:
-	case t.Kind == ir.TypeOption && n > 1:
-		c.error(pos, "%s accepts at most one node, got %d", what, n)
-	case t.Kind != ir.TypeOption && t.Kind != ir.TypeList && n != 1:
-		c.error(pos, "%s requires exactly one node, got %d", what, n)
+	switch slot.Card {
+	case ir.SlotOne:
+		if n != 1 {
+			c.error(pos, "%s takes exactly one node, got %d", what, n)
+		}
+	case ir.SlotOptional:
+		if n > 1 {
+			c.error(pos, "%s takes at most one node, got %d", what, n)
+		}
 	}
 }

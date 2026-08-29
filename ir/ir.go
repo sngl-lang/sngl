@@ -477,14 +477,24 @@ type EventDecl struct {
 type SlotDecl struct {
 	Name   string
 	Params []*Type `json:",omitempty"`
-	// Content is what the slot accepts; its shape bounds the count the way a
-	// component's children type does.
-	Content *Type `json:",omitempty"`
+	// Content is what each supplied node must be; Card is how many are
+	// accepted. Absent, a slot takes any number of components.
+	Content *Type    `json:",omitempty"`
+	Card    SlotCard `json:",omitempty"`
 	// ChildKind names the segmented tree the supplied content must be members
 	// of, from #[tree.children] on the declaration. Empty for a slot that
 	// accepts ordinary components.
 	ChildKind string `json:",omitempty"`
 }
+
+// SlotCard is how many nodes a slot accepts.
+type SlotCard string
+
+const (
+	SlotAny      SlotCard = ""         // any number; the default
+	SlotOne      SlotCard = "one"      // exactly one, from tree.one<T>
+	SlotOptional SlotCard = "optional" // none or one, from option<T>
+)
 
 // EventHandler is a resolved event handler. The handler body is represented
 // as a Func so codegen can reuse its function transform logic.

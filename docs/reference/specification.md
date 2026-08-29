@@ -1671,7 +1671,7 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 ```ebnf
 Type = 
-    IDENT [ "." IDENT | "<" TypeList ">" ]
+    IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" ]
     | "component"
     | "func" "(" [ FuncTypeParamList ] ")" [ Type ]
     | StructDecl
