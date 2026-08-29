@@ -37,12 +37,12 @@ func rawElementDecl(pkg *ir.Package) *ir.Component {
 	}
 	var found *ir.Component
 	ir.WalkStmts(pkg, func(s ir.Stmt) error {
-		if found != nil {
-			return nil
-		}
 		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil {
 			if n.Component.Wildcard != "" && n.Component.WildcardInto != "" {
 				found = n.Component
+				// Every remaining node would be visited otherwise: the guard
+				// this replaces stopped the *matching*, not the walk.
+				return ir.SkipAll
 			}
 		}
 		return nil
@@ -69,13 +69,17 @@ func (g *htmlGen) elementDecl(n *ir.NodeInst) *ir.Component {
 	return g.rawElement()
 }
 
-// rawElement returns the package's raw-element declaration, resolved once.
+// rawElement returns the package's raw-element declaration, resolved once per
+// compilation. The memo is on windowShared rather than on the generator
+// because there is one generator per window and the answer is a property of
+// the package: a site of 789 pages resolved it 789 times, and the fallback
+// path is a full walk of the IR.
 func (g *htmlGen) rawElement() *ir.Component {
-	if !g.rawElemDone {
-		g.rawElemDone = true
-		g.rawElem = rawElementDecl(g.pkg)
+	if !g.shared.rawElemDone {
+		g.shared.rawElemDone = true
+		g.shared.rawElem = rawElementDecl(g.pkg)
 	}
-	return g.rawElem
+	return g.shared.rawElem
 }
 
 // tagPropName is the prop the matched tag name binds to — the `into` argument

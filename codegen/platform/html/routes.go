@@ -32,6 +32,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	// StateVars are package-global (not per-window), so compute once and reuse.
 	stateVars := routeStateVars(req.Pkg)
+	// So is the raw-element declaration, whose fallback is a walk of the IR.
+	rawElem := rawElementDecl(req.Pkg)
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
@@ -54,7 +56,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		// hidden _action value is guaranteed to match the switch case that runs
 		// the handler's mutations — the two no longer count independently.
 		actions, actionIdx := collectActions(req.Pkg, win, targets)
-		render, err := buildRenderModel(req.Pkg, win, path, actionIdx)
+		render, err := buildRenderModel(req.Pkg, win, path, actionIdx, rawElem)
 		if err != nil {
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
