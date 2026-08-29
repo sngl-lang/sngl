@@ -118,7 +118,6 @@ func (c *checker) userShadowsBuiltin(name string) bool {
 	return ok && sd.Builtin == ir.BuiltinNone
 }
 
-// resolveNamedType resolves a named type reference to an IR *Type.
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
 	if t.Package != "" {
@@ -166,13 +165,11 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
 	}
 
-	// User-defined type from scope chain.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if c.rejectUnexported(t.Pos, sym) {
 			return TypDyn
 		}
 		if typ := sym.SymType(); typ != nil {
-			// If this is a generic struct and type args are provided, substitute.
 			if typ.Kind == ir.TypeStruct {
 				if sd, ok := typ.Decl.(*ir.StructDef); ok && len(sd.TypeParams) > 0 {
 					return c.applyStructTypeArgs(t.Pos, typ, sd, t.TypeArgs)
@@ -205,7 +202,6 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
-// resolveQualifiedType resolves a pkg.Type reference.
 func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
@@ -231,7 +227,6 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 	return TypDyn
 }
 
-// resolveFuncType resolves an AST function type to an IR *Type.
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
@@ -250,25 +245,21 @@ func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	}
 }
 
-// resolveAnonStruct resolves an anonymous struct type.
 func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 	sd := c.buildStructDef(s)
 	return sd.SymType()
 }
 
-// resolveAnonEnum resolves an anonymous enum type.
 func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {
 	ed := c.buildEnumDef(e)
 	return ed.SymType()
 }
 
-// resolveAnonUnit resolves an anonymous unit type.
 func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 	ud := c.buildUnitDef(u)
 	return ud.SymType()
 }
 
-// buildStructDef builds an IR StructDef from an AST StructDef.
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	return &ir.StructDef{
 		AST:        s,
@@ -324,7 +315,6 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 	return fields
 }
 
-// buildEnumDef builds an IR EnumDef from an AST EnumDef.
 func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	astMembers := e.Members()
 	members := make([]*ir.EnumMember, len(astMembers))
@@ -441,7 +431,6 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 		raw := strings.TrimSuffix(x.Raw, x.Suffix)
 		raw = strings.ReplaceAll(raw, "_", "")
 		num, _ := strconv.ParseFloat(raw, 64)
-		// Look up the referenced suffix to get its factor.
 		if ref, ok := c.unitBySuffix[x.Suffix]; ok {
 			for _, s := range ref.Suffixes {
 				if s.Name == x.Suffix {
@@ -512,7 +501,6 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 	return params
 }
 
-// buildParams converts AST Params to IR Params.
 func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	params := make([]*ir.Param, len(pl.Params))
 	seen := make(map[string]struct{}, len(pl.Params))
@@ -537,7 +525,6 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	return params
 }
 
-// buildFunc builds an IR Func from an AST FuncDef.
 func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	typeName, methodName, isMethod := ast.SplitMethodName(f.Name)
 

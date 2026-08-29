@@ -15,7 +15,6 @@ type Section struct {
 	Lessons []Lesson
 }
 
-// Lesson is a single interactive step: prose on one side, seed code on the other.
 type Lesson struct {
 	Title    string
 	Slug     string // "<section-slug>/<lesson-slug>"
@@ -63,7 +62,6 @@ func parseWalkthrough(src string) []Section {
 			marker := "\x00SNGL_FENCE_" + itoa(len(fences)-1) + "\x00"
 			prose = strings.Replace(prose, marker, "", 1)
 		}
-		// Replace remaining fence markers with their original fenced block.
 		for i := 0; i < len(fences)-1; i++ {
 			marker := "\x00SNGL_FENCE_" + itoa(i) + "\x00"
 			prose = strings.Replace(prose, marker, "```sngl\n"+fences[i]+"```\n", 1)
@@ -154,7 +152,6 @@ func parseWalkthrough(src string) []Section {
 		}
 		sections[si].Lessons = kept
 	}
-	// Drop now-empty sections.
 	out := sections[:0]
 	for _, s := range sections {
 		if len(s.Lessons) > 0 {

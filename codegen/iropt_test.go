@@ -17,7 +17,7 @@ func varSet(vars ...*ir.Var) map[*ir.Var]struct{} {
 func TestOptimizeMutation_RemoveStaticUpdaters(t *testing.T) {
 	name := &ir.Var{Name: "name"}
 	m := &MutationModel{
-		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		Analysis:   &CommonAnalysis{},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
 			{Name: "$u_0_text", Body: "set text", Deps: varSet(name)},
@@ -36,7 +36,7 @@ func TestOptimizeMutation_RemoveStaticUpdaters(t *testing.T) {
 func TestOptimizeMutation_DeduplicateUpdaters(t *testing.T) {
 	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
-		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		Analysis:   &CommonAnalysis{},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
 			{Name: "$u_0_text", Body: "old", Deps: varSet(x)},
@@ -57,7 +57,7 @@ func TestOptimizeMutation_MergeUpdaters(t *testing.T) {
 	name := &ir.Var{Name: "name"}
 	deps := varSet(count)
 	m := &MutationModel{
-		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		Analysis:   &CommonAnalysis{},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
 			{Name: "$u_0_text", Body: "set text", Deps: deps},
@@ -93,7 +93,6 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 			ModelFields:    map[string]bool{"x": true, "unused": true},
 			ComputedFields: map[string]bool{},
 			ComputedDeps:   map[string]map[string]bool{},
-			Helpers:        map[string]bool{},
 		},
 		DepTracker: NewDepTracker(
 			varSet(x, unused),
@@ -121,7 +120,7 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 func TestOptimizeMutation_UpdaterRequiresSurviveDropAndDrop(t *testing.T) {
 	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
-		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		Analysis:   &CommonAnalysis{},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
 			// Live updater (has a dep) — kept; its String requirement survives.
@@ -165,7 +164,7 @@ func TestOptimizeMutation_UpdaterRequiresSurviveDropAndDrop(t *testing.T) {
 func TestOptimizeMutation_MergedUpdaterUnionsRequires(t *testing.T) {
 	x := &ir.Var{Name: "x"}
 	m := &MutationModel{
-		Analysis:   &CommonAnalysis{Helpers: map[string]bool{}},
+		Analysis:   &CommonAnalysis{},
 		DepTracker: &DepTracker{},
 		Updaters: []Updater{
 			{Name: "$u_0_text", Body: "a", Deps: varSet(x),

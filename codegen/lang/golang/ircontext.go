@@ -21,7 +21,6 @@ const (
 )
 
 // GoIRContext translates IR expressions and statements into Go code.
-// It replaces GoContext for platforms that have been ported to IR.
 type GoIRContext struct {
 	Ctx *codegen.ExprCtx
 
@@ -39,24 +38,17 @@ type GoIRContext struct {
 	// function, producing Go that does not compile.
 	FreeFuncScope bool
 
-	// EmitLineDirectives controls whether EvalStmt prepends `//line file:line`
-	// directives at statement boundaries. Set by platforms when req.Maps is
-	// true. Go's compiler reads //line natively and attributes errors/panics
-	// back to the SNGL source. Gofmt preserves these directives.
+	// EmitLineDirectives prepends `//line file:line` at statement boundaries,
+	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
 
-	// imports records native Go import paths the translator decided it
-	// needed while emitting expressions and statements. Populated by
-	// emit-site calls to RequireImport; read post-translation by platforms
-	// via Imports() so they no longer maintain their own goImports map.
-	// Shared across forked contexts (WithLocal, ForComponent) so child
-	// contexts contribute to the parent's set.
+	// imports is shared across forked contexts (WithLocal, ForComponent), so a
+	// child contributes to the parent's set.
 	imports *importSet
 }
 
-// importSet is the shared collector backing GoIRContext.imports. Keyed by
-// import path; the bool value tracks whether the import is blank ("_") so
-// platforms can render `_ "path"` when needed.
+// importSet is keyed by import path; the bool tracks whether the import is
+// blank ("_").
 type importSet struct {
 	paths   map[string]bool // path → blank?
 	order   []string
@@ -67,7 +59,6 @@ func newImportSet() *importSet {
 	return &importSet{paths: map[string]bool{}, aliases: map[string]string{}}
 }
 
-// NewIRContext creates a GoIRContext from a codegen ExprCtx.
 func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
 	gc := &GoIRContext{Ctx: ctx, imports: newImportSet()}
 	if ctx != nil {
@@ -76,11 +67,7 @@ func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
 	return gc
 }
 
-// RequireImport records that the emitted Go file needs the given import
-// path. Safe to call repeatedly; first insertion wins for ordering.
-// Called from emit sites whenever a native package reference is rendered
-// (e.g. `time.Now()`, `fmt.Fprintln(...)`). Platforms read the result
-// after all translation via Imports().
+// RequireImport is safe to call repeatedly; first insertion wins for ordering.
 func (gc *GoIRContext) RequireImport(path string) {
 	if path == "" || gc.imports == nil {
 		return
@@ -92,19 +79,13 @@ func (gc *GoIRContext) RequireImport(path string) {
 	gc.imports.order = append(gc.imports.order, path)
 }
 
-// RequireImportAs records an import path that must render under an explicit
-// alias (e.g. `alias "path"`), overriding the path-derived default. Used when
-// the conventional alias would collide with another import and the call sites
-// reference a fixed selector (e.g. snglcanvas for pkg/go/canvas alongside
-// fyne's canvas). Safe to call repeatedly.
+// RequireImportAs forces an explicit alias, for when the conventional one
+// would collide and the call sites reference a fixed selector.
 //
-// Forced aliases must be unique across paths: call sites qualify symbols with
-// the literal alias (e.g. `snglcanvas.New`), so renderImports cannot silently
-// suffix a forced alias to de-conflict — the reference would dangle. Two
-// distinct paths forced to the SAME alias is therefore a codegen bug, and this
-// panics rather than emit invalid Go. (Path-derived defaults that clash with a
-// forced alias are still de-conflicted normally in renderImports.) Re-forcing
-// the same (path, alias) is idempotent.
+// A forced alias must be unique across paths: call sites qualify with the
+// literal alias, so renderImports cannot suffix it to de-conflict without
+// dangling the reference. Two paths forced to the same alias therefore panic.
+// Re-forcing the same (path, alias) is idempotent.
 func (gc *GoIRContext) RequireImportAs(path, alias string) {
 	if path == "" || gc.imports == nil {
 		return
@@ -122,18 +103,12 @@ func (gc *GoIRContext) RequireImportAs(path, alias string) {
 }
 
 // AliasFor registers path and returns the alias its symbols must be qualified
-// with, assigning one on first call and returning the same one after.
+// with. A caller spelling the selector itself would be guessing at a Go
+// package name that lives in the module's source, not in its path, and could
+// not know what another import already claimed.
 //
-// This is the answer to "what do I call this package": the caller supplies an
-// import path and a bare identifier, which is all it can know, and the alias
-// is this context's to choose. A caller that spells the selector itself is
-// guessing at a Go package name that lives in the module's source -- not in
-// its path -- and cannot know what another import already claimed.
-//
-// Assignment is the conventional name for the path, suffixed if something
-// already holds it, and happens in registration order. Registration order is
-// the walk order, so the result is stable across runs of one build; nothing
-// here depends on map iteration.
+// Assignment happens in registration order, which is the walk order, so the
+// result is stable across runs of one build; nothing depends on map iteration.
 func (gc *GoIRContext) AliasFor(path string) string {
 	if path == "" || path == "C" || gc.imports == nil {
 		return ""
@@ -198,13 +173,9 @@ func (gc *GoIRContext) IsBlankImport(path string) bool {
 	return gc.imports.paths[path]
 }
 
-// EvalExpr translates an IR expression into a Go expression string.
 func (gc *GoIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(gc, e) }
 
-// EvalStmt translates an IR statement into Go statement strings.
 func (gc *GoIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(gc, s) }
-
-// --- irwalk.Renderer implementation ---
 
 func (gc *GoIRContext) NilExpr() string              { return "nil" }
 func (gc *GoIRContext) Literal(n *ir.Literal) string { return gc.evalLiteral(n) }
@@ -217,13 +188,9 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
 }
 
-// goMultiBaseUnitBinary handles binary ops whose result type is a multi-base
-// unit struct (e.g. `Measurement + Measurement`, `2 * Measurement`) by
-// expanding the operation component-wise over each base field. The operand
-// strings `left`/`right` are already-rendered; `n.Left`/`n.Right` carry the IR
-// types used to decide whether each side is a unit struct (field-projected) or
-// a scalar (used verbatim). Returns ("", false) when neither operand is a
-// multi-base unit. Mirrors legacy translateMultiBaseUnitBinary byte-for-byte.
+// goMultiBaseUnitBinary expands a binary op over each base field of a
+// multi-base unit struct, projecting a unit operand's field and using a scalar
+// one verbatim. Returns ("", false) when neither operand is such a unit.
 func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
 	ud, ok := multiBaseUnitOperand(n.Left, n.Right)
 	if !ok {
@@ -277,35 +244,26 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			return "i18n." + goName
 		}
 	}
-	// Test-scope raw field reads: a Select whose operand is a
-	// RawFieldAccess ident reads the unexported field directly (no
-	// ExportName capitalization) so a generated `_test.go` in the same Go
-	// package can touch unexported Model fields. Mirrors legacy
-	// translateIRExpr's Select case.
+	// A Select on a RawFieldAccess ident reads the unexported field directly,
+	// so a generated `_test.go` in the same package can touch Model fields.
 	if gc.rawFieldAccess(n.Operand) {
-		// A field flagged in MethodFields is surfaced by platform codegen as
-		// a zero-arg method (e.g. gtk4's nilable conditional/loop refs), so
-		// the raw read lowers to a method call.
+		// A MethodFields field is surfaced by platform codegen as a zero-arg
+		// method, so the raw read lowers to a method call.
 		if gc.methodField(n.Field) {
 			return operand + "." + n.Field + "()"
 		}
 		return operand + "." + n.Field
 	}
-	// Test-scope property read on an id'd child node:
-	// `c.<id>.<prop>` → `c.<id><Prop>()`. Platforms emit one getter method
-	// per (id, prop) reactive binding; the test runner consumes them to
-	// read widget state. The trigger is the outer Select's Operand being a
-	// Select on a RawFieldAccess Ident — i.e. `c.<id>` after testlower set
-	// RawFieldAccess for `c`.
+	// `c.<id>.<prop>` → `c.<id><Prop>()`, the getter platforms emit per
+	// (id, prop) binding. Triggered by the outer Select's operand being a
+	// Select on a RawFieldAccess Ident.
 	if inner, ok := n.Operand.(*ir.Select); ok {
 		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) {
 			return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
 		}
 	}
-	// Test-scope list-ref prop read: `c.<id>[idx].<prop>` →
-	// `c.<id>()[idx].<Prop>()`. Used when <id> sits inside a `for` loop;
-	// gtk4 surfaces the per-iteration widgets as a `[]*<id>Ref` returned by
-	// the `<id>()` method. Mirrors legacy.
+	// `c.<id>[idx].<prop>` → `c.<id>()[idx].<Prop>()`, for an <id> inside a
+	// `for` loop, whose per-iteration widgets come back from `<id>()`.
 	if idxExpr, ok := n.Operand.(*ir.Index); ok {
 		if inner, ok := idxExpr.Operand.(*ir.Select); ok {
 			if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) && gc.methodField(inner.Field) {
@@ -313,11 +271,8 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			}
 		}
 	}
-	// Field access on a `dyn` operand: Go's `any` has no fields, so a
-	// bare `.<F>` won't compile. If exactly one user struct in the
-	// package declares this field, emit a type assertion to that
-	// struct. Covers recursive-component patterns where a struct
-	// field is typed `dyn` for self-reference (TreeNode.left/right).
+	// Go's `any` has no fields, so a bare `.<F>` on a `dyn` operand will not
+	// compile; when exactly one user struct declares the field, assert to it.
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
 		if name := gc.uniqueStructWithField(n.Field); name != "" {
 			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
@@ -353,8 +308,6 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 }
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
-	// A color{r,g,b,a} struct (the lowered form of a #rrggbb[aa] literal)
-	// emits as a snglcolor.Color composite; register its import.
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
@@ -411,17 +364,14 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	switch n.IterKind {
 	case ir.IterMapEntries:
-		// Map iteration: for k, v := range m { ... }
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iter)
 	case ir.IterIndexed:
-		// Two-var list/iter: Key is the index, Value the element.
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
-		// Single-var list / iter<T>: for _, x := range list { ... }
 		return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 	}
 }
@@ -473,8 +423,6 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 		}
 		return n.Raw
 	case ir.TypeStruct:
-		// date/time/datetime literals lower to mustParse* helper calls
-		// (time.Time-valued); other string-repr structs (color) emit quoted.
 		if out, ok := LowerTimeLiteralGo(n); ok {
 			return out
 		}
@@ -488,24 +436,18 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 }
 
 func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
-	// Bare enum member — emit as string literal
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
 
-	// Component-self ident: synthesized by passNoImplicitRecv as the
-	// implicit receiver of a desugared component method. Go emission uses
-	// `m` for the Bubbletea/Fyne Model receiver.
+	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return "m"
 	}
 
 	name := n.Name
-	// Synthesized element refs (e.g. `__n3` for a widget the lowering
-	// passes created, or platform-emitted widget field names like
-	// `label0`) are stored as Model struct fields. Qualify them here
-	// so call sites emit `m.<name>` rather than a bare ident that
-	// won't resolve in the generated method scope.
+	// A synthesized element ref is stored as a Model struct field, so it must
+	// be qualified: a bare ident would not resolve in the method scope.
 	if n.IsElementRef && n.Synthesized {
 		return "m." + name
 	}
@@ -521,10 +463,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return "m." + name
 	case codegen.NameConst:
-		// Top-level free-function bodies aren't methods on Model; consts
-		// live at file scope there. Inside a component method, every
-		// const (top-level or component-level) is also a Model field, so
-		// emit `m.<name>` for direct field access.
+		// A const is a file-scope name in a free function and a Model field
+		// inside a component method.
 		if gc.Ctx.Component != nil {
 			return "m." + name
 		}
@@ -534,7 +474,6 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return "m." + ExportName(name)
 	default:
-		// If the type is an enum, emit as string
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
 			return fmt.Sprintf("%q", name)
 		}
@@ -543,18 +482,12 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 }
 
 // maybeWrapErrorReturn wraps a native call whose imported signature is
-// (T, error) so the value can be used as a single Go expression. Without this,
-// calls like `m.issues = jira.Search(...)` lower to `m.issues = jira.Search(...)`
-// — a 2-value RHS against a 1-value LHS — and fail to compile. The Go importer
-// already strips the trailing `error` and records `HasErrorReturn` on
-// `ir.Func`; we honor that here for all eval paths (namespace calls, type
-// methods, plain resolved funcs).
+// (T, error), which would otherwise be a 2-value RHS against a 1-value LHS and
+// fail to compile. The Go importer records this as `HasErrorReturn`.
 //
-// The wrap is an IIFE — `func() T { v, _ := f(args); return v }()` — chosen
-// over a top-level helper to keep this fix local to ircontext.go and avoid
-// threading "needs helper" plumbing through every platform's emit pipeline.
-// Errors are silently discarded; the http.go path emits a logging
-// `nativeMustOK` helper for HTTP-action handlers, which is unchanged.
+// The wrap is an IIFE rather than a top-level helper, to avoid threading
+// "needs helper" plumbing through every platform's emit pipeline. Errors are
+// silently discarded; http.go's `nativeMustOK` logs them instead.
 func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 	if n.Func == nil || !n.Func.HasErrorReturn || n.Func.Return == nil {
 		return raw
@@ -564,52 +497,39 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 }
 
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
-	// Intrinsic dispatch by ID — never by method name — and uniform across the
-	// type-method and inlined call shapes. Backends register only the
-	// intrinsics they can emit; unregistered IDs fall through to the paths
-	// below (and ultimately goBuiltinMethodFromArgs).
+	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
+	// through to the paths below.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
 		for _, p := range imports {
 			gc.RequireImport(p)
 		}
 		return out
 	}
-	// Namespace / component call — Receiver expression preserved.
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)
 	}
 
-	// Type-attached method call (checker-normalized: Func.Receiver set,
-	// Args[0] is the receiver value).
 	if n.Func != nil && n.Func.Receiver != "" {
 		return gc.evalTypeMethodCall(n)
 	}
 
-	// Resolved function
 	if n.Func != nil {
 		fname := n.Func.Name
 		args := gc.evalCallArgs(n.Args)
 
-		// size(x) is a length builtin, not a type conversion. The
-		// primitive casts string/int/float are materialized as ir.Conversion
-		// by the checker (inferBuiltinConversion) and handled in
-		// evalConversion, so they never arrive here as a named call.
+		// size(x) is a length builtin, not a type conversion; the primitive
+		// casts arrive as ir.Conversion instead.
 		if fname == "size" && len(args) == 1 {
 			return "len(" + args[0] + ")"
 		}
 
-		// Component-scope funcs (including computeds) live as methods on
-		// Model — call via the model receiver. Without this, an implicit
-		// zero-arg call like `text(value=greeting)` lowered to a bare
-		// `greeting()` referencing an undefined package-level identifier.
+		// A component-scope func is a method on Model, so it must be called
+		// through the receiver or it references an undefined identifier.
 		_, kind := gc.Ctx.Resolve(fname)
 		if kind == codegen.NameComputed || kind == codegen.NameFunc {
-			// In a free-function scope (android go-lib) there is no Model
-			// receiver: these funcs are emitted as exported package-level
-			// functions, so call them by their exported name. This is what
-			// makes a recursive go-lib func (`func fib => fib(n-1)+...`)
-			// compile. A call to a func that was not emitted into the lib
-			// yields a clean "undefined" Go error rather than silent bad code.
+			// A free-function scope has no Model receiver, so the call uses
+			// the exported name. A func not emitted into the lib then yields
+			// a clean "undefined" Go error rather than silent bad code.
 			if gc.FreeFuncScope {
 				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
@@ -620,7 +540,6 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Unresolved function (func-typed var, etc.) — evaluate the callee expr.
 	args := gc.evalCallArgs(n.Args)
 	if n.Callee != nil {
 		return gc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
@@ -633,20 +552,16 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-		// Native (e.g. C/cgo) call: emit the native name directly, ignoring
-		// the SNGL import alias that ended up as the receiver. A #[foreign]
-		// mark is excluded: it names a declaration this file also emits, so
-		// the call keeps the name that declaration is emitted under.
+		// A native call emits the native name, ignoring the SNGL import alias
+		// that ended up as the receiver. #[foreign] is excluded: it names a
+		// declaration this file also emits, under that declaration's name.
 		if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
 			name := n.Func.Foreign.Name
-			// A cgo call is written with the bare C identifier (e.g.
-			// "gtk_label_new") and the renderer adds the "C." prefix. A caller
-			// that already prefixed it keeps what it wrote.
+			// The renderer adds the "C." prefix to a bare C identifier; a
+			// caller that already prefixed it keeps what it wrote.
 			if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
 				name = "C." + name
 			} else if n.Func.Foreign.Path != "C" {
-				// Non-cgo native call (e.g. fmt.Println, time.Now) — record
-				// the import so platforms reading gc.Imports() see it.
 				gc.RequireImport(n.Func.Foreign.Path)
 			}
 			// Context-taking native call: inject the context expression as the
@@ -680,11 +595,8 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 
 		qualName := receiverName + "." + fname
 
-		// lower.CreateComponent(comp, props) → m.render<Comp>(propArgs...).
-		// Recursive (non-inlinable) user components are left in place by
-		// passNoInlineComponents as this intrinsic; the Go backends emit a
-		// `render<Comp>` Model method taking the component's props positionally.
-		// The prop struct literal's fields are reordered to the component's
+		// lower.CreateComponent(comp, props) → m.render<Comp>(propArgs...),
+		// with the prop literal's fields reordered to the component's
 		// declared prop order.
 		if fname == "CreateComponent" && len(n.Args) == 2 {
 			if compIdent, ok := n.Args[0].Value.(*ir.Ident); ok {
@@ -719,9 +631,8 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			}
 		}
 
-		// For i18n.* calls the namespace receiver is the module object, not a
-		// value argument. Pass only the real call args to the builtin dispatcher
-		// so that a(0) is the first semantic argument (matches type-method path).
+		// An i18n.* namespace receiver is the module object, not a value
+		// argument, so a(0) must be the first semantic argument.
 		if receiverName == "i18n" {
 			if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
 				return result
@@ -748,7 +659,6 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	receiverName := n.Func.Receiver
 	qualName := receiverName + "." + method
 
-	// Alert methods short-circuit to the context's alert emission.
 	if receiverName == "Alert" {
 		return gc.evalAlertCall(method, n.Args)
 	}
@@ -762,35 +672,28 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
-	// User-attached method on a primitive type — emit as a free function call
-	// because Go doesn't allow methods on int/float/string/bool/etc. The
-	// function lifts to TypeNameMethodName (e.g. `int.double` → `IntDouble`).
+	// Go allows no methods on int/float/string/bool, so a user-attached method
+	// on one lifts to a free `TypeNameMethodName` function.
 	if isPrimitiveTypeName(receiverName) && gc.userMethodKnown(receiverName, method) {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Component method called on the current component instance:
-	// keep the Go-idiomatic `m.<method>(rest)` form. Bubbletea/Fyne
-	// emit component method definitions as Model methods, so call sites
-	// must dispatch through `m`.
+	// Bubbletea/Fyne emit component methods as Model methods, so a call on the
+	// current instance must dispatch through `m`.
 	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName {
-		// Method-form call (`v.method()`) threads the receiver as args[0];
-		// strip it. A zero-arg computed referenced by name (e.g. `greeting`
-		// in an interpolation) carries no receiver arg — still dispatch
-		// through `m` rather than lifting to a `MainGreeting()` free func.
+		// A method-form call threads the receiver as args[0]; a zero-arg
+		// computed referenced by name carries none, and still dispatches
+		// through `m` rather than lifting to a free func.
 		if len(args) >= 1 && args[0] == "m" {
 			return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 		}
 		return "m." + method + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// User-attached method on a user-defined struct/enum/component type:
-	// lift to a free function `ReceiverName + MethodName(args...)`. Without
-	// this, static-form calls like `S.helper(5)` and method-form calls like
-	// `v.method()` both fall through to the `args[0].method()` shape, which
-	// is wrong for static calls (where args[0] is the first explicit arg,
-	// not the receiver value).
+	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
+	// static-form call like `S.helper(5)` falls through to `args[0].method()`,
+	// where args[0] is the first explicit arg rather than a receiver.
 	if gc.userMethodKnown(receiverName, method) {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
@@ -803,10 +706,9 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 }
 
-// rawFieldAccess reports whether e is an ident flagged in
-// gc.Ctx.RawFieldAccess (nil-safe). Test runners set this for the receiver
-// ident (e.g. `c`) so its Select-field accesses bypass ExportName /
-// method-getter lowering and touch the unexported Model field directly.
+// rawFieldAccess reports whether e is an ident flagged in gc.Ctx.RawFieldAccess
+// (nil-safe). A test runner sets it for the receiver ident so field accesses
+// bypass ExportName / method-getter lowering.
 func (gc *GoIRContext) rawFieldAccess(e ir.Expr) bool {
 	id, ok := e.(*ir.Ident)
 	if !ok {
@@ -815,18 +717,14 @@ func (gc *GoIRContext) rawFieldAccess(e ir.Expr) bool {
 	return gc.Ctx != nil && gc.Ctx.RawFieldAccess != nil && gc.Ctx.RawFieldAccess[id.Name]
 }
 
-// methodField reports whether a field name is flagged in
-// gc.Ctx.MethodFields (nil-safe). Such fields, when read off a
-// RawFieldAccess recv, lower to a zero-arg method call rather than a raw
-// field read.
+// methodField reports whether a field name is flagged in gc.Ctx.MethodFields
+// (nil-safe); such a field lowers to a zero-arg method call.
 func (gc *GoIRContext) methodField(field string) bool {
 	return gc.Ctx != nil && gc.Ctx.MethodFields != nil && gc.Ctx.MethodFields[field]
 }
 
-// uniqueStructWithField returns the Go type name of the sole package
-// struct declaring a field with this SNGL field name, or "" if zero
-// or multiple structs match. Used to pick a type assertion target
-// when reading a field off a `dyn`-typed operand.
+// uniqueStructWithField returns the Go type name of the sole package struct
+// declaring this field, or "" if zero or several do.
 func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
 		return ""
@@ -849,9 +747,8 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	return ExportName(match.Name)
 }
 
-// userMethodKnown reports whether a method qualName has a user-defined
-// implementation in the package or in any component. Used to decide whether
-// to emit a primitive-receiver call as a free function.
+// userMethodKnown decides whether a primitive-receiver call is emitted as a
+// free function.
 func (gc *GoIRContext) userMethodKnown(receiver, method string) bool {
 	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
 		return false
@@ -882,14 +779,8 @@ func isPrimitiveTypeName(name string) bool {
 }
 
 // evalErrorAwareCall emits Go statements for a fallible call whose error
-// handler was resolved by effect analysis. Returns nil when the call is not
-// specially handled (MVP: only error.raise is recognised) — the caller
-// falls back to the normal expression path.
-//
-// Output per mode, for error.raise(msg, kind):
-//   - ErrorPropagateNative: panic(ErrorEvent{...})
-//   - ErrorInvokeAndTerminate: create ErrorEvent, inline handler body, return
-//   - ErrorBubble: not yet supported (requires fallible-signature lowering)
+// handler effect analysis resolved. Only error.raise is recognised; anything
+// else returns nil and the caller falls back to the expression path.
 func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
 		return nil
@@ -909,13 +800,9 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble would ideally thread the error up a fallible-signature
-		// return channel so a caller-provided handler can catch it. MVP has
-		// no fallible-signature lowering yet, so we conservatively emit a
-		// panic — any enclosing recover-based boundary would catch it, but
-		// since we don't emit recover either this effectively aborts. Users
-		// should put error.raise directly inside the handler where the
-		// boundary/window resolution can inline the handler body.
+		// ErrorBubble wants a fallible-signature return channel, which no
+		// lowering produces yet, so this panics and — with no recover
+		// emitted either — aborts. Put error.raise inside the handler.
 		return []string{"panic(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -931,15 +818,11 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
-// emitHandlerInvoke produces the block that declares the event variable
-// (name from handler param) and inlines the handler body.
+// emitHandlerInvoke declares the event variable and inlines the handler body,
+// wrapped in a Go lexical block so the variable does not leak.
 //
-// The block is wrapped in a Go lexical block `{ ... }` so the variable
-// does not leak into the surrounding scope. Note: this does not currently
-// emit a `return` / `goto end` to terminate the enclosing handler scope —
-// statements following a raise still execute. Users should place
-// error.raise at the end of a handler body. Phase 2 will add a labeled
-// exit so terminate semantics are honoured.
+// It emits no return, so statements following a raise still execute: place
+// error.raise at the end of a handler body.
 func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
@@ -963,7 +846,6 @@ func (gc *GoIRContext) evalAlertCall(method string, args []ir.CallArg) string {
 	if gc.AlertFunc != nil {
 		return strings.Join(gc.AlertFunc(gc, method, args), "; ")
 	}
-	// Default: append to m.toasts
 	switch method {
 	case "toast":
 		msg := gc.EvalExpr(args[0].Value)
@@ -987,19 +869,17 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	if n.Type != nil && n.Type.Kind == ir.TypeNative {
 		if ref, ok := n.Type.Meta.(ir.NativeTypeRef); ok && ref.CgoC {
-			// Cgo pointer cast: (*C.X)(unsafe.Pointer(y))
-			// Empty Name → bare unsafe.Pointer(y) (used for void* args).
+			// An empty Name gives a bare unsafe.Pointer(y), for void* args.
 			gc.RequireImport("unsafe")
 			if ref.Name == "" {
 				return "unsafe.Pointer(" + gc.EvalExpr(n.Operand) + ")"
 			}
 			return "(" + IRTypeToGo(n.Type) + ")(unsafe.Pointer(" + gc.EvalExpr(n.Operand) + "))"
 		}
-		// Go-package native cast: plain type conversion.
 		return IRTypeToGo(n.Type) + "(" + gc.EvalExpr(n.Operand) + ")"
 	}
-	// Temporal conversions from a string literal: route through the
-	// parse helpers — Go's `time.Time("...")` cast doesn't compile.
+	// Go's `time.Time("...")` cast does not compile, so route a temporal
+	// conversion through the parse helpers.
 	if n.Type != nil {
 		if lit, ok := n.Operand.(*ir.Literal); ok {
 			if s, ok2 := LowerTypedLiteralGo(lit, n.Type); ok2 {
@@ -1007,10 +887,8 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
-	// `null` flowing into a nillable target (option<T>, ref<T>, map, list,
-	// func) — Go's untyped nil takes the field type directly. Emitting
-	// `*string(nil)` (which is what plain conversion produces for option
-	// targets, because the goType is `*string`) is not valid Go.
+	// `null` into a nillable target takes Go's untyped nil directly: plain
+	// conversion would give `*string(nil)`, which is not valid Go.
 	if lit, ok := n.Operand.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull {
 		if n.Type != nil {
 			switch n.Type.Kind {
@@ -1021,13 +899,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
-	// Go's string(int) builds a single-rune string; use fmt.Sprint for numeric
-	// and general stringification.
+	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
 	}
-	// Pointer/composite Go types need parens around the cast target:
 	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {
 		return "(" + goType + ")(" + operand + ")"
@@ -1035,8 +911,8 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	return goType + "(" + operand + ")"
 }
 
-// nullFuncStubGo renders a Go function literal whose body returns the zero
-// value of the declared return type. Callable substitute for a null func.
+// nullFuncStubGo is a callable substitute for a null func: it returns the
+// declared return type's zero value.
 func nullFuncStubGo(t *ir.Type) string {
 	if t == nil || t.Sig == nil {
 		return "nil"
@@ -1072,17 +948,15 @@ func isColorStructLit(n *ir.StructLit) bool {
 	return n.Def != nil && n.Def.Name == "color"
 }
 
-// structLitTypeName picks the Go type prefix for a struct literal. Named
-// structs lower to ExportName(sd.Name); anonymous structs (no name on
-// the StructDef) materialize an inline `struct { Field Type; ... }` so
-// the literal parses where Go would otherwise reject a bare `{…}`.
+// structLitTypeName picks the Go type prefix for a struct literal. An
+// anonymous struct materializes an inline `struct { … }`, since Go rejects a
+// bare `{…}` literal.
 func structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"
 	}
-	// Anonymous literals (`{value="x"}`) keep Def nil but carry the
-	// target type via n.Type — extract the StructDef from there so
-	// the emitted Go uses the named type the call expects.
+	// An anonymous literal keeps Def nil but carries the target type in
+	// n.Type, which is where the named type the call expects comes from.
 	def := n.Def
 	if def == nil && n.Type != nil {
 		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
@@ -1092,7 +966,6 @@ func structLitTypeName(n *ir.StructLit) string {
 	if def == nil {
 		return "struct{}"
 	}
-	// color is the shared snglcolor.Color type, not a locally-named struct.
 	if def.Name == "color" || ir.IsColorStruct(n.Type) {
 		return colorGoType
 	}
@@ -1133,7 +1006,6 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		retType = IRTypeToGo(n.Func.Return)
 	}
 
-	// For single-expression lambdas
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := gc.EvalExpr(ret.Value)
@@ -1141,7 +1013,6 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 	}
 
-	// Multi-statement lambda
 	var b strings.Builder
 	b.WriteString("func(" + strings.Join(params, ", ") + ") " + retType + " {\n")
 	for _, stmt := range n.Func.Block {
@@ -1161,7 +1032,6 @@ func (gc *GoIRContext) evalCallArgs(args []ir.CallArg) []string {
 	return out
 }
 
-// WithLocal returns a new context with an additional local variable.
 func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	return &GoIRContext{
 		Ctx:                gc.Ctx.WithLocal(name),
@@ -1172,7 +1042,6 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	}
 }
 
-// ForComponent returns a new context scoped to a component.
 func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 	return &GoIRContext{
 		Ctx:                gc.Ctx.ForComponent(comp),
@@ -1182,8 +1051,6 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
-
-// --- IR type → Go type ---
 
 // IRTypeToGo converts an IR type to a Go type string.
 func IRTypeToGo(t *ir.Type) string {
@@ -1229,13 +1096,11 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "*any"
 	case ir.TypeStruct:
-		// date/time/datetime are string-representable stdlib structs that map
-		// to time.Time in Go (formerly the TypeDate/TypeTime/TypeDateTime
-		// kinds). Detect by name before the generic struct path.
+		// date/time/datetime are stdlib structs mapping to time.Time; detect
+		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
 		}
-		// color maps to the shared snglcolor.Color struct (int channels).
 		if ir.IsColorStruct(t) {
 			return colorGoType
 		}
@@ -1248,8 +1113,6 @@ func IRTypeToGo(t *ir.Type) string {
 			if name := ExportName(sd.Name); name != "" {
 				return name
 			}
-			// Anonymous struct (no source name) — inline the shape so it
-			// can appear in a Go param/return/var type position.
 			if len(sd.Fields) == 0 {
 				return "struct{}"
 			}
@@ -1291,15 +1154,12 @@ func IRTypeToGo(t *ir.Type) string {
 	case ir.TypeNull:
 		return "any"
 	case ir.TypeVoid:
-		// Used as the return slot of intrinsic-call Funcs (e.g.
-		// __renderSlot<N>) emitted by passReactivity. Render as empty so
-		// callers building `func name(params) <T>` get `func name(params)`.
+		// Rendered empty so a caller building `func name(params) <T>` gets
+		// `func name(params)`.
 		return ""
 	case ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
-		// Iter/component/typeparam/invalid have no first-class Go
-		// representation in emitted code; falling back to `any` matches
-		// the previous behavior. Listed explicitly so the default arm
-		// can catch genuinely new TypeKinds.
+		// These have no first-class Go representation, and fall back to `any`.
+		// Listed explicitly so the default arm catches a new TypeKind.
 		return "any"
 	case ir.TypeNative:
 		if ref, ok := t.Meta.(ir.NativeTypeRef); ok {
@@ -1317,16 +1177,14 @@ func IRTypeToGo(t *ir.Type) string {
 	}
 }
 
-// IRLiteralToGo converts an IR literal expression to a Go literal.
 func IRLiteralToGo(e ir.Expr) string {
 	if e == nil {
 		return `""`
 	}
 	switch n := e.(type) {
 	case *ir.Conversion:
-		// null → func: emit a zero-value callable lambda so calling through
-		// the var at runtime returns the declared return type's zero instead
-		// of panicking on a nil func value.
+		// A zero-value callable lambda, so a call through the var returns the
+		// return type's zero instead of panicking on a nil func.
 		if ir.IsNullToFuncConv(n) {
 			return nullFuncStubGo(n.Type)
 		}
@@ -1398,15 +1256,11 @@ func IRLiteralToGo(e ir.Expr) string {
 	case *ir.Lambda:
 		return irLambdaLiteralToGo(n)
 	}
-	// IRLiteralToGo is called from places that may pass non-literal
-	// exprs (e.g. component prop defaults that aren't literals). Returning
-	// "" here is a deliberate best-effort fallback rather than an
-	// exhaustive-case-missing bug, so we don't panic.
+	// Callers may pass a non-literal expr (a component prop default), so ""
+	// is a deliberate fallback rather than a missing case.
 	return `""`
 }
 
-// irLambdaLiteralToGo emits a Go function literal for a synthetic zero-value
-// lambda (body is always a single Return of another IR literal).
 func irLambdaLiteralToGo(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "nil"
@@ -1443,8 +1297,6 @@ func irFuncSigToGo(sig *ir.FuncSig) string {
 	}
 	return "func(" + strings.Join(params, ", ") + ")" + ret
 }
-
-// --- IR operator helpers ---
 
 func irBinaryOp(op ast.BinaryOp) string {
 	return binaryOpStr(op)

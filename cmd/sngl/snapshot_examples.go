@@ -126,7 +126,6 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 	if err != nil {
 		return fmt.Errorf("extracting stdlib examples: %w", err)
 	}
-	// Flatten to first example per component for snapshots.
 	flat := make(map[string]string, len(examples))
 	for name, srcs := range examples {
 		if len(srcs) > 0 {
@@ -155,7 +154,6 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 	defer os.RemoveAll(tmpDir)
 
 	for name, src := range examples {
-		// Check if all platform snapshots exist (skip if not forced).
 		if !force {
 			allExist := true
 			for _, plat := range platforms {
@@ -173,7 +171,6 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 			}
 		}
 
-		// Wrap in output block if needed.
 		if !strings.Contains(src, "output {") {
 			var wrapped strings.Builder
 			wrapped.WriteString("output {\n")

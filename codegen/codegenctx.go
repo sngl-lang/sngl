@@ -6,9 +6,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// CodegenCtx is the codegen-layer view of a checked package.
-// Platform generators create one at the start of Generate() and use
-// it for iteration, name generation, and dependency tracking.
+// CodegenCtx is the codegen-layer view of a checked package, created by a
+// platform generator at the start of Generate().
 type CodegenCtx struct {
 	Pkg      *ir.Package
 	Analysis *CommonAnalysis
@@ -16,15 +15,12 @@ type CodegenCtx struct {
 	ExprCtx  *ExprCtx
 	Namer    *Namer
 	Platform string
-	// RootComponent overrides which component is treated as "main"
-	// for codegen purposes. Empty means use the literal "main" lookup.
-	// Sourced from the "rootComponent" option at construction time —
-	// the test launcher sets this per-group so each test binary builds
-	// its Model from the component-under-test.
+	// RootComponent overrides which component is treated as "main"; empty
+	// means the literal "main" lookup. The test launcher sets it per-group so
+	// each test binary builds its Model from the component-under-test.
 	RootComponent string
 }
 
-// NewCodegenCtx creates a CodegenCtx from a codegen Request.
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	analysis := AnalyzeCommon(req.Pkg)
 	exprCtx := NewExprCtx(req.Pkg)
@@ -32,7 +28,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	return &CodegenCtx{
 		Pkg:           req.Pkg,
 		Analysis:      analysis,
-		Deps:          analysis.DepTracker(),
+		Deps:          NewDepTrackerFromPkg(req.Pkg),
 		ExprCtx:       exprCtx,
 		Namer:         NewNamer(),
 		Platform:      platform,
@@ -40,15 +36,13 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	}
 }
 
-// BuildMutation creates a MutationModel pre-populated with handlers and timers.
 func (ctx *CodegenCtx) BuildMutation(stmts []ir.Stmt) *MutationModel {
-	m := NewMutationModel(ctx.Analysis)
+	m := NewMutationModel(ctx.Analysis, ctx.Deps)
 	m.Handlers = ctx.collectHandlers(stmts)
 	m.Timers = ctx.collectTimers()
 	return m
 }
 
-// BuildRender creates a RenderModel pre-populated with handlers and timers.
 func (ctx *CodegenCtx) BuildRender(stmts []ir.Stmt) *RenderModel {
 	m := NewRenderModel(ctx.Analysis)
 	m.Handlers = ctx.collectHandlers(stmts)

@@ -125,8 +125,6 @@ func TestMapLiteralMixedKeyTypesError(t *testing.T) {
 	}
 }
 
-// --- Disambiguation tests ---
-
 func TestMapLiteralRequiresExpectedType(t *testing.T) {
 	// With map type annotation: ok.
 	src := `var m map<string, int> = {a = 1, b = 2}`

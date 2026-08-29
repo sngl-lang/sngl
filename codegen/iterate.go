@@ -187,8 +187,6 @@ func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
 	return out
 }
 
-// --- Visual node walking ---
-
 // WalkVisualTree walks IR statements, calling fn for each NodeInst.
 // Return true from fn to skip automatic child traversal.
 func WalkVisualTree(stmts []ir.Stmt, fn func(node *ir.NodeInst, depth int) bool) {
@@ -224,8 +222,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 		}
 	}
 }
-
-// --- NodeInst accessors ---
 
 // NodeProp returns the value of a named prop on a NodeInst, or nil.
 func NodeProp(n *ir.NodeInst, name string) ir.Expr {
@@ -321,8 +317,6 @@ func NodeStyleFieldsOf(n *ir.NodeInst, prop string) []StyleField {
 	}
 	return out
 }
-
-// --- IR literal extraction ---
 
 // IRLiteralString extracts a string value from an IR Literal expression.
 // Returns the value and true, or ("", false) for anything that is not a string

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/highlight"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
@@ -72,6 +73,54 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	return f, i, nil
 }
 
+// A library package has no directory — its source is embedded, or synthesized
+// by the target serving it — so its imports resolve through the checker.
+func dumpParsed(args []string, inp dumpInput) (*ast.Document, string, error) {
+	if inp == dumpInputSNGL && len(args) > 0 {
+		in, err := resolveInput(args[0])
+		if err != nil {
+			return nil, "", err
+		}
+		if in != nil {
+			return in.Document(), ".", nil
+		}
+	}
+	return dumpParseInput(inp, args)
+}
+
+// A library package is handed back as the checker already built it: it loads
+// under the lib-source rules that permit its own sngl://internal/ imports,
+// which a fresh check of the same source would reject.
+func dumpChecked(cmd *cobra.Command, args []string, inp dumpInput) (*ir.Package, string, error) {
+	if inp == dumpInputSNGL && len(args) > 0 {
+		in, err := resolveInput(args[0])
+		if err != nil {
+			return nil, "", err
+		}
+		if in != nil {
+			if err := in.Err(); err != nil {
+				return nil, "", fmt.Errorf("%s: %w", in.Path, err)
+			}
+			return in.Pkg, ".", nil
+		}
+	}
+	doc, dir, err := dumpParseInput(inp, args)
+	if err != nil {
+		return nil, "", err
+	}
+	targets, err := dumpCLITargets(cmd)
+	if err != nil {
+		return nil, "", err
+	}
+	start := time.Now()
+	pkg, err := checkDoc(doc, dir, true, targets...)
+	if err != nil {
+		return nil, "", err
+	}
+	slog.Info("check", "dir", dir, "duration", time.Since(start))
+	return pkg, dir, nil
+}
+
 func runDump(cmd *cobra.Command, args []string) error {
 	stage, _ := cmd.Flags().GetString("stage")
 
@@ -91,52 +140,33 @@ func runDump(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f = dumpDefaultFormat(cmd, stage, f)
 
 	switch stage {
 	case "parsed":
-		doc, _, err := dumpParseInput(inp, args)
+		doc, _, err := dumpParsed(args, inp)
 		if err != nil {
 			return err
 		}
 		return dumpDocument(f, doc)
 
 	case "checked":
-		doc, dir, err := dumpParseInput(inp, args)
+		pkg, _, err := dumpChecked(cmd, args, inp)
 		if err != nil {
 			return err
 		}
-		start := time.Now()
-		targets, err := dumpCLITargets(cmd)
-		if err != nil {
-			return err
-		}
-		pkg, err := checkDoc(doc, dir, true, targets...)
-		if err != nil {
-			return err
-		}
-		slog.Info("check", "dir", dir, "duration", time.Since(start))
 		return dumpDocument(f, pkg)
 
 	case "optimized":
-		doc, dir, err := dumpParseInput(inp, args)
+		pkg, dir, err := dumpChecked(cmd, args, inp)
 		if err != nil {
 			return err
 		}
-		start := time.Now()
-		targets, err := dumpCLITargets(cmd)
-		if err != nil {
-			return err
-		}
-		pkg, err := checkDoc(doc, dir, true, targets...)
-		if err != nil {
-			return err
-		}
-		slog.Info("check", "dir", dir, "duration", time.Since(start))
 		target, err := dumpResolveTarget(cmd, pkg)
 		if err != nil {
 			return err
 		}
-		start = time.Now()
+		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Platform: target.Platform,
 			Language: target.Lang,
@@ -156,25 +186,15 @@ func runDump(cmd *cobra.Command, args []string) error {
 		return dumpDocument(f, ir.Convert(pkg))
 
 	case "analysis":
-		doc, dir, err := dumpParseInput(inp, args)
+		pkg, dir, err := dumpChecked(cmd, args, inp)
 		if err != nil {
 			return err
 		}
-		start := time.Now()
-		targets, err := dumpCLITargets(cmd)
-		if err != nil {
-			return err
-		}
-		pkg, err := checkDoc(doc, dir, true, targets...)
-		if err != nil {
-			return err
-		}
-		slog.Info("check", "dir", dir, "duration", time.Since(start))
 		target, err := dumpResolveTarget(cmd, pkg)
 		if err != nil {
 			return err
 		}
-		start = time.Now()
+		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Platform: target.Platform,
 			Language: target.Lang,
@@ -202,20 +222,10 @@ func runDump(cmd *cobra.Command, args []string) error {
 }
 
 func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInput) error {
-	doc, dir, err := dumpParseInput(inp, args)
+	pkg, dir, err := dumpChecked(cmd, args, inp)
 	if err != nil {
 		return err
 	}
-	start := time.Now()
-	targets, err := dumpCLITargets(cmd)
-	if err != nil {
-		return err
-	}
-	pkg, err := checkDoc(doc, dir, true, targets...)
-	if err != nil {
-		return err
-	}
-	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 	target, err := dumpResolveTarget(cmd, pkg)
 	if err != nil {
@@ -243,7 +253,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 		return nil
 	}
 
-	start = time.Now()
+	start := time.Now()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: target.Platform,
 		Language: target.Lang,
@@ -264,21 +274,10 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 }
 
 func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
-	doc, dir, err := dumpParseInput(inp, args)
+	pkg, dir, err := dumpChecked(cmd, args, inp)
 	if err != nil {
 		return err
 	}
-
-	start := time.Now()
-	targets, err := dumpCLITargets(cmd)
-	if err != nil {
-		return err
-	}
-	pkg, err := checkDoc(doc, dir, true, targets...)
-	if err != nil {
-		return err
-	}
-	slog.Info("check", "dir", dir, "duration", time.Since(start))
 
 	target, err := dumpResolveTarget(cmd, pkg)
 	if err != nil {
@@ -308,7 +307,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		Language: target.Lang,
 		Dir:      dir,
 	}
-	start = time.Now()
+	start := time.Now()
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return err
 	}
@@ -359,17 +358,15 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	return dumpCodegenOutput(names, files)
 }
 
-// dumpCLITargets is the target the --lang/--platform flags name, for the check
-// that precedes target resolution: a stage dump has to check against the same
-// target it then dumps for, or it reports a tree the build would never make.
+// A stage dump must check against the same target it then dumps for, or it
+// reports a tree the build would never make.
 func dumpCLITargets(cmd *cobra.Command) ([]ir.StaticTarget, error) {
 	lang, _ := cmd.Flags().GetString("lang")
 	plat, _ := cmd.Flags().GetString("platform")
 	lang, plat, err := resolveLangPlat(lang, plat)
 	if err != nil {
-		// Returning no targets here checked against every registered one and
-		// dumped a tree for a target the caller never named; the flags are
-		// unusable, so say so instead.
+		// Returning no targets instead checks against every registered one and
+		// dumps a tree for a target the caller never named.
 		return nil, err
 	}
 	return cliSelectedTargets(lang, plat), nil
@@ -392,8 +389,6 @@ func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error
 	return targets[0], nil
 }
 
-// dumpCodegenOutput prints generated source to stdout. Single file: raw.
-// Multiple files: txtar format with per-file syntax highlighting.
 func dumpCodegenOutput(names []string, files map[string][]byte) error {
 	if len(names) == 1 {
 		name := names[0]

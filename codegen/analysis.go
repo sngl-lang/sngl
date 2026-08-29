@@ -9,9 +9,10 @@ import (
 )
 
 // CommonAnalysis holds platform-independent analysis extracted from a Package.
-// Platforms embed this and add their own fields on top.
+// Platforms embed this and add their own fields on top. It must hold no
+// *ir.Package: `dump --stage analysis` serializes it, and the IR graph has
+// cycles. Anything a generator accumulates while emitting belongs in Emission.
 type CommonAnalysis struct {
-	Pkg            *ir.Package                // source package (for DepTracker construction)
 	ModelFields    map[string]bool            // data fields + computed fields
 	ComputedFields map[string]bool            // subset of ModelFields that are computed
 	ComputedDeps   map[string]map[string]bool // computed name → root field deps
@@ -25,9 +26,26 @@ type CommonAnalysis struct {
 	Units          []*ir.UnitDef
 	Timers         []TimerInfo
 	NeedsToast     bool
-	Helpers        map[string]bool // needed helper functions (populated during codegen)
 	UsedComponents map[string]bool // primitive component names used in the visual tree
-	Styles         []string        // CSS rules registered by components during codegen
+}
+
+// Emission is what a code generator accumulates while it emits, as opposed to
+// the facts about the program that CommonAnalysis holds.
+type Emission struct {
+	Helpers map[string]bool // helper functions the emitted code needs
+	Styles  []string        // CSS rules registered by components during codegen
+}
+
+func NewEmission() *Emission {
+	return &Emission{Helpers: make(map[string]bool)}
+}
+
+// AddStyle ignores a rule that is already registered.
+func (e *Emission) AddStyle(css string) {
+	if slices.Contains(e.Styles, css) {
+		return
+	}
+	e.Styles = append(e.Styles, css)
 }
 
 // TimerInfo captures platform-independent parts of a timer declaration.
@@ -36,25 +54,20 @@ type TimerInfo struct {
 	IntervalMs int
 	ActiveVar  string
 	Body       []ir.Stmt
-	// LocalRefs is the non-escaping widget-ref set lower's passNodeEscape
-	// recorded for this timer's handler scope. MutationModel platforms use
-	// it to emit those refs as function-locals rather than Model fields.
-	// nil when the pass did not run.
+	// LocalRefs is passNodeEscape's non-escaping widget-ref set for this
+	// handler scope, nil when that pass did not run.
 	LocalRefs map[string]bool
 }
 
 // AnalyzeOpts carries analysis the caller has already computed for this
-// package and does not want repeated. A platform that analyzes the same
-// package once per output file — html does, once per window — fills it from
-// the first pass. Whatever it supplies is copied, so the analysis codegen then
-// mutates is still the caller's alone.
+// package and does not want repeated. Whatever it supplies is copied, so the
+// analysis codegen then mutates is still the caller's alone.
 type AnalyzeOpts struct {
 	// UsedComponents is the result of the visual-tree scan. Nil means scan.
 	UsedComponents map[string]bool
 }
 
-// AnalyzeCommon extracts CommonAnalysis from a Package. Platforms call this
-// first, then add platform-specific analysis on top.
+// AnalyzeCommon extracts CommonAnalysis from a Package.
 func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 	return AnalyzeCommonFor(pkg, AnalyzeOpts{})
 }
@@ -62,7 +75,6 @@ func AnalyzeCommon(pkg *ir.Package) *CommonAnalysis {
 // AnalyzeCommonFor is AnalyzeCommon with the parts named in o taken as given.
 func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	a := &CommonAnalysis{
-		Pkg:            pkg,
 		ModelFields:    make(map[string]bool),
 		ComputedFields: make(map[string]bool),
 		ComputedDeps:   make(map[string]map[string]bool),
@@ -70,7 +82,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		ExternFuncs:    make(map[string]bool),
 		ExternVars:     make(map[string]bool),
 		StructFields:   make(map[string][]string),
-		Helpers:        make(map[string]bool),
 		UsedComponents: make(map[string]bool),
 	}
 
@@ -86,7 +97,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		if IsComputed(f) {
 			a.ModelFields[f.Name] = true
 			a.ComputedFields[f.Name] = true
-			// Use purity analysis Reads for computed deps.
 			deps := make(map[string]bool)
 			for _, r := range f.Reads {
 				deps[r.Name] = true
@@ -95,8 +105,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 	}
 
-	// Include main component's vars and funcs so platform codegen
-	// sees them as model fields (mirrors DepTracker logic).
 	for _, comp := range pkg.Components {
 		if comp.Name == "main" {
 			for _, v := range comp.Vars {
@@ -152,7 +160,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 	}
 
-	// Walk visual tree to collect used primitive component names.
 	if o.UsedComponents != nil {
 		maps.Copy(a.UsedComponents, o.UsedComponents)
 	} else {
@@ -161,10 +168,8 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 	}
 
-	// Timers: package-level plus the main component's. MutationModel platforms
-	// (fyne) read these from CommonAnalysis to emit their timer runtime; html
-	// reads ir.Timer directly off the components during rendering, so this field
-	// previously went unpopulated and fyne emitted no timer runtime at all.
+	// MutationModel platforms emit their timer runtime from these; html reads
+	// ir.Timer off the components instead.
 	allTimers := append([]*ir.Timer{}, pkg.Timers...)
 	for _, comp := range pkg.Components {
 		if comp != nil && comp.Name == "main" {
@@ -188,13 +193,11 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		})
 	}
 
-	// Alert usage is stamped onto the package by the StampUsage lowering pass.
 	a.NeedsToast = pkg.UsesAlert
 
 	return a
 }
 
-// collectUsedIRStmts walks IR statements collecting used visual node names.
 func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -227,28 +230,6 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 	}
 }
 
-// DepTracker returns a new DepTracker initialized from this analysis.
-func (a *CommonAnalysis) DepTracker() *DepTracker {
-	if a.Pkg == nil {
-		return &DepTracker{
-			ModelVars:     make(map[*ir.Var]struct{}),
-			ComputedFuncs: make(map[*ir.Func]struct{}),
-			ComputedDeps:  make(map[*ir.Func]map[*ir.Var]struct{}),
-		}
-	}
-	return NewDepTrackerFromPkg(a.Pkg)
-}
-
-// AddStyle registers a CSS rule to be emitted. Duplicate rules are ignored.
-func (a *CommonAnalysis) AddStyle(css string) {
-	if slices.Contains(a.Styles, css) {
-		return
-	}
-	a.Styles = append(a.Styles, css)
-}
-
-// PruneUnusedComputeds removes computed fields that are not referenced by
-// any of the given used field sets.
 func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 	needed := make(map[string]bool)
 	var mark func(string)
@@ -277,7 +258,6 @@ func (a *CommonAnalysis) PruneUnusedComputeds(usedFields map[string]bool) {
 	}
 }
 
-// IntervalToMs converts an IR duration expression to milliseconds.
 func IntervalToMs(expr ir.Expr) int {
 	if expr == nil {
 		return 0
@@ -309,7 +289,6 @@ func parseNumber(raw string) float64 {
 		if c >= '0' && c <= '9' {
 			n = n*10 + float64(c-'0')
 		} else if c == '.' {
-			// Simple float parsing
 			break
 		} else {
 			break

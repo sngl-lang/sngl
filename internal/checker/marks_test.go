@@ -59,8 +59,6 @@ func wantNoMarkErrs(t *testing.T, errs []string) {
 
 const markImports = "import . \"sngl://internal/marks\"\n"
 
-// --- #[builtin] ---
-
 // The kind is stamped on whatever IR the declaration became, and the marked
 // declaration is what the compiler then keys on.
 func TestBuiltinMarkStampsTheKind(t *testing.T) {
@@ -108,8 +106,6 @@ struct Tiny {}
 	wantMarkErr(t, errs, "macro builtin: expected 1 argument, got 0")
 }
 
-// --- #[intrinsic] ---
-
 func TestIntrinsicMarkStampsIdAndFlags(t *testing.T) {
 	pkg, errs := checkMarkStub(t, markImports+`
 #[intrinsic("string.upper", usable, mutatesReceiver)]
@@ -154,8 +150,6 @@ struct Tiny {}
 `)
 	wantMarkErr(t, errs, `#[intrinsic("string.upper")] cannot mark`)
 }
-
-// --- #[tree.kind] / #[tree.children] ---
 
 // The alias is the file's, and the mark follows it like any other qualified
 // name.
@@ -212,8 +206,6 @@ struct Tiny {}
 `)
 	wantMarkErr(t, errs, "only a component is a node in a tree")
 }
-
-// --- #[foreign] ---
 
 // #[foreign] is declared in sngl://std, so it is the one compiler mark a
 // program can write for itself.

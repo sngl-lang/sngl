@@ -6,9 +6,8 @@ import (
 	"testing"
 )
 
-// TestSpecificationIsGenerated pins the committed generated regions to the
-// grammar: nothing else notices when sngl.ebnf changes and specgen is not
-// re-run. The whole pipeline runs over a copy, mdox included, because mdox
+// Pins the committed generated regions to the grammar: nothing else notices
+// when sngl.ebnf changes and specgen is not re-run. mdox runs too, because it
 // reflows what the generator writes.
 func TestSpecificationIsGenerated(t *testing.T) {
 	root := repoRoot()
@@ -17,15 +16,15 @@ func TestSpecificationIsGenerated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The copy lives beside the original: mdox refuses a file outside the
-	// directory it is anchored on.
-	f, err := os.CreateTemp(filepath.Dir(spec), "specgen-check-*.md")
+	// Not t.TempDir(): mdox refuses a file outside its anchor (the repo root),
+	// and not under docs/ either — TestDocSNGLBlocks enumerates that tree and
+	// raced with the transient file.
+	dir, err := os.MkdirTemp(root, ".specgen-check-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmp := f.Name()
-	f.Close()
-	t.Cleanup(func() { os.Remove(tmp) })
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	tmp := filepath.Join(dir, "specification.md")
 	if err := os.WriteFile(tmp, want, 0o644); err != nil {
 		t.Fatal(err)
 	}

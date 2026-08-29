@@ -62,7 +62,7 @@ Platforms choose between two intermediate representations based on their renderi
 - **MutationModel** (`codegen/model.go`) — emit a static tree once, then generate targeted `Updater` functions to patch when state changes. Used by HTML and Fyne. Interfaces: `MutationModelEmitter`.
 - **RenderModel** (`codegen/model.go`) — re-render the full view from state on every change; framework handles diffing. Used by BubbleTea and Android/Compose. Interfaces: `RenderModelEmitter`.
 
-Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, computed deps, functions, structs, and timers into a platform-independent `CommonAnalysis`.
+Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, computed deps, functions, structs, and timers into a platform-independent `CommonAnalysis`. That struct is read-only to a generator and holds no `*ir.Package`: what a generator *writes* as it emits — helper flags, registered CSS — is `codegen.Emission`, which a platform embeds beside the analysis. Keeping the two apart is what makes `dump --stage analysis` a dump of the analysis rather than of the whole IR graph plus the emitter's scratch space.
 
 ### Platform Details
 
@@ -314,4 +314,14 @@ sngl dump --stage lowered --after none [file|dir]                 # pre-lower IR
 
 The stage is a **flag**, not a positional argument — `sngl dump checked f.sngl`
 fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
-`spew`, or `json`; `--omit AST,Pos` trims noise.
+`spew`, or `json`; `--omit AST,Pos` trims noise. The analysis stage defaults to
+`json` instead: it dumps facts *about* a program rather than a program, and
+those have no source form — `--format sngl` on it is an error naming the two
+that work.
+
+A positional argument may also be a package rather than a path:
+`sngl dump --stage checked sngl://platforms/gtk4`. It arrives already checked,
+because a library package loads under the rules that permit its own
+`sngl://internal/` imports and because a target synthesizes part of it with no
+file on disk. `check` and `generate` take one too; `fmt` does not, since it
+rewrites files and a package has none.

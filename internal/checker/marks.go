@@ -192,8 +192,6 @@ func (c *checker) refuseParamMarks(params []ast.Param) {
 	}
 }
 
-// --- arguments ---
-
 // markArgs holds a mark's arguments, checked against the declared parameter
 // list and addressable by parameter name.
 type markArgs struct {

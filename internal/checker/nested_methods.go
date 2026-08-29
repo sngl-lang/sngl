@@ -149,7 +149,6 @@ func hasMemberLikeName(d ir.Symbol, name string) bool {
 	return false
 }
 
-// typeKindNoun returns a human-readable noun for the kind of IR symbol.
 func typeKindNoun(d ir.Symbol) string {
 	switch d.(type) {
 	case *ir.StructDef:

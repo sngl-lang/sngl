@@ -8,8 +8,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// --- Explicit conversions: int/float/string/bool(x) ---
-
 func TestConvIntFromFloat(t *testing.T) {
 	expectNoErrors(t, `
 func test() {
@@ -68,8 +66,6 @@ func test() {
 `, "cannot convert")
 }
 
-// --- int → unit: literal 0 only ---
-
 func TestUnitZeroAccepted(t *testing.T) {
 	expectNoErrors(t, `
 unit kg { g, kg = 1000g }
@@ -84,8 +80,6 @@ var w kg = 5
 `, "cannot initialize")
 }
 
-// --- Null → func: compiles, is callable ---
-
 func TestNullToFuncCompiles(t *testing.T) {
 	expectNoErrors(t, `
 component main {
@@ -95,8 +89,6 @@ component main {
 }
 `)
 }
-
-// --- Interpolation: primitives, method lookup, rejection ---
 
 func TestInterpolatePrimitives(t *testing.T) {
 	expectNoErrors(t, `
@@ -135,8 +127,6 @@ component main {
 }
 `)
 }
-
-// --- IR explicitness: every implicit conversion materializes as ir.Conversion ---
 
 func TestIRWrapsImplicitIntToFloat(t *testing.T) {
 	doc, err := parser.Parse("test.sngl", []byte(`
@@ -181,8 +171,6 @@ component main {
 }
 `, "not defined for int and float")
 }
-
-// --- Explicit conversion allow-list (continued) ---
 
 func TestConvIntFromBoolAccepted(t *testing.T) {
 	expectNoErrors(t, `
@@ -263,8 +251,6 @@ component main {
 `)
 }
 
-// --- Literal-0 → unit at different assignability sites ---
-
 func TestUnitZeroInArg(t *testing.T) {
 	expectNoErrors(t, `
 unit ms { ms, s = 1000ms }
@@ -307,8 +293,6 @@ func test() {
 `, "cannot pass")
 }
 
-// --- Null → option / func ---
-
 func TestNullToOption(t *testing.T) {
 	expectNoErrors(t, `
 component main {
@@ -342,8 +326,6 @@ component main {
 `)
 }
 
-// --- String domain bidirectional coercion ---
-
 func TestStringToColorAssignment(t *testing.T) {
 	expectNoErrors(t, `
 component main {
@@ -362,8 +344,6 @@ component main {
 }
 `)
 }
-
-// --- Interpolation coverage ---
 
 func TestInterpolateEnum(t *testing.T) {
 	expectNoErrors(t, `
@@ -430,8 +410,6 @@ component main {
 `, "no string() method")
 }
 
-// --- Numeric promotion in arithmetic + comparisons ---
-
 func TestMixedTypedMulRejected(t *testing.T) {
 	expectError(t, `
 component main {
@@ -465,8 +443,6 @@ func test() {
 }
 `, "not defined for int and float")
 }
-
-// --- Explicit cast appears as ir.Conversion in IR ---
 
 func TestIRBuiltinCastEmitsConversion(t *testing.T) {
 	doc, _ := parser.Parse("test.sngl", []byte(`
@@ -530,13 +506,9 @@ component main {
 	}
 }
 
-// --- Literal-zero adapt does not fire for non-unit targets ---
-
 func TestLiteralZeroNotAppliedToString(t *testing.T) {
 	expectError(t, `var s string = 0`, "cannot initialize string with int")
 }
-
-// --- Dyn flows implicitly, gets wrapped in Conversion ---
 
 func TestDynToConcreteFlows(t *testing.T) {
 	expectNoErrors(t, `
