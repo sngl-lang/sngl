@@ -196,7 +196,7 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		}
 		caps := plat.Capabilities(lang).ToLowerCaps()
 		start = time.Now()
-		if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+		if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 			return fmt.Errorf("%s: %w", dir, err)
 		}
 		slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))

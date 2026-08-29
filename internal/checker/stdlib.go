@@ -1239,7 +1239,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
 					continue
 				}
-				c.addPlatformBody(decl.Pos, stdComp, plat, ns, local, decl.Body, false)
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false)
 			}
 		}
 	}
@@ -1249,23 +1249,28 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 // reports that one is already recorded. A duplicate is an error rather than a
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
-func (c *checker) addPlatformBody(pos ast.Pos, comp *ir.Component, platform, ns, local string, body ast.StmtBlock, user bool) {
-	if comp.PlatformBodies == nil {
-		comp.PlatformBodies = map[string][]ir.Stmt{}
+func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool) {
+	bodies, vars := &comp.PlatformBodies, &comp.PlatformVars
+	if kind == ir.BuiltinLanguage {
+		bodies, vars = &comp.LanguageBodies, &comp.LanguageVars
 	}
-	if _, dup := comp.PlatformBodies[platform]; dup {
-		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, platform)
+	if *bodies == nil {
+		*bodies = map[string][]ir.Stmt{}
+	}
+	if _, dup := (*bodies)[target]; dup {
+		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, target)
 		return
 	}
-	if comp.PlatformVars == nil {
-		comp.PlatformVars = map[string][]*ir.Var{}
+	if *vars == nil {
+		*vars = map[string][]*ir.Var{}
 	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
-	comp.PlatformBodies[platform] = nil
+	(*bodies)[target] = nil
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:     comp,
-		platform: platform,
+		platform: target,
+		kind:     kind,
 		body:     body,
 		user:     user,
 	})
@@ -1291,6 +1296,10 @@ type pendingExtension struct {
 	comp     *ir.Component
 	platform string
 	body     ast.StmtBlock
+	// kind says which axis the target names -- a platform or a language --
+	// and so which of the component's two override maps the checked body
+	// belongs in.
+	kind ir.BuiltinKind
 	// user marks an override a program declared rather than a target package.
 	// Its body is the program's own source and resolves in the program's
 	// scope, where the file's imports are; a target package's body is
@@ -1365,8 +1374,13 @@ func (c *checker) checkPendingExtensions() {
 			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
 			pe.comp.Vars = vars
 			c.checkComponentBody(pe.comp)
-			pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
-			pe.comp.PlatformVars[pe.platform] = pe.comp.Vars
+			if pe.kind == ir.BuiltinLanguage {
+				pe.comp.LanguageBodies[pe.platform] = pe.comp.Body
+				pe.comp.LanguageVars[pe.platform] = pe.comp.Vars
+			} else {
+				pe.comp.PlatformBodies[pe.platform] = pe.comp.Body
+				pe.comp.PlatformVars[pe.platform] = pe.comp.Vars
+			}
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars

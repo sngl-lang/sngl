@@ -1,0 +1,68 @@
+# A target is a platform and a language, so a declaration may be overridden on
+# either axis. The platform's wins where both apply -- the platform has the
+# last word on the rest of the build too -- and the declaration's own body is
+# what a target neither overrides gets.
+
+# The platform override, on a build whose language is overridden too.
+sngl generate --platform html --lang go -o out_hg app.sngl
+grep 'html x' out_hg/server.go
+! grep 'go x' out_hg/server.go
+
+# The language override, on a platform that has none.
+sngl generate --platform fyne --lang go -o out_fg app.sngl
+grep 'go x' out_fg/model.go
+! grep 'default x' out_fg/model.go
+
+# Neither: the declaration's own body.
+sngl generate --platform android --lang kotlin -o out_ak app.sngl
+grep 'default x' out_ak/MainScreen.kt
+
+# Two implementations for one target are two answers to a question with one,
+# on either axis.
+! sngl check dup_language.sngl
+stderr 'already has an implementation for "go"'
+
+-- app.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+import "sngl://languages/go"
+
+component Badge(value string) {
+    text(value="default " + value)
+}
+
+component Badge[go.language] {
+    text(value="go " + value)
+}
+
+component Badge[html.platform] {
+    html.span(textContent="html " + value)
+}
+
+component main {
+    window #w(title="t") {
+        Badge(value="x")
+    }
+}
+
+-- dup_language.sngl --
+import . "sngl://std"
+import "sngl://languages/go"
+
+component Badge(value string) {
+    text(value=value)
+}
+
+component Badge[go.language] {
+    text(value="a" + value)
+}
+
+component Badge[go.language] {
+    text(value="b" + value)
+}
+
+component main {
+    window #w(title="t") {
+        Badge(value="x")
+    }
+}

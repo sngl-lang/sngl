@@ -22,6 +22,6 @@ var passPlatformExtensionBody = pass{
 }
 
 func lowerPlatformExtensionBody(pkg *ir.Package, _ Caps, opts Options) error {
-	ir.SpecializeForTarget(pkg, opts.Platform)
+	ir.SpecializeForTarget(pkg, opts.Platform, opts.Language)
 	return nil
 }

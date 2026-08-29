@@ -13,11 +13,11 @@ package ir
 //
 // An empty platform (LSP, format, multi-platform discovery) specializes
 // nothing: declarations keep whatever body the checker left them with.
-func SpecializeForTarget(pkg *Package, platform string) {
-	if pkg == nil || platform == "" {
+func SpecializeForTarget(pkg *Package, platform, language string) {
+	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
-	specializePkgBodies(pkg, platform, map[*Package]struct{}{}, false)
+	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, false)
 }
 
 // SpecializeOverriddenBodies is SpecializeForTarget restricted to declarations
@@ -30,11 +30,33 @@ func SpecializeForTarget(pkg *Package, platform string) {
 // early changes what the optimizer sees for every stdlib component in every
 // build, which is a different change than this one. So the early pass moves
 // only what a program overrode.
-func SpecializeOverriddenBodies(pkg *Package, platform string) {
-	if pkg == nil || platform == "" {
+func SpecializeOverriddenBodies(pkg *Package, platform, language string) {
+	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
-	specializePkgBodies(pkg, platform, map[*Package]struct{}{}, true)
+	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, true)
+}
+
+// target is the build's two axes. A declaration may be overridden on either,
+// and the platform's override wins where both apply -- the platform has the
+// last word on the rest of the build too.
+type target struct{ platform, language string }
+
+// pick returns the body a target selects from the two override maps, and
+// whether there is one at all.
+func pick[T any](t target, byPlatform, byLanguage map[string]T) (T, bool) {
+	if t.platform != "" && byPlatform != nil {
+		if v, ok := byPlatform[t.platform]; ok {
+			return v, true
+		}
+	}
+	if t.language != "" && byLanguage != nil {
+		if v, ok := byLanguage[t.language]; ok {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
 }
 
 // specializePkgBodies swaps each component's PlatformBodies[platform] entry
@@ -44,7 +66,7 @@ func SpecializeOverriddenBodies(pkg *Package, platform string) {
 // imported component's body (e.g. `text` used by a cross-package `Row`) only
 // gets specialized when we walk the imported package's symbol table too.
 // The seen set guards against import cycles.
-func specializePkgBodies(pkg *Package, platform string, seen map[*Package]struct{}, bodiedOnly bool) {
+func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bodiedOnly bool) {
 	if pkg == nil {
 		return
 	}
@@ -61,22 +83,22 @@ func specializePkgBodies(pkg *Package, platform string, seen map[*Package]struct
 		pkg.Symbols.EachSymbol(func(sym Symbol) bool {
 			switch decl := sym.(type) {
 			case *Component:
-				specializeComp(decl, platform, bodiedOnly)
+				specializeComp(decl, t, bodiedOnly)
 			case *Func:
-				specializeFunc(decl, platform, bodiedOnly)
+				specializeFunc(decl, t, bodiedOnly)
 			}
 			return true
 		})
 	}
 	for _, comp := range pkg.Components {
-		specializeComp(comp, platform, bodiedOnly)
+		specializeComp(comp, t, bodiedOnly)
 	}
 	for _, fn := range pkg.Funcs {
-		specializeFunc(fn, platform, bodiedOnly)
+		specializeFunc(fn, t, bodiedOnly)
 	}
 	for _, imp := range pkg.Imports {
 		if imp != nil {
-			specializePkgBodies(imp.Pkg, platform, seen, bodiedOnly)
+			specializePkgBodies(imp.Pkg, t, seen, bodiedOnly)
 		}
 	}
 
@@ -92,7 +114,7 @@ func specializePkgBodies(pkg *Package, platform string, seen map[*Package]struct
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *NodeInst:
-				specializeComp(n.Component, platform, bodiedOnly)
+				specializeComp(n.Component, t, bodiedOnly)
 				walk(n.Children)
 			case *For:
 				walk(n.Body)
@@ -116,14 +138,14 @@ func specializePkgBodies(pkg *Package, platform string, seen map[*Package]struct
 
 // specializeFunc swaps one function's body for platform into its live Block.
 // Idempotent, like specializeComp: re-swapping writes the same value.
-func specializeFunc(fn *Func, platform string, bodiedOnly bool) {
-	if fn == nil || fn.PlatformBodies == nil {
+func specializeFunc(fn *Func, t target, bodiedOnly bool) {
+	if fn == nil {
 		return
 	}
 	if bodiedOnly && len(fn.Block) == 0 {
 		return
 	}
-	if body, ok := fn.PlatformBodies[platform]; ok {
+	if body, ok := pick(t, fn.PlatformBodies, fn.LanguageBodies); ok {
 		fn.Block = body
 	}
 }
@@ -133,27 +155,24 @@ func specializeFunc(fn *Func, platform string, bodiedOnly bool) {
 // the body reads them, and a var belonging to a platform that is not the
 // build target must never reach codegen. Idempotent — re-swapping an
 // already-specialized component writes the same values.
-func specializeComp(comp *Component, platform string, bodiedOnly bool) {
+func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if comp == nil {
 		return
 	}
 	// A component's own functions are overridable too, and are reachable only
 	// through the component that holds them.
 	for _, fn := range comp.Funcs {
-		specializeFunc(fn, platform, bodiedOnly)
-	}
-	if comp.PlatformBodies == nil {
-		return
+		specializeFunc(fn, t, bodiedOnly)
 	}
 	if bodiedOnly && len(comp.Body) == 0 {
 		return
 	}
-	body, ok := comp.PlatformBodies[platform]
+	body, ok := pick(t, comp.PlatformBodies, comp.LanguageBodies)
 	if !ok {
 		return
 	}
 	comp.Body = body
-	if vars, ok := comp.PlatformVars[platform]; ok {
+	if vars, ok := pick(t, comp.PlatformVars, comp.LanguageVars); ok {
 		comp.Vars = vars
 	}
 }

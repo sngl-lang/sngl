@@ -256,6 +256,9 @@ type Func struct {
 	// registered target's; lower's passPlatformExtensionBody swaps the active
 	// one into Block. Empty for a function nobody overrides.
 	PlatformBodies map[string][]Stmt `json:",omitempty"`
+	// LanguageBodies is the same, keyed by language. A declaration may be
+	// overridden on either axis; the platform's wins where both apply.
+	LanguageBodies map[string][]Stmt `json:",omitempty"`
 	Purity         Purity
 	IsTest         bool
 	Reads          []*Var // vars read (directly or via called functions)
@@ -407,6 +410,12 @@ type Component struct {
 	// platform's body into Component.Body before remaining lowering
 	// passes run. nil for components with no extension declarations.
 	PlatformBodies map[string][]Stmt `json:"-"`
+	// LanguageBodies and LanguageVars are the same two maps keyed by language
+	// instead. A declaration may be overridden on either axis -- a target is a
+	// platform and a language -- and the platform's wins where both apply,
+	// because the platform has the last word on everything else too.
+	LanguageBodies map[string][]Stmt `json:"-"`
+	LanguageVars   map[string][]*Var `json:"-"`
 	// PlatformVars holds the vars and consts declared by each extension
 	// body, keyed the same way as PlatformBodies and swapped into
 	// Component.Vars by the same lowering pass. It is per-platform for the

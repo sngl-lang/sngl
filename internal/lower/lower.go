@@ -129,6 +129,11 @@ type Options struct {
 	// stdlib components abstract.
 	Platform string
 
+	// Language is the active target's language identifier ("go", "js",
+	// "kotlin"). A declaration may be overridden on either axis, and the
+	// swap prefers the platform's where both apply.
+	Language string
+
 	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
 	// component id from another platform's namespace. A platform primitive is
 	// the emitting codegen's dispatch key, so one platform's is meaningless to

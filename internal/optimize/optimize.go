@@ -159,7 +159,7 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	// An override is the body a call runs on this target, so it has to be in
 	// place before anything folds or inlines against it. Lowering swaps the
 	// rest; this moves only what already has a body to replace.
-	ir.SpecializeOverriddenBodies(pkg, cfg.Platform)
+	ir.SpecializeOverriddenBodies(pkg, cfg.Platform, cfg.Language)
 	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with
