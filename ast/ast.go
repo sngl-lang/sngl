@@ -322,20 +322,13 @@ func (Param) paramOrEventDecl()     {}
 func (EventDecl) paramOrEventDecl() {}
 func (SlotDecl) paramOrEventDecl()  {}
 
-// SlotDecl declares a named slot on a component: a region of UI the caller
-// supplies. It sits in the parameter list beside the props and events so a
-// component's whole API is one list.
-//
-// Params are types only. A slot's parameter names belong to whoever writes the
-// body — which is the populator, not the declarer — exactly as for a func type.
+// SlotDecl declares a named slot in a component's parameter list. Params are
+// types only: the names belong to whoever writes the body, which is the caller.
 type SlotDecl struct {
 	Pos    Pos
 	Name   string
 	Params []TypeExpr
-	// Attrs are the #[...] macro attributes written before the slot, read the
-	// same way a Param's are. #[tree.children] is the one that means something
-	// here: it says which family the supplied content must belong to.
-	Attrs []MacroAttr `json:",omitempty"`
+	Attrs  []MacroAttr `json:",omitempty"`
 }
 
 // EventDecl declares an event on a component: @click, @change Type.
@@ -356,17 +349,10 @@ type EventHandler struct {
 	Body   StmtBlock
 }
 
-// SlotNode is `slot` in statement position, which is two things.
-//
-// Bare, it is the anonymous slot's insertion point — the one place the keyword
-// means "render here". Named, it populates a slot of the component whose block
-// it sits in, and the keyword is what says the content is being supplied rather
-// than rendered; a named slot *renders* as `name(args)`, ordinary node syntax
-// with no keyword at all.
-//
-// Args are expressions at both sites: an insertion passes values, a population
-// binds names, and an ident is an expression — so one production parses both
-// and the checker rules on which site this is.
+// SlotNode is `slot` in statement position: bare it is the anonymous slot's
+// insertion point, named it populates a slot of the component whose block it
+// sits in. Args are binding names for a population and values for an insertion;
+// both parse as expressions and the checker rules on which site it is.
 type SlotNode struct {
 	Pos   Pos
 	Name  string // "" for the anonymous slot

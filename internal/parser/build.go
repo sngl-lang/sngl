@@ -1314,9 +1314,6 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	return stmt
 }
 
-// buildSlotParam builds a named-slot declaration from a component's parameter
-// list. The parenthesised list is types only: the names belong to whoever
-// writes the body, which is the populator.
 func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDecl {
 	// SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
 	it.skip() // kw_slot
@@ -1339,8 +1336,7 @@ func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDec
 	return d
 }
 
-// buildSlotNode builds `slot` in statement position — the anonymous insertion
-// point when bare, a population when named. Which one it is is the checker's to
+// Which site this is — anonymous insertion or population — is the checker's to
 // say; both spell their arguments as expressions.
 func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
 	// SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .

@@ -3060,7 +3060,9 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	for _, p := range params {
 		c.declare(eh.Pos, p)
 	}
+	c.funcDepth++
 	fn.Block = c.checkBlockIR(&eh.Body)
+	c.funcDepth--
 	c.popScope()
 	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
 }
@@ -3706,7 +3708,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			for _, p := range params {
 				c.declare(arg.Pos, p)
 			}
+			c.funcDepth++
 			fn.Block = c.checkBlockIR(&arg.Body)
+			c.funcDepth--
 			c.popScope()
 			handlers = append(handlers, ir.EventHandler{
 				AST:  &arg,
@@ -4138,13 +4142,10 @@ func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, b
 	return sym, true
 }
 
-// checkSlotNodeIR checks `slot` in statement position.
-//
-// Bare, it is the anonymous slot's insertion point: the caller's ordinary
-// children render here, and the block is the fallback for when there are none.
-// Named, it populates a slot of the component whose block it sits in, which is
-// only meaningful inside that component's call — a named `slot` anywhere else
-// is a declaration written in the wrong place, and says so.
+// checkSlotNodeIR checks a bare `slot`, the anonymous insertion point. A named
+// one is a population, peeled off by checkSlotPopulations before the block is
+// checked, so reaching here means it was written outside any call to a
+// component that declares it.
 func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 	if x.Name != "" {
 		c.error(x.Pos, "slot %q: a slot is declared in the component's parameter list, and populated only inside a call to it", x.Name)
@@ -4157,11 +4158,10 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 }
 
 // enclosingSlot returns the slot of the component being checked that name
-// refers to, or nil. Only the component that declares a slot may insert it:
-// the insertion is where the supplied content lands, and nothing outside the
-// declaration has a position to land it in.
+// names. Only the declaring component may insert one, and only in visual
+// position — hence the funcDepth guard.
 func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
-	if c.currentComponent == nil || name == "" {
+	if c.currentComponent == nil || name == "" || c.funcDepth > 0 {
 		return nil
 	}
 	for _, s := range c.currentComponent.Slots {
@@ -4172,12 +4172,8 @@ func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
 	return nil
 }
 
-// checkSlotInsertion checks a named slot's insertion point: the arguments it
-// passes and the fallback it renders when the caller supplies nothing.
-//
-// Arguments are positional against the declaration's types, because a slot
-// declares types and no names -- the names belong to the populator, so there
-// is nothing here for a named argument to bind to.
+// checkSlotInsertion checks an insertion point: its arguments, positional
+// against the declaration's types, and the fallback block.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
 	inst := &ir.SlotInst{AST: vn, Name: slot.Name}
 	var args []ast.Expr
@@ -4212,7 +4208,6 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.S
 	return inst
 }
 
-// findSlot returns comp's slot of that name, or nil.
 func findSlot(comp *ir.Component, name string) *ir.SlotDecl {
 	if comp == nil {
 		return nil
@@ -4225,14 +4220,9 @@ func findSlot(comp *ir.Component, name string) *ir.SlotDecl {
 	return nil
 }
 
-// checkSlotPopulations pulls the `slot name(bindings) { ... }` entries out of a
-// callsite's block and checks each against the callee's declarations, returning
-// the content by slot name and the block with those entries removed -- what is
-// left are the ordinary children, which go to the anonymous slot.
-//
-// A population is the only place a `slot` keyword appears outside a component's
-// own parameter list, so an entry naming nothing the callee declares is caught
-// here rather than reaching the statement checker as a stray declaration.
+// checkSlotPopulations pulls the `slot name(bindings) { … }` entries out of a
+// call site's block, returning them by name and the block with them removed --
+// what is left are the ordinary children.
 func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (map[string]*ir.SlotContent, ast.StmtBlock) {
 	rest := vn.Block
 	if comp == nil {
@@ -4265,13 +4255,9 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 	return content, rest
 }
 
-// checkSlotContent checks one population: the names it binds the insertion's
-// arguments to, and the content it supplies.
-//
-// The names are the populator's, matched by position against the declaration's
-// types -- a slot declares types and no names, so this is where the parameters
-// of a scoped slot get called anything at all. They are ordinary block-scoped
-// bindings and shadow like any other.
+// checkSlotContent checks one population. The bound names are the caller's own,
+// matched by position against the declaration's types, and are ordinary
+// block-scoped bindings.
 func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.SlotContent {
 	if len(sn.Args) != len(decl.Params) {
 		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))

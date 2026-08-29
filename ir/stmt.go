@@ -23,9 +23,8 @@ type NodeInst struct {
 	Handlers  []EventHandler // inline event handlers
 	Bindings  []PropBinding  // first-class bidi prop bindings; consumed by lowering
 	Children  []Stmt         // type-checked body
-	// Slots is the content supplied for the component's named slots, keyed by
-	// slot name. The ordinary Children go to the anonymous slot; these go to
-	// the insertion point that names them.
+	// Slots is the content supplied per named slot; Children go to the
+	// anonymous one.
 	Slots      map[string]*SlotContent `json:",omitempty"`
 	ID         string                  // #id binding
 	Key        Expr                    // key expression for list diffing (nil → implicit index)
@@ -33,13 +32,8 @@ type NodeInst struct {
 	CanvasDraw *Func                   // non-nil for canvas containers after passCanvas
 }
 
-// SlotContent is what a callsite supplies for one named slot: the statements to
-// splice at the insertion point, and the parameters the populator chose to bind
-// the insertion's arguments to.
-//
-// The parameters are the populator's own names, matched by position against the
-// slot declaration's types, so lowering binds them to the argument expressions
-// written at the insertion rather than substituting statements blindly.
+// SlotContent is what a call site supplies for one named slot. Params are the
+// caller's own names for the insertion's arguments, matched by position.
 type SlotContent struct {
 	Params []*Param
 	Body   []Stmt
@@ -76,16 +70,10 @@ func (*CallStmt) stmtNode() {}
 
 // SlotInst is the slot pseudo-element.
 type SlotInst struct {
-	AST *ast.VisualNode
-	// Name is the slot this instance projects. Empty for the anonymous slot,
-	// whose content is the caller's ordinary children.
-	Name string `json:",omitempty"`
-	// Args are the values passed to a scoped slot at this insertion point. The
-	// populator binds them to names of its own choosing, so they are matched by
-	// position against the declaration's types.
-	Args []Expr `json:",omitempty"`
-	// Children is the fallback: what renders when the caller supplies nothing.
-	Children []Stmt
+	AST      *ast.VisualNode
+	Name     string `json:",omitempty"` // "" is the anonymous slot
+	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
+	Children []Stmt // fallback: rendered when the caller supplies nothing
 }
 
 func (*SlotInst) stmtNode() {}

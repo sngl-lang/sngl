@@ -431,6 +431,18 @@ func findParamSyms(stmts []ir.Stmt, propNames map[string]bool) map[string]*ir.Pa
 // A scoped slot's parameters are bound here rather than at the call site,
 // because the names are the populator's and the values are the insertion's --
 // the two only meet when the body is spliced into place.
+// slotBindings pairs a population's declared params with the values the
+// insertion passed, by position.
+func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
+	subs := make(map[*ir.Param]ir.Expr, len(sc.Params))
+	for i, prm := range sc.Params {
+		if i < len(si.Args) {
+			subs[prm] = si.Args[i]
+		}
+	}
+	return subs
+}
+
 func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
 	if si.Name == "" {
 		if len(callsite.Children) == 0 {
@@ -443,37 +455,8 @@ func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
 		return cloneStmts(si.Children)
 	}
 	body := cloneStmts(sc.Body)
-	if len(sc.Params) > 0 {
-		bindings := make(map[string]ir.Expr, len(sc.Params))
-		for i, prm := range sc.Params {
-			if i < len(si.Args) {
-				bindings[prm.Name] = si.Args[i]
-			}
-		}
-		body = substituteSlotParams(body, bindings)
-	}
+	substituteParamsInStmts(body, slotBindings(sc, si))
 	return body
-}
-
-// substituteSlotParams rewrites references to a population's declared
-// parameters into the expressions the insertion passed for them.
-func substituteSlotParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
-	for _, s := range stmts {
-		_ = ir.RewriteExprs(s, func(e ir.Expr) (ir.Expr, error) {
-			id, ok := e.(*ir.Ident)
-			if !ok {
-				return e, nil
-			}
-			if _, isParam := id.Sym.(*ir.Param); !isParam {
-				return e, nil
-			}
-			if bound, ok := bindings[id.Name]; ok {
-				return cloneExpr(bound), nil
-			}
-			return e, nil
-		})
-	}
-	return stmts
 }
 
 // substituteSlots replaces *ir.SlotInst nodes in stmts with what the call site

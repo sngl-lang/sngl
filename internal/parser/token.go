@@ -91,14 +91,10 @@ const (
 	KW_ELSE      TokenType = 0x3B
 	KW_FUNC      TokenType = 0x3C
 	KW_UNIT      TokenType = 0x3D
-	// Declares a named slot in a component's parameter list, and populates one
-	// from a callsite body. A keyword rather than a built-in node because it is
-	// a declaration form like func/component/struct, not a rendered node; the
-	// anonymous slot's bare `slot` insertion is the one render-flavoured use.
-	KW_SLOT     TokenType = 0x3E
-	KW_BREAK    TokenType = 0x3F // reserved
-	KW_RETURN   TokenType = 0x40
-	KW_CONTINUE TokenType = 0x41 // reserved
+	KW_SLOT      TokenType = 0x3E
+	KW_BREAK     TokenType = 0x3F // reserved
+	KW_RETURN    TokenType = 0x40
+	KW_CONTINUE  TokenType = 0x41 // reserved
 	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
@@ -178,9 +174,8 @@ func insertsSemicolon(t TokenType) bool {
 	switch t {
 	case IDENT, INT, FLOAT, STR_FULL, TRIPLE_FULL, RAW_STRING, UNIT_LITERAL, HASH,
 		STR_END, TRIPLE_END, I18N_STR_FULL, I18N_TRIPLE_FULL, I18N_STR_END, I18N_TRIPLE_END,
-		// KW_RETURN and KW_SLOT are keywords whose tail is optional, so each can
-		// be a whole statement. Without ASI a bare `slot` on its own line takes
-		// the next statement's identifier as its name.
+		// Both have an optional tail, so each can be a whole statement: without
+		// ASI a bare `slot` takes the next line's identifier as its name.
 		KW_RETURN, KW_SLOT,
 		AT, RPAREN, RBRACKET, RBRACE, BANGBANG, PLUS_PLUS, MINUS_MINUS:
 		return true

@@ -391,12 +391,9 @@ type Component struct {
 	// the component was resolved by a name it has no way to read.
 	WildcardInto string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg    string
-	Props  []*Prop
-	Events []*EventDecl
-	// Slots are the named slots declared in the parameter list: regions of UI
-	// the caller supplies. They sit beside Props and Events because that is
-	// where they are written — a component's whole API is one list.
+	Pkg          string
+	Props        []*Prop
+	Events       []*EventDecl
 	Slots        []*SlotDecl `json:",omitempty"`
 	ChildrenType *Type
 	Vars         []*Var
@@ -466,13 +463,8 @@ type EventDecl struct {
 	Wildcard string `json:",omitempty"`
 }
 
-// SlotDecl is a resolved named-slot declaration on a component: a region of UI
-// the caller supplies, declared in the parameter list beside the props and
-// events.
-//
-// Params are types and nothing else. A slot's parameter names are chosen by
-// whoever writes the body, which is the populator, so an insertion matches
-// them by position exactly as for a func type.
+// SlotDecl is a resolved named-slot declaration. Params are types only, so an
+// insertion matches them by position.
 type SlotDecl struct {
 	Name   string
 	Params []*Type `json:",omitempty"`

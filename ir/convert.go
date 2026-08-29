@@ -558,8 +558,13 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 }
 
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
-	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: "slot"},
+	name := s.Name
+	if name == "" {
+		name = "slot"
+	}
+	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}
+	for _, a := range s.Args {
+		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
 	}
 	if len(s.Children) > 0 {
 		vn.Block = c.convertStmtBlock(s.Children)

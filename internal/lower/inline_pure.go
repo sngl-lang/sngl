@@ -581,23 +581,22 @@ func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
 		if len(callsite.Children) == 0 {
 			return deepCloneStmts(si.Children)
 		}
-		return callsite.Children
+		// Cloned, not shared: two insertions of `slot` in one body would
+		// otherwise alias the same IR nodes.
+		return deepCloneStmts(callsite.Children)
 	}
 	sc := callsite.Slots[si.Name]
 	if sc == nil {
 		return deepCloneStmts(si.Children)
 	}
 	body := deepCloneStmts(sc.Body)
-	if len(sc.Params) > 0 {
-		bindings := make(map[string]ir.Expr, len(sc.Params))
-		for i, p := range sc.Params {
-			if i < len(si.Args) {
-				bindings[p.Name] = si.Args[i]
-			}
+	bindings := make(map[string]ir.Expr, len(sc.Params))
+	for i, p := range sc.Params {
+		if i < len(si.Args) {
+			bindings[p.Name] = si.Args[i]
 		}
-		body = substituteParams(body, bindings)
 	}
-	return body
+	return substituteParams(body, bindings)
 }
 
 // substituteSlots replaces every *ir.SlotInst with what the call site supplied.
@@ -839,6 +838,17 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.NodeInst:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
+		if n.Slots != nil {
+			// Shallow-copying the map would alias each SlotContent across call
+			// sites, so the first instance's renames would land on all of them.
+			clone.Slots = make(map[string]*ir.SlotContent, len(n.Slots))
+			for name, sc := range n.Slots {
+				clone.Slots[name] = &ir.SlotContent{
+					Params: slices.Clone(sc.Params),
+					Body:   deepCloneStmts(sc.Body),
+				}
+			}
+		}
 		clone.Handlers = make([]ir.EventHandler, len(n.Handlers))
 		for i, h := range n.Handlers {
 			hc := h
@@ -1115,6 +1125,9 @@ func (w *exprWalker) stmt(s ir.Stmt) {
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		w.stmts(n.Children)
+		for _, sc := range n.Slots {
+			w.stmts(sc.Body)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				w.stmts(h.Func.Block)
@@ -1129,6 +1142,9 @@ func (w *exprWalker) stmt(s ir.Stmt) {
 		w.stmts(n.Body)
 		w.stmts(n.Else)
 	case *ir.SlotInst:
+		for i := range n.Args {
+			n.Args[i] = w.expr(n.Args[i])
+		}
 		w.stmts(n.Children)
 	case *ir.Assign:
 		n.Target = w.expr(n.Target)

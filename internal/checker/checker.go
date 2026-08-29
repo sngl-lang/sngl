@@ -192,6 +192,10 @@ type checker struct {
 
 	// Current component (for event validation).
 	currentComponent *ir.Component
+	// funcDepth is non-zero while a function or handler body is being checked.
+	// A slot insertion renders where it is written, so one reaching a func body
+	// has nowhere to project and is reported rather than built.
+	funcDepth int
 
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
@@ -1640,11 +1644,8 @@ func (c *checker) isLibraryNamespace(name string) bool {
 	return false
 }
 
-// claimComponentAPI holds a component's parameter list to one name per entry.
-// Props, events and slots are written in one list, so a name repeated across
-// them is a collision there whatever the three mean afterwards: a slot is read
-// as a tag and a prop as a value, but the reader of the declaration has only
-// the one list to go on.
+// claimComponentAPI holds a component's parameter list to one name per entry:
+// props, events and slots share the one list a reader has to go on.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
 	seen := make(map[string]string, len(comp.Props)+len(comp.Events)+len(comp.Slots))
 	claim := func(name, kind string, pos ast.Pos) {
@@ -1665,6 +1666,19 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 			claim(pd.Name, "event", pd.Pos)
 		case ast.SlotDecl:
 			claim(pd.Name, "slot", pd.Pos)
+		}
+	}
+	// A slot is resolved as a tag from anywhere in the body, so a var or func of
+	// the same name collides with it. Only that pairing is reported here: the
+	// scope machinery already answers for the rest, and with a better message.
+	for _, v := range comp.Vars {
+		if seen[v.Name] == "slot" {
+			c.error(decl.Pos, "var %q on component %s: name is already declared as a slot", v.Name, comp.Name)
+		}
+	}
+	for _, fn := range comp.Funcs {
+		if seen[fn.Name] == "slot" {
+			c.error(decl.Pos, "func %q on component %s: name is already declared as a slot", fn.Name, comp.Name)
 		}
 	}
 }
@@ -1731,7 +1745,6 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			irComp.Slots = append(irComp.Slots, slot)
 		}
 	}
-	c.claimComponentAPI(comp, irComp)
 
 	finishTreeMarks(comp, irComp, c.pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)
@@ -1745,6 +1758,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
+	c.claimComponentAPI(comp, irComp)
 }
 
 // collectComponentDecls walks a component body for nested declarations,
@@ -2701,6 +2715,8 @@ func (c *checker) dropPlaceholderBodies() {
 func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
+	c.funcDepth++
+	defer func() { c.funcDepth-- }()
 
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}

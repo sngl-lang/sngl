@@ -248,7 +248,12 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 				w.fn(h.Func)
 			}
 		}
+		n.Key = w.expr(n.Key)
+		n.Ref = w.expr(n.Ref)
 		n.Children = w.stmts(n.Children)
+		for _, sc := range n.Slots {
+			sc.Body = w.stmts(sc.Body)
+		}
 	case *CallStmt:
 		if n.Call != nil {
 			// The Call is an expression slot — visiting it descends into its
@@ -279,6 +284,9 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Body = w.stmts(n.Body)
 		n.Else = w.stmts(n.Else)
 	case *SlotInst:
+		for i := range n.Args {
+			n.Args[i] = w.expr(n.Args[i])
+		}
 		n.Children = w.stmts(n.Children)
 	case *ErrorBoundary:
 		n.Children = w.stmts(n.Children)

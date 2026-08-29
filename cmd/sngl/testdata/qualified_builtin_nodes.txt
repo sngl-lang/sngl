@@ -15,7 +15,7 @@ sngl generate --out slotout slot.sngl
 grep 'inner' slotout/index.html
 
 ! sngl check qualslot.sngl
-stderr 'unexpected "kw_slot"'
+stderr 'expected identifier'
 
 sngl check window.sngl
 stdout 'window.sngl: ok'

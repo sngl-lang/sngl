@@ -22,11 +22,8 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
-	// main may be nil: a program declaring windows at top level has no
-	// `component main`, and its visual tree lives in pkg.Windows instead.
-	// Bailing here used to leave every user component un-inlined for that
-	// form, so a platform that relies on the pass (fyne) met IR it does not
-	// handle -- an ir.SlotInst reaching codegen, where irwalk panics.
+	// main may be nil: a program declaring its windows at top level has none,
+	// and its visual tree lives in pkg.Windows instead.
 	main := mainComponent(pkg)
 	if main == nil && len(pkg.Windows) == 0 {
 		// No root to inline into. Every component is its own entry point, so
@@ -47,12 +44,9 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
-	// hoist is where the state of the component currently being inlined
-	// lands. Flattening a callee into its caller makes the caller's scope hold
-	// what the callee declared, and that scope is not one place: a `component
-	// main` program keeps vars, funcs and timers on the component, while a
-	// window keeps vars and funcs on itself and has no timers of its own --
-	// those belong to the package. Set per container as run() walks.
+	// hoist is where an inlined callee's own declarations land. Set per
+	// container as run() walks: a component holds all three slices, a window
+	// holds vars and funcs and borrows pkg.Timers.
 	hoist       hoistTarget
 	cycles      map[*ir.Component]bool
 	keep        map[*ir.Component]bool
@@ -61,9 +55,7 @@ type inlineCompState struct {
 	instCounter int
 }
 
-// hoistTarget names the three slices an inlined component's own declarations
-// are appended to. Pointers rather than values because the append has to be
-// visible to whatever owns them.
+// Pointers rather than values because the append must be visible to the owner.
 type hoistTarget struct {
 	vars   *[]*ir.Var
 	funcs  *[]*ir.Func

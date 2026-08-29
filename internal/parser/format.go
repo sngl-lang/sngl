@@ -811,6 +811,20 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 			f.write(" ")
 			f.writeType(v.Type)
 		}
+	case ast.SlotDecl:
+		f.writeParamAttrs(v.Attrs, multiline)
+		f.write("slot ")
+		f.write(v.Name)
+		if len(v.Params) > 0 {
+			f.write("(")
+			for i, t := range v.Params {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.writeType(t)
+			}
+			f.write(")")
+		}
 	}
 }
 
@@ -1251,10 +1265,6 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, multiline bool) {
 	}
 }
 
-// writeSlotNode formats `slot` in statement position: bare for the anonymous
-// slot's insertion point, named with an optional binding list when it populates
-// a slot from a callsite. The block is written only when there is one, so a
-// bare `slot` stays a single word.
 func (f *formatter) writeSlotNode(s *ast.SlotNode) {
 	f.write("slot")
 	if s.Name != "" {
