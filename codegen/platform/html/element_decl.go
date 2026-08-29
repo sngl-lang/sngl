@@ -28,15 +28,14 @@ func (g *htmlGen) rawElement() *ir.Component {
 	return g.pkg.Wildcard
 }
 
-// tagPropName is the prop the matched tag name binds to — the `into` argument
-// of the element's #[wildcard] mark. A node's `tag=` prop names the element
-// rather than describing it, so it is never emitted as an attribute.
-func tagPropName(comp *ir.Component) string {
-	if comp == nil {
-		return ""
-	}
-	return comp.WildcardInto
-}
+// tagProp is the prop the matched tag name binds to. It is html's own prop on
+// html's own `element`, declared in html.sngl beside this file, so it is named
+// here rather than read back off the declaration at run time.
+// TestElementDeclaresTagProp keeps the two in step.
+//
+// A node's `tag=` names the element rather than describing it, so it is never
+// emitted as an attribute.
+const tagProp = "tag"
 
 // elementProp returns the element's declaration of prop, or nil when the prop
 // is one the wildcard accepted (an attribute nobody declared).

@@ -1465,7 +1465,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	// its `tag` prop, and a call site that wrote one of its own — the way a
 	// hyphenated custom element is reached — replaced it there. n.Name is the
 	// fallback for a node that resolved to no component at all.
-	if t, ok := rawElementTag(decl, n); ok {
+	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
 
@@ -1498,10 +1498,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
-	// The prop the matched tag name binds to names the element rather than
-	// being one of its attributes. The element's #[wildcard] mark says which
-	// prop that is; the name "tag" does not.
-	delete(props, tagPropName(decl))
+	// The tag names the element rather than being one of its attributes.
+	delete(props, tagProp)
 	var attrs strings.Builder
 	staticInnerText := ""
 	staticInnerHTML := ""

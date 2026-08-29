@@ -139,7 +139,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	// The prop the tag name binds to names the element; the tag already
 	// reached OnCreateNode, and there is no attribute to write it as.
-	if prop != "" && prop == tagPropName(t.rawElem) {
+	if prop == tagProp {
 		return nil
 	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {

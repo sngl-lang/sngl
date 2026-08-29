@@ -51,12 +51,8 @@ func componentProps(n *ir.NodeInst) []*ir.Prop {
 // which a call site writing a tag no identifier can spell (a hyphenated custom
 // element) replaces. Only a literal is one: a computed tag would have to be
 // resolved at runtime, and nothing downstream can do that.
-func rawElementTag(decl *ir.Component, n *ir.NodeInst) (string, bool) {
-	into := tagPropName(decl)
-	if into == "" {
-		return "", false
-	}
-	expr := codegen.NodeProp(n, into)
+func rawElementTag(n *ir.NodeInst) (string, bool) {
+	expr := codegen.NodeProp(n, tagProp)
 	if expr == nil {
 		return "", false
 	}

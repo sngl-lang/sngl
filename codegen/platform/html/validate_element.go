@@ -29,17 +29,15 @@ func validateRawElements(pkg *ir.Package) error {
 		if decl.Wildcard == "" {
 			return nil
 		}
-		if into := decl.WildcardInto; into != "" {
-			expr := codegen.NodeProp(n, into)
-			if expr == nil {
-				bad = fmt.Errorf("%s: a raw element needs its %q prop to name a tag", nodePos(n), into)
-				return nil
-			}
-			if tag, ok := codegen.IRLiteralString(expr); !ok || tag == "" {
-				bad = fmt.Errorf("%s: %q must be a string literal: the tag names the element to create, and this one is not known until it runs",
-					nodePos(n), into)
-				return nil
-			}
+		expr := codegen.NodeProp(n, tagProp)
+		if expr == nil {
+			bad = fmt.Errorf("%s: a raw element needs its %q prop to name a tag", nodePos(n), tagProp)
+			return nil
+		}
+		if tag, ok := codegen.IRLiteralString(expr); !ok || tag == "" {
+			bad = fmt.Errorf("%s: %q must be a string literal: the tag names the element to create, and this one is not known until it runs",
+				nodePos(n), tagProp)
+			return nil
 		}
 		for _, p := range decl.Props {
 			if p == nil || p.Wildcard == "" {

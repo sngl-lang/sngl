@@ -155,7 +155,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// rather than as a bogus <name> literal, so a user component keeps
 	// rendering instead of emitting invalid markup.
 	tag := "div"
-	if t, ok := rawElementTag(decl, n); ok {
+	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
 	rb.writeRaw("<" + tag)
@@ -286,7 +286,7 @@ func (rb *renderBuilder) exprIsReactive(e ir.Expr) bool {
 // entries are unpacked back into the attribute names they were written under
 // and appended sorted.
 func (rb *renderBuilder) elementAttrs(decl *ir.Component, n *ir.NodeInst) []*ir.Arg {
-	into := tagPropName(decl)
+	into := tagProp
 	wildcard := map[string]bool{}
 	if decl != nil {
 		for _, dp := range decl.Props {
