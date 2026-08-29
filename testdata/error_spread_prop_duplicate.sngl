@@ -1,9 +1,11 @@
 import . "sngl://std"
 
-struct Opts { text string }
+struct Opts {
+    text string
+}
 component Button(text string) {}
 
 component main {
-    var opts = Opts{text="hi"}
+    var opts = Opts{text = "hi"}
     Button(text="explicit", ...opts) // ERROR(check) "already provided"
 }

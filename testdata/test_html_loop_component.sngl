@@ -1,6 +1,8 @@
 import . "sngl://std"
 
-struct Item { name string = "" }
+struct Item {
+    name string = ""
+}
 
 component card(name = "") {
     var clicks = 0

@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Start with `testdata/`.** Every language feature in SNGL has at least one fixture in `testdata/*.sngl` that exercises it. Reading those fixtures is the fastest way to understand what a change is meant to do and to spot gaps. When proposing a feature, write the fixture first and let the test framework drive the implementation. Fixtures use directives like `// ERROR(check) "msg"` and `// FOLD(...)` to assert behavior at specific compiler phases — see `internal/testutil/sample.go` for the framework.
 
+Every fixture is written the way `sngl fmt` writes it, and
+`TestTestdataIsFormatted` says so, so add one with `sngl fmt` rather than by
+hand. A fixture whose exact layout is the thing under test opts out with
+`// NOFMT "reason"`; the directive exempts it from that test only, so do not
+run `sngl fmt` over the tree while one is in it. An `// ERROR(...)` directive
+names the line it sits on, which is why the formatter keeps a comment on the
+line it was written on.
+
 ## Function syntax
 
 Two valid forms — no third:

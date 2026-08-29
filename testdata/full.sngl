@@ -20,10 +20,10 @@ component main {
     func greeting() => "Hello, " + name
     func doubled() => count * 2
 
-    vbox(style={padding=16, gap=12}) {
-        text(value=greeting, style={fontSize=24, fontWeight="bold"})
+    vbox(style={padding = 16, gap = 12}) {
+        text(value=greeting, style={fontSize = 24, fontWeight = "bold"})
         if active {
-            text(value="Active", style={color=#007700})
+            text(value="Active", style={color = #007700})
         }
         input(placeholder="Enter name", value=name, @input(e) { name = e.value })
         Counter(label="Clicks")

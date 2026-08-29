@@ -22,13 +22,13 @@ import tree "sngl://internal/tree"
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
 struct CanvasStyle {
-    fill        color  = color{a=0}
-    stroke      color  = color{a=0}
-    strokeWidth float  = 1.0
-    lineCap     string = "butt"
-    lineJoin    string = "miter"
-    fontSize    float  = 16.0
-    fontFamily  string = "sans-serif"
+    fill color = color{a = 0}
+    stroke color = color{a = 0}
+    strokeWidth float = 1.0
+    lineCap string = "butt"
+    lineJoin string = "miter"
+    fontSize float = 16.0
+    fontFamily string = "sans-serif"
 }
 
 // One step of a path. `op` is "moveTo", "lineTo", "bezierTo", "arcTo" or
@@ -36,14 +36,14 @@ struct CanvasStyle {
 // points and the end point, `arcTo` one control point, the end point and
 // the radius `r`. The rest keep their zero value.
 struct PathCmd {
-    op  string
-    x   float = 0.0
-    y   float = 0.0
+    op string
+    x float = 0.0
+    y float = 0.0
     cx1 float = 0.0
     cy1 float = 0.0
     cx2 float = 0.0
     cy2 float = 0.0
-    r   float = 0.0
+    r float = 0.0
 }
 
 // Immediate-mode drawing surface. Its children are the shapes to paint, in

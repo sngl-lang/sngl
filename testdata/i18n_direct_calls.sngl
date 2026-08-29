@@ -29,23 +29,23 @@ func test() {
     var count = 3
     var pluralized = i18n.plural(count, {
         i18n.exactly(0) = "no items",
-        i18n.one        = "1 item",
-        i18n.other      = "{count} items",
+        i18n.one = "1 item",
+        i18n.other = "{count} items",
     })
 
     var place = 21
     var ordinal = i18n.selectordinal(place, {
-        i18n.one   = "{place}st",
-        i18n.two   = "{place}nd",
-        i18n.few   = "{place}rd",
+        i18n.one = "{place}st",
+        i18n.two = "{place}nd",
+        i18n.few = "{place}rd",
         i18n.other = "{place}th",
     })
 
     // Free-form select. Note: no 'Str' suffix.
     var gender = "female"
     var pronoun = i18n.select(gender, {
-        male   = "he",
+        male = "he",
         female = "she",
-        other  = "they",
+        other = "they",
     })
 }

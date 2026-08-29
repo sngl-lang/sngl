@@ -11,7 +11,7 @@ component i18nInterp {
         name string
         age int
     }
-    var user = User{name="Alice", age=30}
+    var user = User{name = "Alice", age = 30}
     var welcome = $"Welcome back, {user.name}!"
 
     // Multiple placeholders including an expression.

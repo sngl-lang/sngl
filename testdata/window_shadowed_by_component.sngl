@@ -5,9 +5,9 @@ import . "sngl://std"
 // instantiates as an ordinary node instance rather than registering a
 // package window.
 component window(label string) list<component> {
-	text(value=label)
+    text(value=label)
 }
 
 component main {
-	window(label="ordinary node")
+    window(label="ordinary node")
 }

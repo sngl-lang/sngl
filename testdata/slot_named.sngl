@@ -24,7 +24,7 @@ component table(
 ) list<component> {
     vbox {
         header {
-            text(value = "(untitled)")
+            text(value="(untitled)")
         }
         for r = rows {
             cell(r)
@@ -38,33 +38,33 @@ component table(
 // handler) and only share the one list they are written in.
 component labelled(caption string, slot body, @click ClickEvent) {
     vbox {
-        text(value = caption)
+        text(value=caption)
         body {}
     }
 }
 
 component main {
-    table(rows = [Row{title = "alpha"}, Row{title = "beta"}]) {
+    table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
         slot header {
-            text(value = "Rows")
+            text(value="Rows")
         }
         slot cell(row) {
-            text(value = row.title)
+            text(value=row.title)
         }
-        text(value = "goes to the anonymous slot")
+        text(value="goes to the anonymous slot")
     }
 
     // A slot with no population renders its insertion's block instead, so a
     // fallback needs no separate syntax.
-    table(rows = []) {
+    table(rows=[]) {
         slot cell(row) {
-            text(value = row.title)
+            text(value=row.title)
         }
     }
 
-    labelled(caption = "hi", @click { }) {
+    labelled(caption="hi", @click {}) {
         slot body {
-            text(value = "supplied")
+            text(value="supplied")
         }
     }
 }

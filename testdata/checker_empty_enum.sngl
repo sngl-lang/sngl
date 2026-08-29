@@ -1,7 +1,6 @@
 import . "sngl://std"
 
-enum Empty {
-}
+enum Empty {}
 
 component main {
     text(value="ok")

@@ -1,6 +1,8 @@
 import . "sngl://std"
 
-enum Status { ok, err
+enum Status {
+    ok
+    err
     func isOk() => this == Status.ok
 }
 

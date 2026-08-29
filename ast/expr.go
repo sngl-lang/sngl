@@ -239,8 +239,9 @@ type ListExpr struct {
 // MapLit is a map literal: {<keyExpr>: <valueExpr>, ...}.
 // The colon separator distinguishes from struct literals (which use =).
 type MapLit struct {
-	Pos     Pos
-	Entries []MapEntry
+	Pos       Pos
+	Entries   []MapEntry
+	Multiline bool
 }
 
 // MapEntry is one key-value pair in a MapLit.
@@ -323,6 +324,12 @@ type StmtBlock struct {
 	Pos         Pos
 	IsMultiline bool
 	Stmts       []Stmt
+	// EndPos is the closing brace. A block the parser synthesized around a
+	// braceless body has none, and it is the zero Pos there. Knowing where a
+	// block ends is what lets the formatter place a comment inside it and
+	// space declarations the way the source did, rather than guess from the
+	// statement count.
+	EndPos Pos
 }
 
 // ArgList is an ordered list of arguments (positional, named, binding, event).
@@ -387,6 +394,10 @@ type I18nPlaceholderExpr struct {
 	Type  string     // e.g. "plural", "select", "number", "date" — empty for simple {expr}
 	Style string     // bare style ident e.g. "short", "medium", "currency" — mutually exclusive with Cases
 	Cases []I18nCase // non-nil only when Type is set and cases are present
+	// Multiline records that the cases were written one per line. A message
+	// with four branches is unreadable on one, and the author's choice is the
+	// only thing that says which it is.
+	Multiline bool
 }
 
 // I18nCase is one branch of a plural/select formatter: selector{body}.
@@ -394,6 +405,9 @@ type I18nCase struct {
 	Pos      Pos
 	Selector string // "one", "other", "=0", etc.
 	Body     []Expr // literal segments and nested *I18nPlaceholderExpr
+	// Leading holds the comments written above the case. A placeholder is an
+	// expression, so its comments have no statement list to live in.
+	Leading []*Comment `json:",omitempty"`
 }
 
 // --- ExprPos implementations ---

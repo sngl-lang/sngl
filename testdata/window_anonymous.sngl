@@ -4,9 +4,9 @@
 import . "sngl://std"
 
 window(title="A", href="/") {
-	text(value="a")
+    text(value="a")
 }
 
 window(title="B", href="/b.html") {
-	text(value="b")
+    text(value="b")
 }

@@ -45,7 +45,9 @@ struct Model {
     resize string
 }
 
-struct Focus { enabled bool }
+struct Focus {
+    enabled bool
+}
 
 struct Bind {
     prop string
@@ -149,9 +151,9 @@ component sngl.text[bubbletea.platform] {
 component sngl.button[bubbletea.platform] {
     Styled(
         content=text,
-        focus=Focus{enabled=true},
-        events=[Event{on="click", key="enter"}],
-        style={...style}
+        focus=Focus{enabled = true},
+        events=[Event{on = "click", key = "enter"}],
+        style={...style},
     ) {}
 }
 
@@ -162,27 +164,27 @@ component sngl.image[bubbletea.platform] {
 component sngl.input[bubbletea.platform] {
     Widget(
         model=Model{
-            type="textinput.Model",
-            new="textinput.New()",
-            view=".View()",
-            update=".Update(msg)",
-            init="textinput.Blink",
-            pkg="charm.land/bubbles/v2/textinput",
-            resize=".SetWidth($\{w\})"
+            type = "textinput.Model",
+            new = "textinput.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            init = "textinput.Blink",
+            pkg = "charm.land/bubbles/v2/textinput",
+            resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled=true},
-        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
+        focus=Focus{enabled = true},
+        binds=[Bind{prop = "value", get = ".Value()", set = ".SetValue"}],
         placeholder=placeholder,
-        style={...style}
+        style={...style},
     ) {}
 }
 
 component sngl.checkbox[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled=true},
-        events=[Event{on="change", key="space"}],
-        style={...style}
+        focus=Focus{enabled = true},
+        events=[Event{on = "change", key = "space"}],
+        style={...style},
     ) {}
 }
 
@@ -197,42 +199,42 @@ component sngl.radio[bubbletea.platform] {
 component sngl.toggle[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled=true},
-        events=[Event{on="change", key="space"}],
-        style={...style}
+        focus=Focus{enabled = true},
+        events=[Event{on = "change", key = "space"}],
+        style={...style},
     ) {}
 }
 
 component sngl.select[bubbletea.platform] {
     Widget(
         model=Model{
-            type="list.Model",
-            new="tui.NewList(tui.StringItems($\{options\}), 40, 10)",
-            view=".View()",
-            update=".Update(msg)",
-            pkg="charm.land/bubbles/v2/list",
-            resize=".SetSize($\{w\}, $\{h\})"
+            type = "list.Model",
+            new = "tui.NewList(tui.StringItems($\{options\}), 40, 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/list",
+            resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus=Focus{enabled=true},
-        binds=[Bind{prop="value", get="tui.SelectedString"}],
+        focus=Focus{enabled = true},
+        binds=[Bind{prop = "value", get = "tui.SelectedString"}],
         options=options,
-        style={...style}
+        style={...style},
     ) {}
 }
 
 component sngl.textarea[bubbletea.platform] {
     Widget(
         model=Model{
-            type="textarea.Model",
-            new="textarea.New()",
-            view=".View()",
-            update=".Update(msg)",
-            pkg="charm.land/bubbles/v2/textarea",
-            resize=".SetWidth($\{w\})"
+            type = "textarea.Model",
+            new = "textarea.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/textarea",
+            resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled=true},
-        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
-        style={...style}
+        focus=Focus{enabled = true},
+        binds=[Bind{prop = "value", get = ".Value()", set = ".SetValue"}],
+        style={...style},
     ) {}
 }
 
@@ -245,29 +247,29 @@ component sngl.datepicker[bubbletea.platform] {
 component sngl.progress[bubbletea.platform] {
     Widget(
         model=Model{
-            type="progress.Model",
-            new="progress.New()",
-            view=".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
-            pkg="charm.land/bubbles/v2/progress",
-            resize=".SetWidth($\{w\})"
+            type = "progress.Model",
+            new = "progress.New()",
+            view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+            pkg = "charm.land/bubbles/v2/progress",
+            resize = ".SetWidth($\{w\})",
         },
         value=value,
         max=max,
-        style={...style}
+        style={...style},
     ) {}
 }
 
 component sngl.spinner[bubbletea.platform] {
     Widget(
         model=Model{
-            type="spinner.Model",
-            new="spinner.New()",
-            view=".View()",
-            update=".Update(msg)",
-            init="$\{self\}.Tick",
-            pkg="charm.land/bubbles/v2/spinner"
+            type = "spinner.Model",
+            new = "spinner.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            init = "$\{self\}.Tick",
+            pkg = "charm.land/bubbles/v2/spinner",
         },
-        style={...style}
+        style={...style},
     ) {}
 }
 
@@ -288,9 +290,9 @@ component sngl.card[bubbletea.platform] {
 component sngl.chip[bubbletea.platform] {
     Styled(
         content=label,
-        focus=Focus{enabled=true},
-        events=[Event{on="click", key="enter"}],
-        style={...style}
+        focus=Focus{enabled = true},
+        events=[Event{on = "click", key = "enter"}],
+        style={...style},
     ) {}
 }
 
@@ -345,35 +347,35 @@ component sngl.splitview[bubbletea.platform] {
 component sngl.table[bubbletea.platform] {
     Widget(
         model=Model{
-            type="table.Model",
-            new="tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
-            view=".View()",
-            update=".Update(msg)",
-            pkg="charm.land/bubbles/v2/table",
-            resize=".SetWidth($\{w\})"
+            type = "table.Model",
+            new = "tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/table",
+            resize = ".SetWidth($\{w\})",
         },
-        focus=Focus{enabled=true},
-        binds=[Bind{prop="selected", get="tui.Cursor"}],
+        focus=Focus{enabled = true},
+        binds=[Bind{prop = "selected", get = "tui.Cursor"}],
         columns=columns,
         rows=rows,
-        style={...style}
+        style={...style},
     ) {}
 }
 
 component sngl.tree[bubbletea.platform] {
     Widget(
         model=Model{
-            type="list.Model",
-            new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
-            view=".View()",
-            update=".Update(msg)",
-            pkg="charm.land/bubbles/v2/list",
-            resize=".SetSize($\{w\}, $\{h\})"
+            type = "list.Model",
+            new = "tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/list",
+            resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus=Focus{enabled=true},
-        binds=[Bind{prop="selected", get="tui.SelectedString"}],
+        focus=Focus{enabled = true},
+        binds=[Bind{prop = "selected", get = "tui.SelectedString"}],
         items=items,
-        style={...style}
+        style={...style},
     ) {}
 }
 
@@ -384,16 +386,16 @@ component sngl.menu[bubbletea.platform] {
         // bind. (Read-back would be inert: findBidiProp finds nothing.)
         Widget(
             model=Model{
-                type="list.Model",
-                new="tui.NewList(tui.StringItems($\{items\}), 40, 10)",
-                view=".View()",
-                update=".Update(msg)",
-                pkg="charm.land/bubbles/v2/list",
-                resize=".SetSize($\{w\}, $\{h\})"
+                type = "list.Model",
+                new = "tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+                view = ".View()",
+                update = ".Update(msg)",
+                pkg = "charm.land/bubbles/v2/list",
+                resize = ".SetSize($\{w\}, $\{h\})",
             },
-            focus=Focus{enabled=true},
+            focus=Focus{enabled = true},
             items=items,
-            style={...style}
+            style={...style},
         ) {}
     }
 }

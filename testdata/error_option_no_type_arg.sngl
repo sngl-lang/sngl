@@ -1,6 +1,6 @@
 import . "sngl://std"
 
 component main {
-    var maybe option = null  // ERROR(check) "option requires a type argument"
+    var maybe option = null // ERROR(check) "option requires a type argument"
     text(value="x")
 }

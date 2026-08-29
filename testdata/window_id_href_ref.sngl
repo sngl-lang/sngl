@@ -1,12 +1,12 @@
 import . "sngl://std"
 
 window #home(title="Home", href="/index.html", favicon="/favicon.ico") {
-	text(value="Home")
+    text(value="Home")
 }
 
 window #about(title="About", href="/about.html") {
-	link(text="Home", href=home.href)
-	link(text="Self", href=about.href)
-	link(text="Icon", href=home.favicon)
-	text(value=home.title)
+    link(text="Home", href=home.href)
+    link(text="Self", href=about.href)
+    link(text="Icon", href=home.favicon)
+    text(value=home.title)
 }

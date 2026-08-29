@@ -9,7 +9,7 @@ struct Point {
 }
 
 component main {
-    var p = Point{x=1, y=2}
+    var p = Point{x = 1, y = 2}
     var bad = p.x.zoo // ERROR(check) "no field"
     text(value="x")
 }

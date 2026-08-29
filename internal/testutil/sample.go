@@ -31,6 +31,10 @@ type Sample struct {
 	Origin   string           // OriginTestdata or OriginDocs
 	Errors   []ErrorDirective // ERROR directives (empty for doc samples)
 	Folds    []FoldDirective  // FOLD directives (empty for doc samples)
+	// NoFmt is set by a `// NOFMT "reason"` directive: the fixture is exempt
+	// from the check that it is written the way `sngl fmt` writes it.
+	NoFmt       bool
+	NoFmtReason string
 
 	writeback func(*ast.Document) // set by iterator; nil if read-only
 }
@@ -82,16 +86,22 @@ func TestdataSamples(t testing.TB) iter.Seq[Sample] {
 			if err != nil {
 				t.Fatalf("fold directives %s: %v", path, err)
 			}
+			nofmt, nofmtReason, err := ParseNoFmt(path)
+			if err != nil {
+				t.Fatalf("nofmt directive %s: %v", path, err)
+			}
 			wbPath := path
 			if !yield(Sample{
-				Name:     base,
-				Source:   string(src),
-				Filename: base + ".sngl",
-				FS:       fsys,
-				Dir:      testdataDir,
-				Origin:   OriginTestdata,
-				Errors:   errs,
-				Folds:    folds,
+				Name:        base,
+				Source:      string(src),
+				Filename:    base + ".sngl",
+				FS:          fsys,
+				Dir:         testdataDir,
+				Origin:      OriginTestdata,
+				Errors:      errs,
+				Folds:       folds,
+				NoFmt:       nofmt,
+				NoFmtReason: nofmtReason,
 				writeback: func(doc *ast.Document) {
 					formatted := parser.Format(doc)
 					os.WriteFile(wbPath, []byte(formatted), 0o644)

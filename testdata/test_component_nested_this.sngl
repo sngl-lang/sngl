@@ -6,8 +6,8 @@ import . "sngl://std"
 // out of scope for issue #75.
 component counter {
     var n = 0
-    func bump()  { n += 1 }        // bare field write (closure)
-    func value() => n              // bare field read
+    func bump() { n += 1 } // bare field write (closure)
+    func value() => n      // bare field read
 }
 
 component main {
@@ -16,5 +16,5 @@ component main {
 }
 
 func testComponentClosureBump(t Test, c main) {
-    t.assert(true)  // smoke test — checker should accept the component
+    t.assert(true) // smoke test — checker should accept the component
 }

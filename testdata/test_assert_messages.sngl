@@ -18,20 +18,20 @@ component box {
 // Soft assertions: each failure is recorded but execution continues, so
 // every shape's message gets exercised in a single run.
 func testFailureMessages(t Test, c box) {
-    t.assert(5 == c.count)            // ERROR(test) "wanted 5, got 0 (c.count)"
-    t.assert(0 != c.count)            // ERROR(test) "didn't want 0 (c.count)"
-    t.assert(5 < c.count)             // ERROR(test) "wanted 5 < 0 (c.count)"
-    t.assert(c.count >= 5)            // ERROR(test) "wanted 0 (c.count) >= 5"
-    t.assert(c.name == "world")       // ERROR(test) "wanted \"world\", got \"hello\" (c.name)"
-    t.assert(c.items.contains(7))     // ERROR(test) "wanted [1, 2, 3] (c.items) to contain 7"
+    t.assert(5 == c.count)           // ERROR(test) "wanted 5, got 0 (c.count)"
+    t.assert(0 != c.count)           // ERROR(test) "didn't want 0 (c.count)"
+    t.assert(5 < c.count)            // ERROR(test) "wanted 5 < 0 (c.count)"
+    t.assert(c.count >= 5)           // ERROR(test) "wanted 0 (c.count) >= 5"
+    t.assert(c.name == "world")      // ERROR(test) "wanted \"world\", got \"hello\" (c.name)"
+    t.assert(c.items.contains(7))    // ERROR(test) "wanted [1, 2, 3] (c.items) to contain 7"
     t.assert(c.name.contains("xyz")) // ERROR(test) "wanted \"hello\" (c.name) to contain \"xyz\""
-    t.assert(c.flag)                  // ERROR(test) "wanted true, got false (c.flag)"
+    t.assert(c.flag)                 // ERROR(test) "wanted true, got false (c.flag)"
     c.flag = true
-    t.assert(!c.flag)                 // ERROR(test) "didn't want true (c.flag)"
+    t.assert(!c.flag) // ERROR(test) "didn't want true (c.flag)"
 }
 
 // must() halts the test on failure. The trailing assert never runs.
 func testMustHalts(t Test, c box) {
-    t.must(c.count == 5)              // ERROR(test) "wanted 5, got 0 (c.count)"
+    t.must(c.count == 5) // ERROR(test) "wanted 5, got 0 (c.count)"
     t.assert(c.name == "skipped")
 }

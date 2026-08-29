@@ -6,7 +6,7 @@ struct Point {
 }
 
 component main {
-    var bad Point = {x=1, z=2} // ERROR(check) "unknown field"
+    var bad Point = {x = 1, z = 2} // ERROR(check) "unknown field"
 
     text(value=string(bad.x))
 }

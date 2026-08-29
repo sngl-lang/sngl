@@ -7,6 +7,6 @@ import . "sngl://std"
 
 component main {
     window {
-        html.div(innerTxt = "x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
+        html.div(innerTxt="x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
     }
 }

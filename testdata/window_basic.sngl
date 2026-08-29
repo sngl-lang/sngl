@@ -1,9 +1,9 @@
 import . "sngl://std"
 
 window #home(title="Home", href="/") {
-	text(value="Welcome")
+    text(value="Welcome")
 }
 
 window #settings(title="Settings", href="/settings.html") {
-	text(value="Config")
+    text(value="Config")
 }

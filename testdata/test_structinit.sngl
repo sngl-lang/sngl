@@ -6,14 +6,14 @@ struct Vec {
 }
 
 component geo {
-    var pos = Vec{x=5, y=10}
+    var pos = Vec{x = 5, y = 10}
     func sum() => pos.x + pos.y
 
     text(value="{sum}")
 }
 
 func testStructReassignment(t Test, c geo) {
-    c.pos = Vec{x=100, y=200}
+    c.pos = Vec{x = 100, y = 200}
     t.assert(c.pos.x == 100)
     t.assert(c.pos.y == 200)
 }

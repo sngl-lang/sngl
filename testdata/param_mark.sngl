@@ -21,7 +21,7 @@ func inLambda() => func(#[draw.shape] a int) => a // ERROR(check) "#[draw.shape]
 component element(
     tag string,
     #[draw.shape] attributes map<string, string>, // ERROR(check) "#[draw.shape] cannot mark a parameter"
-    #[nosuch.mark] extra string = "", // ERROR(check) "unknown macro package"
+    #[nosuch.mark] extra string = "",             // ERROR(check) "unknown macro package"
 ) {
-    text(value = tag)
+    text(value=tag)
 }

@@ -467,9 +467,6 @@ func (l *lexer) scanStringContent(resume, triple, i18n bool, startLine, startCol
 			l.advance()
 			l.advance()
 			text := sb.String()
-			if !resume {
-				text = dedent(text)
-			}
 			if resume {
 				if i18n {
 					return l.tok(I18N_TRIPLE_END, text, startLine, startCol)
@@ -709,46 +706,6 @@ func (l *lexer) scanHashToken(startLine, startCol int) Token {
 	// element reference in a naming-tag/selection position. The token value is
 	// the text after `#`.
 	return l.tok(HASH, name, startLine, startCol)
-}
-
-func dedent(s string) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) <= 1 {
-		return s
-	}
-	start := 0
-	if lines[0] == "" {
-		start = 1
-	}
-	minIndent := -1
-	for i := start; i < len(lines); i++ {
-		line := lines[i]
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		indent := len(line) - len(strings.TrimLeft(line, " \t"))
-		if minIndent < 0 || indent < minIndent {
-			minIndent = indent
-		}
-	}
-	if minIndent <= 0 {
-		if start > 0 {
-			return strings.Join(lines[start:], "\n")
-		}
-		return s
-	}
-	result := make([]string, 0, len(lines)-start)
-	for i := start; i < len(lines); i++ {
-		line := lines[i]
-		if len(line) >= minIndent {
-			line = line[minIndent:]
-		}
-		result = append(result, line)
-	}
-	if len(result) > 0 && strings.TrimSpace(result[len(result)-1]) == "" {
-		result = result[:len(result)-1]
-	}
-	return strings.Join(result, "\n")
 }
 
 // Tokenize scans the entire source and returns all tokens up to (and including) EOF.

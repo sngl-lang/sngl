@@ -8,9 +8,9 @@ struct Point {
 func originPlus(p Point) => p.x + p.y
 
 component main {
-    var named Point = {x=3, y=4}
-    var inline = {x=1, y=2}
-    var fromCall = originPlus({x=5, y=6})
+    var named Point = {x = 3, y = 4}
+    var inline = {x = 1, y = 2}
+    var fromCall = originPlus({x = 5, y = 6})
 
     text(value=string(named.x + named.y))
 }
@@ -23,4 +23,3 @@ func testAnonLiteralAssign(t Test, c main) {
 func testAnonLiteralInferred(t Test, c main) {
     t.assert(c.inline.x == 1)
 }
-

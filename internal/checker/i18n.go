@@ -39,7 +39,15 @@ func (b *templateBuilder) writeParts(parts []ast.Expr) {
 	for _, p := range parts {
 		switch v := p.(type) {
 		case *ast.LiteralExpr:
-			b.sb = append(b.sb, icuText(v.Raw)...)
+			raw := v.Raw
+			if len(parts) == 1 {
+				// A whole triple-quoted string carries the indentation it was
+				// written under; a segment of an interpolated one carries only
+				// part of it, and the whole is what dedent is defined over.
+				style, _ := ast.StringStyleOf(v.Kind)
+				raw = ast.Dedent(raw, style)
+			}
+			b.sb = append(b.sb, icuText(raw)...)
 		case *ast.I18nPlaceholderExpr:
 			b.writePlaceholder(v)
 		}

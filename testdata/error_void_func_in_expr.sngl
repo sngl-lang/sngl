@@ -1,7 +1,7 @@
 import . "sngl://std"
 
 component main {
-    func noop() { }
-    var x = noop()  // ERROR(check) "expression yields no value"
+    func noop() {}
+    var x = noop() // ERROR(check) "expression yields no value"
     text(value="x")
 }

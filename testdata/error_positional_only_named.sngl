@@ -3,6 +3,6 @@ import . "sngl://std"
 func parse(_input string, _index int) => _input
 
 func test() {
-    var x = parse(_input="hello", 2)  // ERROR(check) "parameter \"_input\" must be passed positionally"
-    var y = parse("hello", _index=0)  // ERROR(check) "parameter \"_index\" must be passed positionally"
+    var x = parse(_input="hello", 2) // ERROR(check) "parameter \"_input\" must be passed positionally"
+    var y = parse("hello", _index=0) // ERROR(check) "parameter \"_index\" must be passed positionally"
 }

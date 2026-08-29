@@ -9,7 +9,7 @@ component sizedints {
     var d int64 = 9000000000000000000
 
     // In-range constant arithmetic folds to a plain literal.
-    var sum = 3 + 4  // FOLD 7
+    var sum = 3 + 4 // FOLD 7
 
     text(value=string(a))
 }

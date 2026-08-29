@@ -7,9 +7,9 @@ struct Item {
 
 component main {
     var items list<Item> = [
-        {id=1, name="a"},
-        {id=2, name="b"},
-        {id=3, name="c"},
+        {id = 1, name = "a"},
+        {id = 2, name = "b"},
+        {id = 3, name = "c"},
     ]
 
     for i, it = items {

@@ -2,7 +2,6 @@ import . "sngl://std"
 
 struct box<T> {
     v T
-
     func get() => this.v
 }
 

@@ -18,20 +18,20 @@ component Counter(label = "") {
 
 component main {
     var (
-        user = User{name="World", age=25, loggedIn=false}
+        user = User{name = "World", age = 25, loggedIn = false}
         count = 0
     )
 
     func greeting() => "Hello, " + user.name + "!"
     func isAdult() => user.age >= 18
 
-    vbox(style={gap=12, padding=16}) {
-        text(value=greeting, style={fontSize=24, fontWeight="bold"})
+    vbox(style={gap = 12, padding = 16}) {
+        text(value=greeting, style={fontSize = 24, fontWeight = "bold"})
         if isAdult {
-            text(value="(Adult)", style={color=#007700})
+            text(value="(Adult)", style={color = #007700})
         }
         if !isAdult {
-            text(value="(Minor)", style={color=#CC0000})
+            text(value="(Minor)", style={color = #CC0000})
         }
         input(placeholder="Enter name", value=user.name, @input(e) { user.name = e.value })
         Counter(label="Clicks")

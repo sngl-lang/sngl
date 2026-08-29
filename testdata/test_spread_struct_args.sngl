@@ -1,8 +1,18 @@
 import . "sngl://std"
 
-struct Config { name string; greeting string }
-struct Point { x int; y int; z int }
-struct ItemProps { label string; count int }
+struct Config {
+    name string
+    greeting string
+}
+struct Point {
+    x int
+    y int
+    z int
+}
+struct ItemProps {
+    label string
+    count int
+}
 
 func greet(name string, greeting string) string { return greeting + ", " + name }
 func addInts(x int, y int) int { return x + y }
@@ -13,15 +23,15 @@ component main {
     func greetLocal(name string, greeting string) string { return greeting + ", " + name }
 
     // Struct field order doesn't matter — spread binds by name.
-    var cfg = Config{name="world", greeting="hi"}
+    var cfg = Config{name = "world", greeting = "hi"}
     var result = greet(...cfg)
 
     // Extra struct fields (z) that have no matching param are silently ignored.
-    var p = Point{x=3, y=4, z=99}
+    var p = Point{x = 3, y = 4, z = 99}
     var sum = addInts(...p)
 
     // Spread into a component prop list.
-    var opts = ItemProps{label="hello", count=5}
+    var opts = ItemProps{label = "hello", count = 5}
     Item #it(...opts)
 }
 
@@ -37,7 +47,7 @@ func testStructSpreadVarInit(t Test, c root) {
 
 func testStructSpreadComponentMethod(t Test, c root) {
     // Spread a struct into a top-level function call from a test.
-    var cfg = Config{name="alice", greeting="hey"}
+    var cfg = Config{name = "alice", greeting = "hey"}
     t.assert(greet(...cfg) == "hey, alice")
 }
 

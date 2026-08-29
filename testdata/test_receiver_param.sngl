@@ -4,7 +4,9 @@ import . "sngl://std"
 // method is attached to, whatever the parameter is called. The convention used
 // to be the name `this`, which meant a method written the other way could only
 // be called through its type.
-struct Box<T> { value T }
+struct Box<T> {
+    value T
+}
 
 func Box<T>.same(b Box<T>) Box<T> { return b }
 func int.twice(n int) int { return n * 2 }

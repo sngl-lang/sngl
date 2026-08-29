@@ -6,7 +6,10 @@
 
 import . "sngl://std"
 
-struct Task { label string = ""; done bool = false }
+struct Task {
+    label string = ""
+    done bool = false
+}
 
 component main {
     var tasks list<Task> = [{label = "a", done = false}, {label = "b", done = true}]
@@ -21,13 +24,13 @@ component main {
         for &n = nums { n = n + 10 }
     }
 
-    button #mark(text = "mark", @click { markAllDone() })
-    button #bump(text = "bump", @click { bumpAll() })
+    button #mark(text="mark", @click { markAllDone() })
+    button #bump(text="bump", @click { bumpAll() })
 
     // read the live list elements by index (no filter — keep the assertion
     // independent of stdlib higher-order methods)
-    text #t0(value = string(tasks[0].done))
-    text #n0(value = string(nums[0]))
+    text #t0(value=string(tasks[0].done))
+    text #n0(value=string(nums[0]))
 }
 
 func testLoopRefFieldWriteThrough(t Test, c main) {

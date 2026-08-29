@@ -29,7 +29,19 @@ func (l *LiteralExpr) StringValue() (string, bool) {
 	if !ok {
 		return "", false
 	}
-	return UnescapeString(l.Raw, style), true
+	return UnescapeString(Dedent(l.Raw, style), style), true
+}
+
+// Dedent strips the layout of a triple-quoted string: its leading blank line,
+// the indentation its lines share, and a trailing whitespace-only line. It
+// applies to a whole literal only — the segments an interpolation is cut into
+// share one indentation, and dedenting each on its own would eat the newlines
+// between them.
+func Dedent(raw string, style StringStyle) string {
+	if style != StyleTriple {
+		return raw
+	}
+	return dedent(raw)
 }
 
 // NewStringLiteral builds a double-quoted literal standing for value. Use it
@@ -131,4 +143,46 @@ func hexDigit(c byte) int {
 		return int(c-'A') + 10
 	}
 	return -1
+}
+
+// dedent strips a triple-quoted string's leading blank line, the indentation
+// its lines share, and a trailing whitespace-only line.
+func dedent(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) <= 1 {
+		return s
+	}
+	start := 0
+	if lines[0] == "" {
+		start = 1
+	}
+	minIndent := -1
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if minIndent < 0 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+	if minIndent <= 0 {
+		if start > 0 {
+			return strings.Join(lines[start:], "\n")
+		}
+		return s
+	}
+	result := make([]string, 0, len(lines)-start)
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
+		if len(line) >= minIndent {
+			line = line[minIndent:]
+		}
+		result = append(result, line)
+	}
+	if len(result) > 0 && strings.TrimSpace(result[len(result)-1]) == "" {
+		result = result[:len(result)-1]
+	}
+	return strings.Join(result, "\n")
 }
