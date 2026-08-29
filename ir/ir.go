@@ -581,8 +581,11 @@ type StructDef struct {
 	AST        *ast.StructDef
 	Name       string
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
-	Fields     []*StructField
-	Foreign    `json:"Foreign,omitzero"`
+	// TypeParamDefaults is aligned with TypeParams; a nil entry has no default.
+	// An argument list that stops short falls back to them.
+	TypeParamDefaults []*Type `json:"-"`
+	Fields            []*StructField
+	Foreign           `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package
 	// whose identity is global — today the embedded library's "sngl://std",
 	// "sngl://builtin", "sngl://draw". Empty for a program's own

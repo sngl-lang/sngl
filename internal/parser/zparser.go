@@ -133,70 +133,71 @@ const (
 	FuncBodyTail      = Symbol(111) // FuncBodyTail
 	FuncName          = Symbol(112) // FuncName
 	TypeParamList     = Symbol(113) // TypeParamList
-	ParamList         = Symbol(114) // ParamList
-	Param             = Symbol(115) // Param
-	ComponentDecl     = Symbol(116) // ComponentDecl
-	CompParamList     = Symbol(117) // CompParamList
-	CompParam         = Symbol(118) // CompParam
-	CompParamBody     = Symbol(119) // CompParamBody
-	SlotParam         = Symbol(120) // SlotParam
-	CompParamTail     = Symbol(121) // CompParamTail
-	VisualOrStmt      = Symbol(122) // VisualOrStmt
-	IncDecOp          = Symbol(123) // IncDecOp
-	StatementPrimary  = Symbol(124) // StatementPrimary
-	IfNode            = Symbol(125) // IfNode
-	ForNode           = Symbol(126) // ForNode
-	SlotNode          = Symbol(127) // SlotNode
-	SlotArgList       = Symbol(128) // SlotArgList
-	AssignOp          = Symbol(129) // AssignOp
-	Expr              = Symbol(130) // Expr
-	TernaryExpr       = Symbol(131) // TernaryExpr
-	OrExpr            = Symbol(132) // OrExpr
-	AndExpr           = Symbol(133) // AndExpr
-	EqExpr            = Symbol(134) // EqExpr
-	CmpExpr           = Symbol(135) // CmpExpr
-	AddExpr           = Symbol(136) // AddExpr
-	MulExpr           = Symbol(137) // MulExpr
-	EqOp              = Symbol(138) // EqOp
-	CmpOp             = Symbol(139) // CmpOp
-	AddOp             = Symbol(140) // AddOp
-	MulOp             = Symbol(141) // MulOp
-	UnaryExpr         = Symbol(142) // UnaryExpr
-	PostfixExpr       = Symbol(143) // PostfixExpr
-	CondExpr          = Symbol(144) // CondExpr
-	CondOrExpr        = Symbol(145) // CondOrExpr
-	CondAndExpr       = Symbol(146) // CondAndExpr
-	CondEqExpr        = Symbol(147) // CondEqExpr
-	CondCmpExpr       = Symbol(148) // CondCmpExpr
-	CondAddExpr       = Symbol(149) // CondAddExpr
-	CondMulExpr       = Symbol(150) // CondMulExpr
-	CondUnaryExpr     = Symbol(151) // CondUnaryExpr
-	CondPostfixExpr   = Symbol(152) // CondPostfixExpr
-	CondPostfixOp     = Symbol(153) // CondPostfixOp
-	ExprPostfixOp     = Symbol(154) // ExprPostfixOp
-	StmtPostfixOp     = Symbol(155) // StmtPostfixOp
-	PrimaryExpr       = Symbol(156) // PrimaryExpr
-	ImportExpr        = Symbol(157) // ImportExpr
-	ListBody          = Symbol(158) // ListBody
-	ListElem          = Symbol(159) // ListElem
-	StructLitBody     = Symbol(160) // StructLitBody
-	AnonStructLit     = Symbol(161) // AnonStructLit
-	AnonField         = Symbol(162) // AnonField
-	FuncLit           = Symbol(163) // FuncLit
-	ArgList           = Symbol(164) // ArgList
-	Arg               = Symbol(165) // Arg
-	IdentArgCont      = Symbol(166) // IdentArgCont
-	ArgExprCont       = Symbol(167) // ArgExprCont
-	NonIdentPrimary   = Symbol(168) // NonIdentPrimary
-	Type              = Symbol(169) // Type
-	TypeList          = Symbol(170) // TypeList
-	FuncTypeParamList = Symbol(171) // FuncTypeParamList
-	FuncTypeParam     = Symbol(172) // FuncTypeParam
+	TypeParam         = Symbol(114) // TypeParam
+	ParamList         = Symbol(115) // ParamList
+	Param             = Symbol(116) // Param
+	ComponentDecl     = Symbol(117) // ComponentDecl
+	CompParamList     = Symbol(118) // CompParamList
+	CompParam         = Symbol(119) // CompParam
+	CompParamBody     = Symbol(120) // CompParamBody
+	SlotParam         = Symbol(121) // SlotParam
+	CompParamTail     = Symbol(122) // CompParamTail
+	VisualOrStmt      = Symbol(123) // VisualOrStmt
+	IncDecOp          = Symbol(124) // IncDecOp
+	StatementPrimary  = Symbol(125) // StatementPrimary
+	IfNode            = Symbol(126) // IfNode
+	ForNode           = Symbol(127) // ForNode
+	SlotNode          = Symbol(128) // SlotNode
+	SlotArgList       = Symbol(129) // SlotArgList
+	AssignOp          = Symbol(130) // AssignOp
+	Expr              = Symbol(131) // Expr
+	TernaryExpr       = Symbol(132) // TernaryExpr
+	OrExpr            = Symbol(133) // OrExpr
+	AndExpr           = Symbol(134) // AndExpr
+	EqExpr            = Symbol(135) // EqExpr
+	CmpExpr           = Symbol(136) // CmpExpr
+	AddExpr           = Symbol(137) // AddExpr
+	MulExpr           = Symbol(138) // MulExpr
+	EqOp              = Symbol(139) // EqOp
+	CmpOp             = Symbol(140) // CmpOp
+	AddOp             = Symbol(141) // AddOp
+	MulOp             = Symbol(142) // MulOp
+	UnaryExpr         = Symbol(143) // UnaryExpr
+	PostfixExpr       = Symbol(144) // PostfixExpr
+	CondExpr          = Symbol(145) // CondExpr
+	CondOrExpr        = Symbol(146) // CondOrExpr
+	CondAndExpr       = Symbol(147) // CondAndExpr
+	CondEqExpr        = Symbol(148) // CondEqExpr
+	CondCmpExpr       = Symbol(149) // CondCmpExpr
+	CondAddExpr       = Symbol(150) // CondAddExpr
+	CondMulExpr       = Symbol(151) // CondMulExpr
+	CondUnaryExpr     = Symbol(152) // CondUnaryExpr
+	CondPostfixExpr   = Symbol(153) // CondPostfixExpr
+	CondPostfixOp     = Symbol(154) // CondPostfixOp
+	ExprPostfixOp     = Symbol(155) // ExprPostfixOp
+	StmtPostfixOp     = Symbol(156) // StmtPostfixOp
+	PrimaryExpr       = Symbol(157) // PrimaryExpr
+	ImportExpr        = Symbol(158) // ImportExpr
+	ListBody          = Symbol(159) // ListBody
+	ListElem          = Symbol(160) // ListElem
+	StructLitBody     = Symbol(161) // StructLitBody
+	AnonStructLit     = Symbol(162) // AnonStructLit
+	AnonField         = Symbol(163) // AnonField
+	FuncLit           = Symbol(164) // FuncLit
+	ArgList           = Symbol(165) // ArgList
+	Arg               = Symbol(166) // Arg
+	IdentArgCont      = Symbol(167) // IdentArgCont
+	ArgExprCont       = Symbol(168) // ArgExprCont
+	NonIdentPrimary   = Symbol(169) // NonIdentPrimary
+	Type              = Symbol(170) // Type
+	TypeList          = Symbol(171) // TypeList
+	FuncTypeParamList = Symbol(172) // FuncTypeParamList
+	FuncTypeParam     = Symbol(173) // FuncTypeParam
 )
 
-const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_slotkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameTypeParamListParamListParamComponentDeclCompParamListCompParamCompParamBodySlotParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeSlotNodeSlotArgListAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeListFuncTypeParamListFuncTypeParam"
+const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_componentkw_constkw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_slotkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameTypeParamListTypeParamParamListParamComponentDeclCompParamListCompParamCompParamBodySlotParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeSlotNodeSlotArgListAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgIdentArgContArgExprContNonIdentPrimaryTypeTypeListFuncTypeParamListFuncTypeParam"
 
-var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 253, 261, 268, 275, 281, 288, 293, 302, 311, 318, 327, 334, 340, 344, 350, 358, 361, 367, 369, 372, 377, 389, 400, 412, 415, 425, 432, 436, 447, 456, 464, 471, 477, 485, 491, 495, 500, 512, 521, 525, 536, 543, 551, 561, 570, 580, 591, 603, 611, 622, 631, 643, 656, 666, 681, 693, 704, 711, 719, 726, 735, 743, 747, 756, 766, 776, 790, 804, 815, 823, 835, 845, 853, 862, 871, 880, 887, 894, 904, 912, 923, 931, 943, 951, 964, 973, 978, 991, 1004, 1013, 1026, 1035, 1048, 1060, 1068, 1084, 1090, 1097, 1105, 1116, 1124, 1128, 1139, 1145, 1152, 1158, 1165, 1172, 1179, 1183, 1188, 1193, 1198, 1207, 1218, 1226, 1236, 1247, 1257, 1268, 1279, 1290, 1303, 1318, 1331, 1344, 1357, 1368, 1378, 1386, 1394, 1407, 1420, 1429, 1436, 1443, 1446, 1458, 1469, 1484, 1488, 1496, 1513, 1526}
+var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 253, 261, 268, 275, 281, 288, 293, 302, 311, 318, 327, 334, 340, 344, 350, 358, 361, 367, 369, 372, 377, 389, 400, 412, 415, 425, 432, 436, 447, 456, 464, 471, 477, 485, 491, 495, 500, 512, 521, 525, 536, 543, 551, 561, 570, 580, 591, 603, 611, 622, 631, 643, 656, 666, 681, 693, 704, 711, 719, 726, 735, 743, 747, 756, 766, 776, 790, 804, 815, 823, 835, 845, 853, 862, 871, 880, 887, 894, 904, 912, 923, 931, 943, 951, 964, 973, 982, 987, 1000, 1013, 1022, 1035, 1044, 1057, 1069, 1077, 1093, 1099, 1106, 1114, 1125, 1133, 1137, 1148, 1154, 1161, 1167, 1174, 1181, 1188, 1192, 1197, 1202, 1207, 1216, 1227, 1235, 1245, 1256, 1266, 1277, 1288, 1299, 1312, 1327, 1340, 1353, 1366, 1377, 1387, 1395, 1403, 1416, 1429, 1438, 1445, 1452, 1455, 1467, 1478, 1493, 1497, 1505, 1522, 1535}
 
 func (s Symbol) String() string {
 	idx := int(s) - 0
@@ -7372,16 +7373,68 @@ state1:
 	return p.stop(r, accept, errorSet)
 }
 
+// TypeParam grammar:
+//
+//	# A type parameter may carry a default, the way a value parameter does: an
+//	# argument list that stops short falls back to them, right to left.
+//	TypeParam = ident [ assign Type ] .
+//
+//	State 0
+//		on  ident
+//			shift and goto state 1
+//	State 1
+//		Accept
+//		on  assign
+//			shift and goto state 2
+//	State 2
+//		on  ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
+//			call Type and goto state 3
+//	State 3
+//		Accept
+//
+// TypeParam is used internally from Parse.
+func (p *Parser) TypeParam() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(TypeParam), 0)
+	// state0:
+	accept, errorSet = false, 86
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		r = append(r, p.shift())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 89
+	switch Symbol(p.tok.Ch) {
+	case assign:
+		r = append(r, p.shift())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = false, 73
+	switch Symbol(p.tok.Ch) {
+	case ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
+		r = p.add(r, p.Type())
+		goto state3
+	}
+	return p.stop(r, accept, errorSet)
+state3:
+	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+}
+
 // TypeParamList grammar:
 //
-//	TypeParamList = lt ident { comma ident } gt .
+//	TypeParamList = lt TypeParam { comma TypeParam } gt .
 //
 //	State 0
 //		on  lt
 //			shift and goto state 1
 //	State 1
 //		on  ident
-//			shift and goto state 2
+//			call TypeParam and goto state 2
 //	State 2
 //		on  comma
 //			shift and goto state 1
@@ -7406,7 +7459,7 @@ state1:
 	accept, errorSet = false, 86
 	switch Symbol(p.tok.Ch) {
 	case ident:
-		r = append(r, p.shift())
+		r = p.add(r, p.TypeParam())
 		goto state2
 	}
 	return p.stop(r, accept, errorSet)

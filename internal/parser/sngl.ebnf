@@ -340,7 +340,11 @@ FuncBodyTail =
 #   else → bare function name
 FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
 
-TypeParamList = lt ident { comma ident } gt .
+TypeParamList = lt TypeParam { comma TypeParam } gt .
+
+# A type parameter may carry a default, the way a value parameter does: an
+# argument list that stops short falls back to them, right to left.
+TypeParam = ident [ assign Type ] .
 
 ParamList = Param { comma Param } .
 

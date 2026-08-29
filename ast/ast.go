@@ -135,12 +135,14 @@ func (*Comment) structBodyItem()     {}
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
-	Pos         Pos
-	Name        string
-	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
-	Body        []StructBodyItem
-	IsMultiline bool
-	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+	// TypeParamDefaults is aligned with TypeParams; a nil entry has no default.
+	TypeParamDefaults []TypeExpr `json:",omitempty"`
+	Pos               Pos
+	Name              string
+	TypeParams        []string // generic type parameters: ["T"] for `struct list<T> {}`
+	Body              []StructBodyItem
+	IsMultiline       bool
+	Attrs             []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // Fields returns just the *StructField items from Body, in source order.

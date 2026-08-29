@@ -110,7 +110,7 @@ component scroll(
     showScrollbar string,
     @scroll ScrollEvent,
     @scrollEnd ScrollEvent,
-    slot _ tr.one<tr.default>,
+    slot _ tr.one,
 ) {}
 
 // Flexible empty space. With `style.flex=1` it expands to absorb
@@ -316,7 +316,7 @@ component tooltip(
     text string,
     position string,
     delay int,
-    slot _ tr.one<tr.default>,
+    slot _ tr.one,
 ) {}
 
 // Floating content panel anchored to a trigger. Children include the

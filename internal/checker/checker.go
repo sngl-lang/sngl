@@ -1064,6 +1064,9 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	sd.Fields = c.resolveStructFields(sd.AST)
+	// A default is a type reference, so it waits for the same every-shell-exists
+	// condition the fields do.
+	sd.TypeParamDefaults = c.resolveTypeParamDefaults(sd.AST.TypeParamDefaults)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, sd.AST.Funcs())
 }
 

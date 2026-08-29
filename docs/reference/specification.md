@@ -771,7 +771,9 @@ FuncBodyTail =
 
 FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
 
-TypeParamList = "<" IDENT { "," IDENT } ">"
+TypeParamList = "<" TypeParam { "," TypeParam } ">"
+
+TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param }
 
@@ -1509,7 +1511,9 @@ FuncBodyTail =
 
 FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
 
-TypeParamList = "<" IDENT { "," IDENT } ">"
+TypeParamList = "<" TypeParam { "," TypeParam } ">"
+
+TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param }
 

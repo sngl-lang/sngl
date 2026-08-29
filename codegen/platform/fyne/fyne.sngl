@@ -171,7 +171,7 @@ component Wrapper(
     @click sngl.ClickEvent,
     @change sngl.ChangeEvent,
     @input sngl.InputEvent,
-    slot _ tr.one<tr.default>,
+    slot _ tr.one,
 ) {}
 
 // --- The Fyne widgets ---
@@ -349,7 +349,7 @@ component HBox(style sngl.Style, slot _) {
     }
 }
 
-component VScroll(style sngl.Style, slot _ tr.one<tr.default>) {
+component VScroll(style sngl.Style, slot _ tr.one) {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},

@@ -188,16 +188,25 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 // The result's Kind is TypeStruct; Elems holds the bound type arguments in
 // declaration order (matching TypeParams on the StructDef).
 func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructDef, args []ast.TypeExpr) *ir.Type {
-	if len(args) != len(sd.TypeParams) {
-		c.error(pos, "type %s requires %d type argument(s), got %d",
-			sd.Name, len(sd.TypeParams), len(args))
-		// Return the unparameterized base type rather than dyn so downstream
-		// code can still see the struct shape.
-		return base
+	elems := make([]*ir.Type, 0, len(sd.TypeParams))
+	for i := range sd.TypeParams {
+		switch {
+		case i < len(args):
+			elems = append(elems, c.resolveType(args[i]))
+		case c.typeParamDefault(sd, i) != nil:
+			elems = append(elems, c.typeParamDefault(sd, i))
+		default:
+			c.error(pos, "type %s requires a type argument for %s, which has no default",
+				sd.Name, sd.TypeParams[i])
+			// The unparameterized base rather than dyn, so downstream code can
+			// still see the struct shape.
+			return base
+		}
 	}
-	elems := make([]*ir.Type, len(args))
-	for i, a := range args {
-		elems[i] = c.resolveType(a)
+	if len(args) > len(sd.TypeParams) {
+		c.error(pos, "type %s takes %d type argument(s), got %d",
+			sd.Name, len(sd.TypeParams), len(args))
+		return base
 	}
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
@@ -268,12 +277,41 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	return &ir.StructDef{
-		AST:        s,
-		Name:       s.Name,
-		Pkg:        c.libPkgName,
-		TypeParams: s.TypeParams,
-		Fields:     c.resolveStructFields(s),
+		AST:               s,
+		Name:              s.Name,
+		Pkg:               c.libPkgName,
+		TypeParams:        s.TypeParams,
+		TypeParamDefaults: c.resolveTypeParamDefaults(s.TypeParamDefaults),
+		Fields:            c.resolveStructFields(s),
 	}
+}
+
+// typeParamDefault is the default for a struct's i-th type parameter, or nil.
+// A struct shell exists before its defaults are resolved, and a use site can
+// come first, so the written form is resolved on demand when it does.
+func (c *checker) typeParamDefault(sd *ir.StructDef, i int) *ir.Type {
+	if i < len(sd.TypeParamDefaults) && sd.TypeParamDefaults[i] != nil {
+		return sd.TypeParamDefaults[i]
+	}
+	if sd.AST == nil || i >= len(sd.AST.TypeParamDefaults) || sd.AST.TypeParamDefaults[i] == nil {
+		return nil
+	}
+	return c.resolveType(sd.AST.TypeParamDefaults[i])
+}
+
+// resolveTypeParamDefaults resolves the written defaults, keeping them aligned
+// with the parameter names and nil where a parameter has none.
+func (c *checker) resolveTypeParamDefaults(defs []ast.TypeExpr) []*ir.Type {
+	if len(defs) == 0 {
+		return nil
+	}
+	out := make([]*ir.Type, len(defs))
+	for i, d := range defs {
+		if d != nil {
+			out[i] = c.resolveType(d)
+		}
+	}
+	return out
 }
 
 // resolveStructFields resolves a struct's field types. Split out from
@@ -664,9 +702,12 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	default:
 		return ir.SlotAny, nil
 	}
-	if len(nt.TypeArgs) != 1 {
-		c.error(nt.Pos, "%s takes exactly one type argument", name)
-		return card, &ir.Type{Kind: ir.TypeComponent}
+	switch {
+	case len(nt.TypeArgs) == 1:
+		return card, c.resolveType(nt.TypeArgs[0])
+	case len(nt.TypeArgs) == 0 && len(sd.TypeParamDefaults) == 1 && sd.TypeParamDefaults[0] != nil:
+		return card, sd.TypeParamDefaults[0]
 	}
-	return card, c.resolveType(nt.TypeArgs[0])
+	c.error(nt.Pos, "%s takes exactly one type argument", name)
+	return card, &ir.Type{Kind: ir.TypeComponent}
 }

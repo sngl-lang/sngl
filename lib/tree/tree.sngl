@@ -30,5 +30,8 @@ struct default {}
 
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.
+//
+// T defaults to the tree an ordinary component belongs to, so `tree.one` on its
+// own says "exactly one child, of whatever family the slot already accepts".
 #[builtin("treeOne")]
-struct one<T> {}
+struct one<T = default> {}

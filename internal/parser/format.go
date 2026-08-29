@@ -340,7 +340,16 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		f.write(s.Name)
 		if len(s.TypeParams) > 0 {
 			f.write("<")
-			f.write(strings.Join(s.TypeParams, ", "))
+			for k, tp := range s.TypeParams {
+				if k > 0 {
+					f.write(", ")
+				}
+				f.write(tp)
+				if k < len(s.TypeParamDefaults) && s.TypeParamDefaults[k] != nil {
+					f.write(" = ")
+					f.writeType(s.TypeParamDefaults[k])
+				}
+			}
 			f.write(">")
 		}
 		f.write(" ")

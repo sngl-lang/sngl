@@ -1,0 +1,41 @@
+// A type parameter may carry a default, the way a value parameter does. An
+// argument list that stops short falls back to them, so this is a general
+// feature rather than something one generic in the tree package special-cases.
+
+import . "sngl://std"
+import tr "sngl://tree"
+
+struct Pair<A, B = string> {
+    left A
+    right B
+}
+
+struct Boxed<T = int> {
+    v T
+}
+
+// `Pair<int>` fills B from its default; `Boxed` fills its only parameter and
+// needs no argument list at all.
+component show(
+    p Pair<int> = {left=1, right="s"},
+    q Pair<int, bool> = {left=2, right=true},
+    b Boxed = {v=3},
+    // tree.one's parameter defaults to the tree an ordinary component belongs
+    // to, so the wrapper stands on its own.
+    slot body tr.one,
+) {
+    vbox {
+        text(value=p.right)
+        text(value="{q.right}")
+        text(value="{b.v}")
+        body {}
+    }
+}
+
+component main {
+    show() {
+        slot body {
+            text(value="one")
+        }
+    }
+}

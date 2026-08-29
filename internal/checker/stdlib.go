@@ -770,6 +770,9 @@ func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.Str
 func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) {
 	built := c.buildStructDef(s)
 	sd.Fields = built.Fields
+	// A type-parameter default is a type reference like any other, so it wants
+	// the same every-name-is-in-scope condition the fields do.
+	sd.TypeParamDefaults = built.TypeParamDefaults
 	// Every stdlib type name is in scope by now, which is exactly the
 	// condition a default needs.
 	c.fillStructFieldDefaults(sd)

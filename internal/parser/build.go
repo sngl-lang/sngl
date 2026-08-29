@@ -414,7 +414,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 		s.Name = it.shift().Literal
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-		s.TypeParams = b.buildTypeParamList(it.enter())
+		s.TypeParams, s.TypeParamDefaults = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -921,16 +921,48 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 }
 
 func (b *builder) buildTypeParamList(it nodeIter) []string {
-	// TypeParamList = lt ident { comma ident } gt .
-	var params []string
+	names, _ := b.buildTypeParams(it)
+	return names
+}
+
+// buildTypeParams returns the parameter names and their defaults, the defaults
+// aligned with the names and nil where one is absent.
+func (b *builder) buildTypeParams(it nodeIter) ([]string, []ast.TypeExpr) {
+	// TypeParamList = lt TypeParam { comma TypeParam } gt .
+	var names []string
+	var defaults []ast.TypeExpr
 	for !it.done() {
-		if !it.isNonTerminal() && it.tokenType() == IDENT {
-			params = append(params, it.shift().Literal)
-		} else {
-			it.skip() // lt, gt, comma
+		if it.isNonTerminal() && it.symbol() == TypeParam {
+			name, def := b.buildTypeParam(it.enter())
+			names = append(names, name)
+			defaults = append(defaults, def)
+			continue
 		}
+		it.skip() // lt, gt, comma
 	}
-	return params
+	return names, defaults
+}
+
+func (b *builder) buildTypeParam(it nodeIter) (string, ast.TypeExpr) {
+	// TypeParam = ident [ assign Type ] .
+	var name string
+	var def ast.TypeExpr
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == Type {
+				def = b.buildType(it.enter())
+				continue
+			}
+			it.skip()
+			continue
+		}
+		if it.tokenType() == IDENT && name == "" {
+			name = it.shift().Literal
+			continue
+		}
+		it.skip() // assign
+	}
+	return name, def
 }
 
 func (b *builder) buildParamList(it nodeIter, openLine int) ast.ParamList {
