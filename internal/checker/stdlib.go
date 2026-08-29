@@ -1656,14 +1656,25 @@ func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Packa
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
+		case ast.SlotDecl:
+			slot := &ir.SlotDecl{Name: pd.Name}
+			if pd.Type != nil {
+				slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
+			}
+			for _, t := range pd.Params {
+				slot.Params = append(slot.Params, c.resolveType(t))
+			}
+			c.applySlotMarks(pd, slot)
+			irComp.Slots = append(irComp.Slots, slot)
 		}
 	}
 
-	finishTreeMarks(comp, irComp, pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
+	finishTreeMarks(comp, irComp, pkg)
+	c.finishDefaultSlot(irComp)
 
 	c.bindLib(comp.Pos, c.scope, irComp)
 	// Stdlib package for qualified sngl.Component access.

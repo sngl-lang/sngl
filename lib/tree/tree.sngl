@@ -6,26 +6,27 @@
 // runs) and menus (items, separators) are others. Nothing here knows what a
 // shape is — the compiler compares declarations.
 //
-// A slot declares which family its content belongs to by naming that family's
-// type, and how many of them it takes by wrapping it: bare is any number,
-// `tree.one<T>` is exactly one, `option<T>` is none or one.
+// A tree is a type. A component says which one it belongs to by naming that
+// type in its return position, and a slot says which one it accepts by naming
+// it as the slot's type. How many it accepts is the wrapper: bare is any
+// number, `tree.one<T>` is exactly one, `option<T>` is none or one.
 
 import ir "sngl://internal/ir"
 import . "sngl://internal/marks"
 
-// Names the tree this component is a member of.
+// Marks a struct as naming a tree. The struct is the tree: nothing is stored in
+// it and no value of it exists, so a component naming it says which family it
+// is a member of rather than what it holds.
 //
-// A member's children are implicitly members of the same tree, so a shape
-// contains only shapes without saying so. A component that declares a children
-// type of its own, or carries `children`, says what it accepts instead.
-func kind(name string) ir.Macro {}
+// A name resolves or it does not, which is the point — a misspelled tree is an
+// unresolved name at the declaration rather than a family nobody joins.
+func kind() ir.Macro {}
 
-// Names the tree this component's children must be members of.
-//
-// Written alone it makes a container that is not itself a member — a canvas
-// hosts shapes but is not one. Written alongside `kind` it makes a member that
-// hosts a different family, which is how a rich-text block holds inline runs.
-func children(name string) ir.Macro {}
+// The tree an ordinary component belongs to: the one whose members are
+// interchangeable, where a container hosts anything. A component that names no
+// tree is a member of this one, and a slot that names no type accepts it.
+#[builtin("treeDefault")]
+struct default {}
 
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.

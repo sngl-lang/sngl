@@ -17,7 +17,6 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "kind"}:                markTreeKind,
-	{"tree", "children"}:            markTreeChildren,
 	{"platforms", "options"}:        markOptions,
 	{"platforms", "wildcard"}:       markWildcard,
 	{"std", "foreign"}:              markForeign,
@@ -243,79 +242,32 @@ func markOptions(m *mark) error {
 }
 
 func markTreeKind(m *mark) error {
-	return applyTreeMark(m, "kind", m.args.String("name"), setTreeKind)
-}
-
-// A component is a node of one tree, so a second kind would make it two.
-func setTreeKind(c *ir.Component, name string) error {
-	if c.TreeKind != "" {
-		return fmt.Errorf("already a %q node", c.TreeKind)
-	}
-	c.TreeKind = name
-	return nil
-}
-
-func markTreeChildren(m *mark) error {
-	kind := m.args.String("name")
-	// A named slot hosts a tree the same way a component's children do: the
-	// mark says which family the caller's content must belong to. #[tree.kind]
-	// has no slot form -- kind says what a node *is*, and a slot is a position
-	// rather than a node.
-	if slot, ok := m.sym.(*ir.SlotDecl); ok {
-		if kind == "" {
-			return fmt.Errorf("#[tree.children] requires a non-empty tree name")
-		}
-		if slot.ChildKind != "" {
-			return fmt.Errorf("#[tree.children(%q)]: slot content is already restricted to %q", kind, slot.ChildKind)
-		}
-		slot.ChildKind = kind
-		return nil
-	}
-	return applyTreeMark(m, "children", kind, func(c *ir.Component, name string) error {
-		if c.ChildKind != "" {
-			return fmt.Errorf("children are already restricted to %q", c.ChildKind)
-		}
-		c.ChildKind = name
-		return nil
-	})
-}
-
-func applyTreeMark(m *mark, name, kind string, set func(*ir.Component, string) error) error {
-	if kind == "" {
-		return fmt.Errorf("#[tree.%s] requires a non-empty tree name", name)
-	}
-	comp, ok := m.sym.(*ir.Component)
+	sd, ok := m.sym.(*ir.StructDef)
 	if !ok {
-		return fmt.Errorf("#[tree.%s(%q)] cannot mark %s; only a component is a node in a tree", name, kind, ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[tree.kind] cannot mark %s; a tree is named by a struct", ast.DeclFormName(m.decl))
 	}
-	if err := set(comp, kind); err != nil {
-		return fmt.Errorf("#[tree.%s(%q)]: %w", name, kind, err)
+	if decl, ok := m.decl.(*ast.StructDef); ok && len(decl.Body) > 0 {
+		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
 	}
+	sd.IsTree = true
 	return nil
 }
 
-// shapeKind is the tree sngl://draw's components form. #[draw.shape] is the
-// public spelling of #[tree.kind("shape")]: the tree marks are internal to the
-// compiler, so a user declaring a shape reaches them only through this one.
-const shapeKind = "shape"
-
+// #[draw.shape] keeps the rules that are about drawing rather than about trees.
+// Membership is the return position now — a shape says `component rect(…) shape`
+// — so the mark no longer confers it.
 func markShape(m *mark) error {
 	decl, ok := m.decl.(*ast.ComponentDecl)
 	if !ok {
 		return fmt.Errorf("#[draw.shape] requires a component declaration")
 	}
-	// A painted shape has nothing to raise an event from. This is a rule about
-	// drawing rather than about trees, so it is enforced here and not by the
-	// tree marks.
-	for _, p := range decl.Props.Props {
-		if _, isEvent := p.(ast.EventDecl); isEvent {
+	// A painted shape has nothing to raise an event from.
+	for _, prop := range decl.Props.Props {
+		if _, isEvent := prop.(ast.EventDecl); isEvent {
 			return fmt.Errorf("shape components do not support event declarations")
 		}
 	}
-	if decl.ChildrenType != nil {
-		return fmt.Errorf("shape components may only have shape children; remove the children type")
-	}
-	return applyTreeMark(m, "kind", shapeKind, setTreeKind)
+	return nil
 }
 
 // markWildcard implements #[platforms.wildcard("pattern")], which says what a

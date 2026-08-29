@@ -379,7 +379,7 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 		return false
 	}
 	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		comp.TreeKind != "" || comp.ChildKind != ""
+		comp.Tree != nil || hostsTree(comp)
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the

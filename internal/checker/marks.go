@@ -67,7 +67,6 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // tree.children written on an ordinary prop to that rule.
 var paramMarks = map[markKey]bool{
 	{"platforms", "wildcard"}: true,
-	{"tree", "children"}:      true,
 }
 
 // applyParamMarks resolves and runs the marks written on a component prop.

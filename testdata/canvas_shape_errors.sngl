@@ -4,7 +4,7 @@ import . "sngl://draw"
 component notAShape {}
 
 component myWidget {
-    canvas(width=400px, height=300px) { // ERROR(check) "expected shape component in canvas, got notAShape"
-        notAShape {}
+    canvas(width=400px, height=300px) {
+        notAShape {} // ERROR(check) "expected shape component in canvas, got notAShape"
     }
 }

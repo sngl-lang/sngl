@@ -1,0 +1,34 @@
+// What the tree model refuses at a use site.
+
+import . "sngl://std"
+import tr "sngl://tree"
+
+#[tr.kind]
+struct block {}
+
+#[tr.kind]
+struct inline {}
+
+component document(slot _ block) {}
+component para(slot _ inline) block {}
+component bold(weight int) inline {}
+
+component main {
+    // A tree holds nothing and no value of it exists, which is what makes it
+    // usable as a slot's type and not as a var's.
+    var bad block = 0 // ERROR(check) "names a tree, which has no values"
+
+    document() {
+        bold(weight = 700) // ERROR(check) "expected block component in document, got bold"
+    }
+
+    document() {
+        para() {
+            // A member with no slot hosts nothing: the old "a shape contains
+            // shapes without saying so" rule is gone.
+            bold(weight = 1) { // ERROR(check) "does not accept children"
+                bold(weight = 2)
+            }
+        }
+    }
+}

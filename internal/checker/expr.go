@@ -30,7 +30,25 @@ func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
 		c.error(pos, "expression yields no value")
 		return true
 	}
+	if sd := treeStruct(t); sd != nil {
+		c.error(pos, "%s names a tree, which has no values", sd.Name)
+		return true
+	}
 	return false
+}
+
+// treeStruct is the tree declaration t names, or nil. A tree struct holds
+// nothing and no value of it exists: naming one says which family a component
+// or a slot belongs to.
+func treeStruct(t *ir.Type) *ir.StructDef {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || !sd.IsTree {
+		return nil
+	}
+	return sd
 }
 
 func (c *checker) checkExpr(e ast.Expr) ir.Expr {
@@ -2393,6 +2411,10 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		if sd := treeStruct(typ); sd != nil {
+			c.error(decl.Pos, "%s names a tree, which has no values", sd.Name)
+			typ = TypDyn
+		}
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -3227,32 +3249,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
 		}
-		// A component marked #[tree.children("k")] hosts a segmented tree:
-		// every child must be a node marked #[tree.kind("k")].
-		if comp.ChildKind != "" {
-			for _, child := range children {
-				// A slot insertion is a position, not a node: what lands there
-				// is whatever the caller supplies, so the slot's own declared
-				// kind is what has to match. Checking the supplied content
-				// against it is the population's job.
-				if si, isSlot := child.(*ir.SlotInst); isSlot {
-					if slot := c.enclosingSlot(si.Name); slot != nil && slot.ChildKind == comp.ChildKind {
-						continue
-					}
-				}
-				ni, ok := child.(*ir.NodeInst)
-				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
-					continue
-				}
-				childName := "unknown"
-				if ok && ni.Component != nil {
-					childName = ni.Component.Name
-				} else if ok {
-					childName = ni.Name
-				}
-				c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
-			}
-		}
+		c.checkTreeMembership(vn.Pos, children, slotTree(comp, findSlot(comp, ir.DefaultSlot)), "in "+comp.Name)
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
 
@@ -4255,7 +4252,7 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 		if content == nil {
 			content = map[string]*ir.SlotContent{}
 		}
-		content[sn.Name] = c.checkSlotContent(sn, decl)
+		content[sn.Name] = c.checkSlotContent(sn, decl, comp)
 	}
 	c.checkRequiredSlots(vn.Pos, comp, content)
 	return content, rest
@@ -4279,7 +4276,7 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // checkSlotContent checks one population. The bound names are the caller's own,
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
-func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.SlotContent {
+func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
 	if len(sn.Args) != len(decl.Params) {
 		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))
 	}
@@ -4304,24 +4301,7 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.Slot
 	sc.Body = c.checkBlockIR(&sn.Block)
 	c.popScope()
 	c.checkSlotArity(sn.Pos, decl, len(sc.Body), "slot \""+sn.Name+"\"")
-	// A slot marked #[tree.children("k")] hosts a segmented tree, so the
-	// supplied content is held to the same rule a marked component's children
-	// are: every node must carry #[tree.kind("k")].
-	if decl.ChildKind != "" {
-		for _, st := range sc.Body {
-			ni, ok := st.(*ir.NodeInst)
-			if ok && ni.Component != nil && ni.Component.TreeKind == decl.ChildKind {
-				continue
-			}
-			name := "unknown"
-			if ok && ni.Component != nil {
-				name = ni.Component.Name
-			} else if ok {
-				name = ni.Name
-			}
-			c.error(sn.Pos, "expected %s component in slot %q, got %s", decl.ChildKind, sn.Name, name)
-		}
-	}
+	c.checkTreeMembership(sn.Pos, sc.Body, slotTree(owner, decl), "in slot \""+sn.Name+"\"")
 	return sc
 }
 
@@ -4351,5 +4331,69 @@ func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what str
 		if n > 1 {
 			c.error(pos, "%s takes at most one node, got %d", what, n)
 		}
+	}
+}
+
+// slotTree is the segmented tree a slot accepts, or nil for the default tree —
+// the one whose members are interchangeable.
+//
+// owner is the component the slot is declared on. A slot that names no tree
+// accepts the one its component belongs to, so a member hosts its own family
+// without saying so; declaring a slot at all is still what makes it host
+// anything.
+func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
+	if slot == nil {
+		return nil
+	}
+	if slot.Content == nil {
+		if owner == nil {
+			return nil
+		}
+		return owner.Tree
+	}
+	if slot.Content.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, ok := slot.Content.Decl.(*ir.StructDef)
+	if !ok || sd.Builtin == ir.BuiltinTreeDefault || !sd.IsTree {
+		return nil
+	}
+	return sd
+}
+
+// checkTreeMembership holds every supplied node to the tree the position
+// accepts. Compared by declaration, so two packages each declaring a tree of
+// the same name are two trees.
+func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
+	if want == nil {
+		return
+	}
+	for _, st := range content {
+		// A slot insertion is a position rather than a node: what lands there
+		// is whatever the caller supplies, so the slot's own tree is what has
+		// to match, and the population is where the content is checked.
+		if si, isSlot := st.(*ir.SlotInst); isSlot {
+			if slotTree(c.currentComponent, c.enclosingSlot(si.Name)) == want {
+				continue
+			}
+		}
+		ni, ok := st.(*ir.NodeInst)
+		if ok && ni.Component != nil && ni.Component.Tree == want {
+			continue
+		}
+		name := "unknown"
+		at := pos
+		if ok {
+			name = ni.Name
+			if ni.Component != nil {
+				name = ni.Component.Name
+			}
+			// The offending child is a better place to point than the position
+			// that hosts it.
+			if sp := ni.AST.StmtPos(); sp != nil {
+				at = *sp
+			}
+		}
+		c.error(at, "expected %s component %s, got %s", want.Name, where, name)
 	}
 }

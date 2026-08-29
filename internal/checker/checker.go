@@ -1745,12 +1745,12 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
-	finishTreeMarks(comp, irComp, c.pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
-	c.finishDefaultSlot(comp, irComp)
+	finishTreeMarks(comp, irComp, c.pkg)
+	c.finishDefaultSlot(irComp)
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
@@ -1810,6 +1810,10 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
 			typ := c.resolveType(spec.Type)
+			if sd := treeStruct(typ); sd != nil {
+				c.error(s.Pos, "%s names a tree, which has no values", sd.Name)
+				typ = TypDyn
+			}
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -3304,13 +3308,17 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 // parameter list. It says what the `list<component>` return type says and sits
 // where the rest of a component's contract already does, so the two are
 // alternatives rather than a pair.
-func (c *checker) finishDefaultSlot(decl *ast.ComponentDecl, comp *ir.Component) {
+func (c *checker) finishDefaultSlot(comp *ir.Component) {
 	slot := findSlot(comp, ir.DefaultSlot)
 	if slot == nil {
 		return
 	}
-	if decl.ChildrenType != nil {
-		c.error(decl.Pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
+	if comp.ChildrenType != nil {
+		pos := ast.Pos{}
+		if comp.AST != nil {
+			pos = comp.AST.Pos
+		}
+		c.error(pos, "component %s declares the default slot and a children type; the slot replaces it", comp.Name)
 		return
 	}
 	comp.ChildrenType = childrenTypeFor(slot)

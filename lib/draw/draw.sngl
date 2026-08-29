@@ -14,8 +14,7 @@ import std "sngl://std"
 // function.
 import ir "sngl://internal/ir"
 
-// `shape` is this package's public spelling of `tree.kind("shape")`; the tree
-// marks themselves are internal to the compiler.
+// `#[tree.kind]` is what marks the shape struct below as naming a tree.
 import tree "sngl://tree"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
@@ -46,43 +45,47 @@ struct PathCmd {
     r   float = 0.0
 }
 
-// Immediate-mode drawing surface. Its children are the shapes to paint, in
-// declaration order — later shapes cover earlier ones. Coordinates are in
-// pixels from the top-left of the canvas, whatever measurement unit
+// The tree the shapes form. Declaring it here is what makes `shape` a name a
+// component can resolve, so a misspelling is an unresolved name rather than a
+// family nobody joins.
+#[tree.kind]
+struct shape {}
+
+// Immediate-mode drawing surface. Its default slot accepts shapes, so a canvas
+// hosts them without being one. They paint in declaration order — later shapes
+// cover earlier ones — in pixels from the top-left, whatever measurement unit
 // `width` and `height` are given in.
-#[tree.children("shape")]
-component canvas(width std.measurement, height std.measurement, style CanvasStyle, @click std.ClickEvent) {}
+component canvas(
+    width std.measurement,
+    height std.measurement,
+    style CanvasStyle,
+    @click std.ClickEvent,
+    slot _ shape,
+) {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
-#[tree.kind("shape")]
-component rect(x float, y float, w float, h float, style CanvasStyle) {}
+component rect(x float, y float, w float, h float, style CanvasStyle) shape {}
 
 // Circle of radius r centred at cx, cy.
-#[tree.kind("shape")]
-component circle(cx float, cy float, r float, style CanvasStyle) {}
+component circle(cx float, cy float, r float, style CanvasStyle) shape {}
 
 // Ellipse centred at cx, cy with radii rx and ry.
-#[tree.kind("shape")]
-component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) {}
+component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) shape {}
 
 // Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
 // meaningless on a line and is ignored.
-#[tree.kind("shape")]
-component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) {}
+component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape {}
 
 // Arbitrary shape built from a list of PathCmd steps.
-#[tree.kind("shape")]
-component path(cmds list<PathCmd>, style CanvasStyle) {}
+component path(cmds list<PathCmd>, style CanvasStyle) shape {}
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
 // a program can import this package alongside `sngl://std`.
-#[tree.kind("shape")]
-component canvasText(x float, y float, content string, style CanvasStyle) {}
+component canvasText(x float, y float, content string, style CanvasStyle) shape {}
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
-#[tree.kind("shape")]
-component canvasImage(x float, y float, w float, h float, src string) {}
+component canvasImage(x float, y float, w float, h float, src string) shape {}
 
 // Marks a component as a shape: something a `canvas` hosts and paints rather
 // than a widget the layout places.

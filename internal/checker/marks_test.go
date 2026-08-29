@@ -156,55 +156,60 @@ struct Tiny {}
 func TestTreeMarksFollowTheImportAlias(t *testing.T) {
 	pkg, errs := checkMarkStub(t, `import t "sngl://tree"
 
-#[t.kind("block")]
-#[t.children("inline")]
-component para() {}
+#[t.kind]
+struct block {}
+
+component para() block {}
 `)
 	wantNoMarkErrs(t, errs)
-	comp := pkg.Components[0]
-	if comp.TreeKind != "block" || comp.ChildKind != "inline" {
-		t.Errorf("tree = %q/%q, want block/inline", comp.TreeKind, comp.ChildKind)
+	var tree *ir.StructDef
+	for _, sd := range pkg.Structs {
+		if sd.Name == "block" {
+			tree = sd
+		}
+	}
+	if tree == nil || !tree.IsTree {
+		t.Fatalf("block was not marked as a tree")
+	}
+	if pkg.Components[0].Tree != tree {
+		t.Errorf("para.Tree = %v, want the block declaration", pkg.Components[0].Tree)
 	}
 }
 
-func TestTreeKindRejectsAnEmptyName(t *testing.T) {
+// A tree is named by a struct: the declaration is the identity, so there is
+// nothing for a component to carry the mark for.
+func TestTreeKindCannotMarkAComponent(t *testing.T) {
 	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
-#[t.kind("")]
+#[t.kind]
 component para() {}
 `)
-	wantMarkErr(t, errs, "#[tree.kind] requires a non-empty tree name")
+	wantMarkErr(t, errs, "a tree is named by a struct")
 }
 
-// A component is a node of one tree; a second mark would make it two.
-func TestTreeKindRefusesASecondMark(t *testing.T) {
+// The struct is the tree and holds nothing; fields would suggest a value.
+func TestTreeKindRefusesFields(t *testing.T) {
 	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
-#[t.kind("block")]
-#[t.kind("inline")]
-component para() {}
+#[t.kind]
+struct block {
+    n int
+}
 `)
-	wantMarkErr(t, errs, `already a "block" node`)
+	wantMarkErr(t, errs, "a tree struct holds nothing")
 }
 
-func TestTreeChildrenRefusesASecondMark(t *testing.T) {
+// A misspelled tree is an unresolved name where it is written, which is the
+// whole reason a tree is a declaration rather than a string.
+func TestAMisspelledTreeIsUnresolved(t *testing.T) {
 	_, errs := checkMarkStub(t, `import t "sngl://tree"
 
-#[t.children("block")]
-#[t.children("inline")]
-component doc() {}
-`)
-	wantMarkErr(t, errs, `children are already restricted to "block"`)
-}
+#[t.kind]
+struct block {}
 
-// Only a component is a node in a tree.
-func TestTreeKindCannotMarkAStruct(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://tree"
-
-#[t.kind("block")]
-struct Tiny {}
+component para() blcok {}
 `)
-	wantMarkErr(t, errs, "only a component is a node in a tree")
+	wantMarkErr(t, errs, "blcok")
 }
 
 // #[foreign] is declared in sngl://std, so it is the one compiler mark a

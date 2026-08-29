@@ -1,0 +1,48 @@
+// A tree is a declared type. `#[tree.kind]` marks a struct as naming one, a
+// component says which it belongs to by naming that type in its return
+// position, and a slot says which it accepts by naming it as the slot's type.
+//
+// Nothing is matched by name: a misspelled tree is an unresolved name where it
+// is written, and two packages each declaring a tree of the same name declare
+// two trees.
+
+import . "sngl://std"
+import tr "sngl://tree"
+
+#[tr.kind]
+struct block {}
+
+#[tr.kind]
+struct inline {}
+
+// A container that is not itself a member: its default slot names the family
+// it hosts.
+component document(slot _ block) {}
+
+// A member that hosts a different family — the rich-text case the mechanism
+// was generalised for.
+component para(slot _ inline) block {}
+
+// A member with no slot hosts nothing.
+component bold(weight int) inline {}
+
+// A member whose slot names no family hosts its own, so this holds inlines.
+component span(slot _) inline {}
+
+// The default tree is the absence of one: naming it is the same as naming
+// nothing, and an ordinary component belongs to it.
+component plain(slot _ tr.default) {}
+
+component main {
+    document() {
+        para() {
+            bold(weight = 700)
+            span() {
+                bold(weight = 400)
+            }
+        }
+    }
+    plain() {
+        text(value = "anything goes here")
+    }
+}

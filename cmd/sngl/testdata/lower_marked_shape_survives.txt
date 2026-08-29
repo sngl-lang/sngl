@@ -24,7 +24,7 @@ import . "sngl://std"
 import "sngl://draw"
 
 #[draw.shape]
-component blip(x float, y float) {}
+component blip(x float, y float) draw.shape {}
 
 component main() {
     window(title="t") {

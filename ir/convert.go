@@ -261,9 +261,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 	}
 
-	// A default slot already says what ChildrenType says — it is what set it —
-	// and a declaration carrying both is refused on the way back in.
-	if comp.ChildrenType != nil && findSlotDecl(comp, DefaultSlot) == nil {
+	// The return position is the tree the component is a member of, and only a
+	// legacy children type otherwise. A default slot already says what that
+	// type says, and a declaration carrying both is refused on the way back in.
+	switch {
+	case comp.Tree != nil:
+		cd.ChildrenType = &ast.NamedType{Name: comp.Tree.Name}
+	case comp.ChildrenType != nil && findSlotDecl(comp, DefaultSlot) == nil:
 		cd.ChildrenType = c.convertType(comp.ChildrenType)
 	}
 

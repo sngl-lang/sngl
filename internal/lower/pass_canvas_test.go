@@ -12,10 +12,19 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	styleTyp := &ir.Type{Kind: ir.TypeStruct}
 	childListType := ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 
+	// The tree is a declaration, so both the member and its host name this one.
+	shapeTree := &ir.StructDef{Name: "shape", IsTree: true}
+	shapeSlot := func() []*ir.SlotDecl {
+		return []*ir.SlotDecl{{
+			Name:    ir.DefaultSlot,
+			Content: &ir.Type{Kind: ir.TypeStruct, Decl: shapeTree},
+		}}
+	}
+
 	rectComp := &ir.Component{
 		Name:         "rect",
-		TreeKind:     "shape",
-		ChildKind:    "shape",
+		Tree:         shapeTree,
+		Slots:        shapeSlot(),
 		ChildrenType: childListType,
 		Props: []*ir.Prop{
 			{Name: "x", Type: ir.TypFloat},
@@ -27,7 +36,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 	canvasComp := &ir.Component{
 		Name:         "canvas",
-		ChildKind:    "shape",
+		Slots:        shapeSlot(),
 		ChildrenType: childListType,
 		Props: []*ir.Prop{
 			{Name: "width", Type: ir.TypFloat},

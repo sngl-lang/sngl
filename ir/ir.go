@@ -383,13 +383,10 @@ type Component struct {
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
-	// TreeKind names the segmented tree this component is a member of
-	// ("shape"), and ChildKind the one its children must be members of. Both
-	// come from #[tree.kind]/#[tree.children] at registration; a member with
-	// no children type of its own hosts its own kind, so a shape contains
-	// shapes. Empty for an ordinary component.
-	TreeKind  string `json:",omitempty"`
-	ChildKind string `json:",omitempty"`
+	// Tree is the segmented tree this component is a member of, named in its
+	// return position. Nil for a member of the default tree — an ordinary
+	// component, interchangeable with any other.
+	Tree *StructDef `json:"-"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component
@@ -578,6 +575,9 @@ func (p *Param) SymType() *Type  { return p.Type }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
+	// IsTree is set by #[tree.kind]: this struct names a segmented tree rather
+	// than describing a value, and components name it to say they are members.
+	IsTree     bool `json:",omitempty"`
 	AST        *ast.StructDef
 	Name       string
 	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>

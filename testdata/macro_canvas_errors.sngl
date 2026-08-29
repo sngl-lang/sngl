@@ -5,6 +5,3 @@ var bad = 5
 
 #[draw.shape] // ERROR(check) "shape components do not support event declarations"
 component badShape(@click) {}
-
-#[draw.shape] // ERROR(check) "shape components may only have shape children"
-component boxy(x int) list<component> {}

@@ -48,7 +48,7 @@ import . "sngl://std"
 import "sngl://draw"
 
 #[draw.shape]
-component blob(x float, y float) {}
+component blob(x float, y float) draw.shape {}
 
 component main {
     draw.canvas(width=100px, height=100px) {
@@ -60,7 +60,7 @@ import . "sngl://std"
 import d "sngl://draw"
 
 #[d.shape]
-component blob(x float, y float) {}
+component blob(x float, y float) d.shape {}
 
 component main {
     d.canvas(width=100px, height=100px) {
