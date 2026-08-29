@@ -26,6 +26,7 @@ grep 'HandleFunc' out_lambda/server.go
 
 -- param.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window #pkg(title="t", href="/p/{pkg}") {
@@ -35,6 +36,7 @@ component main {
 
 -- ternary.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     var active = true
@@ -45,6 +47,7 @@ component main {
 
 -- lambda.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     var nums list<int> = [1, 2, 3]

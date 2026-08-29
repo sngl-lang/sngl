@@ -220,10 +220,10 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 		// has no gtk4 implementation.
 		return nil
 	}
-	// PlatformBodies survives passPlatformExtensionBody, so it is still the
+	// PlatformOverrides survives passPlatformExtensionBody, so it is still the
 	// record of which platforms declared an override: a gtk4 entry here means
 	// the override existed but did not reach a widget.
-	if _, ok := comp.PlatformBodies[platformName]; ok {
+	if _, ok := comp.PlatformOverrides[platformName]; ok {
 		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
 	}
 	return &codegen.UnimplementedComponent{Component: tag, Platform: platformName}

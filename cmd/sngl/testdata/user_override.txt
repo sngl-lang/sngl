@@ -28,12 +28,27 @@ stderr 'is not a target identity'
 ! sngl check duplicate.sngl
 stderr 'already has an implementation for "html"'
 
-# An override inherits the props of what it overrides and may not restate them.
+# An override's prop list names the props its body reads -- a selection of what
+# the declaration it overrides declares. The types stay with the base, so
+# restating one is an error, and a name the base does not declare is too.
 ! sngl check declaresprops.sngl
-stderr 'may not declare props'
+stderr 'its type belongs to the declaration being overridden'
+
+! sngl check selectsunknown.sngl
+stderr 'selects "bogus", which Avatar does not declare'
+
+# A prop the override did not select is not in scope for its body.
+! sngl check unselected.sngl
+stderr 'undefined: size'
+
+# And the list is optional: without one the override reads every prop, which is
+# what every platform package's override does.
+sngl check noselection.sngl
+stdout 'noselection.sngl: ok'
 
 -- app.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component Avatar(url string, size int) {
     text(value="avatar fallback: " + url)
@@ -68,6 +83,7 @@ component main {
 
 -- nottarget.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component Avatar(url string) {
     text(value=url)
@@ -86,6 +102,7 @@ component main {
 -- duplicate.sngl --
 import sngl "sngl://std"
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component sngl.badge[html.platform] {
     html.span(textContent=value)
@@ -99,6 +116,7 @@ component main {
 
 -- declaresprops.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component Avatar(url string) {
     text(value=url)
@@ -111,5 +129,59 @@ component Avatar[html.platform](url string) {
 component main {
     window #w(title="t") {
         Avatar(url="/a.png")
+    }
+}
+
+-- selectsunknown.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+
+component Avatar(url string) {
+    text(value=url)
+}
+
+component Avatar[html.platform](url, bogus) {
+    html.img(src=url)
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png")
+    }
+}
+
+-- unselected.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+
+component Avatar(url string, size int) {
+    text(value=url)
+}
+
+component Avatar[html.platform](url) {
+    html.img(src=url, width=size)
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png", size=1)
+    }
+}
+
+-- noselection.sngl --
+import . "sngl://std"
+import "sngl://platforms/html"
+
+component Avatar(url string, size int) {
+    text(value=url)
+}
+
+component Avatar[html.platform] {
+    html.img(src=url, alt=string(size))
+}
+
+component main {
+    window #w(title="t") {
+        Avatar(url="/a.png", size=1)
     }
 }

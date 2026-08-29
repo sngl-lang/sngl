@@ -13,6 +13,7 @@ output {
 
 import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
+import "sngl://platforms/html"
 
 component main {
     var path = "sngl"

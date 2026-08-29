@@ -1,6 +1,10 @@
 import sngl "sngl://std"
+import "sngl://platforms/html"
 
-component sngl.text[html.platform](extra string) { // ERROR(check) "may not declare props"
+// An override's prop list is a selection of what the declaration it overrides
+// declares, not a declaration of its own: the base owns the types, and a
+// restated one is a thing that can drift.
+component sngl.text[html.platform](extra string) { // ERROR(check) "its type belongs to the declaration being overridden"
     span(textContent=value) {}
 }
 

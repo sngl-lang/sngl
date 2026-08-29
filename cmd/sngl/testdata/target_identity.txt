@@ -48,6 +48,8 @@ stderr 'unknown type "color" in namespace "html"'
 
 -- gate.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
+import "sngl://languages/go"
 
 component main {
     window #w(title="t") {
@@ -85,6 +87,7 @@ component main {
 
 -- misspelled_member.sngl --
 import . "sngl://std"
+import "sngl://platforms/bubbletea"
 
 component main {
     window #w(title="t") {
@@ -96,6 +99,7 @@ component main {
 
 -- html_wildcard.sngl --
 import . "sngl://std"
+import "sngl://platforms/html"
 
 component main {
     window #w(title="t") {
