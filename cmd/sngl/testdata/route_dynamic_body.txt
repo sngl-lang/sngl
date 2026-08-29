@@ -1,0 +1,55 @@
+# A route's markup is a sequence of literal chunks and holes the server fills.
+# An `if` or a `for` the optimizer could not settle is a hole -- its shape is
+# the request's -- and codegen.HoleIf/HoleFor exist for exactly that, with the
+# Go emitter writing a real `if` and `for ... range` into the response buffer.
+#
+# The render model never produced either. It walked the body inline instead:
+# both arms of an if were emitted one after the other, and a loop body was
+# emitted once with its variable bound to nothing -- so every expression over
+# that variable read as unrenderable and the whole route was refused.
+
+sngl generate --lang go --platform html -o out app.sngl
+
+# The loop is ranged in the handler, not flattened into the page.
+grep 'for _, row := range' out/server.go
+
+# The conditional is a branch in the handler, not both arms concatenated.
+grep 'if ' out/server.go
+grep 'named' out/server.go
+grep 'unnamed' out/server.go
+
+-- go.mod --
+module dynbody
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+type Row struct {
+	Name string
+}
+
+func Rows(pkg string) []Row { return []Row{{Name: pkg}} }
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl://std"
+import "go://dynbody/srv"
+
+component main {
+    var hits = 0
+
+    window #page(title="t", href="/p/{pkg}") {
+        html.button(innerText="go", @click { hits = srv.Bump(hits) })
+        if pkg != "" {
+            html.span(innerText="named")
+        } else {
+            html.span(innerText="unnamed")
+        }
+        for row = srv.Rows(pkg) {
+            html.a(href="/r/" + row.name, innerText=row.name)
+        }
+    }
+}

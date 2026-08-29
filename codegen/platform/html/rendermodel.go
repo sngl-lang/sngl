@@ -61,6 +61,29 @@ func (rb *renderBuilder) pushHole(h codegen.RouteHole) {
 	rb.holes = append(rb.holes, h)
 }
 
+// sub renders a nested skeleton -- the body of a request-dependent if or for.
+// names are identifiers the enclosing hole binds (a loop variable), which the
+// server has a value for inside the hole and the nested render may therefore
+// use.
+func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *codegen.RouteRender {
+	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx, rawElem: rb.rawElem}
+	if len(names) > 0 {
+		child.state = maps.Clone(rb.state)
+		for _, n := range names {
+			if n != "" {
+				child.state[n] = true
+			}
+		}
+	}
+	for _, s := range stmts {
+		child.walkStmt(s, path)
+	}
+	if child.err != nil {
+		rb.fail("%w", child.err)
+	}
+	return child.finish()
+}
+
 func (rb *renderBuilder) finish() *codegen.RouteRender {
 	rb.chunks = append(rb.chunks, rb.cur.String())
 	rb.cur.Reset()
@@ -110,6 +133,17 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.If:
+		// A condition the optimizer could settle is already gone. One that is
+		// left depends on the request, so both arms are skeletons the server
+		// chooses between -- rendering them one after the other emitted both.
+		if rb.exprIsReactive(n.Cond) {
+			h := codegen.RouteHole{Kind: codegen.HoleIf, Expr: n.Cond, Then: rb.sub(n.Body, path)}
+			if len(n.Else) > 0 {
+				h.Else = rb.sub(n.Else, path)
+			}
+			rb.pushHole(h)
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
@@ -117,6 +151,22 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 			rb.walkStmt(c, path)
 		}
 	case *ir.For:
+		// Same: a loop still here did not unroll, so its length is the
+		// request's. Walking the body once left the loop variable bound to
+		// nothing, and every expression over it read as unrenderable -- which
+		// is how a whole route was refused for markup the server can write.
+		//
+		// The two-variable form has no HoleFor spelling (the emitter ranges a
+		// single name), so it keeps the old walk.
+		if n.Value == "" && n.Key != "" {
+			rb.pushHole(codegen.RouteHole{
+				Kind: codegen.HoleFor,
+				Expr: n.Iter,
+				Key:  n.Key,
+				Then: rb.sub(n.Body, path, n.Key),
+			})
+			return
+		}
 		for _, c := range n.Body {
 			rb.walkStmt(c, path)
 		}
