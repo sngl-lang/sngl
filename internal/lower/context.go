@@ -400,6 +400,9 @@ func collectContextReadsInStmt(s ir.Stmt, out map[*ir.Context]bool) {
 			collectContextReadsInExpr(p.Value, out)
 		}
 		collectContextReadsInStmts(n.Children, out)
+		for _, sc := range n.Slots {
+			collectContextReadsInStmts(sc.Body, out)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				collectContextReadsInStmts(h.Func.Block, out)
@@ -558,6 +561,9 @@ func callsInStmt(s ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
 			calls = append(calls, callsInExpr(p.Value, shadow)...)
 		}
 		calls = append(calls, callsInBody(n.Children, shadow)...)
+		for _, sc := range n.Slots {
+			calls = append(calls, callsInBody(sc.Body, shadow)...)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				calls = append(calls, callsInBody(h.Func.Block, shadow)...)
@@ -1262,6 +1268,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 				}
 			}
 			n.Children = lowerInStmts(n.Children, active, reach, hidden)
+			for _, sc := range n.Slots {
+				sc.Body = lowerInStmts(sc.Body, active, reach, hidden)
+			}
 			out = append(out, n)
 
 		case *ir.If:

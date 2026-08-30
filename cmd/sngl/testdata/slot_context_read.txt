@@ -1,0 +1,68 @@
+# A context read written inside a slot population belongs to the caller, so the
+# context lowering has to see it there. It did not: the reachability scan, the
+# call-edge scan and the provider threading each walked a NodeInst's children
+# and skipped its Slots, so the enclosing component was never marked as reading
+# the context, no hidden parameter was threaded to it, and the *ir.ContextRead
+# survived lowering to reach codegen -- where irwalk.EvalExpr has no case for
+# one and every platform panicked.
+#
+# Each assertion below is the context's value arriving at the slot body on one
+# target. A panic is the regression this catches on all three.
+
+sngl generate --platform=html --lang=none --out=html read.sngl
+grep 'var __ctx_theme = "light"' html/index.html
+grep 'textContent = __ctx_theme' html/index.html
+
+sngl generate --platform=android --lang=kotlin --out=android read.sngl
+grep 'light' android/MainScreen.kt
+
+sngl generate --platform=bubbletea --lang=go --out=bt read.sngl
+grep 'light' bt/model.go
+
+# A provider wrapping the call site. The read is lexically the caller's, so it
+# resolves against the provider the caller sits under and not the context's
+# default -- threading that walked Children alone would put "light" here, which
+# is a wrong answer rather than a crash.
+sngl generate --platform=html --lang=none --out=prov provided.sngl
+grep '<span>dark</span>' prov/index.html
+! grep 'light' prov/index.html
+
+-- read.sngl --
+import . "sngl:ui"
+
+context #theme("light")
+
+component framed(slot caption) {
+    caption {
+        text(value="(none)")
+    }
+}
+
+component main {
+    framed() {
+        slot caption {
+            text(value=theme)
+        }
+    }
+}
+
+-- provided.sngl --
+import . "sngl:ui"
+
+context #theme("light")
+
+component framed(slot caption) {
+    caption {
+        text(value="(none)")
+    }
+}
+
+component main {
+    theme("dark") {
+        framed() {
+            slot caption {
+                text(value=theme)
+            }
+        }
+    }
+}
