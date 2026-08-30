@@ -151,6 +151,7 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		Lang:    lang,
 		Options: opts,
 		Source:  "",
+		OutDir:  tmpDir,
 	}
 	if err := plat.Generate(req, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generate: %w", err)

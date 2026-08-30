@@ -445,6 +445,7 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 		FileAssets: fileAssets,
 		ProjectFS:  os.DirFS(filepath.Dir(filename)),
 		Maps:       optionBool(target.Options, "maps"),
+		OutDir:     outDir,
 	}
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {

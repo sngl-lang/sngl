@@ -3,6 +3,8 @@ package javascript
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,8 +24,62 @@ var jsPositionMarker = regexp.MustCompile(`/\*@SNGL:([^:@]+):(\d+)@\*/`)
 // to esbuild. Builds the SNGL→JS source map and returns it as a
 // SourceMapResult with the marker-stripped body in InlineBody and the
 // sidecar JSON in Sidecar.
-func RenderInlineSourceMap(name string, body []byte) codegen.SourceMapResult {
-	return renderJSSourceMap(name, nil, body)
+//
+// mapDir is the directory the finished map will be read from.
+func RenderInlineSourceMap(name, mapDir string, body []byte) codegen.SourceMapResult {
+	return renderJSSourceMap(name, mapDir, nil, body)
+}
+
+// readSourcesContent returns the text of each source for the map's
+// `sourcesContent`. An unreadable one is a null entry rather than an
+// omission: the array is positional against sources, so dropping one would
+// attribute its text to a different file. Under GOOS=js nothing is readable.
+func readSourcesContent(sources []string) []*string {
+	content := make([]*string, len(sources))
+	any := false
+	for i, src := range sources {
+		b, err := os.ReadFile(src)
+		if err != nil {
+			continue
+		}
+		s := string(b)
+		content[i] = &s
+		any = true
+	}
+	if !any {
+		return nil
+	}
+	return content
+}
+
+// relativizeSources rewrites each source path to resolve from mapDir: a
+// `sources` entry is resolved against the map's own location, not the
+// directory the compiler ran in. Relative rather than absolute so golden
+// output does not vary per machine; anything Rel cannot express is left
+// alone.
+func relativizeSources(sources []string, mapDir string) []string {
+	if mapDir == "" {
+		return sources
+	}
+	base, err := filepath.Abs(mapDir)
+	if err != nil {
+		return sources
+	}
+	out := make([]string, len(sources))
+	for i, src := range sources {
+		out[i] = src
+		abs, err := filepath.Abs(src)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(base, abs)
+		if err != nil {
+			continue
+		}
+		// A source map is a URL space, not a filesystem path space.
+		out[i] = filepath.ToSlash(rel)
+	}
+	return out
 }
 
 // extractMarkerPositions scans body for jsPositionMarker matches. For each
@@ -76,7 +132,7 @@ func extractMarkerPositions(body []byte) ([]codegen.PosEntry, []byte) {
 // JsIRContext under EmitPositionMarkers), positions are derived from them
 // and the markers are stripped from the InlineBody. Otherwise positions
 // flow in via the function arg (legacy path; unused today).
-func renderJSSourceMap(name string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
+func renderJSSourceMap(name, mapDir string, positions []codegen.PosEntry, body []byte) codegen.SourceMapResult {
 	if markerPositions, strippedBody := extractMarkerPositions(body); len(markerPositions) > 0 {
 		positions = markerPositions
 		body = strippedBody
@@ -143,18 +199,21 @@ func renderJSSourceMap(name string, positions []codegen.PosEntry, body []byte) c
 	}
 
 	doc := struct {
-		Version    int      `json:"version"`
-		File       string   `json:"file"`
-		SourceRoot string   `json:"sourceRoot,omitempty"`
-		Sources    []string `json:"sources"`
-		Names      []string `json:"names"`
-		Mappings   string   `json:"mappings"`
+		Version        int       `json:"version"`
+		File           string    `json:"file"`
+		SourceRoot     string    `json:"sourceRoot,omitempty"`
+		Sources        []string  `json:"sources"`
+		SourcesContent []*string `json:"sourcesContent,omitempty"`
+		Names          []string  `json:"names"`
+		Mappings       string    `json:"mappings"`
 	}{
-		Version:  3,
-		File:     name,
-		Sources:  sources,
-		Names:    []string{},
-		Mappings: mb.String(),
+		Version: 3,
+		File:    name,
+		// Reads the original paths, which are the ones that open here.
+		SourcesContent: readSourcesContent(sources),
+		Sources:        relativizeSources(sources, mapDir),
+		Names:          []string{},
+		Mappings:       mb.String(),
 	}
 	sidecar, _ := json.Marshal(doc)
 

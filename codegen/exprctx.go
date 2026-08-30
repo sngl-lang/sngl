@@ -45,6 +45,8 @@ type ExprCtx struct {
 	// Maps mirrors Request.Maps: when true, translators emit source-map
 	// hooks (e.g. Go `//line file:lineno` directives before statements).
 	Maps bool
+	// OutDir mirrors Request.OutDir, for translators emitting source maps.
+	OutDir string
 	// ContextVar is the expression to supply for native context args
 	// (e.g., "r.Context()").
 	ContextVar string
@@ -189,6 +191,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
 		NativeImports: ctx.NativeImports, // shared — accumulates across clones
 		Maps:          ctx.Maps,
+		OutDir:        ctx.OutDir,
 		ContextVar:    ctx.ContextVar,
 		// Deep-copy the test/http-only maps (nil-safe via maps.Clone).
 		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),

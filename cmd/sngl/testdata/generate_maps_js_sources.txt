@@ -1,0 +1,81 @@
+# generate_maps_js_inline.txt only greps for a map being present; this one
+# checks the `sources` label resolves and that sourcesContent survives
+# esbuild chaining our SNGL->JS map through its own JS->bundle map.
+[!node] skip
+
+# From a subdirectory, so "../src/app.sngl" is distinguishable from both
+# the invocation path and a bare basename.
+mkdir src
+cp app.sngl src/app.sngl
+rm app.sngl
+
+sngl generate --lang=none --platform=html --opt=maps=true --out=out src/app.sngl
+exists out/index.html
+
+exec node check_map.js
+stdout 'map ok'
+
+-- app.sngl --
+import . "sngl:ui"
+
+component main {
+    var count = 0
+    text(value=string(count))
+    button(text="+", @click { count += 1 })
+}
+
+-- check_map.js --
+// Decode the inline source map out of index.html.
+const fs = require("fs");
+const path = require("path");
+
+const html = fs.readFileSync("out/index.html", "utf8");
+const m = html.match(/sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)/);
+if (!m) {
+    console.error("no inline source map in out/index.html");
+    process.exit(1);
+}
+const map = JSON.parse(Buffer.from(m[1], "base64").toString("utf8"));
+
+if (map.version !== 3) {
+    console.error("source map version " + map.version + ", want 3");
+    process.exit(1);
+}
+if (!map.sources || map.sources.length === 0) {
+    console.error("source map names no sources");
+    process.exit(1);
+}
+
+const snglIdx = map.sources.findIndex((s) => s.endsWith(".sngl"));
+if (snglIdx < 0) {
+    console.error("no .sngl among sources: " + map.sources.join(", "));
+    process.exit(1);
+}
+const sngl = map.sources[snglIdx];
+
+if (path.isAbsolute(sngl)) {
+    console.error("absolute source path: " + sngl);
+    process.exit(1);
+}
+if (!fs.existsSync(path.join("out", sngl))) {
+    console.error("source " + sngl + " does not resolve from the map's directory");
+    process.exit(1);
+}
+
+// esbuild rewrites the map when it chains ours through its own.
+if (!Array.isArray(map.sourcesContent)) {
+    console.error("map carries no sourcesContent");
+    process.exit(1);
+}
+if (map.sourcesContent.length !== map.sources.length) {
+    console.error("sourcesContent has " + map.sourcesContent.length +
+        " entries for " + map.sources.length + " sources; it is positional");
+    process.exit(1);
+}
+const text = map.sourcesContent[snglIdx];
+if (typeof text !== "string" || !text.includes("component main")) {
+    console.error("sourcesContent for " + sngl + " is not the SNGL source: " + JSON.stringify(text));
+    process.exit(1);
+}
+
+console.log("map ok: " + sngl + " (" + text.length + " bytes of source)");

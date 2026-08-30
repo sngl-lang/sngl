@@ -208,6 +208,7 @@ type bundleKey struct {
 	entry  string
 	minify bool
 	maps   bool
+	outDir string
 }
 
 type bundleResult struct {
@@ -517,6 +518,12 @@ type htmlGen struct {
 
 	maps bool
 
+	// outDir is what the inline source map's `sources` resolve against. It
+	// only makes them a good label: a window with `href="/about"` lands a
+	// directory lower, and that name is decided after the map is rendered.
+	// The map's sourcesContent is what actually carries the source.
+	outDir string
+
 	componentInvocations int
 
 	// dataRenames maps original component var names to promoted unique names
@@ -643,6 +650,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
+	g.outDir = ctx.ExprCtx.OutDir
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		// ForComponent re-clones, replacing newHTMLGen's wiring with
@@ -680,11 +688,11 @@ func (g *htmlGen) rewriteSlotCallsOnce() {
 // bundleScript runs the window's script through esbuild, memoized on the
 // script text: every page of a static site shares the same runtime.
 func (g *htmlGen) bundleScript(entry string) (string, error) {
-	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps}
+	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps, outDir: g.outDir}
 	if got, ok := g.shared.bundles[key]; ok {
 		return got.out, got.err
 	}
-	out, err := bundleNativeScript(entry, g.shared.projectFS, g.minify, g.maps)
+	out, err := bundleNativeScript(entry, g.shared.projectFS, g.minify, g.maps, g.outDir)
 	g.shared.bundles[key] = bundleResult{out: out, err: err}
 	return out, err
 }
@@ -1026,7 +1034,7 @@ func (g *htmlGen) generate() (string, error) {
 		// inline sourceMappingURL now, so esbuild chains through to a
 		// SNGL→bundled output map.
 		if g.maps {
-			script = inlineSourceMapFromMarkers(script)
+			script = inlineSourceMapFromMarkers(script, g.outDir)
 		}
 		// Always run esbuild, so output is consistent whether or not the
 		// source uses native imports. Its IIFE wrapping deterministically

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -46,6 +47,12 @@ type GoIRContext struct {
 	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
 
+	// LineDirBase is the directory the emitted .go file will live in. gc
+	// resolves a relative `//line` path against the directory of the file
+	// carrying the directive, not the build's working directory. Empty
+	// leaves the path as the compiler saw it.
+	LineDirBase string
+
 	// imports is shared across forked contexts (WithLocal, ForComponent), so a
 	// child contributes to the parent's set.
 	imports *importSet
@@ -67,6 +74,7 @@ func NewIRContext(ctx *codegen.ExprCtx) *GoIRContext {
 	gc := &GoIRContext{Ctx: ctx, imports: newImportSet()}
 	if ctx != nil {
 		gc.EmitLineDirectives = ctx.Maps
+		gc.LineDirBase = ctx.OutDir
 	}
 	return gc
 }
@@ -405,7 +413,30 @@ func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !pos.IsValid() || pos.File == "" {
 		return nil
 	}
-	return []string{fmt.Sprintf("//line %s:%d", pos.File, pos.Line)}
+	return []string{fmt.Sprintf("//line %s:%d", lineDirPath(pos.File, gc.LineDirBase), pos.Line)}
+}
+
+// lineDirPath rewrites a SNGL source path to resolve from base, the
+// directory the emitted .go file lands in. Relative rather than absolute so
+// golden output does not vary per machine; anything Rel cannot express is
+// left alone.
+func lineDirPath(file, base string) string {
+	if base == "" {
+		return file
+	}
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return file
+	}
+	absFile, err := filepath.Abs(file)
+	if err != nil {
+		return file
+	}
+	rel, err := filepath.Rel(absBase, absFile)
+	if err != nil {
+		return file
+	}
+	return rel
 }
 
 func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal(name) }
@@ -1054,6 +1085,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		AlertFunc:          gc.AlertFunc,
 		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
+		LineDirBase:        gc.LineDirBase,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1064,6 +1096,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		AlertFunc:          gc.AlertFunc,
 		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
+		LineDirBase:        gc.LineDirBase,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }

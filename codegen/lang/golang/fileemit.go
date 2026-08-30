@@ -6,6 +6,7 @@ import (
 	"go/format"
 	"io"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -39,6 +40,7 @@ func newFileEmitter(sink codegen.Sink, opts codegen.FileOptions) *fileEmitter {
 	gc := &GoIRContext{
 		imports:            newImportSet(),
 		EmitLineDirectives: opts.Maps,
+		LineDirBase:        lineDirBase(opts),
 	}
 	return &fileEmitter{sink: sink, opts: opts, gc: gc}
 }
@@ -263,4 +265,13 @@ func isSemverComponent(s string) bool {
 		}
 	}
 	return true
+}
+
+// lineDirBase is the directory opts.Name will land in once the sink's files
+// are written under opts.OutDir.
+func lineDirBase(opts codegen.FileOptions) string {
+	if opts.OutDir == "" {
+		return ""
+	}
+	return filepath.Join(opts.OutDir, filepath.Dir(opts.Name))
 }
