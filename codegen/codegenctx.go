@@ -37,6 +37,29 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	}
 }
 
+// ScopedExprCtx returns the ExprCtx scoped to the declaration whose body a
+// single-model platform emits: the main component when the program has one,
+// and otherwise the window, when there is exactly one to be unambiguous about.
+//
+// A window declares state the way a component does, so a read of it has to
+// resolve against the window or it falls out of scope resolution entirely and
+// renders as a bare identifier the target never declared. Every platform that
+// builds one Model wrote the component half of this itself; none wrote the
+// window half, so a window's own state was a name none of them could resolve.
+func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
+	c := ctx.ExprCtx
+	if main := ctx.MainComponent(); main != nil {
+		c = c.ForComponent(main)
+	}
+	// Only when there is exactly one, so that the window being scoped to is
+	// not a guess. A window statement inside the main component needs no entry
+	// here: it is already inside that component's scope.
+	if len(ctx.Pkg.Windows) == 1 {
+		c = c.ForWindow(ctx.Pkg.Windows[0])
+	}
+	return c
+}
+
 func (ctx *CodegenCtx) BuildMutation(stmts []ir.Stmt) *MutationModel {
 	m := NewMutationModel(ctx.Analysis, ctx.Deps)
 	m.Handlers = ctx.collectHandlers(stmts)

@@ -140,10 +140,7 @@ func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 	info := &irAnalysis{
@@ -181,6 +178,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		for _, v := range main.Vars {
 			allVars = append(allVars, taggedVar{v: v, comp: main})
 		}
+	}
+	for _, v := range codegen.WindowStateVars(pkg) {
+		allVars = append(allVars, taggedVar{v: v})
 	}
 	for _, tv := range allVars {
 		v := tv.v
@@ -284,10 +284,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
 	c.shared = &emitShared{}
-	exprCtx := c.ctx.ExprCtx
-	if main := c.ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 

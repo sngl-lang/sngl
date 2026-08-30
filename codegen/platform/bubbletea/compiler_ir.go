@@ -188,10 +188,7 @@ type irComputed struct {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
@@ -215,6 +212,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	if main := ctx.MainComponent(); main != nil {
 		allVars = append(allVars, main.Vars...)
 	}
+	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
 	for _, v := range allVars {
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
@@ -233,12 +231,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	// pkg.Funcs and main.Funcs overlap for nested component methods, which are
-	// registered in both; dedupe by pointer.
-	allFuncs := pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	// AllFuncs is what dedupes the nested component methods registered in both
+	// pkg.Funcs and main.Funcs, and it is also the only list that includes a
+	// window's own funcs -- the __focusNext/__focusPrev passFocusOrder puts
+	// there were called from Update and declared nowhere.
+	allFuncs := ctx.AllFuncs()
 	seenFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, f := range allFuncs {
 		if seenFn[f] {
@@ -530,10 +527,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
 	}
 
-	allFuncs := ctx.Pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	allFuncs := ctx.AllFuncs()
 	seenUserFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, fn := range allFuncs {
 		if seenUserFn[fn] {

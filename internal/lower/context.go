@@ -806,14 +806,10 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Body = lowerInStmts(w.Body, windowActive, reach, hidden)
-		// No promotion here, unlike the component post-pass below. A
-		// component's state is comp.Vars and every consumer reads it there;
-		// a window's is a top-level LocalVar in its body, which is where the
-		// checker leaves it and where every platform reads it. Window.Vars
-		// holds the href's path params and nothing else. Promoting into it
-		// moved a window's state somewhere only html's route mode looks, so
-		// declaring a context was enough to make a window var vanish from
-		// bubbletea, fyne and gtk4.
+		// The provider unwrap splices a provider's children up to window-body
+		// level, which can put a fresh LocalVar there after passHoistState
+		// already ran. Promote those too, into the same slice.
+		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
 		for _, v := range w.Vars {
 			v.Init = lowerInExpr(v.Init, windowActive, reach, hidden)
 			for _, h := range v.Handlers {
@@ -901,6 +897,13 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 // component or window's Vars slice, where codegen treats them as ordinary
 // state declarations. Only top-level LocalVars are promoted; LocalVars nested
 // inside If/For/etc. remain block-scoped.
+//
+// The Var promoted is the one the local already bound, not a copy of it.
+// Everything downstream that asks whether a name is state keys on the *ir.Var
+// pointer -- the dependency tracker, the reactive bindings -- and an Ident in
+// the body still resolves to lv.Sym. Minting a second Var here left those
+// Idents pointing at a symbol no longer in any state set, so the value was a
+// model field that nothing appeared to read.
 func promoteLocalVarsToVars(stmts []ir.Stmt, vars []*ir.Var) ([]ir.Stmt, []*ir.Var) {
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
@@ -909,12 +912,19 @@ func promoteLocalVarsToVars(stmts []ir.Stmt, vars []*ir.Var) ([]ir.Stmt, []*ir.V
 			out = append(out, s)
 			continue
 		}
-		vars = append(vars, &ir.Var{
-			AST:  lv.AST,
-			Name: lv.Name,
-			Type: lv.Type,
-			Init: lv.Init,
-		})
+		v := lv.Sym
+		if v == nil {
+			v = &ir.Var{AST: lv.AST, Name: lv.Name}
+		}
+		// The statement carries the initializer and the resolved type; the
+		// symbol carries only the binding.
+		if v.Init == nil {
+			v.Init = lv.Init
+		}
+		if v.Type == nil {
+			v.Type = lv.Type
+		}
+		vars = append(vars, v)
 	}
 	return out, vars
 }

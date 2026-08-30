@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -261,10 +262,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 
 	pkg := ctx.Pkg
 
-	allVars := pkg.Vars
+	// Cloned, not aliased: appending onto pkg.Vars writes into its backing
+	// array whenever it has spare capacity.
+	allVars := slices.Clone(pkg.Vars)
 	if main := ctx.MainComponent(); main != nil {
 		allVars = append(allVars, main.Vars...)
 	}
+	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
 	for _, v := range allVars {
 		if v.IsConst {
 			continue
@@ -309,10 +313,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 }
 
 func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) []byte {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
 
 	// Collect the non-computed, non-GoLib user funcs we'll emit as

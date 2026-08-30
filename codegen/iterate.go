@@ -169,6 +169,13 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	if main := ctx.MainComponent(); main != nil {
 		add(main.Funcs)
 	}
+	// A window owns funcs the way a component does, and they are all
+	// synthesized: passCanvas puts a canvas draw func for a canvas in a window
+	// body here, and passFocusOrder the window's __focusNext/__focusPrev. A
+	// caller that missed them emitted calls to methods it never declared.
+	for _, w := range ctx.Pkg.Windows {
+		add(w.Funcs)
+	}
 	return out
 }
 

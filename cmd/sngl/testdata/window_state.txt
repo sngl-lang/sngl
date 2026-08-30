@@ -1,0 +1,67 @@
+# A `var` declared in a window body is that window's state, the way a
+# component's `var` is the component's. The checker leaves it as a top-level
+# LocalVar in the body and passHoistState is what makes the two the same shape;
+# before that, no target implemented the shape at all.
+#
+# It only looked implemented on the four non-html targets, because the
+# initializer still appeared in the output -- as a local of the render function,
+# reset every frame, assigned from a model field nothing declared. bubbletea
+# emitted Go that does not compile, android Kotlin naming an undeclared `n`,
+# and html emitted no state and no binding whatsoever.
+#
+# So every assertion below names the *qualified* read, not the initializer: a
+# bare `n` is exactly what each of these looked like when it was broken. The
+# same program is written twice, once as a window and once as a component, and
+# each target has to produce the same shape for both.
+
+sngl generate --platform=html --lang=none --out=h-win win.sngl
+grep 'var state = \{ n: 0 \}' h-win/index.html
+grep 'state.n = state.n \+ 1' h-win/index.html
+grep 'textContent = String\(state.n\)' h-win/index.html
+! grep '= n \+ 1' h-win/index.html
+
+# The component form is the reference: html emits the same script for both,
+# differing only in the generated-from header and the title the window declares.
+sngl generate --platform=html --lang=none --out=h-comp comp.sngl
+grep 'var state = \{ n: 0 \}' h-comp/index.html
+grep 'state.n = state.n \+ 1' h-comp/index.html
+grep 'textContent = String\(state.n\)' h-comp/index.html
+
+sngl generate --platform=bubbletea --lang=go --out=bt win.sngl
+grep 'm.n = \(m.n \+ 1\)' bt/model.go
+grep 'func \(m \*Model\) __focusNext\(\)' bt/model.go
+grep 'm.__focusNext\(\)' bt/model.go
+! grep '^	n = ' bt/model.go
+
+sngl generate --platform=fyne --lang=go --out=fy win.sngl
+grep 'm.n = \(m.n \+ 1\)' fy/model.go
+
+sngl generate --platform=gtk4 --lang=go --out=gt win.sngl
+grep 'm.n = \(m.n \+ 1\)' gt/model.go
+
+sngl generate --platform=android --lang=kotlin --out=an win.sngl
+grep 'var n by remember \{ mutableStateOf\(0\) \}' an/MainScreen.kt
+grep 'n = \(n \+ 1\)' an/MainScreen.kt
+
+-- win.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+window #home(title="Home", href="/") {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
+
+-- comp.sngl --
+import . "sngl:ui"
+
+component main {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
