@@ -1,6 +1,10 @@
 import . "sngl:ui"
 
-foobar // ERROR(check) "unexpected root-level visual node"
+// A visual node at the top level is the package's own body, so an unresolvable
+// name here is the same error it would be anywhere else a node is written --
+// which names what is actually wrong, where the old root-level rejection could
+// only say the position was unexpected.
+foobar // ERROR(check) "unknown component \"foobar\""
 
 component main {
 }

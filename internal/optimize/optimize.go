@@ -400,6 +400,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 			}
 		}
 	}
+	pkg.Body = foldStmts(pkg.Body, ctx)
 	for _, comp := range pkg.Components {
 		foldComponent(comp, ctx)
 	}

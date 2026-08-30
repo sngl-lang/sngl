@@ -84,6 +84,7 @@ type pass struct {
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
+	passRootWindow,
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,

@@ -209,6 +209,12 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
+	// pendingPkgBody holds the visual nodes written at the package's top
+	// level, collected in pass1 and checked in pass2. They cannot be checked
+	// where they are found: a node reads vars and instantiates components that
+	// pass1 is still registering.
+	pendingPkgBody []*ast.VisualNode
+
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
 	optionsCache map[string]*ir.StructDef
@@ -2059,7 +2065,33 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		}
 		c.buildOutputs(vn)
 	default:
-		c.error(vn.Pos, "unexpected root-level visual node %q", name)
+		// An ordinary visual node at the top level is the package's own body:
+		// what the program renders, with the package's vars as its state. Held
+		// until pass2, because it reads declarations pass1 is still making.
+		c.pendingPkgBody = append(c.pendingPkgBody, vn)
+	}
+}
+
+// checkPackageBody checks the visual nodes written at the package's top level
+// into c.pkg.Body.
+//
+// The package is a state owner like a component or a window (ir.Owners): its
+// vars are the state this body reads, and they are already bound at file scope
+// by pass1, so unlike checkComponentBody and checkWindowBody there is nothing
+// to declare here but the node ids.
+func (c *checker) checkPackageBody() {
+	if len(c.pendingPkgBody) == 0 {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, vn := range c.pendingPkgBody {
+		c.declareNodeIDsStmt(vn, false)
+	}
+	for _, vn := range c.pendingPkgBody {
+		if st := c.checkStmt(vn); st != nil {
+			c.pkg.Body = append(c.pkg.Body, st)
+		}
 	}
 }
 
@@ -2765,6 +2797,8 @@ func (c *checker) pass2() {
 			c.checkWindowBody(w)
 		}
 	}
+
+	c.checkPackageBody()
 
 	// Check timer handler bodies (component timers are checked inside
 	// checkComponentBody so they can see component vars in scope).

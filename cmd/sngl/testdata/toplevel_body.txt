@@ -1,0 +1,84 @@
+# A program's top level is its body. Visual nodes written outside any component
+# or window are what the program renders, with the package's own vars as the
+# state they read -- so `component main` is a wrapper a program no longer has to
+# write (#135).
+#
+# passRootWindow turns that body into the window the program opens at, before
+# any other pass runs. That is the whole implementation strategy: two dozen
+# lowering passes and five platforms already walk pkg.Windows, and a second
+# shape carrying a body is a second thing each of them has to know -- which is
+# exactly where #133 came from. So the assertions below are equalities: the
+# top-level form must generate what the same program written as a window
+# generates, on every target.
+
+sngl generate --platform=html --lang=none --out=t-html top.sngl
+sngl generate --platform=html --lang=none --out=w-html win.sngl
+cmpgen t-html/index.html w-html/index.html
+
+sngl generate --platform=bubbletea --lang=go --out=t-bt top.sngl
+sngl generate --platform=bubbletea --lang=go --out=w-bt win.sngl
+cmpgen t-bt/model.go w-bt/model.go
+
+sngl generate --platform=fyne --lang=go --out=t-fy top.sngl
+sngl generate --platform=fyne --lang=go --out=w-fy win.sngl
+cmpgen t-fy/model.go w-fy/model.go
+
+sngl generate --platform=android --lang=kotlin --out=t-an top.sngl
+sngl generate --platform=android --lang=kotlin --out=w-an win.sngl
+cmpgen t-an/MainScreen.kt w-an/MainScreen.kt
+
+# The state is the package's, and it has to reach the page as state rather than
+# as a name nothing declared -- the failure mode #133 documented.
+grep 'var state = \{ n: 0 \}' t-html/index.html
+grep 'state.n = state.n \+ 1' t-html/index.html
+
+# A body and declared windows coexist: the body is the root the program opens
+# at, the windows are what it navigates to. The root takes index.html even
+# though it is not the only window, which is what distinguishes "first" from
+# "only".
+sngl generate --platform=html --lang=none --out=both both.sngl
+exists both/index.html
+exists both/about/index.html
+grep 'visits' both/index.html
+grep 'About this app' both/about/index.html
+
+-- top.sngl --
+import . "sngl:ui"
+
+var n = 0
+
+vbox {
+    text(value="{n}")
+    button #inc(text="+", @click { n = n + 1 })
+}
+
+-- win.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+var n = 0
+
+window {
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
+
+-- both.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+var visits = 0
+
+vbox {
+    text(value="visits: {visits}")
+    link(href="/about", text="About")
+}
+
+window #about(title="About", href="/about") {
+    vbox {
+        text(value="About this app")
+        link(href="/", text="Home")
+    }
+}
