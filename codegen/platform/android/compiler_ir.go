@@ -2,7 +2,6 @@ package android
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"unicode"
 
@@ -260,16 +259,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		CommonAnalysis: ctx.Analysis,
 	}
 
-	pkg := ctx.Pkg
-
-	// Cloned, not aliased: appending onto pkg.Vars writes into its backing
-	// array whenever it has spare capacity.
-	allVars := slices.Clone(pkg.Vars)
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		if v.IsConst {
 			continue
 		}

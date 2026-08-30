@@ -1,0 +1,56 @@
+# `sngl test` builds a Model from the component under test, which is only
+# called `main` by coincidence. CodegenCtx.MainComponent is what knows that --
+# it consults RootComponent first -- but html answered the same question by
+# name, in eight places, through a private mainIRComponent(pkg).
+#
+# The two agreed for an ordinary build and disagreed for every test build of a
+# component named anything else: html collected no state for it and emitted no
+# binding, so a test asserting an initial value failed with no diagnostic.
+#
+# Renaming the component under test is the whole regression, so each file here
+# is the same program twice under two names.
+
+sngl test --platform none counter.sngl
+stdout 'ok'
+sngl test --platform none renamed.sngl
+stdout 'ok'
+
+sngl test --platform html counter.sngl
+stdout 'ok'
+sngl test --platform html renamed.sngl
+stdout 'ok'
+
+sngl test --platform bubbletea counter.sngl
+stdout 'ok'
+sngl test --platform bubbletea renamed.sngl
+stdout 'ok'
+
+-- counter.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main {
+    var n = 7
+    vbox {
+        text(value="{n}")
+    }
+}
+
+func testInitial(t Test, c main) {
+    t.assert(c.n == 7)
+}
+
+-- renamed.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter {
+    var n = 7
+    vbox {
+        text(value="{n}")
+    }
+}
+
+func testInitial(t Test, c counter) {
+    t.assert(c.n == 7)
+}

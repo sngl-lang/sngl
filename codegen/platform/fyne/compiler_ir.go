@@ -56,16 +56,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
-	var allVars []*ir.Var
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, v)
-	}
-	allVars = append(allVars, pkg.Consts...)
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		if v.IsConst {
 			// Consts skip getter/setter: the field name would collide with
 			// the accessor (APP_NAME field + APP_NAME() method).

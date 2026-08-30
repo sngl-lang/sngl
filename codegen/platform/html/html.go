@@ -537,6 +537,13 @@ type htmlGen struct {
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
+	// rootComp is the component whose body this document renders. It is the
+	// one named "main" for an ordinary build and the component under test for
+	// a test build, which is a distinction only CodegenCtx.MainComponent
+	// makes: html used to answer it by name in eight places, so a test of a
+	// component not called "main" collected no state and rendered no binding.
+	rootComp *ir.Component
+
 	componentDepth int
 
 	usesI18n bool
@@ -640,7 +647,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = codegen.NewDepTrackerFromPkg(pkg)
-	g.currentComp = mainIRComponent(pkg)
+	g.rootComp = mainIRComponent(pkg)
+	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
 	if pkg != nil {
 		for _, c := range pkg.Consts {
@@ -661,6 +669,10 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	g.outDir = ctx.ExprCtx.OutDir
+	// CodegenCtx is the one that knows about RootComponent, so its answer wins
+	// over the by-name lookup newHTMLGen had to fall back on.
+	g.rootComp = ctx.MainComponent()
+	g.currentComp = g.rootComp
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		// ForComponent re-clones, replacing newHTMLGen's wiring with
@@ -1298,7 +1310,7 @@ func (g *htmlGen) stateVars() []*ir.Var {
 				out = append(out, v)
 			}
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, v := range main.Vars {
 				if !v.Synthesized {
 					out = append(out, v)
@@ -1329,7 +1341,7 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 				out = append(out, v)
 			}
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, v := range main.Vars {
 				if v.Synthesized && !seen[v.Name] {
 					seen[v.Name] = true
@@ -1351,7 +1363,7 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				out = append(out, f)
 			}
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, f := range main.Funcs {
 				if f.Synthesized {
 					out = append(out, f)
@@ -1397,7 +1409,7 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	for _, f := range g.pkg.Funcs {
 		add(f)
 	}
-	if main := mainIRComponent(g.pkg); main != nil {
+	if main := g.rootComp; main != nil {
 		for _, f := range main.Funcs {
 			add(f)
 		}
@@ -1410,7 +1422,7 @@ func (g *htmlGen) pkgConsts() []*ir.Var {
 		return nil
 	}
 	out := append([]*ir.Var{}, g.pkg.Consts...)
-	if main := mainIRComponent(g.pkg); main != nil {
+	if main := g.rootComp; main != nil {
 		for _, v := range main.Vars {
 			if v.IsConst {
 				out = append(out, v)
@@ -1834,7 +1846,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, t := range g.pkg.Timers {
 			g.addIRTimer(t)
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, t := range main.Timers {
 				g.addIRTimer(t)
 			}
