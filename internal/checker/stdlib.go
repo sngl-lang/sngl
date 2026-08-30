@@ -1156,6 +1156,14 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		// where this runs and where a target is only in scope if imported.
 		c.pushScope()
 		if pkg := c.libPkg(pkgName); pkg != nil {
+			// Its own declarations first, so the package's source reads them
+			// the way it does everywhere else in the package: `[platform]` is
+			// the identity const the compiler injects into it, and resolving
+			// the bare name against the program's scope would find the ambient
+			// `platform` type instead.
+			for _, sym := range pkg.Symbols.Root.Symbols {
+				c.scope.Replace(sym)
+			}
 			c.bindLib(ast.Pos{}, c.scope, &ir.Namespace{Name: name, Pkg: pkg})
 		}
 		defer c.popScope()

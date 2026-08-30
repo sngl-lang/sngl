@@ -5,14 +5,14 @@
 // its own. A tag no identifier can spell is written through that component's
 // `tag` prop: `html.element(tag="my-widget")`.
 //
-// Each `component sngl.X` gives a stdlib component its HTML implementation.
+// Each `component ui.X` gives a stdlib component its HTML implementation.
 // The stdlib declares the props; the body reads them as locals.
 //
 // Inside a `platform html { ... }` body a native element needs its `html.`
 // prefix: the stdlib component of the same name is in scope too, and carries
 // a body of its own.
 
-import sngl "sngl:ui"
+import ui "sngl:ui"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -67,7 +67,7 @@ component element(
     // the element rather than describing it, so it is never an attribute.
     tag string,
 
-    style sngl.Style,
+    style ui.Style,
     class string,
     id string,
     textContent string,
@@ -82,7 +82,7 @@ component element(
     open bool,
 
     // An attribute is written as it is emitted, so a caller holding a number
-    // converts: `component sngl.progress` spells string(value). These were
+    // converts: `component ui.progress` spells string(value). These were
     // declared `int` and so were written by two paths that disagreed -- the
     // static render rendered the literal and the server render had no string to
     // write, because there is no attribute type here to convert through.
@@ -104,17 +104,17 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
-    @click sngl.ClickEvent,
-    @input sngl.InputEvent,
-    @change sngl.ChangeEvent,
-    @focus sngl.FocusEvent,
-    @blur sngl.FocusEvent,
-    @submit sngl.SubmitEvent,
-    @scroll sngl.ScrollEvent,
-    @load sngl.LoadEvent,
-    @error sngl.ErrorEvent,
-    @close sngl.DismissEvent,
-    @select sngl.SelectEvent,
+    @click ui.ClickEvent,
+    @input ui.InputEvent,
+    @change ui.ChangeEvent,
+    @focus ui.FocusEvent,
+    @blur ui.FocusEvent,
+    @submit ui.SubmitEvent,
+    @scroll ui.ScrollEvent,
+    @load ui.LoadEvent,
+    @error ui.ErrorEvent,
+    @close ui.DismissEvent,
+    @select ui.SelectEvent,
 
     // Every other DOM event. The event set is as open as the element set and
     // the attribute set, for the same reason: a standard adds to it. The
@@ -136,32 +136,32 @@ component element(
 
 // --- Core Layout ---
 
-component sngl.vbox[html.platform] {
+component ui.vbox[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
         slot
     }
 }
 
-component sngl.hbox[html.platform] {
+component ui.hbox[platform] {
     html.div(style={...style, display="flex", flexDirection="row"}) {
         slot
     }
 }
 
-component sngl.stack[html.platform] {
+component ui.stack[platform] {
     html.div(style={...style, position="relative"}) {
         slot
     }
 }
 
-component sngl.spacer[html.platform] {
+component ui.spacer[platform] {
     html.div(style={...style, flex=1}) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
 // `scrollend`. The names differ, so the override maps them: that is the half of
 // wrapping an element that a wildcard cannot do for itself.
-component sngl.scroll[html.platform] {
+component ui.scroll[platform] {
     html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         slot
     }
@@ -169,7 +169,7 @@ component sngl.scroll[html.platform] {
 
 // --- Core Text & Media ---
 
-component sngl.text[html.platform] {
+component ui.text[platform] {
     html.span(textContent=value, style={...style}) {}
 }
 
@@ -177,22 +177,22 @@ component sngl.text[html.platform] {
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-component sngl.button[html.platform] {
+component ui.button[platform] {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
         slot
     }
 }
 
-component sngl.image[html.platform] {
+component ui.image[platform] {
     html.img(src=src, alt=alt, style={...style}) {}
 }
 
-component sngl.input[html.platform] {
+component ui.input[platform] {
     html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
 }
 
-component sngl.checkbox[html.platform] {
+component ui.checkbox[platform] {
     html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
@@ -201,7 +201,7 @@ component sngl.checkbox[html.platform] {
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio[html.platform] {
+component ui.radio[platform] {
     html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
         for opt = options {
             html.label(style={display="inline-flex", alignItems="center", gap=4}) {
@@ -212,14 +212,14 @@ component sngl.radio[html.platform] {
     }
 }
 
-component sngl.toggle[html.platform] {
+component ui.toggle[platform] {
     html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
 }
 
-component sngl.select[html.platform] {
+component ui.select[platform] {
     html.select(disabled=disabled, style={...style}, @change { change() }) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
@@ -230,7 +230,7 @@ component sngl.select[html.platform] {
     }
 }
 
-component sngl.textarea[html.platform] {
+component ui.textarea[platform] {
     html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
         slot
     }
@@ -238,24 +238,24 @@ component sngl.textarea[html.platform] {
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress[html.platform] {
+component ui.progress[platform] {
     html.progress(value=string(value), max=string(max), style={...style}) {}
 }
 
-component sngl.spinner[html.platform] {
+component ui.spinner[platform] {
     html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
 }
 
-component sngl.badge[html.platform] {
+component ui.badge[platform] {
     html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
         html.span(textContent=value) {}
     }
 }
 
-component sngl.tabs[html.platform] {
+component ui.tabs[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
         html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
             for label = items {
@@ -268,19 +268,19 @@ component sngl.tabs[html.platform] {
     }
 }
 
-component sngl.link[html.platform] {
+component ui.link[platform] {
     html.a(href=href, style={...style}, @click { click() }) {
         html.span(textContent=text) {}
     }
 }
 
-component sngl.divider[html.platform] {
+component ui.divider[platform] {
     html.hr(style={...style}) {}
 }
 
 // --- Tier 3: Overlays & Layout ---
 
-component sngl.modal[html.platform] {
+component ui.modal[platform] {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
             if title != "" {
@@ -291,25 +291,25 @@ component sngl.modal[html.platform] {
     }
 }
 
-component sngl.drawer[html.platform] {
+component ui.drawer[platform] {
     html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
         slot
     }
 }
 
-component sngl.tooltip[html.platform] {
+component ui.tooltip[platform] {
     html.div(title=text, style={...style}) {
         slot
     }
 }
 
-component sngl.popover[html.platform] {
+component ui.popover[platform] {
     html.div(style={...style, position="relative"}) {
         slot
     }
 }
 
-component sngl.splitview[html.platform] {
+component ui.splitview[platform] {
     html.div(style={...style, display="flex"}) {
         slot
     }
@@ -317,7 +317,7 @@ component sngl.splitview[html.platform] {
 
 // --- Tier 4: Data & Desktop ---
 
-component sngl.table[html.platform] {
+component ui.table[platform] {
     html.table(style={width="100%", borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
@@ -338,7 +338,7 @@ component sngl.table[html.platform] {
     }
 }
 
-component sngl.tree[html.platform] {
+component ui.tree[platform] {
     html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
         for item = items {
             html.li(textContent=item)
@@ -346,19 +346,19 @@ component sngl.tree[html.platform] {
     }
 }
 
-component sngl.menu[html.platform] {
+component ui.menu[platform] {
     html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
         slot
     }
 }
 
-component sngl.menubar[html.platform] {
+component ui.menubar[platform] {
     html.nav(style={...style, display="flex", gap=4}) {
         slot
     }
 }
 
-component sngl.toolbar[html.platform] {
+component ui.toolbar[platform] {
     html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
         slot
     }
@@ -366,23 +366,23 @@ component sngl.toolbar[html.platform] {
 
 // --- Tier 5: Mobile & Specialized ---
 
-component sngl.datepicker[html.platform] {
+component ui.datepicker[platform] {
     html.input(type="date", value=value, disabled=disabled, style={...style}, @change { change() }) {}
 }
 
-component sngl.chip[html.platform] {
+component ui.chip[platform] {
     html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
         html.span(textContent=label) {}
     }
 }
 
-component sngl.avatar[html.platform] {
+component ui.avatar[platform] {
     html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
         html.span(textContent=initials) {}
     }
 }
 
-component sngl.card[html.platform] {
+component ui.card[platform] {
     html.div(style={borderRadius=8, padding=16, ...style}) {
         slot
     }
