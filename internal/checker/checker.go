@@ -672,14 +672,29 @@ func (c *checker) stmts() []ast.Stmt {
 //   - replaces is the import-replace map, collected once at the top of pass1
 //     for the whole package. Cleared mid-import-loop, a later
 //     `import "p" => "url"` resolves without its replacement.
+//   - pendingPkgBody accumulates the program's top-level visual nodes across
+//     pass1 rather than being reset by it, so the loaded package would append
+//     its own to the program's.
+//
+// The rule is that anything pass1 touches is this package's, whether it resets
+// it or builds it up. TestEnterPackageRestoresWhatPass1Resets enforces exactly
+// that, and is what caught pendingPkgBody: the field and the guard arrived on
+// separate branches, so neither failed until they met on main.
 //
 // Anything pass1 resets belongs here. The two are one function because the
 // bug is precisely that they were not.
 func (c *checker) enterPackage(docs []*ast.Document) func() {
-	savedDocs, savedTopLevel, savedReplaces := c.docs, c.topLevel, c.replaces
+	savedDocs, savedTopLevel := c.docs, c.topLevel
+	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
 	c.docs = docs
+	// Cleared rather than merely saved: pass1 accumulates into this one, so
+	// left in place the loaded package would append its own top-level body to
+	// the program's. No lib package writes one today, which is the only reason
+	// that is a latent leak rather than a live one.
+	c.pendingPkgBody = nil
 	return func() {
-		c.docs, c.topLevel, c.replaces = savedDocs, savedTopLevel, savedReplaces
+		c.docs, c.topLevel = savedDocs, savedTopLevel
+		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
 	}
 }
 
