@@ -245,7 +245,20 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 			_ = json.Unmarshal(m.Params, &p)
 			if cur := current[p.Test]; cur != nil {
 				cur.Passed = false
-				cur.Failures = append(cur.Failures, codegen.TestFailure{Message: "fail recorded"})
+				// Every agent reports a failed assertion as a log line
+				// followed by a bare fail, so the message has already
+				// arrived. Recording "fail recorded" instead threw it away
+				// and printed a `--- FAIL:` with nothing under it -- the
+				// interpreter, which sets Error itself, was the only runner
+				// that ever said what went wrong.
+				msg := "fail recorded"
+				if n := len(cur.Log); n > 0 {
+					msg = cur.Log[n-1]
+				}
+				cur.Failures = append(cur.Failures, codegen.TestFailure{Message: msg})
+				if cur.Error == "" {
+					cur.Error = msg
+				}
 			}
 		case "markSkip":
 			var p struct{ Test, Reason string }
