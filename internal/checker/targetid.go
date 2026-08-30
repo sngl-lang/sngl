@@ -31,54 +31,8 @@ func (c *checker) typeTargetConsts() {
 	}
 }
 
-// synthesizeTargetID declares a target's own identity const into its package,
-// so `html.platform` resolves as an ordinary namespace member. name is the
-// registered target name; typ is c.platformType or c.languageType, and the
-// const takes that type's bare name — `platform` for a platform package,
-// `language` for a language one.
-//
-// This is a file the compiler injects into the package: one declaration nobody
-// can write by hand, in a package that otherwise comes off disk. So it binds
-// the name the way a file would and reports a collision as a redeclaration,
-// rather than asking first whether the name is free — a wildcard answers to
-// every name it covers, and html's element wildcard covers `platform`, so
-// asking left html with no identity at all.
-//
-// A target that could not serve a package has none to declare into, so its
-// identity does not resolve either: naming an unavailable target is an error
-// at the point that names it rather than an override silently registered for a
-// platform this build has no vocabulary for.
-func (c *checker) synthesizeTargetID(pkg *ir.Package, typ *ir.StructDef, name string) {
-	if pkg == nil || pkg.Symbols == nil || typ == nil {
-		return
-	}
-	member := typ.Name
-	// Library packages are cached across the checks one build runs, so this
-	// package may already hold the const an earlier check injected. Binding
-	// that same symbol again is not a redeclaration; binding a second one
-	// would be, so the first is reused rather than rebuilt.
-	sym := c.libs.targetIDs[pkg]
-	if sym == nil {
-		sym = &ir.Var{
-			Name:        member,
-			Type:        typ.SymType(),
-			Init:        &ir.Literal{Type: typ.SymType(), Value: name},
-			IsConst:     true,
-			Synthesized: true,
-			Doc:         "The " + name + " " + member + ", as a value: compare " + targetConstName(member) + " against it.",
-		}
-		if c.libs.targetIDs == nil {
-			c.libs.targetIDs = map[*ir.Package]*ir.Var{}
-		}
-		c.libs.targetIDs[pkg] = sym
-	}
-	if err := pkg.Symbols.Root.Declare(sym); err != nil {
-		c.error(ast.Pos{}, "package for target %q declares %q, the name of the identity const the compiler injects into it", name, member)
-	}
-}
-
 // targetConstName is the predeclared const a target identity is compared
-// against — the inverse of the member name synthesizeTargetID binds.
+// against — the inverse of the member name a target's identity const carries.
 func targetConstName(member string) string {
 	if member == "language" {
 		return "LANGUAGE"

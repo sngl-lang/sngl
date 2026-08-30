@@ -70,11 +70,9 @@ type libCache struct {
 	// macroSigs records the macro declarations whose parameter types have
 	// been resolved; see resolveMacroSig.
 	macroSigs map[*ir.Func]bool
-	// targetIDs is the identity const injected into each target's package.
 	// Shared for the same reason `extended` is: the packages are shared, so a
 	// later check must re-bind the same symbol rather than a second one, which
 	// Declare would rightly call a redeclaration.
-	targetIDs map[*ir.Package]*ir.Var
 }
 
 // libCache returns the library-package cache a check runs against: the one an
@@ -83,7 +81,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, targetIDs: map[*ir.Package]*ir.Var{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
 }
 
 type ImportResolver interface {
@@ -373,16 +371,6 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	// target index binds it for the merge (mergeTargetExtensions).
 	_ = stdlibScope
 
-	for _, p := range cfg.Platforms {
-		if targetUnavailable(p) != nil {
-			continue
-		}
-		c.synthesizeTargetID(c.targetNSPkg("platform/"+p.PlatformIdentifier()), c.platformType, p.PlatformIdentifier())
-	}
-	for _, l := range cfg.Languages {
-		c.synthesizeTargetID(c.targetNSPkg("language/"+l.LanguageIdentifier()), c.languageType, l.LanguageIdentifier())
-	}
-
 	// Splice the build target's extension bodies into the stdlib components
 	// they target. AST splicing happens here so that user pass1/pass2 see
 	// body-bearing stdlib components; IR body checking runs from Check() after
@@ -618,7 +606,14 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 		c.error(pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
 			path, name, prev.path)
 	case kind == bindDecl && prev.kind == bindDecl:
-		c.error(pos, "%q redeclared in this file (previous declaration at %s)", name, prev.pos)
+		// The set this tracks is a document for a program and a package for a
+		// library, whose files are loaded as one, so the previous declaration
+		// may be in a sibling file. The position says which either way.
+		where := "file"
+		if c.inLibSource() {
+			where = "package"
+		}
+		c.error(pos, "%q redeclared in this %s (previous declaration at %s)", name, where, prev.pos)
 	case kind == bindAlias:
 		// An import whose alias is already taken. The alias is the caller's to
 		// choose, so naming the way out is more useful than naming the clash.
@@ -1228,6 +1223,13 @@ func literalConstType(e ast.Expr) *ir.Type {
 func (c *checker) checkPendingConstInits() {
 	for _, p := range c.pendingConstInits {
 		if p.spec.Default == nil {
+			continue
+		}
+		// A mark that supplied both the type and the value has already said
+		// what this const is -- a target identity is a string in the source
+		// and a target type in the IR, which is the one thing this pass cannot
+		// reconcile for it.
+		if len(p.vars) > 0 && p.vars[0].Synthesized && p.vars[0].Init != nil {
 			continue
 		}
 		typ := p.typ

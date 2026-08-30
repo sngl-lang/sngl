@@ -21,6 +21,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "foreign"}:            markForeign,
+	{"macro", "identity"}:           markIdentity,
 	{"ui/draw", "shape"}:            markShape,
 }
 
@@ -404,4 +405,62 @@ func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
 		return
 	}
 	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+}
+
+// markIdentity implements #[identity], which names the const carrying a
+// target's own identity.
+//
+// The const is named for the type it has -- `platform`, `language` -- so it
+// cannot annotate itself: the annotation would resolve to the const being
+// declared rather than to the builtin struct it shadows. The mark supplies the
+// type instead, choosing it by that name, and retypes the literal with it so
+// the value compares equal to nothing but another identity of the same kind.
+func markIdentity(m *mark) error {
+	v, ok := m.sym.(*ir.Var)
+	if !ok || !v.IsConst {
+		return fmt.Errorf("#[identity] cannot mark %s; only a const carries a target identity", ast.DeclFormName(m.decl))
+	}
+	var typ *ir.StructDef
+	switch v.Name {
+	case "platform":
+		typ = m.c.platformType
+	case "language":
+		typ = m.c.languageType
+	default:
+		return fmt.Errorf("#[identity] on %q: a target identity is named for its type, `platform` or `language`", v.Name)
+	}
+	if typ == nil {
+		return fmt.Errorf("#[identity]: sngl:builtin declares no %q type", v.Name)
+	}
+	// Read the value from the source rather than the IR: a const's initialiser
+	// is checked in a deferred pass, so at mark time there is nothing on the
+	// var yet. Supplying both halves here is also what takes this const out of
+	// that pass, which would otherwise check a string against a target type.
+	decl, ok := m.decl.(*ast.ConstDecl)
+	if !ok {
+		return fmt.Errorf("#[identity] cannot mark %s", ast.DeclFormName(m.decl))
+	}
+	name, ok := identityLiteral(decl, v.Name)
+	if !ok {
+		return fmt.Errorf("#[identity] on %q: the value is the target's name, written as a string literal", v.Name)
+	}
+	v.Type = typ.SymType()
+	v.Init = &ir.Literal{Type: typ.SymType(), Value: name}
+	v.Synthesized = true
+	return nil
+}
+
+// identityLiteral is the string a const declaration gives the named const.
+func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
+	for _, spec := range decl.Specs {
+		if !slices.Contains(spec.Names, name) {
+			continue
+		}
+		lit, ok := spec.Default.(*ast.LiteralExpr)
+		if !ok {
+			return "", false
+		}
+		return lit.StringValue()
+	}
+	return "", false
 }
