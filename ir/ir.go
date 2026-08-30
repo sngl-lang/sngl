@@ -122,7 +122,7 @@ func (p *Package) IsMain() bool {
 // reaches this package. Matched on the declaring package as well as the name,
 // because a tree is its declaration: a program's own `struct shape` is not the
 // one sngl://draw paints.
-func (p *Package) UsesTree(pkg, name string) bool {
+func (p *Package) usesTree(pkg, name string) bool {
 	if p == nil {
 		return false
 	}
@@ -145,10 +145,25 @@ func (p *Package) NoteTreeKind(sd *StructDef) {
 	p.TreeKinds[sd] = true
 }
 
-// IsTreeNamed reports whether sd is the tree that pkg declares as name.
-func IsTreeNamed(sd *StructDef, pkg, name string) bool {
+// isTreeNamed reports whether sd is the tree that pkg declares as name.
+func isTreeNamed(sd *StructDef, pkg, name string) bool {
 	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
 }
+
+// The drawing tree is sngl://draw's `shape`, and this is the only place the
+// compiler spells it. passCanvas emits that package's own primitives, so it is
+// the one tree there are rules about; a tree that carried its own would need
+// none of this.
+const (
+	drawPkg   = "sngl://draw"
+	shapeTree = "shape"
+)
+
+// IsDrawShapeTree reports whether sd is the drawing tree.
+func IsDrawShapeTree(sd *StructDef) bool { return isTreeNamed(sd, drawPkg, shapeTree) }
+
+// UsesDrawShapes reports whether a member of the drawing tree reaches p.
+func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) }
 
 // Import records a resolved import.
 type Import struct {
@@ -591,10 +606,8 @@ type TypeParam struct {
 	Default *Type `json:"-"`
 }
 
-// ParamName satisfies ast.Named; see the note there.
+// ParamName and ParamPos mirror ast.TypeParam's; see the note there.
 func (p TypeParam) ParamName() string { return p.Name }
-
-// ParamPos satisfies ast.Named; see the note there.
 func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.

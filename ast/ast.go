@@ -141,18 +141,11 @@ type TypeParam struct {
 	Default TypeExpr `json:",omitempty"`
 }
 
-// ParamName is what a type parameter is called. Declared so one helper can walk
-// either package's parameters -- ir.TypeParam answers to it too.
+// ParamName and ParamPos let one helper walk either package's type parameters
+// -- ir.TypeParam answers to them too. The interface they satisfy belongs to
+// the checker, which is the only caller.
 func (p TypeParam) ParamName() string { return p.Name }
-
-// ParamPos is where it was written, so a redeclaration reports there.
-func (p TypeParam) ParamPos() Pos { return p.Pos }
-
-// Named is a type parameter of either package's shape.
-type Named interface {
-	ParamName() string
-	ParamPos() Pos
-}
+func (p TypeParam) ParamPos() Pos     { return p.Pos }
 
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {

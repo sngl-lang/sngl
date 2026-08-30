@@ -569,63 +569,23 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 	return w.stmts(stmts)
 }
 
-// slotBody is what one insertion point renders: the content the call site
-// supplied for it, or the insertion's own block as the fallback when it
-// supplied none.
-//
-// A scoped slot's arguments are bound here rather than at the call site,
-// because the names they bind to are the populator's and the values are the
-// insertion's -- the two only meet once the body is being spliced into place.
-func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
-	sc := callsite.Slots[si.Name]
-	if sc == nil {
-		// The default slot's content arrives as ordinary children rather than
-		// through the map. Cloned, not shared: two insertions in one body would
-		// otherwise alias the same IR nodes.
-		if si.Name == ir.DefaultSlot && len(callsite.Children) > 0 {
-			return deepCloneStmts(callsite.Children)
-		}
-		return deepCloneStmts(si.Children)
-	}
-	body := deepCloneStmts(sc.Body)
-	bindings := make(map[string]ir.Expr, len(sc.Params))
-	for i, p := range sc.Params {
-		if i < len(si.Args) {
-			bindings[p.Name] = si.Args[i]
-		}
-	}
-	return substituteParams(body, bindings)
-}
-
 // substituteSlots replaces every *ir.SlotInst with what the call site supplied.
+// The inliner binds a scoped slot's arguments by parameter name, since the body
+// it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		if si, isSlot := s.(*ir.SlotInst); isSlot {
-			out = append(out, slotBody(si, callsite)...)
-			continue
-		}
-		switch n := s.(type) {
-		case *ir.If:
-			n.Body = substituteSlots(n.Body, callsite)
-			n.Else = substituteSlots(n.Else, callsite)
-		case *ir.For:
-			n.Body = substituteSlots(n.Body, callsite)
-			n.Else = substituteSlots(n.Else, callsite)
-		case *ir.NodeInst:
-			n.Children = substituteSlots(n.Children, callsite)
-		case *ir.ErrorBoundary:
-			n.Children = substituteSlots(n.Children, callsite)
-		case *ir.Window:
-			n.Body = substituteSlots(n.Body, callsite)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
-			// Leaf stmts — no nested SlotInsts.
-		default:
-			panic(fmt.Sprintf("substituteSlots: unhandled %T", n))
-		}
-		out = append(out, s)
+	sp := ir.SlotSplicer{
+		Clone: deepCloneStmts,
+		Bind: func(body []ir.Stmt, sc *ir.SlotContent, si *ir.SlotInst) []ir.Stmt {
+			bindings := make(map[string]ir.Expr, len(sc.Params))
+			for i, p := range sc.Params {
+				if i < len(si.Args) {
+					bindings[p.Name] = si.Args[i]
+				}
+			}
+			return substituteParams(body, bindings)
+		},
 	}
-	return out
+	return sp.Substitute(stmts, callsite)
 }
 
 // substituteEvents replaces every *ir.Emit whose Name matches a

@@ -1,6 +1,10 @@
 package ir
 
-import "slices"
+import (
+	"slices"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // StripForCompare removes AST references, cross-reference pointers, and
 // symbol tables from a Package so that two independently-checked packages
@@ -100,8 +104,18 @@ func (s *stripper) stripPackage(pkg *Package) {
 
 func (s *stripper) stripStructDef(sd *StructDef) {
 	sd.AST = nil
+	stripTypeParams(sd.TypeParams)
 	for _, f := range sd.Fields {
 		f.Default = nil
+	}
+}
+
+// stripTypeParams drops what a parameter records about its source. A
+// round-trip that reprints and reparses derives the position afresh, so
+// comparing it would compare the two spellings rather than the two packages.
+func stripTypeParams(ps []TypeParam) {
+	for i := range ps {
+		ps[i].Pos = ast.Pos{}
 	}
 }
 
@@ -127,6 +141,8 @@ func (s *stripper) stripFunc(f *Func) {
 		return
 	}
 	f.AST = nil
+	stripTypeParams(f.TypeParams)
+	stripTypeParams(f.RecvTypeParams)
 	f.Reads = nil
 	f.Writes = nil
 	f.Purity = 0

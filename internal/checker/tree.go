@@ -5,12 +5,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// drawPkg and shapeTree identify sngl://draw's own tree.
-const (
-	drawPkg   = "sngl://draw"
-	shapeTree = "shape"
-)
-
 // finishTreeMarks reads a component's return position as the tree it is a
 // member of, which is the whole of what that position says. Naming the default
 // tree is the same as naming none, and naming something that is not a tree is
@@ -28,7 +22,7 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		// A painted shape has nothing to raise an event from. This is drawing's
 		// rule rather than one about trees, and it sits here because membership
 		// is conferred here -- until a tree can carry rules of its own.
-		if ir.IsTreeNamed(sd, drawPkg, shapeTree) && len(comp.Events) > 0 {
+		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 {
 			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
 		}
 		return

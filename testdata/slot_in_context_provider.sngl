@@ -1,0 +1,28 @@
+// A slot insertion point nested inside a context provider is still an
+// insertion point, for the default slot and a named one alike. The two
+// projections disagreed about a provider's children until they became one
+// walk; the optimizer's inliner is what reaches this today.
+
+import . "sngl://std"
+
+context #theme("light")
+
+component framed(slot _, slot caption) {
+    theme("dark") {
+        vbox {
+            slot
+            caption {
+                text(value="(none)")
+            }
+        }
+    }
+}
+
+component main {
+    framed() {
+        slot caption {
+            text(value="caption")
+        }
+        text(value="framed child")
+    }
+}

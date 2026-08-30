@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if !pkg.UsesTree(drawPkg, shapeTree) {
+	if !pkg.UsesDrawShapes() {
 		return nil
 	}
 	var counter int
@@ -50,21 +50,13 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 	}
 }
 
-// drawPkg and shapeTree identify sngl://draw's own tree. The pass emits that
-// package's drawing primitives, so a tree declared elsewhere is not its
-// business however it is spelled.
-const (
-	drawPkg   = "sngl://draw"
-	shapeTree = "shape"
-)
-
 // isShapeContainer reports whether a NodeInst hosts shapes without being one:
 // a canvas, not a rect. A shape's own children are drawn by the emitter that
 // draws it, so only the outermost host becomes a draw function.
 func isShapeContainer(ni *ir.NodeInst) bool {
 	return ni.Component != nil &&
 		ni.Component.Tree == nil &&
-		ir.IsTreeNamed(treeHosted(ni.Component), drawPkg, shapeTree)
+		ir.IsDrawShapeTree(treeHosted(ni.Component))
 }
 
 // treeHosted is the segmented tree a component's default slot accepts, or nil.

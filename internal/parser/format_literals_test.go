@@ -24,9 +24,8 @@ func stringLiterals(doc *ast.Document) []string {
 	return out
 }
 
-// A format must not rewrite a string. The formatter used to print a literal's
-// decoded content back, so `"a\nb"` came out of `sngl fmt` with a real newline
-// in it — a different program that happened to still parse.
+// A format must not rewrite a string. The AST holds a literal's spelling as
+// written and only the checker decodes it, so the formatter reprints the raw.
 func assertLiteralsSurviveFormat(t *testing.T, name, src string) {
 	t.Helper()
 	doc, err := Parse(name, []byte(src))
@@ -253,8 +252,7 @@ func TestTestdataIsFormatted(t *testing.T) {
 	}
 }
 
-// Formatting twice must be formatting once. The blank line a mis-measured
-// statement end inserted made the second pass differ from the first.
+// Formatting twice must be formatting once.
 func TestFormatIsIdempotent(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

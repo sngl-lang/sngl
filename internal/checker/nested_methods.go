@@ -8,7 +8,7 @@ import (
 // synthRecvTypeExpr returns an ast.TypeExpr referring to `name`, with type
 // parameters instantiated as themselves. Used to produce the synthetic `this`
 // param's declared type when desugaring nested methods.
-func synthRecvTypeExpr[T ast.Named](pos ast.Pos, name string, typeParams []T) ast.TypeExpr {
+func synthRecvTypeExpr[T typeParamLike](pos ast.Pos, name string, typeParams []T) ast.TypeExpr {
 	nt := &ast.NamedType{Pos: pos, Name: name}
 	if len(typeParams) > 0 {
 		args := make([]ast.TypeExpr, len(typeParams))
