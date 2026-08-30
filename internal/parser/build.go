@@ -449,8 +449,11 @@ func bodyItemLine(item any) int {
 			return p.Line
 		}
 	}
-	if m, ok := item.(*ast.EnumMember); ok {
-		return m.Pos.Line
+	switch v := item.(type) {
+	case *ast.EnumMember:
+		return v.Pos.Line
+	case *ast.UnitSuffix:
+		return v.Pos.Line
 	}
 	return 0
 }
@@ -629,12 +632,30 @@ func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
 	if it.done() {
 		return u
 	}
+	lbraceLine, rbraceLine := 0, 0
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
+		lbraceLine = it.token().Line
+	}
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
-			u.Suffixes = b.buildUnitSuffixes(it.enter(), &u.IsMultiline)
+			for _, s := range b.buildUnitSuffixes(it.enter(), &u.IsMultiline) {
+				u.Body = append(u.Body, s)
+			}
 		} else {
+			if !it.isNonTerminal() && it.tokenType() == RBRACE {
+				rbraceLine = it.token().Line
+			}
 			it.skip() // rbrace
+		}
+	}
+	u.Body = interleaveComments(b, lbraceLine, rbraceLine, u.Body,
+		func(i ast.UnitBodyItem) int { return bodyItemLine(i) },
+		func(c *ast.Comment) ast.UnitBodyItem { return c })
+	for _, item := range u.Body {
+		if _, ok := item.(*ast.Comment); ok {
+			// A comment needs a line of its own, so the body needs lines.
+			u.IsMultiline = true
 		}
 	}
 	return u

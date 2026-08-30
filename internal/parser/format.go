@@ -539,13 +539,28 @@ func (f *formatter) writeUnitDef(u *ast.UnitDef) {
 	}
 	f.write("{")
 	if u.IsMultiline {
+		body := takeHeaderComment(f, u.Body)
 		f.newline()
 		f.indent++
-		for _, s := range u.Suffixes {
+		for i := 0; i < len(body); i++ {
+			f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+			if f.writeBodyComment(body[i]) {
+				continue
+			}
+			s, ok := body[i].(*ast.UnitSuffix)
+			if !ok {
+				continue
+			}
 			f.write(s.Name)
 			if s.Factor != nil {
 				f.write(" = ")
 				f.writeExpr(s.Factor)
+			}
+			if i+1 < len(body) {
+				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
+					f.writeTrailing(c)
+					i++
+				}
 			}
 			f.newline()
 		}
@@ -553,7 +568,7 @@ func (f *formatter) writeUnitDef(u *ast.UnitDef) {
 		f.write("}")
 	} else {
 		f.write(" ")
-		for i, s := range u.Suffixes {
+		for i, s := range u.Suffixes() {
 			if i > 0 {
 				f.write(", ")
 			}
@@ -835,14 +850,7 @@ func (f *formatter) writeBlock(block *ast.StmtBlock) {
 	f.write("{")
 	stmts := block.Stmts
 	if block.IsMultiline {
-		// A comment on the opening brace's line trails the brace, not the
-		// first statement inside.
-		if len(stmts) > 0 {
-			if c, ok := stmts[0].(*ast.Comment); ok && c.Inline {
-				f.writeTrailing(c)
-				stmts = stmts[1:]
-			}
-		}
+		stmts = takeHeaderComment(f, stmts)
 		f.newline()
 		f.indent++
 		f.formatStmtSeq(stmts)

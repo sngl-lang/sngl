@@ -174,7 +174,7 @@ func (c *converter) convertUnitDef(u *UnitDef) *ast.UnitDef {
 				Raw:  formatFloat(s.Factor),
 			}
 		}
-		def.Suffixes = append(def.Suffixes, us)
+		def.Body = append(def.Body, us)
 	}
 	return def
 }

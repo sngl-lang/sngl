@@ -1,0 +1,25 @@
+import . "sngl://std"
+
+// A unit body holds comments the way a struct's and an enum's do, so one
+// written between the braces stays where it was written.
+
+unit storage { // the base is the byte
+    // the SI prefixes, not the binary ones
+    b
+    kb = 1000b // a thousand, not 1024
+    mb = 1000kb
+
+    // a gigabyte is where the two spellings diverge most
+    gb = 1000mb
+}
+
+component unitComments {
+    var small = 4kb
+    var large = 2gb
+
+    text(value="storage")
+}
+
+func testUnitComments(t Test, c unitComments) {
+    t.assert(c.large > c.small)
+}

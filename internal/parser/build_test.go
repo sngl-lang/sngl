@@ -619,8 +619,8 @@ func TestParseUnitDecl(t *testing.T) {
 	if ud.Name != "Length" {
 		t.Errorf("expected Length, got %q", ud.Name)
 	}
-	if len(ud.Suffixes) != 3 {
-		t.Errorf("expected 3 suffixes, got %d", len(ud.Suffixes))
+	if len(ud.Suffixes()) != 3 {
+		t.Errorf("expected 3 suffixes, got %d", len(ud.Suffixes()))
 	}
 }
 

@@ -203,9 +203,28 @@ type StructField struct {
 type UnitDef struct {
 	Pos         Pos
 	Name        string
-	Suffixes    []*UnitSuffix
+	Body        []UnitBodyItem // suffixes and comments, in source order
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+}
+
+// UnitBodyItem is what may appear between a unit's braces.
+type UnitBodyItem interface {
+	unitBodyItem()
+}
+
+func (*UnitSuffix) unitBodyItem() {}
+func (*Comment) unitBodyItem()    {}
+
+// Suffixes returns just the *UnitSuffix items from Body, in source order.
+func (u *UnitDef) Suffixes() []*UnitSuffix {
+	out := make([]*UnitSuffix, 0, len(u.Body))
+	for _, it := range u.Body {
+		if s, ok := it.(*UnitSuffix); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.
