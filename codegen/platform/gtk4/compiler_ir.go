@@ -162,28 +162,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Inlining folded every non-main component into main, so iterating every
 	// component's vars would re-add the originals and collide their
 	// synthesized __root/__slot scratch fields.
-	type taggedVar struct {
-		v    *ir.Var
-		comp *ir.Component
-	}
-	main := ctx.MainComponent()
-	var allVars []taggedVar
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, taggedVar{v: v})
-	}
-	for _, c := range pkg.Consts {
-		allVars = append(allVars, taggedVar{v: c})
-	}
-	if main != nil {
-		for _, v := range main.Vars {
-			allVars = append(allVars, taggedVar{v: v, comp: main})
-		}
-	}
-	for _, v := range codegen.WindowStateVars(pkg) {
-		allVars = append(allVars, taggedVar{v: v})
-	}
-	for _, tv := range allVars {
-		v := tv.v
+	for _, tv := range ctx.ModelState() {
+		v := tv.Var
 		if v.Synthesized {
 			if v.Name == "__root" {
 				// The __root sentinel is initialized lazily inside BuildUI:
@@ -200,8 +180,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// type, not the slot-var []*C.GtkWidget fallback below.
 			if strings.HasPrefix(v.Name, "__ctx_") {
 				ctxGC := gc
-				if tv.comp != nil {
-					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+				if tv.Comp != nil {
+					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 				}
 				ctxGoType := golang.VarGoType(v)
 				if strings.HasPrefix(ctxGoType, "time.") {
@@ -225,8 +205,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		varGC := gc
-		if tv.comp != nil {
-			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+		if tv.Comp != nil {
+			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 		}
 		goType := golang.VarGoType(v)
 		initVal := irVarInit(v, varGC)

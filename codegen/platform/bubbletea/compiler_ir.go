@@ -202,18 +202,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
-	var allVars []*ir.Var
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, v)
-	}
-	for _, c := range pkg.Consts {
-		allVars = append(allVars, c)
-	}
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
 		// free functions, which are not Model methods.

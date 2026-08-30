@@ -60,6 +60,50 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	return c
 }
 
+// OwnedVar is one var a target puts in its Model, paired with the declaration
+// that owns it. The owner matters to a target that scopes an expression per var
+// -- gtk4 builds a per-var ExprCtx from it -- and to nothing else, which is why
+// the enumeration can be shared even where the emission cannot.
+type OwnedVar struct {
+	Var  *ir.Var
+	Comp *ir.Component // the component declaring it, if one does
+	Win  *ir.Window    // the window declaring it, if one does
+}
+
+// ModelState returns every var a single-Model target puts in its Model, in
+// emission order: the package's vars and consts, then the main component's,
+// then each window's.
+//
+// This is one answer to "which declarations own state", and it used to be four
+// -- one per target, each spelling the same literal `pkg.Vars` plus
+// `MainComponent().Vars`. Nothing made them agree, and #133 is what that cost:
+// a window is an owner none of them named, so a window-level `var` reached no
+// target at all. A target that does not want consts in its Model filters them
+// out; what it must not do is decide for itself who owns state.
+func (ctx *CodegenCtx) ModelState() []OwnedVar {
+	if ctx.Pkg == nil {
+		return nil
+	}
+	out := make([]OwnedVar, 0, len(ctx.Pkg.Vars)+len(ctx.Pkg.Consts))
+	for _, v := range ctx.Pkg.Vars {
+		out = append(out, OwnedVar{Var: v})
+	}
+	for _, c := range ctx.Pkg.Consts {
+		out = append(out, OwnedVar{Var: c})
+	}
+	if main := ctx.MainComponent(); main != nil {
+		for _, v := range main.Vars {
+			out = append(out, OwnedVar{Var: v, Comp: main})
+		}
+	}
+	for _, w := range ctx.Pkg.Windows {
+		for _, v := range w.Vars {
+			out = append(out, OwnedVar{Var: v, Win: w})
+		}
+	}
+	return out
+}
+
 func (ctx *CodegenCtx) BuildMutation(stmts []ir.Stmt) *MutationModel {
 	m := NewMutationModel(ctx.Analysis, ctx.Deps)
 	m.Handlers = ctx.collectHandlers(stmts)
