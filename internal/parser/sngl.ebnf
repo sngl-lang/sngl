@@ -340,7 +340,11 @@ FuncBodyTail =
 #   else → bare function name
 FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
 
-TypeParamList = lt ident { comma ident } gt .
+TypeParamList = lt TypeParam { comma TypeParam } gt .
+
+# A type parameter may carry a default, the way a value parameter does: an
+# argument list that stops short falls back to them, right to left.
+TypeParam = ident [ assign Type ] .
 
 ParamList = Param { comma Param } .
 
@@ -364,11 +368,12 @@ CompParamBody =
     | ident [ CompParamTail ]
     .
 
-# A named slot: a region of UI the caller supplies, declared alongside the props
-# and events so a component's whole API is one list. Types only, no parameter
-# names — the names belong to whoever writes the body, which is the populator,
-# exactly as for a func type.
-SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
+# A slot: a region of UI the caller supplies. Parenthesised types are what the
+# slot is *invoked* with; the trailing Type is the tree it *accepts*, bare for
+# any number and wrapped to narrow the count. The default slot is named `_`, so
+# the name is never optional — `slot` followed by an optional name could not be
+# told from a type, both being idents.
+SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] [ Type ] .
 
 CompParamTail =
       assign Expr
@@ -630,9 +635,10 @@ NonIdentPrimary =
 
 # ── Types ─────────────────────────────────────────────────────────────────────
 
+# `component` is not a type. It was the widest children type before slots and
+# trees, and the keyword now only introduces a declaration.
 Type =
-      ident [ dot ident | lt TypeList gt ]
-    | kw_component
+      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
     | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
     | StructDecl
     | EnumDecl

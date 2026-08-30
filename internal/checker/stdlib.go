@@ -163,9 +163,9 @@ func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	c.libs.macroSigs[fn] = true
 	// The package's own root, whose parent is the scope its imports bound
 	// their namespaces in — the scope the declaration was written in.
-	savedScope, savedTab, savedTP := c.scope, c.symtab, c.typeParams
-	c.scope, c.symtab, c.typeParams = pkg.Symbols.Root, pkg.Symbols, nil
-	defer func() { c.scope, c.symtab, c.typeParams = savedScope, savedTab, savedTP }()
+	savedScope, savedTab := c.scope, c.symtab
+	c.scope, c.symtab = pkg.Symbols.Root, pkg.Symbols
+	defer func() { c.scope, c.symtab = savedScope, savedTab }()
 	for i, p := range fn.AST.Params.Params {
 		fn.Params[i].Type = c.resolveType(p.Type)
 	}
@@ -394,7 +394,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// Library source has its own file scopes, but loading is lazy: it happens
 	// part-way through the importing document's pass1, whose claims are still
 	// in c.topLevel. A lib file's import alias would otherwise collide with a
-	// name the user's dot imports lifted — `import tree "sngl:internal/tree"`
+	// name the user's dot imports lifted — `import tree "sngl:tree"`
 	// against std's `tree` component.
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
@@ -793,12 +793,10 @@ func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
 	prevReturn := c.returnType
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
-	prevTypeParams := c.typeParams
 	// Receiver type parameters (the `<T>` in `list<T>.push`) plus any
 	// method-level ones must be in scope to resolve the receiver type and the
 	// body. RecvTypeParams come first so the receiver type `list<T>` resolves.
-	c.typeParams = append(append([]string{}, fn.RecvTypeParams...), fn.TypeParams...)
-	defer func() { c.typeParams = prevTypeParams }()
+	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
 
 	// Implicit-receiver methods (generic receiver, e.g. list<T>.push) carry no
 	// receiver parameter — the receiver is referenced as `this`. Bind it so

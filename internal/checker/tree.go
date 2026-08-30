@@ -5,27 +5,31 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// finishTreeMarks derives what the tree marks imply and records the kinds on
-// the declaring package. The marks themselves wrote TreeKind and ChildKind
-// when they were applied; this runs once afterwards, so a component that
-// carries both marks is read as one node rather than twice.
-//
-// A member with no children type of its own hosts its own kind: a shape
-// contains shapes without saying so. A declared children type says what it
-// accepts instead, which is how a member of one tree hosts another.
-func finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
-	if decl == nil || comp == nil {
+// finishTreeMarks reads a component's return position as the tree it is a
+// member of, which is the whole of what that position says. Naming the default
+// tree is the same as naming none, and naming something that is not a tree is
+// an error rather than a children contract — a slot is what declares those.
+func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
+	if decl == nil || comp == nil || comp.ChildrenType == nil {
 		return
 	}
-	if comp.ChildKind == "" && comp.TreeKind != "" && decl.ChildrenType == nil {
-		comp.ChildKind = comp.TreeKind
+	named := comp.ChildrenType
+	comp.ChildrenType = nil
+
+	if sd := treeStruct(named); sd != nil {
+		comp.Tree = sd
+		pkg.NoteTreeKind(sd)
+		// A painted shape has nothing to raise an event from. This is drawing's
+		// rule rather than one about trees, and it sits here because membership
+		// is conferred here -- until a tree can carry rules of its own.
+		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 {
+			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
+		}
+		return
 	}
-	// A tree mark is the whole of what a node says about its children, so a
-	// marked component needs no children type in source; without one the
-	// arity check would read it as accepting none.
-	if comp.ChildKind != "" && comp.ChildrenType == nil {
-		comp.ChildrenType = ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
+	if sd, ok := named.Decl.(*ir.StructDef); ok && sd.Builtin == ir.BuiltinTreeDefault {
+		return
 	}
-	pkg.NoteTreeKind(comp.TreeKind)
-	pkg.NoteTreeKind(comp.ChildKind)
+	c.error(decl.Pos, "component %s: the return position names the tree a component belongs to, and %s is not one",
+		comp.Name, named)
 }

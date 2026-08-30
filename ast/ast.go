@@ -133,11 +133,25 @@ func (*StructField) structBodyItem() {}
 func (*FuncDef) structBodyItem()     {}
 func (*Comment) structBodyItem()     {}
 
+// TypeParam is one generic parameter of a declaration. Default is what an
+// argument list that stops short falls back to.
+type TypeParam struct {
+	Pos     Pos `json:"-"`
+	Name    string
+	Default TypeExpr `json:",omitempty"`
+}
+
+// ParamName and ParamPos let one helper walk either package's type parameters
+// -- ir.TypeParam answers to them too. The interface they satisfy belongs to
+// the checker, which is the only caller.
+func (p TypeParam) ParamName() string { return p.Name }
+func (p TypeParam) ParamPos() Pos     { return p.Pos }
+
 // StructDef declares a struct type. Name is empty for anonymous struct types.
 type StructDef struct {
 	Pos         Pos
 	Name        string
-	TypeParams  []string // generic type parameters: ["T"] for `struct list<T> {}`
+	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list<T> {}`
 	Body        []StructBodyItem
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
@@ -182,9 +196,28 @@ type StructField struct {
 type UnitDef struct {
 	Pos         Pos
 	Name        string
-	Suffixes    []*UnitSuffix
+	Body        []UnitBodyItem // suffixes and comments, in source order
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+}
+
+// UnitBodyItem is what may appear between a unit's braces.
+type UnitBodyItem interface {
+	unitBodyItem()
+}
+
+func (*UnitSuffix) unitBodyItem() {}
+func (*Comment) unitBodyItem()    {}
+
+// Suffixes returns just the *UnitSuffix items from Body, in source order.
+func (u *UnitDef) Suffixes() []*UnitSuffix {
+	out := make([]*UnitSuffix, 0, len(u.Body))
+	for _, it := range u.Body {
+		if s, ok := it.(*UnitSuffix); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // UnitSuffix defines a single suffix within a unit declaration.
@@ -274,8 +307,8 @@ type ParamList struct {
 type FuncDef struct {
 	Pos            Pos
 	Name           string
-	TypeParams     []string // method-level generic type parameters, e.g., ["T", "U"]
-	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
+	TypeParams     []TypeParam // method-level generic parameters, e.g. ["T", "U"]
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         ParamList
 	// Target is the `[expr]` index on the declaration name: the build target
 	// this declaration implements, written by whoever overrides one. nil on an
@@ -348,9 +381,12 @@ func (SlotDecl) paramOrEventDecl()  {}
 // SlotDecl declares a named slot in a component's parameter list. Params are
 // types only: the names belong to whoever writes the body, which is the caller.
 type SlotDecl struct {
-	Pos      Pos
-	Name     string
-	Params   []TypeExpr
+	Pos    Pos
+	Name   string
+	Params []TypeExpr
+	// Type is the tree the slot accepts, wrapped in whatever bounds the count.
+	// Absent, it accepts any number of the tree its component belongs to.
+	Type     TypeExpr
 	Attrs    []MacroAttr `json:",omitempty"`
 	Leading  []*Comment  `json:",omitempty"`
 	Trailing *Comment    `json:",omitempty"`

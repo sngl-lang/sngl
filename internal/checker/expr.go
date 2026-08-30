@@ -30,7 +30,25 @@ func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
 		c.error(pos, "expression yields no value")
 		return true
 	}
+	if sd := treeStruct(t); sd != nil {
+		c.error(pos, "%s names a tree, which has no values", sd.Name)
+		return true
+	}
 	return false
+}
+
+// treeStruct is the tree declaration t names, or nil. A tree struct holds
+// nothing and no value of it exists: naming one says which family a component
+// or a slot belongs to.
+func treeStruct(t *ir.Type) *ir.StructDef {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || !sd.IsTree {
+		return nil
+	}
+	return sd
 }
 
 func (c *checker) checkExpr(e ast.Expr) ir.Expr {
@@ -1048,8 +1066,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		if !recvParamStyle && !isStatic {
 			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
 			if len(receiver.Elems) == len(sig.RecvTypeParams) {
-				for i, name := range sig.RecvTypeParams {
-					bindings[name] = receiver.Elems[i]
+				for i, tp := range sig.RecvTypeParams {
+					bindings[tp.Name] = receiver.Elems[i]
 				}
 			} else {
 				// Receiver kind matches but no concrete elems (e.g. bare "list" in
@@ -1087,7 +1105,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		// `Box.same(b)` mean what `b.same()` means.
 		if isStatic && len(sig.RecvTypeParams) > 0 {
 			merged := *sig
-			merged.TypeParams = append(append([]string(nil), sig.RecvTypeParams...), sig.TypeParams...)
+			merged.TypeParams = append(append([]ir.TypeParam(nil), sig.RecvTypeParams...), sig.TypeParams...)
 			merged.RecvTypeParams = nil
 			sig = &merged
 		}
@@ -1514,8 +1532,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				var typeArgBindings map[string]*ir.Type
 				if len(sd.TypeParams) > 0 && len(operand.Elems) == len(sd.TypeParams) {
 					typeArgBindings = make(map[string]*ir.Type, len(sd.TypeParams))
-					for i, name := range sd.TypeParams {
-						typeArgBindings[name] = operand.Elems[i]
+					for i, tp := range sd.TypeParams {
+						typeArgBindings[tp.Name] = operand.Elems[i]
 					}
 				}
 				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
@@ -2028,6 +2046,16 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		}
 		pos++
 	}
+	// A parameter the arguments did not pin falls back to its default, the way
+	// a struct's does when the type-argument list stops short.
+	for _, tp := range sig.TypeParams {
+		if tp.Default == nil {
+			continue
+		}
+		if _, bound := bindings[tp.Name]; !bound {
+			bindings[tp.Name] = tp.Default
+		}
+	}
 	if len(bindings) == 0 {
 		return sig
 	}
@@ -2396,6 +2424,10 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
+		if sd := treeStruct(typ); sd != nil {
+			c.error(decl.Pos, "%s names a tree, which has no values", sd.Name)
+			typ = TypDyn
+		}
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -2659,6 +2691,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// the same stdlib-lenient / user-component-strict arg checking.
 		if comp != nil && x.Call.ID == "" {
 			c.validateCallStmtComponentArgs(x.Call, comp)
+			c.checkRequiredSlots(x.Pos, comp, nil)
+			if slot := findSlot(comp, ir.DefaultSlot); slot != nil {
+				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
+			}
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
 			var keyExpr ir.Expr
 			for _, a := range x.Call.Args.Args {
@@ -3229,32 +3265,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
 		}
-		// A component marked #[tree.children("k")] hosts a segmented tree:
-		// every child must be a node marked #[tree.kind("k")].
-		if comp.ChildKind != "" {
-			for _, child := range children {
-				// A slot insertion is a position, not a node: what lands there
-				// is whatever the caller supplies, so the slot's own declared
-				// kind is what has to match. Checking the supplied content
-				// against it is the population's job.
-				if si, isSlot := child.(*ir.SlotInst); isSlot {
-					if slot := c.enclosingSlot(si.Name); slot != nil && slot.ChildKind == comp.ChildKind {
-						continue
-					}
-				}
-				ni, ok := child.(*ir.NodeInst)
-				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
-					continue
-				}
-				childName := "unknown"
-				if ok && ni.Component != nil {
-					childName = ni.Component.Name
-				} else if ok {
-					childName = ni.Name
-				}
-				c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
-			}
-		}
+		c.checkTreeMembership(vn.Pos, children, slotTree(comp, findSlot(comp, ir.DefaultSlot)), "in "+comp.Name)
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
 
@@ -4157,7 +4168,7 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 	if len(x.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
 	}
-	return &ir.SlotInst{Children: c.checkBlockIR(&x.Block)}
+	return &ir.SlotInst{Name: ir.DefaultSlot, Children: c.checkBlockIR(&x.Block)}
 }
 
 // enclosingSlot returns the slot of the component being checked that name
@@ -4241,6 +4252,10 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 			rest.Stmts = append(rest.Stmts, s)
 			continue
 		}
+		if sn.Name == ir.DefaultSlot {
+			c.error(sn.Pos, "the default slot is filled by ordinary children, not by name")
+			continue
+		}
 		decl := findSlot(comp, sn.Name)
 		if decl == nil {
 			c.error(sn.Pos, "component %s has no slot %q", comp.Name, sn.Name)
@@ -4253,15 +4268,29 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 		if content == nil {
 			content = map[string]*ir.SlotContent{}
 		}
-		content[sn.Name] = c.checkSlotContent(sn, decl)
+		content[sn.Name] = c.checkSlotContent(sn, decl, comp)
 	}
+	c.checkRequiredSlots(vn.Pos, comp, content)
 	return content, rest
+}
+
+// checkRequiredSlots reports the named slots a call site left unpopulated whose
+// count gives no way to omit them.
+func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content map[string]*ir.SlotContent) {
+	for _, slot := range comp.Slots {
+		if slot.Name == ir.DefaultSlot || content[slot.Name] != nil {
+			continue
+		}
+		if slot.Card == ir.SlotOne {
+			c.error(pos, "component %s requires slot %q to be populated", comp.Name, slot.Name)
+		}
+	}
 }
 
 // checkSlotContent checks one population. The bound names are the caller's own,
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
-func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.SlotContent {
+func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
 	if len(sn.Args) != len(decl.Params) {
 		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))
 	}
@@ -4285,23 +4314,107 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl) *ir.Slot
 	}
 	sc.Body = c.checkBlockIR(&sn.Block)
 	c.popScope()
-	// A slot marked #[tree.children("k")] hosts a segmented tree, so the
-	// supplied content is held to the same rule a marked component's children
-	// are: every node must carry #[tree.kind("k")].
-	if decl.ChildKind != "" {
-		for _, st := range sc.Body {
-			ni, ok := st.(*ir.NodeInst)
-			if ok && ni.Component != nil && ni.Component.TreeKind == decl.ChildKind {
-				continue
-			}
-			name := "unknown"
-			if ok && ni.Component != nil {
-				name = ni.Component.Name
-			} else if ok {
-				name = ni.Name
-			}
-			c.error(sn.Pos, "expected %s component in slot %q, got %s", decl.ChildKind, sn.Name, name)
+	c.checkSlotArity(sn.Pos, decl, len(sc.Body), "slot \""+sn.Name+"\"")
+	c.checkTreeMembership(sn.Pos, sc.Body, slotTree(owner, decl), "in slot \""+sn.Name+"\"")
+	return sc
+}
+
+// childrenTypeFor is the children contract a default slot stands for, in the
+// shape the existing arity checks read.
+func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
+	elem := slot.Content
+	if elem == nil {
+		elem = &ir.Type{Kind: ir.TypeComponent}
+	}
+	switch slot.Card {
+	case ir.SlotOne:
+		return elem
+	case ir.SlotOptional:
+		return ir.OptionOf(elem)
+	}
+	return ir.ListOf(elem)
+}
+
+func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
+	switch slot.Card {
+	case ir.SlotOne:
+		if n != 1 {
+			c.error(pos, "%s takes exactly one node, got %d", what, n)
+		}
+	case ir.SlotOptional:
+		if n > 1 {
+			c.error(pos, "%s takes at most one node, got %d", what, n)
 		}
 	}
-	return sc
+}
+
+// slotTree is the segmented tree a slot accepts, or nil for the default tree —
+// the one whose members are interchangeable.
+//
+// owner is the component the slot is declared on: a slot naming no tree accepts
+// the owner's.
+func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
+	if slot == nil {
+		return nil
+	}
+	if slot.Content == nil {
+		if owner == nil {
+			return nil
+		}
+		return owner.Tree
+	}
+	if slot.Content.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, ok := slot.Content.Decl.(*ir.StructDef)
+	if !ok || sd.Builtin == ir.BuiltinTreeDefault || !sd.IsTree {
+		return nil
+	}
+	return sd
+}
+
+// stmtPos is a statement's position, or nil for a synthesized node that has no
+// AST to take one from.
+func stmtPos(s ast.Stmt) *ast.Pos {
+	if s == nil {
+		return nil
+	}
+	return s.StmtPos()
+}
+
+// checkTreeMembership holds every supplied node to the tree the position
+// accepts. Compared by declaration, so two packages each declaring a tree of
+// the same name are two trees.
+func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
+	if want == nil {
+		return
+	}
+	for _, st := range content {
+		// A slot insertion is a position rather than a node: what lands there
+		// is whatever the caller supplies, so the slot's own tree is what has
+		// to match, and the population is where the content is checked.
+		if si, isSlot := st.(*ir.SlotInst); isSlot {
+			if slotTree(c.currentComponent, c.enclosingSlot(si.Name)) == want {
+				continue
+			}
+		}
+		ni, ok := st.(*ir.NodeInst)
+		if ok && ni.Component != nil && ni.Component.Tree == want {
+			continue
+		}
+		name := "unknown"
+		at := pos
+		if ok {
+			name = ni.Name
+			if ni.Component != nil {
+				name = ni.Component.Name
+			}
+			// The offending child is a better place to point than the position
+			// that hosts it.
+			if sp := stmtPos(ni.AST); sp != nil {
+				at = *sp
+			}
+		}
+		c.error(at, "expected %s component %s, got %s", want.Name, where, name)
+	}
 }

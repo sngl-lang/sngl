@@ -424,13 +424,6 @@ func findParamSyms(stmts []ir.Stmt, propNames map[string]bool) map[string]*ir.Pa
 	return out
 }
 
-// slotBody is what one insertion point renders: the content the call site
-// supplied for it, or the insertion's own children as the fallback when it
-// supplied none.
-//
-// A scoped slot's parameters are bound here rather than at the call site,
-// because the names are the populator's and the values are the insertion's --
-// the two only meet when the body is spliced into place.
 // slotBindings pairs a population's declared params with the values the
 // insertion passed, by position.
 func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
@@ -443,59 +436,16 @@ func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
 	return subs
 }
 
-func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
-	if si.Name == "" {
-		if len(callsite.Children) == 0 {
-			return cloneStmts(si.Children)
-		}
-		return cloneStmts(callsite.Children)
-	}
-	sc := callsite.Slots[si.Name]
-	if sc == nil {
-		return cloneStmts(si.Children)
-	}
-	body := cloneStmts(sc.Body)
-	substituteParamsInStmts(body, slotBindings(sc, si))
-	return body
-}
-
 // substituteSlots replaces *ir.SlotInst nodes in stmts with what the call site
-// supplied. Operates on cloned IR, so mutation is safe.
+// supplied. Operates on cloned IR, so mutation is safe, and the clone keeps the
+// populator's *ir.Param, which is what the bindings are keyed by.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
-	var out []ir.Stmt
-	for _, s := range stmts {
-		if si, ok := s.(*ir.SlotInst); ok {
-			out = append(out, slotBody(si, callsite)...)
-			continue
-		}
-		out = append(out, substituteSlotsInStmt(s, callsite))
+	sp := ir.SlotSplicer{
+		Clone: cloneStmts,
+		Bind: func(body []ir.Stmt, sc *ir.SlotContent, si *ir.SlotInst) []ir.Stmt {
+			substituteParamsInStmts(body, slotBindings(sc, si))
+			return body
+		},
 	}
-	return out
-}
-
-func substituteSlotsInStmt(s ir.Stmt, callsite *ir.NodeInst) ir.Stmt {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		n.Children = substituteSlots(n.Children, callsite)
-	case *ir.If:
-		n.Body = substituteSlots(n.Body, callsite)
-		n.Else = substituteSlots(n.Else, callsite)
-	case *ir.For:
-		n.Body = substituteSlots(n.Body, callsite)
-		n.Else = substituteSlots(n.Else, callsite)
-	case *ir.Window:
-		n.Body = substituteSlots(n.Body, callsite)
-	case *ir.ContextProvider:
-		n.Children = substituteSlots(n.Children, callsite)
-	case *ir.ErrorBoundary:
-		n.Children = substituteSlots(n.Children, callsite)
-	case *ir.SlotInst:
-		// Handled in substituteSlots above; if we land here it's a
-		// nested slot we don't substitute through.
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
-		// No child statements with slots.
-	default:
-		panic(fmt.Sprintf("substituteSlotsInStmt: unhandled stmt %T", n))
-	}
-	return s
+	return sp.Substitute(stmts, callsite)
 }

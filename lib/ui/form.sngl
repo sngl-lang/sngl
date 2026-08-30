@@ -15,7 +15,8 @@ component button(
     focusable bool = true,
     @click ClickEvent,
     @longPress LongPressEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_button {
     var count = 0

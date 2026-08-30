@@ -414,7 +414,7 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 		s.Name = it.shift().Literal
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-		s.TypeParams = b.buildTypeParamList(it.enter())
+		s.TypeParams = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -449,8 +449,11 @@ func bodyItemLine(item any) int {
 			return p.Line
 		}
 	}
-	if m, ok := item.(*ast.EnumMember); ok {
-		return m.Pos.Line
+	switch v := item.(type) {
+	case *ast.EnumMember:
+		return v.Pos.Line
+	case *ast.UnitSuffix:
+		return v.Pos.Line
 	}
 	return 0
 }
@@ -629,12 +632,30 @@ func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
 	if it.done() {
 		return u
 	}
+	lbraceLine, rbraceLine := 0, 0
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
+		lbraceLine = it.token().Line
+	}
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ArgList {
-			u.Suffixes = b.buildUnitSuffixes(it.enter(), &u.IsMultiline)
+			for _, s := range b.buildUnitSuffixes(it.enter(), &u.IsMultiline) {
+				u.Body = append(u.Body, s)
+			}
 		} else {
+			if !it.isNonTerminal() && it.tokenType() == RBRACE {
+				rbraceLine = it.token().Line
+			}
 			it.skip() // rbrace
+		}
+	}
+	u.Body = interleaveComments(b, lbraceLine, rbraceLine, u.Body,
+		func(i ast.UnitBodyItem) int { return bodyItemLine(i) },
+		func(c *ast.Comment) ast.UnitBodyItem { return c })
+	for _, item := range u.Body {
+		if _, ok := item.(*ast.Comment); ok {
+			// A comment needs a line of its own, so the body needs lines.
+			u.IsMultiline = true
 		}
 	}
 	return u
@@ -857,7 +878,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 		return
 	}
 	if it.isNonTerminal() && it.symbol() == TypeParamList {
-		params := b.buildTypeParamList(it.enter())
+		params := b.buildTypeParams(it.enter())
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
 			// recv<T>.method[<U>] — receiver-level type params
 			it.skip() // dot
@@ -865,7 +886,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 			f.Name = first + "." + it.shift().Literal
 			// optional method-level type params after the method name
 			if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-				f.TypeParams = b.buildTypeParamList(it.enter())
+				f.TypeParams = b.buildTypeParams(it.enter())
 			}
 		} else {
 			// name<T> — function-level type params only
@@ -879,7 +900,7 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 		f.Name = first + "." + it.shift().Literal
 		// optional method-level type params after the method name
 		if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-			f.TypeParams = b.buildTypeParamList(it.enter())
+			f.TypeParams = b.buildTypeParams(it.enter())
 		}
 		return
 	}
@@ -920,17 +941,39 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 	}
 }
 
-func (b *builder) buildTypeParamList(it nodeIter) []string {
-	// TypeParamList = lt ident { comma ident } gt .
-	var params []string
+func (b *builder) buildTypeParams(it nodeIter) []ast.TypeParam {
+	// TypeParamList = lt TypeParam { comma TypeParam } gt .
+	var out []ast.TypeParam
 	for !it.done() {
-		if !it.isNonTerminal() && it.tokenType() == IDENT {
-			params = append(params, it.shift().Literal)
-		} else {
-			it.skip() // lt, gt, comma
+		if it.isNonTerminal() && it.symbol() == TypeParam {
+			out = append(out, b.buildTypeParam(it.enter()))
+			continue
 		}
+		it.skip() // lt, gt, comma
 	}
-	return params
+	return out
+}
+
+func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
+	// TypeParam = ident [ assign Type ] .
+	var tp ast.TypeParam
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() == Type {
+				tp.Default = b.buildType(it.enter())
+				continue
+			}
+			it.skip()
+			continue
+		}
+		if it.tokenType() == IDENT && tp.Name == "" {
+			tok := it.shift()
+			tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
+			continue
+		}
+		it.skip() // assign
+	}
+	return tp
 }
 
 func (b *builder) buildParamList(it nodeIter, openLine int) ast.ParamList {
@@ -1570,8 +1613,15 @@ func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDec
 		Attrs: attrs,
 	}
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == TypeList {
-			d.Params = b.buildTypeList(it.enter())
+		if it.isNonTerminal() {
+			switch it.symbol() {
+			case TypeList:
+				d.Params = b.buildTypeList(it.enter())
+			case Type:
+				d.Type = b.buildType(it.enter())
+			default:
+				it.skip()
+			}
 			continue
 		}
 		it.skip() // lparen / rparen
@@ -3011,21 +3061,20 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 	case IDENT:
 		nameTok := it.shift()
 		nt := &ast.NamedType{Pos: b.posFromToken(nameTok), Name: nameTok.Literal}
-		if !it.done() && !it.isNonTerminal() {
-			next := it.tokenType()
-			switch next {
-			case DOT:
-				it.skip() // dot
-				nt.Package = nt.Name
-				nt.Name = it.shift().Literal
-			case LT:
-				it.skip() // lt
-				if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-					nt.TypeArgs = b.buildTypeList(it.enter())
-				}
-				if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
-					it.skip() // gt
-				}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+			it.skip() // dot
+			nt.Package = nt.Name
+			nt.Name = it.shift().Literal
+		}
+		// `list<int>` and `tree.one<shape>` are both spellable, so the
+		// qualified branch above falls through rather than returning.
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
+			it.skip() // lt
+			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
+				nt.TypeArgs = b.buildTypeList(it.enter())
+			}
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
+				it.skip() // gt
 			}
 		}
 		return nt

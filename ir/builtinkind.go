@@ -44,6 +44,11 @@ const (
 	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
+	// TreeDefault is the tree an ordinary component belongs to; naming it is
+	// the same as naming no tree.
+	BuiltinTreeDefault BuiltinKind = "treeDefault"
+	// TreeOne narrows a slot's content to exactly one member.
+	BuiltinTreeOne BuiltinKind = "treeOne"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
@@ -107,6 +112,13 @@ func (b BuiltinKind) IsUnit() bool {
 	return b == BuiltinDuration
 }
 
+// IsSlotBound reports whether the kind marks a wrapper read where a slot's type
+// is resolved rather than constructed as a type. Nothing builds an ir.Type from
+// one, which is why it is not IsGeneric.
+func (b BuiltinKind) IsSlotBound() bool {
+	return b == BuiltinTreeOne || b == BuiltinTreeDefault
+}
+
 // IsGeneric reports whether the kind is a generic type constructor
 // (list/map/iter/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
@@ -145,6 +157,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
+		BuiltinTreeOne, BuiltinTreeDefault,
 		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
@@ -154,5 +167,6 @@ func AllBuiltinKinds() []BuiltinKind {
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() || b.IsNode() || b.IsTargetID() || b.IsConst()
+	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
+		b.IsSlotBound() || b.IsNode() || b.IsTargetID() || b.IsConst()
 }

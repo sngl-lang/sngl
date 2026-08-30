@@ -10,11 +10,11 @@ import . "sngl:app"
 // `slot` is not in this family and is absent on purpose: it is a keyword in the
 // declaration family (func, component, struct, enum, unit), not a #[builtin]
 // node resolved by name, so there is nothing for a user declaration to shadow.
-component timer(label string) list<component> {
+component timer(label string, slot _) {
     text(value=label)
 }
 
-component errorBoundary(label string) list<component> {
+component errorBoundary(label string, slot _) {
     text(value=label)
 }
 

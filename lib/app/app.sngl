@@ -17,7 +17,8 @@ import ui "sngl:ui"
 #[builtin("errorBoundary")]
 component errorBoundary(
     @error ui.ErrorEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // A top-level window — the entry point of a UI. `href` is the route the
 // window is served at (URL template params like `{name}` bind as string
@@ -34,7 +35,8 @@ component window(
     href string,
     favicon string,
     @error ui.ErrorEvent,
-) list<component> {}
+    slot _,
+) {}
 
 // Receiver type for raising runtime errors caught by an
 // `errorBoundary` ancestor. Call `error.raise(message, kind)` to

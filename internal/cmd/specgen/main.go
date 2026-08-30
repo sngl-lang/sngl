@@ -178,7 +178,7 @@ var sections = []section{
 		"ConstDecl", "ConstSpec", "IdentList",
 		"VarDecl", "VarSpec", "VarHandler",
 	}},
-	{"functions", []string{"FuncDecl", "FuncTail", "FuncBodyTail", "FuncName", "TypeParamList", "ParamList", "Param"}},
+	{"functions", []string{"FuncDecl", "FuncTail", "FuncBodyTail", "FuncName", "TypeParamList", "TypeParam", "ParamList", "Param"}},
 	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamBody", "SlotParam", "CompParamTail"}},
 	{"expressions", []string{
 		"Expr", "TernaryExpr", "OrExpr", "AndExpr",

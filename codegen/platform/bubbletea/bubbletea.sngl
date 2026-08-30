@@ -76,7 +76,8 @@ component Layout(
     style ui.Style,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip string,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("bubbletea:Styled")]
 component Styled(
@@ -110,7 +111,8 @@ component Overlay(
     placement string,
     dim bool,
     style ui.Style,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Core Layout ---
 

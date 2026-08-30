@@ -24,9 +24,8 @@ func stringLiterals(doc *ast.Document) []string {
 	return out
 }
 
-// A format must not rewrite a string. The formatter used to print a literal's
-// decoded content back, so `"a\nb"` came out of `sngl fmt` with a real newline
-// in it — a different program that happened to still parse.
+// A format must not rewrite a string. The AST holds a literal's spelling as
+// written and only the checker decodes it, so the formatter reprints the raw.
 func assertLiteralsSurviveFormat(t *testing.T, name, src string) {
 	t.Helper()
 	doc, err := Parse(name, []byte(src))
@@ -70,19 +69,29 @@ func TestFormatPreservesDocLiterals(t *testing.T) {
 	}
 }
 
-// commentTexts lists every comment in a document, wherever it managed to
-// land: the statement lists, a struct or enum body, a parameter list, an i18n
-// placeholder's cases.
+// commentTexts lists every comment in a document, each tagged with what
+// encloses it: the statement lists, a struct, enum or unit body, a parameter
+// list, an i18n placeholder's cases. The tag is what makes a comment that
+// merely moved distinguishable from one that stayed -- a text-only list
+// compares equal when a body's comment is relocated to the document tail,
+// since the order survives the move.
 func commentTexts(doc *ast.Document) []string {
 	var out []string
 	var stmts func([]ast.Stmt)
 	var expr func(ast.Expr)
+	owner := "document"
 	take := func(cs ...*ast.Comment) {
 		for _, c := range cs {
 			if c != nil {
-				out = append(out, c.Text)
+				out = append(out, owner+"|"+c.Text)
 			}
 		}
+	}
+	within := func(label string, f func()) {
+		saved := owner
+		owner = label
+		f()
+		owner = saved
 	}
 	props := func(pl ast.PropList) {
 		for _, p := range pl.Props {
@@ -126,23 +135,39 @@ func commentTexts(doc *ast.Document) []string {
 			case *ast.Comment:
 				take(x)
 			case *ast.StructDef:
-				for _, item := range x.Body {
-					if c, ok := item.(*ast.Comment); ok {
-						take(c)
+				within("struct "+x.Name, func() {
+					for _, item := range x.Body {
+						if c, ok := item.(*ast.Comment); ok {
+							take(c)
+						}
 					}
-				}
+				})
 			case *ast.EnumDef:
-				for _, item := range x.Body {
-					if c, ok := item.(*ast.Comment); ok {
-						take(c)
+				within("enum "+x.Name, func() {
+					for _, item := range x.Body {
+						if c, ok := item.(*ast.Comment); ok {
+							take(c)
+						}
 					}
-				}
+				})
+			case *ast.UnitDef:
+				within("unit "+x.Name, func() {
+					for _, item := range x.Body {
+						if c, ok := item.(*ast.Comment); ok {
+							take(c)
+						}
+					}
+				})
 			case *ast.ComponentDecl:
-				props(x.Props)
-				stmts(x.Body.Stmts)
+				within("component "+x.Name, func() {
+					props(x.Props)
+					stmts(x.Body.Stmts)
+				})
 			case *ast.FuncDef:
-				params(x.Params)
-				stmts(x.Block.Stmts)
+				within("func "+x.Name, func() {
+					params(x.Params)
+					stmts(x.Block.Stmts)
+				})
 			case *ast.VisualNode:
 				stmts(x.Block.Stmts)
 				for _, a := range x.Args.Args {
@@ -201,23 +226,25 @@ func assertCommentsSurviveFormat(t *testing.T, name, src string) {
 }
 
 // Every fixture is written the way `sngl fmt` writes it, so that a formatting
-// change has to be looked at rather than discovered later as drift. The three
-// fixtures that do not parse are excluded: there is nothing to format.
-// A fixture opts out with `// NOFMT "reason"`.
+// change has to be looked at rather than discovered later as drift. A fixture
+// carrying an ERROR(parse) directive is excluded: there is nothing to format.
+// One whose exact layout is the thing under test opts out with
+// `// NOFMT "reason"`, which this test then holds to that claim.
 func TestTestdataIsFormatted(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
 			if s.ExpectsError("parse") {
 				t.Skip("has ERROR(parse) directive")
 			}
-			if s.NoFmt {
-				t.Skipf("has NOFMT directive: %s", s.NoFmtReason)
-			}
 			doc, err := Parse(s.Filename, []byte(s.Source))
 			if err != nil {
-				t.Fatalf("parse: %v", err)
+				t.Fatalf("parse: %s", err)
 			}
-			if got := Format(doc); got != s.Source {
+			got := Format(doc)
+			switch {
+			case s.NoFmt && got == s.Source:
+				t.Errorf("NOFMT is stale (%s): the fixture is formatted, so drop the directive", s.NoFmtReason)
+			case !s.NoFmt && got != s.Source:
 				t.Errorf("fixture is not formatted; run `sngl fmt testdata`:\n%s", firstDiff(s.Source, got))
 			}
 			assertCommentsSurviveFormat(t, s.Filename, s.Source)
@@ -225,8 +252,7 @@ func TestTestdataIsFormatted(t *testing.T) {
 	}
 }
 
-// Formatting twice must be formatting once. The blank line a mis-measured
-// statement end inserted made the second pass differ from the first.
+// Formatting twice must be formatting once.
 func TestFormatIsIdempotent(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {

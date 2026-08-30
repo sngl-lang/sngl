@@ -80,20 +80,23 @@ struct Options {
 component Column(
     modifier ui.Style,
     chain list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
     chain list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Row")]
 component Row(
     modifier ui.Style,
     chain list<string>,
     args list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Spacer")]
 component Spacer(
@@ -125,22 +128,26 @@ component CircularProgressIndicator(
 component Button(
     onClick func(),
     modifier ui.Style,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Badge")]
 component Badge(
     modifier ui.Style,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Card")]
 component Card(
     modifier ui.Style,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Checkbox")]
 component Checkbox(
@@ -173,12 +180,14 @@ component OutlinedTextField(
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Core Layout ---
 

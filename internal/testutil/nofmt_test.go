@@ -14,7 +14,7 @@ func TestParseNoFmt(t *testing.T) {
 		wantReason string
 	}{
 		{"absent", "component a {}\n", false, ""},
-		{"bare", "// NOFMT\ncomponent a {}\n", true, ""},
+		{"bare, which is not one: the reason is what makes it reviewable", "// NOFMT\ncomponent a {}\n", false, ""},
 		{"with a reason", "// NOFMT \"the layout is what this asserts\"\ncomponent a {}\n", true, "the layout is what this asserts"},
 		{"anywhere in the file", "component a {}\n// NOFMT \"why\"\n", true, "why"},
 		{"not a directive", "// NOFMTX \"no\"\n", false, ""},

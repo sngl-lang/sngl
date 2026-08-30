@@ -71,7 +71,7 @@ func (*CallStmt) stmtNode() {}
 // SlotInst is the slot pseudo-element.
 type SlotInst struct {
 	AST      *ast.VisualNode
-	Name     string `json:",omitempty"` // "" is the anonymous slot
+	Name     string // ir.DefaultSlot for the one filled by ordinary children
 	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
 	Children []Stmt // fallback: rendered when the caller supplies nothing
 }
