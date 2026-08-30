@@ -101,10 +101,22 @@ type ImportResolver interface {
 	ResolveSchemeFS(scheme, uri, dir string) (docs []*ast.Document, subFS fs.FS, err error)
 }
 
-// Check type-checks a parsed v2 AST Document and returns the IR Package.
+// Check type-checks one parsed document as a package of its own.
 // The Package is populated best-effort even when diagnostics are present.
 func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
-	c := newChecker(doc, cfg)
+	return CheckPackage([]*ast.Document{doc}, cfg)
+}
+
+// CheckPackage type-checks a package's documents together.
+//
+// A package is one declaration set however many files it is written in, so a
+// type annotated in one file may name a type declared in a sibling: pass1
+// registers every document's declarations before pass2 resolves any of them.
+// Checking the files one at a time instead resolved each without its siblings
+// in scope, which reached users as "unknown type" on a name the package
+// plainly declares.
+func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
+	c := newChecker(docs, cfg)
 	c.pass1()
 	// A program's own overrides resolve after pass1: an override may be
 	// written above the declaration it overrides, and may name a component
@@ -133,8 +145,10 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 }
 
 type checker struct {
-	doc *ast.Document
-	cfg *Config
+	// docs is the package being checked: every file of it, registered as one
+	// declaration set.
+	docs []*ast.Document
+	cfg  *Config
 
 	pkg    *ir.Package
 	diags  []ir.Diagnostic
@@ -320,10 +334,10 @@ type pendingConstInit struct {
 	vars []*ir.Var
 }
 
-func newChecker(doc *ast.Document, cfg *Config) *checker {
+func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
 	c := &checker{
-		doc:          doc,
+		docs:         docs,
 		cfg:          cfg,
 		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:       symtab,
@@ -335,7 +349,7 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	}
 	// Set before the library loads, which swap in their own: a lib load
 	// restores what it found, and what it finds must be the program's.
-	c.setMarkScope([]*ast.Document{doc})
+	c.setMarkScope(docs)
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
@@ -625,6 +639,20 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	return false
 }
 
+// stmts is every top-level statement of the package, in file order. A package
+// is one declaration set, so the file a declaration sits in does not affect
+// what it can name.
+func (c *checker) stmts() []ast.Stmt {
+	if len(c.docs) == 1 {
+		return c.docs[0].Stmts
+	}
+	var out []ast.Stmt
+	for _, d := range c.docs {
+		out = append(out, d.Stmts...)
+	}
+	return out
+}
+
 func (c *checker) pass1() {
 	// File-scope name tracking covers this document only. Loading the library
 	// runs through the same register paths with its own scopes, and its names
@@ -635,7 +663,7 @@ func (c *checker) pass1() {
 	// declaration order of `import "p" => "url"` relative to bare `import "p"`
 	// does not matter. Outer (cfg.Replaces) wins over this package's own.
 	c.replaces = map[string]string{}
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		imp, ok := stmt.(*ast.Import)
 		if !ok || imp.Replace == "" {
 			continue
@@ -650,7 +678,7 @@ func (c *checker) pass1() {
 
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		if imp, ok := stmt.(*ast.Import); ok {
 			c.registerImport(imp)
 		}
@@ -664,7 +692,7 @@ func (c *checker) pass1() {
 	// after the shells because their prop/children types may name any of them.
 	var structShells []*ir.StructDef
 	var pendingComponents []*ast.ComponentDecl
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		switch s := stmt.(type) {
 		case *ast.StructDef:
 			structShells = append(structShells, c.registerStructShell(s))
@@ -683,7 +711,7 @@ func (c *checker) pass1() {
 		c.resolveStructBody(sd)
 	}
 
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		switch s := stmt.(type) {
 		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
 			continue // already registered above
@@ -823,23 +851,23 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
 		} else if len(docs) > 0 {
-			merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-			for _, d := range docs {
-				pkg, diags := Check(d, &Config{
-					FS:         subFS,
-					Dir:        c.cfg.Dir,
-					Resolver:   c.cfg.Resolver,
-					Languages:  c.cfg.Languages,
-					Platforms:  c.cfg.Platforms,
-					Replaces:   c.replaces,
-					Targets:    c.targets,
-					LibSources: c.cfg.LibSources,
-					libs:       c.libs,
-				})
-				c.diags = append(c.diags, diags...)
-				c.mergePkgInto(merged, pkg)
-			}
-			irImport.Pkg = merged
+			// One package, however many files it arrived as -- the same rule
+			// a directory import follows.
+			pkg, diags := CheckPackage(docs, &Config{
+				FS:         subFS,
+				Dir:        c.cfg.Dir,
+				Resolver:   c.cfg.Resolver,
+				Languages:  c.cfg.Languages,
+				Platforms:  c.cfg.Platforms,
+				Replaces:   c.replaces,
+				Targets:    c.targets,
+				LibSources: c.cfg.LibSources,
+				libs:       c.libs,
+			})
+			c.diags = append(c.diags, diags...)
+			exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
+			c.mergePkgInto(exported, pkg)
+			irImport.Pkg = exported
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
 			if err != nil {
@@ -881,23 +909,30 @@ func (c *checker) registerImport(imp *ast.Import) {
 				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
 			if len(docs) > 0 {
-				merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-				for _, d := range docs {
-					pkg, diags := Check(d, &Config{
-						FS:         c.cfg.FS,
-						Dir:        c.cfg.Dir,
-						Resolver:   c.cfg.Resolver,
-						Languages:  c.cfg.Languages,
-						Platforms:  c.cfg.Platforms,
-						Replaces:   c.replaces,
-						Targets:    c.targets,
-						LibSources: c.cfg.LibSources,
-						libs:       c.libs,
-					})
-					c.diags = append(c.diags, diags...)
-					c.mergePkgInto(merged, pkg)
-				}
-				irImport.Pkg = merged
+				// The package's files together, not one at a time: a
+				// declaration in one may be named by an annotation in another,
+				// and checking them separately left each without its siblings
+				// in scope.
+				pkg, diags := CheckPackage(docs, &Config{
+					FS:         c.cfg.FS,
+					Dir:        c.cfg.Dir,
+					Resolver:   c.cfg.Resolver,
+					Languages:  c.cfg.Languages,
+					Platforms:  c.cfg.Platforms,
+					Replaces:   c.replaces,
+					Targets:    c.targets,
+					LibSources: c.cfg.LibSources,
+					libs:       c.libs,
+				})
+				c.diags = append(c.diags, diags...)
+				// mergePkgInto builds the view an importer sees: the package's
+				// own declarations, and not the names its own dot imports
+				// lifted into its scope. A package does not re-export what it
+				// imported, so the checked package's root scope is not that
+				// view.
+				exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
+				c.mergePkgInto(exported, pkg)
+				irImport.Pkg = exported
 			}
 		}
 	}

@@ -908,7 +908,7 @@ func (c *checker) targetPackages() []string {
 	// it does not -- pass1 has not built its map yet, and this is the same
 	// scan it will do.
 	replaces := map[string]string{}
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		if imp, ok := stmt.(*ast.Import); ok && imp.Replace != "" {
 			if _, dup := replaces[imp.Path]; !dup {
 				replaces[imp.Path] = imp.Replace
@@ -917,7 +917,7 @@ func (c *checker) targetPackages() []string {
 	}
 	maps.Copy(replaces, c.cfg.Replaces)
 
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		switch s := stmt.(type) {
 		case *ast.Import:
 			target := s.Path
@@ -965,7 +965,7 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 		return c.cfg.Targets
 	}
 	var declared []ir.StaticTarget
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		if s, ok := stmt.(*ast.VisualNode); ok && visualNodeTarget(s) == "output" {
 			declared = append(declared, declaredOutputTargets(s)...)
 		}
@@ -1553,7 +1553,7 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
-	c := newChecker(&ast.Document{}, cfg)
+	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
