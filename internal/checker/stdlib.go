@@ -405,6 +405,11 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedConstInits := c.pendingConstInits
 	c.pendingConstInits = nil
 	defer func() { c.pendingConstInits = savedConstInits }()
+	// pass1 builds the replace map from the documents it is given, so the
+	// enclosing package's is put back: a library package loads part-way
+	// through it, and its own `=>` redirects are not the program's.
+	savedReplaces := c.replaces
+	defer func() { c.replaces = savedReplaces }()
 	pkg := c.loadStdlibPackage(name)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
@@ -488,121 +493,46 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	docs := c.libDocs(pkgName)
 	defer c.setMarkScope(docs)()
 
-	var (
-		imports    []*ast.Import
-		units      []*ast.UnitDef
-		structs    []*ast.StructDef
-		enums      []*ast.EnumDef
-		consts     []*ast.ConstDecl
-		funcs      []*ast.FuncDef
-		components []*ast.ComponentDecl
-		contexts   []*ast.CallStmt
-	)
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			switch s := stmt.(type) {
-			case *ast.Import:
-				imports = append(imports, s)
-			case *ast.UnitDef:
-				units = append(units, s)
-			case *ast.StructDef:
-				structs = append(structs, s)
-			case *ast.EnumDef:
-				enums = append(enums, s)
-			case *ast.ConstDecl:
-				consts = append(consts, s)
-			case *ast.FuncDef:
-				funcs = append(funcs, s)
-			case *ast.ComponentDecl:
-				components = append(components, s)
-			case *ast.CallStmt:
-				if c.isContextDeclCallStmt(s) {
-					contexts = append(contexts, s)
-				}
-			}
-		}
-	}
-
-	for _, s := range imports {
-		c.registerImport(s)
-	}
-	for _, s := range units {
-		c.registerUnit(s)
-	}
-	for _, s := range enums {
-		c.registerEnum(s)
-	}
-	// Structs may reference any type — including other structs — so register
-	// names as empty stubs first, then resolve fields in a second pass.
-	structDefs := make([]*ir.StructDef, len(structs))
-	for i, s := range structs {
-		structDefs[i] = c.registerStructShell(s)
-	}
-	for _, sd := range structDefs {
-		c.resolveStructBody(sd)
-	}
-	// Every type name in the package is in scope by now, which is exactly the
-	// condition a field default needs.
+	// The same pass1 a program's package gets. Registration order -- every
+	// type name before any field that could refer to one, components before
+	// struct bodies, const initialisers last -- is a property of a package and
+	// not of the tier it came from, and this loader used to state it a second
+	// time in a different order.
+	savedDocs := c.docs
+	c.docs = docs
+	defer func() { c.docs = savedDocs }()
+	c.pass1()
+	// A field default is a value expression, so it waits until every name it
+	// could refer to is registered. pass2 does this for a program; a library
+	// package does not get one, so it happens here.
 	c.checkStructFieldDefaults()
-	c.assertOptionsMarked(pkgName, structDefs)
+	c.assertOptionsMarked(pkgName, stdlibPkg.Structs)
+
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
 	// this: a marked declaration is the program's own, and the Go emitter
 	// deliberately ignores a marked name for that reason.
-	for _, sd := range structDefs {
+	for _, sd := range stdlibPkg.Structs {
 		if sd.Foreign.Name == "" && sd.Name == "PluralKey" {
 			sd.Foreign.Name = "i18n.PluralKey"
 		}
 	}
-	for _, s := range consts {
-		c.registerConstShells(s)
-	}
-	// Phase 1: register stdlib func signatures (no body checking yet) so
-	// later phases — context default expressions, context-reading wrapper
-	// bodies — can resolve names against fully-populated symbol tables.
+
+	// Library funcs are not body-checked by pass2, which walks a program's own
+	// declarations, so their bodies are checked below. An expression body
+	// (`=> expr`) is lowered into ir.Block, and a block body is lowered too so
+	// the optimizer can fold through it; a bodyless signature has nothing to
+	// check.
 	type stdlibFuncBody struct {
 		ast *ast.FuncDef
 		fn  *ir.Func
 	}
-	// The i18n and html namespaces describe std's own declarations, so they
-	// belong to that package only. Declaring them from the builtin pass as
-	// well puts an empty `html` namespace in the ambient scope, which shadows
-	// the real one; and building them while any other package loads would
-	// re-enter the package PluralKey lives in.
-	//
-	// They are declared before the funcs whose receiver names them, so that
-	// `func i18n.tr(...)` finds a declaration to be a member of. Their
-	// packages are built from those same funcs, so the Pkg is filled in below
-	// once they exist.
-
 	var pendingBodies []stdlibFuncBody
-	for _, s := range funcs {
-		fn := c.registerFunc(s)
-		// Defer body check: expression-body funcs (=> expr) are lowered into
-		// ir.Block. Block-body stdlib funcs are also lowered for constant-folding
-		// support (e.g., color.lighten, color.darken). Bodyless signatures
-		// (e.g., `func i18n.exactly(n int) PluralKey {}`) are unaffected.
-		if fn != nil && (s.Body != nil || s.Block.IsDefined()) {
-			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: s, fn: fn})
+	for _, fn := range stdlibPkg.Funcs {
+		if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) {
+			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: fn.AST, fn: fn})
 		}
 	}
-	for _, s := range components {
-		c.registerComponent(s)
-	}
-
-	// Register stdlib context declarations last — after the "i18n" namespace is
-	// in scope — so that default-value expressions like `i18n.defaultLocale()`
-	// resolve correctly. Stdlib contexts are declared into the stdlib scope and
-	// their *ir.Context pointers are appended to c.pkg.Contexts so the
-	// interpreter and codegen discover them alongside user-declared contexts.
-	for _, s := range contexts {
-		c.registerRootContextDecl(s)
-	}
-
-	// Const initialisers are checked once every name they could refer to is
-	// registered, which is what lets one const name another declared further
-	// down. pass1 defers them to its own end for the same reason.
-	c.checkPendingConstInits()
 
 	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
 	// that bodies can read freshly-registered context decls (e.g. the
