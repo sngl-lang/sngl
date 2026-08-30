@@ -133,26 +133,6 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
 		return b.Type
 	}
-	switch t.Name {
-	case "color", "date", "time", "datetime":
-		// These are uniformly carried as TypeStructs backed by their stdlib
-		// StructDefs. Look up via the scope chain.
-		if sym, ok := c.scope.Lookup(t.Name); ok {
-			if typ := sym.SymType(); typ != nil {
-				return typ
-			}
-		}
-		if c.inLibSource() {
-			// Library source naming one of these before the declaration is
-			// registered: the stdlib is mid-bootstrap and dyn is the only
-			// answer available.
-			return TypDyn
-		}
-		// In user source a miss is a missing import, not a bootstrap gap --
-		// `time` is declared by sngl:time and is not ambient. Falling through
-		// reports that; returning dyn here silently typed the declaration as
-		// dyn and let the program build.
-	}
 
 	// Generic built-in constructors resolve through scope: a #[builtin]-marked
 	// StructDef (lib/types.sngl) carries the constructor id, and the compiler
