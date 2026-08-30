@@ -1,4 +1,4 @@
-# A pure js:// function returning a TS enum member folds to that member.
+# A pure js: function returning a TS enum member folds to that member.
 #
 # At runtime the member is erased to its value — 1 for a numeric enum, "warn"
 # for a string one — so the encoder writes a bare number or string with nothing
@@ -39,8 +39,8 @@ grep 'code = -1' out/index.html
 ! grep 'code = 1' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const c = lib.pickColor()
 const l = lib.pickLevel()

@@ -11,8 +11,8 @@ grep 'async function outer' out/index.html
 grep 'await fetchHello' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:ui"
+import api "js:./api"
 
 func outer() {
     var f = func() { api.fetchHello("x") }

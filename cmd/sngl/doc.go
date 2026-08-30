@@ -152,7 +152,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 }
 
 // printOrigin says which package a bare name resolved to, and how to reach
-// it. Only sngl://builtin needs no import, so for everything else the name
+// it. Only sngl:builtin needs no import, so for everything else the name
 // alone is not enough to write the program.
 func printOrigin(o lookup.LibraryOrigin) {
 	if imp := o.ImportLine(); imp != "" {

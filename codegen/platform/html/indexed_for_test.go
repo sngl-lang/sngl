@@ -13,7 +13,7 @@ import (
 // and `x` as the element, but unrolling bound `i`=element and `x`=index.
 func TestIndexedForBindsIndexAndElement(t *testing.T) {
 	src := `
-import . "sngl://std"
+import . "sngl:ui"
 output { none { html() } }
 component main {
     for i, x = ["A", "B", "C"] {
@@ -29,7 +29,7 @@ component main {
 	}
 	// Single-var form must remain element-bound.
 	out2 := generateMainPage(t, `
-import . "sngl://std"
+import . "sngl:ui"
 output { none { html() } }
 component main { for x = ["P", "Q"] { text(value=x) } }
 `)
@@ -41,7 +41,7 @@ component main { for x = ["P", "Q"] { text(value=x) } }
 	// (the form is syntactic, not usage-based: an unreferenced value var must
 	// not collapse `for i, x` into the single-var element binding).
 	out3 := generateMainPage(t, `
-import . "sngl://std"
+import . "sngl:ui"
 output { none { html() } }
 component main { for i, x = ["A", "B"] { text(value="n" + string(i)) } }
 `)

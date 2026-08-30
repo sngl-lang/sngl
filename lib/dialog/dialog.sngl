@@ -1,4 +1,25 @@
-import . "sngl://internal/marks"
+// Host-native modal surfaces: the notifications and file choosers an
+// application asks the platform for rather than draws itself.
+//
+// These are not components. A component is placed in a tree and rendered;
+// `Alert.confirm` and `File.pick` are calls that hand control to the host
+// and return what the user chose, which is why they live outside `sngl:ui`.
+
+import . "sngl:internal/marks"
+
+// Receiver type for transient user notifications. Access methods
+// via `Alert.toast(...)`, `Alert.info(...)`, `Alert.warn(...)`,
+// `Alert.error(...)`, and `Alert.confirm(...)`. Each call routes
+// to the platform's native notification mechanism (toast, snackbar,
+// dialog) with an appropriate severity.
+struct Alert {}
+
+// Receiver type for file-system interactions. Access methods via
+// `File.pick()` to prompt for a single file and `File.pickFolder()`
+// to prompt for a directory. Both return the selected path or
+// empty string on cancellation. Availability and dialog style are
+// platform-defined.
+struct File {}
 
 // --- Alert ---
 
@@ -45,14 +66,3 @@ func File.pick() string { return "" }
 // empty string if cancelled. Same platform caveats as `File.pick`.
 #[intrinsic("File.pickFolder", readonly)]
 func File.pickFolder() string { return "" }
-
-// --- error ---
-
-// Raises a runtime error. The error propagates to the nearest
-// enclosing `errorBoundary` ancestor, whose `@error` handler
-// receives an `ErrorEvent{message, kind}`. Without a boundary the
-// error terminates the containing evaluation with a platform-default
-// handler. `kind` lets handlers dispatch programmatically (e.g.
-// "network", "validation", "internal").
-#[intrinsic("error.raise")]
-func error.raise(message string, kind string) {}

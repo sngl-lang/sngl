@@ -12,7 +12,9 @@ stderr 'html.backend'
 stderr 'not yet implemented'
 
 -- backend_const.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import "sngl:platform/html"
+import . "sngl:app"
 
 var v int = html.backend(42)
 

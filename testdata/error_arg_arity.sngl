@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 func add(a int, b int) => a + b
 

@@ -34,7 +34,7 @@ func GetItems() []Item {
 
 // Boom always fails at compile-time evaluation: it panics, so the
 // gen-and-run subprocess exits non-zero. Used to test that a failed
-// go:// import evaluation aborts the build on the html platform.
+// go: import evaluation aborts the build on the html platform.
 //
 //sngl:pure
 func Boom() string { panic("boom") }
@@ -111,7 +111,7 @@ func GetTally() Tally { return Tally{Name: "t", Value: 3} }
 
 // Stamp is embedded in Record. The encoder writes an embedded field under its
 // own Go name rather than promoting its fields, because that is the shape the
-// go:// importer declares.
+// go: importer declares.
 type Stamp struct {
 	At  string
 	Seq int

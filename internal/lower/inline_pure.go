@@ -383,7 +383,7 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
-// package's sngl://platforms/… imports.
+// package's sngl:platform/… imports.
 func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 	// An intrinsic is the primitive the wrappers lower *to* — a raw element,
 	// a declared native widget — not a wrapper over one. It has no body to
@@ -393,7 +393,7 @@ func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 		return false
 	}
 	for _, imp := range pkg.Imports {
-		if !strings.HasPrefix(imp.Path, "sngl://platforms/") {
+		if !strings.HasPrefix(imp.Path, "sngl:platform/") {
 			continue
 		}
 		if imp.Pkg == nil {

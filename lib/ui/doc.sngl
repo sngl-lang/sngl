@@ -1,0 +1,18 @@
+// The user interface: the components most applications are built from, and
+// the vocabulary they share.
+//
+// What is here is the portable core -- a `button` means the same thing on
+// the web, on a phone, in a desktop toolkit and in a terminal, and a
+// platform that renders it differently still renders the same declaration.
+// Specialised surfaces live in packages under this one, so that a program
+// pays for a drawing canvas or a document viewer only by importing it:
+//
+//	sngl:ui/draw    a canvas and the 2D shapes it hosts
+//
+// `Style`, the style enums and the event payloads sit here rather than in a
+// package of their own because every component in every one of those
+// packages refers to them; they are the vocabulary, not a separate concern.
+//
+// Nothing here is in scope until it is imported. `import . "sngl:ui"` writes
+// its declarations unqualified; `import <alias> "sngl:ui"` qualifies them,
+// and is also how a platform overrides a component (`component <alias>.vbox`).

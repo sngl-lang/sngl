@@ -5,8 +5,9 @@
 //
 // Widening a number is lossless and stays implicit, and a numeric literal is
 // untyped so it takes the type it is assigned to.
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
 
 component main {
     var n int = 3

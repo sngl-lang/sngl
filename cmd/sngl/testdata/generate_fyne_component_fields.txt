@@ -23,7 +23,8 @@ grep 'm\.current\.Status' out/model.go
 grep 'm\.current\.Assignee' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { go { fyne } }
 

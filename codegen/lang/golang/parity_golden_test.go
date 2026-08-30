@@ -38,7 +38,7 @@ import (
 //     Output diffed against <name>.golden.
 //
 //   - route mode: the testdata/parity/route_*/ directory (an app.sngl plus a
-//     go.mod and a go:// native package) is compiled through the html
+//     go.mod and a go: native package) is compiled through the html
 //     Generator with --lang go, and the emitted server.go is diffed against
 //     route_<name>.golden. server.go's POST action handler is lowered by the
 //     legacy ContextVar path in http.go.

@@ -3,7 +3,7 @@
 // projections disagreed about a provider's children until they became one
 // walk; the optimizer's inliner is what reaches this today.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 context #theme("light")
 

@@ -81,7 +81,7 @@ func newCapturingResolver(dir string) *capturingResolver {
 
 func (r *capturingResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
 	r.mu.Lock()
-	key := scheme + "://" + uri
+	key := scheme + ":" + uri
 	if !r.seen[key] {
 		r.seen[key] = true
 		r.schema = append(r.schema, schemeRef{scheme: scheme, uri: uri})

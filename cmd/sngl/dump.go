@@ -89,7 +89,7 @@ func dumpParsed(args []string, inp dumpInput) (*ast.Document, string, error) {
 }
 
 // A library package is handed back as the checker already built it: it loads
-// under the lib-source rules that permit its own sngl://internal/ imports,
+// under the lib-source rules that permit its own sngl:internal/ imports,
 // which a fresh check of the same source would reject.
 func dumpChecked(cmd *cobra.Command, args []string, inp dumpInput) (*ir.Package, string, error) {
 	if inp == dumpInputSNGL && len(args) > 0 {

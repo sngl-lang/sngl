@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // Exercises multi-base-unit struct arithmetic in test bodies. `measurement`
 // has multiple base components (px, em, vw, vh, pct — rem converts to em), so

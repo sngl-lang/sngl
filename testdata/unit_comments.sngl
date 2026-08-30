@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // A unit body holds comments the way a struct's and an enum's do, so one
 // written between the braces stays where it was written.

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 const a = 1 + 2
 const b = 1.0 + 2

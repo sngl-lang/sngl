@@ -1,6 +1,6 @@
 # A predeclared PluralKey constant is recognized by the select's type, not by
 # the operand's spelling. Keying off the name "i18n" read the constant only
-# when the import was unaliased; under `import t "sngl://i18n"` the JS backend
+# when the import was unaliased; under `import t "sngl:i18n"` the JS backend
 # emitted the alias as a bare identifier, `{ [t.one]: ... }`, which is a
 # ReferenceError at runtime.
 
@@ -14,16 +14,16 @@ sngl generate --platform html --lang none -o outplain plain.sngl
 grep '\["one"\]: "one item"' outplain/index.html
 
 -- alias.sngl --
-import . "sngl://std"
-import t "sngl://i18n"
+import . "sngl:ui"
+import t "sngl:i18n"
 
 component main {
     var n int = 2
     text(value=t.plural(n, {t.one = "one item", t.other = "many items"}))
 }
 -- plain.sngl --
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:ui"
+import "sngl:i18n"
 
 component main {
     var n int = 2

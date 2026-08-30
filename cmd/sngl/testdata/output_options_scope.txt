@@ -1,4 +1,4 @@
-# The options schema is assembled per target: sngl://std's Options are global,
+# The options schema is assembled per target: sngl:app's Options are global,
 # while a platform's or language's own Options are in scope only for a build
 # selecting it. Guards the tier split — every platforms/ and languages/ package
 # declares an `Options`, so a merged scan of the library would hand one of
@@ -13,7 +13,7 @@ stderr 'unknown option "stylesheet"'
 stderr 'unknown option "goVersion"'
 
 -- ok.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 output {
     none {
@@ -29,7 +29,7 @@ component main {
 }
 
 -- platform_leak.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 output {
     go {
@@ -42,7 +42,7 @@ component main {
 }
 
 -- lang_leak.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 output {
     none {

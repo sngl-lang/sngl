@@ -25,7 +25,7 @@ func RegisterLang(l LangTranslator) {
 		panic("codegen: duplicate lang registration: " + name)
 	}
 	langs[name] = l
-	checker.RegisterTargetPackage("languages/"+name, l)
+	checker.RegisterTargetPackage("language/"+name, l)
 }
 
 // RegisterPlatform registers a platform generator. Panics on duplicate.
@@ -37,7 +37,7 @@ func RegisterPlatform(p PlatformGenerator) {
 		panic("codegen: duplicate platform registration: " + name)
 	}
 	platforms[name] = p
-	checker.RegisterTargetPackage("platforms/"+name, p)
+	checker.RegisterTargetPackage("platform/"+name, p)
 }
 
 // CollectPlatforms returns all registered platforms as checker.Platform slices,

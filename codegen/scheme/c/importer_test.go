@@ -145,7 +145,7 @@ struct Point { int x; int y; };
 	}
 
 	imp := &CImporter{}
-	ni, err := imp.Resolve("c://"+headerPath, dir)
+	ni, err := imp.Resolve(headerPath, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ struct Point { int x; int y; };
 
 func TestCImporter_PkgconfigMissing(t *testing.T) {
 	imp := &CImporter{}
-	_, err := imp.Resolve("c://pkg:nonexistent-lib-xyz", ".")
+	_, err := imp.Resolve("pkg:nonexistent-lib-xyz", ".")
 	if err == nil {
 		t.Fatal("expected error for missing pkg-config lib, got nil")
 	}

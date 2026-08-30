@@ -17,9 +17,9 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "kind"}:                markTreeKind,
-	{"platforms", "options"}:        markOptions,
-	{"platforms", "wildcard"}:       markWildcard,
-	{"std", "foreign"}:              markForeign,
+	{"macro", "options"}:            markOptions,
+	{"macro", "wildcard"}:           markWildcard,
+	{"macro", "foreign"}:            markForeign,
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
@@ -252,7 +252,7 @@ func markTreeKind(m *mark) error {
 	return nil
 }
 
-// markWildcard implements #[platforms.wildcard("pattern")], which says what a
+// markWildcard implements #[macro.wildcard("pattern")], which says what a
 // name nobody declared resolves to: a component reached by any matching name
 // in its package's namespace, or a prop bound by any matching prop name.
 //

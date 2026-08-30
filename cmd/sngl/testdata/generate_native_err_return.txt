@@ -1,6 +1,6 @@
 # Regression test for native-return statement-level unwrap.
 #
-# When a `go://` import declares a func with shape `(T, error)`, the importer
+# When a `go:` import declares a func with shape `(T, error)`, the importer
 # strips the trailing error and sets HasErrorReturn=true. The eval path that
 # powers Fyne click handlers and reactive expressions must wrap such calls so
 # the value can be used as a single Go expression.
@@ -25,11 +25,12 @@ package api
 
 func Fetch(q string) ([]string, error) { return []string{q}, nil }
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { go { fyne } }
 
-import "go://example.com/native-err/api"
+import "go:example.com/native-err/api"
 
 component main {
     var rows list<string> = []

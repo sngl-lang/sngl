@@ -2,8 +2,8 @@
 // argument list that stops short falls back to them, so this is a general
 // feature rather than something one generic in the tree package special-cases.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 struct Pair<A, B = string> {
     left A

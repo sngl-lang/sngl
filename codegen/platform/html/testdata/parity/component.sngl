@@ -1,7 +1,7 @@
 // component.sngl — exercises parent component instantiating a child component
 // and calling a user-defined method.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 component Badge(label = "", count int = 0) {
     hbox {

@@ -5,7 +5,7 @@
 // It takes no invocation parameters, because the caller fills it with ordinary
 // children and there is no population site to bind anything at.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 component card(caption string, slot _) {
     vbox {

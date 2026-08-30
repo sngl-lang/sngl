@@ -8,7 +8,7 @@
 // substitutes the caller's variable and the write lands anyway) and only shows
 // up where the write-back has to come from a platform event.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 component OneWay(count int) {
     text(value=string(count))

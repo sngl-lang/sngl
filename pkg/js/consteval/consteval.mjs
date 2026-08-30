@@ -1,5 +1,5 @@
 // consteval is the JavaScript runtime for SNGL's compile-time evaluation of
-// pure js:// functions. The compiler generates a program that calls each
+// pure js: functions. The compiler generates a program that calls each
 // pending function and hands the result to emit; this module encodes the value
 // as SNGL source and writes the batch to the file named by SNGL_CONSTEVAL_OUT,
 // which the compiler then parses.
@@ -169,7 +169,7 @@ function customEncode(v) {
 }
 
 // encodeNumber writes a JS number as a SNGL float literal. Every JS number is
-// a double and the js:// importer types `number` as float, so an integral
+// a double and the js: importer types `number` as float, so an integral
 // value still gets a decimal point rather than crossing as an int.
 function encodeNumber(v) {
   if (Number.isNaN(v)) throw new Error("consteval: NaN has no SNGL form");
@@ -253,7 +253,7 @@ function encodeMap(v, depth) {
 // expected type is what says what shape the value must have.
 //
 // Unlike the Go runtime it writes a bare name, never the
-// `import("scheme://path").Name` a checker could resolve. The js:// importer
+// `import("scheme://path").Name` a checker could resolve. The js: importer
 // keys a declaration by module and name, and JavaScript reifies no module
 // identity: a value carries no link to the module declaring its type, and a
 // TypeScript interface has no runtime constructor at all.

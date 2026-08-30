@@ -305,7 +305,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 const i18nNamespace = "i18n"
 
 // i18nImportPath is the package $"..." lowers into a call on.
-const i18nImportPath = "sngl://i18n"
+const i18nImportPath = "sngl:i18n"
 
 // i18nReceiver names the namespace the call was reached through, or nil when
 // a dot import put the function in scope unqualified.

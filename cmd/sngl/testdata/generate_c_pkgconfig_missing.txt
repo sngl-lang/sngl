@@ -1,4 +1,4 @@
-# Test that c://pkg: imports with a nonexistent library fail the build.
+# Test that c:pkg: imports with a nonexistent library fail the build.
 # The error message mentioning pkg-config is surfaced via the returned error.
 
 ! sngl generate --platform=fyne --lang=go --out=out .
@@ -11,8 +11,9 @@ module example.com/ctest
 go 1.21
 
 -- main.sngl --
-import . "sngl://std"
-import lib "c://pkg:nonexistent-lib-xyz-9999"
+import . "sngl:ui"
+import . "sngl:app"
+import lib "c:pkg:nonexistent-lib-xyz-9999"
 
 component main {
   window #app {

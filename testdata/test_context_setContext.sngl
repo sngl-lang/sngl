@@ -5,8 +5,9 @@
 // recomputes against the active locale — `var` is initial-value only,
 // not derived. See sngl_var_vs_func_semantics in memory.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:ui"
+import . "sngl:test"
+import "sngl:i18n"
 
 component SetCtxGreeting {
     func label() => $"Hello"

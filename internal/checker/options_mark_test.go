@@ -29,7 +29,7 @@ func (optStubLang) Resolve(string) ir.Symbol   { return nil }
 // The marked struct is named Knobs and the decoy is named Options, so a lookup
 // that still matched the name would find exactly the wrong one.
 const optStubPlatformSource = `
-import . "sngl://platforms"
+import . "sngl:macro"
 
 #[options]
 struct Knobs {
@@ -42,7 +42,7 @@ struct Options {
 `
 
 const optStubLangSource = `
-import . "sngl://platforms"
+import . "sngl:macro"
 
 #[options]
 struct Dials {
@@ -66,8 +66,8 @@ func optStubConfig(t *testing.T) *checker.Config {
 		Platforms: []ir.Platform{optStubPlatform{}},
 		Languages: []ir.Language{optStubLang{}},
 		LibSources: map[string][]*ast.Document{
-			"platforms/optstub": {pdoc},
-			"languages/optlang": {ldoc},
+			"platform/optstub": {pdoc},
+			"language/optlang": {ldoc},
 		},
 	}
 }

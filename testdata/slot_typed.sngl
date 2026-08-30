@@ -6,8 +6,8 @@
 // A slot bounded to exactly one has no spelling for being absent, so it must be
 // populated.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 component frame(slot body tr.one, slot badge option<tr.default>, slot rows) {
     vbox {

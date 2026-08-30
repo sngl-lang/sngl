@@ -1,10 +1,10 @@
 // Package sngltest checks that a Go type crosses into SNGL intact.
 //
-// The SNGL compiler evaluates pure go:// functions while it builds, and the
+// The SNGL compiler evaluates pure go: functions while it builds, and the
 // value crosses in two halves that must agree. One half encodes: the child
 // program writes the Go value as SNGL source with pkg/go/consteval, which
 // honors a MarshalSNGL method and any registered encoder. The other half maps:
-// the compiler asks the go:// importer which SNGL type the Go type is, and
+// the compiler asks the go: importer which SNGL type the Go type is, and
 // checks that source against it. Nothing in the compiler forces the halves to
 // agree, and a type that writes its own MarshalSNGL can put them out of step —
 // which surfaces only as a build that fails on a type the reader did not
@@ -22,7 +22,7 @@
 // # A struct now names its own type
 //
 // The encoder used to write a struct as `Item{...}` and now writes
-// `import("go://example.com/pkg").Item{...}`, so a golden test over the text
+// `import("go:example.com/pkg").Item{...}`, so a golden test over the text
 // Encode returns changes with the compiler. The name alone was not enough to
 // resolve a declaration for a value the declared type says nothing about — a
 // func returning []any — and the encoder is the only end that knows which type
@@ -49,8 +49,8 @@ type TB interface {
 }
 
 // CheckMarshal runs each value through the compiler's own path for a folded
-// go:// result: encode it with pkg/go/consteval, parse the source that
-// produced, and check that against the SNGL type the go:// importer gives T.
+// go: result: encode it with pkg/go/consteval, parse the source that
+// produced, and check that against the SNGL type the go: importer gives T.
 //
 // Each value is reported on its own — one that fails says nothing about the
 // next. With no values it checks only that T has a SNGL type, which is what
@@ -75,7 +75,7 @@ func CheckMarshal[T any](t TB, values ...T) {
 	}
 }
 
-// CheckType checks the mapping half alone: that the go:// importer gives T a
+// CheckType checks the mapping half alone: that the go: importer gives T a
 // SNGL type a program can use. It is CheckMarshal for a type whose values are
 // awkward to construct.
 func CheckType[T any](t TB) {
@@ -128,7 +128,7 @@ func (m *mapping) disagree(v any, src string, err error) string {
     checker says  %v
 
 The compiler encodes a value with the first and checks it against the second,
-so a go:// function returning this type can never fold. Change one half to
+so a go: function returning this type can never fold. Change one half to
 match the other:
 
 %s`,
@@ -160,6 +160,6 @@ func encoderName(m *mapping) string {
 // encoderNote points at the encode half for a failure that never got as far as
 // a type to compare against.
 func encoderNote(m *mapping) string {
-	return fmt.Sprintf("The encoder is %s; every value of %s has to have a SNGL form for a go:// call returning it to fold.",
+	return fmt.Sprintf("The encoder is %s; every value of %s has to have a SNGL form for a go: call returning it to fold.",
 		encoderName(m), m.goName())
 }

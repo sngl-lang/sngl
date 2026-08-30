@@ -6,7 +6,7 @@
 // name would instead read it as the wrapper and complain about the count, which
 // is what tells the two implementations apart.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 struct option<T> {
     v T

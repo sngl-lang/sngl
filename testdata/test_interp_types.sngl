@@ -1,4 +1,6 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:test"
 
 enum Status { active, inactive, pending }
 

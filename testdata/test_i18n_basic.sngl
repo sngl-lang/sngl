@@ -1,5 +1,6 @@
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:ui"
+import . "sngl:test"
+import "sngl:i18n"
 
 // Plain translatable string with no interpolation.
 component i18nBasic {

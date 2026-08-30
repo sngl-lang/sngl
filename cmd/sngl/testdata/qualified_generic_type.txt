@@ -30,7 +30,7 @@ struct Holder<T> {
     item T
 }
 -- main.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "box"
 
 component show(h b.Holder<int>) {
@@ -45,7 +45,7 @@ struct Holder<T> {
     item T
 }
 -- lit/main.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "box"
 
 component main {
@@ -57,7 +57,7 @@ struct Plain {
     n int
 }
 -- arity/main.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "box"
 
 component show(p b.Plain<int>) {

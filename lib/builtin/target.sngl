@@ -1,0 +1,35 @@
+// What this build targets. Both consts fold at build time, so a
+// branch the target does not take is removed rather than compiled.
+
+import . "sngl:internal/marks"
+
+// The identity of a build target: one platform, named. Its values are not
+// declared anywhere — the compiler synthesizes one const per registered
+// platform into that platform's own package, so `html.platform` is the html
+// target and there is no second way to name it.
+//
+// There is no literal, so a string is never mistaken for a platform. Compare
+// `PLATFORM` against one of these rather than against `"html"`.
+#[builtin("platform")]
+struct platform {}
+
+// The identity of a build target's output language, the `platform` type's
+// counterpart: `go.language`, `js.language`. Compare `LANGUAGE` against one.
+#[builtin("language")]
+struct language {}
+
+// The platform this build targets. Compare it against a platform's own
+// identity const — `PLATFORM == html.platform` — to gate code on the target;
+// the comparison folds at build time and the branch not taken is removed. The
+// compiler supplies the value.
+//
+// Its type is `platform`, not `string`: `PLATFORM == "html"` does not compile,
+// so a target name cannot be misspelled into a branch that is silently never
+// taken.
+#[builtin("targetPlatform")]
+const PLATFORM = ""
+
+// The language this build emits: `LANGUAGE == go.language`. Behaves like
+// PLATFORM in every respect.
+#[builtin("targetLanguage")]
+const LANGUAGE = ""

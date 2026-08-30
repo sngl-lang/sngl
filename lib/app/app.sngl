@@ -1,0 +1,54 @@
+// The application shell: the nodes that hold a program rather than draw it,
+// and the error channel that runs between them.
+//
+// `window` is the entry point and `errorBoundary` the catch. `error.raise`
+// is the throw those boundaries catch, which is why it sits here beside them
+// rather than with the widgets. The `timer` a program hangs periodic work off
+// is in `sngl:time`, with the `duration` that measures its interval.
+
+import . "sngl:internal/marks"
+import ui "sngl:ui"
+
+// Catches errors raised in children's event handlers and expressions.
+// When a descendant calls `error.raise` or throws during evaluation,
+// the boundary swallows the error and invokes `@error` with an
+// `ErrorEvent` carrying the message and kind. Without a surrounding
+// boundary, errors propagate to the platform's default handler.
+#[builtin("errorBoundary")]
+component errorBoundary(
+    @error ui.ErrorEvent,
+    slot _,
+) {}
+
+// A top-level window — the entry point of a UI. `href` is the route the
+// window is served at (URL template params like `{name}` bind as string
+// vars in scope for the body); `title` names it; `favicon` is its icon.
+// `@error` is the window's outermost error boundary.
+//
+// Reading `name.href` / `name.title` off a `window #name` declaration
+// lets links survive a window's path change without copying the path
+// string. The #[builtin("window")] mark is how the checker recognises a
+// window declaration — by tag, not by matching the name "window".
+#[builtin("window")]
+component window(
+    title string,
+    href string,
+    favicon string,
+    @error ui.ErrorEvent,
+    slot _,
+) {}
+
+// Receiver type for raising runtime errors caught by an
+// `errorBoundary` ancestor. Call `error.raise(message, kind)` to
+// throw; the nearest boundary's `@error` handler receives an
+// `ErrorEvent` with the message and kind.
+struct error {}
+
+// Raises a runtime error. The error propagates to the nearest
+// enclosing `errorBoundary` ancestor, whose `@error` handler
+// receives an `ErrorEvent{message, kind}`. Without a boundary the
+// error terminates the containing evaluation with a platform-default
+// handler. `kind` lets handlers dispatch programmatically (e.g.
+// "network", "validation", "internal").
+#[intrinsic("error.raise")]
+func error.raise(message string, kind string) {}

@@ -17,8 +17,8 @@ sngl check out.sngl
 stdout 'out.sngl: ok'
 
 -- slots.sngl --
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 struct Row {
     title string

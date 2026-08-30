@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 )
 
 // isExportedName reports whether name refers to an exported identifier
@@ -52,7 +53,7 @@ type Package struct {
 
 	// TreeKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
-	// it: an import of sngl://draw is neither necessary (a package may declare
+	// it: an import of sngl:ui/draw is neither necessary (a package may declare
 	// its own shapes) nor sufficient (inlining flattens a canvas out of the
 	// package that imported it), so the declarations are the only honest
 	// signal.
@@ -121,7 +122,7 @@ func (p *Package) IsMain() bool {
 // UsesTree reports whether a member of the tree that pkg declares as name
 // reaches this package. Matched on the declaring package as well as the name,
 // because a tree is its declaration: a program's own `struct shape` is not the
-// one sngl://draw paints.
+// one sngl:ui/draw paints.
 func (p *Package) usesTree(pkg, name string) bool {
 	if p == nil {
 		return false
@@ -150,12 +151,12 @@ func isTreeNamed(sd *StructDef, pkg, name string) bool {
 	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
 }
 
-// The drawing tree is sngl://draw's `shape`, and this is the only place the
+// The drawing tree is sngl:ui/draw's `shape`, and this is the only place the
 // compiler spells it. passCanvas emits that package's own primitives, so it is
 // the one tree there are rules about; a tree that carried its own would need
 // none of this.
 const (
-	drawPkg   = "sngl://draw"
+	drawPkg   = "sngl:ui/draw"
 	shapeTree = "shape"
 )
 
@@ -168,7 +169,7 @@ func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) 
 // Import records a resolved import.
 type Import struct {
 	AST     *ast.Import
-	Path    string        // local import path (e.g., "widgets", "go://net/http")
+	Path    string        // local import path (e.g., "widgets", "go:net/http")
 	Alias   string        // effective namespace name
 	Replace string        // replacement URL (RHS of =>), empty if not a replace
 	Pkg     *Package      // resolved SNGL package (nil for native)
@@ -178,7 +179,7 @@ type Import struct {
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
 
-// NativeImport holds declarations from a scheme import (go://, ts://, etc.).
+// NativeImport holds declarations from a scheme import (go:, ts://, etc.).
 type NativeImport struct {
 	ImportPath string
 	Structs    []*StructDef
@@ -218,8 +219,8 @@ func IndexNativeDecls(p *Package) NativeDecls {
 			if imp.Native == nil {
 				continue
 			}
-			scheme, _, ok := strings.Cut(imp.Path, "://")
-			if !ok {
+			scheme, _ := imports.ParseScheme(imp.Path)
+			if scheme == "" {
 				continue
 			}
 			for _, sd := range imp.Native.Structs {
@@ -268,7 +269,7 @@ type Foreign struct {
 // Func represents any function: top-level, type-attached method, or lambda.
 //
 // Foreign is set when the function originates from a scheme import (e.g.
-// "go://fmt"); codegen reads it to emit the correct import and call.
+// "go:fmt"); codegen reads it to emit the correct import and call.
 // HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
 // the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
@@ -621,8 +622,8 @@ type StructDef struct {
 	Fields     []*StructField
 	Foreign    `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package
-	// whose identity is global — today the embedded library's "sngl://std",
-	// "sngl://builtin", "sngl://draw". Empty for a program's own
+	// whose identity is global — today the embedded library's "sngl:ui",
+	// "sngl:builtin", "sngl:ui/draw". Empty for a program's own
 	// declarations, whose names are only meaningful relative to a build.
 	// See sameDecl: Pkg and Name are a named type's identity.
 	Pkg     string

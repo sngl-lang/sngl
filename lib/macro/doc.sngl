@@ -1,0 +1,8 @@
+// The marks a package writes to say what its declarations mean to the
+// compiler.
+//
+// The vocabulary is public, and deliberately not in the `internal/` tier: a
+// plugin living outside this repository writes the same marks its in-tree
+// siblings do. `#[foreign]` records what a declaration corresponds to
+// outside SNGL; `#[options]` names a target's build-option schema; and
+// `#[wildcard]` says what a name nobody declared resolves to.

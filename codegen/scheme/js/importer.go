@@ -1,13 +1,13 @@
-// Package js implements the `js://` import scheme. It resolves
+// Package js implements the `js:` import scheme. It resolves
 // JavaScript / TypeScript modules using typescript-go's module
 // resolver, served over an io/fs.FS so the same code path works for
 // the on-disk CLI build and the in-memory playground.
 //
 // Three URI shapes:
 //
-//	js://foo          — node_modules: foo/package.json#types|main
-//	js://./foo        — directory: ./foo/index.{ts,tsx,d.ts,js,mjs,cjs}
-//	js://./foo.json   — JSON literal: shape-infer the parsed object
+//	js:foo          — node_modules: foo/package.json#types|main
+//	js:./foo        — directory: ./foo/index.{ts,tsx,d.ts,js,mjs,cjs}
+//	js:./foo.json   — JSON literal: shape-infer the parsed object
 //
 // # Purity
 //
@@ -36,7 +36,7 @@ func init() {
 	codegen.RegisterScheme(&JSImporter{})
 }
 
-// JSImporter resolves js:// scheme imports.
+// JSImporter resolves js: scheme imports.
 type JSImporter struct{}
 
 // VirtualRoot is the synthetic absolute root used for typescript-go's
@@ -58,25 +58,25 @@ func (j *JSImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	return j.ResolveFS(uri, os.DirFS(dir), dir)
 }
 
-// ResolveFS resolves a js:// import against the provided io/fs.FS using
+// ResolveFS resolves a js: import against the provided io/fs.FS using
 // typescript-go's real module resolver. dir is the OS directory the FS
 // was rooted at (or "" for in-memory FS) and is plumbed through purely
 // for diagnostic messages — resolution itself only consults fsys.
 func (j *JSImporter) ResolveFS(uri string, fsys fs.FS, _ string) (*ir.NativeImport, error) {
-	spec := strings.TrimSpace(strings.TrimPrefix(uri, "js://"))
+	spec := strings.TrimSpace(uri)
 	if spec == "" {
-		return nil, fmt.Errorf("js scheme requires a module path (e.g. js://lodash or js://./foo)")
+		return nil, fmt.Errorf("js scheme requires a module path (e.g. js:lodash or js:./foo)")
 	}
 
 	containing := path.Join(VirtualRoot, "__sngl_entry__.ts")
 	abs, err := ResolveSpec(fsys, VirtualRoot, spec, containing)
 	if err != nil {
-		return nil, fmt.Errorf("resolving js://%s: %w", spec, err)
+		return nil, fmt.Errorf("resolving js:%s: %w", spec, err)
 	}
 
 	rel, ok := StripVirtRoot(abs, VirtualRoot)
 	if !ok {
-		return nil, fmt.Errorf("resolving js://%s: resolver returned out-of-root path %q", spec, abs)
+		return nil, fmt.Errorf("resolving js:%s: resolver returned out-of-root path %q", spec, abs)
 	}
 
 	if strings.HasSuffix(rel, ".json") {

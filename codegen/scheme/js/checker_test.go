@@ -30,7 +30,7 @@ func (r *jsResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, err
 	if scheme != "js" {
 		return nil, fmt.Errorf("unknown scheme %q", scheme)
 	}
-	return r.importer.Resolve(scheme+"://"+uri, r.dir)
+	return r.importer.Resolve(uri, r.dir)
 }
 
 func (r *jsResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
@@ -43,7 +43,7 @@ func TestCheckerAcceptsJSImport(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := `
-import lib "js://./simple"
+import lib "js:./simple"
 
 func wrap(a float, b float) => lib.add(a, b)
 `
@@ -85,7 +85,7 @@ func TestAsyncPropagatesThroughCall(t *testing.T) {
 	// top-level func declaration that is never referenced from a visual node is
 	// not a reactive context, so no error is expected here.
 	src := `
-import lib "js://./simple"
+import lib "js:./simple"
 
 func getTitle(url string) => lib.fetchTitle(url)
 `
@@ -121,7 +121,7 @@ func TestUnusableSymbolRejected(t *testing.T) {
 	if err := os.WriteFile(tsPath, []byte(`export function tup(): [string, number] { return ["x", 1]; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	imp, err := (&js.JSImporter{}).Resolve("js://./weird.ts", dir)
+	imp, err := (&js.JSImporter{}).Resolve("./weird.ts", dir)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

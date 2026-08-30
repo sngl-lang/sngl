@@ -1,8 +1,8 @@
 // Translation and locale-aware formatting.
 //
-// This package is imported like any other — `import "sngl://i18n"` — and a
+// This package is imported like any other — `import "sngl:i18n"` — and a
 // `$"..."` literal needs it in scope: the syntax lowers to a call to `tr`,
-// and nothing is ambient but sngl://builtin.
+// and nothing is ambient but sngl:builtin.
 //
 // The lowering of $"..." literals targets `tr`. Other entry points are
 // direct formatters callable from regular SNGL code.
@@ -12,7 +12,8 @@
 // NoContext sees the `locale` read and adds the hidden `__ctx_locale` param
 // and the call-site argument that fills it.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
+import clock "sngl:time"
 
 // --- Locale context ---
 
@@ -55,11 +56,11 @@ func numberFloat(n float, style string) => _numberFloat(locale, n, style)
 
 // Style: "short", "medium" (default), "long", "full".
 #[intrinsic("i18n.date", usable)]
-func date(d date, style string) => _date(locale, d, style)
+func date(d clock.date, style string) => _date(locale, d, style)
 #[intrinsic("i18n.time", usable)]
-func time(t time, style string) => _time(locale, t, style)
+func time(t clock.time, style string) => _time(locale, t, style)
 #[intrinsic("i18n.datetime", usable)]
-func datetime(dt datetime, dateStyle string, timeStyle string) => _dateTime(locale, dt, dateStyle, timeStyle)
+func datetime(dt clock.datetime, dateStyle string, timeStyle string) => _dateTime(locale, dt, dateStyle, timeStyle)
 
 // --- Direct selectors ---
 

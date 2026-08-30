@@ -1,9 +1,8 @@
-// A painted shape has nothing to raise an event from. The rule used to ride on
-// #[draw.shape], which is what conferred membership; membership is the return
-// position now, so the rule sits where that is read and holds for every member
-// rather than only for one that opted into a mark.
+// A painted shape has nothing to raise an event from. The rule used to ride
+// on a mark that conferred membership; membership is the return position
+// now, so the rule sits where that is read and holds for every member.
 
-import . "sngl://std"
-import "sngl://draw"
+import . "sngl:ui"
+import "sngl:ui/draw"
 
 component badShape(x float, @click ClickEvent) draw.shape {} // ERROR(check) "a shape supports no event declarations"

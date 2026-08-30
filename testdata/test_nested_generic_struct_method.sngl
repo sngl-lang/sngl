@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 struct box<T> {
     v T

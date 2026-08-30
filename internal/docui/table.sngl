@@ -1,5 +1,5 @@
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import "sngl:platform/html"
 
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.

@@ -102,7 +102,7 @@ stderr 'unknown field "nope" on struct Box'
 sngl check private_same_package.sngl
 stdout 'private_same_package.sngl: ok'
 
-# true, false and null are declarations in sngl://builtin, not names the parser
+# true, false and null are declarations in sngl:builtin, not names the parser
 # knows, so a declaration of your own shadows them like any other name. While
 # the parser recognised them they could not be shadowed at all.
 sngl check shadows_true.sngl
@@ -118,7 +118,7 @@ grep 'SHADOWED' platout/index.html
 ! grep 'TARGET' platout/index.html
 
 -- w/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Box {
     v int = 0
@@ -129,7 +129,7 @@ func Box._secret() => 42
 
 func Box.Shown() => 1
 -- other/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Box {
     other int = 0
@@ -139,7 +139,7 @@ struct color {
     tag string = "mine"
 }
 -- private_field.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import w "w"
 
 func f(b w.Box) => b._hidden
@@ -148,7 +148,7 @@ component main {
     text(value="x")
 }
 -- private_method.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import w "w"
 
 func f(b w.Box) => b._secret()
@@ -157,7 +157,7 @@ component main {
     text(value="x")
 }
 -- exported_ok.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import w "w"
 
 func f(b w.Box) => b.Shown()
@@ -168,7 +168,7 @@ component main {
     text(value="x")
 }
 -- own_package.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Local {
     _p int = 0
@@ -182,7 +182,7 @@ component main {
     text(value="x")
 }
 -- redeclared.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 func dup() => 1
 
@@ -192,7 +192,7 @@ component main {
     text(value="x")
 }
 -- dup_alias.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import x "w"
 import x "other"
 
@@ -200,7 +200,7 @@ component main {
     text(value="x")
 }
 -- decl_vs_alias.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import helper "w"
 
 component helper() {
@@ -211,7 +211,7 @@ component main {
     text(value="y")
 }
 -- shadows_dot.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component text(value string) {
     button(text=value)
@@ -221,7 +221,7 @@ component main {
     text(value="mine")
 }
 -- shadows_builtin.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import . "mycolor"
 
 func f() => color{tag="x"}.tag
@@ -230,7 +230,7 @@ component main {
     text(value=f())
 }
 -- shadowers/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct int {
     n string = ""
@@ -238,7 +238,7 @@ struct int {
 
 enum option { first, second }
 -- shadows_builtin_scalar.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import . "shadowers"
 
 func f() => int{n = "mine"}.n
@@ -247,7 +247,7 @@ component main {
     text(value=f())
 }
 -- shadows_builtin_generic.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import . "shadowers"
 
 var picked option = first
@@ -256,23 +256,23 @@ component main {
     text(value="x")
 }
 -- pa/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 func Greet() => "from A"
 -- pb/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 func Greet() => "from B"
 -- pc/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 const LIMIT = 1
 -- pd/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 const LIMIT = 2
 -- dup_dot_func.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import . "pa"
 import . "pb"
 
@@ -280,7 +280,7 @@ component main {
     text(value=Greet())
 }
 -- dup_dot_const.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import . "pc"
 import . "pd"
 
@@ -288,7 +288,7 @@ component main {
     text(value="{LIMIT}")
 }
 -- dup_const.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 const K = 1
 const K = 2
@@ -297,7 +297,7 @@ component main {
     text(value="x")
 }
 -- dup_component_var.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var y int = 1
@@ -305,7 +305,7 @@ component main {
     text(value="x")
 }
 -- dup_loop_var.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var m map<string, string> = {}
@@ -314,25 +314,25 @@ component main {
     }
 }
 -- restate_import.sngl --
-import . "sngl://std"
-import "sngl://draw"
-import draw "sngl://draw"
+import . "sngl:ui"
+import "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component main {
     text(value="x")
 }
 
 -- ambiguous_alias.sngl --
-import . "sngl://std"
-import x "sngl://draw"
-import x "sngl://i18n"
+import . "sngl:ui"
+import x "sngl:ui/draw"
+import x "sngl:i18n"
 
 component main {
     text(value="x")
 }
 
 -- boxes/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Box {
     v int
@@ -342,32 +342,32 @@ struct Box {
 
 enum Mode { A, _B }
 -- private_literal.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Box{v = 1, _hidden = 2}.v
 -- private_enum_member.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Mode._B
 -- private_enum_bare.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "boxes"
 
 var m b.Mode = _B
 -- private_field_call.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "boxes"
 
 func f(x b.Box) => x._run()
 -- unknown_field.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Box{nope = 1}.v
 -- private_same_package.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Box {
     v int
@@ -386,7 +386,7 @@ component main {
     text(value="x")
 }
 -- shadows_true.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 const true = 0 != 0
 
@@ -394,7 +394,7 @@ component main {
     text(value="{true}")
 }
 -- shadows_null.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 const null = "nothing"
 
@@ -402,7 +402,8 @@ component main {
     text(value=null)
 }
 -- shadow_platform.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { none { html } }
 

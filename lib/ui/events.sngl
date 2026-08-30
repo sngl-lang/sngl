@@ -1,0 +1,80 @@
+// Payload emitted by `@click` when a component is activated. Fires on
+// tap, mouse click, Enter-on-focused-button, or the platform's
+// activation gesture. Currently carries no fields — consult the
+// component's own props (e.g. `checked`, `value`) for state.
+struct ClickEvent {}
+
+// Payload emitted by `@longPress` after a sustained press on pointer
+// or touch platforms. The activation duration is platform-defined
+// (typically ~500ms).
+struct LongPressEvent {}
+
+// Payload emitted by `@input` on every keystroke. `value` carries
+// the full current editor text after the keystroke, which is the
+// easiest way to drive state updates from uncontrolled inputs.
+struct InputEvent {
+    value string
+}
+
+// Payload emitted by `@change` when a control commits a new value
+// — typically on blur, Enter, or an explicit selection change.
+// `value` is the committed value as a string.
+struct ChangeEvent {
+    value string
+}
+
+// Payload emitted by `@focus` and `@blur` as focus moves in and out
+// of a control.
+struct FocusEvent {}
+
+// Payload emitted by `@submit` on form-style input submission,
+// typically triggered by pressing Enter inside a single-line input.
+struct SubmitEvent {}
+
+// Payload emitted by `@refresh` when a scrollable container requests
+// pull-to-refresh. The handler is expected to kick off the refresh
+// work and toggle the `refreshing` prop off when complete.
+struct RefreshEvent {}
+
+// Payload emitted by `@scroll` / `@scrollEnd` as the viewport
+// scrolls. Inspect the component's `scrollX`/`scrollY` props for
+// the current offset.
+struct ScrollEvent {}
+
+// Payload emitted by `@close` for overlay components (modal, drawer,
+// popover, chip remove). The handler should typically flip the
+// owning `open` state to false.
+struct DismissEvent {}
+
+// Payload emitted by `@select` from list-like components (tabs,
+// tree, table row selection). Inspect the component's `selected`
+// prop for the new selection.
+struct SelectEvent {}
+
+// Payload emitted by `@expand` in hierarchical views such as `tree`
+// when the user opens or collapses a node.
+struct ExpandEvent {}
+
+// Payload emitted by `@resize` when a split or resizable container
+// changes geometry. Inspect the component's own `position` prop
+// for the new split location.
+struct ResizeEvent {}
+
+// Payload emitted by `@select` / `@close` on menu and menubar items.
+struct MenuEvent {}
+
+// Payload emitted by `@load` after an asynchronous resource (image,
+// document) finishes loading.
+struct LoadEvent {}
+
+// Payload emitted by `@error` when an operation fails. `message` is
+// human-readable; `kind` tags the category so handlers can dispatch
+// programmatically (e.g. "network", "decode", "auth").
+struct ErrorEvent {
+    message string
+    kind string
+}
+
+// Payload emitted by `@change` from `datepicker` when the selected
+// date changes. Inspect the picker's `value` prop for the new date.
+struct DateEvent {}

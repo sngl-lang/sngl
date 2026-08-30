@@ -154,7 +154,7 @@ const (
 	PackageCurrent PackageKind = iota + 1 // cwd's own package
 	PackageLibrary                        // the embedded SNGL library, addressed as "sngl"
 	PackageLocal                          // ./subdir, ../other
-	PackageScheme                         // go://…, file://…, etc.
+	PackageScheme                         // go:…, file:…, etc.
 )
 
 // Path is a valid first argument to Lookup.
@@ -166,7 +166,7 @@ type PackageRef struct {
 }
 
 // The factory builds a checker.ImportResolver per cwd, for scheme-based paths
-// (go://, git://, …). Callers that only query the stdlib or local directories
+// (go:, git://, …). Callers that only query the stdlib or local directories
 // don't need to register one.
 //
 //sngl:pure
@@ -307,9 +307,9 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// Bare `sngl` is every library package merged into one listing. The
 	// per-package paths address one of them each.
 	//
-	// sngl://internal/stdlib is deliberately not an alias for this: despite the
+	// sngl:internal/stdlib is deliberately not an alias for this: despite the
 	// name it is the compiler's intrinsics package, which has nothing to do
-	// with sngl://std.
+	// with sngl:ui.
 	if path == "sngl" {
 		pd, stmts := stdlibPackageDocs(checker.Packages()...)
 		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
@@ -321,7 +321,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
-			title:       "sngl://" + uri,
+			title:       "sngl:" + uri,
 			pd:          pd,
 			stmts:       stmts,
 			library:     true,
@@ -376,7 +376,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// the checker loaded, and the classification below compares pointers. Two
 	// parses of one file share none, so reading the source a second way here
 	// silently unclassifies the target's whole option schema.
-	for _, tier := range []string{"platforms", "languages"} {
+	for _, tier := range []string{"platform", "language"} {
 		uri := tier + "/" + path
 		if !isRegisteredTarget(tier, path) {
 			continue
@@ -438,7 +438,7 @@ func buildIndex(tgt *target) *DeclIndex {
 	switch {
 	case tgt.allPackages:
 		idx.Description = "Every package of the embedded library merged into one listing (" +
-			strings.Join(libraryPaths(), ", ") + "). Only `sngl://builtin` is in scope without an import."
+			strings.Join(libraryPaths(), ", ") + "). Only `sngl:builtin` is in scope without an import."
 	case tgt.library && tgt.pd != nil && tgt.pd.Doc != "":
 		idx.Description = tgt.pd.Doc
 	case tgt.library:
@@ -789,9 +789,9 @@ func FirstSentence(doc string) string {
 // package, which is a whole-package decision made by the plugin.
 func isRegisteredTarget(tier, path string) bool {
 	switch tier {
-	case "platforms":
+	case "platform":
 		return len(codegen.PlatformDocs(codegen.LookupPlatform(path))) > 0
-	case "languages":
+	case "language":
 		return len(codegen.LangDocs(codegen.LookupLang(path))) > 0
 	}
 	return false
@@ -802,10 +802,10 @@ func isRegisteredTarget(tier, path string) bool {
 // a package that exists only because a plugin is registered has to resolve
 // here the way it does in the checker.
 func providedPackageDocs(pkg string) []*ast.Document {
-	if name, ok := strings.CutPrefix(pkg, "platforms/"); ok {
+	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
 		return checker.ProvidedDocs(codegen.LookupPlatform(name))
 	}
-	if name, ok := strings.CutPrefix(pkg, "languages/"); ok {
+	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
 		return checker.ProvidedDocs(codegen.LookupLang(name))
 	}
 	return nil
@@ -919,7 +919,7 @@ func sortByName(xs []DeclSummary) {
 func libraryPaths() []string {
 	out := make([]string, 0, len(lib.PublicPackages()))
 	for _, p := range lib.PublicPackages() {
-		out = append(out, "`sngl://"+p+"`")
+		out = append(out, "`sngl:"+p+"`")
 	}
 	return out
 }
@@ -928,7 +928,7 @@ func quote(s string) string { return "\"" + s + "\"" }
 
 // LibraryOrigin is a library package that declares a given name.
 type LibraryOrigin struct {
-	Pkg     string // package path, e.g. "sngl://draw"
+	Pkg     string // package path, e.g. "sngl:ui/draw"
 	Ambient bool   // in scope without an import
 	Kind    string // "component", "type", "func", …
 }
@@ -943,7 +943,7 @@ func (o LibraryOrigin) ImportLine() string {
 }
 
 // FindInLibrary reports every public library package declaring name. Only
-// sngl://builtin is in scope without an import, so the caller has to know which
+// sngl:builtin is in scope without an import, so the caller has to know which
 // package it found and what importing it costs; two packages may declare the
 // same name, and the caller decides between them.
 func FindInLibrary(name string) []LibraryOrigin {
@@ -955,7 +955,7 @@ func FindInLibrary(name string) []LibraryOrigin {
 			continue
 		}
 		out = append(out, LibraryOrigin{
-			Pkg:     "sngl://" + pkg,
+			Pkg:     "sngl:" + pkg,
 			Ambient: pkg == "builtin",
 			Kind:    declKindName(pd, name),
 		})

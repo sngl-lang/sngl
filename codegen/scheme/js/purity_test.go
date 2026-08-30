@@ -7,12 +7,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// purityOf imports src as a js:// module and reports the purity of each
+// purityOf imports src as a js: module and reports the purity of each
 // exported function, the way the compiler reads it.
 func purityOf(t *testing.T, src string) map[string]ir.Purity {
 	t.Helper()
 	fsys := fstest.MapFS{"lib/index.ts": {Data: []byte(src)}}
-	ni, err := (&JSImporter{}).ResolveFS("js://./lib", fsys, "")
+	ni, err := (&JSImporter{}).ResolveFS("./lib", fsys, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -34,7 +34,7 @@ sngl dump --stage checked main.sngl
 stdout 'component main'
 
 -- main.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 var count = 0
 

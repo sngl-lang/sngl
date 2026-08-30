@@ -54,7 +54,7 @@ func TestCheckAsync_ParameterizedAsync(t *testing.T) {
 	// context), the checker must reject it — the settled-state lowering cannot
 	// key per-param.
 	src := `
-import api "js://app/api"
+import api "js:app/api"
 
 func greet(name string) => api.fetchHello(name)
 
@@ -62,7 +62,7 @@ window #main(title="Main") {
     text(value=greet("World"))
 }
 `
-	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js:app/api", "fetchHello"))
 	if !hasError(diags, "async expression not allowed in parameterized reactive context") {
 		t.Errorf("expected parameterized-async error; got: %v", diags)
 	}
@@ -71,11 +71,11 @@ window #main(title="Main") {
 func TestCheckAsync_ParameterizedAsync_ZeroParam_OK(t *testing.T) {
 	// A zero-param async func is allowed (the settled-state lowering handles it).
 	src := `
-import api "js://app/api"
+import api "js:app/api"
 
 func greeting() => api.fetchHello("world")
 `
-	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js:app/api", "fetchHello"))
 	if hasError(diags, "async expression not allowed in parameterized reactive context") {
 		t.Errorf("unexpected parameterized-async error for zero-param func; got: %v", diags)
 	}
@@ -87,7 +87,7 @@ func TestCheckAsync_ParameterizedAsyncInHandler_OK(t *testing.T) {
 	// reactive prop expression.  Event handlers run as async wrappers and can
 	// freely await parameterized async callees.  Rule 2 must NOT fire here.
 	src := `
-import api "js://app/api"
+import api "js:app/api"
 
 func saveItem(id int) { api.fetchHello("item") }
 
@@ -95,7 +95,7 @@ window #main(title="Main") {
     button(text="Save", @click { saveItem(42) })
 }
 `
-	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js:app/api", "fetchHello"))
 	if hasError(diags, "async expression not allowed in parameterized reactive context") {
 		t.Errorf("unexpected parameterized-async error for handler-only call; got: %v", diags)
 	}
@@ -110,7 +110,7 @@ func TestCheckAsync_ParameterizedAsyncInLambdaInProp(t *testing.T) {
 	// It is called inside a lambda passed to list.map in a reactive prop,
 	// so Rule 2 must fire even though the call is inside a lambda body.
 	src := `
-import api "js://app/api"
+import api "js:app/api"
 
 func greet(name string) => api.fetchHello(name)
 
@@ -120,7 +120,7 @@ window #main(title="Main") {
     text(value=list.map(names, func(x string) => greet(x))[0])
 }
 `
-	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js:app/api", "fetchHello"))
 	if !hasError(diags, "async expression not allowed in parameterized reactive context") {
 		t.Errorf("expected parameterized-async error for async call inside lambda in prop; got: %v", diags)
 	}
@@ -131,11 +131,11 @@ func TestCheckAsync_ParameterizedAsync_NotInVisual_OK(t *testing.T) {
 	// visual prop should NOT trigger Rule 2.  It may be used elsewhere (e.g.,
 	// from a regular function body or not at all).
 	src := `
-import api "js://app/api"
+import api "js:app/api"
 
 func greet(name string) => api.fetchHello(name)
 `
-	_, diags := checkPkgWithImports(src, asyncNativeImport("js://app/api", "fetchHello"))
+	_, diags := checkPkgWithImports(src, asyncNativeImport("js:app/api", "fetchHello"))
 	if hasError(diags, "async expression not allowed in parameterized reactive context") {
 		t.Errorf("unexpected parameterized-async error for func not used in reactive context; got: %v", diags)
 	}

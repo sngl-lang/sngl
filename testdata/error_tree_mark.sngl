@@ -2,7 +2,7 @@
 // the declaration is the identity, so there is nothing to store in it and
 // nothing for a component to carry the mark for.
 
-import tr "sngl://tree"
+import tr "sngl:tree"
 
 #[tr.kind] // ERROR(check) "a tree struct holds nothing"
 struct sized {

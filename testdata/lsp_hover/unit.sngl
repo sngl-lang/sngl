@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:time"
 
 // HOVER(time) "unit time"
 // HOVER(time) "ms"

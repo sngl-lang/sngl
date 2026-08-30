@@ -1,12 +1,12 @@
 // Package draw declares the 2D drawing primitives passCanvas emits into the
 // draw function it extracts from a canvas. They are the intrinsic half of
-// sngl://draw, which declares the canvas and the shapes a program writes.
+// sngl:ui/draw, which declares the canvas and the shapes a program writes.
 //
 // Each declaration here is a signature with no body: the result is produced
 // by the target's native implementation of the marked id, so a backend that
 // does not implement one has nothing to fall back to.
 
-import . "sngl://internal/marks"
+import . "sngl:internal/marks"
 
 #[intrinsic("CanvasSave", mutates)]
 func CanvasSave(ctx dyn) {}

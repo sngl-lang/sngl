@@ -581,7 +581,7 @@ Scopes nest from the innermost outward:
 
 - the **predeclared scope**, holding the built-in type names and the
   predeclared identifiers `true`, `false`, `null`;
-- the **built-in scope**, holding the ambient declarations of `sngl://builtin`;
+- the **built-in scope**, holding the ambient declarations of `sngl:builtin`;
 - the **package scope**, holding the user program's top-level declarations and
   the names its dot imports lift;
 - a **component scope** for each component, holding its parameters, variables,
@@ -602,7 +602,7 @@ method of the same name on the same type.
 
 ### Predeclared identifiers and the library tiers
 
-Everything predeclared is an ordinary declaration in `sngl://builtin` —
+Everything predeclared is an ordinary declaration in `sngl:builtin` —
 the scalar and collection types (`int`, `float`, `string`, `list`, `map`,
 `option`, `ref`, `iter`, `color`, `date`, `time`, `datetime`) with their
 methods, and the constants `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`.
@@ -620,13 +620,16 @@ Nothing here is a keyword. `true`, `false` and `null` resolve through the scope
 chain like every other name, and a declaration of your own by one of those
 names shadows it — the grammar reserves none of them.
 
-Everything else the standard library provides — components, event payload
-types, style enums, `Style`, and the `i18n` and `html` namespaces — belongs to
-`sngl://std` and must be imported:
+Everything else the standard library provides is imported. The components,
+event payload types, style enums and `Style` belong to `sngl:ui`; `window`,
+`errorBoundary` and `error` to `sngl:app`; `date`, `time`, `datetime`, `duration` and `timer` to
+`sngl:time`; `Alert` and `File` to `sngl:dialog`; `Test` to `sngl:test`; and
+the translation surface to `sngl:i18n`:
 
 ```sngl
-import . "sngl://std"
-import sngl "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
+import sngl "sngl:ui"
 ```
 
 The dot form flattens the package's declarations into the file, so they are
@@ -636,13 +639,13 @@ under whatever name the importer chooses (`sngl.text(...)`).
 Both packages register beneath the package scope, so a top-level declaration
 named like a library entity takes precedence over it within the package.
 
-The library is not limited to those two packages. `sngl://draw` holds `canvas`
+The library is not limited to those two packages. `sngl:ui/draw` holds `canvas`
 and the 2D shapes it hosts, and is imported the same way. A library package may
-also carry macros next to the declarations they apply to: `import "sngl://draw"`
+also carry macros next to the declarations they apply to: `import "sngl:ui/draw"`
 brings both the shape components and the `#[draw.shape]` mark that declares new
 ones.
 
-Packages under `sngl://internal/` are the compiler's own tier. They declare the
+Packages under `sngl:internal/` are the compiler's own tier. They declare the
 intrinsics a backend implements natively — the string, list, map and formatting
 primitives the packages above are written against — and the marks that identify
 them. A program may name one, as it may any package, but nothing there is part
@@ -700,7 +703,7 @@ including a built-in. This is what lets a package define its own `text` or
 The rule covers every kind of declaration a file scope holds — types,
 components, free functions, constants and variables alike — and the alias an
 import binds. Where a name is genuinely taken, an alias resolves it: an import
-chooses its own alias, so `import d "sngl://draw"` reaches a package
+chooses its own alias, so `import d "sngl:ui/draw"` reaches a package
 whose default name a dot import already claimed.
 
 Two bindings that mean the same package are a restatement, not a conflict. The
@@ -1377,9 +1380,9 @@ import "cdn/ui" => "https://cdn.example.com/ui"
 An import path may carry a URI scheme, which routes the import to a provider
 rather than to a directory of `.sngl` files:
 
-- `import "go://fmt"`, `import "ts://lodash"` — import declarations from a host
+- `import "go:fmt"`, `import "ts://lodash"` — import declarations from a host
   language package, so generated code in that language can call into it;
-- `import "sngl://platforms/html"`, `import "sngl://languages/go"` — bring a
+- `import "sngl:platform/html"`, `import "sngl:language/go"` — bring a
   platform's or language's contributed package into scope;
 - other schemes may be resolved by the host to fetch remote SNGL sources.
 
@@ -1411,8 +1414,8 @@ The contract has these observable facts:
   semantics defined in this manual; they do not change what a well-formed
   program means.
 - **Platform packages contribute names.** A platform or language may contribute
-  a package of declarations reachable through a `sngl://platforms/…` or
-  `sngl://languages/…` import, and `platform` blocks may resolve
+  a package of declarations reachable through a `sngl:platform/…` or
+  `sngl:language/…` import, and `platform` blocks may resolve
   otherwise-unknown identifiers against the active platform (for example raw
   HTML tag names).
 - **Some targets restrict programs.** A platform may support only certain

@@ -1,6 +1,6 @@
 caps: NoTernary
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var on bool = true
@@ -8,7 +8,7 @@ component main {
     text(value=on ? "ON" : "OFF")
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 component main {
     var on bool = true
     var __lt0 string

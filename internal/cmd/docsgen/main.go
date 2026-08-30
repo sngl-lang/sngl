@@ -31,7 +31,7 @@ func main() {
 	log.SetPrefix("docsgen: ")
 
 	// Build playground WASM + stage wasm_exec.js into the project tree so
-	// website.sngl's file:// import resolves them. Must precede compileSNGL
+	// website.sngl's file: import resolves them. Must precede compileSNGL
 	// so the SNGL compiler picks up content-hashed filenames.
 	if err := prebuildPlaygroundAssets(); err != nil {
 		log.Fatalf("playground prebuild: %v", err)
@@ -121,7 +121,7 @@ func compileSNGL(filename, outDir string) error {
 
 // prebuildPlaygroundAssets builds the playground WASM and copies wasm_exec.js
 // into internal/playground/assets/ so website.sngl can reference them via its
-// file:// import. Both targets are gitignored build artifacts. Sibling
+// file: import. Both targets are gitignored build artifacts. Sibling
 // playground.css / playground.js / tutorial.* files already live in that
 // directory.
 func prebuildPlaygroundAssets() error {
@@ -179,8 +179,8 @@ func injectExamples(outDir string) error {
 				continue
 			}
 			src := strings.TrimSpace(string(data))
-			if strings.Contains(src, `"go://`) {
-				continue // skip examples with go:// imports (not supported in WASM)
+			if strings.Contains(src, `"go:`) {
+				continue // skip examples with go: imports (not supported in WASM)
 			}
 			name := entry.Name()
 			label := strings.ReplaceAll(name, "-", " ")
@@ -210,7 +210,7 @@ func injectExamples(outDir string) error {
 		htmlData = []byte(html)
 		log.Printf("playground: %d examples injected", len(examples))
 	} else {
-		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">import . \"sngl://std\"\n\ncomponent main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
+		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">import . \"sngl:ui\"\n\ncomponent main {\n    vbox(style={padding=16}) {\n        text(value=\"Hello, SNGL!\")\n    }\n}</script>"
 	}
 
 	pgHTMLStr := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)

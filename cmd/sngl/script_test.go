@@ -54,7 +54,7 @@ func TestScript(t *testing.T) {
 			codegen.PlatformUnavailable("gtk4") == nil,
 	)
 	// `node` is true when a node binary is on PATH. Compile-time evaluation of
-	// a pure js:// function shells out to it; the CI image ships chromium and
+	// a pure js: function shells out to it; the CI image ships chromium and
 	// GTK but no node, so those scripts guard with `[!node] skip`.
 	conds["node"] = script.BoolCondition(
 		"a node binary is available",

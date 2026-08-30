@@ -132,18 +132,6 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
 		return b.Type
 	}
-	switch t.Name {
-	case "color", "date", "time", "datetime":
-		// These are uniformly carried as TypeStructs backed by their stdlib
-		// StructDefs (lib/types.sngl). Look up via the scope chain.
-		if sym, ok := c.scope.Lookup(t.Name); ok {
-			if typ := sym.SymType(); typ != nil {
-				return typ
-			}
-		}
-		// Stdlib not yet registered (early bootstrap) — fall back to dyn.
-		return TypDyn
-	}
 
 	// Generic built-in constructors resolve through scope: a #[builtin]-marked
 	// StructDef (lib/types.sngl) carries the constructor id, and the compiler
@@ -173,7 +161,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 
-	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHint(t.Name))
+	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
 	return TypDyn
 }
 
@@ -510,7 +498,7 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 }
 
 // ParseScheme extracts the scheme and URI from an import path.
-// Returns ("go", "pkg/path") for "go://pkg/path", or ("", path) for directory imports.
+// Returns ("go", "pkg/path") for "go:pkg/path", or ("", path) for directory imports.
 func ParseScheme(path string) (scheme, uri string) {
 	return imports.ParseScheme(path)
 }

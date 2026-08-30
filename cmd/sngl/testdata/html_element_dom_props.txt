@@ -28,8 +28,9 @@ grep 'createElement\("li"\)' out/index.html
 ! grep 'setAttribute\("tag"' out/index.html
 
 -- dom.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
 
 component main {
     var shown bool = false

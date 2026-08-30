@@ -1,8 +1,8 @@
 // What lands in a slot is components, so its type names a tree. A value type
 // there says nothing a caller could satisfy.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 component bare(slot _ int) { // ERROR(check) "a slot accepts a tree, and int is not one"
     vbox {

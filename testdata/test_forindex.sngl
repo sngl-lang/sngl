@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 component indexed {
     var items = ["a", "b", "c"]

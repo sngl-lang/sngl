@@ -2,27 +2,27 @@
 // one, so every mark there is refused — whether or not the name it gives
 // resolves to a macro.
 //
-// A component prop is the exception: #[platforms.wildcard] says something
-// about one. So a mark written there is resolved first, and a name that names
-// no macro is reported as the unknown macro it is rather than as an illegal
+// A component prop is the exception: #[macro.wildcard] says something about
+// one. So a mark written there is resolved first, and a name that names no
+// macro is reported as the unknown macro it is rather than as an illegal
 // position.
 
-import . "sngl://std"
-import "sngl://draw"
-import "sngl://platforms"
+import . "sngl:ui"
+import "sngl:ui/draw"
+import "sngl:macro"
 
 func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
 
 func unknownName(#[draw.nosuch] a string) => a // ERROR(check) "#[draw.nosuch] cannot mark a parameter"
 
-func realMacro(#[platforms.wildcard(".*")] a string) => a // ERROR(check) "#[platforms.wildcard] cannot mark a parameter"
+func realMacro(#[macro.wildcard(".*")] a string) => a // ERROR(check) "#[macro.wildcard] cannot mark a parameter"
 
-func inLambda() => func(#[platforms.wildcard(".*")] a int) => a // ERROR(check) "#[platforms.wildcard] cannot mark a parameter"
+func inLambda() => func(#[macro.wildcard(".*")] a int) => a // ERROR(check) "#[macro.wildcard] cannot mark a parameter"
 
 component element(
     tag string,
-    #[foreign("go://example.com/api", "Attrs")] attributes map<string, string>, // ERROR(check) "#[foreign] cannot mark a parameter"
-    #[nosuch.mark] extra string = "",                                           // ERROR(check) "unknown macro package"
+    #[macro.foreign("go:example.com/api", "Attrs")] attributes map<string, string>, // ERROR(check) "#[macro.foreign] cannot mark a parameter"
+    #[nosuch.mark] extra string = "",                                               // ERROR(check) "unknown macro package"
 ) {
     text(value=tag)
 }

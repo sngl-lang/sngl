@@ -1,4 +1,6 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:time"
+import . "sngl:app"
 
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }

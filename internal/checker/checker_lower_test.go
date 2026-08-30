@@ -34,7 +34,7 @@ func TestNodeOpsAreNotNameable(t *testing.T) {
 // TestNodeOpPackageIsGone guards against the package coming back by accident:
 // importing it should fail, not resolve to an empty macro package.
 func TestNodeOpPackageIsGone(t *testing.T) {
-	src := `import "sngl://internal/lower"` + "\n" + `func test() => 1`
+	src := `import "sngl:internal/lower"` + "\n" + `func test() => 1`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -45,5 +45,5 @@ func TestNodeOpPackageIsGone(t *testing.T) {
 			return
 		}
 	}
-	t.Error("importing sngl://internal/lower did not fail")
+	t.Error("importing sngl:internal/lower did not fail")
 }

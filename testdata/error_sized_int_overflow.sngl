@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:app"
 
 // A constant that does not fit its sized target is a compile-time error,
 // following the untyped-constant model: literals adopt the annotated type,

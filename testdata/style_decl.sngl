@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 const primary = Style{
     color = #0000ff,

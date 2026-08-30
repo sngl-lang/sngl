@@ -371,7 +371,7 @@ func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
 		return nil, false
 	}
 
-	// Try file:// scheme functions.
+	// Try file: scheme functions.
 	for _, f := range ns.Funcs {
 		if f.Name == name && f.Foreign.Path == "file" {
 			if len(args) == 1 {
@@ -416,8 +416,8 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 			// A failed compile-time evaluation can only be tolerated when
 			// the target can recompute the value at runtime instead. That
 			// requires the target language to call this scheme natively
-			// (go:// from a go target, js:// from a js target, …). When it
-			// can't — html static/none, kotlin, js+go://, etc. — the const
+			// (go: from a go target, js: from a js target, …). When it
+			// can't — html static/none, kotlin, js+go:, etc. — the const
 			// is unrecoverable, and silently dropping it renders pages with
 			// empty/broken content. Abort the build instead.
 			if !schemeRunnableAtRuntime(scheme, ctx.language) && ctx.err == nil {
@@ -918,7 +918,7 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	return nil, false
 }
 
-// evalFileFunc evaluates file:// scheme functions (path, contents).
+// evalFileFunc evaluates file: scheme functions (path, contents).
 func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) {
 	fsys := os.DirFS(dirPath)
 

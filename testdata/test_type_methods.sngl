@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 func testTypeQualifiedCalls(t Test, c main) {
     t.assert(int.double(5) == 10)

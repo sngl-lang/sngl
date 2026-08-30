@@ -1,0 +1,107 @@
+// Components that move the user somewhere else.
+
+// Navigational hyperlink. `href` is the destination — an external
+// URL, an in-app route, or a file path depending on the platform.
+// `target` ("self" or "blank") controls whether navigation replaces
+// the current view or opens a new window. `@click` runs before
+// navigation and can short-circuit it by raising an error.
+component link(
+    style Style,
+    href string,
+    text string,
+    target string,
+    disabled bool,
+    focusable bool = true,
+    @click ClickEvent,
+) {}
+
+component _example_link {
+    hbox(style={gap=16, padding=16}) {
+        link(href="https://example.com", text="Example Site")
+        link(href="https://example.com", text="New Tab", target="blank")
+    }
+}
+
+// Tabbed navigation. `items` labels each tab; `selected` is the
+// 0-based index of the active tab and is two-way bound. Children of
+// `tabs` are the panels: one per item, in the same order. `variant`
+// styles the tab strip ("underline", "pills"); `@change` fires with
+// the newly selected index.
+component tabs(
+    style Style,
+    items list<string>,
+    selected int,
+    variant string,
+    @change SelectEvent,
+    slot _,
+) {}
+
+component _example_tabs {
+    var selected = 0
+    vbox(style={padding=16}) {
+        tabs(items=["Overview", "Details", "Settings"], selected=selected) {
+            text(value="Overview content")
+            text(value="Detail content")
+            text(value="Settings content")
+        }
+    }
+}
+
+// Context or dropdown menu. `items` is the list of entry labels;
+// `open` is two-way bound visibility. `@select` fires with the chosen
+// item, `@close` when the menu dismisses without selection (click
+// outside, Escape).
+component menu(
+    style Style,
+    items list<string>,
+    open bool,
+    @select MenuEvent,
+    @close DismissEvent,
+) {}
+
+component _example_menu {
+    var showMenu = false
+    vbox(style={padding=16}) {
+        button(text="Show Menu", @click { showMenu = true })
+        menu(items=["Cut", "Copy", "Paste"], open=showMenu)
+    }
+}
+
+// Horizontal menu bar — typically at the top of a window on desktop.
+// Each entry in `items` is rendered as a top-level menu title;
+// sub-menu items are provided by the host platform's menu
+// integration. `@select` fires with the activated menu path.
+component menubar(
+    style Style,
+    items list<string>,
+    @select MenuEvent,
+) {}
+
+component _example_menubar {
+    vbox(style={padding=16}) {
+        menubar(items=["File", "Edit", "View", "Help"])
+    }
+}
+
+// Horizontal bar of action buttons. `items` populates the default
+// buttons; nesting children lets you build custom toolbar contents
+// (mix of buttons, separators, spacers). `@select` fires when an
+// item from `items` is activated.
+component toolbar(
+    style Style,
+    items list<string>,
+    @select MenuEvent,
+    slot _,
+) {}
+
+component _example_toolbar {
+    vbox(style={padding=16}) {
+        toolbar {
+            button(text="New")
+            button(text="Open")
+            button(text="Save")
+            spacer
+            button(text="Settings")
+        }
+    }
+}

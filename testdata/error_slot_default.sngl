@@ -4,7 +4,7 @@
 // Its content arrives as the caller's ordinary children, which is the only way
 // it differs — so there is no population to write, and writing one says so.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 component twice(slot _, slot _) { // ERROR(check) "name is already declared as a slot"
     vbox {

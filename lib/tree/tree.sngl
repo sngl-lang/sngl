@@ -11,8 +11,8 @@
 // it as the slot's type. How many it accepts is the wrapper: bare is any
 // number, `tree.one<T>` is exactly one, `option<T>` is none or one.
 
-import ir "sngl://internal/ir"
-import . "sngl://internal/marks"
+import ir "sngl:internal/ir"
+import . "sngl:internal/marks"
 
 // Marks a struct as naming a tree. The struct is the tree: nothing is stored in
 // it and no value of it exists, so a component naming it says which family it

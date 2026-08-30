@@ -10,7 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The compiler's own marks are declared under sngl://internal/, which only
+// The compiler's own marks are declared under sngl:internal/, which only
 // library source may import. A stub package substituted through
 // Config.LibSources is the only place a fixture can write one, so these cases
 // are checked as a library package rather than as a program.
@@ -20,7 +20,7 @@ func checkMarkStub(t *testing.T, src string) (*ir.Package, []string) {
 	if err != nil {
 		t.Fatalf("parse stub: %v", err)
 	}
-	main, err := parser.Parse("main.sngl", []byte("import ms \"sngl://markstub\"\n"))
+	main, err := parser.Parse("main.sngl", []byte("import ms \"sngl:markstub\"\n"))
 	if err != nil {
 		t.Fatalf("parse main: %v", err)
 	}
@@ -57,7 +57,7 @@ func wantNoMarkErrs(t *testing.T, errs []string) {
 	}
 }
 
-const markImports = "import . \"sngl://internal/marks\"\n"
+const markImports = "import . \"sngl:internal/marks\"\n"
 
 // The kind is stamped on whatever IR the declaration became, and the marked
 // declaration is what the compiler then keys on.
@@ -154,7 +154,7 @@ struct Tiny {}
 // The alias is the file's, and the mark follows it like any other qualified
 // name.
 func TestTreeMarksFollowTheImportAlias(t *testing.T) {
-	pkg, errs := checkMarkStub(t, `import t "sngl://tree"
+	pkg, errs := checkMarkStub(t, `import t "sngl:tree"
 
 #[t.kind]
 struct block {}
@@ -179,7 +179,7 @@ component para() block {}
 // A tree is named by a struct: the declaration is the identity, so there is
 // nothing for a component to carry the mark for.
 func TestTreeKindCannotMarkAComponent(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://tree"
+	_, errs := checkMarkStub(t, `import t "sngl:tree"
 
 #[t.kind]
 component para() {}
@@ -189,7 +189,7 @@ component para() {}
 
 // The struct is the tree and holds nothing; fields would suggest a value.
 func TestTreeKindRefusesFields(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://tree"
+	_, errs := checkMarkStub(t, `import t "sngl:tree"
 
 #[t.kind]
 struct block {
@@ -202,7 +202,7 @@ struct block {
 // A misspelled tree is an unresolved name where it is written, which is the
 // whole reason a tree is a declaration rather than a string.
 func TestAMisspelledTreeIsUnresolved(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl://tree"
+	_, errs := checkMarkStub(t, `import t "sngl:tree"
 
 #[t.kind]
 struct block {}
@@ -212,11 +212,11 @@ component para() blcok {}
 	wantMarkErr(t, errs, "blcok")
 }
 
-// #[foreign] is declared in sngl://std, so it is the one compiler mark a
+// #[foreign] is declared in sngl:macro, so it is the one compiler mark a
 // program can write for itself.
 func checkForeign(t *testing.T, body string) (*ir.Package, []string) {
 	t.Helper()
-	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl://std\"\n"+body))
+	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl:macro\"\n"+body))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -232,7 +232,7 @@ func checkForeign(t *testing.T, body string) (*ir.Package, []string) {
 
 func TestForeignMarksStructAndField(t *testing.T) {
 	pkg, errs := checkForeign(t, `
-#[std.foreign("js://example.com/api", "Entry")]
+#[std.foreign("js:example.com/api", "Entry")]
 struct Post {
     #[std.foreign("Title")]
     heading string = ""
@@ -255,7 +255,7 @@ struct Post {
 
 func TestForeignMarksFuncFlags(t *testing.T) {
 	pkg, errs := checkForeign(t, `
-#[std.foreign("js://example.com/api", "add", pure, async)]
+#[std.foreign("js:example.com/api", "add", pure, async)]
 func add(a int, b int) => a + b
 `)
 	wantNoMarkErrs(t, errs)
@@ -275,7 +275,7 @@ struct Row {
 }
 
 component App {
-    #[std.foreign("js://example.com/api", "Double", pure)]
+    #[std.foreign("js:example.com/api", "Double", pure)]
     func Row.double(x int) => x * 2
 }
 `)
@@ -315,7 +315,7 @@ struct Post {}
 
 func TestForeignRejectsAnUnknownFlag(t *testing.T) {
 	_, errs := checkForeign(t, `
-#[std.foreign("js://x", "add", nosuch)]
+#[std.foreign("js:x", "add", nosuch)]
 func add(a int) => a
 `)
 	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: pure, async)`)
@@ -324,7 +324,7 @@ func add(a int) => a
 // The flags describe a call, and a struct has none.
 func TestForeignRefusesFlagsOnANonFunc(t *testing.T) {
 	_, errs := checkForeign(t, `
-#[std.foreign("js://x", "Entry", pure)]
+#[std.foreign("js:x", "Entry", pure)]
 struct Post {}
 `)
 	wantMarkErr(t, errs, "which describes a call")
@@ -334,8 +334,8 @@ struct Post {}
 // thing.
 func TestForeignRefusesASecondMark(t *testing.T) {
 	_, errs := checkForeign(t, `
-#[std.foreign("js://x", "One")]
-#[std.foreign("js://x", "Two")]
+#[std.foreign("js:x", "One")]
+#[std.foreign("js:x", "Two")]
 struct Post {}
 `)
 	wantMarkErr(t, errs, `already marked as "One"`)
@@ -345,7 +345,7 @@ struct Post {}
 // others refuse it rather than carry it nowhere.
 func TestForeignRefusesAnUnspecifiedForm(t *testing.T) {
 	_, errs := checkForeign(t, `
-#[std.foreign("js://x", "Px")]
+#[std.foreign("js:x", "Px")]
 unit length { px }
 `)
 	wantMarkErr(t, errs, `#[foreign("Px")] cannot mark`)

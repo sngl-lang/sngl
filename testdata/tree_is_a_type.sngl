@@ -6,8 +6,8 @@
 // is written, and two packages each declaring a tree of the same name declare
 // two trees.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 #[tr.kind]
 struct block {}

@@ -2,7 +2,7 @@ package js
 
 import "strings"
 
-// pureMarkers are the annotations that make a js:// function foldable at build
+// pureMarkers are the annotations that make a js: function foldable at build
 // time. All are matched case-sensitively and only in a declaration's doc
 // comment; each is written exactly as its own ecosystem writes it.
 //

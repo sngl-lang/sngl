@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // GettingStarted is the "Your First App" tutorial. Built as a single SNGL
 // component (not markdown) so it renders on every platform website.sngl
@@ -19,7 +20,7 @@ component GettingStarted() {
 
         docui.Heading2(value="Hello, World")
         docui.Paragraph(value="A SNGL app is a tree of components rooted at one called `main`. The smallest app is a single text node:")
-        docui.CodeBlock(code=`import . "sngl://std"
+        docui.CodeBlock(code=`import . "sngl:ui"
 
 component main {
     text(value="Hello, World!")
@@ -29,7 +30,7 @@ component main {
 
         docui.Heading2(value="Reactive state and binding")
         docui.Paragraph(value="State is declared with `var` (mutable) or zero-arg `func` (derived). The `:value` prefix on a prop is two-way binding: changes flow both ways.")
-        docui.CodeBlock(code=`import . "sngl://std"
+        docui.CodeBlock(code=`import . "sngl:ui"
 
 component main {
     var name = "World"
@@ -97,7 +98,7 @@ component main {
 
         docui.Heading2(value="Build a todo app")
         docui.Paragraph(value="Now the full thing: a list of todos with an input field, an add button, and a checkbox per item. Walk through it section by section — every line is part of the running app.")
-        docui.CodeBlock(code=`import . "sngl://std"
+        docui.CodeBlock(code=`import . "sngl:ui"
 
 struct Todo {
     text string = ""
@@ -133,8 +134,8 @@ component main {
 
         docui.Heading2(value="Persist state with a Go import")
         docui.Paragraph(value="The Todo list lives in memory. To save it across runs, import a Go package — any type-safe Go function becomes a SNGL function with the same signature.")
-        docui.CodeBlock(code=`import . "sngl://std"
-import "go://myapp/store"
+        docui.CodeBlock(code=`import . "sngl:ui"
+import "go:myapp/store"
 
 component main {
     var todos list<Todo> = store.Load() @change {

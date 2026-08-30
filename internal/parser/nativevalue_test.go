@@ -42,7 +42,7 @@ func TestParseNativeValueShapes(t *testing.T) {
 // A value may name the declaration it is of, which is what gives it a type
 // where nothing else does.
 func TestParseNativeValueTypeRef(t *testing.T) {
-	e, err := ParseNativeValue("results", []byte(`[import("go://example.com/p").Item{Name = "a"}]`))
+	e, err := ParseNativeValue("results", []byte(`[import("go:example.com/p").Item{Name = "a"}]`))
 	if err != nil {
 		t.Fatalf("ParseNativeValue: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestParseNativeValueTypeRef(t *testing.T) {
 	if !ok {
 		t.Fatalf("element is %T, want a struct literal", list.Elements[0])
 	}
-	if want := (ast.NativeRef{Path: "go://example.com/p", Name: "Item"}); s.Native == nil || *s.Native != want {
+	if want := (ast.NativeRef{Path: "go:example.com/p", Name: "Item"}); s.Native == nil || *s.Native != want {
 		t.Errorf("Native = %+v, want %+v", s.Native, want)
 	}
 	if len(s.Fields) != 1 || s.Fields[0].Name != "Name" {
@@ -70,8 +70,8 @@ func TestOrdinaryParseRejectsTypeRef(t *testing.T) {
 	// argument does not — NonIdentPrimary spells the alternatives out again —
 	// so a case there would fail on a syntax error and prove nothing.
 	for _, src := range []string{
-		`const x = import("go://example.com/p").Item{Name = "a"}`,
-		`const xs = [import("go://example.com/p").Item{}]`,
+		`const x = import("go:example.com/p").Item{Name = "a"}`,
+		`const xs = [import("go:example.com/p").Item{}]`,
 	} {
 		_, err := Parse("t.sngl", []byte(src))
 		if err == nil {
@@ -88,7 +88,7 @@ func TestOrdinaryParseRejectsTypeRef(t *testing.T) {
 // The gate is the whole of the mode: the same expression the native-value
 // parse builds a ref from leaves no ref behind in a document parse.
 func TestNativeTypeRefIsModeOnly(t *testing.T) {
-	const src = `import("go://example.com/p").Item{Name = "a"}`
+	const src = `import("go:example.com/p").Item{Name = "a"}`
 	e, err := ParseNativeValue("results", []byte(src))
 	if err != nil {
 		t.Fatalf("ParseNativeValue: %v", err)

@@ -13,7 +13,7 @@
 ! sngl run --lang=js --platform=none app.sngl
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var count = 0

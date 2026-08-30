@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 // Bug: unknown method on list typechecks silently.
 component main {

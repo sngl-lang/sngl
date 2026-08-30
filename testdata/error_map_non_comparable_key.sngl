@@ -1,6 +1,6 @@
 // Map keys must have structural equality. Lists and other maps are not
 // comparable and cannot be used as keys.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 var bad map<list<int>, string> // ERROR(check) "not comparable"

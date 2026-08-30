@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     // Anonymous func type: no param names in the type, named calls rejected.

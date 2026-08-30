@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // table: state-binding fixture — mutating the bound `selected`
 // index changes the chosen row.

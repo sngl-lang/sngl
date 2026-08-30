@@ -1,4 +1,4 @@
-# Without the @sngl-pure tag a js:// function is not evaluated at build time.
+# Without the @sngl-pure tag a js: function is not evaluated at build time.
 # The compiler has no way to know a foreign function is safe to run during a
 # build, so silence means no: the call survives into the page and runs in the
 # browser.
@@ -12,8 +12,8 @@ grep 'toUpperCase' out/index.html
 ! grep 'HELLO WORLD' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 component main {
     var greeting = lib.shout("hello world")

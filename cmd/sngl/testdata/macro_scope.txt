@@ -3,12 +3,12 @@
 # this, so both halves could be reverted to the old ambient lookup with a green
 # suite.
 #
-# `tree.kind` is the macro under test — sngl://draw declares none now that
+# `tree.kind` is the macro under test — sngl:ui/draw declares none now that
 # membership is the return position.
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
-stderr 'unknown macro package "tree": import it with import "sngl://tree"'
+stderr 'unknown macro package "tree": import it with import "sngl:tree"'
 
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
@@ -18,7 +18,7 @@ stdout 'qualified.sngl: ok'
 stderr 'unknown macro "builtin": no dot-imported package declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
-# sngl://tree brings both the default tree and the mark that declares new ones.
+# sngl:tree brings both the default tree and the mark that declares new ones.
 sngl check with_std.sngl
 stdout 'with_std.sngl: ok'
 
@@ -27,16 +27,16 @@ sngl check aliased.sngl
 stdout 'aliased.sngl: ok'
 
 # A macro exists because a package declares it, so a mark naming one the
-# package does not declare says exactly that. sngl://i18n declares no macros at
+# package does not declare says exactly that. sngl:i18n declares no macros at
 # all; tree, which does, is one import line away.
 ! sngl check no_macros.sngl
-stderr 'unknown macro "kind": package "sngl://i18n" declares none of that name'
+stderr 'unknown macro "kind": package "sngl:i18n" declares none of that name'
 
 -- no_import.sngl --
 #[tree.kind]
 struct block {}
 -- qualified.sngl --
-import "sngl://tree"
+import "sngl:tree"
 
 #[tree.kind]
 struct block {}
@@ -46,8 +46,8 @@ struct Fake {
     v int
 }
 -- with_std.sngl --
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 #[tr.kind]
 struct block {}
@@ -61,8 +61,8 @@ component main {
     }
 }
 -- aliased.sngl --
-import . "sngl://std"
-import whatever "sngl://tree"
+import . "sngl:ui"
+import whatever "sngl:tree"
 
 #[whatever.kind]
 struct block {}
@@ -76,7 +76,7 @@ component main {
     }
 }
 -- no_macros.sngl --
-import b "sngl://i18n"
+import b "sngl:i18n"
 
 #[b.kind]
 struct block {}

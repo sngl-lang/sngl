@@ -1,4 +1,4 @@
-# A pure js:// function folds to a literal at build time: node runs it once
+# A pure js: function folds to a literal at build time: node runs it once
 # during the compile and the result is spliced in, so the shipped page carries
 # the answer rather than the call that computes it.
 [!node] skip
@@ -20,8 +20,8 @@ grep '>1e\+30<' out/index.html
 grep '>1e-07<' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const greeting = lib.shout("hello world")
 const big = lib.big()

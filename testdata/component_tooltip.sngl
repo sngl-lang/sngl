@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // tooltip: state-binding fixture — driving the tooltip `text`
 // from a state var. The stdlib prop isn't two-way bound, so this

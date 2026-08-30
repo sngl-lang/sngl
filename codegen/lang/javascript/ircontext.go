@@ -152,7 +152,7 @@ func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 // declared, since the importer lowered its leading capital to reach the SNGL
 // field name.
 //
-// Only that scheme's declarations: a go:// struct's native names are Go's, and
+// Only that scheme's declarations: a go: struct's native names are Go's, and
 // nothing in a generated page reads them.
 func jsFieldKey(sd *ir.StructDef, name string) string {
 	if sd == nil || !jsscheme.DeclaredHere(sd.Foreign) {
@@ -416,7 +416,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, n, jc.EvalExpr); ok {
 		return out
 	}
-	// Native scheme-import call (e.g. js://): emit through the bundler
+	// Native scheme-import call (e.g. js:): emit through the bundler
 	// alias when the module is in BundledNativePkgs, recording the
 	// module → name binding for top-level `import * as` emission. Only for a
 	// declaration JavaScript has: a #[foreign] mark naming another language

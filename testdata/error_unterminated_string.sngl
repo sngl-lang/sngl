@@ -3,7 +3,7 @@
 // quote that opened it, not at the end of the input -- and a comment cannot be
 // written on that line, because the string would swallow it. Hence the
 // position on the directive.
-import . "sngl://std"
+import . "sngl:ui"
 
 // ERROR(parse:9:16) "unterminated string"
 var x string = "hello

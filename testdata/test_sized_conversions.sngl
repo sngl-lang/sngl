@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:test"
 
 // Explicit conversions between numeric types. Every cross-type numeric
 // conversion is written explicitly as T(x); the checker materializes each as

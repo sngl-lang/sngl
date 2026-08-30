@@ -1,4 +1,4 @@
-# sngl://internal/ is the compiler's own tier: the URI set, what each package
+# sngl:internal/ is the compiler's own tier: the URI set, what each package
 # holds, and whether a package exists at all are implementation details.
 #
 # Importable from a program, the marks package let user source stamp
@@ -25,22 +25,22 @@ sngl check user_draw.sngl
 stdout 'ok'
 
 -- marks.sngl --
-import . "sngl://std"
-import . "sngl://internal/marks"
+import . "sngl:ui"
+import . "sngl:internal/marks"
 
 component main {
     text(value="hi")
 }
 -- draw.sngl --
-import . "sngl://std"
-import "sngl://internal/draw"
+import . "sngl:ui"
+import "sngl:internal/draw"
 
 component main {
     text(value="hi")
 }
 -- intrinsic.sngl --
-import . "sngl://std"
-import . "sngl://internal/marks"
+import . "sngl:ui"
+import . "sngl:internal/marks"
 
 #[intrinsic("my.thing")]
 func evil(x int) int { return 0 }
@@ -50,8 +50,8 @@ component main {
     text(value="{evil(n)}")
 }
 -- user_draw.sngl --
-import . "sngl://std"
-import "sngl://draw"
+import . "sngl:ui"
+import "sngl:ui/draw"
 
 component main {
     draw.canvas(width=100px, height=100px) {

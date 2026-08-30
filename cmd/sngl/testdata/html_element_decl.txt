@@ -15,8 +15,9 @@ grep '<div' out2/index.html
 grep 'hello' out2/index.html
 
 -- reactive.sngl --
-import . "sngl://std"
-import html "sngl://platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import html "sngl:platform/html"
 
 output { none { html() } }
 
@@ -30,7 +31,8 @@ window("t") {
 }
 
 -- stdlib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { none { html() } }
 

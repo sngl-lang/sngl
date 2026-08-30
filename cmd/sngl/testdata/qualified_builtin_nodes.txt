@@ -1,8 +1,9 @@
 # The built-in nodes (window, timer, errorBoundary) dispatch on the #[builtin]
 # mark of whatever the target resolves to. That resolution has to follow a
-# qualified target too: under `import s "sngl://std"` the node is written
+# qualified target too: under `import s "sngl:app"` the node is written
 # `s.window`, and resolving it by bare name silently produced an ordinary empty
-# component that dropped its children.
+# component that dropped its children. The three sit in different packages, so
+# each is qualified by the alias of the one that declares it.
 #
 # `slot` is not in this family: it is a keyword, not a declaration reached
 # through a package, so `s.slot` does not parse and bare `slot` is the only
@@ -35,7 +36,8 @@ sngl generate --out shadowout shadowed.sngl
 grep 'from widgets' shadowout/index.html
 
 -- slot.sngl --
-import s "sngl://std"
+import s "sngl:ui"
+import app "sngl:app"
 
 component Card(slot _) {
     s.vbox {
@@ -53,7 +55,7 @@ component main {
 
 output { none { html } }
 -- qualslot.sngl --
-import s "sngl://std"
+import s "sngl:ui"
 
 component Card(slot _) {
     s.vbox {
@@ -61,7 +63,8 @@ component Card(slot _) {
     }
 }
 -- window.sngl --
-import s "sngl://std"
+import s "sngl:ui"
+import app "sngl:app"
 
 component main {
     s.window #home(href="/index.html") {
@@ -71,17 +74,19 @@ component main {
 
 output { none { html } }
 -- timer.sngl --
-import s "sngl://std"
+import s "sngl:ui"
+import t "sngl:time"
 
 component main {
     var n int = 0
-    s.timer(interval=1s) {
+    t.timer(interval=1s) {
         n = n + 1
     }
     s.text(value="tick")
 }
 -- boundary.sngl --
-import s "sngl://std"
+import s "sngl:ui"
+import app "sngl:app"
 
 component main {
     s.errorBoundary(@error(e) {}) {
@@ -89,13 +94,15 @@ component main {
     }
 }
 -- widgets/lib.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:time"
+import . "sngl:app"
 
 component timer() {
     text(value="from widgets")
 }
 -- shadowed.sngl --
-import s "sngl://std"
+import s "sngl:app"
 import w "widgets"
 
 component main {

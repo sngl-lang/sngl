@@ -19,7 +19,7 @@ import (
 // Membership is the return position; what a component hosts is its default
 // slot's type, which is how a member hosts a different family from its own.
 const treeStubSource = `
-import tree "sngl://tree"
+import tree "sngl:tree"
 
 #[tree.kind]
 struct block {}
@@ -50,7 +50,7 @@ func treeStubConfig(t *testing.T) *checker.Config {
 
 func checkTreeStub(t *testing.T, body string) []string {
 	t.Helper()
-	src := "import . \"sngl://std\"\nimport . \"sngl://richtext\"\n" + body
+	src := "import . \"sngl:ui\"\nimport . \"sngl:richtext\"\n" + body
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

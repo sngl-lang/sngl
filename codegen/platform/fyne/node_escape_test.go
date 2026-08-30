@@ -11,7 +11,7 @@ import (
 )
 
 const recursiveTreeSrc = `
-import . "sngl://std"
+import . "sngl:ui"
 struct TreeNode {
     value int = 0
     left dyn = null

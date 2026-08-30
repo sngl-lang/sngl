@@ -10,7 +10,7 @@ grep 'maxOf\(0, minOf\(' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 ! grep 'coerceIn' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var raw int = 42

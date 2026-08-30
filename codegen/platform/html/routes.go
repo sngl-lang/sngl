@@ -283,7 +283,7 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 }
 
 // collectActions walks a window's visual tree for event handlers placed on the
-// backend (per handlerPlacement: a transitive non-js:// import). Each such
+// backend (per handlerPlacement: a transitive non-js: import). Each such
 // handler becomes a server-state form action.
 //
 // Mutations carries the full handler block unchanged (consumed by the legacy

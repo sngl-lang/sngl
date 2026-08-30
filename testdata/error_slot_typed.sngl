@@ -1,7 +1,7 @@
 // What a slot's declared count refuses.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 component frame(slot body tr.one, slot badge option<tr.default>) {
     vbox {

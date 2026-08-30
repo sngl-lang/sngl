@@ -44,7 +44,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 
 	c.aliases = map[string]string{}
 	for _, imp := range pkg.Imports {
-		if uri, ok := strings.CutPrefix(imp.Path, "sngl://"); ok && imp.Alias != "" && imp.Alias != "." {
+		if uri, ok := strings.CutPrefix(imp.Path, "sngl:"); ok && imp.Alias != "" && imp.Alias != "." {
 			c.aliases[uri] = imp.Alias
 		}
 	}
@@ -55,7 +55,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		// check. Emitting them would put compiler-internal imports in
 		// user-facing output — where they also collide with the names the
 		// standard-library import lifts.
-		if strings.HasPrefix(imp.Path, "sngl://internal/") {
+		if strings.HasPrefix(imp.Path, "sngl:internal/") {
 			continue
 		}
 		stmts = append(stmts, c.convertImport(imp))
@@ -642,7 +642,7 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	return elem
 }
 
-// treePkg is what this file imported sngl://tree as.
+// treePkg is what this file imported sngl:tree as.
 func (c *converter) treePkg() string { return c.aliasFor("tree") }
 
 // aliasFor is what this file imported a library package as, defaulting to the

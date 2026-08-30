@@ -1,7 +1,7 @@
 // What the tree model refuses at a use site.
 
-import . "sngl://std"
-import tr "sngl://tree"
+import . "sngl:ui"
+import tr "sngl:tree"
 
 #[tr.kind]
 struct block {}

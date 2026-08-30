@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 // Bare `text(...)` user calls bind to the stdlib `text` component.
 // When a platform ships `component sngl.text { platform <p> { ... } }`,

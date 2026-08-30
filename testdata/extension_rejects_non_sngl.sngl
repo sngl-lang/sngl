@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 component foo.bar { // ERROR(check) "extension namespace \"foo\" is not an imported library package"
     span() {}

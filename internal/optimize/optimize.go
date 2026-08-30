@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -15,9 +16,9 @@ import (
 // can emit a working runtime call to a function imported via the given scheme.
 // When false, a scheme-import value MUST be resolved at build time (const
 // fold); a fold failure cannot be salvaged and must abort the build rather
-// than emit broken output. Today only Go-language targets call go://, c://
-// functions natively, and only JS targets call js:// natively. (The html
-// platform additionally bridges go:// to wasm for explicitly runtime-used
+// than emit broken output. Today only Go-language targets call go:, c:
+// functions natively, and only JS targets call js: natively. (The html
+// platform additionally bridges go: to wasm for explicitly runtime-used
 // functions, but that path is selected in html codegen, not here — a const
 // fold failure on html still has no runtime to fall back to.)
 func schemeRunnableAtRuntime(scheme, lang string) bool {
@@ -36,11 +37,11 @@ type Config struct {
 	Language string // "js", "go"
 	Dir      string // project directory (for compile-time go run execution)
 
-	// NoCacheBust disables content-hash filename mangling for file:// assets
+	// NoCacheBust disables content-hash filename mangling for file: assets
 	// resolved during folding. Default false (cache-busting enabled).
 	NoCacheBust bool
 
-	// FileAssets is populated by Optimize with file:// assets that need
+	// FileAssets is populated by Optimize with file: assets that need
 	// copying to the output directory.
 	FileAssets []FileAsset
 
@@ -51,8 +52,8 @@ type Config struct {
 
 	// nativeErr records, per scheme, that this build's round loop failed as a
 	// whole — a build error, a timeout — rather than for any one call. The
-	// batches are independent programs, so a go:// failure is no answer for a
-	// js:// call. It is not cached with the calls: the next target's Config
+	// batches are independent programs, so a go: failure is no answer for a
+	// js: call. It is not cached with the calls: the next target's Config
 	// starts clean and retries.
 	nativeErr map[string]error
 
@@ -285,7 +286,7 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 
 	// Accumulate file assets across multiple Optimize calls on the same
 	// Config. The lowering pipeline runs Optimize twice (pre/post lower);
-	// the second pass sees file:// consts already folded to string
+	// the second pass sees file: consts already folded to string
 	// literals and produces no FileAssets, but the resolved assets from
 	// the first pass must survive. Dedup by OutPath; new assets from this
 	// run win on collision.
@@ -500,7 +501,7 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 			continue
 		}
 		ctx.nativeImports[imp.Alias] = imp.Native
-		if scheme, _, ok := strings.Cut(imp.Path, "://"); ok {
+		if scheme, _ := imports.ParseScheme(imp.Path); scheme != "" {
 			ctx.nativeSchemes[imp.Alias] = scheme
 		}
 	}

@@ -76,7 +76,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 - **html** — two modes selected by `--lang`:
   - `--lang none` (default): static site — one `index.html` per window with inline JS.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go://` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
@@ -109,17 +109,27 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ### Stdlib
 
-Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl://<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
+Stdlib source lives in `lib/<package>/*.sngl`, embedded via `//go:embed` in `lib/lib.go` (exported as `lib.FS`). **Each subdirectory is one importable package: `lib/<path>` is `sngl:<path>`.** Nothing in Go enumerates them — `lib.Packages()` reads the embedded directory, so adding a package is adding a directory.
+
+A package is named for **what it does**, never for who ships it — `std` was a
+name of the second kind, which is why everything drifted into it. Within a
+package, files are organised by topic and not by declaration kind: a type and
+its methods sit together (`lib/builtin/numbers.sngl`, `lib/ui/form.sngl`),
+because grouping by kind splits every subject in two.
 
 The tiers, and the split between them is the whole point of the system:
 
-- **`lib/builtin/` → `sngl://builtin`** — the twelve `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/std/` → `sngl://std`** — components, event payloads, enums, `Style`, `Alert`/`File`/`Test`/`error`, and the `i18n` and `html` namespaces. Reaches user code only through `import . "sngl://std"` (flattens) or `import <alias> "sngl://std"` (qualifies).
-- **`lib/draw/` → `sngl://draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it.
-- **`lib/tree/` → `sngl://tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
-- **`lib/i18n/` → `sngl://i18n`** — the translation surface `$"..."` lowers to.
-- **`lib/platforms/` → `sngl://platforms`** — the public mark vocabulary a platform or language package writes (`options`, `wildcard`). Only the vocabulary: `sngl://platforms/<name>` and `sngl://languages/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/internal/` → `sngl://internal/<name>`** — the compiler's own tier, importable only from lib source.
+- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import . "sngl:ui"` (flattens) or `import <alias> "sngl:ui"` (qualifies).
+- **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
+- **`lib/tree/` → `sngl:tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
+- **`lib/app/` → `sngl:app`** — the application shell: `window`, `errorBoundary`, the `error` those boundaries catch, and the top-level `Options` schema. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
+- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup like `sngl:app`, for the same reason: its declarations carry kinds the compiler dispatches on.
+- **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
+- **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
+- **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
+- **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `options`, `wildcard`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
+- **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
 comments at the top of a file, separated from what follows by a blank line
@@ -130,15 +140,15 @@ adding a `lib/` directory with a package comment needs no code change.
 Go's semantics apply when several files carry one: they are concatenated,
 blank-line separated, in load order. That order is not guaranteed, so prose
 that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
-by convention, as `lib/std/doc.sngl` does.
+by convention, as `lib/ui/doc.sngl` does.
 
-Packages import each other — `lib/draw` is written against `lib/std` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
+Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/app` against both `lib/ui` and `sngl:internal/marks` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
-A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes (`window`, `timer`, `slot`, `errorBoundary`) are declared in `std`.
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes are spread across tiers — `window` and `errorBoundary` in `app`, `timer` in `time`, `slot` in `ui`.
 
-`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import sngl "sngl://std"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
+`internal/checker/stdlib.go` parses both packages at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import sngl "sngl:ui"` + `component sngl.vbox`), and the prefix is that alias, not a fixed name.
 
-**A target carries its own library package.** `sngl://platforms/<name>` and `sngl://languages/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
+**A target carries its own library package.** `sngl:platform/<name>` and `sngl:language/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
 
 The point is that the checker does not know where a package comes from. gtk4's `PackageFS` returns its embedded overrides merged with one component declaration per GTK widget class, generated from the host's introspection data; nothing outside `codegen/platform/gtk4/packagefs.go` knows half of that package did not exist a moment earlier. The same interface is what will let a plugin outside this repository answer over an RPC.
 
@@ -163,23 +173,23 @@ mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.kind]` needs `import "sngl://tree"`, and the unqualified
+`#[tree.kind]` needs `import "sngl:tree"`, and the unqualified
 `#[builtin("...")]` and `#[intrinsic("...")]` need
-`import . "sngl://internal/marks"` — which is why every `lib/` file carrying a
+`import . "sngl:internal/marks"` — which is why every `lib/` file carrying a
 mark declares it. The alias is an
-ordinary file-scope binding, so the mark follows it: `import t "sngl://tree"`
+ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
 means `#[t.kind]`.
 
-A lib package may carry macros alongside its declarations — `sngl://tree`
+A lib package may carry macros alongside its declarations — `sngl:tree`
 ships the `kind` mark next to the default tree it applies to — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
-makes a package exist, macro-only ones included. `sngl://internal/<name>` is
+makes a package exist, macro-only ones included. `sngl:internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
 or both. `internal/marks` declares only macros; `internal/draw` declares the
-drawing primitives passCanvas emits, the intrinsic half of `sngl://draw`.
+drawing primitives passCanvas emits, the intrinsic half of `sngl:ui/draw`.
 
 **A tree is a declared type, and `#[tree.kind]` marks the struct that names
-one.** `sngl://tree` describes a segmented component tree: a family whose
+one.** `sngl:tree` describes a segmented component tree: a family whose
 members are not interchangeable widgets, where a container accepts only its
 own family. Drawing is the first user, rich text and menus are the next, and
 nothing in the mechanism knows what a shape is.
@@ -209,7 +219,7 @@ A tree struct holds nothing and no value of it exists.
 The facts land on `ir.Component.Tree` at registration and on
 `ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
 on. A drawing rule rides along there: a painted shape declares no events, which
-`finishTreeMarks` enforces for every member of `sngl://draw`'s tree, because
+`finishTreeMarks` enforces for every member of `sngl:ui/draw`'s tree, because
 membership is the return position and no mark is written to opt in. Nothing
 about a mark reaches the AST: the source carries the `#[...]` as written and the
 checker applies it where it registers the declaration.
@@ -243,13 +253,13 @@ lower down to have to be exempt.
 shape, or the canvas that hosts them) — the marks are the whole list, and each
 says in its own vocabulary that the declaration is rendered rather than
 composed away. `isPlatformStdlibComponent` is a different question: whether a
-component came from a `sngl://platforms/` package the program imports.
+component came from a `sngl:platform/` package the program imports.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
-lives in `sngl://std` for the same reason `shape` lives in `sngl://draw`, and
+lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked
 SNGL to describe a foreign API, a platform package naming its host types.
-`#[foreign("go://example.com/api", "api.Entry")]` gives the import path and the
+`#[foreign("go:example.com/api", "api.Entry")]` gives the import path and the
 name there; one argument is the name alone, which is all a struct field can
 say. A function may add flags — `pure` and `async` — that state what a call
 costs, because a foreign function's SNGL body describes it rather than
@@ -329,7 +339,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
-**A Go type crossing into SNGL is tested with `sngltest/`.** A `go://` value
+**A Go type crossing into SNGL is tested with `sngltest/`.** A `go:` value
 crosses in two halves — `pkg/go/consteval` encodes it, `codegen/scheme/golang`
 types it — and nothing in the compiler forces them to agree.
 `sngltest.CheckMarshal(t, v)` runs both over one value and reports which half
@@ -365,8 +375,8 @@ those have no source form — `--format sngl` on it is an error naming the two
 that work.
 
 A positional argument may also be a package rather than a path:
-`sngl dump --stage checked sngl://platforms/gtk4`. It arrives already checked,
+`sngl dump --stage checked sngl:platform/gtk4`. It arrives already checked,
 because a library package loads under the rules that permit its own
-`sngl://internal/` imports and because a target synthesizes part of it with no
+`sngl:internal/` imports and because a target synthesizes part of it with no
 file on disk. `check` and `generate` take one too; `fmt` does not, since it
 rewrites files and a package has none.
