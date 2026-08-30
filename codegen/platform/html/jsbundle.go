@@ -29,9 +29,9 @@ import (
 // stripped entry is given an inline `//# sourceMappingURL=data:...` so
 // esbuild chains the SNGL→JS map through its own JS→bundled output map.
 // Esbuild's final output carries an inline SNGL→bundled source map.
-func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, error) {
+func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool, outDir string) (string, error) {
 	if maps {
-		strippedEntry, mapURL, err := preBundleSourceMap(entry)
+		strippedEntry, mapURL, err := preBundleSourceMap(entry, outDir)
 		if err == nil && mapURL != "" {
 			entry = strippedEntry + "\n//# sourceMappingURL=" + mapURL + "\n"
 		}
@@ -81,8 +81,8 @@ func bundleNativeScript(entry string, fsys fs.FS, minify, maps bool) (string, er
 // SNGL→JS source-map v3 document, base64-encodes it as a data URL, and
 // returns the marker-stripped entry plus the data URL. Returns ("", "", nil)
 // when entry has no markers.
-func preBundleSourceMap(entry string) (stripped, dataURL string, err error) {
-	res := javascript.RenderInlineSourceMap("sngl-entry.js", []byte(entry))
+func preBundleSourceMap(entry, outDir string) (stripped, dataURL string, err error) {
+	res := javascript.RenderInlineSourceMap("sngl-entry.js", outDir, []byte(entry))
 	if res.Sidecar == nil {
 		return "", "", nil
 	}
@@ -97,8 +97,8 @@ func preBundleSourceMap(entry string) (stripped, dataURL string, err error) {
 // body, builds a SNGL→JS source map, and appends an inline
 // `//# sourceMappingURL=data:...` referencing it. Returns the input
 // unchanged when no markers are present.
-func inlineSourceMapFromMarkers(script string) string {
-	stripped, dataURL, _ := preBundleSourceMap(script)
+func inlineSourceMapFromMarkers(script, outDir string) string {
+	stripped, dataURL, _ := preBundleSourceMap(script, outDir)
 	if dataURL == "" {
 		return script
 	}

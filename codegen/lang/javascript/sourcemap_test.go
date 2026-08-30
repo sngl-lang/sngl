@@ -2,6 +2,8 @@ package javascript
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,7 +18,7 @@ func TestRenderJSSourceMap_Basic(t *testing.T) {
 		{ByteOffset: 7, Pos: ast.Pos{File: "f.sngl", Line: 11, Column: 1}},
 		{ByteOffset: 15, Pos: ast.Pos{File: "f.sngl", Line: 12, Column: 1}},
 	}
-	res := renderJSSourceMap("model.js", positions, body)
+	res := renderJSSourceMap("model.js", "", positions, body)
 	if res.SidecarName != "model.js.map" {
 		t.Errorf("SidecarName=%q want model.js.map", res.SidecarName)
 	}
@@ -51,7 +53,7 @@ func TestRenderJSSourceMap_Basic(t *testing.T) {
 }
 
 func TestRenderJSSourceMap_NoPositionsReturnsZero(t *testing.T) {
-	res := renderJSSourceMap("x.js", nil, []byte("foo"))
+	res := renderJSSourceMap("x.js", "", nil, []byte("foo"))
 	if res.InlineBody != nil || res.Sidecar != nil {
 		t.Fatalf("expected zero, got %+v", res)
 	}
@@ -62,7 +64,7 @@ func TestRenderJSSourceMap_SinglePosition(t *testing.T) {
 	positions := []codegen.PosEntry{
 		{ByteOffset: 0, Pos: ast.Pos{File: "f.sngl", Line: 1, Column: 1}},
 	}
-	res := renderJSSourceMap("out.js", positions, body)
+	res := renderJSSourceMap("out.js", "", positions, body)
 	if res.Sidecar == nil {
 		t.Fatal("Sidecar must be set for a single position")
 	}
@@ -82,7 +84,7 @@ func TestRenderJSSourceMap_SinglePosition(t *testing.T) {
 func TestRenderJSSourceMap_ExtractsInlineMarkers(t *testing.T) {
 	body := []byte("/*@SNGL:foo.sngl:5@*/\nconsole.log(1);\n/*@SNGL:foo.sngl:7@*/\nconsole.log(2);\n")
 	// Pass empty positions: marker extraction is the source.
-	res := renderJSSourceMap("out.js", nil, body)
+	res := renderJSSourceMap("out.js", "", nil, body)
 	if res.Sidecar == nil {
 		t.Fatal("Sidecar must be set when markers are present")
 	}
@@ -105,8 +107,159 @@ func TestRenderJSSourceMap_ExtractsInlineMarkers(t *testing.T) {
 }
 
 func TestRenderJSSourceMap_NoMarkersNoPositionsReturnsZero(t *testing.T) {
-	res := renderJSSourceMap("x.js", nil, []byte("plain;"))
+	res := renderJSSourceMap("x.js", "", nil, []byte("plain;"))
 	if res.InlineBody != nil || res.Sidecar != nil {
 		t.Fatalf("expected zero, got %+v", res)
+	}
+}
+
+// A `sources` entry is resolved against the map's own location, so a map
+// written into an output directory must not carry the path the compiler was
+// invoked with. These cover both spellings an invocation can produce.
+func TestRenderJSSourceMap_SourcesResolveFromMapDir(t *testing.T) {
+	root := t.TempDir()
+	srcDir := filepath.Join(root, "src")
+	outDir := filepath.Join(root, "out")
+	for _, d := range []string{srcDir, outDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srcPath := filepath.Join(srcDir, "app.sngl")
+	if err := os.WriteFile(srcPath, []byte("component main {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rel, err := filepath.Rel(outDir, srcPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		file string
+	}{
+		{"absolute", srcPath},
+		{"relative-to-cwd", relToCwd(t, srcPath)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			positions := []codegen.PosEntry{
+				{ByteOffset: 0, Pos: ast.Pos{File: tc.file, Line: 1, Column: 1}},
+			}
+			res := renderJSSourceMap("model.js", outDir, positions, []byte("first;\n"))
+			var m struct {
+				Sources []string `json:"sources"`
+			}
+			if err := json.Unmarshal(res.Sidecar, &m); err != nil {
+				t.Fatalf("sidecar not valid JSON: %v", err)
+			}
+			if len(m.Sources) != 1 {
+				t.Fatalf("sources=%v want one entry", m.Sources)
+			}
+			if m.Sources[0] != filepath.ToSlash(rel) {
+				t.Errorf("sources[0]=%q want %q", m.Sources[0], filepath.ToSlash(rel))
+			}
+			// The point of the rewrite: a consumer reading the map from
+			// outDir can open what it names.
+			resolved := filepath.Join(outDir, filepath.FromSlash(m.Sources[0]))
+			if _, err := os.Stat(resolved); err != nil {
+				t.Errorf("sources[0] does not resolve from the map's directory: %v", err)
+			}
+		})
+	}
+}
+
+// relToCwd spells path the way a CLI invocation from the working directory
+// would, so the test covers the input form that produced a bare "app.sngl"
+// in the map before sources were rebased.
+func relToCwd(t *testing.T, path string) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(cwd, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rel
+}
+
+// With no output directory known (playground, LSP preview) the path is left
+// exactly as the compiler saw it rather than being resolved against the cwd.
+func TestRenderJSSourceMap_NoMapDirLeavesSourcesAlone(t *testing.T) {
+	positions := []codegen.PosEntry{
+		{ByteOffset: 0, Pos: ast.Pos{File: "f.sngl", Line: 1, Column: 1}},
+	}
+	res := renderJSSourceMap("model.js", "", positions, []byte("first;\n"))
+	var m struct {
+		Sources []string `json:"sources"`
+	}
+	if err := json.Unmarshal(res.Sidecar, &m); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Sources) != 1 || m.Sources[0] != "f.sngl" {
+		t.Errorf("sources=%v want [f.sngl]", m.Sources)
+	}
+}
+
+// A map's generated line numbers count lines in the file as written. The
+// emitter prepends a two-line generated-by header, so building the map
+// against the bare body and prepending the header afterwards shifted every
+// entry up by two — the sidecar pointed two lines above each statement.
+func TestFileEmitter_MapAccountsForGeneratedByHeader(t *testing.T) {
+	sink := codegen.NewMemSink()
+	fe := newFileEmitter(sink, codegen.FileOptions{
+		Name:     "model.js",
+		Source:   "app.sngl",
+		Platform: "html",
+		Maps:     true,
+	})
+	if _, err := fe.Write([]byte("/*@SNGL:app.sngl:7@*/\nconst a = 1;\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := fe.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	files := sink.Files()
+	out, ok := files["model.js"]
+	if !ok {
+		t.Fatal("model.js not written")
+	}
+	sidecar, ok := files["model.js.map"]
+	if !ok {
+		t.Fatal("model.js.map not written")
+	}
+
+	wantLine := -1
+	for i, line := range strings.Split(string(out), "\n") {
+		if strings.Contains(line, "const a = 1;") {
+			wantLine = i
+			break
+		}
+	}
+	if wantLine < 0 {
+		t.Fatalf("statement missing from output:\n%s", out)
+	}
+	if wantLine == 0 {
+		t.Fatalf("header not emitted, so this test would pass vacuously:\n%s", out)
+	}
+
+	var m struct {
+		Mappings string `json:"mappings"`
+	}
+	if err := json.Unmarshal(sidecar, &m); err != nil {
+		t.Fatal(err)
+	}
+	// One segment group per generated line, ';'-separated; the leading
+	// empty groups are the lines before the first mapped statement.
+	gotLine := strings.Index(m.Mappings, "A")
+	if gotLine < 0 {
+		t.Fatalf("no segment in mappings %q", m.Mappings)
+	}
+	if gotLine != wantLine {
+		t.Errorf("first mapping is on generated line %d, statement is on line %d (mappings %q)\n%s",
+			gotLine, wantLine, m.Mappings, out)
 	}
 }

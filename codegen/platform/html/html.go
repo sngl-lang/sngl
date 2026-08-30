@@ -208,6 +208,7 @@ type bundleKey struct {
 	entry  string
 	minify bool
 	maps   bool
+	outDir string
 }
 
 type bundleResult struct {
@@ -517,6 +518,19 @@ type htmlGen struct {
 
 	maps bool
 
+	// outDir is where index.html will land, which is where the inline
+	// source map is read from and so what its `sources` resolve against.
+	//
+	// It only makes those paths a good label, not the thing that has to
+	// work: a window with `href="/about"` is emitted to about/index.html, a
+	// directory below the page at the root, and that name is decided in the
+	// collect step — after the script and its map have been rendered. Over
+	// HTTP nothing resolves either, since the .sngl sits outside the
+	// document root. What actually carries the source is the map's
+	// sourcesContent (see readSourcesContent), which esbuild preserves
+	// through its own map chain.
+	outDir string
+
 	componentInvocations int
 
 	// dataRenames maps original component var names to promoted unique names
@@ -643,6 +657,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
+	g.outDir = ctx.ExprCtx.OutDir
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		// ForComponent re-clones, replacing newHTMLGen's wiring with
@@ -680,11 +695,11 @@ func (g *htmlGen) rewriteSlotCallsOnce() {
 // bundleScript runs the window's script through esbuild, memoized on the
 // script text: every page of a static site shares the same runtime.
 func (g *htmlGen) bundleScript(entry string) (string, error) {
-	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps}
+	key := bundleKey{entry: entry, minify: g.minify, maps: g.maps, outDir: g.outDir}
 	if got, ok := g.shared.bundles[key]; ok {
 		return got.out, got.err
 	}
-	out, err := bundleNativeScript(entry, g.shared.projectFS, g.minify, g.maps)
+	out, err := bundleNativeScript(entry, g.shared.projectFS, g.minify, g.maps, g.outDir)
 	g.shared.bundles[key] = bundleResult{out: out, err: err}
 	return out, err
 }
@@ -1026,7 +1041,7 @@ func (g *htmlGen) generate() (string, error) {
 		// inline sourceMappingURL now, so esbuild chains through to a
 		// SNGL→bundled output map.
 		if g.maps {
-			script = inlineSourceMapFromMarkers(script)
+			script = inlineSourceMapFromMarkers(script, g.outDir)
 		}
 		// Always run esbuild, so output is consistent whether or not the
 		// source uses native imports. Its IIFE wrapping deterministically

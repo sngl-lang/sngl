@@ -25,6 +25,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	analysis := AnalyzeCommon(req.Pkg)
 	exprCtx := NewExprCtx(req.Pkg)
 	exprCtx.Maps = req.Maps
+	exprCtx.OutDir = req.OutDir
 	return &CodegenCtx{
 		Pkg:           req.Pkg,
 		Analysis:      analysis,
