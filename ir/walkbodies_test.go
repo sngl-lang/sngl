@@ -139,6 +139,7 @@ func bodiedPackage() *Package {
 	body := func(slot string) []Stmt { return []Stmt{&Return{Value: mark(slot)}} }
 
 	return &Package{
+		Body: body("Package.Body"),
 		Vars: []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		Funcs: []*Func{{
 			Block: []Stmt{

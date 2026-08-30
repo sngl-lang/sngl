@@ -84,21 +84,20 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	if ctx.Pkg == nil {
 		return nil
 	}
-	out := make([]OwnedVar, 0, len(ctx.Pkg.Vars)+len(ctx.Pkg.Consts))
-	for _, v := range ctx.Pkg.Vars {
-		out = append(out, OwnedVar{Var: v})
-	}
-	for _, c := range ctx.Pkg.Consts {
-		out = append(out, OwnedVar{Var: c})
-	}
-	if main := ctx.MainComponent(); main != nil {
-		for _, v := range main.Vars {
-			out = append(out, OwnedVar{Var: v, Comp: main})
+	root := ctx.MainComponent()
+	var out []OwnedVar
+	for _, o := range ir.Owners(ctx.Pkg) {
+		// One Model holds one component's state: the root's. The others are
+		// inlined into it before codegen, and a child's `count` is not this
+		// model's `count`.
+		if o.Comp != nil && o.Comp != root {
+			continue
 		}
-	}
-	for _, w := range ctx.Pkg.Windows {
-		for _, v := range w.Vars {
-			out = append(out, OwnedVar{Var: v, Win: w})
+		for _, v := range o.Vars {
+			out = append(out, OwnedVar{Var: v, Comp: o.Comp, Win: o.Win})
+		}
+		for _, c := range o.Consts {
+			out = append(out, OwnedVar{Var: c, Comp: o.Comp, Win: o.Win})
 		}
 	}
 	return out
