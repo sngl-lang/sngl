@@ -1,6 +1,7 @@
 package checker_test
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -98,5 +99,29 @@ struct Dup {}
 `)
 	if errs := libParityErrors(t, diags); len(errs) == 0 {
 		t.Fatal("a library package declared one name twice and nothing said so")
+	}
+}
+
+// A function body is held to the same rules in either tier. The library used
+// to be body-checked by a second checker that inferred a return type but
+// verified nothing, so a library function could declare a return and not
+// return on every path -- accepted, and reported to nobody.
+func TestLibPackageChecksFunctionBodies(t *testing.T) {
+	_, diags := libParityConfig(t, `
+func broken(x int) int {
+    if x > 0 {
+        return 1
+    }
+}
+`)
+	errs := libParityErrors(t, diags)
+	var found bool
+	for _, e := range errs {
+		if strings.Contains(e, "must return int on all paths") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("a library function that does not return on all paths was accepted; diagnostics: %v", errs)
 	}
 }

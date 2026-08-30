@@ -538,7 +538,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// that bodies can read freshly-registered context decls (e.g. the
 	// `#locale` context used by i18n.* wrappers).
 	for _, pb := range pendingBodies {
-		c.checkStdlibFuncBody(pb.ast, pb.fn)
+		c.checkFuncBody(pb.fn)
 	}
 
 	// Phase 2b: refine stdlib function purity by propagating from called
@@ -699,85 +699,6 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 		pkg.Vars = append(pkg.Vars, v)
 		c.bindLib(ast.Pos{}, pkg.Symbols.Root, v)
 	}
-}
-
-// checkStdlibFuncBody type-checks a stdlib function body (either expression-body
-// `=>` wrapper or block-body statement) into an ir.Block. The package-level scope
-// must already contain all stdlib decls (imports, types, funcs, contexts) so the
-// body can resolve references like `intl.Translate` or the active `locale` context.
-//
-// Intentional limits:
-//   - Bodyless stdlib funcs are unaffected.
-//   - If checking the body produces no return type (void), the func is left
-//     with Return == nil so the dyn fallback registerFunc applies to
-//     remains active.
-func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
-	if f.Body == nil && !f.Block.IsDefined() {
-		return
-	}
-	c.pushScope()
-	defer c.popScope()
-	for _, p := range fn.Params {
-		c.declare(f.Pos, p)
-	}
-	prevReturn := c.returnType
-	c.returnType = fn.Return
-	defer func() { c.returnType = prevReturn }()
-	// Receiver type parameters (the `<T>` in `list<T>.push`) plus any
-	// method-level ones must be in scope to resolve the receiver type and the
-	// body. RecvTypeParams come first so the receiver type `list<T>` resolves.
-	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
-
-	// Implicit-receiver methods (generic receiver, e.g. list<T>.push) carry no
-	// receiver parameter — the receiver is referenced as `this`. Bind it so
-	// such methods can have an expression body that delegates to an intrinsic,
-	// e.g. `func list<T>.push(item T) => stdlib.ListPush(this, item)`.
-	// Concrete-type methods (string.length(s string), color.hex(c color)) name
-	// the receiver explicitly and need no `this` binding. Only expression
-	// bodies are considered: the bodyless `{ }` generic stubs (map<K,V>.get,
-	// list<T>.filter, …) never reference `this`, and resolving their receiver
-	// type here would spuriously trip the map-key comparability check on the
-	// abstract key type parameter.
-	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.declare(f.Pos, &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
-		}
-	}
-
-	if f.Body != nil {
-		bodyExpr := c.checkExpr(f.Body)
-		if bodyExpr == nil {
-			return
-		}
-		pos := f.Pos
-		if p := f.Body.ExprPos(); p != nil {
-			pos = *p
-		}
-		// Infer concrete return type from the body when the declaration left it
-		// as dyn (the fallback registerFunc applies to library source). Stdlib wrappers
-		// like `i18n.numberInt(n, style) => intl.NumberInt(locale, n, style)`
-		// otherwise stay dyn and downstream codegen has no concrete Go/JS/Kotlin
-		// type for the method signature.
-		//
-		// Restrict to primitive body types to dodge a known ambiguity: the
-		// `color` struct vs the `color` primitive share a name. Wrappers like
-		// `color.rgb(...) => color{...}` produce a struct type whose
-		// stringification collides with the primitive in callers like
-		// `color.hex(c color)`; leaving those Returns as dyn preserves the
-		// historical wildcard behaviour. Primitives don't have this clash.
-		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-			if t := exprType(bodyExpr); t != nil && isPrimitiveTypeKind(t.Kind) {
-				fn.Return = t
-			}
-		}
-		fn.Block = []ir.Stmt{&ir.Return{
-			AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
-			Value: bodyExpr,
-		}}
-	} else if f.Block.IsDefined() {
-		fn.Block = c.checkBlockIR(&f.Block)
-	}
-
 }
 
 // applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a

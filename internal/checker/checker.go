@@ -2940,13 +2940,40 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
 
+	// A method on a generic receiver may carry no receiver parameter -- saying
+	// `this` instead -- so bind it for the expression bodies that delegate to
+	// an intrinsic, `func list<T>.push(item T) => stdlib.ListPush(this, item)`.
+	// A concrete receiver names itself a parameter and needs none, and so does
+	// a nested method, whose `this` is synthesized into its parameter list.
+	// Only an expression body: the bodyless generic stubs never say `this`, and
+	// resolving the receiver here would trip the map-key comparability check
+	// on an abstract key type.
+	if fn.AST != nil && fn.AST.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 &&
+		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
+		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.Receiver, fn.RecvTypeParams)); thisType != nil {
+			c.declare(funcDeclPos(fn), &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+		}
+	}
+
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body
 		bodyExpr := c.checkExpr(body)
+		if bodyExpr == nil {
+			return
+		}
 		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body when there was no annotation.
-		// An explicit `dyn` annotation is kept as-is.
+		// An explicit `dyn` annotation is kept as-is -- except in library
+		// source, where an unannotated signature was given dyn at
+		// registration rather than left nil, so the annotation and the
+		// absence of one are the same thing by the time this runs. Restricted
+		// to primitives: the `color` struct and the `color` primitive share a
+		// name, so inferring `color.rgb(...) => color{...}` as the struct
+		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
+			fn.Return = bodyType
+		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
+			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
 		}
 		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
