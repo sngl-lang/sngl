@@ -1851,20 +1851,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	// A library component's body is not registration's to read: the library
-	// checks its bodies in a later phase that collects their declarations
-	// itself. A plain one goes through loadStdlibPackage's own body pass
-	// (which calls collectComponentDecls), and an override through
-	// checkPendingExtensions (which calls collectExtensionVars). Collecting
-	// here as well would put every var in the list twice, and
-	// checkComponentBody declares what the list holds.
-	//
-	// A program's component has no such second phase -- pass1 registers it and
-	// pass2 checks it -- so its body is collected now.
-	var nestedFuncs []*ast.FuncDef
-	if !c.inLibSource() {
-		nestedFuncs = c.collectComponentDecls(comp, irComp)
-	}
+	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)

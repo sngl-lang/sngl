@@ -581,16 +581,18 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// into the component it names and checkPendingExtensions checks them
 	// there.
 	//
-	// Restricted to the target tiers: sngl:ui's components carry bodies
-	// too, but they are declared without the pass1 pre-pass that binds their
-	// props and vars, so checking them here reports every one as undefined.
+	// The body's own declarations were collected when the component was
+	// registered, as a program's are: registerComponent does that for every
+	// tier, so this only has to check what is already there.
+	//
+	// Restricted to the target tiers: sngl:ui's components carry bodies too
+	// (the _example_* documentation fixtures), and checking those here would
+	// resolve them against the library's scope rather than a program's.
 	if targetTier(pkgName) {
 		for _, irComp := range stdlibPkg.Components {
 			if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
 				continue
 			}
-			nested := c.collectComponentDecls(irComp.AST, irComp)
-			irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nested)
 			c.checkComponentBody(irComp)
 		}
 	}
