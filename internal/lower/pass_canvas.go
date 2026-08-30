@@ -50,9 +50,6 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 	}
 }
 
-// isShapeContainer reports whether a NodeInst hosts shapes without being one:
-// a canvas, not a rect. A shape's own children are drawn by the emitter that
-// draws it, so only the outermost host becomes a draw function.
 // drawPkg and shapeTree identify sngl://draw's own tree. The pass emits that
 // package's drawing primitives, so a tree declared elsewhere is not its
 // business however it is spelled.
@@ -61,6 +58,9 @@ const (
 	shapeTree = "shape"
 )
 
+// isShapeContainer reports whether a NodeInst hosts shapes without being one:
+// a canvas, not a rect. A shape's own children are drawn by the emitter that
+// draws it, so only the outermost host becomes a draw function.
 func isShapeContainer(ni *ir.NodeInst) bool {
 	return ni.Component != nil &&
 		ni.Component.Tree == nil &&
