@@ -224,6 +224,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		codegen.SetOptionField(req.Options, "package", "main")
 	}
 
+	// gtk4 has no errorBoundary emitter. Left to travel on, the boundary
+	// reaches the Go renderer, which panics on a statement kind no platform
+	// was meant to hand it.
+	if err := codegen.FirstUnimplementedNode(req.Pkg, platformName, "errorBoundary"); err != nil {
+		return err
+	}
+
 	c := &compilation{gen: g}
 	// gtk4NoWrap is a manual escape hatch that pins the inline-cgo path. Agent
 	// and Snapshot builds no longer force it: they emit a harness that matches
