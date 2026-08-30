@@ -554,10 +554,13 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		if t.isLocalRef(id.Name) {
 			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
-		if strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
-		}
-		if id.IsElementRef && id.Synthesized {
+		// Any element ref is a Model field: the id a program wrote as `#inc`
+		// exactly as much as the `__nN` lowering synthesized. Asking for
+		// Synthesized as well, and separately for the `__n` prefix, named two
+		// proxies for "is a node handle" and missed the one shape neither
+		// covers -- a tagged widget then reached the setter as a bare `inc`,
+		// which is not a binding this file has.
+		if id.IsElementRef || strings.HasPrefix(id.Name, "__n") {
 			return codegen.ModelFieldRef(id.Name)
 		}
 	}

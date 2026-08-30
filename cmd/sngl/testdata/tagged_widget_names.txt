@@ -1,0 +1,53 @@
+# A Model field is spelled the way the platform declared it. Platforms declare
+# them verbatim -- a node id, a slot, a canvas context -- which is what
+# codegen.ModelFieldRef means by `m.<name>`.
+#
+# The Go renderer exported them instead, and did it on some paths and not
+# others, so one field became two names:
+#
+#     inc  *widget.Button        // declared
+#     m.Inc = widget.NewButton() // written, through MutTargetField
+#     m.inc.SetText("+")         // read, through evalIdent
+#
+# ExportName is the identity on the synthesized ids (`__n1`), which is why this
+# went unseen: it takes a node id a program actually wrote to break, and then
+# no fyne or gtk4 program with a tagged widget compiled at all -- an ordinary
+# `generate`, not just a test build.
+#
+# `sngl test` is the assertion because it compiles what it generates. The
+# fixture deliberately does not click: driving an event is a separate gap.
+
+sngl test --platform none tagged.sngl
+stdout 'ok'
+sngl test --platform html tagged.sngl
+stdout 'ok'
+sngl test --platform bubbletea tagged.sngl
+stdout 'ok'
+sngl test --platform fyne tagged.sngl
+stdout 'ok'
+sngl test --platform gtk4 tagged.sngl
+stdout 'ok'
+
+# The same, as an ordinary build: the emitted field and every reference to it
+# agree on one name.
+sngl generate --platform=fyne --lang=go --out=fy tagged.sngl
+grep 'inc  *\*widget.Button' fy/model.go
+grep 'm\.inc = widget\.NewButton' fy/model.go
+grep 'm\.inc\.OnTapped = m\.inc_click_handler' fy/model.go
+! grep 'm\.Inc' fy/model.go
+
+-- tagged.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter {
+    var n = 3
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
+
+func testInitial(t Test, c counter) {
+    t.assert(c.n == 3)
+}
