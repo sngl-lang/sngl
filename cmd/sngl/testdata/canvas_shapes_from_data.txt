@@ -1,0 +1,81 @@
+# A canvas draws what a program computes: shapes from a loop, shapes behind a
+# condition, and shapes a program declared for itself.
+#
+# Four separate ways this produced a canvas with nothing in it. The shape
+# lookup matched the spelling at the call site, so an aliased import of
+# sngl:ui/draw drew a save and a restore with nothing between them. The walk
+# looking for a canvas stopped at NodeInsts, so one inside an `if` was never
+# lowered. The emitter read only NodeInst children, so a `for` and everything
+# in it was dropped. And a shape composed of other shapes -- which is exempt
+# from inlining, being rendered rather than composed away -- was emitted as a
+# save/restore pair with its body left behind.
+
+sngl generate --platform html --lang none -o out app.sngl
+
+# The backing rect, then the loop: `for c = columns()` unrolls to two cells,
+# and each expands to the three bars its body declares. The second cell's third
+# bar sits at 30 + 16, which exists only if all of that happened.
+grep 'ctx.fillRect\(0, 0, 60, 10\)' out/index.html
+grep 'ctx.fillRect\(16, 0, 6, 6\)' out/index.html
+grep 'ctx.fillRect\(46, 0, 6, 6\)' out/index.html
+
+# And it redraws when the state it draws from changes. The dependency scan read
+# only the draw function's top-level statements, so a canvas drawn from a loop
+# looked like it depended on nothing and was painted once, at startup — and the
+# handler's own write goes through an action it calls, which the scan did not
+# follow either.
+sngl dump --stage lowered --lang none --platform html app.sngl
+stdout '__canvasRedraw'
+
+# The TUI arm folds away, canvas and all.
+sngl generate --platform bubbletea --lang go -o tui app.sngl
+grep 'no pixels here' tui/model.go
+! grep 'fillRect' tui/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import "./gfx"
+import "sngl:platform/bubbletea"
+
+component main {
+    var lit = true
+    gfx.Panel(lit=lit)
+    button(text="t", @click { lit!! })
+}
+-- gfx/gfx.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+import "sngl:platform/bubbletea"
+
+// An aliased import: the shapes are named draw.rect, not rect.
+#[draw.shape]
+component Bar(on = false, x = 0.0) {
+    draw.rect(x=x, y=0.0, w=6.0, h=6.0, style=draw.CanvasStyle{fill=on ? #ff0000 : #003300})
+}
+
+// A shape made of shapes. It is not inlined away, so the canvas emitter has to
+// expand it where it stands.
+#[draw.shape]
+component Cell(on = false, x = 0.0) {
+    Bar(on=on, x=x)
+    Bar(on=on, x=x + 8.0)
+    Bar(on=on, x=x + 16.0)
+}
+
+func columns() => [0.0, 30.0]
+
+// The canvas is one arm of a target test, and its shapes come from a loop.
+component Panel(lit = false) {
+    vbox {
+        if PLATFORM == bubbletea.platform {
+            text(value="no pixels here")
+        } else {
+            draw.canvas(width=60px, height=10px) {
+                draw.rect(x=0.0, y=0.0, w=60.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
+                for c = columns() {
+                    Cell(on=lit, x=c)
+                }
+            }
+        }
+    }
+}

@@ -988,7 +988,7 @@ func (c *checker) targetPackages() []string {
 	// it does not -- pass1 has not built its map yet, and this is the same
 	// scan it will do.
 	replaces := map[string]string{}
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.allStmts() {
 		if imp, ok := stmt.(*ast.Import); ok && imp.Replace != "" {
 			if _, dup := replaces[imp.Path]; !dup {
 				replaces[imp.Path] = imp.Replace
@@ -997,7 +997,7 @@ func (c *checker) targetPackages() []string {
 	}
 	maps.Copy(replaces, c.cfg.Replaces)
 
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.allStmts() {
 		switch s := stmt.(type) {
 		case *ast.Import:
 			target := s.Path
@@ -1045,7 +1045,7 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 		return c.cfg.Targets
 	}
 	var declared []ir.StaticTarget
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.allStmts() {
 		if s, ok := stmt.(*ast.VisualNode); ok && visualNodeTarget(s) == "output" {
 			declared = append(declared, declaredOutputTargets(s)...)
 		}
@@ -1087,11 +1087,18 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 			continue
 		}
 		for _, langStmt := range langNode.Block.Stmts {
-			platNode, ok := langStmt.(*ast.VisualNode)
-			if !ok {
-				continue
+			// A platform carrying options parses as a call, not a visual node
+			// -- the same two forms buildPlatformOutput accepts. Reading only
+			// the node form here dropped every optioned platform from the
+			// target set, so its overrides never merged.
+			switch s := langStmt.(type) {
+			case *ast.VisualNode:
+				out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(s)})
+			case *ast.CallStmt:
+				if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
+					out = append(out, ir.StaticTarget{Language: lang, Platform: ident.Name})
+				}
 			}
-			out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(platNode)})
 		}
 	}
 	return out
@@ -1713,7 +1720,7 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
-	c := newChecker(&ast.Document{}, cfg)
+	c := newChecker([]*ast.Document{{}}, cfg)
 	pkg := c.libPkg(name)
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags

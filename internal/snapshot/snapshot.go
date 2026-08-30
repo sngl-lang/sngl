@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -124,7 +126,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 			return nil, err
 		}
 		dir := filepath.Dir(sourceFile)
-		pkg, err := checkAndReturn(doc, dir)
+		pkg, err := checkAndReturn(doc, dir, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +170,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 		return nil, err
 	}
 	dir := filepath.Dir(sourceFile)
-	pkg, err := checkAndReturn(doc, dir)
+	pkg, err := checkAndReturn(doc, dir, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +227,15 @@ type BatchConfig struct {
 type DocEntry struct {
 	ID         string // unique identifier for output naming
 	SourceFile string // path to .sngl file
+	// Doc is the already-parsed document, and Dir what its imports resolve
+	// against. A caller that read a whole package supplies both -- SourceFile
+	// then names one file of several and is only a label.
+	Doc *ast.Document
+	Dir string
+	// Resolver is what a directory or scheme import resolves through. Nil
+	// resolves nothing, which is all a self-contained doc-comment example
+	// needs.
+	Resolver checker.ImportResolver
 }
 
 // GenerateBatch produces screenshots for multiple documents, using batch
@@ -244,6 +255,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	// Parse and check all documents upfront.
 	type parsedDoc struct {
 		entry DocEntry
+		dir   string
 		pkg   *ir.Package
 	}
 	var parsed []parsedDoc
@@ -252,16 +264,21 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", entry.ID, err)
 		}
-		doc, err := ParseSNGL(sourceFile)
-		if err != nil {
-			return nil, fmt.Errorf("%s: parse: %w", entry.ID, err)
+		doc, dir := entry.Doc, entry.Dir
+		if doc == nil {
+			doc, err = ParseSNGL(sourceFile)
+			if err != nil {
+				return nil, fmt.Errorf("%s: parse: %w", entry.ID, err)
+			}
 		}
-		dir := filepath.Dir(sourceFile)
-		pkg, err := checkAndReturn(doc, dir)
+		if dir == "" {
+			dir = filepath.Dir(sourceFile)
+		}
+		pkg, err := checkAndReturn(doc, dir, entry.Resolver)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", entry.ID, err)
 		}
-		parsed = append(parsed, parsedDoc{entry: entry, pkg: pkg})
+		parsed = append(parsed, parsedDoc{entry: entry, dir: dir, pkg: pkg})
 	}
 
 	var results []Result
@@ -282,22 +299,25 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				// individual fallback path does (below). Generate() emits straight
 				// from IR and does NOT lower itself, so without this the batch
 				// would feed un-inlined components/widgets to codegen and render
-				// blank. Each pkg is snapshotted once, so in-place lowering is safe.
+				// blank. Both rewrite in place and both are target-specific, so a
+				// document snapshotted for several platforms gets a copy per
+				// platform -- the second otherwise lowers what the first left.
+				pkg := ir.ClonePackage(p.pkg)
 				batchOptCfg := &optimize.Config{
 					Platform: platform,
 					Language: lang,
-					Dir:      filepath.Dir(p.entry.SourceFile),
+					Dir:      p.dir,
 				}
-				if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
+				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
 				}
 				batchCaps := plat.Capabilities(langT).ToLowerCaps()
-				if err := lower.Lower(p.pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
+				if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 				}
 				batchDocs = append(batchDocs, codegen.BatchDoc{
 					ID:   p.entry.ID,
-					Pkg:  p.pkg,
+					Pkg:  pkg,
 					Lang: langT,
 				})
 			}
@@ -321,16 +341,17 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			// Batch text snapshots.
 			if bts, ok := plat.(codegen.BatchTextSnapshotter); ok {
 				texts, err := bts.BatchSnapshotText(batchDocs, cfg.Width, cfg.Height)
-				if err == nil {
-					for _, p := range parsed {
-						text, ok := texts[p.entry.ID]
-						if !ok || len(text) == 0 {
-							continue
-						}
-						txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
-						os.WriteFile(txtPath, text, 0o644)
-						results = append(results, Result{Platform: platform, Lang: lang, Path: txtPath})
+				if err != nil {
+					return nil, fmt.Errorf("batch snapshot %s: text: %w", platform, err)
+				}
+				for _, p := range parsed {
+					text, ok := texts[p.entry.ID]
+					if !ok || len(text) == 0 {
+						continue
 					}
+					txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
+					os.WriteFile(txtPath, text, 0o644)
+					results = append(results, Result{Platform: platform, Lang: lang, Path: txtPath})
 				}
 			}
 			continue
@@ -341,7 +362,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			snapshotter, ok := plat.(codegen.Snapshotter)
 			if !ok {
 				// No native snapshotter — try HTML fallback.
-				html, err := CompilePreviewHTML(p.entry.SourceFile, platform, lang)
+				html, err := compilePreviewHTMLDoc(ir.ClonePackage(p.pkg), platform, lang)
 				if err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
 				}
@@ -362,24 +383,25 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
+			pkg := ir.ClonePackage(p.pkg)
 			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,
-				Dir:      filepath.Dir(p.entry.SourceFile),
+				Dir:      p.dir,
 			}
-			if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
+			if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
 			}
 			batchCaps := plat.Capabilities(langT).ToLowerCaps()
-			if err := lower.Lower(p.pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
+			if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
 			if batchCaps != (lower.Caps{}) {
-				if err := optimize.Optimize(p.pkg, batchOptCfg); err != nil {
+				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
 				}
 			}
-			png, err := snapshotter.Snapshot(p.pkg, langT, cfg.Width, cfg.Height)
+			png, err := snapshotter.Snapshot(pkg, langT, cfg.Width, cfg.Height)
 			if err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
 			}
@@ -389,10 +411,16 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			}
 			results = append(results, Result{Platform: platform, Lang: lang, Path: outPath})
 
-			// Text snapshots.
+			// Text snapshots, from the same optimized+lowered package the
+			// image came from. p.pkg is the checked package and nothing more:
+			// asking a platform to emit from it produces a model with no user
+			// types and an empty view.
 			if ts, ok := plat.(codegen.TextSnapshotter); ok {
-				text, err := ts.SnapshotText(p.pkg, langT, cfg.Width, cfg.Height)
-				if err == nil && len(text) > 0 {
+				text, err := ts.SnapshotText(pkg, langT, cfg.Width, cfg.Height)
+				if err != nil {
+					return nil, fmt.Errorf("snapshot %s/%s: text: %w", p.entry.ID, platform, err)
+				}
+				if len(text) > 0 {
 					txtPath := filepath.Join(cfg.OutDir, p.entry.ID+"_"+platform+".txt")
 					os.WriteFile(txtPath, text, 0o644)
 					results = append(results, Result{Platform: platform, Lang: lang, Path: txtPath})

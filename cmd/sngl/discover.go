@@ -114,6 +114,135 @@ func shouldSkipWalkDir(name string) bool {
 	return c == '.' || c == '_'
 }
 
+// A unit is one thing a command works on. Commands differ in what they do with
+// one — check it, generate from it, run its tests — and no longer in how they
+// decide what one is: every command calls resolveUnits.
+//
+// They used to each answer that question for themselves, and disagreed.
+// `sngl generate` merged a file's siblings, `sngl test` deliberately never did,
+// and `sngl check` read every file alone — so the same package's declarations
+// were in scope for one command and undefined for the next.
+type unit struct {
+	// dir is what imports and generated paths resolve against.
+	dir string
+	// name identifies the unit in diagnostics: the file, or the directory.
+	name string
+	// files are the .sngl files the command was asked about here, in discovery
+	// order. A package reads its whole directory whatever this holds; this is
+	// what it reports on.
+	files []string
+	// solo marks a file read without its siblings: one the command line named,
+	// or one from a directory that is not a package.
+	solo bool
+}
+
+// headline is the file a unit is named after in generated output.
+func (u unit) headline() string {
+	if len(u.files) > 0 {
+		return u.files[0]
+	}
+	return u.name
+}
+
+// doc reads the unit into the single document the checker takes.
+func (u unit) doc() (*ast.Document, error) {
+	if !u.solo {
+		return parseDir(u.dir)
+	}
+	f, err := os.Open(u.name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return parseSNGL(u.name, f)
+}
+
+// resolveUnits turns command-line arguments into the units to work on:
+//
+//   - a file named on the command line is its own unit — naming it is the
+//     request, and a corpus of one-file programs in one directory relies on it;
+//   - a directory is a package, and all of its .sngl files are read together;
+//   - a directory whose files declare more than one `component main` is not a
+//     package but a collection of programs, and each file is its own unit.
+func resolveUnits(args []string) ([]unit, error) {
+	files, err := discoverFiles(args)
+	if err != nil {
+		return nil, err
+	}
+	explicit := explicitFileSet(args)
+
+	var grouped []unit
+	index := map[string]int{}
+	for _, f := range files {
+		abs, _ := filepath.Abs(f)
+		if explicit[abs] {
+			grouped = append(grouped, unit{dir: filepath.Dir(f), name: f, files: []string{f}, solo: true})
+			continue
+		}
+		dir := filepath.Dir(f)
+		i, seen := index[dir]
+		if !seen {
+			i = len(grouped)
+			index[dir] = i
+			grouped = append(grouped, unit{dir: dir, name: dir})
+		}
+		grouped[i].files = append(grouped[i].files, f)
+	}
+
+	var out []unit
+	for _, u := range grouped {
+		if u.solo || isPackageDir(u.dir) {
+			out = append(out, u)
+			continue
+		}
+		for _, f := range u.files {
+			out = append(out, unit{dir: u.dir, name: f, files: []string{f}, solo: true})
+		}
+	}
+	return out, nil
+}
+
+// isPackageDir reports whether a directory's files form one package.
+//
+// A package declares at most one `component main` — the checker says so — and
+// a directory with several is a corpus of one-file programs rather than a
+// package. Reading it as one would report every fixture after the first as a
+// duplicate declaration, which is true and useless.
+//
+// A file that does not parse is not counted: a corpus of deliberately broken
+// fixtures is still a corpus.
+func isPackageDir(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return true
+	}
+	mains := 0
+	for _, e := range entries {
+		if e.IsDir() || !isSNGLFile(e.Name()) {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		doc, err := parseSNGL(path, f)
+		f.Close()
+		if err != nil {
+			continue
+		}
+		for _, stmt := range doc.Stmts {
+			if c, ok := stmt.(*ast.ComponentDecl); ok && c.Name == "main" {
+				mains++
+			}
+		}
+		if mains > 1 {
+			return false
+		}
+	}
+	return true
+}
+
 // A directory is one compilation unit: every .sngl file in it merges into one
 // document.
 func parseDir(dir string) (*ast.Document, error) {
@@ -148,44 +277,13 @@ func parseDir(dir string) (*ast.Document, error) {
 	return doc, nil
 }
 
-func mergeDir(doc *ast.Document, filename string) *ast.Document {
-	dir := filepath.Dir(filename)
-	base := filepath.Base(filename)
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return doc
-	}
-
-	for _, e := range entries {
-		if e.IsDir() || !isSNGLFile(e.Name()) || e.Name() == base {
-			continue
-		}
-		path := filepath.Join(dir, e.Name())
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		sibling, err := parseSNGL(path, f)
-		f.Close()
-		if err != nil {
-			continue
-		}
-		mergeInto(doc, sibling)
-	}
-
-	return doc
-}
-
-// Imports are dropped: each file's are file-scoped and must not leak into
-// siblings.
+// Imports come along. They stay file-scoped -- the checker groups a merged
+// document's statements back by the file they were parsed from and gives each
+// group its own import scope -- so an alias one file binds is still invisible
+// to its siblings. Dropping them here instead meant a sibling could only use
+// what the file named on the command line had imported.
 func mergeInto(dst, src *ast.Document) {
-	for _, stmt := range src.Stmts {
-		if _, isImport := stmt.(*ast.Import); isImport {
-			continue
-		}
-		dst.Stmts = append(dst.Stmts, stmt)
-	}
+	dst.Stmts = append(dst.Stmts, src.Stmts...)
 }
 
 func validateOutputs(pkg *ir.Package) error {
@@ -237,6 +335,13 @@ func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTa
 		}
 	}
 	return pkg, nil
+}
+
+// newCLIResolver builds the resolver a check of dir uses. One is built per
+// check (see checkDoc), which is the lifetime any scheme session it opens
+// inherits.
+func newCLIResolver(dir string) *cliResolver {
+	return &cliResolver{rootDir: dir, fsys: os.DirFS(dir)}
 }
 
 // One is built per check (see checkDoc), which is the lifetime any scheme

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -15,8 +16,12 @@ import (
 )
 
 type Config struct {
-	FS        fs.FS          // filesystem for resolving relative imports
-	Dir       string         // OS directory for scheme imports
+	FS  fs.FS  // filesystem for resolving relative imports
+	Dir string // OS directory for scheme imports
+	// PkgPath is where the package being checked sits relative to FS's root,
+	// so that a relative import it writes is rebased onto it before the
+	// resolver reads it. Empty for the package the caller named.
+	PkgPath   string
 	IsMain    bool           // whether output declarations are allowed
 	Resolver  ImportResolver // import resolver (nil = no imports)
 	Languages []ir.Language  // registered languages
@@ -47,6 +52,35 @@ type Config struct {
 	// bookkeeping, and a cache built against other platforms would hand this
 	// check their declarations.
 	libs *libCache
+	// visited is the stack of directory packages currently being checked,
+	// shared with the nested checks so that a package importing itself back is
+	// reported. Two files of one package importing the same sibling is not a
+	// cycle, which is why entries are removed once the package is checked.
+	visited map[string]bool
+	// dirPkgs memoizes the directory packages this build has checked, keyed by
+	// their path under FS. Checking one twice would give the build two
+	// declarations of each of its types, and type identity is
+	// per-declaration -- which reads as "cannot pass Op as Op" at the call
+	// site where the two meet.
+	dirPkgs map[string]*ir.Package
+}
+
+// visitedStack is the import stack a nested check inherits, or a fresh one for
+// the package the caller named.
+func (cfg *Config) visitedStack() map[string]bool {
+	if cfg != nil && cfg.visited != nil {
+		return cfg.visited
+	}
+	return map[string]bool{}
+}
+
+// dirPkgCache is the checked-package cache a nested check inherits, or a fresh
+// one for the package the caller named.
+func (cfg *Config) dirPkgCache() map[string]*ir.Package {
+	if cfg != nil && cfg.dirPkgs != nil {
+		return cfg.dirPkgs
+	}
+	return map[string]*ir.Package{}
 }
 
 // libCache holds the library packages one build has loaded. It is shared with
@@ -103,10 +137,55 @@ type ImportResolver interface {
 	ResolveSchemeFS(scheme, uri, dir string) (docs []*ast.Document, subFS fs.FS, err error)
 }
 
-// Check type-checks a parsed v2 AST Document and returns the IR Package.
-// The Package is populated best-effort even when diagnostics are present.
+// Check type-checks one parsed document. A document whose statements came from
+// several files is a package of those files -- which is what the CLI hands in,
+// having merged a directory into one document -- so it is split back apart and
+// checked as one.
 func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
-	c := newChecker(doc, cfg)
+	return CheckPackage(splitByFile(doc), cfg)
+}
+
+// splitByFile groups a document's statements by the file they were parsed
+// from, preserving order. A statement with no position joins the group being
+// built, so a synthesized declaration stays with its neighbours.
+func splitByFile(doc *ast.Document) []*ast.Document {
+	var out []*ast.Document
+	cur, curFile := (*ast.Document)(nil), ""
+	for _, stmt := range doc.Stmts {
+		file := ""
+		if p := stmt.StmtPos(); p != nil {
+			file = p.File
+		}
+		if cur == nil || (file != "" && file != curFile) {
+			cur = &ast.Document{BlankLines: doc.BlankLines}
+			out = append(out, cur)
+			curFile = file
+		}
+		cur.Stmts = append(cur.Stmts, stmt)
+	}
+	if len(out) == 0 {
+		return []*ast.Document{doc}
+	}
+	if len(out) == 1 {
+		// One file: hand back the document itself, so callers holding it (the
+		// mark scope, the formatter) keep the identity they parsed.
+		return []*ast.Document{doc}
+	}
+	return out
+}
+
+// CheckPackage type-checks a directory's worth of documents as one package and
+// returns the IR Package. The Package is populated best-effort even when
+// diagnostics are present.
+//
+// Declarations are package-wide and imports are per-file: `struct Calc { op Op }`
+// resolves an `Op` declared in the file next to it, while the alias in
+// `import draw "sngl:ui/draw"` binds only where it is written.
+func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
+	if len(docs) == 0 {
+		return &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, nil
+	}
+	c := newChecker(docs, cfg)
 	c.pass1()
 	// A program's own overrides resolve after pass1: an override may be
 	// written above the declaration it overrides, and may name a component
@@ -135,8 +214,28 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 }
 
 type checker struct {
-	doc *ast.Document
-	cfg *Config
+	// doc is the file being registered or checked right now. files is the
+	// whole package: a directory is one compilation unit, so a declaration in
+	// one file may name one in any other.
+	doc   *ast.Document
+	files []*ast.Document
+	cfg   *Config
+
+	// fileScopes holds one scope per file, carrying that file's imports and
+	// nothing else. It sits between the package scope and the stdlib, so a
+	// declaration still shadows a dot-imported name while an alias one file
+	// binds stays invisible to its siblings. `enterFile` swaps which one the
+	// package scope's parent is; `importScope` is where an import binds.
+	fileScopes map[*ast.Document]*ir.Scope
+	// byName resolves a declaration back to its file in pass2, where the work
+	// is driven by the package's declarations rather than by its files.
+	fileScopesByName map[string]*ir.Scope
+	// curFileScope is the file whose imports are in scope, or nil outside any
+	// file (loading a library, checking synthesized IR).
+	curFileScope *ir.Scope
+	// fileTopLevel keeps each file's `topLevel` map across the several passes
+	// pass1 makes over the package.
+	fileTopLevel map[*ast.Document]map[string]topLevelBinding
 
 	pkg    *ir.Package
 	diags  []ir.Diagnostic
@@ -149,8 +248,15 @@ type checker struct {
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
 
-	// Import cycle detection.
+	// inferring is the stack of functions whose return type is being inferred,
+	// so a body that calls itself is reported rather than recurring.
+	inferring map[*ir.Func]bool
+
+	// Import cycle detection: the stack of directory packages being checked.
 	visited map[string]bool
+	// dirPkgs is the build's checked-package cache, shared with every nested
+	// check so that one directory yields one set of declarations.
+	dirPkgs map[string]*ir.Package
 
 	// foreign marks declarations that arrived from another package, so their
 	// unexported members stay private to it.
@@ -158,7 +264,8 @@ type checker struct {
 
 	// topLevel records every name bound at file scope and how it got there,
 	// so two bindings of one name are reported instead of silently resolving
-	// by declaration order.
+	// by declaration order. Reset per file: an alias is one file's, and two
+	// files declaring one name is caught by the package scope instead.
 	topLevel map[string]topLevelBinding
 
 	// Effective replace map for this package: outer overrides layered over
@@ -322,22 +429,24 @@ type pendingConstInit struct {
 	vars []*ir.Var
 }
 
-func newChecker(doc *ast.Document, cfg *Config) *checker {
+func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
 	c := &checker{
-		doc:          doc,
+		doc:          docs[0],
+		files:        docs,
 		cfg:          cfg,
 		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:       symtab,
 		scope:        symtab.Root,
 		unitBySuffix: make(map[string]*ir.UnitDef),
-		visited:      make(map[string]bool),
+		visited:      cfg.visitedStack(),
+		dirPkgs:      cfg.dirPkgCache(),
 		pkgWindowIDs: make(map[string]bool),
 		libs:         cfg.libCache(),
 	}
 	// Set before the library loads, which swap in their own: a lib load
 	// restores what it found, and what it finds must be the program's.
-	c.setMarkScope([]*ast.Document{doc})
+	c.setMarkScope(docs)
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
@@ -358,6 +467,21 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	c.typeTargetConsts()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
+
+	// One import scope per file, spliced between the package scope and the
+	// stdlib. Declarations keep going into Root, so nothing about how a
+	// declaration is registered changes; what changes is which imports Root's
+	// parent chain reaches, and enterFile is what swaps that.
+	c.fileScopes = make(map[*ast.Document]*ir.Scope, len(docs))
+	c.fileScopesByName = make(map[string]*ir.Scope, len(docs))
+	c.fileTopLevel = make(map[*ast.Document]map[string]topLevelBinding, len(docs))
+	for _, d := range docs {
+		fs := NewScope(stdlibScope)
+		c.fileScopes[d] = fs
+		if name := docFileName(d); name != "" {
+			c.fileScopesByName[name] = fs
+		}
+	}
 
 	// Inject all registered platform and language names as namespaces so a
 	// target's own declarations are reachable unqualified by name (html.div).
@@ -399,6 +523,152 @@ func newChecker(doc *ast.Document, cfg *Config) *checker {
 	}
 
 	return c
+}
+
+// docFileName is the file a document was parsed from, taken from the first
+// statement that carries a position. A synthesized document has none, and
+// nothing in pass2 needs to find its way back to one.
+func docFileName(d *ast.Document) string {
+	for _, stmt := range d.Stmts {
+		if p := stmt.StmtPos(); p != nil && p.File != "" {
+			return p.File
+		}
+	}
+	return ""
+}
+
+// allStmts is every statement in the package, in file order. Used by the few
+// scans that ask a question of the whole package -- which targets it names,
+// which imports it replaces -- rather than of one file.
+func (c *checker) allStmts() []ast.Stmt {
+	if len(c.files) == 1 {
+		return c.files[0].Stmts
+	}
+	var out []ast.Stmt
+	for _, d := range c.files {
+		out = append(out, d.Stmts...)
+	}
+	return out
+}
+
+// enterFile makes d the current file: its imports come into scope, and
+// `c.doc` is what the per-file registration loops read.
+func (c *checker) enterFile(d *ast.Document) {
+	c.doc = d
+	c.curFileScope = c.fileScopes[d]
+	if c.curFileScope != nil {
+		c.symtab.Root.Parent = c.curFileScope
+	}
+	// Allocated rather than left nil so that every later pass over this file
+	// adds to the same map: claimTopLevel allocates lazily, and a lazily
+	// allocated one would be dropped when the next pass resumed the file.
+	c.topLevel = map[string]topLevelBinding{}
+	c.fileTopLevel[d] = c.topLevel
+}
+
+// resumeFile re-enters a file that enterFile has already run over, restoring
+// the names it bound. pass1 makes several passes over the package and each one
+// has to see what the ones before it claimed in this file -- a declaration
+// clashing with an alias is reported where the declaration is registered,
+// which is a later pass than the import.
+func (c *checker) resumeFile(d *ast.Document) {
+	c.doc = d
+	c.curFileScope = c.fileScopes[d]
+	if c.curFileScope != nil {
+		c.symtab.Root.Parent = c.curFileScope
+	}
+	c.topLevel = c.fileTopLevel[d]
+}
+
+// enterFileOf makes the file that pos came from current, so that a body
+// checked in pass2 -- which is driven by the package's declarations, not by
+// its files -- resolves through the imports of the file it was written in.
+// A position naming no file leaves the scope alone: synthesized IR has no
+// imports of its own to reach.
+func (c *checker) enterFileOf(pos ast.Pos) {
+	if pos.File == "" {
+		return
+	}
+	if fs, ok := c.fileScopesByName[pos.File]; ok {
+		c.curFileScope = fs
+		c.symtab.Root.Parent = fs
+	}
+}
+
+// symType is a symbol's type, with an inferred return type resolved first.
+// Every place the checker turns a resolved symbol into a type goes through
+// here, because until a `func f() => expr` has had its body checked its return
+// type is nil, and nil reads as void.
+func (c *checker) symType(sym ir.Symbol) *ir.Type {
+	if fn, ok := sym.(*ir.Func); ok {
+		c.ensureReturnType(fn)
+	}
+	if sym == nil {
+		return nil
+	}
+	return sym.SymType()
+}
+
+// ensureReturnType checks fn's body when its return type is still waiting on
+// it. pass2 checks bodies in declaration order, so a call written above the
+// declaration -- or in whichever file of the package the directory happened to
+// be read first -- saw a function with no return type yet and typed the call
+// void. Order is not supposed to matter, and across files there is no order to
+// appeal to.
+//
+// Only an expression body infers: a block-bodied function with no annotation
+// returns nothing, by declaration rather than by inference.
+func (c *checker) ensureReturnType(fn *ir.Func) {
+	if fn == nil || fn.Return != nil {
+		return
+	}
+	if fn.AST == nil || fn.AST.Body == nil {
+		return
+	}
+	if c.inferring[fn] {
+		// `func f() => f()` has no type to arrive at. Reported here rather
+		// than left to recur, and typed dyn so the rest of the file checks.
+		c.error(funcDeclPos(fn), "cannot infer the return type of %q from a body that calls itself; annotate it", fn.Name)
+		fn.Return = TypDyn
+		return
+	}
+	if c.inferring == nil {
+		c.inferring = map[*ir.Func]bool{}
+	}
+	c.inferring[fn] = true
+	defer delete(c.inferring, fn)
+
+	// A top-level body resolves in package scope, not in whatever body was
+	// being checked when the call to it was reached.
+	savedScope, savedComp := c.scope, c.currentComponent
+	c.scope, c.currentComponent = c.symtab.Root, nil
+	defer func() { c.scope, c.currentComponent = savedScope, savedComp }()
+
+	// Only the return type is wanted here. pass2 checks this body again in its
+	// own order — that pass is the authoritative one, and it is where the
+	// diagnostics belong, so anything said here is dropped rather than said
+	// twice.
+	mark := len(c.diags)
+	c.checkFuncBody(fn)
+	c.diags = c.diags[:mark]
+}
+
+// fileOf brings the imports of the file pos names into scope and returns the
+// undo. pass2 is driven by the package's declarations rather than by its
+// files, so each body says which file it was written in:
+//
+//	defer c.fileOf(compDeclPos(comp))()
+//
+// A position naming no file changes nothing, which is what synthesized IR and
+// every single-file package want.
+func (c *checker) fileOf(pos ast.Pos) func() {
+	savedScope := c.curFileScope
+	savedParent := c.symtab.Root.Parent
+	c.enterFileOf(pos)
+	return func() {
+		c.curFileScope = savedScope
+		c.symtab.Root.Parent = savedParent
+	}
 }
 
 // declare binds sym in the current scope, reporting a name already bound there
@@ -630,17 +900,22 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	return false
 }
 
+// pass1 registers every declaration in the package. Each stage runs across all
+// files before the next begins, which is what makes a forward reference work
+// between two files as it already did within one: every type name exists
+// before any struct body is resolved, and every type and component exists
+// before any const, var or func signature names one.
+//
+// `topLevel` is reset per file rather than per package: an alias is one file's
+// business, and two files declaring one name is reported by the package scope
+// (`declare`), not here.
 func (c *checker) pass1() {
-	// File-scope name tracking covers this document only. Loading the library
-	// runs through the same register paths with its own scopes, and its names
-	// reach the user by import, where flattenDotImport claims them.
-	c.topLevel = nil
-
-	// Collect replace map for this package before any import is resolved, so
-	// declaration order of `import "p" => "url"` relative to bare `import "p"`
-	// does not matter. Outer (cfg.Replaces) wins over this package's own.
+	// Collect replace map for the whole package before any import is
+	// resolved, so declaration order of `import "p" => "url"` relative to bare
+	// `import "p"` does not matter -- across files as well as within one.
+	// Outer (cfg.Replaces) wins over this package's own.
 	c.replaces = map[string]string{}
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.allStmts() {
 		imp, ok := stmt.(*ast.Import)
 		if !ok || imp.Replace == "" {
 			continue
@@ -655,10 +930,14 @@ func (c *checker) pass1() {
 
 	// Imports must be processed first so their namespaces are in scope before
 	// any resolveType call inside a component, struct, or func declaration.
-	for _, stmt := range c.doc.Stmts {
-		if imp, ok := stmt.(*ast.Import); ok {
-			c.registerImport(imp)
+	for _, d := range c.files {
+		c.enterFile(d)
+		for _, stmt := range d.Stmts {
+			if imp, ok := stmt.(*ast.Import); ok {
+				c.registerImport(imp)
+			}
 		}
+		c.fileTopLevel[d] = c.topLevel
 	}
 
 	// Pre-register type declarations so they're visible for forward references
@@ -667,49 +946,65 @@ func (c *checker) pass1() {
 	// type NAME first — structs as field-less shells — then resolve struct
 	// fields in a sub-pass once all shells exist. Components are registered
 	// after the shells because their prop/children types may name any of them.
-	var structShells []*ir.StructDef
-	var pendingComponents []*ast.ComponentDecl
-	for _, stmt := range c.doc.Stmts {
-		switch s := stmt.(type) {
-		case *ast.StructDef:
-			structShells = append(structShells, c.registerStructShell(s))
-		case *ast.EnumDef:
-			c.registerEnum(s)
-		case *ast.UnitDef:
-			c.registerUnit(s)
-		case *ast.ComponentDecl:
-			pendingComponents = append(pendingComponents, s)
+	type pendingShell struct {
+		doc *ast.Document
+		sd  *ir.StructDef
+	}
+	type pendingComp struct {
+		doc  *ast.Document
+		decl *ast.ComponentDecl
+	}
+	var structShells []pendingShell
+	var pendingComponents []pendingComp
+	for _, d := range c.files {
+		c.resumeFile(d)
+		for _, stmt := range d.Stmts {
+			switch s := stmt.(type) {
+			case *ast.StructDef:
+				structShells = append(structShells, pendingShell{d, c.registerStructShell(s)})
+			case *ast.EnumDef:
+				c.registerEnum(s)
+			case *ast.UnitDef:
+				c.registerUnit(s)
+			case *ast.ComponentDecl:
+				pendingComponents = append(pendingComponents, pendingComp{d, s})
+			}
 		}
 	}
-	for _, comp := range pendingComponents {
-		c.registerComponent(comp)
+	for _, p := range pendingComponents {
+		c.resumeFile(p.doc)
+		c.registerComponent(p.decl)
 	}
-	for _, sd := range structShells {
-		c.resolveStructBody(sd)
+	for _, p := range structShells {
+		c.resumeFile(p.doc)
+		c.resolveStructBody(p.sd)
 	}
 
-	for _, stmt := range c.doc.Stmts {
-		switch s := stmt.(type) {
-		case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
-			continue // already registered above
-		case *ast.ConstDecl:
-			c.registerConstShells(s)
-		case *ast.VarDecl:
-			c.registerVars(s)
-		case *ast.FuncDef:
-			c.registerFunc(s)
-		case *ast.VisualNode:
-			c.registerRootVisualNode(s)
-		case *ast.CallStmt:
-			if c.isContextDeclCallStmt(s) {
-				c.registerRootContextDecl(s)
-			} else {
-				c.error(s.Pos, "unexpected top-level call statement")
+	for _, d := range c.files {
+		c.resumeFile(d)
+		for _, stmt := range d.Stmts {
+			switch s := stmt.(type) {
+			case *ast.Import, *ast.EnumDef, *ast.StructDef, *ast.UnitDef, *ast.ComponentDecl:
+				continue // already registered above
+			case *ast.ConstDecl:
+				c.registerConstShells(s)
+			case *ast.VarDecl:
+				c.registerVars(s)
+			case *ast.FuncDef:
+				c.registerFunc(s)
+			case *ast.VisualNode:
+				c.registerRootVisualNode(s)
+			case *ast.CallStmt:
+				if c.isContextDeclCallStmt(s) {
+					c.registerRootContextDecl(s)
+				} else {
+					c.error(s.Pos, "unexpected top-level call statement")
+				}
+			case *ast.DisabledDecl:
+			case *ast.Comment:
+			default:
+				// IfStmt, ForStmt at top level are checked in pass2.
 			}
-		case *ast.DisabledDecl:
-		case *ast.Comment:
-		default:
-			// IfStmt, ForStmt at top level are checked in pass2.
 		}
 	}
 
@@ -877,32 +1172,54 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 		}
 	} else if c.cfg.Resolver != nil {
-		if c.visited[imp.Path] {
+		// A `./` or `../` import is relative to the file that wrote it, so it
+		// is rebased onto the importing package's own path before the resolver
+		// sees it. Without that, `../calc` inside an imported `keypad/`
+		// resolved against the root and looked for a sibling of the program.
+		// A bare path stays as written -- that is what a replace target is,
+		// and it names a package rather than a neighbour.
+		dirPath := uri
+		if strings.HasPrefix(uri, "./") || strings.HasPrefix(uri, "../") {
+			dirPath = path.Join(c.cfg.PkgPath, uri)
+		}
+		// Cycle detection is a stack, not a memory: the same package imported
+		// by two files of one package is a package imported twice, and only a
+		// package that imports itself back is a cycle.
+		switch {
+		case c.visited[dirPath]:
 			c.error(imp.Pos, "import cycle detected: %q", imp.Path)
-		} else {
-			c.visited[imp.Path] = true
-			docs, err := c.cfg.Resolver.Resolve(c.cfg.FS, uri)
+		case c.dirPkgs[dirPath] != nil:
+			irImport.Pkg = c.dirPkgs[dirPath]
+		default:
+			c.visited[dirPath] = true
+			docs, err := c.cfg.Resolver.Resolve(c.cfg.FS, dirPath)
 			if err != nil {
 				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
+			defer delete(c.visited, dirPath)
 			if len(docs) > 0 {
-				merged := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-				for _, d := range docs {
-					pkg, diags := Check(d, &Config{
-						FS:         c.cfg.FS,
-						Dir:        c.cfg.Dir,
-						Resolver:   c.cfg.Resolver,
-						Languages:  c.cfg.Languages,
-						Platforms:  c.cfg.Platforms,
-						Replaces:   c.replaces,
-						Targets:    c.targets,
-						LibSources: c.cfg.LibSources,
-						libs:       c.libs,
-					})
-					c.diags = append(c.diags, diags...)
-					c.mergePkgInto(merged, pkg)
-				}
-				irImport.Pkg = merged
+				// One package, not one per file: a directory is a compilation
+				// unit, so a declaration in one of its files may name one in
+				// any other. Checking each document on its own is what made
+				// `struct Calc { op Op }` fail when Op was in the file next to
+				// it.
+				pkg, diags := CheckPackage(docs, &Config{
+					FS:         c.cfg.FS,
+					Dir:        c.cfg.Dir,
+					PkgPath:    dirPath,
+					Resolver:   c.cfg.Resolver,
+					visited:    c.visited,
+					dirPkgs:    c.dirPkgs,
+					Languages:  c.cfg.Languages,
+					Platforms:  c.cfg.Platforms,
+					Replaces:   c.replaces,
+					Targets:    c.targets,
+					LibSources: c.cfg.LibSources,
+					libs:       c.libs,
+				})
+				c.diags = append(c.diags, diags...)
+				irImport.Pkg = pkg
+				c.dirPkgs[dirPath] = pkg
 			}
 		}
 	}
@@ -1196,6 +1513,10 @@ func (c *checker) checkPendingConstInits() {
 		if p.spec.Default == nil {
 			continue
 		}
+		// Deferred out of the per-file loop, so each initializer says which
+		// file it was written in rather than inheriting the last one's
+		// imports.
+		restore := c.fileOf(p.decl.Pos)
 		typ := p.typ
 		initExpr := c.checkExprExpecting(p.spec.Default, typ)
 
@@ -1239,6 +1560,7 @@ func (c *checker) checkPendingConstInits() {
 			v.Init = initExpr
 			v.Type = finalType
 		}
+		restore()
 	}
 }
 
@@ -1416,6 +1738,15 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
 			}
+		} else if sd, ok := structDeclOf(typ); ok {
+			// A struct var with no initializer is that struct's zero value,
+			// which is its fields' defaults -- not an empty struct. Built here
+			// so every consumer sees what a written `Counter{}` already gives
+			// them: left empty, `var c Counter` read back undefined on the web
+			// and its declared defaults everywhere else.
+			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
+				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			}
 		}
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
@@ -1475,6 +1806,12 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				// Don't propagate void into an inferred component var type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
+			}
+		} else if sd, ok := structDeclOf(typ); ok {
+			// See registerVars: a struct var with no initializer is that
+			// struct's zero value, which is its fields' defaults.
+			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
+				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
 			}
 		}
 		for _, name := range spec.Names {
@@ -2542,6 +2879,7 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 	if sd == nil || sd.AST == nil {
 		return
 	}
+	defer c.fileOf(sd.AST.Pos)()
 	byName := make(map[string]*ir.StructField, len(sd.Fields))
 	for _, f := range sd.Fields {
 		byName[f.Name] = f
@@ -2757,6 +3095,7 @@ func (c *checker) dropPlaceholderBodies() {
 }
 
 func (c *checker) checkFuncBody(fn *ir.Func) {
+	defer c.fileOf(funcDeclPos(fn))()
 	c.pushScope()
 	defer c.popScope()
 	c.funcDepth++
@@ -2862,6 +3201,7 @@ func lastStmtMayDiverge(stmts []ir.Stmt) bool {
 // (with refined types and authoritative diagnostics) runs later inside
 // checkComponentBody.
 func (c *checker) preCheckComponentMethods(comp *ir.Component) {
+	defer c.fileOf(compDeclPos(comp))()
 	hasNested := false
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == comp.Name {
@@ -2917,6 +3257,7 @@ func propParam(p *ir.Prop) *ir.Param {
 }
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
+	defer c.fileOf(compDeclPos(comp))()
 	c.pushScope()
 	defer c.popScope()
 
@@ -3042,6 +3383,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
+	if w.AST != nil {
+		defer c.fileOf(w.AST.Pos)()
+	}
 	c.pushScope()
 	defer c.popScope()
 
@@ -3211,6 +3555,7 @@ func (c *checker) checkTimerBody(t *ir.Timer) {
 	if t.AST == nil || !t.AST.Block.IsDefined() {
 		return
 	}
+	defer c.fileOf(t.AST.Pos)()
 	c.pushScope()
 	defer c.popScope()
 	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
@@ -3280,12 +3625,14 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			if h.AST == nil || !h.AST.Body.IsDefined() {
 				continue
 			}
+			restore := c.fileOf(varPos(v))
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)
 			}
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
 			c.popScope()
+			restore()
 		}
 	}
 }

@@ -213,6 +213,23 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 			Op:     ast.AssignSet,
 			Value:  &ir.Ident{Name: "canvas.ImageFillOriginal", Type: ir.TypDyn},
 		},
+		// ImageFillOriginal only grows the image once its renderer has run,
+		// and a container lays out before that -- so a canvas placed in a box
+		// came out one pixel tall. The canvas declared its pixel size; say so.
+		methodStmt(imgField, "SetMinSize", newFyneSizeCall(w, h)),
+	}
+}
+
+// newFyneSizeCall builds `fyne.NewSize(w, h)`.
+func newFyneSizeCall(w, h int) *ir.Call {
+	return &ir.Call{
+		Type:     ir.TypDyn,
+		Receiver: &ir.Ident{Name: "fyne"},
+		Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2", Name: "fyne.NewSize"}},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}},
+		},
 	}
 }
 

@@ -134,25 +134,15 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 	if cliLang != "" && cliPlat != "" {
 		return false
 	}
-	files, err := discoverFiles(args)
-	if err != nil || len(files) == 0 {
+	units, err := resolveUnits(args)
+	if err != nil || len(units) == 0 {
 		return false
 	}
-	f, err := os.Open(files[0])
+	doc, err := units[0].doc()
 	if err != nil {
 		return false
 	}
-	doc, err := parseSNGL(files[0], f)
-	f.Close()
-	if err != nil {
-		return false
-	}
-	dir := filepath.Dir(files[0])
-	absFilename, _ := filepath.Abs(files[0])
-	if !explicitFileSet(args)[absFilename] {
-		doc = mergeDir(doc, files[0])
-	}
-	pkg, err := checkDoc(doc, dir, true)
+	pkg, err := checkDoc(doc, units[0].dir, true)
 	if err != nil {
 		return false
 	}

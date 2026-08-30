@@ -85,8 +85,35 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 			}
 		}()
 	}
-	for _, stmt := range handler.Func.Block {
-		if err := env.Exec(stmt); err != nil {
+	return env.ExecBlock(handler.Func.Block)
+}
+
+// returnSignal carries a `return` out of the blocks it was written inside.
+// Exec reports what happened to a statement as an error, so a return travels
+// that same channel: execIf and execFor pass one up without looking at it, and
+// whoever is running the function body catches it. Reading a Return only where
+// it sits at the top of a body — which is what the interpreter used to do — let
+// a guard clause fall through to the statement after its `if`.
+type returnSignal struct{ value any }
+
+func (*returnSignal) Error() string { return "return outside a function body" }
+
+// IsReturn reports whether an Exec error is a `return` looking for its
+// function body rather than a failure.
+func IsReturn(err error) bool {
+	_, ok := err.(*returnSignal)
+	return ok
+}
+
+// ExecBlock runs a statement stream that is not a function body — a test body,
+// an event handler — stopping at a `return` rather than reporting one.
+func (env *Env) ExecBlock(block []ir.Stmt) error {
+	for _, stmt := range block {
+		err := env.Exec(stmt)
+		if _, ok := err.(*returnSignal); ok {
+			return nil
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -120,14 +147,21 @@ func (env *Env) Exec(s ir.Stmt) error {
 		if err != nil {
 			return err
 		}
-		env.Set(n.Sym, v)
+		env.Set(n.Sym, CopyValue(v))
 		return nil
 	case *ir.If:
 		return env.execIf(n)
 	case *ir.For:
 		return env.execFor(n)
 	case *ir.Return:
-		return nil // caller handles return bodies
+		if n.Value == nil {
+			return &returnSignal{}
+		}
+		v, err := env.Eval(n.Value)
+		if err != nil {
+			return err
+		}
+		return &returnSignal{value: v}
 	case *ir.NodeInst:
 		// Visual nodes don't execute in statement position in the headless
 		// interpreter (they're rendered elsewhere). Skipping preserves

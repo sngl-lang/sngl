@@ -516,6 +516,18 @@ func (jc *JsIRContext) registerNativeImport(mod, name string) {
 	jc.Ctx.NativeImports[mod][name] = true
 }
 
+// jsSnglNamespace reports whether an expression is the alias of an imported
+// SNGL package — one whose declarations this build emits itself, as opposed to
+// a scheme import naming a real JavaScript module.
+func jsSnglNamespace(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	ns, ok := id.Sym.(*ir.Namespace)
+	return ok && ns.Pkg != nil
+}
+
 func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := jc.EvalExpr(n.Receiver)
 	args := jc.evalCallArgs(n.Args)
@@ -565,6 +577,14 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 			if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 				return result
 			}
+		}
+
+		// A SNGL package's declarations are emitted into this very module, so
+		// the alias at the call site names nothing: `readout.cells(…)` is the
+		// free `cells(…)` the emitter wrote. The alias survives only for a
+		// native import, which carries a Foreign path.
+		if jsSnglNamespace(n.Receiver) && n.Func.Foreign.Path == "" {
+			return fname + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		allArgs := append([]string{receiver}, args...)
@@ -767,6 +787,18 @@ func (jc *JsIRContext) evalCallArgs(args []ir.CallArg) []string {
 func (jc *JsIRContext) WithLocal(name string) *JsIRContext {
 	return &JsIRContext{
 		Ctx:      jc.Ctx.WithLocal(name),
+		EventVar: jc.EventVar,
+	}
+}
+
+// WithRenamedLocal binds name as a local that renders as `as`. SNGL's method
+// receiver is spelled `this`, which JavaScript will not accept as a parameter
+// name, so the emitter picks another and the body has to agree with it.
+func (jc *JsIRContext) WithRenamedLocal(name, as string) *JsIRContext {
+	ctx := jc.Ctx.WithLocal(name)
+	ctx.Renames[name] = as
+	return &JsIRContext{
+		Ctx:      ctx,
 		EventVar: jc.EventVar,
 	}
 }

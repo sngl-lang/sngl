@@ -44,7 +44,13 @@ func structDecl(st *ir.SymbolTable, name string) *ir.StructDef {
 // the scope the checker is currently in. That is the scope AttachMethod wrote
 // through, so the two always agree on which declaration a receiver name means.
 func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
-	return ir.LookupMethodIn(c.scope, recv, method)
+	fn, ok := ir.LookupMethodIn(c.scope, recv, method)
+	if ok {
+		// The caller is about to read fn.Return. See symType: an expression
+		// body has no return type until it is checked.
+		c.ensureReturnType(fn)
+	}
+	return fn, ok
 }
 
 // declareMethod makes fn a member of the declaration its receiver names,
@@ -115,6 +121,13 @@ func (c *checker) bindDeclared(claimed bool, sym ir.Symbol) {
 func (c *checker) importScope() *ir.Scope {
 	if c.libImportScope != nil {
 		return c.libImportScope
+	}
+	// The file's own scope sits under the package scope, so an alias one file
+	// binds is unreachable from its siblings while every declaration stays
+	// package-wide. Only while a file is current: registration that happens
+	// outside one has nowhere else to put a name.
+	if c.curFileScope != nil && c.scope == c.symtab.Root {
+		return c.curFileScope
 	}
 	return c.scope
 }

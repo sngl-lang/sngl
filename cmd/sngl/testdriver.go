@@ -65,7 +65,15 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	}
 
 	caps := plat.Capabilities(lang).ToLowerCaps()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: plat.PlatformIdentifier()}); err != nil {
+	// The same options every other caller lowers with. Without the language,
+	// passPlatformExtensionBody picks a different body for a component that
+	// overrides on both axes, so the program under test was not the program
+	// `sngl generate` builds.
+	if err := lower.Lower(pkg, caps, lower.Options{
+		Platform:        plat.PlatformIdentifier(),
+		Language:        langIdent(lang),
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+	}); err != nil {
 		return nil, fmt.Errorf("lower for tests: %w", err)
 	}
 
@@ -174,16 +182,18 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 }
 
 // Best-effort, for error messages: language types spell this differently.
+// langIdent is the language's name, as `ir.Language` declares it.
+//
+// It probed for two method names a LangTranslator does not have —
+// LangIdentifier and Identifier — so it answered "" for every language there
+// is. The optimizer and the lowering both take that name, and with no name the
+// program under test was optimized differently from the one `sngl generate`
+// builds: `go test` and `go build` disagreed about the same source.
 func langIdent(lang codegen.LangTranslator) string {
-	type identer interface{ LangIdentifier() string }
-	if l, ok := lang.(identer); ok {
-		return l.LangIdentifier()
+	if lang == nil {
+		return ""
 	}
-	type identer2 interface{ Identifier() string }
-	if l, ok := lang.(identer2); ok {
-		return l.Identifier()
-	}
-	return ""
+	return lang.LanguageIdentifier()
 }
 
 func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen.TestResult, error) {

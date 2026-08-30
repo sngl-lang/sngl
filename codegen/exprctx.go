@@ -62,6 +62,15 @@ type ExprCtx struct {
 	// IdentRewrites remaps bare identifiers regardless of scope, applied
 	// first in identifier translation.
 	IdentRewrites map[string]string
+	// FreeFuncs names the user functions a host emits as free package-level
+	// functions rather than as methods on its receiver, so a call to one
+	// renders under its exported name from any scope.
+	//
+	// A top-level function has no component in scope and so can read no
+	// component state; there is nothing for a receiver to carry. Emitting one
+	// as a method anyway is what left a type method — which is free, having no
+	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
+	FreeFuncs map[string]bool
 	// StateReceiver, when non-empty, names a struct receiver onto which
 	// component/package state vars are projected as EXPORTED fields. Set by
 	// the html backend (route mode) so a state read `count` renders
@@ -197,6 +206,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),
 		MethodFields:   maps.Clone(ctx.MethodFields),
 		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
+		FreeFuncs:      ctx.FreeFuncs, // shared — one decision for the whole build
 		StateReceiver:  ctx.StateReceiver,
 	}
 }

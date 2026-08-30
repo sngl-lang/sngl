@@ -8,6 +8,45 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// ModelFreeFuncs names the user functions a Model-receiver platform
+// (bubbletea, fyne, gtk4) emits as free package-level functions rather than as
+// methods on its Model, for ExprCtx.FreeFuncs.
+//
+// A top-level function has no component in scope, so it reads no component
+// state and there is nothing for a receiver to carry. It is emitted free
+// because a *method* on a user type is free too — Go has no receiver to hang
+// one of those on — and a type method calling a Model method has no Model to
+// call it through.
+func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
+	if pkg == nil {
+		return nil
+	}
+	componentFuncs := map[*ir.Func]bool{}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			componentFuncs[fn] = true
+		}
+	}
+	out := map[string]bool{}
+	for _, fn := range pkg.Funcs {
+		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] {
+			continue
+		}
+		if isComputedSig(fn) {
+			continue
+		}
+		out[fn.Name] = true
+	}
+	return out
+}
+
+// isComputedSig mirrors codegen.IsComputed without the import: a zero-arg
+// function with a return type is derived state, and those stay Model methods
+// so the runtime can re-read them.
+func isComputedSig(fn *ir.Func) bool {
+	return len(fn.Params) == 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid
+}
+
 // translateIRLiteral renders an ir.Literal as its Go source form. Used by
 // Translator.TranslateIRLiteral (the LangTranslator literal hook); the main
 // expression path uses GoIRContext.evalLiteral. Unit/temporal literals route

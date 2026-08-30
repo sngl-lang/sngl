@@ -483,7 +483,20 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			cp.Props[i] = ir.Arg{Name: p.Name, Value: cloneExpr(p.Value)}
 		}
 		cp.Handlers = make([]ir.EventHandler, len(n.Handlers))
-		copy(cp.Handlers, n.Handlers)
+		for i, h := range n.Handlers {
+			cp.Handlers[i] = h
+			// The handler's body is folded against whatever the copy is being
+			// made for -- an unrolled loop's iteration, an inlined component's
+			// arguments -- so each copy needs a body of its own. Sharing one
+			// meant the first fold substituted its values into it and every
+			// later copy found nothing left to substitute: twenty keypad keys,
+			// each reporting the press of the first.
+			if h.Func != nil {
+				fn := *h.Func
+				fn.Block = cloneStmts(h.Func.Block)
+				cp.Handlers[i].Func = &fn
+			}
+		}
 		cp.Children = cloneStmts(n.Children)
 		return &cp
 	case *ir.If:

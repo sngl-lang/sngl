@@ -41,6 +41,9 @@ type irComputed struct {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
+	// Set before any body is translated, since it decides how a call to one of
+	// these renders. See golang.ModelFreeFuncs.
+	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
 	exprCtx := ctx.ExprCtx
 	if main := ctx.MainComponent(); main != nil {
 		exprCtx = exprCtx.ForComponent(main)
@@ -203,6 +206,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if err != nil {
 		return "", nil, nil, "", err
 	}
+	// Before any translator runs: OnAppendChild wraps a styled child in the
+	// override naming its theme, so the names have to exist by then.
+	themes := assignThemes(nodeSpecs)
 
 	// Shared into every translator so OnCreateNode builds the raster-backed
 	// widget and OnDefault wires reactive redraws.
@@ -331,9 +337,22 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		})
 	}
 
+	componentFuncs := fyneComponentFuncs(ctx.Pkg)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || codegen.IsComputed(fn) {
+			continue
+		}
+		// A method on a user struct or enum is a free `ReceiverMethod(recv, …)`
+		// — Go has no receiver to hang one of those on — and a top-level func
+		// is free too, so that a type method can call it. Skipping everything
+		// with a receiver left both undefined at their call sites.
+		if fn.Receiver != "" && fyneUserTypeName(ctx.Pkg, fn.Receiver) {
+			emitIRFyneTypeMethod(&funcBuf, fn, gc)
+			continue
+		}
+		if fn.Receiver == "" && !componentFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
 		if cm := canvasByFunc[fn]; cm != nil {
@@ -348,6 +367,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		}
 		if fn.Synthesized {
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
+			continue
+		}
+		if componentFuncs[fn] {
+			emitIRFyneComponentFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
@@ -382,6 +405,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// Skip any struct the user already declared, to avoid a duplicate
 		// type decl.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
+	}
+	if decls := emitThemeDecls(themes); decls != "" {
+		td.LangHelpers += decls
+		for _, path := range themeImports() {
+			gc.RequireImport(path)
+		}
 	}
 	if err != nil {
 		return "", nil, nil, "", err
@@ -542,6 +571,103 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	}
 
 	return td, nil
+}
+
+// fyneUserTypeName reports whether name is a struct or enum the package
+// declares, as opposed to a component (whose methods are the Model's).
+func fyneUserTypeName(pkg *ir.Package, name string) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, s := range pkg.Structs {
+		if s.Name == name {
+			return true
+		}
+	}
+	for _, e := range pkg.Enums {
+		if e.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// fyneComponentFuncs is every func some component declares; what is left in
+// pkg.Funcs is top level, with no component in scope to read.
+func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			out[fn] = true
+		}
+	}
+	return out
+}
+
+// emitIRFyneTypeMethod emits a method on a user type as the free function its
+// call sites name: `func GlyphRow(gl Glyph, row int) string`.
+func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
+	fnCopy.Receiver = ""
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// emitIRFyneFreeFunc emits a top-level func under its exported name, which is
+// what ExprCtx.FreeFuncs told the call sites to expect.
+func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Name)
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// emitIRFyneComponentFunc emits a component's own func — an action a handler
+// calls — as a Model method. Its body goes through the same widget-aware
+// translation a promoted handler's does, because it touches the same things:
+// state, and the element refs that are Model fields. Emitted through the plain
+// renderer instead, `__n0.Text = …` named a variable that does not exist.
+func emitIRFyneComponentFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
+		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
+	}, importSink).withLocalRefs(fn.LocalRefs)
+	tr.canvasByFunc = canvasByFunc
+
+	params := fn.Params
+	if len(params) > 0 && params[0].Receiver {
+		params = params[1:]
+	}
+	synthesized := &ir.Func{
+		Name:     fn.Name,
+		Receiver: "Model",
+		Params:   params,
+		Return:   fn.Return,
+		Block:    codegen.WalkLowered(context.Background(), fn.Block, tr),
+	}
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
@@ -888,6 +1014,11 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, error) {
 	specs := map[string]*fyneSpec{}
 	var firstErr error
+	// A child is appended after every node in the tree has been created, so
+	// the edges are recorded here and read back once the walk is done -- a
+	// container's layout is decided by its children's flex, which is not known
+	// when the container itself is reached.
+	kids := map[string][]string{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for i, s := range stmts {
@@ -912,7 +1043,11 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				walk(n.Children)
 			case *ir.Window:
 				walk(n.Body)
-			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+			case *ir.CallStmt:
+				if parent, child, ok := appendChildEdge(n); ok {
+					kids[parent] = append(kids[parent], child)
+				}
+			case *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
 				// No CreateNode call to harvest.
 			case *ir.ContextProvider:
 				panic(fmt.Sprintf("fyne.collectNodes: ContextProvider should be lowered: %#v", n))
@@ -935,7 +1070,25 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			walk(w.Body)
 		}
 	}
+	for id, sp := range specs {
+		sp.Children = kids[id]
+	}
 	return specs, firstErr
+}
+
+// appendChildEdge reads the parent and child of a `lower.AppendChild(p, c)`
+// statement, when that is what this is.
+func appendChildEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
+	call := cs.Call
+	if call == nil || call.Func == nil || call.Func.Intrinsic != ir.NodeOpAppendChild || len(call.Args) < 2 {
+		return "", "", false
+	}
+	parent = codegen.IdentBareName(call.Args[0].Value)
+	child = codegen.IdentBareName(call.Args[1].Value)
+	if parent == "" || child == "" {
+		return "", "", false
+	}
+	return parent, child, true
 }
 
 // harvestSpec decodes the Spec for one created node. rest is what follows the

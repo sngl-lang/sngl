@@ -268,9 +268,14 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	}
 	// `c.<id>.<prop>` → `c.<id><Prop>()`, the getter platforms emit per
 	// (id, prop) binding. Triggered by the outer Select's operand being a
-	// Select on a RawFieldAccess Ident.
+	// Select on a RawFieldAccess Ident: `c.out` is an element ref and
+	// `.value` is a prop of the element it names.
+	//
+	// Not when the inner reads a struct: `c.state.entry` is a field of a
+	// value the component holds, and it rendered as the getter
+	// `c.stateEntry()`, which is nobody's method.
 	if inner, ok := n.Operand.(*ir.Select); ok {
-		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) {
+		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) && !isStructExpr(inner) {
 			return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
 		}
 	}
@@ -567,7 +572,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
 			// a clean "undefined" Go error rather than silent bad code.
-			if gc.FreeFuncScope {
+			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname]) {
 				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
 			// Route mode emits these as State methods under their exported
@@ -674,6 +679,17 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			}
 		}
 
+		// A SNGL package's declarations are emitted into this very Go package,
+		// so the alias at the call site names nothing Go has: `readout.cells(…)`
+		// is `Cells(…)` or `m.cells(…)`, whichever the emitter chose for it.
+		// The alias only survives for a native import, handled above.
+		if gc.snglNamespace(n.Receiver) {
+			if gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] {
+				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			}
+			return gc.recvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
+		}
+
 		// An i18n.* namespace receiver is the module object, not a value
 		// argument, so a(0) must be the first semantic argument.
 		if receiverName == "i18n" {
@@ -695,6 +711,31 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	}
 
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// isStructExpr reports whether an expression reads a plain struct — a value a
+// component holds, as opposed to an element ref, which reads as a component.
+// An untyped expression is not one: hand-built IR carries no types, and the
+// getter form is the older behaviour to fall back on.
+func isStructExpr(e ir.Expr) bool {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Builtin == ir.BuiltinNone
+}
+
+// snglNamespace reports whether an expression is the alias of an imported
+// SNGL package — one whose declarations this build emits itself, as opposed to
+// a scheme import naming a real Go package.
+func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	ns, ok := id.Sym.(*ir.Namespace)
+	return ok && ns.Pkg != nil
 }
 
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
@@ -736,6 +777,13 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
 		return gc.recvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
+	}
+
+	// In a test body the component instance is a local — `c := newTestComponent()`
+	// — so a call on it dispatches through that local. Lifting it to a free
+	// function instead gave `MainPress(c, k)` for what is a method on Model.
+	if len(n.Args) > 0 && gc.rawFieldAccess(n.Args[0].Value) && len(args) > 0 {
+		return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 	}
 
 	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
@@ -950,6 +998,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
+	}
+	// And the other direction is not a cast at all: see StringToNumberHelper.
+	if helper := StringToNumberHelper(n); helper != "" {
+		gc.RequireImport("strconv")
+		return helper + "(" + operand + ")"
 	}
 	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {
@@ -1416,6 +1469,13 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		return gc.emitFuncBody(lines, fn, params)
 	case fn.Receiver != "":
 		sig += "(m *" + fn.Receiver + ") "
+		// The synthetic receiver passNoImplicitRecv prepended is this method's
+		// Go receiver, so it is not also an argument. Emitting it as one gave
+		// `func (m *Model) press(this any, k Key)` against call sites that pass
+		// only `k`.
+		if len(fn.Params) > 0 && fn.Params[0].Receiver {
+			params = params[1:]
+		}
 	}
 	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
 	lines = append(lines, sig)

@@ -21,6 +21,36 @@ type HelperSet struct {
 	NeedTime     bool
 	NeedDateTime bool
 	NeedDuration bool
+	// `int(s)` and `float(s)` are conversions the language allows and Go does
+	// not: `float64("3.5")` builds no number, and `int("42")` is a rune. They
+	// go through strconv, and a string that is not a number reads as zero —
+	// which is what the interpreter and the JavaScript backend already do.
+	NeedParseInt   bool
+	NeedParseFloat bool
+}
+
+// StringToNumberHelper names the helper a conversion needs, or "" when Go's
+// own cast will do. `float(s)` and `int(s)` are conversions the language
+// allows on a string and Go does not: `float64(s)` does not compile and
+// `int(s)` would be a rune.
+//
+// The operand's declared type is what decides, so a `dyn` stays a plain cast —
+// there is nothing to say it holds a string.
+func StringToNumberHelper(n *ir.Conversion) string {
+	if n == nil || n.Type == nil || n.Operand == nil {
+		return ""
+	}
+	src := n.Operand.ExprType()
+	if src == nil || src.Kind != ir.TypeString {
+		return ""
+	}
+	switch n.Type.Kind {
+	case ir.TypeInt:
+		return "snglParseInt"
+	case ir.TypeFloat:
+		return "snglParseFloat"
+	}
+	return ""
 }
 
 // HelpersNeeded walks pkg and returns the helpers the generated code
@@ -75,6 +105,9 @@ func (h HelperSet) Imports() []string {
 	if h.NeedDate || h.NeedTime || h.NeedDateTime || h.NeedDuration {
 		imps = append(imps, "time")
 	}
+	if h.NeedParseInt || h.NeedParseFloat {
+		imps = append(imps, "strconv")
+	}
 	return imps
 }
 
@@ -82,6 +115,22 @@ func (h HelperSet) Imports() []string {
 // concatenated in a stable order. Empty string when h is zero-valued.
 func (h HelperSet) Emit() string {
 	var b strings.Builder
+	if h.NeedParseInt {
+		b.WriteString(`func snglParseInt(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
+}
+
+`)
+	}
+	if h.NeedParseFloat {
+		b.WriteString(`func snglParseFloat(s string) float64 {
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
+}
+
+`)
+	}
 	if h.NeedDuration {
 		b.WriteString(`func mustParseDuration(s string) time.Duration {
 	d, err := time.ParseDuration(s)
@@ -160,6 +209,12 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 	switch n := e.(type) {
 	case *ir.Conversion:
 		recordTypeHelpers(h, n.Type)
+		switch StringToNumberHelper(n) {
+		case "snglParseInt":
+			h.NeedParseInt = true
+		case "snglParseFloat":
+			h.NeedParseFloat = true
+		}
 		recordExprHelpers(h, n.Operand)
 	case *ir.Literal:
 		recordTypeHelpers(h, n.Type)

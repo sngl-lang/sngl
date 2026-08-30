@@ -55,18 +55,27 @@ func GoContextStmts(cs *ir.CallStmt, st *GoCanvasState) []ir.Stmt {
 		// method-call) style expression ~20 times per shape.
 		st.styleSeq++
 		name := "_cstyle" + strconv.Itoa(st.styleSeq)
-		styleRef := &ir.Ident{Name: name, Type: ir.TypDyn}
+		// Typed from the style expression rather than left dyn. A dyn field
+		// read is a field on nothing, and the Go backend answers it by
+		// asserting to whichever single struct declares that name — which,
+		// for `.g`, is as likely to be a program's own Glyph as it is a
+		// colour.
+		styleType := exprType(arg(0))
+		styleRef := &ir.Ident{Name: name, Type: styleType}
 		col := func(field string) []ir.Expr {
-			c := sel(styleRef, field)
-			return []ir.Expr{sel(c, "r"), sel(c, "g"), sel(c, "b"), sel(c, "a")}
+			c := selTyped(styleRef, field, fieldType(styleType, field))
+			return []ir.Expr{
+				selTyped(c, "r", ir.TypInt), selTyped(c, "g", ir.TypInt),
+				selTyped(c, "b", ir.TypInt), selTyped(c, "a", ir.TypInt),
+			}
 		}
 		return []ir.Stmt{
-			&ir.LocalVar{Name: name, Init: arg(0), Type: ir.TypDyn},
+			&ir.LocalVar{Name: name, Init: arg(0), Type: styleType},
 			ctxCall(ctx, "SetFill", col("fill")...),
 			ctxCall(ctx, "SetStroke", col("stroke")...),
-			ctxCall(ctx, "SetStrokeWidth", sel(styleRef, "strokeWidth")),
-			ctxCall(ctx, "SetFont", sel(styleRef, "fontSize"), sel(styleRef, "fontFamily")),
-			ctxCall(ctx, "SetLineStyle", sel(styleRef, "lineCap"), sel(styleRef, "lineJoin")),
+			ctxCall(ctx, "SetStrokeWidth", selTyped(styleRef, "strokeWidth", fieldType(styleType, "strokeWidth"))),
+			ctxCall(ctx, "SetFont", selTyped(styleRef, "fontSize", fieldType(styleType, "fontSize")), selTyped(styleRef, "fontFamily", fieldType(styleType, "fontFamily"))),
+			ctxCall(ctx, "SetLineStyle", selTyped(styleRef, "lineCap", fieldType(styleType, "lineCap")), selTyped(styleRef, "lineJoin", fieldType(styleType, "lineJoin"))),
 		}
 	case "CanvasDrawRect":
 		return []ir.Stmt{ctxCall(ctx, "Rect", arg(0), arg(1), arg(2), arg(3))}
@@ -132,4 +141,42 @@ func ctxCall(ctx ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 // field, so lowercase SNGL names map to the exported Go struct fields.
 func sel(operand ir.Expr, field string) ir.Expr {
 	return &ir.Select{Operand: operand, Field: field, Type: ir.TypDyn}
+}
+
+// selTyped is sel with the field's type carried along, so a backend that
+// declares its types has one to emit rather than a guess to make.
+func selTyped(operand ir.Expr, field string, t *ir.Type) ir.Expr {
+	if t == nil {
+		t = ir.TypDyn
+	}
+	return &ir.Select{Operand: operand, Field: field, Type: t}
+}
+
+// exprType is an expression's static type, or dyn when it carries none.
+func exprType(e ir.Expr) *ir.Type {
+	if e == nil {
+		return ir.TypDyn
+	}
+	if t := e.ExprType(); t != nil {
+		return t
+	}
+	return ir.TypDyn
+}
+
+// fieldType is the declared type of a struct's field, or nil when the type is
+// not a struct or does not declare it.
+func fieldType(t *ir.Type, name string) *ir.Type {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f.Type
+		}
+	}
+	return nil
 }

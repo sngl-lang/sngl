@@ -33,7 +33,11 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	}
 	cycles := findRecursiveCycles(pkg)
 	reactive := collectReactiveVars(pkg)
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform}
+	onList := make(map[*ir.Component]bool, len(pkg.Components))
+	for _, c := range pkg.Components {
+		onList[c] = true
+	}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -44,6 +48,12 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
+	// local is what the package being lowered declares, as opposed to what it
+	// renders. Nil falls back to reading pkg.Components.
+	local map[*ir.Component]bool
+	// onList is pkg.Components as the pass found it: what the prune at the end
+	// is allowed to keep.
+	onList map[*ir.Component]bool
 	// hoist is where an inlined callee's own declarations land. Set per
 	// container as run() walks: a component holds all three slices, a window
 	// holds vars and funcs and borrows pkg.Timers.
@@ -363,8 +373,14 @@ func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
 	return ok
 }
 
-// isLocalComponent reports whether comp is declared in the package being lowered.
+// isLocalComponent reports whether comp is declared in the package being
+// lowered. Read from the set Lower captured before it widened pkg.Components
+// to every component this build renders: an imported component is lowered like
+// any other now, but it is still not this package's to inline away.
 func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
+	if st.local != nil {
+		return st.local[comp]
+	}
 	return slices.Contains(st.pkg.Components, comp)
 }
 
@@ -415,6 +431,15 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
 		}
 		if !st.inlinable(n.Component) {
+			// The node survives, so the declaration behind it does too: the
+			// backend will read that body, and the passes after this one have
+			// to have lowered it. Dropping it from pkg.Components here is what
+			// left an imported component's canvas un-lowered. Only what the
+			// list already carries -- a primitive was never on it, and putting
+			// one there would have the package declaring `text` and `button`.
+			if n.Component != nil && st.onList[n.Component] {
+				st.keep[n.Component] = true
+			}
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
 		}
 		spliced, err := st.expandCall(n)

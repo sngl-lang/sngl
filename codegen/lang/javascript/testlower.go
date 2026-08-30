@@ -44,7 +44,7 @@ const (
 // `pkg` is accepted for symmetry with the Go/Kotlin LowerTestFile
 // signatures but is unused in JS — ES modules have no package
 // declaration.
-func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
+func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string,
 	methodFields map[string]bool, mode TestEmitMode) string {
 
 	if mode == TestEmitNative {
@@ -64,7 +64,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 		fmt.Fprintf(&b, "export async function test%s(t) {\n", suffix)
 		b.WriteString("\tconst c = newTestComponent();\n")
 		b.WriteString("\tsetCurrentTestModel(c);\n")
-		for _, line := range lowerTestBody(fn, methodFields) {
+		for _, line := range lowerTestBody(irPkg, fn, methodFields) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
 		b.WriteString("}\n\n")
@@ -84,12 +84,15 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 // tests address widgets via DOM tags, not via the model field gate
 // the Kotlin/Go lowerers consult — but accepted in the signature for
 // symmetry and future use.
-func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
-	// Build an ExprCtx scoped to a minimal package; tests live in their
-	// own emitted module and reference per-component helpers
-	// (newTestComponent, setCurrentTestModel) declared in the same
-	// file rather than reading package state directly.
-	ctx := codegen.NewExprCtx(&ir.Package{})
+func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) []string {
+	// The test module is bundled with the emitted program, so it has to name
+	// things the way the emitter named them: a method on a user type as the
+	// free `Calc_digit(…)`. Over an empty package it knew none of them and
+	// emitted `Calc{…}.digit(…)`, a method no plain object has.
+	if irPkg == nil {
+		irPkg = &ir.Package{}
+	}
+	ctx := codegen.NewExprCtx(irPkg)
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields

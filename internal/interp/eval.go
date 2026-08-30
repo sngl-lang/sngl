@@ -891,6 +891,16 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 
+	// `pkg.NAME` where pkg is an import's namespace. A namespace is not a
+	// value, so evaluating the operand would report the alias as an undefined
+	// variable -- which is what a const named through one used to do wherever
+	// the optimizer had not already folded it away.
+	if ident, ok := e.Operand.(*ir.Ident); ok {
+		if ns, ok := ident.Sym.(*ir.Namespace); ok {
+			return env.namespaceMember(ns, e.Field)
+		}
+	}
+
 	obj, err := env.Eval(e.Operand)
 	if err != nil {
 		return nil, err
@@ -906,6 +916,31 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return m[e.Field], nil
 	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+// namespaceMember evaluates `alias.member` where alias names an imported
+// package. A const is the only member a select can produce a value for: a
+// type, a component or a function reached this way is a call or a literal, and
+// arrives as one of those rather than here.
+func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
+	if ns.Pkg == nil || ns.Pkg.Symbols == nil {
+		return nil, fmt.Errorf("package %q has no declarations", ns.Name)
+	}
+	sym, ok := ns.Pkg.Symbols.LookupMember(field)
+	if !ok {
+		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
+	}
+	v, isVar := sym.(*ir.Var)
+	if !isVar {
+		return nil, fmt.Errorf("cannot read %s.%s as a value", ns.Name, field)
+	}
+	if val, bound := env.Value(v); bound {
+		return val, nil
+	}
+	if v.Init == nil {
+		return nil, nil
+	}
+	return env.Eval(v.Init)
 }
 
 // i18nPluralConst maps the predeclared i18n PluralKey field names to their
@@ -1577,18 +1612,7 @@ func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string
 			env.Set(p, v)
 		}
 	}
-	for _, s := range fn.Block {
-		if ret, ok := s.(*ir.Return); ok {
-			if ret.Value == nil {
-				return nil, nil
-			}
-			return env.Eval(ret.Value)
-		}
-		if err := env.Exec(s); err != nil {
-			return nil, err
-		}
-	}
-	return nil, nil
+	return env.execBlockForResult(fn.Block)
 }
 
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
@@ -1973,15 +1997,16 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 			}
 		}
 
-		// Walk block looking for trailing Return. Execute preceding stmts.
+		// Walk block looking for a Return at the top of the body: that one is
+		// the tail call candidate, so it is evaluated below rather than here.
+		// A Return anywhere deeper arrives as a returnSignal from Exec and
+		// ends the call with the value it carries, without trampolining.
 		var tailExpr ir.Expr
 		var localVars []ir.Symbol
-		for i, stmt := range fn.Block {
+		nested := false
+		var nestedResult any
+		for _, stmt := range fn.Block {
 			if ret, ok := stmt.(*ir.Return); ok {
-				if i == len(fn.Block)-1 {
-					tailExpr = ret.Value
-					break
-				}
 				tailExpr = ret.Value
 				break
 			}
@@ -1992,15 +2017,27 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.Set(lv.Sym, v)
+					execEnv.Set(lv.Sym, CopyValue(v))
 					localVars = append(localVars, lv.Sym)
 				}
 				continue
 			}
 			if err := execEnv.Exec(stmt); err != nil {
+				if ret, ok := err.(*returnSignal); ok {
+					nested, nestedResult = true, ret.value
+					break
+				}
 				restoreVoid()
 				return nil, err
 			}
+		}
+
+		if nested {
+			restoreVoid()
+			for _, sym := range localVars {
+				delete(execEnv.vals, sym)
+			}
+			return nestedResult, nil
 		}
 
 		if tailExpr == nil {
@@ -2035,19 +2072,17 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 	}
 }
 
-// execBlockForResult runs a block, returning the value of the trailing Return (if any).
+// execBlockForResult runs a function body, returning the value of whichever
+// Return it reaches — including one nested inside an if or a for.
 func (env *Env) execBlockForResult(block []ir.Stmt) (any, error) {
-	for i, stmt := range block {
-		if ret, ok := stmt.(*ir.Return); ok {
-			if ret.Value == nil {
-				return nil, nil
-			}
-			return env.Eval(ret.Value)
+	for _, stmt := range block {
+		err := env.Exec(stmt)
+		if ret, ok := err.(*returnSignal); ok {
+			return ret.value, nil
 		}
-		if err := env.Exec(stmt); err != nil {
+		if err != nil {
 			return nil, err
 		}
-		_ = i
 	}
 	return nil, nil
 }

@@ -2,6 +2,9 @@ package optimize
 
 import (
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -38,6 +41,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Binary:
 		x.Left = foldExpr(x.Left, ctx)
 		x.Right = foldExpr(x.Right, ctx)
+		if lit := scaledUnitLiteral(x); lit != nil {
+			return lit
+		}
 	case *ir.Unary:
 		// Reference operations (&x, *p) are never const — the underlying
 		// storage may be mutated through aliases, and `&literal` is not a
@@ -267,4 +273,58 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	}
 	n.Children = foldStmts(n.Children, ctx)
 	return n
+}
+
+// scaledUnitLiteral folds a unit literal scaled by a number -- `400 * 1px`,
+// `1px * 400`, `100px / 2` -- into the single literal `400px`.
+//
+// It works on the expressions rather than through evalExpr because the
+// folder's value model has no unit: parseLiteral answers nil for one, so a
+// measurement written as arithmetic never folded at all. That is not cosmetic.
+// A canvas reads its pixel size off a literal prop, and a canvas sized by a
+// const expression was falling back to the 300x150 default on every platform.
+//
+// Scaling is the case that needs no conversion table: the suffix is the one
+// the unit literal was written with. Adding two units does need one, and is
+// left alone.
+func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
+	if x.Op != ast.BinMul && x.Op != ast.BinDiv {
+		return nil
+	}
+	unit, _ := x.Left.(*ir.Literal)
+	num, _ := x.Right.(*ir.Literal)
+	if unit == nil || num == nil {
+		return nil
+	}
+	if unit.Suffix == "" {
+		if x.Op == ast.BinDiv {
+			// A number over a unit is not that unit.
+			return nil
+		}
+		unit, num = num, unit
+	}
+	if unit.Suffix == "" || num.Suffix != "" {
+		return nil
+	}
+	amount, err := strconv.ParseFloat(strings.TrimSuffix(unit.Value, unit.Suffix), 64)
+	if err != nil {
+		return nil
+	}
+	factor, err := strconv.ParseFloat(num.Value, 64)
+	if err != nil {
+		return nil
+	}
+	if x.Op == ast.BinDiv {
+		if factor == 0 {
+			return nil
+		}
+		amount /= factor
+	} else {
+		amount *= factor
+	}
+	text := strconv.FormatFloat(amount, 'g', -1, 64)
+	if amount == math.Trunc(amount) && !math.IsInf(amount, 0) {
+		text = strconv.FormatInt(int64(amount), 10)
+	}
+	return &ir.Literal{Type: unit.Type, Value: text + unit.Suffix, Suffix: unit.Suffix}
 }

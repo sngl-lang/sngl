@@ -356,7 +356,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
-	t := sym.SymType()
+	t := c.symType(sym)
 	if t == nil {
 		t = TypDyn
 	}
@@ -786,7 +786,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			// diagnostic comes from the regular path.
 			structTyp := TypDyn
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if t := sym.SymType(); t != nil {
+				if t := c.symType(sym); t != nil {
 					structTyp = t
 				}
 			}
@@ -969,7 +969,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							c.validateCallStmtComponentArgs(call, comp)
 							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
 						}
-						t := fsym.SymType()
+						t := c.symType(fsym)
 						var sig *ir.FuncSig
 						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
 							sig = t.Sig
@@ -1467,7 +1467,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
 							}
-							t := fsym.SymType()
+							t := c.symType(fsym)
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}
@@ -1592,14 +1592,26 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// against the operand's already-known component type so inline
 				// chains work, not just bare-ident operands.
 				if comp.AST != nil {
-					if host := c.findHostComponentAST(comp.AST.Body.Stmts, x.Field); host != nil {
-						return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
-					}
+					// The host is named in the component's body, so it resolves
+					// through the imports of the file that body was written in
+					// -- not through this one's. A test naming `c.out` would
+					// otherwise have to import the vocabulary the component
+					// renders with before it could ask about a ref.
+					restore := c.fileOf(compDeclPos(comp))
+					host := c.findHostComponentAST(comp.AST.Body.Stmts, x.Field)
 					// A ref declared inside a child component is collected across
 					// the rendered subtree, so it reads as list<host> (e.g.
 					// `c.lbl[0]`, or `c.val[i]` from a recursive view).
-					if host := c.findDescendantHost(comp, x.Field, map[string]bool{}); host != nil {
-						return &ir.Select{AST: x, Type: ir.ListOf(host.SymType()), Operand: operandExpr, Field: x.Field}
+					var descendant *ir.Component
+					if host == nil {
+						descendant = c.findDescendantHost(comp, x.Field, map[string]bool{})
+					}
+					restore()
+					if host != nil {
+						return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
+					}
+					if descendant != nil {
+						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
@@ -2733,6 +2745,18 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ForStmt:
 		iterExpr := c.checkExpr(x.Iter)
 		iter := exprType(iterExpr)
+		// A zero-arg computed is called where its result is what is wanted, so
+		// `for x = items` iterates what `func items() list<T>` returns. There
+		// is no single expected type to hand implicitCall here: any of the
+		// three iterable kinds will do.
+		if iter.Kind == ir.TypeFunc && iter.Sig != nil && len(iter.Sig.Params) == 0 && iter.Sig.Return != nil {
+			switch iter.Sig.Return.Kind {
+			case ir.TypeList, ir.TypeIter, ir.TypeMap:
+				x.Iter = &ast.CallExpr{Pos: *x.Iter.ExprPos(), Func: x.Iter}
+				iterExpr = c.checkExpr(x.Iter)
+				iter = exprType(iterExpr)
+			}
+		}
 		// Hoist window #ids declared inside the loop body as list<Window>
 		// symbols in the enclosing scope, so refs outside the loop type-check
 		// against the unrolled list. Done before pushScope so the symbol
@@ -3232,28 +3256,46 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		// A component marked #[tree.children("k")] hosts a segmented tree:
 		// every child must be a node marked #[tree.kind("k")].
 		if comp.ChildKind != "" {
-			for _, child := range children {
-				// A slot insertion is a position, not a node: what lands there
-				// is whatever the caller supplies, so the slot's own declared
-				// kind is what has to match. Checking the supplied content
-				// against it is the population's job.
-				if si, isSlot := child.(*ir.SlotInst); isSlot {
-					if slot := c.enclosingSlot(si.Name); slot != nil && slot.ChildKind == comp.ChildKind {
+			var checkKinds func(stmts []ir.Stmt)
+			checkKinds = func(stmts []ir.Stmt) {
+				for _, child := range stmts {
+					// An `if` or a `for` is not a node in the tree, it is how
+					// the nodes under it got there -- so the kind rule applies
+					// to its body. Reading only the direct children is what
+					// rejected a canvas whose shapes come from a list.
+					switch s := child.(type) {
+					case *ir.If:
+						checkKinds(s.Body)
+						checkKinds(s.Else)
+						continue
+					case *ir.For:
+						checkKinds(s.Body)
+						checkKinds(s.Else)
 						continue
 					}
+					// A slot insertion is a position, not a node: what lands there
+					// is whatever the caller supplies, so the slot's own declared
+					// kind is what has to match. Checking the supplied content
+					// against it is the population's job.
+					if si, isSlot := child.(*ir.SlotInst); isSlot {
+						if slot := c.enclosingSlot(si.Name); slot != nil && slot.ChildKind == comp.ChildKind {
+							continue
+						}
+					}
+					ni, ok := child.(*ir.NodeInst)
+					if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
+						continue
+					}
+					childName := "unknown"
+					if ok && ni.Component != nil {
+						childName = ni.Component.Name
+					} else if ok {
+						childName = ni.Name
+					}
+					c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
 				}
-				ni, ok := child.(*ir.NodeInst)
-				if ok && ni.Component != nil && ni.Component.TreeKind == comp.ChildKind {
-					continue
-				}
-				childName := "unknown"
-				if ok && ni.Component != nil {
-					childName = ni.Component.Name
-				} else if ok {
-					childName = ni.Name
-				}
-				c.error(vn.Pos, "expected %s component in %s, got %s", comp.ChildKind, comp.Name, childName)
 			}
+			checkKinds(children)
 		}
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
@@ -3329,6 +3371,20 @@ func (c *checker) lookupQualified(name string) (ir.Symbol, bool) {
 		return nil, false
 	}
 	return ns.Pkg.Symbols.LookupMember(member)
+}
+
+// structDeclOf is the declaration behind a plain struct type, and false for
+// anything else -- a built-in that happens to be declared as a struct
+// included, since those carry no fields to default.
+func structDeclOf(t *ir.Type) (*ir.StructDef, bool) {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil, false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || sd.Builtin != ir.BuiltinNone {
+		return nil, false
+	}
+	return sd, true
 }
 
 // withFieldDefaults appends the declared default of every field the literal

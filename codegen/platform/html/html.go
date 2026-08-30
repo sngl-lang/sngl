@@ -1334,8 +1334,11 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				out = append(out, f)
 			}
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
-			for _, f := range main.Funcs {
+		// Every component the build renders, not only main: one that survived
+		// inlining is emitted from its own declaration, and its synthesized
+		// funcs -- a canvas draw function among them -- have to come with it.
+		for _, comp := range g.pkg.Components {
+			for _, f := range comp.Funcs {
 				if f.Synthesized {
 					out = append(out, f)
 				}
@@ -1938,6 +1941,23 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if emittedFuncs {
 		b.WriteString("\n")
+	}
+	if g.testMode && emittedFuncs {
+		// The test module is bundled beside the page, not inside its IIFE, so
+		// a call it makes to one of these -- `Calc_digit(…)`, the same name
+		// the emitter used -- has to find it. Hoisted like the state object
+		// above. The shorthand keys survive minification even when the
+		// bindings are renamed.
+		var names []string
+		for _, fn := range funcs {
+			if len(fn.Block) == 0 {
+				continue
+			}
+			names = append(names, jsFuncName(fn))
+		}
+		if len(names) > 0 {
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+		}
 	}
 
 	if g.pkg != nil && len(g.pkg.AsyncKickers) > 0 {
@@ -2938,6 +2958,27 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	return htmlutil.BuildCSSStyleIR(n.Props)
 }
 
+// receiverParamName is what the method's receiver is called in its own body.
+// A nested method's is the implicit `this`; a top-level `func Op.symbol(o Op)`
+// names its own. Both are emitted as `state`, so both have to be renamed —
+// renaming only `this` left `func Op_symbol(state) { return o === "add" … }`,
+// which reads a name the function does not have.
+func receiverParamName(fn *ir.Func) string {
+	if len(fn.Params) > 0 && fn.Params[0].Receiver {
+		return fn.Params[0].Name
+	}
+	return ir.ReceiverParam
+}
+
+// jsFuncName is the JavaScript name a user func is emitted under. A desugared
+// method's dotted form lives in fn.Receiver.
+func jsFuncName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "_" + fn.Name
+	}
+	return strings.ReplaceAll(fn.Name, ".", "_")
+}
+
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -2948,7 +2989,10 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
 		// Emitted as `state` so the param name matches the body's
-		// component-self translation.
+		// component-self translation -- and, for a struct or enum receiver,
+		// so that it is a name JavaScript accepts at all. SNGL spells the
+		// receiver `this`, which is a parameter name JS rejects; the body's
+		// uses are renamed to match below.
 		if i == 0 && fn.Receiver != "" && p.Receiver {
 			params[i] = "state"
 		} else {
@@ -2957,11 +3001,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	paramStr := strings.Join(params, ", ")
 
-	// A desugared method's dotted form lives in fn.Receiver.
-	jsName := strings.ReplaceAll(fn.Name, ".", "_")
-	if fn.Receiver != "" {
-		jsName = fn.Receiver + "_" + fn.Name
-	}
+	jsName := jsFuncName(fn)
 
 	keyword := "function"
 	if fn.IsAsync {
@@ -2972,7 +3012,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
 			if fn.Receiver != "" {
-				jc = jc.WithLocal(ir.ReceiverParam)
+				jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 			}
 			for _, p := range fn.Params {
 				jc = jc.WithLocal(p.Name)
@@ -2990,7 +3030,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// writes and intrinsic statements lower identically.
 	jc := g.scopedJC()
 	if fn.Receiver != "" {
-		jc = jc.WithLocal(ir.ReceiverParam)
+		jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 	}
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
