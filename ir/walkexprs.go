@@ -44,8 +44,10 @@ var (
 //
 //   - Ident.Sym, Type.Decl, Prop.Sym, LocalVar.Sym — the declaration a name
 //     resolves to.
-//   - Call.Func — the callee, owned by pkg.Funcs; Lambda.Func, Closure.Func,
-//     Timer.Handler and EventHandler.Func are owned and are walked.
+//   - Call.Func — the callee, owned by pkg.Funcs; Closure.Func — the lifted
+//     body, likewise appended to pkg.Funcs by passLambda. Lambda.Func,
+//     Timer.Handler, EventHandler.Func and ErrorBoundary.Handler are owned and
+//     are walked.
 //   - Call.ResolvedHandler — aliases Call.ErrorHandler or a handler owned by
 //     an enclosing boundary or window.
 //   - NodeInst.Component — the component being instantiated, owned by
@@ -209,9 +211,10 @@ func (w *rewriter) expr(e Expr) Expr {
 	case *Spread:
 		x.Operand = w.expr(x.Operand)
 	case *Closure:
-		if x.Func != nil {
-			w.fn(x.Func)
-		}
+		// Closure.Func is deliberately not walked: passLambda appends the
+		// lifted func to pkg.Funcs and stores the pointer here, so the body is
+		// already reached where it is declared and walking it again would
+		// apply every rewrite to it twice.
 		if x.State != nil {
 			// The captured-state literal is built at this site and owned by it,
 			// so its field values are ordinary expressions of the enclosing
@@ -289,6 +292,13 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 		n.Children = w.stmts(n.Children)
 	case *ErrorBoundary:
+		// The @error handler is the boundary's own, the way a window's is:
+		// Call.ResolvedHandler only aliases it, so walking it here is the one
+		// visit it gets. Left out, a read in the handler was invisible to
+		// every pass built on this walk.
+		if n.Handler != nil {
+			w.fn(n.Handler.Func)
+		}
 		n.Children = w.stmts(n.Children)
 	case *Window:
 		w.window(n)

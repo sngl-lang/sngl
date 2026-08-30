@@ -90,7 +90,6 @@ func markedPackage() *Package {
 		&Spread{Operand: mark("Spread.Operand")},
 		&Lambda{Func: fn("Lambda.Func")},
 		&Closure{
-			Func:  fn("Closure.Func"),
 			State: &StructLit{Fields: []FieldInit{{Name: "c", Value: mark("Closure.State")}}},
 		},
 	}
@@ -165,7 +164,7 @@ func TestRewriteVisitsEveryExprSlot(t *testing.T) {
 	// Slots whose marker is placed indirectly: the fixture reaches them
 	// through an owned Func or StructLit rather than by holding an Expr.
 	indirect := map[string]bool{
-		"Closure.Func": true, "Lambda.Func": true, "Timer.Handler": true,
+		"Lambda.Func": true, "Timer.Handler": true,
 		"EventHandler.Func": true, "Var.Handlers": true,
 		"Window.ErrorHandler": true, "Output.Options": true,
 	}
