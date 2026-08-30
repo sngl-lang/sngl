@@ -2863,7 +2863,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if c.currentComponent != nil {
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
 		} else if c.pkg != nil {
-			c.pkg.Funcs = append(c.pkg.Funcs, fn)
+			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
 		return nil
 	case *ast.Comment:

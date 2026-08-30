@@ -181,7 +181,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 				continue
 			}
-			c.pkg.Funcs = append(c.pkg.Funcs, fn)
+			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 			out = append(out, fn)
 			continue
 		}
@@ -233,7 +233,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
 			continue
 		}
-		c.pkg.Funcs = append(c.pkg.Funcs, fn)
+		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		out = append(out, fn)
 	}
 	return out

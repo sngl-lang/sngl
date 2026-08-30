@@ -907,7 +907,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 
-	owner := c.importOwner()
+	owner := c.declPkg()
 	owner.Imports = append(owner.Imports, irImport)
 
 	// A segmented tree reaches this package if any package it imports declares
@@ -978,10 +978,21 @@ func (c *checker) registerImport(imp *ast.Import) {
 	c.bindImport(claimed, ns)
 }
 
-// importOwner is the package an import belongs to. While a library package
-// loads, its imports are its own: appending them to the program's package puts
+// declPkg is the package a declaration being registered belongs to: the
+// library package while one loads, and the program's own otherwise. Every
+// registrar appends through this rather than naming c.pkg, which is what lets
+// one set of them serve both -- a `sngl:` package and a user package differ in
+// where their declarations land, not in how they are built.
+//
+// Imports go the same way, and for the reason this started as: appending a
+// loading library's imports to the program's package would put
 // `import std "sngl:ui"` in the IR of every program that reaches i18n.
-func (c *checker) importOwner() *ir.Package {
+//
+// Contexts are the exception and stay on c.pkg. A context is program-global by
+// design -- the `#locale` sngl:i18n declares has to reach the program's own
+// codegen, which reads c.pkg.Contexts -- so it is discovered alongside the
+// user's rather than kept with the package that wrote it.
+func (c *checker) declPkg() *ir.Package {
 	if c.libLoadPkg != nil {
 		return c.libLoadPkg
 	}
@@ -1036,7 +1047,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.applyMarks(e, ed)
-	c.pkg.Enums = append(c.pkg.Enums, ed)
+	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
@@ -1044,7 +1055,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 func (c *checker) registerStruct(s *ast.StructDef) {
 	sd := c.buildStructDef(s)
 	c.applyMarks(s, sd)
-	c.pkg.Structs = append(c.pkg.Structs, sd)
+	c.declPkg().Structs = append(c.declPkg().Structs, sd)
 	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
 	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
 }
@@ -1055,11 +1066,34 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams, Pkg: c.libPkgName}
 	c.applyMarks(s, sd)
-	c.pkg.Structs = append(c.pkg.Structs, sd)
+	c.declPkg().Structs = append(c.declPkg().Structs, sd)
 	c.bindDeclared(claimed, sd)
+	c.publishBuiltinStruct(sd)
 	return sd
+}
+
+// publishBuiltinStruct hands a marked declaration to the phases that read it
+// where they have no scope to resolve a name in. Both cases key on the mark
+// the declaration carries, so neither is a property of the tier it sits in.
+func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
+	// Macro carries no #[builtin] kind: a kind names the IR construct a
+	// declaration dispatches to, and this one dispatches to none. It is found
+	// by name within the compiler's own package, which no program can import.
+	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
+		c.macroStruct = sd
+	}
+	// The canonical date/time/datetime types, for the foreign-type importers
+	// that synthesize one without a scope of their own.
+	switch sd.Builtin {
+	case ir.BuiltinDate:
+		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
+	case ir.BuiltinTime:
+		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
+	case ir.BuiltinDateTime:
+		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
+	}
 }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -1071,7 +1105,7 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
 	c.applyMarks(u, ud)
-	c.pkg.Units = append(c.pkg.Units, ud)
+	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
 	for _, s := range ud.Suffixes {
 		c.unitBySuffix[s.Name] = ud
@@ -1126,7 +1160,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				Init:    initExpr,
 				IsConst: true,
 			}
-			c.pkg.Consts = append(c.pkg.Consts, v)
+			c.declPkg().Consts = append(c.declPkg().Consts, v)
 			c.bindVar(decl.Pos, v)
 		}
 	}
@@ -1155,7 +1189,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
 			c.applyMarks(decl, v)
-			c.pkg.Consts = append(c.pkg.Consts, v)
+			c.declPkg().Consts = append(c.declPkg().Consts, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
 		}
@@ -1439,7 +1473,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				}
 				v.Handlers = append(v.Handlers, handler)
 			}
-			c.pkg.Vars = append(c.pkg.Vars, v)
+			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
 		}
 	}
@@ -1555,11 +1589,11 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 			return
 		}
-		c.pkg.Funcs = append(c.pkg.Funcs, fn)
+		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		return
 	}
 
-	c.pkg.Funcs = append(c.pkg.Funcs, fn)
+	c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 	c.bindDeclared(claimed, fn)
 }
 
@@ -1799,7 +1833,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
-	c.pkg.Components = append(c.pkg.Components, irComp)
+	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
@@ -2531,7 +2565,7 @@ func literalString(e ast.Expr) string {
 // nothing replaced it, so `struct P { x int = 7 }` carried a default no
 // consumer could read and `P{}` had no x at all.
 func (c *checker) checkStructFieldDefaults() {
-	for _, sd := range c.pkg.Structs {
+	for _, sd := range c.declPkg().Structs {
 		c.fillStructFieldDefaults(sd)
 	}
 }

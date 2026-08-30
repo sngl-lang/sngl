@@ -422,6 +422,12 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	savedLoadPkg := c.libLoadPkg
 	c.libLoadPkg = stdlibPkg
 	defer func() { c.libLoadPkg = savedLoadPkg }()
+	// One name, one meaning -- within this package. The map is per declaration
+	// set, so a library package gets its own for the same reason the program's
+	// document does, and neither can collide with the other.
+	savedTopLevel := c.topLevel
+	c.topLevel = nil
+	defer func() { c.topLevel = savedTopLevel }()
 
 	docs := c.libDocs(pkgName)
 	defer c.setMarkScope(docs)()
@@ -465,20 +471,23 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		c.registerImport(s)
 	}
 	for _, s := range units {
-		c.registerStdlibUnit(s, stdlibPkg)
+		c.registerUnit(s)
 	}
 	for _, s := range enums {
-		c.registerStdlibEnum(s, stdlibPkg)
+		c.registerEnum(s)
 	}
 	// Structs may reference any type — including other structs — so register
 	// names as empty stubs first, then resolve fields in a second pass.
 	structDefs := make([]*ir.StructDef, len(structs))
 	for i, s := range structs {
-		structDefs[i] = c.declareStdlibStruct(s, stdlibPkg)
+		structDefs[i] = c.registerStructShell(s)
 	}
-	for i, s := range structs {
-		c.resolveStdlibStructFields(s, structDefs[i])
+	for _, sd := range structDefs {
+		c.resolveStructBody(sd)
 	}
+	// Every type name in the package is in scope by now, which is exactly the
+	// condition a field default needs.
+	c.checkStructFieldDefaults()
 	c.assertOptionsMarked(pkgName, structDefs)
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
