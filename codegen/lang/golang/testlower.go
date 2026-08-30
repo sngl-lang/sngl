@@ -322,11 +322,15 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 		suffix := suffixes[i]
 		funcName, paramType := wrapperHeader(suffix, mode)
 		fmt.Fprintf(&b, "func %s(t *%s) {\n", funcName, paramType)
-		b.WriteString("\tc := newTestComponent()\n")
+		// The handle is named whatever the test called its second parameter.
+		// Emitting a fixed `c` built whichever test happened to use that name
+		// and failed the others at `undefined: g`.
+		recv := testReceiverName(fn)
+		fmt.Fprintf(&b, "\t%s := newTestComponent()\n", recv)
 		if mode == TestEmitAgent {
-			b.WriteString("\tsetCurrentTestModel(c)\n")
+			fmt.Fprintf(&b, "\tsetCurrentTestModel(%s)\n", recv)
 		}
-		b.WriteString("\t_ = c\n")
+		fmt.Fprintf(&b, "\t_ = %s\n", recv)
 		gc := testIRContext(fn, methodFields)
 		for _, s := range fn.Block {
 			for _, line := range lowerTestStmt(s, gc) {
@@ -356,4 +360,14 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 		return "test" + suffix, "testagent.T"
 	}
 	return "Test" + suffix, "testing.T"
+}
+
+// testReceiverName is what a test function calls the component under test: its
+// second parameter's name. A test with no such parameter tests plain functions
+// and never refers to the handle, so the name is only there to be assigned.
+func testReceiverName(fn *ir.Func) string {
+	if fn != nil && len(fn.Params) > 1 && fn.Params[1].Name != "" {
+		return fn.Params[1].Name
+	}
+	return "c"
 }
