@@ -1,0 +1,59 @@
+// The graphical readout: seven rectangles per cell on a 2D canvas.
+//
+// Unlit segments are painted too, in the colour a dark LCD segment has. That
+// is what makes it read as a seven-segment display rather than as a font --
+// the shape of the digit is the part that is *not* showing.
+
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+import "../calc"
+
+// One cell's box, the gap between two of them, and the thickness of a segment
+// within one.
+const CELL_W = 30.0
+const CELL_H = 52.0
+const CELL_GAP = 8.0
+const THICK = 6.0
+const PAD = 12.0
+
+// A lit segment, an unlit one, and the glass behind both. The unlit colour is
+// what makes the panel read as a display rather than as a font.
+const LIT = color{r=45, g=255, b=170, a=255}
+const DARK = color{r=24, g=60, b=52, a=255}
+const BACKING = color{r=10, g=26, b=24, a=255}
+
+// A segment. `on` picks the ink rather than deciding whether to paint: an
+// unlit segment is still there.
+#[draw.shape]
+component Bar(on = false, x = 0.0, y = 0.0, w = 0.0, h = 0.0) {
+    draw.rect(x=x, y=y, w=w, h=h, style=draw.CanvasStyle{fill=on ? LIT : DARK})
+}
+
+// One cell, with its top-left corner at x, y. The verticals stop short of the
+// horizontals by a segment's thickness, which is the gap a real display has
+// between them.
+#[draw.shape]
+component Cell(glyph Glyph, x = 0.0, y = 0.0) {
+    Bar(on=glyph.a, x=x + THICK, y=y, w=CELL_W - 2 * THICK, h=THICK)
+    Bar(on=glyph.g, x=x + THICK, y=y + (CELL_H - THICK) / 2, w=CELL_W - 2 * THICK, h=THICK)
+    Bar(on=glyph.d, x=x + THICK, y=y + CELL_H - THICK, w=CELL_W - 2 * THICK, h=THICK)
+    Bar(on=glyph.f, x=x, y=y + THICK, w=THICK, h=(CELL_H - 3 * THICK) / 2)
+    Bar(on=glyph.b, x=x + CELL_W - THICK, y=y + THICK, w=THICK, h=(CELL_H - 3 * THICK) / 2)
+    Bar(on=glyph.e, x=x, y=y + (CELL_H + THICK) / 2, w=THICK, h=(CELL_H - 3 * THICK) / 2)
+    Bar(on=glyph.c, x=x + CELL_W - THICK, y=y + (CELL_H + THICK) / 2, w=THICK, h=(CELL_H - 3 * THICK) / 2)
+    Bar(on=glyph.point, x=x + CELL_W + 1.0, y=y + CELL_H - THICK, w=THICK, h=THICK)
+}
+
+component SegmentReadout(entry = "0") {
+    draw.canvas(width=WIDTH_PX * 1px, height=HEIGHT_PX * 1px, style=draw.CanvasStyle{fill=BACKING}) {
+        draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.CanvasStyle{fill=BACKING})
+        for i, glyph = cells(entry) {
+            Cell(glyph=glyph, x=PAD + float(i) * (CELL_W + CELL_GAP), y=PAD)
+        }
+    }
+}
+
+const (
+    WIDTH_PX = PAD * 2 + float(calc.WIDTH) * (CELL_W + CELL_GAP) - CELL_GAP
+    HEIGHT_PX = PAD * 2 + CELL_H
+)

@@ -1,0 +1,47 @@
+// The calculator's arithmetic, kept apart from anything that draws.
+//
+// Nothing in this package imports `sngl:ui`: the state machine is the part of
+// a calculator worth testing, and it is the same one on a phone, in a browser
+// and in a terminal.
+
+// The four operations, plus `none` for "nothing is pending". A calculator
+// always has a pending operation slot; `none` is what makes it a total answer
+// rather than an optional one.
+enum Op { none, add, sub, mul, div }
+
+// The symbol a key wears and the status line shows. Not the SNGL operator
+// spelling: a calculator says x and /.
+func Op.symbol(o Op) string {
+    if o == Op.add {
+        return "+"
+    }
+    if o == Op.sub {
+        return "-"
+    }
+    if o == Op.mul {
+        return "x"
+    }
+    if o == Op.div {
+        return "/"
+    }
+    return ""
+}
+
+// Applies the operation. Division by zero is the caller's to catch --
+// `Calc.equals` checks for it before it gets here, because the calculator's
+// answer to it is a display state and not a number.
+func Op.apply(o Op, a float, b float) float {
+    if o == Op.add {
+        return a + b
+    }
+    if o == Op.sub {
+        return a - b
+    }
+    if o == Op.mul {
+        return a * b
+    }
+    if o == Op.div {
+        return a / b
+    }
+    return b
+}

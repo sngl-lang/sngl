@@ -1,0 +1,67 @@
+// A pocket calculator, on every target SNGL has.
+//
+// The three packages under this one divide it the way the problem divides:
+//
+//	calc/     the state machine and its arithmetic -- imports no UI at all
+//	readout/  the seven-segment display, drawn twice for two kinds of screen
+//	keypad/   the keys, as data, and the grid that lays them out
+//
+// What is left here is the wiring: one `Calc`, one handler that maps a key to
+// the method that answers it, and a window to hang them in. The tests are in
+// calc_test.sngl beside this file.
+
+import . "sngl:ui"
+import . "sngl:app"
+import "./calc"
+import "./keypad"
+import "./readout"
+
+output {
+    go {
+        bubbletea(package="calculator")
+        fyne(package="calculator")
+    }
+    none { html }
+    kotlin { android }
+}
+
+component main {
+    var state calc.Calc
+
+    // One key, one method. The calculator never edits itself: each method
+    // answers with the next calculator and the assignment is what makes the
+    // readout redraw.
+    func press(k keypad.Key) {
+        if k.action == keypad.Action.digit {
+            state = state.digit(k.digit)
+        }
+        if k.action == keypad.Action.point {
+            state = state.point()
+        }
+        if k.action == keypad.Action.operate {
+            state = state.operate(k.op)
+        }
+        if k.action == keypad.Action.equals {
+            state = state.equals()
+        }
+        if k.action == keypad.Action.clear {
+            state = state.clear()
+        }
+        if k.action == keypad.Action.negate {
+            state = state.negate()
+        }
+        if k.action == keypad.Action.percent {
+            state = state.percent()
+        }
+        if k.action == keypad.Action.backspace {
+            state = state.backspace()
+        }
+    }
+
+    window #calculator(title="Calculator", href="/") {
+        vbox(style={flex=1, background=#15171c}) {
+            readout.Readout(entry=state.entry, pending=state.pending())
+            keypad.Keypad(@press(k) { press(k) })
+        }
+    }
+}
