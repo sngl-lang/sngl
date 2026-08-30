@@ -656,6 +656,33 @@ func (c *checker) stmts() []ast.Stmt {
 	return out
 }
 
+// enterPackage switches the checker to docs and returns the restore.
+//
+// A lib package loads lazily -- the first import that names it, or the error
+// path that searches every package for a "did you forget an import?" hint --
+// so the load fires in the middle of the program's own pass1. It then runs
+// that same pass1, which opens by clearing the per-package registration state
+// below. Restoring only c.docs left the rest cleared for the remainder of the
+// program's pass1:
+//
+//   - topLevel is the file-scope claim table, so every name claimed before the
+//     load was forgotten and a later declaration colliding with one went
+//     unreported. A component whose prop names an unknown type is enough to
+//     trigger it, because the hint search loads every public package.
+//   - replaces is the import-replace map, collected once at the top of pass1
+//     for the whole package. Cleared mid-import-loop, a later
+//     `import "p" => "url"` resolves without its replacement.
+//
+// Anything pass1 resets belongs here. The two are one function because the
+// bug is precisely that they were not.
+func (c *checker) enterPackage(docs []*ast.Document) func() {
+	savedDocs, savedTopLevel, savedReplaces := c.docs, c.topLevel, c.replaces
+	c.docs = docs
+	return func() {
+		c.docs, c.topLevel, c.replaces = savedDocs, savedTopLevel, savedReplaces
+	}
+}
+
 func (c *checker) pass1() {
 	// File-scope name tracking covers this document only. Loading the library
 	// runs through the same register paths with its own scopes, and its names
