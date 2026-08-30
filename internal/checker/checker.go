@@ -1566,16 +1566,60 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 	}
 }
 
-func (c *checker) registerFunc(f *ast.FuncDef) {
+func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// An override implements one declaration for one target and says which on
 	// its own name, exactly as a component override does. It declares nothing
 	// of its own, so it registers nothing here.
 	if f.Target != nil {
+		if c.inLibSource() {
+			// As with a component override: a library package's belongs to the
+			// target machinery, which resolves it in that package's own scope.
+			return nil
+		}
 		c.userFuncOverrides = append(c.userFuncOverrides, f)
-		return
+		return nil
 	}
 	fn := c.buildFunc(f)
+
+	// A macro declaration is not a function: it is where a `#[...]` mark's
+	// documentation and argument list are written, and a Go handler is what
+	// runs. Binding it would put the name in scope, where a program could call
+	// it -- and a dot import of the package that dot-imports the mark's
+	// package would lift it on. It is kept on the package instead, which is
+	// where mark resolution reads it.
+	if c.isMacroSig(fn.Return) {
+		c.declPkg().Macros = append(c.declPkg().Macros, fn)
+		return nil
+	}
 	c.applyMarks(f, fn)
+
+	// The #[intrinsic] mark names a signature every backend implements, and
+	// the effect metadata follows from the id. An id no intrinsic answers to
+	// is a typo in the mark that nothing downstream would notice: the call
+	// would simply never be recognised.
+	if fn.Intrinsic != "" {
+		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
+			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
+		}
+	}
+
+	// Library source is not body-checked, so two things it would otherwise
+	// infer are stated here instead. A signature with no return annotation is
+	// dyn rather than void -- the "=>" forms that delegate to an intrinsic
+	// rely on it, and body-level inference would conflict with the primitive
+	// and struct spellings the library uses internally. And purity, which the
+	// analysis never runs for, starts pure so the optimizer can fold
+	// int.min and its like; anything reaching outside the program has it
+	// overridden afterwards.
+	if c.inLibSource() {
+		fn.Stdlib = true
+		if fn.Return == nil && f.Body != nil {
+			fn.Return = TypDyn
+		}
+		if fn.Purity == ir.PurityUnknown {
+			fn.Purity = ir.PurityPure
+		}
+	}
 
 	// Only free functions bind a file-scope name; a method's name lives under
 	// its receiver, checked when it is attached there.
@@ -1587,16 +1631,19 @@ func (c *checker) registerFunc(f *ast.FuncDef) {
 	if fn.Receiver != "" {
 		// Attaching is a declaration: it fails on a member of that name
 		// already there, unless this one shadows a standard-library member.
+		// A receiver naming a namespace rather than a type (i18n) has no
+		// declaration to host it, and declareMethod says so.
 		if prev := c.declareMethod(f.Pos, fn); prev != nil {
 			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
-			return
+			return nil
 		}
 		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
-		return
+		return fn
 	}
 
 	c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 	c.bindDeclared(claimed, fn)
+	return fn
 }
 
 // stdlibHint returns a suffix naming the import that would bring name into

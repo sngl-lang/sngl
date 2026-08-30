@@ -61,7 +61,9 @@ func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.
 
 func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	name := s.Call.ID
-	ctx := &ir.Context{AST: s, Name: name}
+	// Stdlib marks the ones a program did not write: sngl:i18n's `#locale` is
+	// a context the language supplies, and lowering treats it as one.
+	ctx := &ir.Context{AST: s, Name: name, Stdlib: c.inLibSource()}
 	if name == "" {
 		c.error(s.Pos, "context decl requires #identifier")
 	} else if _, exists := c.scope.LookupLocal(name); exists {
@@ -93,6 +95,9 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	if def != nil {
 		ctx.Typ = def.ExprType()
 	}
+	// A context is program-global whichever tier declared it: the one sngl:i18n
+	// declares has to reach the program's own codegen, which reads
+	// c.pkg.Contexts.
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
 	if name != "" {
 		c.declare(s.Pos, ctx)
