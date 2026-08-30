@@ -209,11 +209,11 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
-	// pendingPkgBody holds the visual nodes written at the package's top
-	// level, collected in pass1 and checked in pass2. They cannot be checked
-	// where they are found: a node reads vars and instantiates components that
-	// pass1 is still registering.
-	pendingPkgBody []*ast.VisualNode
+	// pendingPkgBody holds the statements written at the package's top level,
+	// collected in pass1 and checked in pass2. They cannot be checked where
+	// they are found: they read vars and instantiate components that pass1 is
+	// still registering.
+	pendingPkgBody []ast.Stmt
 
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
@@ -727,10 +727,15 @@ func (c *checker) pass1() {
 		case *ast.VisualNode:
 			c.registerRootVisualNode(s)
 		case *ast.CallStmt:
+			// A context declaration is a call statement by syntax and a
+			// declaration by meaning, so it is recognised before anything
+			// else. Everything left is the package's body: `counter()` -- a
+			// component instantiated with no block -- parses as a call, and is
+			// the composition a top-level body is usually made of.
 			if c.isContextDeclCallStmt(s) {
 				c.registerRootContextDecl(s)
 			} else {
-				c.error(s.Pos, "unexpected top-level call statement")
+				c.pendingPkgBody = append(c.pendingPkgBody, s)
 			}
 		case *ast.DisabledDecl:
 		case *ast.Comment:
@@ -2068,7 +2073,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		// An ordinary visual node at the top level is the package's own body:
 		// what the program renders, with the package's vars as its state. Held
 		// until pass2, because it reads declarations pass1 is still making.
-		c.pendingPkgBody = append(c.pendingPkgBody, vn)
+		c.pendingPkgBody = append(c.pendingPkgBody, ast.Stmt(vn))
 	}
 }
 
@@ -2085,12 +2090,12 @@ func (c *checker) checkPackageBody() {
 	}
 	c.pushScope()
 	defer c.popScope()
-	for _, vn := range c.pendingPkgBody {
-		c.declareNodeIDsStmt(vn, false)
+	for _, st := range c.pendingPkgBody {
+		c.declareNodeIDsStmt(st, false)
 	}
-	for _, vn := range c.pendingPkgBody {
-		if st := c.checkStmt(vn); st != nil {
-			c.pkg.Body = append(c.pkg.Body, st)
+	for _, st := range c.pendingPkgBody {
+		if checked := c.checkStmt(st); checked != nil {
+			c.pkg.Body = append(c.pkg.Body, checked)
 		}
 	}
 }

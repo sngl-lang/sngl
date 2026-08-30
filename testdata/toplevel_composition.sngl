@@ -1,0 +1,17 @@
+// The idiomatic shape: the top level composes, components hold behaviour. A
+// component instantiated with no block parses as a call statement rather than
+// a visual node, so `counter()` here is an *ast.CallStmt -- the same package
+// body either way.
+
+import . "sngl:ui"
+
+counter()
+
+component counter {
+    var n = 0
+
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}

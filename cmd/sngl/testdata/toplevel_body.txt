@@ -42,6 +42,18 @@ exists both/about/index.html
 grep 'visits' both/index.html
 grep 'About this app' both/about/index.html
 
+# A component instantiated with no block parses as a call statement, not a
+# visual node -- `counter()` is an *ast.CallStmt. It is the same package body,
+# and it is the shape a top-level program usually has: composition at the top,
+# behaviour in components (which is also what a test names, since a composition
+# root has no instance to hand a test).
+# The instance's state is renamed per instance by the inliner, which is what a
+# component instantiated in a body has always done -- it is the composition
+# that is new here, not the inlining.
+sngl generate --platform=html --lang=none --out=comp compose.sngl
+grep 'var state = \{ n__inst0: 0 \}' comp/index.html
+grep 'state.n__inst0 = state.n__inst0 \+ 1' comp/index.html
+
 -- top.sngl --
 import . "sngl:ui"
 
@@ -80,5 +92,18 @@ window #about(title="About", href="/about") {
     vbox {
         text(value="About this app")
         link(href="/", text="Home")
+    }
+}
+
+-- compose.sngl --
+import . "sngl:ui"
+
+counter()
+
+component counter {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
     }
 }
