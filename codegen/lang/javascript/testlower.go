@@ -62,8 +62,11 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		fmt.Fprintf(&b, "export async function test%s(t) {\n", suffix)
-		b.WriteString("\tconst c = newTestComponent();\n")
-		b.WriteString("\tsetCurrentTestModel(c);\n")
+		// Named for the test's own second parameter, not a fixed `c`: a test
+		// that called it anything else referred to a binding this never made.
+		recv := testReceiverName(fn)
+		fmt.Fprintf(&b, "\tconst %s = newTestComponent();\n", recv)
+		fmt.Fprintf(&b, "\tsetCurrentTestModel(%s);\n", recv)
 		for _, line := range lowerTestBody(fn, methodFields) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
@@ -151,4 +154,14 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	}
 	name := jc.EvalExpr(cs.Call.Args[1].Value)
 	return fmt.Sprintf("await t.snapshot(%s)", name), true
+}
+
+// testReceiverName is what a test function calls the component under test: its
+// second parameter's name. A test with no such parameter tests plain functions
+// and never refers to the handle.
+func testReceiverName(fn *ir.Func) string {
+	if fn != nil && len(fn.Params) > 1 && fn.Params[1].Name != "" {
+		return fn.Params[1].Name
+	}
+	return "c"
 }
