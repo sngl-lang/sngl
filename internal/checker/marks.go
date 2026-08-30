@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // markTarget is a syntax form a mark can be written on. The AST knows only
@@ -66,7 +67,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // is a position rather than a node. The mark implementation is what holds a
 // tree.children written on an ordinary prop to that rule.
 var paramMarks = map[markKey]bool{
-	{"platforms", "wildcard"}:     true,
+	{"macro", "wildcard"}:         true,
 	{"internal/tree", "children"}: true,
 }
 
@@ -97,7 +98,7 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 	if !ok {
 		// The declaration says the macro exists; nothing in the compiler says
 		// what it does.
-		c.error(attr.Pos, "macro %s is declared by sngl://%s but the compiler implements no mark for it", attr.MacroName(), uri)
+		c.error(attr.Pos, "macro %s is declared by sngl:%s but the compiler implements no mark for it", attr.MacroName(), uri)
 		return
 	}
 	if err := impl(&mark{c: c, attr: attr, args: args, decl: decl, sym: sym}); err != nil {
@@ -107,7 +108,7 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 
 // resolveMacro finds the macro declaration an attribute names.
 //
-// Only a sngl:// import maps an alias to a package. An alias that names
+// Only a sngl: import maps an alias to a package. An alias that names
 // nothing imported is an error rather than an ambient lookup — a macro package
 // is a dependency, and resolving it from the bare name would make
 // `#[draw.shape]` mean something different depending on what was linked in.
@@ -127,7 +128,7 @@ func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok 
 	case aliasKnown && (ref.Scheme == "internal" || ref.Scheme == "sngl"):
 		fn := c.macroDecl(ref.URI, attr.Name)
 		if fn == nil {
-			c.error(attr.Pos, "unknown macro %q: package %q declares none of that name", attr.Name, "sngl://"+ref.URI)
+			c.error(attr.Pos, "unknown macro %q: package %q declares none of that name", attr.Name, "sngl:"+ref.URI)
 			return "", nil, false
 		}
 		return ref.URI, fn, true
@@ -148,12 +149,21 @@ func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok 
 // package like any other; the compiler's own live under internal/.
 func macroImportHint(alias string) string {
 	if HasPackage(alias) {
-		return "sngl://" + alias
+		return "sngl:" + alias
 	}
-	return "sngl://internal/" + alias
+	// A macro package need not be top-level -- sngl:ui/draw declares `shape` --
+	// so match on the last segment, which is the alias an import binds. Public
+	// packages first: `draw` names both sngl:ui/draw and the compiler's own
+	// sngl:internal/draw, and only one of them is a program's to import.
+	for _, p := range lib.PublicPackages() {
+		if p[strings.LastIndex(p, "/")+1:] == alias {
+			return "sngl:" + p
+		}
+	}
+	return "sngl:internal/" + alias
 }
 
-// macroDecl returns the macro of this name declared by sngl://uri, or nil.
+// macroDecl returns the macro of this name declared by sngl:uri, or nil.
 // The package is loaded to read it — a macro's signature is a declared
 // signature, resolved in the scope of the package that wrote it.
 func (c *checker) macroDecl(uri, name string) *ir.Func {
@@ -396,7 +406,7 @@ func arityDesc(required, total int, variadic bool) string {
 }
 
 // MacroIsImplemented reports whether the compiler implements the macro
-// `sngl://<pkg>` declares as name. A declaration is what makes a macro exist,
+// `sngl:<pkg>` declares as name. A declaration is what makes a macro exist,
 // so this is the one thing about a macro that Go still decides; lib's drift
 // test asserts that every declaration has an answer here.
 func MacroIsImplemented(pkg, name string) bool {

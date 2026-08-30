@@ -1,7 +1,7 @@
 // Number placeholders accept decimal/percent/currency/scientific.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:ui"
+import "sngl:i18n"
 
 var n int = 5
 var bad = $"Score: {n, number, frobble}" // ERROR(check) "invalid number style"

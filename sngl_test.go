@@ -37,7 +37,8 @@ func TestCheckWrapperHappyPath(t *testing.T) {
 // a wrapper around itself, an editor reported the field as unknown on every
 // struct that used one.
 func TestMarkedFieldWithoutMacroPass(t *testing.T) {
-	const src = `import . "sngl://std"
+	const src = `import . "sngl:ui"
+import . "sngl:macro"
 
 struct Entry {
     #[foreign("Title")]

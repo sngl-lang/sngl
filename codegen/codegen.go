@@ -12,6 +12,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -188,7 +189,7 @@ func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
 // component vocabulary depends on files outside this repository — today only
 // gtk4 and its GIR file.
 //
-// An unavailable platform also stops contributing its sngl://platforms/<id>
+// An unavailable platform also stops contributing its sngl:platform/<id>
 // declarations: the checker merges every registered platform's overrides
 // regardless of build target, so overrides naming types it cannot resolve
 // would fail every compile in the process.
@@ -214,7 +215,7 @@ func PlatformUnavailable(name string) error {
 }
 
 // PlatformDocs returns the SNGL declarations p contributes — the source of its
-// `sngl://platforms/<id>` package, both what lib/ embeds and what p
+// `sngl:platform/<id>` package, both what lib/ embeds and what p
 // synthesizes — or nil when it declares none or cannot be used here. gtk4
 // without a GIR file has no widget set to declare and its overrides are
 // written against that set, so it contributes nothing rather than declarations
@@ -226,19 +227,19 @@ func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("platforms/"+p.PlatformIdentifier()),
+	return append(checker.PackageDocsFor("platform/"+p.PlatformIdentifier()),
 		checker.ProvidedDocs(p)...)
 }
 
 // LangDocs returns the SNGL declarations l contributes -- the source of its
-// `sngl://languages/<id>` package, both what lib/ embeds and what l serves
+// `sngl:language/<id>` package, both what lib/ embeds and what l serves
 // itself -- or nil when it declares none. The path is keyed by the language's
-// own identifier, so Go's package is languages/go.
+// own identifier, so Go's package is language/go.
 func LangDocs(l LangTranslator) []*ast.Document {
 	if l == nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("languages/"+l.LanguageIdentifier()),
+	return append(checker.PackageDocsFor("language/"+l.LanguageIdentifier()),
 		checker.ProvidedDocs(l)...)
 }
 
@@ -433,7 +434,7 @@ type HTTPRoute struct {
 }
 
 // HTTPAction describes a form-based server action triggered by an event handler
-// whose mutation crosses the target-language boundary (e.g. invokes a go://
+// whose mutation crosses the target-language boundary (e.g. invokes a go:
 // function when compiling with --lang go).
 type HTTPAction struct {
 	Name string // action identifier (e.g., "action0")
@@ -483,7 +484,7 @@ type RouteRender struct {
 
 // WASMCompiler is optionally implemented by LangTranslators that can compile
 // imported packages to WebAssembly with JS bindings. Platforms like HTML check
-// for this interface to enable go:// (or other scheme) imports at runtime.
+// for this interface to enable go: (or other scheme) imports at runtime.
 type WASMCompiler interface {
 	// BuildWASM compiles a package to WASM and returns the binary.
 	// projectDir is the project root (for module resolution).
@@ -636,9 +637,9 @@ type Request struct {
 	Lang       LangTranslator
 	Options    *ir.StructLit // merged stdlib+lang+platform options for this output target
 	Source     string        // source .sngl filename (base name only)
-	FileAssets []FileAsset   // file:// assets to copy to output
+	FileAssets []FileAsset   // file: assets to copy to output
 	// ProjectFS is the filesystem the project sources were read from. Used
-	// by platforms that resolve native imports (`js://`, `go://`) at codegen
+	// by platforms that resolve native imports (`js:`, `go:`) at codegen
 	// time so the same code path serves CLI (os.DirFS) and the in-memory
 	// playground. May be nil; callers that need it must fall back to
 	// os.DirFS(projectDir) from the options struct.
@@ -652,10 +653,7 @@ type Request struct {
 // SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import
 // path. Returns ("", path) when no scheme is present.
 func SplitScheme(path string) (scheme, uri string) {
-	if before, after, ok := strings.Cut(path, "://"); ok {
-		return before, after
-	}
-	return "", path
+	return imports.ParseScheme(path)
 }
 
 // Header returns a generated-file comment for the given platform and comment

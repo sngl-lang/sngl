@@ -12,7 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// purepkgImport resolves the purepkg test package through the real go://
+// purepkgImport resolves the purepkg test package through the real go:
 // importer, once. The declared types the results document is checked against
 // come from there, so a fixture written against a hand-built *ir.Type would
 // only be asserting itself.
@@ -24,7 +24,7 @@ var purepkgImport = sync.OnceValues(func() (*ir.NativeImport, error) {
 	if _, _, err := checker.LoadStdlib(); err != nil {
 		return nil, err
 	}
-	return (&golang.GoImporter{}).Resolve("go://"+purepkgPath, projectDir())
+	return (&golang.GoImporter{}).Resolve("go:"+purepkgPath, projectDir())
 })
 
 // record is one line of the results file: a key, the separator, a value.
@@ -39,7 +39,7 @@ func purepkgDecls(t *testing.T) ir.NativeDecls {
 		t.Skipf("resolving %s: %v", purepkgPath, err)
 	}
 	return ir.IndexNativeDecls(&ir.Package{Imports: []*ir.Import{{
-		Path:   "go://" + purepkgPath,
+		Path:   "go:" + purepkgPath,
 		Alias:  "purepkg",
 		Native: ni,
 	}}})
@@ -410,7 +410,7 @@ func assertItem(t *testing.T, e ir.Expr) {
 // differ.
 func TestNamedTypeMustAgreeWithTheExpectedOne(t *testing.T) {
 	f := importedFunc(t, "GetGroups")
-	ref := func(name string) string { return `import("go://` + purepkgPath + `").` + name }
+	ref := func(name string) string { return `import("go:` + purepkgPath + `").` + name }
 	src := record("x", `[`+ref("Group")+`{Label = "first", Items = [`+ref("Tally")+`{Name = "a", Value = 1}]}]`)
 	_, bad, err := parseNativeResults("results.sngl", []byte(src), map[string]*ir.Type{"x": f.Return}, purepkgDecls(t))
 	if err != nil {

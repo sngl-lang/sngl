@@ -2,8 +2,8 @@
 // locale-dependent i18n output on every runner, not just compile cleanly.
 // "1,234" (en-US) vs "1.234" (de-DE) — the thousands separator differs.
 
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:test"
+import "sngl:i18n"
 
 component Counter {
     var n = 1234

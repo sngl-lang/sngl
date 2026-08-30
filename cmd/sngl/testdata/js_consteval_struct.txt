@@ -1,4 +1,4 @@
-# A pure js:// function returning an object folds to a struct literal, which is
+# A pure js: function returning an object folds to a struct literal, which is
 # checked against the interface the importer declared for it. The plain object
 # carries no type name, so the declared return type is the only thing that says
 # what shape it must have.
@@ -24,8 +24,8 @@ grep '1\.5' out/index.html
 ! grep 'charAt' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const who = lib.profile("ada", "lovelace")
 

@@ -10,8 +10,8 @@ env PATH=
 stderr 'needs node on PATH'
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const greeting = lib.shout("hello world")
 

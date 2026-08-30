@@ -1,4 +1,4 @@
-# A pure js:// function that throws costs its own value and no other: the two
+# A pure js: function that throws costs its own value and no other: the two
 # calls share one node run, the runtime records the throw against that one key,
 # and the compiler reads the key's absence out of the results document the run
 # still produced. An `exit status` here would mean the throw escaped its call
@@ -18,8 +18,8 @@ stderr 'compile-time evaluation of boom produced no value'
 ! stderr 'exit status'
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const bad = lib.boom()
 const good = lib.fine()

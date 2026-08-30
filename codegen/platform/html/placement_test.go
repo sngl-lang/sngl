@@ -14,7 +14,7 @@ func pkgWithImport(scheme, importPath string) *ir.Package {
 	return &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",
-			AST:    &ast.Import{Path: scheme + "://" + importPath},
+			AST:    &ast.Import{Path: scheme + ":" + importPath},
 			Native: &ir.NativeImport{ImportPath: importPath},
 		}},
 	}
@@ -25,7 +25,7 @@ func goCall(importPath string) *ir.Call {
 	return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: importPath}}}
 }
 
-// jsCall builds a *ir.Call to a native js:// func.
+// jsCall builds a *ir.Call to a native js: func.
 func jsCall(importPath string) *ir.Call {
 	return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: importPath}}}
 }

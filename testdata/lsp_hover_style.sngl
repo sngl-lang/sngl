@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 // TODO: restore style hover test when stdlib is available in v2
 component main {

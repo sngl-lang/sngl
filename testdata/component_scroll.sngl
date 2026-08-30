@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // scroll: state-binding fixture — mutating bound scrollX/scrollY
 // propagates through the scroll viewport.

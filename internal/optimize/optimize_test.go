@@ -534,7 +534,7 @@ component main {
 }
 `)},
 		"lib/widgets.sngl": &fstest.MapFile{Data: []byte(`
-import . "sngl://std"
+import . "sngl:ui"
 
 const tags = ["x", "y"]
 component List() {

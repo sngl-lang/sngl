@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-// snglsrc is this language's own library package, `sngl://languages/go`. A
+// snglsrc is this language's own library package, `sngl:language/go`. A
 // language declares its foreign-type surface the way a platform declares its
 // widgets; see codegen/platform/html/packagefs.go.
 //

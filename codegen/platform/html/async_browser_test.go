@@ -61,7 +61,7 @@ func (r *asyncBrowserResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeI
 		return nil, fmt.Errorf("scheme %q not supported", scheme)
 	}
 	if fsa, ok := imp.(codegen.FSAwareScheme); ok && r.fsys != nil {
-		return fsa.ResolveFS(scheme+"://"+uri, r.fsys, ".")
+		return fsa.ResolveFS(uri, r.fsys, ".")
 	}
 	return nil, fmt.Errorf("scheme %q requires OS filesystem; not supported in this test", scheme)
 }
@@ -151,8 +151,8 @@ func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
 	// via domWriteFor → textContent.  If the button comes first the fall-through
 	// path produces __n0.value (a custom expando) instead of __n0.textContent.
 	const snglSrc = `
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:ui"
+import api "js:./api"
 
 component main {
     var greeting = "before"

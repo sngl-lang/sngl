@@ -11,13 +11,13 @@ import (
 
 // TestDotImportDoesNotLiftLibraryImports keeps the internal/ tier gated. A
 // library package's imports are not part of what it exports, so a dot import
-// of sngl://std must not lift the `ir` namespace lib/std binds for
-// sngl://internal/ir — which a program may not import at all, and which a
+// of sngl:ui must not lift the `ir` namespace lib/std binds for
+// sngl:internal/ir — which a program may not import at all, and which a
 // dot import reached right through when a lib package assembled itself
 // directly in its own export scope.
 func TestDotImportDoesNotLiftLibraryImports(t *testing.T) {
 	const src = `
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Probe {
     m ir.Macro
@@ -37,17 +37,17 @@ component main {
 			return
 		}
 	}
-	t.Errorf("a dot import of sngl://std made the compiler's own sngl://internal/ir reachable as %q; got %v", "ir.Macro", diags)
+	t.Errorf("a dot import of sngl:ui made the compiler's own sngl:internal/ir reachable as %q; got %v", "ir.Macro", diags)
 }
 
 // TestImportedPackageSharesStdlibIdentity pins one library instance per build:
 // an imported package is checked by a nested Check, and a `text` from a second
-// sngl://std would be a different *ir.Component than the program's, so a
+// sngl:ui would be a different *ir.Component than the program's, so a
 // platform extension body attached to one would be invisible on the other.
 func TestImportedPackageSharesStdlibIdentity(t *testing.T) {
 	res := &mockResolver{pkgs: map[string]string{
 		"sub": `
-import . "sngl://std"
+import . "sngl:ui"
 
 component Label() {
     text(value="x")
@@ -56,7 +56,7 @@ component Label() {
 	}}
 	const src = `
 import "sub"
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     text(value="hi")

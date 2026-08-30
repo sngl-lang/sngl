@@ -32,7 +32,7 @@ grep 'for \(opt in more\) \{' out/MainScreen.kt
 grep 'RadioButton\(selected = \(pick == opt\), onClick = \{' out/MainScreen.kt
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var pick = "medium"

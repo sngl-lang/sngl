@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // radio: state-binding fixture — mutating the bound `value` var
 // changes the selected radio option.

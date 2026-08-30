@@ -48,7 +48,7 @@ func (t *Translator) EmitCHeader(imports []*ir.NativeImport) string {
 
 	// Emit #include for each import.
 	for _, ni := range imports {
-		headerPath := strings.TrimPrefix(ni.ImportPath, "c://")
+		headerPath := strings.TrimPrefix(ni.ImportPath, "c:")
 		if after, ok := strings.CutPrefix(headerPath, "pkg:"); ok {
 			libName := after
 			b.WriteString("#include <" + inferPkgHeaderForEmit(libName) + ">\n")

@@ -17,7 +17,7 @@ grep 'Point\{Y: 1, X: 7, Tag: "none"\}' out/model.go
 ! grep '__type' out/model.go
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Point {
     x int

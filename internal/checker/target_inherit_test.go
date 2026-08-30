@@ -62,13 +62,13 @@ func errorsMentioning(diags []ir.Diagnostic, sub string) []string {
 // shared cache -- so one import re-broke every build that a target had just
 // been narrowed to fix.
 func TestImportingASubdirectoryDoesNotWidenTheTargetSet(t *testing.T) {
-	const sub = `import . "sngl://std"
+	const sub = `import . "sngl:ui"
 
 component Sub() {
     text(value="sub")
 }
 `
-	const main = `import . "sngl://std"
+	const main = `import . "sngl:ui"
 import "./sub"
 
 component main {

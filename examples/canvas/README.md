@@ -22,8 +22,8 @@ sngl check examples/canvas/app.sngl
 
 ## Canvas API used
 
-Everything below comes from `sngl://draw`, which the app dot-imports alongside
-`sngl://std`.
+Everything below comes from `sngl:ui/draw`, which the app dot-imports alongside
+`sngl:ui`.
 
 - `canvas(width, height)` — the container; hosts the shapes below as children
 - `rect(x, y, w, h, style)` — filled/stroked rectangle

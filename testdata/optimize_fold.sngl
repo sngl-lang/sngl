@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 component fold {
     var s = string(42)                 // FOLD "42"

@@ -14,7 +14,7 @@ import (
 // built from, the source that schema's declaration is found in, and the
 // language half of the same question.
 func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
-	for _, uri := range []string{"platforms/html", "languages/go"} {
+	for _, uri := range []string{"platform/html", "language/go"} {
 		t.Run(uri, func(t *testing.T) {
 			if checker.HasPackage(uri) {
 				t.Fatalf("%s is embedded under lib/ after all; this test no longer proves anything", uri)

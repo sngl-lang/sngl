@@ -1,5 +1,6 @@
-import . "sngl://std"
-import "sngl://i18n"
+import . "sngl:ui"
+import . "sngl:time"
+import "sngl:i18n"
 
 // Date placeholder with style argument.
 // Demonstrates the {<expr>, <type>, <style>} 3-arg form where the third

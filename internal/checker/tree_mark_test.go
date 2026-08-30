@@ -15,7 +15,7 @@ import (
 // the mechanism was generalised for: a `document` hosts `block` nodes, a
 // `para` is a block that hosts `inline` nodes, and a `bold` is an inline.
 const treeStubSource = `
-import tree "sngl://internal/tree"
+import tree "sngl:internal/tree"
 
 #[tree.children("block")]
 component document() {}
@@ -44,7 +44,7 @@ func treeStubConfig(t *testing.T) *checker.Config {
 
 func checkTreeStub(t *testing.T, body string) []string {
 	t.Helper()
-	src := "import . \"sngl://std\"\nimport . \"sngl://richtext\"\n" + body
+	src := "import . \"sngl:ui\"\nimport . \"sngl:richtext\"\n" + body
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

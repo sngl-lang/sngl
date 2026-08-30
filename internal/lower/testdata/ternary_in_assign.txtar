@@ -1,6 +1,6 @@
 caps: NoTernary
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var label string = ""
@@ -11,7 +11,7 @@ component main {
     })
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 component main {
     var label string = ""
     var on bool = true

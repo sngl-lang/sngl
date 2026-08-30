@@ -16,7 +16,7 @@ func init() {
 	codegen.RegisterScheme(&GoImporter{})
 }
 
-// GoImporter resolves go:// scheme imports by loading Go packages
+// GoImporter resolves go: scheme imports by loading Go packages
 // and extracting exported types, functions, and variables.
 //
 // The registered importer has no cache: it is a process-wide singleton, and a
@@ -44,9 +44,9 @@ type goTypeID struct {
 }
 
 func (g *GoImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
-	userPath := strings.TrimSpace(strings.TrimPrefix(uri, "go://"))
+	userPath := strings.TrimSpace(uri)
 	if userPath == "" {
-		return nil, fmt.Errorf("go scheme requires a package path (e.g. go://github.com/foo/bar)")
+		return nil, fmt.Errorf("go scheme requires a package path (e.g. go:github.com/foo/bar)")
 	}
 	ni, _, _, err := g.load(userPath, dir)
 	return ni, err
@@ -185,7 +185,7 @@ func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*i
 }
 
 // loadedPkgs holds the Go packages one session has loaded. A compilation
-// resolves the same go:// import once per file that names it, and each load is
+// resolves the same go: import once per file that names it, and each load is
 // a `go list` plus a type check. What it hands back is immutable go/types
 // data; the IR declarations built from it are still fresh per call, because
 // the checker binds them into per-file symbol tables.

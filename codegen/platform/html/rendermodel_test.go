@@ -17,8 +17,8 @@ import (
 // binding.
 //
 // The IR is constructed directly (rather than parse→check→optimize→lower)
-// because native go:// resolution requires the Go toolchain importer, which the
-// in-package parity harness intentionally omits — so a parsed fixture's go://
+// because native go: resolution requires the Go toolchain importer, which the
+// in-package parity harness intentionally omits — so a parsed fixture's go:
 // call never carries the Func.Foreign.Path linkage handlerPlacement keys on.
 func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 	const importPath = "example.com/route-post/api"
@@ -27,7 +27,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",
-			AST:    &ast.Import{Path: "go://" + importPath},
+			AST:    &ast.Import{Path: "go:" + importPath},
 			Native: &ir.NativeImport{ImportPath: importPath, Funcs: []*ir.Func{persist}},
 		}},
 	}
@@ -186,7 +186,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",
-			AST:    &ast.Import{Path: "go://" + importPath},
+			AST:    &ast.Import{Path: "go:" + importPath},
 			Native: &ir.NativeImport{ImportPath: importPath, Funcs: []*ir.Func{persist}},
 		}},
 	}

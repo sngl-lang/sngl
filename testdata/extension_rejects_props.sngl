@@ -1,5 +1,5 @@
-import sngl "sngl://std"
-import "sngl://platforms/html"
+import sngl "sngl:ui"
+import "sngl:platform/html"
 
 // An override's prop list is a selection of what the declaration it overrides
 // declares, not a declaration of its own: the base owns the types, and a

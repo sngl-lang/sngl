@@ -42,9 +42,9 @@
 //   style surface these constructors reach. The prop carries the data a future
 //   theme/layout implementation needs; today the assignment is dropped.
 
-import sngl "sngl://std"
-import . "sngl://platforms"
-import . "sngl://internal/marks"
+import sngl "sngl:ui"
+import . "sngl:macro"
+import . "sngl:internal/marks"
 
 #[options]
 struct Options {

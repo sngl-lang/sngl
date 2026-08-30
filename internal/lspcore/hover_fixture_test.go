@@ -53,7 +53,7 @@ func TestHoverFixtures(t *testing.T) {
 					if err != nil || info.IsDir() {
 						return "", false
 					}
-					return "file://" + candidate, true
+					return "file:" + candidate, true
 				},
 				ComponentProp: func(componentName, propName string) (string, bool) {
 					if pkg == nil {

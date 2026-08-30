@@ -2,6 +2,7 @@ package lspcore_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -278,10 +279,11 @@ func TestCompletionContext_ComponentLevel(t *testing.T) {
 // and every use of it was reported as undefined — a file that builds,
 // underlined in red.
 func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
-	content := `import . "sngl://std"
+	content := `import . "sngl:ui"
+import . "sngl:macro"
 
 component main {
-    #[foreign("js://./api", "compute", pure)]
+    #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 
     text(value=string(compute(2, 3)))
@@ -445,5 +447,36 @@ func TestPropListCompletions_OmitsWildcardProp(t *testing.T) {
 	}
 	if slices.Contains(labels, "data") {
 		t.Errorf("wildcard prop \"data\" offered as a completion: %v", labels)
+	}
+}
+
+// An import path completes with the packages a program may name, and the
+// compiler's own tier is not among them: `sngl:internal/<name>` resolves only
+// from library source, so offering it is offering an import that cannot
+// compile.
+func TestImportPathCompletionsHideTheInternalTier(t *testing.T) {
+	content := "import . \"\n"
+	if ctx := lspcore.CompletionContext(content, 1, 11); ctx != lspcore.CtxImportPath {
+		t.Fatalf("context = %v, want CtxImportPath", ctx)
+	}
+	items := lspcore.ImportPathCompletions(content, 1)
+	if len(items) == 0 {
+		t.Fatal("no import path completions")
+	}
+	have := map[string]bool{}
+	for _, it := range items {
+		have[it.Label] = true
+		if strings.HasPrefix(it.Label, "sngl:internal/") {
+			t.Errorf("offered %q, which only library source may import", it.Label)
+		}
+	}
+	for _, want := range []string{"sngl:ui", "sngl:app", "sngl:ui/draw"} {
+		if !have[want] {
+			t.Errorf("missing %q from import completions", want)
+		}
+	}
+	// A closed quote is not a path position.
+	if ctx := lspcore.CompletionContext("import . \"sngl:ui\"\n", 1, 19); ctx == lspcore.CtxImportPath {
+		t.Error("cursor past the closing quote still read as an import path")
 	}
 }

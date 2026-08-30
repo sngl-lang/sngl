@@ -1,6 +1,7 @@
 // Test: first-class prop bindings — child mutations hoist to parent scope.
 
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 component Stepper(:count = 0) {
     button(text="+", @click { count += 1 })

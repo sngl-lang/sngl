@@ -343,7 +343,7 @@ func IsI18nIntrinsic(name string) bool {
 // both usage detection and the JS/Kotlin backends have to recognize them.
 //
 // The select's *type* is what identifies it. Matching the operand's spelling
-// instead read `i18n.one` and missed `t.one` under `import t "sngl://i18n"`,
+// instead read `i18n.one` and missed `t.one` under `import t "sngl:i18n"`,
 // which then emitted the alias as a bare identifier.
 func IsI18nPluralKey(sel *Select) bool {
 	if sel == nil {

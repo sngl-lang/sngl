@@ -37,7 +37,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl://internal/marks\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\n")
 	declared := map[string]bool{}
 	for _, name := range names {
 		info := reg.Classes[name]

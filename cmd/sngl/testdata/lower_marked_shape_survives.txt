@@ -20,8 +20,8 @@ grep 'ctx\.save\(\)' out/index.html
 grep 'ctx\.restore\(\)' out/index.html
 
 -- main.sngl --
-import . "sngl://std"
-import "sngl://draw"
+import . "sngl:app"
+import "sngl:ui/draw"
 
 #[draw.shape]
 component blip(x float, y float) {}

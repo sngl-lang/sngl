@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // reactive-ternary-context: a ternary whose condition reads a reactive var
 // (`dark`) is used as a context-provider value, consumed by 2+ children.

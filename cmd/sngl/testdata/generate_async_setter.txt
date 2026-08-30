@@ -11,8 +11,8 @@ grep 'async function \$set_count' out/index.html
 grep 'await fetchHello' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import api "js://./api"
+import . "sngl:ui"
+import api "js:./api"
 
 component main {
     var count = 0 @change {

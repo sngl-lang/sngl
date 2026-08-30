@@ -1,14 +1,14 @@
-# js:// imports for JS/TS modules. Smoke-test the checker accepts a SNGL
+# js: imports for JS/TS modules. Smoke-test the checker accepts a SNGL
 # file that imports a TypeScript module and calls one of its exports.
 sngl check app.sngl
 stdout 'app.sngl: ok'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 output { js { html } }
 
-import lib "js://./lib"
+import lib "js:./lib"
 
 func wrap(a float, b float) => lib.add(a, b)
 

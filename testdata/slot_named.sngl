@@ -11,7 +11,7 @@
 // writes the body, which is the populator, exactly as for a func type. So the
 // insertion passes values positionally and the population names them.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 struct Row {
     title string

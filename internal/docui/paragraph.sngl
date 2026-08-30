@@ -1,5 +1,5 @@
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import "sngl:platform/html"
 
 // Paragraph renders a block of prose. Generic platforms get a styled text
 // node; html emits a real <p> so default browser typography (margins, line

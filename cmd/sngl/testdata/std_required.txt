@@ -10,6 +10,18 @@ stdout 'withstd.sngl: ok'
 sngl check builtins.sngl
 stdout 'builtins.sngl: ok'
 
+# The calendar types are not among them. Reading a clock is something a program
+# asks for, so date/time/datetime live in sngl:time and a file that wants one
+# says so. This used to resolve to `dyn` rather than fail: the resolver fell
+# back to dyn for the string-representable types whenever they were not in
+# scope, so a missing import silently typed the declaration and built.
+! sngl check dateunimported.sngl
+stderr 'unknown type "date"'
+stderr 'sngl:time'
+
+sngl check dateimported.sngl
+stdout 'dateimported.sngl: ok'
+
 # And cannot be imported: naming an ambient package would imply it were
 # optional.
 ! sngl check importbuiltin.sngl
@@ -46,9 +58,9 @@ stderr 'unknown component "helper" in package w'
 
 # The shapes are their own package. std no longer declares them, so a name an
 # application wants for itself -- rect, line, path -- is free unless the file
-# asks for sngl://draw.
+# asks for sngl:ui/draw.
 ! sngl check draw_unimported.sngl
-stderr 'unknown component "canvas"; sngl://draw declares it'
+stderr 'unknown component "canvas"; sngl:ui/draw declares it'
 
 sngl check draw_imported.sngl
 stdout 'draw_imported.sngl: ok'
@@ -66,7 +78,7 @@ component main {
     text(value="x")
 }
 -- withstd.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     text(value="x")
@@ -77,17 +89,28 @@ component main {
     var f float = float.sqrt(2.0)
     var s string = string.upper("hi")
     var c color = color.rgb(1, 2, 3)
+}
+-- dateunimported.sngl --
+component main {
     var d date = "2026-08-21"
 }
+-- dateimported.sngl --
+import . "sngl:time"
+
+component main {
+    var d date = "2026-08-21"
+    var t time = "09:30"
+    var dt datetime = "2026-08-21T09:30:00"
+}
 -- importbuiltin.sngl --
-import . "sngl://builtin"
+import . "sngl:builtin"
 
 component main {
     var n int = 1
 }
 -- rawelem.sngl --
-import "sngl://platforms/html"
-import "sngl://platforms/gtk4"
+import "sngl:platform/html"
+import "sngl:platform/gtk4"
 
 component Foo() {
     html.marquee() {}
@@ -101,7 +124,7 @@ component Bar() {
     gtk4.GtkLabel(label="x") {}
 }
 -- aliased_expr.sngl --
-import ui "sngl://std"
+import ui "sngl:ui"
 
 func render() => ui.text(value="x")
 
@@ -109,7 +132,7 @@ component main {
     ui.text(value="y")
 }
 -- private.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import w "widgets"
 
 func render() => w.helper()
@@ -118,26 +141,26 @@ component main {
     text(value="x")
 }
 -- widgets/widgets.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component helper() {
     text(value="private")
 }
 -- aliased.sngl --
-import ui "sngl://std"
+import ui "sngl:ui"
 
 component main {
     ui.text(value="x")
 }
 -- draw_unimported.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     canvas(width=100px, height=100px) {}
 }
 -- draw_imported.sngl --
-import . "sngl://std"
-import d "sngl://draw"
+import . "sngl:ui"
+import d "sngl:ui/draw"
 
 component main {
     d.canvas(width=100px, height=100px) {
@@ -145,8 +168,8 @@ component main {
     }
 }
 -- draw_both_dotted.sngl --
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:ui"
+import . "sngl:ui/draw"
 
 component main {
     canvas(width=100px, height=100px) {
@@ -154,7 +177,7 @@ component main {
     }
 }
 -- draw_names_free.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component rect(label string) {
     text(value=label)

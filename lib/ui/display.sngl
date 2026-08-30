@@ -1,0 +1,195 @@
+// Components that show a value and do not edit it.
+
+// Displays a text string. `value` is the content; set `selectable=true`
+// to allow the platform to offer copy. Typography (size, weight, color,
+// alignment, `maxLines` truncation) is driven entirely by `style`.
+// The `@click` event fires on tap/click for simple text-as-action use.
+component text(
+    style Style,
+    value string,
+    selectable bool,
+    @click ClickEvent,
+) {}
+
+component _example_text {
+    vbox(style={gap=8, padding=16}) {
+        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+        text(value="Regular text")
+        text(value="Colored text", style={color=#0066CC})
+    }
+}
+
+// Displays an image from a URL or asset path. `fit` controls how the
+// image is scaled into its frame (see `ObjectFit`). `alt` provides the
+// accessibility label. `@load` fires once decoding completes; `@error`
+// fires on fetch/decode failure with an `ErrorEvent` describing the
+// failure.
+component image(
+    style Style,
+    src string,
+    alt string,
+    fit ObjectFit,
+    @click ClickEvent,
+    @load LoadEvent,
+    @error ErrorEvent,
+) {}
+
+component _example_image {
+    vbox(style={gap=8, padding=16}) {
+        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
+    }
+}
+
+// Small status label — a compact chip showing a status, count, or
+// category tag. `variant` styles the color ("primary", "success",
+// "warning", "error", "neutral"); `size` is "small" or "medium".
+component badge(
+    style Style,
+    value string,
+    variant string,
+    size string,
+) {}
+
+component _example_badge {
+    hbox(style={gap=8, padding=16, alignItems="center"}) {
+        badge(value="3", variant="primary")
+        badge(value="New", variant="success")
+        badge(value="Error", variant="error")
+    }
+}
+
+// Compact interactive tag. `label` is the displayed text. Set
+// `removable=true` to render a remove affordance that emits
+// `@remove`. `selected` styles the chip as active (two-way bound
+// when used as a filter). `variant` styles the chip color.
+component chip(
+    style Style,
+    label string,
+    variant string,
+    removable bool,
+    selected bool,
+    disabled bool,
+    focusable bool = true,
+    @click ClickEvent,
+    @remove DismissEvent,
+) {}
+
+component _example_chip {
+    hbox(style={gap=8, padding=16}) {
+        chip(label="Tag")
+        chip(label="Removable", removable=true)
+        chip(label="Success", variant="success")
+    }
+}
+
+// User profile image with fallback. Renders `src` when available;
+// otherwise displays `initials` in a styled placeholder. `size` is
+// a preset ("small", "medium", "large") or a length; `variant` is
+// "circle" (default) or "square".
+component avatar(
+    style Style,
+    src string,
+    alt string,
+    initials string,
+    size string,
+    variant string,
+    @click ClickEvent,
+) {}
+
+component _example_avatar {
+    hbox(style={gap=8, padding=16}) {
+        avatar(initials="JD")
+        avatar(initials="AB", variant="square")
+        avatar(initials="XY", size="large")
+    }
+}
+
+// Determinate progress indicator. Shows the fraction `value / max`
+// filled. Set `showValue=true` to render a numeric read-out alongside
+// the bar. `variant` styles the bar ("primary", "success", "warning",
+// "error"); `label` annotates the bar with a short description.
+component progress(
+    style Style,
+    value float,
+    // The value `value` is measured against. One rather than zero, because a
+    // platform that wants a fraction divides by it and every platform that
+    // does not still has to render something: `<progress max="0">` is invalid
+    // HTML, and a GTK fraction of value/0 is not a number.
+    max float = 1,
+    label string,
+    variant string,
+    showValue bool,
+) {}
+
+component _example_progress {
+    vbox(style={gap=8, padding=16}) {
+        progress(value=0.7, max=1, label="70% complete", showValue=true)
+        progress(value=3, max=10)
+    }
+}
+
+// Indeterminate loading indicator. Use when progress cannot be
+// measured. `variant` is "bar" or "circle"; `size` is "small",
+// "medium", or "large". `label` adds an accessible description
+// announced by screen readers.
+component spinner(
+    style Style,
+    label string,
+    variant string,
+    size string,
+) {}
+
+component _example_spinner {
+    hbox(style={gap=16, padding=16, alignItems="center"}) {
+        spinner(label="Loading...")
+        spinner(variant="circle", size="large")
+    }
+}
+
+// Tabular data display. `columns` is the list of column headers;
+// `rows` is the cell grid — one inner `list<string>` per row, each
+// cell aligned to its column by position (defaults to no rows).
+// Enable `selectable` for row selection with `selected` as
+// the 0-based row index (two-way bound). Enable `sortable` to let the
+// user re-order by column; `sortColumn` and `sortDirection` ("asc" or
+// "desc") reflect the current sort and are two-way bound. `@sort`
+// fires when the user changes sort, `@select` when the selection
+// changes.
+component table(
+    style Style,
+    columns list<string>,
+    rows list<list<string>> = [],
+    selectable bool,
+    :selected int,
+    sortable bool,
+    sortColumn string,
+    sortDirection string,
+    @select SelectEvent,
+    @sort ChangeEvent,
+) {}
+
+component _example_table {
+    vbox(style={padding=16}) {
+        table(columns=["Name", "Role", "Status"])
+    }
+}
+
+// Hierarchical data display. `items` is the visible row labels in
+// traversal order. `selected` is the label of the current selection,
+// two-way bound. `expanded` is the list of expanded node indices,
+// also two-way bound. `@select` fires on row pick, `@expand` when the
+// user toggles a node.
+component tree(
+    style Style,
+    items list<string>,
+    :selected string,
+    expanded list<int>,
+    @select SelectEvent,
+    @expand ExpandEvent,
+) {}
+
+component _example_tree {
+    vbox(style={padding=16}) {
+        tree(items=["Documents", "Photos", "Music", "Videos"])
+    }
+}

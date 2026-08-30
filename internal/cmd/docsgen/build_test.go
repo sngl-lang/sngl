@@ -10,7 +10,7 @@ import (
 
 // TestWebsiteProducesContent is a sanity check that compiling website.sngl
 // emits real page content — not just the nav sidebar. The site's body is
-// driven by go:// imports (docs.ComponentsByTier etc.) that are evaluated by
+// driven by go: imports (docs.ComponentsByTier etc.) that are evaluated by
 // compiling those packages to wasm; if that evaluation breaks, the sidebar
 // (also data-driven) can still render while every page body comes up empty.
 // This test guards against that whole-site-goes-blank regression.
@@ -42,7 +42,7 @@ func TestWebsiteProducesContent(t *testing.T) {
 	if !strings.Contains(html, "Browse all built-in components") {
 		t.Error("components/index.html missing static page body text")
 	}
-	// Data-driven body content from the go:// `tiers` const. Its absence is
+	// Data-driven body content from the go: `tiers` const. Its absence is
 	// the "sidebar renders but content missing" symptom: the sidebar uses
 	// NavItem/NavGroup, only the page body emits component-card.
 	if !strings.Contains(html, "component-card") {

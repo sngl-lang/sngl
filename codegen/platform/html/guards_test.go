@@ -22,12 +22,12 @@ func noneLang(t *testing.T) codegen.LangTranslator {
 }
 
 // backendHandlerPkg builds a minimal package whose main component has one
-// window holding a button whose @click handler calls a go:// native func —
+// window holding a button whose @click handler calls a go: native func —
 // i.e. a Backend-placed handler.
 func backendHandlerPkg() *ir.Package {
 	imp := &ir.Import{
 		Alias:  "api",
-		AST:    &ast.Import{Path: "go://example.com/api"},
+		AST:    &ast.Import{Path: "go:example.com/api"},
 		Native: &ir.NativeImport{ImportPath: "example.com/api"},
 	}
 	handler := EventHandlerValue(&ir.Func{Block: []ir.Stmt{
@@ -112,7 +112,7 @@ func TestFrontendOnBackendValueErrors(t *testing.T) {
 }
 
 // TestFrontendGoCallAllowed guards the Phase 5 contract against the 6.3 rule:
-// a bare go:// call under html.frontend is the WASM opt-in and must NOT error.
+// a bare go: call under html.frontend is the WASM opt-in and must NOT error.
 func TestFrontendGoCallAllowed(t *testing.T) {
 	pkg := pkgWithImport("go", "example.com/api")
 	pkg.Components = []*ir.Component{{Name: "main", Body: []ir.Stmt{

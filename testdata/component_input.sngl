@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 // input: two-way state-binding fixture — the `:value` binding wires a
 // widget→state writeback handler in addition to the state→widget sync.

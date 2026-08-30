@@ -4,7 +4,7 @@
 // IR, through validate_calibration_test.go, which lowers it with FocusOrder
 // enabled and runs ir.Validate over the result.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 const labels list<string> = ["one", "two", "three"]
 

@@ -8,7 +8,8 @@ exists out/docs/intro.html
 ! exists out/window_L1.html
 
 -- site.sngl --
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 output { none { html } }
 

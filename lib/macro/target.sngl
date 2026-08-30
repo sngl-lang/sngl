@@ -4,10 +4,10 @@
 // The vocabulary is public. A plugin living outside this repository writes the
 // same marks its in-tree siblings do, so the package is imported like any
 // other rather than gated behind the `internal/` tier. The per-target packages
-// under it — `sngl://platforms/html`, `sngl://languages/go` — are separate
+// under it — `sngl:platform/html`, `sngl:language/go` — are separate
 // packages and hold no marks.
 
-import ir "sngl://internal/ir"
+import ir "sngl:internal/ir"
 
 // Marks the struct that declares a target's build-option schema: the fields an
 // `output(...)` block may name.

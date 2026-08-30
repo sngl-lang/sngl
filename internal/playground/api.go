@@ -64,7 +64,7 @@ const playgroundDir = "/playground"
 // parseSource interprets the editor buffer as a txtar archive. The
 // archive's comment is treated as the main `playground.sngl` file; any
 // `-- name --` sections become sibling files in an in-memory FS so
-// `js://./lib`-style imports can resolve. Bare source (no `-- name --`
+// `js:./lib`-style imports can resolve. Bare source (no `-- name --`
 // markers) is the degenerate single-file case.
 func parseSource(source string) (mainSrc []byte, fsys fs.FS) {
 	arc := txtar.Parse([]byte(source))

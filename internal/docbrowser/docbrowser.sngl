@@ -1,4 +1,5 @@
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:app"
 
 // docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
 // renders the top-level main body; html route mode compiles the window
@@ -11,9 +12,9 @@ output {
     }
 }
 
-import "go://git.duckfam.us/jonathan/sngl/docs/lookup"
+import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
-import "sngl://platforms/html"
+import "sngl:platform/html"
 
 component main {
     var path = "sngl"

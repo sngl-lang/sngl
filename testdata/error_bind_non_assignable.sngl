@@ -3,7 +3,7 @@
 // dropped in silence, leaving a `:value=` that read like a binding and was not
 // one.
 
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var name = "world"

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 // Runtime (opaque) struct spread: `...base` where base is a variable cannot be
 // flattened at compile time, so flatten_struct_spread lowers it to a

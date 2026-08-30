@@ -1,5 +1,5 @@
 // Package consteval is the Go runtime for SNGL's compile-time evaluation of
-// pure go:// functions. The compiler generates a program that calls each
+// pure go: functions. The compiler generates a program that calls each
 // pending function and hands the result to Emit; this package encodes the
 // value as SNGL source and writes the batch to the file named by
 // SNGL_CONSTEVAL_OUT, which the compiler then parses.
@@ -297,7 +297,7 @@ func appendStruct(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 		wrote = true
 		// The Go field name, embedded fields included. Promoting an embedded
 		// struct's fields into the outer literal would spell a shape the
-		// compiler has no declaration for: the go:// importer declares an
+		// compiler has no declaration for: the go: importer declares an
 		// embedded field under its own name like any other, so the reader
 		// would see fields the struct does not have.
 		dst = append(dst, f.Name...)
@@ -313,7 +313,7 @@ func appendStruct(dst []byte, v reflect.Value, depth int) ([]byte, error) {
 // appendTypeRef names the declaration t is, so a value whose declared type the
 // compiler never learned — a func returning []any — still arrives with one.
 // reflect gives the declaring package and the name in it, which is what the
-// go:// importer keyed its declarations by.
+// go: importer keyed its declarations by.
 //
 // An unnamed struct type has no declaration to point at and keeps the bare
 // name, or nothing at all.
@@ -322,7 +322,7 @@ func appendTypeRef(dst []byte, t reflect.Type) []byte {
 	if pkg == "" || name == "" {
 		return append(dst, name...)
 	}
-	dst = append(dst, `import("go://`...)
+	dst = append(dst, `import("go:`...)
 	dst = append(dst, pkg...)
 	dst = append(dst, `").`...)
 	return append(dst, name...)

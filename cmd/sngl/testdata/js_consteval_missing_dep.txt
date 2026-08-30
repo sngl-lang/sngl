@@ -15,8 +15,8 @@ stderr 'lib/index.ts'
 ! stderr 'exit status'
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const padded = lib.pad("x")
 

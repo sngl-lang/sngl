@@ -52,7 +52,7 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 	return out, nil
 }
 
-// execJSConstEval generates, bundles and runs the js:// batch, returning the
+// execJSConstEval generates, bundles and runs the js: batch, returning the
 // values keyed by request key and the keys whose value did not check.
 //
 // The build step is in-process and costs about a millisecond, so none of the Go
@@ -65,7 +65,7 @@ func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (m
 	}
 	node, err := exec.LookPath(nodeBin)
 	if err != nil {
-		return nil, nil, fmt.Errorf("evaluating js:// functions at build time needs %s on PATH: %w", nodeBin, err)
+		return nil, nil, fmt.Errorf("evaluating js: functions at build time needs %s on PATH: %w", nodeBin, err)
 	}
 
 	src, err := jsConstEvalSource(dir, reqs)
@@ -214,7 +214,7 @@ func jsConstEvalSource(dir string, reqs []*nativeRequest) (string, error) {
 	return b.String(), nil
 }
 
-// jsRunSpecifier turns a js:// module spec into the specifier the generated
+// jsRunSpecifier turns a js: module spec into the specifier the generated
 // program imports it by, relative to the directory the program is written into
 // (one level below dir).
 //
@@ -231,16 +231,16 @@ func jsRunSpecifier(dir, spec string) (string, error) {
 	root := jsscheme.VirtualRoot
 	abs, err := jsscheme.ResolveSpec(fsys, root, spec, path.Join(root, "__sngl_entry__.ts"))
 	if err != nil {
-		return "", fmt.Errorf("resolving js://%s for compile-time evaluation: %w", spec, err)
+		return "", fmt.Errorf("resolving js:%s for compile-time evaluation: %w", spec, err)
 	}
 	rel, ok := jsscheme.StripVirtRoot(abs, root)
 	if !ok {
-		return "", fmt.Errorf("resolving js://%s: resolver returned out-of-root path %q", spec, abs)
+		return "", fmt.Errorf("resolving js:%s: resolver returned out-of-root path %q", spec, abs)
 	}
 	if strings.HasSuffix(rel, ".d.ts") {
 		runnable, ok := jsRuntimeSibling(fsys, rel)
 		if !ok {
-			return "", fmt.Errorf("js://%s resolves to %s, which declares a module but is not one; no runnable file sits beside it", spec, rel)
+			return "", fmt.Errorf("js:%s resolves to %s, which declares a module but is not one; no runnable file sits beside it", spec, rel)
 		}
 		rel = runnable
 	}

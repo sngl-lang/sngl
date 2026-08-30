@@ -1,0 +1,93 @@
+// Components that paint above the rest of the tree, and the surface a
+// dismissal returns from.
+
+// Dialog overlay. Renders its children in a centered modal dialog
+// atop a scrim when `open` is true. `title` is the dialog heading;
+// `closable=true` shows a close affordance that emits `@close`. `size`
+// is "small", "medium", "large", or "full". Dismissing the scrim or
+// pressing Escape also emits `@close`.
+component modal(
+    style Style,
+    open bool,
+    title string,
+    closable bool,
+    size string,
+    @close DismissEvent,
+) list<component> {}
+
+component _example_modal {
+    var showModal = false
+    vbox(style={padding=16}) {
+        button(text="Open Modal", @click { showModal = true })
+        modal(open=showModal, title="Example Modal", closable=true) {
+            text(value="Modal content goes here.")
+            button(text="Close", @click { showModal = false })
+        }
+    }
+}
+
+// Slide-out panel anchored to a side of the viewport. `side` is "left",
+// "right", "top", or "bottom". `size` is a length or a preset ("small",
+// "medium", "large"). Like `modal`, tapping the scrim or pressing
+// Escape emits `@close`.
+component drawer(
+    style Style,
+    open bool,
+    side string,
+    size string,
+    @close DismissEvent,
+) list<component> {}
+
+component _example_drawer {
+    var showDrawer = false
+    vbox(style={padding=16}) {
+        button(text="Open Drawer", @click { showDrawer = true })
+        drawer(open=showDrawer, side="right") {
+            vbox(style={gap=8, padding=16}) {
+                text(value="Drawer Content", style={fontWeight="bold"})
+                button(text="Close", @click { showDrawer = false })
+            }
+        }
+    }
+}
+
+// Informational popup on hover or focus. Wraps a single child (the
+// trigger); `text` is the tooltip body. `position` hints at placement
+// ("top", "bottom", "left", "right", "auto"). `delay` is the
+// millisecond delay before the tooltip appears.
+component tooltip(
+    style Style,
+    text string,
+    position string,
+    delay int,
+) component {}
+
+component _example_tooltip {
+    vbox(style={padding=16}) {
+        tooltip(text="This is a tooltip") {
+            button(text="Hover me")
+        }
+    }
+}
+
+// Floating content panel anchored to a trigger. Children include the
+// trigger and the panel contents; `open` controls visibility and is
+// two-way bound. `openOn` is "click", "hover", or "focus". `position`
+// hints at placement; the runtime flips to an opposite side if there
+// is not enough room. Clicking outside emits `@close`.
+component popover(
+    style Style,
+    open bool,
+    position string,
+    openOn string,
+    @close DismissEvent,
+) list<component> {}
+
+component _example_popover {
+    var showPop = false
+    vbox(style={padding=16}) {
+        popover(open=showPop, position="bottom", openOn="click") {
+            button(text="Toggle", @click { showPop!! })
+        }
+    }
+}

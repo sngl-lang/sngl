@@ -107,8 +107,8 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
-			AST:    &ast.Import{Path: "wasmbridge-test://" + uri},
-			Path:   "wasmbridge-test://" + uri,
+			AST:    &ast.Import{Path: "wasmbridge-test:" + uri},
+			Path:   "wasmbridge-test:" + uri,
 			Alias:  "rp",
 			Native: ni,
 		}},
@@ -137,7 +137,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 }
 
 // TestFrontendWasmOptIn pins the Phase 5 contract: WASM is opt-in. A bare
-// (default-backend) non-js:// call ships NO WASM; only a call forced
+// (default-backend) non-js: call ships NO WASM; only a call forced
 // client-side via html.frontend pulls the package into the WASM bridge.
 func TestFrontendWasmOptIn(t *testing.T) {
 	const uri = "optin-pkg"
@@ -155,8 +155,8 @@ func TestFrontendWasmOptIn(t *testing.T) {
 	registerFakeScheme(t, ni, uri)
 
 	imp := &ir.Import{
-		AST:    &ast.Import{Path: "wasmbridge-test://" + uri},
-		Path:   "wasmbridge-test://" + uri,
+		AST:    &ast.Import{Path: "wasmbridge-test:" + uri},
+		Path:   "wasmbridge-test:" + uri,
 		Alias:  "op",
 		Native: ni,
 	}
@@ -173,7 +173,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 			}}},
 		}
 		if got := collectWASMPackages(pkg, nil, "."); len(got) != 0 {
-			t.Fatalf("bare go:// call must ship no WASM, got %d packages", len(got))
+			t.Fatalf("bare go: call must ship no WASM, got %d packages", len(got))
 		}
 	})
 

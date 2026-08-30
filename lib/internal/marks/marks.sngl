@@ -6,11 +6,11 @@
 // Unlike a user-facing mark such as `#[draw.shape]` these annotate the library
 // source itself: the checker reads them off a declaration as it registers it.
 //
-// The path is `sngl://internal/marks` and not `.../builtin`: `sngl://builtin`
+// The path is `sngl:internal/marks` and not `.../builtin`: `sngl:builtin`
 // is the ambient package of built-in types, a different thing one letter away
 // at the import line.
 
-import ir "sngl://internal/ir"
+import ir "sngl:internal/ir"
 
 // Names the IR construct a declaration dispatches to.
 //
@@ -19,7 +19,7 @@ import ir "sngl://internal/ir"
 // type kind (`int`, `color`, `list`, …) marks a struct; a node kind (`window`,
 // `timer`, `slot`, `errorBoundary`) marks a component. The kind says which
 // construct, never which tier: the built-in visual nodes are declared in
-// `sngl://std`.
+// `sngl:ui`.
 //
 // A kind classifies one declaration and does not alias two — type identity is
 // per-declaration — so a duplicated kind is an error rather than a silent

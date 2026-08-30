@@ -1,0 +1,122 @@
+// Whole and fractional numbers, and the arithmetic on them.
+
+import . "sngl:internal/marks"
+
+// 64-bit signed integer. Arithmetic operators produce `int` when both
+// operands are `int`; division truncates. Methods on the `int` receiver
+// (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
+// `float` with `float(x)` before doing fractional math.
+#[builtin("int")]
+struct int {}
+
+// Returns the smaller of two integers. Ties return a (which equals b
+// for integers, so the distinction is vacuous).
+#[intrinsic("int.min", usable)]
+func int.min(a int, b int) => a < b ? a : b
+
+// Returns the larger of two integers. Ties return a.
+#[intrinsic("int.max", usable)]
+func int.max(a int, b int) => a > b ? a : b
+
+// Returns the absolute value of an integer. Behavior on the minimum
+// representable value is platform-defined (may overflow).
+#[intrinsic("int.abs", usable)]
+func int.abs(x int) => x < 0 ? -x : x
+
+// Clamps x to the inclusive range [lo, hi]. If hi < lo the result
+// follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
+// documented contract for malformed ranges.
+#[intrinsic("int.clamp", usable)]
+func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
+
+// Parse s in the given base (2, 8, 10, 16). No target other than the headless
+// interpreter implements this yet.
+#[intrinsic("int.parse")]
+func int.parse(s string, base int) int { return 0 }
+
+// 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
+// trailing `.0` distinguishes it from `int`). Methods on the `float`
+// receiver expose the standard math library (`floor`, `round`, `pow`,
+// trigonometric functions, etc.).
+#[builtin("float")]
+struct float {}
+
+// Returns the smaller of two floats. NaN handling is platform-defined
+// — prefer explicit NaN checks when either operand may be NaN.
+#[intrinsic("float.min", usable)]
+func float.min(a float, b float) => a < b ? a : b
+
+// Returns the larger of two floats. See `float.min` for NaN caveats.
+#[intrinsic("float.max", usable)]
+func float.max(a float, b float) => a > b ? a : b
+
+// Returns the absolute value of a float. Preserves +0.0 / -0.0
+// equivalence.
+#[intrinsic("float.abs", usable)]
+func float.abs(x float) => x < 0.0 ? -x : x
+
+// Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
+// wins (see `int.clamp`).
+#[intrinsic("float.clamp", usable)]
+func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
+
+// Largest integer value not greater than x. For negative non-integers this
+// rounds away from zero (e.g. floor(-1.5) == -2).
+#[intrinsic("float.floor", usable)]
+func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
+
+// Smallest integer value not less than x. For negative non-integers this
+// rounds toward zero (e.g. ceil(-1.5) == -1).
+#[intrinsic("float.ceil", usable)]
+func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
+
+// Nearest integer value to x. Halves round away from zero
+// (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
+// and round(-0.5) == -1.0.
+#[intrinsic("float.round", usable)]
+func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
+
+// Raises base to the power exp. Integer powers are exact up to float
+// precision; fractional powers of negative bases yield NaN.
+#[intrinsic("float.pow")]
+func float.pow(base float, exp float) float { return 0.0 }
+
+// Non-negative square root of x. Returns NaN for negative x.
+#[intrinsic("float.sqrt")]
+func float.sqrt(x float) float { return 0.0 }
+
+// Sine of x, where x is in radians.
+#[intrinsic("float.sin")]
+func float.sin(x float) float { return 0.0 }
+
+// Cosine of x, where x is in radians.
+#[intrinsic("float.cos")]
+func float.cos(x float) float { return 0.0 }
+
+// Tangent of x, where x is in radians. Undefined (±Inf / large finite)
+// near odd multiples of π/2.
+#[intrinsic("float.tan")]
+func float.tan(x float) float { return 0.0 }
+
+// Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
+// |x| > 1.
+#[intrinsic("float.asin")]
+func float.asin(x float) float { return 0.0 }
+
+// Arccosine of x, result in radians within [0, π]. Returns NaN for
+// |x| > 1.
+#[intrinsic("float.acos")]
+func float.acos(x float) float { return 0.0 }
+
+// Arctangent of x, result in radians within [-π/2, π/2]. Use
+// `float.atan2` when you have separate y and x and need to recover
+// the quadrant.
+#[intrinsic("float.atan")]
+func float.atan(x float) float { return 0.0 }
+
+// Arctangent of y/x using signs of both arguments to pick the correct
+// quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
+// 0. This is the correct function for converting Cartesian (x, y)
+// into an angle.
+#[intrinsic("float.atan2")]
+func float.atan2(y float, x float) float { return 0.0 }

@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var bg color = "not-a-color" // ERROR(check) "invalid color literal"

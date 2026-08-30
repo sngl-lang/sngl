@@ -10,18 +10,18 @@ sngl fmt input.sngl
 cmp input.sngl expected.sngl
 
 -- formatted.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
 }
 -- unformatted.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component   main   {
     var   x   =   0
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component main {
     var x = 0

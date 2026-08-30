@@ -19,7 +19,7 @@ func TestInlinePure_StrictKeepsIntrinsic(t *testing.T) {
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{main},
-		Imports:    []*ir.Import{{Path: "sngl://platforms/android", Pkg: platformPkg}},
+		Imports:    []*ir.Import{{Path: "sngl:platform/android", Pkg: platformPkg}},
 	}
 
 	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {

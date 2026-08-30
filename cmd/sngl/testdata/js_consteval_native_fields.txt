@@ -22,8 +22,8 @@ grep 'textContent = String\(state\.p\.X\)' out/index.html
 grep 'state\.p\.X = state\.p\.X' out/index.html
 
 -- app.sngl --
-import . "sngl://std"
-import lib "js://./lib"
+import . "sngl:ui"
+import lib "js:./lib"
 
 const total = lib.sum(lib.Point{x = 10.0, y = 20.0})
 

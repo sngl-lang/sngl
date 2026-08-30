@@ -40,7 +40,7 @@ func resultLine(doc, key string) string {
 
 // itemRef is how a value of item names its own type: the package reflect
 // reports for it, and the name in that package.
-const itemRef = `import("go://git.duckfam.us/jonathan/sngl/pkg/go/consteval").item`
+const itemRef = `import("go:git.duckfam.us/jonathan/sngl/pkg/go/consteval").item`
 
 type item struct {
 	Name  string
@@ -80,7 +80,7 @@ func TestEncode(t *testing.T) {
 		{"emptyslice", []string{}, "[]"},
 		{"list", []int{1, 2, 3}, "[1, 2, 3]"},
 		{"nested", [][]int{{1}, {2}}, "[[1], [2]]"},
-		// The go:// importer types []byte as list<int>, so a base64 string
+		// The go: importer types []byte as list<int>, so a base64 string
 		// could never check against the declared type.
 		{"bytes", []byte("hi"), "[104, 105]"},
 		{"m", map[string]int{"b": 2, "a": 1}, `{"a" = 1, "b" = 2}`},

@@ -7,6 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -14,13 +15,15 @@ import (
 // html.frontend / html.backend as generic identity funcs (the wrapped value's
 // type flows through) with no diagnostics.
 func TestHtmlPlacementDirectivesResolve(t *testing.T) {
-	src := `
+	src := `import . "sngl:ui"
+import "sngl:platform/html"
+
 component main {
     var n = 0
     text(value="v {html.frontend(n)}")
     text(value="w {html.backend(n)}")
 }`
-	for _, d := range checkSrc(t, src) {
+	for _, d := range checkWithTargets(t, src) {
 		t.Fatalf("unexpected diag: %s", d.Msg)
 	}
 }
@@ -30,7 +33,7 @@ component main {
 // Func.Intrinsic == "html.frontend" — i.e. the identity directive is NOT folded
 // away by InlinePure, so the html placement analysis can still see it.
 func TestHtmlDirectiveIsPreservedIntrinsic(t *testing.T) {
-	src := `component main { var n = 0  text(value="x {html.frontend(n)}") }`
+	src := "import . \"sngl:ui\"\nimport \"sngl:platform/html\"\n\ncomponent main { var n = 0  text(value=\"x {html.frontend(n)}\") }"
 	pkg := checkOptimizeLower(t, src)
 	if !pkgHasIntrinsicCall(pkg, "html.frontend") {
 		t.Fatal("html.frontend call was erased; must survive as an intrinsic for placement analysis")
@@ -45,7 +48,8 @@ func checkOptimizeLower(t *testing.T, src string) *ir.Package {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	langs, plats := testtargets.Targets()
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s", d.Msg)
@@ -75,4 +79,25 @@ func pkgHasIntrinsicCall(pkg *ir.Package, id string) bool {
 		return nil
 	})
 	return found
+}
+
+// checkWithTargets checks src with every registered target available. The
+// placement directives are the html platform's own declarations now, so
+// resolving `html.frontend` means the platform has to be registered -- the
+// bare checkSrc config registers none.
+func checkWithTargets(t *testing.T, src string) []ir.Diagnostic {
+	t.Helper()
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	langs, plats := testtargets.Targets()
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
+	var errs []ir.Diagnostic
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			errs = append(errs, d)
+		}
+	}
+	return errs
 }

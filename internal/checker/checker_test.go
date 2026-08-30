@@ -47,7 +47,7 @@ func (m *mockResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document
 func newTestResolver() *mockResolver {
 	return &mockResolver{pkgs: map[string]string{
 		"widgets": `
-import . "sngl://std"
+import . "sngl:ui"
 
 component Counter(label = "") {
     var count = 0
@@ -476,14 +476,14 @@ var y int = const bump(1)
 
 // importResolver is a mock ResolveScheme that hands back a pre-built
 // NativeImport so tests can exercise imported-func purity without running
-// the real go:// importer.
+// the real go: importer.
 type importResolver struct {
 	mockResolver
 	native map[string]*ir.NativeImport
 }
 
 func (r *importResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
-	key := scheme + "://" + uri
+	key := scheme + ":" + uri
 	if ni, ok := r.native[key]; ok {
 		return ni, nil
 	}
@@ -513,7 +513,7 @@ func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 		Foreign: ir.Foreign{Path: "math", Name: "math.Square"},
 	}
 	return map[string]*ir.NativeImport{
-		"go://math": {
+		"go:math": {
 			ImportPath: "math",
 			Funcs:      []*ir.Func{fn},
 		},
@@ -522,7 +522,7 @@ func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 
 func TestConstExprImportedPureFunc(t *testing.T) {
 	src := `
-import math "go://math"
+import math "go:math"
 var y = const math.Square(4)
 `
 	diags := checkWithImports(src, nativeMath(ir.PurityPure))
@@ -535,7 +535,7 @@ var y = const math.Square(4)
 
 func TestConstExprImportedImpureFuncRejected(t *testing.T) {
 	src := `
-import math "go://math"
+import math "go:math"
 var y = const math.Square(4)
 `
 	diags := checkWithImports(src, nativeMath(ir.PurityUnknown))
@@ -664,7 +664,7 @@ type schemeFSResolver struct {
 }
 
 func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Document, fs.FS, error) {
-	key := scheme + "://" + uri
+	key := scheme + ":" + uri
 	src, ok := r.fsPkgs[key]
 	if !ok {
 		return nil, nil, nil
@@ -679,7 +679,7 @@ func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Docume
 // counterPkg is the stock imported package for the resolver tests: one
 // exported component, nothing else. Shared so a test's own body shows only
 // what it is actually testing.
-const counterPkg = `import . "sngl://std"
+const counterPkg = `import . "sngl:ui"
 
 component Counter(label = "") {
     text(value=label)
@@ -1022,7 +1022,7 @@ func TestStdlibQualifiedAccess(t *testing.T) {
 	// A stdlib import's alias qualifies the stdlib even when the user shadows
 	// the same name unqualified.
 	expectNoErrors(t, `
-import sngl "sngl://std"
+import sngl "sngl:ui"
 
 component text() {}
 component main {
@@ -1511,7 +1511,7 @@ component myWidget() {
 func TestComponentFuncKeepsItsMarks(t *testing.T) {
 	src := withStd(`
 component main {
-    #[foreign("js://./api", "shout")]
+    #[foreign("js:./api", "shout")]
     func shout() => "hi"
 
     text(value=shout())

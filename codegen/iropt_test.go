@@ -170,7 +170,7 @@ func TestOptimizeMutation_MergedUpdaterUnionsRequires(t *testing.T) {
 			{Name: "$u_0_text", Body: "a", Deps: varSet(x),
 				Requires: Requirement{Helpers: map[string]bool{"String": true}}},
 			{Name: "$u_0_attr", Body: "b", Deps: varSet(x),
-				Requires: Requirement{NativeImports: map[string]map[string]bool{"js://m": {"f": true}}}},
+				Requires: Requirement{NativeImports: map[string]map[string]bool{"js:m": {"f": true}}}},
 		},
 	}
 	OptimizeMutation(m)
@@ -181,7 +181,7 @@ func TestOptimizeMutation_MergedUpdaterUnionsRequires(t *testing.T) {
 	if !got.Helpers["String"] {
 		t.Error("merged updater lost the String helper requirement")
 	}
-	if got.NativeImports["js://m"] == nil || !got.NativeImports["js://m"]["f"] {
+	if got.NativeImports["js:m"] == nil || !got.NativeImports["js:m"]["f"] {
 		t.Error("merged updater lost the native import requirement")
 	}
 }

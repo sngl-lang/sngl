@@ -8,15 +8,15 @@ stdout 'CanvasSave'
 stdout 'CanvasDrawRect'
 
 -- app.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 import g "./geom"
 
 component main {
     g.Chart()
 }
 -- geom/g.sngl --
-import . "sngl://std"
-import . "sngl://draw"
+import . "sngl:ui"
+import . "sngl:ui/draw"
 
 component Chart() {
     canvas(width=100px, height=100px) {

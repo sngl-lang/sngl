@@ -16,7 +16,7 @@ func TestStdlibHoverFollowsImports(t *testing.T) {
 		src  string
 		want bool
 	}{
-		{"imported", "import . \"sngl://std\"\n\ncomponent main {\n    text(value=\"x\")\n}\n", true},
+		{"imported", "import . \"sngl:ui\"\n\ncomponent main {\n    text(value=\"x\")\n}\n", true},
 		{"not imported", "component main {\n    var n int = 1\n}\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

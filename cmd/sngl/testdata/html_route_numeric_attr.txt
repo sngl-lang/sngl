@@ -16,8 +16,9 @@ grep 'width="100"' static/index.html
 grep 'height="50"' static/index.html
 
 -- route.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
 
 output {
     go { html }
@@ -31,8 +32,9 @@ component main {
     }
 }
 -- static.sngl --
-import . "sngl://std"
-import "sngl://platforms/html"
+import . "sngl:ui"
+import . "sngl:app"
+import "sngl:platform/html"
 
 component main {
     var n string = ""

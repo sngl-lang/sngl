@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A pure go:// call inside a component body only becomes const when the call
+// A pure go: call inside a component body only becomes const when the call
 // site's prop value is bound into it, which happens in a child context. That
 // child has to carry the round's request collector: without it the call is
 // neither folded nor requested, and the value silently comes out empty (the
@@ -47,7 +47,7 @@ func TestInlinedNativeCallReachesTheBatch(t *testing.T) {
 	pkg := &ir.Package{
 		Components: []*ir.Component{comp},
 		Imports: []*ir.Import{{
-			Path:  "go://" + purepkgPath,
+			Path:  "go:" + purepkgPath,
 			Alias: "purepkg",
 			Native: &ir.NativeImport{
 				ImportPath: purepkgPath,
@@ -108,7 +108,7 @@ func TestExpandedNativeCallReachesTheBatch(t *testing.T) {
 		}},
 	}
 	pkg := &ir.Package{Imports: []*ir.Import{{
-		Path:  "go://" + purepkgPath,
+		Path:  "go:" + purepkgPath,
 		Alias: "purepkg",
 		Native: &ir.NativeImport{
 			ImportPath: purepkgPath,

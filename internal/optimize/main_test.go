@@ -9,7 +9,7 @@ import (
 )
 
 // TestMain moves the evaluator binary cache out of the developer's real cache:
-// every test that evaluates a go:// call generates its own one-call program,
+// every test that evaluates a go: call generates its own one-call program,
 // so a package run would otherwise leave a few hundred megabytes there, and on
 // CI in a cache nothing ever reuses.
 //

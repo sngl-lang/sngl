@@ -1,0 +1,141 @@
+// Layout length used throughout `Style`. Unit literals: `px`, `em`,
+// `rem` (= 16em), `vw`, `vh`, `pct`.
+unit measurement { px, em, rem = 16em, vw, vh, pct }
+
+// Main-axis direction for flex containers such as `vbox` and `hbox`.
+// `row` and `column` are the common cases; the `Reverse` variants
+// lay children out in the opposite order (useful for right-to-left
+// layouts or stacks that grow from the bottom).
+enum FlexDirection { row, column, rowReverse, columnReverse }
+
+// Cross-axis alignment of children inside a flex container.
+// `start`/`center`/`end` anchor children to the corresponding edge;
+// `stretch` expands children to fill the cross axis; `baseline`
+// aligns text children along their typographic baseline.
+enum Alignment { start, center, end, stretch, baseline }
+
+// Main-axis distribution of children inside a flex container.
+// `spaceBetween` puts all free space between children; `spaceAround`
+// adds half-sized margins on the ends; `spaceEvenly` makes the
+// margins and inter-child gaps equal.
+enum Justification { start, center, end, spaceBetween, spaceAround, spaceEvenly }
+
+// Horizontal alignment of inline text content. `justify` distributes
+// whitespace so each line (except the last) fills the available
+// width.
+enum TextAlign { left, center, right, justify }
+
+// Numeric weight for fonts. `lighter`/`bolder` are relative — each
+// steps one weight from the inherited value. `normal` and `bold`
+// are absolute.
+enum FontWeight { normal, bold, lighter, bolder }
+
+// Slant applied to fonts. `italic` uses the italic face when one
+// is available in the font family; `oblique` synthesizes a slant
+// from the upright face.
+enum FontStyle { normal, italic, oblique }
+
+// Positioning scheme for a component within its parent's layout flow.
+// `static` is the default (flow layout). `relative` lays out in flow
+// but offsets the element from that position via `top`/`left`/etc.
+// `absolute` and `fixed` remove the element from flow; `sticky`
+// toggles between relative and fixed based on scroll position.
+enum Position { static, relative, absolute, fixed, sticky }
+
+// Intrinsic layout mode. Overrides a component's default display
+// behavior. `none` hides the component without reserving space.
+// `inlineBlock` / `inlineFlex` behave as inline content whose
+// inside is block or flex.
+enum Display { flex, block, inline, inlineBlock, inlineFlex, none, grid }
+
+// Behavior when content exceeds its container's bounds. `auto` adds
+// scrollbars only when needed; `scroll` always reserves them;
+// `hidden` clips without scrolling; `visible` lets content spill out.
+enum Overflow { visible, hidden, scroll, auto }
+
+// How an `image`'s contents are sized to fit its frame. `contain`
+// letterboxes, `cover` fills and crops, `fill` stretches,
+// `scaleDown` is `contain` except the image is never scaled up.
+enum ObjectFit { contain, cover, fill, none, scaleDown }
+
+// Line style drawn along a component's border. `double` draws two
+// parallel lines separated by a gap — the total visual thickness
+// is the declared border width.
+enum BorderStyle { none, solid, dashed, dotted, double }
+
+// Marker style for list-rendered containers. Applied via
+// `style.listStyleType` on list-flavored components.
+enum ListStyle { none, disc, circle, square, decimal }
+
+// Declarative style properties applied via the `style` prop on any
+// visual component. Fields are grouped below by category; platform
+// codegen maps each property to the closest native equivalent.
+// Unset fields inherit the platform default. Length-typed fields
+// accept any `measurement` literal (`px`, `em`, `rem`, `vw`, `vh`,
+// `pct`); color-typed fields accept any `color` value.
+struct Style {
+    // Spacing
+    padding measurement
+    paddingTop measurement
+    paddingRight measurement
+    paddingBottom measurement
+    paddingLeft measurement
+    paddingX measurement
+    paddingY measurement
+    margin measurement
+    marginTop measurement
+    marginRight measurement
+    marginBottom measurement
+    marginLeft measurement
+    marginX measurement
+    marginY measurement
+    gap measurement
+
+    // Size
+    width measurement
+    minWidth measurement
+    height measurement
+    maxWidth measurement
+    maxHeight measurement
+
+    // Flex
+    flex float
+    flexDirection FlexDirection
+    alignItems Alignment
+    justifyContent Justification
+
+    // Position
+    position Position
+    top measurement
+    bottom measurement
+    left measurement
+    right measurement
+    zIndex int
+
+    // Typography
+    color color
+    fontSize measurement
+    fontFamily string
+    fontWeight FontWeight
+    fontStyle FontStyle
+    textAlign TextAlign
+    maxLines int
+
+    // Decoration
+    background color
+    borderRadius measurement
+    borderColor color
+    borderWidth measurement
+    border string
+    borderBottom string
+    borderLeft string
+    borderCollapse string
+    borderStyle BorderStyle
+    opacity float
+    cursor string
+
+    // Display
+    display Display
+    overflow Overflow
+    listStyleType ListStyle
+}

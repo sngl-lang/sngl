@@ -1,6 +1,6 @@
 caps: NoLambda, NoDeclarative
 -- input.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 
 component counter {
     var count int = 0
@@ -9,7 +9,7 @@ component counter {
     })
 }
 -- expected.sngl --
-import . "sngl://std"
+import . "sngl:ui"
 struct __lambda0_caps {
     count ref<int>
 }

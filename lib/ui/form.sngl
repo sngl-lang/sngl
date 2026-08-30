@@ -1,0 +1,199 @@
+// Controls the user edits. Each carries a two-way bound value prop, so a
+// form is state plus the controls that name it.
+
+import time "sngl:time"
+
+// Clickable button that triggers an action. Supply `text` for a label,
+// or nest components inside the body for custom content. Set
+// `disabled=true` to suppress input and render the disabled styling.
+// `@click` fires on activation; `@longPress` fires after a sustained
+// press on pointer/touch platforms.
+component button(
+    style Style,
+    text string,
+    disabled bool,
+    focusable bool = true,
+    @click ClickEvent,
+    @longPress LongPressEvent,
+) list<component> {}
+
+component _example_button {
+    var count = 0
+    vbox(style={gap=8, padding=16}) {
+        hbox(style={gap=8}) {
+            button(text="Click me", @click { count += 1 })
+            button(text="Reset", @click { count = 0 })
+            button(text="Disabled", disabled=true)
+        }
+        text(value="Clicked " + string(count) + " times")
+    }
+}
+
+// Single-line text input field. `value` is a two-way bound prop — write
+// to update the field, read to observe edits. `placeholder` shows when
+// empty; `readonly` disables edits while keeping focus/selection; set
+// `type` to "password", "search", "email", etc. for appropriate platform
+// behavior. `@input` fires on every keystroke, `@change` on commit
+// (blur or Enter), `@submit` on Enter. `maxLength` caps accepted input.
+component input(
+    style Style,
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
+    type string,
+    maxLength int,
+    focusable bool = true,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+    @submit SubmitEvent,
+) {}
+
+component _example_input {
+    var name = ""
+    vbox(style={gap=8, padding=16}) {
+        input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
+        input(placeholder="Password", type="password")
+        input(placeholder="Search...", type="search")
+        text(value="Hello, " + name)
+    }
+}
+
+// Multi-line text input field. Mirrors `input` semantics for a
+// multi-line editor: two-way bound `value`, `@input` per keystroke,
+// `@change` on commit. `rows` controls the initial visible row count;
+// the editor still scrolls when content exceeds it.
+component textarea(
+    style Style,
+    :value string,
+    placeholder string,
+    disabled bool,
+    readonly bool,
+    rows int,
+    maxLength int,
+    focusable bool = true,
+    @input InputEvent,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+component _example_textarea {
+    var notes = ""
+    vbox(style={gap=8, padding=16}) {
+        textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
+        text(value="Length: " + string(notes.length()))
+    }
+}
+
+// Boolean toggle rendered as a checkmark box. `checked` is two-way
+// bound — toggling the box updates it, and writes to it update the
+// rendered state. `label` is rendered next to the box; omit it for
+// a bare checkbox. `@change` fires each time the user toggles.
+component checkbox(
+    style Style,
+    :checked bool,
+    label string,
+    disabled bool,
+    focusable bool = true,
+    @change ChangeEvent,
+) {}
+
+component _example_checkbox {
+    var darkMode = false
+    vbox(style={gap=8, padding=16}) {
+        checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
+        text(value=darkMode ? "Dark mode on" : "Dark mode off")
+    }
+}
+
+// Group of mutually exclusive options. `options` is the list of choice
+// labels; `value` is the currently selected label (matched by string
+// equality). `direction` is "horizontal" or "vertical" and controls
+// how choices are laid out. `@change` fires with the newly selected
+// value on user selection.
+component radio(
+    style Style,
+    :value string,
+    options list<string>,
+    disabled bool,
+    direction string,
+    @change ChangeEvent,
+) {}
+
+component _example_radio {
+    var size = "medium"
+    vbox(style={gap=8, padding=16}) {
+        radio(options=["small", "medium", "large"], value=size, direction="horizontal")
+        text(value="Selected: " + size)
+    }
+}
+
+// On/off switch control. `checked` is two-way bound. Semantically
+// equivalent to `checkbox` but rendered as a switch affordance on
+// platforms that distinguish the two.
+component toggle(
+    style Style,
+    :checked bool,
+    label string,
+    disabled bool,
+    focusable bool = true,
+    @change ChangeEvent,
+) {}
+
+component _example_toggle {
+    var notifications = false
+    vbox(style={gap=8, padding=16}) {
+        toggle(checked=notifications, label="Notifications", @change { notifications!! })
+        text(value=notifications ? "Enabled" : "Disabled")
+    }
+}
+
+// Dropdown selection control. `options` is the list of choices;
+// `value` is the current selection, two-way bound. Set `multiple=true`
+// to allow multi-select (value becomes a newline-joined string of
+// selected labels). `placeholder` shows when nothing is selected.
+component select(
+    style Style,
+    :value string,
+    options list<string>,
+    placeholder string,
+    disabled bool,
+    multiple bool,
+    focusable bool = true,
+    @change ChangeEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+component _example_select {
+    var fruit = ""
+    vbox(style={gap=8, padding=16}) {
+        select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", value=fruit)
+        text(value="Selected: " + fruit)
+    }
+}
+
+// Calendar-based date selection. `value` is the selected date
+// (two-way bound). `min` / `max` clamp the selectable range;
+// `placeholder` shows when no date is picked. `@change` fires once
+// the user picks a date.
+component datepicker(
+    style Style,
+    value time.date,
+    min time.date,
+    max time.date,
+    disabled bool,
+    placeholder string,
+    @change DateEvent,
+    @focus FocusEvent,
+    @blur FocusEvent,
+) {}
+
+component _example_datepicker {
+    vbox(style={padding=16}) {
+        datepicker(placeholder="Select a date")
+    }
+}

@@ -44,7 +44,7 @@ type Importer struct {
 func (h *Importer) Scheme() string { return h.scheme }
 
 func (h *Importer) ResolveFS(uri, _ string) (fs.FS, error) {
-	rawURL := h.scheme + "://" + uri
+	rawURL := h.scheme + ":" + uri
 	hash, cleanURL := splitHashFragment(rawURL)
 	kind, err := archiveKind(cleanURL)
 	if err != nil {
@@ -106,7 +106,7 @@ func (h *Importer) ResolveFS(uri, _ string) (fs.FS, error) {
 // Refresh clears the cached extraction for the URL, re-fetches the archive,
 // and returns the sha256 of the compressed archive bytes.
 func (h *Importer) Refresh(uri, _ string) (string, error) {
-	rawURL := h.scheme + "://" + uri
+	rawURL := h.scheme + ":" + uri
 	_, cleanURL := splitHashFragment(rawURL)
 	if _, err := archiveKind(cleanURL); err != nil {
 		return "", err

@@ -51,7 +51,7 @@ func valueReturnKind(t *testing.T, ni *ir.NativeImport) ir.TypeKind {
 // `sngl preview` and `sngl doc --browse` type-checked every reload against
 // signatures from the first compile.
 func TestGoImporterSessionScopesToOneCompilation(t *testing.T) {
-	const uri = "go://example.com/edited/p"
+	const uri = "example.com/edited/p"
 	dir := writeGoModule(t, "string", `""`)
 
 	first := (&GoImporter{}).NewSession()
@@ -91,7 +91,7 @@ func TestGoImporterSessionScopesToOneCompilation(t *testing.T) {
 // The registered importer is a process-wide singleton, so it must remember
 // nothing at all.
 func TestGoImporterSingletonCachesNothing(t *testing.T) {
-	const uri = "go://example.com/edited/p"
+	const uri = "example.com/edited/p"
 	dir := writeGoModule(t, "string", `""`)
 
 	singleton := &GoImporter{}
@@ -115,7 +115,7 @@ func TestGoImporterSingletonCachesNothing(t *testing.T) {
 // A failed load is not remembered: the file may be mid-edit, and the next
 // resolve must get the chance to succeed.
 func TestGoImporterSessionDoesNotCacheFailure(t *testing.T) {
-	const uri = "go://example.com/edited/p"
+	const uri = "example.com/edited/p"
 	dir := writeGoModule(t, "string", `""`)
 	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte("package p\n\nfunc Value() string { return\n"), 0o644); err != nil {
 		t.Fatal(err)

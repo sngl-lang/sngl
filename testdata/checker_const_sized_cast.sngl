@@ -1,4 +1,4 @@
-import . "sngl://std"
+import . "sngl:ui"
 
 // Regression: component/block-level consts initialized with a sized-numeric or
 // temporal conversion must be accepted. Previously nonConstCallRef hardcoded

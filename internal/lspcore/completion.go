@@ -7,6 +7,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
@@ -35,6 +36,8 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 		return OutputOptsCompletions(content, line)
 	case CtxOutputTarget:
 		return OutputTargetCompletions(content, line)
+	case CtxImportPath:
+		return ImportPathCompletions(content, line)
 	default:
 		return ExpressionCompletions(doc)
 	}
@@ -51,6 +54,7 @@ const (
 	CtxEventHandler
 	CtxOutputOpts
 	CtxOutputTarget
+	CtxImportPath // inside the quotes of an import path
 )
 
 func CompletionContext(content string, line, col int) CompletionCtx {
@@ -59,6 +63,18 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 		return CtxTopLevel
 	}
 	l := strings.TrimSpace(lines[line-1])
+
+	// An import path, like an output line, is top-level and so is decided
+	// before the brace-depth check. The cursor has to be inside the quotes:
+	// an odd number of them before it means one is still open.
+	if strings.HasPrefix(l, "import ") || l == "import" {
+		raw := lines[line-1]
+		prefix := raw[:min(col-1, len(raw))]
+		if strings.Count(prefix, "\"")%2 == 1 {
+			return CtxImportPath
+		}
+		return CtxTopLevel
+	}
 
 	// Output line detection — must be before brace depth check since outputs are top-level
 	if strings.HasPrefix(l, "output ") || l == "output" {
@@ -325,12 +341,12 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	// these are read from the package that declares them rather than from
 	// whatever the file has in scope. The #[options] mark is on the loaded
 	// IR, so the package is loaded rather than only parsed.
-	uris := []string{"std"}
+	uris := []string{"app"}
 	if langName != "" {
-		uris = append(uris, "languages/"+langName)
+		uris = append(uris, "language/"+langName)
 	}
 	if platformName != "" {
-		uris = append(uris, "platforms/"+platformName)
+		uris = append(uris, "platform/"+platformName)
 	}
 
 	seen := map[string]bool{}
@@ -617,8 +633,8 @@ func enumThisItems(d *ast.EnumDef) []CompletionItem {
 //
 // Matched by the mark's own name, which is all this can do and all it needs:
 // completion runs on one parsed document with no checker, so nothing here
-// resolves the macro to sngl://platforms, applies it, or knows the pattern it
-// compiled to. The name survives aliasing (`import p "sngl://platforms"` makes
+// resolves the macro to sngl:macro, applies it, or knows the pattern it
+// compiled to. The name survives aliasing (`import p "sngl:macro"` makes
 // it `#[p.wildcard]`, same Name), and the cost of a false positive — a user
 // macro of that name on an ordinary prop — is one withheld suggestion rather
 // than a wrong one.
@@ -629,4 +645,39 @@ func isWildcardProp(p ast.Param) bool {
 		}
 	}
 	return false
+}
+
+// ImportPathCompletions offers the library packages an import may name.
+//
+// The compiler's own tier is left out: `sngl:internal/<name>` resolves only
+// from library source, so offering it to a program is offering an import that
+// cannot compile. That is also why this reads PublicPackages rather than
+// Packages -- the same list `sngl doc` indexes, and the same rule.
+//
+// A target's package is not in lib/ at all, so the registered platforms and
+// languages contribute theirs by name.
+func ImportPathCompletions(content string, line int) []CompletionItem {
+	var items []CompletionItem
+	for _, p := range lib.PublicPackages() {
+		items = append(items, CompletionItem{
+			Label:  "sngl:" + p,
+			Kind:   CIKModule,
+			Detail: "library package",
+		})
+	}
+	for _, name := range codegen.Platforms() {
+		items = append(items, CompletionItem{
+			Label:  "sngl:platform/" + name,
+			Kind:   CIKModule,
+			Detail: "platform package",
+		})
+	}
+	for _, name := range codegen.Langs() {
+		items = append(items, CompletionItem{
+			Label:  "sngl:language/" + name,
+			Kind:   CIKModule,
+			Detail: "language package",
+		})
+	}
+	return items
 }

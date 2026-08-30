@@ -1,7 +1,8 @@
 // String-keyed map. Bare-ident keys become string literals when the
 // expected type's K is string. String-literal keys also work.
 
-import . "sngl://std"
+import . "sngl:ui"
+import . "sngl:test"
 
 component mapStringKeys {
     var prices map<string, int> = {
