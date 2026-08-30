@@ -291,23 +291,23 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	// Direct ContextReads can also live in Vars/Funcs/Timers — mark those.
 	compDirectReads := func(comp *ir.Component) map[*ir.Context]bool {
 		out := map[*ir.Context]bool{}
-		collectContextReadsInStmts(comp.Body, out)
+		collectContextReads(comp.Body, out)
 		for _, v := range comp.Vars {
-			collectContextReadsInExpr(v.Init, out)
+			collectContextReads(v.Init, out)
 			for _, h := range v.Handlers {
 				if h.Func != nil {
-					collectContextReadsInStmts(h.Func.Block, out)
+					collectContextReads(h.Func.Block, out)
 				}
 			}
 		}
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
-				collectContextReadsInStmts(fn.Block, out)
+				collectContextReads(fn.Block, out)
 			}
 		}
 		for _, t := range comp.Timers {
 			if t.Handler != nil {
-				collectContextReadsInStmts(t.Handler.Block, out)
+				collectContextReads(t.Handler.Block, out)
 			}
 		}
 		return out
@@ -379,324 +379,81 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	return reach
 }
 
-// directContextReads returns the set of contexts directly read in stmts
-// (not counting transitive calls).
+// directContextReads returns the set of contexts read directly in stmts: not
+// counting reads reached through a call, which the fixpoint in
+// computeReachability propagates, and not counting reads under a provider for
+// the same context, which that provider answers rather than the scope being
+// scanned.
 func directContextReads(stmts []ir.Stmt) map[*ir.Context]bool {
-	result := map[*ir.Context]bool{}
-	collectContextReadsInStmts(stmts, result)
-	return result
+	out := map[*ir.Context]bool{}
+	collectContextReads(stmts, out)
+	return out
 }
 
-func collectContextReadsInStmts(stmts []ir.Stmt, out map[*ir.Context]bool) {
-	for _, s := range stmts {
-		collectContextReadsInStmt(s, out)
-	}
-}
-
-func collectContextReadsInStmt(s ir.Stmt, out map[*ir.Context]bool) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		for _, p := range n.Props {
-			collectContextReadsInExpr(p.Value, out)
-		}
-		collectContextReadsInStmts(n.Children, out)
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				collectContextReadsInStmts(h.Func.Block, out)
-			}
-		}
-	case *ir.If:
-		collectContextReadsInExpr(n.Cond, out)
-		collectContextReadsInStmts(n.Body, out)
-		collectContextReadsInStmts(n.Else, out)
-	case *ir.For:
-		collectContextReadsInExpr(n.Iter, out)
-		collectContextReadsInStmts(n.Body, out)
-		collectContextReadsInStmts(n.Else, out)
-	case *ir.ContextProvider:
-		// Do NOT descend into provider's children for read collection:
-		// those reads are shielded by this provider's value. Only collect
-		// reads from the value expression itself (which is in the outer scope).
-		collectContextReadsInExpr(n.Value, out)
-	case *ir.Assign:
-		collectContextReadsInExpr(n.Target, out)
-		collectContextReadsInExpr(n.Value, out)
-	case *ir.LocalVar:
-		collectContextReadsInExpr(n.Init, out)
-	case *ir.Return:
-		collectContextReadsInExpr(n.Value, out)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			collectContextReadsInExpr(n.Call.Receiver, out)
-			for _, a := range n.Call.Args {
-				collectContextReadsInExpr(a.Value, out)
-			}
-		}
-	case *ir.Emit:
-		for _, a := range n.Args {
-			collectContextReadsInExpr(a.Value, out)
-		}
-	case *ir.SlotInst:
-		collectContextReadsInStmts(n.Children, out)
-	case *ir.ErrorBoundary:
-		collectContextReadsInStmts(n.Children, out)
-	case *ir.Toggle:
-		// Toggle survives NoContext when NoToggle cap is off; Target may
-		// reference a ContextRead (e.g. `ctx.flag!!`).
-		collectContextReadsInExpr(n.Target, out)
-	case *ir.Window:
-		// Window stmts only appear inside for-loop bodies (dynamic window
-		// emission). Walk their surface so reads inside reach reachability.
-		collectContextReadsInExpr(n.Href, out)
-		collectContextReadsInExpr(n.Title, out)
-		collectContextReadsInExpr(n.Favicon, out)
-		collectContextReadsInStmts(n.Body, out)
-		for _, v := range n.Vars {
-			collectContextReadsInExpr(v.Init, out)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					collectContextReadsInStmts(h.Func.Block, out)
-				}
-			}
-		}
-		for _, fn := range n.Funcs {
-			if hasBody(fn) {
-				collectContextReadsInStmts(fn.Block, out)
-			}
-		}
-	default:
-		panic(fmt.Sprintf("collectContextReadsInStmt: unhandled %T", n))
-	}
-}
-
-func collectContextReadsInExpr(e ir.Expr, out map[*ir.Context]bool) {
-	if e == nil {
-		return
-	}
-	switch n := e.(type) {
-	case *ir.ContextRead:
-		out[n.Ref] = true
-	case *ir.Binary:
-		collectContextReadsInExpr(n.Left, out)
-		collectContextReadsInExpr(n.Right, out)
-	case *ir.Unary:
-		collectContextReadsInExpr(n.Operand, out)
-	case *ir.Ternary:
-		collectContextReadsInExpr(n.Cond, out)
-		collectContextReadsInExpr(n.Then, out)
-		collectContextReadsInExpr(n.Else, out)
-	case *ir.Select:
-		collectContextReadsInExpr(n.Operand, out)
-	case *ir.Index:
-		collectContextReadsInExpr(n.Operand, out)
-		collectContextReadsInExpr(n.Idx, out)
-	case *ir.Call:
-		collectContextReadsInExpr(n.Receiver, out)
-		collectContextReadsInExpr(n.Callee, out)
-		for _, a := range n.Args {
-			collectContextReadsInExpr(a.Value, out)
-		}
-	case *ir.Conversion:
-		collectContextReadsInExpr(n.Operand, out)
-	case *ir.StructLit:
-		for _, f := range n.Fields {
-			collectContextReadsInExpr(f.Value, out)
-		}
-	case *ir.ListLit:
-		for _, el := range n.Elems {
-			collectContextReadsInExpr(el, out)
-		}
-	case *ir.MapLitIR:
-		for _, entry := range n.Entries {
-			collectContextReadsInExpr(entry.Key, out)
-			collectContextReadsInExpr(entry.Value, out)
-		}
-	case *ir.Spread:
-		collectContextReadsInExpr(n.Operand, out)
-	case *ir.Lambda:
-		// Lambda survives NoContext when NoLambda cap is off; body may
-		// read ctx (e.g. stdlib wrapper passing a lambda that reads locale).
-		if n.Func != nil {
-			collectContextReadsInStmts(n.Func.Block, out)
-		}
-	case *ir.Closure:
-		// Closure (post-NoLambda lift) has captured state + a top-level
-		// Func; State exprs may contain ContextRead, and the lifted Func
-		// is walked separately via pkg.Funcs.
-		if n.State != nil {
-			for _, f := range n.State.Fields {
-				collectContextReadsInExpr(f.Value, out)
-			}
-		}
-	case *ir.Literal, *ir.Ident:
-		// Terminal — no nested exprs.
-	default:
-		panic(fmt.Sprintf("collectContextReadsInExpr: unhandled %T", n))
-	}
-}
-
-// callsInBody returns all call sites (component instantiations + func calls)
-// reachable from stmts, each annotated with the set of contexts shadowed at
-// that site by enclosing ContextProvider nodes. shadow is the current shadow
-// set (copied on descent).
-func callsInBody(stmts []ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
-	var calls []callEdge
-	for _, s := range stmts {
-		calls = append(calls, callsInStmt(s, shadow)...)
-	}
-	return calls
-}
-
-func callsInStmt(s ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		var calls []callEdge
-		if n.Component != nil {
-			calls = append(calls, callEdge{comp: n.Component, shadowed: shadow})
-		}
-		for _, p := range n.Props {
-			calls = append(calls, callsInExpr(p.Value, shadow)...)
-		}
-		calls = append(calls, callsInBody(n.Children, shadow)...)
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				calls = append(calls, callsInBody(h.Func.Block, shadow)...)
-			}
-		}
-		return calls
-	case *ir.ContextProvider:
-		inner := copyContextShadow(shadow)
-		inner[n.Ref] = true
-		calls := callsInExpr(n.Value, shadow)
-		calls = append(calls, callsInBody(n.Children, inner)...)
-		return calls
-	case *ir.If:
-		calls := callsInExpr(n.Cond, shadow)
-		calls = append(calls, callsInBody(n.Body, shadow)...)
-		calls = append(calls, callsInBody(n.Else, shadow)...)
-		return calls
-	case *ir.For:
-		calls := callsInExpr(n.Iter, shadow)
-		calls = append(calls, callsInBody(n.Body, shadow)...)
-		calls = append(calls, callsInBody(n.Else, shadow)...)
-		return calls
-	case *ir.SlotInst:
-		return callsInBody(n.Children, shadow)
-	case *ir.ErrorBoundary:
-		return callsInBody(n.Children, shadow)
-	case *ir.Assign:
-		calls := callsInExpr(n.Target, shadow)
-		calls = append(calls, callsInExpr(n.Value, shadow)...)
-		return calls
-	case *ir.LocalVar:
-		return callsInExpr(n.Init, shadow)
-	case *ir.Return:
-		return callsInExpr(n.Value, shadow)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			return callsInExpr(n.Call, shadow)
+// collectContextReads walks root -- a []ir.Stmt, a single statement or an
+// expression -- adding every context read directly under it to out.
+//
+// The walk is ir.Walk rather than a switch of its own. This pass used to carry
+// a full copy of the IR traversal, and what it cost was one line per node kind
+// that the IR had and the copy did not: a read inside a named slot's
+// population, or inside an errorBoundary's @error handler, was simply not
+// found, the component holding it was never marked as a reader, and the read
+// survived the pass to reach codegen as a bare *ir.ContextRead that no
+// emitter has a case for. What is left below is only what this pass answers
+// differently from a plain traversal, and each such answer is a scope rule.
+func collectContextReads(root any, out map[*ir.Context]bool) {
+	// Walk's callback never returns a real error, so neither does this.
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.ContextRead:
+			out[x.Ref] = true
+		case *ir.ContextProvider:
+			// A provider answers reads of its own context beneath it, so those
+			// are not reads of the scope being scanned. Its value is, though:
+			// that expression is evaluated outside the scope it establishes.
+			collectContextReads(x.Value, out)
+			return ir.SkipDir
 		}
 		return nil
-	case *ir.Emit:
-		var calls []callEdge
-		for _, a := range n.Args {
-			calls = append(calls, callsInExpr(a.Value, shadow)...)
-		}
-		return calls
-	case *ir.Toggle:
-		// Toggle may survive into NoContext when NoToggle cap is off.
-		return callsInExpr(n.Target, shadow)
-	case *ir.Window:
-		// Window stmts only appear inside for-loop bodies.
-		var calls []callEdge
-		calls = append(calls, callsInExpr(n.Href, shadow)...)
-		calls = append(calls, callsInExpr(n.Title, shadow)...)
-		calls = append(calls, callsInExpr(n.Favicon, shadow)...)
-		calls = append(calls, callsInBody(n.Body, shadow)...)
-		for _, v := range n.Vars {
-			calls = append(calls, callsInExpr(v.Init, shadow)...)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					calls = append(calls, callsInBody(h.Func.Block, shadow)...)
-				}
-			}
-		}
-		for _, fn := range n.Funcs {
-			if hasBody(fn) {
-				calls = append(calls, callsInBody(fn.Block, shadow)...)
-			}
-		}
-		return calls
-	default:
-		panic(fmt.Sprintf("callsInStmt: unhandled %T", n))
-	}
+	})
+}
+
+func callsInBody(stmts []ir.Stmt, shadow map[*ir.Context]bool) []callEdge {
+	return callsIn(stmts, shadow)
 }
 
 func callsInExpr(e ir.Expr, shadow map[*ir.Context]bool) []callEdge {
-	if e == nil {
-		return nil
-	}
+	return callsIn(e, shadow)
+}
+
+// callsIn collects every call edge reachable from root -- a component
+// instantiation or a function call -- each tagged with the set of contexts a
+// provider already answers at that point.
+//
+// Shadowing is why this cannot be a plain ir.Walk: the tag is a property of
+// the path taken to an edge, not of the edge. Only the provider case knows
+// that, so only the provider case recurses by hand.
+func callsIn(root any, shadow map[*ir.Context]bool) []callEdge {
 	var calls []callEdge
-	switch n := e.(type) {
-	case *ir.Call:
-		if n.Func != nil {
-			calls = append(calls, callEdge{fn: n.Func, shadowed: shadow})
-		}
-		calls = append(calls, callsInExpr(n.Receiver, shadow)...)
-		calls = append(calls, callsInExpr(n.Callee, shadow)...)
-		for _, a := range n.Args {
-			calls = append(calls, callsInExpr(a.Value, shadow)...)
-		}
-	case *ir.Binary:
-		calls = append(calls, callsInExpr(n.Left, shadow)...)
-		calls = append(calls, callsInExpr(n.Right, shadow)...)
-	case *ir.Unary:
-		calls = append(calls, callsInExpr(n.Operand, shadow)...)
-	case *ir.Ternary:
-		calls = append(calls, callsInExpr(n.Cond, shadow)...)
-		calls = append(calls, callsInExpr(n.Then, shadow)...)
-		calls = append(calls, callsInExpr(n.Else, shadow)...)
-	case *ir.Select:
-		calls = append(calls, callsInExpr(n.Operand, shadow)...)
-	case *ir.Index:
-		calls = append(calls, callsInExpr(n.Operand, shadow)...)
-		calls = append(calls, callsInExpr(n.Idx, shadow)...)
-	case *ir.Conversion:
-		calls = append(calls, callsInExpr(n.Operand, shadow)...)
-	case *ir.StructLit:
-		for _, f := range n.Fields {
-			calls = append(calls, callsInExpr(f.Value, shadow)...)
-		}
-	case *ir.ListLit:
-		for _, el := range n.Elems {
-			calls = append(calls, callsInExpr(el, shadow)...)
-		}
-	case *ir.MapLitIR:
-		for _, entry := range n.Entries {
-			calls = append(calls, callsInExpr(entry.Key, shadow)...)
-			calls = append(calls, callsInExpr(entry.Value, shadow)...)
-		}
-	case *ir.Spread:
-		calls = append(calls, callsInExpr(n.Operand, shadow)...)
-	case *ir.Lambda:
-		// Lambda survives NoContext when NoLambda cap is off; body may
-		// host calls into Reach(ctx) funcs.
-		if n.Func != nil {
-			calls = append(calls, callsInBody(n.Func.Block, shadow)...)
-		}
-	case *ir.Closure:
-		// Closure (post-NoLambda lift) — captured-state field exprs may
-		// host calls; the lifted Func is walked separately via pkg.Funcs.
-		if n.State != nil {
-			for _, f := range n.State.Fields {
-				calls = append(calls, callsInExpr(f.Value, shadow)...)
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			if x.Component != nil {
+				calls = append(calls, callEdge{comp: x.Component, shadowed: shadow})
 			}
+		case *ir.Call:
+			if x.Func != nil {
+				calls = append(calls, callEdge{fn: x.Func, shadowed: shadow})
+			}
+		case *ir.ContextProvider:
+			inner := copyContextShadow(shadow)
+			inner[x.Ref] = true
+			calls = append(calls, callsIn(x.Value, shadow)...)
+			calls = append(calls, callsIn(x.Children, inner)...)
+			return ir.SkipDir
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
-		// Terminal — no nested exprs.
-	default:
-		panic(fmt.Sprintf("callsInExpr: unhandled %T", n))
-	}
+		return nil
+	})
 	return calls
 }
 
@@ -1049,10 +806,14 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Body = lowerInStmts(w.Body, windowActive, reach, hidden)
-		// Promote any LocalVar that the provider unwrap spliced up to
-		// window-body level into the window's Vars slice. See the parallel
-		// post-pass on comp.Body below for rationale.
-		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
+		// No promotion here, unlike the component post-pass below. A
+		// component's state is comp.Vars and every consumer reads it there;
+		// a window's is a top-level LocalVar in its body, which is where the
+		// checker leaves it and where every platform reads it. Window.Vars
+		// holds the href's path params and nothing else. Promoting into it
+		// moved a window's state somewhere only html's route mode looks, so
+		// declaring a context was enough to make a window var vanish from
+		// bubbletea, fyne and gtk4.
 		for _, v := range w.Vars {
 			v.Init = lowerInExpr(v.Init, windowActive, reach, hidden)
 			for _, h := range v.Handlers {
@@ -1262,6 +1023,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 				}
 			}
 			n.Children = lowerInStmts(n.Children, active, reach, hidden)
+			for _, sc := range n.Slots {
+				sc.Body = lowerInStmts(sc.Body, active, reach, hidden)
+			}
 			out = append(out, n)
 
 		case *ir.If:
