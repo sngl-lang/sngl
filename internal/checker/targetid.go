@@ -31,54 +31,8 @@ func (c *checker) typeTargetConsts() {
 	}
 }
 
-// synthesizeTargetID declares a target's own identity const into its package,
-// so `html.platform` resolves as an ordinary namespace member. name is the
-// registered target name; typ is c.platformType or c.languageType, and the
-// const takes that type's bare name — `platform` for a platform package,
-// `language` for a language one.
-//
-// This is a file the compiler injects into the package: one declaration nobody
-// can write by hand, in a package that otherwise comes off disk. So it binds
-// the name the way a file would and reports a collision as a redeclaration,
-// rather than asking first whether the name is free — a wildcard answers to
-// every name it covers, and html's element wildcard covers `platform`, so
-// asking left html with no identity at all.
-//
-// A target that could not serve a package has none to declare into, so its
-// identity does not resolve either: naming an unavailable target is an error
-// at the point that names it rather than an override silently registered for a
-// platform this build has no vocabulary for.
-func (c *checker) synthesizeTargetID(pkg *ir.Package, typ *ir.StructDef, name string) {
-	if pkg == nil || pkg.Symbols == nil || typ == nil {
-		return
-	}
-	member := typ.Name
-	// Library packages are cached across the checks one build runs, so this
-	// package may already hold the const an earlier check injected. Binding
-	// that same symbol again is not a redeclaration; binding a second one
-	// would be, so the first is reused rather than rebuilt.
-	sym := c.libs.targetIDs[pkg]
-	if sym == nil {
-		sym = &ir.Var{
-			Name:        member,
-			Type:        typ.SymType(),
-			Init:        &ir.Literal{Type: typ.SymType(), Value: name},
-			IsConst:     true,
-			Synthesized: true,
-			Doc:         "The " + name + " " + member + ", as a value: compare " + targetConstName(member) + " against it.",
-		}
-		if c.libs.targetIDs == nil {
-			c.libs.targetIDs = map[*ir.Package]*ir.Var{}
-		}
-		c.libs.targetIDs[pkg] = sym
-	}
-	if err := pkg.Symbols.Root.Declare(sym); err != nil {
-		c.error(ast.Pos{}, "package for target %q declares %q, the name of the identity const the compiler injects into it", name, member)
-	}
-}
-
 // targetConstName is the predeclared const a target identity is compared
-// against — the inverse of the member name synthesizeTargetID binds.
+// against — the inverse of the member name a target's identity const carries.
 func targetConstName(member string) string {
 	if member == "language" {
 		return "LANGUAGE"
@@ -95,8 +49,41 @@ func targetConstName(member string) string {
 // name, and a value of any other type -- `html.color`, a string -- is refused
 // where it is written rather than becoming an override nothing ever selects.
 func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKind, ok bool) {
-	sel, isSel := e.(*ast.SelectExpr)
-	if !isSel {
+	switch t := e.(type) {
+	case *ast.IdentExpr:
+		// A target's own package writes its identity unqualified: inside
+		// android.sngl the const is `platform`, and naming it `android.platform`
+		// there says the package's name twice. The qualified form is what a
+		// program outside the package writes.
+		sym, found := c.scope.Lookup(t.Name)
+		if !found {
+			c.error(t.Pos, "undefined: %s", t.Name)
+			return "", ir.BuiltinNone, false
+		}
+		return c.targetIdentity(t.Pos, sym, t.Name)
+	case *ast.SelectExpr:
+		operand, isIdent := t.Operand.(*ast.IdentExpr)
+		if !isIdent {
+			c.error(t.Pos, "an override's target is a target's own identity, e.g. html.platform")
+			return "", ir.BuiltinNone, false
+		}
+		sym, found := c.scope.Lookup(operand.Name)
+		if !found {
+			c.error(t.Pos, "undefined: %s", operand.Name)
+			return "", ir.BuiltinNone, false
+		}
+		ns, isNS := sym.(*ir.Namespace)
+		if !isNS || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+			c.error(t.Pos, "%s is not a target", operand.Name)
+			return "", ir.BuiltinNone, false
+		}
+		member, found := ns.Pkg.Symbols.LookupMember(t.Field)
+		if !found {
+			c.error(t.Pos, "undefined: %s.%s", operand.Name, t.Field)
+			return "", ir.BuiltinNone, false
+		}
+		return c.targetIdentity(t.Pos, member, operand.Name+"."+t.Field)
+	default:
 		pos := ast.Pos{}
 		if e != nil {
 			if p := e.ExprPos(); p != nil {
@@ -106,29 +93,15 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 		c.error(pos, "an override's target is a target's own identity, e.g. html.platform")
 		return "", ir.BuiltinNone, false
 	}
-	operand, isIdent := sel.Operand.(*ast.IdentExpr)
-	if !isIdent {
-		c.error(sel.Pos, "an override's target is a target's own identity, e.g. html.platform")
-		return "", ir.BuiltinNone, false
-	}
-	sym, found := c.scope.Lookup(operand.Name)
-	if !found {
-		c.error(sel.Pos, "undefined: %s", operand.Name)
-		return "", ir.BuiltinNone, false
-	}
-	ns, isNS := sym.(*ir.Namespace)
-	if !isNS || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		c.error(sel.Pos, "%s is not a target", operand.Name)
-		return "", ir.BuiltinNone, false
-	}
-	member, found := ns.Pkg.Symbols.LookupMember(sel.Field)
-	if !found {
-		c.error(sel.Pos, "undefined: %s.%s", operand.Name, sel.Field)
-		return "", ir.BuiltinNone, false
-	}
-	v, isVar := member.(*ir.Var)
+}
+
+// targetIdentity reads the target a symbol identifies. Both spellings of the
+// index -- the package's own `platform` and another package's `html.platform`
+// -- name one const, so what makes it an identity is checked in one place.
+func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (string, ir.BuiltinKind, bool) {
+	v, isVar := sym.(*ir.Var)
 	if !isVar || !v.IsConst || v.Type == nil || v.Init == nil {
-		c.error(sel.Pos, "%s.%s is not a target identity", operand.Name, sel.Field)
+		c.error(pos, "%s is not a target identity", spelling)
 		return "", ir.BuiltinNone, false
 	}
 	k := ir.BuiltinNone
@@ -138,7 +111,7 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 	case c.languageType != nil && v.Type.Decl == c.languageType:
 		k = ir.BuiltinLanguage
 	default:
-		c.error(sel.Pos, "%s.%s is a %s, not a target identity", operand.Name, sel.Field, v.Type)
+		c.error(pos, "%s is a %s, not a target identity", spelling, v.Type)
 		return "", ir.BuiltinNone, false
 	}
 	lit, isLit := v.Init.(*ir.Literal)

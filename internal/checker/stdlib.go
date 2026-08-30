@@ -195,12 +195,68 @@ func (c *checker) adoptAmbient(pkg *ir.Package) {
 // plus what the target of that name synthesizes (providedDocs). Config.LibSources
 // substitutes the whole package instead, for the in-test stubs.
 func (c *checker) libDocs(name string) []*ast.Document {
+	var docs []*ast.Document
 	if c.cfg != nil {
-		if docs, ok := c.cfg.LibSources[name]; ok {
-			return docs
+		if src, ok := c.cfg.LibSources[name]; ok {
+			docs = src
 		}
 	}
-	return append(PackageDocsFor(name), c.providedDocs(name)...)
+	if docs == nil {
+		docs = append(PackageDocsFor(name), c.providedDocs(name)...)
+	}
+	return append(docs, c.identityDoc(name)...)
+}
+
+// identityFile is the name the generated identity declaration is mounted
+// under. The prefix keeps it clear of anything a plugin would write, and it
+// reads as a file of the package because it is one.
+const identityFile = "sngl__identity.sngl"
+
+// identityDoc is the target identity mounted into a target's package: one
+// generated file declaring the const that `[platform]` names.
+//
+// It is added here rather than to the fs.FS a plugin serves, because that is
+// not the only way a target package's source arrives -- Config.LibSources
+// substitutes the whole package for the in-test stubs, and a stub is as much a
+// target as a plugin is. This is the one place they meet.
+//
+// Generated rather than injected into the loaded IR: the identity is then an
+// ordinary declaration of the package, parsed, registered and documented like
+// everything else it serves, and nothing downstream has to know the compiler
+// wrote it.
+func (c *checker) identityDoc(pkgName string) []*ast.Document {
+	member, ok := targetNamespaceMember(pkgName)
+	if !ok {
+		return nil
+	}
+	name, _ := targetNamespaceName(pkgName)
+	// Qualified, not dot-imported: imports are file scope, so a dot import
+	// here would collide with nothing -- it would just lift the package's
+	// names into a file that uses one mark and declares one const.
+	src := fmt.Sprintf(`import macro "sngl:macro"
+
+// The %s %s, as a value: compare %s against it. The comparison folds at
+// build time, so the branch not taken is removed.
+#[macro.identity]
+const %s = %q
+`, name, member, targetConstName(member), member, name)
+	doc, err := parser.Parse(identityFile, []byte(src))
+	if err != nil {
+		panic("sngl: generated target identity does not parse: " + err.Error())
+	}
+	return []*ast.Document{doc}
+}
+
+// targetNamespaceMember is the identity const a package of this name carries:
+// `platform` for a platform tier, `language` for a language one.
+func targetNamespaceMember(pkgName string) (string, bool) {
+	switch {
+	case strings.HasPrefix(pkgName, "platform/"):
+		return "platform", true
+	case strings.HasPrefix(pkgName, "language/"):
+		return "language", true
+	}
+	return "", false
 }
 
 // providedDocs is the source the registered target of this package name
@@ -343,6 +399,17 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
 	defer func() { c.topLevel = savedTopLevel }()
+	// Deferred const initialisers are per declaration set for the same reason:
+	// this package's are checked before it finishes loading, and the enclosing
+	// set is put back untouched.
+	savedConstInits := c.pendingConstInits
+	c.pendingConstInits = nil
+	defer func() { c.pendingConstInits = savedConstInits }()
+	// pass1 builds the replace map from the documents it is given, so the
+	// enclosing package's is put back: a library package loads part-way
+	// through it, and its own `=>` redirects are not the program's.
+	savedReplaces := c.replaces
+	defer func() { c.replaces = savedReplaces }()
 	pkg := c.loadStdlibPackage(name)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
@@ -426,123 +493,57 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	docs := c.libDocs(pkgName)
 	defer c.setMarkScope(docs)()
 
-	var (
-		imports    []*ast.Import
-		units      []*ast.UnitDef
-		structs    []*ast.StructDef
-		enums      []*ast.EnumDef
-		consts     []*ast.ConstDecl
-		funcs      []*ast.FuncDef
-		components []*ast.ComponentDecl
-		contexts   []*ast.CallStmt
-	)
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			switch s := stmt.(type) {
-			case *ast.Import:
-				imports = append(imports, s)
-			case *ast.UnitDef:
-				units = append(units, s)
-			case *ast.StructDef:
-				structs = append(structs, s)
-			case *ast.EnumDef:
-				enums = append(enums, s)
-			case *ast.ConstDecl:
-				consts = append(consts, s)
-			case *ast.FuncDef:
-				funcs = append(funcs, s)
-			case *ast.ComponentDecl:
-				components = append(components, s)
-			case *ast.CallStmt:
-				if c.isContextDeclCallStmt(s) {
-					contexts = append(contexts, s)
-				}
-			}
-		}
-	}
+	// The same pass1 a program's package gets. Registration order -- every
+	// type name before any field that could refer to one, components before
+	// struct bodies, const initialisers last -- is a property of a package and
+	// not of the tier it came from, and this loader used to state it a second
+	// time in a different order.
+	savedDocs := c.docs
+	c.docs = docs
+	defer func() { c.docs = savedDocs }()
+	c.pass1()
+	// A field default is a value expression, so it waits until every name it
+	// could refer to is registered. pass2 does this for a program; a library
+	// package does not get one, so it happens here.
+	c.checkStructFieldDefaults()
+	c.assertOptionsMarked(pkgName, stdlibPkg.Structs)
 
-	for _, s := range imports {
-		c.registerImport(s)
-	}
-	for _, s := range units {
-		c.registerStdlibUnit(s, stdlibPkg)
-	}
-	for _, s := range enums {
-		c.registerStdlibEnum(s, stdlibPkg)
-	}
-	// Structs may reference any type — including other structs — so register
-	// names as empty stubs first, then resolve fields in a second pass.
-	structDefs := make([]*ir.StructDef, len(structs))
-	for i, s := range structs {
-		structDefs[i] = c.declareStdlibStruct(s, stdlibPkg)
-	}
-	for i, s := range structs {
-		c.resolveStdlibStructFields(s, structDefs[i])
-	}
-	c.assertOptionsMarked(pkgName, structDefs)
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
 	// this: a marked declaration is the program's own, and the Go emitter
 	// deliberately ignores a marked name for that reason.
-	for _, sd := range structDefs {
+	for _, sd := range stdlibPkg.Structs {
 		if sd.Foreign.Name == "" && sd.Name == "PluralKey" {
 			sd.Foreign.Name = "i18n.PluralKey"
 		}
 	}
-	for _, s := range consts {
-		c.registerStdlibConst(s, stdlibPkg)
-	}
-	// Phase 1: register stdlib func signatures (no body checking yet) so
-	// later phases — context default expressions, context-reading wrapper
-	// bodies — can resolve names against fully-populated symbol tables.
+
+	// Library funcs are not body-checked by pass2, which walks a program's own
+	// declarations, so their bodies are checked below. An expression body
+	// (`=> expr`) is lowered into ir.Block, and a block body is lowered too so
+	// the optimizer can fold through it; a bodyless signature has nothing to
+	// check.
 	type stdlibFuncBody struct {
 		ast *ast.FuncDef
 		fn  *ir.Func
 	}
-	// The i18n and html namespaces describe std's own declarations, so they
-	// belong to that package only. Declaring them from the builtin pass as
-	// well puts an empty `html` namespace in the ambient scope, which shadows
-	// the real one; and building them while any other package loads would
-	// re-enter the package PluralKey lives in.
-	//
-	// They are declared before the funcs whose receiver names them, so that
-	// `func i18n.tr(...)` finds a declaration to be a member of. Their
-	// packages are built from those same funcs, so the Pkg is filled in below
-	// once they exist.
-
 	var pendingBodies []stdlibFuncBody
-	for _, s := range funcs {
-		fn := c.registerStdlibFunc(s, stdlibPkg)
-		// Defer body check: expression-body funcs (=> expr) are lowered into
-		// ir.Block. Block-body stdlib funcs are also lowered for constant-folding
-		// support (e.g., color.lighten, color.darken). Bodyless signatures
-		// (e.g., `func i18n.exactly(n int) PluralKey {}`) are unaffected.
-		if fn != nil && (s.Body != nil || s.Block.IsDefined()) {
-			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: s, fn: fn})
+	for _, fn := range stdlibPkg.Funcs {
+		if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) {
+			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: fn.AST, fn: fn})
 		}
-	}
-	for _, s := range components {
-		c.registerStdlibComponent(s, stdlibPkg)
-	}
-
-	// Register stdlib context declarations last — after the "i18n" namespace is
-	// in scope — so that default-value expressions like `i18n.defaultLocale()`
-	// resolve correctly. Stdlib contexts are declared into the stdlib scope and
-	// their *ir.Context pointers are appended to c.pkg.Contexts so the
-	// interpreter and codegen discover them alongside user-declared contexts.
-	for _, s := range contexts {
-		c.registerStdlibContextDecl(s)
 	}
 
 	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
 	// that bodies can read freshly-registered context decls (e.g. the
 	// `#locale` context used by i18n.* wrappers).
 	for _, pb := range pendingBodies {
-		c.checkStdlibFuncBody(pb.ast, pb.fn)
+		c.checkFuncBody(pb.fn)
 	}
 
 	// Phase 2b: refine stdlib function purity by propagating from called
-	// functions. The auto-Pure mark in registerStdlibFunc is a placeholder;
+	// functions. The auto-Pure default registerFunc gives library source is a
+	// placeholder;
 	// now that every body is checked, lift each func's purity to
 	// max(self, max(called.Purity)) and iterate to a fixed point. This
 	// makes wrappers like `i18n.defaultLocale() => intl.DefaultLocale()`
@@ -567,16 +568,18 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// into the component it names and checkPendingExtensions checks them
 	// there.
 	//
-	// Restricted to the target tiers: sngl:ui's components carry bodies
-	// too, but they are declared without the pass1 pre-pass that binds their
-	// props and vars, so checking them here reports every one as undefined.
+	// The body's own declarations were collected when the component was
+	// registered, as a program's are: registerComponent does that for every
+	// tier, so this only has to check what is already there.
+	//
+	// Restricted to the target tiers: sngl:ui's components carry bodies too
+	// (the _example_* documentation fixtures), and checking those here would
+	// resolve them against the library's scope rather than a program's.
 	if targetTier(pkgName) {
 		for _, irComp := range stdlibPkg.Components {
 			if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
 				continue
 			}
-			nested := c.collectComponentDecls(irComp.AST, irComp)
-			irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nested)
 			c.checkComponentBody(irComp)
 		}
 	}
@@ -698,244 +701,9 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	}
 }
 
-// declareStdlibStruct registers a struct name (without fields) so other
-// declarations can reference it while we are still processing the stdlib.
-// Fields are filled in by resolveStdlibStructFields once every name is in
-// scope.
-func (c *checker) declareStdlibStruct(s *ast.StructDef, pkg *ir.Package) *ir.StructDef {
-	sd := &ir.StructDef{AST: s, Name: s.Name, Pkg: c.libPkgName}
-	c.applyMarks(s, sd)
-	// Macro carries no #[builtin] kind: a kind names the IR construct a
-	// declaration dispatches to, and this one dispatches to none. It is found
-	// by name within the compiler's own package, which no program can import.
-	if c.libPkgName == "sngl:"+irPkg && s.Name == macroTypeName {
-		c.macroStruct = sd
-	}
-	// A loading package's own root is the current scope, so this binds the
-	// same symbol twice — which Declare tolerates, while still refusing a
-	// different symbol under a name already taken.
-	c.bindLib(s.Pos, c.scope, sd)
-	// Stdlib package for qualified sngl.Type access.
-	pkg.Structs = append(pkg.Structs, sd)
-	c.bindLib(s.Pos, pkg.Symbols.Root, sd)
-	// Publish the canonical date/time/datetime struct types so non-checker
-	// phases (foreign-type importers) can synthesize them without scope access.
-	switch sd.Builtin {
-	case ir.BuiltinDate:
-		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ir.BuiltinTime:
-		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ir.BuiltinDateTime:
-		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
-	}
-	return sd
-}
-
-// resolveStdlibStructFields populates the fields of an already-declared
-// struct. Safe to run after every stdlib type name is in scope, which allows
-// fields to reference any stdlib type regardless of declaration order.
-func (c *checker) resolveStdlibStructFields(s *ast.StructDef, sd *ir.StructDef) {
-	built := c.buildStructDef(s)
-	sd.Fields = built.Fields
-	// A type-parameter default is a type reference like any other, so it wants
-	// the same every-name-is-in-scope condition the fields do.
-	sd.TypeParams = built.TypeParams
-	// Every stdlib type name is in scope by now, which is exactly the
-	// condition a default needs.
-	c.fillStructFieldDefaults(sd)
-}
-
-func (c *checker) registerStdlibEnum(e *ast.EnumDef, pkg *ir.Package) {
-	ed := c.buildEnumDef(e)
-	c.applyMarks(e, ed)
-	c.bindLib(e.Pos, c.scope, ed)
-	pkg.Enums = append(pkg.Enums, ed)
-	c.bindLib(e.Pos, pkg.Symbols.Root, ed)
-}
-
-func (c *checker) registerStdlibUnit(u *ast.UnitDef, pkg *ir.Package) {
-	ud := c.buildUnitDef(u)
-	c.applyMarks(u, ud)
-	c.bindLib(u.Pos, c.scope, ud)
-	for _, s := range ud.Suffixes {
-		c.unitBySuffix[s.Name] = ud
-	}
-	pkg.Units = append(pkg.Units, ud)
-	c.bindLib(u.Pos, pkg.Symbols.Root, ud)
-}
-
-// registerStdlibConst registers a library const. A mark on the declaration is
-// applied to every name it declares, which is why #[builtin] on a grouped
-// const reports the kind twice rather than picking one.
-func (c *checker) registerStdlibConst(decl *ast.ConstDecl, pkg *ir.Package) {
-	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
-		var init ir.Expr
-		if spec.Default != nil {
-			init = c.checkExprExpecting(spec.Default, typ)
-			if typ.Kind == ir.TypeDyn {
-				typ = exprType(init)
-			}
-		}
-		for _, name := range spec.Names {
-			v := &ir.Var{
-				AST:     decl,
-				Name:    name,
-				Type:    typ,
-				Init:    init,
-				IsConst: true,
-			}
-			c.applyMarks(decl, v)
-			pkg.Consts = append(pkg.Consts, v)
-			c.bindLib(decl.Pos, c.scope, v)
-			c.bindLib(decl.Pos, pkg.Symbols.Root, v)
-		}
-	}
-}
-
-func (c *checker) registerStdlibFunc(f *ast.FuncDef, pkg *ir.Package) *ir.Func {
-	fn := c.buildFunc(f)
-	// A macro declaration is not a function: it is the place a `#[...]` mark's
-	// documentation and argument list are written, and a Go handler is what
-	// runs. Binding it would put the name in scope, where a program could call
-	// it — and a dot import of the package that dot-imports the mark's package
-	// would lift it on, so `#[builtin]` would end up callable from any file
-	// that imports sngl:ui.
-	if c.isMacroSig(fn.Return) {
-		// The declaration is the whole of what the compiler knows about a
-		// macro except what it does, so it is kept on the package where mark
-		// resolution reads it.
-		pkg.Macros = append(pkg.Macros, fn)
-		return nil
-	}
-	c.applyMarks(f, fn)
-	// Stdlib funcs skip the body-check pass. When a stdlib signature omits a
-	// return annotation (common for the "=>" forms that delegate to an
-	// intrinsic), treat the missing return as an explicit dyn escape hatch
-	// rather than void — the stdlib is trusted to know what it's doing, and
-	// body-level inference would conflict with the primitive/struct aliasing
-	// used internally (e.g. the `color` struct vs the `color` primitive).
-	if fn.Return == nil && f.Body != nil {
-		fn.Return = TypDyn
-	}
-	// buildFunc copied the #[intrinsic] mark; the effect metadata that goes
-	// with the id follows from it. An id no intrinsic answers to is a typo in
-	// the mark, and nothing downstream would notice it — the call would just
-	// never be recognized.
-	if fn.Intrinsic != "" {
-		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
-			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
-		}
-	}
-	// Stdlib funcs are not body-checked, so the usual purity analysis never
-	// runs. Mark them pure so the optimizer can constant-fold pure stdlib
-	// methods (int.min, string.upper, etc.) when called with constant args.
-	// Impure stdlib (alert.show, file.contents, anything reaching outside the
-	// program) gets its purity overridden later by stdlib.SetImpure or via
-	// scheme registration.
-	if fn.Purity == ir.PurityUnknown {
-		fn.Purity = ir.PurityPure
-	}
-	fn.Stdlib = true
-	if fn.Receiver != "" {
-		// Type-attached method, hosted on the receiver's declaration. A
-		// receiver that names a namespace rather than a type (i18n, html) has
-		// no declaration to host it; those funcs become members of the
-		// namespace's own package, built from this same list below.
-		if prev := c.declareMethod(f.Pos, fn); prev != nil {
-			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
-		}
-	} else {
-		// Free function — available both qualified and unqualified.
-		c.bindLib(f.Pos, c.scope, fn)
-		pkg.Funcs = append(pkg.Funcs, fn)
-		c.bindLib(f.Pos, pkg.Symbols.Root, fn)
-	}
-	return fn
-}
-
-// checkStdlibFuncBody type-checks a stdlib function body (either expression-body
-// `=>` wrapper or block-body statement) into an ir.Block. The package-level scope
-// must already contain all stdlib decls (imports, types, funcs, contexts) so the
-// body can resolve references like `intl.Translate` or the active `locale` context.
-//
-// Intentional limits:
-//   - Bodyless stdlib funcs are unaffected.
-//   - If checking the body produces no return type (void), the func is left
-//     with Return == nil so existing dyn-fallback in registerStdlibFunc
-//     remains active.
-func (c *checker) checkStdlibFuncBody(f *ast.FuncDef, fn *ir.Func) {
-	if f.Body == nil && !f.Block.IsDefined() {
-		return
-	}
-	c.pushScope()
-	defer c.popScope()
-	for _, p := range fn.Params {
-		c.declare(f.Pos, p)
-	}
-	prevReturn := c.returnType
-	c.returnType = fn.Return
-	defer func() { c.returnType = prevReturn }()
-	// Receiver type parameters (the `<T>` in `list<T>.push`) plus any
-	// method-level ones must be in scope to resolve the receiver type and the
-	// body. RecvTypeParams come first so the receiver type `list<T>` resolves.
-	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
-
-	// Implicit-receiver methods (generic receiver, e.g. list<T>.push) carry no
-	// receiver parameter — the receiver is referenced as `this`. Bind it so
-	// such methods can have an expression body that delegates to an intrinsic,
-	// e.g. `func list<T>.push(item T) => stdlib.ListPush(this, item)`.
-	// Concrete-type methods (string.length(s string), color.hex(c color)) name
-	// the receiver explicitly and need no `this` binding. Only expression
-	// bodies are considered: the bodyless `{ }` generic stubs (map<K,V>.get,
-	// list<T>.filter, …) never reference `this`, and resolving their receiver
-	// type here would spuriously trip the map-key comparability check on the
-	// abstract key type parameter.
-	if f.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 {
-		if thisType := c.resolveType(synthRecvTypeExpr(f.Pos, fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.declare(f.Pos, &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
-		}
-	}
-
-	if f.Body != nil {
-		bodyExpr := c.checkExpr(f.Body)
-		if bodyExpr == nil {
-			return
-		}
-		pos := f.Pos
-		if p := f.Body.ExprPos(); p != nil {
-			pos = *p
-		}
-		// Infer concrete return type from the body when the declaration left it
-		// as dyn (the fallback applied in registerStdlibFunc). Stdlib wrappers
-		// like `i18n.numberInt(n, style) => intl.NumberInt(locale, n, style)`
-		// otherwise stay dyn and downstream codegen has no concrete Go/JS/Kotlin
-		// type for the method signature.
-		//
-		// Restrict to primitive body types to dodge a known ambiguity: the
-		// `color` struct vs the `color` primitive share a name. Wrappers like
-		// `color.rgb(...) => color{...}` produce a struct type whose
-		// stringification collides with the primitive in callers like
-		// `color.hex(c color)`; leaving those Returns as dyn preserves the
-		// historical wildcard behaviour. Primitives don't have this clash.
-		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-			if t := exprType(bodyExpr); t != nil && isPrimitiveTypeKind(t.Kind) {
-				fn.Return = t
-			}
-		}
-		fn.Block = []ir.Stmt{&ir.Return{
-			AST:   &ast.ReturnStmt{Pos: pos, Value: f.Body},
-			Value: bodyExpr,
-		}}
-	} else if f.Block.IsDefined() {
-		fn.Block = c.checkBlockIR(&f.Block)
-	}
-
-}
-
 // applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
 // stdlib wrapper that delegates to it. The wrapper would otherwise default to
-// PurityPure (registerStdlibFunc), which is wrong for effecting intrinsics like
+// PurityPure (registerFunc, for library source), which is wrong for effecting intrinsics like
 // ListPush (mutates its receiver) — letting the optimizer fold or drop a real
 // mutation. Backends and reactivity read the mutation semantics back via
 // fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
@@ -989,7 +757,7 @@ func (c *checker) targetPackages() []string {
 	// it does not -- pass1 has not built its map yet, and this is the same
 	// scan it will do.
 	replaces := map[string]string{}
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		if imp, ok := stmt.(*ast.Import); ok && imp.Replace != "" {
 			if _, dup := replaces[imp.Path]; !dup {
 				replaces[imp.Path] = imp.Replace
@@ -998,7 +766,7 @@ func (c *checker) targetPackages() []string {
 	}
 	maps.Copy(replaces, c.cfg.Replaces)
 
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		switch s := stmt.(type) {
 		case *ast.Import:
 			target := s.Path
@@ -1046,7 +814,7 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 		return c.cfg.Targets
 	}
 	var declared []ir.StaticTarget
-	for _, stmt := range c.doc.Stmts {
+	for _, stmt := range c.stmts() {
 		if s, ok := stmt.(*ast.VisualNode); ok && visualNodeTarget(s) == "output" {
 			declared = append(declared, declaredOutputTargets(s)...)
 		}
@@ -1143,6 +911,14 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		// where this runs and where a target is only in scope if imported.
 		c.pushScope()
 		if pkg := c.libPkg(pkgName); pkg != nil {
+			// Its own declarations first, so the package's source reads them
+			// the way it does everywhere else in the package: `[platform]` is
+			// the identity const the compiler injects into it, and resolving
+			// the bare name against the program's scope would find the ambient
+			// `platform` type instead.
+			for _, sym := range pkg.Symbols.Root.Symbols {
+				c.scope.Replace(sym)
+			}
 			c.bindLib(ast.Pos{}, c.scope, &ir.Namespace{Name: name, Pkg: pkg})
 		}
 		defer c.popScope()
@@ -1551,97 +1327,6 @@ func isPrimitiveTypeKind(k ir.TypeKind) bool {
 	return false
 }
 
-// registerStdlibContextDecl registers a stdlib `context #name(default)` decl.
-// The *ir.Context is declared in the current scope (stdlib scope) so user
-// source can read it as an identifier, and appended to c.pkg.Contexts so the
-// interpreter and codegen discover it alongside user-declared contexts.
-func (c *checker) registerStdlibContextDecl(s *ast.CallStmt) {
-	name := s.Call.ID
-	ctx := &ir.Context{AST: s, Name: name, Stdlib: true}
-	if name == "" {
-		c.error(s.Pos, "stdlib context decl requires #identifier")
-		return
-	}
-	if _, exists := c.scope.LookupLocal(name); exists {
-		// Already declared (e.g. duplicate stdlib file); skip silently.
-		return
-	}
-	args := s.Call.Args.Args
-	if len(args) != 1 {
-		c.error(s.Pos, "stdlib context decl requires exactly one default value")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.bindLib(s.Pos, c.scope, ctx)
-		return
-	}
-	a, isArg := args[0].(ast.Arg)
-	if !isArg || a.Name != "" {
-		c.error(s.Pos, "stdlib context default must be positional, not named")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-		c.bindLib(s.Pos, c.scope, ctx)
-		return
-	}
-	// A context default is an initializer expression (see registerContextDecl),
-	// not a compile-time constant.
-	def := c.checkExpr(a.Value)
-	ctx.Default = def
-	if def != nil {
-		ctx.Typ = def.ExprType()
-	}
-	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-	c.bindLib(s.Pos, c.scope, ctx)
-}
-
-func (c *checker) registerStdlibComponent(comp *ast.ComponentDecl, pkg *ir.Package) {
-	irComp := &ir.Component{
-		AST:    comp,
-		Name:   comp.Name,
-		Stdlib: true,
-		Pkg:    c.libPkgName,
-	}
-	c.applyMarks(comp, irComp)
-
-	for _, p := range comp.Props.Props {
-		switch pd := p.(type) {
-		case ast.Param:
-			typ := c.resolveType(pd.Type)
-			var def ir.Expr
-			if pd.Default != nil {
-				// Placeholder; stdlib prop defaults don't need full checking.
-				def = &ir.Literal{Type: typ}
-			}
-			prop := &ir.Prop{
-				Name:          pd.Name,
-				Type:          typ,
-				Default:       def,
-				Bidirectional: pd.Bidirectional,
-			}
-			c.applyParamMarks(pd, prop)
-			irComp.Props = append(irComp.Props, prop)
-		case ast.EventDecl:
-			evt := &ir.EventDecl{
-				Name: pd.Name,
-				Type: c.resolveType(pd.Type),
-			}
-			c.applyEventMarks(pd, evt)
-			irComp.Events = append(irComp.Events, evt)
-		case ast.SlotDecl:
-			irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd))
-		}
-	}
-
-	c.finishWildcardMarks(comp.Pos, irComp)
-	if comp.ChildrenType != nil {
-		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
-	}
-	c.finishTreeMarks(comp, irComp, pkg)
-	c.finishDefaultSlot(irComp)
-
-	c.bindLib(comp.Pos, c.scope, irComp)
-	// Stdlib package for qualified sngl.Component access.
-	pkg.Components = append(pkg.Components, irComp)
-	c.bindLib(comp.Pos, pkg.Symbols.Root, irComp)
-}
-
 // Platform sources use a library import's alias as the `component <alias>.X`
 // extension prefix.
 func libImportAliases(doc *ast.Document) map[string]string {
@@ -1717,7 +1402,7 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
-	c := newChecker(&ast.Document{}, cfg)
+	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags

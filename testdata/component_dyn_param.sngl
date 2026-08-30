@@ -1,0 +1,14 @@
+// An explicit `dyn` is an annotation: it says the prop takes anything, which
+// is what `context(default dyn)` in sngl:builtin means. Only a prop with
+// neither an annotation nor a default is unannotated -- see
+// error_untyped_param.sngl for that.
+import . "sngl:ui"
+
+component Holder(value dyn) {
+    text(value="held")
+}
+
+component main {
+    Holder(value=1)
+    Holder(value="two")
+}

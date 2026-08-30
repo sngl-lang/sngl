@@ -1,0 +1,34 @@
+# A package is one declaration set however many files it is written in, so a
+# type annotated in one file may name a type declared in a sibling.
+#
+# An imported package used to be checked a file at a time -- one Check per
+# document, the results merged afterwards -- so each file resolved without its
+# siblings in scope. Annotation positions failed on a name the package plainly
+# declares; a body reference worked, because those resolve lazily, which is
+# what made it look like a type-resolution bug rather than a scoping one.
+
+sngl check app
+stdout 'ok'
+
+-- app/main.sngl --
+import . "sngl:ui"
+import s "../sub"
+
+component main {
+    text(value=string(s.dist(s.origin())))
+}
+-- sub/a.sngl --
+struct Pt {
+    x int = 0
+    y int = 0
+}
+-- sub/b.sngl --
+// Every one of these names Pt from a.sngl: a struct field's type, a
+// parameter's type, and a body expression.
+struct Line {
+    from Pt
+}
+
+func dist(a Pt) => a.x
+
+func origin() => Pt{x = 0, y = 0}
