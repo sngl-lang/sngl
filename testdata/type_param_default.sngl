@@ -25,6 +25,16 @@ struct Later {
     n int
 }
 
+// A default may name a parameter declared beside it, since the whole list is in
+// scope while any of it resolves. The function form always could; the struct
+// form resolved its defaults outside that scope and reported A as unknown.
+struct Sibling<A, B = A> {
+    left A
+    right B
+}
+
+func idr<T, U = T>(a T, b U) => a
+
 // `Pair<int>` fills B from its default; `Boxed` fills its only parameter and
 // needs no argument list at all.
 component show(
@@ -63,4 +73,12 @@ component main {
             text(value="{names.length()}{greeting}")
         }
     }
+}
+
+// A method's body resolves the receiver's type parameters, not just its
+// signature: `T` in the return type worked while `T` in a body declaration did
+// not, so the declaration was accepted and its body was not.
+func Boxed<T>.replace(b Boxed<T>, other T) T {
+    var previous T = b.v
+    return previous
 }

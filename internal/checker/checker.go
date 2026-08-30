@@ -143,8 +143,6 @@ type checker struct {
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
 
-	// Type resolution context.
-
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
 
@@ -1062,6 +1060,7 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
+	defer pushTypeParams(c, sd.AST.TypeParams)()
 	sd.Fields = c.resolveStructFields(sd.AST)
 	// A default is a type reference, so it waits for the same every-shell-exists
 	// condition the fields do.
@@ -2747,7 +2746,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 
-	defer pushTypeParams(c, fn.TypeParams)()
+	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
 
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body

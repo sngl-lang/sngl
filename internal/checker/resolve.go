@@ -275,6 +275,7 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 }
 
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
+	defer pushTypeParams(c, s.TypeParams)()
 	return &ir.StructDef{
 		AST:        s,
 		Name:       s.Name,
@@ -331,9 +332,6 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 // first (making the name visible for forward/mutually-recursive references)
 // and resolve fields in a second sub-pass once every type shell exists.
 func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
-	// Struct-level type params, so a field type like T resolves.
-	defer pushTypeParams(c, s.TypeParams)()
-
 	var fields []*ir.StructField
 	seen := make(map[string]struct{})
 	for _, f := range s.Fields() {
@@ -392,12 +390,13 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 // buildUnitDef builds an IR UnitDef from an AST UnitDef,
 // resolving suffix conversion factors.
 func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
-	suffixes := make([]*ir.UnitSuffix, len(u.Suffixes))
+	astSuffixes := u.Suffixes()
+	suffixes := make([]*ir.UnitSuffix, len(astSuffixes))
 	// Stash factor lookups for suffixes defined earlier in this same unit so
 	// expressions like `s = 1000ms` resolve against `ms` before registration.
 	localFactors := map[string]float64{}
 	localBaseNames := map[string]string{}
-	for i, s := range u.Suffixes {
+	for i, s := range astSuffixes {
 		us := &ir.UnitSuffix{
 			Name:     s.Name,
 			Factor:   1.0,
