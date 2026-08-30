@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -204,6 +205,24 @@ func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 }
 func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	if n.Init != nil {
+		// A SNGL list local is mutable -- `out.push(x)` is ordinary -- and
+		// Kotlin's listOf() is neither mutable nor, when empty, typed. Both
+		// bit at once: `var out = listOf()` could not infer its element and
+		// had no add().
+		if n.Type != nil && n.Type.Kind == ir.TypeList {
+			if ll, ok := n.Init.(*ir.ListLit); ok {
+				elem := "Any"
+				if len(n.Type.Elems) > 0 {
+					elem = IRTypeToKt(n.Type.Elems[0])
+				}
+				if len(ll.Elems) == 0 {
+					return "var " + n.Name + " = mutableListOf<" + elem + ">()"
+				}
+				if rest, cut := strings.CutPrefix(initStr, "listOf("); cut {
+					return "var " + n.Name + " = mutableListOf<" + elem + ">(" + rest
+				}
+			}
+		}
 		return "var " + n.Name + " = " + initStr
 	}
 	goType := "Any"
@@ -267,7 +286,10 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Value
 	case ir.TypeFloat:
 		s := n.Value
-		if !strings.Contains(s, ".") {
+		// An exponent already makes it a Double in Kotlin, and `1e+09.0` is
+		// not a literal at all -- it is where `const ROUNDABLE = 1000000000.0`
+		// stopped compiling.
+		if !strings.ContainsAny(s, ".eE") {
 			s += ".0"
 		}
 		return s
@@ -290,7 +312,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-			return exportName(n.Type.Decl.SymName()) + "." + n.Member
+			return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
@@ -610,9 +632,26 @@ func ktZeroFor(t *ir.Type) string {
 		return `""`
 	case ir.TypeList:
 		return "listOf()"
+	case ir.TypeEnum:
+		// An enum's zero is its first member, as it is on every other target.
+		// `null` is not a value of a non-nullable Kotlin enum, so a struct
+		// field left at its default did not compile.
+		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
+			return exportName(ed.Name) + "." + EnumEntry(ed.Members[0].Name)
+		}
 	}
 	return "null"
 }
+
+// EnumEntry is the Kotlin spelling of one SNGL enum member. Upper-cased
+// because Kotlin entries are, and because a SNGL member may be named for
+// something Any already declares -- `Action.equals` reads as the method
+// otherwise.
+//
+// Declaration and reference both go through here. They used to spell it
+// separately, so every `Op.none` in the output named an entry declared as
+// `NONE`.
+func EnumEntry(member string) string { return strings.ToUpper(member) }
 
 func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
@@ -653,6 +692,22 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		imports:       kc.imports,
+	}
+}
+
+// WithIdentRewrite returns a context in which one name renders as another.
+// Used for a method's receiver: an extension function's receiver is `this`
+// whatever the declaration named it, so a body reading `o.symbol` has to read
+// `this.symbol`.
+func (kc *KtIRContext) WithIdentRewrite(from, to string) *KtIRContext {
+	rewrites := make(map[string]string, len(kc.IdentRewrites)+1)
+	maps.Copy(rewrites, kc.IdentRewrites)
+	rewrites[from] = to
+	return &KtIRContext{
+		Ctx:           kc.Ctx,
+		EventVar:      kc.EventVar,
+		IdentRewrites: rewrites,
 		imports:       kc.imports,
 	}
 }
@@ -787,7 +842,7 @@ func IRLiteralToKt(e ir.Expr) string {
 			return n.Value
 		case ir.TypeFloat:
 			s := n.Value
-			if !strings.Contains(s, ".") {
+			if !strings.ContainsAny(s, ".eE") {
 				s += ".0"
 			}
 			return s
@@ -840,6 +895,16 @@ func IRLiteralToKt(e ir.Expr) string {
 		return name + "(" + strings.Join(parts, ", ") + ")"
 	case *ir.Lambda:
 		return irLambdaLiteralToKt(n)
+	case *ir.Ident:
+		// An enum member is a literal value, and the only one that arrives as
+		// an identifier. Falling through to the empty string put `op = ""` in
+		// a constructor call whose parameter is an enum.
+		if n.Member != "" {
+			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
+				return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+			}
+			return fmt.Sprintf("%q", n.Member)
+		}
 	}
 	return `""`
 }

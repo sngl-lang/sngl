@@ -68,7 +68,13 @@ func (t *Translator) TypeToNative(hint string) string {
 	}
 }
 
-func (t *Translator) ExportName(name string) string {
+func (t *Translator) ExportName(name string) string { return SafeIdent(name) }
+
+// SafeIdent renders a SNGL identifier as a Kotlin one, escaping a hard
+// keyword the way Kotlin does. A parameter or local named `object`, `is` or
+// `when` is ordinary SNGL and not a Kotlin identifier at all, so every site
+// that emits a declared name goes through here.
+func SafeIdent(name string) string {
 	if kotlinHardKeywords[name] {
 		return "`" + name + "`"
 	}

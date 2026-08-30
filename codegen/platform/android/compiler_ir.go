@@ -312,6 +312,15 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// places: (1) to register `name → state.name` rewrites so call
 	// sites in the composable route through `state`, and (2) to
 	// actually emit them inside the class body below.
+	// A component's own funcs, which belong inside the composable rather than
+	// beside it -- see the emission below.
+	componentOwnFuncs := map[*ir.Func]bool{}
+	if main := ctx.MainComponent(); main != nil {
+		for _, fn := range main.Funcs {
+			componentOwnFuncs[fn] = true
+		}
+	}
+
 	var stateFuncs []*ir.Func
 	if testMode && !cfg.GoLib {
 		allFuncs := ctx.AllFuncs()
@@ -325,7 +334,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if isCanvasDrawFunc(fn) {
 				continue
 			}
-			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
 			stateFuncs = append(stateFuncs, fn)
@@ -488,7 +497,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if i == len(ed.Members)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&body, "    %s%s\n", strings.ToUpper(m.Name), comma)
+			fmt.Fprintf(&body, "    %s%s\n", kotlin.EnumEntry(m.Name), comma)
 		}
 		body.WriteString("}\n\n")
 	}
@@ -580,6 +589,30 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("\n")
 	}
 
+	// The component's own funcs, as local funs closing over the state
+	// declared just above. In test mode they are members of MainScreenState
+	// instead, and the call sites are rewritten to reach them there.
+	if !testMode && !cfg.GoLib {
+		for _, fn := range ctx.AllFuncs() {
+			if !componentOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
+				continue
+			}
+			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
+				continue
+			}
+			var local strings.Builder
+			emitIRKtFunc(&local, fn, kc)
+			for line := range strings.SplitSeq(strings.TrimRight(local.String(), "\n"), "\n") {
+				if line == "" {
+					body.WriteString("\n")
+					continue
+				}
+				fmt.Fprintf(&body, "    %s\n", line)
+			}
+			body.WriteString("\n")
+		}
+	}
+
 	// Timers
 	for _, t := range info.Timers {
 		// ActiveVar is a bare reactive-var name; in test mode it lives on the
@@ -640,7 +673,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	if !cfg.GoLib && !testMode {
 		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
-			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			if fn.IsTest || codegen.IsComputed(fn) {
 				continue
 			}
 			// Canvas draw funcs are inlined into the Canvas {} DrawScope
@@ -648,7 +681,23 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if isCanvasDrawFunc(fn) {
 				continue
 			}
-			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
+				continue
+			}
+			// A method on a user type is called as one -- `state.pending()` --
+			// so it is an extension function, and the receiver passNoImplicitRecv
+			// put in front of the parameters is Kotlin's own `this`. A
+			// component's own func is not that: it is called by bare name from
+			// the composable, and the component is no Kotlin type to extend.
+			if fn.Receiver != "" && ktUserTypeName(ctx.Pkg, fn.Receiver) {
+				emitIRKtMethod(&body, fn, kc)
+				continue
+			}
+			// A component's func reads and writes the component's state, and
+			// on Compose that state is a `remember`ed local of the composable.
+			// So it is a local fun of the composable too; emitted at top level
+			// it named a `state` nothing had declared.
+			if componentOwnFuncs[fn] {
 				continue
 			}
 			emitIRKtFunc(&body, fn, kc)
@@ -749,11 +798,78 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	}
 }
 
+// isReceiverParam reports whether p is the receiver passNoImplicitRecv put in
+// front of a method's parameters. It is usually named `this`, but the name is
+// the declaration's to choose -- `func Op.symbol(o Op)` calls it `o`, and
+// matching on the name alone left it in the signature of an extension whose
+// receiver it already was.
+func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
+	if fn.Receiver == "" {
+		return false
+	}
+	if p.Name == "this" {
+		return true
+	}
+	return p.Type != nil && p.Type.Decl != nil && p.Type.Decl.SymName() == fn.Receiver
+}
+
+// ktUserTypeName reports whether name is a struct or enum the package
+// declares, as opposed to a component.
+func ktUserTypeName(pkg *ir.Package, name string) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name == name {
+			return true
+		}
+	}
+	for _, ed := range pkg.Enums {
+		if ed.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// emitIRKtMethod emits a method on a user type as a Kotlin extension
+// function. The explicit receiver parameter is dropped: the body already
+// names it `this`, which is what an extension's receiver is called.
+//
+// Skipping every func with a receiver left `Calc.pending` undeclared while
+// `state.pending()` was emitted at two call sites.
+func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
+	recv := exportName(fn.Receiver)
+	fnCopy := *fn
+	fnCopy.Name = recv + "." + fn.Name
+	// Dropped here rather than left to emitIRKtFunc, which decides by asking
+	// fn.Receiver -- and this copy is about to stop having one.
+	localKC := kc
+	if len(fnCopy.Params) > 0 && isReceiverParam(fn, fnCopy.Params[0]) {
+		// The body names the receiver whatever the declaration called it
+		// (`func Op.symbol(o Op)`), and an extension's receiver is `this`.
+		if name := fnCopy.Params[0].Name; name != "this" {
+			localKC = localKC.WithIdentRewrite(name, "this")
+		}
+		fnCopy.Params = fnCopy.Params[1:]
+	}
+	fnCopy.Receiver = ""
+	emitIRKtFunc(b, &fnCopy, localKC)
+}
+
 func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
+	// passNoImplicitRecv puts the receiver in front of the parameters as
+	// `this`, which is a Kotlin keyword and never what the call site passes:
+	// an extension takes it as the receiver, and a component's func is called
+	// by name from inside the composable that holds its state.
+	fnParams := fn.Params
+	if len(fnParams) > 0 && isReceiverParam(fn, fnParams[0]) {
+		fnParams = fnParams[1:]
+	}
+	params := make([]string, len(fnParams))
+	for i, p := range fnParams {
 		ktType := kotlin.IRTypeToKt(p.Type)
-		params[i] = p.Name + ": " + ktType
+		params[i] = kotlin.SafeIdent(p.Name) + ": " + ktType
 	}
 	paramStr := strings.Join(params, ", ")
 
@@ -763,7 +879,7 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	}
 
 	localKC := kc
-	for _, p := range fn.Params {
+	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
 
@@ -826,6 +942,11 @@ func ktZeroValue(t *ir.Type) string {
 		return `""`
 	case ir.TypeList:
 		return ""
+	case ir.TypeEnum:
+		// The language's zero, which for an enum is its first member. An empty
+		// string is not one, and a constructor call carrying it did not
+		// type-check.
+		return kotlin.KtZeroFor(t)
 	default:
 		return `""`
 	}
