@@ -1773,6 +1773,14 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// `component sngl.X() { body }`, whose body the platform reads itself.
 	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	if comp.Target != nil && !bare {
+		if c.inLibSource() {
+			// A library package's overrides belong to mergeTargetExtensions,
+			// which resolves each one in that package's own scope -- where the
+			// target's namespace is bound. Collecting them here would resolve
+			// `[android.platform]` later and elsewhere, with no `android` in
+			// scope to resolve it against.
+			return
+		}
 		c.userOverrides = append(c.userOverrides, comp)
 		return
 	}
@@ -1789,8 +1797,10 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 
 	irComp := &ir.Component{
-		AST:  comp,
-		Name: comp.Name,
+		AST:    comp,
+		Name:   comp.Name,
+		Stdlib: c.inLibSource(),
+		Pkg:    c.libPkgName,
 	}
 	c.applyMarks(comp, irComp)
 
@@ -1803,10 +1813,20 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 				Bidirectional: pd.Bidirectional,
 			}
 			c.applyParamMarks(pd, prop)
-			if prop.Type.Kind == ir.TypeDyn && pd.Default == nil {
+			// A prop with neither an annotation nor a default says nothing
+			// about what it takes. `dyn` written out is an annotation: it says
+			// the prop takes anything, which is what `context(default dyn)`
+			// means and what a caller reads at the call site.
+			if prop.Type.Kind == ir.TypeDyn && pd.Type == nil && pd.Default == nil {
 				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
 			}
-			// Default is checked later in checkComponentBody when scope is ready.
+			// Default is checked later in checkComponentBody when scope is
+			// ready. A library component has no body to check, so its default
+			// is recorded as a typed placeholder: what reads it downstream asks
+			// whether the prop has one, not what it is.
+			if pd.Default != nil && c.inLibSource() {
+				prop.Default = &ir.Literal{Type: prop.Type}
+			}
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
@@ -1825,13 +1845,21 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		}
 	}
 
-	finishTreeMarks(comp, irComp, c.pkg)
+	finishTreeMarks(comp, irComp, c.declPkg())
 	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 
-	nestedFuncs := c.collectComponentDecls(comp, irComp)
+	// A library component's body is not this phase's to read. It travels with
+	// the extension machinery (checkPendingExtensions), which collects its
+	// state declarations itself -- pre-registering them here would declare
+	// each one twice. A program's component is registered and checked in the
+	// one pass1/pass2 pair, so its body is collected now.
+	var nestedFuncs []*ast.FuncDef
+	if !c.inLibSource() {
+		nestedFuncs = c.collectComponentDecls(comp, irComp)
+	}
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)

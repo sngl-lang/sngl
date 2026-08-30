@@ -343,6 +343,12 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
 	defer func() { c.topLevel = savedTopLevel }()
+	// Deferred const initialisers are per declaration set for the same reason:
+	// this package's are checked before it finishes loading, and the enclosing
+	// set is put back untouched.
+	savedConstInits := c.pendingConstInits
+	c.pendingConstInits = nil
+	defer func() { c.pendingConstInits = savedConstInits }()
 	pkg := c.loadStdlibPackage(name)
 	if name == i18nPkg {
 		c.declarePluralKeyConstants(pkg)
@@ -422,12 +428,6 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	savedLoadPkg := c.libLoadPkg
 	c.libLoadPkg = stdlibPkg
 	defer func() { c.libLoadPkg = savedLoadPkg }()
-	// One name, one meaning -- within this package. The map is per declaration
-	// set, so a library package gets its own for the same reason the program's
-	// document does, and neither can collide with the other.
-	savedTopLevel := c.topLevel
-	c.topLevel = nil
-	defer func() { c.topLevel = savedTopLevel }()
 
 	docs := c.libDocs(pkgName)
 	defer c.setMarkScope(docs)()
@@ -499,7 +499,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		}
 	}
 	for _, s := range consts {
-		c.registerStdlibConst(s, stdlibPkg)
+		c.registerConstShells(s)
 	}
 	// Phase 1: register stdlib func signatures (no body checking yet) so
 	// later phases — context default expressions, context-reading wrapper
@@ -531,7 +531,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		}
 	}
 	for _, s := range components {
-		c.registerStdlibComponent(s, stdlibPkg)
+		c.registerComponent(s)
 	}
 
 	// Register stdlib context declarations last — after the "i18n" namespace is
@@ -542,6 +542,11 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	for _, s := range contexts {
 		c.registerStdlibContextDecl(s)
 	}
+
+	// Const initialisers are checked once every name they could refer to is
+	// registered, which is what lets one const name another declared further
+	// down. pass1 defers them to its own end for the same reason.
+	c.checkPendingConstInits()
 
 	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
 	// that bodies can read freshly-registered context decls (e.g. the
