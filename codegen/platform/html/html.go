@@ -418,6 +418,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
+		gen.irWindow = win.Window
+		if win.Window != nil {
+			gen.ctx = gen.ctx.ForWindow(win.Window)
+		}
 		if win.Window != nil {
 			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
 				gen.title = s
@@ -546,6 +550,12 @@ type htmlGen struct {
 	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
 	// IR node rather than on the package or main component.
 	irWindowFuncs []*ir.Func
+
+	// irWindow is the window this generator emits a document for, or nil when
+	// it is emitting a main component's body. A window is the third place
+	// state is declared, beside the package and the main component, and it is
+	// per-document: static mode emits one file per window.
+	irWindow *ir.Window
 
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
@@ -1293,6 +1303,13 @@ func (g *htmlGen) stateVars() []*ir.Var {
 				if !v.Synthesized {
 					out = append(out, v)
 				}
+			}
+		}
+	}
+	if g.irWindow != nil {
+		for _, v := range g.irWindow.Vars {
+			if !v.Synthesized {
+				out = append(out, v)
 			}
 		}
 	}

@@ -89,6 +89,10 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		a.ModelFields[v.Name] = true
 	}
 
+	for _, v := range WindowStateVars(pkg) {
+		a.ModelFields[v.Name] = true
+	}
+
 	for _, f := range pkg.Funcs {
 		a.FuncNames[f.Name] = true
 		if f.Receiver != "" {
@@ -293,4 +297,27 @@ func parseNumber(raw string) float64 {
 		}
 	}
 	return n
+}
+
+// WindowStateVars returns the state declared by every window in pkg.
+//
+// A window is the third place state is declared, beside the package and the
+// main component, and it is the one every consumer forgot: the checker leaves
+// a window's `var` as a local of the body where a component's becomes a
+// declaration, and passHoistState is what makes the two the same shape. Having
+// one function for it means a target that supports windows either calls this
+// or does not, rather than each carrying a list that can fall a case behind.
+//
+// Synthesized vars are included: a caller filters them the way it already
+// filters the package's and the component's, which is not the same rule
+// everywhere -- html emits them as file-scope lets, bubbletea as Model fields.
+func WindowStateVars(pkg *ir.Package) []*ir.Var {
+	if pkg == nil {
+		return nil
+	}
+	var out []*ir.Var
+	for _, w := range pkg.Windows {
+		out = append(out, w.Vars...)
+	}
+	return out
 }

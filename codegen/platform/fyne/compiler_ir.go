@@ -41,10 +41,7 @@ type irComputed struct {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
@@ -67,6 +64,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	if main := ctx.MainComponent(); main != nil {
 		allVars = append(allVars, main.Vars...)
 	}
+	allVars = append(allVars, codegen.WindowStateVars(pkg)...)
 	for _, v := range allVars {
 		if v.IsConst {
 			// Consts skip getter/setter: the field name would collide with
@@ -161,10 +159,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // The aliases come back alongside because the file emitter is a context of its
 // own: an alias forced during translation does not reach it.
 func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
 

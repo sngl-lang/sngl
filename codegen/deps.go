@@ -66,6 +66,12 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			}
 		}
 	}
+	// A window's state is a model var like a component's. Left out here a read
+	// of it has no dependency, so the binding that keeps an element up to date
+	// is never emitted.
+	for _, v := range WindowStateVars(pkg) {
+		model[v] = struct{}{}
+	}
 	return &DepTracker{
 		ModelVars:     model,
 		ComputedFuncs: computed,
