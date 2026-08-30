@@ -189,13 +189,10 @@ type irComputed struct {
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Set before any body is translated, since it decides how a call to one of
-	// these renders. Clones inherit it: ForComponent and WithLocal copy the
-	// map reference along.
+	// these renders, and before ScopedExprCtx clones it. Clones inherit it:
+	// ForComponent and WithLocal copy the map reference along.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
@@ -209,17 +206,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
-	var allVars []*ir.Var
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, v)
-	}
-	for _, c := range pkg.Consts {
-		allVars = append(allVars, c)
-	}
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
 		// free functions, which are not Model methods.
@@ -237,12 +225,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		})
 	}
 
-	// pkg.Funcs and main.Funcs overlap for nested component methods, which are
-	// registered in both; dedupe by pointer.
-	allFuncs := pkg.Funcs
-	if main := ctx.MainComponent(); main != nil {
-		allFuncs = append(allFuncs, main.Funcs...)
-	}
+	// AllFuncs is what dedupes the nested component methods registered in both
+	// pkg.Funcs and main.Funcs, and it is also the only list that includes a
+	// window's own funcs -- the __focusNext/__focusPrev passFocusOrder puts
+	// there were called from Update and declared nowhere.
+	allFuncs := ctx.AllFuncs()
 	seenFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, f := range allFuncs {
 		if seenFn[f] {
@@ -534,10 +521,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
 	}
 
-	// Every component this build renders, not only main: one that survived
-	// inlining is emitted from its own declaration, and the funcs its body
-	// calls have to come with it.
-	allFuncs := ctx.Pkg.Funcs
+	// Every component this build renders, not only the root: one that
+	// survived inlining is emitted from its own declaration, and the funcs
+	// its body calls have to come with it. AllFuncs is the deduped base --
+	// the loop below dedupes what this adds on top.
+	allFuncs := ctx.AllFuncs()
 	for _, comp := range ctx.Pkg.Components {
 		allFuncs = append(allFuncs, comp.Funcs...)
 	}
@@ -701,13 +689,22 @@ func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	b.WriteByte('\n')
 }
 
-// componentFuncSet is every func some component declares. What is left in
-// pkg.Funcs is top level: declared beside the components rather than inside
-// one, so nothing of a component's is in scope for it.
+// componentFuncSet is every func a component or a window declares. What is
+// left in pkg.Funcs is top level: declared beside them rather than inside one,
+// so nothing of a component's is in scope for it.
+//
+// A window owns funcs the way a component does -- passFocusOrder's
+// __focusNext/__focusPrev among them -- and they read the Model, so leaving
+// them out emitted them free and the focus helpers lost their receiver.
 func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, comp := range pkg.Components {
 		for _, fn := range comp.Funcs {
+			out[fn] = true
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
 			out[fn] = true
 		}
 	}

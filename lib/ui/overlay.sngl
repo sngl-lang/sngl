@@ -1,6 +1,8 @@
 // Components that paint above the rest of the tree, and the surface a
 // dismissal returns from.
 
+import tr "sngl:tree"
+
 // Dialog overlay. Renders its children in a centered modal dialog
 // atop a scrim when `open` is true. `title` is the dialog heading;
 // `closable=true` shows a close affordance that emits `@close`. `size`
@@ -13,7 +15,8 @@ component modal(
     closable bool,
     size string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_modal {
     var showModal = false
@@ -36,7 +39,8 @@ component drawer(
     side string,
     size string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_drawer {
     var showDrawer = false
@@ -60,7 +64,8 @@ component tooltip(
     text string,
     position string,
     delay int,
-) component {}
+    slot _ tr.one,
+) {}
 
 component _example_tooltip {
     vbox(style={padding=16}) {
@@ -81,7 +86,8 @@ component popover(
     position string,
     openOn string,
     @close DismissEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_popover {
     var showPop = false

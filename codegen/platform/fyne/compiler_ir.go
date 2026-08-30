@@ -42,12 +42,10 @@ type irComputed struct {
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Set before any body is translated, since it decides how a call to one of
-	// these renders. See golang.ModelFreeFuncs.
+	// these renders, and before ScopedExprCtx clones it. See
+	// golang.ModelFreeFuncs.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
@@ -62,15 +60,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
-	var allVars []*ir.Var
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, v)
-	}
-	allVars = append(allVars, pkg.Consts...)
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		if v.IsConst {
 			// Consts skip getter/setter: the field name would collide with
 			// the accessor (APP_NAME field + APP_NAME() method).
@@ -164,10 +155,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // The aliases come back alongside because the file emitter is a context of its
 // own: an alias forced during translation does not reach it.
 func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
 

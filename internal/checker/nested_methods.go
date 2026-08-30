@@ -8,12 +8,12 @@ import (
 // synthRecvTypeExpr returns an ast.TypeExpr referring to `name`, with type
 // parameters instantiated as themselves. Used to produce the synthetic `this`
 // param's declared type when desugaring nested methods.
-func synthRecvTypeExpr(pos ast.Pos, name string, typeParams []string) ast.TypeExpr {
+func synthRecvTypeExpr[T typeParamLike](pos ast.Pos, name string, typeParams []T) ast.TypeExpr {
 	nt := &ast.NamedType{Pos: pos, Name: name}
 	if len(typeParams) > 0 {
 		args := make([]ast.TypeExpr, len(typeParams))
 		for i, tp := range typeParams {
-			args[i] = &ast.NamedType{Pos: pos, Name: tp}
+			args[i] = &ast.NamedType{Pos: pos, Name: tp.ParamName()}
 		}
 		nt.TypeArgs = args
 	}
@@ -167,7 +167,7 @@ func typeKindNoun(d ir.Symbol) string {
 //
 // recvName is the type name (struct/enum/component).
 // typeParams is the receiver type's type parameters (empty for enum/component).
-func (c *checker) registerNestedMethods(recvName string, typeParams []string, nested []*ast.FuncDef) []*ir.Func {
+func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypeParam, nested []*ast.FuncDef) []*ir.Func {
 	out := make([]*ir.Func, 0, len(nested))
 	for _, n := range nested {
 		// Funcs with an explicit method receiver (e.g. `func int.double`
@@ -181,7 +181,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
 				continue
 			}
-			c.pkg.Funcs = append(c.pkg.Funcs, fn)
+			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 			out = append(out, fn)
 			continue
 		}
@@ -213,7 +213,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			Pos:            n.Pos,
 			Name:           recvName + "." + n.Name,
 			TypeParams:     n.TypeParams,
-			RecvTypeParams: append([]string(nil), typeParams...),
+			RecvTypeParams: append([]ast.TypeParam(nil), typeParams...),
 			Params:         newParams,
 			ReturnType:     n.ReturnType,
 			Body:           n.Body,
@@ -233,7 +233,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []string, ne
 			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
 			continue
 		}
-		c.pkg.Funcs = append(c.pkg.Funcs, fn)
+		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		out = append(out, fn)
 	}
 	return out

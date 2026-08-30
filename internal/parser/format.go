@@ -24,6 +24,18 @@ func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	return io.WriteString(w, alignTrailingComments(buf.String(), f.trailing))
 }
 
+// FormatTypeParams formats a parameter list as it is written, defaults
+// included. Empty when there are none, so it appends to a name unconditionally.
+func FormatTypeParams(ps []ast.TypeParam) string {
+	if len(ps) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	f := newFormatter(&buf)
+	f.writeTypeParams(ps)
+	return buf.String()
+}
+
 // FormatExpr formats a single expression.
 func FormatExpr(e ast.Expr) string {
 	var buf strings.Builder
@@ -338,11 +350,7 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	f.write("struct ")
 	if s.Name != "" {
 		f.write(s.Name)
-		if len(s.TypeParams) > 0 {
-			f.write("<")
-			f.write(strings.Join(s.TypeParams, ", "))
-			f.write(">")
-		}
+		f.writeTypeParams(s.TypeParams)
 		f.write(" ")
 	}
 	if len(s.Body) == 0 {
@@ -351,16 +359,17 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	}
 	// Struct fields require semicolons (ASI newlines), so always multiline.
 	f.write("{")
+	body := takeHeaderComment(f, s.Body)
 	f.newline()
 	f.indent++
-	for i := 0; i < len(s.Body); i++ {
-		f.blankBeforeBodyItem(i, bodyItemLine(s.Body[i]))
-		if f.writeBodyComment(s.Body[i]) {
+	for i := 0; i < len(body); i++ {
+		f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+		if f.writeBodyComment(body[i]) {
 			continue
 		}
-		f.writeStructBodyItem(s.Body[i])
-		if i+1 < len(s.Body) {
-			if c, ok := s.Body[i+1].(*ast.Comment); ok && c.Inline {
+		f.writeStructBodyItem(body[i])
+		if i+1 < len(body) {
+			if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
 				f.writeTrailing(c)
 				i++
 			}
@@ -402,6 +411,19 @@ func (f *formatter) blankBeforeBodyItem(i, line int) {
 	if i > 0 && line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
 		f.blankLine()
 	}
+}
+
+// takeHeaderComment writes a comment sitting on the opening brace's line as a
+// trailer on the brace and returns the body without it. It trails the brace,
+// not the first item inside, which is where a body loop would otherwise put it.
+func takeHeaderComment[T any](f *formatter, body []T) []T {
+	if len(body) > 0 {
+		if c, ok := any(body[0]).(*ast.Comment); ok && c.Inline {
+			f.writeTrailing(c)
+			return body[1:]
+		}
+	}
+	return body
 }
 
 // writeBodyComment writes a struct or enum body item that is a comment on a
@@ -454,15 +476,17 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			break
 		}
 	}
+	body := e.Body
 	if e.IsMultiline || hasFuncs {
+		body = takeHeaderComment(f, body)
 		f.newline()
 		f.indent++
-		for i := 0; i < len(e.Body); i++ {
-			f.blankBeforeBodyItem(i, bodyItemLine(e.Body[i]))
-			if f.writeBodyComment(e.Body[i]) {
+		for i := 0; i < len(body); i++ {
+			f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+			if f.writeBodyComment(body[i]) {
 				continue
 			}
-			item := e.Body[i]
+			item := body[i]
 			switch it := item.(type) {
 			case *ast.EnumMember:
 				f.write(it.Name)
@@ -473,8 +497,8 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			case *ast.FuncDef:
 				f.writeFuncDef(it)
 			}
-			if i+1 < len(e.Body) {
-				if c, ok := e.Body[i+1].(*ast.Comment); ok && c.Inline {
+			if i+1 < len(body) {
+				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
 					f.writeTrailing(c)
 					i++
 				}
@@ -515,13 +539,28 @@ func (f *formatter) writeUnitDef(u *ast.UnitDef) {
 	}
 	f.write("{")
 	if u.IsMultiline {
+		body := takeHeaderComment(f, u.Body)
 		f.newline()
 		f.indent++
-		for _, s := range u.Suffixes {
+		for i := 0; i < len(body); i++ {
+			f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
+			if f.writeBodyComment(body[i]) {
+				continue
+			}
+			s, ok := body[i].(*ast.UnitSuffix)
+			if !ok {
+				continue
+			}
 			f.write(s.Name)
 			if s.Factor != nil {
 				f.write(" = ")
 				f.writeExpr(s.Factor)
+			}
+			if i+1 < len(body) {
+				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
+					f.writeTrailing(c)
+					i++
+				}
 			}
 			f.newline()
 		}
@@ -529,7 +568,7 @@ func (f *formatter) writeUnitDef(u *ast.UnitDef) {
 		f.write("}")
 	} else {
 		f.write(" ")
-		for i, s := range u.Suffixes {
+		for i, s := range u.Suffixes() {
 			if i > 0 {
 				f.write(", ")
 			}
@@ -614,24 +653,36 @@ func (f *formatter) writeVarSpec(spec ast.VarSpec) {
 
 // --- func ---
 
+func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
+	if len(ps) == 0 {
+		return
+	}
+	f.write("<")
+	for i, p := range ps {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.write(p.Name)
+		if p.Default != nil {
+			f.write(" = ")
+			f.writeType(p.Default)
+		}
+	}
+	f.write(">")
+}
+
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
 		// recv<T>.method form: Name is "recv.method", split and insert type params.
 		dot := strings.IndexByte(fn.Name, '.')
 		f.write(fn.Name[:dot])
-		f.write("<")
-		f.write(strings.Join(fn.RecvTypeParams, ", "))
-		f.write(">")
+		f.writeTypeParams(fn.RecvTypeParams)
 		f.write(fn.Name[dot:]) // ".method"
 	} else {
 		f.write(fn.Name)
 	}
-	if len(fn.TypeParams) > 0 {
-		f.write("<")
-		f.write(strings.Join(fn.TypeParams, ", "))
-		f.write(">")
-	}
+	f.writeTypeParams(fn.TypeParams)
 	f.writeTargetIndex(fn.Target)
 	f.write("(")
 	f.writeParams(fn.Params)
@@ -799,14 +850,7 @@ func (f *formatter) writeBlock(block *ast.StmtBlock) {
 	f.write("{")
 	stmts := block.Stmts
 	if block.IsMultiline {
-		// A comment on the opening brace's line trails the brace, not the
-		// first statement inside.
-		if len(stmts) > 0 {
-			if c, ok := stmts[0].(*ast.Comment); ok && c.Inline {
-				f.writeTrailing(c)
-				stmts = stmts[1:]
-			}
-		}
+		stmts = takeHeaderComment(f, stmts)
 		f.newline()
 		f.indent++
 		f.formatStmtSeq(stmts)
@@ -991,6 +1035,10 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 				f.writeType(t)
 			}
 			f.write(")")
+		}
+		if v.Type != nil {
+			f.write(" ")
+			f.writeType(v.Type)
 		}
 	}
 }

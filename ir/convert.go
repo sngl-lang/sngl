@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -30,12 +31,23 @@ func ConvertStmt(s Stmt) ast.Stmt {
 	return c.convertStmt(s)
 }
 
-type converter struct{}
+type converter struct {
+	// aliases maps a library package's URI to what this file imported it as,
+	// so a name from one is spelled the way the source spells it.
+	aliases map[string]string
+}
 
 // --- Package → Document ---
 
 func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
+
+	c.aliases = map[string]string{}
+	for _, imp := range pkg.Imports {
+		if uri, ok := strings.CutPrefix(imp.Path, "sngl:"); ok && imp.Alias != "" && imp.Alias != "." {
+			c.aliases[uri] = imp.Alias
+		}
+	}
 
 	for _, imp := range pkg.Imports {
 		// Macro-package imports are injected by the library load, not written
@@ -101,6 +113,11 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	if len(pkg.Outputs) > 0 {
 		stmts = append(stmts, c.convertOutputs(pkg.Outputs))
 	}
+	// The package's own body renders last, after every declaration it reads,
+	// which is the order the source is written in and the order fmt keeps.
+	for _, st := range pkg.Body {
+		stmts = append(stmts, c.convertStmt(st))
+	}
 
 	return &ast.Document{Stmts: stmts}
 }
@@ -118,6 +135,7 @@ func (c *converter) convertImport(imp *Import) *ast.Import {
 func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 	def := &ast.StructDef{
 		Name:        s.Name,
+		TypeParams:  c.convertTypeParams(s.TypeParams),
 		IsMultiline: len(s.Fields) > 1,
 	}
 	for _, f := range s.Fields {
@@ -161,7 +179,7 @@ func (c *converter) convertUnitDef(u *UnitDef) *ast.UnitDef {
 				Raw:  formatFloat(s.Factor),
 			}
 		}
-		def.Suffixes = append(def.Suffixes, us)
+		def.Body = append(def.Body, us)
 	}
 	return def
 }
@@ -198,7 +216,7 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 	}
 	fd := &ast.FuncDef{
 		Name:       name,
-		TypeParams: f.TypeParams,
+		TypeParams: c.convertTypeParams(f.TypeParams),
 		Params:     c.convertParamList(f.Params),
 	}
 	if f.Return != nil {
@@ -235,6 +253,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 		props = append(props, ed)
 	}
+	for _, s := range comp.Slots {
+		sd := ast.SlotDecl{Name: s.Name, Type: c.convertSlotContent(s)}
+		for _, p := range s.Params {
+			sd.Params = append(sd.Params, c.convertType(p))
+		}
+		props = append(props, sd)
+	}
 	if len(props) > 0 {
 		cd.Props = ast.PropList{
 			IsMultiline: len(props) > 3,
@@ -242,8 +267,10 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 	}
 
-	if comp.ChildrenType != nil {
-		cd.ChildrenType = c.convertType(comp.ChildrenType)
+	// The return position is the tree the component is a member of. Its
+	// children type is derived from the default slot, which prints itself.
+	if comp.Tree != nil {
+		cd.ChildrenType = c.treeName(comp.Tree)
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -561,10 +588,103 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		}
 	}
 
-	if len(n.Children) > 0 {
+	if len(n.Children) > 0 || len(n.Slots) > 0 {
 		vn.Block = c.convertStmtBlock(n.Children)
+		vn.Block.Stmts = append(c.convertSlotContents(n), vn.Block.Stmts...)
+		vn.Block.IsMultiline = true
 	}
 	return vn
+}
+
+func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ast.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Default: c.convertType(p.Default)}
+	}
+	return out
+}
+
+// convertSlotContents renders what a call site supplied for each named slot.
+// Sorted, because the IR holds them in a map and a dump has to be stable.
+func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
+	names := make([]string, 0, len(n.Slots))
+	for name := range n.Slots {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]ast.Stmt, 0, len(names))
+	for _, name := range names {
+		sc := n.Slots[name]
+		sn := &ast.SlotNode{Name: name, Block: c.convertStmtBlock(sc.Body)}
+		for _, p := range sc.Params {
+			sn.Args = append(sn.Args, &ast.IdentExpr{Name: p.Name})
+		}
+		out = append(out, sn)
+	}
+	return out
+}
+
+// convertSlotContent is a slot's declared type: the element type, rewrapped in
+// whatever the count was read from.
+func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
+	if s.Content == nil {
+		return nil
+	}
+	sd, _ := s.Content.Decl.(*StructDef)
+	isDefault := sd != nil && sd.Builtin == BuiltinTreeDefault
+	var elem ast.TypeExpr
+	if sd != nil {
+		// A tree is spelled through whatever this file imported its package as;
+		// convertType reads the name off the declaration and loses that.
+		elem = c.treeName(sd)
+	} else {
+		elem = c.convertType(s.Content)
+	}
+	switch s.Card {
+	case SlotOne:
+		nt := &ast.NamedType{Package: c.treePkg(), Name: "one"}
+		// tree.one's own parameter defaults to the default tree, so naming it
+		// would be spelling out what the declaration already says.
+		if !isDefault {
+			nt.TypeArgs = []ast.TypeExpr{elem}
+		}
+		return nt
+	case SlotOptional:
+		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
+	}
+	if isDefault {
+		// A slot naming the default tree accepts what a bare one accepts.
+		return nil
+	}
+	return elem
+}
+
+// treePkg is what this file imported sngl:tree as.
+func (c *converter) treePkg() string { return c.aliasFor("tree") }
+
+// aliasFor is what this file imported a library package as, defaulting to the
+// last segment of its URI — which is the alias an unaliased import binds.
+func (c *converter) aliasFor(uri string) string {
+	if a := c.aliases[uri]; a != "" {
+		return a
+	}
+	if i := strings.LastIndexByte(uri, '/'); i >= 0 {
+		return uri[i+1:]
+	}
+	return uri
+}
+
+// treeName spells a tree the way the file that names it does: qualified when it
+// was declared elsewhere, bare when it was declared here.
+func (c *converter) treeName(sd *StructDef) *ast.NamedType {
+	nt := &ast.NamedType{Name: sd.Name}
+	if sd.Pkg != "" {
+		nt.Package = c.aliasFor(sd.Pkg)
+	}
+	return nt
 }
 
 func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
@@ -573,8 +693,10 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 }
 
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
+	// The default slot's insertion is spelled `slot`, not by its name: `_` is
+	// what the declaration calls it, and the body has the keyword for it.
 	name := s.Name
-	if name == "" {
+	if name == "" || name == DefaultSlot {
 		name = "slot"
 	}
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}
@@ -855,13 +977,25 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
+		// Bare `component` carries no declaration — it is the widest component
+		// type, not an unresolved one, so it has a spelling of its own.
 		name := "dyn" // anonymous/unresolved declaration
-		if t.Decl != nil {
+		switch {
+		case t.Decl != nil:
 			name = t.Decl.SymName()
+		case t.Kind == TypeComponent:
+			name = "component"
 		}
 		nt := &ast.NamedType{Name: name}
 		if t.Package != "" {
 			nt.Package = t.Package
+		}
+		// A parameterized struct holds its bound arguments in Elems, in the
+		// declaration order the spelling wants them back in.
+		if sd, ok := t.Decl.(*StructDef); ok && len(sd.TypeParams) > 0 {
+			for _, e := range t.Elems {
+				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
+			}
 		}
 		return nt
 	case TypeFunc:

@@ -1,6 +1,8 @@
 // Containers. These place their children; what a child looks like is
 // the child's business.
 
+import tr "sngl:tree"
+
 // Vertical box layout container. Children are stacked top to bottom and
 // laid out along the cross axis via `style.alignItems`. Enable `scroll`
 // to make overflow scrollable; set `refreshing` alongside `@refresh`
@@ -11,7 +13,8 @@ component vbox(
     scroll bool,
     refreshing bool,
     @refresh RefreshEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_vbox {
     vbox(style={gap=8, padding=16}) {
@@ -28,7 +31,8 @@ component _example_vbox {
 component hbox(
     style Style,
     scroll bool,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_hbox {
     hbox(style={gap=8, padding=16}) {
@@ -45,7 +49,8 @@ component _example_hbox {
 // placement.
 component stack(
     style Style,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_stack {
     stack {
@@ -68,7 +73,8 @@ component scroll(
     showScrollbar string,
     @scroll ScrollEvent,
     @scrollEnd ScrollEvent,
-) component {}
+    slot _ tr.one,
+) {}
 
 component _example_scroll {
     scroll(direction="vertical", style={height=120}) {
@@ -134,7 +140,8 @@ component splitview(
     maxPosition float,
     resizable bool,
     @resize ResizeEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_splitview {
     splitview(direction="horizontal", style={height=120}) {
@@ -156,7 +163,8 @@ component card(
     variant string,
     clickable bool,
     @click ClickEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_card {
     hbox(style={gap=16, padding=16}) {

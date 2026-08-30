@@ -1,0 +1,36 @@
+// The default slot is declared in the parameter list too, under the name `_`.
+// A component's whole contract is then the one list: props, events, and slots,
+// with nothing to distinguish the default one but its name.
+//
+// It takes no invocation parameters, because the caller fills it with ordinary
+// children and there is no population site to bind anything at.
+
+import . "sngl:ui"
+
+component card(caption string, slot _) {
+    vbox {
+        text(value=caption)
+        slot
+    }
+}
+
+component panel(slot _, slot header) {
+    vbox {
+        header {
+            text(value="(untitled)")
+        }
+        slot
+    }
+}
+
+component main {
+    card(caption="hi") {
+        text(value="child")
+    }
+    panel() {
+        slot header {
+            text(value="Head")
+        }
+        text(value="body")
+    }
+}

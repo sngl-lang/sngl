@@ -13,7 +13,7 @@ var passCanvas = pass{
 }
 
 func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
-	if !pkg.UsesTree("shape") {
+	if !pkg.UsesDrawShapes() {
 		return nil
 	}
 	var counter int
@@ -65,8 +65,30 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 // draws it, so only the outermost host becomes a draw function.
 func isShapeContainer(ni *ir.NodeInst) bool {
 	return ni.Component != nil &&
-		ni.Component.ChildKind == "shape" &&
-		ni.Component.TreeKind == ""
+		ni.Component.Tree == nil &&
+		ir.IsDrawShapeTree(treeHosted(ni.Component))
+}
+
+// treeHosted is the segmented tree a component's default slot accepts, or nil.
+// A canvas hosts shapes; a rect, being one, hosts its own and is not a
+// container.
+func treeHosted(comp *ir.Component) *ir.StructDef {
+	for _, s := range comp.Slots {
+		if s.Name != ir.DefaultSlot || s.Content == nil || s.Content.Kind != ir.TypeStruct {
+			continue
+		}
+		if sd, ok := s.Content.Decl.(*ir.StructDef); ok && sd.IsTree {
+			return sd
+		}
+	}
+	return nil
+}
+
+// hostsTree reports whether a component's default slot accepts a segmented
+// tree, which is what makes it a rendered position rather than a wrapper the
+// inliner may compose away.
+func hostsTree(comp *ir.Component) bool {
+	return treeHosted(comp) != nil
 }
 
 // buildDrawFunc generates a draw function for a set of shape children.

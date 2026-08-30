@@ -6,7 +6,7 @@
 // these off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
 // primitive lowers to lipgloss / bubbles model code.
 
-import sngl "sngl:ui"
+import ui "sngl:ui"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -73,17 +73,18 @@ struct Event {
 #[intrinsic("bubbletea:Layout")]
 component Layout(
     join JoinDir,
-    style sngl.Style,
+    style ui.Style,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip string,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("bubbletea:Styled")]
 component Styled(
     content string,
     focus Focus,
     events list<Event>,
-    style sngl.Style,
+    style ui.Style,
 ) {}
 
 #[intrinsic("bubbletea:Widget")]
@@ -92,7 +93,7 @@ component Widget(
     focus Focus,
     binds list<Bind>,
     placeholder string,
-    style sngl.Style,
+    style ui.Style,
 
     // Operands for the `$\{name\}` tokens in this widget's Model strings. A
     // token names one of these props, so the set grows with the templates
@@ -109,34 +110,35 @@ component Widget(
 component Overlay(
     placement string,
     dim bool,
-    style sngl.Style,
-) list<component> {}
+    style ui.Style,
+    slot _,
+) {}
 
 // --- Core Layout ---
 
-component sngl.vbox[bubbletea.platform] {
+component ui.vbox[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
 }
 
-component sngl.hbox[bubbletea.platform] {
+component ui.hbox[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         slot
     }
 }
 
-component sngl.stack[bubbletea.platform] {
+component ui.stack[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
 }
 
-component sngl.spacer[bubbletea.platform] {
+component ui.spacer[platform] {
     Styled(content="", style={...style}) {}
 }
 
-component sngl.scroll[bubbletea.platform] {
+component ui.scroll[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
@@ -144,11 +146,11 @@ component sngl.scroll[bubbletea.platform] {
 
 // --- Core Text & Media ---
 
-component sngl.text[bubbletea.platform] {
+component ui.text[platform] {
     Styled(content=value, style={...style}) {}
 }
 
-component sngl.button[bubbletea.platform] {
+component ui.button[platform] {
     Styled(
         content=text,
         focus=Focus{enabled=true},
@@ -157,11 +159,11 @@ component sngl.button[bubbletea.platform] {
     ) {}
 }
 
-component sngl.image[bubbletea.platform] {
+component ui.image[platform] {
     Styled(content="[image]", style={...style}) {}
 }
 
-component sngl.input[bubbletea.platform] {
+component ui.input[platform] {
     Widget(
         model=Model{
             type = "textinput.Model",
@@ -179,7 +181,7 @@ component sngl.input[bubbletea.platform] {
     ) {}
 }
 
-component sngl.checkbox[bubbletea.platform] {
+component ui.checkbox[platform] {
     Styled(
         content=label,
         focus=Focus{enabled=true},
@@ -190,13 +192,13 @@ component sngl.checkbox[bubbletea.platform] {
 
 // --- Tier 1: Core Input ---
 
-component sngl.radio[bubbletea.platform] {
+component ui.radio[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
 }
 
-component sngl.toggle[bubbletea.platform] {
+component ui.toggle[platform] {
     Styled(
         content=label,
         focus=Focus{enabled=true},
@@ -205,7 +207,7 @@ component sngl.toggle[bubbletea.platform] {
     ) {}
 }
 
-component sngl.select[bubbletea.platform] {
+component ui.select[platform] {
     Widget(
         model=Model{
             type = "list.Model",
@@ -222,7 +224,7 @@ component sngl.select[bubbletea.platform] {
     ) {}
 }
 
-component sngl.textarea[bubbletea.platform] {
+component ui.textarea[platform] {
     Widget(
         model=Model{
             type = "textarea.Model",
@@ -238,13 +240,13 @@ component sngl.textarea[bubbletea.platform] {
     ) {}
 }
 
-component sngl.datepicker[bubbletea.platform] {
+component ui.datepicker[platform] {
     Styled(content=string(value), style={...style}) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-component sngl.progress[bubbletea.platform] {
+component ui.progress[platform] {
     Widget(
         model=Model{
             type = "progress.Model",
@@ -259,7 +261,7 @@ component sngl.progress[bubbletea.platform] {
     ) {}
 }
 
-component sngl.spinner[bubbletea.platform] {
+component ui.spinner[platform] {
     Widget(
         model=Model{
             type = "spinner.Model",
@@ -273,21 +275,21 @@ component sngl.spinner[bubbletea.platform] {
     ) {}
 }
 
-component sngl.badge[bubbletea.platform] {
+component ui.badge[platform] {
     Styled(content=value, style={...style}) {}
 }
 
-component sngl.divider[bubbletea.platform] {
+component ui.divider[platform] {
     Styled(content="─", style={...style}) {}
 }
 
-component sngl.card[bubbletea.platform] {
+component ui.card[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
 }
 
-component sngl.chip[bubbletea.platform] {
+component ui.chip[platform] {
     Styled(
         content=label,
         focus=Focus{enabled=true},
@@ -296,17 +298,17 @@ component sngl.chip[bubbletea.platform] {
     ) {}
 }
 
-component sngl.link[bubbletea.platform] {
+component ui.link[platform] {
     Styled(content=text, style={...style}) {}
 }
 
-component sngl.tabs[bubbletea.platform] {
+component ui.tabs[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         slot
     }
 }
 
-component sngl.modal[bubbletea.platform] {
+component ui.modal[platform] {
     if open {
         Overlay(placement="center", dim=true, style={...style}) {
             slot
@@ -314,7 +316,7 @@ component sngl.modal[bubbletea.platform] {
     }
 }
 
-component sngl.drawer[bubbletea.platform] {
+component ui.drawer[platform] {
     if open {
         Overlay(placement=side, dim=true, style={...style}) {
             slot
@@ -322,7 +324,7 @@ component sngl.drawer[bubbletea.platform] {
     }
 }
 
-component sngl.tooltip[bubbletea.platform] {
+component ui.tooltip[platform] {
     // Render the trigger child, then reveal `text` (dim, below) only while
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
@@ -332,19 +334,19 @@ component sngl.tooltip[bubbletea.platform] {
     }
 }
 
-component sngl.popover[bubbletea.platform] {
+component ui.popover[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
         slot
     }
 }
 
-component sngl.splitview[bubbletea.platform] {
+component ui.splitview[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         slot
     }
 }
 
-component sngl.table[bubbletea.platform] {
+component ui.table[platform] {
     Widget(
         model=Model{
             type = "table.Model",
@@ -362,7 +364,7 @@ component sngl.table[bubbletea.platform] {
     ) {}
 }
 
-component sngl.tree[bubbletea.platform] {
+component ui.tree[platform] {
     Widget(
         model=Model{
             type = "list.Model",
@@ -379,7 +381,7 @@ component sngl.tree[bubbletea.platform] {
     ) {}
 }
 
-component sngl.menu[bubbletea.platform] {
+component ui.menu[platform] {
     if open {
         // menu surfaces selection via @select only — its stdlib signature
         // has no `selected` prop, so there's no two-way selection var to
@@ -400,18 +402,18 @@ component sngl.menu[bubbletea.platform] {
     }
 }
 
-component sngl.menubar[bubbletea.platform] {
+component ui.menubar[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         slot
     }
 }
 
-component sngl.toolbar[bubbletea.platform] {
+component ui.toolbar[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         slot
     }
 }
 
-component sngl.avatar[bubbletea.platform] {
+component ui.avatar[platform] {
     Styled(content=initials, style={...style}) {}
 }

@@ -42,7 +42,7 @@ func CheckNativeValue(e ast.Expr, want *ir.Type, types ir.NativeDecls) (ir.Expr,
 	// per program, and nothing in an encoded value can leave state behind that
 	// the next one would see.
 	if nativeValueChecker == nil {
-		nativeValueChecker = newChecker([]*ast.Document{{}}, &Config{})
+		nativeValueChecker = newChecker(nil, &Config{})
 		nativeValueChecker.nativeValues = true
 	}
 	c := nativeValueChecker

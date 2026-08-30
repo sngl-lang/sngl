@@ -357,7 +357,7 @@ func literalValueString(e ast.Expr) string {
 func formatUnitHover(u *ast.UnitDef, doc *ast.Document) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nunit %s {\n", u.Name)
-	for _, sfx := range u.Suffixes {
+	for _, sfx := range u.Suffixes() {
 		sb.WriteString("    ")
 		sb.WriteString(sfx.Name)
 		if sfx.Factor != nil {

@@ -31,7 +31,7 @@ func TestStdlibListHasTypeParam(t *testing.T) {
 
 	// Verify that the stdlib AST decl for list has TypeParams.
 	listDecl := findStdlibStruct(t, "list")
-	if len(listDecl.TypeParams) != 1 || listDecl.TypeParams[0] != "T" {
+	if len(listDecl.TypeParams) != 1 || listDecl.TypeParams[0].Name != "T" {
 		t.Errorf("stdlib list TypeParams = %v, want [T]", listDecl.TypeParams)
 	}
 }
@@ -48,7 +48,7 @@ func TestStdlibMapHasTypeParams(t *testing.T) {
 	noErrors(t, diags)
 
 	mapDecl := findStdlibStruct(t, "map")
-	if len(mapDecl.TypeParams) != 2 || mapDecl.TypeParams[0] != "K" || mapDecl.TypeParams[1] != "V" {
+	if len(mapDecl.TypeParams) != 2 || mapDecl.TypeParams[0].Name != "K" || mapDecl.TypeParams[1].Name != "V" {
 		t.Errorf("stdlib map TypeParams = %v, want [K V]", mapDecl.TypeParams)
 	}
 }

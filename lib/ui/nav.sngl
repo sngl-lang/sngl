@@ -33,7 +33,8 @@ component tabs(
     selected int,
     variant string,
     @change SelectEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_tabs {
     var selected = 0
@@ -90,7 +91,8 @@ component toolbar(
     style Style,
     items list<string>,
     @select MenuEvent,
-) list<component> {}
+    slot _,
+) {}
 
 component _example_toolbar {
     vbox(style={padding=16}) {

@@ -215,7 +215,7 @@ func TestParseFuncMethod(t *testing.T) {
 func TestParseFuncGeneric(t *testing.T) {
 	doc := mustParse(t, `func identity<T>(x T) => x`)
 	fd := doc.Stmts[0].(*ast.FuncDef)
-	if len(fd.TypeParams) != 1 || fd.TypeParams[0] != "T" {
+	if len(fd.TypeParams) != 1 || fd.TypeParams[0].Name != "T" {
 		t.Errorf("expected type param T, got %v", fd.TypeParams)
 	}
 }
@@ -619,8 +619,8 @@ func TestParseUnitDecl(t *testing.T) {
 	if ud.Name != "Length" {
 		t.Errorf("expected Length, got %q", ud.Name)
 	}
-	if len(ud.Suffixes) != 3 {
-		t.Errorf("expected 3 suffixes, got %d", len(ud.Suffixes))
+	if len(ud.Suffixes()) != 3 {
+		t.Errorf("expected 3 suffixes, got %d", len(ud.Suffixes()))
 	}
 }
 
@@ -714,7 +714,7 @@ func TestParseGenericStruct(t *testing.T) {
 	if s.Name != "list" {
 		t.Errorf("Name = %q, want list", s.Name)
 	}
-	if len(s.TypeParams) != 1 || s.TypeParams[0] != "T" {
+	if len(s.TypeParams) != 1 || s.TypeParams[0].Name != "T" {
 		t.Errorf("TypeParams = %v, want [T]", s.TypeParams)
 	}
 }
@@ -726,7 +726,7 @@ func TestParseGenericStructTwoParams(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	s := doc.Stmts[0].(*ast.StructDef)
-	if len(s.TypeParams) != 2 || s.TypeParams[0] != "K" || s.TypeParams[1] != "V" {
+	if len(s.TypeParams) != 2 || s.TypeParams[0].Name != "K" || s.TypeParams[1].Name != "V" {
 		t.Errorf("TypeParams = %v, want [K V]", s.TypeParams)
 	}
 }
@@ -763,7 +763,7 @@ func TestParseGenericReceiverMethod(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := firstFuncDef(t, doc)
-	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0].Name != "T" {
 		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
 	}
 	if len(fn.TypeParams) != 0 {
@@ -778,7 +778,7 @@ func TestParseGenericReceiverWithTwoParams(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := firstFuncDef(t, doc)
-	if len(fn.RecvTypeParams) != 2 || fn.RecvTypeParams[0] != "K" || fn.RecvTypeParams[1] != "V" {
+	if len(fn.RecvTypeParams) != 2 || fn.RecvTypeParams[0].Name != "K" || fn.RecvTypeParams[1].Name != "V" {
 		t.Errorf("RecvTypeParams = %v, want [K V]", fn.RecvTypeParams)
 	}
 }
@@ -802,7 +802,7 @@ func TestParseGenericFunctionStillWorks(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	fn := doc.Stmts[0].(*ast.FuncDef)
-	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "T" {
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0].Name != "T" {
 		t.Errorf("TypeParams = %v, want [T]", fn.TypeParams)
 	}
 	if len(fn.RecvTypeParams) != 0 {
@@ -826,10 +826,10 @@ func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
 	if fn == nil {
 		t.Fatal("no FuncDef")
 	}
-	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0] != "T" {
+	if len(fn.RecvTypeParams) != 1 || fn.RecvTypeParams[0].Name != "T" {
 		t.Errorf("RecvTypeParams = %v, want [T]", fn.RecvTypeParams)
 	}
-	if len(fn.TypeParams) != 1 || fn.TypeParams[0] != "U" {
+	if len(fn.TypeParams) != 1 || fn.TypeParams[0].Name != "U" {
 		t.Errorf("TypeParams = %v, want [U]", fn.TypeParams)
 	}
 }

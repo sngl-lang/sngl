@@ -140,10 +140,7 @@ func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 	info := &irAnalysis{
@@ -165,25 +162,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// Inlining folded every non-main component into main, so iterating every
 	// component's vars would re-add the originals and collide their
 	// synthesized __root/__slot scratch fields.
-	type taggedVar struct {
-		v    *ir.Var
-		comp *ir.Component
-	}
-	main := ctx.MainComponent()
-	var allVars []taggedVar
-	for _, v := range pkg.Vars {
-		allVars = append(allVars, taggedVar{v: v})
-	}
-	for _, c := range pkg.Consts {
-		allVars = append(allVars, taggedVar{v: c})
-	}
-	if main != nil {
-		for _, v := range main.Vars {
-			allVars = append(allVars, taggedVar{v: v, comp: main})
-		}
-	}
-	for _, tv := range allVars {
-		v := tv.v
+	for _, tv := range ctx.ModelState() {
+		v := tv.Var
 		if v.Synthesized {
 			if v.Name == "__root" {
 				// The __root sentinel is initialized lazily inside BuildUI:
@@ -200,8 +180,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// type, not the slot-var []*C.GtkWidget fallback below.
 			if strings.HasPrefix(v.Name, "__ctx_") {
 				ctxGC := gc
-				if tv.comp != nil {
-					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+				if tv.Comp != nil {
+					ctxGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 				}
 				ctxGoType := golang.VarGoType(v)
 				if strings.HasPrefix(ctxGoType, "time.") {
@@ -225,8 +205,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		varGC := gc
-		if tv.comp != nil {
-			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.comp))
+		if tv.Comp != nil {
+			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 		}
 		goType := golang.VarGoType(v)
 		initVal := irVarInit(v, varGC)
@@ -284,10 +264,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
 	c.shared = &emitShared{}
-	exprCtx := c.ctx.ExprCtx
-	if main := c.ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 

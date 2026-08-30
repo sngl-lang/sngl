@@ -39,7 +39,7 @@ grep 'from widgets' shadowout/index.html
 import s "sngl:ui"
 import app "sngl:app"
 
-component Card() list<component> {
+component Card(slot _) {
     s.vbox {
         slot
     }
@@ -57,7 +57,7 @@ output { none { html } }
 -- qualslot.sngl --
 import s "sngl:ui"
 
-component Card() list<component> {
+component Card(slot _) {
     s.vbox {
         s.slot
     }

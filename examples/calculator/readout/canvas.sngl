@@ -24,16 +24,14 @@ const BACKING = color{r=10, g=26, b=24, a=255}
 
 // A segment. `on` picks the ink rather than deciding whether to paint: an
 // unlit segment is still there.
-#[draw.shape]
-component Bar(on = false, x = 0.0, y = 0.0, w = 0.0, h = 0.0) {
+component Bar(on = false, x = 0.0, y = 0.0, w = 0.0, h = 0.0) draw.shape {
     draw.rect(x=x, y=y, w=w, h=h, style=draw.CanvasStyle{fill=on ? LIT : DARK})
 }
 
 // One cell, with its top-left corner at x, y. The verticals stop short of the
 // horizontals by a segment's thickness, which is the gap a real display has
 // between them.
-#[draw.shape]
-component Cell(glyph Glyph, x = 0.0, y = 0.0) {
+component Cell(glyph Glyph, x = 0.0, y = 0.0) draw.shape {
     Bar(on=glyph.a, x=x + THICK, y=y, w=CELL_W - 2 * THICK, h=THICK)
     Bar(on=glyph.g, x=x + THICK, y=y + (CELL_H - THICK) / 2, w=CELL_W - 2 * THICK, h=THICK)
     Bar(on=glyph.d, x=x + THICK, y=y + CELL_H - THICK, w=CELL_W - 2 * THICK, h=THICK)

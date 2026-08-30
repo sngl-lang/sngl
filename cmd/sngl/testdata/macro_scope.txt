@@ -2,10 +2,13 @@
 # the same as any other qualified or dot-imported name. Nothing else covered
 # this, so both halves could be reverted to the old ambient lookup with a green
 # suite.
+#
+# `tree.kind` is the macro under test — sngl:ui/draw declares none now that
+# membership is the return position.
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
-stderr 'unknown macro package "draw": import it with import "sngl:ui/draw"'
+stderr 'unknown macro package "tree": import it with import "sngl:tree"'
 
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
@@ -15,8 +18,7 @@ stdout 'qualified.sngl: ok'
 stderr 'unknown macro "builtin": no dot-imported package declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
-# sngl:ui/draw brings both the shape components and the mark that declares new
-# ones. Nothing collides: the canvas components live in draw, not std.
+# sngl:tree brings both the default tree and the mark that declares new ones.
 sngl check with_std.sngl
 stdout 'with_std.sngl: ok'
 
@@ -26,18 +28,18 @@ stdout 'aliased.sngl: ok'
 
 # A macro exists because a package declares it, so a mark naming one the
 # package does not declare says exactly that. sngl:i18n declares no macros at
-# all; std, which does, is one import line away.
+# all; tree, which does, is one import line away.
 ! sngl check no_macros.sngl
-stderr 'unknown macro "shape": package "sngl:i18n" declares none of that name'
+stderr 'unknown macro "kind": package "sngl:i18n" declares none of that name'
 
 -- no_import.sngl --
-#[draw.shape]
-component blob(x float, y float) {}
+#[tree.kind]
+struct block {}
 -- qualified.sngl --
-import "sngl:ui/draw"
+import "sngl:tree"
 
-#[draw.shape]
-component blob(x float, y float) {}
+#[tree.kind]
+struct block {}
 -- bare_builtin.sngl --
 #[builtin("int")]
 struct Fake {
@@ -45,30 +47,36 @@ struct Fake {
 }
 -- with_std.sngl --
 import . "sngl:ui"
-import "sngl:ui/draw"
+import tr "sngl:tree"
 
-#[draw.shape]
-component blob(x float, y float) {}
+#[tr.kind]
+struct block {}
+
+component para(slot _ block) {}
+component bold(weight int) block {}
 
 component main {
-    draw.canvas(width=100px, height=100px) {
-        blob(x=1.0, y=2.0)
+    para() {
+        bold(weight=700)
     }
 }
 -- aliased.sngl --
 import . "sngl:ui"
-import d "sngl:ui/draw"
+import whatever "sngl:tree"
 
-#[d.shape]
-component blob(x float, y float) {}
+#[whatever.kind]
+struct block {}
+
+component para(slot _ block) {}
+component bold(weight int) block {}
 
 component main {
-    d.canvas(width=100px, height=100px) {
-        blob(x=1.0, y=2.0)
+    para() {
+        bold(weight=700)
     }
 }
 -- no_macros.sngl --
 import b "sngl:i18n"
 
-#[b.shape]
-component blob(x float, y float) {}
+#[b.kind]
+struct block {}

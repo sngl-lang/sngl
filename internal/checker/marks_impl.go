@@ -16,12 +16,11 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"internal/tree", "kind"}:       markTreeKind,
-	{"internal/tree", "children"}:   markTreeChildren,
+	{"tree", "kind"}:                markTreeKind,
 	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "foreign"}:            markForeign,
-	{"ui/draw", "shape"}:            markShape,
+	{"macro", "identity"}:           markIdentity,
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
@@ -243,79 +242,15 @@ func markOptions(m *mark) error {
 }
 
 func markTreeKind(m *mark) error {
-	return applyTreeMark(m, "kind", m.args.String("name"), setTreeKind)
-}
-
-// A component is a node of one tree, so a second kind would make it two.
-func setTreeKind(c *ir.Component, name string) error {
-	if c.TreeKind != "" {
-		return fmt.Errorf("already a %q node", c.TreeKind)
-	}
-	c.TreeKind = name
-	return nil
-}
-
-func markTreeChildren(m *mark) error {
-	kind := m.args.String("name")
-	// A named slot hosts a tree the same way a component's children do: the
-	// mark says which family the caller's content must belong to. #[tree.kind]
-	// has no slot form -- kind says what a node *is*, and a slot is a position
-	// rather than a node.
-	if slot, ok := m.sym.(*ir.SlotDecl); ok {
-		if kind == "" {
-			return fmt.Errorf("#[tree.children] requires a non-empty tree name")
-		}
-		if slot.ChildKind != "" {
-			return fmt.Errorf("#[tree.children(%q)]: slot content is already restricted to %q", kind, slot.ChildKind)
-		}
-		slot.ChildKind = kind
-		return nil
-	}
-	return applyTreeMark(m, "children", kind, func(c *ir.Component, name string) error {
-		if c.ChildKind != "" {
-			return fmt.Errorf("children are already restricted to %q", c.ChildKind)
-		}
-		c.ChildKind = name
-		return nil
-	})
-}
-
-func applyTreeMark(m *mark, name, kind string, set func(*ir.Component, string) error) error {
-	if kind == "" {
-		return fmt.Errorf("#[tree.%s] requires a non-empty tree name", name)
-	}
-	comp, ok := m.sym.(*ir.Component)
+	sd, ok := m.sym.(*ir.StructDef)
 	if !ok {
-		return fmt.Errorf("#[tree.%s(%q)] cannot mark %s; only a component is a node in a tree", name, kind, ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[tree.kind] cannot mark %s; a tree is named by a struct", ast.DeclFormName(m.decl))
 	}
-	if err := set(comp, kind); err != nil {
-		return fmt.Errorf("#[tree.%s(%q)]: %w", name, kind, err)
+	if decl, ok := m.decl.(*ast.StructDef); ok && len(decl.Body) > 0 {
+		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
 	}
+	sd.IsTree = true
 	return nil
-}
-
-// shapeKind is the tree sngl:ui/draw's components form. #[draw.shape] is the
-// public spelling of #[tree.kind("shape")]: the tree marks are internal to the
-// compiler, so a user declaring a shape reaches them only through this one.
-const shapeKind = "shape"
-
-func markShape(m *mark) error {
-	decl, ok := m.decl.(*ast.ComponentDecl)
-	if !ok {
-		return fmt.Errorf("#[draw.shape] requires a component declaration")
-	}
-	// A painted shape has nothing to raise an event from. This is a rule about
-	// drawing rather than about trees, so it is enforced here and not by the
-	// tree marks.
-	for _, p := range decl.Props.Props {
-		if _, isEvent := p.(ast.EventDecl); isEvent {
-			return fmt.Errorf("shape components do not support event declarations")
-		}
-	}
-	if decl.ChildrenType != nil {
-		return fmt.Errorf("shape components may only have shape children; remove the children type")
-	}
-	return applyTreeMark(m, "kind", shapeKind, setTreeKind)
 }
 
 // markWildcard implements #[macro.wildcard("pattern")], which says what a
@@ -404,4 +339,62 @@ func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
 		return
 	}
 	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+}
+
+// markIdentity implements #[identity], which names the const carrying a
+// target's own identity.
+//
+// The const is named for the type it has -- `platform`, `language` -- so it
+// cannot annotate itself: the annotation would resolve to the const being
+// declared rather than to the builtin struct it shadows. The mark supplies the
+// type instead, choosing it by that name, and retypes the literal with it so
+// the value compares equal to nothing but another identity of the same kind.
+func markIdentity(m *mark) error {
+	v, ok := m.sym.(*ir.Var)
+	if !ok || !v.IsConst {
+		return fmt.Errorf("#[identity] cannot mark %s; only a const carries a target identity", ast.DeclFormName(m.decl))
+	}
+	var typ *ir.StructDef
+	switch v.Name {
+	case "platform":
+		typ = m.c.platformType
+	case "language":
+		typ = m.c.languageType
+	default:
+		return fmt.Errorf("#[identity] on %q: a target identity is named for its type, `platform` or `language`", v.Name)
+	}
+	if typ == nil {
+		return fmt.Errorf("#[identity]: sngl:builtin declares no %q type", v.Name)
+	}
+	// Read the value from the source rather than the IR: a const's initialiser
+	// is checked in a deferred pass, so at mark time there is nothing on the
+	// var yet. Supplying both halves here is also what takes this const out of
+	// that pass, which would otherwise check a string against a target type.
+	decl, ok := m.decl.(*ast.ConstDecl)
+	if !ok {
+		return fmt.Errorf("#[identity] cannot mark %s", ast.DeclFormName(m.decl))
+	}
+	name, ok := identityLiteral(decl, v.Name)
+	if !ok {
+		return fmt.Errorf("#[identity] on %q: the value is the target's name, written as a string literal", v.Name)
+	}
+	v.Type = typ.SymType()
+	v.Init = &ir.Literal{Type: typ.SymType(), Value: name}
+	v.Synthesized = true
+	return nil
+}
+
+// identityLiteral is the string a const declaration gives the named const.
+func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
+	for _, spec := range decl.Specs {
+		if !slices.Contains(spec.Names, name) {
+			continue
+		}
+		lit, ok := spec.Default.(*ast.LiteralExpr)
+		if !ok {
+			return "", false
+		}
+		return lit.StringValue()
+	}
+	return "", false
 }

@@ -63,6 +63,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		codegen.SetOptionField(req.Options, "package", "main")
 	}
 
+	// fyne has no errorBoundary emitter. Left to travel on, the boundary
+	// reaches the Go renderer, which panics on a statement kind no platform
+	// was meant to hand it.
+	if err := codegen.FirstUnimplementedNode(req.Pkg, "fyne", "errorBoundary"); err != nil {
+		return err
+	}
+
 	c := &compilation{}
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {

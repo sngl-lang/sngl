@@ -8,13 +8,13 @@ component NavItem(href = "", text = "", active = false) {
         }
     } else {
         link(text=text, href=href, style={
-            fontWeight=active ? "bold" : "normal",
-            padding="4px 8px"
+            fontWeight = active ? "bold" : "normal",
+            padding = "4px 8px",
         })
     }
 }
 
-component NavGroup(title = "", href = "") list<component> {
+component NavGroup(title = "", href = "", slot _) {
     if PLATFORM == html.platform {
         html.li {
             html.a(href=href, class="nav-group-title", innerText=title)

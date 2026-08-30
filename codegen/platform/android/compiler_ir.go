@@ -259,13 +259,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		CommonAnalysis: ctx.Analysis,
 	}
 
-	pkg := ctx.Pkg
-
-	allVars := pkg.Vars
-	if main := ctx.MainComponent(); main != nil {
-		allVars = append(allVars, main.Vars...)
-	}
-	for _, v := range allVars {
+	for _, ov := range ctx.ModelState() {
+		v := ov.Var
 		if v.IsConst {
 			continue
 		}
@@ -309,10 +304,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 }
 
 func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) []byte {
-	exprCtx := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		exprCtx = exprCtx.ForComponent(main)
-	}
+	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
 
 	// Collect the non-computed, non-GoLib user funcs we'll emit as

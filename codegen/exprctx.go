@@ -29,10 +29,15 @@ const (
 // It wraps the checker's Package and is the sole translation context.
 type ExprCtx struct {
 	Pkg       *ir.Package
-	Component *ir.Component     // current component (nil for top-level)
-	Locals    map[string]bool   // for-loop vars, lambda params
-	Renames   map[string]string // original → unique name (component inlining)
-	EventVar  string            // what the handler's event parameter maps to (e.g., "e.target")
+	Component *ir.Component // current component (nil for top-level)
+	// Window is the window whose body is being translated, if any. A window
+	// declares state the way a component does, and it nests: a `window`
+	// written inside a component sees that component's declarations too, so
+	// this is an inner scope beside Component rather than a replacement.
+	Window   *ir.Window
+	Locals   map[string]bool   // for-loop vars, lambda params
+	Renames  map[string]string // original → unique name (component inlining)
+	EventVar string            // what the handler's event parameter maps to (e.g., "e.target")
 	// EventParam is the handler parameter EventVar stands for. `event` was an
 	// ambient name once and is a declared parameter now, so the substitution
 	// is by declaration: a handler may call its parameter whatever it likes,
@@ -94,6 +99,17 @@ func NewExprCtx(pkg *ir.Package) *ExprCtx {
 func (ctx *ExprCtx) ForComponent(comp *ir.Component) *ExprCtx {
 	c := ctx.Clone()
 	c.Component = comp
+	c.Window = nil
+	return c
+}
+
+// ForWindow returns a new ExprCtx with win as the innermost scope. Any
+// component scope is kept: a `window` written inside a component reads that
+// component's vars, and dropping them made every one of those reads render as
+// a bare identifier.
+func (ctx *ExprCtx) ForWindow(win *ir.Window) *ExprCtx {
+	c := ctx.Clone()
+	c.Window = win
 	return c
 }
 
@@ -105,6 +121,30 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	}
 	if _, ok := ctx.Renames[name]; ok {
 		return nil, NameLocal
+	}
+
+	// Window-scoped declarations. A window's state is its own, the way a
+	// component's is: passHoistState puts it in Window.Vars so that a read of
+	// it resolves here rather than falling through to package scope and out
+	// the bottom as an unknown name -- which is what made it render as a bare
+	// identifier no target had declared.
+	if ctx.Window != nil {
+		for _, v := range ctx.Window.Vars {
+			if v.Name == name {
+				if v.IsConst {
+					return v, NameConst
+				}
+				return v, NameStateVar
+			}
+		}
+		for _, f := range ctx.Window.Funcs {
+			if f.Name == name {
+				if IsComputed(f) {
+					return f, NameComputed
+				}
+				return f, NameFunc
+			}
+		}
 	}
 
 	// Component-scoped declarations.
@@ -193,6 +233,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 	return &ExprCtx{
 		Pkg:           ctx.Pkg,
 		Component:     ctx.Component,
+		Window:        ctx.Window,
 		Locals:        maps.Clone(ctx.Locals),
 		Renames:       maps.Clone(ctx.Renames),
 		EventVar:      ctx.EventVar,

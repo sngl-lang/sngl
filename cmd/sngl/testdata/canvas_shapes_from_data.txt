@@ -48,15 +48,13 @@ import draw "sngl:ui/draw"
 import "sngl:platform/bubbletea"
 
 // An aliased import: the shapes are named draw.rect, not rect.
-#[draw.shape]
-component Bar(on = false, x = 0.0) {
+component Bar(on = false, x = 0.0) draw.shape {
     draw.rect(x=x, y=0.0, w=6.0, h=6.0, style=draw.CanvasStyle{fill=on ? #ff0000 : #003300})
 }
 
 // A shape made of shapes. It is not inlined away, so the canvas emitter has to
 // expand it where it stands.
-#[draw.shape]
-component Cell(on = false, x = 0.0) {
+component Cell(on = false, x = 0.0) draw.shape {
     Bar(on=on, x=x)
     Bar(on=on, x=x + 8.0)
     Bar(on=on, x=x + 16.0)

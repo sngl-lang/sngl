@@ -51,13 +51,24 @@ type Package struct {
 	Contexts []*Context
 	Symbols  *SymbolTable
 
-	// TreeKinds records the segmented trees (see Component.TreeKind) whose
-	// nodes this package declares or imports. The lowering pass for a tree
-	// gates on it: an import of sngl:ui/draw is neither necessary (a package
-	// may declare its own shapes) nor sufficient (inlining flattens a canvas
-	// out of the package that imported it), so the declarations are the only
-	// honest signal.
-	TreeKinds map[string]bool `json:",omitempty"`
+	// Body is what the package itself renders: visual nodes written at the top
+	// level, outside any component or window. The package is then a state
+	// owner like the other two -- Vars is the state this body reads, the way
+	// Component.Vars is for Component.Body.
+	//
+	// Nothing fills it yet. It exists so the owners are three of a kind before
+	// the syntax that populates it lands, because every consumer that asks
+	// "which declarations own state" has to be able to name the package
+	// without a special case (#135).
+	Body []Stmt `json:",omitempty"`
+
+	// TreeKinds records the segmented trees whose members
+	// this package declares or imports. The lowering pass for a tree gates on
+	// it: an import of sngl:ui/draw is neither necessary (a package may declare
+	// its own shapes) nor sufficient (inlining flattens a canvas out of the
+	// package that imported it), so the declarations are the only honest
+	// signal.
+	TreeKinds map[*StructDef]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -119,23 +130,52 @@ func (p *Package) IsMain() bool {
 	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
 }
 
-// UsesTree reports whether any component of the named segmented tree reaches
-// this package. See Package.TreeKinds.
-func (p *Package) UsesTree(kind string) bool {
-	return p != nil && p.TreeKinds[kind]
+// UsesTree reports whether a member of the tree that pkg declares as name
+// reaches this package. Matched on the declaring package as well as the name,
+// because a tree is its declaration: a program's own `struct shape` is not the
+// one sngl:ui/draw paints.
+func (p *Package) usesTree(pkg, name string) bool {
+	if p == nil {
+		return false
+	}
+	for sd := range p.TreeKinds {
+		if sd.Pkg == pkg && sd.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
-// NoteTreeKind records that a component of the named tree reaches this
-// package.
-func (p *Package) NoteTreeKind(kind string) {
-	if p == nil || kind == "" {
+// NoteTreeKind records that a member of a tree reaches this package.
+func (p *Package) NoteTreeKind(sd *StructDef) {
+	if p == nil || sd == nil {
 		return
 	}
 	if p.TreeKinds == nil {
-		p.TreeKinds = map[string]bool{}
+		p.TreeKinds = map[*StructDef]bool{}
 	}
-	p.TreeKinds[kind] = true
+	p.TreeKinds[sd] = true
 }
+
+// isTreeNamed reports whether sd is the tree that pkg declares as name.
+func isTreeNamed(sd *StructDef, pkg, name string) bool {
+	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
+}
+
+// The drawing tree is sngl:ui/draw's `shape`, and this is the only place the
+// compiler spells it. passCanvas emits that package's own primitives, so it is
+// the one tree there are rules about; a tree that carried its own would need
+// none of this.
+const (
+	drawPkg   = "sngl:ui/draw"
+	shapeTree = "shape"
+)
+
+// IsDrawShapeTree reports whether sd is the drawing tree.
+func IsDrawShapeTree(sd *StructDef) bool { return isTreeNamed(sd, drawPkg, shapeTree) }
+
+// UsesDrawShapes reports whether a member of the drawing tree reaches p.
+func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) }
 
 // Import records a resolved import.
 type Import struct {
@@ -247,8 +287,8 @@ type Func struct {
 	AST            *ast.FuncDef // nil for lambdas and event handlers
 	Name           string       // empty for lambdas and event handlers
 	Receiver       string       // "int" for int.abs (empty for plain funcs)
-	TypeParams     []string
-	RecvTypeParams []string // receiver-level type parameters: ["T"] for func list<T>.length()
+	TypeParams     []TypeParam
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
@@ -384,13 +424,10 @@ type Component struct {
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
-	// TreeKind names the segmented tree this component is a member of
-	// ("shape"), and ChildKind the one its children must be members of. Both
-	// come from #[tree.kind]/#[tree.children] at registration; a member with
-	// no children type of its own hosts its own kind, so a shape contains
-	// shapes. Empty for an ordinary component.
-	TreeKind  string `json:",omitempty"`
-	ChildKind string `json:",omitempty"`
+	// Tree is the segmented tree this component is a member of, named in its
+	// return position. Nil for a member of the default tree — an ordinary
+	// component, interchangeable with any other.
+	Tree *StructDef `json:"-"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component
@@ -478,11 +515,25 @@ type EventDecl struct {
 type SlotDecl struct {
 	Name   string
 	Params []*Type `json:",omitempty"`
-	// ChildKind names the segmented tree the supplied content must be members
-	// of, from #[tree.children] on the declaration. Empty for a slot that
-	// accepts ordinary components.
-	ChildKind string `json:",omitempty"`
+	// Content is what each supplied node must be; Card is how many are
+	// accepted. Absent, a slot takes any number of components.
+	Content *Type    `json:",omitempty"`
+	Card    SlotCard `json:",omitempty"`
 }
+
+// DefaultSlot is the name of the slot a caller fills with ordinary children.
+// It is a slot like any other; only its content arrives as sugar, which is why
+// it cannot be populated by name.
+const DefaultSlot = "_"
+
+// SlotCard is how many nodes a slot accepts.
+type SlotCard string
+
+const (
+	SlotAny      SlotCard = ""         // any number; the default
+	SlotOne      SlotCard = "one"      // exactly one, from tree.one<T>
+	SlotOptional SlotCard = "optional" // none or one, from option<T>
+)
 
 // EventHandler is a resolved event handler. The handler body is represented
 // as a Func so codegen can reuse its function transform logic.
@@ -559,11 +610,26 @@ type Param struct {
 func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
 
+// TypeParam is one generic parameter of a declaration. Default is what an
+// argument list that stops short falls back to.
+type TypeParam struct {
+	Pos     ast.Pos `json:"-"`
+	Name    string
+	Default *Type `json:"-"`
+}
+
+// ParamName and ParamPos mirror ast.TypeParam's; see the note there.
+func (p TypeParam) ParamName() string { return p.Name }
+func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
+
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
+	// IsTree is set by #[tree.kind]: this struct names a segmented tree rather
+	// than describing a value, and components name it to say they are members.
+	IsTree     bool `json:",omitempty"`
 	AST        *ast.StructDef
 	Name       string
-	TypeParams []string // generic type parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
+	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
 	Foreign    `json:"Foreign,omitzero"`
 	// Pkg is the URI of the package that declared this type, for a package

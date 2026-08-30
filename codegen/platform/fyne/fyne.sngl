@@ -12,7 +12,7 @@
 // what a component declaration cannot express as data:
 //
 //   Widget     no children      — a leaf.
-//   Container  list<component>  — children attach through a method (`Add`).
+//   Container  a default slot        — children attach through a method (`Add`).
 //   Wrapper    component        — the child is assigned to a field (`Content`).
 //
 // Everything below Widget/Container/Wrapper — Label, Button, VBox and the rest
@@ -42,7 +42,8 @@
 //   style surface these constructors reach. The prop carries the data a future
 //   theme/layout implementation needs; today the assignment is dropped.
 
-import sngl "sngl:ui"
+import ui "sngl:ui"
+import tr "sngl:tree"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -145,10 +146,10 @@ component Widget(
     number int,
     flag bool,
     options list<string>,
-    style sngl.Style,
-    @click sngl.ClickEvent,
-    @change sngl.ChangeEvent,
-    @input sngl.InputEvent,
+    style ui.Style,
+    @click ui.ClickEvent,
+    @change ui.ChangeEvent,
+    @input ui.InputEvent,
 ) {}
 
 #[intrinsic("fyne:Container")]
@@ -159,11 +160,12 @@ component Container(
     number int,
     flag bool,
     options list<string>,
-    style sngl.Style,
-    @click sngl.ClickEvent,
-    @change sngl.ChangeEvent,
-    @input sngl.InputEvent,
-) list<component> {}
+    style ui.Style,
+    @click ui.ClickEvent,
+    @change ui.ChangeEvent,
+    @input ui.InputEvent,
+    slot _,
+) {}
 
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
@@ -173,11 +175,12 @@ component Wrapper(
     number int,
     flag bool,
     options list<string>,
-    style sngl.Style,
-    @click sngl.ClickEvent,
-    @change sngl.ChangeEvent,
-    @input sngl.InputEvent,
-) component {}
+    style ui.Style,
+    @click ui.ClickEvent,
+    @change ui.ChangeEvent,
+    @input ui.InputEvent,
+    slot _ tr.one,
+) {}
 
 // --- The Fyne widgets ---
 //
@@ -187,7 +190,7 @@ component Wrapper(
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
 // written the same way a user would write a thirteenth.
 
-component Label(text string, style sngl.Style) {
+component Label(text string, style ui.Style) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
@@ -200,7 +203,7 @@ component Label(text string, style sngl.Style) {
     ) {}
 }
 
-component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
+component Button(text string, style ui.Style, @click ui.ClickEvent) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -215,7 +218,7 @@ component Button(text string, style sngl.Style, @click sngl.ClickEvent) {
     ) {}
 }
 
-component Entry(text string, placeholder string, style sngl.Style, @input sngl.InputEvent) {
+component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -233,7 +236,7 @@ component Entry(text string, placeholder string, style sngl.Style, @input sngl.I
     ) {}
 }
 
-component MultiLineEntry(text string, placeholder string, rows int, style sngl.Style, @input sngl.InputEvent) {
+component MultiLineEntry(text string, placeholder string, rows int, style ui.Style, @input ui.InputEvent) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
@@ -253,7 +256,7 @@ component MultiLineEntry(text string, placeholder string, rows int, style sngl.S
     ) {}
 }
 
-component Check(text string, checked bool, style sngl.Style, @change sngl.ChangeEvent) {
+component Check(text string, checked bool, style ui.Style, @change ui.ChangeEvent) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -275,7 +278,7 @@ component Check(text string, checked bool, style sngl.Style, @change sngl.Change
 // The choices are a constructor argument, which is why `options` is an `Arg`
 // rather than a `Setter`: `widget.Select` has no method that replaces them, so
 // a later change to the bound list does not reach the widget.
-component Select(selected string, options list<string>, style sngl.Style, @change sngl.ChangeEvent) {
+component Select(selected string, options list<string>, style ui.Style, @change ui.ChangeEvent) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
@@ -294,7 +297,7 @@ component Select(selected string, options list<string>, style sngl.Style, @chang
 // `widget.Hyperlink` exposes its text and its URL as struct fields rather than
 // as setters, and a URL is a `*url.Parse` result rather than an expression this
 // package can spell, so the link renders empty.
-component Hyperlink(style sngl.Style) {
+component Hyperlink(style ui.Style) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
@@ -309,7 +312,7 @@ component Hyperlink(style sngl.Style) {
 // expression to build, so the image is empty. From a resource rather than a
 // URI because NewImageFromURI dereferences what it is given and a nil URI is
 // the only one available here.
-component Image(style sngl.Style) {
+component Image(style ui.Style) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
@@ -320,7 +323,7 @@ component Image(style sngl.Style) {
     ) {}
 }
 
-component Spacer(style sngl.Style) {
+component Spacer(style ui.Style) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
@@ -330,7 +333,7 @@ component Spacer(style sngl.Style) {
     ) {}
 }
 
-component VBox(style sngl.Style) list<component> {
+component VBox(style ui.Style, slot _) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -344,7 +347,7 @@ component VBox(style sngl.Style) list<component> {
     }
 }
 
-component HBox(style sngl.Style) list<component> {
+component HBox(style ui.Style, slot _) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -358,7 +361,7 @@ component HBox(style sngl.Style) list<component> {
     }
 }
 
-component VScroll(style sngl.Style) component {
+component VScroll(style ui.Style, slot _ tr.one) {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -374,13 +377,13 @@ component VScroll(style sngl.Style) component {
 
 // --- Layout containers ---
 
-component sngl.vbox[fyne.platform] {
+component ui.vbox[platform] {
     VBox(style={...style}) {
         slot
     }
 }
 
-component sngl.hbox[fyne.platform] {
+component ui.hbox[platform] {
     HBox(style={...style}) {
         slot
     }
@@ -389,29 +392,29 @@ component sngl.hbox[fyne.platform] {
 // Fyne has no layered container in the widget set this platform builds from,
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
-component sngl.stack[fyne.platform] {
+component ui.stack[platform] {
     VBox(style={...style}) {
         slot
     }
 }
 
-component sngl.scroll[fyne.platform] {
+component ui.scroll[platform] {
     VScroll(style={...style}) {
         slot
     }
 }
 
-component sngl.spacer[fyne.platform] {
+component ui.spacer[platform] {
     Spacer(style={...style}) {}
 }
 
-component sngl.card[fyne.platform] {
+component ui.card[platform] {
     VBox(style={...style}) {
         slot
     }
 }
 
-component sngl.splitview[fyne.platform] {
+component ui.splitview[platform] {
     HBox(style={...style}) {
         slot
     }
@@ -424,19 +427,19 @@ component sngl.splitview[fyne.platform] {
 // constructor arguments. So an overlay renders inline with its content
 // visible.
 
-component sngl.modal[fyne.platform] {
+component ui.modal[platform] {
     VBox(style={...style}) {
         slot
     }
 }
 
-component sngl.drawer[fyne.platform] {
+component ui.drawer[platform] {
     VBox(style={...style}) {
         slot
     }
 }
 
-component sngl.popover[fyne.platform] {
+component ui.popover[platform] {
     VBox(style={...style}) {
         slot
     }
@@ -444,7 +447,7 @@ component sngl.popover[fyne.platform] {
 
 // The shape html uses: a box carrying the tooltip text, with the wrapped
 // content inside it.
-component sngl.tooltip[fyne.platform] {
+component ui.tooltip[platform] {
     VBox(style={...style}) {
         slot
     }
@@ -457,23 +460,23 @@ component sngl.tooltip[fyne.platform] {
 // arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no `Arg` can
 // build out of a SNGL prop.
 
-component sngl.tabs[fyne.platform] {
+component ui.tabs[platform] {
     HBox(style={...style}) {
         slot
     }
 }
 
-component sngl.toolbar[fyne.platform] {
+component ui.toolbar[platform] {
     HBox(style={...style}) {
         slot
     }
 }
 
-component sngl.menubar[fyne.platform] {
+component ui.menubar[platform] {
     HBox(style={...style}) {}
 }
 
-component sngl.menu[fyne.platform] {
+component ui.menu[platform] {
     VBox(style={...style}) {}
 }
 
@@ -483,95 +486,95 @@ component sngl.menu[fyne.platform] {
 // as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
 // no way to spell. Each renders as its container, empty.
 
-component sngl.table[fyne.platform] {
+component ui.table[platform] {
     VBox(style={...style}) {}
 }
 
-component sngl.tree[fyne.platform] {
+component ui.tree[platform] {
     VBox(style={...style}) {}
 }
 
-component sngl.radio[fyne.platform] {
+component ui.radio[platform] {
     VBox(style={...style}) {}
 }
 
 // --- Text ---
 
-component sngl.text[fyne.platform] {
+component ui.text[platform] {
     Label(text=value, style={...style}) {}
 }
 
-component sngl.badge[fyne.platform] {
+component ui.badge[platform] {
     Label(text=value, style={...style}) {}
 }
 
-component sngl.chip[fyne.platform] {
+component ui.chip[platform] {
     Label(text=label, style={...style}) {}
 }
 
-component sngl.divider[fyne.platform] {
+component ui.divider[platform] {
     Label(text=label, style={...style}) {}
 }
 
 // `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
 // is the half of an avatar this platform can render.
-component sngl.avatar[fyne.platform] {
+component ui.avatar[platform] {
     Label(text=initials, style={...style}) {}
 }
 
-component sngl.spinner[fyne.platform] {
+component ui.spinner[platform] {
     Label(text=label, style={...style}) {}
 }
 
 // `value` is a float and the label is text, so the conversion is spelled
 // here rather than left to the Spec, which binds a prop to a setter and
 // converts nothing.
-component sngl.progress[fyne.platform] {
+component ui.progress[platform] {
     Label(text=string(value), style={...style}) {}
 }
 
 // `value`, `min` and `max` are `date`, which no SNGL expression converts to a
 // string, so the picker shows its `placeholder` and its selection does not
 // reach the bound value.
-component sngl.datepicker[fyne.platform] {
+component ui.datepicker[platform] {
     Label(text=placeholder, style={...style}) {}
 }
 
 // --- Controls ---
 
-component sngl.button[fyne.platform] {
+component ui.button[platform] {
     Button(text=text, style={...style}, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
-component sngl.link[fyne.platform] {
+component ui.link[platform] {
     Hyperlink(style={...style}) {}
 }
 
-component sngl.image[fyne.platform] {
+component ui.image[platform] {
     Image(style={...style}) {}
 }
 
-component sngl.checkbox[fyne.platform] {
+component ui.checkbox[platform] {
     Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
-component sngl.toggle[fyne.platform] {
+component ui.toggle[platform] {
     Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
-component sngl.select[fyne.platform] {
+component ui.select[platform] {
     Select(selected=value, options=options, style={...style}, @change { change() }) {}
 }
 
 // --- Text entry ---
 
-component sngl.input[fyne.platform] {
+component ui.input[platform] {
     Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
 }
 
-component sngl.textarea[fyne.platform] {
+component ui.textarea[platform] {
     MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
 }

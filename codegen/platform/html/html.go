@@ -418,6 +418,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
+		gen.irWindow = win.Window
+		if win.Window != nil {
+			gen.ctx = gen.ctx.ForWindow(win.Window)
+		}
 		if win.Window != nil {
 			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
 				gen.title = s
@@ -533,6 +537,13 @@ type htmlGen struct {
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
+	// rootComp is the component whose body this document renders. It is the
+	// one named "main" for an ordinary build and the component under test for
+	// a test build, which is a distinction only CodegenCtx.MainComponent
+	// makes: html used to answer it by name in eight places, so a test of a
+	// component not called "main" collected no state and rendered no binding.
+	rootComp *ir.Component
+
 	componentDepth int
 
 	usesI18n bool
@@ -546,6 +557,12 @@ type htmlGen struct {
 	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
 	// IR node rather than on the package or main component.
 	irWindowFuncs []*ir.Func
+
+	// irWindow is the window this generator emits a document for, or nil when
+	// it is emitting a main component's body. A window is the third place
+	// state is declared, beside the package and the main component, and it is
+	// per-document: static mode emits one file per window.
+	irWindow *ir.Window
 
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
@@ -630,7 +647,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = codegen.NewDepTrackerFromPkg(pkg)
-	g.currentComp = mainIRComponent(pkg)
+	g.rootComp = mainIRComponent(pkg)
+	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
 	if pkg != nil {
 		for _, c := range pkg.Consts {
@@ -651,6 +669,10 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	g.outDir = ctx.ExprCtx.OutDir
+	// CodegenCtx is the one that knows about RootComponent, so its answer wins
+	// over the by-name lookup newHTMLGen had to fall back on.
+	g.rootComp = ctx.MainComponent()
+	g.currentComp = g.rootComp
 	if main := ctx.MainComponent(); main != nil {
 		g.irBodyStmts = main.Body
 		// ForComponent re-clones, replacing newHTMLGen's wiring with
@@ -1280,19 +1302,25 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 
 // stateVars returns pkg.Vars merged with the main component's Vars.
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
+// stateVars is the state in scope for the document this generator emits: the
+// package's, the root component's, and this window's. The other components'
+// are not -- html emits one document per window and inlines the rest into it,
+// so a child component's var reaches `state` through the inliner's rename, not
+// through this list.
+//
+// Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
-	if g.pkg != nil {
-		for _, v := range g.pkg.Vars {
+	for _, o := range ir.Owners(g.pkg) {
+		if o.Comp != nil && o.Comp != g.rootComp {
+			continue
+		}
+		if o.Win != nil && o.Win != g.irWindow {
+			continue
+		}
+		for _, v := range o.Vars {
 			if !v.Synthesized {
 				out = append(out, v)
-			}
-		}
-		if main := mainIRComponent(g.pkg); main != nil {
-			for _, v := range main.Vars {
-				if !v.Synthesized {
-					out = append(out, v)
-				}
 			}
 		}
 	}
@@ -1312,7 +1340,7 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 				out = append(out, v)
 			}
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, v := range main.Vars {
 				if v.Synthesized && !seen[v.Name] {
 					seen[v.Name] = true
@@ -1334,9 +1362,10 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				out = append(out, f)
 			}
 		}
-		// Every component the build renders, not only main: one that survived
-		// inlining is emitted from its own declaration, and its synthesized
-		// funcs -- a canvas draw function among them -- have to come with it.
+		// Every component the build renders, not only the root: one that
+		// survived inlining is emitted from its own declaration, and its
+		// synthesized funcs -- a canvas draw function among them -- have to
+		// come with it.
 		for _, comp := range g.pkg.Components {
 			for _, f := range comp.Funcs {
 				if f.Synthesized {
@@ -1383,7 +1412,7 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	for _, f := range g.pkg.Funcs {
 		add(f)
 	}
-	if main := mainIRComponent(g.pkg); main != nil {
+	if main := g.rootComp; main != nil {
 		for _, f := range main.Funcs {
 			add(f)
 		}
@@ -1396,7 +1425,7 @@ func (g *htmlGen) pkgConsts() []*ir.Var {
 		return nil
 	}
 	out := append([]*ir.Var{}, g.pkg.Consts...)
-	if main := mainIRComponent(g.pkg); main != nil {
+	if main := g.rootComp; main != nil {
 		for _, v := range main.Vars {
 			if v.IsConst {
 				out = append(out, v)
@@ -1820,7 +1849,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		for _, t := range g.pkg.Timers {
 			g.addIRTimer(t)
 		}
-		if main := mainIRComponent(g.pkg); main != nil {
+		if main := g.rootComp; main != nil {
 			for _, t := range main.Timers {
 				g.addIRTimer(t)
 			}

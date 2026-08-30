@@ -1456,14 +1456,39 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 	}
 }
 
-// A shape hosts shapes without saying so: #[tree.kind("shape")] implies the
-// child kind, so a rect accepts a circle and the canvas accepts the rect.
+// A canvas accepts shapes because its default slot names that tree.
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
 component myWidget() {
     canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0)
+        circle(cx=50.0, cy=50.0, r=30.0)
+    }
+}
+`)
+}
+
+// A member hosts nothing unless it declares a slot: `rect` declares none, so
+// the old "a shape contains shapes without saying so" rule is gone. A member
+// that does declare one, and names no tree on it, hosts its own family.
+func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
+	expectError(t, `
+component myWidget() {
+    canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0) {
-            circle(cx=50.0, cy=50.0, r=30.0) {}
+            circle(cx=50.0, cy=50.0, r=30.0)
+        }
+    }
+}
+`, "does not accept children")
+
+	expectNoErrors(t, `
+component group(slot _) shape {}
+
+component myWidget() {
+    canvas(width=400px, height=300px) {
+        group() {
+            circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1481,14 +1506,15 @@ component myWidget() {
 `, "expected shape component in canvas, got notAShape")
 }
 
-// `shape` was a type name only so that `list<shape>` could stand in for a
-// polymorphism SNGL does not have. It names nothing now.
-func TestCheckShape_StandaloneRejected(t *testing.T) {
+// `shape` names the tree, so it resolves — but a tree holds nothing and no
+// value of it exists, which is what makes it usable as a slot's type and not
+// as a var's.
+func TestCheckShape_IsNotAValueType(t *testing.T) {
 	expectError(t, `
 component myWidget() {
     var bad shape = 0
 }
-`, "unknown type")
+`, "names a tree, which has no values")
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {

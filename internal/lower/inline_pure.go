@@ -379,7 +379,7 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 		return false
 	}
 	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		comp.TreeKind != "" || comp.ChildKind != ""
+		comp.Tree != nil || hostsTree(comp)
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
@@ -569,65 +569,23 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 	return w.stmts(stmts)
 }
 
-// slotBody is what one insertion point renders: the content the call site
-// supplied for it, or the insertion's own block as the fallback when it
-// supplied none.
-//
-// A scoped slot's arguments are bound here rather than at the call site,
-// because the names they bind to are the populator's and the values are the
-// insertion's -- the two only meet once the body is being spliced into place.
-func slotBody(si *ir.SlotInst, callsite *ir.NodeInst) []ir.Stmt {
-	if si.Name == "" {
-		if len(callsite.Children) == 0 {
-			return deepCloneStmts(si.Children)
-		}
-		// Cloned, not shared: two insertions of `slot` in one body would
-		// otherwise alias the same IR nodes.
-		return deepCloneStmts(callsite.Children)
-	}
-	sc := callsite.Slots[si.Name]
-	if sc == nil {
-		return deepCloneStmts(si.Children)
-	}
-	body := deepCloneStmts(sc.Body)
-	bindings := make(map[string]ir.Expr, len(sc.Params))
-	for i, p := range sc.Params {
-		if i < len(si.Args) {
-			bindings[p.Name] = si.Args[i]
-		}
-	}
-	return substituteParams(body, bindings)
-}
-
 // substituteSlots replaces every *ir.SlotInst with what the call site supplied.
+// The inliner binds a scoped slot's arguments by parameter name, since the body
+// it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		if si, isSlot := s.(*ir.SlotInst); isSlot {
-			out = append(out, slotBody(si, callsite)...)
-			continue
-		}
-		switch n := s.(type) {
-		case *ir.If:
-			n.Body = substituteSlots(n.Body, callsite)
-			n.Else = substituteSlots(n.Else, callsite)
-		case *ir.For:
-			n.Body = substituteSlots(n.Body, callsite)
-			n.Else = substituteSlots(n.Else, callsite)
-		case *ir.NodeInst:
-			n.Children = substituteSlots(n.Children, callsite)
-		case *ir.ErrorBoundary:
-			n.Children = substituteSlots(n.Children, callsite)
-		case *ir.Window:
-			n.Body = substituteSlots(n.Body, callsite)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
-			// Leaf stmts — no nested SlotInsts.
-		default:
-			panic(fmt.Sprintf("substituteSlots: unhandled %T", n))
-		}
-		out = append(out, s)
+	sp := ir.SlotSplicer{
+		Clone: deepCloneStmts,
+		Bind: func(body []ir.Stmt, sc *ir.SlotContent, si *ir.SlotInst) []ir.Stmt {
+			bindings := make(map[string]ir.Expr, len(sc.Params))
+			for i, p := range sc.Params {
+				if i < len(si.Args) {
+					bindings[p.Name] = si.Args[i]
+				}
+			}
+			return substituteParams(body, bindings)
+		},
 	}
-	return out
+	return sp.Substitute(stmts, callsite)
 }
 
 // substituteEvents replaces every *ir.Emit whose Name matches a
@@ -1031,8 +989,18 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 	panic(fmt.Sprintf("deepCloneExpr: unhandled %T", e))
 }
 
-// exprWalker applies a transform to every reachable expression in a
-// statement tree. Used for param substitution.
+// exprWalker applies a transform to every expression reachable from a
+// statement tree. Used for parameter and context substitution.
+//
+// It is ir.Rewrite with one rule of its own: an expression the transform
+// replaces is not descended into. What is substituted in is already-checked
+// code from another scope -- a bound argument, a hidden state read -- and
+// walking it would apply the same substitution to names that were never the
+// callee's to bind.
+//
+// It used to be a second copy of the traversal, and drifted from the first in
+// both directions: it reached NodeInst.Slots, which the context pass's copy
+// did not, and it stopped at ErrorBoundary.Handler, which nothing did.
 type exprWalker struct {
 	transform func(ir.Expr) ir.Expr
 }
@@ -1041,143 +1009,40 @@ func newExprWalker(transform func(ir.Expr) ir.Expr) *exprWalker {
 	return &exprWalker{transform: transform}
 }
 
+func (w *exprWalker) visit(n ir.Node) (ir.Node, error) {
+	e, isExpr := n.(ir.Expr)
+	if !isExpr {
+		return n, nil
+	}
+	if out := w.transform(e); out != e {
+		return out, ir.SkipDir
+	}
+	return n, nil
+}
+
+// expr transforms e and its subexpressions, returning the replacement. A bare
+// expression is its own root, and ir.Rewrite cannot write a replacement back
+// into a root it was handed by value -- so the root is transformed here and
+// the walk only descends.
 func (w *exprWalker) expr(e ir.Expr) ir.Expr {
 	if e == nil {
 		return nil
 	}
 	if out := w.transform(e); out != e {
-		// Transform replaced this node. Do not recurse into the
-		// replacement (the bound argument is already-checked user code
-		// and may itself contain refs to other params/scopes we should
-		// not re-transform).
 		return out
 	}
-	switch n := e.(type) {
-	case *ir.Binary:
-		n.Left = w.expr(n.Left)
-		n.Right = w.expr(n.Right)
-	case *ir.Unary:
-		n.Operand = w.expr(n.Operand)
-	case *ir.Ternary:
-		n.Cond = w.expr(n.Cond)
-		n.Then = w.expr(n.Then)
-		n.Else = w.expr(n.Else)
-	case *ir.Select:
-		n.Operand = w.expr(n.Operand)
-	case *ir.Index:
-		n.Operand = w.expr(n.Operand)
-		n.Idx = w.expr(n.Idx)
-	case *ir.Call:
-		n.Receiver = w.expr(n.Receiver)
-		n.Callee = w.expr(n.Callee)
-		for i := range n.Args {
-			n.Args[i].Value = w.expr(n.Args[i].Value)
+	root := true
+	_ = ir.Rewrite(e, func(n ir.Node) (ir.Node, error) {
+		if root {
+			root = false // already transformed above; do not run it twice
+			return n, nil
 		}
-	case *ir.Conversion:
-		n.Operand = w.expr(n.Operand)
-	case *ir.StructLit:
-		for i := range n.Fields {
-			n.Fields[i].Value = w.expr(n.Fields[i].Value)
-		}
-	case *ir.ListLit:
-		for i := range n.Elems {
-			n.Elems[i] = w.expr(n.Elems[i])
-		}
-	case *ir.MapLitIR:
-		for i := range n.Entries {
-			n.Entries[i].Key = w.expr(n.Entries[i].Key)
-			n.Entries[i].Value = w.expr(n.Entries[i].Value)
-		}
-	case *ir.Spread:
-		n.Operand = w.expr(n.Operand)
-	case *ir.Lambda:
-		if n.Func != nil {
-			w.stmts(n.Func.Block)
-		}
-	case *ir.Closure:
-		if n.State != nil {
-			for i := range n.State.Fields {
-				n.State.Fields[i].Value = w.expr(n.State.Fields[i].Value)
-			}
-		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
-		// Terminal — no nested exprs. (Ident.Sym is rewritten by callers'
-		// transform; this walker only handles structural recursion.)
-	default:
-		panic(fmt.Sprintf("exprWalker.expr: unhandled %T", n))
-	}
+		return w.visit(n)
+	})
 	return e
 }
 
 func (w *exprWalker) stmts(stmts []ir.Stmt) []ir.Stmt {
-	for _, s := range stmts {
-		w.stmt(s)
-	}
+	_ = ir.Rewrite(stmts, w.visit)
 	return stmts
-}
-
-func (w *exprWalker) stmt(s ir.Stmt) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		for i := range n.Props {
-			n.Props[i].Value = w.expr(n.Props[i].Value)
-		}
-		n.Key = w.expr(n.Key)
-		n.Ref = w.expr(n.Ref)
-		w.stmts(n.Children)
-		for _, sc := range n.Slots {
-			w.stmts(sc.Body)
-		}
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				w.stmts(h.Func.Block)
-			}
-		}
-	case *ir.If:
-		n.Cond = w.expr(n.Cond)
-		w.stmts(n.Body)
-		w.stmts(n.Else)
-	case *ir.For:
-		n.Iter = w.expr(n.Iter)
-		w.stmts(n.Body)
-		w.stmts(n.Else)
-	case *ir.SlotInst:
-		for i := range n.Args {
-			n.Args[i] = w.expr(n.Args[i])
-		}
-		w.stmts(n.Children)
-	case *ir.Assign:
-		n.Target = w.expr(n.Target)
-		n.Value = w.expr(n.Value)
-	case *ir.Emit:
-		for i := range n.Args {
-			n.Args[i].Value = w.expr(n.Args[i].Value)
-		}
-	case *ir.LocalVar:
-		n.Init = w.expr(n.Init)
-	case *ir.Return:
-		n.Value = w.expr(n.Value)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			n.Call.Receiver = w.expr(n.Call.Receiver)
-			n.Call.Callee = w.expr(n.Call.Callee)
-			for i := range n.Call.Args {
-				n.Call.Args[i].Value = w.expr(n.Call.Args[i].Value)
-			}
-		}
-	case *ir.Toggle:
-		n.Target = w.expr(n.Target)
-	case *ir.ErrorBoundary:
-		w.stmts(n.Children)
-	case *ir.Window:
-		n.Href = w.expr(n.Href)
-		n.Title = w.expr(n.Title)
-		n.Favicon = w.expr(n.Favicon)
-		w.stmts(n.Body)
-	case *ir.ContextProvider:
-		n.Value = w.expr(n.Value)
-		w.stmts(n.Children)
-	default:
-		panic(fmt.Sprintf("exprWalker.stmt: unhandled %T", n))
-	}
 }

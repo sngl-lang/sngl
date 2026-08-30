@@ -6,16 +6,16 @@
 // argument it becomes. They are ordinary components otherwise, so user code
 // can reach a composable this package wraps no wrapper for.
 //
-// A `component sngl.X { platform android { ... } }` override is inlined into
+// A `component ui.X { platform android { ... } }` override is inlined into
 // the caller at lower time, so its body is what the codegen sees.
 //
-// The four `component sngl.X()` bodies left below are not read at all — the
+// The four `component ui.X()` bodies left below are not read at all — the
 // parens form is skipped by mergePlatformExtensions — and those four
 // components are still written by name in a switch in compose_ir.go. Each
 // needs something the generic intrinsic emitter cannot yet say; the comment
 // on each says which.
 
-import sngl "sngl:ui"
+import ui "sngl:ui"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -78,69 +78,76 @@ struct Options {
 
 #[intrinsic("android:Column")]
 component Column(
-    modifier sngl.Style,
+    modifier ui.Style,
     chain list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Box")]
 component Box(
-    modifier sngl.Style,
+    modifier ui.Style,
     chain list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Row")]
 component Row(
-    modifier sngl.Style,
+    modifier ui.Style,
     chain list<string>,
     args list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Spacer")]
 component Spacer(
-    modifier sngl.Style,
+    modifier ui.Style,
     chain list<string>,
 ) {}
 
 #[intrinsic("android:Text")]
 component Text(
     text string,
-    modifier sngl.Style,
+    modifier ui.Style,
     // Typography, as Compose's own `style` argument: a TextStyle built from
     // the Style's font and colour fields.
-    style sngl.Style,
+    style ui.Style,
     args list<string>,
 ) {}
 
 #[intrinsic("android:HorizontalDivider")]
 component HorizontalDivider(
-    modifier sngl.Style,
+    modifier ui.Style,
 ) {}
 
 #[intrinsic("android:CircularProgressIndicator")]
 component CircularProgressIndicator(
-    modifier sngl.Style,
+    modifier ui.Style,
 ) {}
 
 #[intrinsic("android:Button")]
 component Button(
     onClick func(),
-    modifier sngl.Style,
-) list<component> {}
+    modifier ui.Style,
+    slot _,
+) {}
 
 #[intrinsic("android:Badge")]
 component Badge(
-    modifier sngl.Style,
-) list<component> {}
+    modifier ui.Style,
+    slot _,
+) {}
 
 #[intrinsic("android:Card")]
 component Card(
-    modifier sngl.Style,
-) list<component> {}
+    modifier ui.Style,
+    slot _,
+) {}
 
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Checkbox")]
 component Checkbox(
@@ -164,47 +171,49 @@ component RadioButton(
 component OutlinedTextField(
     value string,
     minLines int,
-    modifier sngl.Style,
+    modifier ui.Style,
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
-    onValueChange func(e sngl.InputEvent),
+    onValueChange func(e ui.InputEvent),
 ) {}
 
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
-) list<component> {}
+    slot _,
+) {}
 
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,
-) list<component> {}
+    slot _,
+) {}
 
 // --- Core Layout ---
 
-component sngl.vbox[android.platform] {
+component ui.vbox[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.hbox[android.platform] {
+component ui.hbox[platform] {
     Row(modifier={...style}) {
         slot
     }
 }
 
-component sngl.stack[android.platform] {
+component ui.stack[platform] {
     Box(modifier={...style}) {
         slot
     }
 }
 
-component sngl.spacer[android.platform] {
+component ui.spacer[platform] {
     Spacer(modifier={...style}) {}
 }
 
-component sngl.scroll[android.platform] {
+component ui.scroll[platform] {
     Column(
         modifier={...style},
         chain=["verticalScroll(rememberScrollState())"],
@@ -215,11 +224,11 @@ component sngl.scroll[android.platform] {
 
 // --- Core Text & Media ---
 
-component sngl.text[android.platform] {
+component ui.text[platform] {
     Text(text=value, modifier={...style}, style={...style}) {}
 }
 
-component sngl.button[android.platform] {
+component ui.button[platform] {
     Button(onClick=func() { click() }, modifier={...style}) {
         Text(text=text) {}
     }
@@ -229,7 +238,7 @@ component sngl.button[android.platform] {
 // every source SNGL accepts (a URL, an asset path) needs a different one, so
 // android draws no image yet. The emitter used to render a TODO comment,
 // which draws nothing; an unsized Spacer is the declared spelling of that.
-component sngl.image[android.platform] {
+component ui.image[platform] {
     Spacer(modifier={...style}) {}
 }
 
@@ -237,11 +246,11 @@ component sngl.image[android.platform] {
 // composable lambda — `label = { Text("...") }`. An intrinsic prop can carry a
 // value or a statement lambda, but nothing declares a *composable* lambda
 // argument, so the label cannot be written here.
-component sngl.input() {
+component ui.input() {
     OutlinedTextField(value=value) {}
 }
 
-component sngl.checkbox[android.platform] {
+component ui.checkbox[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
         Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
         if label != "" {
@@ -256,7 +265,7 @@ component sngl.checkbox[android.platform] {
 // container is the direction the prop asks for and each option is a button
 // beside its label. onClick is passed nothing, so the override builds the
 // ChangeEvent itself from the option it looped over.
-component sngl.radio[android.platform] {
+component ui.radio[platform] {
     if direction == "horizontal" {
         Row(modifier={...style}) {
             for opt = options {
@@ -278,7 +287,7 @@ component sngl.radio[android.platform] {
     }
 }
 
-component sngl.toggle[android.platform] {
+component ui.toggle[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
         Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
         if label != "" {
@@ -293,11 +302,11 @@ component sngl.toggle[android.platform] {
 // `expanded` across every row. DropdownMenuItem's `text` is a composable
 // lambda (see input). And the placeholder fallback needs Kotlin's
 // `isNotEmpty()`, which SNGL has no spelling for on a bound prop.
-component sngl.select() {
+component ui.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-component sngl.textarea[android.platform] {
+component ui.textarea[platform] {
     OutlinedTextField(
         value=value,
         minLines=3,
@@ -313,7 +322,7 @@ component sngl.textarea[android.platform] {
 }
 
 // Not converted. Same composable-lambda `label` as input.
-component sngl.datepicker() {
+component ui.datepicker() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
@@ -324,35 +333,35 @@ component sngl.datepicker() {
 // `value` at all — a distinction an override body cannot draw, since a prop it
 // reads is always there. `progress` is also a `() -> Float` lambda, and a
 // func-typed prop's body is emitted as statements, not as an expression.
-component sngl.progress() {
+component ui.progress() {
     LinearProgressIndicator {}
 }
 
-component sngl.spinner[android.platform] {
+component ui.spinner[platform] {
     CircularProgressIndicator(modifier={...style}) {}
 }
 
-component sngl.badge[android.platform] {
+component ui.badge[platform] {
     Badge(modifier={...style}) {
         Text(text=value) {}
     }
 }
 
-component sngl.divider[android.platform] {
+component ui.divider[platform] {
     HorizontalDivider(modifier={...style}) {}
 }
 
-component sngl.card[android.platform] {
+component ui.card[platform] {
     Card(modifier={...style}) {
         slot
     }
 }
 
-component sngl.chip[android.platform] {
+component ui.chip[platform] {
     Text(text=label) {}
 }
 
-component sngl.link[android.platform] {
+component ui.link[platform] {
     Text(
         text=text,
         style={...style},
@@ -360,13 +369,13 @@ component sngl.link[android.platform] {
     ) {}
 }
 
-component sngl.tabs[android.platform] {
+component ui.tabs[platform] {
     TabRow(selectedTabIndex=selected) {
         slot
     }
 }
 
-component sngl.modal[android.platform] {
+component ui.modal[platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(args=["shape = MaterialTheme.shapes.medium"]) {
@@ -381,52 +390,52 @@ component sngl.modal[android.platform] {
     }
 }
 
-component sngl.drawer[android.platform] {
+component ui.drawer[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.tooltip[android.platform] {
+component ui.tooltip[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.popover[android.platform] {
+component ui.popover[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.splitview[android.platform] {
+component ui.splitview[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.table[android.platform] {
+component ui.table[platform] {
     Text(text="") {}
 }
 
-component sngl.tree[android.platform] {
+component ui.tree[platform] {
     Text(text="") {}
 }
 
-component sngl.menu[android.platform] {
+component ui.menu[platform] {
     Text(text="") {}
 }
 
-component sngl.menubar[android.platform] {
+component ui.menubar[platform] {
     Text(text="") {}
 }
 
-component sngl.toolbar[android.platform] {
+component ui.toolbar[platform] {
     Column(modifier={...style}) {
         slot
     }
 }
 
-component sngl.avatar[android.platform] {
+component ui.avatar[platform] {
     Text(text="") {}
 }

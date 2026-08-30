@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component Card(title = "Card", subtitle = "") list<component> {
+component Card(title = "Card", subtitle = "", slot _) {
     vbox {
         text(value=title)
         text(value=subtitle)
