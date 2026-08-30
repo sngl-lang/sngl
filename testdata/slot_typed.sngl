@@ -1,0 +1,51 @@
+// A slot declares which family its content belongs to by naming that family's
+// type, and how many it takes by wrapping it. Bare is any number — the default,
+// and what a slot with no type at all means. `tr.one<T>` narrows it to exactly
+// one and `option<T>` to none or one; those two are the only wrappers.
+//
+// A slot bounded to exactly one has no spelling for being absent, so it must be
+// populated.
+
+import . "sngl:ui"
+import tr "sngl:tree"
+
+component frame(slot body tr.one, slot badge option<tr.default>, slot rows) {
+    vbox {
+        body {}
+        badge {}
+        rows {}
+    }
+}
+
+// The default slot carries a type the same way. It is named `_`, so every slot
+// has the one shape and the name is never optional — `slot` followed by an
+// optional name would be ambiguous with a type, both being idents.
+component strip(slot _ tr.default) {
+    vbox {
+        slot
+    }
+}
+
+component main {
+    frame() {
+        slot body {
+            text(value="one")
+        }
+    }
+    frame() {
+        slot body {
+            text(value="one")
+        }
+        slot badge {
+            text(value="b")
+        }
+        slot rows {
+            text(value="a")
+            text(value="b")
+        }
+    }
+    strip() {
+        text(value="a")
+        text(value="b")
+    }
+}

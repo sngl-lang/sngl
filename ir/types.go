@@ -658,8 +658,8 @@ func DurationType() *Type {
 type FuncSig struct {
 	Params         []*Param
 	Return         *Type // nil for void/action
-	TypeParams     []string
-	RecvTypeParams []string // receiver-level type parameters; consumed (set to nil) after substitution
+	TypeParams     []TypeParam
+	RecvTypeParams []TypeParam // receiver-level; consumed (set to nil) after substitution
 	Purity         Purity
 	Color          Color // Sync (default), Async, or Param.
 	PolyParam      int   // when Color == ColorParam: index of the funcvar param the color depends on.

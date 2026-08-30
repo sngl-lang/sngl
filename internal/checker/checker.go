@@ -143,9 +143,6 @@ type checker struct {
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
 
-	// Type resolution context.
-	typeParams []string // active generic type params (set during function checking)
-
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
 
@@ -1046,7 +1043,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
-	c.registerNestedMethods(sd.Name, sd.TypeParams, s.Funcs())
+	c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
 }
 
 // registerStructShell registers a struct's name and type parameters without
@@ -1055,7 +1052,7 @@ func (c *checker) registerStruct(s *ast.StructDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: s.TypeParams}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams)}
 	c.applyMarks(s, sd)
 	c.pkg.Structs = append(c.pkg.Structs, sd)
 	c.bindDeclared(claimed, sd)
@@ -1063,8 +1060,12 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
+	defer pushTypeParams(c, sd.AST.TypeParams)()
 	sd.Fields = c.resolveStructFields(sd.AST)
-	c.registerNestedMethods(sd.Name, sd.TypeParams, sd.AST.Funcs())
+	// A default is a type reference, so it waits for the same every-shell-exists
+	// condition the fields do.
+	sd.TypeParams = c.resolveTypeParams(sd.AST.TypeParams)
+	c.registerNestedMethods(sd.Name, sd.AST.TypeParams, sd.AST.Funcs())
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
@@ -1728,6 +1729,23 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 	}
 }
 
+// buildSlotDecl resolves one slot declaration, for either registration path.
+func (c *checker) buildSlotDecl(pd ast.SlotDecl) *ir.SlotDecl {
+	slot := &ir.SlotDecl{Name: pd.Name}
+	if pd.Type != nil {
+		slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
+	}
+	if pd.Name == ir.DefaultSlot && len(pd.Params) > 0 {
+		// Its content is written as ordinary children, which have no binding
+		// site, so there is nowhere to collect a parameter.
+		c.error(pd.Pos, "the default slot takes no parameters: its content is written as ordinary children")
+	}
+	for _, t := range pd.Params {
+		slot.Params = append(slot.Params, c.resolveType(t))
+	}
+	return slot
+}
+
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// An override implements one declaration for one target, and says which
 	// target on its own name: `component sngl.button[html.platform] { ... }`.
@@ -1782,20 +1800,16 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		case ast.SlotDecl:
-			slot := &ir.SlotDecl{Name: pd.Name}
-			for _, t := range pd.Params {
-				slot.Params = append(slot.Params, c.resolveType(t))
-			}
-			c.applySlotMarks(pd, slot)
-			irComp.Slots = append(irComp.Slots, slot)
+			irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd))
 		}
 	}
 
-	finishTreeMarks(comp, irComp, c.pkg)
 	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
+	c.finishTreeMarks(comp, irComp, c.pkg)
+	c.finishDefaultSlot(irComp)
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
@@ -1855,6 +1869,10 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
 			typ := c.resolveType(spec.Type)
+			if sd := treeStruct(typ); sd != nil {
+				c.error(s.Pos, "%s names a tree, which has no values", sd.Name)
+				typ = TypDyn
+			}
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -2782,9 +2800,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 
-	prevTypeParams := c.typeParams
-	c.typeParams = fn.TypeParams
-	defer func() { c.typeParams = prevTypeParams }()
+	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
 
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body
@@ -3343,4 +3359,13 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 		}
 		c.bindLifted(imp.Pos, dst, sym)
 	}
+}
+
+// finishDefaultSlot derives the children contract from the `_` slot.
+func (c *checker) finishDefaultSlot(comp *ir.Component) {
+	slot := findSlot(comp, ir.DefaultSlot)
+	if slot == nil {
+		return
+	}
+	comp.ChildrenType = childrenTypeFor(slot)
 }

@@ -13,6 +13,13 @@ type Symbol interface {
 	SymType() *Type
 }
 
+// TypeParamSym binds a type parameter's name in the scope its declaration
+// opens. Nothing else declares one, so a repeat is the ordinary redeclaration.
+type TypeParamSym struct{ Name string }
+
+func (t *TypeParamSym) SymName() string { return t.Name }
+func (t *TypeParamSym) SymType() *Type  { return &Type{Kind: TypeTypeParam, ParamName: t.Name} }
+
 // LoopVar is a for-loop iteration variable.
 type LoopVar struct {
 	Name string

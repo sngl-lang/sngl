@@ -1,0 +1,37 @@
+// Package tree describes a segmented component tree: one whose nodes are not
+// interchangeable widgets but members of a named family, where a container
+// accepts only its own family's members.
+//
+// A canvas and its shapes are one such tree; rich text (paragraphs, inline
+// runs) and menus (items, separators) are others. Nothing here knows what a
+// shape is — the compiler compares declarations.
+//
+// A tree is a type. A component says which one it belongs to by naming that
+// type in its return position, and a slot says which one it accepts by naming
+// it as the slot's type. How many it accepts is the wrapper: bare is any
+// number, `tree.one<T>` is exactly one, `option<T>` is none or one.
+
+import ir "sngl:internal/ir"
+import . "sngl:internal/marks"
+
+// Marks a struct as naming a tree. The struct is the tree: nothing is stored in
+// it and no value of it exists, so a component naming it says which family it
+// is a member of rather than what it holds.
+//
+// A name resolves or it does not, which is the point — a misspelled tree is an
+// unresolved name at the declaration rather than a family nobody joins.
+func kind() ir.Macro {}
+
+// The tree an ordinary component belongs to: the one whose members are
+// interchangeable, where a container hosts anything. A component that names no
+// tree is a member of this one, and a slot that names no type accepts it.
+#[builtin("treeDefault")]
+struct default {}
+
+// Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
+// any number, so this is what narrows it; `option<T>` is the other narrowing.
+//
+// T defaults to the tree an ordinary component belongs to, so `tree.one` on its
+// own says "exactly one child, of whatever family the slot already accepts".
+#[builtin("treeOne")]
+struct one<T = default> {}

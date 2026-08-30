@@ -49,12 +49,6 @@ func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
 	}
 }
 
-func (c *checker) applySlotMarks(d ast.SlotDecl, slot *ir.SlotDecl) {
-	for _, attr := range d.MacroAttrs() {
-		c.applyMark(attr, d, slot, true)
-	}
-}
-
 // wildcardEvent returns the event of comp whose pattern covers name. A
 // declared event of that name beats every wildcard, so the caller looks one up
 // first; two wildcards covering one name is ambiguous and reported by the

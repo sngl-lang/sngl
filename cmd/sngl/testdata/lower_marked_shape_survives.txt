@@ -1,15 +1,15 @@
-# A component the program declares with a public mark is a primitive, and a
-# primitive has no body by design.
+# A component the program declares as a primitive has no body by design.
 #
 # Lowering drops a bodyless component when building for a target, because one
 # that declares nothing renders nothing and every platform used to guess
-# differently at what an empty component meant. A marked one is the exception:
-# #[draw.shape] says the node is a member of the drawing tree and passCanvas
-# emits it, so dropping it takes the canvas contents with it.
+# differently at what an empty component meant. A member of a segmented tree is
+# the exception: passCanvas emits it, so dropping it takes the canvas contents
+# with it.
 #
-# The marks are the whole list -- #[intrinsic], #[builtin], a wildcard pattern,
-# a tree kind -- but only a tree kind is reachable from user code, so it is what
-# this asserts. Without the exemption the canvas emits no draw calls at all and
+# The signals are the whole list -- #[intrinsic], #[builtin], a wildcard
+# pattern, a tree -- but only a tree is reachable from user code, so it is what
+# this asserts: `blip` is one because it names `draw.shape` in its return
+# position. Without the exemption the canvas emits no draw calls at all and
 # still exits 0.
 
 sngl generate --platform=html --lang=none --out=out main.sngl
@@ -20,11 +20,10 @@ grep 'ctx\.save\(\)' out/index.html
 grep 'ctx\.restore\(\)' out/index.html
 
 -- main.sngl --
+import . "sngl:ui"
 import . "sngl:app"
 import "sngl:ui/draw"
-
-#[draw.shape]
-component blip(x float, y float) {}
+component blip(x float, y float) draw.shape {}
 
 component main() {
     window(title="t") {

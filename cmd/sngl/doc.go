@@ -646,9 +646,7 @@ func renderFuncDoc(f *ast.FuncDef, doc string) string {
 
 	var sig strings.Builder
 	sig.WriteString("func " + f.Name)
-	if len(f.TypeParams) > 0 {
-		sig.WriteString("<" + strings.Join(f.TypeParams, ", ") + ">")
-	}
+	sig.WriteString(parser.FormatTypeParams(f.TypeParams))
 	sig.WriteString("(")
 	for i, p := range f.Params.Params {
 		if i > 0 {

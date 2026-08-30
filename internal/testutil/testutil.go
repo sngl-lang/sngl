@@ -125,7 +125,7 @@ func ParseDirectives(path string) ([]ErrorDirective, error) {
 
 // nofmtRE matches a `// NOFMT "reason"` directive, which exempts a fixture
 // from the check that it is written the way `sngl fmt` writes it.
-var nofmtRE = regexp.MustCompile(`//\s*NOFMT\b\s*(".*")?`)
+var nofmtRE = regexp.MustCompile(`//\s*NOFMT\b\s*(".*")`)
 
 // ParseNoFmt reports whether a fixture carries a NOFMT directive, and the
 // reason written with it. A fixture that says something the formatter would

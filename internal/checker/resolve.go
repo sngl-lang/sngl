@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 
@@ -148,11 +147,6 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return &ir.Type{Kind: ir.TypeComponent}
 	}
 
-	// Type parameter (checked before scope so generic params shadow types like T).
-	if slices.Contains(c.typeParams, t.Name) {
-		return &ir.Type{Kind: ir.TypeTypeParam, ParamName: t.Name}
-	}
-
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if c.rejectUnexported(t.Pos, sym) {
 			return TypDyn
@@ -176,21 +170,32 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 // The result's Kind is TypeStruct; Elems holds the bound type arguments in
 // declaration order (matching TypeParams on the StructDef).
 func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructDef, args []ast.TypeExpr) *ir.Type {
-	if len(args) != len(sd.TypeParams) {
-		c.error(pos, "type %s requires %d type argument(s), got %d",
-			sd.Name, len(sd.TypeParams), len(args))
-		// Return the unparameterized base type rather than dyn so downstream
-		// code can still see the struct shape.
-		return base
+	elems := make([]*ir.Type, 0, len(sd.TypeParams))
+	for i := range sd.TypeParams {
+		switch {
+		case i < len(args):
+			elems = append(elems, c.resolveType(args[i]))
+		default:
+			def := c.typeParamDefault(sd, i)
+			if def == nil {
+				c.error(pos, "type %s requires a type argument for %s, which has no default",
+					sd.Name, sd.TypeParams[i].Name)
+				// The unparameterized base rather than dyn, so downstream code
+				// can still see the struct shape.
+				return base
+			}
+			elems = append(elems, def)
+		}
 	}
-	elems := make([]*ir.Type, len(args))
-	for i, a := range args {
-		elems[i] = c.resolveType(a)
+	if len(args) > len(sd.TypeParams) {
+		c.error(pos, "type %s takes %d type argument(s), got %d",
+			sd.Name, len(sd.TypeParams), len(args))
+		return base
 	}
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
-func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.Type {
+func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
@@ -209,7 +214,16 @@ func (c *checker) resolveQualifiedType(pkg, name string, _ []ast.TypeExpr) *ir.T
 		if c.rejectUnexported(ast.Pos{}, tsym) {
 			return TypDyn
 		}
-		return tsym.SymType()
+		typ := tsym.SymType()
+		if typ != nil && typ.Kind == ir.TypeStruct {
+			if sd, ok := typ.Decl.(*ir.StructDef); ok && len(sd.TypeParams) > 0 {
+				return c.applyStructTypeArgs(ast.Pos{}, typ, sd, args)
+			}
+		}
+		if len(args) > 0 {
+			c.error(ast.Pos{}, "type %q in namespace %q takes no type arguments", name, pkg)
+		}
+		return typ
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
 	return TypDyn
@@ -249,13 +263,56 @@ func (c *checker) resolveAnonUnit(u *ast.UnitDef) *ir.Type {
 }
 
 func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
+	defer pushTypeParams(c, s.TypeParams)()
 	return &ir.StructDef{
 		AST:        s,
 		Name:       s.Name,
 		Pkg:        c.libPkgName,
-		TypeParams: s.TypeParams,
+		TypeParams: c.resolveTypeParams(s.TypeParams),
 		Fields:     c.resolveStructFields(s),
 	}
+}
+
+// typeParamDefault is the default for a struct's i-th type parameter, or nil.
+// A struct shell exists before its defaults are resolved, and a use site can
+// come first, so the written form is resolved on demand when it does.
+func (c *checker) typeParamDefault(sd *ir.StructDef, i int) *ir.Type {
+	if i < len(sd.TypeParams) && sd.TypeParams[i].Default != nil {
+		return sd.TypeParams[i].Default
+	}
+	if sd.AST == nil || i >= len(sd.AST.TypeParams) || sd.AST.TypeParams[i].Default == nil {
+		return nil
+	}
+	return c.resolveType(sd.AST.TypeParams[i].Default)
+}
+
+// typeParamShells records the names before any other declaration exists. A
+// default may name a type declared further down the file, so it is left to
+// resolveStructBody the way a field is.
+func typeParamShells(ps []ast.TypeParam) []ir.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ir.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
+	}
+	return out
+}
+
+// resolveTypeParams resolves each parameter's written default, if it has one.
+func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ir.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
+		if p.Default != nil {
+			out[i].Default = c.resolveType(p.Default)
+		}
+	}
+	return out
 }
 
 // resolveStructFields resolves a struct's field types. Split out from
@@ -263,13 +320,6 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 // first (making the name visible for forward/mutually-recursive references)
 // and resolve fields in a second sub-pass once every type shell exists.
 func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
-	// Push struct-level type params into scope so field types like T resolve.
-	prevTypeParams := c.typeParams
-	if len(s.TypeParams) > 0 {
-		c.typeParams = append(append([]string(nil), c.typeParams...), s.TypeParams...)
-	}
-	defer func() { c.typeParams = prevTypeParams }()
-
 	var fields []*ir.StructField
 	seen := make(map[string]struct{})
 	for _, f := range s.Fields() {
@@ -328,12 +378,13 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 // buildUnitDef builds an IR UnitDef from an AST UnitDef,
 // resolving suffix conversion factors.
 func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
-	suffixes := make([]*ir.UnitSuffix, len(u.Suffixes))
+	astSuffixes := u.Suffixes()
+	suffixes := make([]*ir.UnitSuffix, len(astSuffixes))
 	// Stash factor lookups for suffixes defined earlier in this same unit so
 	// expressions like `s = 1000ms` resolve against `ms` before registration.
 	localFactors := map[string]float64{}
 	localBaseNames := map[string]string{}
-	for i, s := range u.Suffixes {
+	for i, s := range astSuffixes {
 		us := &ir.UnitSuffix{
 			Name:     s.Name,
 			Factor:   1.0,
@@ -519,12 +570,8 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	// Set type params so T resolves during param/return type resolution.
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
 	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
-	prevTypeParams := c.typeParams
-	combined := f.TypeParams
-	if len(f.RecvTypeParams) > 0 {
-		combined = append(append([]string(nil), f.RecvTypeParams...), f.TypeParams...)
-	}
-	c.typeParams = combined
+	// Receiver parameters come first so the receiver type `list<T>` resolves.
+	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
 	// leave Return nil here so checkFuncBody can infer from a `=>` body without
 	// conflating it with an explicit `dyn` return annotation.
@@ -535,14 +582,14 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
-		TypeParams:     f.TypeParams,
-		RecvTypeParams: f.RecvTypeParams,
+		TypeParams:     c.resolveTypeParams(f.TypeParams),
+		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),
 	}
 	c.refuseParamMarks(f.Params.Params)
-	c.typeParams = prevTypeParams
+	popTypeParams()
 	if isMethod {
 		fn.Receiver = typeName
 		fn.Name = methodName
@@ -587,4 +634,84 @@ func isComparable(t *ir.Type) bool {
 		return true
 	}
 	return false
+}
+
+// resolveSlotContent reads a slot's declared type as what each supplied node
+// must be, plus how many are accepted. Bare `T` takes any number; the two
+// wrappers narrow it, and neither is a type the slot content ever has — they
+// say a count, so they are read here rather than constructed as types.
+func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
+	nt, ok := t.(*ast.NamedType)
+	if !ok {
+		return c.resolveType(t), ir.SlotAny
+	}
+	if card, elem := c.slotWrapper(nt); card != ir.SlotAny {
+		return c.requireTree(nt.Pos, elem), card
+	}
+	return c.requireTree(nt.Pos, c.resolveType(t)), ir.SlotAny
+}
+
+// requireTree holds a slot's content to naming a tree. What lands in a slot is
+// components, so a value type there says nothing a caller could satisfy.
+func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
+	if t == nil || t.Kind == ir.TypeDyn {
+		return t
+	}
+	if sd, ok := t.Decl.(*ir.StructDef); ok && (sd.IsTree || sd.Builtin == ir.BuiltinTreeDefault) {
+		return t
+	}
+	c.error(pos, "a slot accepts a tree, and %s is not one", t)
+	return nil
+}
+
+// slotWrapper reports the count a wrapper names, and the type it wraps. The
+// wrappers are recognised by their #[builtin] kind so a user declaration of
+// either name shadows them like any other built-in.
+func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
+	name := nt.Name
+	var sym ir.Symbol
+	if nt.Package != "" {
+		name = nt.Package + "." + nt.Name
+		nsSym, ok := c.scope.Lookup(nt.Package)
+		if !ok {
+			return ir.SlotAny, nil
+		}
+		ns, ok := nsSym.(*ir.Namespace)
+		if !ok {
+			return ir.SlotAny, nil
+		}
+		if ns.Pkg == nil {
+			return ir.SlotAny, nil
+		}
+		var found bool
+		if sym, found = ns.Pkg.Symbols.LookupMemberType(nt.Name); !found {
+			return ir.SlotAny, nil
+		}
+	} else {
+		var ok bool
+		if sym, ok = c.scope.Lookup(nt.Name); !ok {
+			return ir.SlotAny, nil
+		}
+	}
+	sd, ok := sym.(*ir.StructDef)
+	if !ok {
+		return ir.SlotAny, nil
+	}
+	var card ir.SlotCard
+	switch sd.Builtin {
+	case ir.BuiltinTreeOne:
+		card = ir.SlotOne
+	case ir.BuiltinOption:
+		card = ir.SlotOptional
+	default:
+		return ir.SlotAny, nil
+	}
+	switch {
+	case len(nt.TypeArgs) == 1:
+		return card, c.resolveType(nt.TypeArgs[0])
+	case len(nt.TypeArgs) == 0 && c.typeParamDefault(sd, 0) != nil:
+		return card, c.typeParamDefault(sd, 0)
+	}
+	c.error(nt.Pos, "%s takes exactly one type argument", name)
+	return card, &ir.Type{Kind: ir.TypeComponent}
 }

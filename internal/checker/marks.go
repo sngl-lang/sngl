@@ -60,15 +60,8 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // paramMarks are the marks that may be written in a component's parameter
 // list. Every other mark says something about a declaration that a parameter is
 // not, so the position is refused rather than left to the mark to notice.
-//
-// tree.children is legal here for a slot and nowhere else: a slot is a position
-// that hosts content, so which family that content belongs to is a fact about
-// the slot. tree.kind stays out, because kind says what a node *is* and a slot
-// is a position rather than a node. The mark implementation is what holds a
-// tree.children written on an ordinary prop to that rule.
 var paramMarks = map[markKey]bool{
-	{"macro", "wildcard"}:         true,
-	{"internal/tree", "children"}: true,
+	{"macro", "wildcard"}: true,
 }
 
 // applyParamMarks resolves and runs the marks written on a component prop.

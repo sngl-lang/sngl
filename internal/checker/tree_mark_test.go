@@ -10,22 +10,28 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The tree marks carry a name and nothing else, so a tree that has nothing to
-// do with drawing works the same way. This stub declares the rich-text tree
-// the mechanism was generalised for: a `document` hosts `block` nodes, a
-// `para` is a block that hosts `inline` nodes, and a `bold` is an inline.
+// A tree is a declaration and nothing here knows what drawing is, so a tree
+// with nothing to do with it works the same way. This stub declares the
+// rich-text tree the mechanism was generalised for: a `document` hosts `block`
+// members, a `para` is a block that hosts `inline` members, and a `bold` is an
+// inline.
+//
+// Membership is the return position; what a component hosts is its default
+// slot's type, which is how a member hosts a different family from its own.
 const treeStubSource = `
-import tree "sngl:internal/tree"
+import tree "sngl:tree"
 
-#[tree.children("block")]
-component document() {}
+#[tree.kind]
+struct block {}
 
-#[tree.kind("block")]
-#[tree.children("inline")]
-component para() {}
+#[tree.kind]
+struct inline {}
 
-#[tree.kind("inline")]
-component bold(weight int) {}
+component document(slot _ block) {}
+
+component para(slot _ inline) block {}
+
+component bold(weight int) inline {}
 
 component plain() {}
 `
@@ -103,21 +109,18 @@ component main {
 	}
 }
 
-// A member with no children mark of its own hosts its own kind, so a nested
-// node needs no second mark to be legal — and a member that carries #[children]
-// hosts that kind instead, which is what makes para a block full of inlines.
-func TestTreeKindImpliesItsOwnChildren(t *testing.T) {
+// A member hosts nothing unless it says so. The implicit "a shape contains
+// shapes" rule is gone: the default slot is where hosting is declared, and
+// `bold` declares none.
+func TestAMemberWithNoSlotHostsNothing(t *testing.T) {
 	errs := checkTreeStub(t, `
 component main {
-    document() {
-        para() {}
-        para() {
-            para() {}
-        }
+    bold(weight=1) {
+        bold(weight=2)
     }
 }
 `)
-	want := "expected inline component in para, got para"
+	want := "does not accept children"
 	if !hasErr(errs, want) {
 		t.Errorf("want %q, got %v", want, errs)
 	}
