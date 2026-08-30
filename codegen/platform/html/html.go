@@ -1302,24 +1302,23 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 
 // stateVars returns pkg.Vars merged with the main component's Vars.
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
+// stateVars is the state in scope for the document this generator emits: the
+// package's, the root component's, and this window's. The other components'
+// are not -- html emits one document per window and inlines the rest into it,
+// so a child component's var reaches `state` through the inliner's rename, not
+// through this list.
+//
+// Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
-	if g.pkg != nil {
-		for _, v := range g.pkg.Vars {
-			if !v.Synthesized {
-				out = append(out, v)
-			}
+	for _, o := range ir.Owners(g.pkg) {
+		if o.Comp != nil && o.Comp != g.rootComp {
+			continue
 		}
-		if main := g.rootComp; main != nil {
-			for _, v := range main.Vars {
-				if !v.Synthesized {
-					out = append(out, v)
-				}
-			}
+		if o.Win != nil && o.Win != g.irWindow {
+			continue
 		}
-	}
-	if g.irWindow != nil {
-		for _, v := range g.irWindow.Vars {
+		for _, v := range o.Vars {
 			if !v.Synthesized {
 				out = append(out, v)
 			}

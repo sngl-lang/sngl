@@ -113,6 +113,11 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	if len(pkg.Outputs) > 0 {
 		stmts = append(stmts, c.convertOutputs(pkg.Outputs))
 	}
+	// The package's own body renders last, after every declaration it reads,
+	// which is the order the source is written in and the order fmt keeps.
+	for _, st := range pkg.Body {
+		stmts = append(stmts, c.convertStmt(st))
+	}
 
 	return &ast.Document{Stmts: stmts}
 }

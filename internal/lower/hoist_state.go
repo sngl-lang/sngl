@@ -27,6 +27,12 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	// The package is a state owner like the other two: a `var` at the top of
+	// its body is the package's state, not a local of it. Nothing fills
+	// Package.Body yet, so this is inert -- it is here because the rule is the
+	// same rule, and a pass that knows two of the three owners is how the
+	// window case went missing in the first place.
+	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	for _, w := range pkg.Windows {
 		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
 	}

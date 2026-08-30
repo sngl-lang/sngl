@@ -38,11 +38,18 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 		return &DepTracker{ModelVars: model, ComputedFuncs: computed, ComputedDeps: computedDeps}
 	}
 
-	for _, v := range pkg.Vars {
-		model[v] = struct{}{}
-	}
-	for _, f := range pkg.Funcs {
-		if IsComputed(f) {
+	// Every owner contributes. These sets are keyed by *ir.Var and *ir.Func
+	// rather than by name, so two components declaring `count` are two
+	// entries and there is nothing to disambiguate -- unlike the name-keyed
+	// sets in AnalyzeCommon, which can take only the root component's.
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
+			model[v] = struct{}{}
+		}
+		for _, f := range o.Funcs {
+			if !IsComputed(f) {
+				continue
+			}
 			computed[f] = struct{}{}
 			deps := make(map[*ir.Var]struct{})
 			for _, r := range f.Reads {
@@ -50,27 +57,6 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			}
 			computedDeps[f] = deps
 		}
-	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			model[v] = struct{}{}
-		}
-		for _, f := range comp.Funcs {
-			if IsComputed(f) {
-				computed[f] = struct{}{}
-				deps := make(map[*ir.Var]struct{})
-				for _, r := range f.Reads {
-					deps[r] = struct{}{}
-				}
-				computedDeps[f] = deps
-			}
-		}
-	}
-	// A window's state is a model var like a component's. Left out here a read
-	// of it has no dependency, so the binding that keeps an element up to date
-	// is never emitted.
-	for _, v := range WindowStateVars(pkg) {
-		model[v] = struct{}{}
 	}
 	return &DepTracker{
 		ModelVars:     model,

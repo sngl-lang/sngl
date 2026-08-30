@@ -441,6 +441,9 @@ func (w *rewriter) pkg(pkg *Package) {
 	for _, win := range pkg.Windows {
 		w.window(win)
 	}
+	// The package's own body, last, so a walk sees declarations before what
+	// renders them -- the same order this walk visits a component in.
+	pkg.Body = w.stmts(pkg.Body)
 }
 
 func (w *rewriter) root(root any) {

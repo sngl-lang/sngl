@@ -85,49 +85,35 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		UsedComponents: make(map[string]bool),
 	}
 
-	for _, v := range pkg.Vars {
-		a.ModelFields[v.Name] = true
-	}
-
-	for _, v := range WindowStateVars(pkg) {
-		a.ModelFields[v.Name] = true
-	}
-
-	for _, f := range pkg.Funcs {
-		a.FuncNames[f.Name] = true
-		if f.Receiver != "" {
-			a.FuncNames[f.Receiver+"."+f.Name] = true
+	// These sets are keyed by name, so only one component can contribute: a
+	// child component's `count` is not the root model's `count`. The package
+	// and the windows are unambiguous and always do.
+	for _, o := range ir.Owners(pkg) {
+		if o.Comp != nil && o.Comp.Name != rootComponentName {
+			continue
 		}
-		if IsComputed(f) {
-			a.ModelFields[f.Name] = true
-			a.ComputedFields[f.Name] = true
-			deps := make(map[string]bool)
-			for _, r := range f.Reads {
-				deps[r.Name] = true
-			}
-			a.ComputedDeps[f.Name] = deps
+		for _, v := range o.Vars {
+			a.ModelFields[v.Name] = true
 		}
-	}
-
-	for _, comp := range pkg.Components {
-		if comp.Name == "main" {
-			for _, v := range comp.Vars {
-				a.ModelFields[v.Name] = true
+		// A window's funcs are synthesized and reached through
+		// CodegenCtx.AllFuncs, not by name from an expression, so they do not
+		// join FuncNames.
+		if o.Win != nil {
+			continue
+		}
+		for _, f := range o.Funcs {
+			a.FuncNames[f.Name] = true
+			if f.Receiver != "" {
+				a.FuncNames[f.Receiver+"."+f.Name] = true
 			}
-			for _, f := range comp.Funcs {
-				a.FuncNames[f.Name] = true
-				if f.Receiver != "" {
-					a.FuncNames[f.Receiver+"."+f.Name] = true
+			if IsComputed(f) {
+				a.ModelFields[f.Name] = true
+				a.ComputedFields[f.Name] = true
+				deps := make(map[string]bool)
+				for _, r := range f.Reads {
+					deps[r.Name] = true
 				}
-				if IsComputed(f) {
-					a.ModelFields[f.Name] = true
-					a.ComputedFields[f.Name] = true
-					deps := make(map[string]bool)
-					for _, r := range f.Reads {
-						deps[r.Name] = true
-					}
-					a.ComputedDeps[f.Name] = deps
-				}
+				a.ComputedDeps[f.Name] = deps
 			}
 		}
 	}
@@ -299,25 +285,8 @@ func parseNumber(raw string) float64 {
 	return n
 }
 
-// WindowStateVars returns the state declared by every window in pkg.
-//
-// A window is the third place state is declared, beside the package and the
-// main component, and it is the one every consumer forgot: the checker leaves
-// a window's `var` as a local of the body where a component's becomes a
-// declaration, and passHoistState is what makes the two the same shape. Having
-// one function for it means a target that supports windows either calls this
-// or does not, rather than each carrying a list that can fall a case behind.
-//
-// Synthesized vars are included: a caller filters them the way it already
-// filters the package's and the component's, which is not the same rule
-// everywhere -- html emits them as file-scope lets, bubbletea as Model fields.
-func WindowStateVars(pkg *ir.Package) []*ir.Var {
-	if pkg == nil {
-		return nil
-	}
-	var out []*ir.Var
-	for _, w := range pkg.Windows {
-		out = append(out, w.Vars...)
-	}
-	return out
-}
+// rootComponentName is the component a single-Model target builds from when
+// nothing overrides it. CodegenCtx.MainComponent is the authority -- it also
+// honours RootComponent -- but AnalyzeCommon runs from a package alone, before
+// there is a CodegenCtx to ask.
+const rootComponentName = "main"

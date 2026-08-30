@@ -51,6 +51,17 @@ type Package struct {
 	Contexts []*Context
 	Symbols  *SymbolTable
 
+	// Body is what the package itself renders: visual nodes written at the top
+	// level, outside any component or window. The package is then a state
+	// owner like the other two -- Vars is the state this body reads, the way
+	// Component.Vars is for Component.Body.
+	//
+	// Nothing fills it yet. It exists so the owners are three of a kind before
+	// the syntax that populates it lands, because every consumer that asks
+	// "which declarations own state" has to be able to name the package
+	// without a special case (#135).
+	Body []Stmt `json:",omitempty"`
+
 	// TreeKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
 	// it: an import of sngl:ui/draw is neither necessary (a package may declare
