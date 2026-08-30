@@ -378,7 +378,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
 		return ctx.BuildMutation(nil), nil
 	}
-	singleWindow := len(irWindows) == 1
 	staticMode := req.Lang.LanguageIdentifier() == "none"
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
@@ -389,7 +388,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
-		case singleWindow && (win.Window == nil || win.Window.Href == nil):
+		case win.Window == nil || win.Window.Href == nil:
+			// No declaration to take an href from: the package body's root
+			// window, or a lone main component's. It is the document the site
+			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
 			href, ok := codegen.IRLiteralString(win.Window.Href)

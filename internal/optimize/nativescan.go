@@ -80,6 +80,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 			scanExprs(f.Default)
 		}
 	}
+	scanStmts(pkg.Body, visit)
 	for _, comp := range pkg.Components {
 		for _, p := range comp.Props {
 			scanExprs(p.Default)

@@ -209,6 +209,12 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
+	// pendingPkgBody holds the statements written at the package's top level,
+	// collected in pass1 and checked in pass2. They cannot be checked where
+	// they are found: they read vars and instantiate components that pass1 is
+	// still registering.
+	pendingPkgBody []ast.Stmt
+
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
 	optionsCache map[string]*ir.StructDef
@@ -721,10 +727,15 @@ func (c *checker) pass1() {
 		case *ast.VisualNode:
 			c.registerRootVisualNode(s)
 		case *ast.CallStmt:
+			// A context declaration is a call statement by syntax and a
+			// declaration by meaning, so it is recognised before anything
+			// else. Everything left is the package's body: `counter()` -- a
+			// component instantiated with no block -- parses as a call, and is
+			// the composition a top-level body is usually made of.
 			if c.isContextDeclCallStmt(s) {
 				c.registerRootContextDecl(s)
 			} else {
-				c.error(s.Pos, "unexpected top-level call statement")
+				c.pendingPkgBody = append(c.pendingPkgBody, s)
 			}
 		case *ast.DisabledDecl:
 		case *ast.Comment:
@@ -2059,7 +2070,33 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		}
 		c.buildOutputs(vn)
 	default:
-		c.error(vn.Pos, "unexpected root-level visual node %q", name)
+		// An ordinary visual node at the top level is the package's own body:
+		// what the program renders, with the package's vars as its state. Held
+		// until pass2, because it reads declarations pass1 is still making.
+		c.pendingPkgBody = append(c.pendingPkgBody, ast.Stmt(vn))
+	}
+}
+
+// checkPackageBody checks the visual nodes written at the package's top level
+// into c.pkg.Body.
+//
+// The package is a state owner like a component or a window (ir.Owners): its
+// vars are the state this body reads, and they are already bound at file scope
+// by pass1, so unlike checkComponentBody and checkWindowBody there is nothing
+// to declare here but the node ids.
+func (c *checker) checkPackageBody() {
+	if len(c.pendingPkgBody) == 0 {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, st := range c.pendingPkgBody {
+		c.declareNodeIDsStmt(st, false)
+	}
+	for _, st := range c.pendingPkgBody {
+		if checked := c.checkStmt(st); checked != nil {
+			c.pkg.Body = append(c.pkg.Body, checked)
+		}
 	}
 }
 
@@ -2765,6 +2802,8 @@ func (c *checker) pass2() {
 			c.checkWindowBody(w)
 		}
 	}
+
+	c.checkPackageBody()
 
 	// Check timer handler bodies (component timers are checked inside
 	// checkComponentBody so they can see component vars in scope).
