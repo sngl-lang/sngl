@@ -806,10 +806,14 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Body = lowerInStmts(w.Body, windowActive, reach, hidden)
-		// Promote any LocalVar that the provider unwrap spliced up to
-		// window-body level into the window's Vars slice. See the parallel
-		// post-pass on comp.Body below for rationale.
-		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
+		// No promotion here, unlike the component post-pass below. A
+		// component's state is comp.Vars and every consumer reads it there;
+		// a window's is a top-level LocalVar in its body, which is where the
+		// checker leaves it and where every platform reads it. Window.Vars
+		// holds the href's path params and nothing else. Promoting into it
+		// moved a window's state somewhere only html's route mode looks, so
+		// declaring a context was enough to make a window var vanish from
+		// bubbletea, fyne and gtk4.
 		for _, v := range w.Vars {
 			v.Init = lowerInExpr(v.Init, windowActive, reach, hidden)
 			for _, h := range v.Handlers {
