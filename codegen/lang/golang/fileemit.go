@@ -40,10 +40,7 @@ func newFileEmitter(sink codegen.Sink, opts codegen.FileOptions) *fileEmitter {
 	gc := &GoIRContext{
 		imports:            newImportSet(),
 		EmitLineDirectives: opts.Maps,
-		// The directive is resolved against the emitted file's own
-		// directory, which is the output root plus whatever subdirectory
-		// this file sits in.
-		LineDirBase: lineDirBase(opts),
+		LineDirBase:        lineDirBase(opts),
 	}
 	return &fileEmitter{sink: sink, opts: opts, gc: gc}
 }

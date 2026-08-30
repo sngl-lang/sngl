@@ -70,9 +70,8 @@ func (fe *fileEmitter) EvalStmt(s ir.Stmt) []string {
 // real alias should populate NativeImports directly.
 func (fe *fileEmitter) RequireImport(path string) string { return path }
 
-// mapDir is the directory the sidecar map will be read from: the output
-// root joined with whatever subdirectory the output name sits in, since
-// the sidecar is written beside the file it maps.
+// mapDir is the directory the sidecar map will be read from; it is written
+// beside the file it maps.
 func (fe *fileEmitter) mapDir() string {
 	if fe.opts.OutDir == "" {
 		return ""
@@ -96,12 +95,9 @@ func (fe *fileEmitter) Close() error {
 	if fe.opts.Maps {
 		// Extract inline /*@SNGL:file:line@*/ markers into a v3 source
 		// map sidecar, strip from body, and append a sourceMappingURL
-		// footer that references the sidecar by name.
-		//
-		// Run over the *assembled* bytes, header included: a map's
-		// generated line numbers are counted in the file as written, so
-		// mapping the bare body and prepending the header afterwards
-		// shifts every entry by the header's height.
+		// footer that references the sidecar by name. Runs over the
+		// assembled bytes, header included, since generated line numbers
+		// count the file as written.
 		res := renderJSSourceMap(fe.opts.Name, fe.mapDir(), nil, assembled.Bytes())
 		if res.InlineBody != nil {
 			assembled.Reset()

@@ -1,17 +1,10 @@
-# The inline map has to carry the SNGL source itself. Its `sources` are
-# resolved against the map's own location, and for html the map is inlined
-# into a page: one emitted below the output root sits at a different depth
-# from the one at the root, and over HTTP the .sngl is outside the document
-# root either way. sourcesContent is what removes the need to resolve at
-# all — and esbuild has to preserve it when it chains our SNGL->JS map
-# through its own JS->bundle map.
-#
 # generate_maps_js_inline.txt only greps for a map being present; this one
-# checks it points at something and carries the source.
+# checks the `sources` label resolves and that sourcesContent survives
+# esbuild chaining our SNGL->JS map through its own JS->bundle map.
 [!node] skip
 
-# Build from a subdirectory so the right `sources` label ("../src/app.sngl")
-# is distinguishable from both the invocation path and a bare basename.
+# From a subdirectory, so "../src/app.sngl" is distinguishable from both
+# the invocation path and a bare basename.
 mkdir src
 cp app.sngl src/app.sngl
 rm app.sngl
@@ -32,9 +25,7 @@ component main {
 }
 
 -- check_map.js --
-// Decode the inline source map out of index.html and check two things: the
-// `sources` label resolves as a path relative to the map's own directory,
-// and the map carries the SNGL text so no resolution is needed at all.
+// Decode the inline source map out of index.html.
 const fs = require("fs");
 const path = require("path");
 
@@ -63,8 +54,6 @@ if (snglIdx < 0) {
 const sngl = map.sources[snglIdx];
 
 if (path.isAbsolute(sngl)) {
-    // An absolute path resolves on the machine that built it and nowhere
-    // else, so golden output must never carry one.
     console.error("absolute source path: " + sngl);
     process.exit(1);
 }
@@ -73,8 +62,7 @@ if (!fs.existsSync(path.join("out", sngl))) {
     process.exit(1);
 }
 
-// esbuild rewrites the map when it chains ours through its own; the source
-// text has to survive that, or a served page has no way back to the SNGL.
+// esbuild rewrites the map when it chains ours through its own.
 if (!Array.isArray(map.sourcesContent)) {
     console.error("map carries no sourcesContent");
     process.exit(1);

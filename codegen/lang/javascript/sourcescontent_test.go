@@ -10,10 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-// The map carries the SNGL text, so a consumer needs no path to resolve —
-// which is the only way an inline map works for a page emitted below the
-// output root, or for a site served over HTTP with the .sngl outside the
-// document root.
+// The map carries the SNGL text, so a consumer needs no path to resolve.
 func TestRenderJSSourceMap_EmbedsSourcesContent(t *testing.T) {
 	dir := t.TempDir()
 	srcPath := filepath.Join(dir, "app.sngl")
@@ -45,9 +42,8 @@ func TestRenderJSSourceMap_EmbedsSourcesContent(t *testing.T) {
 	}
 }
 
-// A source that cannot be read (the playground has no disk at all) leaves
-// the field off rather than emitting a shorter array, which would misalign
-// every later entry against sources.
+// Nothing readable leaves the field off rather than emitting a shorter
+// array, which would misalign every later entry against sources.
 func TestRenderJSSourceMap_UnreadableSourceOmitsContent(t *testing.T) {
 	positions := []codegen.PosEntry{
 		{ByteOffset: 0, Pos: ast.Pos{File: "no/such/app.sngl", Line: 1, Column: 1}},

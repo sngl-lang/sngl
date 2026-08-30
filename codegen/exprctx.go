@@ -45,8 +45,7 @@ type ExprCtx struct {
 	// Maps mirrors Request.Maps: when true, translators emit source-map
 	// hooks (e.g. Go `//line file:lineno` directives before statements).
 	Maps bool
-	// OutDir mirrors Request.OutDir, so a translator building a source map
-	// can resolve its `sources` against where the map will be read from.
+	// OutDir mirrors Request.OutDir, for translators emitting source maps.
 	OutDir string
 	// ContextVar is the expression to supply for native context args
 	// (e.g., "r.Context()").

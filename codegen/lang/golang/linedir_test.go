@@ -6,11 +6,8 @@ import (
 	"testing"
 )
 
-// The Go compiler resolves a relative `//line` path against the directory of
-// the file carrying the directive, not the working directory the build ran
-// from. So a directive naming the SNGL source the way the compiler was
-// invoked points at nothing once the .go file sits in the output directory —
-// which is what lineDirPath rewrites.
+// gc resolves a relative `//line` path against the directory of the file
+// carrying the directive, so the path has to be relative to the output.
 func TestLineDirPath_ResolvesFromEmittedFilesDirectory(t *testing.T) {
 	root := t.TempDir()
 	srcDir := filepath.Join(root, "src")
@@ -44,8 +41,6 @@ func TestLineDirPath_ResolvesFromEmittedFilesDirectory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := lineDirPath(tc.file, outDir)
 			if filepath.IsAbs(got) {
-				// An absolute path resolves on the machine that built it
-				// and nowhere else, so golden output must never carry one.
 				t.Fatalf("lineDirPath returned an absolute path %q", got)
 			}
 			if _, err := os.Stat(filepath.Join(outDir, got)); err != nil {
@@ -56,7 +51,7 @@ func TestLineDirPath_ResolvesFromEmittedFilesDirectory(t *testing.T) {
 }
 
 // With no output directory known (playground, LSP preview) the path stays
-// exactly as the compiler saw it rather than being resolved against the cwd.
+// as the compiler saw it.
 func TestLineDirPath_NoBaseLeavesPathAlone(t *testing.T) {
 	if got := lineDirPath("app.sngl", ""); got != "app.sngl" {
 		t.Errorf("lineDirPath(%q, \"\") = %q, want it unchanged", "app.sngl", got)

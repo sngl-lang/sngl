@@ -106,12 +106,10 @@ type FileOptions struct {
 	// Maps enables source-map emission: Go inline //line directives,
 	// JS data-URL sourceMappingURL.
 	Maps bool
-	// OutDir is where the sink's files will come to rest on disk. A source
-	// map's `sources` are resolved against the map's own location, so
-	// writing one means knowing that location — which the sink alone does
-	// not say, since generation runs into a MemSink the caller drains
-	// afterwards. Empty when the output never lands on disk (playground,
-	// LSP preview), and source paths are then left as the compiler saw them.
+	// OutDir is where the sink's files will come to rest on disk. The sink
+	// alone does not say, since generation runs into a MemSink the caller
+	// drains afterwards. Empty when the output never lands on disk
+	// (playground, LSP preview), and source paths are then left unrewritten.
 	OutDir string
 	// CgoPreamble, when non-empty, is emitted immediately after the package
 	// clause and before the regular import block (Go only). It holds the cgo
@@ -656,8 +654,7 @@ type Request struct {
 	// field of the output() options block (lib/options.sngl).
 	Maps bool
 	// OutDir is where the generated files will be written. Only source-map
-	// emission reads it, to resolve `sources` against the map's location;
-	// see FileOptions.OutDir.
+	// emission reads it; see FileOptions.OutDir.
 	OutDir string
 }
 

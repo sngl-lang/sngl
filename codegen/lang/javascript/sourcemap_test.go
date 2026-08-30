@@ -113,9 +113,8 @@ func TestRenderJSSourceMap_NoMarkersNoPositionsReturnsZero(t *testing.T) {
 	}
 }
 
-// A `sources` entry is resolved against the map's own location, so a map
-// written into an output directory must not carry the path the compiler was
-// invoked with. These cover both spellings an invocation can produce.
+// A `sources` entry is resolved against the map's own location, not the
+// directory the compiler ran in. Both spellings an invocation can produce.
 func TestRenderJSSourceMap_SourcesResolveFromMapDir(t *testing.T) {
 	root := t.TempDir()
 	srcDir := filepath.Join(root, "src")
@@ -159,8 +158,6 @@ func TestRenderJSSourceMap_SourcesResolveFromMapDir(t *testing.T) {
 			if m.Sources[0] != filepath.ToSlash(rel) {
 				t.Errorf("sources[0]=%q want %q", m.Sources[0], filepath.ToSlash(rel))
 			}
-			// The point of the rewrite: a consumer reading the map from
-			// outDir can open what it names.
 			resolved := filepath.Join(outDir, filepath.FromSlash(m.Sources[0]))
 			if _, err := os.Stat(resolved); err != nil {
 				t.Errorf("sources[0] does not resolve from the map's directory: %v", err)
@@ -170,8 +167,7 @@ func TestRenderJSSourceMap_SourcesResolveFromMapDir(t *testing.T) {
 }
 
 // relToCwd spells path the way a CLI invocation from the working directory
-// would, so the test covers the input form that produced a bare "app.sngl"
-// in the map before sources were rebased.
+// would.
 func relToCwd(t *testing.T, path string) string {
 	t.Helper()
 	cwd, err := os.Getwd()
@@ -185,8 +181,8 @@ func relToCwd(t *testing.T, path string) string {
 	return rel
 }
 
-// With no output directory known (playground, LSP preview) the path is left
-// exactly as the compiler saw it rather than being resolved against the cwd.
+// With no output directory known (playground, LSP preview) the path stays
+// as the compiler saw it.
 func TestRenderJSSourceMap_NoMapDirLeavesSourcesAlone(t *testing.T) {
 	positions := []codegen.PosEntry{
 		{ByteOffset: 0, Pos: ast.Pos{File: "f.sngl", Line: 1, Column: 1}},
@@ -203,10 +199,7 @@ func TestRenderJSSourceMap_NoMapDirLeavesSourcesAlone(t *testing.T) {
 	}
 }
 
-// A map's generated line numbers count lines in the file as written. The
-// emitter prepends a two-line generated-by header, so building the map
-// against the bare body and prepending the header afterwards shifted every
-// entry up by two — the sidecar pointed two lines above each statement.
+// Generated line numbers count the file as written, header included.
 func TestFileEmitter_MapAccountsForGeneratedByHeader(t *testing.T) {
 	sink := codegen.NewMemSink()
 	fe := newFileEmitter(sink, codegen.FileOptions{
@@ -252,8 +245,8 @@ func TestFileEmitter_MapAccountsForGeneratedByHeader(t *testing.T) {
 	if err := json.Unmarshal(sidecar, &m); err != nil {
 		t.Fatal(err)
 	}
-	// One segment group per generated line, ';'-separated; the leading
-	// empty groups are the lines before the first mapped statement.
+	// One ';'-separated group per generated line; the leading empty ones
+	// precede the first mapped statement.
 	gotLine := strings.Index(m.Mappings, "A")
 	if gotLine < 0 {
 		t.Fatalf("no segment in mappings %q", m.Mappings)

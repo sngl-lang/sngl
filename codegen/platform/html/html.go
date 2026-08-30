@@ -518,17 +518,10 @@ type htmlGen struct {
 
 	maps bool
 
-	// outDir is where index.html will land, which is where the inline
-	// source map is read from and so what its `sources` resolve against.
-	//
-	// It only makes those paths a good label, not the thing that has to
-	// work: a window with `href="/about"` is emitted to about/index.html, a
-	// directory below the page at the root, and that name is decided in the
-	// collect step — after the script and its map have been rendered. Over
-	// HTTP nothing resolves either, since the .sngl sits outside the
-	// document root. What actually carries the source is the map's
-	// sourcesContent (see readSourcesContent), which esbuild preserves
-	// through its own map chain.
+	// outDir is what the inline source map's `sources` resolve against. It
+	// only makes them a good label: a window with `href="/about"` lands a
+	// directory lower, and that name is decided after the map is rendered.
+	// The map's sourcesContent is what actually carries the source.
 	outDir string
 
 	componentInvocations int

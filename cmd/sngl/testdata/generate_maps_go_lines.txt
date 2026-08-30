@@ -2,11 +2,10 @@
 # before each statement so the Go compiler attributes errors and stack
 # traces back to the original SNGL source.
 #
-# The Go compiler resolves a relative //line path against the directory of
-# the file carrying the directive, not the directory the build ran from, so
-# the path is written relative to the output directory. Building from a
-# subdirectory keeps the right answer ("../src/app.sngl") distinguishable
-# from both the invocation path and a bare basename.
+# gc resolves a relative //line path against the directory of the file
+# carrying it, so the path is written relative to the output. Built from a
+# subdirectory, so "../src/app.sngl" is distinguishable from both the
+# invocation path and a bare basename.
 
 mkdir src
 cp app.sngl src/app.sngl
@@ -15,13 +14,13 @@ rm app.sngl
 sngl generate --platform=bubbletea --lang=go --opt=main=true --opt=maps=true --out=out src/app.sngl
 exists out/model.go
 
-# The directive names the source as reached from out/, where model.go lives.
+# Named as reached from out/, where model.go lives.
 grep '//line \.\./src/app\.sngl:' out/model.go
 
-# And that is a path to something: the directive resolves to the real file.
+# And it resolves to the real file.
 exists out/../src/app.sngl
 
-# An absolute path would resolve too, but only on the machine that built it.
+# An absolute path would resolve, but only on the machine that built it.
 ! grep '//line /' out/model.go
 
 # Sanity: without maps the directive is absent.

@@ -25,28 +25,15 @@ var jsPositionMarker = regexp.MustCompile(`/\*@SNGL:([^:@]+):(\d+)@\*/`)
 // SourceMapResult with the marker-stripped body in InlineBody and the
 // sidecar JSON in Sidecar.
 //
-// mapDir is the directory the finished map will be read from, so the
-// `sources` paths can be written relative to it; see relativizeSources.
+// mapDir is the directory the finished map will be read from.
 func RenderInlineSourceMap(name, mapDir string, body []byte) codegen.SourceMapResult {
 	return renderJSSourceMap(name, mapDir, nil, body)
 }
 
-// readSourcesContent returns the text of each source, for the map's
-// `sourcesContent`, with a nil entry for one that cannot be read.
-//
-// Embedding the text is what makes an inline map usable at all. Its
-// `sources` are resolved against the map's own location, and for html the
-// map is inlined into a page: one emitted to about/index.html sits a
-// directory below the one at the root, and the path is fixed before either
-// name is decided. Served over HTTP nothing resolves regardless, since the
-// .sngl is outside the document root. With the text embedded no path has
-// to resolve — the paths stay as labels, and as the fallback for a
-// consumer reading a sidecar off the filesystem.
-//
-// A source that cannot be read is a null entry rather than an omission:
-// sourcesContent is positional against sources, so dropping one would
-// silently attribute its text to a different file. The playground reads
-// nothing (there is no disk under GOOS=js), which is the all-null case.
+// readSourcesContent returns the text of each source for the map's
+// `sourcesContent`. An unreadable one is a null entry rather than an
+// omission: the array is positional against sources, so dropping one would
+// attribute its text to a different file. Under GOOS=js nothing is readable.
 func readSourcesContent(sources []string) []*string {
 	content := make([]*string, len(sources))
 	any := false
@@ -65,17 +52,11 @@ func readSourcesContent(sources []string) []*string {
 	return content
 }
 
-// relativizeSources rewrites each source path so it resolves from mapDir,
-// which is where a consumer reads the map from. A `sources` entry is
-// resolved against the map's own location, so the compiler's input path —
-// relative to the invocation's working directory, or absolute — names
-// nothing once the map sits in the output directory.
-//
-// An absolute path would resolve but would also vary per machine, which
-// golden output cannot have; a relative one is stable as long as source and
-// output keep their relative positions. Anything Rel cannot express (a
-// different Windows volume, an unknown mapDir) keeps the path unchanged:
-// a map that points somewhere is worth more than no map.
+// relativizeSources rewrites each source path to resolve from mapDir: a
+// `sources` entry is resolved against the map's own location, not the
+// directory the compiler ran in. Relative rather than absolute so golden
+// output does not vary per machine; anything Rel cannot express is left
+// alone.
 func relativizeSources(sources []string, mapDir string) []string {
 	if mapDir == "" {
 		return sources
@@ -228,8 +209,7 @@ func renderJSSourceMap(name, mapDir string, positions []codegen.PosEntry, body [
 	}{
 		Version: 3,
 		File:    name,
-		// Read the content before the paths are rewritten: the originals
-		// are what open on this filesystem.
+		// Reads the original paths, which are the ones that open here.
 		SourcesContent: readSourcesContent(sources),
 		Sources:        relativizeSources(sources, mapDir),
 		Names:          []string{},

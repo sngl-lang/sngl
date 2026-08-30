@@ -47,10 +47,9 @@ type GoIRContext struct {
 	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
 
-	// LineDirBase is the directory the emitted .go file will live in. A
-	// relative path in a `//line` directive is resolved by the Go compiler
-	// against the directory of the file carrying it, so the SNGL path has to
-	// be rewritten relative to that or it names nothing from there. Empty
+	// LineDirBase is the directory the emitted .go file will live in. gc
+	// resolves a relative `//line` path against the directory of the file
+	// carrying the directive, not the build's working directory. Empty
 	// leaves the path as the compiler saw it.
 	LineDirBase string
 
@@ -417,11 +416,10 @@ func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	return []string{fmt.Sprintf("//line %s:%d", lineDirPath(pos.File, gc.LineDirBase), pos.Line)}
 }
 
-// lineDirPath rewrites a SNGL source path so it resolves from base, the
-// directory the emitted .go file lands in. An absolute path would resolve
-// but would vary per machine, which golden output cannot have. Anything Rel
-// cannot express, and an unknown base, keep the path unchanged: a directive
-// pointing somewhere beats none.
+// lineDirPath rewrites a SNGL source path to resolve from base, the
+// directory the emitted .go file lands in. Relative rather than absolute so
+// golden output does not vary per machine; anything Rel cannot express is
+// left alone.
 func lineDirPath(file, base string) string {
 	if base == "" {
 		return file
