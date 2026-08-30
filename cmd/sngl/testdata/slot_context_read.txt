@@ -27,6 +27,20 @@ sngl generate --platform=html --lang=none --out=prov provided.sngl
 grep '<span>dark</span>' prov/index.html
 ! grep 'light' prov/index.html
 
+# An errorBoundary's @error handler is the other body the walks stopped short
+# of: ir.Rewrite skipped ErrorBoundary.Handler entirely, and Call.ResolvedHandler
+# only aliases it, so nothing reached a read written there. fyne and gtk4 are
+# absent here because they panic on an errorBoundary for an unrelated reason
+# (issue #112).
+sngl generate --platform=html --lang=none --out=ebh boundary.sngl
+grep 'state.caught = __ctx_theme' ebh/index.html
+
+sngl generate --platform=android --lang=kotlin --out=ebk boundary.sngl
+grep '__ctx_theme' ebk/MainScreen.kt
+
+sngl generate --platform=bubbletea --lang=go --out=ebb boundary.sngl
+grep '__ctx_theme' ebb/model.go
+
 -- read.sngl --
 import . "sngl:ui"
 
@@ -65,4 +79,18 @@ component main {
             }
         }
     }
+}
+
+-- boundary.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+context #theme("light")
+
+component main {
+    var caught = ""
+    errorBoundary(@error(e) { caught = theme }) {
+        button #go(text="Go", @click { error.raise("boom", "") })
+    }
+    text(value=caught)
 }
