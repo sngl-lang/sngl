@@ -57,7 +57,7 @@ func TestTickHonoursEachTimersInterval(t *testing.T) {
 
 	// Five ticks reach 500ms: the fast timer is due at each 100ms boundary,
 	// the slow one only at the last.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if _, err := ts.Tick(env); err != nil {
 			t.Fatalf("tick %d: %v", i, err)
 		}
@@ -82,7 +82,7 @@ func TestATickFiresEveryTimerDueAtTheSameDeadline(t *testing.T) {
 		t.Fatalf("NewTimers: %v", err)
 	}
 	total := 0
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		n, err := ts.Tick(env)
 		if err != nil {
 			t.Fatalf("tick %d: %v", i, err)
@@ -195,7 +195,7 @@ component main {
 	if err != nil {
 		t.Fatalf("NewTimers: %v", err)
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if _, err := ts.Tick(env); err != nil {
 			t.Fatalf("tick %d: %v", i, err)
 		}

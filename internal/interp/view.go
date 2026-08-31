@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -178,9 +179,7 @@ func walkNodes(nodes []*Node, fn func(*Node) bool) bool {
 func (n *Node) Map() map[string]any {
 	m := make(map[string]any, len(n.Props)+len(n.Handlers)+2)
 	m["_type"] = n.Name
-	for k, val := range n.Props {
-		m[k] = val
-	}
+	maps.Copy(m, n.Props)
 	for ev, h := range n.Handlers {
 		m["@"+ev] = h
 	}
