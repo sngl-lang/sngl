@@ -1,6 +1,6 @@
 vbox() {
     text(value="hi", selectable=true)
-    text(style="{}", value="resolved from positional")
+    text(style={}, value="resolved from positional")
     button(text="click me", @click)
     hbox() {
         text(value="nested")

@@ -1,5 +1,7 @@
 vbox() {
     text(value="[new]")
     vbox() {
+        text(value="Report")
+        text(value="body text")
     }
 }

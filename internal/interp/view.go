@@ -49,10 +49,9 @@ type Node struct {
 	// on that order, so a map alone will not do.
 	Props     map[string]any
 	PropOrder []string
-	// Handlers holds each declared event's body, keyed by event name without
-	// the `@`. The value is whatever the IR carried: an *ir.Func for a visual
-	// node, an *ast.StmtBlock for the children-less call form.
-	Handlers map[string]any
+	// Handlers are the declared events, in declaration order. Ordered rather
+	// than mapped because a snapshot prints them and has to be deterministic.
+	Handlers []Handler
 	Children []*Node
 	// Env is the scope the props were evaluated in. Held because a handler
 	// runs in it, and because a re-evaluation has to use the same scope the
@@ -85,9 +84,39 @@ type Node struct {
 	Component *ir.Component
 }
 
-// IsComponent reports whether this node instantiates a user component rather
-// than a platform element.
+// Handler is one declared event on a node. Body is whatever the IR carried:
+// an *ir.Func for a visual node, an *ast.StmtBlock for the call form.
+type Handler struct {
+	Name string
+	Body any
+}
+
+// IsComponent reports whether this node instantiates a component rather than a
+// platform element.
 func (n *Node) IsComponent() bool { return n != nil && n.Component != nil }
+
+// IsUserComponent reports whether this node instantiates one of the program's
+// own components, as opposed to a stdlib element that happens to resolve to a
+// component declaration with nothing in it.
+//
+// Deliberately not the same question as Expanded. Expanded asks whether a body
+// was mounted beneath -- that governs Find, because the walk it replaced
+// matched an empty-bodied component by #id. This asks whether the declaration
+// is the program's, which is what a snapshot needs: `component holder { var n
+// = 0 }` renders nothing and must not print, while `vbox` resolves to a
+// component with nothing in it and must.
+func (n *Node) IsUserComponent() bool {
+	return n != nil && IsUserComponent(n.Component)
+}
+
+// IsUserComponent reports whether comp is one of the program's own components.
+// A stdlib element resolves to a declaration carrying no body, vars or funcs.
+func IsUserComponent(comp *ir.Component) bool {
+	if comp == nil {
+		return false
+	}
+	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+}
 
 // Mount builds the retained tree for env's component body.
 func Mount(env *Env) (*View, error) {
@@ -180,8 +209,8 @@ func (n *Node) Map() map[string]any {
 	m := make(map[string]any, len(n.Props)+len(n.Handlers)+2)
 	m["_type"] = n.Name
 	maps.Copy(m, n.Props)
-	for ev, h := range n.Handlers {
-		m["@"+ev] = h
+	for _, h := range n.Handlers {
+		m["@"+h.Name] = h.Body
 	}
 	m["__ownerEnv"] = n.Env
 	return m
@@ -346,12 +375,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			Expanded:  len(inst.Component.Body) > 0,
 		}
 		node.Props, node.PropOrder = evalProps(env, inst.Props)
-		if len(inst.Handlers) > 0 {
-			node.Handlers = make(map[string]any, len(inst.Handlers))
-			for _, h := range inst.Handlers {
-				node.Handlers[h.Name] = h.Func
-			}
-		}
+		node.Handlers = handlersOf(inst)
 		m.add(node)
 
 		child := env.componentEnv(inst.Component, inst)
@@ -386,12 +410,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		Inst: inst,
 	}
 	node.Props, node.PropOrder = evalProps(env, inst.Props)
-	if len(inst.Handlers) > 0 {
-		node.Handlers = make(map[string]any, len(inst.Handlers))
-		for _, h := range inst.Handlers {
-			node.Handlers[h.Name] = h.Func
-		}
-	}
+	node.Handlers = handlersOf(inst)
 	m.add(node)
 
 	kids, err := m.stmts(env, inst.Children, path)
@@ -472,10 +491,7 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 	if cstmt, ok := cs.AST.(*ast.CallStmt); ok {
 		for _, a := range cstmt.Call.Args.Args {
 			if h, ok := a.(ast.EventHandler); ok {
-				if node.Handlers == nil {
-					node.Handlers = map[string]any{}
-				}
-				node.Handlers[h.Name] = &h.Body
+				node.Handlers = append(node.Handlers, Handler{Name: h.Name, Body: &h.Body})
 			}
 		}
 	}
@@ -548,6 +564,18 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 		out = append(out, nodes...)
 	}
 	return out, nil
+}
+
+// handlersOf collects a node's declared events in declaration order.
+func handlersOf(inst *ir.NodeInst) []Handler {
+	if len(inst.Handlers) == 0 {
+		return nil
+	}
+	out := make([]Handler, 0, len(inst.Handlers))
+	for _, h := range inst.Handlers {
+		out = append(out, Handler{Name: h.Name, Body: h.Func})
+	}
+	return out
 }
 
 // evalProps evaluates a node's prop assignments, keeping the order they were
