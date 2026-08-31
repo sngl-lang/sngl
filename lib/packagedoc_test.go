@@ -57,7 +57,7 @@ func TestOnePackageCommentPerPackage(t *testing.T) {
 // declaration below instead.
 func hasPackageComment(src string) bool {
 	run := false
-	for _, line := range strings.Split(src, "\n") {
+	for line := range strings.SplitSeq(src, "\n") {
 		switch {
 		case strings.HasPrefix(line, "//"):
 			run = true

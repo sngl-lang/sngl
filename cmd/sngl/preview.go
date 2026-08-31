@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -530,9 +531,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 func libraryComponentSchemas() checker.SchemaRegistry {
 	out := checker.SchemaRegistry{}
 	for _, pkg := range lib.PublicPackages() {
-		for name, schema := range checker.PackageSchema(pkg) {
-			out[name] = schema
-		}
+		maps.Copy(out, checker.PackageSchema(pkg))
 	}
 	return out
 }
