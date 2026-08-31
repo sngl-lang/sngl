@@ -43,7 +43,12 @@ component Cell(glyph Glyph, x = 0.0, y = 0.0) draw.shape {
 }
 
 component SegmentReadout(entry = "0") {
-    draw.canvas(width=WIDTH_PX * 1px, height=HEIGHT_PX * 1px, style=draw.CanvasStyle{fill=BACKING}) {
+    draw.canvas(
+        width=WIDTH_PX * 1px,
+        height=HEIGHT_PX * 1px,
+        scalingMode=draw.ScalingMode.fit,
+        style=draw.CanvasStyle{fill=BACKING},
+    ) {
         draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.CanvasStyle{fill=BACKING})
         for i, glyph = cells(entry) {
             Cell(glyph=glyph, x=PAD + float(i) * (CELL_W + CELL_GAP), y=PAD)

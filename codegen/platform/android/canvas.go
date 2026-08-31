@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -168,11 +169,61 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	if id := userTestTag(n); id != "" {
 		tag = fmt.Sprintf(".testTag(%q)", id)
 	}
-	cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
-	cc.indent++
+
+	// `width`/`height` are the coordinate space the shapes were placed in.
+	// At `center` the Canvas is that size and the drawing lands one to one;
+	// otherwise it takes the room it is given and the shapes are scaled into
+	// it, because a DrawScope has no backing store to stretch the way a
+	// browser or Fyne does.
+	mode := canvasScalingProp(n)
+	switch mode {
+	case canvasutil.ScaleFit, canvasutil.ScaleFill, canvasutil.ScaleStretch:
+		cc.kc.RequireImport("androidx.compose.foundation.layout.fillMaxWidth")
+		cc.kc.RequireImport("androidx.compose.ui.graphics.drawscope.scale")
+		cc.line("Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(%df / %df)%s) {", w, h, tag)
+		cc.indent++
+		cc.kc.RequireImport("androidx.compose.foundation.layout.aspectRatio")
+		cc.emitCanvasScale(mode, w, h)
+	default:
+		cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
+		cc.indent++
+		cc.emitDrawBody(n.CanvasDraw)
+		cc.indent--
+		cc.line("}")
+		return
+	}
 	cc.emitDrawBody(n.CanvasDraw)
 	cc.indent--
 	cc.line("}")
+	cc.indent--
+	cc.line("}")
+}
+
+// emitCanvasScale opens the DrawScope transform that maps the drawing's own
+// coordinate space onto the space the Canvas was laid out in. The caller
+// closes it.
+//
+// `stretch` scales the two axes separately; `fit` and `fill` scale both by one
+// factor, the smaller ratio for fit so the whole drawing lands inside and the
+// larger for fill so none of the room is left over.
+func (cc *irComposeContext) emitCanvasScale(mode string, w, h int) {
+	switch mode {
+	case canvasutil.ScaleStretch:
+		cc.line("scale(scaleX = size.width / %df, scaleY = size.height / %df, pivot = Offset.Zero) {", w, h)
+	case canvasutil.ScaleFill:
+		cc.line("scale(scale = maxOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+	default:
+		cc.line("scale(scale = minOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+	}
+	cc.indent++
+}
+
+// canvasScalingProp reads the canvas node's `scalingMode`.
+func canvasScalingProp(n *ir.NodeInst) string {
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+		return v.Member
+	}
+	return ""
 }
 
 // pendingStyle holds the Kotlin expression of the CanvasStyle bound by the most

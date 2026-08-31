@@ -1,0 +1,79 @@
+# `width` and `height` on a canvas are the coordinate space the shapes were
+# placed in, not the size it is shown at. `scalingMode` is what happens to the
+# picture when the room it is given is not that size.
+#
+# Each target already had a name for all four, so none of them needed a new
+# mechanism -- only a value to read. html scales the backing store into the CSS
+# box with object-fit, fyne has the four fill modes one for one, and Compose
+# has no backing store to stretch so the shapes are scaled in the DrawScope.
+
+sngl generate --platform html --lang none -o h fit.sngl
+grep 'object-fit:contain' h/index.html
+# The backing store keeps the size the shapes were placed at.
+grep 'width="200px"' h/index.html
+# And the prop is read here rather than passed through as an attribute no
+# element has.
+! grep 'scalingMode=' h/index.html
+
+sngl generate --platform html --lang none -o hs stretch.sngl
+grep 'object-fit:fill' hs/index.html
+
+# center is the default, and adds nothing: the canvas stays the size of its
+# own drawing, which is what every canvas did before there was a choice.
+sngl generate --platform html --lang none -o hc center.sngl
+! grep 'object-fit' hc/index.html
+
+# Fyne's fill modes line up with the four names.
+sngl generate --platform fyne --lang go -o f fit.sngl
+grep 'FillMode = canvas.ImageFillContain' f/model.go
+# A minimum is a floor rather than a size: without one the box gives a canvas
+# nothing to scale into, which is a readout one pixel tall.
+grep 'SetMinSize' f/model.go
+
+sngl generate --platform fyne --lang go -o fc center.sngl
+grep 'FillMode = canvas.ImageFillOriginal' fc/model.go
+
+# Compose draws into the room it is laid out in, so the shapes are scaled.
+sngl generate --platform android --lang kotlin -o a fit.sngl
+grep 'aspectRatio\(200f / 100f\)' a/MainScreen.kt
+grep 'scale\(scale = minOf\(size.width / 200f, size.height / 100f\)' a/MainScreen.kt
+
+sngl generate --platform android --lang kotlin -o ac center.sngl
+grep 'Modifier.size\(200.dp, 100.dp\)' ac/MainScreen.kt
+
+-- fit.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.fit) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}
+-- stretch.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.stretch) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}
+-- center.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}

@@ -204,20 +204,39 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2/canvas", Name: "canvas.NewImageFromImage"}},
 		Args:     []ir.CallArg{{Value: methodCall(dcField, "Result", nil, ir.TypDyn)}},
 	}
-	return []ir.Stmt{
+	out := []ir.Stmt{
 		&ir.Assign{Target: dcField, Op: ast.AssignSet, Value: newCanvasContextCall(w, h)},
 		&ir.CallStmt{Call: drawCall},
 		&ir.Assign{Target: imgField, Op: ast.AssignSet, Value: newImg},
 		&ir.Assign{
 			Target: &ir.Select{Operand: imgField, Field: "FillMode", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
-			Value:  &ir.Ident{Name: "canvas.ImageFillOriginal", Type: ir.TypDyn},
+			Value:  &ir.Ident{Name: fyneFillMode(m.Scaling), Type: ir.TypDyn},
 		},
-		// ImageFillOriginal only grows the image once its renderer has run,
-		// and a container lays out before that -- so a canvas placed in a box
-		// came out one pixel tall. The canvas declared its pixel size; say so.
-		methodStmt(imgField, "SetMinSize", newFyneSizeCall(w, h)),
 	}
+	// A fill mode only grows the image once its renderer has run, and a
+	// container lays out before that -- so a canvas placed in a box came out
+	// one pixel tall. The canvas declared its pixel size; say so.
+	//
+	// In every mode, including the scaling ones: a minimum is a floor rather
+	// than a size, and without one a scaled canvas is given nothing to scale
+	// into.
+	out = append(out, methodStmt(imgField, "SetMinSize", newFyneSizeCall(w, h)))
+	return out
+}
+
+// fyneFillMode is Fyne's name for a scaling mode. The four line up one for
+// one, which is the whole of what this platform has to do about it.
+func fyneFillMode(scaling string) string {
+	switch scaling {
+	case canvasutil.ScaleFit:
+		return "canvas.ImageFillContain"
+	case canvasutil.ScaleFill:
+		return "canvas.ImageFillCover"
+	case canvasutil.ScaleStretch:
+		return "canvas.ImageFillStretch"
+	}
+	return "canvas.ImageFillOriginal"
 }
 
 // newFyneSizeCall builds `fyne.NewSize(w, h)`.

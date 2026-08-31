@@ -15,6 +15,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
@@ -1562,6 +1563,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := g.buildCSSStyle(n)
+	if css := canvasScalingCSS(n); css != "" {
+		if style != "" {
+			style += ";"
+		}
+		style += css
+	}
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
@@ -1573,6 +1580,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
 		if name == "style" || name == "class" {
+			continue
+		}
+		// Read into the element's CSS by canvasScalingCSS, and not an
+		// attribute any element has.
+		if name == "scalingMode" {
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -2208,6 +2220,44 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}
+}
+
+// canvasScalingCSS is the display size and fit of a canvas whose `scalingMode`
+// asks for one.
+//
+// `width`/`height` on a canvas are its backing store -- the coordinate space
+// the shapes were placed in -- and the CSS box is how big it is shown. A
+// browser scales the one to the other, and object-fit says how, which is the
+// same four choices SNGL spells.
+//
+// `center` is the default and adds nothing: the element stays the size of its
+// drawing, which is what every canvas did before there was a choice.
+func canvasScalingCSS(n *ir.NodeInst) string {
+	if n == nil || n.CanvasDraw == nil {
+		return ""
+	}
+	// Emitted after the width and height the canvas declared, so it wins:
+	// those two are the backing store, which stays the size the shapes were
+	// placed at, and these are the box the browser scales it into.
+	switch canvasScalingMode(n) {
+	case canvasutil.ScaleFit:
+		// Height from the width, so the drawing keeps its shape at whatever
+		// width the row gives it.
+		return "width:100%;height:auto;object-fit:contain"
+	case canvasutil.ScaleFill:
+		return "width:100%;height:100%;object-fit:cover"
+	case canvasutil.ScaleStretch:
+		return "width:100%;height:100%;object-fit:fill"
+	}
+	return ""
+}
+
+// canvasScalingMode reads a canvas node's `scalingMode` prop.
+func canvasScalingMode(n *ir.NodeInst) string {
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+		return v.Member
+	}
+	return ""
 }
 
 // emitCanvasSetups emits the _snglColor helper once when any canvas element is
