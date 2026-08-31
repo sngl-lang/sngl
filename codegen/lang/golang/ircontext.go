@@ -1240,11 +1240,24 @@ func IRTypeToGo(t *ir.Type) string {
 			return "*" + IRTypeToGo(t.Elems[0])
 		}
 		return "*any"
+	case ir.TypeRemote:
+		// A pointer: two readers of one key hold the same box, and a settle has
+		// to be visible to both.
+		if len(t.Elems) > 0 {
+			return "*" + remoteGoType + "[" + IRTypeToGo(t.Elems[0]) + "]"
+		}
+		return "*" + remoteGoType + "[any]"
 	case ir.TypeStruct:
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
+		}
+		// The runtime defines the failure its boxes carry, so generated code
+		// spells that rather than emitting a struct of its own that no box
+		// could hold.
+		if ir.IsRemoteFailureStruct(t) {
+			return remoteFailureGo
 		}
 		if ir.IsColorStruct(t) {
 			return colorGoType

@@ -94,6 +94,7 @@ var passes = []pass{
 	passRefLoop,
 	passUnit,
 	passEnum,
+	passQuery,
 	passAsyncReactive,
 	passComputed,
 	passLambda,

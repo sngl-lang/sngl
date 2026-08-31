@@ -68,8 +68,8 @@ func queryCall(t *testing.T, fn *ir.Func) *ir.Call {
 // setter for a kicker to watch.
 func TestQueryLowersToALookup(t *testing.T) {
 	pkg, users := makeQueryPkg()
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 
 	if len(pkg.AsyncKickers) != 0 {
@@ -94,8 +94,8 @@ func TestQueryLowersToALookup(t *testing.T) {
 // argument list rather than the declaration name carries it.
 func TestQueryKeyIsItsArguments(t *testing.T) {
 	pkg, users := makeQueryPkg()
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 
 	key, ok := queryCall(t, users).Args[1].Value.(*ir.ListLit)
@@ -117,8 +117,8 @@ func TestQueryKeyExcludesTheComponentReceiver(t *testing.T) {
 	pkg, users := makeQueryPkg()
 	recv := &ir.Param{Name: "this", Type: &ir.Type{Kind: ir.TypeComponent}}
 	users.Params = append([]*ir.Param{recv}, users.Params...)
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 
 	key := queryCall(t, users).Args[1].Value.(*ir.ListLit)
@@ -137,8 +137,8 @@ func TestQueryKeyExcludesTheComponentReceiver(t *testing.T) {
 // awaited; a sync thunk would let a backend emit the call as already answered.
 func TestQueryThunkAnswersTheFetchedType(t *testing.T) {
 	pkg, users := makeQueryPkg()
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 
 	thunk, ok := queryCall(t, users).Args[2].Value.(*ir.Lambda)
@@ -164,8 +164,8 @@ func TestQueryThunkAnswersTheFetchedType(t *testing.T) {
 // expression at all. The await moved into the thunk.
 func TestQueryBecomesSynchronous(t *testing.T) {
 	pkg, users := makeQueryPkg()
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 	if users.IsAsync {
 		t.Error("users.IsAsync = true; the await belongs to the thunk now")
@@ -181,8 +181,8 @@ func TestQueryInsideAComponentIsLowered(t *testing.T) {
 	pkg, users := makeQueryPkg()
 	pkg.Funcs = pkg.Funcs[:1] // leave only fetchUsers at package level
 	pkg.Components = []*ir.Component{{Name: "main", Funcs: []*ir.Func{users}}}
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
-		t.Fatalf("lowerAsyncReactive: %v", err)
+	if err := lowerQueries(pkg, Caps{}, Options{}); err != nil {
+		t.Fatalf("lowerQueries: %v", err)
 	}
 	queryCall(t, users)
 }

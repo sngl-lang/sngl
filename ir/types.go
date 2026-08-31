@@ -636,6 +636,23 @@ func builtinOf(t *Type) BuiltinKind {
 // call this to detect the shape.
 func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
 
+// IsRemoteFailureStruct reports whether t is sngl:remote's Failure.
+//
+// Matched by declaration site rather than by a #[builtin] kind: Failure is an
+// ordinary struct, and the compiler has no reason to know it beyond the one a
+// backend has — the Go runtime defines the type its boxes carry, so generated
+// code has to spell that rather than a struct of its own.
+func IsRemoteFailureStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Failure" && sd.Pkg == remotePkg
+}
+
+// remotePkg is sngl:remote, whose Failure a backend maps to its own runtime.
+const remotePkg = "sngl:remote"
+
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.
 func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
