@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 // shmDir is where a POSIX shared memory object lives on Linux: shm_open(3)
@@ -62,9 +63,13 @@ var (
 	shmPending []string
 )
 
-// shmPut writes payload into a fresh shared memory object and returns the name
-// to hand the terminal.
-func shmPut(payload []byte) (string, bool) {
+// shmPut creates a shared memory object of size bytes, hands fill the mapping
+// to write the frame into, and returns the name to give the terminal.
+//
+// fill writes into the shared pages themselves, so the frame is composed once
+// where the terminal will read it -- there is no staging buffer and no copy out
+// of one.
+func shmPut(size int, fill func([]byte)) (string, bool) {
 	shmMu.Lock()
 	shmCounter++
 	name := fmt.Sprintf("/sngl-%d-%d", os.Getpid(), shmCounter)
@@ -80,16 +85,22 @@ func shmPut(payload []byte) (string, bool) {
 	}
 
 	path := shmPath(name)
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
 		return "", false
 	}
-	if _, err := f.Write(payload); err != nil {
-		_ = f.Close()
+	defer f.Close()
+	if err := f.Truncate(int64(size)); err != nil {
 		_ = os.Remove(path)
 		return "", false
 	}
-	if err := f.Close(); err != nil {
+	m, err := syscall.Mmap(int(f.Fd()), 0, size, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		_ = os.Remove(path)
+		return "", false
+	}
+	fill(m)
+	if err := syscall.Munmap(m); err != nil {
 		_ = os.Remove(path)
 		return "", false
 	}

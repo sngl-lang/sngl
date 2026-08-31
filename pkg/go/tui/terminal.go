@@ -270,17 +270,15 @@ func kittyTransmit(img image.Image, cols, rows, id int) string {
 // kittyTransmitSHM hands the frame over as a shared memory object, returning
 // false when that transport is unavailable and the caller should fall back.
 //
-// f=32 is straight RGBA, and gg composites into a premultiplied buffer, so the
-// two agree only where the image is opaque -- which a canvas normally is, and
-// which Opaque answers with a scan of the alpha bytes alone. A frame that is
-// not takes the fallback rather than a second buffer to un-premultiply into:
-// the pty path encodes as PNG, where the distinction does not arise.
+// The pixels are composed straight into the shared pages: nothing is staged in
+// a buffer of ours and copied over, so a translucent frame costs one pass over
+// memory the terminal is going to read anyway.
 func kittyTransmitSHM(img image.Image, cols, rows, id int) (string, bool) {
 	if !kittySHMSupported() || !shmSupported() {
 		return "", false
 	}
 	rgba, ok := img.(*image.RGBA)
-	if !ok || !rgba.Opaque() {
+	if !ok {
 		return "", false
 	}
 	b := rgba.Bounds()
@@ -289,13 +287,45 @@ func kittyTransmitSHM(img image.Image, cols, rows, id int) (string, bool) {
 	if rgba.Stride != b.Dx()*4 {
 		return "", false
 	}
-	name, ok := shmPut(rgba.Pix)
+	name, ok := shmPut(len(rgba.Pix), func(dst []byte) { straightRGBA(dst, rgba) })
 	if !ok {
 		return "", false
 	}
 	payload := base64.StdEncoding.EncodeToString([]byte(name))
 	ctrl := fmt.Sprintf("a=T,U=1,i=%d,q=2,t=s,f=32,s=%d,v=%d,c=%d,r=%d", id, b.Dx(), b.Dy(), cols, rows)
 	return kittyChunks(payload, ctrl), true
+}
+
+// straightRGBA writes src into dst as the straight-alpha RGBA that f=32 means.
+//
+// Go's image.RGBA is alpha-premultiplied and the protocol's is not, so a
+// translucent pixel has to be divided back out or it arrives too dark. Opaque
+// is both the common case and the whole image whenever a canvas paints its own
+// background, and there it is one memcpy.
+func straightRGBA(dst []byte, src *image.RGBA) {
+	if src.Opaque() {
+		copy(dst, src.Pix)
+		return
+	}
+	p := src.Pix
+	for i := 0; i+3 < len(p) && i+3 < len(dst); i += 4 {
+		a := uint32(p[i+3])
+		switch a {
+		case 0xff:
+			dst[i], dst[i+1], dst[i+2] = p[i], p[i+1], p[i+2]
+		case 0:
+			// Premultiplied by zero keeps no colour to recover, and the pixel is
+			// invisible either way.
+			dst[i], dst[i+1], dst[i+2] = 0, 0, 0
+		default:
+			// A premultiplied channel never exceeds its alpha, so this stays in
+			// range without a clamp.
+			dst[i] = uint8(uint32(p[i]) * 0xff / a)
+			dst[i+1] = uint8(uint32(p[i+1]) * 0xff / a)
+			dst[i+2] = uint8(uint32(p[i+2]) * 0xff / a)
+		}
+		dst[i+3] = p[i+3]
+	}
 }
 
 // kittyChunks frames a base64 payload as one or more escapes carrying ctrl.

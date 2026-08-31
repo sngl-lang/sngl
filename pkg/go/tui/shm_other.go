@@ -8,4 +8,4 @@ package tui
 
 func shmSupported() bool { return false }
 
-func shmPut([]byte) (string, bool) { return "", false }
+func shmPut(int, func([]byte)) (string, bool) { return "", false }

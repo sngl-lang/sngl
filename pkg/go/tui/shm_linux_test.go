@@ -81,16 +81,41 @@ func TestShmTransmitCarriesRawPixels(t *testing.T) {
 	}
 }
 
-func TestShmDeclinesTranslucentImage(t *testing.T) {
+func TestShmCarriesTranslucentPixelsStraight(t *testing.T) {
 	localKitty(t)
 	if !shmSupported() {
 		t.Skip("no usable /dev/shm")
 	}
-	// gg composites premultiplied and f=32 is straight alpha; the two agree
-	// only where the image is opaque.
-	img := solid(2, 2, color.RGBA{10, 0, 0, 128})
-	if _, ok := kittyTransmitSHM(img, 1, 1, 1); ok {
-		t.Error("handed over premultiplied pixels as straight RGBA")
+	// Go premultiplies and f=32 does not, so half-alpha red stored as 0x80 has
+	// to arrive as the 0xff it was drawn with, or the frame renders dark.
+	img := solid(2, 2, color.RGBA{0x80, 0, 0, 0x80})
+	esc, ok := kittyTransmitSHM(img, 1, 1, 1)
+	if !ok {
+		t.Fatal("declined a translucent frame")
+	}
+	got, err := os.ReadFile(shmPath(shmName(t, esc)))
+	if err != nil {
+		t.Fatalf("reading the handed-over object: %v", err)
+	}
+	for i := 0; i+3 < len(got); i += 4 {
+		if want := [4]byte{0xff, 0, 0, 0x80}; [4]byte(got[i:i+4]) != want {
+			t.Fatalf("pixel %d is %v, want %v", i/4, got[i:i+4], want)
+		}
+	}
+}
+
+func TestStraightRGBAKeepsInvisiblePixelsClear(t *testing.T) {
+	// Premultiplied by zero leaves no colour to divide back out, and dividing
+	// would be by zero.
+	img := image.NewRGBA(image.Rect(0, 0, 1, 2))
+	img.Pix[4], img.Pix[5], img.Pix[6], img.Pix[7] = 0x40, 0x40, 0x40, 0xff
+	dst := make([]byte, len(img.Pix))
+	straightRGBA(dst, img)
+	if !bytes.Equal(dst[:4], []byte{0, 0, 0, 0}) {
+		t.Errorf("transparent pixel became %v", dst[:4])
+	}
+	if !bytes.Equal(dst[4:], img.Pix[4:]) {
+		t.Errorf("opaque pixel became %v", dst[4:])
 	}
 }
 
@@ -136,13 +161,13 @@ func TestShmUnlinksOldObjects(t *testing.T) {
 	if !shmSupported() {
 		t.Skip("no usable /dev/shm")
 	}
-	payload := []byte{1, 2, 3, 4}
-	first, ok := shmPut(payload)
+	put := func() (string, bool) { return shmPut(4, func(m []byte) { copy(m, []byte{1, 2, 3, 4}) }) }
+	first, ok := put()
 	if !ok {
 		t.Fatal("shmPut")
 	}
 	for i := 0; i < 2; i++ {
-		if _, ok := shmPut(payload); !ok {
+		if _, ok := put(); !ok {
 			t.Fatal("shmPut")
 		}
 	}
