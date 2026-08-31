@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"maps"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -539,10 +540,11 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 
 // forStmt mounts one subtree per iteration.
 //
-// The iteration is identified by its index. A list node may declare `key=` for
-// diffing, and that is the identity a reorder should preserve -- but it sits on
-// a node *inside* the body rather than on the loop, so wiring it in is the
-// reconciler's job, not the mounter's.
+// An iteration is identified by the `key=` of the first top-level node in the
+// loop body, evaluated per iteration -- that is the author saying which
+// iteration this is, and it is the only identity that survives the list being
+// reordered. Without one there is nothing but the index, and a reorder then
+// reads as every element's contents changing.
 func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	iterVal, err := env.Eval(f.Iter)
 	if err != nil {
@@ -552,18 +554,55 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	if !ok || len(list) == 0 {
 		return m.stmts(env, f.Else, path+":else")
 	}
+
+	keyExpr := loopKeyExpr(f.Body)
+	seen := map[string]int{}
 	var out []*Node
 	for i, item := range list {
 		child := env.Snapshot()
 		child.Set(f.KeySym, item)
 		child.Set(f.ValueSym, i)
-		nodes, err := m.stmts(child, f.Body, fmt.Sprintf("%s:body[%d]", path, i))
+
+		id := strconv.Itoa(i)
+		if keyExpr != nil {
+			if v, evalErr := child.Eval(keyExpr); evalErr == nil {
+				id = iterationID(fmt.Sprintf("%v", v), seen)
+			}
+		}
+		nodes, err := m.stmts(child, f.Body, fmt.Sprintf("%s:body[%s]", path, id))
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, nodes...)
 	}
 	return out, nil
+}
+
+// loopKeyExpr is the `key=` a loop body declares, or nil.
+//
+// Top-level only: `key=` marks the thing being repeated, and a node nested
+// inside the iteration is not that. The checker lifts it off the props into
+// NodeInst.Key, so it is never among them.
+func loopKeyExpr(body []ir.Stmt) ir.Expr {
+	for _, s := range body {
+		if n, ok := s.(*ir.NodeInst); ok && n.Key != nil {
+			return n.Key
+		}
+	}
+	return nil
+}
+
+// iterationID disambiguates a repeated key. Two iterations claiming one
+// identity would collide in the key index and silently drop a node, so the
+// later ones are suffixed. A duplicate key is the author's bug, but losing a
+// node is not the way to report it.
+func iterationID(base string, seen map[string]int) string {
+	n := seen[base]
+	seen[base] = n + 1
+	if n == 0 {
+		return base
+	}
+	return fmt.Sprintf("%s~%d", base, n)
 }
 
 // handlersOf collects a node's declared events in declaration order.

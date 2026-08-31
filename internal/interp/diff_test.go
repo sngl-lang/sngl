@@ -141,10 +141,10 @@ func TestAShorterListRemovesTheTail(t *testing.T) {
 	}
 }
 
-// TestReorderingAnUnkeyedListAssignsRatherThanMoves records a real limitation
-// rather than a behaviour worth having. Iterations are addressed by index, so
-// swapping two elements looks like both of them changing value. A node's `key=`
-// is what would fix this, and the mounter does not read it yet.
+// TestReorderingAnUnkeyedListAssignsRatherThanMoves is what an unkeyed loop
+// costs. Iterations are addressed by index, so swapping two elements reads as
+// both changing value. That is correct output, just not the cheap one --
+// `key=` is what buys the move, and the next test spends it.
 func TestReorderingAnUnkeyedListAssignsRatherThanMoves(t *testing.T) {
 	before, after := mountTwice(t, diffSrc, "main", func(env *Env) {
 		setVar(env, "items", []any{"b", "a"})
@@ -155,8 +155,121 @@ func TestReorderingAnUnkeyedListAssignsRatherThanMoves(t *testing.T) {
 	}
 	for _, p := range got {
 		if p.Kind != PatchSetProp {
-			t.Errorf("got %s; a reorder is currently seen as assignment, not movement", p)
+			t.Errorf("got %s; without a key a reorder is assignment, not movement", p)
 		}
+	}
+}
+
+const keyedSrc = `import . "sngl:ui"
+
+component main {
+    var items = ["a", "b", "c"]
+    vbox {
+        for it = items {
+            text(value=it, key=it)
+        }
+    }
+}
+`
+
+// TestAKeyedReorderMoves: with `key=`, an iteration keeps its identity when the
+// list is reordered, so the nodes survive and only their positions change.
+func TestAKeyedReorderMoves(t *testing.T) {
+	before, after := mountTwice(t, keyedSrc, "main", func(env *Env) {
+		setVar(env, "items", []any{"c", "a", "b"})
+	})
+	got := Diff(before, after)
+	if len(got) == 0 {
+		t.Fatal("a reorder produced no patches; the order on screen would be stale")
+	}
+	for _, p := range got {
+		if p.Kind != PatchMove {
+			t.Errorf("got %s; a keyed reorder moves rather than re-assigns", p)
+		}
+	}
+	// Rotating one element to the front moves exactly that element: the other
+	// two are already in order relative to each other.
+	if len(got) != 1 {
+		t.Errorf("want 1 move, got %d:\n%s", len(got), patchLines(got))
+	}
+	if !strings.Contains(got[0].Key.Path, "[c]") {
+		t.Errorf("moved %s, want the iteration keyed c", got[0].Key)
+	}
+	if got[0].Index != 0 {
+		t.Errorf("moved to index %d, want 0", got[0].Index)
+	}
+}
+
+// TestAKeyedInsertDoesNotMoveTheRest: inserting shifts every following
+// sibling's absolute index, but a host doing the insertion shifts them itself.
+// Emitting a move for each would turn one insertion into a patch per sibling.
+func TestAKeyedInsertDoesNotMoveTheRest(t *testing.T) {
+	before, after := mountTwice(t, keyedSrc, "main", func(env *Env) {
+		setVar(env, "items", []any{"z", "a", "b", "c"})
+	})
+	got := Diff(before, after)
+	if len(got) != 1 {
+		t.Fatalf("want 1 create and nothing else, got %d:\n%s", len(got), patchLines(got))
+	}
+	if got[0].Kind != PatchCreate || got[0].Index != 0 {
+		t.Errorf("got %s, want a create at index 0", got[0])
+	}
+}
+
+// TestAKeyedRemovalKeepsTheSurvivorsPut is the same argument in reverse.
+func TestAKeyedRemovalKeepsTheSurvivorsPut(t *testing.T) {
+	before, after := mountTwice(t, keyedSrc, "main", func(env *Env) {
+		setVar(env, "items", []any{"a", "c"})
+	})
+	got := Diff(before, after)
+	if len(got) != 1 || got[0].Kind != PatchRemove {
+		t.Fatalf("want 1 remove and nothing else, got %d:\n%s", len(got), patchLines(got))
+	}
+	if !strings.Contains(got[0].Key.Path, "[b]") {
+		t.Errorf("removed %s, want the iteration keyed b", got[0].Key)
+	}
+}
+
+// TestKeyedIterationsSurviveAReload: identity by `key=` has to hold across a
+// recompile too, since that is where the whole scheme is aimed.
+func TestKeyedIterationsSurviveAReload(t *testing.T) {
+	envA, _ := envFor(t, keyedSrc, "main")
+	before, _ := Mount(envA)
+	envB, _ := envFor(t, keyedSrc, "main")
+	after, _ := Mount(envB)
+	if got := Diff(before, after); len(got) != 0 {
+		t.Errorf("recompiling produced %d patches over a keyed loop:\n%s", len(got), patchLines(got))
+	}
+}
+
+// TestADuplicateKeyDoesNotDropANode: two iterations claiming one identity would
+// collide in the key index. A duplicate key is the author's bug, but losing a
+// node is not the way to report it.
+func TestADuplicateKeyDoesNotDropANode(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component main {
+    var items = ["a", "a", "b"]
+    vbox {
+        for it = items {
+            text(value=it, key=it)
+        }
+    }
+}
+`
+	env, _ := envFor(t, src, "main")
+	v, err := Mount(env)
+	if err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+	walked := 0
+	v.Walk(func(*Node) bool { walked++; return true })
+	if walked != v.Len() {
+		t.Errorf("walked %d nodes but the index holds %d; a duplicate key dropped one", walked, v.Len())
+	}
+	// vbox plus three iterations.
+	if v.Len() != 4 {
+		t.Errorf("mounted %d nodes, want 4", v.Len())
 	}
 }
 
