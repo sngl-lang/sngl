@@ -95,7 +95,17 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				// fyne's New() returns *Model; LowerTestFile generates code
 				// against `newTestComponent()` and dereferences fields via
 				// `c.<field>`, which Go handles transparently on a pointer.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+				//
+				// BuildUI is what creates the widgets. New() only sets state,
+				// so without it every widget field is nil -- a test driving an
+				// event finds no callback on the widget it names, and a
+				// handler writing back to one dereferences nil. gtk4's agent
+				// calls buildWidgetTree for the same reason.
+				build := ""
+				if c.hasEventInvokers {
+					build = "\tm.BuildUI()\n"
+				}
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model {\n\tm := New()\n" + build + "\treturn m\n}\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -139,6 +149,11 @@ func init() {
 			} else {
 				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
 				// newTestComponent helper: fyne's New() returns *Model.
+				//
+				// No BuildUI here, unlike the agent above: this file is an
+				// in-package `go test`, with no Fyne app running, and building
+				// widgets without one is an error inside Fyne itself. So the
+				// native path reads state and does not drive events.
 				helper := []byte("\nfunc newTestComponent() *Model { return New() }\n")
 				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
 					return err
@@ -171,6 +186,13 @@ type compilation struct {
 	info *irAnalysis
 	cfg  Config
 	lang codegen.LangTranslator
+	// hasEventInvokers is set by emitIR when the program has at least one
+	// (#id, @event) pair a test could drive. It decides whether the agent
+	// builds the widget tree: only a test driving an event needs widgets, and
+	// building them runs constructors this platform deliberately stubs -- the
+	// image is `NewImageFromURI(nil)` because there is no expression here to
+	// build a URI from, and calling it is a crash rather than an empty image.
+	hasEventInvokers bool
 }
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
@@ -193,7 +215,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
+	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang, &c.hasEventInvokers)
 	if err != nil {
 		return err
 	}

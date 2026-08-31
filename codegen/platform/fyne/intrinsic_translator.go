@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -46,6 +47,11 @@ type fyneTranslator struct {
 	// into every translator that may create a canvas or emit a redraw. The
 	// drawing itself is stateless here — canvasutil.GoContextStmts translates
 	// each intrinsic into Context method calls.
+	// invokerSink records one (id, event) pair per handler attached, for the
+	// test-invoker methods emitted after the walk. nil in scopes with no test
+	// surface -- a slot func, a canvas draw.
+	invokerSink func(fyneEventInvoker)
+
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
 	// canvasState threads per-draw-func style-local naming for
@@ -66,6 +72,23 @@ var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
 
 // withLocalRefs sets the non-escaping ref-id set for the scope this
 // translator emits. See fyneTranslator.localRefs.
+// fyneEventInvoker is one (id, event) pair a test can drive. Firing it invokes
+// the widget's own callback field -- the same thing fyne's test.Tap does, and
+// the same thing a real tap does -- so no layout or synthetic pointer is
+// involved.
+type fyneEventInvoker struct {
+	IDLabel   string // the #id a program wrote
+	SnglEvent string // the event a test writes, e.g. "click"
+	Field     string // the Go callback field, e.g. "OnTapped"
+	Param     string // the declared parameter name, "" for a no-arg event
+	ParamType string // its Go type, "" for a no-arg event
+}
+
+func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
+	t.invokerSink = sink
+	return t
+}
+
 func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
 	t.localRefs = local
 	return t
@@ -305,6 +328,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	fieldName := h.Field
+	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h)
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
@@ -405,4 +429,63 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		return t.translateCanvasRedraw(n)
 	}
 	return []ir.Stmt{stmt}
+}
+
+// recordInvoker notes one (id, event) pair for the test-invoker methods emitted
+// after the walk. A synthesized id is skipped: `c.__n0.click()` is not
+// something a test can write.
+func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
+	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
+		return
+	}
+	t.invokerSink(fyneEventInvoker{
+		IDLabel:   id,
+		SnglEvent: event,
+		Field:     h.Field,
+		Param:     h.Param,
+		ParamType: fyneHandlerParamType(h),
+	})
+}
+
+// fyneHandlerParamType reads the parameter's Go type out of the declared
+// signature -- `func(s string)` gives "string". The declaration is the only
+// place it is written down, and only the single-parameter shape occurs.
+func fyneHandlerParamType(h fyneHandler) string {
+	if h.Param == "" {
+		return ""
+	}
+	open := strings.Index(h.Signature, "(")
+	close := strings.LastIndex(h.Signature, ")")
+	if open < 0 || close < open {
+		return ""
+	}
+	parts := strings.Fields(h.Signature[open+1 : close])
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[len(parts)-1]
+}
+
+// emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
+// the widget's declared callback field.
+func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
+	seen := map[string]bool{}
+	for _, inv := range invokers {
+		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
+		if seen[name] {
+			continue // duplicate id+event -- keep the first
+		}
+		seen[name] = true
+		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
+			name, inv.Field, inv.IDLabel)
+		if inv.Param != "" && inv.ParamType != "" {
+			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
+			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(%s)\n\t}\n}\n\n",
+				inv.IDLabel, inv.Field, inv.IDLabel, inv.Field, inv.Param)
+			continue
+		}
+		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s()\n\t}\n}\n\n",
+			inv.IDLabel, inv.Field, inv.IDLabel, inv.Field)
+	}
 }
