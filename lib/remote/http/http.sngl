@@ -1,0 +1,46 @@
+// HTTP as a data source: a request whose answer is a `remote.Value`.
+//
+// `fetch` is a query, so it is keyed by its url — one box per url, started on
+// first read, shared by every part of the program asking for the same one, and
+// re-fetched when the url an expression computes changes.
+//
+// The transport underneath it is `get`, which is declared here and implemented
+// per language. That is where a target says whether it can speak HTTP at all: a
+// language with no implementation and no platform supplying one fails the build
+// rather than the request. A scheme the transport does not know — `foo://` in a
+// url a program computed — is a runtime failure instead, because a url is a
+// string and no build can read it.
+
+import remote "sngl:remote"
+
+// What an HTTP request answers with.
+//
+// The response, not a parse of it: a JSON adapter is a layer on top rather than
+// something `fetch` guesses at. `body` is the payload as text, which is what a
+// caller needs to hand to whatever does know how to read it.
+struct Result {
+    status int
+    body string
+    headers map<string, string>
+}
+
+// True for a 2xx status. The other classes are failures and reach the box as
+// one, so a Result a program holds has usually already succeeded — this is for
+// the cases that ask anyway.
+func Result.ok(r Result) => r.status >= 200 && r.status < 300
+
+// Fetches url, answering the box every reader of that url shares.
+//
+// Keyed by the url alone, so two components asking for the same one make a
+// single request. A url built from state re-fetches when that state changes,
+// with no dependency declared anywhere: the expression that builds the url is
+// what reactivity already watches.
+#[remote.query]
+func fetch(url string) remote.Value<Result> {
+    return get(url)
+}
+
+// Performs one request. Declared here and implemented per target — see
+// `sngl:language/go` — which is what makes "can this build speak HTTP" a
+// question the compiler answers rather than the program.
+func get(url string) Result
