@@ -5,35 +5,17 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
 
-// Key identifies one node in a component's body by *where it is written*
-// rather than by which *ir.NodeInst it currently is.
+// Key identifies one node by where it is written rather than by which
+// *ir.NodeInst it currently is. It lives in pkg/go/snglhost because a host
+// holds one too: a protocol only one side can name is not a protocol.
 //
-// The interpreter's existing caches key on pointers -- childEnvs by
-// *ir.NodeInst, callChildEnvs by *ir.CallStmt, Env.vals by ir.Symbol. That is
-// right within a single run and useless across two: a recheck produces an
-// entirely new ir.Package, so every one of those keys becomes garbage the
-// moment the program is reloaded. A live window that reloads its source, and a
-// REPL that appends a line to its buffer, are both that operation -- so
-// identity has to survive a recompile or reload is a restart with extra steps.
-//
-// Pointer keys stay, because they are what a run uses. This is the projection
-// the reconciler diffs across.
-type Key struct {
-	// Comp is the declaring component's name. A node is only ever compared
-	// against nodes of the same declaration.
-	Comp string
-	// Path is the structural route to the node within that body.
-	Path string
-}
-
-func (k Key) String() string {
-	if k.Comp == "" {
-		return k.Path
-	}
-	return k.Comp + ":" + k.Path
-}
+// Pointer keys stay inside a run -- they are what a run uses. This is the
+// projection the reconciler diffs across, because a recheck produces an
+// entirely new ir.Package and every pointer with it.
+type Key = snglhost.Key
 
 // VarKey identifies one binding across a reload. ir.Symbol carries SymName, so
 // this needs nothing the IR does not already hold.
@@ -70,16 +52,6 @@ func ComponentKeys(comp *ir.Component) []Key {
 	w := &keyWalk{comp: comp.Name}
 	w.stmts(comp.Body, "")
 	return w.out
-}
-
-// Iter extends a key with a loop iteration. The iteration is identified by the
-// node's own `key=` expression when it has one -- that is the author saying
-// which iteration this is, and it is the only identity that survives the list
-// being reordered. Without one the index is all there is, and a reorder loses
-// the state, exactly as it does for the compiled platforms' list diffing.
-func (k Key) Iter(id string) Key {
-	k.Path += "[" + id + "]"
-	return k
 }
 
 type keyWalk struct {
