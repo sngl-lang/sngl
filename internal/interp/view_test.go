@@ -37,7 +37,7 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 		t.Fatal("no fixtures found")
 	}
 
-	compared, withIDs, swept := 0, 0, 0
+	compared, withIDs, swept, supplied := 0, 0, 0, 0
 	for _, file := range files {
 		pkg := checkFixture(t, file)
 		if pkg == nil {
@@ -61,7 +61,15 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 					continue
 				}
 				oldMaps := normalizeRefs(old)
-				newMaps := nodeMaps(view.Find(id))
+				// The tree finds strictly more than the walk did: content a
+				// call site supplies to a user component is now mounted, and
+				// the walk never reached it. That is the one intentional
+				// divergence, so it is subtracted here rather than the
+				// comparison being loosened -- everything else must still
+				// match exactly.
+				visible, fromSlot := splitSupplied(view.Find(id))
+				supplied += fromSlot
+				newMaps := nodeMaps(visible)
 				compared++
 				if len(oldMaps) > 0 {
 					withIDs++
@@ -85,8 +93,13 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 	if withIDs < 50 {
 		t.Errorf("only %d lookups resolved to a node; ids are not being found", withIDs)
 	}
-	t.Logf("%d/%d fixtures swept, %d lookups compared, %d resolved to at least one node",
-		swept, len(files), compared, withIDs)
+	// The subtraction above must be doing something, or it is a silent escape
+	// hatch that would hide a real divergence.
+	if supplied == 0 {
+		t.Error("no slot-supplied nodes were found; the exclusion is unexercised, so it hides rather than documents")
+	}
+	t.Logf("%d/%d fixtures swept, %d lookups compared, %d resolved to at least one node, %d found only by the tree (slot-supplied)",
+		swept, len(files), compared, withIDs, supplied)
 }
 
 // TestMountKeysAreUniqueAndStable: a mounted path is identity, so two nodes
@@ -201,6 +214,14 @@ func allIDs(pkg *ir.Package) []string {
 					seen[n.ID] = true
 				}
 				walk(n.Children)
+				// Named-slot content, which is where the gap was: an id here
+				// was invisible to the walk, to the checker, and to this
+				// collector, so nothing noticed.
+				for _, sc := range n.Slots {
+					if sc != nil {
+						walk(sc.Body)
+					}
+				}
 			case *ir.CallStmt:
 				if _, id := elemCallInfo(n); id != "" {
 					seen[id] = true
@@ -249,6 +270,20 @@ func normalizeRefs(v any) []map[string]any {
 		return out
 	}
 	return nil
+}
+
+// splitSupplied separates nodes the pre-tree walk could reach from those it
+// could not: content a call site supplied to a user component, which the
+// mounter marks with a `supplied:` path segment.
+func splitSupplied(nodes []*Node) (visible []*Node, fromSlot int) {
+	for _, n := range nodes {
+		if contains(n.Key.Path, "/supplied:") {
+			fromSlot++
+			continue
+		}
+		visible = append(visible, n)
+	}
+	return visible, fromSlot
 }
 
 func nodeMaps(nodes []*Node) []map[string]any {

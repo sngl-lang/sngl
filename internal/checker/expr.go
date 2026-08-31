@@ -1312,6 +1312,17 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				}
 				return nil
 			}
+		case *ast.SlotNode:
+			// Both forms of `slot` carry a block written in *this* component's
+			// body -- a population's content at a call site, an insertion
+			// point's fallback at a declaration -- so an id inside either is
+			// this component's to resolve. Without this case a ref inside
+			// `slot name { ... }` was undefined, while the same ref among
+			// ordinary children resolved, because those arrive as the parent
+			// node's Block.
+			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
+				return comp
+			}
 		case *ast.IfStmt:
 			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
 				return comp

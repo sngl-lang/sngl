@@ -146,6 +146,32 @@ func (n *Node) Map() map[string]any {
 type mounter struct {
 	view *View
 	root string
+	// slots is the stack of call sites whose components are currently being
+	// expanded. An insertion point renders whatever the frame on top supplied
+	// for it, in the scope that frame was written in.
+	slots []slotFrame
+}
+
+// slotFrame is one component expansion: the instantiation that supplied the
+// content, and the scope that content was written in.
+//
+// The env matters as much as the callsite. Content written at a call site reads
+// the caller's vars, not the component's -- `frame { text(value=title) }` means
+// the caller's title. Symbols are keyed by declaration, so evaluating it in the
+// caller's env is the whole of what lexical scoping needs here.
+type slotFrame struct {
+	callsite *ir.NodeInst
+	env      *Env
+}
+
+func (m *mounter) push(f slotFrame) { m.slots = append(m.slots, f) }
+func (m *mounter) pop()             { m.slots = m.slots[:len(m.slots)-1] }
+
+func (m *mounter) top() (slotFrame, bool) {
+	if len(m.slots) == 0 {
+		return slotFrame{}, false
+	}
+	return m.slots[len(m.slots)-1], true
 }
 
 func (m *mounter) add(n *Node) {
@@ -215,7 +241,7 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			out = append(out, nodes...)
 
 		case *ir.SlotInst:
-			nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("slot@%d", next("slot"))))
+			nodes, err := m.slotInst(env, n, join(fmt.Sprintf("slot@%d", next("slot"))))
 			if err != nil {
 				return nil, err
 			}
@@ -263,6 +289,8 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		}
 		child := env.componentEnv(inst.Component, inst)
 		child.RenderDepth = env.RenderDepth + 1
+		m.push(slotFrame{callsite: inst, env: env})
+		defer m.pop()
 		return m.stmts(child, child.BodyStmts, path)
 	}
 
@@ -288,11 +316,9 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	}
 	node.Children = kids
 
-	// Named slot content is NOT descended into, matching ResolveElementRef,
-	// which never looked at NodeInst.Slots. An #id inside a named slot is
-	// therefore invisible to both -- a gap to close once the tree is the only
-	// walk, so that closing it is one change with one test rather than two
-	// walks drifting apart again.
+	// A native element's Children are its real children, mounted above. Its
+	// Slots are not read here: only a component declaring insertion points
+	// renders supplied content, and it does so at those points -- see slotInst.
 	return []*Node{node}, nil
 }
 
@@ -304,6 +330,11 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			}
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
+			// The children-less call form supplies nothing, but it still opens
+			// a frame: without one, an insertion point in this component's body
+			// would read the *enclosing* call site's content.
+			m.push(slotFrame{env: env})
+			defer m.pop()
 			return m.stmts(child, child.BodyStmts, path)
 		}
 	}
@@ -335,6 +366,44 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 	}
 	m.add(node)
 	return []*Node{node}, nil
+}
+
+// slotInst mounts one insertion point: the content its call site supplied, or
+// the insertion's own block as the fallback. ir.SlotBody makes that choice, so
+// the rule is the splicer's and this does not decide it a second time.
+//
+// Supplied content is mounted in the *caller's* scope with the caller's frame
+// current, because that content is written in the caller's body: a slot inside
+// it belongs to the caller's call site, not to this one.
+func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, error) {
+	frame, ok := m.top()
+	body, sc, supplied := ir.SlotBody(si, frame.callsite)
+	if !supplied || !ok {
+		return m.stmts(env, body, path)
+	}
+
+	cenv := frame.env
+	// A scoped slot's arguments are the insertion's, evaluated here, and the
+	// names they bind are the populator's, declared at the call site.
+	if sc != nil && len(sc.Params) > 0 {
+		cenv = frame.env.Snapshot()
+		for i, prm := range sc.Params {
+			if i >= len(si.Args) {
+				break
+			}
+			v, err := env.Eval(si.Args[i])
+			if err != nil {
+				continue
+			}
+			cenv.Set(prm, v)
+		}
+	}
+
+	m.pop()
+	defer m.push(frame)
+	// The path segment marks these nodes as having come from the call site,
+	// which is what distinguishes them from an insertion point's fallback.
+	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
 }
 
 // forStmt mounts one subtree per iteration.
