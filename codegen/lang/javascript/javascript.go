@@ -156,22 +156,3 @@ func binaryOpStr(op ast.BinaryOp) string {
 		return "?"
 	}
 }
-
-func assignOpStr(op ast.AssignOp) string {
-	switch op {
-	case ast.AssignSet:
-		return "="
-	case ast.AssignAdd:
-		return "+="
-	case ast.AssignSub:
-		return "-="
-	case ast.AssignMul:
-		return "*="
-	case ast.AssignDiv:
-		return "/="
-	case ast.AssignMod:
-		return "%="
-	default:
-		return "="
-	}
-}

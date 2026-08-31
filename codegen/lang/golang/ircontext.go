@@ -210,7 +210,7 @@ func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
 	}
 	leftIsStruct := isMultiBaseUnitType(n.Left.ExprType())
 	rightIsStruct := isMultiBaseUnitType(n.Right.ExprType())
-	op := binaryOpStr(n.Op)
+	op := n.Op.String()
 
 	// Equality on two unit structs is fine via Go struct equality.
 	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
@@ -1444,11 +1444,11 @@ func irFuncSigToGo(sig *ir.FuncSig) string {
 }
 
 func irBinaryOp(op ast.BinaryOp) string {
-	return binaryOpStr(op)
+	return op.String()
 }
 
 func irAssignOp(op ast.AssignOp) string {
-	return assignOpStr(op)
+	return op.String()
 }
 
 // EmitFuncDef renders a complete Go function definition from an *ir.Func.

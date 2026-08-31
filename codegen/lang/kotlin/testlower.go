@@ -69,7 +69,7 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 				value := lowerTestExpr(n.Value, methodFields, compRecvs)
-				op := assignOpStr(n.Op)
+				op := n.Op.String()
 				return []string{
 					"composeTestRule.runOnUiThread {",
 					fmt.Sprintf("    %s.%s %s %s", id.Name, sel.Field, op, value),
@@ -242,7 +242,7 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 	case *ir.Binary:
 		left := lowerTestExpr(n.Left, methodFields, compRecvs)
 		right := lowerTestExpr(n.Right, methodFields, compRecvs)
-		return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+		return "(" + left + " " + n.Op.String() + " " + right + ")"
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {
 			return "!" + lowerTestExpr(n.Operand, methodFields, compRecvs)
@@ -355,8 +355,8 @@ const (
 //	          "device"           → AndroidJUnit4         (instrumented tests)
 //	Agent:  package + testagent imports + fun testFoo(t: T) { ... } + Registry.register init.
 //
-// Each function in fns is rendered using the same lowerTestStmt walker
-// LowerTestFunc uses, ensuring identical semantic translation.
+// Both modes render every function in fns through the same lowerTestStmt
+// walker, so a test body translates identically either way.
 // testInstanceVar names the component a test drives. Deliberately not a name
 // SNGL source can produce, so a local in the test body never collides.
 const testInstanceVar = "__snglTestComponent"
@@ -437,11 +437,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			// hoisted state directly. composeRule.setContent mounts
 			// the screen so mutableStateOf-backed fields work.
 			fmt.Fprintf(&b, "        val %s = MainScreenState()\n", recv)
-			// LowerTestFunc uses `composeTestRule`; LowerTestFile's
-			// native wrapper exposes the rule as `composeRule` to
-			// mirror the agent-mode emission's naming. Bind one to
-			// the other so the per-stmt lowerings (which reference
-			// composeTestRule) resolve.
+			// lowerTestStmt emits `composeTestRule`; the native
+			// wrapper names the rule `composeRule`. Bind one to the
+			// other so those per-stmt lowerings resolve.
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
 			for _, s := range fn.Block {
@@ -491,9 +489,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 	return b.String()
 }
 
-// compReceiverSet returns the names of fn's component-typed params.
-// Mirrors the compRecvs derivation in LowerTestFunc so lowerTestStmt
-// recognises `<recv>.<field>` reads regardless of the chosen param name.
+// compReceiverSet returns the names of fn's component-typed params. It is what
+// lowerTestStmt takes as compRecvs, so `<recv>.<field>` reads are recognised
+// whatever the param is called.
 func compReceiverSet(fn *ir.Func) map[string]bool {
 	out := map[string]bool{}
 	for _, p := range fn.Params {

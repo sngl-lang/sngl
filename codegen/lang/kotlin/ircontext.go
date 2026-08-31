@@ -82,7 +82,7 @@ func (kc *KtIRContext) Literal(n *ir.Literal) string { return kc.evalLiteral(n) 
 func (kc *KtIRContext) Ident(n *ir.Ident) string     { return kc.evalIdent(n) }
 
 func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
-	return "(" + left + " " + binaryOpStr(n.Op) + " " + right + ")"
+	return "(" + left + " " + n.Op.String() + " " + right + ")"
 }
 func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
@@ -183,7 +183,7 @@ func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConve
 func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambda(n) }
 
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
-	return target + " " + assignOpStr(n.Op) + " " + value
+	return target + " " + n.Op.String() + " " + value
 }
 
 // valueCopy binds a struct value the way SNGL binds one: by copy.
