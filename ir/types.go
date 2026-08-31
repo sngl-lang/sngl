@@ -84,14 +84,27 @@ func (t *Type) IsSized() bool {
 	return t != nil && (t.Kind == TypeInt || t.Kind == TypeFloat) && t.Bits != 0
 }
 
-// ListOf returns a list type with the given element type.
+// ListOf returns a list type with the given element type, carrying the
+// #[builtin("list")] declaration (see ir/genericbuiltins.go). Decl is metadata
+// here and not identity: Equal compares a list structurally, by element type.
 func ListOf(elem *Type) *Type {
-	return &Type{Kind: TypeList, Elems: []*Type{elem}}
+	t := &Type{Kind: TypeList, Elems: []*Type{elem}}
+	// Assigning the pointer straight to Decl would store a non-nil Symbol
+	// holding a nil *StructDef before the stdlib has registered one, and every
+	// `if t.Decl != nil` in the compiler would then dereference it.
+	if sd := listStructDef.Load(); sd != nil {
+		t.Decl = sd
+	}
+	return t
 }
 
-// MapOf returns a map<K, V> type.
+// MapOf returns a map<K, V> type, carrying the #[builtin("map")] declaration.
 func MapOf(k, v *Type) *Type {
-	return &Type{Kind: TypeMap, Elems: []*Type{k, v}}
+	t := &Type{Kind: TypeMap, Elems: []*Type{k, v}}
+	if sd := mapStructDef.Load(); sd != nil {
+		t.Decl = sd
+	}
+	return t
 }
 
 // OptionOf returns an option type wrapping the given type.
@@ -102,6 +115,12 @@ func OptionOf(inner *Type) *Type {
 // RefOf builds a ref<elem> Type.
 func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
+}
+
+// FuncOf returns a func type with the given parameters and return type. A nil
+// ret is a void function.
+func FuncOf(params []*Param, ret *Type) *Type {
+	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: params, Return: ret}}
 }
 
 // IterOf returns an iter<T> type.
@@ -574,7 +593,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 // BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
 // and generic behaviour travel with the type rather than with a hardcoded name.
 func builtinOf(t *Type) BuiltinKind {
-	if t == nil || t.Kind != TypeStruct {
+	if t == nil {
 		return BuiltinNone
 	}
 	sd, ok := t.Decl.(*StructDef)
@@ -607,25 +626,43 @@ func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
-// Registered stdlib datetime struct type. Populated by the checker once
-// lib/types.sngl is parsed, so non-checker phases (foreign-type importers,
-// etc.) can synthesize a canonical datetime value type without their own scope
-// access. Nil before registration; the accessor falls back to TypDyn.
-var stdlibDateTimeType *Type
+// Registered stdlib date/time/datetime struct types. Populated by the checker
+// once the declarations carrying the marks are parsed, so non-checker phases
+// (foreign-type importers, etc.) can synthesize a canonical value type without
+// their own scope access. Nil before registration; the accessors fall back to
+// TypDyn.
+var (
+	stdlibDateType     *Type
+	stdlibTimeType     *Type
+	stdlibDateTimeType *Type
+)
 
-// RegisterStringReprStructs records the resolved stdlib datetime struct type so
-// the DateTimeType accessor can hand it out. Idempotent.
+// RegisterStringReprStructs records the resolved stdlib date, time and datetime
+// struct types so the accessors below can hand them out. Each argument is
+// recorded when non-nil, so the three marks may register separately.
+// Idempotent.
 func RegisterStringReprStructs(date, time, dateTime *Type) {
+	if date != nil {
+		stdlibDateType = date
+	}
+	if time != nil {
+		stdlibTimeType = time
+	}
 	if dateTime != nil {
 		stdlibDateTimeType = dateTime
 	}
 }
 
-// DateTimeType returns the registered stdlib struct type,
-// falling back to dyn when the stdlib has not been loaded yet.
-func DateTimeType() *Type {
-	if stdlibDateTimeType != nil {
-		return stdlibDateTimeType
+// DateType, TimeType and DateTimeType return the registered stdlib struct
+// type, falling back to dyn when the stdlib has not been loaded yet.
+func DateType() *Type { return orDyn(stdlibDateType) }
+func TimeType() *Type { return orDyn(stdlibTimeType) }
+
+func DateTimeType() *Type { return orDyn(stdlibDateTimeType) }
+
+func orDyn(t *Type) *Type {
+	if t != nil {
+		return t
 	}
 	return TypDyn
 }

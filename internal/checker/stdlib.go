@@ -716,6 +716,13 @@ func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
 	if def.Purity != ir.PurityUnknown {
 		fn.Purity = def.Purity
 	}
+	// An "=>" form cannot carry a return annotation, and library source is not
+	// body-checked, so the registry is the only thing that knows what
+	// `int.abs` returns. Taking it here is what keeps the declaration off the
+	// dyn fallback below.
+	if fn.Return == nil {
+		fn.Return = def.Return
+	}
 	return true
 }
 

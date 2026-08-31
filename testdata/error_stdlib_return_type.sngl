@@ -1,0 +1,12 @@
+// A library `=>` form cannot carry a return annotation, and library source is
+// not body-checked, so nothing knew what these returned and the checker typed
+// them dyn -- which made every use of the result check clean whatever it was
+// assigned to. They declare a return type off a block body instead, the same
+// way `string.split` does.
+
+func test() {
+    var c int = color.rgb(1, 2, 3)                     // ERROR(check) "cannot initialize int with color"
+    var b int = string.contains("ab", "a")             // ERROR(check) "cannot initialize int with bool"
+    var s string = string.startsWith("ab", "a")        // ERROR(check) "cannot initialize string with bool"
+    var o int = color.opacity(color.rgb(1, 2, 3), 128) // ERROR(check) "cannot initialize int with color"
+}

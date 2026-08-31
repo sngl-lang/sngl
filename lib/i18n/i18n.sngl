@@ -109,13 +109,13 @@ func _numberInt(locale string, n int, style string) string { return "" }
 func _numberFloat(locale string, n float, style string) string { return "" }
 
 #[intrinsic("i18n._date")]
-func _date(locale string, d dyn, style string) string { return "" }
+func _date(locale string, d clock.date, style string) string { return "" }
 
 #[intrinsic("i18n._time")]
-func _time(locale string, t dyn, style string) string { return "" }
+func _time(locale string, t clock.time, style string) string { return "" }
 
 #[intrinsic("i18n._dateTime")]
-func _dateTime(locale string, dt dyn, dateStyle string, timeStyle string) string { return "" }
+func _dateTime(locale string, dt clock.datetime, dateStyle string, timeStyle string) string { return "" }
 
 #[intrinsic("i18n._select")]
 func _select(locale string, value string, cases map<string, string>) string { return "" }

@@ -1500,6 +1500,9 @@ func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	case ir.BuiltinDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
+	// The generic collection declarations, for ListOf/MapOf to attach to every
+	// list and map type they build.
+	ir.RegisterGenericBuiltin(sd)
 }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -1584,15 +1587,19 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 // declarations exist.
 func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
 		// An un-annotated const backed by a literal gets its concrete type on
 		// the shell immediately, so a later `var x = SOME_CONST` (registered
 		// before the deferred checkPendingConstInits runs) infers the const's
 		// type rather than dyn. Non-literal initializers still resolve in the
 		// deferred pass.
-		if typ.Kind == ir.TypeDyn && spec.Type == nil {
-			if lt := literalConstType(spec.Default); lt != nil {
-				typ = lt
+		var typ *ir.Type
+		switch {
+		case spec.Type != nil:
+			typ = c.resolveType(spec.Type)
+		default:
+			typ = literalConstType(spec.Default)
+			if typ == nil {
+				typ = dynDeferred("const type, resolved by checkPendingConstInits")
 			}
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
@@ -2049,7 +2056,7 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
-			fn.Return = TypDyn
+			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
 		if fn.Purity == ir.PurityUnknown {
 			fn.Purity = ir.PurityPure
@@ -3702,12 +3709,13 @@ func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
 func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		isWindow := c.isWindowNode(visualNodeTarget(n))
+		target := visualNodeTarget(n)
+		isWindow := c.isWindowNode(target)
 		if isWindow && inLoop {
 			// The loop hoists this id as a list of windows.
 			return
 		}
-		c.declareNodeID(n.ID, isWindow)
+		c.declareNodeID(n.ID, target, isWindow)
 		// Descend into the node's own children, but not into a nested
 		// window — a window has its own scope and hoists its ids itself.
 		if !isWindow {
@@ -3716,8 +3724,8 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
-		if _, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, false)
+		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
+			c.declareNodeID(id, target, false)
 		}
 	case *ast.IfStmt:
 		c.declareNodeIDsIn(&n.Body, inLoop)
@@ -3728,7 +3736,9 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	}
 }
 
-func (c *checker) declareNodeID(id string, isWindow bool) {
+// declareNodeID binds one node id. target names the component the node
+// instantiates, which is the type a handle to it reads at.
+func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	if id == "" {
 		return
 	}
@@ -3737,14 +3747,70 @@ func (c *checker) declareNodeID(id string, isWindow bool) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
+	// A component's own methods are registered on the symbol table under the
+	// component as receiver, not in scope by bare name -- a body reference to
+	// one resolves through the currentComponent path in inferIdent, which runs
+	// only when the scope lookup misses. So a same-named node id has to be
+	// refused here or it shadows the method, which is what `button #bump` next
+	// to `func bump()` did: the handle bound the name, the call went to an
+	// opaque handle, and only a runtime that resolves by name found the
+	// method at all.
+	if c.currentComponent != nil {
+		if _, ok := c.lookupMethod(c.currentComponent.Name, id); ok {
+			return
+		}
+	}
 	// A window's id names the window itself, so bind the window here and let
-	// buildWindow fill it in. Any other node id names a handle to a rendered
-	// node, which has no declaration of its own.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: ir.TypDyn, IsConst: true}
+	// buildWindow fill it in.
+	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true}
 	if isWindow {
 		sym = &ir.Window{Name: id, Typ: c.windowType}
 	}
 	c.declare(ast.Pos{}, sym)
+}
+
+// nodeHandleType is what a handle to a rendered instance of the component
+// named target reads at. The same answer the `c.<id>` selector path arrives at
+// through findHostComponentAST, reached directly because the hoisting pass has
+// the target name in hand; the two disagreeing is what made a bare `#id`
+// reference dyn while `c.<id>` on the same node was typed.
+func (c *checker) nodeHandleType(target string) *ir.Type {
+	if comp := c.componentNamed(target); comp != nil {
+		if t := comp.SymType(); t != nil {
+			return t
+		}
+	}
+	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+}
+
+// componentNamed resolves a visual node's target -- `Sidebar`, or the
+// `pkg.Name` form a qualified one carries -- to the component it names.
+func (c *checker) componentNamed(target string) *ir.Component {
+	if target == "" {
+		return nil
+	}
+	pkg, name, qualified := strings.Cut(target, ".")
+	if !qualified {
+		if sym, ok := c.scope.Lookup(target); ok {
+			comp, _ := sym.(*ir.Component)
+			return comp
+		}
+		return nil
+	}
+	sym, ok := c.scope.Lookup(pkg)
+	if !ok {
+		return nil
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil {
+		return nil
+	}
+	member, ok := ns.Pkg.Symbols.LookupMember(name)
+	if !ok {
+		return nil
+	}
+	comp, _ := member.(*ir.Component)
+	return comp
 }
 
 func (c *checker) hoistedWindow(id string) *ir.Window {

@@ -469,11 +469,12 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 	}
 }
 
-// callListLength builds a Call expression for the ListLength intrinsic.
+// callListLength builds a Call expression for the ListLength intrinsic,
+// instantiated at the element type of the list being measured.
 func callListLength(iter ir.Expr) *ir.Call {
 	var params []*ir.Param
 	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		params = def.Params
+		params, _ = def.Instantiate(listElem(iter))
 	}
 	fn := &ir.Func{
 		Name:      "length",
@@ -487,6 +488,20 @@ func callListLength(iter ir.Expr) *ir.Call {
 		Func: fn,
 		Args: []ir.CallArg{{Value: iter}},
 	}
+}
+
+// listElem is the element type of a list expression, or nil when the
+// expression is not a typed list -- Instantiate leaves the type variable in
+// place for that, which is a truer signature than dyn.
+func listElem(e ir.Expr) *ir.Type {
+	if e == nil {
+		return nil
+	}
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeList || len(t.Elems) != 1 {
+		return nil
+	}
+	return t.Elems[0]
 }
 
 // ---- focusable detection (unchanged) ----

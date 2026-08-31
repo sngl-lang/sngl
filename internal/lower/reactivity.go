@@ -1242,13 +1242,16 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
 func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
-	listPushDef := ir.LookupIntrinsic("list.push")
+	// A slot holds node handles, which are opaque -- so this is one of the
+	// few places dyn is the honest binding for the intrinsic's element type
+	// rather than a signature that had no better answer.
+	pushParams, pushReturn := ir.LookupIntrinsic("list.push").Instantiate(ir.TypDyn)
 	listPushFn := &ir.Func{
 		Name:      "push",
 		Receiver:  "list",
 		Intrinsic: "list.push",
-		Params:    listPushDef.Params,
-		Return:    listPushDef.Return,
+		Params:    pushParams,
+		Return:    pushReturn,
 	}
 	pushToSlot := func(nodeID string) ir.Stmt {
 		return &ir.Assign{
