@@ -12,9 +12,6 @@ import (
 	"fyne.io/fyne/v2/layout"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
-
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // This file is the spike for an interpreted fyne host: proof that a widget can
@@ -57,26 +54,18 @@ var fyneCtors = map[string]any{
 func allSpecs(t *testing.T) map[string]*fyneSpec {
 	t.Helper()
 	pkg := checkAllComponents(t)
-	seen := map[string]*ir.Component{}
-	codegen.WalkVisualTree(pkg.Components[0].Body, func(n *ir.NodeInst, _ int) bool {
-		if n.Component != nil {
-			seen[n.Name] = n.Component
-		}
-		return false
-	})
 	out := map[string]*fyneSpec{}
-	for _, name := range StdlibComponents {
-		comp := seen[name]
-		if comp == nil {
-			t.Fatalf("fixture did not instantiate %q", name)
-		}
+	for _, comp := range OverriddenComponents(pkg) {
 		for _, n := range fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts) {
 			sp, err := specFromProps(n.Name, nodeProps(n))
 			if err != nil {
-				t.Fatalf("%s: %v", name, err)
+				t.Fatalf("%s: %v", comp.Name, err)
 			}
-			out[name] = sp
+			out[comp.Name] = sp
 		}
+	}
+	if len(out) == 0 {
+		t.Fatal("no specs decoded; the override walk found nothing")
 	}
 	return out
 }

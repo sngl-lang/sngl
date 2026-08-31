@@ -60,8 +60,10 @@ func Generate() ([]byte, error) {
 	return render(specs)
 }
 
-func specs() ([]fyneplat.WidgetSpec, error) {
-	doc, err := parser.Parse("registry.sngl", []byte(fyneplat.AllComponentsSource))
+// probe checks the smallest program that pulls the platform in, which is all
+// it takes to reach what the platform declares.
+func probe() (*ir.Package, error) {
+	doc, err := parser.Parse("registry.sngl", []byte(fyneplat.WidgetProbeSource))
 	if err != nil {
 		return nil, fmt.Errorf("parsing the widget fixture: %w", err)
 	}
@@ -82,6 +84,14 @@ func specs() ([]fyneplat.WidgetSpec, error) {
 		if d.Severity == ir.Error {
 			return nil, fmt.Errorf("%s: %s", d.Pos, d.Msg)
 		}
+	}
+	return pkg, nil
+}
+
+func specs() ([]fyneplat.WidgetSpec, error) {
+	pkg, err := probe()
+	if err != nil {
+		return nil, err
 	}
 	return fyneplat.WidgetSpecsFrom(pkg)
 }

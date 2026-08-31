@@ -2,73 +2,72 @@ package fyne
 
 import (
 	"fmt"
+	"sort"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// StdlibComponents is every stdlib component this platform overrides.
+// WidgetProbeSource is a program that does nothing except pull this platform
+// in, which is all it takes to reach what the platform declares.
 //
-// It is data rather than a test fixture because two things read it: the tests
-// that hold each override to having a body, and the generator that emits the
-// worker's widget registry from those bodies. Two copies would drift, and the
-// drift would be a widget the tests cover and no window can build.
-var StdlibComponents = []string{
-	"vbox", "hbox", "stack", "scroll", "spacer", "card", "splitview",
-	"modal", "drawer", "popover", "tooltip",
-	"tabs", "toolbar", "menubar", "menu",
-	"table", "tree", "radio",
-	"text", "badge", "chip", "divider", "avatar", "spinner", "progress", "datepicker",
-	"button", "link", "image", "checkbox", "toggle", "select",
-	"input", "textarea",
-}
-
-// AllComponentsSource instantiates every name in StdlibComponents so the
-// checked IR carries a NodeInst pointing at each stdlib *ir.Component -- which
-// is the only way to reach the Spec each override lowers to, since a Spec is a
-// prop on an instantiation rather than anything a declaration holds.
-const AllComponentsSource = `
+// It replaces a fixture that instantiated all thirty-four overridden components
+// by hand, and a list of their names beside it. Both were maintained by hand
+// and had to agree with fyne.sngl and with each other; a widget added to one
+// and not the others was a widget the tests covered and no window could build.
+// Nothing needs instantiating: an override's body is a declaration, and the
+// checker attaches it to the stdlib component it names.
+const WidgetProbeSource = `
 import . "sngl:ui"
 import "sngl:platform/fyne"
 output { go { fyne() } }
-component main {
-    vbox {
-        hbox {}
-        stack {}
-        scroll { text(value="in scroll") }
-        spacer()
-        card {}
-        splitview {}
-        modal {}
-        drawer {}
-        popover {}
-        tooltip { text(value="tipped") }
-        tabs {}
-        toolbar {}
-        menubar()
-        menu()
-        table()
-        tree()
-        radio()
-        text(value="t")
-        badge(value="b")
-        chip(label="c")
-        divider()
-        avatar(initials="AB")
-        spinner(label="s")
-        progress(value=0.5)
-        datepicker(placeholder="pick")
-        button(text="go")
-        link(href="/x", text="l")
-        image(src="/i.png")
-        checkbox(label="c")
-        toggle(label="t")
-        select(options=["a"])
-        input(placeholder="p")
-        textarea(placeholder="p", rows=3)
-    }
-}
+component main {}
 `
+
+// OverriddenComponents lists the stdlib components this platform gives a body
+// to, read off the checked symbol table in declaration-independent order.
+//
+// This is the list, derived. A component appears here because fyne.sngl
+// overrides it, which is the only thing that ever made it true.
+func OverriddenComponents(pkg *ir.Package) []*ir.Component {
+	if pkg == nil || pkg.Symbols == nil {
+		return nil
+	}
+	var out []*ir.Component
+	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
+		c, ok := sym.(*ir.Component)
+		if !ok {
+			return true
+		}
+		if b, has := c.PlatformOverrides["fyne"]; has && len(b.Stmts) > 0 {
+			out = append(out, c)
+		}
+		return true
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// BareStdlibComponents lists the stdlib components this platform gives no body
+// to. Only `context` should be here: it is a node kind rather than a widget.
+func BareStdlibComponents(pkg *ir.Package) []string {
+	if pkg == nil || pkg.Symbols == nil {
+		return nil
+	}
+	var out []string
+	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
+		c, ok := sym.(*ir.Component)
+		if !ok || !c.Stdlib {
+			return true
+		}
+		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {
+			out = append(out, c.Name)
+		}
+		return true
+	})
+	sort.Strings(out)
+	return out
+}
 
 // WidgetSpec is what one stdlib component needs to be built at runtime, decoded
 // from the Spec its fyne override lowers to.
@@ -142,23 +141,14 @@ func propRenames(comp *ir.Component, node *ir.NodeInst) map[string]string {
 // The checking is the caller's, deliberately: this package must not depend on
 // the checker, and a generator is where parsing belongs anyway.
 func WidgetSpecsFrom(pkg *ir.Package) ([]WidgetSpec, error) {
-	if pkg == nil || len(pkg.Components) == 0 {
-		return nil, fmt.Errorf("no components in the checked package")
+	comps := OverriddenComponents(pkg)
+	if len(comps) == 0 {
+		return nil, fmt.Errorf("no component carries a fyne override; was the platform registered when checking?")
 	}
-	seen := map[string]*ir.Component{}
-	codegen.WalkVisualTree(pkg.Components[0].Body, func(n *ir.NodeInst, _ int) bool {
-		if n.Component != nil {
-			seen[n.Name] = n.Component
-		}
-		return false
-	})
 
 	var out []WidgetSpec
-	for _, name := range StdlibComponents {
-		comp := seen[name]
-		if comp == nil {
-			return nil, fmt.Errorf("%s: not instantiated; AllComponentsSource is out of step with StdlibComponents", name)
-		}
+	for _, comp := range comps {
+		name := comp.Name
 		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
 		if len(prims) == 0 {
 			return nil, fmt.Errorf("%s: its fyne body reaches no primitive", name)

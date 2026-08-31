@@ -30,19 +30,32 @@ func TestTheCommittedRegistryIsCurrent(t *testing.T) {
 	}
 }
 
-// TestEveryOverriddenComponentIsInTheRegistry: the platform declares a fyne
-// body for each of these, so a window must be able to build each. One missing
-// is a component that checks, generates and runs on a compiled target while
+// TestEveryOverriddenComponentIsInTheRegistry: fyne.sngl declares a body for
+// each of these, so a window must be able to build each. One missing is a
+// component that checks, generates and runs on a compiled target while
 // silently rendering nothing when interpreted.
+//
+// The list is not written here. It is read from the platform, which reads it
+// from the overrides -- the same source the registry is emitted from, so this
+// asks whether the generator dropped one rather than whether two hand-written
+// lists agree.
 func TestEveryOverriddenComponentIsInTheRegistry(t *testing.T) {
 	src, err := Generate()
 	if err != nil {
 		t.Fatalf("generating: %v", err)
 	}
+	pkg, err := probe()
+	if err != nil {
+		t.Fatalf("checking the probe: %v", err)
+	}
+	comps := fyneplat.OverriddenComponents(pkg)
+	if len(comps) < 30 {
+		t.Fatalf("only %d overridden components found; this test is checking nothing", len(comps))
+	}
 	text := string(src)
-	for _, name := range fyneplat.StdlibComponents {
-		if !strings.Contains(text, "\t\t\""+name+"\": {") {
-			t.Errorf("%s has a fyne override but no registry entry", name)
+	for _, c := range comps {
+		if !strings.Contains(text, "\t\t\""+c.Name+"\": {") {
+			t.Errorf("%s has a fyne override but no registry entry", c.Name)
 		}
 	}
 }

@@ -20,7 +20,41 @@ import (
 // overrides inlined, so a window is asked for `text`, never `Label`.
 func Default() Registry {
 	return Registry{
-		"vbox": {
+		"avatar": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"initials": "SetText"},
+		},
+		"badge": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"value": "SetText"},
+		},
+		"button": {
+			New:      widget.NewButton,
+			Setters:  map[string]string{"text": "SetText"},
+			Handlers: map[string]string{"click": "OnTapped"},
+		},
+		"card": {
+			New: container.NewVBox,
+			Add: "Add",
+		},
+		"checkbox": {
+			New:      widget.NewCheck,
+			Setters:  map[string]string{"label": "SetText"},
+			Handlers: map[string]string{"change": "OnChanged"},
+		},
+		"chip": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"label": "SetText"},
+		},
+		"datepicker": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"placeholder": "SetText"},
+		},
+		"divider": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"label": "SetText"},
+		},
+		"drawer": {
 			New: container.NewVBox,
 			Add: "Add",
 		},
@@ -28,22 +62,22 @@ func Default() Registry {
 			New: container.NewHBox,
 			Add: "Add",
 		},
-		"stack": {
+		"image": {
+			New: canvas.NewImageFromResource,
+		},
+		"input": {
+			New:      widget.NewEntry,
+			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
+			Handlers: map[string]string{"input": "OnChanged"},
+		},
+		"link": {
+			New: widget.NewHyperlink,
+		},
+		"menu": {
 			New: container.NewVBox,
 			Add: "Add",
 		},
-		"scroll": {
-			New:     container.NewVScroll,
-			Content: "Content",
-		},
-		"spacer": {
-			New: layout.NewSpacer,
-		},
-		"card": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"splitview": {
+		"menubar": {
 			New: container.NewHBox,
 			Add: "Add",
 		},
@@ -51,31 +85,37 @@ func Default() Registry {
 			New: container.NewVBox,
 			Add: "Add",
 		},
-		"drawer": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
 		"popover": {
 			New: container.NewVBox,
 			Add: "Add",
 		},
-		"tooltip": {
+		"progress": {
+			New: widget.NewLabel,
+		},
+		"radio": {
 			New: container.NewVBox,
 			Add: "Add",
 		},
-		"tabs": {
+		"scroll": {
+			New:     container.NewVScroll,
+			Content: "Content",
+		},
+		"select": {
+			New:      widget.NewSelect,
+			Handlers: map[string]string{"change": "OnChanged"},
+		},
+		"spacer": {
+			New: layout.NewSpacer,
+		},
+		"spinner": {
+			New:     widget.NewLabel,
+			Setters: map[string]string{"label": "SetText"},
+		},
+		"splitview": {
 			New: container.NewHBox,
 			Add: "Add",
 		},
-		"toolbar": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"menubar": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"menu": {
+		"stack": {
 			New: container.NewVBox,
 			Add: "Add",
 		},
@@ -83,79 +123,39 @@ func Default() Registry {
 			New: container.NewVBox,
 			Add: "Add",
 		},
-		"tree": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"radio": {
-			New: container.NewVBox,
+		"tabs": {
+			New: container.NewHBox,
 			Add: "Add",
 		},
 		"text": {
 			New:     widget.NewLabel,
 			Setters: map[string]string{"value": "SetText"},
 		},
-		"badge": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"value": "SetText"},
-		},
-		"chip": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"divider": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"avatar": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"initials": "SetText"},
-		},
-		"spinner": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"progress": {
-			New: widget.NewLabel,
-		},
-		"datepicker": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"placeholder": "SetText"},
-		},
-		"button": {
-			New:      widget.NewButton,
-			Setters:  map[string]string{"text": "SetText"},
-			Handlers: map[string]string{"click": "OnTapped"},
-		},
-		"link": {
-			New: widget.NewHyperlink,
-		},
-		"image": {
-			New: canvas.NewImageFromResource,
-		},
-		"checkbox": {
-			New:      widget.NewCheck,
-			Setters:  map[string]string{"label": "SetText"},
-			Handlers: map[string]string{"change": "OnChanged"},
+		"textarea": {
+			New:      widget.NewMultiLineEntry,
+			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
+			Handlers: map[string]string{"input": "OnChanged"},
 		},
 		"toggle": {
 			New:      widget.NewCheck,
 			Setters:  map[string]string{"label": "SetText"},
 			Handlers: map[string]string{"change": "OnChanged"},
 		},
-		"select": {
-			New:      widget.NewSelect,
-			Handlers: map[string]string{"change": "OnChanged"},
+		"toolbar": {
+			New: container.NewHBox,
+			Add: "Add",
 		},
-		"input": {
-			New:      widget.NewEntry,
-			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
-			Handlers: map[string]string{"input": "OnChanged"},
+		"tooltip": {
+			New: container.NewVBox,
+			Add: "Add",
 		},
-		"textarea": {
-			New:      widget.NewMultiLineEntry,
-			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
-			Handlers: map[string]string{"input": "OnChanged"},
+		"tree": {
+			New: container.NewVBox,
+			Add: "Add",
+		},
+		"vbox": {
+			New: container.NewVBox,
+			Add: "Add",
 		},
 	}
 }

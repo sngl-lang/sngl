@@ -19,54 +19,28 @@ import (
 // wants the bodyless-declaration syntax in #123, which turns "a target must
 // implement this" into something the compiler can see rather than something
 // each platform's test restates.
-// TestEveryStdlibComponentHasAFyneBody is bar one of the redesign: each stdlib
-// component must carry a `component sngl.X { ... }` body in fyne.sngl,
-// and that body must implement something.
+// TestEveryStdlibComponentHasAFyneBody, with one exception that is not a
+// widget.
 //
-// The emptiness check is the point. mergePlatformExtensions reserves
-// PlatformOverrides[platform] before checking the block, so an override written
-// with an empty body records a *present* entry that renders nothing — a
-// node whose stdlib name reaches codegen, matches no widget, and is dropped
-// while its AppendChild is still emitted (issue #120's failure mode). Presence
-// alone is therefore not the assertion; a non-empty statement list is.
+// This used to compare fyne.sngl against a list of names written beside it,
+// which could only fail if someone edited one and not the other -- and a
+// component added to sngl:ui and overridden nowhere was invisible to it. Asking
+// the other way round is what makes it an assertion: every stdlib component
+// must have a body here unless it is named below.
 func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 	pkg := checkAllComponents(t)
 
-	seen := map[string]*ir.Component{}
-	codegen.WalkVisualTree(pkg.Components[0].Body, func(n *ir.NodeInst, _ int) bool {
-		if n.Component != nil {
-			seen[n.Name] = n.Component
-		}
-		return false
-	})
+	// `context` is a builtin node kind rather than a widget: it provides a
+	// value to a subtree and renders nothing, so there is nothing to build.
+	allowed := map[string]bool{"context": true}
 
-	var missingNode, missingBody, emptyBody []string
-	for _, name := range StdlibComponents {
-		comp, ok := seen[name]
-		if !ok {
-			missingNode = append(missingNode, name)
-			continue
-		}
-		body, ok := comp.PlatformOverrides["fyne"]
-		if !ok {
-			missingBody = append(missingBody, name)
-			continue
-		}
-		if len(body.Stmts) == 0 {
-			emptyBody = append(emptyBody, name)
+	for _, name := range BareStdlibComponents(pkg) {
+		if !allowed[name] {
+			t.Errorf("stdlib component %q has no fyne body, and is not one of the kinds exempt from having one", name)
 		}
 	}
-	if len(missingNode) > 0 {
-		t.Fatalf("fixture did not instantiate %v — the source, not the platform, is wrong", missingNode)
-	}
-	if len(missingBody) > 0 {
-		t.Errorf("no PlatformOverrides[\"fyne\"] entry for %v", missingBody)
-	}
-	if len(emptyBody) > 0 {
-		t.Errorf("PlatformOverrides[\"fyne\"] is present but empty for %v", emptyBody)
-	}
-	if n := len(StdlibComponents); n != 34 {
-		t.Errorf("StdlibComponents has %d entries, want the 34 stdlib components", n)
+	if n := len(OverriddenComponents(pkg)); n < 30 {
+		t.Errorf("only %d components carry a fyne override; the walk is not finding them", n)
 	}
 }
 
@@ -83,29 +57,17 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 	pkg := checkAllComponents(t)
 
-	seen := map[string]*ir.Component{}
-	codegen.WalkVisualTree(pkg.Components[0].Body, func(n *ir.NodeInst, _ int) bool {
-		if n.Component != nil {
-			seen[n.Name] = n.Component
-		}
-		return false
-	})
-
 	used := map[string]bool{}
-	for _, name := range StdlibComponents {
-		comp := seen[name]
-		if comp == nil {
-			t.Fatalf("fixture did not instantiate %q", name)
-		}
+	for _, comp := range OverriddenComponents(pkg) {
 		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
 		if len(prims) == 0 {
-			t.Errorf("%s: fyne body reaches no fyne primitive", name)
+			t.Errorf("%s: fyne body reaches no fyne primitive", comp.Name)
 			continue
 		}
 		for _, n := range prims {
 			used[fynePrimitive(n.Component)] = true
 			if _, err := specFromProps(n.Name, nodeProps(n)); err != nil {
-				t.Errorf("%s: %v", name, err)
+				t.Errorf("%s: %v", comp.Name, err)
 			}
 		}
 	}
@@ -125,7 +87,7 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 
 func checkAllComponents(t *testing.T) *ir.Package {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(AllComponentsSource))
+	doc, err := parser.Parse("t.sngl", []byte(WidgetProbeSource))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
