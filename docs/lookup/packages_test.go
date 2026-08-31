@@ -90,16 +90,18 @@ func TestLibraryPackages(t *testing.T) {
 	}
 }
 
-// The library and the targets are two id spaces, and the URL keeps them apart:
+// The URL is the package path and the declaration's name -- no kind segment,
+// since one name means one declaration within a package. The scheme stays as
+// the first segment because the library and the targets are two id spaces:
 // sngl:html would otherwise land on the html platform's pages.
 func TestDeclHrefSeparatesLibraryFromTargets(t *testing.T) {
-	if got := lookup.DeclHref("sngl:ui", "components", "button"); got != "/docs/sngl/ui/components/button.html" {
+	if got := lookup.DeclHref("sngl:ui", "components", "button"); got != "/docs/sngl/ui/button.html" {
 		t.Errorf("sngl:ui button: got %q", got)
 	}
-	if got := lookup.DeclHref("sngl:ui/draw", "components", "circle"); got != "/docs/sngl/ui/draw/components/circle.html" {
+	if got := lookup.DeclHref("sngl:ui/draw", "components", "circle"); got != "/docs/sngl/ui/draw/circle.html" {
 		t.Errorf("sngl:ui/draw circle: got %q", got)
 	}
-	if got := lookup.DeclHref("html", "types", "Options"); got != "/docs/html/types/Options.html" {
+	if got := lookup.DeclHref("html", "types", "Options"); got != "/docs/html/Options.html" {
 		t.Errorf("html Options: got %q", got)
 	}
 }
@@ -135,19 +137,19 @@ func TestAllDeclPages(t *testing.T) {
 		}
 		if p.Pkg == "sngl:ui" && p.Kind == "enums" && p.Name == "Alignment" && p.Ident2 == "" {
 			sawUIDecl = true
-			if p.Href != "/docs/sngl/ui/enums/Alignment.html" {
+			if p.Href != "/docs/sngl/ui/Alignment.html" {
 				t.Errorf("Alignment href: got %q", p.Href)
 			}
 		}
 		if p.Pkg == "sngl:builtin" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "" {
 			sawSnglType = true
-			if p.Href != "/docs/sngl/builtin/types/color.html" {
+			if p.Href != "/docs/sngl/builtin/color.html" {
 				t.Errorf("color href: got %q", p.Href)
 			}
 		}
 		if p.Pkg == "sngl:builtin" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "darken" {
 			sawSnglTypeMethod = true
-			if p.Href != "/docs/sngl/builtin/types/color/darken.html" {
+			if p.Href != "/docs/sngl/builtin/color/darken.html" {
 				t.Errorf("color.darken href: got %q", p.Href)
 			}
 		}

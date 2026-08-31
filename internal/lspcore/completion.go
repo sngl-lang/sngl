@@ -1,6 +1,7 @@
 package lspcore
 
 import (
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -23,15 +24,15 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 	case CtxTopLevel:
 		return TopLevelKeywords()
 	case CtxComponent:
-		return ComponentKeywords()
+		return ComponentKeywords(content, doc)
 	case CtxVisualNode:
-		return ComponentNameCompletions(doc)
+		return ComponentNameCompletions(content, doc)
 	case CtxPropList:
 		return PropListCompletions(content, doc, line, col)
 	case CtxStyleProp:
 		return StylePropCompletions()
 	case CtxEventHandler:
-		return EventCompletions()
+		return EventCompletions(content, doc, line)
 	case CtxOutputOpts:
 		return OutputOptsCompletions(content, line)
 	case CtxOutputTarget:
@@ -126,19 +127,23 @@ func TopLevelKeywords() []CompletionItem {
 	return items
 }
 
-func ComponentKeywords() []CompletionItem {
+// ComponentKeywords is what can start a statement in a component body: the
+// keywords, and the components a node could name.
+func ComponentKeywords(content string, doc *ast.Document) []CompletionItem {
 	kws := []string{"var", "const", "if", "for"}
 	items := make([]CompletionItem, len(kws))
 	for i, kw := range kws {
 		items[i] = CompletionItem{Label: kw, Kind: CIKKeyword}
 	}
-	// TODO: add stdlib component items (LoadStdlib removed in v2)
-	return items
+	return append(items, ComponentNameCompletions(content, doc)...)
 }
 
-func ComponentNameCompletions(doc *ast.Document) []CompletionItem {
-	// TODO: add stdlib component items (LoadStdlib removed in v2)
-	var items []CompletionItem
+// ComponentNameCompletions is every component the document can name: the ones
+// it declares, and the ones its imports bring into scope. A component from a
+// package it has not imported is not offered, because writing it would not
+// compile.
+func ComponentNameCompletions(content string, doc *ast.Document) []CompletionItem {
+	items := scopeOf(content, doc).components()
 	if doc != nil {
 		for _, s := range doc.Stmts {
 			if c, ok := s.(*ast.ComponentDecl); ok {
@@ -191,13 +196,125 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 	return items
 }
 
-func EventCompletions() []CompletionItem {
-	// TODO: restore event completions from stdlib (LoadStdlib removed in v2)
-	return nil
+// EventCompletions offers the events of the node whose block the cursor is in,
+// which is the only component whose handlers can be written there.
+func EventCompletions(content string, doc *ast.Document, line int) []CompletionItem {
+	name := enclosingNodeName(content, line)
+	if name == "" {
+		return nil
+	}
+	var items []CompletionItem
+	if decl := userComponent(doc, name); decl != nil {
+		for _, p := range decl.Props.Props {
+			if e, ok := p.(ast.EventDecl); ok {
+				items = append(items, eventItem(e.Name, typeExprString(e.Type)))
+			}
+		}
+		return items
+	}
+	schema := scopeOf(content, doc).componentSchema(name)
+	if schema == nil {
+		return nil
+	}
+	names := make([]string, 0, len(schema.Events))
+	for n := range schema.Events {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		items = append(items, eventItem(n, schema.Events[n]))
+	}
+	return items
 }
 
+func eventItem(name, payload string) CompletionItem {
+	return CompletionItem{
+		Label:            "@" + name,
+		Kind:             CIKEvent,
+		Detail:           payload,
+		InsertText:       "@" + name + "={ $1 }",
+		InsertTextFormat: ITFSnippet,
+	}
+}
+
+// StylePropCompletions offers the fields of the Style struct, which is what
+// every `style=` prop takes.
 func StylePropCompletions() []CompletionItem {
-	// TODO: restore style prop completions from stdlib (LoadStdlib removed in v2)
+	var items []CompletionItem
+	for _, f := range styleFields() {
+		detail := ""
+		if f.Type != nil {
+			detail = f.Type.String()
+		}
+		items = append(items, CompletionItem{
+			Label:            f.Name,
+			Kind:             CIKField,
+			Detail:           detail,
+			InsertText:       f.Name + "=$1",
+			InsertTextFormat: ITFSnippet,
+		})
+	}
+	return items
+}
+
+// enclosingNodeName is the component named by the innermost block the cursor
+// sits in: the line that opened it, at the depth the cursor is at.
+func enclosingNodeName(content string, line int) string {
+	lines := strings.Split(content, "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	depth := 0
+	for i := line - 2; i >= 0; i-- {
+		l := lines[i]
+		depth += strings.Count(l, "}") - strings.Count(l, "{")
+		if depth < 0 {
+			return nodeNameOnLine(l)
+		}
+	}
+	return ""
+}
+
+// nodeNameOnLine reads the component a node line names, dropping an element
+// ref and any prop list: `button #ok(text="hi") {` is a button.
+func nodeNameOnLine(l string) string {
+	l = strings.TrimSpace(l)
+	l = strings.TrimSuffix(l, "{")
+	if i := strings.IndexAny(l, "(#"); i >= 0 {
+		l = l[:i]
+	}
+	l = strings.TrimSpace(l)
+	if i := strings.LastIndexAny(l, " \t"); i >= 0 {
+		l = l[i+1:]
+	}
+	if l == "" || !isIdentStart(l[0]) {
+		return ""
+	}
+	return l
+}
+
+func isIdentStart(c byte) bool {
+	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+func offers(items []CompletionItem, label string) bool {
+	for _, it := range items {
+		if it.Label == label {
+			return true
+		}
+	}
+	return false
+}
+
+func userComponent(doc *ast.Document, name string) *ast.ComponentDecl {
+	if doc == nil {
+		return nil
+	}
+	for _, stmt := range doc.Stmts {
+		if c, ok := stmt.(*ast.ComponentDecl); ok && c.Name == name {
+			return c
+		}
+	}
 	return nil
 }
 
@@ -235,26 +352,25 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		return nil
 	}
 
-	// Look up user-defined components
+	// A component the document declares itself, whose props are in the AST.
 	var props []ast.Param
 	var events []ast.EventDecl
-	if doc != nil {
-		for _, stmt := range doc.Stmts {
-			if c, ok := stmt.(*ast.ComponentDecl); ok && c.Name == compName {
-				for _, p := range c.Props.Props {
-					switch pd := p.(type) {
-					case ast.Param:
-						props = append(props, pd)
-					case ast.EventDecl:
-						events = append(events, pd)
-					}
-				}
-				break
+	if c := userComponent(doc, compName); c != nil {
+		for _, p := range c.Props.Props {
+			switch pd := p.(type) {
+			case ast.Param:
+				props = append(props, pd)
+			case ast.EventDecl:
+				events = append(events, pd)
 			}
 		}
 	}
-
-	// TODO: look up stdlib component schemas (LoadStdlib removed in v2)
+	// Otherwise one an import brought in, whose prop types are resolved rather
+	// than written: the schema is where those live.
+	var schema *checker.ComponentSchema
+	if props == nil && events == nil {
+		schema = scopeOf(content, doc).componentSchema(compName)
+	}
 
 	// Collect already-used prop names on this line to exclude them
 	used := map[string]bool{}
@@ -309,8 +425,42 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		})
 	}
 
-	// Style prop
-	if !used["style"] {
+	if schema != nil {
+		names := make([]string, 0, len(schema.Props))
+		for n := range schema.Props {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			if used[n] {
+				continue
+			}
+			ps := schema.Props[n]
+			items = append(items, CompletionItem{
+				Label:            n,
+				Kind:             CIKProperty,
+				Detail:           (&ps.Type).String(),
+				Documentation:    FirstLine(ps.Doc),
+				InsertText:       n + "=$1",
+				InsertTextFormat: ITFSnippet,
+			})
+		}
+		enames := make([]string, 0, len(schema.Events))
+		for n := range schema.Events {
+			enames = append(enames, n)
+		}
+		sort.Strings(enames)
+		for _, n := range enames {
+			if used[n] {
+				continue
+			}
+			items = append(items, eventItem(n, schema.Events[n]))
+		}
+	}
+
+	// Every library component declares `style`, so the schema has already
+	// offered it with its real type. This is for a component that does not.
+	if !used["style"] && !offers(items, "style") {
 		items = append(items, CompletionItem{
 			Label:            "style",
 			Kind:             CIKProperty,
@@ -470,33 +620,31 @@ func NamespaceCompletions(content string, doc *ast.Document, line, col int) []Co
 		}
 	}
 
-	// Also check imported namespaces in the document
-	if pkgDoc == nil && doc != nil {
-		for _, stmt := range doc.Stmts {
-			if imp, ok := stmt.(*ast.Import); ok && imp.Alias == nsName {
-				// Imported package — we don't have resolved components here,
-				// so return empty for now.
-				// TODO: resolve imported components for namespace completions
-				return nil
-			}
-		}
+	// A library package the document imported under this alias. Its source is
+	// what the platform and language branches above read too, so the members
+	// render the same way.
+	var pkgDocs []*ast.Document
+	if pkgDoc != nil {
+		pkgDocs = []*ast.Document{pkgDoc}
+	} else if uri, ok := scopeOf(content, doc).alias[nsName]; ok {
+		pkgDocs = checker.PackageSource(uri)
 	}
 
 	// `this.<member>` inside a method body: enumerate the receiver type's
 	// fields, members, and sibling methods.
-	if pkgDoc == nil && nsName == ir.ReceiverParam {
+	if len(pkgDocs) == 0 && nsName == ir.ReceiverParam {
 		if items := thisCompletions(doc, line); items != nil {
 			return items
 		}
 	}
 
-	if pkgDoc == nil {
+	if len(pkgDocs) == 0 {
 		return nil
 	}
 
 	var items []CompletionItem
 
-	for _, stmt := range pkgDoc.Stmts {
+	for _, stmt := range pkgStmts(pkgDocs) {
 		switch s := stmt.(type) {
 		case *ast.ComponentDecl:
 			if strings.Contains(s.Name, ".") {

@@ -85,7 +85,7 @@ func TestTopLevelKeywords(t *testing.T) {
 }
 
 func TestComponentKeywords(t *testing.T) {
-	items := lspcore.ComponentKeywords()
+	items := lspcore.ComponentKeywords("", nil)
 	labels := map[string]bool{}
 	for _, item := range items {
 		labels[item.Label] = true
@@ -135,8 +135,28 @@ component main {
 	}
 }
 
+// A `style=` prop takes sngl:ui's Style, so its fields are the vocabulary,
+// with the type each one takes.
 func TestStylePropCompletions(t *testing.T) {
-	// StylePropCompletions is a v2 stub that returns nil until stdlib style
-	// metadata is reloaded. Just exercise the code path.
-	_ = lspcore.StylePropCompletions()
+	items := lspcore.StylePropCompletions()
+	if len(items) == 0 {
+		t.Fatal("no style props offered")
+	}
+	byLabel := map[string]lspcore.CompletionItem{}
+	for _, it := range items {
+		byLabel[it.Label] = it
+	}
+	for _, name := range []string{"padding", "color", "fontSize"} {
+		it, ok := byLabel[name]
+		if !ok {
+			t.Errorf("style prop %q not offered", name)
+			continue
+		}
+		if it.Detail == "" {
+			t.Errorf("style prop %q offered with no type", name)
+		}
+	}
+	if _, ok := byLabel["nosuchprop"]; ok {
+		t.Error("a name Style does not declare was offered")
+	}
 }

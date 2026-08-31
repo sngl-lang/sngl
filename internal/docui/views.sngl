@@ -69,14 +69,14 @@ component PackagePageView(view lookup.PackageView, baseHref = "") {
             text(value="Import path: " + view.nativeImportPath,
                  style={color="#888", fontFamily="monospace"})
         }
-        KindSection(title="Components", items=view.components, hrefPrefix=baseHref + "components/")
-        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref + "types/")
-        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref + "enums/")
-        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref + "functions/")
-        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref + "constants/")
-        KindSection(title="Data", items=view.data, hrefPrefix=baseHref + "data/")
-        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref + "overrides/")
-        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref + "platform-types/")
+        KindSection(title="Components", items=view.components, hrefPrefix=baseHref)
+        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref)
+        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref)
+        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref)
+        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref)
+        KindSection(title="Data", items=view.data, hrefPrefix=baseHref)
+        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref)
+        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref)
     }
 }
 
@@ -89,13 +89,13 @@ component StdlibSections(path = "", baseHref = "") {
 
 component StdlibSectionsView(view lookup.PackageView, baseHref = "") {
     vbox(style={gap=4, padding=8}) {
-        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref + "types/")
-        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref + "enums/")
-        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref + "functions/")
-        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref + "constants/")
-        KindSection(title="Data", items=view.data, hrefPrefix=baseHref + "data/")
-        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref + "overrides/")
-        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref + "platform-types/")
+        KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref)
+        KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref)
+        KindSection(title="Functions", items=view.functions, hrefPrefix=baseHref)
+        KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref)
+        KindSection(title="Data", items=view.data, hrefPrefix=baseHref)
+        KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref)
+        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref)
     }
 }
 
