@@ -53,6 +53,13 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 // mounted, assuming it applied every patch handed to it.
 func (s *Session) View() *View { return s.view }
 
+// Attach brings a host up to the session's current tree, as one batch of
+// creations. A host joining a program that is already running -- a second
+// window on one session, or an inspector beside it -- starts here.
+func (s *Session) Attach(h Host) error {
+	return Apply(h, Diff(nil, s.view))
+}
+
 // Sync re-mounts against current state and reports what changed. Every
 // operation below ends in one, and a caller that mutates state directly (a
 // REPL assigning a var) calls it itself.
