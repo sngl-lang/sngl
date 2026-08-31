@@ -23,32 +23,96 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
 
-// Widget is how one SNGL element is built and driven: the runtime twin of a
-// Spec in fyne.sngl. The constructor is the only part reflection cannot
-// recover, which is what a registry is for.
-type Widget struct {
-	// New is the constructor, as a function value.
-	New any
-	// Setters maps a prop to the method that assigns it, without the receiver.
-	// A prop absent here has no surface to reach and is dropped, as the emitter
-	// drops it.
-	Setters map[string]string
-	// Handlers maps a declared event to the callback field it is assigned to.
-	Handlers map[string]string
-	// Add is the method a container attaches a child with; Content the field a
-	// single-child wrapper assigns one to. Which applies is decided by Content
-	// being set, because that is the case with no method to call.
-	Add     string
-	Content string
+// spec is the Spec record a primitive was instantiated with, as it arrives on
+// the node. The platform's fyne.sngl declares it and the interpreter hands it
+// over untouched, so nothing here decides which widget a component becomes.
+type spec struct {
+	// ctor is the constructor's key, "path.Name", looked up in Ctors.
+	ctor string
+	// setters maps a prop to the method that assigns it; handlers a declared
+	// event to its callback field.
+	setters  map[string]string
+	handlers map[string]string
+	// add is a container's attach method, content a wrapper's child field.
+	add, content string
 }
 
-// Registry maps a SNGL element name to how it is built.
-type Registry map[string]Widget
+// SpecProp is the prop a primitive carries its Spec in. Renaming it here means
+// renaming it in fyne.sngl.
+const SpecProp = "spec"
+
+// decodeSpec reads the Spec off a node's props. A node without one is not a
+// widget this platform declared -- a canvas or a drawing shape, say -- and
+// there is nothing to build.
+func decodeSpec(props []snglhost.PropVal) (spec, bool) {
+	var sp spec
+	raw, ok := fieldOf(props, SpecProp)
+	if !ok {
+		return sp, false
+	}
+	rec, ok := raw.(snglhost.WireStruct)
+	if !ok {
+		return sp, false
+	}
+	if n, ok := structField(rec, "new").(snglhost.WireStruct); ok {
+		sp.ctor = str(structField(n, "path")) + "." + str(structField(n, "name"))
+	}
+	sp.add = str(structField(rec, "add"))
+	sp.content = str(structField(rec, "content"))
+	sp.setters = pairs(structField(rec, "setters"), "prop", "call")
+	sp.handlers = pairs(structField(rec, "handlers"), "on", "field")
+	return sp, sp.ctor != "."
+}
+
+func fieldOf(props []snglhost.PropVal, name string) (any, bool) {
+	for _, p := range props {
+		if p.Name == name {
+			return p.Value, true
+		}
+	}
+	return nil, false
+}
+
+func structField(w snglhost.WireStruct, name string) any {
+	for _, f := range w.Fields {
+		if f.Name == name {
+			return f.Value
+		}
+	}
+	return nil
+}
+
+// pairs reads a list of two-field records into a map, which is how a Spec
+// spells its setters and handlers.
+func pairs(v any, keyField, valField string) map[string]string {
+	list, ok := v.([]any)
+	if !ok || len(list) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	for _, el := range list {
+		rec, ok := el.(snglhost.WireStruct)
+		if !ok {
+			continue
+		}
+		if k := str(structField(rec, keyField)); k != "" {
+			out[k] = str(structField(rec, valField))
+		}
+	}
+	return out
+}
+
+func str(v any) string {
+	s, _ := v.(string)
+	return s
+}
 
 // Host renders into a Fyne container. It is not safe for concurrent use and
 // expects to be driven from the goroutine that owns the Fyne loop.
 type Host struct {
-	reg   Registry
+	// ctors is the only thing this host is told in advance: a constructor
+	// cannot be recovered from the string a Spec names it by.
+	ctors map[string]any
 	nodes map[snglhost.Key]*mounted
 	// missing is every key with no widget behind it: an element this worker was
 	// not built for, and everything under it.
@@ -56,7 +120,7 @@ type Host struct {
 	roots   []*mounted
 	// OnEvent is called when a widget's own callback fires. A worker forwards
 	// it back over the wire; a test reads it directly.
-	OnEvent func(key snglhost.Key, event string)
+	OnEvent func(key snglhost.Key, event string, args []any)
 	// Root is the container the tree is rendered into.
 	Root *fyne.Container
 	// Unsupported records elements the registry has no entry for. A worker
@@ -74,19 +138,19 @@ type mounted struct {
 	key      snglhost.Key
 	name     string
 	obj      fyne.CanvasObject
-	spec     Widget
+	spec     spec
 	parent   snglhost.Key
 	children []*mounted
-	// orphans holds objects mounted beneath a widget that is not a container.
-	// They are tracked so Remove stays correct, and go unrendered -- which is
-	// what the declaration said would happen: a widget declares no slot.
+	// orphans holds objects mounted beneath a widget that is neither a
+	// container nor a wrapper. Tracked so Remove stays correct; unrendered,
+	// because the Spec names nowhere to put them.
 	orphans []fyne.CanvasObject
 }
 
 // New returns a Host rendering into a fresh vertical container.
-func New(reg Registry) *Host {
+func New(ctors map[string]any) *Host {
 	return &Host{
-		reg:         reg,
+		ctors:       ctors,
 		nodes:       map[snglhost.Key]*mounted{},
 		missing:     map[snglhost.Key]bool{},
 		seenMissing: map[string]bool{},
@@ -113,7 +177,12 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 		h.missing[d.Key] = true
 		return nil
 	}
-	spec, ok := h.reg[d.Name]
+	sp, ok := decodeSpec(d.Props)
+	if ok {
+		if _, known := h.ctors[sp.ctor]; !known {
+			ok = false
+		}
+	}
 	if !ok {
 		// Not an error: a program may name an element this worker was not built
 		// for, and reporting it beats rendering a hole silently.
@@ -127,13 +196,16 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 		}
 		return nil
 	}
-	obj, err := construct(spec)
+	obj, err := construct(h.ctors[sp.ctor])
 	if err != nil {
 		return fmt.Errorf("%s: %w", d.Name, err)
 	}
-	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: spec, parent: parent}
+	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: sp, parent: parent}
 	h.nodes[d.Key] = m
 	for _, p := range d.Props {
+		if p.Name == SpecProp {
+			continue // metadata, not a value the widget takes
+		}
 		if err := applyProp(m, p.Name, p.Value); err != nil {
 			return fmt.Errorf("%s.%s: %w", d.Name, p.Name, err)
 		}
@@ -188,7 +260,7 @@ func (h *Host) Rebind(key snglhost.Key, events []string) error {
 
 // SetOnEvent satisfies snglhost.EventReporter, so a worker forwards what a
 // viewer does back over the wire without this package knowing there is one.
-func (h *Host) SetOnEvent(fn func(key snglhost.Key, event string)) { h.OnEvent = fn }
+func (h *Host) SetOnEvent(fn func(key snglhost.Key, event string, args []any)) { h.OnEvent = fn }
 
 // Object returns the Fyne widget mounted for a key, for a test or an inspector.
 func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
@@ -200,13 +272,14 @@ func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
 }
 
 // Fire invokes a widget's own callback, the way a click would -- through the
-// widget rather than around it, as a compiled target does.
-func (h *Host) Fire(key snglhost.Key, event string) error {
+// widget rather than around it, as a compiled target does. Args are what the
+// widget would have reported; a zero value stands in for each it omits.
+func (h *Host) Fire(key snglhost.Key, event string, args ...any) error {
 	m, ok := h.nodes[key]
 	if !ok {
 		return fmt.Errorf("no widget at %s", key)
 	}
-	field, ok := m.spec.Handlers[event]
+	field, ok := m.spec.handlers[event]
 	if !ok {
 		return fmt.Errorf("%s declares no @%s", m.name, event)
 	}
@@ -214,18 +287,25 @@ func (h *Host) Fire(key snglhost.Key, event string) error {
 	if !f.IsValid() || f.IsNil() {
 		return fmt.Errorf("%s.%s is not bound", m.name, field)
 	}
-	args := make([]reflect.Value, f.Type().NumIn())
-	for i := range args {
-		args[i] = reflect.Zero(f.Type().In(i))
+	in := make([]reflect.Value, f.Type().NumIn())
+	for i := range in {
+		if i < len(args) && args[i] != nil {
+			v := reflect.ValueOf(args[i])
+			if v.Type().AssignableTo(f.Type().In(i)) {
+				in[i] = v
+				continue
+			}
+		}
+		in[i] = reflect.Zero(f.Type().In(i))
 	}
-	f.Call(args)
+	f.Call(in)
 	return nil
 }
 
 // construct calls the registered constructor. A container's is variadic and
 // takes nothing: children arrive later through Add.
-func construct(w Widget) (obj fyne.CanvasObject, err error) {
-	fv := reflect.ValueOf(w.New)
+func construct(ctor any) (obj fyne.CanvasObject, err error) {
+	fv := reflect.ValueOf(ctor)
 	if !fv.IsValid() || fv.Kind() != reflect.Func {
 		return nil, fmt.Errorf("no constructor registered")
 	}
@@ -256,7 +336,7 @@ func construct(w Widget) (obj fyne.CanvasObject, err error) {
 // applyProp assigns through the declared setter. The method's own parameter
 // type is what the value is converted to, so nothing here names a Fyne type.
 func applyProp(m *mounted, prop string, v any) error {
-	method, ok := m.spec.Setters[prop]
+	method, ok := m.spec.setters[prop]
 	if !ok {
 		return nil // no surface to reach; the emitter drops it too
 	}
@@ -281,7 +361,7 @@ func applyProp(m *mounted, prop string, v any) error {
 // bind assigns a closure to each declared callback field. The field's own type
 // is the signature, so MakeFunc needs nothing the registry does not say.
 func (h *Host) bind(m *mounted, events []string) error {
-	for event, field := range m.spec.Handlers {
+	for event, field := range m.spec.handlers {
 		f := reflect.ValueOf(m.obj).Elem().FieldByName(field)
 		if !f.IsValid() || !f.CanSet() {
 			return fmt.Errorf("%s has no settable field %s", m.name, field)
@@ -291,9 +371,16 @@ func (h *Host) bind(m *mounted, events []string) error {
 			continue
 		}
 		key, name := m.key, event
-		f.Set(reflect.MakeFunc(f.Type(), func([]reflect.Value) []reflect.Value {
+		f.Set(reflect.MakeFunc(f.Type(), func(in []reflect.Value) []reflect.Value {
 			if h.OnEvent != nil {
-				h.OnEvent(key, name)
+				// The callback's own arguments are the payload: OnChanged(s)
+				// hands over the text the field now holds, which is what a
+				// two-way binding assigns.
+				args := make([]any, len(in))
+				for i, v := range in {
+					args[i] = v.Interface()
+				}
+				h.OnEvent(key, name, args)
 			}
 			return nil
 		}))
@@ -354,19 +441,19 @@ func (h *Host) slotsOf(parent snglhost.Key) (*[]*mounted, *[]fyne.CanvasObject) 
 // wrapper's are one field, and without this a Scroll rendered empty.
 func (h *Host) setContent(parent snglhost.Key) error {
 	p, ok := h.nodes[parent]
-	if !ok || p.spec.Content == "" {
+	if !ok || p.spec.content == "" {
 		return nil
 	}
-	f := reflect.ValueOf(p.obj).Elem().FieldByName(p.spec.Content)
+	f := reflect.ValueOf(p.obj).Elem().FieldByName(p.spec.content)
 	if !f.IsValid() || !f.CanSet() {
-		return fmt.Errorf("%s has no settable field %s", p.name, p.spec.Content)
+		return fmt.Errorf("%s has no settable field %s", p.name, p.spec.content)
 	}
 	if len(p.children) == 0 {
 		f.Set(reflect.Zero(f.Type()))
 	} else {
 		child := reflect.ValueOf(p.children[0].obj)
 		if !child.Type().AssignableTo(f.Type()) {
-			return fmt.Errorf("cannot put a %T in %s.%s", p.children[0].obj, p.name, p.spec.Content)
+			return fmt.Errorf("cannot put a %T in %s.%s", p.children[0].obj, p.name, p.spec.content)
 		}
 		f.Set(child)
 	}

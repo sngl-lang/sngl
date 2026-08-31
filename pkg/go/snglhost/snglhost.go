@@ -382,12 +382,16 @@ func (h *MemHost) childrenOf(parent Key) *[]*MemNode {
 type Event struct {
 	Key  Key    `json:"key"`
 	Name string `json:"name"`
+	// Args is what the widget reported: the text a field now holds, the state
+	// a checkbox was toggled to. A two-way binding is a handler that assigns
+	// this, so without it typing changes nothing.
+	Args []any `json:"args,omitempty"`
 }
 
 // EventReporter is a Host that can tell the driver about interaction. ServeHost
 // wires one up so its events become notifications on the wire.
 type EventReporter interface {
-	SetOnEvent(func(key Key, event string))
+	SetOnEvent(func(key Key, event string, args []any))
 }
 
 // RPCHost is a Host on the far end of a pipe: the interpreter's side of the
@@ -462,6 +466,9 @@ func (h *RPCHost) read(r *testrpc.Reader) {
 			var ev Event
 			if json.Unmarshal(msg.Params, &ev) != nil {
 				continue
+			}
+			for i, a := range ev.Args {
+				ev.Args[i] = decodeWire(a)
 			}
 			select {
 			case h.events <- ev:
@@ -561,8 +568,8 @@ func (h *RPCHost) notify(method string, params any) error {
 func ServeHost(h Host, rw io.ReadWriteCloser) error {
 	r, w := testrpc.NewReader(rw), testrpc.NewWriter(rw)
 	if rep, ok := h.(EventReporter); ok {
-		rep.SetOnEvent(func(key Key, event string) {
-			_ = w.Notify("event", Event{Key: key, Name: event})
+		rep.SetOnEvent(func(key Key, event string, args []any) {
+			_ = w.Notify("event", Event{Key: key, Name: event, Args: args})
 		})
 	}
 	var batch error

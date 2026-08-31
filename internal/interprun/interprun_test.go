@@ -31,10 +31,10 @@ func check(t *testing.T, src string) *ir.Package {
 // window without opening one.
 type clickable struct {
 	*snglhost.MemHost
-	emit func(snglhost.Key, string)
+	emit func(snglhost.Key, string, []any)
 }
 
-func (h *clickable) SetOnEvent(fn func(snglhost.Key, string)) { h.emit = fn }
+func (h *clickable) SetOnEvent(fn func(snglhost.Key, string, []any)) { h.emit = fn }
 
 const src = `import . "sngl:ui"
 import . "sngl:time"
@@ -83,7 +83,7 @@ func TestAClickReachesTheProgramAndTheAnswerComesBack(t *testing.T) {
 	waitFor(t, "the tree to mount", func() bool { return len(far.Find("inc")) == 1 })
 
 	incKey := far.Find("inc")[0].Key
-	far.emit(incKey, "click")
+	far.emit(incKey, "click", nil)
 
 	waitFor(t, "the click to come back", func() bool {
 		out := far.Find("out")

@@ -208,7 +208,10 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 			// into a prop and a handler. No platform, so no override is
 			// inlined: a host is asked for `text`, not `Label`.
 			icaps := lower.AllFeatures().ToLowerCaps()
-			if err := lower.Lower(tpkg, icaps, lower.Options{}); err != nil {
+			if err := lower.Lower(tpkg, icaps, lower.Options{
+				Platform:        target.Platform,
+				ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+			}); err != nil {
 				return fmt.Errorf("%s: %w", dir, err)
 			}
 			// Nothing is lowered, optimized or generated for an interpreted

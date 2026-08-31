@@ -75,7 +75,7 @@ func (t *threaded) Unwrap() snglhost.Host { return t.inner }
 
 // SetOnEvent forwards to the wrapped host: an event originates on Fyne's thread
 // already, so it needs no hop, and the wire is safe to write from there.
-func (t *threaded) SetOnEvent(fn func(snglhost.Key, string)) {
+func (t *threaded) SetOnEvent(fn func(snglhost.Key, string, []any)) {
 	if rep, ok := t.inner.(snglhost.EventReporter); ok {
 		rep.SetOnEvent(fn)
 	}

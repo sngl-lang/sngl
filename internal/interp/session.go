@@ -100,10 +100,14 @@ func (s *Session) FireDue() ([]Patch, error) {
 
 // Invoke runs a node's declared event handler and reports what it changed.
 //
+// Args are what the widget reported -- the text a field now holds, say. A
+// two-way binding desugars to a handler that assigns its parameter, so without
+// them typing changes nothing.
+//
 // The handler runs in the node's own scope, which for a loop iteration is a
 // snapshot of the enclosing one -- so mutations are written back afterwards,
 // the same way a test's event trigger does it.
-func (s *Session) Invoke(key Key, event string) ([]Patch, error) {
+func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	n, ok := s.view.At(key)
 	if !ok {
 		return nil, fmt.Errorf("no node at %s", key)
@@ -120,7 +124,7 @@ func (s *Session) Invoke(key Key, event string) ([]Patch, error) {
 		if env == nil {
 			env = s.Env
 		}
-		if _, err := env.runEventHandler(fn, nil, event); err != nil {
+		if _, err := env.runEventHandlerValues(fn, args); err != nil {
 			return nil, err
 		}
 		s.Env.RebindFrom(env)

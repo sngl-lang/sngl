@@ -12,10 +12,10 @@ import (
 // toolkit without needing one.
 type eventingHost struct {
 	*snglhost.MemHost
-	emit func(snglhost.Key, string)
+	emit func(snglhost.Key, string, []any)
 }
 
-func (h *eventingHost) SetOnEvent(fn func(snglhost.Key, string)) { h.emit = fn }
+func (h *eventingHost) SetOnEvent(fn func(snglhost.Key, string, []any)) { h.emit = fn }
 
 // TestAnEventCrossesBackOverTheWire: ops go one way, interaction comes the
 // other. Without this a window is a picture.
@@ -43,7 +43,7 @@ func TestAnEventCrossesBackOverTheWire(t *testing.T) {
 	if far.emit == nil {
 		t.Fatal("ServeHost did not wire the host's event reporter")
 	}
-	far.emit(key, "click")
+	far.emit(key, "click", nil)
 
 	select {
 	case ev := <-h.Events():
@@ -60,14 +60,14 @@ func TestAnEventCrossesBackOverTheWire(t *testing.T) {
 // that took the first message it saw would answer End with a click.
 type chattyHost struct {
 	*snglhost.MemHost
-	emit func(snglhost.Key, string)
+	emit func(snglhost.Key, string, []any)
 }
 
-func (h *chattyHost) SetOnEvent(fn func(snglhost.Key, string)) { h.emit = fn }
+func (h *chattyHost) SetOnEvent(fn func(snglhost.Key, string, []any)) { h.emit = fn }
 
 func (h *chattyHost) SetProp(key snglhost.Key, prop string, v any) error {
 	if h.emit != nil {
-		h.emit(key, "click")
+		h.emit(key, "click", nil)
 	}
 	return h.MemHost.SetProp(key, prop, v)
 }

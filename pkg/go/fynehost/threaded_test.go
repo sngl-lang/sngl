@@ -5,6 +5,7 @@ import (
 
 	fynetest "fyne.io/fyne/v2/test"
 
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
@@ -69,30 +70,30 @@ func TestABatchIsAppliedOnFynesThreadInOrder(t *testing.T) {
 	}
 }
 
-// TestThreadedForwardsTheEventReporter: a worker wraps the Fyne host in
-// Threaded, so ServeHost sees the wrapper -- and must still be able to wire up
-// what a viewer does.
+// TestThreadedForwardsTheEventReporter: a worker wraps its host in Threaded, so
+// ServeHost sees the wrapper -- and must still be able to wire up what a viewer
+// does, or the window is inert.
 func TestThreadedForwardsTheEventReporter(t *testing.T) {
 	app := fynetest.NewApp()
 	t.Cleanup(app.Quit)
 
-	inner := fynehost.New(fynehost.Default())
+	inner := fynehost.New(fynehost.Ctors())
 	h := fynehost.Threaded(inner)
 	rep, ok := h.(snglhost.EventReporter)
 	if !ok {
 		t.Fatal("Threaded does not report events, so a worker's window would be inert")
 	}
 	var got string
-	rep.SetOnEvent(func(_ snglhost.Key, event string) { got = event })
+	rep.SetOnEvent(func(_ snglhost.Key, event string, _ []any) { got = event })
 
-	key := snglhost.Key{Comp: "main", Path: "button@0"}
-	h.Begin()
-	if err := h.Create(snglhost.NodeDesc{Key: key, Name: "button", ID: "b", Events: []string{"click"}}, snglhost.Key{}, 0); err != nil {
-		t.Fatalf("Create: %v", err)
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
 	}
-	if err := h.End(); err != nil {
-		t.Fatalf("End: %v", err)
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
 	}
+	key := s.View().Find("inc")[0].Key
 	if err := inner.Fire(key, "click"); err != nil {
 		t.Fatalf("Fire: %v", err)
 	}

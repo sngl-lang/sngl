@@ -28,7 +28,7 @@ func main() {
 	a := app.New()
 	w := a.NewWindow(*title)
 
-	host := fynehost.New(fynehost.Default())
+	host := fynehost.New(fynehost.Ctors())
 	host.OnUnsupported = func(name string) {
 		fmt.Fprintf(os.Stderr, "sngl: no fyne widget for %q; it and anything inside it are not rendered\n", name)
 	}

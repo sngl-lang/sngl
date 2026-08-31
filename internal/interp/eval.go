@@ -1601,6 +1601,68 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 // expected to pass the event payload as a literal struct (e.g.
 // `c.entry.@input(InputEvent{value="hello"})`) so the body's `e.value`
 // resolves through the regular struct-field path.
+// runEventHandlerValues runs a handler against values rather than expressions,
+// which is the shape an event arrives in from a host: the widget already
+// evaluated them.
+func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
+	for i, p := range fn.Params {
+		if i >= len(vals) {
+			break
+		}
+		env.Set(p, coerceEventArg(p.Type, vals[i]))
+	}
+	return env.execBlockForResult(fn.Block)
+}
+
+// coerceEventArg shapes what a host reported into what the handler declared.
+//
+// A toolkit reports positional values -- OnChanged hands over a string -- while
+// an event's payload is a declared struct, InputEvent{value string}. The
+// declaration is the only thing that knows which is which, so the adaptation
+// happens here rather than in a host that would have to know the field names.
+func coerceEventArg(want *ir.Type, v any) any {
+	if want == nil || want.Kind != ir.TypeStruct {
+		return v
+	}
+	if _, already := v.(*Struct); already {
+		return v
+	}
+	def, _ := want.Decl.(*ir.StructDef)
+	if def == nil || len(def.Fields) == 0 {
+		return v
+	}
+	// One value, one payload: it fills the first field. An event carrying more
+	// than one would need the host to report them in declaration order, which
+	// is what a Spec's param naming is for when that arrives.
+	out := NewStruct(def, want)
+	for i, f := range def.Fields {
+		if i == 0 {
+			out.Set(f.Name, v)
+			continue
+		}
+		out.Set(f.Name, zeroOf(f.Type))
+	}
+	return out
+}
+
+// zeroOf is the empty value of a type, for a payload field nothing reported.
+func zeroOf(t *ir.Type) any {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case ir.TypeString:
+		return ""
+	case ir.TypeBool:
+		return false
+	case ir.TypeInt:
+		return 0
+	case ir.TypeFloat:
+		return 0.0
+	}
+	return nil
+}
+
 func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string) (any, error) {
 	_ = eventName // reserved for future per-event semantics
 	for i, p := range fn.Params {

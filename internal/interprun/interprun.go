@@ -56,7 +56,7 @@ func Drive(s *interp.Session, rw io.ReadWriteCloser) error {
 
 		case ev := <-h.Events():
 			stopTimer(wake, due)
-			patches, err := s.Invoke(ev.Key, ev.Name)
+			patches, err := s.Invoke(ev.Key, ev.Name, ev.Args...)
 			if err != nil {
 				// A handler that fails is the program's problem, not the
 				// window's: report it and keep the window alive, the way a

@@ -9,153 +9,31 @@ import (
 	widget "fyne.io/fyne/v2/widget"
 )
 
-// Default is the widget set the stdlib declares, as fyne.sngl describes it.
+// Ctors is every constructor the stdlib widget set names, keyed the way a Spec
+// spells it.
 //
-// Every entry here is a Spec in that file: the constructor, the setter method
-// behind each prop, the callback field behind each event. What a Spec also
-// carries -- the Go type, the callback signature -- is absent, because those
-// exist so the emitter can print them and a host reads both off the value.
+// This is the whole generated artifact. Everything else a host needs -- which
+// method sets a prop, which field takes a callback, how a container attaches a
+// child -- rides on the node in its Spec, and reflection reads the rest off the
+// value. Go will not turn "widget.NewLabel" into a symbol, and that is the only
+// reason this file exists.
 //
-// The keys are SNGL's names. An interpreted program is checked without platform
-// overrides inlined, so a window is asked for `text`, never `Label`.
-func Default() Registry {
-	return Registry{
-		"avatar": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"initials": "SetText"},
-		},
-		"badge": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"value": "SetText"},
-		},
-		"button": {
-			New:      widget.NewButton,
-			Setters:  map[string]string{"text": "SetText"},
-			Handlers: map[string]string{"click": "OnTapped"},
-		},
-		"card": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"checkbox": {
-			New:      widget.NewCheck,
-			Setters:  map[string]string{"label": "SetText"},
-			Handlers: map[string]string{"change": "OnChanged"},
-		},
-		"chip": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"datepicker": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"placeholder": "SetText"},
-		},
-		"divider": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"drawer": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"hbox": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"image": {
-			New: canvas.NewImageFromResource,
-		},
-		"input": {
-			New:      widget.NewEntry,
-			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
-			Handlers: map[string]string{"input": "OnChanged"},
-		},
-		"link": {
-			New: widget.NewHyperlink,
-		},
-		"menu": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"menubar": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"modal": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"popover": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"progress": {
-			New: widget.NewLabel,
-		},
-		"radio": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"scroll": {
-			New:     container.NewVScroll,
-			Content: "Content",
-		},
-		"select": {
-			New:      widget.NewSelect,
-			Handlers: map[string]string{"change": "OnChanged"},
-		},
-		"spacer": {
-			New: layout.NewSpacer,
-		},
-		"spinner": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"label": "SetText"},
-		},
-		"splitview": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"stack": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"table": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"tabs": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"text": {
-			New:     widget.NewLabel,
-			Setters: map[string]string{"value": "SetText"},
-		},
-		"textarea": {
-			New:      widget.NewMultiLineEntry,
-			Setters:  map[string]string{"placeholder": "SetPlaceHolder", "value": "SetText"},
-			Handlers: map[string]string{"input": "OnChanged"},
-		},
-		"toggle": {
-			New:      widget.NewCheck,
-			Setters:  map[string]string{"label": "SetText"},
-			Handlers: map[string]string{"change": "OnChanged"},
-		},
-		"toolbar": {
-			New: container.NewHBox,
-			Add: "Add",
-		},
-		"tooltip": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"tree": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
-		"vbox": {
-			New: container.NewVBox,
-			Add: "Add",
-		},
+// A worker generated for a project emits the same map from the Specs that
+// program can reach, which is what makes a widget the compiler never heard of a
+// rebuild rather than an impossibility.
+func Ctors() map[string]any {
+	return map[string]any{
+		"fyne.io/fyne/v2/canvas.NewImageFromResource": canvas.NewImageFromResource,
+		"fyne.io/fyne/v2/container.NewHBox":           container.NewHBox,
+		"fyne.io/fyne/v2/container.NewVBox":           container.NewVBox,
+		"fyne.io/fyne/v2/container.NewVScroll":        container.NewVScroll,
+		"fyne.io/fyne/v2/layout.NewSpacer":            layout.NewSpacer,
+		"fyne.io/fyne/v2/widget.NewButton":            widget.NewButton,
+		"fyne.io/fyne/v2/widget.NewCheck":             widget.NewCheck,
+		"fyne.io/fyne/v2/widget.NewEntry":             widget.NewEntry,
+		"fyne.io/fyne/v2/widget.NewHyperlink":         widget.NewHyperlink,
+		"fyne.io/fyne/v2/widget.NewLabel":             widget.NewLabel,
+		"fyne.io/fyne/v2/widget.NewMultiLineEntry":    widget.NewMultiLineEntry,
+		"fyne.io/fyne/v2/widget.NewSelect":            widget.NewSelect,
 	}
 }

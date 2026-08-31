@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -30,16 +31,15 @@ func TestTheCommittedRegistryIsCurrent(t *testing.T) {
 	}
 }
 
-// TestEveryOverriddenComponentIsInTheRegistry: fyne.sngl declares a body for
-// each of these, so a window must be able to build each. One missing is a
-// component that checks, generates and runs on a compiled target while
-// silently rendering nothing when interpreted.
+// TestEveryOverriddenComponentsConstructorIsPresent: fyne.sngl declares a body
+// for each of these and each body names a constructor. One missing is a
+// component that checks, generates and runs on a compiled target while silently
+// rendering nothing when interpreted.
 //
-// The list is not written here. It is read from the platform, which reads it
-// from the overrides -- the same source the registry is emitted from, so this
-// asks whether the generator dropped one rather than whether two hand-written
-// lists agree.
-func TestEveryOverriddenComponentIsInTheRegistry(t *testing.T) {
+// It is the constructors that are checked, not the component names: which
+// widget a component becomes rides on the node in its Spec, and the ctor table
+// is the only thing a host is told in advance.
+func TestEveryOverriddenComponentsConstructorIsPresent(t *testing.T) {
 	src, err := Generate()
 	if err != nil {
 		t.Fatalf("generating: %v", err)
@@ -48,39 +48,36 @@ func TestEveryOverriddenComponentIsInTheRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("checking the probe: %v", err)
 	}
-	comps := fyneplat.OverriddenComponents(pkg)
-	if len(comps) < 30 {
-		t.Fatalf("only %d overridden components found; this test is checking nothing", len(comps))
+	specs, err := fyneplat.WidgetSpecsFrom(pkg)
+	if err != nil {
+		t.Fatalf("decoding specs: %v", err)
+	}
+	if len(specs) < 30 {
+		t.Fatalf("only %d specs decoded; this test is checking nothing", len(specs))
 	}
 	text := string(src)
-	for _, c := range comps {
-		if !strings.Contains(text, "\t\t\""+c.Name+"\": {") {
-			t.Errorf("%s has a fyne override but no registry entry", c.Name)
+	for _, sp := range specs {
+		if sp.CtorPath == "" {
+			continue
+		}
+		key := sp.CtorPath + "." + sp.CtorName
+		if !strings.Contains(text, strconv.Quote(key)) {
+			t.Errorf("%s is built by %s, which is not in the table", sp.Element, key)
 		}
 	}
 }
 
-// TestASetterIsKeyedByThePropACallerWrites guards the rename the generator has
-// to follow. A Spec's setters are keyed by the primitive's vocabulary, and a
-// host is handed the component's own prop names -- so `text` taking `value` is
-// the case that fails silently if the override is not read.
-func TestASetterIsKeyedByThePropACallerWrites(t *testing.T) {
+// TestTheTableIsConstructorsAndNothingElse guards what the move to Spec-driven
+// hosts bought: a setter or a callback field appearing here would mean a host
+// was told something the node already carries.
+func TestTheTableIsConstructorsAndNothingElse(t *testing.T) {
 	src, err := Generate()
 	if err != nil {
 		t.Fatalf("generating: %v", err)
 	}
-	text := string(src)
-	for _, want := range []string{
-		`"text": {`,
-		`Setters: map[string]string{"value": "SetText"}`, // ui.text writes value=
-		`Setters: map[string]string{"label": "SetText"}`, // ui.chip writes label=
-	} {
-		if !strings.Contains(text, want) {
-			t.Errorf("generated registry is missing %s", want)
+	for _, leaked := range []string{"SetText", "OnTapped", "OnChanged", "Setters", "Handlers"} {
+		if strings.Contains(string(src), leaked) {
+			t.Errorf("the generated table mentions %q; that rides on the Spec, not here", leaked)
 		}
-	}
-	// And the primitive's own name must not survive as a key for ui.text.
-	if strings.Contains(text, "\t\t\"text\": {\n\t\t\tNew:     widget.NewLabel,\n\t\t\tSetters: map[string]string{\"text\":") {
-		t.Error("ui.text is keyed by the primitive's prop name; the override rename was not followed")
 	}
 }

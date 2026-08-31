@@ -1,15 +1,17 @@
 package fynehost_test
 
 import (
-	"strings"
 	"testing"
 
 	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
@@ -19,17 +21,35 @@ import (
 // is the right way round: a test binary may link both ends to check they meet,
 // while the shipped package still carries only the protocol.
 
+// check parses, checks and lowers the way an interpreted fyne run does. The
+// lowering matters: a Spec only reaches a node once the platform's override is
+// inlined, and the Spec is the whole of what this host is told.
 func check(t *testing.T, src string) *ir.Package {
 	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	plat := codegen.LookupPlatform("fyne")
+	if plat == nil {
+		t.Fatal("fyne platform not registered")
+	}
+	cfg := &checker.Config{
+		IsMain:    true,
+		Platforms: []ir.Platform{plat},
+		Targets:   []ir.StaticTarget{{Platform: "fyne", Language: "none"}},
+	}
+	pkg, diags := checker.Check(doc, cfg)
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
 		}
+	}
+	if err := lower.Lower(pkg, lower.AllFeatures().ToLowerCaps(), lower.Options{
+		Platform:        "fyne",
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+	}); err != nil {
+		t.Fatalf("lower: %v", err)
 	}
 	return pkg
 }
@@ -59,7 +79,7 @@ func TestASessionDrivesRealFyneWidgets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
-	h := fynehost.New(fynehost.Default())
+	h := fynehost.New(fynehost.Ctors())
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)
 	}
@@ -106,12 +126,12 @@ func TestClickingTheWidgetRunsTheSNGLHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
-	h := fynehost.New(fynehost.Default())
+	h := fynehost.New(fynehost.Ctors())
 
 	var fired []string
-	h.OnEvent = func(key interp.Key, event string) {
+	h.OnEvent = func(key interp.Key, event string, args []any) {
 		fired = append(fired, event)
-		p, err := s.Invoke(key, event)
+		p, err := s.Invoke(key, event, args...)
 		if err != nil {
 			t.Errorf("Invoke: %v", err)
 			return
@@ -145,8 +165,8 @@ func TestClickingTheWidgetRunsTheSNGLHandler(t *testing.T) {
 }
 
 // TestAnUnregisteredElementIsReportedNotDropped: a worker built without a
-// widget must say so. Rendering a hole silently is how a preview quietly stops
-// matching the program.
+// constructor must say so. Rendering a hole silently is how a preview quietly
+// stops matching the program.
 func TestAnUnregisteredElementIsReportedNotDropped(t *testing.T) {
 	app := fynetest.NewApp()
 	t.Cleanup(app.Quit)
@@ -155,17 +175,21 @@ func TestAnUnregisteredElementIsReportedNotDropped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
-	reg := fynehost.Default()
-	delete(reg, "button")
-	h := fynehost.New(reg)
+	ctors := fynehost.Ctors()
+	delete(ctors, "fyne.io/fyne/v2/widget.NewButton")
+	h := fynehost.New(ctors)
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)
 	}
-	if len(h.Unsupported) != 1 || h.Unsupported[0] != "button" {
-		t.Errorf("unsupported = %v, want [button]", h.Unsupported)
+	if len(h.Unsupported) == 0 {
+		t.Error("the missing button constructor was not reported")
 	}
-	if !strings.Contains(h.Tree(), "text") {
-		t.Errorf("the rest of the tree did not mount:\n%s", h.Tree())
+	// The rest of the tree still mounted.
+	if _, ok := h.Object(s.View().Find("out")[0].Key); !ok {
+		t.Errorf("#out did not mount; one missing constructor took the tree with it")
+	}
+	if _, ok := h.Object(s.View().Find("inc")[0].Key); ok {
+		t.Errorf("#inc mounted despite having no constructor")
 	}
 }
 
@@ -188,7 +212,7 @@ component main {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
-	h := fynehost.New(fynehost.Default())
+	h := fynehost.New(fynehost.Ctors())
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)
 	}
@@ -230,9 +254,9 @@ component main {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
-	reg := fynehost.Default()
-	delete(reg, "hbox")
-	h := fynehost.New(reg)
+	ctors := fynehost.Ctors()
+	delete(ctors, "fyne.io/fyne/v2/container.NewHBox")
+	h := fynehost.New(ctors)
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)
 	}
@@ -241,5 +265,63 @@ component main {
 	}
 	if _, mounted := h.Object(s.View().Find("after")[0].Key); !mounted {
 		t.Error("#after was not mounted; an unsupported sibling should not take it out")
+	}
+}
+
+// TestTwoWayBindingWritesBack is the hello example: `input(:value=name)` binds
+// both ways, so typing must reach the var and the text that interpolates it.
+//
+// It exercises the whole chain -- the binding desugars to a handler that
+// assigns its parameter, the widget reports the text it now holds as that
+// parameter, and the resulting patch lands on the label.
+func TestTwoWayBindingWritesBack(t *testing.T) {
+	app := fynetest.NewApp()
+	t.Cleanup(app.Quit)
+
+	src := `import . "sngl:ui"
+
+component main {
+    var name = "World"
+
+    vbox {
+        text #greeting(value="Hello, {name}!")
+        input #field(:value=name, placeholder="Enter your name")
+    }
+}
+`
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	h := fynehost.New(fynehost.Ctors())
+	h.OnEvent = func(key interp.Key, event string, args []any) {
+		p, err := s.Invoke(key, event, args...)
+		if err != nil {
+			t.Errorf("Invoke: %v", err)
+			return
+		}
+		if err := interp.Apply(h, p); err != nil {
+			t.Errorf("Apply: %v", err)
+		}
+	}
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	greeting, _ := h.Object(s.View().Find("greeting")[0].Key)
+	label, ok := greeting.(*widget.Label)
+	if !ok {
+		t.Fatalf("#greeting is a %T, want a *widget.Label", greeting)
+	}
+	if label.Text != "Hello, World!" {
+		t.Fatalf("initial render is %q", label.Text)
+	}
+
+	// Type into the field: the widget reports the text it now holds.
+	if err := h.Fire(s.View().Find("field")[0].Key, "input", "SNGL"); err != nil {
+		t.Fatalf("Fire: %v", err)
+	}
+	if label.Text != "Hello, SNGL!" {
+		t.Errorf("after typing, the label reads %q; the binding did not write back", label.Text)
 	}
 }
