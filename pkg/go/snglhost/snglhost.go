@@ -59,18 +59,14 @@ func (k Key) Iter(id string) Key {
 	return k
 }
 
-// Host is what a toolkit implements. It is the whole surface between the
-// interpreter and a window.
+// Host is the whole surface between the interpreter and a window.
 //
-// Nothing here carries IR. A host is handed a NodeDesc and a Key and never a
-// *Node, because the out-of-process host is the case that matters: it is a
-// separate program reached over a pipe, and anything it holds has to survive
-// being serialised. Keeping the in-process host to the same diet is what stops
-// the two drifting into different contracts.
+// Nothing here carries IR: a host gets a NodeDesc and a Key, never a *Node,
+// because the out-of-process one is a separate program and everything it holds
+// must survive serialisation.
 //
-// A host is called from one goroutine. It owns its toolkit's loop and will
-// deliver events from it, but those must reach a Session through a queue --
-// see Session's own note.
+// Called from one goroutine. A host's own events must reach a Session through a
+// queue rather than directly.
 type Host interface {
 	// Begin and End bracket the patches from one Diff. A reload produces a
 	// large batch, and a host that relayouts per op will visibly thrash.
@@ -116,13 +112,10 @@ type PropVal struct {
 	Value any
 }
 
-// WireStruct is a struct value as a host sees it: named fields in the order the
-// checker recorded, and nothing of the declaration it came from.
-//
-// A runtime *Struct carries Def and Type, which are IR. Handing one to a host
-// leaks the program's declarations into it, and over a pipe it does not even
-// round-trip -- the far side decodes a map with Def and Fields keys rather than
-// a value. This is the projection that crosses.
+// WireStruct is a struct value as a host sees it: named fields, and nothing of
+// the declaration it came from. A runtime *Struct carries Def and Type, which
+// are IR and do not round-trip -- the far side would decode an object with Def
+// and Fields keys rather than a value.
 type WireStruct struct {
 	Fields []PropVal
 }
@@ -137,13 +130,10 @@ func (w WireStruct) String() string {
 	return "{" + strings.Join(parts, ", ") + "}"
 }
 
-// MemHost is the reference Host: a tree of maps, holding exactly what it was
-// told and nothing else.
-//
-// It is what the headless runs and the REPL render, and it is the oracle a real
-// host is checked against -- if applying a patch list to MemHost does not
-// reproduce the session's own view, the fault is in Diff or Apply rather than
-// in anyone's toolkit.
+// MemHost is the reference Host: a tree of maps holding exactly what it was
+// told. It is the oracle a real host is checked against -- if applying a patch
+// list to it does not reproduce the session's view, the fault is in Diff or
+// Apply rather than in anyone's toolkit.
 type MemHost struct {
 	// mu guards everything below. A Host is called from one goroutine and needs
 	// no lock -- but this one is also the oracle a test reads while a ServeHost
@@ -404,16 +394,12 @@ type EventReporter interface {
 // out-of-process worker.
 //
 // Ops go out as notifications and End as a request, so a batch costs one round
-// trip rather than one per op. That is the batching contract made load-bearing:
-// a host that could answer per op would not need Begin and End at all.
-//
-// The wire is internal/testrpc, the same line-delimited JSON-RPC the test
-// driver already speaks to per-language agents. One wire in the repo, not two.
+// trip rather than one per op.
 //
 // A single goroutine owns reading. Events arrive whenever someone touches a
-// widget, including while a batch is in flight, so the reader routes them to
-// Events and responses to whoever is waiting -- two readers on one stream would
-// race for each other's messages.
+// widget, including mid-batch, so the reader routes them to Events and
+// responses to whoever waits -- two readers would race for each other's
+// messages.
 type RPCHost struct {
 	w      *testrpc.Writer
 	closer io.Closer

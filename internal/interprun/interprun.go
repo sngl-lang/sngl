@@ -107,10 +107,20 @@ type Options struct {
 	Dir string
 	// Args are passed to the worker.
 	Args []string
+	// Platform is the target being interpreted, checked against the workers
+	// that exist.
+	Platform string
 }
 
 // Run interprets pkg and renders it in a spawned worker.
+//
+// Fyne is the only toolkit with a worker so far. Options.Platform is checked
+// rather than ignored, because the alternative is `--platform bubbletea` quietly
+// opening a Fyne window.
 func Run(pkg *ir.Package, opts Options) error {
+	if opts.Platform != "" && opts.Platform != "fyne" {
+		return fmt.Errorf("--lang none has no worker for platform %q yet; only fyne is interpreted", opts.Platform)
+	}
 	comp := opts.Component
 	if comp == "" {
 		comp = "main"

@@ -8,15 +8,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// WidgetProbeSource is a program that does nothing except pull this platform
-// in, which is all it takes to reach what the platform declares.
-//
-// It replaces a fixture that instantiated all thirty-four overridden components
-// by hand, and a list of their names beside it. Both were maintained by hand
-// and had to agree with fyne.sngl and with each other; a widget added to one
-// and not the others was a widget the tests covered and no window could build.
-// Nothing needs instantiating: an override's body is a declaration, and the
-// checker attaches it to the stdlib component it names.
+// WidgetProbeSource pulls this platform in and does nothing else, which is all
+// it takes to reach what the platform declares: an override's body is a
+// declaration, so nothing has to be instantiated to find it.
 const WidgetProbeSource = `
 import . "sngl:ui"
 import "sngl:platform/fyne"
@@ -25,10 +19,7 @@ component main {}
 `
 
 // OverriddenComponents lists the stdlib components this platform gives a body
-// to, read off the checked symbol table in declaration-independent order.
-//
-// This is the list, derived. A component appears here because fyne.sngl
-// overrides it, which is the only thing that ever made it true.
+// to, read off the checked symbol table.
 func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 	if pkg == nil || pkg.Symbols == nil {
 		return nil
@@ -69,14 +60,11 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	return out
 }
 
-// WidgetSpec is what one stdlib component needs to be built at runtime, decoded
-// from the Spec its fyne override lowers to.
+// WidgetSpec is what one stdlib component needs to be built at runtime.
 //
-// It carries less than the internal spec does: no Go type and no callback
-// signature, because those exist so the emitter can *print* them and a host
-// holds the value and reads both off it by reflection. What is left is the one
-// thing reflection cannot recover -- the constructor -- and the names of the
-// methods and fields to reach through.
+// Less than the internal spec: no Go type and no callback signature, since a
+// host holds the value and reflects both off it. The constructor is the one
+// thing reflection cannot recover.
 type WidgetSpec struct {
 	// Element is the SNGL name, which is what reaches a host: an interpreted
 	// program is checked without overrides inlined, so a window is asked for

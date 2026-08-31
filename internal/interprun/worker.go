@@ -26,13 +26,16 @@ const WorkerPkg = "git.duckfam.us/jonathan/sngl/cmd/sngl-fyne-worker"
 // it.
 const WorkerDir = ".tmp/sngl/worker"
 
-// Locate finds the worker to render with, in the order that costs least: one
-// named explicitly, one on PATH, then one built for this project.
+// Locate finds the worker to render with: one named explicitly, then one built
+// for this project.
+//
+// A worker on PATH is deliberately not consulted. It was built against some
+// other module, and the argument in EnsureWorker cuts both ways -- a worker
+// that resolved different versions than the program would ship with is a
+// preview of a different program, whether it came from a cache directory or
+// from PATH. SNGL_FYNE_WORKER stays, because naming one is asking for it.
 func Locate(dir string) (string, error) {
 	if p := os.Getenv(WorkerEnv); p != "" {
-		return p, nil
-	}
-	if p, err := exec.LookPath("sngl-fyne-worker"); err == nil {
 		return p, nil
 	}
 	return EnsureWorker(dir)
@@ -40,15 +43,9 @@ func Locate(dir string) (string, error) {
 
 // EnsureWorker builds the worker for a project, or returns the cached one.
 //
-// It builds *in the project*, which is the whole point. A worker resolves the
-// module it is built in -- its replace directives, its pinned versions, its
-// vendor directory -- so one built anywhere else would render widgets from
-// different code than the program would ship with. That is not a cache miss,
-// it is a preview of a different program.
-//
-// The binary is named for a hash of what it is built from, so a stale one can
-// never be mistaken for fresh and several may coexist: an editor holding a
-// long-lived worker does not conflict with a terminal starting one.
+// Built in the project, so it resolves that module's replace directives and
+// pinned versions rather than some other module's. Named by content hash, so
+// several may coexist and a stale one is never mistaken for fresh.
 func EnsureWorker(dir string) (string, error) {
 	key, err := workerKey(dir)
 	if err != nil {
@@ -86,6 +83,18 @@ func EnsureWorker(dir string) (string, error) {
 func workerKey(dir string) (string, error) {
 	h := sha256.New()
 	fmt.Fprintln(h, WorkerPkg, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	// In a checkout of sngl itself the worker's own source is part of the
+	// build, and go.mod does not move when it changes. Outside one it is a
+	// pinned dependency and go.sum covers it.
+	for _, dep := range []string{"pkg/go/fynehost", "cmd/sngl-fyne-worker"} {
+		if entries, err := os.ReadDir(filepath.Join(dir, dep)); err == nil {
+			for _, e := range entries {
+				if info, err := e.Info(); err == nil {
+					fmt.Fprintln(h, dep, e.Name(), info.Size(), info.ModTime().UnixNano())
+				}
+			}
+		}
+	}
 	for _, name := range []string{"go.mod", "go.sum", "go.work", "go.work.sum"} {
 		b, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {

@@ -23,14 +23,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
 
-// Widget is how one SNGL element is built and driven.
-//
-// It is the runtime twin of the Spec record in fyne.sngl, and carries less:
-// a Spec must also say the Go *type* and the callback *signature* so the
-// emitter can print them, while a host holds the value and reads both off it by
-// reflection. What cannot be recovered is the constructor -- Go will not turn
-// "widget.NewLabel" into a symbol -- so that is the one thing a registry is
-// for, and a generated worker emits this table from the Specs in scope.
+// Widget is how one SNGL element is built and driven: the runtime twin of a
+// Spec in fyne.sngl. The constructor is the only part reflection cannot
+// recover, which is what a registry is for.
 type Widget struct {
 	// New is the constructor, as a function value.
 	New any
@@ -48,10 +43,6 @@ type Widget struct {
 }
 
 // Registry maps a SNGL element name to how it is built.
-//
-// Hand-written here for the elements a first window needs. A generated worker
-// replaces it wholesale, emitted from the Specs its program can reach -- which
-// is what makes a third-party widget a rebuild rather than an impossibility.
 type Registry map[string]Widget
 
 // Host renders into a Fyne container. It is not safe for concurrent use and
@@ -198,9 +189,8 @@ func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
 	return m.obj, true
 }
 
-// Fire invokes a widget's own callback, the way a click would. This is what
-// makes an interpreted run the same kind of target as a compiled one: the
-// event goes through the widget rather than around it.
+// Fire invokes a widget's own callback, the way a click would -- through the
+// widget rather than around it, as a compiled target does.
 func (h *Host) Fire(key snglhost.Key, event string) error {
 	m, ok := h.nodes[key]
 	if !ok {
@@ -279,9 +269,7 @@ func applyProp(m *mounted, prop string, v any) error {
 }
 
 // bind assigns a closure to each declared callback field. The field's own type
-// is the signature, so MakeFunc needs nothing the registry does not already
-// say -- which is why a Spec's Signature is an emitter's concern and not a
-// host's.
+// is the signature, so MakeFunc needs nothing the registry does not say.
 func (h *Host) bind(m *mounted, events []string) error {
 	for event, field := range m.spec.Handlers {
 		f := reflect.ValueOf(m.obj).Elem().FieldByName(field)

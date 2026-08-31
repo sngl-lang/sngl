@@ -9,22 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// View is the interpreter's retained render tree.
-//
-// The interpreter has always rendered by *querying*: ResolveElementRef re-walks
-// the component's IR statements, re-evaluating every `if`, `for` and prop
-// expression, to find one #id. The snapshot printer walks the same IR a second
-// time to produce source. Two walks of one tree that must agree, and neither
-// holds anything between calls.
-//
-// A window cannot work that way. It needs a tree that persists, so a state
-// change becomes a patch to what is already on screen rather than a fresh
-// render, and so a reload can diff against what is mounted. This is that tree.
-//
-// It is deliberately the *rendered* tree -- user components are expanded in
-// place and contribute no node of their own -- because that is what both
-// existing walks produce, and matching them exactly is what lets those walks be
-// replaced rather than joined by a third.
+// View is the interpreter's retained render tree, mounted once and patched.
 type View struct {
 	// Roots are the mounted top-level nodes, in source order.
 	Roots []*Node
@@ -37,10 +22,8 @@ type View struct {
 
 // Node is one retained instance in a View.
 type Node struct {
-	// Key is the node's mounted path: the route from the mount root, crossing
-	// component instantiations. ComponentKeys is the analogous projection
-	// within a single declaration; a mounted node needs the whole chain,
-	// because the same declaration mounted twice is two nodes.
+	// Key is the mounted path, crossing component instantiations: one
+	// declaration mounted twice is two nodes, so ComponentKeys is not enough.
 	Key Key
 	// Name is the resolved element name, ID the #id binding if any.
 	Name string
@@ -61,27 +44,18 @@ type Node struct {
 	// Inst is the IR this node was mounted from, or nil for the
 	// children-less call form. Repointed by a reload; never used as identity.
 	Inst *ir.NodeInst
-	// CompEnv is the component's own scope, non-nil exactly when Component is.
-	// Node.Env is the *caller's* -- where the arguments were evaluated -- so a
-	// reader wanting the instance's own state wants this one.
+	// CompEnv is the component's own scope; Node.Env is the caller's, where the
+	// arguments were evaluated.
 	CompEnv *Env
-	// Expanded says the component's body was mounted beneath this node.
-	//
-	// A user component with an *empty* visual body renders nothing of its own,
-	// so in the rendered tree it IS the element -- which is why the walk this
-	// replaced matched it by #id (`len(Component.Body) > 0` was its test). It
-	// still needs to be a component node for the authored reading, so both
-	// hold and this is what tells them apart. Not `len(Children) > 0`: a body
-	// of `if false { … }` expands to nothing and must still be skipped.
+	// Expanded says the component's body was mounted beneath this node. A
+	// component with an empty visual body renders nothing of its own, so in the
+	// rendered tree it IS the element and Find must return it. Not
+	// `len(Children) > 0`: `if false { … }` expands to nothing and is still
+	// expanded.
 	Expanded bool
-	// Component is the declaration this node instantiates, non-nil only for a
-	// user component. Its Children are the expansion of that component's body.
-	//
-	// Keeping the instantiation as a node is what lets one tree serve readers
-	// that want opposite things. An element ref and a snapshot want the
-	// *rendered* tree, so they descend through it; `c.children` wants the
-	// *authored* tree, so it stops here and hands back the component itself.
-	// Expanding at mount time served the first and made the second impossible.
+	// Component is the declaration this node instantiates; its Children are the
+	// expansion of that component's body. Kept as a node so one tree serves
+	// both readings: a snapshot descends through it, an inspector stops at it.
 	Component *ir.Component
 }
 
@@ -96,16 +70,10 @@ type Handler struct {
 // platform element.
 func (n *Node) IsComponent() bool { return n != nil && n.Component != nil }
 
-// IsUserComponent reports whether this node instantiates one of the program's
-// own components, as opposed to a stdlib element that happens to resolve to a
-// component declaration with nothing in it.
-//
-// Deliberately not the same question as Expanded. Expanded asks whether a body
-// was mounted beneath -- that governs Find, because the walk it replaced
-// matched an empty-bodied component by #id. This asks whether the declaration
-// is the program's, which is what a snapshot needs: `component holder { var n
-// = 0 }` renders nothing and must not print, while `vbox` resolves to a
-// component with nothing in it and must.
+// IsUserComponent reports whether this instantiates one of the program's own
+// components. Not the same question as Expanded, and they differ on one case:
+// `component holder { var n = 0 }` renders nothing and a snapshot must skip it,
+// while `vbox` resolves to a declaration with nothing in it and must print.
 func (n *Node) IsUserComponent() bool {
 	return n != nil && IsUserComponent(n.Component)
 }

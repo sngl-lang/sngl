@@ -69,24 +69,17 @@ func (p Patch) String() string {
 	}
 }
 
-// Diff reports the patches that turn before into after.
+// Diff reports the patches that turn before into after. Nodes match by mounted
+// Key, never by position: a recheck replaces every pointer in the program.
 //
-// Nodes are matched by mounted Key, never by position, which is the whole
-// reason Key exists: a recheck replaces every pointer in the program, so a
-// reload has nothing else to match on.
+// Removals first, deepest first. Then creations and moves *interleaved*, one
+// ascending pass per parent -- separating them does not converge, because a
+// creation's index is a position in the finished list and the list is not
+// finished yet. Assignments last.
 //
-// Removals come first, deepest first, so a parent outlives its children. Then
-// creations and moves *interleaved*, in one pass over each parent's new child
-// list, so a host applying them in order converges: each step places the right
-// node at the next position and everything before it is already final.
-// Assignments to surviving nodes come last.
-//
-// The interleaving is not cosmetic. Emitting all the creations and then all the
-// moves does not work, because a creation's index is a position in the finished
-// list and the list is not finished yet -- and picking a minimal move set with
-// a longest-increasing-subsequence only converges if a move says "insert before
-// this node" rather than "insert at this index". This diff says the index, so
-// it simulates the host's list and emits what that list needs.
+// A minimal move set via longest-increasing-subsequence would need moves to say
+// "insert before this node"; this protocol says "at this index", so Diff
+// simulates the host's list instead.
 func Diff(before, after *View) []Patch {
 	// gone is what the host will not be holding once removals are applied: a
 	// node dropped or replaced, and everything beneath it, since Host.Remove

@@ -8,13 +8,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
 
-// Key identifies one node by where it is written rather than by which
-// *ir.NodeInst it currently is. It lives in pkg/go/snglhost because a host
-// holds one too: a protocol only one side can name is not a protocol.
-//
-// Pointer keys stay inside a run -- they are what a run uses. This is the
-// projection the reconciler diffs across, because a recheck produces an
-// entirely new ir.Package and every pointer with it.
+// Key identifies a node by where it is written. Defined in snglhost because a
+// host holds one too. See that declaration.
 type Key = snglhost.Key
 
 // VarKey identifies one binding across a reload. ir.Symbol carries SymName, so

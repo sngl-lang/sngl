@@ -1,18 +1,9 @@
 // Command sngl-fyne-worker renders a SNGL program in a Fyne window, driven
 // over stdin and stdout.
 //
-// It is the out-of-process host: `sngl` interprets the program and sends
-// patches, this opens the window and applies them. The split is not incidental.
-// Linking Fyne into the compiler would make `sngl` a CGo/OpenGL binary that no
-// longer cross-compiles and that the WASM playground could not import, and a
-// worker built inside the user's own Go module is also the only thing that
-// resolves their `replace` directives and pinned versions -- so what you see
-// previewed is what you would ship.
-//
-// This one is hand-written and renders the widget set in fynehost.Default().
-// A generated worker is the same main() with its registry emitted from the
-// Specs its program can reach, which is what turns a widget the compiler never
-// heard of into a rebuild rather than an impossibility.
+// Separate from `sngl` because linking Fyne into the compiler would make it a
+// CGo/OpenGL binary: no cross-compilation, and the WASM playground could not
+// import it. See cmd/sngl/deps_test.go.
 package main
 
 import (

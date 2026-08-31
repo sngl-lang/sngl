@@ -7,17 +7,10 @@ import (
 )
 
 // Session is a program the interpreter is holding open: its scope, its mounted
-// tree, and its timer schedule, with the operations that move it forward.
+// tree, and its timer schedule. Every operation on it answers in patches.
 //
-// Everything before this re-mounted per call -- ResolveElementRef and the
-// snapshot printer each build a tree, read it, and drop it. That is correct and
-// wasteful, and it is not what a window can do: a window needs the tree to
-// persist so a change becomes a patch to what is already on screen. A Session
-// is that persistence, and every operation on it answers in patches.
-//
-// It is deliberately single-threaded. A host owns its toolkit's loop and will
-// deliver events from it; those must reach a Session through a queue, because
-// Env is mutation-heavy and holds no lock.
+// Single-threaded, and Env holds no lock -- a host's events must reach it
+// through a queue rather than from the toolkit's own goroutine.
 type Session struct {
 	Pkg    *ir.Package
 	Comp   string

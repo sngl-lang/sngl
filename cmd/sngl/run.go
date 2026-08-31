@@ -51,16 +51,12 @@ func runRun(cmd *cobra.Command, args []string) error {
 		main:    true,
 		quiet:   true,
 		onTarget: func(target outputTarget, pkg *ir.Package, _, outDir string) error {
-			// `--lang none` means the program is not translated: something else
-			// runs the IR. For html that something is a browser; for every
-			// other platform it is the interpreter, driving a worker that owns
-			// the toolkit. No codegen, no compile of the program itself.
-			if target.Lang == "none" && target.Platform != "html" {
+			if isInterpreted(target) {
 				dir, err := os.Getwd()
 				if err != nil {
 					return err
 				}
-				return interprun.Run(pkg, interprun.Options{Dir: dir, Args: progArgs})
+				return interprun.Run(pkg, interprun.Options{Dir: dir, Args: progArgs, Platform: target.Platform})
 			}
 			plat := codegen.LookupPlatform(target.Platform)
 			runner, ok := plat.(codegen.Runner)
