@@ -108,19 +108,19 @@ struct Tiny {}
 
 func TestIntrinsicMarkStampsIdAndFlags(t *testing.T) {
 	pkg, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", usable, mutatesReceiver)]
+#[intrinsic("markstub.shout", usable, mutatesReceiver)]
 func shout(s string) => s
 `)
 	wantNoMarkErrs(t, errs)
 	fn := pkg.Funcs[0]
-	if fn.Intrinsic != "string.upper" || !fn.IntrinsicBodyUsable || !fn.MutatesReceiver {
+	if fn.Intrinsic != "markstub.shout" || !fn.IntrinsicBodyUsable || !fn.MutatesReceiver {
 		t.Errorf("intrinsic = %+v, want the id and both flags", fn)
 	}
 }
 
 func TestIntrinsicMarkRejectsAnUnknownFlag(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", nosuch)]
+#[intrinsic("markstub.shout", nosuch)]
 func shout(s string) => s
 `)
 	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: usable, mutates, readonly, mutatesReceiver)`)
@@ -128,7 +128,7 @@ func shout(s string) => s
 
 func TestIntrinsicMarkRejectsContradictoryFlags(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", mutates, readonly)]
+#[intrinsic("markstub.shout", mutates, readonly)]
 func shout(s string) => s
 `)
 	wantMarkErr(t, errs, "is both mutates and readonly")
@@ -136,7 +136,7 @@ func shout(s string) => s
 
 func TestIntrinsicMarkRejectsARepeatedFlag(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", usable, usable)]
+#[intrinsic("markstub.shout", usable, usable)]
 func shout(s string) => s
 `)
 	wantMarkErr(t, errs, "repeats flag usable")
@@ -145,10 +145,10 @@ func shout(s string) => s
 // An id names a native implementation of a call, and a struct has no call.
 func TestIntrinsicMarkCannotMarkAStruct(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper")]
+#[intrinsic("markstub.shout")]
 struct Tiny {}
 `)
-	wantMarkErr(t, errs, `#[intrinsic("string.upper")] cannot mark`)
+	wantMarkErr(t, errs, `#[intrinsic("markstub.shout")] cannot mark`)
 }
 
 // The alias is the file's, and the mark follows it like any other qualified

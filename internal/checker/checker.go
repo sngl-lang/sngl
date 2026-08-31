@@ -1500,8 +1500,6 @@ func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	case ir.BuiltinDateTime:
 		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
 	}
-	// The generic collection declarations, for ListOf/MapOf to attach to every
-	// list and map type they build.
 	ir.RegisterGenericBuiltin(sd)
 }
 
@@ -2035,24 +2033,11 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	c.applyMarks(f, fn)
 
-	// The #[intrinsic] mark names a signature every backend implements, and
-	// the effect metadata follows from the id. An id no intrinsic answers to
-	// is a typo in the mark that nothing downstream would notice: the call
-	// would simply never be recognised.
-	if fn.Intrinsic != "" {
-		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
-			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
-		}
-	}
-
 	// Library source is not body-checked, so two things it would otherwise
-	// infer are stated here instead. A signature with no return annotation is
-	// dyn rather than void -- the "=>" forms that delegate to an intrinsic
-	// rely on it, and body-level inference would conflict with the primitive
-	// and struct spellings the library uses internally. And purity, which the
-	// analysis never runs for, starts pure so the optimizer can fold
-	// int.min and its like; anything reaching outside the program has it
-	// overridden afterwards.
+	// infer are stated here. A signature with no return annotation is dyn
+	// rather than void. And purity, which the analysis never runs for, starts
+	// pure so the optimizer can fold int.min and its like; anything reaching
+	// outside the program has it overridden afterwards.
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
@@ -2061,6 +2046,14 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		if fn.Purity == ir.PurityUnknown {
 			fn.Purity = ir.PurityPure
 		}
+	}
+
+	// After the block above: the return type and purity it settles are part of
+	// what gets published. A mistyped id is not an error here -- there is no
+	// list for it to be absent from -- but RequireIntrinsicFallback catches one
+	// when a backend has neither an emitter nor a `usable` body.
+	if fn.Intrinsic != "" {
+		c.publishIntrinsic(fn)
 	}
 
 	// Only free functions bind a file-scope name; a method's name lives under
@@ -3737,7 +3730,7 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 }
 
 // declareNodeID binds one node id. target names the component the node
-// instantiates, which is the type a handle to it reads at.
+// instantiates.
 func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	if id == "" {
 		return
@@ -3747,14 +3740,9 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
-	// A component's own methods are registered on the symbol table under the
-	// component as receiver, not in scope by bare name -- a body reference to
-	// one resolves through the currentComponent path in inferIdent, which runs
-	// only when the scope lookup misses. So a same-named node id has to be
-	// refused here or it shadows the method, which is what `button #bump` next
-	// to `func bump()` did: the handle bound the name, the call went to an
-	// opaque handle, and only a runtime that resolves by name found the
-	// method at all.
+	// A component's methods are registered under the component as receiver, not
+	// in scope by bare name: inferIdent reaches them only when the scope lookup
+	// misses. So `button #bump` beside `func bump()` would shadow the method.
 	if c.currentComponent != nil {
 		if _, ok := c.lookupMethod(c.currentComponent.Name, id); ok {
 			return
@@ -3769,11 +3757,9 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	c.declare(ast.Pos{}, sym)
 }
 
-// nodeHandleType is what a handle to a rendered instance of the component
-// named target reads at. The same answer the `c.<id>` selector path arrives at
-// through findHostComponentAST, reached directly because the hoisting pass has
-// the target name in hand; the two disagreeing is what made a bare `#id`
-// reference dyn while `c.<id>` on the same node was typed.
+// nodeHandleType is what a handle to a rendered instance of target reads at --
+// the same answer inferSelect reaches through findHostComponentAST, arrived at
+// directly because the hoisting pass already has the name.
 func (c *checker) nodeHandleType(target string) *ir.Type {
 	if comp := c.componentNamed(target); comp != nil {
 		if t := comp.SymType(); t != nil {
@@ -3783,8 +3769,7 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 	return dynFallback("node id names an instance of %q, which resolves to no component", target)
 }
 
-// componentNamed resolves a visual node's target -- `Sidebar`, or the
-// `pkg.Name` form a qualified one carries -- to the component it names.
+// componentNamed resolves a visual node's target, bare or `pkg.Name`.
 func (c *checker) componentNamed(target string) *ir.Component {
 	if target == "" {
 		return nil

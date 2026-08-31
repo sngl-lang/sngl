@@ -3,12 +3,19 @@ package lower_test
 import (
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	t.Helper()
+	// passCanvas reads its primitives' signatures off sngl:internal/draw, which
+	// a check registers as it loads. This package is built by hand, so it asks
+	// for the load itself.
+	if checker.LibPackage("internal/draw") == nil {
+		t.Fatal("sngl:internal/draw did not load")
+	}
 	styleTyp := &ir.Type{Kind: ir.TypeStruct}
 	childListType := ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 
