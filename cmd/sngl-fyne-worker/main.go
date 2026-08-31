@@ -48,8 +48,9 @@ func main() {
 		if err != nil && err != io.EOF {
 			fmt.Fprintf(os.Stderr, "sngl-fyne-worker: %v\n", err)
 		}
-		// The driver went away, so the window has nothing behind it.
-		a.Quit()
+		// The driver went away, so the window has nothing behind it. Quitting
+		// touches the app, and this is not Fyne's thread.
+		fyne.Do(a.Quit)
 	}()
 
 	w.ShowAndRun()

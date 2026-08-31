@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -165,5 +166,80 @@ func TestAnUnregisteredElementIsReportedNotDropped(t *testing.T) {
 	}
 	if !strings.Contains(h.Tree(), "text") {
 		t.Errorf("the rest of the tree did not mount:\n%s", h.Tree())
+	}
+}
+
+// TestAWrapperGetsItsChild covers the registry's Content field, which named a
+// field nothing read: a scroll rendered empty because a wrapper takes its one
+// child through a field rather than a list.
+func TestAWrapperGetsItsChild(t *testing.T) {
+	app := fynetest.NewApp()
+	t.Cleanup(app.Quit)
+
+	src := `import . "sngl:ui"
+
+component main {
+    scroll #s {
+        text #inner(value="scrolled")
+    }
+}
+`
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	h := fynehost.New(fynehost.Default())
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+	obj, ok := h.Object(s.View().Find("s")[0].Key)
+	if !ok {
+		t.Fatal("#s is not mounted")
+	}
+	sc, ok := obj.(*container.Scroll)
+	if !ok {
+		t.Fatalf("#s is a %T, want a *container.Scroll", obj)
+	}
+	if sc.Content == nil {
+		t.Fatal("the scroll has no content; its Content field was never assigned")
+	}
+	if _, ok := sc.Content.(*widget.Label); !ok {
+		t.Errorf("the scroll holds a %T, want the text's *widget.Label", sc.Content)
+	}
+}
+
+// TestAnUnsupportedElementSwallowsItsSubtree: children of an element this
+// worker cannot build have nowhere to go. Letting them fall through mounts a
+// whole subtree at top level and shifts every root index after it.
+func TestAnUnsupportedElementSwallowsItsSubtree(t *testing.T) {
+	app := fynetest.NewApp()
+	t.Cleanup(app.Quit)
+
+	src := `import . "sngl:ui"
+
+component main {
+    vbox {
+        hbox #unknown {
+            text #buried(value="should not surface")
+        }
+        text #after(value="after")
+    }
+}
+`
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	reg := fynehost.Default()
+	delete(reg, "hbox")
+	h := fynehost.New(reg)
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+	if _, mounted := h.Object(s.View().Find("buried")[0].Key); mounted {
+		t.Error("#buried was mounted even though its parent could not be built")
+	}
+	if _, mounted := h.Object(s.View().Find("after")[0].Key); !mounted {
+		t.Error("#after was not mounted; an unsupported sibling should not take it out")
 	}
 }

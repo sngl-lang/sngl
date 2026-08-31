@@ -29,8 +29,7 @@ type threaded struct {
 func (t *threaded) Begin() {
 	t.depth++
 	if t.depth == 1 {
-		t.queued = t.queued[:0]
-		t.deferred = nil
+		t.queued = nil
 	}
 	t.enqueue(func() error { t.inner.Begin(); return nil })
 }
@@ -51,9 +50,6 @@ func (t *threaded) End() error {
 			}
 		}
 	})
-	if err == nil {
-		err = t.deferred
-	}
 	return err
 }
 

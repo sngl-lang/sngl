@@ -59,7 +59,10 @@ type Registry map[string]Widget
 type Host struct {
 	reg   Registry
 	nodes map[snglhost.Key]*mounted
-	roots []*mounted
+	// missing is every key with no widget behind it: an element this worker was
+	// not built for, and everything under it.
+	missing map[snglhost.Key]bool
+	roots   []*mounted
 	// OnEvent is called when a widget's own callback fires. A worker forwards
 	// it back over the wire; a test reads it directly.
 	OnEvent func(key snglhost.Key, event string)
@@ -71,7 +74,6 @@ type Host struct {
 	Unsupported []string
 
 	depth int
-	err   error
 }
 
 type mounted struct {
@@ -90,9 +92,10 @@ type mounted struct {
 // New returns a Host rendering into a fresh vertical container.
 func New(reg Registry) *Host {
 	return &Host{
-		reg:   reg,
-		nodes: map[snglhost.Key]*mounted{},
-		Root:  container.NewVBox(),
+		reg:     reg,
+		nodes:   map[snglhost.Key]*mounted{},
+		missing: map[snglhost.Key]bool{},
+		Root:    container.NewVBox(),
 	}
 }
 
@@ -103,18 +106,24 @@ func (h *Host) End() error {
 	if h.depth > 0 {
 		return nil
 	}
-	err := h.err
-	h.err = nil
 	h.Root.Refresh()
-	return err
+	return nil
 }
 
 func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error {
+	if h.missing[parent] {
+		// Its parent could not be built, so there is nowhere for this to go.
+		// Without this it would fall through to the root and the whole subtree
+		// of an unknown container would appear at top level.
+		h.missing[d.Key] = true
+		return nil
+	}
 	spec, ok := h.reg[d.Name]
 	if !ok {
-		// Not an error: a program may name an element this worker was not
-		// built for, and reporting it beats rendering a hole silently.
+		// Not an error: a program may name an element this worker was not built
+		// for, and reporting it beats rendering a hole silently.
 		h.Unsupported = append(h.Unsupported, d.Name)
+		h.missing[d.Key] = true
 		return nil
 	}
 	obj, err := construct(spec)
@@ -307,7 +316,7 @@ func (h *Host) insert(m *mounted, parent snglhost.Key, index int) error {
 	*objs = append(*objs, nil)
 	copy((*objs)[index+1:], (*objs)[index:])
 	(*objs)[index] = m.obj
-	return nil
+	return h.setContent(parent)
 }
 
 func (h *Host) detach(m *mounted) {
@@ -316,6 +325,7 @@ func (h *Host) detach(m *mounted) {
 		if c.key == m.key {
 			*siblings = append((*siblings)[:i], (*siblings)[i+1:]...)
 			*objs = append((*objs)[:i], (*objs)[i+1:]...)
+			_ = h.setContent(m.parent)
 			return
 		}
 	}
@@ -323,6 +333,10 @@ func (h *Host) detach(m *mounted) {
 
 // slotsOf returns the child list and the Fyne object list of a parent, kept in
 // step so an index means the same thing in both.
+//
+// A wrapper takes its single child through a field rather than a list, which
+// the registry names in Content -- see setContent, called after the lists are
+// updated. Its slice here is bookkeeping so Remove and Move stay correct.
 func (h *Host) slotsOf(parent snglhost.Key) (*[]*mounted, *[]fyne.CanvasObject) {
 	if parent == (snglhost.Key{}) {
 		return &h.roots, &h.Root.Objects
@@ -334,9 +348,34 @@ func (h *Host) slotsOf(parent snglhost.Key) (*[]*mounted, *[]fyne.CanvasObject) 
 	if c, ok := p.obj.(*fyne.Container); ok {
 		return &p.children, &c.Objects
 	}
-	// A widget that is not a container has nowhere to put a child. Keep the
-	// bookkeeping so Remove still works, and let the object go unrendered.
 	return &p.children, &p.orphans
+}
+
+// setContent assigns a wrapper's single child to the field its registry entry
+// names. A container's children are its Objects slice and need nothing; a
+// wrapper's are one field, and without this a Scroll rendered empty.
+func (h *Host) setContent(parent snglhost.Key) error {
+	p, ok := h.nodes[parent]
+	if !ok || p.spec.Content == "" {
+		return nil
+	}
+	f := reflect.ValueOf(p.obj).Elem().FieldByName(p.spec.Content)
+	if !f.IsValid() || !f.CanSet() {
+		return fmt.Errorf("%s has no settable field %s", p.name, p.spec.Content)
+	}
+	if len(p.children) == 0 {
+		f.Set(reflect.Zero(f.Type()))
+	} else {
+		child := reflect.ValueOf(p.children[0].obj)
+		if !child.Type().AssignableTo(f.Type()) {
+			return fmt.Errorf("cannot put a %T in %s.%s", p.children[0].obj, p.name, p.spec.Content)
+		}
+		f.Set(child)
+	}
+	if w, ok := p.obj.(fyne.Widget); ok {
+		w.Refresh()
+	}
+	return nil
 }
 
 func contains(xs []string, x string) bool {

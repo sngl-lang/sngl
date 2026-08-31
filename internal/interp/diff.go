@@ -14,11 +14,6 @@ const (
 	// PatchSetProp assigns one prop of a node that survived.
 	PatchSetProp
 	// PatchMove places a surviving node at Index among Parent's children.
-	//
-	// Keying a loop by `key=` is what makes this reachable: an iteration then
-	// keeps its identity when the list is reordered, so the node survives and
-	// only its position changed. Without a key an iteration is its index, and
-	// a reorder reads as every element's contents changing instead.
 	PatchMove
 	// PatchRebind says a surviving node's set of declared events changed, so
 	// the host must re-read Node.Handlers. Handler bodies are IR and every
@@ -80,31 +75,45 @@ func (p Patch) String() string {
 // reason Key exists: a recheck replaces every pointer in the program, so a
 // reload has nothing else to match on.
 //
-// The order is removals first (deepest first, so a parent outlives its
-// children), then creations (shallowest first, so a parent exists before what
-// mounts into it), then moves, then assignments to what survived. A host may
-// apply them in that order without further thought.
+// Removals come first, deepest first, so a parent outlives its children. Then
+// creations and moves *interleaved*, in one pass over each parent's new child
+// list, so a host applying them in order converges: each step places the right
+// node at the next position and everything before it is already final.
+// Assignments to surviving nodes come last.
 //
-// A move says "place this node at Index among Parent's children", and moves
-// arrive in the order the new tree wants. A host that detaches and re-inserts
-// at Index for each in turn converges on that order.
+// The interleaving is not cosmetic. Emitting all the creations and then all the
+// moves does not work, because a creation's index is a position in the finished
+// list and the list is not finished yet -- and picking a minimal move set with
+// a longest-increasing-subsequence only converges if a move says "insert before
+// this node" rather than "insert at this index". This diff says the index, so
+// it simulates the host's list and emits what that list needs.
 func Diff(before, after *View) []Patch {
-	var removes, creates, moves, sets []Patch
+	// gone is what the host will not be holding once removals are applied: a
+	// node dropped or replaced, and everything beneath it, since Host.Remove
+	// unmounts a subtree.
+	gone := goneKeys(before, after)
 
-	afterKeys := map[Key]bool{}
-	walkParented(after, func(n *Node, parent Key, index, depth int) {
-		afterKeys[n.Key] = true
+	var removes []Patch
+	walkParented(before, func(n *Node, parent Key, _, depth int) {
+		// Only the top of each removed subtree is named: the host takes the
+		// rest with it.
+		if gone[n.Key] && !gone[parent] {
+			removes = append(removes, Patch{Kind: PatchRemove, Key: n.Key, Index: depth})
+		}
+	})
+	sortByIndexDesc(removes)
+	for i := range removes {
+		removes[i].Index = 0 // depth was scratch; a removal has no position
+	}
+
+	var structure, sets []Patch
+	for _, group := range childGroups(after) {
+		structure = append(structure, placeChildren(before, gone, group)...)
+	}
+	walkParented(after, func(n *Node, _ Key, _, _ int) {
 		old, ok := before.At(n.Key)
-		// A node whose element changed at the same key is not the same node:
-		// no host can turn a button into a text field by assignment.
-		if !ok || old.Name != n.Name {
-			if ok {
-				removes = append(removes, Patch{Kind: PatchRemove, Key: n.Key, Index: depth})
-			}
-			creates = append(creates, Patch{
-				Kind: PatchCreate, Key: n.Key, Node: n, Parent: parent, Index: index,
-			})
-			return
+		if !ok || gone[n.Key] {
+			return // created, and a creation carries its props and events
 		}
 		sets = append(sets, propPatches(old, n)...)
 		if !sameHandlerNames(old, n) {
@@ -112,30 +121,88 @@ func Diff(before, after *View) []Patch {
 		}
 	})
 
-	walkParented(before, func(n *Node, _ Key, _, depth int) {
-		if !afterKeys[n.Key] {
-			removes = append(removes, Patch{Kind: PatchRemove, Key: n.Key, Index: depth})
+	out := make([]Patch, 0, len(removes)+len(structure)+len(sets))
+	out = append(out, removes...)
+	out = append(out, structure...)
+	out = append(out, sets...)
+	return out
+}
+
+// goneKeys is every key the host will have dropped after removals: one absent
+// from the new tree, one whose element changed -- no host turns a button into a
+// text field by assignment -- and every descendant of either.
+func goneKeys(before, after *View) map[Key]bool {
+	gone := map[Key]bool{}
+	walkParented(before, func(n *Node, parent Key, _, _ int) {
+		if gone[parent] {
+			gone[n.Key] = true
+			return
+		}
+		now, ok := after.At(n.Key)
+		if !ok || now.Name != n.Name {
+			gone[n.Key] = true
 		}
 	})
+	return gone
+}
 
-	moves = movePatches(before, after)
-
-	// Deepest first among removals: a host freeing a parent must not be handed
-	// its children afterwards.
-	sortByIndexDesc(removes)
-	// Creations arrive in pre-order already, which is parents before children.
-
-	out := make([]Patch, 0, len(removes)+len(creates)+len(moves)+len(sets))
-	out = append(out, removes...)
-	out = append(out, creates...)
-	out = append(out, moves...)
-	out = append(out, sets...)
-	for i := range out {
-		if out[i].Kind == PatchRemove {
-			out[i].Index = 0 // depth was scratch; a removal has no position
+// placeChildren emits the creations and moves that bring one parent's children
+// into their new order, by simulating what the host is holding.
+//
+// The simulation is the correctness argument: after step i the host's first
+// i+1 children are exactly the wanted ones, so the last step leaves the whole
+// list right. A survivor already in place costs nothing.
+func placeChildren(before *View, gone map[Key]bool, group childGroup) []Patch {
+	// What the host holds under this parent once removals are done.
+	var cur []Key
+	if p, ok := before.At(group.parent); ok {
+		for _, c := range p.Children {
+			if !gone[c.Key] {
+				cur = append(cur, c.Key)
+			}
+		}
+	} else if before != nil && group.parent == (Key{}) {
+		for _, c := range before.Roots {
+			if !gone[c.Key] {
+				cur = append(cur, c.Key)
+			}
 		}
 	}
+
+	var out []Patch
+	for i, n := range group.children {
+		_, existed := before.At(n.Key)
+		if !existed || gone[n.Key] {
+			out = append(out, Patch{Kind: PatchCreate, Key: n.Key, Node: n, Parent: group.parent, Index: i})
+			cur = insertKey(cur, n.Key, i)
+			continue
+		}
+		if i < len(cur) && cur[i] == n.Key {
+			continue // already where it belongs
+		}
+		out = append(out, Patch{Kind: PatchMove, Key: n.Key, Parent: group.parent, Index: i})
+		cur = insertKey(removeKey(cur, n.Key), n.Key, i)
+	}
 	return out
+}
+
+func insertKey(keys []Key, k Key, at int) []Key {
+	if at < 0 || at > len(keys) {
+		at = len(keys)
+	}
+	keys = append(keys, Key{})
+	copy(keys[at+1:], keys[at:])
+	keys[at] = k
+	return keys
+}
+
+func removeKey(keys []Key, k Key) []Key {
+	for i, x := range keys {
+		if x == k {
+			return append(keys[:i], keys[i+1:]...)
+		}
+	}
+	return keys
 }
 
 // propPatches reports the assignments turning old's props into n's.
@@ -166,57 +233,6 @@ func propPatches(old, n *Node) []Patch {
 
 func renderValue(v any) string { return fmt.Sprintf("%v", v) }
 
-// movePatches reports the reorderings, per parent.
-//
-// Only relative order among *surviving* siblings counts. Inserting or removing
-// a node shifts the absolute index of everything after it, and a host doing the
-// insertion shifts them itself -- emitting a move for each would turn one
-// insertion into a patch per following sibling.
-//
-// So: take the survivors in their new order, read off where each sat before,
-// and keep the longest increasing run of those old positions in place. Whatever
-// is not in that run is what actually moved. This is the usual keyed-list
-// reconciliation, and it is minimal in the number of moves.
-func movePatches(before, after *View) []Patch {
-	oldIndex := map[Key]int{}
-	oldParent := map[Key]Key{}
-	walkParented(before, func(n *Node, p Key, i, _ int) {
-		oldIndex[n.Key], oldParent[n.Key] = i, p
-	})
-
-	var out []Patch
-	for _, group := range childGroups(after) {
-		type survivor struct {
-			key Key
-			at  int // index in the new child list
-			was int // index in the old child list
-		}
-		var surv []survivor
-		for i, n := range group.children {
-			was, existed := oldIndex[n.Key]
-			if !existed || oldParent[n.Key] != group.parent {
-				continue // created, or reparented: a create handles it
-			}
-			surv = append(surv, survivor{key: n.Key, at: i, was: was})
-		}
-		if len(surv) < 2 {
-			continue
-		}
-		olds := make([]int, len(surv))
-		for i, sv := range surv {
-			olds[i] = sv.was
-		}
-		stable := longestIncreasingRun(olds)
-		for i, sv := range surv {
-			if stable[i] {
-				continue
-			}
-			out = append(out, Patch{Kind: PatchMove, Key: sv.key, Parent: group.parent, Index: sv.at})
-		}
-	}
-	return out
-}
-
 type childGroup struct {
 	parent   Key
 	children []*Node
@@ -239,34 +255,6 @@ func childGroups(v *View) []childGroup {
 	}
 	walk(v.Roots)
 	return out
-}
-
-// longestIncreasingRun marks the members of a longest increasing subsequence of
-// xs. Those are the elements that can stay put while the rest move around them.
-func longestIncreasingRun(xs []int) []bool {
-	n := len(xs)
-	best := make([]int, n) // length of the LIS ending at i
-	prev := make([]int, n)
-	bestEnd, bestLen := -1, 0
-	for i := range xs {
-		best[i], prev[i] = 1, -1
-		for j := range i {
-			if xs[j] < xs[i] && best[j]+1 > best[i] {
-				best[i], prev[i] = best[j]+1, j
-			}
-		}
-		if best[i] > bestLen {
-			bestLen, bestEnd = best[i], i
-		}
-	}
-	keep := make([]bool, n)
-	for i := bestEnd; i >= 0; i = prev[i] {
-		keep[i] = true
-		if prev[i] < 0 {
-			break
-		}
-	}
-	return keep
 }
 
 func sameHandlerNames(a, b *Node) bool {

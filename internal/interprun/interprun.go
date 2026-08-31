@@ -32,16 +32,22 @@ func Drive(s *interp.Session, rw io.ReadWriteCloser) error {
 		return fmt.Errorf("mounting the tree: %w", err)
 	}
 
+	// One timer for the whole loop, reset each pass. A fresh one per iteration
+	// with a deferred Stop pins both until Drive returns, and Drive returns when
+	// the window closes -- so a 100ms tick accumulated tens of thousands.
+	wake := time.NewTimer(0)
+	if !wake.Stop() {
+		<-wake.C
+	}
+	defer wake.Stop()
+
 	for {
-		// A timer that is already due fires immediately; one that is not gets a
-		// deadline. With no timers at all there is nothing to wake for, and the
-		// loop waits only on the host.
+		// A timer already due fires immediately; with none there is nothing to
+		// wake for and the loop waits only on the host.
 		var due <-chan time.Time
 		if next, ok := s.Timers.Next(); ok {
-			d := max(time.Until(next), 0)
-			t := time.NewTimer(d)
-			defer t.Stop()
-			due = t.C
+			wake.Reset(max(time.Until(next), 0))
+			due = wake.C
 		}
 
 		select {
@@ -49,6 +55,7 @@ func Drive(s *interp.Session, rw io.ReadWriteCloser) error {
 			return h.Err()
 
 		case ev := <-h.Events():
+			stopTimer(wake, due)
 			patches, err := s.Invoke(ev.Key, ev.Name)
 			if err != nil {
 				// A handler that fails is the program's problem, not the
@@ -70,6 +77,20 @@ func Drive(s *interp.Session, rw io.ReadWriteCloser) error {
 			if err := interp.Apply(h, patches); err != nil {
 				return err
 			}
+		}
+	}
+}
+
+// stopTimer drains a reset timer that did not fire, so the next Reset starts
+// clean rather than seeing a stale tick.
+func stopTimer(t *time.Timer, armed <-chan time.Time) {
+	if armed == nil {
+		return
+	}
+	if !t.Stop() {
+		select {
+		case <-t.C:
+		default:
 		}
 	}
 }

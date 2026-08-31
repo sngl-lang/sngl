@@ -13,8 +13,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"sort"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
 )
@@ -143,6 +145,11 @@ func (w WireStruct) String() string {
 // reproduce the session's own view, the fault is in Diff or Apply rather than
 // in anyone's toolkit.
 type MemHost struct {
+	// mu guards everything below. A Host is called from one goroutine and needs
+	// no lock -- but this one is also the oracle a test reads while a ServeHost
+	// on another goroutine applies to it, which is the whole point of having it.
+	// Locking here beats a wrapper in every test that does so.
+	mu     sync.Mutex
 	roots  []*MemNode
 	byKey  map[Key]*MemNode
 	parent map[Key]Key
@@ -167,8 +174,14 @@ func NewMemHost() *MemHost {
 	return &MemHost{byKey: map[Key]*MemNode{}, parent: map[Key]Key{}}
 }
 
-func (h *MemHost) Begin() { h.depth++ }
+func (h *MemHost) Begin() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.depth++
+}
 func (h *MemHost) End() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.depth--
 	if h.depth == 0 {
 		h.Batches++
@@ -177,6 +190,8 @@ func (h *MemHost) End() error {
 }
 
 func (h *MemHost) Create(d NodeDesc, parent Key, index int) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if _, exists := h.byKey[d.Key]; exists {
 		return fmt.Errorf("already mounted")
 	}
@@ -191,6 +206,8 @@ func (h *MemHost) Create(d NodeDesc, parent Key, index int) error {
 }
 
 func (h *MemHost) Remove(key Key) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	n, ok := h.byKey[key]
 	if !ok {
 		return fmt.Errorf("not mounted")
@@ -209,6 +226,8 @@ func (h *MemHost) Remove(key Key) error {
 }
 
 func (h *MemHost) Move(key Key, parent Key, index int) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	n, ok := h.byKey[key]
 	if !ok {
 		return fmt.Errorf("not mounted")
@@ -219,6 +238,8 @@ func (h *MemHost) Move(key Key, parent Key, index int) error {
 }
 
 func (h *MemHost) SetProp(key Key, prop string, v any) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	n, ok := h.byKey[key]
 	if !ok {
 		return fmt.Errorf("not mounted")
@@ -241,6 +262,8 @@ func (h *MemHost) SetProp(key Key, prop string, v any) error {
 }
 
 func (h *MemHost) Rebind(key Key, events []string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	n, ok := h.byKey[key]
 	if !ok {
 		return fmt.Errorf("not mounted")
@@ -250,17 +273,27 @@ func (h *MemHost) Rebind(key Key, events []string) error {
 }
 
 // Len is the number of mounted nodes.
-func (h *MemHost) Len() int { return len(h.byKey) }
+func (h *MemHost) Len() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.byKey)
+}
 
-// Find returns the mounted nodes carrying an #id, which is how a test or an
-// inspector addresses one.
+// Find returns copies of the mounted nodes carrying an #id, which is how a test
+// or an inspector addresses one.
+//
+// Copies because the caller is usually on a different goroutine from the one
+// applying patches -- that is what this host is for -- and handing out live
+// nodes would put the lock around the lookup and nothing else.
 func (h *MemHost) Find(id string) []*MemNode {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	var out []*MemNode
 	var walk func([]*MemNode)
 	walk = func(nodes []*MemNode) {
 		for _, n := range nodes {
 			if n.ID == id {
-				out = append(out, n)
+				out = append(out, n.clone())
 			}
 			walk(n.Children)
 		}
@@ -269,9 +302,26 @@ func (h *MemHost) Find(id string) []*MemNode {
 	return out
 }
 
+// clone deep-copies a node so a reader holds nothing the applier can mutate.
+func (n *MemNode) clone() *MemNode {
+	c := &MemNode{
+		Key: n.Key, Name: n.Name, ID: n.ID,
+		Props:  make(map[string]any, len(n.Props)),
+		Order:  append([]string(nil), n.Order...),
+		Events: append([]string(nil), n.Events...),
+	}
+	maps.Copy(c.Props, n.Props)
+	for _, kid := range n.Children {
+		c.Children = append(c.Children, kid.clone())
+	}
+	return c
+}
+
 // String renders the mounted tree. Comparable with RenderView, which renders a
 // View the same way -- that equality is the whole correctness claim.
 func (h *MemHost) String() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	var b strings.Builder
 	var walk func([]*MemNode, int)
 	walk = func(nodes []*MemNode, depth int) {
@@ -395,8 +445,8 @@ func NewRPCHost(rw io.ReadWriteCloser) *RPCHost {
 }
 
 // Events reports what viewers did. A driver reads it and calls Session.Invoke.
-// It is buffered: a worker whose events nobody reads must not block its own
-// event loop, so the oldest are dropped once it fills.
+// Buffered, and a full channel drops the newest rather than blocking: a
+// worker whose events nobody reads must not stall its own event loop.
 func (h *RPCHost) Events() <-chan Event { return h.events }
 
 // Done closes when the worker's stream ends, which is how a driver learns the
