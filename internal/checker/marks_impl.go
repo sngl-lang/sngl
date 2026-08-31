@@ -24,6 +24,7 @@ var markImpls = map[markKey]markImpl{
 	{"remote", "query"}:             markQuery,
 }
 
+
 // markQuery implements #[query], which says a function's answer is fetched:
 // keyed by its arguments, cached, and rewritten by the NoAsyncReactive lowering
 // into a RemoteQuery lookup.
@@ -197,6 +198,7 @@ func markIntrinsic(m *mark) error {
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
 	flagPure  = "pure"
+	flagNative          = "native"
 	flagAsync = "async"
 )
 
@@ -232,7 +234,15 @@ func markForeign(m *mark) error {
 		return fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
 	}
 	scheme, pkgPath := imports.ParseScheme(path)
-	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: true}
+	// `native` is the whole difference between "corresponds to" and "is", and
+	// Marked is where the two already part: a backend reads an unmarked foreign
+	// path as a reference to emit and import, and a marked one as a name to
+	// spell beside a declaration it emits itself.
+	isNative := slices.Contains(flags, flagNative)
+	if isNative && scheme == "" {
+		return fmt.Errorf("#[foreign(%q, native)] names no language; a declaration that *is* a foreign identifier has to say whose, as `go:%s`", name, path)
+	}
+	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: !isNative}
 	switch d := m.sym.(type) {
 	case *ir.StructDef:
 		if d.Foreign.Marked {

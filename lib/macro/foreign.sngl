@@ -20,4 +20,20 @@ import ir "sngl:internal/ir"
 // redirecting to one the backend did not emit. Struct, struct field and
 // function are the forms that carry it; the others refuse it. The flags that
 // may follow the name are `ir.ForeignFlag`.
+// `native` says the declaration *is* the foreign identifier rather than
+// corresponding to one, which is the sharpest thing this mark can say. Without
+// it a marked declaration is still the program's own: the backend emits it, and
+// the name is one to spell alongside it. With it the backend emits nothing, a
+// call becomes a call to the named identifier, and the import is required at
+// that call site.
+//
+// The call site is the point. An import written at the top of a target's
+// library package is resolved by every program built for that language, whether
+// or not it uses the package — so a transport nothing fetches with still has to
+// be on the machine. A `native` declaration costs nothing until something calls
+// it, which is what lets a target package name a package most of its programs
+// will never touch.
+//
+// It also has no body, and may not: the identifier already exists, so a body
+// here would be emitted by nobody and read by nobody.
 func foreign(path string, name string = "", flags list<ir.ForeignFlag> = []) ir.Macro {}

@@ -3379,7 +3379,7 @@ func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
 	if fn == nil {
 		return false
 	}
-	return fn.Intrinsic != "" || fn.Foreign.Marked ||
+	return fn.Intrinsic != "" || fn.Foreign.Path != "" ||
 		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
 }
 

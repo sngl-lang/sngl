@@ -52,4 +52,4 @@ enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
 //
 // Both describe a call, so a declaration with no call to describe — a struct,
 // a field — refuses them.
-enum ForeignFlag { pure, async }
+enum ForeignFlag { pure, async, native }

@@ -2,6 +2,7 @@
 // that selects --lang go.
 
 import . "sngl:macro"
+import http "sngl:remote/http"
 
 #[options]
 struct Options {
@@ -14,4 +15,19 @@ struct Options {
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     goModExtra string
+}
+
+// --- sngl:remote/http ---
+
+// The Go transport. `native` rather than a `go:` import, so the request package
+// is pulled in only by a build that actually fetches: an import at the top of
+// this file is resolved by every program built for Go.
+#[foreign("go:git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "Get", native)]
+func httpGet(url string) http.Result
+
+// What sngl:remote/http declares and leaves to each target. An override rather
+// than an intrinsic: there is no string for a code generator to build here,
+// only a call to name.
+func http.get[language]() {
+    return httpGet(url)
 }
