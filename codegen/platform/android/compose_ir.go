@@ -19,10 +19,13 @@ type irComposeContext struct {
 	buf     *strings.Builder
 	indent  int
 	hasSlot bool
-	// inLinearScope reports whether the node being rendered sits inside a Row
-	// or a Column, which is where Compose puts weight(). At the top of a
-	// composable there is no parent to take a share of.
-	inLinearScope bool
+	// parentAxis is "Row" or "Column" when the node being rendered sits in
+	// one, and "" at the top of a composable. weight() lives on those two
+	// scopes, and which one it is decides which axis it grows.
+	parentAxis string
+	// atRoot marks the window's own content, which is the node the display
+	// cutout has to be kept out of.
+	atRoot bool
 	// combo is the selected Android toolchain (versions/SDK). Available so
 	// emitters can branch where a real version difference changes output;
 	// there is no such divergence between the current combos, so nothing
@@ -418,10 +421,17 @@ func (cc *irComposeContext) flexModifier(val string) string {
 	if val == "" || val == "0" || val == "0.0" {
 		return ""
 	}
-	if !cc.inLinearScope {
-		return "fillMaxSize()"
+	switch cc.parentAxis {
+	case "Row":
+		// weight() grows the main axis only. CSS stretches a flex child
+		// across the other one by default, which is why the rows of the
+		// keypad divided the height while the keys in them stayed the height
+		// of their own labels.
+		return fmt.Sprintf("weight(%sf).fillMaxHeight()", val)
+	case "Column":
+		return fmt.Sprintf("weight(%sf).fillMaxWidth()", val)
 	}
-	return fmt.Sprintf("weight(%sf)", val)
+	return "fillMaxSize()"
 }
 
 // declaresProp reports whether comp declares a prop of this name.
@@ -666,10 +676,15 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	cc.line("%s {", call)
 	cc.indent++
 	// weight() lives on RowScope and ColumnScope, so whether a child may ask
-	// for a share depends on which composable is about to receive it.
-	outerScope := cc.inLinearScope
-	cc.inLinearScope = composable == "Row" || composable == "Column"
-	defer func() { cc.inLinearScope = outerScope }()
+	// for a share -- and along which axis -- depends on which composable is
+	// about to receive it. Nothing below here is the window's content.
+	outerAxis, outerRoot := cc.parentAxis, cc.atRoot
+	cc.parentAxis = ""
+	if composable == "Row" || composable == "Column" {
+		cc.parentAxis = composable
+	}
+	cc.atRoot = false
+	defer func() { cc.parentAxis, cc.atRoot = outerAxis, outerRoot }()
 	for _, child := range n.Children {
 		cc.renderStmt(child)
 	}
@@ -692,6 +707,14 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 	mod.WriteString(cc.modifierRawExcept(n, "modifier", skip))
 	for _, call := range irStringList(codegen.NodeProp(n, "chain")) {
 		mod.WriteString("." + call)
+	}
+	if cc.atRoot {
+		// A phone's window is not a rectangle: a status bar sits over the top
+		// of it and a cutout over part of that. Last in the chain, so it
+		// insets the content and not the background -- the colour still
+		// reaches the edges and only what is drawn inside is kept clear.
+		cc.kc.RequireImport("androidx.compose.foundation.layout.safeDrawingPadding")
+		mod.WriteString(".safeDrawingPadding()")
 	}
 	return mod.String()
 }

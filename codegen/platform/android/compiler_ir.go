@@ -648,6 +648,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		buf:    &body,
 		indent: 1,
 		combo:  cfg.combo(),
+		// This one renders the window's own content. A sub-component's
+		// composable never does, so the cutout padding belongs here alone.
+		atRoot: true,
 	}
 
 	wins := ctx.Windows()
