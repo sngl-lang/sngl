@@ -107,11 +107,16 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// Prepending turns on the intrinsic's parameter count, which a check
 	// registers off the declaration; this call is built by hand, so it says
 	// `func exactly(n int)` takes the one parameter the explicit arg fills.
-	ir.RegisterIntrinsic(ir.IntrinsicDef{
-		Name:   "i18n.exactly",
-		Params: []*ir.Param{{Name: "n", Type: ir.TypInt}},
-		Pkg:    ir.I18nPkg,
-	})
+	// Only when no check in this binary has already said it, since the real
+	// declaration says more.
+	if ir.LookupIntrinsic("i18n.exactly") == nil {
+		ir.RegisterIntrinsic(ir.IntrinsicDef{
+			Name:       "i18n.exactly",
+			Params:     []*ir.Param{{Name: "n", Type: ir.TypInt}},
+			Pkg:        ir.I18nPkg,
+			DeclaredAs: "exactly",
+		})
+	}
 	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}

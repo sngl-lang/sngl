@@ -1,6 +1,10 @@
 package ir
 
 import (
+	"cmp"
+	"fmt"
+	"iter"
+	"maps"
 	"slices"
 	"sync"
 )
@@ -16,15 +20,41 @@ var (
 	intrinsics   = map[string]*IntrinsicDef{}
 )
 
-// RegisterIntrinsic records what a #[intrinsic] declaration says. A later check
-// of the same library replaces the entry with an equal one.
+// RegisterIntrinsic records what a #[intrinsic] declaration says.
+//
+// Two declarations claiming one id panics, as a duplicate emitter does in
+// codegen's registry: an id is the dispatch key every backend answers to, so
+// one naming two declarations means half its call sites reach the wrong
+// signature. The mark is reachable only from library source -- user source
+// cannot import sngl:internal/marks -- so this is a compiler or stdlib
+// programmer error and no program can provoke it.
+//
+// Re-registering the same declaration is how a second check of the same
+// library behaves, and updates the entry. Same declaration means same package
+// and same spelling; a duplicate of that within one package is already an
+// error where it is declared.
 func RegisterIntrinsic(def IntrinsicDef) {
 	if def.Name == "" {
 		return
 	}
 	intrinsicsMu.Lock()
 	defer intrinsicsMu.Unlock()
+	if prev, ok := intrinsics[def.Name]; ok && !prev.sameDeclAs(def) {
+		panic(fmt.Sprintf("ir: intrinsic %q is declared twice, as %s and as %s",
+			def.Name, prev.declSite(), def.declSite()))
+	}
 	intrinsics[def.Name] = &def
+}
+
+func (d IntrinsicDef) sameDeclAs(other IntrinsicDef) bool {
+	return d.Pkg == other.Pkg && d.DeclaredAs == other.DeclaredAs
+}
+
+func (d IntrinsicDef) declSite() string {
+	if d.Pkg == "" {
+		return d.DeclaredAs
+	}
+	return d.Pkg + "." + d.DeclaredAs
 }
 
 // LookupIntrinsic returns the registered definition for an id, or nil when no
@@ -48,22 +78,14 @@ func IntrinsicByName(name string) (IntrinsicDef, bool) {
 	return *def, true
 }
 
-// AllIntrinsics returns every registered definition, ordered by id.
-func AllIntrinsics() []IntrinsicDef {
+// AllIntrinsics yields every registered definition, ordered by id. The
+// snapshot is taken under the lock and yielded without it, so a consumer may
+// look one up as it goes.
+func AllIntrinsics() iter.Seq[*IntrinsicDef] {
 	intrinsicsMu.RLock()
-	defer intrinsicsMu.RUnlock()
-	out := make([]IntrinsicDef, 0, len(intrinsics))
-	for _, def := range intrinsics {
-		out = append(out, *def)
-	}
-	slices.SortFunc(out, func(a, b IntrinsicDef) int {
-		switch {
-		case a.Name < b.Name:
-			return -1
-		case a.Name > b.Name:
-			return 1
-		}
-		return 0
-	})
-	return out
+	out := slices.Collect(maps.Values(intrinsics))
+	intrinsicsMu.RUnlock()
+
+	slices.SortFunc(out, func(a, b *IntrinsicDef) int { return cmp.Compare(a.Name, b.Name) })
+	return slices.Values(out)
 }

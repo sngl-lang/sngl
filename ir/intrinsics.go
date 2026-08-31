@@ -22,6 +22,10 @@ type IntrinsicDef struct {
 	// Pkg is the library package the declaration lives in -- how a caller asks
 	// about a group of intrinsics without matching id spellings.
 	Pkg string
+	// DeclaredAs is how the declaration is spelled (`list.push`, `tr`), which
+	// with Pkg identifies it: RegisterIntrinsic panics on a second declaration
+	// of one id, and this is what tells that from the same one re-registered.
+	DeclaredAs string
 }
 
 // Instantiate binds d's type parameters, in TypeParams order. An unbound one

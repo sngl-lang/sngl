@@ -75,7 +75,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 	}
 
 	inRegistry := map[string]bool{}
-	for _, def := range registry {
+	for def := range registry {
 		inRegistry[def.Name] = true
 		if !marked[def.Name] {
 			t.Errorf("registry has %q with no declaration marked #[intrinsic(%q)]", def.Name, def.Name)
@@ -177,7 +177,7 @@ func TestEveryIntrinsicIsImplemented(t *testing.T) {
 		t.Fatal("no languages registered")
 	}
 	checked := 0
-	for _, def := range ir.AllIntrinsics() {
+	for def := range ir.AllIntrinsics() {
 		if def.Pkg == drawPkg || def.Name == errorRaiseID {
 			continue
 		}

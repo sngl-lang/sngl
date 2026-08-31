@@ -712,6 +712,21 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 // that need a signature with no declaration in hand (see ir.RegisterIntrinsic).
 // The purity is the mark's, already applied by markIntrinsic.
 func (c *checker) publishIntrinsic(fn *ir.Func) {
+	// Only a library package publishes, which is what lets RegisterIntrinsic
+	// panic on a duplicate rather than diagnose one. Two ways in that are not
+	// that:
+	//
+	// User source importing sngl:internal/marks is refused, but a refusal is a
+	// diagnostic and checking continues, so the mark still stamps -- see
+	// cmd/sngl/testdata/check_internal_import.txt, which exists because this
+	// reaching codegen used to panic.
+	//
+	// LoadStdlib checks every tier merged into one anonymous document, to read
+	// schemas off it. Nothing there has a package, and the merge puts two of
+	// some names in one scope: a reader of the library, not a definition of it.
+	if !c.inLibSource() || c.libPkgName == "" {
+		return
+	}
 	ir.RegisterIntrinsic(ir.IntrinsicDef{
 		Name:            fn.Intrinsic,
 		Params:          fn.Params,
@@ -720,7 +735,17 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		Purity:          fn.Purity,
 		MutatesReceiver: fn.MutatesReceiver,
 		Pkg:             c.libPkgName,
+		DeclaredAs:      funcDeclName(fn),
 	})
+}
+
+// funcDeclName is how a declaration is spelled: `list.push` for a method,
+// `tr` for a free function.
+func funcDeclName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "." + fn.Name
+	}
+	return fn.Name
 }
 
 // intrinsicTypeParamNames is the order Instantiate binds in: the receiver's

@@ -1,6 +1,7 @@
 package ir_test
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -40,6 +41,29 @@ func TestSubstitutePreservesTheDeclaration(t *testing.T) {
 	if got.Decl != sd {
 		t.Errorf("Substitute dropped the declaration")
 	}
+}
+
+// An id is the dispatch key every backend answers to, so two declarations of
+// one id means half its call sites reach the wrong signature. Only library
+// source can carry the mark, so this is a compiler error and panics.
+func TestDuplicateIntrinsicPanics(t *testing.T) {
+	first := ir.IntrinsicDef{Name: "test.dupe", Pkg: "sngl:one", DeclaredAs: "one.dupe"}
+	ir.RegisterIntrinsic(first)
+
+	// The same declaration again, as a second check of the same library does.
+	ir.RegisterIntrinsic(first)
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("no panic for two declarations of one intrinsic id")
+		}
+		msg, _ := r.(string)
+		if !strings.Contains(msg, "sngl:one.one.dupe") || !strings.Contains(msg, "sngl:two.two.dupe") {
+			t.Errorf("panic %q does not name both declarations", msg)
+		}
+	}()
+	ir.RegisterIntrinsic(ir.IntrinsicDef{Name: "test.dupe", Pkg: "sngl:two", DeclaredAs: "two.dupe"})
 }
 
 // The generic collection intrinsics are written against type variables, and a
