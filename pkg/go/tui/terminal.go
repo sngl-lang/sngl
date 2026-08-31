@@ -158,12 +158,13 @@ func halfBlock(img image.Image, cols, rows int) string {
 }
 
 var (
-	kittyOnce sync.Once
-	kittyOK   bool
+	kittyOnce  sync.Once
+	kittyOK    bool
+	kittySHMOK bool
 )
 
 // resetKittyDetection clears the cached detection (test-only seam).
-func resetKittyDetection() { kittyOnce = sync.Once{}; kittyOK = false }
+func resetKittyDetection() { kittyOnce = sync.Once{}; kittyOK, kittySHMOK = false, false }
 
 // resetTransmitCache clears the per-id transmit-hash cache (test-only seam).
 func resetTransmitCache() {
@@ -175,22 +176,51 @@ func resetTransmitCache() {
 // kittySupported reports whether the terminal supports the kitty graphics
 // protocol, via environment heuristics, cached after the first call.
 func kittySupported() bool {
-	kittyOnce.Do(func() {
-		if os.Getenv("KITTY_WINDOW_ID") != "" {
-			kittyOK = true
-			return
-		}
-		term := os.Getenv("TERM")
-		prog := os.Getenv("TERM_PROGRAM")
-		for _, hay := range []string{term, prog} {
-			h := strings.ToLower(hay)
-			if strings.Contains(h, "kitty") || strings.Contains(h, "wezterm") || strings.Contains(h, "ghostty") {
+	kittyOnce.Do(detectKitty)
+	return kittyOK
+}
+
+// kittySHMSupported reports whether the terminal implements the shared memory
+// transmission medium, which is a narrower question than whether it draws
+// images at all.
+//
+// The medium is optional, and a terminal that does not implement it answers t=s
+// with an error rather than by asking for the data another way -- so the frame
+// is simply lost. The protocol's own query is unusable here, since reading the
+// reply means owning the tty the TUI is drawing on. Hence a list of terminals
+// known to implement it; everything else takes the pty path, which anything
+// kitty-capable understands.
+func kittySHMSupported() bool {
+	kittyOnce.Do(detectKitty)
+	return kittySHMOK
+}
+
+// detectKitty fills in both capability flags from the environment.
+func detectKitty() {
+	if os.Getenv("KITTY_WINDOW_ID") != "" {
+		kittyOK, kittySHMOK = true, true
+		return
+	}
+	for _, hay := range []string{os.Getenv("TERM"), os.Getenv("TERM_PROGRAM")} {
+		h := strings.ToLower(hay)
+		for _, t := range kittyTerminals {
+			if strings.Contains(h, t.name) {
 				kittyOK = true
-				return
+				kittySHMOK = kittySHMOK || t.shm
 			}
 		}
-	})
-	return kittyOK
+	}
+}
+
+// kittyTerminals is what the environment can be recognised by, and whether that
+// terminal takes a frame as shared memory.
+var kittyTerminals = []struct {
+	name string
+	shm  bool
+}{
+	{"kitty", true},
+	{"ghostty", true},
+	{"wezterm", false},
 }
 
 // kittyChunk is the max base64 payload bytes per kitty escape. The protocol
@@ -205,12 +235,19 @@ const kittyChunk = 4096
 // ID, is painted with the corresponding region of that image.
 const placeholderRune = 0x10EEEE
 
-// kittyTransmit encodes img as PNG and returns the kitty escape(s) that
-// transmit it and create a virtual placement (U=1) spanning cols x rows cells,
-// keyed by id. The base64 payload is chunked at kittyChunk bytes: every escape
-// carries m=1 until the final one carries m=0. q=2 suppresses the terminal's
-// response codes so they don't corrupt the TUI stream. This is APC data and
-// MUST be written raw to the tty, never through a cell compositor.
+// kittyTransmit returns the kitty escape(s) that transmit img and create a
+// virtual placement (U=1) spanning cols x rows cells, keyed by id. q=2
+// suppresses the terminal's response codes so they don't corrupt the TUI
+// stream. This is APC data and MUST be written raw to the tty, never through a
+// cell compositor.
+//
+// Two transports, and which one is reachable decides the encoding as well.
+// Shared memory carries the frame beside the pty rather than through it, so it
+// can hand over the raw pixels (f=32) the rasteriser already produced -- no
+// compression, no base64, and nothing proportional to the image in the terminal
+// stream. Down the pty every byte is base64, which inflates by a third, so the
+// pixels have to be compressed first (f=100) or a redraw would cost most of a
+// megabyte; the PNG encode is the price of the transport, not a choice.
 func kittyTransmit(img image.Image, cols, rows, id int) string {
 	if id <= 0 {
 		id = 1
@@ -218,15 +255,56 @@ func kittyTransmit(img image.Image, cols, rows, id int) string {
 	cols = clamp(cols, 1, len(rowColumnDiacritics))
 	rows = clamp(rows, 1, len(rowColumnDiacritics))
 
+	if s, ok := kittyTransmitSHM(img, cols, rows, id); ok {
+		return s
+	}
+
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return ""
 	}
 	payload := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return kittyChunks(payload, fmt.Sprintf("a=T,U=1,i=%d,q=2,f=100,c=%d,r=%d", id, cols, rows))
+}
 
+// kittyTransmitSHM hands the frame over as a shared memory object, returning
+// false when that transport is unavailable and the caller should fall back.
+//
+// f=32 is straight RGBA, and gg composites into a premultiplied buffer, so the
+// two agree only where the image is opaque -- which a canvas normally is, and
+// which Opaque answers with a scan of the alpha bytes alone. A frame that is
+// not takes the fallback rather than a second buffer to un-premultiply into:
+// the pty path encodes as PNG, where the distinction does not arise.
+func kittyTransmitSHM(img image.Image, cols, rows, id int) (string, bool) {
+	if !kittySHMSupported() || !shmSupported() {
+		return "", false
+	}
+	rgba, ok := img.(*image.RGBA)
+	if !ok || !rgba.Opaque() {
+		return "", false
+	}
+	b := rgba.Bounds()
+	// Stride padding would misalign every row after the first, and the protocol
+	// has no way to describe it.
+	if rgba.Stride != b.Dx()*4 {
+		return "", false
+	}
+	name, ok := shmPut(rgba.Pix)
+	if !ok {
+		return "", false
+	}
+	payload := base64.StdEncoding.EncodeToString([]byte(name))
+	ctrl := fmt.Sprintf("a=T,U=1,i=%d,q=2,t=s,f=32,s=%d,v=%d,c=%d,r=%d", id, b.Dx(), b.Dy(), cols, rows)
+	return kittyChunks(payload, ctrl), true
+}
+
+// kittyChunks frames a base64 payload as one or more escapes carrying ctrl.
+// The payload is chunked at kittyChunk bytes: every escape carries m=1 until
+// the final one carries m=0.
+func kittyChunks(payload, ctrl string) string {
 	var b strings.Builder
 	first := true
-	for len(payload) > 0 {
+	for {
 		n := min(kittyChunk, len(payload))
 		chunk := payload[:n]
 		payload = payload[n:]
@@ -235,13 +313,15 @@ func kittyTransmit(img image.Image, cols, rows, id int) string {
 			more = 0
 		}
 		if first {
-			fmt.Fprintf(&b, "\x1b_Ga=T,U=1,i=%d,q=2,f=100,c=%d,r=%d,m=%d;%s\x1b\\", id, cols, rows, more, chunk)
+			fmt.Fprintf(&b, "\x1b_G%s,m=%d;%s\x1b\\", ctrl, more, chunk)
 			first = false
 		} else {
 			fmt.Fprintf(&b, "\x1b_Gm=%d;%s\x1b\\", more, chunk)
 		}
+		if more == 0 {
+			return b.String()
+		}
 	}
-	return b.String()
 }
 
 // kittyPlaceholders returns the cols x rows Unicode-placeholder grid that

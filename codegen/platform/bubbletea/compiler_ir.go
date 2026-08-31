@@ -515,6 +515,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// Routed through the shared canvas Context translator, so they are excluded
 	// from the generic user-func loop below.
 	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
+	emitCanvasSurfaceDecls(&b, ctx.Pkg)
 	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
 	hasCanvas := hasCanvasNodes(ctx.Pkg)
 	if hasCanvas {
