@@ -60,6 +60,19 @@ type Node struct {
 	// Inst is the IR this node was mounted from, or nil for the
 	// children-less call form. Repointed by a reload; never used as identity.
 	Inst *ir.NodeInst
+	// CompEnv is the component's own scope, non-nil exactly when Component is.
+	// Node.Env is the *caller's* -- where the arguments were evaluated -- so a
+	// reader wanting the instance's own state wants this one.
+	CompEnv *Env
+	// Expanded says the component's body was mounted beneath this node.
+	//
+	// A user component with an *empty* visual body renders nothing of its own,
+	// so in the rendered tree it IS the element -- which is why the walk this
+	// replaced matched it by #id (`len(Component.Body) > 0` was its test). It
+	// still needs to be a component node for the authored reading, so both
+	// hold and this is what tells them apart. Not `len(Children) > 0`: a body
+	// of `if false { … }` expands to nothing and must still be skipped.
+	Expanded bool
 	// Component is the declaration this node instantiates, non-nil only for a
 	// user component. Its Children are the expansion of that component's body.
 	//
@@ -106,7 +119,7 @@ func (v *View) Find(id string) []*Node {
 	}
 	var out []*Node
 	for _, n := range v.byID[id] {
-		if n.IsComponent() {
+		if n.IsComponent() && n.Expanded {
 			continue
 		}
 		out = append(out, n)
@@ -317,7 +330,7 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 // do -- so a component instantiation is never addressable by #id, even when it
 // carries one.
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
-	if inst.Component != nil && len(inst.Component.Body) > 0 {
+	if inst.Component != nil {
 		if env.RenderDepth >= maxCallDepth {
 			return nil, nil
 		}
@@ -331,12 +344,31 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			Env:       env,
 			Inst:      inst,
 			Component: inst.Component,
+			Expanded:  len(inst.Component.Body) > 0,
 		}
 		node.Props, node.PropOrder = evalProps(env, inst.Props)
+		if len(inst.Handlers) > 0 {
+			node.Handlers = make(map[string]any, len(inst.Handlers))
+			for _, h := range inst.Handlers {
+				node.Handlers[h.Name] = h.Func
+			}
+		}
 		m.add(node)
 
 		child := env.componentEnv(inst.Component, inst)
 		child.RenderDepth = env.RenderDepth + 1
+		node.CompEnv = child
+		if !node.Expanded {
+			// Nothing of its own to render, so it stands in the tree as the
+			// element does -- children included, which is what the element
+			// branch below did for it before it was recognised as a component.
+			kids, err := m.stmts(env, inst.Children, path)
+			if err != nil {
+				return nil, err
+			}
+			node.Children = kids
+			return []*Node{node}, nil
+		}
 		m.push(slotFrame{callsite: inst, env: env})
 		defer m.pop()
 		kids, err := m.stmts(child, child.BodyStmts, path)
@@ -404,6 +436,11 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
+			node.CompEnv = child
+			node.Expanded = len(comp.Body) > 0
+			if !node.Expanded {
+				return []*Node{node}, nil
+			}
 			// The children-less call form supplies nothing, but it still opens
 			// a frame: without one, an insertion point in this component's body
 			// would read the *enclosing* call site's content.

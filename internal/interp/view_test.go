@@ -386,3 +386,69 @@ func sortedKeys(v *View) []Key {
 	})
 	return out
 }
+
+// TestAnEmptyBodiedComponentIsBothReadings is the rule a fixture caught rather
+// than a test: `component main { var x = 5 }` renders nothing of its own, so in
+// the rendered tree it *is* the element and Find must return it -- while
+// `c.m.double()` still needs its scope, so it must also be a component node.
+//
+// Skipping every component node broke test_reactivity_extension_method with
+// "non-numeric operands <nil>, int", which is what `len(Component.Body) > 0`
+// had been deciding all along.
+func TestAnEmptyBodiedComponentIsBothReadings(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component holder {
+    var x = 5
+}
+
+component main {
+    holder #h()
+}
+`
+	env, _ := envFor(t, src, "main")
+	v, err := Mount(env)
+	if err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+
+	// The rendered reading: it is the element, so Find returns it.
+	found := v.Find("h")
+	if len(found) != 1 {
+		t.Fatalf("Find(#h) returned %d nodes, want 1 -- an empty-bodied component is the element", len(found))
+	}
+	if found[0].Expanded {
+		t.Error("#h is marked Expanded, but its component declares no visual body")
+	}
+
+	// The authored reading: it is still a component, and carries its scope.
+	if !found[0].IsComponent() {
+		t.Error("#h is not a component node, so c.h.<member> has no scope to resolve against")
+	}
+	if found[0].CompEnv == nil {
+		t.Error("#h has no CompEnv")
+	}
+
+	// And a component that DOES render is skipped by Find, as before.
+	src2 := `import . "sngl:ui"
+
+component leaf() {
+    text(value="hi")
+}
+
+component main {
+    leaf #l()
+}
+`
+	env2, _ := envFor(t, src2, "main")
+	v2, err := Mount(env2)
+	if err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+	if got := len(v2.Find("l")); got != 0 {
+		t.Errorf("Find(#l) returned %d nodes; an expanded component is not an element ref", got)
+	}
+	if got := len(v2.FindAny("l")); got != 1 {
+		t.Errorf("FindAny(#l) returned %d nodes, want 1", got)
+	}
+}
