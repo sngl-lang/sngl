@@ -1,0 +1,173 @@
+package interp
+
+import (
+	"strings"
+	"testing"
+	"time"
+)
+
+func sessionFor(t *testing.T, src, comp string) *Session {
+	t.Helper()
+	s, err := NewSession(check(t, src), comp, NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	return s
+}
+
+const sessionSrc = `import . "sngl:ui"
+import . "sngl:time"
+
+component main {
+    var (
+        count = 0
+        label = "start"
+    )
+    vbox {
+        text #out(value="{label}: {count}")
+        button #inc(text="+", @click { count += 1 })
+        timer(interval=100ms, enabled=true, @tick { count += 10 })
+    }
+}
+`
+
+// TestInvokeRunsTheHandlerAndReportsTheChange is the loop a window runs:
+// an event arrives, state moves, and what changed comes back as patches.
+func TestInvokeRunsTheHandlerAndReportsTheChange(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	out := s.View().Find("out")
+	if len(out) != 1 {
+		t.Fatalf("#out resolved to %d nodes", len(out))
+	}
+	if got := out[0].Props["value"]; got != "start: 0" {
+		t.Fatalf("initial value %v", got)
+	}
+
+	inc := s.View().Find("inc")
+	patches, err := s.Invoke(inc[0].Key, "click")
+	if err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+	if len(patches) != 1 || patches[0].Kind != PatchSetProp {
+		t.Fatalf("want one setprop, got:\n%s", patchLines(patches))
+	}
+	if patches[0].Value != "start: 1" {
+		t.Errorf("patched to %v, want \"start: 1\"", patches[0].Value)
+	}
+	// And the session's own view moved with it, so the next diff is against
+	// what the host now holds.
+	if got := s.View().Find("out")[0].Props["value"]; got != "start: 1" {
+		t.Errorf("session view still reads %v", got)
+	}
+}
+
+// TestASecondSyncWithNoChangeIsEmpty: an idle loop must not repaint.
+func TestASecondSyncWithNoChangeIsEmpty(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	if _, err := s.Invoke(s.View().Find("inc")[0].Key, "click"); err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+	patches, err := s.Sync()
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(patches) != 0 {
+		t.Errorf("idle sync produced %d patches:\n%s", len(patches), patchLines(patches))
+	}
+}
+
+// TestTickAdvancesTimeAndPatches.
+func TestTickAdvancesTimeAndPatches(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	patches, err := s.Tick()
+	if err != nil {
+		t.Fatalf("Tick: %v", err)
+	}
+	if len(patches) != 1 || patches[0].Value != "start: 10" {
+		t.Fatalf("want the timer's +10 as one patch, got:\n%s", patchLines(patches))
+	}
+}
+
+// TestReloadCarriesStateAndPatchesTheEdit is the hot-reload case end to end:
+// a running program, a file saved with one literal changed, and neither the
+// window nor the state it holds is thrown away.
+func TestReloadCarriesStateAndPatchesTheEdit(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	if _, err := s.Invoke(s.View().Find("inc")[0].Key, "click"); err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+
+	edited := strings.Replace(sessionSrc, `value="{label}: {count}"`, `value="{label} = {count}"`, 1)
+	patches, err := s.Reload(check(t, edited))
+	if err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if len(patches) != 1 || patches[0].Kind != PatchSetProp {
+		t.Fatalf("want one setprop, got %d:\n%s", len(patches), patchLines(patches))
+	}
+	// The count survived the reload: 1, not the initialiser's 0.
+	if patches[0].Value != "start = 1" {
+		t.Errorf("patched to %v; state was not carried across the reload", patches[0].Value)
+	}
+}
+
+// TestReloadReinitialisesAVarWhoseTypeChanged: carrying a value across a type
+// change leaves a session holding something no expression could have produced.
+func TestReloadReinitialisesAVarWhoseTypeChanged(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	if _, err := s.Invoke(s.View().Find("inc")[0].Key, "click"); err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+
+	retyped := strings.Replace(sessionSrc, "count = 0", `count = "zero"`, 1)
+	retyped = strings.Replace(retyped, "count += 1", `count = "one"`, 1)
+	retyped = strings.Replace(retyped, "count += 10", `count = "ten"`, 1)
+	if _, err := s.Reload(check(t, retyped)); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if got := s.View().Find("out")[0].Props["value"]; got != "start: zero" {
+		t.Errorf("value is %v; a retyped var must be reinitialised, not carried", got)
+	}
+}
+
+// TestReloadRunsTheInitialiserForANewVar.
+func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	added := strings.Replace(sessionSrc, `label = "start"`, "label = \"start\"\n        extra = 7", 1)
+	added = strings.Replace(added, `value="{label}: {count}"`, `value="{label}: {count}: {extra}"`, 1)
+	if _, err := s.Reload(check(t, added)); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if got := s.View().Find("out")[0].Props["value"]; got != "start: 0: 7" {
+		t.Errorf("value is %v, want the new var initialised to 7", got)
+	}
+}
+
+// TestReloadDoesNotRestartTimerPhase: saving a file must not reset every timer
+// in the program, which is what a fresh schedule would do.
+func TestReloadDoesNotRestartTimerPhase(t *testing.T) {
+	s := sessionFor(t, sessionSrc, "main")
+	if _, err := s.Tick(); err != nil { // clock at 100ms, timer due at 200ms
+		t.Fatalf("Tick: %v", err)
+	}
+	// Off the interval boundary, or the test cannot tell a carried deadline
+	// from a fresh one: at 100ms a new schedule computes 200ms too, which is
+	// exactly what Rebase would have carried. At 130ms they differ.
+	s.Clock.(*Virtual).Advance(30 * time.Millisecond)
+
+	want, ok := s.Timers.NextFor(TimerKey("main", 0))
+	if !ok {
+		t.Fatal("no timer scheduled")
+	}
+	edited := strings.Replace(sessionSrc, `label = "start"`, `label = "restarted"`, 1)
+	if _, err := s.Reload(check(t, edited)); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	got, ok := s.Timers.NextFor(TimerKey("main", 0))
+	if !ok {
+		t.Fatal("the timer is gone after the reload")
+	}
+	if !got.Equal(want) {
+		t.Errorf("next fire moved to %v from %v; the reload restarted the timer", got, want)
+	}
+}
