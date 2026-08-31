@@ -24,6 +24,7 @@ type CodegenCtx struct {
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 	analysis := AnalyzeCommon(req.Pkg)
 	exprCtx := NewExprCtx(req.Pkg)
+	exprCtx.Platform = platform
 	exprCtx.Maps = req.Maps
 	exprCtx.OutDir = req.OutDir
 	return &CodegenCtx{

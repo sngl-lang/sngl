@@ -1,0 +1,12 @@
+// JavaScript language package. Declarations here are visible at every output
+// target that selects --lang js.
+//
+// The Options schema is empty and declared anyway. An empty schema is a fact —
+// this target takes no build options — and `output(...)` is checked against it,
+// so a misspelled or misplaced option is reported here rather than accepted and
+// ignored. A target with no package at all could not say even that.
+
+import . "sngl:macro"
+
+#[options]
+struct Options {}

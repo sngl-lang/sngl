@@ -657,6 +657,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
+	g.ctx.Platform = "html"
 	if pkg != nil {
 		for _, c := range pkg.Consts {
 			g.ctx.Locals[c.Name] = true

@@ -166,8 +166,9 @@ func targetsWithPackages() []any {
 //
 //   - a written body says it computes the same answer, so a backend may emit
 //     the body instead of the id.
-//   - sngl:internal/draw's primitives take a platform draw context, so the
-//     platform emits them through IntrinsicTranslator and no language does.
+//   - a platform declares the library package it implements, for emitters that
+//     could not be an IntrinsicEmitter — sngl:internal/draw's primitives take a
+//     platform draw context and are translated inside each platform.
 //   - error.raise lowers to each target's abort form rather than to a call at
 //     all, which ir.IsErrorRaiseFunc is the compiler's own statement of.
 func TestEveryIntrinsicIsImplemented(t *testing.T) {
@@ -178,7 +179,7 @@ func TestEveryIntrinsicIsImplemented(t *testing.T) {
 	}
 	checked := 0
 	for def := range ir.AllIntrinsics() {
-		if def.Pkg == drawPkg || def.Name == errorRaiseID {
+		if def.Name == errorRaiseID {
 			continue
 		}
 		fn := intrinsicDecl(def.Name)
@@ -193,15 +194,11 @@ func TestEveryIntrinsicIsImplemented(t *testing.T) {
 			continue
 		}
 		checked++
-		implemented := false
-		for _, lang := range langs {
-			if codegen.LookupIntrinsic(lang, def.Name) != nil {
-				implemented = true
-				break
-			}
-		}
-		if !implemented {
-			t.Errorf("#[intrinsic(%q)] is implemented by no language and carries no `usable` body; "+
+		// Either side may answer. A language emitter, a platform emitter, or a
+		// platform declaring the package it implements: the question is whether
+		// a build can emit the call at all, not which half of the target does.
+		if !codegen.AnyTargetImplements(def) {
+			t.Errorf("#[intrinsic(%q)] is implemented by no language or platform and has no body to fall back to; "+
 				"a build reaching it emits a call to a function that does not exist", def.Name)
 		}
 	}
@@ -210,10 +207,7 @@ func TestEveryIntrinsicIsImplemented(t *testing.T) {
 	}
 }
 
-const (
-	drawPkg      = "sngl:internal/draw"
-	errorRaiseID = "error.raise"
-)
+const errorRaiseID = "error.raise"
 
 // intrinsicDecl finds the declaration carrying an id, for the facts the
 // registry does not record.

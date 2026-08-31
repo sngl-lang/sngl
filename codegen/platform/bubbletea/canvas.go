@@ -11,6 +11,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// The 2D primitives are translated in this package rather than through an
+// IntrinsicEmitter, which renders one expression and could not carry the
+// statements and pending style these need. Declaring the package is how that
+// implementation becomes visible to the completeness check.
+func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw") }
+
 // Canvas2D rendering for bubbletea.
 //
 // bubbletea keeps the declarative visual tree (it does NOT set NoDeclarative),

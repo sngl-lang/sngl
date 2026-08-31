@@ -584,7 +584,7 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
 	// through to the paths below.
-	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, n, gc.EvalExpr); ok {
 		for _, p := range imports {
 			gc.RequireImport(p)
 		}

@@ -27,7 +27,7 @@ func TestIntrinsicRegistry(t *testing.T) {
 		Func: &ir.Func{Intrinsic: "Doubler"},
 		Args: []ir.CallArg{{Value: &ir.Ident{Name: "x"}}},
 	}
-	out, imports, ok := EmitIntrinsicCall(lang, call, func(e ir.Expr) string {
+	out, imports, ok := EmitIntrinsicCall(lang, "", call, func(e ir.Expr) string {
 		return e.(*ir.Ident).Name
 	})
 	if !ok || out != "x * 2" {
@@ -38,10 +38,10 @@ func TestIntrinsicRegistry(t *testing.T) {
 	}
 
 	// A call with no intrinsic, or an unknown lang, declines.
-	if _, _, ok := EmitIntrinsicCall(lang, &ir.Call{Func: &ir.Func{}}, nil); ok {
+	if _, _, ok := EmitIntrinsicCall(lang, "", &ir.Call{Func: &ir.Func{}}, nil); ok {
 		t.Error("call without an intrinsic ID must decline")
 	}
-	if _, _, ok := EmitIntrinsicCall("other-lang", call, func(e ir.Expr) string { return "" }); ok {
+	if _, _, ok := EmitIntrinsicCall("other-lang", "", call, func(e ir.Expr) string { return "" }); ok {
 		t.Error("unknown lang must decline")
 	}
 }
