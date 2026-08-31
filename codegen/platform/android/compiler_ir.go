@@ -484,6 +484,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// user output.
 	body.WriteString("data class SnglInputEvent(val value: String)\n\n")
 
+	// string(float) is a helper rather than a method call: Kotlin's own
+	// Double.toString writes a fraction a whole number does not have.
+	body.WriteString(kotlin.FloatStringDecl)
+	body.WriteString("\n")
+
 	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
 	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs); mf != "" {
 		body.WriteString(mf)

@@ -96,7 +96,14 @@ func (tc *toolchain) findAndroidJar() error {
 		tc.AndroidJar = cached
 		return nil
 	}
-	return fmt.Errorf("android.jar not found; install Android SDK platform %s or set ANDROID_HOME", tc.cPlatformAPI)
+	if err := tc.downloadAndroidPlatform(); err != nil {
+		return fmt.Errorf("android.jar not found and could not be fetched (%w); install Android SDK platform %s or set ANDROID_HOME", err, tc.cPlatformAPI)
+	}
+	if !fileExists(cached) {
+		return fmt.Errorf("android.jar not found in the downloaded platform %s", tc.cPlatformAPI)
+	}
+	tc.AndroidJar = cached
+	return nil
 }
 
 func (tc *toolchain) findBuildTools() error {
@@ -121,7 +128,10 @@ func (tc *toolchain) findBuildTools() error {
 	if dirExists(cached) {
 		return tc.setBuildTools(cached)
 	}
-	return fmt.Errorf("Android build-tools not found; install build-tools %s or set ANDROID_HOME", tc.cBuildTools)
+	if err := tc.downloadBuildTools(); err != nil {
+		return fmt.Errorf("Android build-tools not found and could not be fetched (%w); install build-tools %s or set ANDROID_HOME", err, tc.cBuildTools)
+	}
+	return tc.setBuildTools(cached)
 }
 
 func (tc *toolchain) setBuildTools(dir string) error {

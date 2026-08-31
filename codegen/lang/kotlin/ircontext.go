@@ -185,6 +185,35 @@ func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambd
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	return target + " " + assignOpStr(n.Op) + " " + value
 }
+
+// valueCopy binds a struct value the way SNGL binds one: by copy.
+//
+// A SNGL struct is a value, so `var next = this` gives you your own; Go's
+// assignment already does that and Kotlin's does not -- `next` is the same
+// object, and mutating it writes through to whatever else holds it. On
+// Compose that is fatal rather than merely wrong: the state a handler
+// reassigns is the object it just mutated, structural equality says nothing
+// changed, and the screen never recomposes. Every button animated and none of
+// them did anything.
+//
+// A literal needs no copy: it is already nobody else's. Neither does an
+// assignment -- copying on binding is what makes every mutable name one this
+// scope owns, and copying again on the way out would only defeat the
+// structural-equality check Compose uses to decide whether to recompose.
+func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
+	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+		return rendered
+	}
+	if ir.StringReprStruct(t) {
+		return rendered
+	}
+	switch init.(type) {
+	case *ir.StructLit, *ir.Literal, nil:
+		return rendered
+	}
+	return rendered + ".copy()"
+}
+
 func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
 }
@@ -223,7 +252,7 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 				}
 			}
 		}
-		return "var " + n.Name + " = " + initStr
+		return "var " + n.Name + " = " + valueCopy(n.Init, n.Type, initStr)
 	}
 	goType := "Any"
 	if n.Type != nil {
@@ -588,6 +617,12 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 			}
 			return operand + ".toDouble()"
 		case ir.TypeString:
+			// Kotlin's Double.toString always writes a fraction, so a
+			// calculator that Go and JS both spell `24` came out as `24.0`.
+			// string(float) has to mean the same thing on every target.
+			if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeFloat {
+				return FloatStringFn + "(" + operand + ")"
+			}
 			return operand + ".toString()"
 		case ir.TypeBool:
 			return operand + " as Boolean"
@@ -1039,3 +1074,13 @@ func ktMapValZero(t *ir.Type) string {
 	}
 	return ktZeroFor(t.Elems[1])
 }
+
+// FloatStringFn names the helper `string(<float>)` lowers to, and
+// FloatStringDecl is its declaration. Kotlin's own Double.toString always
+// writes a fraction; Go's fmt.Sprint and JavaScript's String both drop it for
+// a whole number, and SNGL follows them.
+const FloatStringFn = "_snglFloatStr"
+
+const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+`
