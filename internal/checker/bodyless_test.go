@@ -52,10 +52,12 @@ func length(s string) int
 	}
 }
 
-// The converse rule, and the one that actually retires the hazard: a body on a
-// non-`usable` intrinsic is a fiction, so writing one is an error rather than
-// merely useless.
-func TestIntrinsicWithoutUsableRejectsABody(t *testing.T) {
+// A written body is itself the assertion that it computes the same answer the
+// native implementation would, so a backend without the id may emit it. There is
+// no flag beside it: `usable` was a second record of one fact, and it sat one
+// word away from promoting a fabricated `return 0` into a live wrong answer.
+// Making the body optional is what let the flag go.
+func TestIntrinsicMayCarryItsOwnImplementation(t *testing.T) {
 	src := `import . "sngl:internal/marks"
 
 #[intrinsic("string.length")]
@@ -63,34 +65,9 @@ func length(s string) int {
     return 0
 }
 `
-	errs := checkSrc(t, src)
-	if len(errs) == 0 {
-		t.Fatal("a non-usable intrinsic kept its body; the `usable` hazard is still reachable")
-	}
-	var found bool
-	for _, e := range errs {
-		if strings.Contains(e.Error(), "never read") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("diagnostic does not explain that the body is unread: %s", errs[0].Error())
-	}
-}
-
-// `usable` is the way to keep a body: it says the body computes the same answer
-// the native implementation would, so a backend without the id may emit it.
-func TestUsableIntrinsicKeepsItsBody(t *testing.T) {
-	src := `import . "sngl:internal/marks"
-
-#[intrinsic("string.length", usable)]
-func length(s string) int {
-    return 0
-}
-`
 	for _, e := range checkSrc(t, src) {
-		if strings.Contains(e.Error(), "never read") {
-			t.Fatalf("a usable intrinsic was told to drop its body: %s", e.Error())
+		if strings.Contains(e.Error(), "body") {
+			t.Fatalf("a body on an intrinsic was reported: %s", e.Error())
 		}
 	}
 }

@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -47,6 +48,19 @@ func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
 		panic("codegen: duplicate intrinsic emitter " + lang + "/" + id)
 	}
 	byID[id] = e
+}
+
+// IntrinsicIDs returns the ids lang has registered an emitter for, sorted:
+// what a backend implements, which the intrinsic declarations cannot answer.
+func IntrinsicIDs(lang string) []string {
+	intrinsicMu.RLock()
+	defer intrinsicMu.RUnlock()
+	ids := make([]string, 0, len(intrinsicEmitters[lang]))
+	for id := range intrinsicEmitters[lang] {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // LookupIntrinsic returns the emitter registered for (lang, id), or nil. ID is
@@ -114,17 +128,16 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 	if fn == nil || fn.Intrinsic == "" {
 		return
 	}
-	// A body that survived type checking is one the declaration claimed
-	// computes the right answer; a placeholder was dropped there, so there is
-	// nothing here to emit instead. The body is the whole question — asking
-	// `usable` as well would let a `usable` intrinsic with an empty body
-	// through, which is the case with nothing to emit.
+	// A body is the declaration's claim that it computes the right answer, and
+	// it is the whole claim — there is no flag beside it to consult. A
+	// declaration with none is a signature, so there is nothing here to emit
+	// instead of the missing emitter.
 	if len(fn.Block) > 0 {
 		return
 	}
 	panic(fmt.Sprintf(
-		"codegen: %s has no implementation of intrinsic %q (called as %s), and its SNGL body is a placeholder, not an implementation; "+
-			"register an emitter for it, or mark the declaration `usable` if its body is a correct answer",
+		"codegen: %s has no implementation of intrinsic %q (called as %s), and the declaration has no body to emit instead; "+
+			"register an emitter for it, or give the declaration a body if it computes a correct answer",
 		lang, fn.Intrinsic, callName(fn)))
 }
 

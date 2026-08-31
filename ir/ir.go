@@ -306,7 +306,13 @@ type Func struct {
 	IsTest            bool
 	Reads             []*Var // vars read (directly or via called functions)
 	Writes            []*Var // vars mutated (directly or via called functions)
-	Intrinsic         string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
+	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
+	// declaration carrying one and no body is a signature every backend must
+	// implement; one carrying a body asserts that the body computes the same
+	// answer, so a backend without the id may emit it instead. The body's
+	// presence is the whole of that distinction — there is no flag, because a
+	// flag beside a body is two records of one fact and they drifted.
+	Intrinsic         string
 	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
 	// in the encoder and neither is written.
 	Foreign        `json:"Foreign,omitzero"`
@@ -330,12 +336,6 @@ type Func struct {
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
 	MutatesReceiver bool
-	// IntrinsicBodyUsable says this function's SNGL body computes the same
-	// result the native implementation of Intrinsic would, so a backend that
-	// does not implement the id may emit the body. Without it the declaration
-	// is a signature only: a backend that cannot emit the id must say so
-	// rather than emit a call to something that does not exist.
-	IntrinsicBodyUsable bool
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms

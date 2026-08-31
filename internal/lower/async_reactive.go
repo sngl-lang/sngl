@@ -508,26 +508,25 @@ func isComponentReceiver(p *ir.Param) bool {
 // plus a cast at every use; here the fetched type is known, so what a backend
 // sees is `func() list<User>` answering a remote.Value<list<User>>.
 func remoteQueryCall(fn *ir.Func, retType, fetched *ir.Type, args []ir.Expr, thunk ir.Expr) (*ir.Call, error) {
-	def := ir.LookupIntrinsic("RemoteQuery")
-	if def == nil {
-		return nil, fmt.Errorf("NoAsyncReactive: RemoteQuery is not registered")
+	// The signature is written here rather than looked up. The declaration in
+	// sngl:internal/remote is generic in T, and this is the site that knows what
+	// T is — so substituting into a looked-up shape would be a longer way of
+	// saying what is already in hand, and it would make the pass depend on that
+	// package having been loaded. A pass that synthesizes a call knows the call
+	// it is synthesizing.
+	params := []*ir.Param{
+		{Name: "queryID", Type: ir.TypString},
+		{Name: "args", Type: ir.ListOf(ir.TypDyn)},
+		{Name: "fetch", Type: &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: fetched}}},
 	}
-	bindings := map[string]*ir.Type{"T": fetched}
-	params := make([]*ir.Param, len(def.Params))
-	for i, p := range def.Params {
-		params[i] = &ir.Param{Name: p.Name, Type: p.Type.Substitute(bindings)}
-	}
-	// The thunk's real type, which the shape hint erases to dyn.
-	params[len(params)-1].Type = &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: fetched}}
-
 	return &ir.Call{
 		Type: retType,
 		Func: &ir.Func{
-			Name:      def.Name,
-			Intrinsic: def.Name,
+			Name:      remoteQueryIntrinsic,
+			Intrinsic: remoteQueryIntrinsic,
 			Params:    params,
 			Return:    retType,
-			Purity:    def.Purity,
+			Purity:    ir.PurityReadonly,
 		},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: ir.TypString, Value: queryID(fn)}},
@@ -536,6 +535,10 @@ func remoteQueryCall(fn *ir.Func, retType, fetched *ir.Type, args []ir.Expr, thu
 		},
 	}, nil
 }
+
+// remoteQueryIntrinsic is the id sngl:internal/remote declares and every
+// language backend implements against its own pkg/<lang>/remote runtime.
+const remoteQueryIntrinsic = "RemoteQuery"
 
 // queryID names the declaration a box belongs to, so two queries never share a
 // key space. The name alone suffices: the checker already refuses two

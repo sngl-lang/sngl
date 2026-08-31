@@ -22,21 +22,24 @@
 // declaration that returns one — a macro is written as a mark, never called.
 struct Macro {}
 
-// What the compiler may assume about a call to an intrinsic, and what the
-// declaration's SNGL body is good for. Written as bare identifiers after the
-// id: `#[intrinsic("list.push", usable, mutates, mutatesReceiver)]`.
+// What the compiler may assume about a call to an intrinsic. Written as bare
+// identifiers after the id: `#[intrinsic("list.push", mutates, mutatesReceiver)]`.
 //
-// `usable` says the body computes the same result the native implementation
-// would, so a backend that does not implement the id may emit the body
-// instead; without it the declaration is a signature only. `mutates` says a
-// call has an effect beyond its result, so it survives dead-code elimination
-// and is never folded. `readonly` says the result depends on host state — the
-// clock, the environment, the filesystem — so it must not be folded either,
-// though the call has no effect of its own; it contradicts `mutates`.
-// `mutatesReceiver` says the first argument is modified in place, which is
-// what reactivity needs to treat a statement-level call as a write to the
-// receiver's variable.
-enum IntrinsicFlag { usable, mutates, readonly, mutatesReceiver }
+// What the declaration's SNGL body is good for is not among them. A body says
+// it: one that is written computes the same result the native implementation
+// would, so a backend that does not implement the id may emit it, and a
+// declaration with no body is a signature only. That used to be a `usable` flag
+// beside the body — two records of one fact, and the flag was one word away from
+// promoting a fabricated `return 0` into a live wrong answer.
+//
+// `mutates` says a call has an effect beyond its result, so it survives
+// dead-code elimination and is never folded. `readonly` says the result depends
+// on host state — the clock, the environment, the filesystem — so it must not be
+// folded either, though the call has no effect of its own; it contradicts
+// `mutates`. `mutatesReceiver` says the first argument is modified in place,
+// which is what reactivity needs to treat a statement-level call as a write to
+// the receiver's variable.
+enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
 
 // What a call to a foreign function costs. Written as bare identifiers after
 // the name: `#[foreign("go:example.com/api", "Get", pure, async)]`.

@@ -142,7 +142,6 @@ func builtinKindNames() []string {
 // lib/internal/ir. The checker validates them against that enum; these are the
 // members it acts on.
 const (
-	flagUsable          = "usable"
 	flagMutates         = "mutates"
 	flagReadonly        = "readonly"
 	flagMutatesReceiver = "mutatesReceiver"
@@ -185,7 +184,6 @@ func markIntrinsic(m *mark) error {
 		return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, fn.Intrinsic)
 	}
 	fn.Intrinsic = id
-	fn.IntrinsicBodyUsable = slices.Contains(flags, flagUsable)
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
 	switch {
 	case slices.Contains(flags, flagMutates):

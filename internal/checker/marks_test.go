@@ -108,27 +108,27 @@ struct Tiny {}
 
 func TestIntrinsicMarkStampsIdAndFlags(t *testing.T) {
 	pkg, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", usable, mutatesReceiver)]
+#[intrinsic("markstub.shout", mutatesReceiver)]
 func shout(s string) => s
 `)
 	wantNoMarkErrs(t, errs)
 	fn := pkg.Funcs[0]
-	if fn.Intrinsic != "string.upper" || !fn.IntrinsicBodyUsable || !fn.MutatesReceiver {
-		t.Errorf("intrinsic = %+v, want the id and both flags", fn)
+	if fn.Intrinsic != "markstub.shout" || !fn.MutatesReceiver {
+		t.Errorf("intrinsic = %+v, want the id and the flag", fn)
 	}
 }
 
 func TestIntrinsicMarkRejectsAnUnknownFlag(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", nosuch)]
+#[intrinsic("markstub.shout", nosuch)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: usable, mutates, readonly, mutatesReceiver)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver)`)
 }
 
 func TestIntrinsicMarkRejectsContradictoryFlags(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", mutates, readonly)]
+#[intrinsic("markstub.shout", mutates, readonly)]
 func shout(s string) => s
 `)
 	wantMarkErr(t, errs, "is both mutates and readonly")
@@ -136,19 +136,19 @@ func shout(s string) => s
 
 func TestIntrinsicMarkRejectsARepeatedFlag(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper", usable, usable)]
+#[intrinsic("markstub.shout", mutates, mutates)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, "repeats flag usable")
+	wantMarkErr(t, errs, "repeats flag mutates")
 }
 
 // An id names a native implementation of a call, and a struct has no call.
 func TestIntrinsicMarkCannotMarkAStruct(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("string.upper")]
+#[intrinsic("markstub.shout")]
 struct Tiny {}
 `)
-	wantMarkErr(t, errs, `#[intrinsic("string.upper")] cannot mark`)
+	wantMarkErr(t, errs, `#[intrinsic("markstub.shout")] cannot mark`)
 }
 
 // The alias is the file's, and the mark follows it like any other qualified

@@ -103,6 +103,20 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// Verify the Phase 3 arg-index fix: i18n.exactly(0) via the namespace-call
 	// path must emit i18n.Exactly(0) — NOT i18n.Exactly("i18n").
+	//
+	// Prepending turns on the intrinsic's parameter count, which a check
+	// registers off the declaration; this call is built by hand, so it says
+	// `func exactly(n int)` takes the one parameter the explicit arg fills.
+	// Only when no check in this binary has already said it, since the real
+	// declaration says more.
+	if ir.LookupIntrinsic("i18n.exactly") == nil {
+		ir.RegisterIntrinsic(ir.IntrinsicDef{
+			Name:       "i18n.exactly",
+			Params:     []*ir.Param{{Name: "n", Type: ir.TypInt}},
+			Pkg:        ir.I18nPkg,
+			DeclaredAs: "exactly",
+		})
+	}
 	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
@@ -161,11 +175,11 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 // The same shape with a body is fine: the body is what gets emitted.
 func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
 	call := &ir.Call{Func: &ir.Func{
-		Name: "ok", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		Name: "ok", Intrinsic: "NoBackendHasThis",
 		Block: []ir.Stmt{&ir.Return{}},
 	}}
 	if got := newMinimalIRCtx().EvalExpr(call); got == "" {
-		t.Error("usable intrinsic emitted nothing")
+		t.Error("an intrinsic with a body emitted nothing")
 	}
 }
 
