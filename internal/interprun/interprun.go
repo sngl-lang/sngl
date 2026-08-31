@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/internal/interp"
@@ -139,45 +138,3 @@ type pipe struct {
 func (p pipe) Read(b []byte) (int, error)  { return p.r.Read(b) }
 func (p pipe) Write(b []byte) (int, error) { return p.w.Write(b) }
 func (p pipe) Close() error                { _ = p.w.Close(); return p.r.Close() }
-
-// WorkerEnv names an explicit worker binary, which is how a developer points a
-// run at one they are working on.
-const WorkerEnv = "SNGL_FYNE_WORKER"
-
-// Locate finds the worker to render with, in the order that costs least.
-//
-// Building it is last and deliberate: it happens in dir, so the module there --
-// its replace directives, its pinned versions -- is what the worker resolves
-// against. A worker built anywhere else would render widgets from a different
-// version of the code than the program would ship with, which is the whole
-// reason it is not a system-wide cache.
-func Locate(dir string) (string, error) {
-	if p := os.Getenv(WorkerEnv); p != "" {
-		return p, nil
-	}
-	if p, err := exec.LookPath("sngl-fyne-worker"); err == nil {
-		return p, nil
-	}
-	return build(dir)
-}
-
-const workerPkg = "git.duckfam.us/jonathan/sngl/cmd/sngl-fyne-worker"
-
-func build(dir string) (string, error) {
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
-	out := filepath.Join(cache, "sngl", "worker", "sngl-fyne-worker")
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-		return "", err
-	}
-	cmd := exec.Command("go", "build", "-o", out, workerPkg)
-	cmd.Dir = dir
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("no worker found and building one in %s failed: %w\n"+
-			"set %s to a built worker, or put sngl-fyne-worker on PATH", dir, err, WorkerEnv)
-	}
-	return out, nil
-}
