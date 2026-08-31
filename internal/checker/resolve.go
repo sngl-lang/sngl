@@ -609,6 +609,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
+		Pkg:            c.libPkgName,
 		TypeParams:     c.resolveTypeParams(f.TypeParams),
 		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),

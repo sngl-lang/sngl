@@ -318,7 +318,7 @@ func TestForeignRejectsAnUnknownFlag(t *testing.T) {
 #[std.foreign("js:x", "add", nosuch)]
 func add(a int) => a
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: pure, async, native)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: pure, async)`)
 }
 
 // The flags describe a call, and a struct has none.

@@ -24,7 +24,7 @@ import ir "sngl:internal/ir"
 // A kind classifies one declaration and does not alias two — type identity is
 // per-declaration — so a duplicated kind is an error rather than a silent
 // overwrite.
-func builtin(kind string) ir.Macro {}
+func builtin(kind string) ir.Macro
 
 // Names the native implementation that stands behind a function, and states
 // what the compiler may assume about a call to it.
@@ -43,4 +43,4 @@ func builtin(kind string) ir.Macro {}
 // are the declaration itself. The mark also keeps the inliner off the
 // component: a platform's stdlib overrides lower down to its primitives, so
 // the primitives must survive the pass that removes the overrides.
-func intrinsic(id string, flags list<ir.IntrinsicFlag> = []) ir.Macro {}
+func intrinsic(id string, flags list<ir.IntrinsicFlag> = []) ir.Macro

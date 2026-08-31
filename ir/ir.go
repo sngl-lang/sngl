@@ -284,8 +284,14 @@ type Foreign struct {
 // HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
 // the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
-	AST            *ast.FuncDef // nil for lambdas and event handlers
-	Name           string       // empty for lambdas and event handlers
+	AST  *ast.FuncDef // nil for lambdas and event handlers
+	Name string       // empty for lambdas and event handlers
+	// Pkg is the declaring package URI, as StructDef.Pkg is. Empty for a
+	// program's own declarations, whose names mean nothing outside a build.
+	//
+	// A macro needs it: a mark is bound to the declaration it was written from,
+	// and that binding is (package, name).
+	Pkg            string
 	Receiver       string       // "int" for int.abs (empty for plain funcs)
 	TypeParams     []TypeParam
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()

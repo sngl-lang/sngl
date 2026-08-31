@@ -451,7 +451,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	c.fileTopLevel = make(map[*ast.Document]map[string]topLevelBinding, len(docs))
 	// Set before the library loads, which swap in their own: a lib load
 	// restores what it found, and what it finds must be the program's.
-	c.setMarkScope(docs)
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
@@ -2021,15 +2020,22 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	fn := c.buildFunc(f)
 
-	// A macro declaration is not a function: it is where a `#[...]` mark's
+	// A macro declaration is not a function -- it is where a `#[...]` mark's
 	// documentation and argument list are written, and a Go handler is what
-	// runs. Binding it would put the name in scope, where a program could call
-	// it -- and a dot import of the package that dot-imports the mark's
-	// package would lift it on. It is kept on the package instead, which is
-	// where mark resolution reads it.
+	// runs -- but it is bound like one, because a mark resolves through the
+	// scope like every other name. It used to be kept off the scope and looked
+	// up in a table built by re-scanning the imports, which is why a package
+	// could not use a macro it declared: its own declarations were never in
+	// that table, though they were always in scope.
+	//
+	// The two reasons it was kept out are answered rather than avoided. A
+	// program calling one is refused where a call is checked, by its type: a
+	// macro answers ir.Macro, which nothing constructs and no value holds. And
+	// a dot import of a package that dot-imports the mark's package does not
+	// lift it on, because no package re-exports what it imported -- an importer
+	// sees the export view mergePkgInto builds of a package's own declarations.
 	if c.isMacroSig(fn.Return) {
 		c.declPkg().Macros = append(c.declPkg().Macros, fn)
-		return nil
 	}
 	c.applyMarks(f, fn)
 
@@ -3379,7 +3385,10 @@ func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
 	if fn == nil {
 		return false
 	}
-	return fn.Intrinsic != "" || fn.Foreign.Path != "" ||
+	// A macro is the fourth: the declaration is where a mark's arguments and
+	// documentation are written, and the compiler's implementation of that mark
+	// is what runs. There has never been a body worth writing.
+	return fn.Intrinsic != "" || fn.Foreign.Path != "" || c.isMacroSig(fn.Return) ||
 		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
 }
 

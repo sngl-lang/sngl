@@ -33,22 +33,33 @@ func TestBodylessVoidFuncNeedsASource(t *testing.T) {
 	}
 }
 
-// An #[intrinsic] id is one of the three answers, and a signature carrying one
-// needs no return even for a type with no literal to fabricate — which is the
-// case that forced this: remote.pending could only have been written as an
-// infinite self-recursion.
-func TestBodylessIntrinsicIsAccepted(t *testing.T) {
+// A program cannot write #[intrinsic] at all, because it cannot import the
+// package that declares it. That used to be only half true: the mark resolver
+// read the import statement rather than the import, so the mark applied while
+// the import beside it was rejected. Resolving marks through the scope closed
+// that — a name a program may not import is not in its scope.
+//
+// The bodyless-intrinsic case the library relies on is exercised by the library
+// itself, which is all signatures now; #[foreign(..., native)] is the form a
+// program can write, in TestForeignNativeNeedsNoBody.
+func TestCompilerTierMarkIsNotAvailableToAProgram(t *testing.T) {
 	src := `import . "sngl:internal/marks"
 
 #[intrinsic("string.length")]
 func length(s string) int
 `
-	// Only asserting the body rule; the id belongs to another receiver here, so
-	// ignore anything about the id itself.
-	for _, e := range checkSrc(t, src) {
-		if strings.Contains(e.Error(), "no body") || strings.Contains(e.Error(), "missing return") {
-			t.Fatalf("a bodyless #[intrinsic] was reported: %s", e.Error())
+	errs := checkSrc(t, src)
+	if len(errs) == 0 {
+		t.Fatal("a program used a compiler-tier mark")
+	}
+	var sawImport bool
+	for _, e := range errs {
+		if strings.Contains(e.Error(), "internal to the compiler") {
+			sawImport = true
 		}
+	}
+	if !sawImport {
+		t.Errorf("the import was not the complaint: %s", errs[0].Error())
 	}
 }
 

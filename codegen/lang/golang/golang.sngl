@@ -2,6 +2,7 @@
 // that selects --lang go.
 
 import . "sngl:macro"
+import ir "sngl:internal/ir"
 import http "sngl:remote/http"
 
 #[options]
@@ -22,7 +23,13 @@ struct Options {
 // The Go transport. `native` rather than a `go:` import, so the request package
 // is pulled in only by a build that actually fetches: an import at the top of
 // this file is resolved by every program built for Go.
-#[foreign("go:git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "Get", native)]
+// Names the Go package-level identifier a declaration *is*. A thin spelling of
+// #[foreign(..., native)] in the language it is about, which is where a Go path
+// and a Go identifier belong — and which a package can now use on its own
+// declarations, since a mark resolves through the scope like any other name.
+func native(path string, name string) ir.Macro
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "Get")]
 func httpGet(url string) http.Result
 
 // What sngl:remote/http declares and leaves to each target. An override rather

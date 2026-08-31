@@ -27,4 +27,4 @@ import ir "sngl:internal/ir"
 // the re-evaluation looks up a different key, and a key with no fetch behind it
 // starts one. That is why a key may be a loop variable or any other derived
 // value, none of which a program could have named in advance.
-func query() ir.Macro {}
+func query() ir.Macro

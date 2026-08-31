@@ -492,7 +492,6 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	defer func() { c.libLoadPkg = savedLoadPkg }()
 
 	docs := c.libDocs(pkgName)
-	defer c.setMarkScope(docs)()
 
 	// The same pass1 a program's package gets. Registration order -- every
 	// type name before any field that could refer to one, components before
@@ -677,11 +676,19 @@ func IsMacroDecl(f *ast.FuncDef) bool {
 // isMacroSig reports whether a declared signature returns sngl:internal/ir's
 // Macro — the whole of what makes a declaration a macro rather than a function.
 func (c *checker) isMacroSig(t *ir.Type) bool {
-	if c.macroStruct == nil || t == nil || t.Kind != ir.TypeStruct {
+	if t == nil || t.Kind != ir.TypeStruct {
 		return false
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
-	return ok && sd == c.macroStruct
+	if !ok {
+		return false
+	}
+	// By declaration site rather than by pointer. A directory import is checked
+	// by a sub-checker with its own load of the library, so the Macro it
+	// resolved is a different *StructDef from this checker's — equal in every
+	// way that matters and not the same pointer. Comparing the two made a mark
+	// in an imported package "not a macro".
+	return sd.Name == macroTypeName && sd.Pkg == "sngl:"+irPkg
 }
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the

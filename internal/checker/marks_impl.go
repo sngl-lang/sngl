@@ -22,6 +22,50 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
 	{"remote", "query"}:             markQuery,
+	// Both URIs, because a target's package is reachable under either today:
+	// optionsSchemaFor tries "platform/<name>" before "language/<name>" and
+	// hasLibPkg accepts the first for a language, so golang.sngl loads under two
+	// names and a macro it declares reports whichever it was loaded as. It is
+	// the same mark; keying it once would make it depend on which lookup ran
+	// first.
+	{"language/go", "native"}:       markGoNative,
+	{"platform/go", "native"}:       markGoNative,
+}
+
+// markGoNative implements #[go.native("path", "Name")]: the declaration *is*
+// that Go package-level identifier rather than corresponding to one.
+//
+// Which is the whole difference from #[foreign], and why Foreign.Marked is
+// where it lands. Marked says "the backend emits this declaration and the name
+// is one to spell beside it"; unset says "the identifier already exists and a
+// call becomes a call to it" — the shape the Go renderer has always read for an
+// imported declaration, requiring the import at the call site.
+//
+// That last part is the point. An import written at the top of a target's
+// library package is resolved by every program built for that language, so a
+// transport nothing fetches with still had to be on the machine. A native
+// declaration costs nothing until something calls it.
+//
+// It lives in sngl:language/go because a Go path and a Go identifier are Go's
+// to describe, and a package may use a macro it declares.
+func markGoNative(m *mark) error {
+	path, name := m.args.String("path"), m.args.String("name")
+	if path == "" || name == "" {
+		return fmt.Errorf("#[go.native]: a package path and an identifier are both required")
+	}
+	fm := ir.Foreign{Scheme: "go", Path: path, Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		if len(d.Block) > 0 {
+			return fmt.Errorf("#[go.native] on %q: %s.%s already exists, so a body here would be emitted by nobody and read by nobody", d.Name, path, name)
+		}
+		d.Foreign = fm
+	case *ir.StructDef:
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
 }
 
 
@@ -198,7 +242,6 @@ func markIntrinsic(m *mark) error {
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
 	flagPure  = "pure"
-	flagNative          = "native"
 	flagAsync = "async"
 )
 
@@ -234,15 +277,7 @@ func markForeign(m *mark) error {
 		return fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
 	}
 	scheme, pkgPath := imports.ParseScheme(path)
-	// `native` is the whole difference between "corresponds to" and "is", and
-	// Marked is where the two already part: a backend reads an unmarked foreign
-	// path as a reference to emit and import, and a marked one as a name to
-	// spell beside a declaration it emits itself.
-	isNative := slices.Contains(flags, flagNative)
-	if isNative && scheme == "" {
-		return fmt.Errorf("#[foreign(%q, native)] names no language; a declaration that *is* a foreign identifier has to say whose, as `go:%s`", name, path)
-	}
-	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: !isNative}
+	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: true}
 	switch d := m.sym.(type) {
 	case *ir.StructDef:
 		if d.Foreign.Marked {

@@ -6,17 +6,22 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// checkedPkg checks inline source and returns the package, failing on any error.
-func checkedPkg(t *testing.T, src string) *ir.Package {
+// checkedPkgWithTargets checks inline source with the targets registered and
+// returns the package. A target's own library package — sngl:language/go, where
+// #[go.native] is declared — exists only when that target is registered, so the
+// default harness cannot see it.
+func checkedPkgWithTargets(t *testing.T, src string) *ir.Package {
 	t.Helper()
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	langs, plats := testtargets.Targets()
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s", d.Error())
@@ -36,10 +41,11 @@ func checkedPkg(t *testing.T, src string) *ir.Package {
 // language — writing sngl:remote/http's Go transport as a plain `go:` import in
 // golang.sngl made three html server-action tests fail on a package they have
 // no interest in. A native declaration costs nothing until something calls it.
-func TestForeignNativeIsAReferenceNotADeclaration(t *testing.T) {
+func TestGoNativeIsAReferenceNotADeclaration(t *testing.T) {
 	src := `import . "sngl:macro"
+import go "sngl:language/go"
 
-#[foreign("go:strings", "ToUpper", native)]
+#[go.native("strings", "ToUpper")]
 func shout(s string) string
 
 #[foreign("go:strings", "ToLower")]
@@ -47,7 +53,7 @@ func quiet(s string) string {
     return s
 }
 `
-	pkg := checkedPkg(t, src)
+	pkg := checkedPkgWithTargets(t, src)
 
 	native := findFn(t, pkg, "shout")
 	if native.Foreign.Marked {
@@ -71,13 +77,13 @@ func quiet(s string) string {
 // A native declaration has no body and may not: the identifier already exists,
 // so a body would be emitted by nobody and read by nobody. Bodylessness is
 // legal because the mark is one of the answers to where a body comes from.
-func TestForeignNativeNeedsNoBody(t *testing.T) {
-	src := `import . "sngl:macro"
+func TestGoNativeNeedsNoBody(t *testing.T) {
+	src := `import go "sngl:language/go"
 
-#[foreign("go:strings", "ToUpper", native)]
+#[go.native("strings", "ToUpper")]
 func shout(s string) string
 `
-	for _, e := range checkSrc(t, src) {
+	for _, e := range checkWithTargets(t, src) {
 		if strings.Contains(e.Error(), "no body") || strings.Contains(e.Error(), "missing return") {
 			t.Fatalf("a native declaration was told to grow a body: %s", e.Error())
 		}
@@ -88,17 +94,17 @@ func shout(s string) string
 // #[foreign] may leave the scheme off — it only records a correspondence — but a
 // native one is emitted as a reference, and which language's reference is the
 // question.
-func TestForeignNativeRequiresALanguage(t *testing.T) {
-	src := `import . "sngl:macro"
+func TestGoNativeRequiresBothHalves(t *testing.T) {
+	src := `import go "sngl:language/go"
 
-#[foreign("strings", "ToUpper", native)]
+#[go.native("", "ToUpper")]
 func shout(s string) string
 `
-	errs := checkSrc(t, src)
+	errs := checkWithTargets(t, src)
 	if len(errs) == 0 {
 		t.Fatal("a native declaration naming no language checked")
 	}
-	if got := errs[0].Error(); !strings.Contains(got, "names no language") {
+	if got := errs[0].Error(); !strings.Contains(got, "a package path and an identifier are both required") {
 		t.Errorf("unexpected diagnostic: %s", got)
 	}
 }
