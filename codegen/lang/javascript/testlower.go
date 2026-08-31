@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -111,6 +113,10 @@ func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
 			out = append(out, line)
 			continue
 		}
+		if line, ok := lowerEventTrigger(s, jc); ok {
+			out = append(out, line)
+			continue
+		}
 		out = append(out, jc.EvalStmt(s)...)
 	}
 	return out
@@ -164,4 +170,54 @@ func testReceiverName(fn *ir.Func) string {
 		return fn.Params[1].Name
 	}
 	return "c"
+}
+
+// lowerEventTrigger matches the IR shape a test line like `c.inc.click()`
+// produces -- a CallStmt the checker tagged with an Event, whose callee is a
+// chain of SelectExprs ending in the event field -- and emits
+// `<recv>.<id><Event>(...)`.
+//
+// Without it the event was dropped and the call rendered as `c.inc()`, which
+// resolves to nothing: the assertion then failed on an unchanged value rather
+// than erroring, which is the worst way for this to be missing.
+//
+// The invoker it names is attached to the state object by the html platform,
+// where the element behind `#inc` is known. Both halves capitalise the event
+// the same way, which is the only thing making them meet.
+func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
+	call, ok := s.(*ir.CallStmt)
+	if !ok || call.Call == nil {
+		return "", false
+	}
+	c := call.Call
+	if c.AST == nil || c.Event == "" {
+		return "", false
+	}
+	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	// outerSel.Operand is `c.inc` -- another SelectExpr Operand:Ident{c}, Field:"inc".
+	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	recv, ok := innerSel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return "", false
+	}
+	args := make([]string, len(c.Args))
+	for i, a := range c.Args {
+		args[i] = jc.EvalExpr(a.Value)
+	}
+	return fmt.Sprintf("%s.%s%s(%s);", recv.Name, innerSel.Field, exportEventName(c.Event), strings.Join(args, ", ")), true
+}
+
+// exportEventName upper-cases the first letter, matching the name the platform
+// gives the invoker it attaches.
+func exportEventName(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

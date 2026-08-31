@@ -1,4 +1,4 @@
-# `c.<id>.click()` drives a real GTK signal.
+# `c.<id>.click()` drives a real platform event.
 #
 # gtk4 had the scaffolding for this and none of the wiring: gtkEventInvoker was
 # declared, emitEventInvokers was written and called, and nothing anywhere
@@ -14,6 +14,19 @@
 sngl test --platform gtk4 click.sngl
 stdout 'ok'
 
+# fyne invokes the widget's own callback field, which is what a real tap does
+# and what fyne's own test.Tap does. The field is declared in fyne.sngl:
+# Handler{on="click", field="OnTapped"}.
+sngl test --platform fyne click.sngl
+stdout 'ok'
+
+# html dispatches on the element itself, so the click runs through the same
+# addEventListener the page wired rather than calling the handler behind its
+# back. The invoker hangs off the state object a test holds, which is what
+# makes `c.incClick()` resolve.
+sngl test --platform html click.sngl
+stdout 'ok'
+
 # The invoker is named for the event a program writes, not the one the platform
 # subscribes to. gtk4's button override is `@clicked { click() }`, so by the
 # time a handler is promoted it is named "clicked" while a test writes
@@ -25,6 +38,17 @@ grep 'gtk4rt.Emit\(m.inc, "clicked"\)' out/model.go
 
 # A synthesized id is not something a test can name, so it gets no invoker.
 ! grep 'func \(m \*Model\) __n' out/model.go
+
+sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' fy/model.go
+grep 'm.inc.OnTapped\(\)' fy/model.go
+
+# html only emits invokers under test mode -- an ordinary page carries no test
+# surface at all.
+sngl generate --platform=html --lang=none --opt test=true --out=ht rooted.sngl
+grep 'state.incClick = \(\) =>' ht/index.html
+sngl generate --platform=html --lang=none --out=plain rooted.sngl
+! grep 'incClick' plain/index.html
 
 -- click.sngl --
 import . "sngl:ui"

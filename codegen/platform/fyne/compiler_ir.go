@@ -150,7 +150,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // with its Go import paths and cgo preamble, for the caller's FileEmitter.
 // The aliases come back alongside because the file emitter is a context of its
 // own: an alias forced during translation does not reach it.
-func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator) (string, []string, map[string]string, string, error) {
+func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.LangTranslator, sawInvoker *bool) (string, []string, map[string]string, string, error) {
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
@@ -159,6 +159,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
+	var eventInvokers []fyneEventInvoker
 	var entrySync []entrySyncRec
 	widgetImports := map[string]bool{}
 	addWidgetImport := func(p string) { widgetImports[p] = true }
@@ -201,7 +202,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			bodyStmts := wins[0].Body
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport).withLocalRefs(mainScopeLocalRefs(ctx))
+			}, addWidgetImport).withLocalRefs(mainScopeLocalRefs(ctx)).
+				withInvokerSink(func(inv fyneEventInvoker) {
+					eventInvokers = append(eventInvokers, inv)
+				})
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
@@ -362,6 +366,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			ActiveVar:  t.ActiveVar,
 			Body:       bodyBuf.String(),
 		})
+	}
+
+	emitFyneEventInvokers(&funcBuf, eventInvokers)
+	if sawInvoker != nil {
+		*sawInvoker = len(eventInvokers) > 0
 	}
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)

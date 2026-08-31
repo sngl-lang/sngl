@@ -850,7 +850,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// program wrote, the SNGL event written on it, and the GTK signal that event
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
-	t.recordInvoker(bare, componentEventOf(handler, event), signal, cType)
+	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
 
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
@@ -963,24 +963,4 @@ func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
 		GTKSignal:  signal,
 		WidgetType: cType,
 	})
-}
-
-// componentEventOf is the event a test can write for this handler: the one the
-// program wrote, when a platform override re-raised it, and otherwise the name
-// the handler already carries.
-//
-// gtk4's button subscribes to the host widget -- `@clicked { click() }` -- so
-// what reaches here is "clicked" while a test writes `c.inc.click()`. The
-// program's name is recorded during the substitution that inlined its block,
-// because that is the last point both are visible.
-func componentEventOf(handler ir.Expr, fallback string) string {
-	id, ok := handler.(*ir.Ident)
-	if !ok {
-		return fallback
-	}
-	fn, ok := id.Sym.(*ir.Func)
-	if !ok || fn.LoweredFromComponentEvent == "" {
-		return fallback
-	}
-	return fn.LoweredFromComponentEvent
 }
