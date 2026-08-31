@@ -35,7 +35,7 @@ func testFoo(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("ui", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
+	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
 	if !strings.Contains(out, "import \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"") {
 		t.Errorf("agent mode missing testagent import; got:\n%s", out)
 	}
@@ -78,7 +78,7 @@ func testWithIf(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("ui", []*ir.Func{fn}, []string{"WithIf"}, nil, TestEmitAgent)
+	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"WithIf"}, nil, TestEmitAgent)
 	if !strings.Contains(out, "if ") {
 		t.Errorf("expected 'if ' in lowered output; got:\n%s", out)
 	}
@@ -107,7 +107,7 @@ func testFoo(t Test, c box) {
 			break
 		}
 	}
-	out := LowerTestFile("ui", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative)
+	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative)
 	if !strings.Contains(out, "import \"testing\"") {
 		t.Errorf("native mode missing testing import; got:\n%s", out)
 	}

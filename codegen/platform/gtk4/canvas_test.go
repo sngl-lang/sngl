@@ -150,7 +150,15 @@ component main {
 	}
 	out := string(mem.Files()["model.go"])
 
-	if strings.Contains(out, "C.cairo_scale") {
+	// The bug was drawing an ellipse as a scaled circle, which scales the
+	// stroke along with it. The draw func is where that would show; the whole
+	// file is not, because _snglCairoScale legitimately scales the context to
+	// map a drawing's coordinate space onto the size it is drawn at.
+	drawBody := out
+	if _, after, ok := strings.Cut(out, "func (m *Model) _canvasDraw"); ok {
+		drawBody = after
+	}
+	if strings.Contains(drawBody, "C.cairo_scale") {
 		t.Errorf("ellipse still emits C.cairo_scale — the scaled-stroke bug; expected a Bézier path\n%s", out)
 	}
 	for _, want := range []string{"C.cairo_move_to", "C.cairo_curve_to", "C.cairo_close_path"} {

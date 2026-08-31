@@ -1,0 +1,99 @@
+# A `return` inside an `if` or a `for` returns from the function. The
+# interpreter read a body by scanning its top level for a Return and executing
+# everything before it, so a return written one block deeper was executed as a
+# statement that did nothing and the guard clause fell through to the line
+# after its `if`. Every backend emitted the right code, so only the test runner
+# and the constant folder disagreed with the program -- which is what makes
+# this a txtar test: the testdata harnesses check, they do not run.
+sngl test guards.sngl
+stdout '4 tests, 0 failures'
+
+# Same program, same answers, through a real backend.
+sngl generate --platform html --lang none -o out guards.sngl
+grep 'return "zero"' out/index.html
+
+# A zero-arg computed is called where its result is what the position wants.
+# The for iterator was the one place that did not, so `for c = letters` failed
+# to check at all.
+sngl test iterate.sngl
+stdout '1 tests, 0 failures'
+
+-- guards.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func sign(n int) string {
+    if n < 0 {
+        return "negative"
+    }
+    if n == 0 {
+        return "zero"
+    }
+    return "positive"
+}
+
+// The base case returns from inside the `if`; the recursive call stays in tail
+// position, so this is also the shape the interpreter trampolines.
+func repeat(s string, n int) string {
+    if n <= 0 {
+        return ""
+    }
+    return s + repeat(s, n - 1)
+}
+
+func firstNegative(xs list<int>) int {
+    for x = xs {
+        if x < 0 {
+            return x
+        }
+    }
+    return 0
+}
+
+component main {
+    var n = 0
+    func label() => sign(n)
+    text #out(value=label)
+}
+
+func testConstantFolded(t Test, c main) {
+    t.assert(sign(-2) == "negative")
+    t.assert(sign(0) == "zero")
+    t.assert(sign(7) == "positive")
+}
+
+func testAtRuntime(t Test, c main) {
+    t.assert(c.out.value == "zero")
+    c.n = 5
+    t.assert(c.out.value == "positive")
+}
+
+func testRecursionTerminates(t Test, c main) {
+    t.assert(repeat("ab", 0) == "")
+    t.assert(repeat("ab", 3) == "ababab")
+}
+
+func testReturnOutOfLoop(t Test, c main) {
+    t.assert(firstNegative([3, 1, -4, -1]) == -4)
+    t.assert(firstNegative([3, 1]) == 0)
+}
+
+-- iterate.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main {
+    var word = "abc"
+
+    func letters() => string.split(word, "")
+
+    vbox {
+        for c = letters {
+            text(value=c)
+        }
+    }
+}
+
+func testComputedIterator(t Test, c main) {
+    t.assert(c.letters().length() == 3)
+}

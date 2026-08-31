@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -93,25 +92,17 @@ func (r *capturingResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Doc
 // The caches are populated as a side effect of the checker's transitive import
 // resolution. A checker error is logged rather than fatal: a bad hash on one
 // dep must not prevent downloading the others.
-func walkMains(files []string, resolver checker.ImportResolver, dir string) {
+func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
 	langs, plats := collectTargets()
-	for _, filename := range files {
-		f, err := os.Open(filename)
+	for _, u := range units {
+		doc, err := u.doc()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			continue
 		}
-		doc, err := parseSNGL(filename, f)
-		f.Close()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-			continue
-		}
-		doc = mergeDir(doc, filename)
-		mainDir := filepath.Dir(filename)
 		_, diags := checker.Check(doc, &checker.Config{
-			FS:        os.DirFS(mainDir),
-			Dir:       mainDir,
+			FS:        os.DirFS(u.dir),
+			Dir:       u.dir,
 			IsMain:    true,
 			Resolver:  resolver,
 			Languages: langs,
@@ -119,36 +110,44 @@ func walkMains(files []string, resolver checker.ImportResolver, dir string) {
 		})
 		for _, d := range diags {
 			if d.Severity == ir.Error {
-				slog.Info("pkg walk diagnostic", "file", filename, "msg", d.Error())
+				slog.Info("pkg walk diagnostic", "unit", u.name, "msg", d.Error())
 			}
 		}
 	}
 }
 
-// pkg commands drive from mains only: a library file should not trigger remote
-// fetches on its own.
-func mainFiles(files []string) ([]string, error) {
-	var mains []string
-	for _, filename := range files {
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", filename, err)
+// pkg commands drive from mains only: a library package should not trigger
+// remote fetches on its own — whatever it imports, the program importing it
+// imports too.
+func mainUnits(units []unit) ([]unit, error) {
+	var mains []unit
+	for _, u := range units {
+		declares := false
+		for _, filename := range u.files {
+			data, err := os.ReadFile(filename)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", filename, err)
+			}
+			// Textual, because a type check to answer only "is this a main?"
+			// would double the work.
+			if strings.Contains(string(data), "component main") {
+				declares = true
+				break
+			}
 		}
-		// Textual, because a type check to answer only "is this a main?" would
-		// double the work.
-		if strings.Contains(string(data), "component main") {
-			mains = append(mains, filename)
+		if declares {
+			mains = append(mains, u)
 		}
 	}
 	return mains, nil
 }
 
 func runPkgDownload(cmd *cobra.Command, args []string) error {
-	files, err := discoverFiles(args)
+	units, err := resolveUnits(args)
 	if err != nil {
 		return err
 	}
-	mains, err := mainFiles(files)
+	mains, err := mainUnits(units)
 	if err != nil {
 		return err
 	}
@@ -169,11 +168,11 @@ func runPkgDownload(cmd *cobra.Command, args []string) error {
 }
 
 func runPkgUpdate(cmd *cobra.Command, args []string) error {
-	files, err := discoverFiles(args)
+	units, err := resolveUnits(args)
 	if err != nil {
 		return err
 	}
-	mains, err := mainFiles(files)
+	mains, err := mainUnits(units)
 	if err != nil {
 		return err
 	}

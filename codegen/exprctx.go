@@ -67,6 +67,15 @@ type ExprCtx struct {
 	// IdentRewrites remaps bare identifiers regardless of scope, applied
 	// first in identifier translation.
 	IdentRewrites map[string]string
+	// FreeFuncs names the user functions a host emits as free package-level
+	// functions rather than as methods on its receiver, so a call to one
+	// renders under its exported name from any scope.
+	//
+	// A top-level function has no component in scope and so can read no
+	// component state; there is nothing for a receiver to carry. Emitting one
+	// as a method anyway is what left a type method — which is free, having no
+	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
+	FreeFuncs map[string]bool
 	// StateReceiver, when non-empty, names a struct receiver onto which
 	// component/package state vars are projected as EXPORTED fields. Set by
 	// the html backend (route mode) so a state read `count` renders
@@ -238,6 +247,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),
 		MethodFields:   maps.Clone(ctx.MethodFields),
 		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
+		FreeFuncs:      ctx.FreeFuncs, // shared — one decision for the whole build
 		StateReceiver:  ctx.StateReceiver,
 	}
 }
@@ -295,6 +305,26 @@ func IsComputed(f *ir.Func) bool {
 // (with the "test" prefix stripped) plus the methodFields set built
 // from every component's funcs and computed package funcs. Shared
 // across platforms whose codegen emits an agent-mode test file.
+// TestComponentParam is the name a test binds its component instance to, or
+// "" when the test declared none: `func testPress(t Test, c main)` says `c`,
+// and `func testAddition(t Test)` says nothing at all.
+//
+// The name is the declaration's, not the emitter's. Binding a hardcoded `c`
+// into every test collided with any local of that name -- silently, because
+// the page it produced no longer parsed and all the runner could report was
+// that the agent never connected.
+func TestComponentParam(fn *ir.Func) string {
+	if fn == nil {
+		return ""
+	}
+	for _, p := range fn.Params {
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			return p.Name
+		}
+	}
+	return ""
+}
+
 func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {
 	methodFields = map[string]bool{}
 	if pkg == nil {

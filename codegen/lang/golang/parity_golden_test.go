@@ -125,9 +125,9 @@ func lowerTestFileFixture(t *testing.T, path string) string {
 	}
 	var b strings.Builder
 	b.WriteString("// ==== TestEmitNative ====\n")
-	b.WriteString(golang.LowerTestFile("ui", fns, suffixes, methodFields, golang.TestEmitNative))
+	b.WriteString(golang.LowerTestFile("ui", nil, fns, suffixes, methodFields, golang.TestEmitNative))
 	b.WriteString("\n// ==== TestEmitAgent ====\n")
-	b.WriteString(golang.LowerTestFile("ui", fns, suffixes, methodFields, golang.TestEmitAgent))
+	b.WriteString(golang.LowerTestFile("ui", nil, fns, suffixes, methodFields, golang.TestEmitAgent))
 	return b.String()
 }
 

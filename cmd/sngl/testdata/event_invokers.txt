@@ -1,0 +1,104 @@
+# `c.<id>.click()` drives a real platform event, on every target.
+#
+# Each platform fires the event by the mechanism it already exposes, and none
+# of them needs layout or a synthetic pointer:
+#
+#   gtk4       g_signal_emit_by_name on the widget
+#   fyne       the widget's own callback field (what test.Tap calls)
+#   html       .click() on the element, through its addEventListener
+#   bubbletea  the activating key through Update, with focus set
+#
+# What they all skip is whether the widget is visible, sensitive and hittable:
+# a signal emitted at a hidden button still fires. Catching that needs real
+# input at a position, which is a different kind of test.
+#
+# gtk4 had the scaffolding for this and none of the wiring: gtkEventInvoker was
+# declared, emitEventInvokers was written and called, and nothing anywhere
+# constructed an invoker, so the slice was always empty. The runtime half
+# already shipped -- gtk4rt.Emit is g_signal_emit_by_name, commented "used by
+# generated test invokers".
+#
+# No pointer or key simulation is involved, and no layout: emitting the signal
+# runs the real trampoline and Go callback bridge, synchronously. What it does
+# not check is that the widget is visible, sensitive and hittable -- a signal
+# emitted at a hidden button still fires -- which is a different kind of test.
+
+sngl test --platform gtk4 click.sngl
+stdout 'ok'
+
+# fyne invokes the widget's own callback field, which is what a real tap does
+# and what fyne's own test.Tap does. The field is declared in fyne.sngl:
+# Handler{on="click", field="OnTapped"}.
+sngl test --platform fyne click.sngl
+stdout 'ok'
+
+# html dispatches on the element itself, so the click runs through the same
+# addEventListener the page wired rather than calling the handler behind its
+# back. The invoker hangs off the state object a test holds, which is what
+# makes `c.incClick()` resolve.
+sngl test --platform html click.sngl
+stdout 'ok'
+
+# bubbletea has no pointer: a button is activated by pressing a key while it
+# holds focus, so the invoker sets focus, sends that key through Update, and
+# restores focus. That is the platform's own input path, not a shortcut around
+# it -- whatever else Update does with the message happens too.
+sngl test --platform bubbletea click.sngl
+stdout 'ok'
+
+# The invoker is named for the event a program writes, not the one the platform
+# subscribes to. gtk4's button override is `@clicked { click() }`, so by the
+# time a handler is promoted it is named "clicked" while a test writes
+# `click()`. The pairing is recorded during the substitution that inlines the
+# program's block, which is the last point both names exist.
+sngl generate --platform=gtk4 --lang=go --out=out rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' out/model.go
+grep 'gtk4rt.Emit\(m.inc, "clicked"\)' out/model.go
+
+# A synthesized id is not something a test can name, so it gets no invoker.
+! grep 'func \(m \*Model\) __n' out/model.go
+
+sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' fy/model.go
+grep 'm.inc.OnTapped\(\)' fy/model.go
+
+# html only emits invokers under test mode -- an ordinary page carries no test
+# surface at all.
+sngl generate --platform=bubbletea --lang=go --out=bt rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' bt/model.go
+grep 'm.Update\(tea.KeyPressMsg{Code: tea.KeyEnter}\)' bt/model.go
+
+sngl generate --platform=html --lang=none --opt test=true --out=ht rooted.sngl
+grep 'state.incClick = \(\) =>' ht/index.html
+sngl generate --platform=html --lang=none --out=plain rooted.sngl
+! grep 'incClick' plain/index.html
+
+-- click.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
+
+func testIncrement(t Test, c counter) {
+    c.inc.click()
+    t.assert(c.n == 1)
+}
+
+-- rooted.sngl --
+import . "sngl:ui"
+
+counter()
+
+component counter {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}

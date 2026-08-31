@@ -523,6 +523,21 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		return c.convertWindow(s)
 	case *ContextProvider:
 		return c.convertContextProvider(s)
+	case *CanvasRedrawStmt:
+		// A repaint the canvas lowering synthesized. No program can write one,
+		// so it has no source form; printed as the call it behaves like, so
+		// that `dump --stage lowered` over a reactive canvas prints rather
+		// than panics.
+		name := "canvas"
+		if s.DrawFunc != nil {
+			name = s.DrawFunc.Name
+		}
+		return &ast.CallStmt{Call: &ast.CallExpr{
+			Func: &ast.IdentExpr{Name: "__canvasRedraw"},
+			Args: ast.ArgList{Args: []ast.ArgOrEventHandler{
+				ast.Arg{Value: &ast.IdentExpr{Name: name}},
+			}},
+		}}
 	default:
 		panic(fmt.Sprintf("ir.Convert: no AST conversion for stmt type %T", s))
 	}

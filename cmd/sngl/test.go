@@ -58,20 +58,12 @@ func runTest(cmd *cobra.Command, args []string) error {
 		platform = "none"
 	}
 
-	files, err := discoverFiles(args)
+	units, err := resolveUnits(args)
 	if err != nil {
 		return err
 	}
-	if len(files) == 0 {
+	if len(units) == 0 {
 		return fmt.Errorf("no .sngl files found")
-	}
-	// Every discovered fixture is standalone: under `sngl test ./...`,
-	// sibling-merging would cascade an intentional-error fixture into every
-	// other file.
-	explicitFiles := make(map[string]bool, len(files))
-	for _, f := range files {
-		abs, _ := filepath.Abs(f)
-		explicitFiles[abs] = true
 	}
 
 	runFilter, _ := cmd.Flags().GetString("run")
@@ -81,7 +73,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	opts := parseTestOpts(optSlice)
 
 	if platform == "all" {
-		return runTestAll(language, files, explicitFiles, runFilter, verbose, format, opts)
+		return runTestAll(language, units, runFilter, verbose, format, opts)
 	}
 
 	plat := codegen.LookupPlatform(platform)
@@ -98,12 +90,12 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("platform %q does not support testing", platform)
 	}
 
-	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, files, explicitFiles, runFilter, opts)
+	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, units, runFilter, opts)
 
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
 
-func runTestAll(language string, files []string, explicitFiles map[string]bool, runFilter string, verbose bool, format string, opts *ir.StructLit) error {
+func runTestAll(language string, units []unit, runFilter string, verbose bool, format string, opts *ir.StructLit) error {
 	names := codegen.Platforms()
 	var ran, skipped, failedPlats int
 	var grandTests, grandFail int
@@ -134,7 +126,7 @@ func runTestAll(language string, files []string, explicitFiles map[string]bool, 
 			continue
 		}
 		fmt.Printf("=== platform=%s\n", name)
-		tests, fails, results := runOnPlatform(context.Background(), plat, runner, lang, files, explicitFiles, runFilter, opts)
+		tests, fails, results := runOnPlatform(context.Background(), plat, runner, lang, units, runFilter, opts)
 		ran++
 		grandTests += tests
 		grandFail += fails
@@ -179,39 +171,31 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 // A parse or check failure counts as a test failure: `./...` already skips
 // `testdata/` and `.`/`_`-prefixed directories, so a walked file is expected
 // to be valid SNGL.
-func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, files []string, explicitFiles map[string]bool, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
+//
+// A unit is a package, so a test function reads the whole package it was
+// written in: `sngl test` used to read every file alone, and a test could not
+// name a component declared in the file next to it.
+func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, units []unit, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	var totalTests, totalFail int
 	var allResults []*codegen.TestResult
 
-	for _, filename := range files {
+	for _, u := range units {
+		filename := u.headline()
 		absFilename, _ := filepath.Abs(filename)
-		tf, err := os.Open(filename)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-			totalFail++
-			continue
-		}
 		start := time.Now()
-		doc, err := parseSNGL(filename, tf)
-		tf.Close()
+		doc, err := u.doc()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++
 			continue
 		}
-		slog.Info("parse", "file", filename, "duration", time.Since(start))
+		slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 		if len(doc.TestFuncs()) == 0 {
 			continue
-		}
-
-		if !explicitFiles[absFilename] {
-			start = time.Now()
-			doc = mergeDir(doc, filename)
-			slog.Info("merge", "file", filename, "duration", time.Since(start))
 		}
 
 		// Filter tests by --run pattern before checking so filtered-out
@@ -238,13 +222,13 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		}
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, filepath.Dir(filename), true)
+		pkg, err := checkDoc(doc, u.dir, true)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++
 			continue
 		}
-		slog.Info("check", "file", filename, "duration", time.Since(start))
+		slog.Info("check", "unit", u.name, "duration", time.Since(start))
 
 		// Record the source path so headless runners (e.g. `none`) can
 		// resolve sibling `<fixture>.snapshots/<name>.sngl` goldens.

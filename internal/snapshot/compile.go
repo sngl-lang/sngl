@@ -23,12 +23,17 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	dir := filepath.Dir(sourceFile)
-	pkg, err := checkAndReturn(doc, dir)
+	pkg, err := checkAndReturn(doc, filepath.Dir(sourceFile), nil)
 	if err != nil {
 		return nil, err
 	}
+	return compilePreviewHTMLDoc(pkg, platform, lang)
+}
 
+// compilePreviewHTMLDoc is CompilePreviewHTML from the checked package on, for
+// a caller that already has one -- a package read from several files has no
+// single source file to re-read.
+func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, error) {
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -117,7 +122,7 @@ func ParseSNGL(filename string) (*ast.Document, error) {
 }
 
 // checkAndReturn type-checks a document and returns the package or the first error.
-func checkAndReturn(doc *ast.Document, dir string) (*ir.Package, error) {
+func checkAndReturn(doc *ast.Document, dir string, resolver checker.ImportResolver) (*ir.Package, error) {
 	// Register all available languages and platforms so the checker can merge
 	// each stdlib component's platform extension body (e.g. the bubbletea
 	// `Layout`/`Widget` primitives that back vbox/input/etc). Without these the
@@ -128,6 +133,7 @@ func checkAndReturn(doc *ast.Document, dir string) (*ir.Package, error) {
 		FS:        os.DirFS(dir),
 		Dir:       dir,
 		IsMain:    true,
+		Resolver:  resolver,
 		Languages: langs,
 		Platforms: plats,
 	})

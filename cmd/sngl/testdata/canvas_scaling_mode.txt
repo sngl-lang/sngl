@@ -1,0 +1,110 @@
+# `width` and `height` on a canvas are the coordinate space the shapes were
+# placed in, not the size it is shown at. `scalingMode` is what happens to the
+# picture when the room it is given is not that size.
+#
+# Each target already had a name for all four, so none of them needed a new
+# mechanism -- only a value to read. fyne has the four fill modes one for one;
+# html and Compose scale the geometry, which is the whole point of scaling a
+# drawing rather than a picture of one.
+
+# html scales the geometry rather than the picture: the backing store is sized
+# to the box the canvas was laid out in, at device resolution, and the shapes
+# are scaled on the way in. Resampling a small drawing up to a big one is what
+# made a display of hard edges come out soft.
+sngl generate --platform html --lang none -o h fit.sngl
+grep '_snglCanvasDraw\(\$0, 200, 100, "fit", _canvasDraw0\)' h/index.html
+grep 'aspect-ratio:200/100' h/index.html
+# Nothing left for the browser to resample.
+! grep 'object-fit' h/index.html
+# The box is what the backing store follows, so a resize redraws.
+grep '_snglCanvasWatch\(\$0,' h/index.html
+# And the prop is read here rather than passed through as an attribute no
+# element has.
+! grep 'scalingMode=' h/index.html
+
+sngl generate --platform html --lang none -o hs stretch.sngl
+grep '_snglCanvasDraw\(\$0, 200, 100, "stretch", _canvasDraw0\)' hs/index.html
+
+# center is the default, and adds nothing: the canvas stays the size of its
+# own drawing, redrawn at that size, which is what every canvas did before
+# there was a choice.
+sngl generate --platform html --lang none -o hc center.sngl
+grep '_snglCanvasDraw\(\$0, 200, 100, "", _canvasDraw0\)' hc/index.html
+! grep 'aspect-ratio' hc/index.html
+! grep '_snglCanvasWatch\(\$0,' hc/index.html
+
+# Fyne asks a Raster's generator for a picture at the pixel size it is about to
+# upload, which is the one thing an Image cannot know -- so a scaled canvas is
+# a Raster and the shapes are rasterised at the size they are shown.
+sngl generate --platform fyne --lang go -o f fit.sngl
+grep 'canvas.NewRaster' f/model.go
+grep 'Begin\(pw, ph, 200, 100, "fit"\)' f/model.go
+# The surface outlives the drawing: Fyne calls back on every redraw, and a
+# buffer allocated per call is the whole image thrown away per keypress.
+grep 'Surface snglcanvas.Surface' f/model.go
+! grep 'FillMode' f/model.go
+# A minimum is a floor rather than a size: without one the box gives a canvas
+# nothing to scale into, which is a readout one pixel tall.
+grep 'SetMinSize' f/model.go
+
+# A canvas shown at its own size has nothing to scale, so it stays the cheaper
+# Image it always was.
+sngl generate --platform fyne --lang go -o fc center.sngl
+grep 'FillMode = canvas.ImageFillOriginal' fc/model.go
+! grep 'canvas.NewRaster' fc/model.go
+
+# Compose draws into the room it is laid out in, so the shapes are scaled.
+sngl generate --platform android --lang kotlin -o a fit.sngl
+grep 'aspectRatio\(200f / 100f\)' a/MainScreen.kt
+grep 'scale\(scale = minOf\(size.width / 200f, size.height / 100f\)' a/MainScreen.kt
+
+sngl generate --platform android --lang kotlin -o ac center.sngl
+grep 'Modifier.size\(200.dp, 100.dp\)' ac/MainScreen.kt
+
+# gtk4 is a vector context already, so it scales with a transform. The
+# allocated size travels with the cairo_t: GTK hands it to the draw callback,
+# and it used to be discarded.
+sngl generate --platform gtk4 --lang go -o g fit.sngl
+grep '_snglCairoScale\(cr, pw, ph, 200, 100, "fit"\)' g/model.go
+grep 'gtk_widget_set_hexpand' g/model.go
+
+sngl generate --platform gtk4 --lang go -o gc center.sngl
+grep '_snglCairoScale\(cr, pw, ph, 200, 100, ""\)' gc/model.go
+! grep 'gtk_widget_set_hexpand' gc/model.go
+
+-- fit.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.fit) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}
+-- stretch.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.stretch) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}
+-- center.sngl --
+import . "sngl:app"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main {
+    window #w {
+        draw.canvas(width=200px, height=100px) {
+            draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        }
+    }
+}

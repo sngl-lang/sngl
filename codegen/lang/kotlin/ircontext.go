@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -184,6 +185,35 @@ func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambd
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	return target + " " + assignOpStr(n.Op) + " " + value
 }
+
+// valueCopy binds a struct value the way SNGL binds one: by copy.
+//
+// A SNGL struct is a value, so `var next = this` gives you your own; Go's
+// assignment already does that and Kotlin's does not -- `next` is the same
+// object, and mutating it writes through to whatever else holds it. On
+// Compose that is fatal rather than merely wrong: the state a handler
+// reassigns is the object it just mutated, structural equality says nothing
+// changed, and the screen never recomposes. Every button animated and none of
+// them did anything.
+//
+// A literal needs no copy: it is already nobody else's. Neither does an
+// assignment -- copying on binding is what makes every mutable name one this
+// scope owns, and copying again on the way out would only defeat the
+// structural-equality check Compose uses to decide whether to recompose.
+func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
+	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+		return rendered
+	}
+	if ir.StringReprStruct(t) {
+		return rendered
+	}
+	switch init.(type) {
+	case *ir.StructLit, *ir.Literal, nil:
+		return rendered
+	}
+	return rendered + ".copy()"
+}
+
 func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
 }
@@ -204,7 +234,25 @@ func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 }
 func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	if n.Init != nil {
-		return "var " + n.Name + " = " + initStr
+		// A SNGL list local is mutable -- `out.push(x)` is ordinary -- and
+		// Kotlin's listOf() is neither mutable nor, when empty, typed. Both
+		// bit at once: `var out = listOf()` could not infer its element and
+		// had no add().
+		if n.Type != nil && n.Type.Kind == ir.TypeList {
+			if ll, ok := n.Init.(*ir.ListLit); ok {
+				elem := "Any"
+				if len(n.Type.Elems) > 0 {
+					elem = IRTypeToKt(n.Type.Elems[0])
+				}
+				if len(ll.Elems) == 0 {
+					return "var " + n.Name + " = mutableListOf<" + elem + ">()"
+				}
+				if rest, cut := strings.CutPrefix(initStr, "listOf("); cut {
+					return "var " + n.Name + " = mutableListOf<" + elem + ">(" + rest
+				}
+			}
+		}
+		return "var " + n.Name + " = " + valueCopy(n.Init, n.Type, initStr)
 	}
 	goType := "Any"
 	if n.Type != nil {
@@ -267,7 +315,10 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 		return n.Value
 	case ir.TypeFloat:
 		s := n.Value
-		if !strings.Contains(s, ".") {
+		// An exponent already makes it a Double in Kotlin, and `1e+09.0` is
+		// not a literal at all -- it is where `const ROUNDABLE = 1000000000.0`
+		// stopped compiling.
+		if !strings.ContainsAny(s, ".eE") {
 			s += ".0"
 		}
 		return s
@@ -290,7 +341,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-			return exportName(n.Type.Decl.SymName()) + "." + n.Member
+			return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
@@ -566,6 +617,12 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 			}
 			return operand + ".toDouble()"
 		case ir.TypeString:
+			// Kotlin's Double.toString always writes a fraction, so a
+			// calculator that Go and JS both spell `24` came out as `24.0`.
+			// string(float) has to mean the same thing on every target.
+			if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeFloat {
+				return FloatStringFn + "(" + operand + ")"
+			}
 			return operand + ".toString()"
 		case ir.TypeBool:
 			return operand + " as Boolean"
@@ -610,9 +667,26 @@ func ktZeroFor(t *ir.Type) string {
 		return `""`
 	case ir.TypeList:
 		return "listOf()"
+	case ir.TypeEnum:
+		// An enum's zero is its first member, as it is on every other target.
+		// `null` is not a value of a non-nullable Kotlin enum, so a struct
+		// field left at its default did not compile.
+		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
+			return exportName(ed.Name) + "." + EnumEntry(ed.Members[0].Name)
+		}
 	}
 	return "null"
 }
+
+// EnumEntry is the Kotlin spelling of one SNGL enum member. Upper-cased
+// because Kotlin entries are, and because a SNGL member may be named for
+// something Any already declares -- `Action.equals` reads as the method
+// otherwise.
+//
+// Declaration and reference both go through here. They used to spell it
+// separately, so every `Op.none` in the output named an entry declared as
+// `NONE`.
+func EnumEntry(member string) string { return strings.ToUpper(member) }
 
 func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
@@ -653,6 +727,22 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		imports:       kc.imports,
+	}
+}
+
+// WithIdentRewrite returns a context in which one name renders as another.
+// Used for a method's receiver: an extension function's receiver is `this`
+// whatever the declaration named it, so a body reading `o.symbol` has to read
+// `this.symbol`.
+func (kc *KtIRContext) WithIdentRewrite(from, to string) *KtIRContext {
+	rewrites := make(map[string]string, len(kc.IdentRewrites)+1)
+	maps.Copy(rewrites, kc.IdentRewrites)
+	rewrites[from] = to
+	return &KtIRContext{
+		Ctx:           kc.Ctx,
+		EventVar:      kc.EventVar,
+		IdentRewrites: rewrites,
 		imports:       kc.imports,
 	}
 }
@@ -787,7 +877,7 @@ func IRLiteralToKt(e ir.Expr) string {
 			return n.Value
 		case ir.TypeFloat:
 			s := n.Value
-			if !strings.Contains(s, ".") {
+			if !strings.ContainsAny(s, ".eE") {
 				s += ".0"
 			}
 			return s
@@ -840,6 +930,16 @@ func IRLiteralToKt(e ir.Expr) string {
 		return name + "(" + strings.Join(parts, ", ") + ")"
 	case *ir.Lambda:
 		return irLambdaLiteralToKt(n)
+	case *ir.Ident:
+		// An enum member is a literal value, and the only one that arrives as
+		// an identifier. Falling through to the empty string put `op = ""` in
+		// a constructor call whose parameter is an enum.
+		if n.Member != "" {
+			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
+				return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+			}
+			return fmt.Sprintf("%q", n.Member)
+		}
 	}
 	return `""`
 }
@@ -974,3 +1074,25 @@ func ktMapValZero(t *ir.Type) string {
 	}
 	return ktZeroFor(t.Elems[1])
 }
+
+// FloatStringFn names the helper `string(<float>)` lowers to, and
+// FloatStringDecl is its declaration. Kotlin's own Double.toString always
+// writes a fraction; Go's fmt.Sprint and JavaScript's String both drop it for
+// a whole number, and SNGL follows them.
+const FloatStringFn = "_snglFloatStr"
+
+// SplitFn names the helper `string.split` lowers to, and SplitDecl is its
+// declaration. Kotlin's own split returns a leading and a trailing empty
+// string for an empty separator; Go and JavaScript return the characters.
+const SplitFn = "_snglSplit"
+
+// The character walk matches JavaScript, which splits by UTF-16 unit. Go
+// splits an empty separator by rune, so a non-BMP character already differs
+// between those two; this follows the nearer of the pair.
+const SplitDecl = `fun ` + SplitFn + `(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+`
+
+const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+`

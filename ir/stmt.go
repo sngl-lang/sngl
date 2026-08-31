@@ -140,6 +140,10 @@ type LocalVar struct {
 	CanvasDraw   *Func
 	CanvasWidth  int
 	CanvasHeight int
+	// CanvasScaling is the `scalingMode` prop: what a platform does with the
+	// picture when the room it lays the canvas out in is not the size the
+	// shapes were placed at. Empty means the declaration's default.
+	CanvasScaling string
 }
 
 func (*LocalVar) stmtNode() {}

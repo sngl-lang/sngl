@@ -268,9 +268,14 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	}
 	// `c.<id>.<prop>` → `c.<id><Prop>()`, the getter platforms emit per
 	// (id, prop) binding. Triggered by the outer Select's operand being a
-	// Select on a RawFieldAccess Ident.
+	// Select on a RawFieldAccess Ident: `c.out` is an element ref and
+	// `.value` is a prop of the element it names.
+	//
+	// Not when the inner reads a struct: `c.state.entry` is a field of a
+	// value the component holds, and it rendered as the getter
+	// `c.stateEntry()`, which is nobody's method.
 	if inner, ok := n.Operand.(*ir.Select); ok {
-		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) {
+		if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) && !isStructExpr(inner) {
 			return fmt.Sprintf("%s.%s%s()", id.Name, inner.Field, ExportName(n.Field))
 		}
 	}
@@ -289,6 +294,9 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 		if name := gc.uniqueStructWithField(n.Field); name != "" {
 			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
 		}
+	}
+	if field, ok := gc.modelField(n); ok {
+		return operand + "." + field
 	}
 	return operand + "." + ExportName(n.Field)
 }
@@ -403,7 +411,33 @@ func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
-func (gc *GoIRContext) MutTargetField(n *ir.Select) string { return ExportName(n.Field) }
+func (gc *GoIRContext) MutTargetField(n *ir.Select) string {
+	if field, ok := gc.modelField(n); ok {
+		return field
+	}
+	return ExportName(n.Field)
+}
+
+// modelField reports the Go name for a field selected straight off the model
+// receiver, which is the name the platform declared it with.
+//
+// A platform declares Model fields verbatim -- a node id, a slot, a canvas
+// context -- which is what codegen.ModelFieldRef means by `m.<name>`, and what
+// an element-ref Ident already renders. ExportName here spelled the same field
+// two different ways depending on which path reached it: read through Select,
+// written through MutTargetField. It went unnoticed because ExportName is the
+// identity on the synthesized ids (`__n1`), and broke on the first `#id` a
+// program wrote -- `m.Inc = widget.NewButton(...)` against a field named
+// `inc`, so no fyne or gtk4 program with a tagged widget compiled.
+//
+// One function for both paths, because two was the bug.
+func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
+	id, ok := n.Operand.(*ir.Ident)
+	if !ok || id.Name != gc.recvName() {
+		return "", false
+	}
+	return n.Field, true
+}
 
 func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !gc.EmitLineDirectives {
@@ -507,7 +541,21 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameFunc:
 		// Named as a value -- `xs.filter(keep)` -- this is a Go method value,
 		// which carries its receiver and matches the callback's signature.
-		return gc.recvName() + "." + ExportName(name)
+		//
+		// Spelled the way whoever emits it names it. EmitFuncDef writes
+		// fn.Name verbatim, so a reference is verbatim too -- exporting here
+		// named a method that was never declared: `m.Inc_click_handler`
+		// against `func (m *Model) inc_click_handler()`, which is every
+		// promoted handler on a tagged widget.
+		//
+		// Route mode is the exception, and says so by setting StateReceiver:
+		// writeRouteFuncs renames each func to its exported name before
+		// emitting, because there they are methods on a per-request State
+		// struct. Same split as MutTargetIdent makes for a state var.
+		if gc.Ctx.StateReceiver != "" {
+			return gc.Ctx.StateReceiver + "." + ExportName(name)
+		}
+		return gc.recvName() + "." + name
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return "m." + ExportName(name)
 	default:
@@ -567,7 +615,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
 			// a clean "undefined" Go error rather than silent bad code.
-			if gc.FreeFuncScope {
+			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname]) {
 				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
 			// Route mode emits these as State methods under their exported
@@ -674,6 +722,17 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			}
 		}
 
+		// A SNGL package's declarations are emitted into this very Go package,
+		// so the alias at the call site names nothing Go has: `readout.cells(…)`
+		// is `Cells(…)` or `m.cells(…)`, whichever the emitter chose for it.
+		// The alias only survives for a native import, handled above.
+		if gc.snglNamespace(n.Receiver) {
+			if gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] {
+				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			}
+			return gc.recvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
+		}
+
 		// An i18n.* namespace receiver is the module object, not a value
 		// argument, so a(0) must be the first semantic argument.
 		if receiverName == "i18n" {
@@ -695,6 +754,31 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	}
 
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// isStructExpr reports whether an expression reads a plain struct — a value a
+// component holds, as opposed to an element ref, which reads as a component.
+// An untyped expression is not one: hand-built IR carries no types, and the
+// getter form is the older behaviour to fall back on.
+func isStructExpr(e ir.Expr) bool {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Builtin == ir.BuiltinNone
+}
+
+// snglNamespace reports whether an expression is the alias of an imported
+// SNGL package — one whose declarations this build emits itself, as opposed to
+// a scheme import naming a real Go package.
+func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	ns, ok := id.Sym.(*ir.Namespace)
+	return ok && ns.Pkg != nil
 }
 
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
@@ -736,6 +820,13 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
 		return gc.recvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
+	}
+
+	// In a test body the component instance is a local — `c := newTestComponent()`
+	// — so a call on it dispatches through that local. Lifting it to a free
+	// function instead gave `MainPress(c, k)` for what is a method on Model.
+	if len(n.Args) > 0 && gc.rawFieldAccess(n.Args[0].Value) && len(args) > 0 {
+		return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 	}
 
 	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
@@ -950,6 +1041,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
+	}
+	// And the other direction is not a cast at all: see StringToNumberHelper.
+	if helper := StringToNumberHelper(n); helper != "" {
+		gc.RequireImport("strconv")
+		return helper + "(" + operand + ")"
 	}
 	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {
@@ -1416,6 +1512,13 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		return gc.emitFuncBody(lines, fn, params)
 	case fn.Receiver != "":
 		sig += "(m *" + fn.Receiver + ") "
+		// The synthetic receiver passNoImplicitRecv prepended is this method's
+		// Go receiver, so it is not also an argument. Emitting it as one gave
+		// `func (m *Model) press(this any, k Key)` against call sites that pass
+		// only `k`.
+		if len(fn.Params) > 0 && fn.Params[0].Receiver {
+			params = params[1:]
+		}
 	}
 	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
 	lines = append(lines, sig)

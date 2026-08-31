@@ -31,7 +31,19 @@ type Meta struct {
 	Draw   *ir.Func
 	Width  int
 	Height int
+	// Scaling is the `scalingMode` prop: what to do with the picture when the
+	// room the canvas is laid out in is not the size its shapes were placed
+	// at. Empty is the declaration's default, which is Center.
+	Scaling string
 }
+
+// The scaling modes, spelled as lib/ui/draw declares them.
+const (
+	ScaleCenter  = "center"
+	ScaleFit     = "fit"
+	ScaleFill    = "fill"
+	ScaleStretch = "stretch"
+)
 
 // Collect walks every Func block + component/window body for
 // `LocalVar.CanvasDraw != nil` entries (canvas CreateNode locals threaded
@@ -46,7 +58,7 @@ func Collect(pkg *ir.Package, funcs []*ir.Func) (byID map[string]*Meta, byFunc m
 			switch n := s.(type) {
 			case *ir.LocalVar:
 				if n.CanvasDraw != nil {
-					m := &Meta{ID: n.Name, Draw: n.CanvasDraw, Width: n.CanvasWidth, Height: n.CanvasHeight}
+					m := &Meta{ID: n.Name, Draw: n.CanvasDraw, Width: n.CanvasWidth, Height: n.CanvasHeight, Scaling: n.CanvasScaling}
 					byID[n.Name] = m
 					byFunc[n.CanvasDraw] = m
 				}

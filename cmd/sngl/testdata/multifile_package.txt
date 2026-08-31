@@ -1,0 +1,110 @@
+# A directory is one package: a declaration in one of its files may name one in
+# any other, and each file keeps its own imports.
+#
+# Neither held. The checker checked an imported directory one document at a
+# time and merged the results, so `struct Calc { op Op }` reported Op as an
+# unknown type when Op was in the file next to it; and the CLI's merge dropped
+# every sibling's imports, so a file could only use what the file it was merged
+# into had imported.
+
+# Cross-file: the program names a type, a const, a func and a component that
+# the imported package declares across four files.
+sngl generate --platform html --lang none -o out app.sngl
+grep 'LIMIT is 7' out/index.html
+grep 'twice: 14' out/index.html
+grep 'Badge' out/index.html
+
+# An alias stays the file's own. `parts.sngl` imports sngl:ui/draw as `draw`;
+# `types.sngl` does not, and naming draw.canvas there is an error.
+! sngl check leak/
+stderr 'unknown component "draw.canvas"'
+
+# Two files importing the same package get the same declarations, not two
+# copies: type identity is per-declaration, so a second check of the package
+# would make `Op` and `Op` different types at the call site where they meet.
+sngl check twice/
+
+# A relative import is relative to the file that wrote it, not to the program.
+sngl check nested/
+
+-- app.sngl --
+import . "sngl:ui"
+import "./pkg"
+
+component main {
+    vbox {
+        text(value="LIMIT is {pkg.LIMIT}")
+        text(value="twice: {pkg.twice(pkg.LIMIT)}")
+        pkg.Badge(label="Badge")
+    }
+}
+-- pkg/types.sngl --
+enum Op { none, add }
+
+struct Pair {
+    x int = 0
+    op Op = Op.add
+}
+-- pkg/consts.sngl --
+const LIMIT = 7
+-- pkg/funcs.sngl --
+func twice(n int) => n * 2
+
+// Names a type from types.sngl and a const from consts.sngl.
+func widened(p Pair) => p.x + LIMIT
+-- pkg/views.sngl --
+import . "sngl:ui"
+
+component Badge(label = "") {
+    text(value=label)
+}
+-- leak/app.sngl --
+import . "sngl:ui"
+import "./gfx"
+
+component main {
+    gfx.Panel
+}
+-- leak/gfx/parts.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component Panel {
+    draw.canvas(width=10px, height=10px) {
+        draw.rect(x=0.0, y=0.0, w=10.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
+    }
+}
+-- leak/gfx/types.sngl --
+import . "sngl:ui"
+
+component Sneaky {
+    draw.canvas(width=10px, height=10px) {}
+}
+-- twice/app.sngl --
+import . "sngl:ui"
+import "./shared"
+import "./user"
+
+component main {
+    var op shared.Op = shared.Op.add
+    text(value=user.describe(op))
+}
+-- twice/shared/shared.sngl --
+enum Op { none, add }
+-- twice/user/user.sngl --
+import "../shared"
+
+func describe(o shared.Op) => o == shared.Op.add ? "add" : "none"
+-- nested/app.sngl --
+import . "sngl:ui"
+import "./outer"
+
+component main {
+    text(value=outer.label())
+}
+-- nested/outer/outer.sngl --
+import "../inner"
+
+func label() => inner.NAME
+-- nested/inner/inner.sngl --
+const NAME = "inner"

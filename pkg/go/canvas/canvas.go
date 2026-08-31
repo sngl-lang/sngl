@@ -81,8 +81,76 @@ func New(width, height int) *Context {
 	return &Context{dc: gg.NewContext(width, height)}
 }
 
+// NewScaled creates a Context of pw x ph pixels that a drawing placed in a
+// w x h coordinate space is scaled into, per mode.
+//
+// The point of it is that the shapes are rasterised at the size they are shown
+// rather than drawn small and resampled up: an edge lands where it lands
+// instead of being interpolated from where it landed at another size. mode is
+// the SNGL scalingMode -- "fit", "fill", "stretch", or "" for none.
+func NewScaled(pw, ph int, w, h float64, mode string) *Context {
+	c := New(pw, ph)
+	if w <= 0 || h <= 0 || mode == "" {
+		return c
+	}
+	applyScale(c, pw, ph, w, h, mode)
+	return c
+}
+
+// applyScale is the transform NewScaled and Surface.Begin both need.
+func applyScale(c *Context, pw, ph int, w, h float64, mode string) {
+	if w <= 0 || h <= 0 || mode == "" {
+		return
+	}
+	sx, sy := float64(pw)/w, float64(ph)/h
+	switch mode {
+	case "stretch":
+	case "fill":
+		sx = math.Max(sx, sy)
+		sy = sx
+	default: // fit
+		sx = math.Min(sx, sy)
+		sy = sx
+	}
+	c.dc.Scale(sx, sy)
+}
+
 // Result returns the rendered image.
 func (c *Context) Result() image.Image { return c.dc.Image() }
+
+// Surface is a drawing target that outlives the drawing.
+//
+// A host that hands its renderer a picture -- Fyne's Raster, which asks for
+// one at the pixel size it is about to upload -- calls back on every redraw,
+// and allocating a fresh buffer each time throws away the whole image per
+// keypress. This keeps it, and reallocates only when the size it is asked for
+// changes.
+//
+// The zero value is ready to use. Not safe for concurrent use: a canvas is
+// drawn by the UI thread that owns it.
+type Surface struct {
+	ctx    *Context
+	pw, ph int
+}
+
+// Begin returns a cleared context of pw x ph pixels, with a drawing placed in
+// a w x h coordinate space scaled into it per mode. The buffer is reused
+// whenever the pixel size is unchanged, which is every redraw that is not a
+// resize.
+func (s *Surface) Begin(pw, ph int, w, h float64, mode string) *Context {
+	if s.ctx == nil || s.pw != pw || s.ph != ph {
+		s.ctx, s.pw, s.ph = NewScaled(pw, ph, w, h, mode), pw, ph
+		return s.ctx
+	}
+	// Reused, so the last drawing is still in it. Zeroing the pixels is the
+	// clear -- gg's own fills with the current colour, which is a paint.
+	if img, ok := s.ctx.dc.Image().(*image.RGBA); ok {
+		clear(img.Pix)
+	}
+	s.ctx.dc.Identity()
+	applyScale(s.ctx, pw, ph, w, h, mode)
+	return s.ctx
+}
 
 // Save / Restore bracket transform/clip state.
 func (c *Context) Save()    { c.dc.Push() }

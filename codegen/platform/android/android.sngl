@@ -124,10 +124,15 @@ component CircularProgressIndicator(
     modifier ui.Style,
 ) {}
 
+// `colors` is the same Style the modifier gets. A Button paints its own
+// surface, so a background in the modifier lands behind the pill rather than
+// on it -- the colour has to go through the widget's own colour set.
 #[intrinsic("android:Button")]
 component Button(
     onClick func(),
     modifier ui.Style,
+    colors ui.Style,
+    shape ui.Style,
     slot _,
 ) {}
 
@@ -229,7 +234,7 @@ component ui.text[platform] {
 }
 
 component ui.button[platform] {
-    Button(onClick=func() { click() }, modifier={...style}) {
+    Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
         Text(text=text) {}
     }
 }

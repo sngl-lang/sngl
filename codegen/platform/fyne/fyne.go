@@ -88,14 +88,11 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
 			if agentMode {
-				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
-				// fyne's New() returns *Model; LowerTestFile generates code
-				// against `newTestComponent()` and dereferences fields via
-				// `c.<field>`, which Go handles transparently on a pointer.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -114,6 +111,16 @@ var currentModel *Model
 
 func setCurrentTestModel(m *Model) { currentModel = m }
 func currentTestModel() *Model     { return currentModel }
+
+// New() only zeroes the state; the widget fields an Updater writes through are
+// assigned by BuildUI, so a test that never renders would nil-deref on the
+// first state change. The test app has to exist before any widget does.
+func newTestComponent() *Model {
+	test.NewApp()
+	m := New()
+	m.BuildUI()
+	return m
+}
 
 func snapshotBytes(m *Model) (string, []byte, error) {
 	win := test.NewWindow(m.BuildUI())
@@ -137,10 +144,15 @@ func init() {
 					return err
 				}
 			} else {
-				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
-				// newTestComponent helper: fyne's New() returns *Model.
-				helper := []byte("\nfunc newTestComponent() *Model { return New() }\n")
-				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
+				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
+				if err := writeRawFile(sink, "model_test.go", []byte(src)); err != nil {
+					return err
+				}
+				// Its own file rather than an appendix to model_test.go: the
+				// helper needs an import, and that file's import block is
+				// written by LowerTestFile.
+				helper := []byte("package " + c.cfg.Package + "\n\nimport \"fyne.io/fyne/v2/test\"\n\nfunc newTestComponent() *Model {\n\ttest.NewApp()\n\tm := New()\n\tm.BuildUI()\n\treturn m\n}\n")
+				if err := writeRawFile(sink, "testcomponent_test.go", helper); err != nil {
 					return err
 				}
 			}

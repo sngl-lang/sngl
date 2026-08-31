@@ -1,0 +1,19 @@
+// Which readout a target gets.
+//
+// The choice is a build-time constant, so the branch not taken is folded away
+// -- an html build carries no box-drawing characters and a TUI build carries
+// no canvas.
+
+import . "sngl:ui"
+import "sngl:platform/bubbletea"
+
+component Readout(entry = "0", pending = "") {
+    vbox(style={gap=4, padding=12, alignItems="center"}) {
+        text(value=pending == "" ? " " : pending, style={fontSize=14, color=#7f9c95, fontFamily="monospace"})
+        if PLATFORM == bubbletea.platform {
+            AsciiReadout(entry=entry)
+        } else {
+            SegmentReadout(entry=entry)
+        }
+    }
+}

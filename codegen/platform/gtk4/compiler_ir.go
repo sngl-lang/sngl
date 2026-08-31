@@ -268,8 +268,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 
-	// vc is constructed only so later phases keep their (currently empty)
-	// accumulators.
+	// vc carries the accumulators the phases after the walk read back: the
+	// test invokers the main body's translator records as it connects signals.
 	var buildBuf strings.Builder
 	vc := &viewContext{
 		gc:         gc,
@@ -293,7 +293,10 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
-			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped)
+			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
+			withInvokerSink(func(inv gtkEventInvoker) {
+				vc.eventInvokers = append(vc.eventInvokers, inv)
+			})
 		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
@@ -359,11 +362,11 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc))
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
-	if len(vc.eventInvokers) > 0 {
+	if len(vc.eventInvokers) > 0 && !c.wrapped {
 		gc.RequireImport("unsafe")
 	}
 	var eventInvokersBuf strings.Builder
-	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers)
+	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers, c.wrapped)
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {
@@ -1132,7 +1135,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 // emitEventInvokers emits one Model method per (#id, @event) pair. Each fires
 // the real GTK signal, so the test runner drives `c.<id>.@<event>()` through
 // the trampoline and Go-callback bridge rather than re-running the handler.
-func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
+func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped bool) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		methodName := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1149,6 +1152,13 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker) {
 		}
 		if inv.PreFire != "" {
 			fmt.Fprintf(b, "\t%s\n", inv.PreFire)
+		}
+		if wrapped {
+			// gtk4rt.Emit is the same g_signal_emit_by_name, behind the
+			// runtime this mode already links against.
+			fmt.Fprintf(b, "\tgtk4rt.Emit(m.%s, %q)\n", inv.FieldName, inv.GTKSignal)
+			b.WriteString("}\n\n")
+			continue
 		}
 		fmt.Fprintf(b, "\tsig := C.CString(%q)\n", inv.GTKSignal)
 		b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")

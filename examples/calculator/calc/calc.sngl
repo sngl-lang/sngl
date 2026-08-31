@@ -1,0 +1,200 @@
+// The state machine. Every key on the keypad is one method here, and each
+// returns the next calculator rather than editing this one -- so a caller
+// holds `var state Calc` and writes `state = state.digit("7")`, and the
+// reactive update is the single assignment.
+
+struct Calc {
+    // What the readout shows, and the state itself rather than a rendering of
+    // one: a calculator that stored a float could not tell "3." from "3", and
+    // the difference is the whole of what pressing the point does.
+    entry string = "0"
+
+    // The left operand of the pending operation.
+    acc float = 0
+
+    // What `=` will do, or `none`.
+    op Op = Op.none
+
+    // True while `entry` is being typed. A result is not: the next digit
+    // replaces it instead of appending to it.
+    typing bool = false
+
+    // Division by zero. The readout shows E and every key but C is inert.
+    failed bool = false
+
+    // What a second `=` repeats, and the operand it repeats with. Every
+    // calculator you have used answers `1 + 1 = = =` with 4; one that cleared
+    // the operation on the first `=` stops at 2.
+    repeatOp Op = Op.none
+    repeatArg float = 0
+
+    // `entry` as a number. A trailing point is dropped rather than handed to
+    // the platform's string-to-float, which is where the three targets stop
+    // agreeing.
+    func value() float {
+        if string.endsWith(this.entry, ".") {
+            return float(string.substring(this.entry, 0, string.length(this.entry) - 1))
+        }
+        return float(this.entry)
+    }
+
+    // Digits count; the point and the minus sign do not, so "-3.5" is three
+    // of the ten cells.
+    func digits() int {
+        return string.length(string.replace(string.replace(this.entry, ".", ""), "-", ""))
+    }
+
+    func digit(d string) Calc {
+        if this.failed {
+            return this
+        }
+        var next = this
+        if !this.typing {
+            next.entry = d
+            next.typing = true
+            return next
+        }
+        if this.digits() >= WIDTH {
+            return next
+        }
+        if this.entry == "0" {
+            next.entry = d
+            return next
+        }
+        if this.entry == "-0" {
+            next.entry = "-" + d
+            return next
+        }
+        next.entry = this.entry + d
+        return next
+    }
+
+    func point() Calc {
+        if this.failed {
+            return this
+        }
+        var next = this
+        if !this.typing {
+            next.entry = "0."
+            next.typing = true
+            return next
+        }
+        if string.contains(this.entry, ".") {
+            return next
+        }
+        next.entry = this.entry + "."
+        return next
+    }
+
+    // Flips the sign of what is on the readout. It works on a result too,
+    // which is why it does not set `typing`: negating an answer and then
+    // typing a digit should still start a fresh number.
+    func negate() Calc {
+        if this.failed {
+            return this
+        }
+        var next = this
+        if string.startsWith(this.entry, "-") {
+            next.entry = string.substring(this.entry, 1, string.length(this.entry))
+            return next
+        }
+        if this.entry == "0" {
+            return next
+        }
+        next.entry = "-" + this.entry
+        return next
+    }
+
+    func percent() Calc {
+        if this.failed {
+            return this
+        }
+        var next = this
+        next.entry = format(this.value() / 100)
+        next.typing = false
+        return next
+    }
+
+    // Deletes the last character typed. A result has nothing to delete --
+    // backspacing an answer would leave a number the user never entered.
+    func backspace() Calc {
+        if this.failed {
+            return Calc{}
+        }
+        if !this.typing {
+            return this
+        }
+        var next = this
+        var shorter = string.substring(this.entry, 0, string.length(this.entry) - 1)
+        next.entry = shorter == "" || shorter == "-" ? "0" : shorter
+        return next
+    }
+
+    // Choosing an operation settles whatever was already pending, so
+    // `2 + 3 + 4` shows 5 the moment the second + goes down. Choosing one
+    // twice in a row just changes your mind about which it is.
+    func operate(o Op) Calc {
+        if this.failed {
+            return this
+        }
+        var next = this.typing && this.op != Op.none ? this.equals() : this
+        if next.failed {
+            return next
+        }
+        next.acc = next.value()
+        next.op = o
+        next.typing = false
+        return next
+    }
+
+    func equals() Calc {
+        if this.failed {
+            return this
+        }
+        if this.op == Op.none {
+            if this.repeatOp == Op.none {
+                var idle = this
+                idle.typing = false
+                return idle
+            }
+            return this.settle(this.value(), this.repeatOp, this.repeatArg)
+        }
+        return this.settle(this.acc, this.op, this.value())
+    }
+    // Nothing pending, so this is a repeat: apply the last operation to
+    // what is showing. That is what the second `=` means, and it is what
+    // makes the third one work too.
+
+    // One evaluation, from either arm of `=`: `a o b` into the readout, with
+    // the pair remembered so the next `=` can repeat it.
+    func settle(a float, o Op, b float) Calc {
+        if o == Op.div && b == 0 {
+            return Calc{entry="E", failed=true}
+        }
+        var next = this
+        var result = Op.apply(o, a, b)
+        next.entry = format(result)
+        next.acc = result
+        next.op = Op.none
+        next.typing = false
+        next.repeatOp = o
+        next.repeatArg = b
+        return next
+    }
+
+    func clear() Calc {
+        return Calc{}
+    }
+
+    // The line above the readout: what is waiting on the left operand. Empty
+    // when nothing is, which is most of the time.
+    func pending() string {
+        if this.failed {
+            return "divide by zero"
+        }
+        if this.op == Op.none {
+            return ""
+        }
+        return format(this.acc) + " " + Op.symbol(this.op)
+    }
+}

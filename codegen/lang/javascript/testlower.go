@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -22,6 +24,10 @@ const (
 	// doc comment.
 	TestEmitNative
 )
+
+// testInstanceVar names the component a test drives. Deliberately not a name
+// SNGL source can produce, so a local in the test body never collides.
+const testInstanceVar = "__snglTestComponent"
 
 // LowerTestFile produces the entire source of a generated JS test file.
 //
@@ -44,7 +50,7 @@ const (
 // `pkg` is accepted for symmetry with the Go/Kotlin LowerTestFile
 // signatures but is unused in JS — ES modules have no package
 // declaration.
-func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
+func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string,
 	methodFields map[string]bool, mode TestEmitMode) string {
 
 	if mode == TestEmitNative {
@@ -62,12 +68,16 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		fmt.Fprintf(&b, "export async function test%s(t) {\n", suffix)
-		// Named for the test's own second parameter, not a fixed `c`: a test
-		// that called it anything else referred to a binding this never made.
-		recv := testReceiverName(fn)
-		fmt.Fprintf(&b, "\tconst %s = newTestComponent();\n", recv)
-		fmt.Fprintf(&b, "\tsetCurrentTestModel(%s);\n", recv)
-		for _, line := range lowerTestBody(fn, methodFields) {
+		// Always built -- a snapshot needs an instance whether the test named
+		// one or not -- but bound to the declared name only when there is
+		// one. A fixed `const c` in every test redeclared any local called
+		// `c`, and a module that does not parse is a page that never loads.
+		b.WriteString("\tconst " + testInstanceVar + " = newTestComponent();\n")
+		b.WriteString("\tsetCurrentTestModel(" + testInstanceVar + ");\n")
+		if recv := codegen.TestComponentParam(fn); recv != "" {
+			fmt.Fprintf(&b, "\tconst %s = %s;\n", recv, testInstanceVar)
+		}
+		for _, line := range lowerTestBody(irPkg, fn, methodFields) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
 		b.WriteString("}\n\n")
@@ -87,12 +97,15 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string,
 // tests address widgets via DOM tags, not via the model field gate
 // the Kotlin/Go lowerers consult — but accepted in the signature for
 // symmetry and future use.
-func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
-	// Build an ExprCtx scoped to a minimal package; tests live in their
-	// own emitted module and reference per-component helpers
-	// (newTestComponent, setCurrentTestModel) declared in the same
-	// file rather than reading package state directly.
-	ctx := codegen.NewExprCtx(&ir.Package{})
+func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) []string {
+	// The test module is bundled with the emitted program, so it has to name
+	// things the way the emitter named them: a method on a user type as the
+	// free `Calc_digit(…)`. Over an empty package it knew none of them and
+	// emitted `Calc{…}.digit(…)`, a method no plain object has.
+	if irPkg == nil {
+		irPkg = &ir.Package{}
+	}
+	ctx := codegen.NewExprCtx(irPkg)
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields
@@ -108,6 +121,10 @@ func lowerTestBody(fn *ir.Func, methodFields map[string]bool) []string {
 			continue
 		}
 		if line, ok := lowerTestSnapshot(s, jc); ok {
+			out = append(out, line)
+			continue
+		}
+		if line, ok := lowerEventTrigger(s, jc); ok {
 			out = append(out, line)
 			continue
 		}
@@ -156,12 +173,52 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	return fmt.Sprintf("await t.snapshot(%s)", name), true
 }
 
-// testReceiverName is what a test function calls the component under test: its
-// second parameter's name. A test with no such parameter tests plain functions
-// and never refers to the handle.
-func testReceiverName(fn *ir.Func) string {
-	if fn != nil && len(fn.Params) > 1 && fn.Params[1].Name != "" {
-		return fn.Params[1].Name
+// lowerEventTrigger matches the IR shape a test line like `c.inc.click()`
+// produces -- a CallStmt the checker tagged with an Event, whose callee is a
+// chain of SelectExprs ending in the event field -- and emits
+// `<recv>.<id><Event>(...)`.
+//
+// Without it the event was dropped and the call rendered as `c.inc()`, which
+// resolves to nothing: the assertion then failed on an unchanged value rather
+// than erroring, which is the worst way for this to be missing.
+//
+// The invoker it names is attached to the state object by the html platform,
+// where the element behind `#inc` is known. Both halves capitalise the event
+// the same way, which is the only thing making them meet.
+func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
+	call, ok := s.(*ir.CallStmt)
+	if !ok || call.Call == nil {
+		return "", false
 	}
-	return "c"
+	c := call.Call
+	if c.AST == nil || c.Event == "" {
+		return "", false
+	}
+	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	// outerSel.Operand is `c.inc` -- another SelectExpr Operand:Ident{c}, Field:"inc".
+	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
+	if !ok {
+		return "", false
+	}
+	recv, ok := innerSel.Operand.(*ast.IdentExpr)
+	if !ok {
+		return "", false
+	}
+	args := make([]string, len(c.Args))
+	for i, a := range c.Args {
+		args[i] = jc.EvalExpr(a.Value)
+	}
+	return fmt.Sprintf("%s.%s%s(%s);", recv.Name, innerSel.Field, exportEventName(c.Event), strings.Join(args, ", ")), true
+}
+
+// exportEventName upper-cases the first letter, matching the name the platform
+// gives the invoker it attaches.
+func exportEventName(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

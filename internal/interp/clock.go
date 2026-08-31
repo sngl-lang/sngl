@@ -147,10 +147,10 @@ func (ts *Timers) FireDue(env *Env) (int, error) {
 		if !enabled || e.Timer.Handler == nil {
 			continue
 		}
-		for _, st := range e.Timer.Handler.Block {
-			if err := env.Exec(st); err != nil {
-				return fired, err
-			}
+		// ExecBlock rather than a raw Exec loop: a `return` in a handler ends
+		// that handler, and only ExecBlock swallows the signal.
+		if err := env.ExecBlock(e.Timer.Handler.Block); err != nil {
+			return fired, err
 		}
 		fired++
 	}

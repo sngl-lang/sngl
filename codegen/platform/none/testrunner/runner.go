@@ -65,7 +65,11 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 	}
 
 	for _, stmt := range fn.Block {
-		if err := env.Exec(stmt); err != nil {
+		err := env.Exec(stmt)
+		if interp.IsReturn(err) {
+			break
+		}
+		if err != nil {
 			r.Failures = append(r.Failures, codegen.TestFailure{
 				Line:    errorLine(err, stmt),
 				Message: err.Error(),

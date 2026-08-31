@@ -1,0 +1,101 @@
+// The seven segments, and which of them each character lights.
+//
+// This is the whole of what the two renderers share. `canvas.sngl` turns a
+// Glyph into rectangles and `ascii.sngl` turns the same Glyph into three rows
+// of characters; neither of them knows what a digit looks like.
+
+import "../calc"
+
+// One cell of the readout. The segments carry their traditional letters:
+//
+//	 aaa
+//	f   b
+//	 ggg
+//	e   c
+//	 ddd  .
+//
+// `point` is the decimal point hanging off the cell's bottom right. It belongs
+// to the cell rather than occupying one of its own, which is why a string is
+// folded into glyphs rather than padded character by character: "3.5" lights
+// two cells, not three.
+struct Glyph {
+    a bool = false
+    b bool = false
+    c bool = false
+    d bool = false
+    e bool = false
+    f bool = false
+    g bool = false
+    point bool = false
+}
+
+// `s` repeated `n` times. SNGL has no numeric range and no while loop, so
+// anything counted rather than iterated is written this way.
+func repeat(s string, n int) string {
+    if n <= 0 {
+        return ""
+    }
+    return s + repeat(s, n - 1)
+}
+
+// The character a cell shows. An unknown character lights nothing, which is
+// what makes the padding below work: a leading space is a dark cell.
+func glyphOf(ch string) Glyph {
+    if ch == "0" {
+        return Glyph{a=true, b=true, c=true, d=true, e=true, f=true}
+    }
+    if ch == "1" {
+        return Glyph{b=true, c=true}
+    }
+    if ch == "2" {
+        return Glyph{a=true, b=true, g=true, e=true, d=true}
+    }
+    if ch == "3" {
+        return Glyph{a=true, b=true, g=true, c=true, d=true}
+    }
+    if ch == "4" {
+        return Glyph{f=true, g=true, b=true, c=true}
+    }
+    if ch == "5" {
+        return Glyph{a=true, f=true, g=true, c=true, d=true}
+    }
+    if ch == "6" {
+        return Glyph{a=true, f=true, g=true, e=true, c=true, d=true}
+    }
+    if ch == "7" {
+        return Glyph{a=true, b=true, c=true}
+    }
+    if ch == "8" {
+        return Glyph{a=true, b=true, c=true, d=true, e=true, f=true, g=true}
+    }
+    if ch == "9" {
+        return Glyph{a=true, b=true, c=true, d=true, f=true, g=true}
+    }
+    if ch == "-" {
+        return Glyph{g=true}
+    }
+    if ch == "E" {
+        return Glyph{a=true, f=true, g=true, e=true, d=true}
+    }
+    return Glyph{}
+}
+
+// Cells the entry needs: everything but the point, which hangs off its
+// neighbour.
+func cellsWide(entry string) int {
+    return string.length(string.replace(entry, ".", ""))
+}
+
+// The entry as `calc.WIDTH` cells, right-aligned the way a calculator's
+// readout is, with each point folded onto the cell to its left.
+func cells(entry string) list<Glyph> {
+    var out list<Glyph> = []
+    for ch = string.split(repeat(" ", calc.WIDTH - cellsWide(entry)) + entry, "") {
+        if ch == "." && out.length() > 0 {
+            out[out.length() - 1].point = true
+        } else {
+            out.push(glyphOf(ch))
+        }
+    }
+    return out
+}

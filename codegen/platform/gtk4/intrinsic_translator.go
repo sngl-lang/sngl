@@ -82,6 +82,12 @@ type gtk4Translator struct {
 	// could not be emitted at all. nil in scopes that emit no widgets.
 	shared *emitShared
 
+	// invokerSink records one (id, event) pair per signal connected, for the
+	// test-invoker methods emitted after the walk. nil in the scopes that emit
+	// no test surface -- a slot func, a canvas draw -- which is also why this
+	// is a sink rather than a field read back off the translator.
+	invokerSink func(gtkEventInvoker)
+
 	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
 	// while the following draw primitive is translated.
 	canvasByID         map[string]*canvasMeta
@@ -107,6 +113,11 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
 	return t.localRefs != nil && t.localRefs[id]
+}
+
+func (t *gtk4Translator) withInvokerSink(sink func(gtkEventInvoker)) *gtk4Translator {
+	t.invokerSink = sink
+	return t
 }
 
 func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
@@ -554,10 +565,13 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		if t.isLocalRef(id.Name) {
 			return &ir.Ident{Name: id.Name, Type: id.Type}
 		}
-		if strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
-		}
-		if id.IsElementRef && id.Synthesized {
+		// Any element ref is a Model field: the id a program wrote as `#inc`
+		// exactly as much as the `__nN` lowering synthesized. Asking for
+		// Synthesized as well, and separately for the `__n` prefix, named two
+		// proxies for "is a node handle" and missed the one shape neither
+		// covers -- a tagged widget then reached the setter as a bare `inc`,
+		// which is not a binding this file has.
+		if id.IsElementRef || strings.HasPrefix(id.Name, "__n") {
 			return codegen.ModelFieldRef(id.Name)
 		}
 	}
@@ -832,6 +846,12 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		}
 		signal = sig.Name
 	}
+	// Everything a test invoker needs is known here and nowhere later: the id a
+	// program wrote, the SNGL event written on it, and the GTK signal that event
+	// maps to. The statements emitted below keep only the signal, which is why
+	// this is recorded rather than recovered.
+	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
+
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
 	if t.wrapped {
@@ -924,4 +944,23 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		return t.translateCanvasRedraw(n)
 	}
 	return []ir.Stmt{stmt}
+}
+
+// recordInvoker notes one (id, event) pair for the test-invoker methods emitted
+// after the walk.
+//
+// A synthesized id is skipped: `c.__n0.click()` is not something a test can
+// write, so a method for it would be dead. A scope with no sink -- a slot func,
+// a canvas draw -- records nothing.
+func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
+	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
+		return
+	}
+	t.invokerSink(gtkEventInvoker{
+		IDLabel:    id,
+		SnglEvent:  event,
+		FieldName:  id,
+		GTKSignal:  signal,
+		WidgetType: cType,
+	})
 }

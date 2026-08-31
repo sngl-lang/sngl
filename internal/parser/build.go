@@ -705,17 +705,22 @@ func (b *builder) buildConstDecl(it nodeIter) *ast.ConstDecl {
 	// ConstDecl = kw_const ConstSpec | kw_const lparen ConstSpec { comma ConstSpec } rparen .
 	pos := b.posFromToken(it.shift()) // kw_const
 	c := &ast.ConstDecl{Pos: ast.Pos(pos)}
+	openLine := 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		c.IsGrouped = true
-		it.skip() // lparen
+		openLine = b.posFromToken(it.shift()).Line // lparen
 	}
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == ConstSpec {
+		switch {
+		case it.isNonTerminal() && it.symbol() == ConstSpec:
 			c.Specs = append(c.Specs, b.buildConstSpec(it.enter()))
-		} else {
-			it.skip() // comma, rparen
+		case !it.isNonTerminal() && it.tokenType() == RPAREN:
+			c.EndPos = ast.Pos(b.posFromToken(it.shift()))
+		default:
+			it.skip() // comma
 		}
 	}
+	c.Tail = b.attachSpecComments(openLine, c.EndPos.Line, c.Specs)
 	return c
 }
 
@@ -724,6 +729,9 @@ func (b *builder) buildConstSpec(it nodeIter) ast.VarSpec {
 	var spec ast.VarSpec
 	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
 		spec.Names, spec.NamePositions = b.buildIdentListWithPos(it.enter())
+		if len(spec.NamePositions) > 0 {
+			spec.Pos = spec.NamePositions[0]
+		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		spec.Type = b.buildType(it.enter())
@@ -744,18 +752,48 @@ func (b *builder) buildVarDecl(it nodeIter) *ast.VarDecl {
 	// VarDecl = kw_var VarSpec | kw_var lparen VarSpec { comma VarSpec } rparen .
 	pos := b.posFromToken(it.shift()) // kw_var
 	v := &ast.VarDecl{Pos: ast.Pos(pos)}
+	openLine := 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		v.IsGrouped = true
-		it.skip() // lparen
+		openLine = b.posFromToken(it.shift()).Line // lparen
 	}
 	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == VarSpec {
+		switch {
+		case it.isNonTerminal() && it.symbol() == VarSpec:
 			v.Specs = append(v.Specs, b.buildVarSpec(it.enter()))
-		} else {
-			it.skip() // comma, rparen
+		case !it.isNonTerminal() && it.tokenType() == RPAREN:
+			v.EndPos = ast.Pos(b.posFromToken(it.shift()))
+		default:
+			it.skip() // comma
 		}
 	}
+	v.Tail = b.attachSpecComments(openLine, v.EndPos.Line, v.Specs)
 	return v
+}
+
+// attachSpecComments hands each spec in a group the comments written above it
+// and after it, and returns the ones left between the last spec and the closing
+// paren.
+//
+// A group is not a StmtBlock, so the statement-level pass cannot descend into
+// it: everything written inside came out below the whole declaration, in a pile
+// and detached from what it documented. A one-line group shares its line with
+// whatever follows, so it claims nothing.
+func (b *builder) attachSpecComments(openLine, endLine int, specs []ast.VarSpec) []*ast.Comment {
+	if openLine == 0 || endLine <= openLine {
+		return nil
+	}
+	prev := openLine
+	for i := range specs {
+		line := specs[i].Pos.Line
+		if line == 0 {
+			continue
+		}
+		specs[i].Leading = b.claimComments(prev, line)
+		specs[i].Trailing = b.claimInlineComment(line)
+		prev = line
+	}
+	return b.claimComments(prev, endLine)
 }
 
 func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
@@ -763,6 +801,9 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 	var spec ast.VarSpec
 	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
 		spec.Names, spec.NamePositions = b.buildIdentListWithPos(it.enter())
+		if len(spec.NamePositions) > 0 {
+			spec.Pos = spec.NamePositions[0]
+		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		spec.Type = b.buildType(it.enter())

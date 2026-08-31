@@ -41,7 +41,31 @@ type canvasMeta = canvasutil.Meta
 // draw funcs: a 0..255→0..1 source setter and the alpha-gated fill/stroke
 // painters (fill when fill.a>0, stroke when stroke.a>0). Emitted into model.go
 // alongside the canvas stdlib struct decls whenever any canvas is present.
-const canvasCairoHelpers = `func _snglCairoSource(cr *C.cairo_t, c ` + canvasutil.ColorGoType + `) {
+const canvasCairoHelpers = `// _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
+// drawing at. An empty mode leaves the context alone, which is what a canvas
+// shown at its own size wants.
+func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
+	if w <= 0 || h <= 0 || mode == "" {
+		return
+	}
+	sx, sy := float64(pw)/float64(w), float64(ph)/float64(h)
+	switch mode {
+	case "stretch":
+	case "fill":
+		if sy > sx {
+			sx = sy
+		}
+		sy = sx
+	default:
+		if sy < sx {
+			sx = sy
+		}
+		sy = sx
+	}
+	C.cairo_scale(cr, C.double(sx), C.double(sy))
+}
+
+func _snglCairoSource(cr *C.cairo_t, c ` + canvasutil.ColorGoType + `) {
 	C.cairo_set_source_rgba(cr, C.double(float64(c.R)/255.0), C.double(float64(c.G)/255.0), C.double(float64(c.B)/255.0), C.double(float64(c.A)/255.0))
 }
 
@@ -315,13 +339,28 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_width", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}))},
 		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_height", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}))},
 	}
+	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
+		// The content size stays as the natural one -- it is what the drawing
+		// asks for -- but a canvas that scales takes more when there is more,
+		// which is what expanding says in GTK.
+		widget := cgoCast("GtkWidget", daField)
+		stmts = append(stmts,
+			&ir.CallStmt{Call: nativeCall("gtk_widget_set_hexpand", widget, &ir.Ident{Name: "1", Type: ir.TypDyn})},
+			&ir.CallStmt{Call: nativeCall("gtk_widget_set_vexpand", widget, &ir.Ident{Name: "1", Type: ir.TypDyn})},
+		)
+	}
 
 	// Register the draw callback through the trampoline registry:
 	//   snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t) { m._canvasDrawN(cr) })
 	//   C.sngl_drawing_area_set_draw(unsafe.Pointer(m.<id>), C.int(len(snglDrawFuncs)-1))
 	cbList := &ir.Ident{Name: "snglDrawFuncs", Type: ir.TypDyn}
+	// The drawing's own coordinate space is scaled onto the size GTK is
+	// drawing at, so the shapes are rasterised where they land rather than
+	// drawn at one size and stretched from it. cairo is a vector context, so
+	// this costs a transform and nothing else.
 	closure := &ir.Ident{
-		Name: fmt.Sprintf("func(cr *C.cairo_t) { m.%s(cr) }", m.Draw.Name),
+		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); m.%s(cr) }",
+			w, h, m.Scaling, m.Draw.Name),
 		Type: ir.TypDyn,
 	}
 	appendCall := &ir.Call{

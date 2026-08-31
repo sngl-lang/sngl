@@ -14,7 +14,7 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 # textarea forwards @input onto onValueChange. The lambda parameter is
 # declared as the event payload, so the holder a handler reads `.value` from is
 # built from the text Compose passed.
-grep 'OutlinedTextField\(value = notes, minLines = 3, modifier = Modifier, onValueChange = \{ newValue ->' out/MainScreen.kt
+grep 'OutlinedTextField\(value = notes, minLines = 3, modifier = Modifier\.safeDrawingPadding\(\), onValueChange = \{ newValue ->' out/MainScreen.kt
 grep 'val e = SnglInputEvent\(newValue\)' out/MainScreen.kt
 grep 'notes = e\.value' out/MainScreen.kt
 
@@ -35,7 +35,7 @@ grep 'onDismissRequest = \{' out/MainScreen.kt
 grep 'open = false' out/MainScreen.kt
 
 # `args` carries an argument whose value has no SNGL spelling.
-grep 'Row\(modifier = Modifier, verticalAlignment = Alignment.CenterVertically\) \{' out/MainScreen.kt
+grep 'Row\(modifier = Modifier\.safeDrawingPadding\(\), verticalAlignment = Alignment.CenterVertically\) \{' out/MainScreen.kt
 grep 'Surface\(shape = MaterialTheme\.shapes\.medium\) \{' out/MainScreen.kt
 
 # A program can pass its own lambda to an intrinsic directly; the parameter

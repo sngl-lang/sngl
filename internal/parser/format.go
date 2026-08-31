@@ -589,10 +589,14 @@ func (f *formatter) writeConstDecl(c *ast.ConstDecl) {
 		f.write("const (")
 		f.newline()
 		f.indent++
-		for _, spec := range c.Specs {
+		for i, spec := range c.Specs {
+			f.blankBeforeBodyItem(i, leadLine(spec.Pos.Line, spec.Leading, nil))
+			f.writeLeadingComments(spec.Leading)
 			f.writeVarSpec(spec)
+			f.writeTrailing(spec.Trailing)
 			f.newline()
 		}
+		f.writeLeadingComments(c.Tail)
 		f.indent--
 		f.write(")")
 	} else {
@@ -613,10 +617,14 @@ func (f *formatter) writeVarDecl(v *ast.VarDecl) {
 		f.write("var (")
 		f.newline()
 		f.indent++
-		for _, spec := range v.Specs {
+		for i, spec := range v.Specs {
+			f.blankBeforeBodyItem(i, leadLine(spec.Pos.Line, spec.Leading, nil))
+			f.writeLeadingComments(spec.Leading)
 			f.writeVarSpec(spec)
+			f.writeTrailing(spec.Trailing)
 			f.newline()
 		}
+		f.writeLeadingComments(v.Tail)
 		f.indent--
 		f.write(")")
 	} else {

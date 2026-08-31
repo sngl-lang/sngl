@@ -39,6 +39,30 @@ func NewStruct(def *ir.StructDef, typ *ir.Type) *Struct {
 	return &Struct{Def: def, Type: typ}
 }
 
+// CopyValue is what declaring a local from a struct means: a struct is a value
+// type, so `var next = this` gets its own, and editing it does not edit what
+// the caller still holds. Anything else is returned as it is -- a list is a
+// reference by design, which is what makes `items.push(4)` and
+// `todos[i].done!!` write through.
+//
+// Only a local declaration copies. A parameter does not: `func translate(dx
+// int, dy int) { this.x += dx }` is a method that edits its receiver, and the
+// caller is meant to see it.
+//
+// Nested structs are copied too, since a field of a struct is as much a value
+// as the struct is.
+func CopyValue(v any) any {
+	s, ok := v.(*Struct)
+	if !ok || s == nil {
+		return v
+	}
+	cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
+	for i, f := range s.Fields {
+		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value)}
+	}
+	return cp
+}
+
 // Name returns the declared type's name, or "" for an anonymous literal.
 func (s *Struct) Name() string {
 	if s == nil || s.Def == nil {

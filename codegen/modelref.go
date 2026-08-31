@@ -29,3 +29,26 @@ func IdentBareName(e ir.Expr) string {
 	}
 	return ""
 }
+
+// TriggerEventName is the event a test can write for a handler: the one the
+// program wrote, when a platform override re-raised it, and otherwise the name
+// the handler already carries.
+//
+// A platform override subscribes to its host widget's event and re-raises the
+// component's — gtk4's button is `@clicked { click() }` — so a promoted handler
+// is named for the host while a test writes `c.inc.click()`. The program's name
+// is recorded during the substitution that inlined its block
+// (ir.Func.LoweredFromComponentEvent), because that is the last point both are
+// visible. A platform whose primitive declares the component's own event name
+// gets the same answer from the fallback.
+func TriggerEventName(handler ir.Expr, fallback string) string {
+	id, ok := handler.(*ir.Ident)
+	if !ok {
+		return fallback
+	}
+	fn, ok := id.Sym.(*ir.Func)
+	if !ok || fn.LoweredFromComponentEvent == "" {
+		return fallback
+	}
+	return fn.LoweredFromComponentEvent
+}

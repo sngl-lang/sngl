@@ -1,0 +1,84 @@
+# Every command resolves its arguments the same way, through resolveUnits:
+#
+#   - a file named on the command line is its own unit;
+#   - a directory is a package, read as one;
+#   - a directory whose files declare more than one `component main` is a
+#     collection of programs, and each file is its own unit.
+#
+# They used to each decide for themselves. `sngl generate` merged a file's
+# siblings, `sngl test` deliberately never did, and `sngl check` read every
+# file alone -- so the same package was one program to one command and a pile
+# of undefined names to the next.
+
+# A package: main is in app.sngl, the test that drives it is in app_test.sngl,
+# and the helper it calls is in a third file.
+sngl check app/
+stdout 'app/app.sngl: ok'
+stdout 'app/app_test.sngl: ok'
+
+sngl test app/
+stdout '2 tests, 0 failures'
+
+sngl generate --platform html --lang none -o out app/
+grep 'twice: 14' out/index.html
+
+# The same directory named as one file is that file alone, which is what a
+# corpus of one-file programs relies on -- and what makes naming a file mean
+# "this file".
+! sngl check app/app_test.sngl
+stderr 'unknown type "main"'
+
+# A directory holding several programs is not a package. Read as one it would
+# report every main after the first as a duplicate; read as a corpus, each file
+# stands alone.
+sngl check corpus/
+stdout 'corpus/one.sngl: ok'
+stdout 'corpus/two.sngl: ok'
+
+sngl test corpus/
+stdout '2 tests, 0 failures'
+
+-- app/app.sngl --
+import . "sngl:ui"
+
+component main {
+    var n = 7
+    text #out(value="twice: {twice(n)}")
+}
+-- app/helper.sngl --
+func twice(n int) => n * 2
+-- app/app_test.sngl --
+import . "sngl:test"
+
+func testHelper(t Test) {
+    t.assert(twice(3) == 6)
+}
+
+// `main` is declared in app.sngl, the file next to this one.
+func testComponent(t Test, c main) {
+    t.assert(c.out.value == "twice: 14")
+}
+-- corpus/one.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main {
+    var a = 1
+    text(value=string(a))
+}
+
+func testOne(t Test, c main) {
+    t.assert(c.a == 1)
+}
+-- corpus/two.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main {
+    var b = 2
+    text(value=string(b))
+}
+
+func testTwo(t Test, c main) {
+    t.assert(c.b == 2)
+}

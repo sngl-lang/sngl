@@ -1,0 +1,64 @@
+// The terminal's readout: the same seven segments, drawn with characters.
+//
+// A TUI has no pixels to put a canvas on, so a cell becomes three rows three
+// characters wide, plus a fourth column for the decimal point. The segment
+// data is the same `Glyph` the canvas renderer paints -- only the ink differs.
+
+import . "sngl:ui"
+import "../calc"
+
+// Cell art is 3 columns wide plus the point's own column.
+const CELL_COLS = 4
+
+// The box drawn around the readout, in the characters a terminal has.
+const BOX_H = "─"
+const BOX_TL = "╭"
+const BOX_TR = "╮"
+const BOX_BL = "╰"
+const BOX_BR = "╯"
+const BOX_V = "│"
+
+// One row of one cell.
+//
+//	row 0    _      the a segment
+//	row 1   |_|     f, g, b
+//	row 2   |_| .   e, d, c and the point
+func Glyph.row(gl Glyph, row int) string {
+    if row == 0 {
+        return " " + (gl.a ? "_" : " ") + "  "
+    }
+    if row == 1 {
+        return (gl.f ? "|" : " ") + (gl.g ? "_" : " ") + (gl.b ? "|" : " ") + " "
+    }
+    return (gl.e ? "|" : " ") + (gl.d ? "_" : " ") + (gl.c ? "|" : " ") + (gl.point ? "." : " ")
+}
+
+// One row of the whole readout, across every cell.
+func rowOf(lit list<Glyph>, row int) string {
+    var out = ""
+    for gl = lit {
+        out = out + gl.row(row)
+    }
+    return out
+}
+
+// The box is a function of the entry and nothing else, so these are top-level
+// funcs rather than computeds on the component below: the component's only job
+// is to place the five lines.
+func rule() => repeat(BOX_H, calc.WIDTH * CELL_COLS + 2)
+
+func boxTop() => BOX_TL + rule() + BOX_TR
+
+func boxBottom() => BOX_BL + rule() + BOX_BR
+
+func boxLine(entry string, row int) => BOX_V + " " + rowOf(cells(entry), row) + " " + BOX_V
+
+component AsciiReadout(entry = "0") {
+    vbox(style={gap=0}) {
+        text(value=boxTop)
+        text(value=boxLine(entry, 0))
+        text(value=boxLine(entry, 1))
+        text(value=boxLine(entry, 2))
+        text(value=boxBottom)
+    }
+}
