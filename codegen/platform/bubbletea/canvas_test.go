@@ -42,9 +42,21 @@ component main {
 	for _, f := range mem.Files() {
 		out.WriteString(string(f))
 	}
-	for _, want := range []string{"snglcanvas.New(40, 20)", "ctx.Rect(", "RenderTerminal("} {
+	for _, want := range []string{
+		"var _canvasSurface0 snglcanvas.Surface",
+		"_canvasSurface0.Begin(40, 20, 0, 0, \"\")",
+		"ctx.Rect(",
+		"RenderTerminal(",
+	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q in emitted bubbletea output:\n%s", want, out.String())
+		}
+	}
+	// The surface is what keeps the buffer across frames; allocating one per
+	// rasterise is the thing it replaced.
+	for _, unwanted := range []string{"snglcanvas.New("} {
+		if strings.Contains(out.String(), unwanted) {
+			t.Errorf("canvas allocates per frame (%q):\n%s", unwanted, out.String())
 		}
 	}
 

@@ -188,13 +188,53 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	}
 }
 
-// canvasRasteriser returns a Go `func() image.Image` literal that allocates a
-// canvas Context, runs the node's draw func, and returns the rasterised image.
+// canvasRasteriser returns a Go `func() image.Image` literal that draws the
+// node's shapes into its canvas surface and returns the rasterised image.
 // Shared by the View placeholder path and the out-of-band transmit method; both
 // pass it to tui, which calls it only when pixels are actually required.
+//
+// A terminal canvas never rescales -- the cell grid is computed from the
+// declared size -- so the surface is asked for the size it already has and the
+// buffer survives every frame after the first.
 func canvasRasteriser(n *ir.NodeInst, w, h int) string {
-	return fmt.Sprintf("func() image.Image { __c := %s.New(%d, %d); m.%s(__c); return __c.Result() }",
-		snglCanvasAlias, w, h, n.CanvasDraw.Name)
+	return fmt.Sprintf("func() image.Image { __c := %s.Begin(%d, %d, 0, 0, \"\"); m.%s(__c); return __c.Result() }",
+		canvasSurfaceVar(n.CanvasDraw), w, h, n.CanvasDraw.Name)
+}
+
+// canvasSurfaceVar names the package-level surface backing a draw func. It is a
+// package var rather than a Model field because bubbletea's Model is a value:
+// an Update returns a copy, so a buffer parked in a field would be reallocated
+// on the frame after every keypress -- the allocation this exists to remove.
+func canvasSurfaceVar(fn *ir.Func) string {
+	return strings.Replace(fn.Name, "canvasDraw", "canvasSurface", 1)
+}
+
+// emitCanvasSurfaceDecls declares one reusable drawing surface per canvas.
+//
+// tui calls the rasteriser on every frame it cannot serve from cache, and a
+// context allocated per call throws the whole image away per keypress -- most
+// of a megabyte for a readout across a wide terminal.
+func emitCanvasSurfaceDecls(b *strings.Builder, pkg *ir.Package) {
+	seen := map[*ir.Func]bool{}
+	emit := func(body []ir.Stmt) {
+		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
+			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
+				return false
+			}
+			seen[n.CanvasDraw] = true
+			fmt.Fprintf(b, "var %s %s.Surface\n", canvasSurfaceVar(n.CanvasDraw), snglCanvasAlias)
+			return false
+		})
+	}
+	for _, c := range pkg.Components {
+		emit(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		emit(w.Body)
+	}
+	if len(seen) > 0 {
+		b.WriteByte('\n')
+	}
 }
 
 // canvasImageID derives a stable, nonzero kitty image ID from a canvas draw
