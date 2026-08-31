@@ -338,6 +338,18 @@ func (h *MemHost) childrenOf(parent Key) *[]*MemNode {
 	return &h.roots
 }
 
+// Event is a host reporting that someone did something to a widget.
+type Event struct {
+	Key  Key    `json:"key"`
+	Name string `json:"name"`
+}
+
+// EventReporter is a Host that can tell the driver about interaction. ServeHost
+// wires one up so its events become notifications on the wire.
+type EventReporter interface {
+	SetOnEvent(func(key Key, event string))
+}
+
 // RPCHost is a Host on the far end of a pipe: the interpreter's side of the
 // out-of-process worker.
 //
@@ -347,10 +359,21 @@ func (h *MemHost) childrenOf(parent Key) *[]*MemNode {
 //
 // The wire is internal/testrpc, the same line-delimited JSON-RPC the test
 // driver already speaks to per-language agents. One wire in the repo, not two.
+//
+// A single goroutine owns reading. Events arrive whenever someone touches a
+// widget, including while a batch is in flight, so the reader routes them to
+// Events and responses to whoever is waiting -- two readers on one stream would
+// race for each other's messages.
 type RPCHost struct {
 	w      *testrpc.Writer
-	r      *testrpc.Reader
 	closer io.Closer
+
+	events chan Event
+	resp   chan *testrpc.Message
+	done   chan struct{}
+	// readErr is why the reader stopped, read only after done is closed.
+	readErr error
+
 	// pending is the error the batch has already failed with. An op that fails
 	// mid-batch is reported at End, and the ops after it are still sent: the
 	// far side is a separate process and dropping half a batch would leave it
@@ -358,9 +381,58 @@ type RPCHost struct {
 	pending error
 }
 
-// NewRPCHost speaks to a worker over rw.
+// NewRPCHost speaks to a worker over rw and starts reading from it.
 func NewRPCHost(rw io.ReadWriteCloser) *RPCHost {
-	return &RPCHost{w: testrpc.NewWriter(rw), r: testrpc.NewReader(rw), closer: rw}
+	h := &RPCHost{
+		w:      testrpc.NewWriter(rw),
+		closer: rw,
+		events: make(chan Event, 64),
+		resp:   make(chan *testrpc.Message, 1),
+		done:   make(chan struct{}),
+	}
+	go h.read(testrpc.NewReader(rw))
+	return h
+}
+
+// Events reports what viewers did. A driver reads it and calls Session.Invoke.
+// It is buffered: a worker whose events nobody reads must not block its own
+// event loop, so the oldest are dropped once it fills.
+func (h *RPCHost) Events() <-chan Event { return h.events }
+
+// Done closes when the worker's stream ends, which is how a driver learns the
+// window was shut.
+func (h *RPCHost) Done() <-chan struct{} { return h.done }
+
+// Err reports why reading stopped. Valid once Done is closed.
+func (h *RPCHost) Err() error { return h.readErr }
+
+func (h *RPCHost) read(r *testrpc.Reader) {
+	defer close(h.done)
+	for {
+		msg, err := r.Read()
+		if err != nil {
+			if err != io.EOF {
+				h.readErr = err
+			}
+			return
+		}
+		switch {
+		case msg.IsResponse():
+			select {
+			case h.resp <- msg:
+			default: // nobody waiting; a stale response is not worth blocking on
+			}
+		case msg.Method == "event":
+			var ev Event
+			if json.Unmarshal(msg.Params, &ev) != nil {
+				continue
+			}
+			select {
+			case h.events <- ev:
+			default: // nobody draining; drop rather than stall the worker
+			}
+		}
+	}
 }
 
 func (h *RPCHost) Close() error { return h.closer.Close() }
@@ -378,17 +450,21 @@ func (h *RPCHost) End() error {
 		return err
 	}
 	for {
-		msg, err := h.r.Read()
-		if err != nil {
-			return err
+		select {
+		case msg := <-h.resp:
+			if msg.ID == nil || *msg.ID != id {
+				continue
+			}
+			if msg.Error != nil {
+				return msg.Error
+			}
+			return h.pending
+		case <-h.done:
+			if h.readErr != nil {
+				return h.readErr
+			}
+			return io.EOF
 		}
-		if !msg.IsResponse() || *msg.ID != id {
-			continue // a worker may notify events while a batch is in flight
-		}
-		if msg.Error != nil {
-			return msg.Error
-		}
-		return h.pending
 	}
 }
 
@@ -448,6 +524,11 @@ func (h *RPCHost) notify(method string, params any) error {
 // with the same oracle an in-process host is checked against.
 func ServeHost(h Host, rw io.ReadWriteCloser) error {
 	r, w := testrpc.NewReader(rw), testrpc.NewWriter(rw)
+	if rep, ok := h.(EventReporter); ok {
+		rep.SetOnEvent(func(key Key, event string) {
+			_ = w.Notify("event", Event{Key: key, Name: event})
+		})
+	}
 	var batch error
 	for {
 		msg, err := r.Read()

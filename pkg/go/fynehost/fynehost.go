@@ -176,6 +176,10 @@ func (h *Host) Rebind(key snglhost.Key, events []string) error {
 	return h.bind(m, events)
 }
 
+// SetOnEvent satisfies snglhost.EventReporter, so a worker forwards what a
+// viewer does back over the wire without this package knowing there is one.
+func (h *Host) SetOnEvent(fn func(key snglhost.Key, event string)) { h.OnEvent = fn }
+
 // Object returns the Fyne widget mounted for a key, for a test or an inspector.
 func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
 	m, ok := h.nodes[key]
