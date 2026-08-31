@@ -86,6 +86,7 @@ type pass struct {
 //     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
 //     no ref<T> survives, all rewrites are no-ops.
 var passes = []pass{
+	passRootWindow,
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
@@ -136,6 +137,16 @@ type Options struct {
 	// "kotlin"). A declaration may be overridden on either axis, and the
 	// swap prefers the platform's where both apply.
 	Language string
+
+	// RootComponent names the declaration lowering should treat as the
+	// program's entry point, overriding the by-name lookup for "main".
+	//
+	// It exists for a test build, where the entry point is the component under
+	// test rather than the program's own root. Without it the inliner flattens
+	// that component into whatever the program renders and renames its state
+	// per instance, so the Model has `n__inst0` where the test agent -- written
+	// against the declaration -- asks for `n` (#136).
+	RootComponent string
 
 	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
 	// component id from another platform's namespace. A platform primitive is

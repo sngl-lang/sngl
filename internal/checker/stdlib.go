@@ -498,13 +498,10 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// struct bodies, const initialisers last -- is a property of a package and
 	// not of the tier it came from, and this loader used to state it a second
 	// time in a different order.
-	savedDocs := c.docs
-	c.docs = docs
-	restoreFile := c.saveFile()
-	defer func() {
-		c.docs = savedDocs
-		restoreFile()
-	}()
+	//
+	// Running it means running everything it resets, which is why the restore
+	// covers more than the documents: see enterPackage.
+	defer c.enterPackage(docs)()
 	c.pass1()
 	// A field default is a value expression, so it waits until every name it
 	// could refer to is registered. pass2 does this for a program; a library

@@ -379,7 +379,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
 		return ctx.BuildMutation(nil), nil
 	}
-	singleWindow := len(irWindows) == 1
 	staticMode := req.Lang.LanguageIdentifier() == "none"
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
@@ -390,7 +389,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
-		case singleWindow && (win.Window == nil || win.Window.Href == nil):
+		case win.Window == nil || win.Window.Href == nil:
+			// No declaration to take an href from: the package body's root
+			// window, or a lone main component's. It is the document the site
+			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
 			href, ok := codegen.IRLiteralString(win.Window.Href)
@@ -564,6 +566,10 @@ type htmlGen struct {
 	// state is declared, beside the package and the main component, and it is
 	// per-document: static mode emits one file per window.
 	irWindow *ir.Window
+
+	// snglIDByElem maps a JS element variable ($1) to the id a program wrote
+	// on that node (#inc). Only ids a test could name are in it.
+	snglIDByElem map[string]string
 
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
@@ -968,6 +974,7 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	}
 	if n != nil {
 		g.idToNode[id] = n
+		g.noteSnglID(id, n)
 	}
 	return id
 }
@@ -1964,6 +1971,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 				fmt.Fprintf(b, "state.%s = () => $%s();\n", fn.Name, fn.Name)
 			}
 		}
+		g.emitEventInvokers(b)
 		// Hoisted onto window so the testagent's newTestComponent() returns a
 		// live reference. Tests share one state across the session.
 		b.WriteString("if (typeof window !== 'undefined') { window.__sngl_state = state; }\n")
@@ -3330,4 +3338,60 @@ func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.No
 	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)
 	}
+}
+
+// noteSnglID records the id a program wrote against the JS variable this
+// element is bound to. They are different names -- `#inc` is what a test can
+// say, `$1` is what the emitted script holds -- and this is the one place both
+// are in hand.
+func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
+	if elemVar == "" || n == nil || n.ID == "" || strings.HasPrefix(n.ID, "__n") {
+		return
+	}
+	if g.snglIDByElem == nil {
+		g.snglIDByElem = map[string]string{}
+	}
+	g.snglIDByElem[elemVar] = n.ID
+}
+
+// emitEventInvokers attaches one function per (#id, @event) pair to the state
+// object a test holds, so `c.inc.click()` reaches the element.
+//
+// The event is dispatched on the element itself -- `.click()` for a click, a
+// real Event for the rest -- so it runs through the same addEventListener the
+// page wired, rather than calling the handler behind its back. Nothing about
+// layout or pointer position is involved; what it skips is whether the element
+// is visible and hittable.
+//
+// They hang off `state` because that is the object newTestComponent() returns,
+// which is what makes `c.<id><Event>()` resolve. The computed accessors above
+// are attached the same way.
+func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
+	seen := map[string]bool{}
+	for _, h := range g.handlers {
+		snglID := g.snglIDByElem[h.elemID]
+		if snglID == "" {
+			continue // a node no test can name
+		}
+		name := snglID + capitalizeFirst(h.event)
+		if seen[name] {
+			continue // duplicate id+event -- keep the first
+		}
+		seen[name] = true
+		if h.event == "click" {
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = () => %s.dispatchEvent(new Event(%q));\n", name, h.elemID, h.event)
+	}
+}
+
+// capitalizeFirst upper-cases the first letter, matching golang.ExportName on
+// the names an event can have -- the two halves of a trigger are named on
+// opposite sides of the compiler and have to agree.
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

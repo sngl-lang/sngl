@@ -1,0 +1,136 @@
+# A test names the component under test with its second parameter, and the
+# driver passes that name as rootComponent so the platform builds its Model
+# from it. That only worked while nothing else in the program rendered.
+#
+# With any root present -- a top-level composition, or a `component main` --
+# the root instantiates the component under test, so passInlinePure flattens it
+# and renames its state per instance. The Model then carries `n__inst0` while
+# the agent, written against the declaration, asks for `n`:
+#
+#     ./testagent_main.go:9:10: c.n undefined (type Model has no field
+#                               or method n)
+#
+# The cause was ordering: the package was lowered once, before the group -- and
+# therefore the root -- was known. Each group now lowers its own clone with its
+# own root, the way each build target already does.
+#
+# The three files differ only in what surrounds the component under test, which
+# is the whole regression.
+
+sngl test --platform none alone.sngl
+stdout 'ok'
+sngl test --platform none composed.sngl
+stdout 'ok'
+sngl test --platform none rooted.sngl
+stdout 'ok'
+
+sngl test --platform html alone.sngl
+stdout 'ok'
+sngl test --platform html composed.sngl
+stdout 'ok'
+sngl test --platform html rooted.sngl
+stdout 'ok'
+
+sngl test --platform bubbletea alone.sngl
+stdout 'ok'
+sngl test --platform bubbletea composed.sngl
+stdout 'ok'
+sngl test --platform bubbletea rooted.sngl
+stdout 'ok'
+
+# Two components under test in one file: each group is its own root, so
+# neither is inlined into the other or into the composition above them.
+#
+# Their parameters are deliberately named something other than `c`. The agent
+# used to declare a fixed `c := newTestComponent()`, so a test that called its
+# handle anything else built against a binding that was never made:
+#
+#     ./testagent_main.go:9:8: undefined: g
+sngl test --platform none two.sngl
+stdout 'ok'
+sngl test --platform html two.sngl
+stdout 'ok'
+sngl test --platform bubbletea two.sngl
+stdout 'ok'
+
+-- alone.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter {
+    var n = 3
+    vbox {
+        text(value="{n}")
+    }
+}
+
+func testInitial(t Test, c counter) {
+    t.assert(c.n == 3)
+}
+
+-- composed.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+counter()
+
+component counter {
+    var n = 3
+    vbox {
+        text(value="{n}")
+    }
+}
+
+func testInitial(t Test, c counter) {
+    t.assert(c.n == 3)
+}
+
+-- rooted.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main {
+    counter()
+}
+
+component counter {
+    var n = 3
+    vbox {
+        text(value="{n}")
+    }
+}
+
+func testInitial(t Test, c counter) {
+    t.assert(c.n == 3)
+}
+
+-- two.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+vbox {
+    counter()
+    greeter()
+}
+
+component counter {
+    var n = 3
+    vbox {
+        text(value="{n}")
+    }
+}
+
+component greeter {
+    var who = "world"
+    vbox {
+        text(value="hi {who}")
+    }
+}
+
+func testCounter(t Test, cnt counter) {
+    t.assert(cnt.n == 3)
+}
+
+func testGreeter(t Test, g greeter) {
+    t.assert(g.who == "world")
+}
