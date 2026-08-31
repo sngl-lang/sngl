@@ -46,8 +46,8 @@ func Promote(doc *ast.Document, name string) *ast.Document {
 			stmts = append(stmts, s)
 		default:
 			// Preserve everything else (Import, top-level VarDecl /
-			// ConstDecl, StructDef/EnumDef/UnitDef, PlatformStmt,
-			// output blocks, etc.) so the re-check has the same
+			// ConstDecl, StructDef/EnumDef/UnitDef, output
+			// blocks, etc.) so the re-check has the same
 			// supporting context as the original document.
 			stmts = append(stmts, s)
 		}

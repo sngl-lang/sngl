@@ -12,9 +12,10 @@ import (
 // The checker types the &-bound element var as ref<T> and wraps its reads in
 // Unary{Deref}. This pass replaces every reference to that element var with
 // indexed list access (`list[idx]`), so reads index the live element and
-// writes update it in place under value semantics. It records the loop index
-// (the two-var Key, or a synthesized name) on For.IndexVar; codegen emits an
-// index-driven loop for RefElem fors.
+// writes update it in place under value semantics. The loop is then desugared
+// into an ordinary two-var loop over indices — For.Key is the index (the user's
+// own binding, or a synthesized name) and For.Value is "_" — so no ref-specific
+// path reaches codegen.
 //
 // Runs early (before reactivity) so the rewritten `list[idx].field` writes are
 // seen as mutations of the list var — the reactivity peel then fires the
@@ -123,7 +124,7 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 
 // lowerFor rewrites a RefElem loop's body: every reference to the &-bound
 // element var becomes Index{Iter, idx}. The index is the two-var Key or a
-// synthesized name recorded on For.IndexVar.
+// synthesized name.
 func (st *refLoopState) lowerFor(n *ir.For) {
 	elemName := n.Key
 	indexName := ""

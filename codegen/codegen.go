@@ -412,12 +412,16 @@ type HTTPCompiler interface {
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.
 type HTTPRequest struct {
-	Pkg        *ir.Package               // v2 checked IR
-	Package    string                    // target package name (e.g., "main", "ui")
-	Main       bool                      // generate standalone server with main()
-	Framework  string                    // HTTP framework: "net/http", "gin", "echo"
-	Routes     []HTTPRoute               // window → route mapping
-	RenderHTML func(routeIdx int) string // Deprecated: returns a baked static HTML body for a route. Phase 3 introduced the structured HTTPRoute.Render (RouteRender) model that carries IR-expr holes; the language renders those via its own *IRContext. RenderHTML remains until Phase 4 switches the Go consumer onto Render.
+	Pkg       *ir.Package // v2 checked IR
+	Package   string      // target package name (e.g., "main", "ui")
+	Main      bool        // generate standalone server with main()
+	Framework string      // HTTP framework: "net/http", "gin", "echo"
+	Routes    []HTTPRoute // window → route mapping
+	// RenderHTML returns a baked static HTML body for a route. It serves
+	// routes with no server actions, where the page is a constant; a route
+	// that has them renders through HTTPRoute.Render instead, whose IR-expr
+	// holes the language fills against per-session state.
+	RenderHTML func(routeIdx int) string
 }
 
 // HTTPRoute maps a window to an HTTP route.

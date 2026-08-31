@@ -13,9 +13,6 @@ import (
 // the same shape codegen sees. In particular i18n detection must run after
 // InlinePure (which can collapse the i18n wrapper into a direct intrinsic);
 // final-pass placement guarantees that.
-//
-// Replaces: codegen.PackageUsesErrorHandling, codegen.usesAlert, and the
-// per-backend hasI18nCalls / golang.PackageUsesI18n walkers.
 var passStampUsage = pass{
 	name:    "StampUsage",
 	enabled: func(Caps) bool { return true },
@@ -71,8 +68,7 @@ func pkgUsesAlert(pkg *ir.Package) bool {
 
 // pkgUsesErrorHandling reports whether the package contains any error-handling
 // construct: a window/boundary @error handler, a fallible-call handler, a
-// raise, or a func that can error. Mirrors the former
-// codegen.PackageUsesErrorHandling traversal.
+// raise, or a func that can error.
 func pkgUsesErrorHandling(pkg *ir.Package) bool {
 	for _, w := range pkg.Windows {
 		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Body) {
