@@ -1548,14 +1548,18 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 	}
 	if n.CanvasDraw != nil {
-		g.canvasSetups = append(g.canvasSetups, canvasSetup{id: id, drawFunc: n.CanvasDraw})
+		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
+		cs := canvasSetup{id: id, drawFunc: n.CanvasDraw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
-		// passCanvasReactivity injects into handler/timer bodies.
+		// passCanvasReactivity injects into handler/timer bodies. A scaled
+		// canvas also redraws when its box changes, because the box is what
+		// its backing store is sized from.
 		uname := fmt.Sprintf("$u_%s_canvas", id[1:])
-		body := fmt.Sprintf(
-			"(function(){const _ctx=%s.getContext(\"2d\");_ctx.clearRect(0,0,%s.width,%s.height);%s(_ctx);})();",
-			id, id, id, n.CanvasDraw.Name,
-		)
+		body := cs.drawCall() + ";"
+		if cs.scaling != "" {
+			body += fmt.Sprintf("_snglCanvasWatch(%s,function(){%s});", id, cs.drawCall())
+		}
 		g.initWrites = append(g.initWrites, updateFunc{
 			funcName: uname,
 			body:     body,
@@ -2237,17 +2241,20 @@ func canvasScalingCSS(n *ir.NodeInst) string {
 		return ""
 	}
 	// Emitted after the width and height the canvas declared, so it wins:
-	// those two are the backing store, which stays the size the shapes were
-	// placed at, and these are the box the browser scales it into.
+	// those two size the backing store, and this is the box the shapes are
+	// drawn into. No object-fit -- the helper sizes the backing store to this
+	// box and scales the geometry, so there is no picture left to resample.
 	switch canvasScalingMode(n) {
 	case canvasutil.ScaleFit:
-		// Height from the width, so the drawing keeps its shape at whatever
-		// width the row gives it.
-		return "width:100%;height:auto;object-fit:contain"
-	case canvasutil.ScaleFill:
-		return "width:100%;height:100%;object-fit:cover"
-	case canvasutil.ScaleStretch:
-		return "width:100%;height:100%;object-fit:fill"
+		// aspect-ratio rather than height:auto alone: the backing store's own
+		// dimensions move at runtime, and the box must not follow them.
+		w, h := canvasIntProp(n, "width"), canvasIntProp(n, "height")
+		if w <= 0 || h <= 0 {
+			return "width:100%"
+		}
+		return fmt.Sprintf("width:100%%;height:auto;aspect-ratio:%d/%d", w, h)
+	case canvasutil.ScaleFill, canvasutil.ScaleStretch:
+		return "width:100%;height:100%"
 	}
 	return ""
 }
@@ -2268,6 +2275,7 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 		return
 	}
 	b.WriteString(snglColorHelper)
+	b.WriteString(snglCanvasHelper)
 }
 
 // timerSyncCalls returns a $timer_N_sync() call for every timer whose enabled
@@ -2856,10 +2864,7 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
 	for _, cs := range g.canvasSetups {
 		if cs.drawFunc == rs.DrawFunc {
-			id := cs.id
-			return "(function(){const _ctx=" + id + ".getContext(\"2d\");" +
-				"_ctx.clearRect(0,0," + id + ".width," + id + ".height);" +
-				rs.DrawFunc.Name + "(_ctx);})()"
+			return cs.drawCall()
 		}
 	}
 	return "" // draw func not found (shouldn't happen)

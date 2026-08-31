@@ -1081,6 +1081,18 @@ func ktMapValZero(t *ir.Type) string {
 // a whole number, and SNGL follows them.
 const FloatStringFn = "_snglFloatStr"
 
+// SplitFn names the helper `string.split` lowers to, and SplitDecl is its
+// declaration. Kotlin's own split returns a leading and a trailing empty
+// string for an empty separator; Go and JavaScript return the characters.
+const SplitFn = "_snglSplit"
+
+// The character walk matches JavaScript, which splits by UTF-16 unit. Go
+// splits an empty separator by rune, so a non-BMP character already differs
+// between those two; this follows the nearer of the pair.
+const SplitDecl = `fun ` + SplitFn + `(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+`
+
 const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 `

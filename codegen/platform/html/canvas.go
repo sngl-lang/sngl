@@ -1,6 +1,8 @@
 package html
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -103,8 +105,68 @@ func init() {
 type canvasSetup struct {
 	id       string
 	drawFunc *ir.Func
+	// w and h are the coordinate space the shapes were placed in, and scaling
+	// what to do when the box is not that size. Both are needed at the draw
+	// call, not only where the element is written.
+	w, h    int
+	scaling string
+}
+
+// canvasIntProp is the integer pixel value of a canvas dimension prop, which
+// is a measurement literal by the time it reaches codegen.
+func canvasIntProp(n *ir.NodeInst, name string) int {
+	lit, ok := codegen.NodeProp(n, name).(*ir.Literal)
+	if !ok || lit == nil {
+		return 0
+	}
+	v, err := strconv.ParseFloat(strings.TrimSuffix(lit.Value, lit.Suffix), 64)
+	if err != nil {
+		return 0
+	}
+	return int(v)
+}
+
+// drawCall is the one way this platform draws a canvas: through the helper,
+// which decides the backing store from the box and scales the shapes into it.
+func (cs canvasSetup) drawCall() string {
+	return fmt.Sprintf("_snglCanvasDraw(%s,%d,%d,%q,%s)", cs.id, cs.w, cs.h, cs.scaling, cs.drawFunc.Name)
 }
 
 // snglColorHelper converts a SNGL color struct {r,g,b,a} to CSS rgba().
 // Emitted once in the JS bundle whenever canvas is present.
 const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g+\",\"+c.b+\",\"+(c.a/255)+\")\":\"rgba(0,0,0,0)\"}\n"
+
+// snglCanvasHelper draws one canvas, scaling the geometry rather than the
+// picture.
+//
+// A canvas has two sizes: the coordinate space the shapes were placed in, and
+// the box the layout gave it. Letting the browser bridge the two -- a fixed
+// backing store stretched by CSS -- resamples a small image up to a big one,
+// and a drawing of hard edges comes out soft. So the backing store is sized
+// to the box instead, at device resolution, and the shapes are scaled on the
+// way in: every edge is rasterised where it lands rather than interpolated
+// from where it landed at another size.
+//
+// `center` keeps the backing store the author's, which is what a canvas that
+// is shown at its own size wants and costs nothing to redraw.
+const snglCanvasHelper = `function _snglCanvasDraw(el,w,h,mode,draw){
+  const ctx=el.getContext("2d");
+  if(!mode){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,el.width,el.height);draw(ctx);return}
+  const dpr=window.devicePixelRatio||1;
+  const pw=Math.max(1,Math.round((el.clientWidth||w)*dpr));
+  const ph=Math.max(1,Math.round((el.clientHeight||h)*dpr));
+  if(el.width!==pw)el.width=pw;
+  if(el.height!==ph)el.height=ph;
+  let sx,sy;
+  if(mode==="stretch"){sx=pw/w;sy=ph/h}
+  else{sx=sy=mode==="fill"?Math.max(pw/w,ph/h):Math.min(pw/w,ph/h)}
+  ctx.setTransform(sx,0,0,sy,0,0);
+  ctx.clearRect(0,0,w,h);
+  draw(ctx);
+}
+function _snglCanvasWatch(el,redraw){
+  if(typeof ResizeObserver!=="function")return;
+  let first=true;
+  new ResizeObserver(function(){if(first){first=false;return}redraw()}).observe(el);
+}
+`

@@ -447,6 +447,23 @@ func declaresProp(comp *ir.Component, name string) bool {
 	return false
 }
 
+// cornerShapeExpr renders a Style's borderRadius as the shape a Material
+// widget takes, or "" when it asked for none.
+func (cc *irComposeContext) cornerShapeExpr(n *ir.NodeInst, styleProp string) string {
+	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
+		if sf.Name != "borderRadius" {
+			continue
+		}
+		v := cc.kc.EvalExpr(sf.Value)
+		if v == "" || v == "0" || v == "0.0" {
+			continue
+		}
+		cc.kc.RequireImport("androidx.compose.foundation.shape.RoundedCornerShape")
+		return fmt.Sprintf("RoundedCornerShape(%s.dp)", v)
+	}
+	return ""
+}
+
 // buttonColorsExpr renders a Style's background and foreground as the colour
 // set a Material button takes, or "" when it asked for neither.
 func (cc *irComposeContext) buttonColorsExpr(n *ir.NodeInst, styleProp string) string {
@@ -628,11 +645,11 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 // trailing lambda. A func-typed prop is a callback, emitted as the Kotlin
 // lambda Compose takes there.
 //
-// Four prop names are this emitter's own — `modifier` builds the Modifier
+// Five prop names are this emitter's own — `modifier` builds the Modifier
 // chain from a Style, `chain` appends further Modifier calls to it, `args` is
-// arguments already spelled in Kotlin, and `colors` is a Style rendered as the
-// widget's own colour set — because none of the four is a value Compose takes
-// as written.
+// arguments already spelled in Kotlin, `colors` is a Style rendered as the
+// widget's own colour set and `shape` as its own outline — because none of
+// the five is a value Compose takes as written.
 func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
 	var args []string
 	for _, p := range comp.Props {
@@ -642,6 +659,12 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			args = append(args, irStringList(codegen.NodeProp(n, p.Name))...)
 		case "modifier":
 			args = append(args, "modifier = "+cc.intrinsicModifier(n, comp))
+		case "shape":
+			// A Material button is a stadium by default, so a tall one is an
+			// ellipse. `borderRadius` is the corner it actually asked for.
+			if sh := cc.cornerShapeExpr(n, "modifier"); sh != "" {
+				args = append(args, p.Name+" = "+sh)
+			}
 		case "colors":
 			// A Button paints its own surface, so Modifier.background draws a
 			// rectangle *behind* the pill rather than colouring it -- which is

@@ -132,6 +132,7 @@ component Button(
     onClick func(),
     modifier ui.Style,
     colors ui.Style,
+    shape ui.Style,
     slot _,
 ) {}
 
@@ -233,7 +234,7 @@ component ui.text[platform] {
 }
 
 component ui.button[platform] {
-    Button(onClick=func() { click() }, modifier={...style}, colors={...style}) {
+    Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
         Text(text=text) {}
     }
 }

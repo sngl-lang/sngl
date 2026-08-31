@@ -3,25 +3,35 @@
 # picture when the room it is given is not that size.
 #
 # Each target already had a name for all four, so none of them needed a new
-# mechanism -- only a value to read. html scales the backing store into the CSS
-# box with object-fit, fyne has the four fill modes one for one, and Compose
-# has no backing store to stretch so the shapes are scaled in the DrawScope.
+# mechanism -- only a value to read. fyne has the four fill modes one for one;
+# html and Compose scale the geometry, which is the whole point of scaling a
+# drawing rather than a picture of one.
 
+# html scales the geometry rather than the picture: the backing store is sized
+# to the box the canvas was laid out in, at device resolution, and the shapes
+# are scaled on the way in. Resampling a small drawing up to a big one is what
+# made a display of hard edges come out soft.
 sngl generate --platform html --lang none -o h fit.sngl
-grep 'object-fit:contain' h/index.html
-# The backing store keeps the size the shapes were placed at.
-grep 'width="200px"' h/index.html
+grep '_snglCanvasDraw\(\$0, 200, 100, "fit", _canvasDraw0\)' h/index.html
+grep 'aspect-ratio:200/100' h/index.html
+# Nothing left for the browser to resample.
+! grep 'object-fit' h/index.html
+# The box is what the backing store follows, so a resize redraws.
+grep '_snglCanvasWatch\(\$0,' h/index.html
 # And the prop is read here rather than passed through as an attribute no
 # element has.
 ! grep 'scalingMode=' h/index.html
 
 sngl generate --platform html --lang none -o hs stretch.sngl
-grep 'object-fit:fill' hs/index.html
+grep '_snglCanvasDraw\(\$0, 200, 100, "stretch", _canvasDraw0\)' hs/index.html
 
 # center is the default, and adds nothing: the canvas stays the size of its
-# own drawing, which is what every canvas did before there was a choice.
+# own drawing, redrawn at that size, which is what every canvas did before
+# there was a choice.
 sngl generate --platform html --lang none -o hc center.sngl
-! grep 'object-fit' hc/index.html
+grep '_snglCanvasDraw\(\$0, 200, 100, "", _canvasDraw0\)' hc/index.html
+! grep 'aspect-ratio' hc/index.html
+! grep '_snglCanvasWatch\(\$0,' hc/index.html
 
 # Fyne's fill modes line up with the four names.
 sngl generate --platform fyne --lang go -o f fit.sngl
