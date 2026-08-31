@@ -2970,11 +2970,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	return nil
 }
 
-// buildPlatformPkgScope builds (and caches) a scope containing declarations
-// from the named platform's sngl:platform/<n> package.
-func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
+// targetPkgScope builds (and caches) a scope containing the declarations of the
+// target package sngl:<uri>, for either tier: a language ships a package the
+// way a platform does, and source in it is written against its own
+// declarations the same way.
+func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	if c.platformScopeCache != nil {
-		if s, ok := c.platformScopeCache[platform]; ok {
+		if s, ok := c.platformScopeCache[uri]; ok {
 			// Clone so each insertion point gets its own parent chain.
 			clone := NewScope(nil)
 			maps.Copy(clone.Symbols, s.Symbols)
@@ -2983,11 +2985,14 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 		}
 	}
 
-	t := c.lookupTarget(platform)
+	name, _, ok := targetTierName(uri)
+	if !ok {
+		return nil
+	}
+	t := c.lookupTarget(name)
 	if t == nil || targetUnavailable(t) != nil {
 		return nil
 	}
-	uri := "platform/" + platform
 	if !c.hasLibPkg(uri) {
 		return nil
 	}
@@ -3000,12 +3005,12 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: name, Pkg: pkg})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
 	}
-	c.platformScopeCache[platform] = scope
+	c.platformScopeCache[uri] = scope
 
 	// Return a clone for this usage.
 	clone := NewScope(nil)

@@ -75,7 +75,22 @@ func StdlibDocs() []*ast.Document {
 // A platform or language package: one contributed by a codegen plugin rather
 // than by the library.
 func targetTier(pkg string) bool {
-	return strings.HasPrefix(pkg, "platform/") || strings.HasPrefix(pkg, "language/")
+	_, _, ok := targetTierName(pkg)
+	return ok
+}
+
+// targetTierName splits a target package name into the target it belongs to and
+// the identity that target carries. The two tiers are one mechanism -- a
+// package a plugin serves, holding the overrides a build targeting it loads --
+// so what tells them apart is the kind, not a separate code path.
+func targetTierName(pkg string) (string, ir.BuiltinKind, bool) {
+	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
+		return name, ir.BuiltinPlatform, true
+	}
+	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
+		return name, ir.BuiltinLanguage, true
+	}
+	return "", ir.BuiltinNone, false
 }
 
 // parseStdlibDocs parses every .sngl file embedded in the lib package. File
@@ -926,17 +941,20 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 	return out
 }
 
-// mergeTargetExtensions collects the `component sngl.X` overrides one target's
-// package declares, checking each `platform <name> { ... }` block into the
-// stdlib *ir.Component's PlatformOverrides map. The lowering pass
-// passPlatformExtensionBody reads PlatformOverrides[opts.Platform] and swaps it
-// into Component.Body before any other pass runs.
+// mergeTargetExtensions collects the overrides one target's package declares --
+// `component sngl.X` and `func pkg.f[target]` alike -- into the declaration
+// each names, under the target it implements. ir.Specialize swaps the entry
+// for the target being built into the declaration's own body before any other
+// pass runs.
 //
 // A target's package is loaded the way a side-effect import is, and for the
-// same reason: building for a platform is an `import _ "sngl:platform/<it>"`
-// nobody wrote. So this runs for the build target, and for any target package
-// the program imported itself -- which is how a program asks to be held to a
-// platform's rules without naming one of its declarations.
+// same reason: building for a target is an `import _ "sngl:platform/<it>"`
+// nobody wrote, and a language's package is one of those imports too -- which
+// is what makes a language able to implement a declaration the library leaves
+// open (`func http.get[language]`) rather than only describe types. So this
+// runs for the build target, and for any target package the program imported
+// itself -- which is how a program asks to be held to a target's rules without
+// naming one of its declarations.
 //
 // It used to run for every registered platform at once, which made one
 // platform's problems everybody's: an override naming a widget its own host
@@ -953,10 +971,8 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		return
 	}
 	c.libs.extended[pkgName] = true
-	name, ok := strings.CutPrefix(pkgName, "platform/")
+	name, tier, ok := targetTierName(pkgName)
 	if !ok {
-		// Only a platform declares overrides; a language package has no
-		// `component sngl.X` to merge.
 		return
 	}
 	if p := c.lookupTarget(name); p != nil && targetUnavailable(p) != nil {
@@ -988,6 +1004,18 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 			// scope, so resolve it from the document's own imports.
 			aliases := libImportAliases(doc)
 			for _, stmt := range doc.Stmts {
+				if fd, isFunc := stmt.(*ast.FuncDef); isFunc {
+					// The package's own overrides. Resolved here rather than
+					// left to mergeFuncOverride, which would resolve them in
+					// the program's scope: the name a target package overrides
+					// comes from its own imports.
+					if fd.Target != nil {
+						if base := c.libFuncOverrideBase(fd, aliases); base != nil {
+							c.mergeFuncOverride(fd, base, pkgName)
+						}
+					}
+					continue
+				}
 				decl, ok := stmt.(*ast.ComponentDecl)
 				if !ok {
 					continue
@@ -1028,15 +1056,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// everywhere: a platform package is not an exception, so the
 				// one rule covers a package's own overrides and a program's.
 				if decl.Target == nil {
-					c.error(decl.Pos, "override %q must name the target it implements: component %s[%s.platform]", decl.Name, decl.Name, name)
+					c.error(decl.Pos, "override %q must name the target it implements: component %s[%s.%s]", decl.Name, decl.Name, name, targetTierMember(tier))
 					continue
 				}
 				plat, kind, ok := c.resolveTargetIndex(decl.Target)
 				if !ok {
 					continue
 				}
-				if kind != ir.BuiltinPlatform || plat != name {
-					// A platform package implements its own target. Naming
+				if kind != tier || plat != name {
+					// A target package implements its own target. Naming
 					// another would register an override that only merges when
 					// this package loads, which is when the *other* target is
 					// not the one being built.
@@ -1143,16 +1171,19 @@ func (c *checker) checkPendingExtensions() {
 	if len(c.pendingExtensions) == 0 {
 		return
 	}
-	// Group by platform so each platform's own package is in scope while its
-	// extension bodies are checked. It must be scoped per platform: several
-	// platforms each declare a distinct `struct Options`.
+	// Group by target package so each target's own is in scope while its
+	// extension bodies are checked. It must be scoped per target: several of
+	// them each declare a distinct `struct Options`. Keyed by the package
+	// rather than the bare name, because the two tiers share a namespace and a
+	// language of some name is not the platform of it.
 	var order []string
-	byPlatform := map[string][]pendingExtension{}
+	byTarget := map[string][]pendingExtension{}
 	for _, pe := range c.pendingExtensions {
-		if _, seen := byPlatform[pe.platform]; !seen {
-			order = append(order, pe.platform)
+		uri := targetTierMember(pe.kind) + "/" + pe.platform
+		if _, seen := byTarget[uri]; !seen {
+			order = append(order, uri)
 		}
-		byPlatform[pe.platform] = append(byPlatform[pe.platform], pe)
+		byTarget[uri] = append(byTarget[uri], pe)
 	}
 	// Check against the stdlib scope, not the user root: these bodies are
 	// compiler-internal source, and resolving them where user declarations are
@@ -1160,7 +1191,7 @@ func (c *checker) checkPendingExtensions() {
 	// on (e.g. android.sngl's 52 bare `slot` references).
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
-	for _, platform := range order {
+	for _, uri := range order {
 		// Platform bodies are written against the standard library they
 		// extend (bare `slot`, `text`, …), which reaches user scope only by
 		// import. Resolve them in the std package's own scope, which chains
@@ -1171,13 +1202,13 @@ func (c *checker) checkPendingExtensions() {
 		// re-registered copies, which would not unify with the prop types
 		// built from them.
 		c.scope = c.stdlibPkg.Symbols.Root
-		if ps := c.buildPlatformPkgScope(platform); ps != nil {
+		if ps := c.targetPkgScope(uri); ps != nil {
 			ps.Parent = c.scope
 			c.scope = ps
 		}
 		c.pushScope()
 		libBodyScope := c.scope
-		for _, pe := range byPlatform[platform] {
+		for _, pe := range byTarget[uri] {
 			// A program's override resolves against the program: the names its
 			// body reaches are the ones its own file imported.
 			if pe.user {
