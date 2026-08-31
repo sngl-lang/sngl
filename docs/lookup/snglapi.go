@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // The types and functions in this file project the Go Result/DeclIndex/*Detail
@@ -199,9 +200,21 @@ type Entry struct {
 // any platform/language with a non-empty Package()). Each entry's Path is a
 // valid first argument to Lookup / PackageIndex.
 type PackageEntry struct {
-	Path  string // "sngl", "android", "html", ...
-	Title string // display title, e.g. "Standard Library", "android"
+	// Path is the import path, which is what Lookup takes and what the URL is
+	// built from: "sngl:ui", "sngl:ui/draw", "html".
+	Path string
+	// Title is the display name, the same import path.
+	Title string
 	Kind  string // "library" | "platform" | "language"
+	// Href is the package's index page, BaseHref the prefix its declaration
+	// pages sit under, and Depth how far below the library root it sits -- 0
+	// for sngl:ui, 1 for sngl:ui/draw -- so the tree renders without
+	// re-splitting the path.
+	Href     string
+	BaseHref string
+	Depth    int
+	// Blurb is the first sentence of the package comment.
+	Blurb string
 }
 
 // DeclPage is one generated documentation page for a decl. Pkg + Kind + Name
@@ -238,20 +251,39 @@ func Packages() []PackageRefView {
 	return out
 }
 
-// StdlibPackages enumerates every package the docs site generates pages for:
-// the SNGL standard library plus each registered platform/language whose
-// Package() returns at least one document.
+// LibraryPackages enumerates every package the docs site generates pages for:
+// each public package of the embedded library, then each registered
+// platform/language whose own package holds at least one document.
+//
+// One entry per package. The single merged "sngl" entry this replaced could not
+// say which package a declaration came from, and could not represent two of
+// them declaring one name.
 //
 //sngl:pure
-func StdlibPackages() []PackageEntry {
-	out := []PackageEntry{{Path: "sngl", Title: "SNGL Library", Kind: "library"}}
+func LibraryPackages() []PackageEntry {
+	var out []PackageEntry
+	for _, uri := range lib.PublicPackages() {
+		path := "sngl:" + uri
+		out = append(out, PackageEntry{
+			Path:     path,
+			Title:    path,
+			Kind:     "library",
+			Href:     PackageHref(path),
+			BaseHref: PackageBaseHref(path),
+			Depth:    strings.Count(uri, "/"),
+			Blurb:    packageBlurb(path),
+		})
+	}
 	plats := codegen.Platforms()
 	sort.Strings(plats)
 	for _, name := range plats {
 		if len(codegen.PlatformDocs(codegen.LookupPlatform(name))) == 0 {
 			continue
 		}
-		out = append(out, PackageEntry{Path: name, Title: name, Kind: "platform"})
+		out = append(out, PackageEntry{
+			Path: name, Title: name, Kind: "platform", Href: PackageHref(name),
+			BaseHref: PackageBaseHref(name), Blurb: packageBlurb(name),
+		})
 	}
 	langs := codegen.Langs()
 	sort.Strings(langs)
@@ -259,26 +291,66 @@ func StdlibPackages() []PackageEntry {
 		if len(codegen.LangDocs(codegen.LookupLang(name))) == 0 {
 			continue
 		}
-		out = append(out, PackageEntry{Path: name, Title: name, Kind: "language"})
+		out = append(out, PackageEntry{
+			Path: name, Title: name, Kind: "language", Href: PackageHref(name),
+			BaseHref: PackageBaseHref(name), Blurb: packageBlurb(name),
+		})
 	}
 	return out
 }
 
-// NonStdlibPackages returns StdlibPackages minus the "sngl" entry — the
-// platforms and languages whose package indexes are generated alongside the
-// stdlib's rich landing page.
+func packageBlurb(path string) string {
+	res, err := Lookup(path)
+	if err != nil || res.Index == nil {
+		return ""
+	}
+	return FirstSentence(res.Index.Description)
+}
+
+// PackageHref is a package's index page. The URL is the import path with the
+// scheme's colon as a separator: sngl:ui is /docs/sngl/ui/index.html and
+// sngl:ui/draw nests under it, so a reader who knows what to import knows where
+// to look. A target keeps its bare name, which is how a program names it too.
 //
 //sngl:pure
-func NonStdlibPackages() []PackageEntry {
-	all := StdlibPackages()
-	out := make([]PackageEntry, 0, len(all))
-	for _, p := range all {
-		if p.Path == "sngl" {
-			continue
+func PackageHref(path string) string {
+	return "/docs/" + urlPkg(path) + "/index.html"
+}
+
+// PackageBaseHref is the prefix a package's declaration pages sit under.
+//
+//sngl:pure
+func PackageBaseHref(path string) string {
+	return "/docs/" + urlPkg(path) + "/"
+}
+
+// LibraryTree is the packages of the embedded library, in path order, for the
+// listing at the library root. Targets are left out: they are documented
+// alongside, but a program does not import one to write it.
+//
+//sngl:pure
+func LibraryTree() []PackageEntry {
+	var out []PackageEntry
+	for _, p := range LibraryPackages() {
+		if p.Kind == "library" {
+			out = append(out, p)
 		}
-		out = append(out, p)
 	}
 	return out
+}
+
+// DeclHref is one declaration's page, under its package.
+//
+//sngl:pure
+func DeclHref(path, kind, name string) string {
+	return declPageHref(path, kind, name, "")
+}
+
+// urlPkg is the path segments a package's pages live under. Keeping the scheme
+// as the first segment is what keeps the two id spaces apart: sngl:html would
+// otherwise land on the html platform's pages.
+func urlPkg(path string) string {
+	return strings.ReplaceAll(path, ":", "/")
 }
 
 // AllDeclPages returns one DeclPage per documentation page the site should
@@ -289,7 +361,7 @@ func NonStdlibPackages() []PackageEntry {
 //sngl:pure
 func AllDeclPages() []DeclPage {
 	var out []DeclPage
-	for _, pkg := range StdlibPackages() {
+	for _, pkg := range LibraryPackages() {
 		res, err := Lookup(pkg.Path)
 		if err != nil || res.Kind != KindIndex || res.Index == nil {
 			continue
@@ -315,11 +387,10 @@ func AllDeclPages() []DeclPage {
 			})
 		}
 		for _, c := range idx.Components {
-			// Stdlib components have rich, hand-rolled pages on the website
-			// (live preview, highlighted code, props/events tables). Skip
-			// them here so the generic per-decl loop doesn't double-emit
-			// them with a thinner EntryView render.
-			if pkg.Path == "sngl" {
+			// A library component's page is hand-rolled on the website (live
+			// preview, highlighted code, prop and event tables), so the generic
+			// render would be a second page at the same href.
+			if pkg.Kind == "library" {
 				continue
 			}
 			add("components", c.Name, "")
@@ -369,7 +440,7 @@ func AllDeclPages() []DeclPage {
 }
 
 func declPageHref(pkg, kind, name, ident2 string) string {
-	base := "/docs/" + pkg + "/" + kind + "/" + name
+	base := "/docs/" + urlPkg(pkg) + "/" + kind + "/" + name
 	if ident2 != "" {
 		return base + "/" + ident2 + ".html"
 	}

@@ -1,5 +1,3 @@
-// Components that move the user somewhere else.
-
 // Navigational hyperlink. `href` is the destination — an external
 // URL, an in-app route, or a file path depending on the platform.
 // `target` ("self" or "blank") controls whether navigation replaces

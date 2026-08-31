@@ -37,25 +37,70 @@ func TestLookupPlatformBubbletea(t *testing.T) {
 	}
 }
 
-func TestStdlibPackages(t *testing.T) {
-	pkgs := lookup.StdlibPackages()
+// One entry per package, each addressed by its import path. A single "sngl"
+// entry standing for the whole library could not say which package a
+// declaration came from.
+func TestLibraryPackages(t *testing.T) {
+	pkgs := lookup.LibraryPackages()
 	if len(pkgs) == 0 {
-		t.Fatal("StdlibPackages returned empty list")
+		t.Fatal("LibraryPackages returned empty list")
 	}
-	if pkgs[0].Path != "sngl" || pkgs[0].Kind != "library" {
-		t.Errorf("first entry: got %+v, want sngl/library", pkgs[0])
-	}
-	var seenAndroid bool
+	byPath := map[string]lookup.PackageEntry{}
 	for _, p := range pkgs {
-		if p.Path == "android" {
-			seenAndroid = true
-			if p.Kind != "platform" {
-				t.Errorf("android Kind: got %q, want platform", p.Kind)
-			}
-		}
+		byPath[p.Path] = p
 	}
-	if !seenAndroid {
-		t.Error("android missing from StdlibPackages")
+
+	ui, ok := byPath["sngl:ui"]
+	if !ok {
+		t.Fatalf("sngl:ui missing; got %v", byPath)
+	}
+	if ui.Kind != "library" || ui.Title != "sngl:ui" {
+		t.Errorf("ui entry: got %+v, want library/sngl:ui", ui)
+	}
+	if ui.Href != "/docs/sngl/ui/index.html" {
+		t.Errorf("ui Href: got %q", ui.Href)
+	}
+	if ui.Depth != 0 {
+		t.Errorf("ui Depth: got %d, want 0", ui.Depth)
+	}
+
+	// A nested package is its own entry, one level down.
+	draw, ok := byPath["sngl:ui/draw"]
+	if !ok {
+		t.Fatalf("sngl:ui/draw missing")
+	}
+	if draw.Href != "/docs/sngl/ui/draw/index.html" || draw.Depth != 1 {
+		t.Errorf("ui/draw entry: got %+v", draw)
+	}
+
+	if _, ok := byPath["sngl"]; ok {
+		t.Error(`a merged "sngl" entry is back; every package is addressed by its own path`)
+	}
+
+	android, ok := byPath["android"]
+	if !ok {
+		t.Fatal("android missing from LibraryPackages")
+	}
+	if android.Kind != "platform" {
+		t.Errorf("android Kind: got %q, want platform", android.Kind)
+	}
+	// A target keeps its bare name, which is also how a program names it.
+	if android.Href != "/docs/android/index.html" {
+		t.Errorf("android Href: got %q", android.Href)
+	}
+}
+
+// The library and the targets are two id spaces, and the URL keeps them apart:
+// sngl:html would otherwise land on the html platform's pages.
+func TestDeclHrefSeparatesLibraryFromTargets(t *testing.T) {
+	if got := lookup.DeclHref("sngl:ui", "components", "button"); got != "/docs/sngl/ui/components/button.html" {
+		t.Errorf("sngl:ui button: got %q", got)
+	}
+	if got := lookup.DeclHref("sngl:ui/draw", "components", "circle"); got != "/docs/sngl/ui/draw/components/circle.html" {
+		t.Errorf("sngl:ui/draw circle: got %q", got)
+	}
+	if got := lookup.DeclHref("html", "types", "Options"); got != "/docs/html/types/Options.html" {
+		t.Errorf("html Options: got %q", got)
 	}
 }
 
@@ -66,6 +111,7 @@ func TestAllDeclPages(t *testing.T) {
 	}
 	var (
 		sawSnglType       bool
+		sawUIDecl         bool
 		sawSnglTypeMethod bool
 		sawAndroid        bool
 	)
@@ -73,24 +119,35 @@ func TestAllDeclPages(t *testing.T) {
 		if p.Href == "" {
 			t.Errorf("DeclPage missing Href: %+v", p)
 		}
-		if !strings.HasPrefix(p.Href, "/docs/"+p.Pkg+"/") {
-			t.Errorf("Href doesn't match pkg prefix: %+v", p)
+		// A library package's pages sit under the scheme, a target's under its
+		// bare name -- the two id spaces, kept apart.
+		wantPrefix := "/docs/" + strings.ReplaceAll(p.Pkg, ":", "/") + "/"
+		if !strings.HasPrefix(p.Href, wantPrefix) {
+			t.Errorf("Href %q is not under %q", p.Href, wantPrefix)
 		}
-		// Stdlib components are skipped by AllDeclPages — the website renders
-		// them via a hand-rolled rich loop so the generic per-decl path would
-		// double-emit identical hrefs.
-		if p.Pkg == "sngl" && p.Kind == "components" {
-			t.Errorf("sngl/components page leaked into AllDeclPages: %+v", p)
+		if p.Pkg == "sngl" {
+			t.Errorf(`a merged "sngl" page is back: %+v`, p)
 		}
-		if p.Pkg == "sngl" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "" {
+		// A library component's page is hand-rolled on the website, so the
+		// generic loop must not emit a second one at the same href.
+		if p.Kind == "components" && strings.HasPrefix(p.Pkg, "sngl:") {
+			t.Errorf("library component page leaked into AllDeclPages: %+v", p)
+		}
+		if p.Pkg == "sngl:ui" && p.Kind == "enums" && p.Name == "Alignment" && p.Ident2 == "" {
+			sawUIDecl = true
+			if p.Href != "/docs/sngl/ui/enums/Alignment.html" {
+				t.Errorf("Alignment href: got %q", p.Href)
+			}
+		}
+		if p.Pkg == "sngl:builtin" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "" {
 			sawSnglType = true
-			if p.Href != "/docs/sngl/types/color.html" {
+			if p.Href != "/docs/sngl/builtin/types/color.html" {
 				t.Errorf("color href: got %q", p.Href)
 			}
 		}
-		if p.Pkg == "sngl" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "darken" {
+		if p.Pkg == "sngl:builtin" && p.Kind == "types" && p.Name == "color" && p.Ident2 == "darken" {
 			sawSnglTypeMethod = true
-			if p.Href != "/docs/sngl/types/color/darken.html" {
+			if p.Href != "/docs/sngl/builtin/types/color/darken.html" {
 				t.Errorf("color.darken href: got %q", p.Href)
 			}
 		}
@@ -99,13 +156,16 @@ func TestAllDeclPages(t *testing.T) {
 		}
 	}
 	if !sawSnglType {
-		t.Error("missing sngl/types/color page")
+		t.Error("missing sngl:builtin types/color page")
 	}
 	if !sawSnglTypeMethod {
-		t.Error("missing sngl/types/color/darken page")
+		t.Error("missing sngl:builtin types/color/darken page")
 	}
 	if !sawAndroid {
 		t.Error("no android pages emitted")
+	}
+	if !sawUIDecl {
+		t.Error("missing sngl:ui enums/Alignment page")
 	}
 }
 

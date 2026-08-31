@@ -1,5 +1,3 @@
-// A value that may be absent, and a mutable cell holding one.
-
 import . "sngl:internal/marks"
 
 // Optional value: `option<T>` is either a `T` or absent. Constructed by the

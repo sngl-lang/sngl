@@ -1,5 +1,3 @@
-// Whole and fractional numbers, and the arithmetic on them.
-
 import . "sngl:internal/marks"
 
 // 64-bit signed integer. Arithmetic operators produce `int` when both

@@ -1,6 +1,3 @@
-// What this build targets. Both consts fold at build time, so a
-// branch the target does not take is removed rather than compiled.
-
 import . "sngl:internal/marks"
 
 // The identity of a build target: one platform, named. Its values are not

@@ -1,5 +1,3 @@
-// Reactive context: ambient state a subtree can override.
-
 import . "sngl:internal/marks"
 
 // Declares a reactive context: `context #name(default)` binds `name`, and

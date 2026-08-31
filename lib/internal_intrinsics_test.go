@@ -109,17 +109,18 @@ var markRE = regexp.MustCompile(`#\[intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n
 // them and nothing noticed: `sngl doc` rendered a bare name and the website
 // rendered an empty card.
 func TestExportedComponentsAreDocumented(t *testing.T) {
-	reg, _, err := checker.LoadStdlib()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(reg) == 0 {
-		t.Fatal("no components in the stdlib registry")
-	}
-	for name, schema := range reg {
-		if schema.Doc == "" {
-			t.Errorf("component %s has no doc comment", name)
+	total := 0
+	for _, pkg := range lib.PublicPackages() {
+		schema := checker.PackageSchema(pkg)
+		total += len(schema)
+		for name, s := range schema {
+			if s.Doc == "" {
+				t.Errorf("component sngl:%s.%s has no doc comment", pkg, name)
+			}
 		}
+	}
+	if total == 0 {
+		t.Fatal("no components in any library package")
 	}
 }
 

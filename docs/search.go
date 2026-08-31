@@ -33,7 +33,7 @@ func SearchIndex() []SearchEntry {
 		out = append(out, e)
 	}
 
-	for _, pkg := range lookup.StdlibPackages() {
+	for _, pkg := range lookup.LibraryPackages() {
 		idx := lookup.PackageIndex(pkg.Path)
 		if !idx.Found {
 			continue
