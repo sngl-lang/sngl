@@ -9,31 +9,31 @@
 import . "sngl:internal/marks"
 
 #[intrinsic("CanvasSave", mutates)]
-func CanvasSave(ctx dyn) {}
+func CanvasSave(ctx dyn)
 
 #[intrinsic("CanvasRestore", mutates)]
-func CanvasRestore(ctx dyn) {}
+func CanvasRestore(ctx dyn)
 
 #[intrinsic("CanvasApplyStyle", mutates)]
-func CanvasApplyStyle(ctx dyn, style dyn) {}
+func CanvasApplyStyle(ctx dyn, style dyn)
 
 #[intrinsic("CanvasDrawRect", mutates)]
-func CanvasDrawRect(ctx dyn, x float, y float, w float, h float) {}
+func CanvasDrawRect(ctx dyn, x float, y float, w float, h float)
 
 #[intrinsic("CanvasDrawCircle", mutates)]
-func CanvasDrawCircle(ctx dyn, cx float, cy float, r float) {}
+func CanvasDrawCircle(ctx dyn, cx float, cy float, r float)
 
 #[intrinsic("CanvasDrawEllipse", mutates)]
-func CanvasDrawEllipse(ctx dyn, cx float, cy float, rx float, ry float) {}
+func CanvasDrawEllipse(ctx dyn, cx float, cy float, rx float, ry float)
 
 #[intrinsic("CanvasDrawLine", mutates)]
-func CanvasDrawLine(ctx dyn, x1 float, y1 float, x2 float, y2 float) {}
+func CanvasDrawLine(ctx dyn, x1 float, y1 float, x2 float, y2 float)
 
 #[intrinsic("CanvasDrawPath", mutates)]
-func CanvasDrawPath(ctx dyn, cmds list<dyn>) {}
+func CanvasDrawPath(ctx dyn, cmds list<dyn>)
 
 #[intrinsic("CanvasDrawText", mutates)]
-func CanvasDrawText(ctx dyn, x float, y float, content string) {}
+func CanvasDrawText(ctx dyn, x float, y float, content string)
 
 #[intrinsic("CanvasDrawImage", mutates)]
-func CanvasDrawImage(ctx dyn, x float, y float, w float, h float, src string) {}
+func CanvasDrawImage(ctx dyn, x float, y float, w float, h float, src string)

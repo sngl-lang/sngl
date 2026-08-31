@@ -37,7 +37,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 	var registry []ir.IntrinsicDef
 	for _, defs := range [][]ir.IntrinsicDef{
 		ir.Intrinsics, ir.AlertIntrinsics, ir.FileIntrinsics,
-		ir.I18nIntrinsics, ir.CanvasIntrinsics,
+		ir.I18nIntrinsics, ir.CanvasIntrinsics, ir.RemoteIntrinsics,
 	} {
 		registry = append(registry, defs...)
 	}

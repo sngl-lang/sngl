@@ -1,0 +1,90 @@
+// The three-state box a data adapter returns, and the accessors that read it.
+
+import . "sngl:internal/marks"
+
+// A value fetched from outside the program: absent until it arrives, able to
+// fail, and able to arrive again. T is the fetched type.
+//
+// Reading one is four accessors — three independent facts and the combination
+// almost every screen wants:
+//
+//     if users.loading() { spinner() }
+//     for u = users.or([]) { row(user = u) }
+//
+// A fetched box comes from a `#[query]` function and nothing else; the three
+// constructors below make the settled, failed and pending states directly, for
+// an adapter that already has its answer and for a test that needs to render
+// one branch. A bare `T` is not a `Value<T>` and does not become one on its
+// own — a `Value` carries fetch state that no plain value implies.
+#[builtin("remote")]
+struct Value<T> {}
+
+// The most recent value that arrived, or `null` if none ever has. A failure
+// does not clear it: a refresh that fails leaves the previous value in place,
+// which is what lets a screen keep rendering while it warns.
+#[intrinsic("remote.value")]
+func Value<T>.value() option<T>
+
+// How the most recent attempt failed, or `null` if it succeeded. An attempt
+// that succeeds clears it.
+#[intrinsic("remote.error")]
+func Value<T>.error() option<Failure>
+
+// True while an attempt is in flight. Orthogonal to the other two: a refresh
+// runs over a value that is already there, and over a failure that is still
+// worth showing.
+#[intrinsic("remote.inFlight")]
+func Value<T>.inFlight() bool
+
+// The value if one has arrived, otherwise fallback. The idiomatic way to bind
+// a remote into a prop, since a component wants a `T` rather than a box —
+// `map.get` takes its default the same way and for the same reason.
+#[intrinsic("remote.or")]
+func Value<T>.or(fallback T) T
+
+// Re-runs the fetch behind this box, bypassing any cached answer.
+//
+// It invalidates freshness rather than the box: `value()` keeps what it has and
+// `inFlight()` goes true, and the new data replaces the old only once it
+// arrives. So a screen mid-refresh can go on rendering the previous result, and
+// deciding whether to is the display's business. Dropping the value first would
+// blank it, and would throw away the case the three facts exist for.
+//
+// A query re-fetches on its own when one of its arguments changes, so this is
+// for the reasons nothing in the program observes: a retry button after a
+// failure, a pull-to-refresh gesture, a poll driven by a `timer`. Calling it
+// while an attempt is in flight is not an error and starts no second attempt.
+#[intrinsic("remote.refresh", mutates, mutatesReceiver)]
+func Value<T>.refresh()
+
+// True when there is nothing to show yet: an attempt is in flight and no value
+// has ever arrived. This is the spinner condition, and it is deliberately not
+// `inFlight()` — that is also true during a refresh over a value the screen
+// should keep rendering rather than replace with a spinner.
+func Value<T>.loading() => this.inFlight() && this.value() == null
+
+// True when a value is available, whether or not the most recent attempt
+// failed.
+func Value<T>.ready() => this.value() != null
+
+// True when the most recent attempt failed. A remote can be both `ready` and
+// `failed`; see the package comment for why that state is the point.
+func Value<T>.failed() => this.error() != null
+
+// A settled box: value arrived, nothing failed, nothing in flight. The identity
+// query — what a fetch that already has its answer returns. This is how an
+// adapter hands over data it did not have to go and get, and how a test builds
+// the ready branch without a fetch.
+#[intrinsic("remote.of")]
+func of<T>(value T) Value<T>
+
+// A box whose most recent attempt failed, holding no value. A test builds the
+// failure branch with this; for the harder case a screen actually has to
+// handle — a stale value beside a failure — only a real refresh produces it.
+#[intrinsic("remote.failedWith")]
+func failedWith<T>(f Failure) Value<T>
+
+// A box with an attempt in flight and nothing to show: the spinner state. Also
+// what the idle box reads as, since neither has a value.
+#[intrinsic("remote.pending")]
+func pending<T>() Value<T>

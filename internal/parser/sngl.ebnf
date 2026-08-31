@@ -317,9 +317,14 @@ FuncTail =
     | FuncBodyTail
     .
 
+# The block is optional: a declaration with no body is a signature, and the
+# checker requires the body to come from somewhere else — an #[intrinsic] id a
+# backend implements, a #[foreign] declaration describing something outside
+# SNGL, or a per-target override. Writing a body a backend replaces is what a
+# fabricated dummy did, and a fabricated body reads exactly like a real one.
 FuncBodyTail =
       fat_arrow Expr
-    | [ Type ] StmtBlock
+    | [ Type ] [ StmtBlock ]
     .
 
 # FuncName encodes all name/type-param combinations inside a single non-terminal.

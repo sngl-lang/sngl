@@ -3629,12 +3629,18 @@ state11:
 
 // FuncBodyTail grammar:
 //
+//	# The block is optional: a declaration with no body is a signature, and the
+//	# checker requires the body to come from somewhere else — an #[intrinsic] id a
+//	# backend implements, a #[foreign] declaration describing something outside
+//	# SNGL, or a per-target override. Writing a body a backend replaces is what a
+//	# fabricated dummy did, and a fabricated body reads exactly like a real one.
 //	FuncBodyTail =
 //	      fat_arrow Expr
-//	    | [ Type ] StmtBlock
+//	    | [ Type ] [ StmtBlock ]
 //	    .
 //
 //	State 0
+//		Accept
 //		on  fat_arrow
 //			shift and goto state 1
 //		on  ident, kw_enum, kw_func, kw_struct, kw_unit
@@ -3647,6 +3653,7 @@ state11:
 //	State 2
 //		Accept
 //	State 3
+//		Accept
 //		on  lbrace
 //			call StmtBlock and goto state 2
 //
@@ -3655,7 +3662,7 @@ func (p *Parser) FuncBodyTail() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(FuncBodyTail), 0)
 	// state0:
-	accept, errorSet = false, 42
+	accept, errorSet = true, 42
 	switch Symbol(p.tok.Ch) {
 	case fat_arrow:
 		r = append(r, p.shift())
@@ -3680,7 +3687,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 124
+	accept, errorSet = true, 124
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -3708,11 +3715,13 @@ state3:
 //		on  ident
 //			call FuncName and goto state 2
 //	State 2
+//		Accept
 //		on  lbracket
 //			call TargetIndex and goto state 3
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen
 //			call FuncTail and goto state 4
 //	State 3
+//		Accept
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen
 //			call FuncTail and goto state 4
 //	State 4
@@ -3739,7 +3748,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 38
+	accept, errorSet = true, 38
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		r = p.add(r, p.TargetIndex())
@@ -3750,7 +3759,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 39
+	accept, errorSet = true, 39
 	switch Symbol(p.tok.Ch) {
 	case fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace, lparen:
 		r = p.add(r, p.FuncTail())
@@ -3771,6 +3780,7 @@ state4:
 //		on  kw_func
 //			shift and goto state 1
 //	State 1
+//		Accept
 //		on  lparen
 //			shift and goto state 2
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace
@@ -3781,6 +3791,7 @@ state4:
 //		on  attr_open, ident
 //			call ParamList and goto state 5
 //	State 3
+//		Accept
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 4
 //	State 4
@@ -3802,7 +3813,7 @@ func (p *Parser) FuncLit() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 40
+	accept, errorSet = true, 40
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -3824,7 +3835,7 @@ state2:
 	}
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 41
+	accept, errorSet = true, 41
 	switch Symbol(p.tok.Ch) {
 	case fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())
@@ -3947,6 +3958,7 @@ state5:
 //	    .
 //
 //	State 0
+//		Accept
 //		on  lparen
 //			shift and goto state 1
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace
@@ -3957,6 +3969,7 @@ state5:
 //		on  attr_open, ident
 //			call ParamList and goto state 4
 //	State 2
+//		Accept
 //		on  fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace
 //			call FuncBodyTail and goto state 3
 //	State 3
@@ -3970,7 +3983,7 @@ func (p *Parser) FuncTail() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(FuncTail), 0)
 	// state0:
-	accept, errorSet = false, 40
+	accept, errorSet = true, 40
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -3992,7 +4005,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 41
+	accept, errorSet = true, 41
 	switch Symbol(p.tok.Ch) {
 	case fat_arrow, ident, kw_enum, kw_func, kw_struct, kw_unit, lbrace:
 		r = p.add(r, p.FuncBodyTail())

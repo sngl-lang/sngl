@@ -1027,6 +1027,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
+	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
+
 	typeName := receiver.String()
 	if receiver.Decl != nil {
 		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
@@ -1405,7 +1407,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption, ir.TypeMap:
+		ir.TypeList, ir.TypeOption, ir.TypeMap, ir.TypeRemote:
 		return true
 	}
 	return false
@@ -1463,6 +1465,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		}
 		operand = operand.Elems[0]
 	}
+
+	// Placed beside the ref auto-deref because it answers the same question:
+	// what value is the field actually being read off. A namespace, a type name
+	// or an enum never has a func type, so nothing below is disturbed.
+	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	{
 		// Namespace member access: ns.field.
@@ -1652,6 +1659,7 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	operandExpr := c.checkExpr(x.Operand)
 	indexExpr := c.checkExpr(x.Index)
 	operand := exprType(operandExpr)
+	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
@@ -2058,7 +2066,19 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		}
 		pos++
 	}
-	// A parameter the arguments did not pin falls back to its default, the way
+	// A parameter the arguments could not pin is bound from the type the context
+	// wants, which is the only way to write one that appears in the return type
+	// alone: `remote.pending()` takes no arguments, and SNGL has no syntax for
+	// naming a type argument at a call site, so without this such a function is
+	// undeclarable rather than merely awkward.
+	//
+	// Arguments come first on purpose. An argument states the type directly,
+	// while the expected type states what the result has to be assignable to,
+	// and the two disagree wherever a conversion would have been applied.
+	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
+		bindTypeParams(sig.Return, c.expected, bindings)
+	}
+	// A parameter neither pinned nor implied falls back to its default, the way
 	// a struct's does when the type-argument list stops short.
 	for _, tp := range sig.TypeParams {
 		if tp.Default == nil {
@@ -3319,6 +3339,43 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		ID:        vn.ID,
 		Key:       keyExpr,
 	}
+}
+
+// callComputedOperand inserts the elided call when expr is a bare reference to a
+// zero-argument function used as an operand. `total.length()`, `doubled[0]` and
+// `pt.x` all mean the computed's *result*: nothing in SNGL declares a method, an
+// index or a field on a function, so a function reaching one of those positions
+// can only be a call whose parentheses were left off — the same elision argument
+// position gets through implicitCall.
+//
+// It is separate from implicitCall because these positions have no expected type
+// to offer it. They do not need one: in argument position a bare function may
+// legitimately be the value wanted, and there the expected type is what decides;
+// here it never can be.
+//
+// All three positions used to fall through to a dyn result with no diagnostic —
+// `plain.bogusMethod()` checked clean — and, because the operand stayed an Ident
+// bound to the func rather than becoming a Call, reactivity never reached the
+// vars the computed reads, so a prop reading one never re-rendered.
+//
+// Args stays nil: this is the implicit-receiver shape passNoImplicitRecv
+// normalizes, so a component's computed picks up its `this` there rather than in
+// two places that could disagree.
+func callComputedOperand(expr ir.Expr, t *ir.Type) (ir.Expr, *ir.Type) {
+	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil ||
+		len(t.Sig.Params) != 0 || t.Sig.Return == nil {
+		return expr, t
+	}
+	id, isIdent := expr.(*ir.Ident)
+	if !isIdent {
+		return expr, t
+	}
+	fn, isFunc := id.Sym.(*ir.Func)
+	if !isFunc {
+		return expr, t
+	}
+	ret := t.Sig.Return
+	return &ir.Call{Type: ret, Func: fn}, ret
 }
 
 // implicitCall checks whether actual is a zero-arg func whose return type is

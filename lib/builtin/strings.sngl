@@ -11,43 +11,43 @@ struct string {}
 
 // Number of Unicode characters in s (not bytes).
 #[intrinsic("string.length")]
-func string.length(s string) int { return 0 }
+func string.length(s string) int
 
 // Index of the first occurrence of sub in s, or -1 if absent. The
 // index is a character index, matching `string.substring`.
 #[intrinsic("string.indexOf")]
-func string.indexOf(s string, sub string) int { return -1 }
+func string.indexOf(s string, sub string) int
 
 // Substring of s from start (inclusive) to end (exclusive). Both
 // bounds are character indices; negative or out-of-range values are
 // clamped to [0, length(s)].
 #[intrinsic("string.substring")]
-func string.substring(s string, start int, end int) string { return s }
+func string.substring(s string, start int, end int) string
 
 // Uppercased copy of s using the platform's Unicode case mapping.
 #[intrinsic("string.upper")]
-func string.upper(s string) string { return s }
+func string.upper(s string) string
 
 // Lowercased copy of s using the platform's Unicode case mapping.
 #[intrinsic("string.lower")]
-func string.lower(s string) string { return s }
+func string.lower(s string) string
 
 // Copy of s with leading and trailing whitespace removed. Whitespace
 // follows the platform's Unicode whitespace definition.
 #[intrinsic("string.trim")]
-func string.trim(s string) string { return s }
+func string.trim(s string) string
 
 // Copy of s with every occurrence of old replaced by new. Replacement
 // is non-overlapping — after each match, scanning resumes after the
 // replacement (not after old).
 #[intrinsic("string.replace")]
-func string.replace(s string, old string, new string) string { return s }
+func string.replace(s string, old string, new string) string
 
 // Splits s on every occurrence of sep and returns the pieces. An
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
 #[intrinsic("string.split")]
-func string.split(s string, sep string) list<string> { return [s] }
+func string.split(s string, sep string) list<string>
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.

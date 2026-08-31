@@ -75,6 +75,25 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "map.contains", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}}, Return: TypBool},
 	{Name: "map.get", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}, {Name: "def", Type: TypDyn}}, Return: TypDyn},
 
+	// --- remote ---
+	// The receiver is TypDyn, as list's and map's element types are: the entry
+	// is one signature for every T, and the checker binds the real one from the
+	// declaration in sngl:remote. Reading a remote is pure in its argument the
+	// way list.length is — the state that moves under it is the receiver, which
+	// is the dependency reactivity already tracks.
+	{Name: "remote.value", Params: []*Param{{Name: "r", Type: TypDyn}}, Return: OptionOf(TypDyn)},
+	{Name: "remote.error", Params: []*Param{{Name: "r", Type: TypDyn}}, Return: OptionOf(TypDyn)},
+	{Name: "remote.inFlight", Params: []*Param{{Name: "r", Type: TypDyn}}, Return: TypBool},
+	{Name: "remote.or", Params: []*Param{{Name: "r", Type: TypDyn}, {Name: "fallback", Type: TypDyn}}, Return: TypDyn},
+	{Name: "remote.refresh", Params: []*Param{{Name: "r", Type: TypDyn}}, Return: TypVoid, Purity: PurityMutates, MutatesReceiver: true},
+	// The three states, constructed directly. #[query] is the only way to get a
+	// box that fetches; these are for an adapter holding an answer it did not
+	// have to go and get, and for a test rendering one branch. Pure, so they
+	// fold.
+	{Name: "remote.of", Params: []*Param{{Name: "value", Type: TypDyn}}, Return: RemoteOf(TypDyn)},
+	{Name: "remote.failedWith", Params: []*Param{{Name: "f", Type: TypDyn}}, Return: RemoteOf(TypDyn)},
+	{Name: "remote.pending", Params: nil, Return: RemoteOf(TypDyn)},
+
 	// --- color ---
 	{Name: "color.hex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
 
@@ -250,6 +269,23 @@ var NodeOps = []string{
 	NodeOpAttachHandler,
 }
 
+// RemoteIntrinsics is the primitive the query lowering emits, declared in
+// sngl:internal/remote. Every language backend must implement it against its own
+// pkg/<lang>/remote runtime; unlike the Canvas set it is a language concern
+// rather than a platform one, because the store of boxes and their state
+// transitions live in that runtime and not in a rendering surface.
+//
+// The entry is a shape hint keyed by the id, as list's and map's are. The real
+// signature is the generic declaration in sngl:internal/remote, and what a
+// backend sees is what the lowering emits with T substituted.
+var RemoteIntrinsics = []IntrinsicDef{
+	{Name: "RemoteQuery", Params: []*Param{
+		{Name: "queryID", Type: TypString},
+		{Name: "args", Type: ListOf(TypDyn)},
+		{Name: "fetch", Type: TypDyn},
+	}, Return: RemoteOf(TypDyn), Purity: PurityReadonly},
+}
+
 // CanvasIntrinsics are platform-level intrinsics for Canvas2D drawing.
 // Each canvas-capable platform must provide native implementations.
 // The ctx parameter is an opaque platform draw context (TypDyn).
@@ -372,7 +408,7 @@ const pluralKeyTypeName = "PluralKey"
 // LookupIntrinsic returns the intrinsic definition for the given name, or nil.
 // Searches all intrinsic lists.
 func LookupIntrinsic(name string) *IntrinsicDef {
-	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, CanvasIntrinsics} {
+	for _, list := range [][]IntrinsicDef{Intrinsics, AlertIntrinsics, FileIntrinsics, I18nIntrinsics, CanvasIntrinsics, RemoteIntrinsics} {
 		for i := range list {
 			if list[i].Name == name {
 				return &list[i]

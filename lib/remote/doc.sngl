@@ -1,0 +1,52 @@
+// Values that arrive from outside the program: what a query, an API call or a
+// database row is to the program *before* it has answered.
+//
+// `remote.Value<T>` is the three-state box every data adapter returns. A plain
+// async call cannot describe the states a fetch passes through: the compiler's
+// async lowering seeds a reactive async computed with the zero value of its
+// type, so a fetch in flight, a fetch that failed, and a fetch that legitimately
+// returned `0` are the same value. A `Value` separates them by holding three
+// independent facts instead of one:
+//
+//   - the last value that arrived, if one ever did
+//   - how the most recent attempt failed, if it did
+//   - whether an attempt is in flight right now
+//
+// Every accessor answers on every box, including one nothing has ever fetched:
+// its zero is the idle box — no value, no failure, nothing in flight — so
+// `value()` on it is null rather than a fault. That is the reason the box wraps
+// an `option<T>` instead of a `T`: with the absence carried in the type, no
+// accessor has a case it cannot answer, and no reader needs a guard before
+// asking.
+//
+// The three are independent on purpose, because the interesting states are the
+// combinations. A stale value beside a failure is a refresh that did not land,
+// and the honest thing to render is the old value with a warning — not a
+// spinner, and not an empty screen. Collapsing them into one status enum is what
+// makes that case unexpressible, which is why there is no such enum, and why
+// `refresh()` keeps the value it has until new data replaces it.
+//
+// A box that fetches comes from a `#[query]` function and from nothing else:
+//
+//     #[query]
+//     func users(page int) remote.Value<list<User>> {
+//         return api.listUsers(page)
+//     }
+//
+// The mark is what says this function's answer is keyed and cached — one box per
+// argument tuple, re-fetched when an argument changes, shared by every part of
+// the program asking the same question. An *unmarked* function returning a
+// `Value` is an ordinary function that happens to return one.
+//
+// A bare `T` is not a `Value<T>` and does not become one on its own. This is
+// where the type parts company with `option<T>`, which promotes in one
+// direction: an option is "maybe a `T`" and promoting one loses nothing, while a
+// `Value` carries fetch state that no plain value implies, and a silent
+// promotion would invent a settled box wherever two types happened to line up.
+// `of`, `failedWith` and `pending` construct the three states explicitly — for
+// an adapter that already holds its answer, and for a test that needs to render
+// one branch.
+//
+// The adapters are packages of their own — `sngl:remote/graphql`,
+// `sngl:remote/sql` — and a program pays for one by importing it. What lives
+// here is only the vocabulary they all return.

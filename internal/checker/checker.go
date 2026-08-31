@@ -3347,6 +3347,22 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.funcDepth++
 	defer func() { c.funcDepth-- }()
 
+	// A #[query] body answers the fetched type, not the box: the box is what the
+	// runtime puts the answer in, and the lowering makes this body the thunk it
+	// calls. So the return type the body is checked against is T, while the
+	// declaration keeps answering remote.Value<T> for its callers.
+	//
+	// This is the one place a T stands where a Value<T> is written, and the mark
+	// is what licenses it. The general implicit promotion was withdrawn because
+	// it would invent a settled box wherever two types lined up; here the author
+	// has said this function fetches, which is precisely the claim that makes the
+	// body's answer the unboxed value.
+	if fn.Query && fn.Return != nil && fn.Return.Kind == ir.TypeRemote && len(fn.Return.Elems) == 1 {
+		declared := fn.Return
+		fn.Return = declared.Elems[0]
+		defer func() { fn.Return = declared }()
+	}
+
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}
 	if fn.AST != nil {
@@ -3418,7 +3434,38 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
+		// A body on a declaration whose body nobody reads is a fiction, and the
+		// danger is not that it is unused but that it looks used: `usable` is one
+		// word away, and `func list<T>.filter(...) { return [] }` would then
+		// answer "no matches" for every call. Say where the answer comes from, or
+		// write the answer — never both.
+		if fn.Intrinsic != "" && !fn.IntrinsicBodyUsable {
+			c.error(fn.AST.Pos, "%q is #[intrinsic(%q)] without `usable`, so its body is never read: drop the body, or mark it `usable` if it computes the right answer",
+				fn.Name, fn.Intrinsic)
+		}
+	} else if fn.AST != nil {
+		// No body at all: a signature. Something else has to supply the answer,
+		// and this is where that is required rather than assumed.
+		if !c.bodySuppliedElsewhere(fn) {
+			c.error(fn.AST.Pos, "%q has no body: give it one, or say where the answer comes from — #[intrinsic], #[foreign], or a per-target override",
+				fn.Name)
+		}
 	}
+}
+
+// bodySuppliedElsewhere reports whether a declaration with no written body gets
+// one from somewhere the checker can name.
+//
+// Three answers, and each is a declaration rather than a convention: an
+// #[intrinsic] id every backend must implement, a #[foreign] correspondence
+// whose body would only ever have described what it names, and a per-target
+// override carrying the body for the target a build picks.
+func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	return fn.Intrinsic != "" || fn.Foreign.Marked ||
+		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
 }
 
 // blockAlwaysReturns reports whether a statement block is guaranteed to return

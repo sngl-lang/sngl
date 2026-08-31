@@ -1,0 +1,30 @@
+// The mark that says a function's answer is fetched.
+
+import ir "sngl:internal/ir"
+
+// Marks a function whose answer is fetched, keyed and cached.
+//
+// The function returns a `Value<T>` and its body is the fetch. The compiler
+// rewrites it to a lookup: one box per argument tuple, started on first read,
+// re-fetched when an argument changes, and shared by every part of the program
+// asking the same question. So two calls with equal arguments are one box and
+// one fetch, and a call whose arguments differ is a different box.
+//
+// The mark exists because the return type alone cannot say this. A `Value<T>` is
+// a value like any other and a function may hand one back without any of the
+// above — a wrapper forwarding another query's answer, or one of the three
+// constructors. Marking the function is what separates "returns a box" from
+// "is a query", and an unmarked function returning a `Value` is the former:
+// well defined, and never silently half-lowered.
+//
+// A query's arguments become its key, so each must be encodable as one. That
+// rules out a function, a component and another `Value`; scalars, strings,
+// enums, units and collections of those are all fine. The rule reaches the
+// arguments and not the fetched type — what comes *back* is never part of a key.
+//
+// Reactivity needs nothing declared. A prop reading `users(page)` mentions
+// `page`, so the ordinary dependency walk re-evaluates it when `page` changes;
+// the re-evaluation looks up a different key, and a key with no fetch behind it
+// starts one. That is why a key may be a loop variable or any other derived
+// value, none of which a program could have named in advance.
+func query() ir.Macro {}

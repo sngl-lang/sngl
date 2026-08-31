@@ -12,7 +12,7 @@ struct list<T> {}
 
 // Number of items in l.
 #[intrinsic("list.length")]
-func list<T>.length() int { return 0 }
+func list<T>.length() int
 
 // Appends item to the receiver list (`this`) and returns it. push mutates the
 // list in place — index assignment (`l[i] = x`) and the mutating methods
@@ -21,41 +21,41 @@ func list<T>.length() int { return 0 }
 // mutates-receiver semantics through to lowering and every backend (see
 // ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
 #[intrinsic("list.push", mutates, mutatesReceiver)]
-func list<T>.push(item T) list<T> { return [] }
+func list<T>.push(item T) list<T>
 
 // Removes the item at index from the receiver list (`this`) in place.
 // Out-of-range indices leave the list unchanged.
 #[intrinsic("list.remove", mutates, mutatesReceiver)]
-func list<T>.remove(index int) list<T> { return [] }
+func list<T>.remove(index int) list<T>
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
 #[intrinsic("list.indexOf")]
-func list<T>.indexOf(item T) int { return -1 }
+func list<T>.indexOf(item T) int
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
 #[intrinsic("list.join")]
-func list<T>.join(sep string) string { return "" }
+func list<T>.join(sep string) string
 
 // Returns a copy of l with items in reverse order.
 #[intrinsic("list.reverse")]
-func list<T>.reverse() list<T> { return [] }
+func list<T>.reverse() list<T>
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
 #[intrinsic("list.slice")]
-func list<T>.slice(start int, end int) list<T> { return [] }
+func list<T>.slice(start int, end int) list<T>
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
 #[intrinsic("list.filter")]
-func list<T>.filter(pred func(T) bool) list<T> { return [] }
+func list<T>.filter(pred func(T) bool) list<T>
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
 #[intrinsic("list.map")]
-func list<T>.map<U>(fn func(T) U) list<U> { return [] }
+func list<T>.map<U>(fn func(T) U) list<U>
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.

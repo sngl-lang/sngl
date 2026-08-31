@@ -705,8 +705,15 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 			f.write(" ")
 			f.writeType(fn.ReturnType)
 		}
-		f.write(" ")
-		f.writeBlock(&fn.Block)
+		// A declaration with no block is a signature — an #[intrinsic] id, a
+		// #[foreign] correspondence, or a per-target override supplies the
+		// answer. Printing `{}` here would write the fabricated body the form
+		// exists to avoid, and would turn every such declaration back into one
+		// the checker now rejects.
+		if fn.Block.IsDefined() {
+			f.write(" ")
+			f.writeBlock(&fn.Block)
+		}
 	}
 }
 

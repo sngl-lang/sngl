@@ -74,7 +74,7 @@ func select(value string, cases map<string, string>) => _select(locale, value, c
 // the intl primitives that consume it; use the predeclared constants
 // (i18n.zero, i18n.one, …, i18n.other) for CLDR keyword categories.
 #[intrinsic("i18n.exactly")]
-func exactly(n int) PluralKey { return {} }
+func exactly(n int) PluralKey
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
@@ -94,31 +94,31 @@ func selectordinal(count int, forms map<PluralKey, string>) => _selectOrdinal(lo
 // reaches them through the wrappers, which thread the active locale.
 
 #[intrinsic("i18n._defaultLocale", readonly)]
-func _defaultLocale() string { return "" }
+func _defaultLocale() string
 
 #[intrinsic("i18n._translate")]
-func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string { return "" }
+func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string
 
 #[intrinsic("i18n._format")]
-func _format(locale string, template string, args map<string, dyn>) string { return "" }
+func _format(locale string, template string, args map<string, dyn>) string
 
 #[intrinsic("i18n._numberInt")]
-func _numberInt(locale string, n int, style string) string { return "" }
+func _numberInt(locale string, n int, style string) string
 
 #[intrinsic("i18n._numberFloat")]
-func _numberFloat(locale string, n float, style string) string { return "" }
+func _numberFloat(locale string, n float, style string) string
 
 #[intrinsic("i18n._date")]
-func _date(locale string, d dyn, style string) string { return "" }
+func _date(locale string, d dyn, style string) string
 
 #[intrinsic("i18n._time")]
-func _time(locale string, t dyn, style string) string { return "" }
+func _time(locale string, t dyn, style string) string
 
 #[intrinsic("i18n._dateTime")]
-func _dateTime(locale string, dt dyn, dateStyle string, timeStyle string) string { return "" }
+func _dateTime(locale string, dt dyn, dateStyle string, timeStyle string) string
 
 #[intrinsic("i18n._select")]
-func _select(locale string, value string, cases map<string, string>) string { return "" }
+func _select(locale string, value string, cases map<string, string>) string
 
 // PluralKey identifies a CLDR plural category or an exact numeric match.
 // Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
@@ -129,7 +129,7 @@ struct PluralKey {
 }
 
 #[intrinsic("i18n._plural")]
-func _plural(locale string, count int, forms map<PluralKey, string>) string { return "" }
+func _plural(locale string, count int, forms map<PluralKey, string>) string
 
 #[intrinsic("i18n._selectOrdinal")]
-func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string { return "" }
+func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string

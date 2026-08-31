@@ -44,6 +44,10 @@ const (
 	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
+	// Remote is the box a data adapter returns: the last value that arrived,
+	// how the most recent attempt failed, and whether one is in flight. See
+	// sngl:remote.
+	BuiltinRemote BuiltinKind = "remote"
 	// TreeDefault is the tree an ordinary component belongs to; naming it is
 	// the same as naming no tree.
 	BuiltinTreeDefault BuiltinKind = "treeDefault"
@@ -120,10 +124,10 @@ func (b BuiltinKind) IsSlotBound() bool {
 }
 
 // IsGeneric reports whether the kind is a generic type constructor
-// (list/map/iter/ref/option).
+// (list/map/iter/ref/option/remote).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote:
 		return true
 	}
 	return false
@@ -156,7 +160,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinInt, BuiltinFloat, BuiltinString,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeDefault,
 		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext,
 		BuiltinPlatform, BuiltinLanguage,

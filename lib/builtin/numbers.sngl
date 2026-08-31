@@ -32,7 +32,7 @@ func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
 // interpreter implements this yet.
 #[intrinsic("int.parse")]
-func int.parse(s string, base int) int { return 0 }
+func int.parse(s string, base int) int
 
 // 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
 // trailing `.0` distinguishes it from `int`). Methods on the `float`
@@ -79,44 +79,44 @@ func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float
 // Raises base to the power exp. Integer powers are exact up to float
 // precision; fractional powers of negative bases yield NaN.
 #[intrinsic("float.pow")]
-func float.pow(base float, exp float) float { return 0.0 }
+func float.pow(base float, exp float) float
 
 // Non-negative square root of x. Returns NaN for negative x.
 #[intrinsic("float.sqrt")]
-func float.sqrt(x float) float { return 0.0 }
+func float.sqrt(x float) float
 
 // Sine of x, where x is in radians.
 #[intrinsic("float.sin")]
-func float.sin(x float) float { return 0.0 }
+func float.sin(x float) float
 
 // Cosine of x, where x is in radians.
 #[intrinsic("float.cos")]
-func float.cos(x float) float { return 0.0 }
+func float.cos(x float) float
 
 // Tangent of x, where x is in radians. Undefined (±Inf / large finite)
 // near odd multiples of π/2.
 #[intrinsic("float.tan")]
-func float.tan(x float) float { return 0.0 }
+func float.tan(x float) float
 
 // Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
 // |x| > 1.
 #[intrinsic("float.asin")]
-func float.asin(x float) float { return 0.0 }
+func float.asin(x float) float
 
 // Arccosine of x, result in radians within [0, π]. Returns NaN for
 // |x| > 1.
 #[intrinsic("float.acos")]
-func float.acos(x float) float { return 0.0 }
+func float.acos(x float) float
 
 // Arctangent of x, result in radians within [-π/2, π/2]. Use
 // `float.atan2` when you have separate y and x and need to recover
 // the quadrant.
 #[intrinsic("float.atan")]
-func float.atan(x float) float { return 0.0 }
+func float.atan(x float) float
 
 // Arctangent of y/x using signs of both arguments to pick the correct
 // quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
 // 0. This is the correct function for converting Cartesian (x, y)
 // into an angle.
 #[intrinsic("float.atan2")]
-func float.atan2(y float, x float) float { return 0.0 }
+func float.atan2(y float, x float) float

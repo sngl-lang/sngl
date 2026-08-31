@@ -24,6 +24,12 @@ func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
 	case f.Foreign.Name != "":
 		// A #[foreign] function's purity is asserted by its mark, not read off
 		// a body that only describes the foreign declaration (see buildFunc).
+	case f.Query:
+		// Same reasoning for #[query]: the body here is the fetch, but the body
+		// the function ends up with is a RemoteQuery lookup, so reading effects
+		// off what is written describes the wrong function. Left at the readonly
+		// the mark asserted — which is also what stops the optimizer inlining a
+		// query into its caller and dissolving the box it exists to return.
 	case w.mutates:
 		f.Purity = ir.PurityMutates
 	case len(w.reads) > 0:

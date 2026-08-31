@@ -21,6 +21,23 @@ func ZeroExpr(t *Type) Expr {
 		return &Literal{Type: TypNull, Value: "null"}
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
+	case TypeRemote:
+		// The idle remote: no value, no failure, nothing in flight. An empty
+		// composite of the type, the way a struct's zero is — every host's zero
+		// three-field record already reads that way, so no backend has to
+		// special-case it.
+		//
+		// Having one is what keeps a remote total. Reading `.value()` off a
+		// remote nothing has fetched answers null rather than faulting, which is
+		// the point of returning the box instead of the bare T: `option<T>`
+		// carries the absence, so no accessor has a case with no answer.
+		//
+		// Note this is a zero of remote<T>, not a zero of T. The bug in the
+		// current async lowering is that it seeds with ZeroExpr(T) — a fetched
+		// empty list and a fetch still in flight are then the same []. A zero
+		// remote is distinguishable from a fetched anything, because `value()`
+		// is null and `inFlight()` is false.
+		return &StructLit{Type: t, Fields: nil}
 	case TypeStruct:
 		// date/time/datetime are string-representable stdlib structs (like
 		// color); their zero value is a canonical-form string literal rather

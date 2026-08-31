@@ -51,4 +51,4 @@ struct error {}
 // handler. `kind` lets handlers dispatch programmatically (e.g.
 // "network", "validation", "internal").
 #[intrinsic("error.raise")]
-func error.raise(message string, kind string) {}
+func error.raise(message string, kind string)

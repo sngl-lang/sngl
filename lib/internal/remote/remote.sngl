@@ -1,0 +1,39 @@
+// Package remote declares the primitive the query lowering emits in place of a
+// `#[query]` function's body. It is the intrinsic half of sngl:remote, which
+// declares the box a program reads.
+//
+// One read-triggered lookup rather than a settle plus a kicker. The first design
+// keyed one box to the declaration and fired a kicker from each reactive
+// dependency's setter, which cannot express a key that is not a reactive var —
+// and per-call-site keys routinely are not. A loop variable has no setter, so
+// there is nothing for a kicker to watch:
+//
+//     for p = pages { row(users = users(p).or([])) }
+//
+// Reading instead is what makes that work. A prop mentioning `p` is
+// re-evaluated by the ordinary dependency walk, the re-evaluation looks up a
+// different key, and a key with no fetch behind it starts one. Nothing about the
+// query has to be known in advance.
+//
+// The declaration is a signature: the answer comes from the target's native
+// implementation of the marked id, so a backend that does not implement one has
+// nothing to fall back to.
+
+import . "sngl:internal/marks"
+import remote "sngl:remote"
+
+// Returns the box for this query and key, starting the fetch if no attempt has
+// been made for it.
+//
+// `queryID` names the declaration, `args` is the argument tuple that keys the
+// box within it, and `fetch` produces the answer. Generic in T rather than
+// erased to `dyn`: the lowering knows the fetched type and substitutes it, so a
+// backend sees `func() list<User>` and can emit a typed generic instead of `any`
+// and a cast at every use.
+//
+// `readonly`, not `mutates`. It depends on host state and must never fold at
+// build time, but a second call with the same key returns the same box and
+// starts nothing — which is the only footing on which a call sitting in a prop
+// expression, evaluated during render, is acceptable at all.
+#[intrinsic("RemoteQuery", readonly)]
+func RemoteQuery<T>(queryID string, args list<dyn>, fetch func() T) remote.Value<T>
