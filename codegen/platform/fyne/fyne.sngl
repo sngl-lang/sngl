@@ -101,6 +101,13 @@ struct Handler {
 // one of them applies: `add` is the method a Container calls per child
 // (default `Add`), `content` the field a Wrapper assigns its single child to
 // (default `Content`).
+//
+// `axis` is "horizontal" or "vertical" on a container that lays its children
+// out along one, and empty on everything else. It is the one thing a Spec says
+// about a widget rather than about its construction, and it is here because a
+// child asking for a share of its parent (`style.flex`) is answered by the
+// parent's layout: a container with an axis and a flexing child is built with
+// the weighted layout instead of the constructor `new` names.
 // A Go declaration this platform emits a reference to: the import path it
 // lives in, and its identifier there.
 //
@@ -122,6 +129,7 @@ struct Spec {
     content string
     setters list<Setter>
     handlers list<Handler>
+    axis string
 }
 
 // --- The primitives ---
@@ -301,11 +309,13 @@ component Hyperlink(style ui.Style) {
 }
 
 // `canvas.Image` is constructed from a URI, which this platform has no
-// expression to build, so the image is empty.
+// expression to build, so the image is empty. From a resource rather than a
+// URI because NewImageFromURI dereferences what it is given and a nil URI is
+// the only one available here.
 component Image(style ui.Style) {
     Widget(
         spec=Spec{
-            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
+            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
             args = [Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
@@ -329,6 +339,7 @@ component VBox(style ui.Style, slot _) {
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
+            axis = "vertical",
         },
         style={...style},
     ) {
@@ -342,6 +353,7 @@ component HBox(style ui.Style, slot _) {
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
+            axis = "horizontal",
         },
         style={...style},
     ) {

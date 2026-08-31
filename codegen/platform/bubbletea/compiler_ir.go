@@ -188,6 +188,10 @@ type irComputed struct {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
+	// Set before any body is translated, since it decides how a call to one of
+	// these renders, and before ScopedExprCtx clones it. Clones inherit it:
+	// ForComponent and WithLocal copy the map reference along.
+	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
@@ -517,14 +521,40 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
 	}
 
+	// Every component this build renders, not only the root: one that
+	// survived inlining is emitted from its own declaration, and the funcs
+	// its body calls have to come with it. AllFuncs is the deduped base --
+	// the loop below dedupes what this adds on top.
 	allFuncs := ctx.AllFuncs()
+	for _, comp := range ctx.Pkg.Components {
+		allFuncs = append(allFuncs, comp.Funcs...)
+	}
+	componentFuncs := componentFuncSet(ctx.Pkg)
 	seenUserFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, fn := range allFuncs {
 		if seenUserFn[fn] {
 			continue
 		}
 		seenUserFn[fn] = true
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) || canvasDraws[fn] {
+		if fn.IsTest || codegen.IsComputed(fn) || canvasDraws[fn] {
+			continue
+		}
+		// A method on a user struct or enum is not a Model method: Go has no
+		// methods to attach to some of those types and the call site lifts it
+		// to a free `ReceiverMethod(recv, …)` either way. Skipping every func
+		// with a receiver skipped these entirely, and left the call to a name
+		// nothing declared.
+		if fn.Receiver != "" && userTypeName(ctx.Pkg, fn.Receiver) {
+			emitIRTypeMethod(&b, fn, gc)
+			continue
+		}
+		// A top-level func has no component in scope, so it reads no state and
+		// needs no receiver. Emitted free, it is callable from a Model method
+		// and from a type method alike -- as a Model method it was reachable
+		// only from the first, and `Calc.pending` calling `format` rendered
+		// `m.format(…)` in a function with no `m`.
+		if !componentFuncs[fn] {
+			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
 		emitIRFunc(&b, fn, gc)
@@ -619,6 +649,79 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 
 	return body, gc.Imports()
+}
+
+// userTypeName reports whether name is a struct or enum the package declares,
+// as opposed to a component (whose methods are the Model's).
+func userTypeName(pkg *ir.Package, name string) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, s := range pkg.Structs {
+		if s.Name == name {
+			return true
+		}
+	}
+	for _, e := range pkg.Enums {
+		if e.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// emitIRTypeMethod emits a method on a user type as the free function its call
+// sites name: `func GlyphRow(gl Glyph, row int) string`, with the receiver as
+// the first parameter (passNoImplicitRecv already put it there).
+func emitIRTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
+	fnCopy.Receiver = ""
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// emitIRFreeFunc emits a top-level func under its exported name, which is what
+// FreeFuncs told the call sites to expect.
+func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Name)
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// componentFuncSet is every func a component or a window declares. What is
+// left in pkg.Funcs is top level: declared beside them rather than inside one,
+// so nothing of a component's is in scope for it.
+//
+// A window owns funcs the way a component does -- passFocusOrder's
+// __focusNext/__focusPrev among them -- and they read the Model, so leaving
+// them out emitted them free and the focus helpers lost their receiver.
+func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			out[fn] = true
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
+			out[fn] = true
+		}
+	}
+	return out
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {

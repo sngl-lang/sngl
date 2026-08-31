@@ -41,7 +41,12 @@ func init() {
 	reg("string.lower", func(a []string) string { return a[0] + ".lowercase()" })
 	reg("string.trim", func(a []string) string { return a[0] + ".trim()" })
 	reg("string.replace", func(a []string) string { return a[0] + ".replace(" + a[1] + ", " + a[2] + ")" })
-	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
+	// Kotlin's split answers `["", "a", "b", "c", ""]` for an empty separator
+	// where Go and JavaScript both answer `["a", "b", "c"]`. A calculator
+	// splitting its entry into characters got two blank cells it never asked
+	// for, one of them shifting the whole readout along. The helper is the
+	// one meaning, on every target.
+	reg("string.split", func(a []string) string { return SplitFn + "(" + a[0] + ", " + a[1] + ")" })
 
 	// --- float math --- (java.lang.Math)
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })

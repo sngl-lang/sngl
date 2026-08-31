@@ -644,10 +644,8 @@ func fireTimers(pkg *ir.Package, env *interp.Env) error {
 		if !enabled || t.Handler == nil {
 			continue
 		}
-		for _, st := range t.Handler.Block {
-			if err := env.Exec(st); err != nil {
-				return err
-			}
+		if err := env.ExecBlock(t.Handler.Block); err != nil {
+			return err
 		}
 	}
 	return nil

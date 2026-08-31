@@ -46,6 +46,16 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 			}
 		case *ir.Window:
 			walkCanvasStmts(v.Body, &v.Funcs, counter)
+		case *ir.If:
+			// A canvas is often one arm of a target test -- a drawing on the
+			// platforms that have pixels, something else on the ones that do
+			// not. Stopping at NodeInsts left that canvas unlowered, and the
+			// backend rendered its shapes as though they were widgets.
+			walkCanvasStmts(v.Body, funcs, counter)
+			walkCanvasStmts(v.Else, funcs, counter)
+		case *ir.For:
+			walkCanvasStmts(v.Body, funcs, counter)
+			walkCanvasStmts(v.Else, funcs, counter)
 		}
 	}
 }
@@ -98,11 +108,34 @@ func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func 
 // emitShapes emits draw calls for each shape child.
 func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
 	for _, s := range children {
-		ni, ok := s.(*ir.NodeInst)
-		if !ok {
-			continue
+		switch v := s.(type) {
+		case *ir.NodeInst:
+			emitShape(v, body, funcs, ctx)
+		case *ir.If:
+			// The draw function is imperative, so the conditional and the loop
+			// a canvas body was written with survive into it. Skipping them --
+			// which is what reading only NodeInsts did -- silently dropped
+			// every shape a program drew from data.
+			var then, otherwise []ir.Stmt
+			emitShapes(v.Body, &then, funcs, ctx)
+			emitShapes(v.Else, &otherwise, funcs, ctx)
+			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.For:
+			var loop, empty []ir.Stmt
+			emitShapes(v.Body, &loop, funcs, ctx)
+			emitShapes(v.Else, &empty, funcs, ctx)
+			*body = append(*body, &ir.For{
+				AST:      v.AST,
+				Key:      v.Key,
+				Value:    v.Value,
+				Iter:     v.Iter,
+				ElemType: v.ElemType,
+				Body:     loop,
+				Else:     empty,
+				KeySym:   v.KeySym,
+				ValueSym: v.ValueSym,
+			})
 		}
-		emitShape(ni, body, funcs, ctx)
 	}
 }
 
@@ -157,6 +190,45 @@ func hasArg(ni *ir.NodeInst, name string) bool {
 	return false
 }
 
+// primitiveShapeName is the shape a NodeInst draws, or "" when it is a shape
+// composed of other shapes.
+//
+// It reads the declaration's name rather than the spelling at the call site,
+// which is what the node's own Name carries: under `import draw "sngl:ui/draw"`
+// that is "draw.rect", it matched nothing, and the canvas emitted a save and a
+// restore with no drawing in between. A shape declared with a body is composed
+// of the shapes in it, so only a body-less one is a primitive -- that is also
+// what keeps a program's own `component rect` from being mistaken for this
+// package's.
+func primitiveShapeName(ni *ir.NodeInst) string {
+	if ni.Component == nil || len(ni.Component.Body) > 0 {
+		return ni.Name
+	}
+	return ni.Component.Name
+}
+
+// shapeBody is a composed shape's declaration body with the call site's
+// arguments substituted for its props, ready to be emitted where the call
+// stands. A prop the call site leaves out takes its declared default.
+//
+// The body is cloned: one declaration is drawn once per call site, and each
+// gets its own arguments.
+func shapeBody(ni *ir.NodeInst) []ir.Stmt {
+	if ni.Component == nil || len(ni.Component.Body) == 0 {
+		return nil
+	}
+	bindings := map[string]ir.Expr{}
+	for _, p := range ni.Component.Props {
+		if p.Default != nil {
+			bindings[p.Name] = p.Default
+		}
+	}
+	for i := range ni.Props {
+		bindings[ni.Props[i].Name] = ni.Props[i].Value
+	}
+	return substituteParams(deepCloneStmts(ni.Component.Body), bindings)
+}
+
 // emitShape emits save / applyStyle / primitive-draw / recurse / restore for one shape.
 func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
 	*body = append(*body, canvasCall(ctx, "CanvasSave"))
@@ -165,7 +237,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 		*body = append(*body, canvasCall(ctx, "CanvasApplyStyle", argVal(ni, "style")))
 	}
 
-	switch ni.Name {
+	switch primitiveShapeName(ni) {
 	case "rect":
 		*body = append(*body, canvasCall(ctx, "CanvasDrawRect",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h")))
@@ -186,7 +258,14 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	case "canvasImage":
 		*body = append(*body, canvasCall(ctx, "CanvasDrawImage",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h"), argVal(ni, "src")))
-		// user-defined shapes: emit only save/restore (children handled by recursion below)
+	default:
+		// A shape composed of other shapes. It is exempt from component
+		// inlining -- a tree kind marks a declaration as rendered rather than
+		// composed away -- so its body is expanded here instead, with the call
+		// site's arguments substituted for its props. Emitting only the
+		// save/restore around it is what made a program's own shape draw
+		// nothing at all.
+		emitShapes(shapeBody(ni), body, funcs, ctx)
 	}
 
 	if len(ni.Children) > 0 {

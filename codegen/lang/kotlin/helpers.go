@@ -33,7 +33,8 @@ func translateIRLiteral(n *ir.Literal) string {
 			return n.Value
 		case ir.TypeFloat:
 			s := n.Value
-			if !strings.Contains(s, ".") {
+			// An exponent already makes it a Double; `1e+09.0` is nothing.
+			if !strings.ContainsAny(s, ".eE") {
 				s += ".0"
 			}
 			return s

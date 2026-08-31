@@ -857,11 +857,18 @@ func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
 			continue
 		}
 		for _, langStmt := range langNode.Block.Stmts {
-			platNode, ok := langStmt.(*ast.VisualNode)
-			if !ok {
-				continue
+			// A platform carrying options parses as a call, not a visual node
+			// -- the same two forms buildPlatformOutput accepts. Reading only
+			// the node form here dropped every optioned platform from the
+			// target set, so its overrides never merged.
+			switch s := langStmt.(type) {
+			case *ast.VisualNode:
+				out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(s)})
+			case *ast.CallStmt:
+				if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
+					out = append(out, ir.StaticTarget{Language: lang, Platform: ident.Name})
+				}
 			}
-			out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(platNode)})
 		}
 	}
 	return out

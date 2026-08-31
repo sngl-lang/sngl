@@ -208,7 +208,10 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if !t.isLocalRef(id) {
 		t.fieldSink(id, goType)
 	}
-	ctor := nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(), ir.TypDyn)
+	ctor := t.flexLayoutCall(sp)
+	if ctor == nil {
+		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(), ir.TypDyn)
+	}
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
@@ -257,8 +260,9 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
+	childSpec := t.specs[codegen.IdentBareName(child)]
 	parent = t.qualifyParentExpr(parent)
-	child = t.qualifyChildExpr(child)
+	child = t.themed(t.qualifyChildExpr(child), childSpec)
 	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: ir.TypDyn},

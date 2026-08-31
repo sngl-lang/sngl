@@ -115,10 +115,10 @@ static void sngl_set_prop_double(void *obj, const char *name, double v) {
 // to the C.sngl_drawing_area_set_draw call sites this file emits (cgo
 // preambles are per-file), while sngl_draw_dispatch is //export-ed once in
 // callbacks.go and forward-declared extern here.
-extern void sngl_draw_dispatch(int idx, cairo_t* cr);
+extern void sngl_draw_dispatch(int idx, cairo_t* cr, int width, int height);
 static void sngl_draw_tramp(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    (void)area; (void)width; (void)height;
-    sngl_draw_dispatch(GPOINTER_TO_INT(data), cr);
+    (void)area;
+    sngl_draw_dispatch(GPOINTER_TO_INT(data), cr, width, height);
 }
 static void sngl_drawing_area_set_draw(void* area, int idx) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), sngl_draw_tramp, GINT_TO_POINTER(idx), NULL);

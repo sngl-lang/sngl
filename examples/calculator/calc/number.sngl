@@ -1,0 +1,23 @@
+// Turning a float back into something a ten-cell readout can show.
+
+// Cells on the readout. An entry longer than this stops accepting digits
+// rather than scrolling: a calculator that hides the digit you just typed is
+// worse than one that ignores it.
+const WIDTH = 10
+
+// Where rounding stops. 0.1 + 0.2 is 0.30000000000000004 in every language
+// with binary floats, and a calculator that says so is wrong in the only way
+// its user can see.
+const SCALE = 1000000.0
+
+// Above this, SCALE-ing overflows the integer `float.round` goes through, so
+// the value is printed as the platform spells it.
+const ROUNDABLE = 1000000000.0
+
+// The display spelling of a computed value.
+func format(v float) string {
+    if float.abs(v) >= ROUNDABLE {
+        return string(v)
+    }
+    return string(float.round(v * SCALE) / SCALE)
+}

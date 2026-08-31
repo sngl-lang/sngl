@@ -1,0 +1,40 @@
+// An expression-bodied function has no declared return type, so it has none at
+// all until its body is checked -- and pass2 checks bodies in declaration
+// order. A call written above the declaration read the return type as nil,
+// which is void, and reported `twice(3) == 6` as "operator == not defined for
+// void and int".
+//
+// Order is not supposed to matter. Across the files of one package there is no
+// order to appeal to either: which file is read first is the directory's
+// business, so this had to be resolved on demand rather than by sorting.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func caller() => twice(3) == 6
+
+func twice(n int) => n * 2
+
+// A chain: each link's type is only known once the next one's body is checked.
+func outer() => middle() + 1
+
+func middle() => inner() * 2
+
+func inner() => 7
+
+component main {
+    // Same question inside a component, and in the other direction.
+    func shown() => label()
+
+    func label() => "twice: {twice(n)}"
+
+    var n = 3
+
+    text #out(value=shown)
+}
+
+func testForwardReference(t Test, c main) {
+    t.assert(caller())
+    t.assert(outer() == 15)
+    t.assert(c.out.value == "twice: 6")
+}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -66,6 +67,55 @@ func packageHasCanvas(pkg *ir.Package) bool {
 			return true
 		}
 	}
+	// A canvas node carries its draw func on the NodeInst, and this platform
+	// renders it inline from there rather than emitting the func -- so a
+	// program whose only canvas is inside a component body has no
+	// `_canvasDraw` anywhere the loops above look. Asking the tree is asking
+	// the same question renderCanvas answers.
+	for _, comp := range pkg.Components {
+		if comp != nil && treeHasCanvas(comp.Body) {
+			return true
+		}
+	}
+	for _, w := range pkg.Windows {
+		if w != nil && treeHasCanvas(w.Body) {
+			return true
+		}
+	}
+	return false
+}
+
+// treeHasCanvas reports whether any node in stmts is a canvas passCanvas gave
+// a draw func to.
+func treeHasCanvas(stmts []ir.Stmt) bool {
+	for _, st := range stmts {
+		switch n := st.(type) {
+		case *ir.NodeInst:
+			if n.CanvasDraw != nil || treeHasCanvas(n.Children) {
+				return true
+			}
+		case *ir.If:
+			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
+				return true
+			}
+		case *ir.For:
+			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
+				return true
+			}
+		case *ir.Window:
+			if treeHasCanvas(n.Body) {
+				return true
+			}
+		case *ir.SlotInst:
+			if treeHasCanvas(n.Children) {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if treeHasCanvas(n.Children) {
+				return true
+			}
+		}
+	}
 	return false
 }
 
@@ -119,11 +169,61 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	if id := userTestTag(n); id != "" {
 		tag = fmt.Sprintf(".testTag(%q)", id)
 	}
-	cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
-	cc.indent++
+
+	// `width`/`height` are the coordinate space the shapes were placed in.
+	// At `center` the Canvas is that size and the drawing lands one to one;
+	// otherwise it takes the room it is given and the shapes are scaled into
+	// it, because a DrawScope has no backing store to stretch the way a
+	// browser or Fyne does.
+	mode := canvasScalingProp(n)
+	switch mode {
+	case canvasutil.ScaleFit, canvasutil.ScaleFill, canvasutil.ScaleStretch:
+		cc.kc.RequireImport("androidx.compose.foundation.layout.fillMaxWidth")
+		cc.kc.RequireImport("androidx.compose.ui.graphics.drawscope.scale")
+		cc.line("Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(%df / %df)%s) {", w, h, tag)
+		cc.indent++
+		cc.kc.RequireImport("androidx.compose.foundation.layout.aspectRatio")
+		cc.emitCanvasScale(mode, w, h)
+	default:
+		cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
+		cc.indent++
+		cc.emitDrawBody(n.CanvasDraw)
+		cc.indent--
+		cc.line("}")
+		return
+	}
 	cc.emitDrawBody(n.CanvasDraw)
 	cc.indent--
 	cc.line("}")
+	cc.indent--
+	cc.line("}")
+}
+
+// emitCanvasScale opens the DrawScope transform that maps the drawing's own
+// coordinate space onto the space the Canvas was laid out in. The caller
+// closes it.
+//
+// `stretch` scales the two axes separately; `fit` and `fill` scale both by one
+// factor, the smaller ratio for fit so the whole drawing lands inside and the
+// larger for fill so none of the room is left over.
+func (cc *irComposeContext) emitCanvasScale(mode string, w, h int) {
+	switch mode {
+	case canvasutil.ScaleStretch:
+		cc.line("scale(scaleX = size.width / %df, scaleY = size.height / %df, pivot = Offset.Zero) {", w, h)
+	case canvasutil.ScaleFill:
+		cc.line("scale(scale = maxOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+	default:
+		cc.line("scale(scale = minOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+	}
+	cc.indent++
+}
+
+// canvasScalingProp reads the canvas node's `scalingMode`.
+func canvasScalingProp(n *ir.NodeInst) string {
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+		return v.Member
+	}
+	return ""
 }
 
 // pendingStyle holds the Kotlin expression of the CanvasStyle bound by the most
@@ -142,13 +242,62 @@ func (cc *irComposeContext) emitDrawBody(fn *ir.Func) {
 		return
 	}
 	ds := &canvasDrawState{}
-	for _, stmt := range fn.Block {
-		cs, ok := stmt.(*ir.CallStmt)
-		if !ok || cs.Call == nil || cs.Call.Func == nil {
-			continue
+	cc.emitDrawStmts(fn.Block, ds)
+}
+
+// emitDrawStmts walks a draw body. An `if` or a `for` is not a shape, it is
+// how the shapes under it got there -- reading only the top-level calls drew
+// the canvas background and dropped every shape a loop produced, which is a
+// seven-segment display with no segments.
+func (cc *irComposeContext) emitDrawStmts(stmts []ir.Stmt, ds *canvasDrawState) {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ir.CallStmt:
+			if s.Call != nil && s.Call.Func != nil {
+				cc.emitCanvasIntrinsic(s.Call, ds)
+			}
+		case *ir.For:
+			cc.emitDrawFor(s, ds)
+		case *ir.If:
+			cc.emitDrawIf(s, ds)
 		}
-		cc.emitCanvasIntrinsic(cs.Call, ds)
 	}
+}
+
+func (cc *irComposeContext) emitDrawFor(s *ir.For, ds *canvasDrawState) {
+	iterExpr := cc.kc.EvalExpr(s.Iter)
+	loopKC := cc.kc
+	if s.Key != "" && s.Key != "_" {
+		loopKC = loopKC.WithLocal(s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		loopKC = loopKC.WithLocal(s.Value)
+	}
+	savedKC := cc.kc
+	cc.kc = loopKC
+	cc.line("%s", cc.kc.ForHead(s, iterExpr))
+	cc.indent++
+	cc.emitDrawStmts(s.Body, ds)
+	cc.indent--
+	cc.line("%s", cc.kc.BlockEnd())
+	cc.kc = savedKC
+	if len(s.Else) > 0 {
+		cc.emitDrawStmts(s.Else, ds)
+	}
+}
+
+func (cc *irComposeContext) emitDrawIf(s *ir.If, ds *canvasDrawState) {
+	cc.line("if (%s) {", cc.kc.EvalExpr(s.Cond))
+	cc.indent++
+	cc.emitDrawStmts(s.Body, ds)
+	cc.indent--
+	if len(s.Else) > 0 {
+		cc.line("} else {")
+		cc.indent++
+		cc.emitDrawStmts(s.Else, ds)
+		cc.indent--
+	}
+	cc.line("}")
 }
 
 // evalStyleArg evaluates a CanvasApplyStyle argument to a Kotlin CanvasStyle

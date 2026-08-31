@@ -6,8 +6,10 @@
 
 sngl generate --platform=android --lang=kotlin --out=out app.sngl
 
-# `chain` appends Modifier calls the Style has no field for.
-grep 'Column\(modifier = Modifier\.fillMaxSize\(\)\) \{' out/MainScreen.kt
+# `chain` appends Modifier calls the Style has no field for, and the window's
+# own content is kept out from under the status bar and the display cutout --
+# last in the chain, so it insets the content rather than the background.
+grep 'Column\(modifier = Modifier\.fillMaxSize\(\)\.safeDrawingPadding\(\)\) \{' out/MainScreen.kt
 
 # Row's declared props, and a #id carried onto the intrinsic as a testTag.
 grep 'Row\(modifier = Modifier\.testTag\("bar"\)\.padding\(4\.dp\)\) \{' out/MainScreen.kt

@@ -15,6 +15,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
@@ -1003,8 +1004,18 @@ func (g *htmlGen) generate() (string, error) {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
 	if g.stylesheet == "" {
-		const defaultCSS = "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
+		defaultCSS := "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
 			"body { font-family: system-ui, sans-serif; }\n"
+		// A root element asking for a share of its parent has no parent to
+		// take it from: `body` is not a flex container and neither it nor
+		// `html` has a height, so `flex: 1` on the outermost div did nothing
+		// and the page sat at its content height. The share it is asking for
+		// is the viewport, which is the reading Compose's fillMaxSize() gets
+		// from the same source.
+		if g.rootFlexes() {
+			defaultCSS += "html, body { height: 100%; }\n" +
+				"body { display: flex; flex-direction: column; }\n"
+		}
 		css, err := maybeMinifyCSS(defaultCSS, g.minify)
 		if err != nil {
 			return "", err
@@ -1369,8 +1380,12 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				out = append(out, f)
 			}
 		}
-		if main := g.rootComp; main != nil {
-			for _, f := range main.Funcs {
+		// Every component the build renders, not only the root: one that
+		// survived inlining is emitted from its own declaration, and its
+		// synthesized funcs -- a canvas draw function among them -- have to
+		// come with it.
+		for _, comp := range g.pkg.Components {
+			for _, f := range comp.Funcs {
 				if f.Synthesized {
 					out = append(out, f)
 				}
@@ -1383,6 +1398,28 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		}
 	}
 	return out
+}
+
+// rootFlexes reports whether a top-level node of the page asked for a share of
+// its parent. Only the roots: a flex inside the tree is answered by the box
+// around it, and only the outermost one needs the viewport handed to it.
+func (g *htmlGen) rootFlexes() bool {
+	for _, st := range g.irBodyStmts {
+		n, ok := st.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, sf := range codegen.NodeStyleFields(n) {
+			if sf.Name != "flex" {
+				continue
+			}
+			if v, ok := codegen.IRLiteralString(sf.Value); ok && (v == "" || v == "0") {
+				continue
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func (g *htmlGen) pkgStructs() []*ir.StructDef {
@@ -1518,14 +1555,18 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 	}
 	if n.CanvasDraw != nil {
-		g.canvasSetups = append(g.canvasSetups, canvasSetup{id: id, drawFunc: n.CanvasDraw})
+		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
+		cs := canvasSetup{id: id, drawFunc: n.CanvasDraw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
-		// passCanvasReactivity injects into handler/timer bodies.
+		// passCanvasReactivity injects into handler/timer bodies. A scaled
+		// canvas also redraws when its box changes, because the box is what
+		// its backing store is sized from.
 		uname := fmt.Sprintf("$u_%s_canvas", id[1:])
-		body := fmt.Sprintf(
-			"(function(){const _ctx=%s.getContext(\"2d\");_ctx.clearRect(0,0,%s.width,%s.height);%s(_ctx);})();",
-			id, id, id, n.CanvasDraw.Name,
-		)
+		body := cs.drawCall() + ";"
+		if cs.scaling != "" {
+			body += fmt.Sprintf("_snglCanvasWatch(%s,function(){%s});", id, cs.drawCall())
+		}
 		g.initWrites = append(g.initWrites, updateFunc{
 			funcName: uname,
 			body:     body,
@@ -1533,6 +1574,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := g.buildCSSStyle(n)
+	if css := canvasScalingCSS(n); css != "" {
+		if style != "" {
+			style += ";"
+		}
+		style += css
+	}
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
@@ -1544,6 +1591,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
 		if name == "style" || name == "class" {
+			continue
+		}
+		// Read into the element's CSS by canvasScalingCSS, and not an
+		// attribute any element has.
+		if name == "scalingMode" {
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1975,6 +2027,23 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if emittedFuncs {
 		b.WriteString("\n")
 	}
+	if g.testMode && emittedFuncs {
+		// The test module is bundled beside the page, not inside its IIFE, so
+		// a call it makes to one of these -- `Calc_digit(…)`, the same name
+		// the emitter used -- has to find it. Hoisted like the state object
+		// above. The shorthand keys survive minification even when the
+		// bindings are renamed.
+		var names []string
+		for _, fn := range funcs {
+			if len(fn.Block) == 0 {
+				continue
+			}
+			names = append(names, jsFuncName(fn))
+		}
+		if len(names) > 0 {
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+		}
+	}
 
 	if g.pkg != nil && len(g.pkg.AsyncKickers) > 0 {
 		for _, k := range g.pkg.AsyncKickers {
@@ -2165,6 +2234,47 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 }
 
+// canvasScalingCSS is the display size and fit of a canvas whose `scalingMode`
+// asks for one.
+//
+// `width`/`height` on a canvas are its backing store -- the coordinate space
+// the shapes were placed in -- and the CSS box is how big it is shown. A
+// browser scales the one to the other, and object-fit says how, which is the
+// same four choices SNGL spells.
+//
+// `center` is the default and adds nothing: the element stays the size of its
+// drawing, which is what every canvas did before there was a choice.
+func canvasScalingCSS(n *ir.NodeInst) string {
+	if n == nil || n.CanvasDraw == nil {
+		return ""
+	}
+	// Emitted after the width and height the canvas declared, so it wins:
+	// those two size the backing store, and this is the box the shapes are
+	// drawn into. No object-fit -- the helper sizes the backing store to this
+	// box and scales the geometry, so there is no picture left to resample.
+	switch canvasScalingMode(n) {
+	case canvasutil.ScaleFit:
+		// aspect-ratio rather than height:auto alone: the backing store's own
+		// dimensions move at runtime, and the box must not follow them.
+		w, h := canvasIntProp(n, "width"), canvasIntProp(n, "height")
+		if w <= 0 || h <= 0 {
+			return "width:100%"
+		}
+		return fmt.Sprintf("width:100%%;height:auto;aspect-ratio:%d/%d", w, h)
+	case canvasutil.ScaleFill, canvasutil.ScaleStretch:
+		return "width:100%;height:100%"
+	}
+	return ""
+}
+
+// canvasScalingMode reads a canvas node's `scalingMode` prop.
+func canvasScalingMode(n *ir.NodeInst) string {
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+		return v.Member
+	}
+	return ""
+}
+
 // emitCanvasSetups emits the _snglColor helper once when any canvas element is
 // present. The per-canvas draw call comes from the updaters registered in
 // initWrites, so no per-canvas IIFE is emitted here.
@@ -2173,6 +2283,7 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 		return
 	}
 	b.WriteString(snglColorHelper)
+	b.WriteString(snglCanvasHelper)
 }
 
 // timerSyncCalls returns a $timer_N_sync() call for every timer whose enabled
@@ -2761,10 +2872,7 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
 	for _, cs := range g.canvasSetups {
 		if cs.drawFunc == rs.DrawFunc {
-			id := cs.id
-			return "(function(){const _ctx=" + id + ".getContext(\"2d\");" +
-				"_ctx.clearRect(0,0," + id + ".width," + id + ".height);" +
-				rs.DrawFunc.Name + "(_ctx);})()"
+			return cs.drawCall()
 		}
 	}
 	return "" // draw func not found (shouldn't happen)
@@ -2974,6 +3082,27 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	return htmlutil.BuildCSSStyleIR(n.Props)
 }
 
+// receiverParamName is what the method's receiver is called in its own body.
+// A nested method's is the implicit `this`; a top-level `func Op.symbol(o Op)`
+// names its own. Both are emitted as `state`, so both have to be renamed —
+// renaming only `this` left `func Op_symbol(state) { return o === "add" … }`,
+// which reads a name the function does not have.
+func receiverParamName(fn *ir.Func) string {
+	if len(fn.Params) > 0 && fn.Params[0].Receiver {
+		return fn.Params[0].Name
+	}
+	return ir.ReceiverParam
+}
+
+// jsFuncName is the JavaScript name a user func is emitted under. A desugared
+// method's dotted form lives in fn.Receiver.
+func jsFuncName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "_" + fn.Name
+	}
+	return strings.ReplaceAll(fn.Name, ".", "_")
+}
+
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -2984,7 +3113,10 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
 		// Emitted as `state` so the param name matches the body's
-		// component-self translation.
+		// component-self translation -- and, for a struct or enum receiver,
+		// so that it is a name JavaScript accepts at all. SNGL spells the
+		// receiver `this`, which is a parameter name JS rejects; the body's
+		// uses are renamed to match below.
 		if i == 0 && fn.Receiver != "" && p.Receiver {
 			params[i] = "state"
 		} else {
@@ -2993,11 +3125,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	paramStr := strings.Join(params, ", ")
 
-	// A desugared method's dotted form lives in fn.Receiver.
-	jsName := strings.ReplaceAll(fn.Name, ".", "_")
-	if fn.Receiver != "" {
-		jsName = fn.Receiver + "_" + fn.Name
-	}
+	jsName := jsFuncName(fn)
 
 	keyword := "function"
 	if fn.IsAsync {
@@ -3008,7 +3136,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
 			if fn.Receiver != "" {
-				jc = jc.WithLocal(ir.ReceiverParam)
+				jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 			}
 			for _, p := range fn.Params {
 				jc = jc.WithLocal(p.Name)
@@ -3026,7 +3154,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// writes and intrinsic statements lower identically.
 	jc := g.scopedJC()
 	if fn.Receiver != "" {
-		jc = jc.WithLocal(ir.ReceiverParam)
+		jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 	}
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)

@@ -118,9 +118,20 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 				walk(n.Children)
 			case *For:
 				walk(n.Body)
+				walk(n.Else)
 			case *If:
 				walk(n.Body)
 				walk(n.Else)
+			case *Window:
+				// A `window #w { … }` written inside a component is a
+				// statement here, not an entry in pkg.Windows. Stopping at it
+				// left every widget under it holding the abstract stdlib body,
+				// so the platform saw nothing it could build.
+				walk(n.Body)
+			case *SlotInst:
+				walk(n.Children)
+			case *ErrorBoundary:
+				walk(n.Children)
 			}
 		}
 	}

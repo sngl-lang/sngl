@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -9,20 +10,26 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// testIRContext builds a GoIRContext for rendering a test body. The
-// ExprCtx is backed by an empty package: idents in a test body are either
-// locals (params/loop vars, registered below) or — for component state —
-// reached as `c.<field>` Selects on a RawFieldAccess receiver, so no
-// package-level resolution is required and an empty Pkg keeps Resolve from
-// `m.`-prefixing bare idents (matching the legacy empty-scope behavior).
+// testIRContext builds a GoIRContext for rendering a test body.
 //
 //   - Component-typed params get RawFieldAccess so `c.count` reads the
 //     unexported Model field directly.
 //   - MethodFields names the fields whose `recv.<field>` lowers to a
 //     zero-arg method call (component methods / computeds).
 //   - Each param binds as a Local.
-func testIRContext(fn *ir.Func, methodFields map[string]bool) *GoIRContext {
-	ctx := codegen.NewExprCtx(&ir.Package{})
+//
+// The ExprCtx is backed by the package being compiled, because the test file
+// lands in the same Go package as the model and has to name things the way the
+// model emitter named them: a method on a user type as the free
+// `CalcDigit(…)`, a top-level func as the free `Format(…)`. Over an empty
+// package it knew neither, and emitted `Calc{…}.digit(…)` against a Go type
+// with no such method.
+func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) *GoIRContext {
+	if irPkg == nil {
+		irPkg = &ir.Package{}
+	}
+	ctx := codegen.NewExprCtx(irPkg)
+	ctx.FreeFuncs = ModelFreeFuncs(irPkg)
 	ctx.RawFieldAccess = map[string]bool{}
 	ctx.MethodFields = methodFields
 	gc := NewIRContext(ctx)
@@ -288,6 +295,10 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	return fmt.Sprintf("if !(%s) { t.Errorf(\"assert failed: %%s\", %q) }", exprGo, exprGo), true
 }
 
+// testInstanceVar names the component a test drives. Deliberately not a name
+// SNGL source can produce, so a local in the test body never collides.
+const testInstanceVar = "__snglTestComponent"
+
 // TestEmitMode selects how LowerTestFile wraps the per-test bodies.
 type TestEmitMode int
 
@@ -308,37 +319,72 @@ const (
 //
 //   - Native: `package <pkg>` + import "testing" + funcs `func Test<X>(t *testing.T)`.
 //   - Agent:  `package <pkg>` + import "git.duckfam.us/jonathan/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.
-func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "package %s\n\n", pkg)
+func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
+	// Bodies first: what a test body calls decides what the file imports, and
+	// the header cannot be written until that is known. A fixed import line
+	// left `strings` and `utf8` undefined the moment a test asserted on
+	// anything the string builtins lower through.
+	var body strings.Builder
+	needed := map[string]bool{}
 	switch mode {
 	case TestEmitNative:
-		b.WriteString("import \"testing\"\n\n")
+		needed["testing"] = true
 	case TestEmitAgent:
-		b.WriteString("import \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\n")
+		needed["git.duckfam.us/jonathan/sngl/pkg/go/testagent"] = true
 	}
 
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		funcName, paramType := wrapperHeader(suffix, mode)
-		fmt.Fprintf(&b, "func %s(t *%s) {\n", funcName, paramType)
-		// The handle is named whatever the test called its second parameter.
-		// Emitting a fixed `c` built whichever test happened to use that name
-		// and failed the others at `undefined: g`.
-		recv := testReceiverName(fn)
-		fmt.Fprintf(&b, "\t%s := newTestComponent()\n", recv)
+		fmt.Fprintf(&body, "func %s(t *%s) {\n", funcName, paramType)
+		// The instance is always built, because a snapshot needs one whether
+		// the test named it or not; the declared name is bound only when the
+		// test declared it. Emitting a fixed `c` into every test collided
+		// with any local of that name.
+		body.WriteString("\t" + testInstanceVar + " := newTestComponent()\n")
 		if mode == TestEmitAgent {
-			fmt.Fprintf(&b, "\tsetCurrentTestModel(%s)\n", recv)
+			body.WriteString("\tsetCurrentTestModel(" + testInstanceVar + ")\n")
 		}
-		fmt.Fprintf(&b, "\t_ = %s\n", recv)
-		gc := testIRContext(fn, methodFields)
+		// Whichever name is in scope is discarded, because a test may drive
+		// the component only through the runner -- `t.snapshot(...)` names it
+		// nowhere -- and Go rejects a local nothing reads.
+		if recv := codegen.TestComponentParam(fn); recv != "" {
+			fmt.Fprintf(&body, "\t%s := %s\n", recv, testInstanceVar)
+			fmt.Fprintf(&body, "\t_ = %s\n", recv)
+		} else {
+			body.WriteString("\t_ = " + testInstanceVar + "\n")
+		}
+		gc := testIRContext(irPkg, fn, methodFields)
 		for _, s := range fn.Block {
 			for _, line := range lowerTestStmt(s, gc) {
-				fmt.Fprintf(&b, "\t%s\n", line)
+				fmt.Fprintf(&body, "\t%s\n", line)
 			}
 		}
-		b.WriteString("}\n\n")
+		for _, imp := range gc.Imports() {
+			needed[imp] = true
+		}
+		body.WriteString("}\n\n")
 	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "package %s\n\n", pkg)
+	if len(needed) > 0 {
+		paths := make([]string, 0, len(needed))
+		for p := range needed {
+			paths = append(paths, p)
+		}
+		sort.Strings(paths)
+		if len(paths) == 1 {
+			fmt.Fprintf(&b, "import %q\n\n", paths[0])
+		} else {
+			b.WriteString("import (\n")
+			for _, p := range paths {
+				fmt.Fprintf(&b, "\t%q\n", p)
+			}
+			b.WriteString(")\n\n")
+		}
+	}
+	b.WriteString(body.String())
 
 	if mode == TestEmitAgent {
 		b.WriteString("func init() {\n")
@@ -360,14 +406,4 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 		return "test" + suffix, "testagent.T"
 	}
 	return "Test" + suffix, "testing.T"
-}
-
-// testReceiverName is what a test function calls the component under test: its
-// second parameter's name. A test with no such parameter tests plain functions
-// and never refers to the handle, so the name is only there to be assigned.
-func testReceiverName(fn *ir.Func) string {
-	if fn != nil && len(fn.Params) > 1 && fn.Params[1].Name != "" {
-		return fn.Params[1].Name
-	}
-	return "c"
 }

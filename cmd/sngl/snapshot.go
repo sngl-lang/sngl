@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 	"github.com/spf13/cobra"
 )
@@ -45,60 +46,67 @@ func runSnapshot(cmd *cobra.Command, args []string) error {
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
-
-	for _, p := range paths {
-		info, err := os.Stat(p)
+	if recurse {
+		expanded, err := recurseDirs(paths)
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			if err := snapshotDir(p, platforms, outDir, width, height, recurse, force); err != nil {
-				return err
-			}
-		} else {
-			if err := snapshotFile(p, platforms, outDir, width, height, force); err != nil {
-				return err
-			}
+		paths = expanded
+	}
+
+	units, err := resolveUnits(paths)
+	if err != nil {
+		return err
+	}
+	for _, u := range units {
+		if err := snapshotUnit(u, platforms, outDir, width, height, force); err != nil {
+			slog.Warn("snapshot failed", "path", u.headline(), "err", err)
 		}
 	}
 	return nil
 }
 
-func snapshotDir(dir string, platforms []string, outDir string, width, height int, recurse, force bool) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		path := filepath.Join(dir, e.Name())
-		if e.IsDir() && recurse {
-			if err := snapshotDir(path, platforms, outDir, width, height, recurse, force); err != nil {
-				return err
-			}
+// recurseDirs expands each directory argument into itself and every
+// subdirectory. resolveUnits reads a directory as one package and does not
+// descend, so --recurse is a widening of the argument list rather than
+// anything the unit resolver has to know about.
+func recurseDirs(paths []string) ([]string, error) {
+	var out []string
+	for _, p := range paths {
+		info, err := os.Stat(p)
+		if err != nil {
+			return nil, err
+		}
+		if !info.IsDir() {
+			out = append(out, p)
 			continue
 		}
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sngl") {
-			if err := snapshotFile(path, platforms, outDir, width, height, force); err != nil {
-				slog.Warn("snapshot failed", "path", path, "err", err)
+		err = filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
 			}
+			if d.IsDir() && !strings.HasPrefix(d.Name(), ".") {
+				out = append(out, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return out, nil
 }
 
-func snapshotFile(path string, flagPlatforms []string, outOverride string, width, height int, force bool) error {
-	data, err := os.ReadFile(path)
+func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, height int, force bool) error {
+	doc, err := u.doc()
 	if err != nil {
 		return err
 	}
-	doc, err := parser.Parse(path, data)
-	if err != nil {
-		return err
-	}
+	path := u.headline()
 
 	platforms := flagPlatforms
 	if len(platforms) == 0 {
-		pkg, err := checkDoc(doc, filepath.Dir(path), true)
+		pkg, err := checkDoc(doc, u.dir, true)
 		if err == nil && pkg != nil {
 			for _, o := range pkg.Outputs {
 				platforms = append(platforms, o.Platform)
@@ -109,7 +117,7 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		return nil
 	}
 
-	fileDir := filepath.Dir(path)
+	fileDir := u.dir
 	effectiveOutDir := outOverride
 	if effectiveOutDir == "" {
 		effectiveOutDir = filepath.Join(fileDir, "snapshots")
@@ -153,16 +161,19 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		docs = append(docs, snapshot.DocEntry{ID: name, SourceFile: tmpFile})
 	}
 
-	// Without the output {} guard, a file holding only component definitions
+	// Without the output {} guard, a unit holding only component definitions
 	// would be added as a main doc and fail to type-check.
-	if len(platforms) > 0 && strings.Contains(string(data), "output {") {
+	if len(platforms) > 0 && declaresOutput(doc) {
 		basename := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		if !u.solo {
+			basename = filepath.Base(u.dir)
+		}
 		if !force && snapshotAllExist(effectiveOutDir, basename, platforms) {
 			for _, plat := range platforms {
 				slog.Info("exists", "path", filepath.Join(effectiveOutDir, basename+"_"+plat+".png"))
 			}
 		} else {
-			docs = append(docs, snapshot.DocEntry{ID: basename, SourceFile: path})
+			docs = append(docs, snapshot.DocEntry{ID: basename, SourceFile: path, Doc: doc, Dir: u.dir, Resolver: newCLIResolver(u.dir)})
 		}
 	}
 
@@ -184,6 +195,20 @@ func snapshotFile(path string, flagPlatforms []string, outOverride string, width
 		slog.Info("wrote", "path", r.Path)
 	}
 	return nil
+}
+
+// declaresOutput reports whether the document carries an `output` block. A
+// package's is in whichever file wrote it, so this reads the merged document
+// rather than any one file's text.
+func declaresOutput(doc *ast.Document) bool {
+	for _, stmt := range doc.Stmts {
+		if vn, ok := stmt.(*ast.VisualNode); ok {
+			if id, ok := vn.Target.(*ast.IdentExpr); ok && id.Name == "output" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func snapshotAllExist(outDir, id string, platforms []string) bool {

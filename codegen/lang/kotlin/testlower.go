@@ -357,6 +357,10 @@ const (
 //
 // Each function in fns is rendered using the same lowerTestStmt walker
 // LowerTestFunc uses, ensuring identical semantic translation.
+// testInstanceVar names the component a test drives. Deliberately not a name
+// SNGL source can produce, so a local in the test body never collides.
+const testInstanceVar = "__snglTestComponent"
+
 func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode, testRunner string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "package %s\n\n", pkg)
@@ -448,8 +452,13 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			b.WriteString("    }\n\n")
 		case TestEmitAgent:
 			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
-			b.WriteString("    val c = newTestComponent()\n")
-			b.WriteString("    setCurrentTestModel(c)\n")
+			// See the Go and JS lowerers: the instance is always built, the
+			// declared name bound only when the test declared one.
+			b.WriteString("    val " + testInstanceVar + " = newTestComponent()\n")
+			b.WriteString("    setCurrentTestModel(" + testInstanceVar + ")\n")
+			if recv := codegen.TestComponentParam(fn); recv != "" {
+				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
+			}
 			for _, s := range fn.Block {
 				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitAgent) {
 					fmt.Fprintf(&b, "    %s\n", line)

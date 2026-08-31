@@ -77,55 +77,58 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		return nil
 	}
 
-	explicitFiles := explicitFileSet(paths)
-
-	files, err := discoverFiles(paths)
+	units, err := resolveUnits(paths)
 	if err != nil {
 		return err
 	}
-	if len(files) == 0 {
+	if len(units) == 0 {
 		return fmt.Errorf("no .sngl files found")
 	}
 
-	seen := make(map[string]bool)
-	for _, filename := range files {
-		dir := filepath.Dir(filename)
-		if seen[dir] {
-			continue
-		}
-		seen[dir] = true
-
-		f, err := os.Open(filename)
-		if err != nil {
-			return fmt.Errorf("%s: %w", filename, err)
-		}
+	for _, u := range units {
 		start := time.Now()
-		doc, err := parseSNGL(filename, f)
-		f.Close()
+		doc, err := u.doc()
 		if err != nil {
-			return fmt.Errorf("%s: %w", filename, err)
+			return fmt.Errorf("%s: %w", u.name, err)
 		}
-		slog.Info("parse", "file", filename, "duration", time.Since(start))
-
-		absFilename, _ := filepath.Abs(filename)
-		if !explicitFiles[absFilename] {
-			start = time.Now()
-			doc = mergeDir(doc, filename)
-			slog.Info("merge", "dir", dir, "duration", time.Since(start))
-		}
+		slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, dir, true, cliSelectedTargets(cliLang, cliPlat)...)
+		pkg, err := checkDoc(doc, u.dir, true, cliSelectedTargets(cliLang, cliPlat)...)
 		if err != nil {
-			return fmt.Errorf("%s: %w", dir, err)
+			return fmt.Errorf("%s: %w", u.name, err)
 		}
-		slog.Info("check", "dir", dir, "duration", time.Since(start))
+		slog.Info("check", "unit", u.name, "duration", time.Since(start))
 
-		if err := emitPackage(pkg, filename, dir, cliLang, cliPlat, p); err != nil {
+		// A directory walk reaches a program's library packages too, and a
+		// library has nothing to emit -- generating one wrote a second
+		// index.html over the program's. A file named on the command line is
+		// generated whether or not it declares main, since naming it is the
+		// request.
+		if !u.solo && !hasMainComponent(pkg) {
+			slog.Info("skip: no component main", "unit", u.name)
+			continue
+		}
+
+		if err := emitPackage(pkg, u.headline(), u.dir, cliLang, cliPlat, p); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// hasMainComponent reports whether a package is a program rather than a
+// library.
+func hasMainComponent(pkg *ir.Package) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, comp := range pkg.Components {
+		if comp.Name == "main" {
+			return true
+		}
+	}
+	return false
 }
 
 // Split out because a package addressed by `sngl:<uri>` arrives already

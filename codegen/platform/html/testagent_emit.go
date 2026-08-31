@@ -44,7 +44,7 @@ func emitTestagentFiles(sink codegen.Sink, pkg *ir.Package, modelType string) er
 		return nil
 	}
 
-	testagentMain := javascript.LowerTestFile("ui", testFns, suffixes, methodFields, javascript.TestEmitAgent)
+	testagentMain := javascript.LowerTestFile("ui", pkg, testFns, suffixes, methodFields, javascript.TestEmitAgent)
 	if err := writeRawHTMLFile(sink, "testagent_main.js", []byte(testagentMain)); err != nil {
 		return err
 	}

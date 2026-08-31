@@ -1,0 +1,65 @@
+# A test's locals are its own. The lowerers bound the component instance to a
+# hardcoded `c` in *every* test, whether the test declared one or not, so a
+# local of that name was a redeclaration.
+#
+# It failed in the worst way it could. On html the emitted module no longer
+# parsed, so the page never ran and all the runner could say was that the
+# agent had not connected within 15s -- nothing about a name, a test, or a
+# line. On the Go targets it was at least a compiler error, but on a file
+# nobody had written.
+#
+# The name is the declaration's now: bound where a test declares a component
+# parameter, and nowhere else.
+
+sngl test --platform none app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform bubbletea app.sngl
+stdout '3 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    none { html }
+    go { bubbletea }
+}
+
+struct Counter {
+    n int = 0
+
+    func bump() Counter {
+        var next = this
+        next.n = this.n + 1
+        return next
+    }
+}
+
+component main {
+    var count Counter
+
+    func tick() {
+        count = count.bump()
+    }
+
+    text(value="{count.n}")
+}
+
+// `c` is this test's own local, not the component the runner builds.
+func testALocalNamedC(t Test) {
+    var c = Counter{}
+    c = c.bump().bump()
+    t.assert(c.n == 2)
+}
+
+// So is `t`'s neighbour in a test that never asks for a component at all.
+func testNoComponentParam(t Test) {
+    t.assert(Counter{}.bump().n == 1)
+}
+
+// And a test that does ask binds the name it asked under.
+func testComponentParamIsBound(t Test, screen main) {
+    screen.tick()
+    t.assert(screen.count.n == 1)
+}

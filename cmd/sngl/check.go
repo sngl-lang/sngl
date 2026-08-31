@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,42 +38,36 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	// argument at all falls back to the current directory, which is what
 	// discoverFiles does with an empty list.
 	if len(paths) > 0 || len(args) == 0 {
-		files, err := discoverFiles(paths)
+		units, err := resolveUnits(paths)
 		if err != nil {
 			return err
 		}
-		if len(files) == 0 {
+		if len(units) == 0 {
 			return fmt.Errorf("no .sngl files found")
 		}
 
-		for _, filename := range files {
-			f, err := os.Open(filename)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
-				failed = true
-				continue
-			}
-
+		for _, u := range units {
 			start := time.Now()
-			doc, err := parseSNGL(filename, f)
-			f.Close()
+			doc, err := u.doc()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+				fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 				failed = true
 				continue
 			}
-			slog.Info("parse", "file", filename, "duration", time.Since(start))
+			slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 			start = time.Now()
-			if _, err := checkDoc(doc, filepath.Dir(filename), true); err != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
+			if _, err := checkDoc(doc, u.dir, true); err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 				failed = true
 				continue
 			}
-			slog.Info("check", "file", filename, "duration", time.Since(start))
+			slog.Info("check", "unit", u.name, "duration", time.Since(start))
 
 			if !quiet(cmd) {
-				fmt.Printf("%s: ok\n", filename)
+				for _, filename := range u.files {
+					fmt.Printf("%s: ok\n", filename)
+				}
 			}
 		}
 	}

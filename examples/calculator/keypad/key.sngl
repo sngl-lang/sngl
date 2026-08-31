@@ -1,0 +1,39 @@
+// What a key is, before anything decides how it looks.
+//
+// A key carries what it does rather than a label the handler has to parse
+// back: `Key{action = digit, digit = "7"}` says what pressing it means, and
+// `main` switches on the action instead of comparing strings.
+
+import "../calc"
+
+enum Action { digit, point, operate, equals, clear, negate, percent, backspace }
+
+// `digit` and `op` are each read by exactly one action and ignored by the
+// rest. That is cheaper than eight structs, and the alternative -- one string
+// field reinterpreted per action -- is the thing this type exists to prevent.
+struct Key {
+    label string = ""
+    action Action = Action.digit
+    digit string = ""
+    op calc.Op = calc.Op.none
+
+    // Weight in its row. The zero key is two keys wide, as it is on every
+    // calculator ever made.
+    span float = 1
+
+    // Which of the three families it belongs to, so the styling has something
+    // to read that is not the label.
+    func tone() string {
+        if this.action == Action.operate || this.action == Action.equals {
+            return "operator"
+        }
+        if this.action == Action.digit || this.action == Action.point {
+            return "digit"
+        }
+        return "modifier"
+    }
+}
+
+func digitKey(d string) => Key{label=d, action=Action.digit, digit=d}
+
+func opKey(o calc.Op) => Key{label=o.symbol(), action=Action.operate, op=o}

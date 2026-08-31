@@ -47,13 +47,30 @@ struct PathCmd {
 #[tree.kind]
 struct shape {}
 
+// How a canvas is shown when the room it is given is not the size it draws at.
+// `width` and `height` are the coordinate space the shapes are placed in;
+// this is what happens to the picture that space produces.
+//
+// `center` leaves it alone, at its own size, in the middle of whatever it was
+// given — the default, because a drawing placed in pixels is one somebody
+// measured. `fit` and `fill` both scale it evenly, `fit` until the whole of it
+// is inside and `fill` until none of the space is left over, so `fill` crops
+// where the shapes are the wrong shape for the room. `stretch` scales the two
+// axes separately to land exactly on the edges, which is the only one that
+// changes what the drawing looks like.
+enum ScalingMode { center, fit, fill, stretch }
+
 // Immediate-mode drawing surface. Its default slot accepts shapes, so a canvas
 // hosts them without being one. They paint in declaration order — later shapes
 // cover earlier ones — in pixels from the top-left, whatever measurement unit
 // `width` and `height` are given in.
+//
+// Those two are the coordinate space and not the size on screen: a canvas laid
+// out bigger than it draws shows the picture per `scalingMode`.
 component canvas(
     width std.measurement,
     height std.measurement,
+    scalingMode ScalingMode,
     style CanvasStyle,
     @click std.ClickEvent,
     slot _ shape,

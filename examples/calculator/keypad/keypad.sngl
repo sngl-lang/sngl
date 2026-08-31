@@ -1,0 +1,76 @@
+// The keypad: five rows of keys that fill whatever room they are given.
+//
+// It reports a press and knows nothing about arithmetic. `main` owns the
+// calculator; this owns the grid.
+
+import . "sngl:ui"
+import "../calc"
+
+const (
+    DIGIT_BG = #2c2f36
+    MODIFIER_BG = #3d424d
+    OPERATOR_BG = #f59e0b
+    KEY_FG = #f5f7fa
+)
+
+func bgOf(tone string) color {
+    if tone == "operator" {
+        return OPERATOR_BG
+    }
+    if tone == "modifier" {
+        return MODIFIER_BG
+    }
+    return DIGIT_BG
+}
+
+// The rows, top to bottom. Written as data so that the layout below is five
+// lines long however many keys there turn out to be.
+func rows() list<list<Key>> {
+    return [
+        [
+            Key{label="C", action=Action.clear},
+            Key{label="+/-", action=Action.negate},
+            Key{label="%", action=Action.percent},
+            opKey(calc.Op.div),
+        ],
+        [digitKey("7"), digitKey("8"), digitKey("9"), opKey(calc.Op.mul)],
+        [digitKey("4"), digitKey("5"), digitKey("6"), opKey(calc.Op.sub)],
+        [digitKey("1"), digitKey("2"), digitKey("3"), opKey(calc.Op.add)],
+        [
+            digitKey("0"),
+            Key{label=".", action=Action.point},
+            Key{label="<", action=Action.backspace},
+            Key{label="=", action=Action.equals},
+        ],
+    ]
+}
+
+// One key. `flex` is what makes the grid fill the window: every key claims its
+// span of its row, and every row claims an equal share of the keypad.
+component KeyCap(entry Key, @press Key) {
+    button(
+        text=entry.label,
+        style={
+            flex = entry.span,
+            background = bgOf(entry.tone()),
+            color = KEY_FG,
+            fontSize = 22,
+            fontWeight = "bold",
+            borderRadius = 8,
+            margin = 3,
+        },
+        @click { press(entry) },
+    )
+}
+
+component Keypad(@press Key) {
+    vbox(style={flex=1, gap=0, padding=6}) {
+        for row = rows() {
+            hbox(style={flex=1, gap=0}) {
+                for entry = row {
+                    KeyCap(entry=entry, @press(k) { press(k) })
+                }
+            }
+        }
+    }
+}

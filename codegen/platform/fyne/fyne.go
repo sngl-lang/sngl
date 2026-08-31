@@ -88,24 +88,11 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
 			if agentMode {
-				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
-				// fyne's New() returns *Model; LowerTestFile generates code
-				// against `newTestComponent()` and dereferences fields via
-				// `c.<field>`, which Go handles transparently on a pointer.
-				//
-				// BuildUI is what creates the widgets. New() only sets state,
-				// so without it every widget field is nil -- a test driving an
-				// event finds no callback on the widget it names, and a
-				// handler writing back to one dereferences nil. gtk4's agent
-				// calls buildWidgetTree for the same reason.
-				build := ""
-				if c.hasEventInvokers {
-					build = "\tm.BuildUI()\n"
-				}
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model {\n\tm := New()\n" + build + "\treturn m\n}\n\nfunc main() { testagent.Main() }\n")
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -124,6 +111,16 @@ var currentModel *Model
 
 func setCurrentTestModel(m *Model) { currentModel = m }
 func currentTestModel() *Model     { return currentModel }
+
+// New() only zeroes the state; the widget fields an Updater writes through are
+// assigned by BuildUI, so a test that never renders would nil-deref on the
+// first state change. The test app has to exist before any widget does.
+func newTestComponent() *Model {
+	test.NewApp()
+	m := New()
+	m.BuildUI()
+	return m
+}
 
 func snapshotBytes(m *Model) (string, []byte, error) {
 	win := test.NewWindow(m.BuildUI())
@@ -147,15 +144,15 @@ func init() {
 					return err
 				}
 			} else {
-				src := golang.LowerTestFile(c.cfg.Package, testFns, suffixes, methodFields, golang.TestEmitNative)
-				// newTestComponent helper: fyne's New() returns *Model.
-				//
-				// No BuildUI here, unlike the agent above: this file is an
-				// in-package `go test`, with no Fyne app running, and building
-				// widgets without one is an error inside Fyne itself. So the
-				// native path reads state and does not drive events.
-				helper := []byte("\nfunc newTestComponent() *Model { return New() }\n")
-				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
+				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
+				if err := writeRawFile(sink, "model_test.go", []byte(src)); err != nil {
+					return err
+				}
+				// Its own file rather than an appendix to model_test.go: the
+				// helper needs an import, and that file's import block is
+				// written by LowerTestFile.
+				helper := []byte("package " + c.cfg.Package + "\n\nimport \"fyne.io/fyne/v2/test\"\n\nfunc newTestComponent() *Model {\n\ttest.NewApp()\n\tm := New()\n\tm.BuildUI()\n\treturn m\n}\n")
+				if err := writeRawFile(sink, "testcomponent_test.go", helper); err != nil {
 					return err
 				}
 			}
@@ -186,13 +183,6 @@ type compilation struct {
 	info *irAnalysis
 	cfg  Config
 	lang codegen.LangTranslator
-	// hasEventInvokers is set by emitIR when the program has at least one
-	// (#id, @event) pair a test could drive. It decides whether the agent
-	// builds the widget tree: only a test driving an event needs widgets, and
-	// building them runs constructors this platform deliberately stubs -- the
-	// image is `NewImageFromURI(nil)` because there is no expression here to
-	// build a URI from, and calling it is a crash rather than an empty image.
-	hasEventInvokers bool
 }
 
 func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen.CommonAnalysis) (*codegen.MutationModel, error) {
@@ -215,7 +205,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang, &c.hasEventInvokers)
+	body, imports, aliases, cgoPreamble, err := emitIR(c.info, c.ctx, c.cfg, c.lang)
 	if err != nil {
 		return err
 	}

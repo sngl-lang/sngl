@@ -1,0 +1,53 @@
+# `string.split(s, "")` is the characters of s, on every target.
+#
+# Kotlin's own split is not: `"abc".split("")` answers `["", "a", "b", "c", ""]`
+# where Go's strings.Split and JavaScript's String.split both answer
+# `["a", "b", "c"]`. The calculator splits its entry into characters to lay
+# them out in fixed cells, so on Android it got two cells it never asked for --
+# one of them at the front, shifting the whole readout along and pushing the
+# last digit off the right-hand edge. Nothing said so; the display was simply
+# wrong by one cell.
+
+sngl test --platform none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform bubbletea app.sngl
+stdout '2 tests, 0 failures'
+
+# The Kotlin emitter goes through a helper rather than the built-in.
+sngl generate --platform android --lang kotlin -o a app.sngl
+grep '_snglSplit\(' a/MainScreen.kt
+! grep '\.split\(""\)' a/MainScreen.kt
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    none { html }
+    go { bubbletea }
+}
+
+func chars(s string) list<string> {
+    return string.split(s, "")
+}
+
+component main {
+    var n = chars("abc").length()
+
+    text(value="{n}")
+}
+
+func testEmptySeparatorGivesTheCharacters(t Test) {
+    var got = chars("abc")
+    t.assert(got.length() == 3)
+    t.assert(got[0] == "a")
+    t.assert(got[2] == "c")
+}
+
+// A separator that is actually there splits on it, and an empty string has no
+// characters to give.
+func testOrdinarySeparatorIsUnchanged(t Test) {
+    t.assert(string.split("a,b", ",").length() == 2)
+    t.assert(chars("").length() == 0)
+}

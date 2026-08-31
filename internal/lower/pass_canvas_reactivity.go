@@ -89,34 +89,61 @@ type canvasEntry struct {
 // (CanvasDraw != nil) with its reactive dep set to out.
 func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasEntry) {
 	for _, s := range stmts {
-		ni, ok := s.(*ir.NodeInst)
-		if !ok {
-			continue
-		}
-		if ni.CanvasDraw != nil {
-			deps := drawFuncStateVars(ni.CanvasDraw, stateVars)
-			if len(deps) > 0 {
-				*out = append(*out, canvasEntry{canvas: ni, deps: deps})
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.CanvasDraw != nil {
+				deps := drawFuncStateVars(n.CanvasDraw, stateVars)
+				if len(deps) > 0 {
+					*out = append(*out, canvasEntry{canvas: n, deps: deps})
+				}
+				continue
 			}
-		} else {
-			collectCanvases(ni.Children, stateVars, out)
+			collectCanvases(n.Children, stateVars, out)
+		// A canvas is as likely to be one arm of a target test or an entry in
+		// a list as it is to be a plain child.
+		case *ir.If:
+			collectCanvases(n.Body, stateVars, out)
+			collectCanvases(n.Else, stateVars, out)
+		case *ir.For:
+			collectCanvases(n.Body, stateVars, out)
+			collectCanvases(n.Else, stateVars, out)
+		case *ir.Window:
+			collectCanvases(n.Body, stateVars, out)
 		}
 	}
 }
 
 // drawFuncStateVars collects the state vars read by a synthesized canvas draw
-// func by walking its block's CallStmt args.
+// func by walking its draw calls.
+//
+// Nested statements count: a canvas whose shapes come from a `for` puts every
+// one of its calls inside the loop, and reading only the top level found no
+// dependency at all — so the page drew the display once and never again.
 func drawFuncStateVars(fn *ir.Func, stateVars map[*ir.Var]bool) map[*ir.Var]bool {
 	out := make(map[*ir.Var]bool)
-	for _, s := range fn.Block {
-		cs, ok := s.(*ir.CallStmt)
-		if !ok {
-			continue
-		}
-		for _, arg := range cs.Call.Args {
-			gatherStateVarRefs(arg.Value, stateVars, out)
+	var walk func(stmts []ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.CallStmt:
+				if n.Call == nil {
+					continue
+				}
+				for _, arg := range n.Call.Args {
+					gatherStateVarRefs(arg.Value, stateVars, out)
+				}
+			case *ir.If:
+				gatherStateVarRefs(n.Cond, stateVars, out)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				gatherStateVarRefs(n.Iter, stateVars, out)
+				walk(n.Body)
+				walk(n.Else)
+			}
 		}
 	}
+	walk(fn.Block)
 	return out
 }
 
@@ -209,11 +236,25 @@ func gatherBlockMutations(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out map[*
 					out[v] = true
 				}
 			}
+		case *ir.CallStmt:
+			// A handler that calls an action writes whatever the action
+			// writes. Handler funcs are synthesized during lowering, after the
+			// checker filled in Writes, so theirs is empty and the write has
+			// to be read off the callee -- `@click { press(k) }` mutates
+			// everything `press` does.
+			if n.Call != nil && n.Call.Func != nil {
+				for _, v := range n.Call.Func.Writes {
+					if stateVars[v] {
+						out[v] = true
+					}
+				}
+			}
 		case *ir.If:
 			gatherBlockMutations(n.Body, stateVars, out)
 			gatherBlockMutations(n.Else, stateVars, out)
 		case *ir.For:
 			gatherBlockMutations(n.Body, stateVars, out)
+			gatherBlockMutations(n.Else, stateVars, out)
 		}
 	}
 }
@@ -222,28 +263,35 @@ func gatherBlockMutations(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out map[*
 // into event handlers on non-canvas NodeInsts (e.g. button @click).
 func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
 	for _, s := range stmts {
-		ni, ok := s.(*ir.NodeInst)
-		if !ok {
-			continue
-		}
-		if ni.CanvasDraw != nil {
-			continue // canvas nodes themselves don't have user handlers
-		}
-		for i := range ni.Handlers {
-			if ni.Handlers[i].Func == nil {
-				continue
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.CanvasDraw != nil {
+				continue // canvas nodes themselves don't have user handlers
 			}
-			mutated := handlerMutatedVars(ni.Handlers[i].Func, stateVars)
-			for _, e := range canvases {
-				if varsOverlap(mutated, e.deps) {
-					ni.Handlers[i].Func.Block = append(ni.Handlers[i].Func.Block, &ir.CanvasRedrawStmt{
-						Canvas:   e.canvas,
-						DrawFunc: e.canvas.CanvasDraw,
-					})
+			for i := range n.Handlers {
+				if n.Handlers[i].Func == nil {
+					continue
+				}
+				mutated := handlerMutatedVars(n.Handlers[i].Func, stateVars)
+				for _, e := range canvases {
+					if varsOverlap(mutated, e.deps) {
+						n.Handlers[i].Func.Block = append(n.Handlers[i].Func.Block, &ir.CanvasRedrawStmt{
+							Canvas:   e.canvas,
+							DrawFunc: e.canvas.CanvasDraw,
+						})
+					}
 				}
 			}
+			injectIntoNodeHandlers(n.Children, stateVars, canvases)
+		case *ir.If:
+			injectIntoNodeHandlers(n.Body, stateVars, canvases)
+			injectIntoNodeHandlers(n.Else, stateVars, canvases)
+		case *ir.For:
+			injectIntoNodeHandlers(n.Body, stateVars, canvases)
+			injectIntoNodeHandlers(n.Else, stateVars, canvases)
+		case *ir.Window:
+			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 		}
-		injectIntoNodeHandlers(ni.Children, stateVars, canvases)
 	}
 }
 

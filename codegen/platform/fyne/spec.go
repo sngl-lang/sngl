@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -21,6 +22,9 @@ const intrinsicPrefix = "fyne:"
 // specPropName is the primitive prop carrying the Spec record. Renaming it
 // here means renaming it in fyne.sngl.
 const specPropName = "spec"
+
+// stylePropName is the primitive prop carrying the sngl.Style record.
+const stylePropName = "style"
 
 // fyneArg is one argument the Go constructor is called with, decoded from the
 // SNGL `Arg` record. Prop names a value prop of the primitive; when the
@@ -76,7 +80,44 @@ type fyneSpec struct {
 	// after the node's CreateNode, which is the only place they are known to
 	// be in scope.
 	CtorProps map[string]ir.Expr
+	// Axis is "horizontal"/"vertical" on a container that lays children out
+	// along one, empty otherwise.
+	Axis string
+	// Style is what the node's own `style` prop asked for, of the fields a
+	// layout can answer. These reach Fyne without a Setter because none of
+	// them is a method on this widget: flex and margin are read by the
+	// *parent's* layout, gap and padding by this one's.
+	Style fyneStyle
+	// Children names this container's children in the order they are appended,
+	// which is the order a layout is handed them in.
+	Children []string
+	// ThemeVar is the generated theme this node's paint styles resolved to,
+	// empty when it asked for none. See theme.go.
+	ThemeVar string
 }
+
+// fyneStyle is the part of sngl.Style this platform can answer, in the
+// device-independent pixels Fyne measures in.
+//
+// The layout half is read by a layout -- flex and margin by the *parent's*,
+// gap and padding by this box's own. The paint half is read by a theme, which
+// is the only per-widget styling Fyne has: see theme.go.
+type fyneStyle struct {
+	Flex    float64
+	Margin  float64
+	Gap     float64
+	Padding float64
+
+	Background   *fyneColor
+	Color        *fyneColor
+	FontSize     float64
+	BorderRadius float64
+	Bold         bool
+}
+
+// fyneColor is an RGBA colour, comparable so a set of styles dedupes to a set
+// of themes.
+type fyneColor struct{ R, G, B, A uint8 }
 
 // aliaser assigns the alias an import path's symbols are qualified with. The
 // Go context implements it; see golang.GoIRContext.AliasFor.
@@ -166,6 +207,8 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 			sp.Add, _ = codegen.IRLiteralString(f.Value)
 		case "content":
 			sp.Content, _ = codegen.IRLiteralString(f.Value)
+		case "axis":
+			sp.Axis, _ = codegen.IRLiteralString(f.Value)
 		case "args":
 			for _, e := range listElems(f.Value) {
 				sl, ok := e.(*ir.StructLit)
@@ -212,7 +255,108 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if sp.New.Name == "" || sp.GoType.Name == "" {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
 	}
+	sp.Style = styleFromProps(props)
 	return sp, nil
+}
+
+// styleFromProps reads the layout fields off the node's `style` record. A
+// field whose expression is not a literal is left at zero: the layout is built
+// once with the widget tree, so a flex that varies with state is not something
+// it can answer.
+func styleFromProps(props map[string]ir.Expr) fyneStyle {
+	var st fyneStyle
+	lit, ok := props[stylePropName].(*ir.StructLit)
+	if !ok {
+		return st
+	}
+	for _, f := range lit.Fields {
+		switch f.Name {
+		case "background":
+			st.Background = colorFromExpr(f.Value)
+		case "color":
+			st.Color = colorFromExpr(f.Value)
+		case "fontWeight":
+			// Written as a string and typed as an enum, so it is the member
+			// after the optimizer folded it and the string before -- both
+			// reach here, since a caller may generate from unoptimized IR.
+			// Fyne has two faces, so everything but bold is the regular one.
+			st.Bold = enumOrString(f.Value) == "bold"
+			continue
+		}
+		var into *float64
+		switch f.Name {
+		case "flex":
+			into = &st.Flex
+		case "margin":
+			into = &st.Margin
+		case "gap":
+			into = &st.Gap
+		case "padding":
+			into = &st.Padding
+		case "fontSize":
+			into = &st.FontSize
+		case "borderRadius":
+			into = &st.BorderRadius
+		default:
+			continue
+		}
+		if v, ok := literalNumber(f.Value); ok {
+			*into = v
+		}
+	}
+	return st
+}
+
+// enumOrString reads an enum member, or a plain string, as its name.
+func enumOrString(e ir.Expr) string {
+	if id, ok := e.(*ir.Ident); ok && id.Member != "" {
+		return id.Member
+	}
+	v, _ := codegen.IRLiteralString(e)
+	return v
+}
+
+// colorFromExpr reads a `color{r=.., g=.., b=.., a=..}` literal. A colour that
+// is not a literal is no colour: the theme is built once with the widget tree.
+func colorFromExpr(e ir.Expr) *fyneColor {
+	sl, ok := e.(*ir.StructLit)
+	if !ok {
+		return nil
+	}
+	var c fyneColor
+	into := map[string]*uint8{"r": &c.R, "g": &c.G, "b": &c.B, "a": &c.A}
+	seen := 0
+	for _, f := range sl.Fields {
+		p, ok := into[f.Name]
+		if !ok {
+			continue
+		}
+		v, ok := literalNumber(f.Value)
+		if !ok {
+			return nil
+		}
+		*p = uint8(v)
+		seen++
+	}
+	if seen == 0 {
+		return nil
+	}
+	return &c
+}
+
+// literalNumber reads a numeric literal, with or without a unit suffix: a
+// Style measurement is written `6` or `6px` and both mean the same number of
+// device-independent pixels to Fyne.
+func literalNumber(e ir.Expr) (float64, bool) {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit == nil {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(strings.TrimSuffix(lit.Value, lit.Suffix), 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 // ctorArgs renders this widget's constructor arguments. A prop-backed Arg

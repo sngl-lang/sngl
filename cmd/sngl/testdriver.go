@@ -162,16 +162,18 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 }
 
 // Best-effort, for error messages: language types spell this differently.
+// langIdent is the language's name, as `ir.Language` declares it.
+//
+// It probed for two method names a LangTranslator does not have —
+// LangIdentifier and Identifier — so it answered "" for every language there
+// is. The optimizer and the lowering both take that name, and with no name the
+// program under test was optimized differently from the one `sngl generate`
+// builds: `go test` and `go build` disagreed about the same source.
 func langIdent(lang codegen.LangTranslator) string {
-	type identer interface{ LangIdentifier() string }
-	if l, ok := lang.(identer); ok {
-		return l.LangIdentifier()
+	if lang == nil {
+		return ""
 	}
-	type identer2 interface{ Identifier() string }
-	if l, ok := lang.(identer2); ok {
-		return l.Identifier()
-	}
-	return ""
+	return lang.LanguageIdentifier()
 }
 
 func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen.TestResult, error) {
@@ -223,7 +225,20 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 			_ = json.Unmarshal(m.Params, &p)
 			if cur := current[p.Test]; cur != nil {
 				cur.Passed = false
-				cur.Failures = append(cur.Failures, codegen.TestFailure{Message: "fail recorded"})
+				// Every agent reports a failed assertion as a log line
+				// followed by a bare fail, so the message has already
+				// arrived. Recording "fail recorded" instead threw it away
+				// and printed a `--- FAIL:` with nothing under it -- the
+				// interpreter, which sets Error itself, was the only runner
+				// that ever said what went wrong.
+				msg := "fail recorded"
+				if n := len(cur.Log); n > 0 {
+					msg = cur.Log[n-1]
+				}
+				cur.Failures = append(cur.Failures, codegen.TestFailure{Message: msg})
+				if cur.Error == "" {
+					cur.Error = msg
+				}
 			}
 		case "markSkip":
 			var p struct{ Test, Reason string }
@@ -313,9 +328,15 @@ func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang code
 		return fmt.Errorf("optimize for tests: %w", err)
 	}
 	caps := plat.Capabilities(lang).ToLowerCaps()
+	// The same options every other caller lowers with. Without the language,
+	// passPlatformExtensionBody picks a different body for a component that
+	// overrides on both axes, so the program under test was not the program
+	// `sngl generate` builds.
 	if err := lower.Lower(pkg, caps, lower.Options{
-		Platform:      plat.PlatformIdentifier(),
-		RootComponent: root,
+		Platform:        plat.PlatformIdentifier(),
+		Language:        langIdent(lang),
+		RootComponent:   root,
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
 	}); err != nil {
 		return fmt.Errorf("lower for tests: %w", err)
 	}

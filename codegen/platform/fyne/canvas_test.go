@@ -70,6 +70,10 @@ component main {
 		"snglcanvas.New(400, 280)",
 		".Result()",
 		"canvas.NewImageFromImage(",
+		// ImageFillOriginal only grows the image once its renderer has run,
+		// and the container lays out before that -- without an explicit min
+		// size the canvas is one pixel tall.
+		"SetMinSize(fyne.NewSize(400, 280))",
 		// redraw wiring in the handler.
 		"_canvasDraw0(",
 		".Refresh()",

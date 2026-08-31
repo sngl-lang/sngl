@@ -34,6 +34,12 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 		}
 	}
 
+	// An imported package's consts are seeded first, so a `calc.WIDTH` written
+	// here resolves to the same value the imported code reads. They are bound
+	// by symbol, so a name this package also declares still wins: its own
+	// binding is written after.
+	seedImportedConsts(env, pkg, map[*ir.Package]bool{})
+
 	if compName == "" {
 		for _, c := range pkg.Consts {
 			env.Set(c, evalInit(env, c.Init))
@@ -75,6 +81,25 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	env.Comp = comp
 	env.BodyStmts = comp.Body
 	return env, nil
+}
+
+// seedImportedConsts binds the consts of every package this one imports,
+// transitively, so a const named through a namespace has a value at runtime.
+// Depth first, so a package's own imports are seeded before it is.
+func seedImportedConsts(env *Env, pkg *ir.Package, seen map[*ir.Package]bool) {
+	if pkg == nil || seen[pkg] {
+		return
+	}
+	seen[pkg] = true
+	for _, imp := range pkg.Imports {
+		if imp == nil || imp.Pkg == nil {
+			continue
+		}
+		seedImportedConsts(env, imp.Pkg, seen)
+		for _, c := range imp.Pkg.Consts {
+			env.Set(c, evalInit(env, c.Init))
+		}
+	}
 }
 
 func evalInit(env *Env, expr ir.Expr) any {

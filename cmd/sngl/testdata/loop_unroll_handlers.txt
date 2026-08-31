@@ -1,0 +1,34 @@
+# Unrolling a loop clones its body once per iteration, and the clone has to
+# reach into the event handlers: the handler's body is folded against the
+# iteration it belongs to.
+#
+# The clone copied the handler structs but shared the one *ir.Func behind them,
+# so the first iteration's fold substituted its values into the shared body and
+# every later copy found nothing left to substitute. Twenty keys on a keypad,
+# each reporting the press of the first.
+
+sngl generate --platform html --lang none -o out app.sngl
+
+grep 'main_pick\(state, "a"\)' out/index.html
+grep 'main_pick\(state, "b"\)' out/index.html
+grep 'main_pick\(state, "c"\)' out/index.html
+
+-- app.sngl --
+import . "sngl:ui"
+
+func labels() => ["a", "b", "c"]
+
+component main {
+    var chosen = ""
+
+    func pick(label string) {
+        chosen = label
+    }
+
+    vbox {
+        for l = labels() {
+            button(text=l, @click { pick(l) })
+        }
+        text(value=chosen)
+    }
+}
