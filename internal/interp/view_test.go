@@ -12,8 +12,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// TestMountAgreesWithResolveElementRef is the evidence that the retained tree
-// can replace the query walk rather than join it.
+// TestMountAgreesWithThePreTreeWalk is the evidence that the retained tree
+// replaced the query walk rather than changing what it answered.
+//
+// The oracle in view_oracle_test.go is that walk, frozen. ResolveElementRef
+// now reads the tree, so comparing against it would compare the tree with
+// itself.
 //
 // For every fixture in testdata that checks cleanly with no platform
 // registered, every component is mounted and every #id in the package is looked
@@ -24,7 +28,7 @@ import (
 // here and are skipped -- so this is a lower bound on agreement, not a proof
 // over the whole corpus. The count assertion below is what keeps the skip list
 // from quietly swallowing everything.
-func TestMountAgreesWithResolveElementRef(t *testing.T) {
+func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 	files, err := filepath.Glob(filepath.Join("..", "..", "testdata", "*.sngl"))
 	if err != nil {
 		t.Fatalf("glob: %v", err)
@@ -52,7 +56,7 @@ func TestMountAgreesWithResolveElementRef(t *testing.T) {
 				continue
 			}
 			for _, id := range ids {
-				old, oerr := env.ResolveElementRef(id)
+				old, oerr := oracleResolve(env, id)
 				if oerr != nil {
 					continue
 				}
