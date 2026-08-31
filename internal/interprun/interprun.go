@@ -110,6 +110,30 @@ type Options struct {
 	// Platform is the target being interpreted, checked against the workers
 	// that exist.
 	Platform string
+	// Headless mounts into an in-memory host and prints the tree instead of
+	// opening a window.
+	Headless bool
+}
+
+// Headless mounts the program into an in-memory host and returns the tree it
+// produced, rendering nothing.
+//
+// It is what to reach for when a window comes up blank: it says what the
+// program mounted and, through the host's own report, what a real toolkit
+// would have been asked for.
+func Headless(pkg *ir.Package, comp string) (string, error) {
+	if comp == "" {
+		comp = "main"
+	}
+	s, err := interp.NewSession(pkg, comp, interp.NewVirtual())
+	if err != nil {
+		return "", err
+	}
+	h := interp.NewMemHost()
+	if err := s.Attach(h); err != nil {
+		return "", err
+	}
+	return h.String(), nil
 }
 
 // Run interprets pkg and renders it in a spawned worker.
@@ -124,6 +148,14 @@ func Run(pkg *ir.Package, opts Options) error {
 	comp := opts.Component
 	if comp == "" {
 		comp = "main"
+	}
+	if opts.Headless {
+		tree, err := Headless(pkg, comp)
+		if err != nil {
+			return err
+		}
+		fmt.Print(tree)
+		return nil
 	}
 	worker := opts.Worker
 	if worker == "" {

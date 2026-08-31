@@ -56,7 +56,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				return interprun.Run(pkg, interprun.Options{Dir: dir, Args: progArgs, Platform: target.Platform})
+				return interprun.Run(pkg, interprun.Options{
+					Dir: dir, Args: progArgs, Platform: target.Platform,
+					Headless: codegen.OptionString(target.Options, "host") == "mem",
+				})
 			}
 			plat := codegen.LookupPlatform(target.Platform)
 			runner, ok := plat.(codegen.Runner)

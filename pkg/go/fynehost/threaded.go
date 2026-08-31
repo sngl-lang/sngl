@@ -69,6 +69,10 @@ func (t *threaded) Rebind(key snglhost.Key, events []string) error {
 	return t.enqueue(func() error { return t.inner.Rebind(key, events) })
 }
 
+// Unwrap returns the host underneath, so a worker can reach what only the real
+// host knows -- what it could not build.
+func (t *threaded) Unwrap() snglhost.Host { return t.inner }
+
 // SetOnEvent forwards to the wrapped host: an event originates on Fyne's thread
 // already, so it needs no hop, and the wire is safe to write from there.
 func (t *threaded) SetOnEvent(fn func(snglhost.Key, string)) {

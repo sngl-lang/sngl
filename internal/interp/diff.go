@@ -147,18 +147,16 @@ func goneKeys(before, after *View) map[Key]bool {
 // list right. A survivor already in place costs nothing.
 func placeChildren(before *View, gone map[Key]bool, group childGroup) []Patch {
 	// What the host holds under this parent once removals are done.
-	var cur []Key
+	var was []*Node
 	if p, ok := before.At(group.parent); ok {
-		for _, c := range p.Children {
-			if !gone[c.Key] {
-				cur = append(cur, c.Key)
-			}
-		}
+		was = HostChildren(p.Children)
 	} else if before != nil && group.parent == (Key{}) {
-		for _, c := range before.Roots {
-			if !gone[c.Key] {
-				cur = append(cur, c.Key)
-			}
+		was = hostRoots(before)
+	}
+	var cur []Key
+	for _, c := range was {
+		if !gone[c.Key] {
+			cur = append(cur, c.Key)
 		}
 	}
 
@@ -236,17 +234,18 @@ func childGroups(v *View) []childGroup {
 	if v == nil {
 		return nil
 	}
-	out := []childGroup{{parent: Key{}, children: v.Roots}}
+	out := []childGroup{{parent: Key{}, children: hostRoots(v)}}
 	var walk func([]*Node)
 	walk = func(nodes []*Node) {
 		for _, n := range nodes {
-			if len(n.Children) > 0 {
-				out = append(out, childGroup{parent: n.Key, children: n.Children})
+			kids := HostChildren(n.Children)
+			if len(kids) > 0 {
+				out = append(out, childGroup{parent: n.Key, children: kids})
 			}
-			walk(n.Children)
+			walk(kids)
 		}
 	}
-	walk(v.Roots)
+	walk(hostRoots(v))
 	return out
 }
 
@@ -262,8 +261,36 @@ func sameHandlerNames(a, b *Node) bool {
 	return true
 }
 
-// walkParented visits every node depth-first in mount order, reporting each
-// node's parent key, its position among that parent's children, and its depth.
+// HostChildren is a node's children as a host sees them: one of the program's
+// own components is transparent, and what its body rendered takes its place.
+//
+// A toolkit has a widget for `vbox`, none for `readout.Readout`. The tree keeps
+// the instantiation as a node because an inspector wants it, but sending it to
+// a host asks for a widget that cannot exist -- and everything inside it goes
+// down with the failure.
+func HostChildren(nodes []*Node) []*Node {
+	var out []*Node
+	for _, n := range nodes {
+		if n.IsUserComponent() {
+			out = append(out, HostChildren(n.Children)...)
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+// hostRoots is HostChildren for a whole view.
+func hostRoots(v *View) []*Node {
+	if v == nil {
+		return nil
+	}
+	return HostChildren(v.Roots)
+}
+
+// walkParented visits every node a host holds, depth-first in mount order,
+// reporting each node's parent key, its position among that parent's children,
+// and its depth. Components are transparent; see HostChildren.
 func walkParented(v *View, fn func(n *Node, parent Key, index, depth int)) {
 	if v == nil {
 		return
@@ -272,10 +299,10 @@ func walkParented(v *View, fn func(n *Node, parent Key, index, depth int)) {
 	walk = func(nodes []*Node, parent Key, depth int) {
 		for i, n := range nodes {
 			fn(n, parent, i, depth)
-			walk(n.Children, n.Key, depth+1)
+			walk(HostChildren(n.Children), n.Key, depth+1)
 		}
 	}
-	walk(v.Roots, Key{}, 0)
+	walk(hostRoots(v), Key{}, 0)
 }
 
 func sortByIndexDesc(p []Patch) {

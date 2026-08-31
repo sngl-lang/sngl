@@ -111,7 +111,7 @@ func RenderView(v *View) string {
 	var b strings.Builder
 	var walk func([]*Node, int)
 	walk = func(nodes []*Node, depth int) {
-		for _, n := range nodes {
+		for _, n := range HostChildren(nodes) {
 			d := n.Desc()
 			props := map[string]any{}
 			var order []string

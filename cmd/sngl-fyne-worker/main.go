@@ -29,6 +29,9 @@ func main() {
 	w := a.NewWindow(*title)
 
 	host := fynehost.New(fynehost.Default())
+	host.OnUnsupported = func(name string) {
+		fmt.Fprintf(os.Stderr, "sngl: no fyne widget for %q; it and anything inside it are not rendered\n", name)
+	}
 	w.SetContent(host.Root)
 	w.Resize(fyne.NewSize(float32(*width), float32(*height)))
 

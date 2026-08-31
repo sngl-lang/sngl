@@ -193,3 +193,45 @@ func TestNoIRReachesTheHost(t *testing.T) {
 		}
 	}
 }
+
+// TestAUserComponentIsTransparentToTheHost: a toolkit has a widget for `vbox`
+// and none for `readout.Readout`. The tree keeps the instantiation as a node
+// because an inspector wants it, but a host asked to build one gets an element
+// it cannot make -- and everything inside goes down with it.
+//
+// This is what made examples/calculator render an empty window.
+func TestAUserComponentIsTransparentToTheHost(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component panel(label string) {
+    vbox {
+        text #inner(value=label)
+    }
+}
+
+component main {
+    vbox #outer {
+        panel(label="hi")
+    }
+}
+`
+	s := sessionFor(t, src, "main")
+	h := NewMemHost()
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	// The component contributes no node of its own...
+	if got := strings.Count(h.String(), "panel"); got != 0 {
+		t.Errorf("the host was asked to build %d panel widgets:\n%s", got, h.String())
+	}
+	// ...and what its body rendered took its place, beneath the real parent.
+	if len(h.Find("inner")) != 1 {
+		t.Errorf("#inner did not reach the host:\n%s", h.String())
+	}
+	outer := h.Find("outer")
+	if len(outer) != 1 || len(outer[0].Children) != 1 {
+		t.Fatalf("#outer holds %v, want the panel's vbox hoisted into it:\n%s", outer, h.String())
+	}
+	tracks(t, "attach with a user component", h, s)
+}

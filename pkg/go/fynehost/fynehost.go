@@ -59,10 +59,13 @@ type Host struct {
 	OnEvent func(key snglhost.Key, event string)
 	// Root is the container the tree is rendered into.
 	Root *fyne.Container
-	// Unsupported records elements the registry has no entry for, so a worker
-	// can report what it could not build rather than rendering a hole in
-	// silence.
+	// Unsupported records elements the registry has no entry for. A worker
+	// reports them: a window that silently renders less than the program says
+	// is worse than one that says what it dropped.
 	Unsupported []string
+	// OnUnsupported is called once per element name the registry lacks.
+	OnUnsupported func(name string)
+	seenMissing   map[string]bool
 
 	depth int
 }
@@ -83,10 +86,11 @@ type mounted struct {
 // New returns a Host rendering into a fresh vertical container.
 func New(reg Registry) *Host {
 	return &Host{
-		reg:     reg,
-		nodes:   map[snglhost.Key]*mounted{},
-		missing: map[snglhost.Key]bool{},
-		Root:    container.NewVBox(),
+		reg:         reg,
+		nodes:       map[snglhost.Key]*mounted{},
+		missing:     map[snglhost.Key]bool{},
+		seenMissing: map[string]bool{},
+		Root:        container.NewVBox(),
 	}
 }
 
@@ -113,8 +117,14 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 	if !ok {
 		// Not an error: a program may name an element this worker was not built
 		// for, and reporting it beats rendering a hole silently.
-		h.Unsupported = append(h.Unsupported, d.Name)
 		h.missing[d.Key] = true
+		if !h.seenMissing[d.Name] {
+			h.seenMissing[d.Name] = true
+			h.Unsupported = append(h.Unsupported, d.Name)
+			if h.OnUnsupported != nil {
+				h.OnUnsupported(d.Name)
+			}
+		}
 		return nil
 	}
 	obj, err := construct(spec)

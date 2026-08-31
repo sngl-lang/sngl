@@ -200,6 +200,17 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 			return fmt.Errorf("%s: unknown language %q (available: %v)", name, target.Lang, codegen.Langs())
 		}
 		if isInterpreted(target) {
+			// Full capabilities: every gated pass is compensation for
+			// something a backend cannot emit, and the interpreter can emit
+			// everything -- in particular Declarative, whose absence dissolves
+			// the visual tree the interpreter mounts. What still runs is the
+			// desugaring no target does without, such as turning `:value=x`
+			// into a prop and a handler. No platform, so no override is
+			// inlined: a host is asked for `text`, not `Label`.
+			icaps := lower.AllFeatures().ToLowerCaps()
+			if err := lower.Lower(tpkg, icaps, lower.Options{}); err != nil {
+				return fmt.Errorf("%s: %w", dir, err)
+			}
 			// Nothing is lowered, optimized or generated for an interpreted
 			// target. Every lowering pass is compensation for something a
 			// backend cannot emit, and the interpreter can emit everything --
