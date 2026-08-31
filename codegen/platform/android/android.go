@@ -284,7 +284,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// Test sources: native mode lands in the gradle test/androidTest
 	// sourceset alongside MainScreen.kt; agent mode emits driver,
 	// model accessor, and snapshot capture files for the launcher
-	// to relocate (Task 5).
+	// to relocate.
 	if testMode {
 		if err := emitKotlinTestSources(req, sink, cfg, ktOpts, effectiveMain); err != nil {
 			return err
@@ -300,9 +300,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //   - native (default): one JUnit-style MainScreenTest.kt under
 //     app/src/test/kotlin (robolectric) or app/src/androidTest/kotlin
 //     (device), suitable for `./gradlew test` / `connectedCheck`.
-//   - agent: TestAgentRunner.kt + AgentMain.kt + TestModelAccessor.kt
-//   - RobolectricSnapshot.kt (when testRunner=robolectric). The
-//     launcher in Task 5 relocates these into a generated project.
+//   - agent: TestAgentRunner.kt + TestModelAccessor.kt
+//   - RobolectricSnapshot.kt (when testRunner=robolectric). The launcher
+//     relocates these into a generated project.
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	if len(testFns) == 0 {
@@ -383,7 +383,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 			return err
 		}
 	case "device":
-		// No AgentMain.kt — MainActivity.onCreate is the entry point;
+		// No separate entry point — MainActivity.onCreate is it, and
 		// scaffold patches it to call TestAgentBootstrap.start(this).
 		if err := writeAndroidSourceFile(sink, prefix+"TestAgentBootstrap.kt", req.Lang, ktOpts, deviceAgentBootstrapKotlin(cfg.Package)); err != nil {
 			return err

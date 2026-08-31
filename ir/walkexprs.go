@@ -104,16 +104,6 @@ func WalkExprs(root any, fn func(Expr) error) error {
 	})
 }
 
-// RewriteStmts rewrites only statements; expressions pass through unchanged.
-func RewriteStmts(root any, fn func(Stmt) (Stmt, error)) error {
-	return Rewrite(root, func(n Node) (Node, error) {
-		if s, ok := n.(Stmt); ok {
-			return fn(s)
-		}
-		return n, nil
-	})
-}
-
 // RewriteExprs rewrites only expressions; statements pass through unchanged.
 func RewriteExprs(root any, fn func(Expr) (Expr, error)) error {
 	return Rewrite(root, func(n Node) (Node, error) {

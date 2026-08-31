@@ -129,12 +129,12 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 // across the whole package, returning the first build error found:
 //
 //   - html.backend(<const expr>): forcing a plain constant expression to the
-//     server means generating a lazy-loaded static file, which is not yet
-//     implemented (Task 6.2). A func value wrapped by html.backend becomes an
+//     server means generating a lazy-loaded static file, which is not
+//     implemented. A func value wrapped by html.backend becomes an
 //     HTTP route and is allowed.
 //   - html.frontend(<server-only value>): forcing a value client-side that is
 //     explicitly pinned server-side (it wraps an html.backend(...) subtree) is
-//     a contradiction and cannot be honored (Task 6.3).
+//     a contradiction and cannot be honored.
 //
 // Note (6.3 simplification): a bare go: call under html.frontend is allowed —
 // it compiles to WASM (Phase 5). The only "server-only value" this v1 rule

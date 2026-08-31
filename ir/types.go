@@ -624,33 +624,19 @@ func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
-// Registered stdlib date/time/datetime struct types, so a phase with no scope
-// of its own (the foreign-type importers) can synthesize a canonical value
-// type. Nil before registration; the accessors fall back to TypDyn.
-var (
-	stdlibDateType     *Type
-	stdlibTimeType     *Type
-	stdlibDateTimeType *Type
-)
+// The registered stdlib datetime struct type, so a phase with no scope of its
+// own (the foreign-type importers) can synthesize a canonical value type. Nil
+// before registration; the accessor falls back to TypDyn.
+var stdlibDateTimeType *Type
 
-// RegisterStringReprStructs records each non-nil argument, so the three marks
-// may register separately. Idempotent.
-func RegisterStringReprStructs(date, time, dateTime *Type) {
-	if date != nil {
-		stdlibDateType = date
-	}
-	if time != nil {
-		stdlibTimeType = time
-	}
-	if dateTime != nil {
-		stdlibDateTimeType = dateTime
+// RegisterDateTimeStruct records the datetime struct. Idempotent.
+func RegisterDateTimeStruct(t *Type) {
+	if t != nil {
+		stdlibDateTimeType = t
 	}
 }
 
-// DateType, TimeType and DateTimeType fall back to dyn before registration.
-func DateType() *Type { return orDyn(stdlibDateType) }
-func TimeType() *Type { return orDyn(stdlibTimeType) }
-
+// DateTimeType falls back to dyn before registration.
 func DateTimeType() *Type { return orDyn(stdlibDateTimeType) }
 
 func orDyn(t *Type) *Type {

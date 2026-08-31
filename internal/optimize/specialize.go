@@ -123,10 +123,11 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 
 	cloned = substituteSlots(cloned, n)
 	// Component-body platform override at inline time: optimize splices the
-	// (cloned) body into the parent tree here, before lower's passPlatformFilter
-	// runs, so the override must be resolved now while the component boundary is
-	// still intact. passPlatformFilter handles every other path (lower-inlined
-	// and non-inlined component bodies); both apply the same override rule.
+	// (cloned) body into the parent tree here, before lower's
+	// passPlatformExtensionBody runs, so the override must be resolved now while
+	// the component boundary is still intact. That pass handles every other path
+	// (lower-inlined and non-inlined component bodies); both apply the same
+	// override rule.
 
 	// Bind non-const props by substituting their parameter references with the
 	// call-site argument expressions. Const props are bound via childCtx.values

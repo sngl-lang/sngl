@@ -88,7 +88,7 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 //
 // A subexpression is hoistable if none of its free identifiers are locals
 // (*ir.Param or *ir.LoopVar). When a local is captured, the subexpression is
-// left alone (Task 10's checker rule will reject it).
+// left alone, for the checker rule to reject.
 //
 // Hoisting is done depth-first with a maximality rule: the largest valid
 // async-bearing subtree is hoisted; its interior is not separately hoisted.

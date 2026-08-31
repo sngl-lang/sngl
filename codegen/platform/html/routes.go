@@ -286,9 +286,9 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 // backend (per handlerPlacement: a transitive non-js: import). Each such
 // handler becomes a server-state form action.
 //
-// Mutations carries the full handler block unchanged (consumed by the legacy
-// RenderHTML-based golang path). LogicalMutations carries the same body with
-// visual/DOM-patch statements removed (Phase 4 consumes this).
+// Mutations carries the full handler block unchanged; LogicalMutations carries
+// the same body with visual/DOM-patch statements removed, which is what the
+// golang consumer reads.
 //
 // It also returns an index map keyed by each backend *ir.EventHandler to its
 // position in the returned slice. This is the SINGLE source of truth for action

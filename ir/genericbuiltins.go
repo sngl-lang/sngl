@@ -28,8 +28,3 @@ func RegisterGenericBuiltin(sd *StructDef) {
 		mapStructDef.Store(sd)
 	}
 }
-
-// ListDecl and MapDecl return the registered declaration, nil before the
-// stdlib has loaded.
-func ListDecl() *StructDef { return listStructDef.Load() }
-func MapDecl() *StructDef  { return mapStructDef.Load() }

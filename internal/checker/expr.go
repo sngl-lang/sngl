@@ -520,12 +520,12 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	switch x.Op {
 	case ast.BinAnd, ast.BinOr:
 		if !skip && (left.Kind != ir.TypeBool || right.Kind != ir.TypeBool) {
-			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 		}
 		typ = TypBool
 	case ast.BinEq, ast.BinNeq:
 		if !skip && !comparableEq(left, right) {
-			c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 		}
 		typ = TypBool
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
@@ -534,14 +534,14 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			case left.IsNumeric() && right.IsNumeric():
 				// Numeric comparisons require the same width and signedness.
 				if !left.Equal(right) {
-					c.error(x.Pos, "operator %s not defined for %s and %s (add an explicit conversion)", binOpStr(x.Op), left, right)
+					c.error(x.Pos, "operator %s not defined for %s and %s (add an explicit conversion)", x.Op, left, right)
 				}
 			case left.Kind == ir.TypeString && right.Kind == ir.TypeString:
 				// string comparisons OK
 			case left.SameUnitType(right) && left.IsSingleBaseUnit():
 				// single-base unit comparisons OK (e.g. duration)
 			default:
-				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 			}
 		}
 		typ = TypBool
@@ -561,7 +561,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		} else if left.Kind == ir.TypeUnit || right.Kind == ir.TypeUnit {
 			// unit +/- unit: both must be same unit type
 			if !skip && !left.SameUnitType(right) {
-				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 			}
 			typ = left
 			if typ.Kind != ir.TypeUnit {
@@ -569,7 +569,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			}
 		} else {
 			if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-				c.error(x.Pos, "operator %s not defined for %s and %s", binOpStr(x.Op), left, right)
+				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 			}
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
@@ -625,38 +625,6 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
 
-func binOpStr(op ast.BinaryOp) string {
-	switch op {
-	case ast.BinAdd:
-		return "+"
-	case ast.BinSub:
-		return "-"
-	case ast.BinMul:
-		return "*"
-	case ast.BinDiv:
-		return "/"
-	case ast.BinMod:
-		return "%"
-	case ast.BinEq:
-		return "=="
-	case ast.BinNeq:
-		return "!="
-	case ast.BinLt:
-		return "<"
-	case ast.BinLte:
-		return "<="
-	case ast.BinGt:
-		return ">"
-	case ast.BinGte:
-		return ">="
-	case ast.BinAnd:
-		return "&&"
-	case ast.BinOr:
-		return "||"
-	}
-	return "?"
-}
-
 // unifyNumeric returns the common type of two numeric binary operands. Operands
 // must already share a width and signedness (untyped literals are adapted to
 // the other operand up front); a mismatch is an error requiring an explicit
@@ -680,7 +648,7 @@ func (c *checker) unifyNumeric(left, right *ir.Type, pos ast.Pos, op ast.BinaryO
 	if right.Kind == ir.TypeUnit {
 		return right
 	}
-	c.error(pos, "operator %s not defined for %s and %s (add an explicit conversion)", binOpStr(op), left, right)
+	c.error(pos, "operator %s not defined for %s and %s (add an explicit conversion)", op, left, right)
 	return left
 }
 
@@ -2724,13 +2692,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
 			}
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
-			var keyExpr ir.Expr
-			for _, a := range x.Call.Args.Args {
-				if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
-					keyExpr = c.checkExpr(arg.Value)
-					break
-				}
-			}
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      compName,
@@ -2738,7 +2699,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				Props:     bindWildcardName(comp, compName, props),
 				Handlers:  handlers,
 				Bindings:  bindings,
-				Key:       keyExpr,
+				Key:       c.keyArgExpr(x.Call.Args),
 			}
 		}
 		// Children-less element references (`text #id(...)`, `button(@click)`)
@@ -2772,6 +2733,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				Handlers:  handlers,
 				Bindings:  bindings,
 				ID:        id,
+				Key:       c.keyArgExpr(x.Call.Args),
 			}
 		}
 		callExpr := c.checkExpr(x.Call)
@@ -3309,15 +3271,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
 
-	// Extract key= arg for loop diffing.
-	var keyExpr ir.Expr
-	for _, a := range vn.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
-			keyExpr = c.checkExpr(arg.Value)
-			break
-		}
-	}
-
 	emitName := name
 	if qualifiedLocal != "" {
 		emitName = qualifiedLocal
@@ -3333,7 +3286,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Children:  children,
 		Slots:     slotContent,
 		ID:        vn.ID,
-		Key:       keyExpr,
+		Key:       c.keyArgExpr(vn.Args),
 	}
 }
 
@@ -3533,6 +3486,19 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			}
 		}
 	}
+}
+
+// keyArgExpr returns the checked `key=` argument, the list-diffing key for a
+// node in a loop. Every ir.NodeInst constructor calls this: the key is written
+// the same way whichever form the node takes, so reading it in only some of
+// them drops it silently.
+func (c *checker) keyArgExpr(args ast.ArgList) ir.Expr {
+	for _, a := range args.Args {
+		if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
+			return c.checkExpr(arg.Value)
+		}
+	}
+	return nil
 }
 
 // checkAndSplitArgs checks values and splits a checked ArgList into IR property

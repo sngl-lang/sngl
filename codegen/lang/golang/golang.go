@@ -3,7 +3,6 @@ package golang
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -64,58 +63,6 @@ func (t *Translator) TypeToNative(hint string) string {
 
 func (t *Translator) ExportName(name string) string {
 	return ExportName(name)
-}
-
-func binaryOpStr(op ast.BinaryOp) string {
-	switch op {
-	case ast.BinAdd:
-		return "+"
-	case ast.BinSub:
-		return "-"
-	case ast.BinMul:
-		return "*"
-	case ast.BinDiv:
-		return "/"
-	case ast.BinMod:
-		return "%"
-	case ast.BinEq:
-		return "=="
-	case ast.BinNeq:
-		return "!="
-	case ast.BinLt:
-		return "<"
-	case ast.BinLte:
-		return "<="
-	case ast.BinGt:
-		return ">"
-	case ast.BinGte:
-		return ">="
-	case ast.BinAnd:
-		return "&&"
-	case ast.BinOr:
-		return "||"
-	default:
-		return "?"
-	}
-}
-
-func assignOpStr(op ast.AssignOp) string {
-	switch op {
-	case ast.AssignSet:
-		return "="
-	case ast.AssignAdd:
-		return "+="
-	case ast.AssignSub:
-		return "-="
-	case ast.AssignMul:
-		return "*="
-	case ast.AssignDiv:
-		return "/="
-	case ast.AssignMod:
-		return "%="
-	default:
-		return "="
-	}
 }
 
 // goBuiltinMethodFromCall returns native Go code for stdlib methods, or "" if not a stdlib method.

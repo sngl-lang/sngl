@@ -172,7 +172,7 @@ func (jc *JsIRContext) Conversion(n *ir.Conversion) string { return jc.evalConve
 func (jc *JsIRContext) Lambda(n *ir.Lambda) string         { return jc.evalLambda(n) }
 
 func (jc *JsIRContext) AssignText(n *ir.Assign, target, value string) string {
-	return target + " " + assignOpStr(n.Op) + " " + value
+	return target + " " + n.Op.String() + " " + value
 }
 func (jc *JsIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
