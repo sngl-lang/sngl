@@ -1,0 +1,36 @@
+# A const or var group is not a block, so nothing descended into it: every
+# comment written inside came out below the whole declaration, in a pile,
+# detached from what it documented -- and a leading comment and an inline one
+# were concatenated onto a single line, which is two comments becoming one.
+
+# Every comment stays where it was written, so the file is already formatted.
+sngl fmt --check groups.sngl
+
+# And formatting it changes nothing.
+cp groups.sngl input.sngl
+sngl fmt input.sngl
+cmp input.sngl groups.sngl
+
+# The pile below the group is what this replaced.
+! grep '^// How wide' input.sngl
+
+-- groups.sngl --
+import . "sngl:ui"
+
+// Documents the group itself.
+const (
+    // How wide the readout is.
+    WIDTH = 10
+
+    ROWS = 5 // rows in the keypad
+    // A note after the last one, still inside the group.
+)
+
+var (
+    // A running total.
+    total = 0
+)
+
+component main {
+    text(value="{WIDTH}x{ROWS}{total}")
+}
