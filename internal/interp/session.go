@@ -53,6 +53,21 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 // mounted, assuming it applied every patch handed to it.
 func (s *Session) View() *View { return s.view }
 
+// SetComponentVar assigns a component variable by name. It is how a REPL, an
+// inspector, or a test moves state without going through a handler.
+func SetComponentVar(s *Session, name string, v any) bool {
+	if s == nil || s.Env == nil || s.Env.Comp == nil {
+		return false
+	}
+	for _, sym := range s.Env.Comp.Vars {
+		if sym.SymName() == name {
+			s.Env.Set(sym, v)
+			return true
+		}
+	}
+	return false
+}
+
 // Attach brings a host up to the session's current tree, as one batch of
 // creations. A host joining a program that is already running -- a second
 // window on one session, or an inspector beside it -- starts here.
