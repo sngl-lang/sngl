@@ -109,6 +109,11 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
+	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
+	// size the widget is now.
+	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
+		return []ir.Stmt{methodStmt(codegen.ModelFieldRef(m.ID), "Refresh")}
+	}
 	dcField := codegen.ModelFieldRef(canvasCtxField(m.ID))
 	imgField := codegen.ModelFieldRef(m.ID)
 	w, h := canvasDims(m)
@@ -178,8 +183,6 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	if m == nil {
 		return nil
 	}
-	t.fieldSink(id, "*canvas.Image")
-	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
 	t.topLevel = append(t.topLevel, id)
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
@@ -189,8 +192,31 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	}
 
 	w, h := canvasDims(m)
-	dcField := codegen.ModelFieldRef(canvasCtxField(id))
 	imgField := codegen.ModelFieldRef(id)
+
+	// A scaled canvas is a Raster, because Fyne hands a Raster's generator the
+	// pixel size it is about to be drawn at -- which is the one thing an Image
+	// cannot know. The shapes are then rasterised at the size they are shown
+	// instead of drawn small and resampled up, which is the difference between
+	// a seven-segment display with edges and one without.
+	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
+		t.fieldSink(id, "*canvas.Raster")
+		// The surface outlives the drawing: Fyne asks the generator for a
+		// picture on every redraw, and a buffer allocated per call is the
+		// whole image thrown away per keypress.
+		t.fieldSink(canvasSurfaceField(id), snglCanvasAlias+".Surface")
+		if t.importSink != nil {
+			t.importSink("image")
+		}
+		return []ir.Stmt{
+			&ir.Assign{Target: imgField, Op: ast.AssignSet, Value: rawGoExpr(t.rasterExpr(m, w, h))},
+			methodStmt(imgField, "SetMinSize", newFyneSizeCall(w, h)),
+		}
+	}
+
+	t.fieldSink(id, "*canvas.Image")
+	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
+	dcField := codegen.ModelFieldRef(canvasCtxField(id))
 
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
@@ -211,33 +237,34 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		&ir.Assign{
 			Target: &ir.Select{Operand: imgField, Field: "FillMode", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
-			Value:  &ir.Ident{Name: fyneFillMode(m.Scaling), Type: ir.TypDyn},
+			Value:  &ir.Ident{Name: "canvas.ImageFillOriginal", Type: ir.TypDyn},
 		},
 	}
-	// A fill mode only grows the image once its renderer has run, and a
+	// ImageFillOriginal only grows the image once its renderer has run, and a
 	// container lays out before that -- so a canvas placed in a box came out
 	// one pixel tall. The canvas declared its pixel size; say so.
-	//
-	// In every mode, including the scaling ones: a minimum is a floor rather
-	// than a size, and without one a scaled canvas is given nothing to scale
-	// into.
 	out = append(out, methodStmt(imgField, "SetMinSize", newFyneSizeCall(w, h)))
 	return out
 }
 
-// fyneFillMode is Fyne's name for a scaling mode. The four line up one for
-// one, which is the whole of what this platform has to do about it.
-func fyneFillMode(scaling string) string {
-	switch scaling {
-	case canvasutil.ScaleFit:
-		return "canvas.ImageFillContain"
-	case canvasutil.ScaleFill:
-		return "canvas.ImageFillCover"
-	case canvasutil.ScaleStretch:
-		return "canvas.ImageFillStretch"
-	}
-	return "canvas.ImageFillOriginal"
+// rasterExpr is the `canvas.NewRaster` call for a scaled canvas: a generator
+// that allocates a context at the pixel size Fyne asks for, scales the
+// drawing's own coordinate space into it, and hands back the image.
+//
+// Written as Go source rather than built as IR because it is a closure over
+// the Model, and the point of it is the two parameters Fyne passes in.
+func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
+	return fmt.Sprintf(
+		"canvas.NewRaster(func(pw, ph int) image.Image {\n"+
+			"\t\tctx := m.%s.Begin(pw, ph, %d, %d, %q)\n"+
+			"\t\tm.%s(ctx)\n"+
+			"\t\treturn ctx.Result()\n"+
+			"\t})",
+		canvasSurfaceField(m.ID), w, h, m.Scaling, m.Draw.Name)
 }
+
+// canvasSurfaceField names the reusable drawing target behind a scaled canvas.
+func canvasSurfaceField(id string) string { return id + "Surface" }
 
 // newFyneSizeCall builds `fyne.NewSize(w, h)`.
 func newFyneSizeCall(w, h int) *ir.Call {

@@ -53,12 +53,14 @@ func gtkPost(fn func()) {
 // snglDrawFuncs holds registered cairo draw closures indexed by int. Each
 // canvas's GtkDrawingArea registers one closure that invokes the model's
 // _canvasDrawN(cr) method.
-var snglDrawFuncs []func(*C.cairo_t)
+// The allocated size travels with the context: a canvas that scales needs the
+// size it is being drawn at, and GTK hands it to the draw callback.
+var snglDrawFuncs []func(*C.cairo_t, int, int)
 
 //export sngl_draw_dispatch
-func sngl_draw_dispatch(idx C.int, cr *C.cairo_t) {
+func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	if idx >= 0 && int(idx) < len(snglDrawFuncs) {
-		snglDrawFuncs[int(idx)](cr)
+		snglDrawFuncs[int(idx)](cr, int(width), int(height))
 	}
 }
 {{- end}}

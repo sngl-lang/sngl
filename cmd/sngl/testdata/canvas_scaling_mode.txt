@@ -33,15 +33,25 @@ grep '_snglCanvasDraw\(\$0, 200, 100, "", _canvasDraw0\)' hc/index.html
 ! grep 'aspect-ratio' hc/index.html
 ! grep '_snglCanvasWatch\(\$0,' hc/index.html
 
-# Fyne's fill modes line up with the four names.
+# Fyne asks a Raster's generator for a picture at the pixel size it is about to
+# upload, which is the one thing an Image cannot know -- so a scaled canvas is
+# a Raster and the shapes are rasterised at the size they are shown.
 sngl generate --platform fyne --lang go -o f fit.sngl
-grep 'FillMode = canvas.ImageFillContain' f/model.go
+grep 'canvas.NewRaster' f/model.go
+grep 'Begin\(pw, ph, 200, 100, "fit"\)' f/model.go
+# The surface outlives the drawing: Fyne calls back on every redraw, and a
+# buffer allocated per call is the whole image thrown away per keypress.
+grep 'Surface snglcanvas.Surface' f/model.go
+! grep 'FillMode' f/model.go
 # A minimum is a floor rather than a size: without one the box gives a canvas
 # nothing to scale into, which is a readout one pixel tall.
 grep 'SetMinSize' f/model.go
 
+# A canvas shown at its own size has nothing to scale, so it stays the cheaper
+# Image it always was.
 sngl generate --platform fyne --lang go -o fc center.sngl
 grep 'FillMode = canvas.ImageFillOriginal' fc/model.go
+! grep 'canvas.NewRaster' fc/model.go
 
 # Compose draws into the room it is laid out in, so the shapes are scaled.
 sngl generate --platform android --lang kotlin -o a fit.sngl
@@ -50,6 +60,17 @@ grep 'scale\(scale = minOf\(size.width / 200f, size.height / 100f\)' a/MainScree
 
 sngl generate --platform android --lang kotlin -o ac center.sngl
 grep 'Modifier.size\(200.dp, 100.dp\)' ac/MainScreen.kt
+
+# gtk4 is a vector context already, so it scales with a transform. The
+# allocated size travels with the cairo_t: GTK hands it to the draw callback,
+# and it used to be discarded.
+sngl generate --platform gtk4 --lang go -o g fit.sngl
+grep '_snglCairoScale\(cr, pw, ph, 200, 100, "fit"\)' g/model.go
+grep 'gtk_widget_set_hexpand' g/model.go
+
+sngl generate --platform gtk4 --lang go -o gc center.sngl
+grep '_snglCairoScale\(cr, pw, ph, 200, 100, ""\)' gc/model.go
+! grep 'gtk_widget_set_hexpand' gc/model.go
 
 -- fit.sngl --
 import . "sngl:app"
