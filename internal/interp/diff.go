@@ -152,7 +152,7 @@ func propPatches(old, n *Node) []Patch {
 		if had && renderValue(ov) == renderValue(nv) {
 			continue
 		}
-		out = append(out, Patch{Kind: PatchSetProp, Key: n.Key, Prop: name, Value: nv})
+		out = append(out, Patch{Kind: PatchSetProp, Key: n.Key, Prop: name, Value: wireValue(nv)})
 	}
 	// A prop the node no longer sets is cleared, since the host is still
 	// holding whatever it was last assigned.

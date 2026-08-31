@@ -21,8 +21,13 @@ import (
 type Host interface {
 	// Begin and End bracket the patches from one Diff. A reload produces a
 	// large batch, and a host that relayouts per op will visibly thrash.
+	//
+	// End returns the batch's error rather than each op doing so: a host on the
+	// far end of a pipe sends its ops as notifications and can only answer once,
+	// which is the whole point of batching. An in-process host reports the same
+	// way so the two contracts stay identical.
 	Begin()
-	End()
+	End() error
 
 	// Create mounts a node beneath parent at index. A zero parent is a root.
 	// Its props and events arrive with it, so no SetProp or Rebind follows.
@@ -58,11 +63,61 @@ type PropVal struct {
 	Value any
 }
 
+// WireStruct is a struct value as a host sees it: named fields in the order the
+// checker recorded, and nothing of the declaration it came from.
+//
+// A runtime *Struct carries Def and Type, which are IR. Handing one to a host
+// leaks the program's declarations into it, and over a pipe it does not even
+// round-trip -- the far side decodes a map with Def and Fields keys rather than
+// a value. This is the projection that crosses.
+type WireStruct struct {
+	Fields []PropVal
+}
+
+// String renders it the way a struct literal is written, so a host and a View
+// print the same text.
+func (w WireStruct) String() string {
+	parts := make([]string, len(w.Fields))
+	for i, f := range w.Fields {
+		parts[i] = fmt.Sprintf("%s = %v", f.Name, f.Value)
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// wireValue converts a runtime value to one a host may hold. Composite values
+// are converted through, since a list of structs is still a list of IR.
+func wireValue(v any) any {
+	switch x := v.(type) {
+	case *Struct:
+		if x == nil {
+			return nil
+		}
+		w := WireStruct{Fields: make([]PropVal, len(x.Fields))}
+		for i, f := range x.Fields {
+			w.Fields[i] = PropVal{Name: f.Name, Value: wireValue(f.Value)}
+		}
+		return w
+	case []any:
+		out := make([]any, len(x))
+		for i, el := range x {
+			out[i] = wireValue(el)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, el := range x {
+			out[k] = wireValue(el)
+		}
+		return out
+	}
+	return v
+}
+
 // Desc projects a node for a host.
 func (n *Node) Desc() NodeDesc {
 	d := NodeDesc{Key: n.Key, Name: n.Name, ID: n.ID}
 	for _, name := range n.PropOrder {
-		d.Props = append(d.Props, PropVal{Name: name, Value: n.Props[name]})
+		d.Props = append(d.Props, PropVal{Name: name, Value: wireValue(n.Props[name])})
 	}
 	for _, h := range n.Handlers {
 		d.Events = append(d.Events, h.Name)
@@ -80,7 +135,6 @@ func Apply(h Host, patches []Patch) error {
 		return nil
 	}
 	h.Begin()
-	defer h.End()
 	for _, p := range patches {
 		var err error
 		switch p.Kind {
@@ -98,10 +152,11 @@ func Apply(h Host, patches []Patch) error {
 			err = fmt.Errorf("unknown patch kind %d", p.Kind)
 		}
 		if err != nil {
+			_ = h.End()
 			return fmt.Errorf("%s: %w", p, err)
 		}
 	}
-	return nil
+	return h.End()
 }
 
 // MemHost is the reference Host: a tree of maps, holding exactly what it was
@@ -137,11 +192,12 @@ func NewMemHost() *MemHost {
 }
 
 func (h *MemHost) Begin() { h.depth++ }
-func (h *MemHost) End() {
+func (h *MemHost) End() error {
 	h.depth--
 	if h.depth == 0 {
 		h.Batches++
 	}
+	return nil
 }
 
 func (h *MemHost) Create(d NodeDesc, parent Key, index int) error {
@@ -216,6 +272,9 @@ func (h *MemHost) Rebind(key Key, events []string) error {
 	n.Events = events
 	return nil
 }
+
+// Len is the number of mounted nodes.
+func (h *MemHost) Len() int { return len(h.byKey) }
 
 // Find returns the mounted nodes carrying an #id, which is how a test or an
 // inspector addresses one.
