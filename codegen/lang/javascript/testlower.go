@@ -23,6 +23,10 @@ const (
 	TestEmitNative
 )
 
+// testInstanceVar names the component a test drives. Deliberately not a name
+// SNGL source can produce, so a local in the test body never collides.
+const testInstanceVar = "__snglTestComponent"
+
 // LowerTestFile produces the entire source of a generated JS test file.
 //
 // Agent mode emits:
@@ -62,8 +66,15 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		fmt.Fprintf(&b, "export async function test%s(t) {\n", suffix)
-		b.WriteString("\tconst c = newTestComponent();\n")
-		b.WriteString("\tsetCurrentTestModel(c);\n")
+		// Always built -- a snapshot needs an instance whether the test named
+		// one or not -- but bound to the declared name only when there is
+		// one. A fixed `const c` in every test redeclared any local called
+		// `c`, and a module that does not parse is a page that never loads.
+		b.WriteString("\tconst " + testInstanceVar + " = newTestComponent();\n")
+		b.WriteString("\tsetCurrentTestModel(" + testInstanceVar + ");\n")
+		if recv := codegen.TestComponentParam(fn); recv != "" {
+			fmt.Fprintf(&b, "\tconst %s = %s;\n", recv, testInstanceVar)
+		}
 		for _, line := range lowerTestBody(irPkg, fn, methodFields) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}

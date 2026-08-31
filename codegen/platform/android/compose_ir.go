@@ -19,6 +19,10 @@ type irComposeContext struct {
 	buf     *strings.Builder
 	indent  int
 	hasSlot bool
+	// inLinearScope reports whether the node being rendered sits inside a Row
+	// or a Column, which is where Compose puts weight(). At the top of a
+	// composable there is no parent to take a share of.
+	inLinearScope bool
 	// combo is the selected Android toolchain (versions/SDK). Available so
 	// emitters can branch where a real version difference changes output;
 	// there is no such divergence between the current combos, so nothing
@@ -375,16 +379,80 @@ func (cc *irComposeContext) buildModifierRaw(n *ir.NodeInst) string {
 // intrinsic names its props after the Compose arguments it emits, so the
 // Style behind its Modifier is not called "style".
 func (cc *irComposeContext) modifierRaw(n *ir.NodeInst, styleProp string) string {
+	return cc.modifierRawExcept(n, styleProp, nil)
+}
+
+// modifierRawExcept is modifierRaw with some style fields left out, for a
+// widget that answers them another way.
+func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, skip map[string]bool) string {
 	parts := []string{"Modifier"}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("testTag(%q)", id))
 	}
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
+		if skip[sf.Name] {
+			continue
+		}
+		if sf.Name == "flex" {
+			if mod := cc.flexModifier(cc.kc.EvalExpr(sf.Value)); mod != "" {
+				parts = append(parts, mod)
+			}
+			continue
+		}
 		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
 	}
 	return strings.Join(parts, ".")
+}
+
+// flexModifier is what a child asking for a share of its parent becomes.
+//
+// Inside a Row or a Column that is weight(), which is what makes a keypad fill
+// the screen instead of every button sizing to its own label -- the row of
+// `C +/- % /` came out wider than the rows under it, because "+/-" is.
+//
+// At the top of a composable there is no parent to take a share of and
+// weight() is not even in scope, so the same request means the screen.
+func (cc *irComposeContext) flexModifier(val string) string {
+	if val == "" || val == "0" || val == "0.0" {
+		return ""
+	}
+	if !cc.inLinearScope {
+		return "fillMaxSize()"
+	}
+	return fmt.Sprintf("weight(%sf)", val)
+}
+
+// declaresProp reports whether comp declares a prop of this name.
+func declaresProp(comp *ir.Component, name string) bool {
+	if comp == nil {
+		return false
+	}
+	for _, p := range comp.Props {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// buttonColorsExpr renders a Style's background and foreground as the colour
+// set a Material button takes, or "" when it asked for neither.
+func (cc *irComposeContext) buttonColorsExpr(n *ir.NodeInst, styleProp string) string {
+	var args []string
+	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
+		switch sf.Name {
+		case "background":
+			args = append(args, "containerColor = "+composeColorExpr(cc.kc.EvalExpr(sf.Value)))
+		case "color":
+			args = append(args, "contentColor = "+composeColorExpr(cc.kc.EvalExpr(sf.Value)))
+		}
+	}
+	if len(args) == 0 {
+		return ""
+	}
+	return "ButtonDefaults.buttonColors(" + strings.Join(args, ", ") + ")"
 }
 
 func (cc *irComposeContext) buildModifier(n *ir.NodeInst) string {
@@ -511,6 +579,10 @@ func composeModifier(prop, val string) string {
 		return fmt.Sprintf("background(%s)", composeColorExpr(val))
 	case "opacity":
 		return fmt.Sprintf("alpha(%s)", val)
+	case "flex":
+		// Decided in modifierRawExcept, which knows whether weight() is in
+		// scope here.
+		return ""
 	case "gap":
 		// Gap handled by Arrangement in Column/Row
 		return ""
@@ -546,10 +618,11 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 // trailing lambda. A func-typed prop is a callback, emitted as the Kotlin
 // lambda Compose takes there.
 //
-// Three prop names are this emitter's own — `modifier` builds the Modifier
-// chain from a Style, `chain` appends further Modifier calls to it, and `args`
-// is arguments already spelled in Kotlin — because none of the three is a
-// value Compose takes as written.
+// Four prop names are this emitter's own — `modifier` builds the Modifier
+// chain from a Style, `chain` appends further Modifier calls to it, `args` is
+// arguments already spelled in Kotlin, and `colors` is a Style rendered as the
+// widget's own colour set — because none of the four is a value Compose takes
+// as written.
 func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
 	var args []string
 	for _, p := range comp.Props {
@@ -558,7 +631,15 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 		case "args":
 			args = append(args, irStringList(codegen.NodeProp(n, p.Name))...)
 		case "modifier":
-			args = append(args, "modifier = "+cc.intrinsicModifier(n))
+			args = append(args, "modifier = "+cc.intrinsicModifier(n, comp))
+		case "colors":
+			// A Button paints its own surface, so Modifier.background draws a
+			// rectangle *behind* the pill rather than colouring it -- which is
+			// the orange square that showed around every operator key. The
+			// colour belongs in the widget's own colour set.
+			if c := cc.buttonColorsExpr(n, p.Name); c != "" {
+				args = append(args, p.Name+" = "+c)
+			}
 		default:
 			if isStyleType(p.Type) {
 				if ts := cc.textStyleExpr(n, p.Name); ts != "" {
@@ -584,6 +665,11 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	}
 	cc.line("%s {", call)
 	cc.indent++
+	// weight() lives on RowScope and ColumnScope, so whether a child may ask
+	// for a share depends on which composable is about to receive it.
+	outerScope := cc.inLinearScope
+	cc.inLinearScope = composable == "Row" || composable == "Column"
+	defer func() { cc.inLinearScope = outerScope }()
 	for _, child := range n.Children {
 		cc.renderStmt(child)
 	}
@@ -595,9 +681,15 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 // the styling and testTag every node gets, then the composable's own
 // `chain` entries, which are Modifier calls spelled in Kotlin because
 // Style has no field that names one.
-func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst) string {
+func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component) string {
 	var mod strings.Builder
-	mod.WriteString(cc.modifierRaw(n, "modifier"))
+	// A widget that takes its own colours takes the background with them, so
+	// the Modifier must not draw one too.
+	skip := map[string]bool{}
+	if declaresProp(comp, "colors") {
+		skip["background"] = true
+	}
+	mod.WriteString(cc.modifierRawExcept(n, "modifier", skip))
 	for _, call := range irStringList(codegen.NodeProp(n, "chain")) {
 		mod.WriteString("." + call)
 	}

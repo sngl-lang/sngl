@@ -39,8 +39,9 @@ import us.duckfam.git.jonathan.sngl.testagent.Registry
 lateinit var composeTestRule: ComposeContentTestRule
 
 fun testFieldMethodAndI18n(t: T) {
-    val c = newTestComponent()
-    setCurrentTestModel(c)
+    val __snglTestComponent = newTestComponent()
+    setCurrentTestModel(__snglTestComponent)
+    val c = __snglTestComponent
     t.assertTrue((c.count == 0), "(c.count == 0)")
     t.assertTrue((c.label() != ""), "(c.label() != \"\")")
     val msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))

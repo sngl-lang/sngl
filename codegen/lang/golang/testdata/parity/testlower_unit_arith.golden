@@ -4,7 +4,8 @@ package ui
 import "testing"
 
 func TestMeasurementArithmetic(t *testing.T) {
-	c := newTestComponent()
+	__snglTestComponent := newTestComponent()
+	c := __snglTestComponent
 	_ = c
 	if !((Measurement{Px: Measurement{Px: 3}.Px + Measurement{Px: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Px: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Px: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Px: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Px: 2}.Pct} == Measurement{Px: 5})) { t.Errorf("assert failed: %s", "(Measurement{Px: Measurement{Px: 3}.Px + Measurement{Px: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Px: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Px: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Px: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Px: 2}.Pct} == Measurement{Px: 5})") }
 	if !((Measurement{Px: Measurement{Px: 16}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 16}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 16}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 16}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 16}.Pct + Measurement{Em: 2}.Pct} == Measurement{Px: Measurement{Em: 2}.Px + Measurement{Px: 16}.Px, Em: Measurement{Em: 2}.Em + Measurement{Px: 16}.Em, Vw: Measurement{Em: 2}.Vw + Measurement{Px: 16}.Vw, Vh: Measurement{Em: 2}.Vh + Measurement{Px: 16}.Vh, Pct: Measurement{Em: 2}.Pct + Measurement{Px: 16}.Pct})) { t.Errorf("assert failed: %s", "(Measurement{Px: Measurement{Px: 16}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 16}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 16}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 16}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 16}.Pct + Measurement{Em: 2}.Pct} == Measurement{Px: Measurement{Em: 2}.Px + Measurement{Px: 16}.Px, Em: Measurement{Em: 2}.Em + Measurement{Px: 16}.Em, Vw: Measurement{Em: 2}.Vw + Measurement{Px: 16}.Vw, Vh: Measurement{Em: 2}.Vh + Measurement{Px: 16}.Vh, Pct: Measurement{Em: 2}.Pct + Measurement{Px: 16}.Pct})") }
@@ -20,8 +21,9 @@ package ui
 import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
 
 func testMeasurementArithmetic(t *testagent.T) {
-	c := newTestComponent()
-	setCurrentTestModel(c)
+	__snglTestComponent := newTestComponent()
+	setCurrentTestModel(__snglTestComponent)
+	c := __snglTestComponent
 	_ = c
 	if !((Measurement{Px: Measurement{Px: 3}.Px + Measurement{Px: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Px: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Px: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Px: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Px: 2}.Pct} == Measurement{Px: 5})) { t.Errorf("assert failed: %s", "(Measurement{Px: Measurement{Px: 3}.Px + Measurement{Px: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Px: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Px: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Px: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Px: 2}.Pct} == Measurement{Px: 5})") }
 	if !((Measurement{Px: Measurement{Px: 16}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 16}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 16}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 16}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 16}.Pct + Measurement{Em: 2}.Pct} == Measurement{Px: Measurement{Em: 2}.Px + Measurement{Px: 16}.Px, Em: Measurement{Em: 2}.Em + Measurement{Px: 16}.Em, Vw: Measurement{Em: 2}.Vw + Measurement{Px: 16}.Vw, Vh: Measurement{Em: 2}.Vh + Measurement{Px: 16}.Vh, Pct: Measurement{Em: 2}.Pct + Measurement{Px: 16}.Pct})) { t.Errorf("assert failed: %s", "(Measurement{Px: Measurement{Px: 16}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 16}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 16}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 16}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 16}.Pct + Measurement{Em: 2}.Pct} == Measurement{Px: Measurement{Em: 2}.Px + Measurement{Px: 16}.Px, Em: Measurement{Em: 2}.Em + Measurement{Px: 16}.Em, Vw: Measurement{Em: 2}.Vw + Measurement{Px: 16}.Vw, Vh: Measurement{Em: 2}.Vh + Measurement{Px: 16}.Vh, Pct: Measurement{Em: 2}.Pct + Measurement{Px: 16}.Pct})") }

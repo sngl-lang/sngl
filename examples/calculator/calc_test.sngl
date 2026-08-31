@@ -88,6 +88,47 @@ func testPendingLine(t Test) {
     t.assert(calc.Calc{}.digit("2").operate(calc.Op.add).pending() == "2 +")
 }
 
+// Every calculator repeats the last operation on a second `=`. `1 + 1 = = =`
+// is 4, not 2, and the operand it repeats with is the one on the right.
+func testEqualsRepeatsTheLastOperation(t Test) {
+    var c = calc.Calc{}
+    c = c.digit("1").operate(calc.Op.add).digit("1").equals()
+    t.assert(c.entry == "2")
+    c = c.equals()
+    t.assert(c.entry == "3")
+    c = c.equals()
+    t.assert(c.entry == "4")
+}
+
+// The repeat is the right operand, not the left: `9 - 2 = =` counts down by
+// two rather than subtracting from nine again.
+func testRepeatKeepsTheRightOperand(t Test) {
+    var c = calc.Calc{}
+    c = c.digit("9").operate(calc.Op.sub).digit("2").equals()
+    t.assert(c.entry == "7")
+    t.assert(c.equals().entry == "5")
+}
+
+// A new operation replaces what `=` repeats.
+func testANewOperationReplacesTheRepeat(t Test) {
+    var c = calc.Calc{}
+    c = c.digit("1").operate(calc.Op.add).digit("1").equals()
+    c = c.operate(calc.Op.mul).digit("3").equals()
+    t.assert(c.entry == "6")
+    t.assert(c.equals().entry == "18")
+}
+
+// `=` with nothing behind it does nothing at all.
+func testEqualsAloneIsInert(t Test) {
+    var c = calc.Calc{}
+    t.assert(c.equals().entry == "0")
+    t.assert(c.digit("7").equals().entry == "7")
+}
+
+// Pressing keys goes through the same handler the keypad is wired to. `main`
+// is declared in app.sngl, the file next to this one: a directory is one
+// package, so a test names what its package declares.
+
 // --- The readout ---
 
 // A point folds onto the cell to its left and the number is padded from the

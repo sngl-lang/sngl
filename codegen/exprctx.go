@@ -305,6 +305,26 @@ func IsComputed(f *ir.Func) bool {
 // (with the "test" prefix stripped) plus the methodFields set built
 // from every component's funcs and computed package funcs. Shared
 // across platforms whose codegen emits an agent-mode test file.
+// TestComponentParam is the name a test binds its component instance to, or
+// "" when the test declared none: `func testPress(t Test, c main)` says `c`,
+// and `func testAddition(t Test)` says nothing at all.
+//
+// The name is the declaration's, not the emitter's. Binding a hardcoded `c`
+// into every test collided with any local of that name -- silently, because
+// the page it produced no longer parsed and all the runner could report was
+// that the agent never connected.
+func TestComponentParam(fn *ir.Func) string {
+	if fn == nil {
+		return ""
+	}
+	for _, p := range fn.Params {
+		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
+			return p.Name
+		}
+	}
+	return ""
+}
+
 func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {
 	methodFields = map[string]bool{}
 	if pkg == nil {

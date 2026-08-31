@@ -996,8 +996,18 @@ func (g *htmlGen) generate() (string, error) {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
 	if g.stylesheet == "" {
-		const defaultCSS = "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
+		defaultCSS := "* { margin: 0; padding: 0; box-sizing: border-box; }\n" +
 			"body { font-family: system-ui, sans-serif; }\n"
+		// A root element asking for a share of its parent has no parent to
+		// take it from: `body` is not a flex container and neither it nor
+		// `html` has a height, so `flex: 1` on the outermost div did nothing
+		// and the page sat at its content height. The share it is asking for
+		// is the viewport, which is the reading Compose's fillMaxSize() gets
+		// from the same source.
+		if g.rootFlexes() {
+			defaultCSS += "html, body { height: 100%; }\n" +
+				"body { display: flex; flex-direction: column; }\n"
+		}
 		css, err := maybeMinifyCSS(defaultCSS, g.minify)
 		if err != nil {
 			return "", err
@@ -1380,6 +1390,28 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		}
 	}
 	return out
+}
+
+// rootFlexes reports whether a top-level node of the page asked for a share of
+// its parent. Only the roots: a flex inside the tree is answered by the box
+// around it, and only the outermost one needs the viewport handed to it.
+func (g *htmlGen) rootFlexes() bool {
+	for _, st := range g.irBodyStmts {
+		n, ok := st.(*ir.NodeInst)
+		if !ok {
+			continue
+		}
+		for _, sf := range codegen.NodeStyleFields(n) {
+			if sf.Name != "flex" {
+				continue
+			}
+			if v, ok := codegen.IRLiteralString(sf.Value); ok && (v == "" || v == "0") {
+				continue
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func (g *htmlGen) pkgStructs() []*ir.StructDef {

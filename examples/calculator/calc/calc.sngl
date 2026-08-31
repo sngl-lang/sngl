@@ -22,6 +22,12 @@ struct Calc {
     // Division by zero. The readout shows E and every key but C is inert.
     failed bool = false
 
+    // What a second `=` repeats, and the operand it repeats with. Every
+    // calculator you have used answers `1 + 1 = = =` with 4; one that cleared
+    // the operation on the first `=` stops at 2.
+    repeatOp Op = Op.none
+    repeatArg float = 0
+
     // `entry` as a number. A trailing point is dropped rather than handed to
     // the platform's string-to-float, which is where the three targets stop
     // agreeing.
@@ -142,19 +148,37 @@ struct Calc {
     }
 
     func equals() Calc {
-        var next = this
-        if this.failed || this.op == Op.none {
-            next.typing = false
-            return next
+        if this.failed {
+            return this
         }
-        if this.op == Op.div && this.value() == 0 {
+        if this.op == Op.none {
+            if this.repeatOp == Op.none {
+                var idle = this
+                idle.typing = false
+                return idle
+            }
+            return this.settle(this.value(), this.repeatOp, this.repeatArg)
+        }
+        return this.settle(this.acc, this.op, this.value())
+    }
+    // Nothing pending, so this is a repeat: apply the last operation to
+    // what is showing. That is what the second `=` means, and it is what
+    // makes the third one work too.
+
+    // One evaluation, from either arm of `=`: `a o b` into the readout, with
+    // the pair remembered so the next `=` can repeat it.
+    func settle(a float, o Op, b float) Calc {
+        if o == Op.div && b == 0 {
             return Calc{entry="E", failed=true}
         }
-        var result = Op.apply(this.op, this.acc, this.value())
+        var next = this
+        var result = Op.apply(o, a, b)
         next.entry = format(result)
         next.acc = result
         next.op = Op.none
         next.typing = false
+        next.repeatOp = o
+        next.repeatArg = b
         return next
     }
 

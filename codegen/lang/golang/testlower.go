@@ -295,6 +295,10 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	return fmt.Sprintf("if !(%s) { t.Errorf(\"assert failed: %%s\", %q) }", exprGo, exprGo), true
 }
 
+// testInstanceVar names the component a test drives. Deliberately not a name
+// SNGL source can produce, so a local in the test body never collides.
+const testInstanceVar = "__snglTestComponent"
+
 // TestEmitMode selects how LowerTestFile wraps the per-test bodies.
 type TestEmitMode int
 
@@ -333,11 +337,23 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 		suffix := suffixes[i]
 		funcName, paramType := wrapperHeader(suffix, mode)
 		fmt.Fprintf(&body, "func %s(t *%s) {\n", funcName, paramType)
-		body.WriteString("\tc := newTestComponent()\n")
+		// The instance is always built, because a snapshot needs one whether
+		// the test named it or not; the declared name is bound only when the
+		// test declared it. Emitting a fixed `c` into every test collided
+		// with any local of that name.
+		body.WriteString("\t" + testInstanceVar + " := newTestComponent()\n")
 		if mode == TestEmitAgent {
-			body.WriteString("\tsetCurrentTestModel(c)\n")
+			body.WriteString("\tsetCurrentTestModel(" + testInstanceVar + ")\n")
 		}
-		body.WriteString("\t_ = c\n")
+		// Whichever name is in scope is discarded, because a test may drive
+		// the component only through the runner -- `t.snapshot(...)` names it
+		// nowhere -- and Go rejects a local nothing reads.
+		if recv := codegen.TestComponentParam(fn); recv != "" {
+			fmt.Fprintf(&body, "\t%s := %s\n", recv, testInstanceVar)
+			fmt.Fprintf(&body, "\t_ = %s\n", recv)
+		} else {
+			body.WriteString("\t_ = " + testInstanceVar + "\n")
+		}
 		gc := testIRContext(irPkg, fn, methodFields)
 		for _, s := range fn.Block {
 			for _, line := range lowerTestStmt(s, gc) {
