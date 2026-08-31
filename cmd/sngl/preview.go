@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,14 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"sort"
-
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
 	"git.duckfam.us/jonathan/sngl/ir"
+	"git.duckfam.us/jonathan/sngl/lib"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -49,9 +49,7 @@ type previewServer struct {
 	clients    map[chan struct{}]struct{}
 
 	// Stdlib schemas, so the editor can show the unset properties too.
-	schemas     checker.SchemaRegistry
-	styleNames  []string // sorted
-	styleSchema map[string]checker.StylePropSchema
+	schemas checker.SchemaRegistry
 
 	// Synced from the browser.
 	runtimeState map[string]any
@@ -66,23 +64,13 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	schemas, styleProps, err := checker.LoadStdlib()
-	if err != nil {
-		return fmt.Errorf("loading stdlib: %w", err)
-	}
-	var styleNames []string
-	for name := range styleProps {
-		styleNames = append(styleNames, name)
-	}
-	sort.Strings(styleNames)
+	schemas := libraryComponentSchemas()
 
 	s := &previewServer{
-		sourceFile:  sourceFile,
-		sourceDir:   filepath.Dir(sourceFile),
-		clients:     make(map[chan struct{}]struct{}),
-		schemas:     schemas,
-		styleNames:  styleNames,
-		styleSchema: styleProps,
+		sourceFile: sourceFile,
+		sourceDir:  filepath.Dir(sourceFile),
+		clients:    make(map[chan struct{}]struct{}),
+		schemas:    schemas,
 	}
 
 	if err := s.recompile(); err != nil {
@@ -501,13 +489,8 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		resp.Props[arg.Name] = exprToPropJSON(arg.Value, typeName, enum)
 	}
 
-	for _, name := range s.styleNames {
-		sp := s.styleSchema[name]
-		resp.Styles[name] = propJSON{
-			Type: typeToString(sp.Type),
-			Enum: sp.Enum,
-		}
-	}
+	// Only the styles the node sets, untyped: Style's fields are an ordinary
+	// struct declaration and nothing here resolves them.
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)
 		if !ok || arg.Name != "style" {
@@ -515,8 +498,7 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 		}
 		if se, ok := arg.Value.(*ast.StructExpr); ok {
 			for _, f := range se.Fields {
-				sp := s.styleSchema[f.Name]
-				resp.Styles[f.Name] = exprToPropJSON(f.Value, typeToString(sp.Type), sp.Enum)
+				resp.Styles[f.Name] = exprToPropJSON(f.Value, "", nil)
 			}
 		}
 	}
@@ -540,6 +522,18 @@ func (s *previewServer) handleNodeGet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// libraryComponentSchemas is every library package's component schemas in one
+// map. The editor resolves a component by the name written in the source, which
+// is the name in that file's scope; a name two packages declare resolves here to
+// whichever package sorts last, and the editor shows its props.
+func libraryComponentSchemas() checker.SchemaRegistry {
+	out := checker.SchemaRegistry{}
+	for _, pkg := range lib.PublicPackages() {
+		maps.Copy(out, checker.PackageSchema(pkg))
+	}
+	return out
 }
 
 func typeToString(t ir.Type) string {

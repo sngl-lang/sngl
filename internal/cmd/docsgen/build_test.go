@@ -39,10 +39,14 @@ func TestWebsiteProducesContent(t *testing.T) {
 	html := string(data)
 
 	// Static body text from PageLayout's slot — present even with empty data.
-	if !strings.Contains(html, "Browse all built-in components") {
+	if !strings.Contains(html, "a first application reaches for") {
 		t.Error("components/index.html missing static page body text")
 	}
-	// Data-driven body content from the go: `tiers` const. Its absence is
+	// The link on to the full listing, which is where the curated set stops.
+	if !strings.Contains(html, "/docs/sngl/ui/index.html") {
+		t.Error("components/index.html does not link on to sngl:ui")
+	}
+	// Data-driven body content from the go: `curated` const. Its absence is
 	// the "sidebar renders but content missing" symptom: the sidebar uses
 	// NavItem/NavGroup, only the page body emits component-card.
 	if !strings.Contains(html, "component-card") {

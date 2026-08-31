@@ -9,6 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/snapshot"
+	"git.duckfam.us/jonathan/sngl/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -122,14 +123,12 @@ func snapshotExamplesFile(path string, platforms []string, width, height int, fo
 }
 
 func snapshotStdlibExamples(platforms []string, width, height int, force bool) error {
-	examples, err := checker.StdlibExamples()
-	if err != nil {
-		return fmt.Errorf("extracting stdlib examples: %w", err)
-	}
-	flat := make(map[string]string, len(examples))
-	for name, srcs := range examples {
-		if len(srcs) > 0 {
-			flat[name] = srcs[0]
+	flat := map[string]string{}
+	for _, pkg := range lib.PublicPackages() {
+		for name, srcs := range checker.PackageExamples(pkg) {
+			if len(srcs) > 0 {
+				flat[name] = srcs[0]
+			}
 		}
 	}
 	if len(flat) == 0 {

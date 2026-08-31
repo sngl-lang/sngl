@@ -3,6 +3,7 @@
 package optimize
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -18,11 +19,11 @@ import (
 // only be asserting itself.
 var purepkgImport = sync.OnceValues(func() (*ir.NativeImport, error) {
 	// The importer maps time.Duration through ir.DurationType, which the
-	// #[builtin("duration")] declaration registers when the stdlib loads. The
-	// real pipeline loads it in newChecker, before any import resolves; a test
+	// #[builtin("duration")] declaration registers as sngl:time loads. The real
+	// pipeline loads it in newChecker, before any import resolves; a test
 	// resolving an import on its own has to say so.
-	if _, _, err := checker.LoadStdlib(); err != nil {
-		return nil, err
+	if checker.LibPackage("time") == nil {
+		return nil, fmt.Errorf("sngl:time did not load")
 	}
 	return (&golang.GoImporter{}).Resolve("go:"+purepkgPath, projectDir())
 })

@@ -1,6 +1,3 @@
-// Components that paint above the rest of the tree, and the surface a
-// dismissal returns from.
-
 import tr "sngl:tree"
 
 // Dialog overlay. Renders its children in a centered modal dialog

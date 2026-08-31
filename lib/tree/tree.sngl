@@ -1,6 +1,6 @@
-// Package tree describes a segmented component tree: one whose nodes are not
-// interchangeable widgets but members of a named family, where a container
-// accepts only its own family's members.
+// Segmented component trees: a tree whose nodes are not interchangeable
+// widgets but members of a named family, where a container accepts only its
+// own family's members.
 //
 // A canvas and its shapes are one such tree; rich text (paragraphs, inline
 // runs) and menus (items, separators) are others. Nothing here knows what a

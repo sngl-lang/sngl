@@ -1,5 +1,3 @@
-// RGBA color, and the ways to build and derive one.
-
 import . "sngl:internal/marks"
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha

@@ -4,6 +4,7 @@ package docs
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/lib"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
@@ -251,10 +253,13 @@ func NavTree() []NavGroup {
 }
 
 type Component struct {
-	Name            string
+	Name string
+	// Pkg is the import path a program writes to reach it, and Href the page
+	// its documentation is generated at.
+	Pkg             string
+	Href            string
 	Doc             string // full doc string
 	Blurb           string // first sentence of Doc, for index/card listings
-	Tier            string
 	Children        string // "none", "one", "many"
 	Props           []ComponentProp
 	Events          []ComponentEvent
@@ -274,27 +279,94 @@ type ComponentEvent struct {
 	PayloadType string
 }
 
-type Tier struct {
-	Name       string
-	Components []Component
+// LibraryComponents is every exported component of every public library
+// package, each carrying the package it belongs to. One package at a time,
+// because a component is a declaration in a package and two packages may
+// declare one name.
+//
+//sngl:pure
+func LibraryComponents() []Component {
+	var comps []Component
+	for _, uri := range lib.PublicPackages() {
+		comps = append(comps, packageComponents(uri)...)
+	}
+	sort.Slice(comps, func(i, j int) bool {
+		if comps[i].Pkg != comps[j].Pkg {
+			return comps[i].Pkg < comps[j].Pkg
+		}
+		return comps[i].Name < comps[j].Name
+	})
+	return comps
 }
 
+// CuratedComponents is the starter set the /components page leads with, in the
+// order docsite.Starter lists them rather than alphabetically: it is a reading
+// order, not an index.
+//
 //sngl:pure
-func StdlibComponents() []Component {
-	registry, _, err := checker.LoadStdlib()
-	if err != nil {
-		return nil
+func CuratedComponents() []Component {
+	byName := map[string]Component{}
+	for _, c := range packageComponents(docsite.StarterPkg) {
+		byName[c.Name] = c
 	}
-	tiers := docsite.AssignTiers(registry)
-	stdlibExamples, _ := checker.StdlibExamples()
+	out := make([]Component, 0, len(docsite.Starter))
+	for _, name := range docsite.Starter {
+		if c, ok := byName[name]; ok {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// CuratedRest is how many components of the starter package the curated list
+// leaves out, for the page's link on to the full listing.
+//
+//sngl:pure
+func CuratedRest() int {
+	rest := len(packageComponents(docsite.StarterPkg)) - len(CuratedComponents())
+	if rest < 0 {
+		return 0
+	}
+	return rest
+}
+
+// CuratedPkg is the import path the curated list is drawn from.
+//
+//sngl:pure
+func CuratedPkg() string { return "sngl:" + docsite.StarterPkg }
+
+// CuratedPkgHref is the page listing everything CuratedComponents leaves out.
+//
+//sngl:pure
+func CuratedPkgHref() string { return lookup.PackageHref(CuratedPkg()) }
+
+// CuratedRestLabel is the link on to the full listing, formatted here because
+// SNGL would have to convert the count to a string at the call site.
+//
+//sngl:pure
+func CuratedRestLabel() string {
+	rest := CuratedRest()
+	if rest == 0 {
+		return "Browse " + CuratedPkg()
+	}
+	return fmt.Sprintf("Browse the other %d components in %s", rest, CuratedPkg())
+}
+
+// packageComponents takes the library package's URI ("ui"), which is what the
+// checker keys a schema by; the import path is that under the scheme.
+func packageComponents(uri string) []Component {
+	path := "sngl:" + uri
+	registry := checker.PackageSchema(uri)
+	examples := checker.PackageExamples(uri)
 
 	var comps []Component
 	for name, schema := range registry {
 		c := Component{
 			Name:     name,
+			Pkg:      path,
+			Href:     lookup.DeclHref(path, "components", name),
 			Doc:      schema.Doc,
 			Blurb:    firstSentence(schema.Doc),
-			Tier:     tiers[name],
 			Children: docsite.ChildPolicyString(schema.Children),
 		}
 		for pname, ps := range schema.Props {
@@ -313,7 +385,7 @@ func StdlibComponents() []Component {
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
 
-		if srcs, ok := stdlibExamples[name]; ok {
+		if srcs, ok := examples[name]; ok {
 			c.Examples = srcs
 			if len(srcs) > 0 {
 				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
@@ -323,47 +395,8 @@ func StdlibComponents() []Component {
 
 		comps = append(comps, c)
 	}
-
-	tierIdx := map[string]int{}
-	for i, t := range docsite.TierOrder {
-		tierIdx[t] = i
-	}
-	sort.Slice(comps, func(i, j int) bool {
-		ti := tierIdx[comps[i].Tier]
-		tj := tierIdx[comps[j].Tier]
-		if ti != tj {
-			return ti < tj
-		}
-		return comps[i].Name < comps[j].Name
-	})
-
+	sort.Slice(comps, func(i, j int) bool { return comps[i].Name < comps[j].Name })
 	return comps
-}
-
-//sngl:pure
-func ComponentsByTier() []Tier {
-	comps := StdlibComponents()
-	tierMap := map[string][]Component{}
-	for _, c := range comps {
-		tierMap[c.Tier] = append(tierMap[c.Tier], c)
-	}
-	var tiers []Tier
-	for _, t := range docsite.TierOrder {
-		if cs, ok := tierMap[t]; ok {
-			tiers = append(tiers, Tier{Name: t, Components: cs})
-		}
-	}
-	return tiers
-}
-
-//sngl:pure
-func StdlibLookup(name string) Component {
-	for _, c := range StdlibComponents() {
-		if c.Name == name {
-			return c
-		}
-	}
-	return Component{Name: name, Doc: "Component not found."}
 }
 
 var platformOrder = []string{"html", "android", "bubbletea", "fyne"}

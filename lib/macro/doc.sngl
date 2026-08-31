@@ -6,3 +6,6 @@
 // siblings do. `#[foreign]` records what a declaration corresponds to
 // outside SNGL; `#[options]` names a target's build-option schema; and
 // `#[wildcard]` says what a name nobody declared resolves to.
+//
+// The per-target packages under it -- `sngl:platform/html`, `sngl:language/go`
+// -- are separate packages, and hold no marks.

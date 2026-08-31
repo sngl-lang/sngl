@@ -9,6 +9,14 @@
 //
 //	sngl:ui/draw    a canvas and the 2D shapes it hosts
 //
+// The components fall into five groups:
+//
+//	display    show a value and do not edit it
+//	form       controls the user edits, each with a two-way bound value prop
+//	layout     containers, which place their children
+//	nav        move the user somewhere else
+//	overlay    paint above the rest of the tree
+//
 // `Style`, the style enums and the event payloads sit here rather than in a
 // package of their own because every component in every one of those
 // packages refers to them; they are the vocabulary, not a separate concern.

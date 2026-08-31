@@ -43,10 +43,6 @@ type Config struct {
 	// callers leave it nil. A substitution replaces the package, where the
 	// source a target provides (ProvidedDocs) adds to it.
 	LibSources map[string][]*ast.Document
-	// libSource permits sngl:internal/ imports in the document itself, for
-	// the one caller that checks lib/ source as the document rather than
-	// loading it as a package. Unexported: no program is lib source.
-	libSource bool
 	// libs is the library-package cache this check shares with the nested
 	// checks its imports start. Unexported: it is the compiler's own
 	// bookkeeping, and a cache built against other platforms would hand this

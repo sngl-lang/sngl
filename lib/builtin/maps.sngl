@@ -1,5 +1,3 @@
-// Key-value collections.
-
 import . "sngl:internal/marks"
 
 // K is the key type (must be comparable); V is the value type.

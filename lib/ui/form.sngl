@@ -1,6 +1,3 @@
-// Controls the user edits. Each carries a two-way bound value prop, so a
-// form is state plus the controls that name it.
-
 import time "sngl:time"
 
 // Clickable button that triggers an action. Supply `text` for a label,
