@@ -82,6 +82,12 @@ type gtk4Translator struct {
 	// could not be emitted at all. nil in scopes that emit no widgets.
 	shared *emitShared
 
+	// invokerSink records one (id, event) pair per signal connected, for the
+	// test-invoker methods emitted after the walk. nil in the scopes that emit
+	// no test surface -- a slot func, a canvas draw -- which is also why this
+	// is a sink rather than a field read back off the translator.
+	invokerSink func(gtkEventInvoker)
+
 	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
 	// while the following draw primitive is translated.
 	canvasByID         map[string]*canvasMeta
@@ -107,6 +113,11 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
 	return t.localRefs != nil && t.localRefs[id]
+}
+
+func (t *gtk4Translator) withInvokerSink(sink func(gtkEventInvoker)) *gtk4Translator {
+	t.invokerSink = sink
+	return t
 }
 
 func (t *gtk4Translator) withPkg(pkg *ir.Package) *gtk4Translator {
@@ -835,6 +846,12 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		}
 		signal = sig.Name
 	}
+	// Everything a test invoker needs is known here and nowhere later: the id a
+	// program wrote, the SNGL event written on it, and the GTK signal that event
+	// maps to. The statements emitted below keep only the signal, which is why
+	// this is recorded rather than recovered.
+	t.recordInvoker(bare, componentEventOf(handler, event), signal, cType)
+
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
 	if t.wrapped {
@@ -927,4 +944,43 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		return t.translateCanvasRedraw(n)
 	}
 	return []ir.Stmt{stmt}
+}
+
+// recordInvoker notes one (id, event) pair for the test-invoker methods emitted
+// after the walk.
+//
+// A synthesized id is skipped: `c.__n0.click()` is not something a test can
+// write, so a method for it would be dead. A scope with no sink -- a slot func,
+// a canvas draw -- records nothing.
+func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
+	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
+		return
+	}
+	t.invokerSink(gtkEventInvoker{
+		IDLabel:    id,
+		SnglEvent:  event,
+		FieldName:  id,
+		GTKSignal:  signal,
+		WidgetType: cType,
+	})
+}
+
+// componentEventOf is the event a test can write for this handler: the one the
+// program wrote, when a platform override re-raised it, and otherwise the name
+// the handler already carries.
+//
+// gtk4's button subscribes to the host widget -- `@clicked { click() }` -- so
+// what reaches here is "clicked" while a test writes `c.inc.click()`. The
+// program's name is recorded during the substitution that inlined its block,
+// because that is the last point both are visible.
+func componentEventOf(handler ir.Expr, fallback string) string {
+	id, ok := handler.(*ir.Ident)
+	if !ok {
+		return fallback
+	}
+	fn, ok := id.Sym.(*ir.Func)
+	if !ok || fn.LoweredFromComponentEvent == "" {
+		return fallback
+	}
+	return fn.LoweredFromComponentEvent
 }
