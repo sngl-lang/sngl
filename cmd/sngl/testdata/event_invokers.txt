@@ -1,4 +1,16 @@
-# `c.<id>.click()` drives a real platform event.
+# `c.<id>.click()` drives a real platform event, on every target.
+#
+# Each platform fires the event by the mechanism it already exposes, and none
+# of them needs layout or a synthetic pointer:
+#
+#   gtk4       g_signal_emit_by_name on the widget
+#   fyne       the widget's own callback field (what test.Tap calls)
+#   html       .click() on the element, through its addEventListener
+#   bubbletea  the activating key through Update, with focus set
+#
+# What they all skip is whether the widget is visible, sensitive and hittable:
+# a signal emitted at a hidden button still fires. Catching that needs real
+# input at a position, which is a different kind of test.
 #
 # gtk4 had the scaffolding for this and none of the wiring: gtkEventInvoker was
 # declared, emitEventInvokers was written and called, and nothing anywhere
@@ -27,6 +39,13 @@ stdout 'ok'
 sngl test --platform html click.sngl
 stdout 'ok'
 
+# bubbletea has no pointer: a button is activated by pressing a key while it
+# holds focus, so the invoker sets focus, sends that key through Update, and
+# restores focus. That is the platform's own input path, not a shortcut around
+# it -- whatever else Update does with the message happens too.
+sngl test --platform bubbletea click.sngl
+stdout 'ok'
+
 # The invoker is named for the event a program writes, not the one the platform
 # subscribes to. gtk4's button override is `@clicked { click() }`, so by the
 # time a handler is promoted it is named "clicked" while a test writes
@@ -45,6 +64,10 @@ grep 'm.inc.OnTapped\(\)' fy/model.go
 
 # html only emits invokers under test mode -- an ordinary page carries no test
 # surface at all.
+sngl generate --platform=bubbletea --lang=go --out=bt rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' bt/model.go
+grep 'm.Update\(tea.KeyPressMsg{Code: tea.KeyEnter}\)' bt/model.go
+
 sngl generate --platform=html --lang=none --opt test=true --out=ht rooted.sngl
 grep 'state.incClick = \(\) =>' ht/index.html
 sngl generate --platform=html --lang=none --out=plain rooted.sngl
