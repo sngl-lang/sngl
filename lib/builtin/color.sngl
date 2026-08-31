@@ -22,17 +22,17 @@ struct color {
 
 // Builds an opaque color from 0-255 RGB components. Values outside
 // that range are clamped by downstream consumers; pass literal ints.
-func color.rgb(r int, g int, b int) => color{r=r, g=g, b=b, a=255}
+func color.rgb(r int, g int, b int) color { return color{r=r, g=g, b=b, a=255} }
 
 // Builds a color from 0-255 RGB components and an explicit 0-255
 // alpha. Use when transparency is needed; otherwise prefer
 // `color.rgb` for clarity.
-func color.rgba(r int, g int, b int, a int) => color{r=r, g=g, b=b, a=a}
+func color.rgba(r int, g int, b int, a int) color { return color{r=r, g=g, b=b, a=a} }
 
 // Returns a copy of c with alpha replaced by a (0-255). Useful for
 // deriving translucent variants of a base color while keeping the
 // hue stable.
-func color.opacity(c color, a int) => color{r=c.r, g=c.g, b=c.b, a=a}
+func color.opacity(c color, a int) color { return color{r=c.r, g=c.g, b=c.b, a=a} }
 
 // Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
 // its complete value, and dropping alpha would print two different colours

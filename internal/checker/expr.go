@@ -13,12 +13,12 @@ import (
 // exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
 func exprType(e ir.Expr) *ir.Type {
 	if e == nil {
-		return TypDyn
+		return dynFallback("no expression to take the type of")
 	}
 	if t := e.ExprType(); t != nil {
 		return t
 	}
-	return TypDyn
+	return dynFallback("%T carries no type", e)
 }
 
 // requireValueType errors if t is TypeVoid, covering the case where a call to
@@ -152,7 +152,7 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	case *ast.EventRefExpr:
 		return c.inferEventRef(x)
 	default:
-		return &ir.Ident{Type: TypDyn}
+		return &ir.Ident{Type: dynFallback("no rule for expression %T", x)}
 	}
 }
 
@@ -191,7 +191,7 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	case ast.LiteralColor:
 		return c.lowerHexLiteral(x)
 	default:
-		typ = TypDyn
+		typ = dynFallback("no type for literal kind %v", x.Kind)
 	}
 	return &ir.Literal{AST: x, Type: typ, Value: x.Raw}
 }
@@ -370,13 +370,13 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
-			typ = TypDyn
+			typ = dynFallback("context %q is untyped", ctx.Name)
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = TypDyn
+		t = dynFallback("symbol %q (%T) has no type", x.Name, sym)
 	}
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
@@ -620,7 +620,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	default:
-		typ = TypDyn
+		typ = dynFallback("no type rule for binary operator %v", x.Op)
 	}
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
@@ -738,7 +738,7 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			typ = operand.Elems[0]
 		}
 	default:
-		typ = TypDyn
+		typ = dynFallback("no type rule for unary operator %v", x.Op)
 	}
 	return &ir.Unary{AST: x, Type: typ, Op: x.Op, Operand: operandExpr}
 }
@@ -802,7 +802,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
 			// diagnostic comes from the regular path.
-			structTyp := TypDyn
+			structTyp := dynFallback("cast target %q is not in scope", ident.Name)
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if t := c.symType(sym); t != nil {
 					structTyp = t
@@ -1016,7 +1016,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
 					t := resolved.SymType()
 					if t == nil {
-						t = TypDyn
+						t = dynFallback("member %s.%s (%T) has no type", ident.Name, sel.Field, resolved)
 					}
 					args := c.checkCallArgs(call.Args, nil)
 					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
@@ -1221,7 +1221,13 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	if event == "" && isPrimitiveMethodReceiver(receiver) {
 		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
 	}
-	return &ir.Call{AST: call, Type: TypDyn, Receiver: receiverExpr, Args: args, Event: event}
+	return &ir.Call{
+		AST:      call,
+		Type:     dynSpread(receiver, "no method %q on %s", sel.Field, receiver),
+		Receiver: receiverExpr,
+		Args:     args,
+		Event:    event,
+	}
 }
 
 // elementEvent returns the event declared on the component addressed by
@@ -1439,7 +1445,7 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
-		return TypDyn
+		return dynFallback("call has no signature to take a return type from")
 	}
 	if sig.Return == nil {
 		return TypVoid
@@ -1481,7 +1487,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							if ctx, isCtx := fsym.(*ir.Context); isCtx {
 								typ := ctx.Typ
 								if typ == nil {
-									typ = TypDyn
+									typ = dynFallback("context %s.%s is untyped", ident.Name, x.Field)
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
 							}
@@ -1495,7 +1501,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
 						t := resolved.SymType()
 						if t == nil {
-							t = TypDyn
+							t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, resolved)
 						}
 						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 					}
@@ -1592,7 +1598,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					if len(params) == 0 {
 						ret := fn.Return
 						if ret == nil {
-							ret = TypDyn
+							ret = dynFallback("method %q has no return type", fn.Name)
 						}
 						return &ir.Select{AST: x, Type: ret, Operand: operandExpr, Field: x.Field}
 					}
@@ -1645,7 +1651,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		}
 	}
 
-	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+	return &ir.Select{
+		AST:     x,
+		Type:    dynSpread(operand, "no field %q on %s", x.Field, operand),
+		Operand: operandExpr,
+		Field:   x.Field,
+	}
 }
 
 func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
@@ -1655,7 +1666,7 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
-			return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+			return &ir.Index{AST: x, Type: dynFallback("map type %s carries %d element types, want 2", operand, len(operand.Elems)), Operand: operandExpr, Idx: indexExpr}
 		}
 		keyT, valT := operand.Elems[0], operand.Elems[1]
 		if !keyT.Equal(exprType(indexExpr)) {
@@ -1667,7 +1678,12 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
-	return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	return &ir.Index{
+		AST:     x,
+		Type:    dynSpread(operand, "%s is not indexable", operand),
+		Operand: operandExpr,
+		Idx:     indexExpr,
+	}
 }
 
 func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
@@ -2112,11 +2128,11 @@ func (c *checker) inferEventRef(x *ast.EventRefExpr) ir.Expr {
 				if evt.Type != nil {
 					return &ir.Ident{Type: evt.Type}
 				}
-				return &ir.Ident{Type: TypDyn}
+				return &ir.Ident{Type: dynFallback("event %q on component %s carries no payload type", x.Name, c.currentComponent.Name)}
 			}
 		}
 	}
-	return &ir.Ident{Type: TypDyn}
+	return &ir.Ident{Type: dynFallback("event reference @%s names no event in scope", x.Name)}
 }
 
 // paramNameOK reports whether a param can be targeted by name at a call site.
@@ -3252,7 +3268,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
 				}
-				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: TypDyn, Func: fn, Args: args}}
+				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: dynFallback("call to %q written as a visual node has no return type", fn.Name), Func: fn, Args: args}}
 			}
 		}
 	}
@@ -4344,7 +4360,7 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *i
 		if i < len(decl.Params) {
 			typ = decl.Params[i]
 		} else {
-			typ = TypDyn
+			typ = dynFallback("argument %d is past the %d declared parameters", i, len(decl.Params))
 		}
 		p := &ir.Param{Name: id.Name, Type: typ}
 		c.declare(id.Pos, p)

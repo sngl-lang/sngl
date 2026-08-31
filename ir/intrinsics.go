@@ -7,6 +7,14 @@ type IntrinsicDef struct {
 	Name   string   // PascalCase identifier, e.g. "string.indexOf"
 	Params []*Param // parameter signatures
 	Return *Type    // return type
+	// TypeParams names the type variables Params and Return are written
+	// against, in the order a caller binds them. A collection intrinsic is
+	// generic in its element type exactly as its lib declaration is
+	// (`func list<T>.push(item T) list<T>`); spelling that here as dyn made
+	// this a less-typed second record of the same signature, and put
+	// `list<dyn>` into the IR of every pass that synthesizes a call from it.
+	// Instantiate binds them.
+	TypeParams []string
 	// Purity, if non-zero, overrides the default PurityPure assumption.
 	// Use this for intrinsics whose result depends on host state
 	// (env vars, filesystem, time, etc.) or that have side effects.
@@ -16,6 +24,34 @@ type IntrinsicDef struct {
 	// signature returns a value. Reactivity treats a statement-level call as a
 	// write to the receiver var, and backends emit an in-place mutation.
 	MutatesReceiver bool
+}
+
+// The type variables the generic entries below are written against. Only their
+// names are significant -- Instantiate matches on those.
+var (
+	tvT = &Type{Kind: TypeTypeParam, ParamName: "T"}
+	tvU = &Type{Kind: TypeTypeParam, ParamName: "U"}
+	tvK = &Type{Kind: TypeTypeParam, ParamName: "K"}
+	tvV = &Type{Kind: TypeTypeParam, ParamName: "V"}
+)
+
+// Instantiate binds d's type parameters, in TypeParams order, and returns the
+// resulting params and return type. Extra arguments are ignored; a parameter
+// left unbound stays a type variable, which is what a caller that only needs
+// the arity gets. Safe on a non-generic def: it returns Params and Return
+// unchanged.
+func (d IntrinsicDef) Instantiate(args ...*Type) ([]*Param, *Type) {
+	if len(d.TypeParams) == 0 || len(args) == 0 {
+		return d.Params, d.Return
+	}
+	bindings := make(map[string]*Type, len(d.TypeParams))
+	for i, name := range d.TypeParams {
+		if i < len(args) && args[i] != nil {
+			bindings[name] = args[i]
+		}
+	}
+	sig := (&FuncSig{Params: d.Params, Return: d.Return}).Substitute(bindings)
+	return sig.Params, sig.Return
 }
 
 // IntrinsicByName returns the intrinsic definition with the given PascalCase
@@ -58,22 +94,28 @@ var Intrinsics = []IntrinsicDef{
 	{Name: "float.atan2", Params: []*Param{{Name: "y", Type: TypFloat}, {Name: "x", Type: TypFloat}}, Return: TypFloat},
 
 	// --- list ---
-	{Name: "list.length", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: TypInt},
-	{Name: "list.push", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
-	{Name: "list.remove", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "index", Type: TypInt}}, Return: ListOf(TypDyn), Purity: PurityMutates, MutatesReceiver: true},
-	{Name: "list.indexOf", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "item", Type: TypDyn}}, Return: TypInt},
-	{Name: "list.join", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "sep", Type: TypString}}, Return: TypString},
-	{Name: "list.reverse", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "list.slice", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: ListOf(TypDyn)},
-	{Name: "list.filter", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "pred", Type: TypDyn}}, Return: ListOf(TypDyn)},
-	{Name: "list.map", Params: []*Param{{Name: "l", Type: ListOf(TypDyn)}, {Name: "fn", Type: TypDyn}}, Return: ListOf(TypDyn)},
+	// Generic in the element type, matching lib/builtin/lists.sngl. A caller
+	// synthesizing one of these Instantiates it at the element type it has;
+	// the dyn that remains is then written where it is true (a lowered node
+	// handle) rather than baked into the signature.
+	{Name: "list.length", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}}, Return: TypInt},
+	{Name: "list.push", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "item", Type: tvT}}, Return: ListOf(tvT), Purity: PurityMutates, MutatesReceiver: true},
+	{Name: "list.remove", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "index", Type: TypInt}}, Return: ListOf(tvT), Purity: PurityMutates, MutatesReceiver: true},
+	{Name: "list.indexOf", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "item", Type: tvT}}, Return: TypInt},
+	{Name: "list.join", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "sep", Type: TypString}}, Return: TypString},
+	{Name: "list.reverse", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}}, Return: ListOf(tvT)},
+	{Name: "list.slice", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "start", Type: TypInt}, {Name: "end", Type: TypInt}}, Return: ListOf(tvT)},
+	{Name: "list.filter", TypeParams: []string{"T"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "pred", Type: FuncOf([]*Param{{Name: "item", Type: tvT}}, TypBool)}}, Return: ListOf(tvT)},
+	// map's second variable is the result element type, which its lib
+	// declaration writes as the method-level `<U>` in `list<T>.map<U>`.
+	{Name: "list.map", TypeParams: []string{"T", "U"}, Params: []*Param{{Name: "l", Type: ListOf(tvT)}, {Name: "fn", Type: FuncOf([]*Param{{Name: "item", Type: tvT}}, tvU)}}, Return: ListOf(tvU)},
 
 	// --- map ---
-	{Name: "map.length", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: TypInt},
-	{Name: "map.keys", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "map.values", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}}, Return: ListOf(TypDyn)},
-	{Name: "map.contains", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}}, Return: TypBool},
-	{Name: "map.get", Params: []*Param{{Name: "m", Type: MapOf(TypDyn, TypDyn)}, {Name: "key", Type: TypDyn}, {Name: "def", Type: TypDyn}}, Return: TypDyn},
+	{Name: "map.length", TypeParams: []string{"K", "V"}, Params: []*Param{{Name: "m", Type: MapOf(tvK, tvV)}}, Return: TypInt},
+	{Name: "map.keys", TypeParams: []string{"K", "V"}, Params: []*Param{{Name: "m", Type: MapOf(tvK, tvV)}}, Return: ListOf(tvK)},
+	{Name: "map.values", TypeParams: []string{"K", "V"}, Params: []*Param{{Name: "m", Type: MapOf(tvK, tvV)}}, Return: ListOf(tvV)},
+	{Name: "map.contains", TypeParams: []string{"K", "V"}, Params: []*Param{{Name: "m", Type: MapOf(tvK, tvV)}, {Name: "key", Type: tvK}}, Return: TypBool},
+	{Name: "map.get", TypeParams: []string{"K", "V"}, Params: []*Param{{Name: "m", Type: MapOf(tvK, tvV)}, {Name: "key", Type: tvK}, {Name: "def", Type: tvV}}, Return: tvV},
 
 	// --- color ---
 	{Name: "color.hex", Params: []*Param{{Name: "c", Type: TypDyn}}, Return: TypString},
@@ -97,10 +139,12 @@ var Intrinsics = []IntrinsicDef{
 	// --- error ---
 	// ErrorRaise is recognised by effect analysis as the user-facing raise
 	// primitive. Codegen emits a target-appropriate error-propagation (never
-	// a normal function call) — the intrinsic name is the sentinel. Returns
-	// int purely to satisfy the expression-body forwarding in stdlib; the
-	// value is never used because every target lowers the call to an abort.
-	{Name: "error.raise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}, Return: TypInt},
+	// a normal function call) — the intrinsic name is the sentinel. Void: its
+	// lib declaration is a void block body, and every target lowers the call
+	// to an abort, so there is no value to hand back. It read `int` while
+	// nothing consulted a registry return type, which put the two records of
+	// this signature in disagreement.
+	{Name: "error.raise", Params: []*Param{{Name: "message", Type: TypString}, {Name: "kind", Type: TypString}}},
 
 	// --- html placement directives (GitLab #27) ---
 	// HtmlFrontend / HtmlBackend are identity intrinsics: they return their sole
@@ -111,8 +155,8 @@ var Intrinsics = []IntrinsicDef{
 	// they never block folding of their argument, but the call node itself is
 	// preserved because the wrapping stdlib funcs are generic (InlinePure skips
 	// generics) and carry a non-empty Intrinsic id.
-	{Name: "html.frontend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
-	{Name: "html.backend", Params: []*Param{{Name: "v", Type: TypDyn}}, Return: TypDyn},
+	{Name: "html.frontend", TypeParams: []string{"T"}, Params: []*Param{{Name: "v", Type: tvT}}, Return: tvT},
+	{Name: "html.backend", TypeParams: []string{"T"}, Params: []*Param{{Name: "v", Type: tvT}}, Return: tvT},
 }
 
 // AlertIntrinsics are platform-level intrinsics for dialog/toast operations.
@@ -120,10 +164,10 @@ var Intrinsics = []IntrinsicDef{
 var AlertIntrinsics = []IntrinsicDef{
 	// Alerts cause visible UI side effects (dialogs/toasts); treat as Mutates
 	// so the optimizer never folds calls to them.
-	{Name: "Alert.toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Alert.info", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Alert.warn", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
-	{Name: "Alert.error", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypInt, Purity: PurityMutates},
+	{Name: "Alert.toast", Params: []*Param{{Name: "message", Type: TypString}, {Name: "variant", Type: TypString}}, Purity: PurityMutates},
+	{Name: "Alert.info", Params: []*Param{{Name: "message", Type: TypString}}, Purity: PurityMutates},
+	{Name: "Alert.warn", Params: []*Param{{Name: "message", Type: TypString}}, Purity: PurityMutates},
+	{Name: "Alert.error", Params: []*Param{{Name: "message", Type: TypString}}, Purity: PurityMutates},
 	{Name: "Alert.confirm", Params: []*Param{{Name: "message", Type: TypString}}, Return: TypBool, Purity: PurityMutates},
 }
 
