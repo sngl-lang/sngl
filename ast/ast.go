@@ -234,26 +234,33 @@ type UnitSuffix struct {
 // position of Names[i]. Empty when the parser didn't track positions
 // (older fixtures, synthesized specs).
 type VarSpec struct {
+	Pos           Pos
 	Names         []string
 	NamePositions []Pos
 	Type          TypeExpr
 	Default       Expr
 	Handlers      []EventHandler
+	Leading       []*Comment `json:",omitempty"` // comments written above it in a group
+	Trailing      *Comment   `json:",omitempty"` // the comment written after it on its line
 }
 
 // ConstDecl declares one or more constants.
 type ConstDecl struct {
 	Pos       Pos
+	EndPos    Pos // the closing paren of a group, which bounds the comments inside it
 	IsGrouped bool
 	Specs     []VarSpec
+	Tail      []*Comment  `json:",omitempty"` // comments after the last spec, still inside the group
 	Attrs     []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
 // VarDecl declares one or more variables.
 type VarDecl struct {
 	Pos       Pos
+	EndPos    Pos // the closing paren of a group, which bounds the comments inside it
 	IsGrouped bool
 	Specs     []VarSpec
+	Tail      []*Comment  `json:",omitempty"` // comments after the last spec, still inside the group
 	Attrs     []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
 }
 
