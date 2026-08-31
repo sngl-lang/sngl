@@ -24,14 +24,14 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	}
 	// main may be nil: a program declaring its windows at top level has none,
 	// and its visual tree lives in pkg.Windows instead.
-	main := mainComponent(pkg)
+	main := rootComponent(pkg, opts)
 	if main == nil && len(pkg.Windows) == 0 {
 		// No root to inline into. Every component is its own entry point, so
 		// there is nothing to flatten and nothing is unreachable -- running
 		// the pass anyway would retain an empty keep set and drop them all.
 		return nil
 	}
-	cycles := findRecursiveCycles(pkg)
+	cycles := findRecursiveCycles(pkg, opts)
 	reactive := collectReactiveVars(pkg)
 	onList := make(map[*ir.Component]bool, len(pkg.Components))
 	for _, c := range pkg.Components {
@@ -139,10 +139,19 @@ func (st *inlineCompState) run() error {
 	return nil
 }
 
-// mainComponent returns the package's main component, or nil if absent.
-func mainComponent(pkg *ir.Package) *ir.Component {
+// rootComponent returns the component lowering treats as the program's entry
+// point: the one opts names, and otherwise the one called "main".
+//
+// A test build names the component under test, because that is what the
+// harness renders. Left to find "main", the inliner flattens the component
+// under test into the program's own root and renames its state per instance.
+func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
+	want := opts.RootComponent
+	if want == "" {
+		want = "main"
+	}
 	for _, c := range pkg.Components {
-		if c.Name == "main" {
+		if c.Name == want {
 			return c
 		}
 	}
@@ -152,7 +161,7 @@ func mainComponent(pkg *ir.Package) *ir.Component {
 // findRecursiveCycles returns the set of components participating in any
 // call cycle (including self-recursion). Edges follow NodeInst.Component
 // from each component's body, funcs, and nested control-flow.
-func findRecursiveCycles(pkg *ir.Package) map[*ir.Component]bool {
+func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	edges := map[*ir.Component]map[*ir.Component]bool{}
 	for _, c := range pkg.Components {
 		edges[c] = map[*ir.Component]bool{}
@@ -164,7 +173,7 @@ func findRecursiveCycles(pkg *ir.Package) map[*ir.Component]bool {
 	// Also scan pkg.Windows so components instantiated inside window bodies
 	// participate in cycle detection. Use a synthetic "main" edge set since
 	// windows are not independent cycle roots — they live in main's scope.
-	if main := mainComponent(pkg); main != nil {
+	if main := rootComponent(pkg, opts); main != nil {
 		for _, w := range pkg.Windows {
 			collectCalleeEdges(w.Body, edges[main])
 			for _, f := range w.Funcs {

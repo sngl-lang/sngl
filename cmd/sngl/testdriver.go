@@ -50,39 +50,10 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
 
-	// The package arrives checked but not lowered, and must go through the
-	// generate pipeline's full optimize→lower→optimize: lower alone leaves
-	// constructs the language codegen rejects, e.g. a ternary stranded in the
-	// __ctx_* Var.Init passContext synthesizes, which NoTernary does not rewrite
-	// (it lowers ternaries in statement positions only) and the post-lower
-	// optimize folds away.
-	optCfg := &optimize.Config{
-		Platform: plat.PlatformIdentifier(),
-		Language: langIdent(lang),
-	}
-	if err := optimize.Optimize(pkg, optCfg); err != nil {
-		return nil, fmt.Errorf("optimize for tests: %w", err)
-	}
-
-	caps := plat.Capabilities(lang).ToLowerCaps()
-	// The same options every other caller lowers with. Without the language,
-	// passPlatformExtensionBody picks a different body for a component that
-	// overrides on both axes, so the program under test was not the program
-	// `sngl generate` builds.
-	if err := lower.Lower(pkg, caps, lower.Options{
-		Platform:        plat.PlatformIdentifier(),
-		Language:        langIdent(lang),
-		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
-	}); err != nil {
-		return nil, fmt.Errorf("lower for tests: %w", err)
-	}
-
-	if caps != (lower.Caps{}) {
-		if err := optimize.Optimize(pkg, optCfg); err != nil {
-			return nil, fmt.Errorf("optimize for tests: %w", err)
-		}
-	}
-
+	// Group before lowering, not after: the component under test is what the
+	// harness renders, so it is the program's entry point for this build, and
+	// lowering has to know that before it inlines anything. Grouping reads the
+	// second parameter's type, which the checked IR already carries.
 	var testFns []*ir.Func
 	for _, f := range pkg.Funcs {
 		if f.IsTest {
@@ -97,11 +68,20 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	groups := testharness.GroupIR(testFns)
 
 	for _, group := range groups {
+		// Each group lowers its own clone, the way each build target does: the
+		// pipeline mutates in place, and two groups do not agree on what the
+		// root is.
+		groupPkg := ir.ClonePackage(pkg)
+		rootForTests(groupPkg, group.Component)
+		if err := prepareForLaunch(groupPkg, plat, lang, group.Component); err != nil {
+			return results, err
+		}
+
 		groupOpts := cloneOptions(opts)
 		if group.Component != "" {
 			codegen.SetOptionField(groupOpts, "rootComponent", group.Component)
 		}
-		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, pkg, groupOpts, fixtureDir, fixtureFile, group)
+		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, groupPkg, groupOpts, fixtureDir, fixtureFile, group)
 		if err != nil {
 			return results, err
 		}
@@ -313,4 +293,57 @@ func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.M
 		return
 	}
 	_ = w.Respond(*m.ID, map[string]any{"pass": res.Pass, "diff": res.Diff}, nil)
+}
+
+// rootForTests makes comp the program's only entry point.
+//
+// A test renders the component it names, not the program around it. Left in
+// place, that program is a root the inliner flattens the component under test
+// into -- renaming its state per instance, so the Model carries `n__inst0`
+// where the agent, written against the declaration, asks for `n`. The symptom
+// was that a component test passed only while nothing else in the program
+// rendered (#136).
+//
+// A group naming no component tests plain functions; there is nothing to make
+// a root of, and the program is left as it is.
+func rootForTests(pkg *ir.Package, comp string) {
+	if comp == "" {
+		return
+	}
+	pkg.Body = nil
+	pkg.Windows = nil
+}
+
+// prepareForLaunch runs the generate pipeline's full optimize→lower→optimize
+// over one group's package. lower alone leaves constructs the language codegen
+// rejects, e.g. a ternary stranded in the __ctx_* Var.Init passContext
+// synthesizes, which NoTernary does not rewrite (it lowers ternaries in
+// statement positions only) and the post-lower optimize folds away.
+func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang codegen.LangTranslator, root string) error {
+	optCfg := &optimize.Config{
+		Platform: plat.PlatformIdentifier(),
+		Language: langIdent(lang),
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		return fmt.Errorf("optimize for tests: %w", err)
+	}
+	caps := plat.Capabilities(lang).ToLowerCaps()
+	// The same options every other caller lowers with. Without the language,
+	// passPlatformExtensionBody picks a different body for a component that
+	// overrides on both axes, so the program under test was not the program
+	// `sngl generate` builds.
+	if err := lower.Lower(pkg, caps, lower.Options{
+		Platform:        plat.PlatformIdentifier(),
+		Language:        langIdent(lang),
+		RootComponent:   root,
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+	}); err != nil {
+		return fmt.Errorf("lower for tests: %w", err)
+	}
+	if caps != (lower.Caps{}) {
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return fmt.Errorf("optimize for tests: %w", err)
+		}
+	}
+	return nil
 }

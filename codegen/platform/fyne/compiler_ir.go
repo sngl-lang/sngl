@@ -163,6 +163,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
+	var eventInvokers []fyneEventInvoker
 	var entrySync []entrySyncRec
 	widgetImports := map[string]bool{}
 	addWidgetImport := func(p string) { widgetImports[p] = true }
@@ -208,7 +209,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			bodyStmts := wins[0].Body
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport).withLocalRefs(mainScopeLocalRefs(ctx))
+			}, addWidgetImport).withLocalRefs(mainScopeLocalRefs(ctx)).
+				withInvokerSink(func(inv fyneEventInvoker) {
+					eventInvokers = append(eventInvokers, inv)
+				})
 			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
@@ -387,6 +391,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			Body:       bodyBuf.String(),
 		})
 	}
+
+	emitFyneEventInvokers(&funcBuf, eventInvokers)
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {

@@ -600,6 +600,15 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 // enclosing parameter rather than left pointing at a parameter that is about
 // to be inlined away.
 func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *ir.Func) []ir.Stmt {
+	return substituteEventsUnder(stmts, handlers, enclosing, nil)
+}
+
+// substituteEventsUnder is substituteEventsIn carrying the override's own
+// event handler whose body is being walked, so a substitution made beneath it
+// can record which program-written event it serves. That pairing exists only
+// here: after this pass the override's `click()` emit is gone, replaced by the
+// program's block, and the handler is left named for the host widget's event.
+func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *ir.Func, under *ir.EventHandler) []ir.Stmt {
 	byName := map[string]*ir.EventHandler{}
 	for i := range handlers {
 		h := &handlers[i]
@@ -609,6 +618,9 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 	for _, s := range stmts {
 		if emit, isEmit := s.(*ir.Emit); isEmit {
 			if h, ok := byName[emit.Name]; ok && h != nil && h.Func != nil {
+				if under != nil && under.ComponentEvent == "" {
+					under.ComponentEvent = emit.Name
+				}
 				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args, enclosing)...)
 				continue
 			}
@@ -624,6 +636,9 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.AST != nil {
 			if evRef, ok := cs.Call.AST.Func.(*ast.EventRefExpr); ok {
 				if h, ok := byName[evRef.Name]; ok && h != nil && h.Func != nil {
+					if under != nil && under.ComponentEvent == "" {
+						under.ComponentEvent = evRef.Name
+					}
 					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args, enclosing)...)
 					continue
 				}
@@ -637,31 +652,35 @@ func substituteEventsIn(stmts []ir.Stmt, handlers []ir.EventHandler, enclosing *
 		}
 		switch n := s.(type) {
 		case *ir.If:
-			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
-			n.Else = substituteEventsIn(n.Else, handlers, enclosing)
+			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
+			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
 		case *ir.For:
-			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
-			n.Else = substituteEventsIn(n.Else, handlers, enclosing)
+			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
+			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
 		case *ir.NodeInst:
-			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
+			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 			// A prop lambda is the enclosing scope of its own body: a
 			// parameter a user handler names but the emit passes no argument
 			// for is the one this lambda receives.
 			for _, f := range propLambdas(n) {
-				f.Block = substituteEventsIn(f.Block, handlers, f)
+				f.Block = substituteEventsUnder(f.Block, handlers, f, under)
 			}
-			for _, h := range n.Handlers {
+			for i := range n.Handlers {
+				h := &n.Handlers[i]
 				if h.Func == nil {
 					continue
 				}
-				h.Func.Block = substituteEventsIn(h.Func.Block, handlers, h.Func)
+				// This handler is the override's subscription to its host
+				// widget's event; anything substituted inside it is the
+				// program's, so it is what `under` names.
+				h.Func.Block = substituteEventsUnder(h.Func.Block, handlers, h.Func, h)
 			}
 		case *ir.SlotInst:
-			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
+			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
-			n.Children = substituteEventsIn(n.Children, handlers, enclosing)
+			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.Window:
-			n.Body = substituteEventsIn(n.Body, handlers, enclosing)
+			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider:
 			// Leaf/imperative — no nested Emit/EventRefExpr that this pass
 			// would substitute. (CallStmt with EventRefExpr handled above.)

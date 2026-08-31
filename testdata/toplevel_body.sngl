@@ -1,0 +1,16 @@
+// A program's top level is its body: visual nodes written outside any
+// component or window are what it renders, with the package's own vars as the
+// state they read. The package is a state owner like the other two
+// (ir.Owners), and passRootWindow turns the body into the window a program
+// opens at, so nothing downstream needs a third shape.
+
+import . "sngl:ui"
+
+var count = 0
+
+var label = "clicks"
+
+vbox {
+    text(value="{label}: {count}")
+    button #inc(text="+", @click { count = count + 1 })
+}

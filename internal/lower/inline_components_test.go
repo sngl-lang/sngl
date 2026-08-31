@@ -22,7 +22,7 @@ func TestFindRecursiveCycles(t *testing.T) {
 	e.Body = []ir.Stmt{}
 
 	pkg := &ir.Package{Components: []*ir.Component{a, b, c, d, e}}
-	got := findRecursiveCycles(pkg)
+	got := findRecursiveCycles(pkg, Options{})
 	want := map[*ir.Component]bool{a: true, b: true, c: true}
 	for k := range want {
 		if !got[k] {
@@ -42,7 +42,7 @@ func TestFindRecursiveCyclesThroughIfBranch(t *testing.T) {
 		&ir.If{Body: []ir.Stmt{&ir.NodeInst{Component: tv}}},
 	}
 	pkg := &ir.Package{Components: []*ir.Component{tv}}
-	got := findRecursiveCycles(pkg)
+	got := findRecursiveCycles(pkg, Options{})
 	if !got[tv] {
 		t.Errorf("TreeView self-recursion should be detected")
 	}

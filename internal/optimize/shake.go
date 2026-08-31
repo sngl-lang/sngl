@@ -131,7 +131,11 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		}
 	}
 
-	// Roots: components, windows, timers, outputs, test functions.
+	// Roots: the package body, components, windows, timers, outputs, test
+	// functions. The package body is a root like a window's: it is rendered,
+	// so what it reads is used. Left out, a top-level `var` looked unread and
+	// was shaken away while the body kept referring to it.
+	walkStmts(pkg.Body, used, walk)
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}

@@ -301,6 +301,12 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
+	// pendingPkgBody holds the statements written at the package's top level,
+	// collected in pass1 and checked in pass2. They cannot be checked where
+	// they are found: they read vars and instantiate components that pass1 is
+	// still registering.
+	pendingPkgBody []ast.Stmt
+
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
 	optionsCache map[string]*ir.StructDef
@@ -531,9 +537,9 @@ func docFileName(d *ast.Document) string {
 // left the program with no file current, and the imports registered after it
 // bound into the package scope where every sibling could see them.
 func (c *checker) saveFile() func() {
-	doc, scope, top := c.doc, c.curFileScope, c.topLevel
+	doc, scope := c.doc, c.curFileScope
 	return func() {
-		c.doc, c.curFileScope, c.topLevel = doc, scope, top
+		c.doc, c.curFileScope = doc, scope
 		if c.curFileScope != nil {
 			c.symtab.Root.Parent = c.curFileScope
 		}
@@ -920,6 +926,50 @@ func (c *checker) stmts() []ast.Stmt {
 	return out
 }
 
+// enterPackage switches the checker to docs and returns the restore.
+//
+// A lib package loads lazily -- the first import that names it, or the error
+// path that searches every package for a "did you forget an import?" hint --
+// so the load fires in the middle of the program's own pass1. It then runs
+// that same pass1, which opens by clearing the per-package registration state
+// below. Restoring only c.docs left the rest cleared for the remainder of the
+// program's pass1:
+//
+//   - topLevel is the file-scope claim table, so every name claimed before the
+//     load was forgotten and a later declaration colliding with one went
+//     unreported. A component whose prop names an unknown type is enough to
+//     trigger it, because the hint search loads every public package.
+//   - replaces is the import-replace map, collected once at the top of pass1
+//     for the whole package. Cleared mid-import-loop, a later
+//     `import "p" => "url"` resolves without its replacement.
+//   - pendingPkgBody accumulates the program's top-level visual nodes across
+//     pass1 rather than being reset by it, so the loaded package would append
+//     its own to the program's.
+//
+// The rule is that anything pass1 touches is this package's, whether it resets
+// it or builds it up. TestEnterPackageRestoresWhatPass1Resets enforces exactly
+// that, and is what caught pendingPkgBody: the field and the guard arrived on
+// separate branches, so neither failed until they met on main.
+//
+// Anything pass1 resets belongs here. The two are one function because the
+// bug is precisely that they were not.
+func (c *checker) enterPackage(docs []*ast.Document) func() {
+	savedDocs, savedTopLevel := c.docs, c.topLevel
+	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
+	restoreFile := c.saveFile()
+	c.docs = docs
+	// Cleared rather than merely saved: pass1 accumulates into this one, so
+	// left in place the loaded package would append its own top-level body to
+	// the program's. No lib package writes one today, which is the only reason
+	// that is a latent leak rather than a live one.
+	c.pendingPkgBody = nil
+	return func() {
+		restoreFile()
+		c.docs, c.topLevel = savedDocs, savedTopLevel
+		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
+	}
+}
+
 // pass1 registers every declaration in the package. Each stage runs across all
 // files before the next begins, which is what makes a forward reference work
 // between two files as it already did within one: every type name exists
@@ -1015,10 +1065,15 @@ func (c *checker) pass1() {
 			case *ast.VisualNode:
 				c.registerRootVisualNode(s)
 			case *ast.CallStmt:
+				// A context declaration is a call statement by syntax and a
+				// declaration by meaning, so it is recognised before anything
+				// else. Everything left is the package's body: `counter()` -- a
+				// component instantiated with no block -- parses as a call, and is
+				// the composition a top-level body is usually made of.
 				if c.isContextDeclCallStmt(s) {
 					c.registerRootContextDecl(s)
 				} else {
-					c.error(s.Pos, "unexpected top-level call statement")
+					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
 			case *ast.DisabledDecl:
 			case *ast.Comment:
@@ -2403,7 +2458,33 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		}
 		c.buildOutputs(vn)
 	default:
-		c.error(vn.Pos, "unexpected root-level visual node %q", name)
+		// An ordinary visual node at the top level is the package's own body:
+		// what the program renders, with the package's vars as its state. Held
+		// until pass2, because it reads declarations pass1 is still making.
+		c.pendingPkgBody = append(c.pendingPkgBody, ast.Stmt(vn))
+	}
+}
+
+// checkPackageBody checks the visual nodes written at the package's top level
+// into c.pkg.Body.
+//
+// The package is a state owner like a component or a window (ir.Owners): its
+// vars are the state this body reads, and they are already bound at file scope
+// by pass1, so unlike checkComponentBody and checkWindowBody there is nothing
+// to declare here but the node ids.
+func (c *checker) checkPackageBody() {
+	if len(c.pendingPkgBody) == 0 {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, st := range c.pendingPkgBody {
+		c.declareNodeIDsStmt(st, false)
+	}
+	for _, st := range c.pendingPkgBody {
+		if checked := c.checkStmt(st); checked != nil {
+			c.pkg.Body = append(c.pkg.Body, checked)
+		}
 	}
 }
 
@@ -3110,6 +3191,8 @@ func (c *checker) pass2() {
 			c.checkWindowBody(w)
 		}
 	}
+
+	c.checkPackageBody()
 
 	// Check timer handler bodies (component timers are checked inside
 	// checkComponentBody so they can see component vars in scope).

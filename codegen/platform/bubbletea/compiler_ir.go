@@ -610,7 +610,20 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 	b.WriteString("}\n\n")
 
-	emitIRUpdate(&b, info, ctx, gc, cfg)
+	var eventInvokers []btEventInvoker
+	emitIRUpdate(&b, info, ctx, gc, cfg, func(n *ir.NodeInst, event string, slotIdx int, keyExpr string) {
+		// A synthesized id is not something a test can write.
+		if n.ID == "" || strings.HasPrefix(n.ID, "__n") {
+			return
+		}
+		eventInvokers = append(eventInvokers, btEventInvoker{
+			IDLabel:   n.ID,
+			SnglEvent: event,
+			SlotIdx:   slotIdx,
+			KeyExpr:   keyExpr,
+		})
+	})
+	emitBtEventInvokers(&b, eventInvokers)
 
 	emitIRView(&b, info, ctx, gc, cfg)
 
@@ -789,7 +802,7 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 	}
 }
 
-func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
+func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, invokerSink btInvokerSink) {
 	b.WriteString("func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {\n")
 	// Accumulate every command into a batch. Each widget forward and each
 	// message handler may produce a command (a timer re-arm, a spinner tick, a
@@ -932,7 +945,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// emitIRButtonHandlers) so overlay-content buttons keep working.
 	wins := ctx.Windows()
 	for _, win := range wins {
-		emitIRButtonHandlers(b, win.Body, info, gc, caseGuard)
+		emitIRButtonHandlers(b, win.Body, info, gc, caseGuard, invokerSink)
 	}
 
 	b.WriteString("\t\t}\n") // end switch
@@ -997,9 +1010,13 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // (non-overlay) handler case so background activation is frozen while an overlay
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
-func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, nil, bgGuard, false)
+func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
+	emitIRButtonHandlersWalk(b, stmts, info, gc, nil, bgGuard, false, invokerSink)
 }
+
+// btInvokerSink records one (node, event) pair a test can drive. nil where
+// there is no test surface to emit.
+type btInvokerSink func(n *ir.NodeInst, event string, slotIdx int, keyExpr string)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. currentFor is non-nil when inside a for-loop that
@@ -1007,7 +1024,7 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 // loop-wrapped body that matches the cursor to the current iteration. bgGuard is
 // appended to each case unless inOverlay is set (overlay-content handlers stay
 // unguarded so they keep working while the overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For, bgGuard string, inOverlay bool) {
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
@@ -1096,12 +1113,12 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, n, bgGuard, inOverlay)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, n, bgGuard, inOverlay, invokerSink)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
@@ -1119,11 +1136,18 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
+				// A loop slot's focus index is per-iteration, so only a static
+				// one is a thing a test can name and drive.
+				if invokerSink != nil && currentFor == nil {
+					if idx := nodeFocusSlotIdx(n); idx >= 0 {
+						invokerSink(n, ev.On, idx, teaKeyMsg(ev.Key))
+					}
+				}
 			}
 			// Overlay-content handlers stay live while the overlay is open, so
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay, invokerSink)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Window:
@@ -1190,6 +1214,56 @@ func overlayCloseVar(cond ir.Expr) string {
 
 // teaKeyGuard maps an Event record's `key` string to a bubbletea key-message
 // guard expression. Returns "" for an unknown key (the case is skipped).
+// btEventInvoker is one (#id, @event) pair a test can drive. Firing it sends
+// the key that activates the widget through Update, which is this platform's
+// real input path -- a TUI has no pointer, and a button is activated by
+// pressing a key while it holds focus.
+type btEventInvoker struct {
+	IDLabel   string // the #id a program wrote
+	SnglEvent string // the event a test writes, e.g. "click"
+	SlotIdx   int    // the focus slot the widget occupies
+	KeyExpr   string // the tea key message that activates it
+}
+
+// teaKeyMsg is the message a press of key arrives as. It pairs with
+// teaKeyGuard: one says how Update recognises the key, the other how a test
+// produces it, and they name the same constant.
+func teaKeyMsg(key string) string {
+	guard := teaKeyGuard(key)
+	const prefix = "msg.Code == "
+	if !strings.HasPrefix(guard, prefix) {
+		return ""
+	}
+	return "tea.KeyPressMsg{Code: " + strings.TrimPrefix(guard, prefix) + "}"
+}
+
+// emitBtEventInvokers writes one Model method per (id, event) pair. Each sets
+// focus to the widget, sends the activating key through Update, and restores
+// focus -- so the handler runs by the same route a keypress takes, including
+// whatever else Update does with the message.
+//
+// Update takes and returns a Model by value, so the result is assigned back
+// through the pointer receiver; a test holds an addressable local, which is
+// what makes `c.incClick()` legal.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
+	seen := map[string]bool{}
+	for _, inv := range invokers {
+		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
+		if seen[name] || inv.KeyExpr == "" {
+			continue
+		}
+		seen[name] = true
+		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
+		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		fmt.Fprintf(b, "\tprev := m.__focusID\n")
+		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
+		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
+		fmt.Fprintf(b, "\tm.__focusID = prev\n")
+		b.WriteString("}\n\n")
+	}
+}
+
 func teaKeyGuard(key string) string {
 	switch key {
 	case "enter":
