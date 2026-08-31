@@ -156,9 +156,14 @@ component main {
 	}
 }
 
-// TestMountExpandsUserComponentsInPlace pins the semantics the existing walks
-// have: a user component contributes no node, so its children are the parent's.
-func TestMountExpandsUserComponentsInPlace(t *testing.T) {
+// TestAComponentInstantiationIsANodeWithItsExpansionBeneath is the shape that
+// lets one tree serve readers wanting opposite things.
+//
+// An element ref and a snapshot want the rendered tree, so they descend through
+// a component. `c.children` wants the authored tree, so it stops at one and
+// hands back the component itself. Expanding at mount time served the first and
+// made the second impossible.
+func TestAComponentInstantiationIsANodeWithItsExpansionBeneath(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component leaf() {
@@ -174,11 +179,58 @@ component main {
 	if err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
-	if got := len(v.Find("inner")); got != 1 {
-		t.Errorf("#inner resolved to %d nodes, want 1", got)
+
+	if len(v.Roots) != 1 {
+		t.Fatalf("mounted %d roots, want 1", len(v.Roots))
 	}
+	root := v.Roots[0]
+	if !root.IsComponent() {
+		t.Fatalf("root is %q, which is not a component node", root.Name)
+	}
+	if len(root.Children) != 1 || root.Children[0].Name != "text" {
+		t.Errorf("component's children are %v, want one text", root.Children)
+	}
+
+	// The rendered reading: descend through the component.
+	if got := len(v.Find("inner")); got != 1 {
+		t.Errorf("#inner resolved to %d element nodes, want 1", got)
+	}
+	// A component instantiation is not an element ref, which is what
+	// ResolveElementRef has always done -- so Find skips it...
 	if got := len(v.Find("outer")); got != 0 {
-		t.Errorf("#outer resolved to %d nodes; a component instantiation is not addressable", got)
+		t.Errorf("#outer resolved to %d element nodes; a component is not one", got)
+	}
+	// ...while the tree still holds it, for the authored reading.
+	if got := len(v.FindAny("outer")); got != 1 {
+		t.Errorf("FindAny(#outer) found %d nodes, want 1", got)
+	}
+}
+
+// TestComponentNodeCarriesItsArguments: the instantiation's props are the
+// arguments, evaluated in the caller's scope.
+func TestComponentNodeCarriesItsArguments(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component leaf(label string) {
+    text(value=label)
+}
+
+component main {
+    var greeting = "hello"
+    leaf #outer(label=greeting)
+}
+`
+	env, _ := envFor(t, src, "main")
+	v, err := Mount(env)
+	if err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+	nodes := v.FindAny("outer")
+	if len(nodes) != 1 {
+		t.Fatalf("FindAny(#outer) found %d nodes, want 1", len(nodes))
+	}
+	if got := nodes[0].Props["label"]; got != "hello" {
+		t.Errorf("label = %v, want the caller's greeting %q", got, "hello")
 	}
 }
 

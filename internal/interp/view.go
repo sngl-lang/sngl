@@ -60,7 +60,20 @@ type Node struct {
 	// Inst is the IR this node was mounted from, or nil for the
 	// children-less call form. Repointed by a reload; never used as identity.
 	Inst *ir.NodeInst
+	// Component is the declaration this node instantiates, non-nil only for a
+	// user component. Its Children are the expansion of that component's body.
+	//
+	// Keeping the instantiation as a node is what lets one tree serve readers
+	// that want opposite things. An element ref and a snapshot want the
+	// *rendered* tree, so they descend through it; `c.children` wants the
+	// *authored* tree, so it stops here and hands back the component itself.
+	// Expanding at mount time served the first and made the second impossible.
+	Component *ir.Component
 }
+
+// IsComponent reports whether this node instantiates a user component rather
+// than a platform element.
+func (n *Node) IsComponent() bool { return n != nil && n.Component != nil }
 
 // Mount builds the retained tree for env's component body.
 func Mount(env *Env) (*View, error) {
@@ -81,8 +94,29 @@ func Mount(env *Env) (*View, error) {
 	return v, nil
 }
 
-// Find returns the nodes carrying the given #id, in mount order.
+// Find returns the element nodes carrying the given #id, in mount order.
+//
+// A component instantiation is skipped even when it carries an id, which is
+// what ResolveElementRef has always done: `c.<id>` names an element whose
+// props are read, and a component's props are reached through its own fields.
+// FindAny is the unfiltered form.
 func (v *View) Find(id string) []*Node {
+	if v == nil {
+		return nil
+	}
+	var out []*Node
+	for _, n := range v.byID[id] {
+		if n.IsComponent() {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+// FindAny returns every node carrying the given #id, component instantiations
+// included.
+func (v *View) FindAny(id string) []*Node {
 	if v == nil {
 		return nil
 	}
@@ -287,11 +321,30 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		if env.RenderDepth >= maxCallDepth {
 			return nil, nil
 		}
+		// The instantiation's own props are the arguments, evaluated in the
+		// caller's scope -- the same values componentEnv binds to the
+		// component's parameters.
+		node := &Node{
+			Key:       m.key(path),
+			Name:      inst.Name,
+			ID:        inst.ID,
+			Env:       env,
+			Inst:      inst,
+			Component: inst.Component,
+		}
+		node.Props, node.PropOrder = evalProps(env, inst.Props)
+		m.add(node)
+
 		child := env.componentEnv(inst.Component, inst)
 		child.RenderDepth = env.RenderDepth + 1
 		m.push(slotFrame{callsite: inst, env: env})
 		defer m.pop()
-		return m.stmts(child, child.BodyStmts, path)
+		kids, err := m.stmts(child, child.BodyStmts, path)
+		if err != nil {
+			return nil, err
+		}
+		node.Children = kids
+		return []*Node{node}, nil
 	}
 
 	node := &Node{
@@ -328,6 +381,27 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			if env.RenderDepth >= maxCallDepth {
 				return nil, nil
 			}
+			node := &Node{
+				Key:       m.key(path),
+				Name:      name,
+				ID:        id,
+				Env:       env,
+				Component: comp,
+				Props:     map[string]any{},
+			}
+			if cs.Call != nil {
+				for _, arg := range cs.Call.Args {
+					if arg.Name == "" {
+						continue
+					}
+					if v, err := env.Eval(arg.Value); err == nil {
+						node.Props[arg.Name] = v
+						node.PropOrder = append(node.PropOrder, arg.Name)
+					}
+				}
+			}
+			m.add(node)
+
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
 			// The children-less call form supplies nothing, but it still opens
@@ -335,7 +409,12 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			// would read the *enclosing* call site's content.
 			m.push(slotFrame{env: env})
 			defer m.pop()
-			return m.stmts(child, child.BodyStmts, path)
+			kids, err := m.stmts(child, child.BodyStmts, path)
+			if err != nil {
+				return nil, err
+			}
+			node.Children = kids
+			return []*Node{node}, nil
 		}
 	}
 
