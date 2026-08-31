@@ -1,0 +1,57 @@
+# `c.<id>.click()` drives a real GTK signal.
+#
+# gtk4 had the scaffolding for this and none of the wiring: gtkEventInvoker was
+# declared, emitEventInvokers was written and called, and nothing anywhere
+# constructed an invoker, so the slice was always empty. The runtime half
+# already shipped -- gtk4rt.Emit is g_signal_emit_by_name, commented "used by
+# generated test invokers".
+#
+# No pointer or key simulation is involved, and no layout: emitting the signal
+# runs the real trampoline and Go callback bridge, synchronously. What it does
+# not check is that the widget is visible, sensitive and hittable -- a signal
+# emitted at a hidden button still fires -- which is a different kind of test.
+
+sngl test --platform gtk4 click.sngl
+stdout 'ok'
+
+# The invoker is named for the event a program writes, not the one the platform
+# subscribes to. gtk4's button override is `@clicked { click() }`, so by the
+# time a handler is promoted it is named "clicked" while a test writes
+# `click()`. The pairing is recorded during the substitution that inlines the
+# program's block, which is the last point both names exist.
+sngl generate --platform=gtk4 --lang=go --out=out rooted.sngl
+grep 'func \(m \*Model\) incClick\(\)' out/model.go
+grep 'gtk4rt.Emit\(m.inc, "clicked"\)' out/model.go
+
+# A synthesized id is not something a test can name, so it gets no invoker.
+! grep 'func \(m \*Model\) __n' out/model.go
+
+-- click.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}
+
+func testIncrement(t Test, c counter) {
+    c.inc.click()
+    t.assert(c.n == 1)
+}
+
+-- rooted.sngl --
+import . "sngl:ui"
+
+counter()
+
+component counter {
+    var n = 0
+    vbox {
+        text(value="{n}")
+        button #inc(text="+", @click { n = n + 1 })
+    }
+}

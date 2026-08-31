@@ -338,6 +338,14 @@ type Func struct {
 	// takes a single string param rather than the SNGL InputEvent).
 	LoweredFromTag   string `json:"-"`
 	LoweredFromEvent string `json:"-"`
+	// LoweredFromComponentEvent is the event a *program* wrote, when this
+	// handler serves one. A platform override subscribes to its host widget's
+	// event and re-raises the component's -- gtk4's button is
+	// `@clicked { click() }` -- so by the time a handler is promoted its name
+	// is the host's ("clicked") and the name a test can write ("click") is
+	// gone. Recorded where the two are still both visible: the substitution
+	// that replaces the `click()` emit with the program's own block.
+	LoweredFromComponentEvent string `json:"-"`
 	// LoweredFromNode is the synthesized node id (`__nN`) the handler was
 	// attached to. A tag identifies the *kind* of node and no more, so a
 	// platform whose components all lower to a handful of primitives has to
@@ -541,6 +549,10 @@ type EventHandler struct {
 	AST  *ast.EventHandler
 	Name string
 	Func *Func
+	// ComponentEvent is the event a program wrote that this handler ends up
+	// serving, when it is a platform override's subscription to its host
+	// widget's event. See Func.LoweredFromComponentEvent, which it feeds.
+	ComponentEvent string `json:"-"`
 	// CanError is set by effect analysis when the handler body may raise
 	// or calls a function that may raise. Codegen uses this to decide
 	// whether to emit error-propagation scaffolding for this handler.
