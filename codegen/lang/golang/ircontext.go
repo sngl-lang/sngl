@@ -290,6 +290,9 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
 		}
 	}
+	if field, ok := gc.modelField(n); ok {
+		return operand + "." + field
+	}
 	return operand + "." + ExportName(n.Field)
 }
 
@@ -403,7 +406,33 @@ func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
-func (gc *GoIRContext) MutTargetField(n *ir.Select) string { return ExportName(n.Field) }
+func (gc *GoIRContext) MutTargetField(n *ir.Select) string {
+	if field, ok := gc.modelField(n); ok {
+		return field
+	}
+	return ExportName(n.Field)
+}
+
+// modelField reports the Go name for a field selected straight off the model
+// receiver, which is the name the platform declared it with.
+//
+// A platform declares Model fields verbatim -- a node id, a slot, a canvas
+// context -- which is what codegen.ModelFieldRef means by `m.<name>`, and what
+// an element-ref Ident already renders. ExportName here spelled the same field
+// two different ways depending on which path reached it: read through Select,
+// written through MutTargetField. It went unnoticed because ExportName is the
+// identity on the synthesized ids (`__n1`), and broke on the first `#id` a
+// program wrote -- `m.Inc = widget.NewButton(...)` against a field named
+// `inc`, so no fyne or gtk4 program with a tagged widget compiled.
+//
+// One function for both paths, because two was the bug.
+func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
+	id, ok := n.Operand.(*ir.Ident)
+	if !ok || id.Name != gc.recvName() {
+		return "", false
+	}
+	return n.Field, true
+}
 
 func (gc *GoIRContext) StmtPrefix(s ir.Stmt) []string {
 	if !gc.EmitLineDirectives {
@@ -507,7 +536,21 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameFunc:
 		// Named as a value -- `xs.filter(keep)` -- this is a Go method value,
 		// which carries its receiver and matches the callback's signature.
-		return gc.recvName() + "." + ExportName(name)
+		//
+		// Spelled the way whoever emits it names it. EmitFuncDef writes
+		// fn.Name verbatim, so a reference is verbatim too -- exporting here
+		// named a method that was never declared: `m.Inc_click_handler`
+		// against `func (m *Model) inc_click_handler()`, which is every
+		// promoted handler on a tagged widget.
+		//
+		// Route mode is the exception, and says so by setting StateReceiver:
+		// writeRouteFuncs renames each func to its exported name before
+		// emitting, because there they are methods on a per-request State
+		// struct. Same split as MutTargetIdent makes for a state var.
+		if gc.Ctx.StateReceiver != "" {
+			return gc.Ctx.StateReceiver + "." + ExportName(name)
+		}
+		return gc.recvName() + "." + name
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return "m." + ExportName(name)
 	default:
