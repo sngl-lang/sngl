@@ -95,20 +95,54 @@ func TestComplete_TopLevel(t *testing.T) {
 	}
 }
 
+// The events offered inside a node's block are that component's, not every
+// event the library declares: `@` under a `button` is a click, not a change.
 func TestComplete_EventHandler(t *testing.T) {
-	content := "component Foo {\n  app {\n    button {\n      @click\n    }\n  }\n}"
+	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  vbox {\n    button {\n      @\n    }\n  }\n}"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
-	items := lspcore.Complete(content, doc, 4, 7)
-	// EventCompletions is currently stubbed in v2, so we just check no panic
-	_ = items
+	items := lspcore.Complete(content, doc, 6, 8)
+	labels := map[string]bool{}
+	for _, it := range items {
+		labels[it.Label] = true
+	}
+	if !labels["@click"] {
+		t.Errorf("button offers no @click; got %v", labels)
+	}
+	if labels["@change"] {
+		t.Errorf("button offered @change, which is input's: %v", labels)
+	}
 }
 
+// A node position offers what the file can name: its own components, and the
+// ones its imports brought in.
 func TestComplete_VisualNode(t *testing.T) {
-	content := "component Foo {\n  app {\n    \n  }\n}"
+	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  vbox {\n    \n  }\n}"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	items := lspcore.Complete(content, doc, 5, 5)
+	labels := map[string]bool{}
+	for _, it := range items {
+		labels[it.Label] = true
+	}
+	for _, name := range []string{"button", "text", "vbox"} {
+		if !labels[name] {
+			t.Errorf("sngl:ui is dot-imported but %q is not offered", name)
+		}
+	}
+	if labels["circle"] {
+		t.Error("circle offered without sngl:ui/draw imported")
+	}
+}
+
+// Without the import, none of it is in scope, so none of it is offered.
+func TestComplete_VisualNodeWithoutImports(t *testing.T) {
+	content := "component Foo {\n  Bar {\n    \n  }\n}\n\ncomponent Bar {\n}"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	items := lspcore.Complete(content, doc, 3, 5)
-	// ComponentNameCompletions returns user components (no stdlib in v2 yet)
-	_ = items
+	for _, it := range items {
+		if it.Label == "button" {
+			t.Error("button offered with no import of sngl:ui")
+		}
+	}
 }
 
 func TestComponentNameCompletions(t *testing.T) {
@@ -117,7 +151,7 @@ func TestComponentNameCompletions(t *testing.T) {
 			&ast.ComponentDecl{Name: "MyComp"},
 		},
 	}
-	items := lspcore.ComponentNameCompletions(doc)
+	items := lspcore.ComponentNameCompletions("", doc)
 	found := false
 	for _, item := range items {
 		if item.Label == "MyComp" {
@@ -130,10 +164,13 @@ func TestComponentNameCompletions(t *testing.T) {
 	}
 }
 
+// A nil document imports nothing, so only the ambient package contributes.
 func TestComponentNameCompletions_NilDoc(t *testing.T) {
-	items := lspcore.ComponentNameCompletions(nil)
-	// No stdlib in v2 yet, so nil doc returns empty
-	_ = items
+	for _, it := range lspcore.ComponentNameCompletions("", nil) {
+		if it.Detail != "sngl:builtin" {
+			t.Errorf("nil doc offered %q from %q", it.Label, it.Detail)
+		}
+	}
 }
 
 func TestExpressionCompletions(t *testing.T) {
@@ -329,10 +366,11 @@ func TestParseOneDiagnostic_NoPosition(t *testing.T) {
 	}
 }
 
+// Nothing to offer where no node encloses the cursor.
 func TestEventCompletions(t *testing.T) {
-	items := lspcore.EventCompletions()
-	// Stubbed in v2 (LoadStdlib removed), returns nil
-	_ = items
+	if items := lspcore.EventCompletions("component Foo {\n@\n}", nil, 2); len(items) != 0 {
+		t.Errorf("events offered outside a node: %v", items)
+	}
 }
 
 func TestComplete_PropValue(t *testing.T) {
@@ -363,9 +401,9 @@ func TestComplete_ComponentKeywords(t *testing.T) {
 }
 
 func TestStylePropCompletions(t *testing.T) {
-	items := lspcore.StylePropCompletions()
-	// Stubbed in v2 (LoadStdlib removed), returns nil
-	_ = items
+	if len(lspcore.StylePropCompletions()) == 0 {
+		t.Error("no style props offered")
+	}
 }
 
 func TestCompletionContext_OutputTarget(t *testing.T) {
@@ -478,5 +516,65 @@ func TestImportPathCompletionsHideTheInternalTier(t *testing.T) {
 	// A closed quote is not a path position.
 	if ctx := lspcore.CompletionContext("import . \"sngl:ui\"\n", 1, 19); ctx == lspcore.CtxImportPath {
 		t.Error("cursor past the closing quote still read as an import path")
+	}
+}
+
+// Completion is asked for mid-edit, when the buffer does not parse: `button(`
+// has no closing paren, and Analyze returns a document with no statements at
+// all rather than a partial one. The imports decide what is in scope, so they
+// are read from the text when the parse has none -- without that, everything
+// below is empty exactly when an editor asks.
+func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
+	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  button(\n}"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	if doc != nil && len(doc.Stmts) > 0 {
+		t.Fatal("this buffer is supposed to be unparseable; the test no longer covers what it says")
+	}
+	items := lspcore.Complete(content, doc, 4, 10)
+	byLabel := map[string]lspcore.CompletionItem{}
+	styles := 0
+	for _, it := range items {
+		byLabel[it.Label] = it
+		if it.Label == "style" {
+			styles++
+		}
+	}
+	// The props and events are resolved, not written: `text` is a string and
+	// @click carries a ClickEvent, neither of which the AST says.
+	if got := byLabel["text"].Detail; got != "string" {
+		t.Errorf("button.text detail = %q, want string", got)
+	}
+	if got := byLabel["@click"].Detail; got != "ClickEvent" {
+		t.Errorf("button @click detail = %q, want ClickEvent", got)
+	}
+	if _, ok := byLabel["value"]; ok {
+		t.Error("button offered `value`, which is input's prop")
+	}
+	// `style` comes from the schema with its type, and the untyped fallback
+	// must not double it.
+	if got := byLabel["style"].Detail; got != "Style" {
+		t.Errorf("style detail = %q, want Style", got)
+	}
+	if styles != 1 {
+		t.Errorf("style offered %d times", styles)
+	}
+}
+
+// An aliased library import is reachable through its alias, which used to
+// return nothing at all.
+func TestNamespaceCompletions_AliasedLibraryPackage(t *testing.T) {
+	content := "import d \"sngl:ui/draw\"\n\ncomponent Foo {\n  d.\n}"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	labels := map[string]bool{}
+	for _, it := range lspcore.Complete(content, doc, 4, 5) {
+		labels[it.Label] = true
+	}
+	for _, name := range []string{"canvas", "circle", "shape"} {
+		if !labels[name] {
+			t.Errorf("d. offers no %q; got %v", name, labels)
+		}
+	}
+	if labels["button"] {
+		t.Error("d. offered button, which is sngl:ui's")
 	}
 }
