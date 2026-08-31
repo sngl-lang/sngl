@@ -1,0 +1,21 @@
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+// A children-less element call carrying a #id parses as a call rather than a
+// visual node, and its props were left unnamed: positional binding is skipped
+// without a component to bind against, and a stdlib element passes none so its
+// event args stay leniently typed. Every reader then dropped them.
+func testPositionalPropsOnAnElementRef(t Test, c main) {
+    t.assert(c.pos.value == "positional")
+    t.assert(c.named.value == "named")
+}
+
+component main {
+    text #pos({}, "positional")
+    text #named(value="named")
+}
