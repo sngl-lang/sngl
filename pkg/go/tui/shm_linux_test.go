@@ -166,7 +166,7 @@ func TestShmUnlinksOldObjects(t *testing.T) {
 	if !ok {
 		t.Fatal("shmPut")
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if _, ok := put(); !ok {
 			t.Fatal("shmPut")
 		}
