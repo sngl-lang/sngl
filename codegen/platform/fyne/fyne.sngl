@@ -300,12 +300,14 @@ component Hyperlink(style ui.Style) {
     ) {}
 }
 
-// `canvas.Image` is constructed from a URI, which this platform has no
-// expression to build, so the image is empty.
+// `canvas.Image` is constructed from a source this platform has no expression
+// to build, so the image is empty. It has to be built from a *resource* rather
+// than a URI: `NewImageFromURI(nil)` dereferences its argument and panics,
+// while `NewImageFromResource(nil)` yields the empty image intended here.
 component Image(style ui.Style) {
     Widget(
         spec=Spec{
-            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromURI"},
+            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
             args = [Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
