@@ -149,10 +149,6 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	// imports sngl:app to write a window, and sngl:time to write a timer.
 	c.libPkg(appPkg)
 	c.libPkg(timePkg)
-	// Same rule, one step further out: sngl:internal/draw declares no kind a
-	// visual node dispatches on, but its functions are what passCanvas emits,
-	// and it registers their signatures the way any package registers its
-	// intrinsics. Nothing imports it, so this is the only thing that loads it.
 	c.libPkg(drawIntrinsicsPkg)
 	return builtinPkg, c.libPkg("ui")
 }
@@ -639,10 +635,9 @@ const (
 	optionsPkg = appPkg
 )
 
-// drawIntrinsicsPkg declares the drawing primitives passCanvas emits. No SNGL
-// source imports it -- sngl:ui/draw declares the shapes, this declares what a
-// shape lowers to -- so nothing else would ever load it, and the signatures the
-// pass reads off these declarations would be unreachable.
+// drawIntrinsicsPkg declares the primitives passCanvas emits. No SNGL source
+// imports it, so loadStdlib is the only thing that loads it -- and without the
+// load, the signatures the pass reads off these declarations do not exist.
 const drawIntrinsicsPkg = "internal/draw"
 
 // irPkg is the compiler's own package, and macroTypeName the return type it
@@ -713,17 +708,9 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	}
 }
 
-// publishIntrinsic records what a #[intrinsic] declaration says, for the phases
-// that need an intrinsic's signature with no declaration in hand: three
-// lowering passes synthesize a call to one the program never wrote, and ir
-// cannot import the checker. Everything published here is read off the
-// declaration, so there is nothing for the two to disagree about -- which a
-// hand-written table in ir did, on five return types, for as long as nothing
-// read one off it.
-//
-// The purity is the mark's (`#[intrinsic("list.push", mutates)]`), already
-// applied by markIntrinsic; the table used to override it with a copy of the
-// same fact.
+// publishIntrinsic records what a #[intrinsic] declaration says, for the passes
+// that need a signature with no declaration in hand (see ir.RegisterIntrinsic).
+// The purity is the mark's, already applied by markIntrinsic.
 func (c *checker) publishIntrinsic(fn *ir.Func) {
 	ir.RegisterIntrinsic(ir.IntrinsicDef{
 		Name:            fn.Intrinsic,
@@ -736,9 +723,8 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 	})
 }
 
-// intrinsicTypeParamNames is the order a caller binds an intrinsic's type
-// variables in: the receiver's first, then the method's own. `list<T>.map<U>`
-// binds T then U, which is how Instantiate reads its arguments.
+// intrinsicTypeParamNames is the order Instantiate binds in: the receiver's
+// parameters first, then the method's own -- T then U for `list<T>.map<U>`.
 func intrinsicTypeParamNames(fn *ir.Func) []string {
 	if len(fn.RecvTypeParams) == 0 && len(fn.TypeParams) == 0 {
 		return nil

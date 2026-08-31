@@ -10,20 +10,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A fallback to dyn is the checker giving up on a type without saying so, and
-// downstream phases have no way to tell one apart from a type that is dyn
-// because the program said so. dynFallback marks every such site: it yields
-// TypDyn as before, and under SNGL_PANIC_ON_DYN it reports the site and the
-// reason, so a test that only passes because of a silent degradation fails
-// loudly instead.
+// A fallback to dyn is the checker giving up on a type without saying so, which
+// nothing downstream can tell apart from a dyn the program asked for. Marking
+// the sites is what makes them countable.
 //
-// A `return TypDyn` written directly is error recovery — c.error has already
-// reported at that point, and the type only keeps the rest of the file
-// checkable. Those are not fallbacks and stay as they are.
+// A `return TypDyn` written directly is error recovery: c.error has already
+// reported and the type only keeps the rest of the file checkable. Not a
+// fallback.
 //
-// SNGL_PANIC_ON_DYN=1 panics at the first fallback. =report prints each
-// distinct site to stderr and carries on, which is how a whole test run's
-// fallbacks get counted in one pass.
+// SNGL_PANIC_ON_DYN=1 panics at the first fallback; =report prints each
+// distinct site to stderr and carries on, for counting a whole test run.
 var (
 	dynMode     = os.Getenv("SNGL_PANIC_ON_DYN")
 	panicOnDyn  = dynMode != "" && dynMode != "report"
@@ -37,10 +33,8 @@ func dynFallback(format string, args ...any) *ir.Type {
 	return dynAt(2, format, args...)
 }
 
-// dynSpread is a fallback reached through an operand that is already dyn or
-// invalid: the dyn spreads from there rather than originating here, and a
-// panic would name this site for a decision made elsewhere. Anything else
-// reaching it is a fallback like any other.
+// dynSpread is a fallback whose operand was already dyn or invalid, so the dyn
+// originated elsewhere and reporting here would name the wrong site.
 func dynSpread(from *ir.Type, format string, args ...any) *ir.Type {
 	if from != nil && (from.Kind == ir.TypeDyn || from.Kind == ir.TypeInvalid) {
 		return ir.TypDyn
@@ -48,11 +42,10 @@ func dynSpread(from *ir.Type, format string, args ...any) *ir.Type {
 	return dynAt(2, format, args...)
 }
 
-// dynDeferred is a dyn a later pass is required to replace — a shell type
-// standing in until the pass that can compute it runs. It never reports; the
-// contract it names is that something else fills it in.
-func dynDeferred(what string) *ir.Type {
-	_ = what
+// dynDeferred is a shell a named later pass replaces. The argument is there to
+// name that pass at the call site; nothing reads it.
+func dynDeferred(pass string) *ir.Type {
+	_ = pass
 	return ir.TypDyn
 }
 

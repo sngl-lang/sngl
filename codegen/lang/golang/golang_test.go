@@ -104,10 +104,9 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 	// Verify the Phase 3 arg-index fix: i18n.exactly(0) via the namespace-call
 	// path must emit i18n.Exactly(0) — NOT i18n.Exactly("i18n").
 	//
-	// Whether the receiver is prepended turns on the intrinsic's parameter
-	// count, which a check registers off the declaration. This call is built by
-	// hand, so it registers the one fact it turns on: `func exactly(n int)`
-	// takes one parameter, which the single explicit arg already fills.
+	// Prepending turns on the intrinsic's parameter count, which a check
+	// registers off the declaration; this call is built by hand, so it says
+	// `func exactly(n int)` takes the one parameter the explicit arg fills.
 	ir.RegisterIntrinsic(ir.IntrinsicDef{
 		Name:   "i18n.exactly",
 		Params: []*ir.Param{{Name: "n", Type: ir.TypInt}},

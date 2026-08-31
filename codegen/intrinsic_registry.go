@@ -50,9 +50,8 @@ func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
 	byID[id] = e
 }
 
-// IntrinsicIDs returns the ids lang has registered an emitter for, sorted. For
-// a caller asking what a backend implements — which is this registry's own
-// question, and not one the intrinsic declarations answer.
+// IntrinsicIDs returns the ids lang has registered an emitter for, sorted:
+// what a backend implements, which the intrinsic declarations cannot answer.
 func IntrinsicIDs(lang string) []string {
 	intrinsicMu.RLock()
 	defer intrinsicMu.RUnlock()

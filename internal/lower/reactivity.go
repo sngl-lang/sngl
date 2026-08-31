@@ -1242,14 +1242,9 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
 func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
-	// A slot holds node handles, which are opaque -- so this is one of the
-	// few places dyn is the honest binding for the intrinsic's element type
-	// rather than a signature that had no better answer.
-	//
-	// The lookup can miss: the registry holds what a check registered, and a
-	// caller that built this IR without one has no sngl:builtin loaded. The
-	// synthesized signature is then empty rather than absent, which is what it
-	// was before the pass knew the element type at all.
+	// dyn is the element type here, not a fallback: a slot holds node handles,
+	// which are opaque. The lookup misses for IR built without a check, and an
+	// empty signature is what the pass used to synthesize anyway.
 	var pushParams []*ir.Param
 	var pushReturn *ir.Type
 	if def := ir.LookupIntrinsic("list.push"); def != nil {

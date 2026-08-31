@@ -8,14 +8,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// `list` and `map` are declared in lib/builtin like any other built-in --
-// `#[builtin("list")] struct list<T> {}` with generic methods written against
-// the type parameters. The mark used to be read for its kind and the
-// declaration then dropped, so `list<int>` was {Kind: TypeList, Elems: [int]}
-// and nothing downstream could reach the declaration or its parameters. Every
-// list type is built through ir.ListOf, which is why every one of these
-// spellings has to carry it -- attaching it only where an annotation is
-// resolved would be worse than leaving it nil.
+// A collection type carries the #[builtin]-marked declaration it was resolved
+// from, whichever way it was spelled. Every one of these is built through
+// ir.ListOf/MapOf, so attaching it anywhere short of there -- the annotation
+// path only, say -- leaves the rest nil, which is worse than none of them
+// having it.
 func TestCollectionTypesCarryTheirDeclaration(t *testing.T) {
 	const src = `component main {
     var annotated list<int> = [1]
@@ -72,8 +69,7 @@ func TestCollectionTypesCarryTheirDeclaration(t *testing.T) {
 		}
 	}
 
-	// The element type of a nested list is built the same way, so it carries
-	// the declaration too -- a type is not more declared at the top level.
+	// A type is not more declared at the top level.
 	nested := pkg.Components[0].Vars
 	for _, v := range nested {
 		if v.Name != "nested" {

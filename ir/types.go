@@ -85,13 +85,12 @@ func (t *Type) IsSized() bool {
 }
 
 // ListOf returns a list type with the given element type, carrying the
-// #[builtin("list")] declaration (see ir/genericbuiltins.go). Decl is metadata
-// here and not identity: Equal compares a list structurally, by element type.
+// #[builtin("list")] declaration (see genericbuiltins.go).
 func ListOf(elem *Type) *Type {
 	t := &Type{Kind: TypeList, Elems: []*Type{elem}}
-	// Assigning the pointer straight to Decl would store a non-nil Symbol
-	// holding a nil *StructDef before the stdlib has registered one, and every
-	// `if t.Decl != nil` in the compiler would then dereference it.
+	// Not `Decl: listStructDef.Load()`: that stores a non-nil Symbol holding a
+	// nil *StructDef before the stdlib registers one, which every
+	// `if t.Decl != nil` in the compiler then dereferences.
 	if sd := listStructDef.Load(); sd != nil {
 		t.Decl = sd
 	}
@@ -117,8 +116,7 @@ func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
 }
 
-// FuncOf returns a func type with the given parameters and return type. A nil
-// ret is a void function.
+// FuncOf returns a func type. A nil ret is a void function.
 func FuncOf(params []*Param, ret *Type) *Type {
 	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: params, Return: ret}}
 }
@@ -626,21 +624,17 @@ func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
-// Registered stdlib date/time/datetime struct types. Populated by the checker
-// once the declarations carrying the marks are parsed, so non-checker phases
-// (foreign-type importers, etc.) can synthesize a canonical value type without
-// their own scope access. Nil before registration; the accessors fall back to
-// TypDyn.
+// Registered stdlib date/time/datetime struct types, so a phase with no scope
+// of its own (the foreign-type importers) can synthesize a canonical value
+// type. Nil before registration; the accessors fall back to TypDyn.
 var (
 	stdlibDateType     *Type
 	stdlibTimeType     *Type
 	stdlibDateTimeType *Type
 )
 
-// RegisterStringReprStructs records the resolved stdlib date, time and datetime
-// struct types so the accessors below can hand them out. Each argument is
-// recorded when non-nil, so the three marks may register separately.
-// Idempotent.
+// RegisterStringReprStructs records each non-nil argument, so the three marks
+// may register separately. Idempotent.
 func RegisterStringReprStructs(date, time, dateTime *Type) {
 	if date != nil {
 		stdlibDateType = date
@@ -653,8 +647,7 @@ func RegisterStringReprStructs(date, time, dateTime *Type) {
 	}
 }
 
-// DateType, TimeType and DateTimeType return the registered stdlib struct
-// type, falling back to dyn when the stdlib has not been loaded yet.
+// DateType, TimeType and DateTimeType fall back to dyn before registration.
 func DateType() *Type { return orDyn(stdlibDateType) }
 func TimeType() *Type { return orDyn(stdlibTimeType) }
 

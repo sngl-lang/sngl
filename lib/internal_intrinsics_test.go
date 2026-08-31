@@ -18,11 +18,9 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
-// TestEveryIntrinsicIsDeclared pins the registry against the declarations. It
-// used to hold a hand-written table in ir to them; the registry is built from
-// the declarations now, so what it still says is that loading every package
-// registers every marked id — an intrinsic is registered as its declaration
-// is, and a target's arrive with its package rather than with lib/.
+// TestEveryIntrinsicIsDeclared: loading every package registers every marked
+// id. An intrinsic is registered as its declaration is, and a target's arrive
+// with its package rather than with lib/.
 //
 // A marked component is held to the opposite rule. The registry is signatures
 // every language backend must implement; a component intrinsic is a widget one
@@ -125,11 +123,8 @@ func TestExportedComponentsAreDocumented(t *testing.T) {
 	}
 }
 
-// targetsWithPackages is every registered platform and language, which is where
-// a target's own library package lives.
 // loadEveryPackage checks every library and target package, which is what
-// populates the intrinsic registry: an intrinsic is registered as its
-// declaration is, so nothing is known about one whose package never loaded.
+// populates the intrinsic registry.
 func loadEveryPackage(t *testing.T) {
 	t.Helper()
 	for _, name := range lib.Packages() {
@@ -149,6 +144,8 @@ func loadEveryPackage(t *testing.T) {
 	}
 }
 
+// targetsWithPackages is every registered platform and language, which is where
+// a target's own library package lives.
 func targetsWithPackages() []any {
 	var out []any
 	for _, p := range codegen.CollectPlatforms() {
@@ -160,11 +157,9 @@ func targetsWithPackages() []any {
 	return out
 }
 
-// TestEveryIntrinsicIsImplemented is the contract the registry was said to
-// state and never checked. A declaration marked #[intrinsic] is a signature
-// whose result comes from the target's implementation of the id, so an id
-// nothing implements is a build emitting a call to a function that does not
-// exist. A table in ir could only ever say the id was in a Go list.
+// A declaration marked #[intrinsic] is a signature whose result comes from the
+// target's implementation of the id, so an id nothing implements is a build
+// emitting a call to a function that does not exist.
 //
 // Three ways an id is legitimately absent from the language emitter registry,
 // each read off the declaration rather than off a list of names:
@@ -217,8 +212,8 @@ const (
 	errorRaiseID = "error.raise"
 )
 
-// intrinsicDecl finds the declaration carrying an intrinsic id, for the facts
-// the registry does not record.
+// intrinsicDecl finds the declaration carrying an id, for the facts the
+// registry does not record.
 func intrinsicDecl(id string) *ir.Func {
 	for _, name := range append(lib.Packages(), loadedTargetPackages()...) {
 		pkg := checker.LibPackage(name)

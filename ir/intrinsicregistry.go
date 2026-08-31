@@ -5,36 +5,19 @@ import (
 	"sync"
 )
 
-// The intrinsics a check has registered, keyed by id.
+// The intrinsics a check has registered, keyed by id. Only what the loaded
+// packages declare, so a target's (html.frontend) are absent until its package
+// is loaded; anything needing the whole set walks the source instead.
 //
-// An intrinsic is a declaration: `#[intrinsic("list.push", mutates,
-// mutatesReceiver)] func list<T>.push(item T) list<T>` states the id, the
-// signature, and what a call costs, and the checker reads all three off it.
-// This used to be a hand-written table in Go beside them, which is a second
-// record of the same facts and lost every comparison against the first: it
-// could not name a type the library declares (`date` and `PluralKey` read as
-// dyn), it could not name a type variable (every collection signature read as
-// list<dyn>), and where lowering rewrites a call's parameters it gave up and
-// recorded none at all. It also claimed `int` for five void functions, which
-// nothing noticed for as long as nothing read a return type off it.
-//
-// So the declarations populate it instead. What is left in Go is the lookup
-// the phases that cannot see a declaration need: three lowering passes
-// synthesize a call to an intrinsic the program never wrote, and `ir` cannot
-// import the checker.
-//
-// A registered def is therefore only as complete as the packages a check
-// loaded -- a target's intrinsics (html.frontend) arrive with its package, not
-// with lib/. Anything wanting the whole contract has to walk the source, which
-// is what lib's TestEveryIntrinsicHasAnEmitter does.
+// It exists because ir cannot import the checker, and three lowering passes
+// synthesize a call to an intrinsic with no declaration in hand.
 var (
 	intrinsicsMu sync.RWMutex
 	intrinsics   = map[string]*IntrinsicDef{}
 )
 
-// RegisterIntrinsic records what a #[intrinsic] declaration says. Called by the
-// checker as it registers the declaration, so a later check of the same library
-// replaces the entry with an equal one.
+// RegisterIntrinsic records what a #[intrinsic] declaration says. A later check
+// of the same library replaces the entry with an equal one.
 func RegisterIntrinsic(def IntrinsicDef) {
 	if def.Name == "" {
 		return
@@ -56,9 +39,7 @@ func LookupIntrinsic(name string) *IntrinsicDef {
 }
 
 // IntrinsicByName returns the definition registered for the given id (e.g.
-// "list.push"), or ok=false if no loaded package declares it. Lets the checker
-// and lowering passes read intrinsic metadata by id rather than matching method
-// names.
+// "list.push"), or ok=false if no loaded package declares it.
 func IntrinsicByName(name string) (IntrinsicDef, bool) {
 	def := LookupIntrinsic(name)
 	if def == nil {
@@ -67,8 +48,7 @@ func IntrinsicByName(name string) (IntrinsicDef, bool) {
 	return *def, true
 }
 
-// AllIntrinsics returns every registered definition, ordered by id. What it
-// covers depends on which packages have been loaded in this process.
+// AllIntrinsics returns every registered definition, ordered by id.
 func AllIntrinsics() []IntrinsicDef {
 	intrinsicsMu.RLock()
 	defer intrinsicsMu.RUnlock()

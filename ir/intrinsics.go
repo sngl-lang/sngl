@@ -8,12 +8,7 @@ type IntrinsicDef struct {
 	Params []*Param // parameter signatures
 	Return *Type    // return type
 	// TypeParams names the type variables Params and Return are written
-	// against, in the order a caller binds them. A collection intrinsic is
-	// generic in its element type exactly as its lib declaration is
-	// (`func list<T>.push(item T) list<T>`); spelling that here as dyn made
-	// this a less-typed second record of the same signature, and put
-	// `list<dyn>` into the IR of every pass that synthesizes a call from it.
-	// Instantiate binds them.
+	// against, in the order Instantiate binds them.
 	TypeParams []string
 	// Purity, if non-zero, overrides the default PurityPure assumption.
 	// Use this for intrinsics whose result depends on host state
@@ -24,16 +19,14 @@ type IntrinsicDef struct {
 	// signature returns a value. Reactivity treats a statement-level call as a
 	// write to the receiver var, and backends emit an in-place mutation.
 	MutatesReceiver bool
-	// Pkg is the library package the declaration lives in, which is how a
-	// caller asks about a group of intrinsics without matching id spellings.
+	// Pkg is the library package the declaration lives in -- how a caller asks
+	// about a group of intrinsics without matching id spellings.
 	Pkg string
 }
 
-// Instantiate binds d's type parameters, in TypeParams order, and returns the
-// resulting params and return type. Extra arguments are ignored; a parameter
-// left unbound stays a type variable, which is what a caller that only needs
-// the arity gets. Safe on a non-generic def: it returns Params and Return
-// unchanged.
+// Instantiate binds d's type parameters, in TypeParams order. An unbound one
+// stays a type variable, so a caller that only needs the arity can pass
+// nothing.
 func (d IntrinsicDef) Instantiate(args ...*Type) ([]*Param, *Type) {
 	if len(d.TypeParams) == 0 || len(args) == 0 {
 		return d.Params, d.Return
@@ -88,15 +81,13 @@ func IsI18nCall(c *Call) bool {
 // IsI18nIntrinsic reports whether an intrinsic id is one sngl:i18n declares.
 // Empty name returns false (most user funcs carry no Intrinsic tag).
 //
-// The declaring package, not the id's spelling: the ids all happen to start
-// with "i18n." and matching that would be the compiler identifying a built-in
-// by its name again. Pkg comes off the declaration.
+// The declaring package, not the id's spelling: the ids all happen to begin
+// "i18n.", and matching that identifies a built-in by its name.
 func IsI18nIntrinsic(name string) bool {
 	def := LookupIntrinsic(name)
 	return def != nil && def.Pkg == I18nPkg
 }
 
-// I18nPkg is the package whose intrinsics IsI18nIntrinsic answers for.
 const I18nPkg = "sngl:i18n"
 
 // IsI18nPluralKey reports whether sel reads one of i18n's predeclared

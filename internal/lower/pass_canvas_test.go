@@ -10,11 +10,9 @@ import (
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	t.Helper()
-	// passCanvas emits calls to sngl:internal/draw's primitives and reads their
-	// signatures off the declarations, which a check registers as it loads the
-	// package -- and no SNGL source imports it, so loadStdlib is what loads it
-	// in a real compile. This package is built by hand with no checker in
-	// sight, so it asks for the load itself.
+	// passCanvas reads its primitives' signatures off sngl:internal/draw, which
+	// a check registers as it loads. This package is built by hand, so it asks
+	// for the load itself.
 	if checker.LibPackage("internal/draw") == nil {
 		t.Fatal("sngl:internal/draw did not load")
 	}

@@ -27,10 +27,8 @@ func TestI18nEmittersNameRealRuntimeFuncs(t *testing.T) {
 	translate := func(e ir.Expr) string { return e.(*ir.Ident).Name }
 	call := regexp.MustCompile(`\bi18n\.([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 
-	// The emitters this backend registered, not the intrinsic declarations:
-	// what is under test is the runtime name an emitter writes, and whether
-	// every declared id has an emitter at all is lib's
-	// TestEveryIntrinsicIsImplemented.
+	// The emitters this backend registered, not the declarations: coverage is
+	// lib's TestEveryIntrinsicIsImplemented.
 	ids := codegen.IntrinsicIDs(langGo)
 	if len(ids) == 0 {
 		t.Fatal("no Go intrinsic emitters registered")
