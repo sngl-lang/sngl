@@ -108,3 +108,43 @@ func write(t *testing.T, dir, name, body string) {
 		t.Fatal(err)
 	}
 }
+
+// TestTheWorkerSourceListIsComplete holds workerSources to what the toolchain
+// says the worker is built from.
+//
+// The list is hashed to decide whether a cached worker is stale, and a package
+// missing from it is invisible: the binary keeps being reused while the code it
+// was built from has moved. That is not hypothetical -- it shipped that way,
+// with pkg/go/snglhost absent, so a change to the wire format left a worker
+// speaking the old one with no way to notice.
+//
+// Asking `go build` every time would be correct by construction and costs 1.9s
+// a run, which is the whole of what the cache buys. So the list stays, and this
+// is what stops it rotting.
+func TestTheWorkerSourceListIsComplete(t *testing.T) {
+	out, err := exec.Command("go", "list", "-deps", WorkerPkg).Output()
+	if err != nil {
+		t.Skipf("go list unavailable: %v", err)
+	}
+	const mod = "git.duckfam.us/jonathan/sngl/"
+	listed := map[string]bool{}
+	for _, d := range workerSources {
+		listed[d] = true
+	}
+	var found int
+	for dep := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if !strings.HasPrefix(dep, mod) {
+			continue
+		}
+		found++
+		if pkg := strings.TrimPrefix(dep, mod); !listed[pkg] {
+			t.Errorf("the worker is built from %s, which workerSources does not hash: a change there would not rebuild it", pkg)
+		}
+	}
+	if found == 0 {
+		t.Fatal("go list reported no first-party dependencies; this test is checking nothing")
+	}
+	if found != len(workerSources) {
+		t.Errorf("workerSources has %d entries for %d dependencies; one of them no longer exists", len(workerSources), found)
+	}
+}

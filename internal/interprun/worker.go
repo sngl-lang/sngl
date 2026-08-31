@@ -86,7 +86,7 @@ func workerKey(dir string) (string, error) {
 	// In a checkout of sngl itself the worker's own source is part of the
 	// build, and go.mod does not move when it changes. Outside one it is a
 	// pinned dependency and go.sum covers it.
-	for _, dep := range []string{"pkg/go/fynehost", "cmd/sngl-fyne-worker"} {
+	for _, dep := range workerSources {
 		if entries, err := os.ReadDir(filepath.Join(dir, dep)); err == nil {
 			for _, e := range entries {
 				if info, err := e.Info(); err == nil {
@@ -104,6 +104,22 @@ func workerKey(dir string) (string, error) {
 		h.Write(b)
 	}
 	return hex.EncodeToString(h.Sum(nil))[:16], nil
+}
+
+// workerSources is every first-party package the worker is built from.
+//
+// Hashing these is what makes an edit to the worker rebuild it, and getting the
+// list wrong is silent: a stale binary speaking an older protocol, which is
+// exactly what happened when this covered only the two obvious directories and
+// the wire format changed underneath it in pkg/go/snglhost.
+//
+// TestTheWorkerSourceListIsComplete holds it to `go list -deps`, because the
+// toolchain is the only thing that actually knows.
+var workerSources = []string{
+	"cmd/sngl-fyne-worker",
+	"pkg/go/fynehost",
+	"pkg/go/snglhost",
+	"internal/testrpc",
 }
 
 // selfIgnore makes the generated directory invisible to git without the user
