@@ -50,9 +50,19 @@ func TestSubstitutePreservesTheDeclaration(t *testing.T) {
 // less-typed second record of the lib declaration, and put list<dyn> into the
 // IR of every pass that synthesizes a call from one.
 func TestGenericIntrinsicsInstantiate(t *testing.T) {
-	def := ir.LookupIntrinsic("list.push")
-	if def == nil {
-		t.Fatal("no list.push intrinsic")
+	// Registered the way lib/builtin/lists.sngl declares it. The registry holds
+	// what a check registered, so this package's own tests state their inputs
+	// rather than loading the library through the checker.
+	tvT := &ir.Type{Kind: ir.TypeTypeParam, ParamName: "T"}
+	tvU := &ir.Type{Kind: ir.TypeTypeParam, ParamName: "U"}
+	def := &ir.IntrinsicDef{
+		Name:       "list.push",
+		TypeParams: []string{"T"},
+		Params: []*ir.Param{
+			{Name: "l", Type: ir.ListOf(tvT)},
+			{Name: "item", Type: tvT},
+		},
+		Return: ir.ListOf(tvT),
 	}
 	if len(def.TypeParams) != 1 || def.TypeParams[0] != "T" {
 		t.Fatalf("TypeParams = %v, want [T]", def.TypeParams)
@@ -75,10 +85,16 @@ func TestGenericIntrinsicsInstantiate(t *testing.T) {
 		t.Errorf("uninstantiated param 1 = %s, want T", got)
 	}
 
-	// map's result element is its own variable, as `list<T>.map<U>` declares.
-	mapDef := ir.LookupIntrinsic("list.map")
-	if mapDef == nil {
-		t.Fatal("no list.map intrinsic")
+	// map's result element is its own variable, as `list<T>.map<U>` declares:
+	// the receiver's parameter binds first, then the method's own.
+	mapDef := &ir.IntrinsicDef{
+		Name:       "list.map",
+		TypeParams: []string{"T", "U"},
+		Params: []*ir.Param{
+			{Name: "l", Type: ir.ListOf(tvT)},
+			{Name: "fn", Type: ir.FuncOf([]*ir.Param{{Name: "item", Type: tvT}}, tvU)},
+		},
+		Return: ir.ListOf(tvU),
 	}
 	_, ret = mapDef.Instantiate(ir.TypInt, ir.TypString)
 	if got := ret.String(); got != "list<string>" {

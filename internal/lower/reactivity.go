@@ -1245,7 +1245,16 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	// A slot holds node handles, which are opaque -- so this is one of the
 	// few places dyn is the honest binding for the intrinsic's element type
 	// rather than a signature that had no better answer.
-	pushParams, pushReturn := ir.LookupIntrinsic("list.push").Instantiate(ir.TypDyn)
+	//
+	// The lookup can miss: the registry holds what a check registered, and a
+	// caller that built this IR without one has no sngl:builtin loaded. The
+	// synthesized signature is then empty rather than absent, which is what it
+	// was before the pass knew the element type at all.
+	var pushParams []*ir.Param
+	var pushReturn *ir.Type
+	if def := ir.LookupIntrinsic("list.push"); def != nil {
+		pushParams, pushReturn = def.Instantiate(ir.TypDyn)
+	}
 	listPushFn := &ir.Func{
 		Name:      "push",
 		Receiver:  "list",

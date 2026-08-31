@@ -149,6 +149,11 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	// imports sngl:app to write a window, and sngl:time to write a timer.
 	c.libPkg(appPkg)
 	c.libPkg(timePkg)
+	// Same rule, one step further out: sngl:internal/draw declares no kind a
+	// visual node dispatches on, but its functions are what passCanvas emits,
+	// and it registers their signatures the way any package registers its
+	// intrinsics. Nothing imports it, so this is the only thing that loads it.
+	c.libPkg(drawIntrinsicsPkg)
 	return builtinPkg, c.libPkg("ui")
 }
 
@@ -634,6 +639,12 @@ const (
 	optionsPkg = appPkg
 )
 
+// drawIntrinsicsPkg declares the drawing primitives passCanvas emits. No SNGL
+// source imports it -- sngl:ui/draw declares the shapes, this declares what a
+// shape lowers to -- so nothing else would ever load it, and the signatures the
+// pass reads off these declarations would be unreachable.
+const drawIntrinsicsPkg = "internal/draw"
+
 // irPkg is the compiler's own package, and macroTypeName the return type it
 // declares that makes a function a macro.
 const (
@@ -702,28 +713,44 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	}
 }
 
-// applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
-// stdlib wrapper that delegates to it. The wrapper would otherwise default to
-// PurityPure (registerFunc, for library source), which is wrong for effecting intrinsics like
-// ListPush (mutates its receiver) — letting the optimizer fold or drop a real
-// mutation. Backends and reactivity read the mutation semantics back via
-// fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
-func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
-	def, ok := ir.IntrinsicByName(id)
-	if !ok {
-		return false
+// publishIntrinsic records what a #[intrinsic] declaration says, for the phases
+// that need an intrinsic's signature with no declaration in hand: three
+// lowering passes synthesize a call to one the program never wrote, and ir
+// cannot import the checker. Everything published here is read off the
+// declaration, so there is nothing for the two to disagree about -- which a
+// hand-written table in ir did, on five return types, for as long as nothing
+// read one off it.
+//
+// The purity is the mark's (`#[intrinsic("list.push", mutates)]`), already
+// applied by markIntrinsic; the table used to override it with a copy of the
+// same fact.
+func (c *checker) publishIntrinsic(fn *ir.Func) {
+	ir.RegisterIntrinsic(ir.IntrinsicDef{
+		Name:            fn.Intrinsic,
+		Params:          fn.Params,
+		Return:          fn.Return,
+		TypeParams:      intrinsicTypeParamNames(fn),
+		Purity:          fn.Purity,
+		MutatesReceiver: fn.MutatesReceiver,
+		Pkg:             c.libPkgName,
+	})
+}
+
+// intrinsicTypeParamNames is the order a caller binds an intrinsic's type
+// variables in: the receiver's first, then the method's own. `list<T>.map<U>`
+// binds T then U, which is how Instantiate reads its arguments.
+func intrinsicTypeParamNames(fn *ir.Func) []string {
+	if len(fn.RecvTypeParams) == 0 && len(fn.TypeParams) == 0 {
+		return nil
 	}
-	if def.Purity != ir.PurityUnknown {
-		fn.Purity = def.Purity
+	names := make([]string, 0, len(fn.RecvTypeParams)+len(fn.TypeParams))
+	for _, tp := range fn.RecvTypeParams {
+		names = append(names, tp.Name)
 	}
-	// An "=>" form cannot carry a return annotation, and library source is not
-	// body-checked, so the registry is the only thing that knows what
-	// `int.abs` returns. Taking it here is what keeps the declaration off the
-	// dyn fallback below.
-	if fn.Return == nil {
-		fn.Return = def.Return
+	for _, tp := range fn.TypeParams {
+		names = append(names, tp.Name)
 	}
-	return true
+	return names
 }
 
 // targetPackages is every target package this check loads. Building for a

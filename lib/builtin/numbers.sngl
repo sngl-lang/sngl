@@ -12,22 +12,22 @@ struct int {}
 // Returns the smaller of two integers. Ties return a (which equals b
 // for integers, so the distinction is vacuous).
 #[intrinsic("int.min", usable)]
-func int.min(a int, b int) => a < b ? a : b
+func int.min(a int, b int) int { return a < b ? a : b }
 
 // Returns the larger of two integers. Ties return a.
 #[intrinsic("int.max", usable)]
-func int.max(a int, b int) => a > b ? a : b
+func int.max(a int, b int) int { return a > b ? a : b }
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
 #[intrinsic("int.abs", usable)]
-func int.abs(x int) => x < 0 ? -x : x
+func int.abs(x int) int { return x < 0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the result
 // follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
 // documented contract for malformed ranges.
 #[intrinsic("int.clamp", usable)]
-func int.clamp(x int, lo int, hi int) => int.max(lo, int.min(x, hi))
+func int.clamp(x int, lo int, hi int) int { return int.max(lo, int.min(x, hi)) }
 
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
 // interpreter implements this yet.
@@ -44,21 +44,21 @@ struct float {}
 // Returns the smaller of two floats. NaN handling is platform-defined
 // — prefer explicit NaN checks when either operand may be NaN.
 #[intrinsic("float.min", usable)]
-func float.min(a float, b float) => a < b ? a : b
+func float.min(a float, b float) float { return a < b ? a : b }
 
 // Returns the larger of two floats. See `float.min` for NaN caveats.
 #[intrinsic("float.max", usable)]
-func float.max(a float, b float) => a > b ? a : b
+func float.max(a float, b float) float { return a > b ? a : b }
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.
 #[intrinsic("float.abs", usable)]
-func float.abs(x float) => x < 0.0 ? -x : x
+func float.abs(x float) float { return x < 0.0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
 // wins (see `int.clamp`).
 #[intrinsic("float.clamp", usable)]
-func float.clamp(x float, lo float, hi float) => float.max(lo, float.min(x, hi))
+func float.clamp(x float, lo float, hi float) float { return float.max(lo, float.min(x, hi)) }
 
 // Largest integer value not greater than x. For negative non-integers this
 // rounds away from zero (e.g. floor(-1.5) == -2).

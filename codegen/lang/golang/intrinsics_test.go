@@ -27,21 +27,30 @@ func TestI18nEmittersNameRealRuntimeFuncs(t *testing.T) {
 	translate := func(e ir.Expr) string { return e.(*ir.Ident).Name }
 	call := regexp.MustCompile(`\bi18n\.([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 
-	for _, decl := range append(append([]ir.IntrinsicDef{}, ir.Intrinsics...), ir.I18nIntrinsics...) {
-		if !strings.HasPrefix(decl.Name, "i18n.") {
+	// The emitters this backend registered, not the intrinsic declarations:
+	// what is under test is the runtime name an emitter writes, and whether
+	// every declared id has an emitter at all is lib's
+	// TestEveryIntrinsicIsImplemented.
+	ids := codegen.IntrinsicIDs(langGo)
+	if len(ids) == 0 {
+		t.Fatal("no Go intrinsic emitters registered")
+	}
+	seen := 0
+	for _, id := range ids {
+		if !strings.HasPrefix(id, "i18n.") {
 			continue
 		}
-		emit := codegen.LookupIntrinsic(langGo, decl.Name)
-		if emit == nil {
-			t.Errorf("%s: no Go emitter", decl.Name)
-			continue
-		}
+		seen++
+		emit := codegen.LookupIntrinsic(langGo, id)
 		code, _ := emit(args, translate)
 		for _, m := range call.FindAllStringSubmatch(code, -1) {
 			if !exported[m[1]] {
-				t.Errorf("%s emits %q, but pkg/go/i18n has no exported func %s", decl.Name, code, m[1])
+				t.Errorf("%s emits %q, but pkg/go/i18n has no exported func %s", id, code, m[1])
 			}
 		}
+	}
+	if seen == 0 {
+		t.Fatal("no i18n emitter was exercised")
 	}
 }
 

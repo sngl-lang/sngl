@@ -2035,24 +2035,13 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	c.applyMarks(f, fn)
 
-	// The #[intrinsic] mark names a signature every backend implements, and
-	// the effect metadata follows from the id. An id no intrinsic answers to
-	// is a typo in the mark that nothing downstream would notice: the call
-	// would simply never be recognised.
-	if fn.Intrinsic != "" {
-		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
-			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
-		}
-	}
-
 	// Library source is not body-checked, so two things it would otherwise
 	// infer are stated here instead. A signature with no return annotation is
-	// dyn rather than void -- the "=>" forms that delegate to an intrinsic
-	// rely on it, and body-level inference would conflict with the primitive
-	// and struct spellings the library uses internally. And purity, which the
-	// analysis never runs for, starts pure so the optimizer can fold
-	// int.min and its like; anything reaching outside the program has it
-	// overridden afterwards.
+	// dyn rather than void, which only the declarations that state no return
+	// type reach now that the "=>" forms delegating to an intrinsic declare
+	// one off a block body. And purity, which the analysis never runs for,
+	// starts pure so the optimizer can fold int.min and its like; anything
+	// reaching outside the program has it overridden afterwards.
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
@@ -2061,6 +2050,17 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		if fn.Purity == ir.PurityUnknown {
 			fn.Purity = ir.PurityPure
 		}
+	}
+
+	// The #[intrinsic] mark names a signature every backend implements, and
+	// this declaration is that signature -- published once the two facts the
+	// library states outside the annotation (the return type, the purity) are
+	// settled above. A mistyped id is no longer an error here, because there
+	// is no list left for it to be absent from; what catches one is
+	// RequireIntrinsicFallback at the point a backend has neither an emitter
+	// for the id nor a `usable` body to fall back on.
+	if fn.Intrinsic != "" {
+		c.publishIntrinsic(fn)
 	}
 
 	// Only free functions bind a file-scope name; a method's name lives under
