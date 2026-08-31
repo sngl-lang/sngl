@@ -1490,15 +1490,10 @@ func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
 		c.macroStruct = sd
 	}
-	// The canonical date/time/datetime types, for the foreign-type importers
-	// that synthesize one without a scope of their own.
-	switch sd.Builtin {
-	case ir.BuiltinDate:
-		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ir.BuiltinTime:
-		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ir.BuiltinDateTime:
-		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
+	// The canonical datetime type, for the foreign-type importers that
+	// synthesize one without a scope of their own.
+	if sd.Builtin == ir.BuiltinDateTime {
+		ir.RegisterDateTimeStruct(sd.SymType())
 	}
 	ir.RegisterGenericBuiltin(sd)
 }
@@ -2697,18 +2692,6 @@ type pkgProvider interface {
 	Description() string
 }
 
-// lookupTarget finds a registered platform or language by name.
-// targetNSPkg is the lib package a target ships, loaded like any other. It is
-// the same instance an `import "sngl:platform/x"` reaches, because libPkg
-// memoizes: a platform's declarations must be one set, whether user code
-// imported them or only named one through the ambient namespace.
-func (c *checker) targetNSPkg(uri string) *ir.Package {
-	if uri == "" || !c.hasLibPkg(uri) {
-		return nil
-	}
-	return c.libPkg(uri)
-}
-
 // importablePackages names every package this check could import: the public
 // lib/ tiers, plus the package each configured target serves for itself. A
 // target's package is not under lib/, so a list read from there alone would
@@ -2866,27 +2849,6 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// targetsPlatform reports whether a `platform <name> { ... }` block is for a
-// platform this check is building for. With no target named, every block is
-// checked: that is the platform-agnostic read the LSP and a bare check want,
-// and a block skipped there would be a block nobody ever checked.
-func (c *checker) targetsPlatform(name string) bool {
-	if len(c.targets) == 0 {
-		return true
-	}
-	named := false
-	for _, t := range c.targets {
-		if t.Platform == "" {
-			continue
-		}
-		named = true
-		if t.Platform == name {
-			return true
-		}
-	}
-	return !named
 }
 
 // buildOptionsStructLit type-checks each named arg against the merged options

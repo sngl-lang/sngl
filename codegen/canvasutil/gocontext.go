@@ -137,12 +137,6 @@ func ctxCall(ctx ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 	}}
 }
 
-// sel builds `operand.<field>` as an ir.Select. The Go renderer ExportNames the
-// field, so lowercase SNGL names map to the exported Go struct fields.
-func sel(operand ir.Expr, field string) ir.Expr {
-	return &ir.Select{Operand: operand, Field: field, Type: ir.TypDyn}
-}
-
 // selTyped is sel with the field's type carried along, so a backend that
 // declares its types has one to emit rather than a guess to make.
 func selTyped(operand ir.Expr, field string, t *ir.Type) ir.Expr {

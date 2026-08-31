@@ -240,14 +240,6 @@ func (a markArgs) String(name string) string {
 	return ""
 }
 
-// Int is a constant-integer parameter's value (0 if absent).
-func (a markArgs) Int(name string) int64 {
-	if i := a.index(name); i >= 0 {
-		return a.vals[i].num
-	}
-	return 0
-}
-
 // Idents is the value of a list-typed parameter, empty when the mark supplied
 // none.
 func (a markArgs) Idents(name string) []string {
