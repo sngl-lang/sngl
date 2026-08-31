@@ -44,8 +44,12 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 	case "tick":
 		if cv := tv.comp; cv != nil {
+			ts, err := tv.sched(cv)
+			if err != nil {
+				return nil, err
+			}
 			compEnv := cv.compEnv()
-			if err := fireTimers(tv.pkg, compEnv); err != nil {
+			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
 			cv.Env.RebindFrom(compEnv)
@@ -69,13 +73,29 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			return nil, err
 		}
 		timeoutMs := interp.ToInt(timeoutVal)
-		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
+		// The deadline is simulated, not wall-clock: a test asking to wait
+		// 1000ms for a 10ms timer spends three ticks, not a real second.
+		if tv.clock == nil {
+			tv.clock = interp.NewVirtual()
+		}
+		deadline := tv.clock.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+
+		// A test function may take no component, in which case there is
+		// nothing to tick. The predicate still runs once: it may be closing
+		// over package state, and it ran once before this loop had a schedule.
 		cv := tv.comp
+		var ts *interp.Timers
+		if cv != nil {
+			var serr error
+			if ts, serr = tv.sched(cv); serr != nil {
+				return nil, serr
+			}
+		}
 
 		for {
 			// Predicate runs in its captured env so c reads observe in-place
-			// component-var updates from fireTimers.
+			// component-var updates from the timer handlers.
 			out, callErr := lv.Call(nil)
 			if callErr != nil {
 				return nil, callErr
@@ -83,14 +103,19 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			if b, ok := out.(bool); ok && b {
 				return nil, nil
 			}
-			if cv == nil {
+			// Nothing left to advance the clock: waiting longer cannot change
+			// the answer, and looping on an unmoving clock would never return.
+			if ts == nil {
 				return nil, nil
 			}
-			if !time.Now().Before(deadline) {
+			if _, any := ts.Next(); !any {
+				return nil, nil
+			}
+			if !tv.clock.Now().Before(deadline) {
 				return nil, nil
 			}
 			compEnv := cv.compEnv()
-			if err := fireTimers(tv.pkg, compEnv); err != nil {
+			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
 			cv.Env.RebindFrom(compEnv)
@@ -621,34 +646,4 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 		return nil, fmt.Errorf("cannot assign to const %q", field)
 	}
 	return sym, nil
-}
-
-// fireTimers runs each component timer's handler once, honoring the Enabled
-// expression. In IR, timers live on ir.Component (not scattered through the
-// body), so we walk pkg.Components for the active component.
-func fireTimers(pkg *ir.Package, env *interp.Env) error {
-	if env.Comp == nil {
-		return nil
-	}
-	for _, t := range env.Comp.Timers {
-		enabled := true
-		if t.Enabled != nil {
-			v, err := env.Eval(t.Enabled)
-			if err != nil {
-				return err
-			}
-			if b, ok := v.(bool); ok {
-				enabled = b
-			}
-		}
-		if !enabled || t.Handler == nil {
-			continue
-		}
-		for _, st := range t.Handler.Block {
-			if err := env.Exec(st); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
