@@ -10,7 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// stdlibComponentsUnderFyne is every stdlib component this platform is
+// StdlibComponents is every stdlib component this platform is
 // responsible for, one per line of the source below.
 //
 // The list is written out rather than derived, so it catches an override that
@@ -19,61 +19,6 @@ import (
 // wants the bodyless-declaration syntax in #123, which turns "a target must
 // implement this" into something the compiler can see rather than something
 // each platform's test restates.
-var stdlibComponentsUnderFyne = []string{
-	"vbox", "hbox", "stack", "scroll", "spacer", "card", "splitview",
-	"modal", "drawer", "popover", "tooltip",
-	"tabs", "toolbar", "menubar", "menu",
-	"table", "tree", "radio",
-	"text", "badge", "chip", "divider", "avatar", "spinner", "progress", "datepicker",
-	"button", "link", "image", "checkbox", "toggle", "select",
-	"input", "textarea",
-}
-
-// allComponentsSrc instantiates every name in stdlibComponentsUnderFyne so the
-// checked IR carries a NodeInst pointing at each stdlib *ir.Component.
-const allComponentsSrc = `
-import . "sngl:ui"
-import "sngl:platform/fyne"
-output { go { fyne() } }
-component main {
-    vbox {
-        hbox {}
-        stack {}
-        scroll { text(value="in scroll") }
-        spacer()
-        card {}
-        splitview {}
-        modal {}
-        drawer {}
-        popover {}
-        tooltip { text(value="tipped") }
-        tabs {}
-        toolbar {}
-        menubar()
-        menu()
-        table()
-        tree()
-        radio()
-        text(value="t")
-        badge(value="b")
-        chip(label="c")
-        divider()
-        avatar(initials="AB")
-        spinner(label="s")
-        progress(value=0.5)
-        datepicker(placeholder="pick")
-        button(text="go")
-        link(href="/x", text="l")
-        image(src="/i.png")
-        checkbox(label="c")
-        toggle(label="t")
-        select(options=["a"])
-        input(placeholder="p")
-        textarea(placeholder="p", rows=3)
-    }
-}
-`
-
 // TestEveryStdlibComponentHasAFyneBody is bar one of the redesign: each stdlib
 // component must carry a `component sngl.X { ... }` body in fyne.sngl,
 // and that body must implement something.
@@ -96,7 +41,7 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 	})
 
 	var missingNode, missingBody, emptyBody []string
-	for _, name := range stdlibComponentsUnderFyne {
+	for _, name := range StdlibComponents {
 		comp, ok := seen[name]
 		if !ok {
 			missingNode = append(missingNode, name)
@@ -120,8 +65,8 @@ func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 	if len(emptyBody) > 0 {
 		t.Errorf("PlatformOverrides[\"fyne\"] is present but empty for %v", emptyBody)
 	}
-	if n := len(stdlibComponentsUnderFyne); n != 34 {
-		t.Errorf("stdlibComponentsUnderFyne has %d entries, want the 34 stdlib components", n)
+	if n := len(StdlibComponents); n != 34 {
+		t.Errorf("StdlibComponents has %d entries, want the 34 stdlib components", n)
 	}
 }
 
@@ -147,7 +92,7 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 	})
 
 	used := map[string]bool{}
-	for _, name := range stdlibComponentsUnderFyne {
+	for _, name := range StdlibComponents {
 		comp := seen[name]
 		if comp == nil {
 			t.Fatalf("fixture did not instantiate %q", name)
@@ -178,48 +123,9 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 	}
 }
 
-// fynePrimitiveNodes collects every fyne primitive instantiation reachable
-// from stmts, following a non-primitive component into its own body — which is
-// how a widget declaration (`component Label { Widget(spec=...) }`) is reached
-// from an override that names it.
-func fynePrimitiveNodes(stmts []ir.Stmt) []*ir.NodeInst {
-	var out []*ir.NodeInst
-	seen := map[*ir.Component]bool{}
-	var walk func([]ir.Stmt)
-	walk = func(s []ir.Stmt) {
-		codegen.WalkVisualTree(s, func(n *ir.NodeInst, _ int) bool {
-			if n.Component == nil {
-				return false
-			}
-			if fynePrimitive(n.Component) != "" {
-				out = append(out, n)
-				return false
-			}
-			if !seen[n.Component] {
-				seen[n.Component] = true
-				walk(n.Component.Body)
-			}
-			return false
-		})
-	}
-	walk(stmts)
-	return out
-}
-
-// nodeProps is the node's props by name, the shape specFromProps decodes. In a
-// real build these arrive as the assignments lowering emits after CreateNode;
-// here they are read straight off the checked node.
-func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
-	out := map[string]ir.Expr{}
-	for _, p := range n.Props {
-		out[p.Name] = p.Value
-	}
-	return out
-}
-
 func checkAllComponents(t *testing.T) *ir.Package {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(allComponentsSrc))
+	doc, err := parser.Parse("t.sngl", []byte(AllComponentsSource))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

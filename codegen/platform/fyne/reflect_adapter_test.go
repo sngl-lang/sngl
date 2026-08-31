@@ -65,7 +65,7 @@ func allSpecs(t *testing.T) map[string]*fyneSpec {
 		return false
 	})
 	out := map[string]*fyneSpec{}
-	for _, name := range stdlibComponentsUnderFyne {
+	for _, name := range StdlibComponents {
 		comp := seen[name]
 		if comp == nil {
 			t.Fatalf("fixture did not instantiate %q", name)
