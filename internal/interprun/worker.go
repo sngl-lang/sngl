@@ -118,6 +118,8 @@ func workerKey(dir string) (string, error) {
 var workerSources = []string{
 	"cmd/sngl-fyne-worker",
 	"pkg/go/fynehost",
+	"pkg/go/fynelayout",
+	"pkg/go/fynetheme",
 	"pkg/go/snglhost",
 	"internal/testrpc",
 }
