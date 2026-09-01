@@ -292,7 +292,7 @@ type Func struct {
 	// A macro needs it: a mark is bound to the declaration it was written from,
 	// and that binding is (package, name).
 	Pkg            string
-	Receiver       string       // "int" for int.abs (empty for plain funcs)
+	Receiver       string // "int" for int.abs (empty for plain funcs)
 	TypeParams     []TypeParam
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         []*Param
@@ -318,7 +318,7 @@ type Func struct {
 	// answer, so a backend without the id may emit it instead. The body's
 	// presence is the whole of that distinction — there is no flag, because a
 	// flag beside a body is two records of one fact and they drifted.
-	Intrinsic         string
+	Intrinsic string
 	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
 	// in the encoder and neither is written.
 	Foreign        `json:"Foreign,omitzero"`

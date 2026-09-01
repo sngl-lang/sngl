@@ -104,6 +104,30 @@ func TestGoIRContext_RawFieldAccess_NonRawUnaffected(t *testing.T) {
 	}
 }
 
+// A Model field read is unexported, so the emitter has to know the receiver
+// when it sees one -- and knowing it by name alone is not knowing it. A loop
+// variable may shadow it (`for m = entry().typeDoc.methods` under a receiver
+// called `m`), and the fields it then reads belong to its own type, exported
+// like any other Go struct's.
+func TestGoIRContext_ShadowedReceiverIsNotTheModel(t *testing.T) {
+	pkg := &ir.Package{}
+	ctx := codegen.NewExprCtx(pkg)
+	ctx.StateReceiver = "m"
+	gc := NewIRContext(ctx)
+
+	loopVar := &ir.LoopVar{Name: "m"}
+	shadowed := &ir.Select{Operand: &ir.Ident{Name: "m", Sym: loopVar}, Field: "short"}
+	if got, want := gc.EvalExpr(shadowed), "m.Short"; got != want {
+		t.Errorf("shadowed receiver = %q; want %q", got, want)
+	}
+
+	// The receiver itself still reads its own unexported state.
+	recv := &ir.Select{Operand: &ir.Ident{Name: "m"}, Field: "short"}
+	if got, want := gc.EvalExpr(recv), "m.short"; got != want {
+		t.Errorf("receiver = %q; want %q", got, want)
+	}
+}
+
 // TestGoIRContext_MethodFields_DirectCall verifies that a Select on a
 // RawFieldAccess ident whose field is in MethodFields lowers to a zero-arg
 // method call `c.<field>()` instead of a raw field read. Mirrors legacy.

@@ -12,7 +12,7 @@ import (
 // answer rather than on a race.
 func settled[T any](t *testing.T, v *Value[T]) *Value[T] {
 	t.Helper()
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		if !v.InFlight() {
 			return v
 		}
@@ -95,9 +95,8 @@ func TestConcurrentReadersShareOneFetch(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func() { defer wg.Done(); Query(s, "q", []any{1}, fetch) }()
+	for range 20 {
+		wg.Go(func() { Query(s, "q", []any{1}, fetch) })
 	}
 	wg.Wait()
 	close(release)

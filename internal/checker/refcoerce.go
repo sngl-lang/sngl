@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"maps"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -56,9 +58,7 @@ func (c *checker) verifyRefCoercions(pkg *ir.Package) {
 	// the reason the coercion exists -- and its parameters belong to a package
 	// the program is not made of.
 	for _, lib := range c.libs.pkgs {
-		for p, fn := range paramOwners(lib) {
-			owners[p] = fn
-		}
+		maps.Copy(owners, paramOwners(lib))
 	}
 	// One diagnostic per parameter: every call site handing it a value is the
 	// same mistake in the declaration, reported where the declaration is.

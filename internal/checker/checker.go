@@ -3302,7 +3302,6 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.funcDepth++
 	defer func() { c.funcDepth-- }()
 
-
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}
 	if fn.AST != nil {

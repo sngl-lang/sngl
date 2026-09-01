@@ -436,6 +436,20 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	if !ok || id.Name != gc.recvName() {
 		return "", false
 	}
+	// And it has to *be* the receiver. A binding that merely shares its name
+	// shadows it -- `for m = entry().typeDoc.methods` in a Model whose receiver
+	// is `m` -- and its fields are its own type's, exported like any other Go
+	// struct's, rather than the Model's unexported state.
+	switch sym := id.Sym.(type) {
+	case nil, *ir.Component:
+		// A synthesized receiver read carries no symbol.
+	case *ir.Param:
+		if !sym.Receiver && sym.Name != ir.ReceiverParam {
+			return "", false
+		}
+	default:
+		return "", false
+	}
 	return n.Field, true
 }
 
