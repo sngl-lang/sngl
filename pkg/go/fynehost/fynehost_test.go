@@ -3,6 +3,7 @@ package fynehost_test
 import (
 	"testing"
 
+	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
@@ -15,6 +16,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 )
 
 // This test imports the compiler, which the package under test must not. That
@@ -323,5 +325,102 @@ component main {
 	}
 	if label.Text != "Hello, SNGL!" {
 		t.Errorf("after typing, the label reads %q; the binding did not write back", label.Text)
+	}
+}
+
+// TestAContainerCarriesItsChildrensFlex: Fyne's own boxes pack children at
+// their minimum size, so a keypad laid out with `flex=1` came up as small
+// buttons in the corner. The layout is what answers it, and its weights are
+// positional, so it is rebuilt as children arrive.
+func TestAContainerCarriesItsChildrensFlex(t *testing.T) {
+	app := fynetest.NewApp()
+	t.Cleanup(app.Quit)
+
+	src := `import . "sngl:ui"
+
+component main {
+    hbox #row(style={gap=4, padding=6}) {
+        button(text="a", style={flex=1, margin=3})
+        button(text="b", style={flex=2})
+    }
+}
+`
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	h := fynehost.New(fynehost.Ctors())
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	obj, ok := h.Object(s.View().Find("row")[0].Key)
+	if !ok {
+		t.Fatal("#row is not mounted")
+	}
+	c, ok := obj.(*fyne.Container)
+	if !ok {
+		t.Fatalf("#row is a %T, want a *fyne.Container", obj)
+	}
+	w, ok := c.Layout.(fynelayout.Weighted)
+	if !ok {
+		t.Fatalf("#row lays out with %T; its children's flex has nowhere to be said", c.Layout)
+	}
+	if !w.Horizontal {
+		t.Error("an hbox laid out vertically")
+	}
+	if len(w.Weights) != 2 || w.Weights[0] != 1 || w.Weights[1] != 2 {
+		t.Errorf("weights are %v, want [1 2]", w.Weights)
+	}
+	if len(w.Margins) != 2 || w.Margins[0] != 3 {
+		t.Errorf("margins are %v, want the first child's 3", w.Margins)
+	}
+	if w.Gap != 4 || w.Padding != 6 {
+		t.Errorf("gap/padding are %v/%v, want 4/6", w.Gap, w.Padding)
+	}
+}
+
+// TestPaintStylesReachATheme: Fyne has no per-widget styling, so a colour or a
+// text size is a theme over the subtree it applies to. Without this the
+// calculator's keys were all one colour.
+func TestPaintStylesReachATheme(t *testing.T) {
+	app := fynetest.NewApp()
+	t.Cleanup(app.Quit)
+
+	src := `import . "sngl:ui"
+
+component main {
+    vbox {
+        button #plain(text="plain")
+        button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22})
+    }
+}
+`
+	s, err := interp.NewSession(check(t, src), "main", interp.NewVirtual())
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	h := fynehost.New(fynehost.Ctors())
+	if err := s.Attach(h); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	root, _ := h.Object(s.View().Find("plain")[0].Key)
+	if root == nil {
+		t.Fatal("#plain is not mounted")
+	}
+	// A node asking for nothing is not wrapped: a theme that answers nothing
+	// still costs a node in the tree.
+	if h.ViewOf(s.View().Find("plain")[0].Key) != root {
+		t.Error("#plain was wrapped in a theme it did not ask for")
+	}
+	painted := s.View().Find("painted")[0].Key
+	wrapper := h.ViewOf(painted)
+	obj, _ := h.Object(painted)
+	if wrapper == obj {
+		t.Fatal("#painted was not wrapped; its background and text size reach nothing")
+	}
+	if _, ok := wrapper.(*container.ThemeOverride); !ok {
+		t.Errorf("#painted is wrapped in a %T, want a *container.ThemeOverride", wrapper)
 	}
 }

@@ -35,6 +35,9 @@ type spec struct {
 	handlers map[string]string
 	// add is a container's attach method, content a wrapper's child field.
 	add, content string
+	// axis is "horizontal" or "vertical" on a container that lays its children
+	// out along one, which is what tells a layout which way to measure.
+	axis string
 }
 
 // SpecProp is the prop a primitive carries its Spec in. Renaming it here means
@@ -58,6 +61,7 @@ func decodeSpec(props []snglhost.PropVal) (spec, bool) {
 		sp.ctor = str(structField(n, "path")) + "." + str(structField(n, "name"))
 	}
 	sp.add = str(structField(rec, "add"))
+	sp.axis = str(structField(rec, "axis"))
 	sp.content = str(structField(rec, "content"))
 	sp.setters = pairs(structField(rec, "setters"), "prop", "call")
 	sp.handlers = pairs(structField(rec, "handlers"), "on", "field")
@@ -135,10 +139,14 @@ type Host struct {
 }
 
 type mounted struct {
-	key      snglhost.Key
-	name     string
-	obj      fyne.CanvasObject
-	spec     spec
+	key   snglhost.Key
+	name  string
+	obj   fyne.CanvasObject
+	spec  spec
+	style style
+	// view is what is actually mounted: obj, or obj inside a theme override.
+	// The parent holds this, the tree holds obj.
+	view     fyne.CanvasObject
 	parent   snglhost.Key
 	children []*mounted
 	// orphans holds objects mounted beneath a widget that is neither a
@@ -200,11 +208,13 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 	if err != nil {
 		return fmt.Errorf("%s: %w", d.Name, err)
 	}
-	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: sp, parent: parent}
+	st := decodeStyle(d.Props)
+	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: sp, style: st, parent: parent}
+	m.view = themed(obj, st)
 	h.nodes[d.Key] = m
 	for _, p := range d.Props {
-		if p.Name == SpecProp {
-			continue // metadata, not a value the widget takes
+		if p.Name == SpecProp || p.Name == "style" {
+			continue // metadata and paint, not values the widget takes
 		}
 		if err := applyProp(m, p.Name, p.Value); err != nil {
 			return fmt.Errorf("%s.%s: %w", d.Name, p.Name, err)
@@ -269,6 +279,16 @@ func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
 		return nil, false
 	}
 	return m.obj, true
+}
+
+// ViewOf returns what is actually mounted for a key: the widget, or the theme
+// override wrapping it. Object returns the widget itself.
+func (h *Host) ViewOf(key snglhost.Key) fyne.CanvasObject {
+	m, ok := h.nodes[key]
+	if !ok {
+		return nil
+	}
+	return m.view
 }
 
 // Fire invokes a widget's own callback, the way a click would -- through the
@@ -400,8 +420,12 @@ func (h *Host) insert(m *mounted, parent snglhost.Key, index int) error {
 
 	*objs = append(*objs, nil)
 	copy((*objs)[index+1:], (*objs)[index:])
-	(*objs)[index] = m.obj
-	return h.setContent(parent)
+	(*objs)[index] = m.view
+	if err := h.setContent(parent); err != nil {
+		return err
+	}
+	h.relayout(parent)
+	return nil
 }
 
 func (h *Host) detach(m *mounted) {
@@ -411,6 +435,7 @@ func (h *Host) detach(m *mounted) {
 			*siblings = append((*siblings)[:i], (*siblings)[i+1:]...)
 			*objs = append((*objs)[:i], (*objs)[i+1:]...)
 			_ = h.setContent(m.parent)
+			h.relayout(m.parent)
 			return
 		}
 	}

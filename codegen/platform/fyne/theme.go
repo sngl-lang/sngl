@@ -23,57 +23,11 @@ import (
 // background at all, so a box asking for one gets nothing -- Fyne draws
 // nothing behind a container to colour.
 
-// snglThemeType is the theme every generated theme value is an instance of. It
-// embeds the app's own theme, so a property this platform does not set is
-// still whatever the app would have used.
-//
-// The button radius moved theme keys in Fyne 2.8 (SizeNameInputRadius ->
-// SizeNameButtonRadius); the untyped string answers both, and the constant
-// that exists in the built-against version answers with it.
-const snglThemeType = `// snglTheme is one set of SNGL style properties as a Fyne theme, for the
-// subtree a container.ThemeOverride applies it to.
-type snglTheme struct {
-	fyne.Theme
-	background, foreground color.Color
-	textSize, radius       float32
-	bold                   bool
-}
-
-func (t snglTheme) Color(n fyne.ThemeColorName, v fyne.ThemeVariant) color.Color {
-	switch n {
-	case theme.ColorNameButton, theme.ColorNameBackground, theme.ColorNameInputBackground:
-		if t.background != nil {
-			return t.background
-		}
-	case theme.ColorNameForeground:
-		if t.foreground != nil {
-			return t.foreground
-		}
-	}
-	return t.Theme.Color(n, v)
-}
-
-func (t snglTheme) Size(n fyne.ThemeSizeName) float32 {
-	switch n {
-	case theme.SizeNameText:
-		if t.textSize > 0 {
-			return t.textSize
-		}
-	case theme.SizeNameInputRadius, "buttonRadius":
-		if t.radius > 0 {
-			return t.radius
-		}
-	}
-	return t.Theme.Size(n)
-}
-
-func (t snglTheme) Font(s fyne.TextStyle) fyne.Resource {
-	if t.bold {
-		s.Bold = true
-	}
-	return t.Theme.Font(s)
-}
-`
+// ThemeImportPath is the runtime package the generated themes are instances
+// of. The type used to be emitted here as a string constant, which meant the
+// interpreted host had to carry a second copy of the same forty lines -- and
+// two copies of a Fyne contract drift the moment Fyne changes one.
+const ThemeImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
 
 // themeValue is one distinct set of paint properties. Comparable, so the set
 // of styles in a program dedupes to the set of themes it needs.
@@ -151,40 +105,44 @@ func assignThemes(specs map[string]*fyneSpec) []themeValue {
 	return themes
 }
 
-// emitThemeDecls writes the theme type and one var per distinct theme.
+// emitThemeDecls writes one var per distinct theme.
 func emitThemeDecls(themes []themeValue) string {
 	if len(themes) == 0 {
 		return ""
 	}
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString(snglThemeType)
 	b.WriteString("\n")
 	for i, t := range themes {
-		fmt.Fprintf(&b, "var _snglTheme%d = snglTheme{Theme: theme.DefaultTheme()", i)
+		fmt.Fprintf(&b, "var _snglTheme%d = %s.Theme{Theme: theme.DefaultTheme()", i, themeAlias)
 		if t.backgroundOK {
-			fmt.Fprintf(&b, ", background: %s", goColorLit(*t.Background))
+			fmt.Fprintf(&b, ", Background: %s", goColorLit(*t.Background))
 		}
 		if t.foregroundOK {
-			fmt.Fprintf(&b, ", foreground: %s", goColorLit(*t.Foreground))
+			fmt.Fprintf(&b, ", Foreground: %s", goColorLit(*t.Foreground))
 		}
 		if t.TextSize > 0 {
-			fmt.Fprintf(&b, ", textSize: %s", float32Lit(t.TextSize))
+			fmt.Fprintf(&b, ", TextSize: %s", float32Lit(t.TextSize))
 		}
 		if t.Radius > 0 {
-			fmt.Fprintf(&b, ", radius: %s", float32Lit(t.Radius))
+			fmt.Fprintf(&b, ", Radius: %s", float32Lit(t.Radius))
 		}
 		if t.Bold {
-			b.WriteString(", bold: true")
+			b.WriteString(", Bold: true")
 		}
 		b.WriteString("}\n")
 	}
 	return b.String()
 }
 
-// themeImports are what the emitted theme declarations reference.
+// themeAlias is the identifier the runtime theme package is referred to by.
+const themeAlias = "fynetheme"
+
+// themeImports are what the emitted theme declarations reference. The type
+// itself now comes from a runtime package rather than being written into every
+// generated program, so image/color is only needed for the colour literals.
 func themeImports() []string {
-	return slices.Clone([]string{"image/color", "fyne.io/fyne/v2", "fyne.io/fyne/v2/theme"})
+	return slices.Clone([]string{"image/color", "fyne.io/fyne/v2/theme", ThemeImportPath})
 }
 
 // themed wraps a styled widget in the container.ThemeOverride carrying its
