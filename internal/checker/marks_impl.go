@@ -21,6 +21,54 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
+	{"language/go", "native"}:       markGoNative,
+}
+
+// markGoNative implements #[go.native("path", "Name")]: the declaration *is*
+// that Go package-level identifier rather than corresponding to one.
+//
+// Which is the whole difference from #[foreign], and why Foreign.Marked is
+// where it lands. Marked says "the backend emits this declaration and the name
+// is one to spell beside it"; unset says "the identifier already exists and a
+// call becomes a call to it" — the shape the Go renderer has always read for an
+// imported declaration, requiring the import at the call site.
+//
+// That last part is the point. An import written at the top of a target's
+// library package is resolved by every program built for that language, so a
+// transport nothing fetches with still had to be on the machine. A native
+// declaration costs nothing until something calls it.
+//
+// It lives in sngl:language/go because a Go path and a Go identifier are Go's
+// to describe, and a package may use a macro it declares.
+func markGoNative(m *mark) error {
+	path, name := m.args.String("path"), m.args.String("name")
+	if path == "" || name == "" {
+		return fmt.Errorf("#[go.native]: a package path and an identifier are both required")
+	}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
+	if err != nil {
+		return err
+	}
+	fm := ir.Foreign{Scheme: "go", Path: path, Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		if len(d.Block) > 0 {
+			return fmt.Errorf("#[go.native] on %q: %s.%s already exists, so a body here would be emitted by nobody and read by nobody", d.Name, path, name)
+		}
+		d.Foreign = fm
+		// The same fact the Go importer reads off a signature it sees. A
+		// declaration here has no signature to read, so the mark is where it
+		// is said.
+		d.HasErrorReturn = slices.Contains(flags, flagFails)
+	case *ir.StructDef:
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR
@@ -66,7 +114,6 @@ func builtinKindNames() []string {
 // lib/internal/ir. The checker validates them against that enum; these are the
 // members it acts on.
 const (
-	flagUsable          = "usable"
 	flagMutates         = "mutates"
 	flagReadonly        = "readonly"
 	flagMutatesReceiver = "mutatesReceiver"
@@ -109,7 +156,6 @@ func markIntrinsic(m *mark) error {
 		return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, fn.Intrinsic)
 	}
 	fn.Intrinsic = id
-	fn.IntrinsicBodyUsable = slices.Contains(flags, flagUsable)
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
 	switch {
 	case slices.Contains(flags, flagMutates):
@@ -125,6 +171,9 @@ const (
 	flagPure  = "pure"
 	flagAsync = "async"
 )
+
+// The flag #[native] accepts after the name, declared as go.NativeFlag.
+const flagFails = "fails"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //

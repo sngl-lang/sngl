@@ -387,6 +387,50 @@ component main {
 }`, "non-lvalue")
 }
 
+// A ref<T> parameter takes a plain T, and the value is what the callee gets.
+// One declaration then serves the caller who wants the handle and the caller who
+// wants the contents, which is the whole point: `&` is the difference, written
+// where the choice belongs.
+func TestCheckValueForARefParam(t *testing.T) {
+	expectNoErrors(t, `
+func peek(r ref<int>) => *r
+
+component main {
+    var n int = 1
+    var a int = peek(&n)
+    var b int = peek(n)
+}`)
+}
+
+// Only where the callee does nothing with the parameter but read through it. A
+// value has no cell to write back to, or to outlive the call in, so a callee
+// that hands the ref on has to be given a real one.
+func TestCheckValueForAnEscapingRefParam(t *testing.T) {
+	expectError(t, `
+func keep(r ref<int>) ref<int> {
+    return r
+}
+
+component main {
+    var n int = 1
+    var a int = *keep(n)
+}`, "lets it escape")
+}
+
+// The callee is held to that once every body is checked, not at the call: a call
+// may be reached before the declaration it names.
+func TestCheckValueForARefParamDeclaredLater(t *testing.T) {
+	expectError(t, `
+component main {
+    var n int = 1
+    var a int = *keep(n)
+}
+
+func keep(r ref<int>) ref<int> {
+    return r
+}`, "lets it escape")
+}
+
 func TestCheckDerefNonRef(t *testing.T) {
 	expectError(t, `
 component main {

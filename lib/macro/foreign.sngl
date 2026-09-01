@@ -20,4 +20,4 @@ import ir "sngl:internal/ir"
 // redirecting to one the backend did not emit. Struct, struct field and
 // function are the forms that carry it; the others refuse it. The flags that
 // may follow the name are `ir.ForeignFlag`.
-func foreign(path string, name string = "", flags list<ir.ForeignFlag> = []) ir.Macro {}
+func foreign(path string, name string = "", flags list<ir.ForeignFlag> = []) ir.Macro

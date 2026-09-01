@@ -15,7 +15,7 @@ stdout 'qualified.sngl: ok'
 
 # An unqualified macro resolves against dot-imported macro packages only.
 ! sngl check bare_builtin.sngl
-stderr 'unknown macro "builtin": no dot-imported package declares it'
+stderr 'unknown macro "builtin": nothing in scope declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
 # sngl:tree brings both the default tree and the mark that declares new ones.

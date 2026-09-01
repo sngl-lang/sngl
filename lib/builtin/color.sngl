@@ -36,7 +36,7 @@ func color.opacity(c color, a int) color { return color{r=c.r, g=c.g, b=c.b, a=a
 // its complete value, and dropping alpha would print two different colours
 // the same.
 #[intrinsic("color.hex")]
-func color.hex(c color) string { return "" }
+func color.hex(c color) string
 
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,
 // preserving alpha. `lighten(c, 0.0)` returns c; `lighten(c, 1.0)`

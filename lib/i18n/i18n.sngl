@@ -19,7 +19,7 @@ import clock "sngl:time"
 
 // Returns the process-startup locale string. Reads $LC_ALL, then
 // $LC_MESSAGES, then $LANG, falling back to "en-US".
-#[intrinsic("i18n.defaultLocale", usable)]
+#[intrinsic("i18n.defaultLocale")]
 func defaultLocale() string { return _defaultLocale() }
 
 // The active locale. Overridable per-subtree with `i18n.locale("xx-YY") { ... }`
@@ -32,40 +32,40 @@ context #locale(defaultLocale())
 // Translate `key` against the loaded manifest, formatting via ICU.
 // The lowering of $"..." passes the synthesized ICU template as `key`
 // and the placeholder values as `args`.
-#[intrinsic("i18n.tr", usable)]
+#[intrinsic("i18n.tr")]
 func tr(key string, args map<string, dyn>) string { return _translate(locale, key, "", args) }
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
-#[intrinsic("i18n.trInline", usable)]
+#[intrinsic("i18n.trInline")]
 func trInline(key string, inlinedTemplate string, args map<string, dyn>) string { return _translate(locale, key, inlinedTemplate, args) }
 
 // Format an ICU template directly, no manifest lookup.
-#[intrinsic("i18n.format", usable)]
+#[intrinsic("i18n.format")]
 func format(template string, args map<string, dyn>) string { return _format(locale, template, args) }
 
 // --- Direct formatters ---
 
 // Style: "decimal" (default), "percent", "currency", "scientific".
-#[intrinsic("i18n.numberInt", usable)]
+#[intrinsic("i18n.numberInt")]
 func numberInt(n int, style string) string { return _numberInt(locale, n, style) }
-#[intrinsic("i18n.numberFloat", usable)]
+#[intrinsic("i18n.numberFloat")]
 func numberFloat(n float, style string) string { return _numberFloat(locale, n, style) }
 
 // Style: "short", "medium" (default), "long", "full".
-#[intrinsic("i18n.date", usable)]
+#[intrinsic("i18n.date")]
 func date(d clock.date, style string) string { return _date(locale, d, style) }
-#[intrinsic("i18n.time", usable)]
+#[intrinsic("i18n.time")]
 func time(t clock.time, style string) string { return _time(locale, t, style) }
-#[intrinsic("i18n.datetime", usable)]
+#[intrinsic("i18n.datetime")]
 func datetime(dt clock.datetime, dateStyle string, timeStyle string) string { return _dateTime(locale, dt, dateStyle, timeStyle) }
 
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-#[intrinsic("i18n.select", usable)]
+#[intrinsic("i18n.select")]
 func select(value string, cases map<string, string>) string { return _select(locale, value, cases) }
 
 // --- Plural/ordinal selectors ---
@@ -74,51 +74,52 @@ func select(value string, cases map<string, string>) string { return _select(loc
 // the intl primitives that consume it; use the predeclared constants
 // (i18n.zero, i18n.one, …, i18n.other) for CLDR keyword categories.
 #[intrinsic("i18n.exactly")]
-func exactly(n int) PluralKey { return {} }
+func exactly(n int) PluralKey
 
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-#[intrinsic("i18n.plural", usable)]
+#[intrinsic("i18n.plural")]
 func plural(count int, forms map<PluralKey, string>) string { return _plural(locale, count, forms) }
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
-#[intrinsic("i18n.selectordinal", usable)]
+#[intrinsic("i18n.selectordinal")]
 func selectordinal(count int, forms map<PluralKey, string>) string { return _selectOrdinal(locale, count, forms) }
 
 // --- Primitives ---
 //
-// The locale-aware formatting the wrappers above are written against. Every
-// body is a placeholder: the result comes from the target's own
-// implementation of the marked id. They are unexported because a program
-// reaches them through the wrappers, which thread the active locale.
+// The locale-aware formatting the wrappers above are written against. Each is a
+// signature with no body: the result comes from the target's own implementation
+// of the marked id, so there is nothing here for one to stand in for. They are
+// unexported because a program reaches them through the wrappers, which thread
+// the active locale.
 
 #[intrinsic("i18n._defaultLocale", readonly)]
-func _defaultLocale() string { return "" }
+func _defaultLocale() string
 
 #[intrinsic("i18n._translate")]
-func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string { return "" }
+func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string
 
 #[intrinsic("i18n._format")]
-func _format(locale string, template string, args map<string, dyn>) string { return "" }
+func _format(locale string, template string, args map<string, dyn>) string
 
 #[intrinsic("i18n._numberInt")]
-func _numberInt(locale string, n int, style string) string { return "" }
+func _numberInt(locale string, n int, style string) string
 
 #[intrinsic("i18n._numberFloat")]
-func _numberFloat(locale string, n float, style string) string { return "" }
+func _numberFloat(locale string, n float, style string) string
 
 #[intrinsic("i18n._date")]
-func _date(locale string, d clock.date, style string) string { return "" }
+func _date(locale string, d clock.date, style string) string
 
 #[intrinsic("i18n._time")]
-func _time(locale string, t clock.time, style string) string { return "" }
+func _time(locale string, t clock.time, style string) string
 
 #[intrinsic("i18n._dateTime")]
-func _dateTime(locale string, dt clock.datetime, dateStyle string, timeStyle string) string { return "" }
+func _dateTime(locale string, dt clock.datetime, dateStyle string, timeStyle string) string
 
 #[intrinsic("i18n._select")]
-func _select(locale string, value string, cases map<string, string>) string { return "" }
+func _select(locale string, value string, cases map<string, string>) string
 
 // PluralKey identifies a CLDR plural category or an exact numeric match.
 // Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
@@ -129,7 +130,7 @@ struct PluralKey {
 }
 
 #[intrinsic("i18n._plural")]
-func _plural(locale string, count int, forms map<PluralKey, string>) string { return "" }
+func _plural(locale string, count int, forms map<PluralKey, string>) string
 
 #[intrinsic("i18n._selectOrdinal")]
-func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string { return "" }
+func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string

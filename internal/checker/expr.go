@@ -995,6 +995,8 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
+	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
+
 	typeName := receiver.String()
 	if receiver.Decl != nil {
 		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
@@ -1019,6 +1021,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			fn, ok = c.lookupMethod("option", sel.Field)
 		case ir.TypeMap:
 			fn, ok = c.lookupMethod("map", sel.Field)
+		}
+	}
+	// A method reached through `option<Struct>` resolves against the struct,
+	// the same way a field read through one does (see inferSelect). Asked after
+	// `option`'s own members, so a name the option itself declares still wins.
+	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
+		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
+		if fn, ok = ir.MemberOf(receiver.Elems[0].Decl, sel.Field); ok {
+			receiver = receiver.Elems[0]
+			typeName = receiver.String()
 		}
 	}
 	if ok {
@@ -1390,26 +1402,44 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption, ir.TypeMap:
+		ir.TypeList, ir.TypeOption, ir.TypeMap, ir.TypeRemote:
 		return true
 	}
 	return false
 }
 
-// hasNoLegitimateFields reports whether a scalar primitive type cannot have
-// any selector fields. Used to surface "no field X on type Y" diagnostics that
-// would otherwise silently degrade to TypDyn. Kept conservative: only the
-// pure-scalar primitives (int/float/bool) qualify because every other type
-// kind in the language has at least one legitimate field-style accessor
-// (color.r, list.length, struct fields, component vars/props, enum
-// members, etc.) or carries no shape information at all (dyn, generic
-// params, anonymous structs).
+// methodNamed reports whether the type declares a method of this name, which
+// is what a field read of a type with no fields usually is: the call left off.
+func methodNamed(t *ir.Type, name string) bool {
+	if t == nil {
+		return false
+	}
+	decl, ok := t.Decl.(*ir.StructDef)
+	if !ok {
+		return false
+	}
+	_, found := decl.Methods[name]
+	return found
+}
+
+// hasNoLegitimateFields reports whether a type cannot have any selector
+// fields. Used to surface "no field X on type Y" diagnostics that would
+// otherwise silently degrade to TypDyn. Kept conservative: a type qualifies
+// only when it has no field-style accessor at all, which rules out most kinds
+// (color.r, list.length, struct fields, component vars/props, enum members)
+// and everything carrying no shape information (dyn, generic params, anonymous
+// structs).
+//
+// remote.Value is one: it declares no fields and reaches its three facts
+// through methods alone, so `box.value` is `box.value()` with the call left
+// off — which degraded to dyn, passed every prop it was handed, and reached a
+// backend as a field read of a struct that has none.
 func hasNoLegitimateFields(t *ir.Type) bool {
 	if t == nil {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeRemote:
 		return true
 	}
 	return false
@@ -1448,6 +1478,24 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		}
 		operand = operand.Elems[0]
 	}
+
+	// A field read through `option<Struct>` resolves against the struct, which
+	// is what every backend already emits -- Go reads through the pointer an
+	// option is. Only the type it was resolved against changes; no deref node
+	// is synthesized, because there is nothing for one to lower to.
+	//
+	// Without this the whole select degraded to dyn: `contents.value().status`
+	// worked, `contents.value().nope` worked exactly as well, and both reached
+	// a backend as a field read of whatever was there.
+	if operand != nil && operand.Kind == ir.TypeOption && len(operand.Elems) == 1 &&
+		operand.Elems[0] != nil && operand.Elems[0].Kind == ir.TypeStruct {
+		operand = operand.Elems[0]
+	}
+
+	// Placed beside the ref auto-deref because it answers the same question:
+	// what value is the field actually being read off. A namespace, a type name
+	// or an enum never has a func type, so nothing below is disturbed.
+	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	{
 		// Namespace member access: ns.field.
@@ -1536,7 +1584,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 					}
 				}
-				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
+				if _, isMethod := sd.Methods[x.Field]; isMethod {
+					c.error(x.Pos, "%s.%s is a method; write %s() to call it", sd.Name, x.Field, x.Field)
+				} else {
+					c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
+				}
 			}
 		}
 
@@ -1626,7 +1678,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
 		if hasNoLegitimateFields(operand) {
-			c.error(x.Pos, "no field %q on type %s", x.Field, operand)
+			if methodNamed(operand, x.Field) {
+				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
+			} else {
+				c.error(x.Pos, "no field %q on type %s", x.Field, operand)
+			}
 		}
 	}
 
@@ -1642,6 +1698,7 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	operandExpr := c.checkExpr(x.Operand)
 	indexExpr := c.checkExpr(x.Index)
 	operand := exprType(operandExpr)
+	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
@@ -2053,7 +2110,19 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		}
 		pos++
 	}
-	// A parameter the arguments did not pin falls back to its default, the way
+	// A parameter the arguments could not pin is bound from the type the context
+	// wants, which is the only way to write one that appears in the return type
+	// alone: `remote.pending()` takes no arguments, and SNGL has no syntax for
+	// naming a type argument at a call site, so without this such a function is
+	// undeclarable rather than merely awkward.
+	//
+	// Arguments come first on purpose. An argument states the type directly,
+	// while the expected type states what the result has to be assignable to,
+	// and the two disagree wherever a conversion would have been applied.
+	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
+		bindTypeParams(sig.Return, c.expected, bindings)
+	}
+	// A parameter neither pinned nor implied falls back to its default, the way
 	// a struct's does when the type-argument list stops short.
 	for _, tp := range sig.TypeParams {
 		if tp.Default == nil {
@@ -2267,6 +2336,10 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 			expr = adapted
 		} else if callExpr, _ := c.implicitCall(value, actual, p.Type); callExpr != nil {
 			expr = c.checkExpr(callExpr)
+		} else if c.coerceValueToRef(actual, p, *value.ExprPos()) {
+			// The value stands as it is, and is not wrapped in a conversion to
+			// ref<T>: see refcoerce.go for why the argument keeps its own type.
+			return expr
 		} else {
 			c.error(*value.ExprPos(), "cannot pass %s as %s", actual, p.Type)
 		}
@@ -2934,11 +3007,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	return nil
 }
 
-// buildPlatformPkgScope builds (and caches) a scope containing declarations
-// from the named platform's sngl:platform/<n> package.
-func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
+// targetPkgScope builds (and caches) a scope containing the declarations of the
+// target package sngl:<uri>, for either tier: a language ships a package the
+// way a platform does, and source in it is written against its own
+// declarations the same way.
+func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	if c.platformScopeCache != nil {
-		if s, ok := c.platformScopeCache[platform]; ok {
+		if s, ok := c.platformScopeCache[uri]; ok {
 			// Clone so each insertion point gets its own parent chain.
 			clone := NewScope(nil)
 			maps.Copy(clone.Symbols, s.Symbols)
@@ -2947,11 +3022,14 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 		}
 	}
 
-	t := c.lookupTarget(platform)
+	name, kind, ok := targetTierName(uri)
+	if !ok {
+		return nil
+	}
+	t := c.lookupTargetIn(name, kind)
 	if t == nil || targetUnavailable(t) != nil {
 		return nil
 	}
-	uri := "platform/" + platform
 	if !c.hasLibPkg(uri) {
 		return nil
 	}
@@ -2964,12 +3042,12 @@ func (c *checker) buildPlatformPkgScope(platform string) *ir.Scope {
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.Options) works inside platform blocks.
-	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: platform, Pkg: pkg})
+	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: name, Pkg: pkg})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
 	}
-	c.platformScopeCache[platform] = scope
+	c.platformScopeCache[uri] = scope
 
 	// Return a clone for this usage.
 	clone := NewScope(nil)
@@ -3335,6 +3413,43 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		ID:        vn.ID,
 		Key:       c.keyArgExpr(vn.Args),
 	}
+}
+
+// callComputedOperand inserts the elided call when expr is a bare reference to a
+// zero-argument function used as an operand. `total.length()`, `doubled[0]` and
+// `pt.x` all mean the computed's *result*: nothing in SNGL declares a method, an
+// index or a field on a function, so a function reaching one of those positions
+// can only be a call whose parentheses were left off — the same elision argument
+// position gets through implicitCall.
+//
+// It is separate from implicitCall because these positions have no expected type
+// to offer it. They do not need one: in argument position a bare function may
+// legitimately be the value wanted, and there the expected type is what decides;
+// here it never can be.
+//
+// All three positions used to fall through to a dyn result with no diagnostic —
+// `plain.bogusMethod()` checked clean — and, because the operand stayed an Ident
+// bound to the func rather than becoming a Call, reactivity never reached the
+// vars the computed reads, so a prop reading one never re-rendered.
+//
+// Args stays nil: this is the implicit-receiver shape passNoImplicitRecv
+// normalizes, so a component's computed picks up its `this` there rather than in
+// two places that could disagree.
+func callComputedOperand(expr ir.Expr, t *ir.Type) (ir.Expr, *ir.Type) {
+	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil ||
+		len(t.Sig.Params) != 0 || t.Sig.Return == nil {
+		return expr, t
+	}
+	id, isIdent := expr.(*ir.Ident)
+	if !isIdent {
+		return expr, t
+	}
+	fn, isFunc := id.Sym.(*ir.Func)
+	if !isFunc {
+		return expr, t
+	}
+	ret := t.Sig.Return
+	return &ir.Call{Type: ret, Func: fn}, ret
 }
 
 // implicitCall checks whether actual is a zero-arg func whose return type is

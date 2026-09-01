@@ -149,6 +149,19 @@ func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 			}
 		}
 	}
+	// After the injection walks, so every slot's GenFunc is wired and the
+	// props are the ones the build path settled on.
+	defer func() {
+		for _, comp := range pkg.Components {
+			st.owner = compOwner{comp}
+			st.synthesizeRemoteSettle()
+		}
+		for _, w := range pkg.Windows {
+			st.owner = windowOwner{w}
+			st.synthesizeRemoteSettle()
+		}
+	}()
+
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
 		comp.Body = st.rewriteAndInject(comp.Body)
@@ -903,8 +916,14 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	props := st.reverseDeps[v]
-	slots := st.reverseSlots[v]
+	return st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
+}
+
+// updaterStmts is the body of an update: reassign every dependent prop from
+// its own expression, then re-fire every dependent slot. What made the update
+// necessary is the caller's business -- an assignment the program wrote, or a
+// fetch that answered long after the render that started it.
+func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSlot, fieldRewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
 	if len(props) == 0 && len(slots) == 0 {
 		return nil
 	}

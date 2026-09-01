@@ -33,6 +33,7 @@ const (
 	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
 	TypeIter      // Elems = [T] for iter<T>
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
+	TypeRemote    // Elems = [T] for remote<T> — a fetched value, its failure and its in-flight flag
 )
 
 // Type is the unified representation of all SNGL types.
@@ -126,6 +127,18 @@ func IterOf(elem *Type) *Type {
 	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
 }
 
+// RemoteOf returns a remote.Value<T> type wrapping the fetched type. decl is the
+// Value declaration, which the type carries so its methods resolve through
+// MemberOf; pass nothing where no scope is in reach, as the intrinsic registry
+// does.
+func RemoteOf(inner *Type, decl ...Symbol) *Type {
+	t := &Type{Kind: TypeRemote, Elems: []*Type{inner}}
+	if len(decl) == 1 {
+		t.Decl = decl[0]
+	}
+	return t
+}
+
 func (t *Type) String() string {
 	if t == nil {
 		return "<nil>"
@@ -172,6 +185,14 @@ func (t *Type) String() string {
 			return fmt.Sprintf("ref<%s>", t.Elems[0])
 		}
 		return "ref"
+	case TypeRemote:
+		// Qualified, unlike list and option: the declaration lives in sngl:remote
+		// rather than being ambient, and a diagnostic naming a bare `Value<T>`
+		// says little when the program also has structs of its own.
+		if len(t.Elems) > 0 {
+			return fmt.Sprintf("remote.Value<%s>", t.Elems[0])
+		}
+		return "remote.Value"
 	case TypeIter:
 		if len(t.Elems) == 1 {
 			return fmt.Sprintf("iter<%s>", t.Elems[0])
@@ -409,7 +430,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeRemote, TypeStruct:
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -477,7 +498,7 @@ func (t *Type) Equal(other *Type) bool {
 		// Width and signedness distinguish sized numerics; Bits==0 (plain
 		// int/float) is a distinct type from any sized width.
 		return t.Bits == other.Bits && t.Unsigned == other.Unsigned
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeRemote:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
@@ -584,6 +605,15 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if target.Kind == TypeOption {
 		return t.IsAssignableTo(target.Elems[0])
 	}
+	if t.Kind == TypeRemote && target.Kind == TypeRemote {
+		return t.Elems[0].IsAssignableTo(target.Elems[0])
+	}
+	// A bare T is deliberately NOT assignable to a remote.Value<T>, which is
+	// where this differs from option<T> just above. An option is "maybe a T", so
+	// promoting one loses nothing; a Value carries fetch state that no plain
+	// value implies, and a silent promotion would invent a settled box wherever
+	// a type happened to line up. remote.query constructs a box that fetches, and
+	// remote.of / failedWith / pending construct the three states directly.
 	return false
 }
 
@@ -605,6 +635,41 @@ func builtinOf(t *Type) BuiltinKind {
 // TypeStruct backed by its stdlib StructDef and marked #[builtin("color")];
 // call this to detect the shape.
 func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
+
+// IsRemoteFailureStruct reports whether t is sngl:remote's Failure.
+//
+// Matched by declaration site rather than by a #[builtin] kind: Failure is an
+// ordinary struct, and the compiler has no reason to know it beyond the one a
+// backend has — the Go runtime defines the type its boxes carry, so generated
+// code has to spell that rather than a struct of its own.
+func IsRemoteFailureStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Failure" && sd.Pkg == remotePkg
+}
+
+// IsRemoteHTTPResultStruct reports whether t is sngl:remote/http's Result.
+//
+// Matched the same way and for the same reason as Failure above: the runtime
+// that performs the request is what defines the value a request answers with,
+// so generated code spells that type rather than declaring one of its own that
+// the transport could not return.
+func IsRemoteHTTPResultStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Result" && sd.Pkg == remoteHTTPPkg
+}
+
+// remotePkg is sngl:remote, whose Failure a backend maps to its own runtime;
+// remoteHTTPPkg is sngl:remote/http, whose Result it maps the same way.
+const (
+	remotePkg     = "sngl:remote"
+	remoteHTTPPkg = "sngl:remote/http"
+)
 
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.

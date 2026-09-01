@@ -439,7 +439,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// the call reached codegen as a type-method call or was inlined to a direct
 	// intrinsic call. Must precede every other branch so e.g. an inlined
 	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
-	if out, _, ok := codegen.EmitIntrinsicCall(langJS, n, jc.EvalExpr); ok {
+	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
 		return out
 	}
 	// Native scheme-import call (e.g. js:): emit through the bundler

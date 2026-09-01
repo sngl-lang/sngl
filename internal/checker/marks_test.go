@@ -108,13 +108,13 @@ struct Tiny {}
 
 func TestIntrinsicMarkStampsIdAndFlags(t *testing.T) {
 	pkg, errs := checkMarkStub(t, markImports+`
-#[intrinsic("markstub.shout", usable, mutatesReceiver)]
+#[intrinsic("markstub.shout", mutatesReceiver)]
 func shout(s string) => s
 `)
 	wantNoMarkErrs(t, errs)
 	fn := pkg.Funcs[0]
-	if fn.Intrinsic != "markstub.shout" || !fn.IntrinsicBodyUsable || !fn.MutatesReceiver {
-		t.Errorf("intrinsic = %+v, want the id and both flags", fn)
+	if fn.Intrinsic != "markstub.shout" || !fn.MutatesReceiver {
+		t.Errorf("intrinsic = %+v, want the id and the flag", fn)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestIntrinsicMarkRejectsAnUnknownFlag(t *testing.T) {
 #[intrinsic("markstub.shout", nosuch)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: usable, mutates, readonly, mutatesReceiver)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver)`)
 }
 
 func TestIntrinsicMarkRejectsContradictoryFlags(t *testing.T) {
@@ -136,10 +136,10 @@ func shout(s string) => s
 
 func TestIntrinsicMarkRejectsARepeatedFlag(t *testing.T) {
 	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("markstub.shout", usable, usable)]
+#[intrinsic("markstub.shout", mutates, mutates)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, "repeats flag usable")
+	wantMarkErr(t, errs, "repeats flag mutates")
 }
 
 // An id names a native implementation of a call, and a struct has no call.

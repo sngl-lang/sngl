@@ -1,0 +1,14 @@
+// Kotlin language package. Declarations here are visible at every output target
+// that selects --lang kotlin.
+//
+// The Options schema is empty and declared anyway; see the note in
+// codegen/lang/javascript/javascript.sngl. The Android build knobs — the
+// application id, the launcher icon, whether to emit a Gradle project — belong
+// to the platform rather than to the language, and are declared in
+// codegen/platform/android/android.sngl. What would belong here is something
+// true of Kotlin at every platform, which so far is nothing.
+
+import . "sngl:macro"
+
+#[options]
+struct Options {}

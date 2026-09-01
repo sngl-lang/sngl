@@ -27,7 +27,7 @@ func TestIntrinsicRegistry(t *testing.T) {
 		Func: &ir.Func{Intrinsic: "Doubler"},
 		Args: []ir.CallArg{{Value: &ir.Ident{Name: "x"}}},
 	}
-	out, imports, ok := EmitIntrinsicCall(lang, call, func(e ir.Expr) string {
+	out, imports, ok := EmitIntrinsicCall(lang, "", call, func(e ir.Expr) string {
 		return e.(*ir.Ident).Name
 	})
 	if !ok || out != "x * 2" {
@@ -38,10 +38,10 @@ func TestIntrinsicRegistry(t *testing.T) {
 	}
 
 	// A call with no intrinsic, or an unknown lang, declines.
-	if _, _, ok := EmitIntrinsicCall(lang, &ir.Call{Func: &ir.Func{}}, nil); ok {
+	if _, _, ok := EmitIntrinsicCall(lang, "", &ir.Call{Func: &ir.Func{}}, nil); ok {
 		t.Error("call without an intrinsic ID must decline")
 	}
-	if _, _, ok := EmitIntrinsicCall("other-lang", call, func(e ir.Expr) string { return "" }); ok {
+	if _, _, ok := EmitIntrinsicCall("other-lang", "", call, func(e ir.Expr) string { return "" }); ok {
 		t.Error("unknown lang must decline")
 	}
 }
@@ -66,18 +66,11 @@ func TestRequireIntrinsicFallback(t *testing.T) {
 		{"nil func", nil, false},
 		{"not an intrinsic", &ir.Func{Name: "plain"}, false},
 		{"bodyless with no emitter", &ir.Func{Name: "p", Intrinsic: "NoBackendHasThis"}, true},
-		// A body that reached codegen is one the declaration claimed computes
-		// the right answer: the checker drops a placeholder after checking it.
-		{"a body that survived checking", &ir.Func{
+		// A body is the declaration's claim that it computes the right answer,
+		// and it is the whole claim: the two cases that used to pair it with a
+		// `usable` flag said nothing this pair does not.
+		{"a written body", &ir.Func{
 			Name: "p", Intrinsic: "NoBackendHasThis",
-			Block: []ir.Stmt{&ir.Return{}},
-		}, false},
-		// `usable` says to keep the body, not that an absent one is an answer.
-		{"usable but bodyless", &ir.Func{
-			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
-		}, true},
-		{"usable with its body", &ir.Func{
-			Name: "p", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
 			Block: []ir.Stmt{&ir.Return{}},
 		}, false},
 	}

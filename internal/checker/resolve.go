@@ -60,7 +60,7 @@ func namesType(t *ir.Type, name string) bool {
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
 // its #[builtin] kind) to the type arguments of t. The construction logic stays
 // in the compiler; only the name→kind binding lives in scope.
-func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, t *ast.NamedType) *ir.Type {
+func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t *ast.NamedType) *ir.Type {
 	switch id {
 	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
@@ -98,6 +98,17 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, t *ast.NamedType) *
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
+	case ir.BuiltinRemote:
+		// The declaration travels with the type, unlike list's and map's, so a
+		// method on a Value resolves through ir.MemberOf rather than by looking
+		// the receiver's name up globally. Those two look up by name only
+		// because they have no declaration to ask; here the name is `Value`,
+		// which a user struct could plausibly also be called.
+		if len(t.TypeArgs) == 0 {
+			c.error(t.Pos, "%s requires a type argument, e.g. remote.Value<list<User>>", t.Name)
+			return ir.RemoteOf(TypDyn, sd)
+		}
+		return ir.RemoteOf(c.resolveType(t.TypeArgs[0]), sd)
 	}
 	// Unknown kind would be a compiler bug (macro validates the id set).
 	return dynFallback("builtin generic kind %v has no constructor", id)
@@ -120,7 +131,7 @@ func (c *checker) userShadowsBuiltin(name string) bool {
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
 	if t.Package != "" {
-		return c.resolveQualifiedType(t.Package, t.Name, t.TypeArgs)
+		return c.resolveQualifiedType(t)
 	}
 
 	// Builtin scalar primitives — resolved from the shared registry
@@ -139,7 +150,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// user declaration of the same name shadows the built-in like any other.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
-			return c.constructBuiltinGeneric(sd.Builtin, t)
+			return c.constructBuiltinGeneric(sd.Builtin, sd, t)
 		}
 	}
 	// `component` has no `<T>` decl to carry a marker; it is a bare kind.
@@ -195,7 +206,8 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
-func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *ir.Type {
+func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
+	pkg, name, args := t.Package, t.Name, t.TypeArgs
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
@@ -216,8 +228,23 @@ func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *i
 		}
 		typ := tsym.SymType()
 		if typ != nil && typ.Kind == ir.TypeStruct {
-			if sd, ok := typ.Decl.(*ir.StructDef); ok && len(sd.TypeParams) > 0 {
-				return c.applyStructTypeArgs(ast.Pos{}, typ, sd, args)
+			if sd, ok := typ.Decl.(*ir.StructDef); ok {
+				// A #[builtin] generic is the built-in however it was reached.
+				// Unqualified resolution dispatches on the kind a few lines up;
+				// without the same dispatch here, `remote.Value<T>` came back an
+				// ordinary generic struct that shared a declaration with the
+				// built-in but not a type — so it failed to unify with itself
+				// ("cannot return remote.Value<list<User>> as Value<list<User>>").
+				// remote.Value is likely the first generic built-in a program can
+				// reach qualified at all, which is why nothing found this sooner:
+				// list, map and option are ambient, and importing sngl:builtin
+				// explicitly is an error.
+				if sd.Builtin.IsGeneric() {
+					return c.constructBuiltinGeneric(sd.Builtin, sd, t)
+				}
+				if len(sd.TypeParams) > 0 {
+					return c.applyStructTypeArgs(t.Pos, typ, sd, args)
+				}
 			}
 		}
 		if len(args) > 0 {
@@ -582,6 +609,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
+		Pkg:            c.libPkgName,
 		TypeParams:     c.resolveTypeParams(f.TypeParams),
 		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),

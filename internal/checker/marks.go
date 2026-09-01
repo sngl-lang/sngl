@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // markTarget is a syntax form a mark can be written on. The AST knows only
@@ -101,90 +99,69 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 
 // resolveMacro finds the macro declaration an attribute names.
 //
-// Only a sngl: import maps an alias to a package. An alias that names
-// nothing imported is an error rather than an ambient lookup — a macro package
-// is a dependency, and resolving it from the bare name would make
-// `#[draw.shape]` mean something different depending on what was linked in.
+// Through the ordinary scope, the same way every other name resolves. A macro
+// used to be looked up in a table this package built by re-scanning the import
+// statements — a second resolver for one question, which is why a package could
+// not use a macro it declared itself: its own declarations were never in that
+// table, though they were always in scope.
+//
+// Only a sngl: import maps an alias to a package. An alias naming nothing
+// imported is an error rather than an ambient lookup — a macro package is a
+// dependency, and resolving it from the bare name would make `#[draw.shape]`
+// mean something different depending on what was linked in.
 func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok bool) {
-	ref, aliasKnown := c.markAliases[attr.Alias]
-	switch {
-	case attr.Alias == "":
-		// Unqualified `#[name]` resolves against the dot-imported packages,
-		// the same way an unqualified declaration does.
-		for _, pkg := range c.markDotPkgs {
-			if fn := c.macroDecl(pkg, attr.Name); fn != nil {
-				return pkg, fn, true
-			}
-		}
-		c.error(attr.Pos, "unknown macro %q: no dot-imported package declares it", attr.Name)
-		return "", nil, false
-	case aliasKnown && (ref.Scheme == "internal" || ref.Scheme == "sngl"):
-		fn := c.macroDecl(ref.URI, attr.Name)
-		if fn == nil {
-			c.error(attr.Pos, "unknown macro %q: package %q declares none of that name", attr.Name, "sngl:"+ref.URI)
+	if attr.Alias == "" {
+		sym, found := c.scope.Lookup(attr.Name)
+		if !found {
+			c.error(attr.Pos, "unknown macro %q: nothing in scope declares it", attr.Name)
 			return "", nil, false
 		}
-		return ref.URI, fn, true
-	case aliasKnown:
-		// Imported, but not from a scheme that can carry a macro. Nothing
-		// downstream reads a mark that resolved to nothing, so a silent skip
-		// would drop it and report nothing.
-		c.error(attr.Pos, "%q is not a library package, so it declares no macros", attr.Alias)
-		return "", nil, false
-	default:
+		return c.macroFrom(attr, sym)
+	}
+	nsSym, found := c.scope.Lookup(attr.Alias)
+	if !found {
 		c.error(attr.Pos, "unknown macro package %q: import it with import %q", attr.Alias, macroImportHint(attr.Alias))
 		return "", nil, false
 	}
+	ns, isNS := nsSym.(*ir.Namespace)
+	if !isNS || ns.Pkg == nil {
+		c.error(attr.Pos, "%q is not a library package, so it declares no macros", attr.Alias)
+		return "", nil, false
+	}
+	member, found := ns.Pkg.Symbols.LookupMember(attr.Name)
+	if !found {
+		c.error(attr.Pos, "unknown macro %q: package %q declares none of that name", attr.Name, pkgURIOf(ns.Pkg, attr.Alias))
+		return "", nil, false
+	}
+	return c.macroFrom(attr, member)
 }
 
-// macroImportHint names the package an unknown alias most likely meant, so the
-// suggestion is a line the user can paste. A macro package is a library
-// package like any other; the compiler's own live under internal/.
-func macroImportHint(alias string) string {
-	if HasPackage(alias) {
-		return "sngl:" + alias
+// macroFrom accepts a resolved symbol as a macro, or says why it is not one.
+//
+// A macro is a declaration whose return type is sngl:internal/ir's Macro, and
+// nothing else about it is special — which is the point of resolving it here
+// rather than in a table of its own.
+func (c *checker) macroFrom(attr ast.MacroAttr, sym ir.Symbol) (string, *ir.Func, bool) {
+	fn, isFunc := sym.(*ir.Func)
+	if !isFunc {
+		c.error(attr.Pos, "%q is not a macro: it is %T; a mark names a declaration returning ir.Macro", attr.MacroName(), sym)
+		return "", nil, false
 	}
-	// A macro package need not be top-level -- sngl:ui/draw declares `shape` --
-	// so match on the last segment, which is the alias an import binds. Public
-	// packages first: `draw` names both sngl:ui/draw and the compiler's own
-	// sngl:internal/draw, and only one of them is a program's to import.
-	for _, p := range lib.PublicPackages() {
-		if p[strings.LastIndex(p, "/")+1:] == alias {
-			return "sngl:" + p
-		}
+	if !c.isMacroSig(fn.Return) {
+		c.error(attr.Pos, "%q is not a macro: it answers %s; a mark names a declaration returning ir.Macro", attr.MacroName(), fn.Return)
+		return "", nil, false
 	}
-	return "sngl:internal/" + alias
-}
-
-// macroDecl returns the macro of this name declared by sngl:uri, or nil.
-// The package is loaded to read it — a macro's signature is a declared
-// signature, resolved in the scope of the package that wrote it.
-func (c *checker) macroDecl(uri, name string) *ir.Func {
-	// A package still loading cannot be asked what it declares. That is a
-	// package whose own source marks a declaration with one of its own
-	// macros, which no lib package does.
-	if !c.hasLibPkg(uri) || c.libs.loading[uri] {
-		return nil
+	// The package the macro was declared in, whose root scope its parameter
+	// types resolve against. Asking libPkg for the package currently loading
+	// would re-enter its own load, which is what kept a package from using a
+	// macro it declares; the one being built is already in hand.
+	// Symbols may be nil for a package still assembling its own: the signature
+	// is resolved once, and a mark applied before there is a scope to resolve
+	// against gets the declared types as written.
+	if pkg := c.macroHome(fn); pkg != nil && pkg.Symbols != nil {
+		c.resolveMacroSig(pkg, fn)
 	}
-	pkg := c.libPkg(uri)
-	for _, fn := range pkg.Macros {
-		if fn.Name == name {
-			c.resolveMacroSig(pkg, fn)
-			return fn
-		}
-	}
-	return nil
-}
-
-// setMarkScope points mark resolution at the documents whose declarations are
-// being registered, and returns a function restoring the previous set. An
-// alias binds a macro package for the whole package, as it does for every
-// other imported name.
-func (c *checker) setMarkScope(docs []*ast.Document) func() {
-	savedAliases, savedDot := c.markAliases, c.markDotPkgs
-	c.markAliases = imports.ResolveAliases(docs)
-	c.markDotPkgs = imports.DotPackages(docs)
-	return func() { c.markAliases, c.markDotPkgs = savedAliases, savedDot }
+	return strings.TrimPrefix(fn.Pkg, "sngl:"), fn, true
 }
 
 // refuseParamMarks reports the marks written on a function or lambda
@@ -397,4 +374,44 @@ func arityDesc(required, total int, variadic bool) string {
 func MacroIsImplemented(pkg, name string) bool {
 	_, ok := markImpls[markKey{pkg, name}]
 	return ok
+}
+
+// macroImportHint is the import a mark's alias most likely wanted, for the
+// error that says the alias names nothing. A guess at the URI from the alias:
+// the marks a program writes are all `sngl:<alias>` but for the compiler's own
+// tier, which no program imports.
+func macroImportHint(alias string) string {
+	return "sngl:" + alias
+}
+
+// pkgURIOf names a package the way an import writes it, for a diagnostic about
+// one. A Package does not carry its own URI, so it is read off a declaration in
+// it; a package with nothing to read falls back to the alias the mark used.
+func pkgURIOf(pkg *ir.Package, alias string) string {
+	if pkg != nil {
+		for _, sd := range pkg.Structs {
+			if sd.Pkg != "" {
+				return sd.Pkg
+			}
+		}
+		for _, fn := range pkg.Funcs {
+			if fn.Pkg != "" {
+				return fn.Pkg
+			}
+		}
+		for _, m := range pkg.Macros {
+			if m.Pkg != "" {
+				return m.Pkg
+			}
+		}
+	}
+	return alias
+}
+
+// macroHome is the package a macro was declared in, without re-entering a load.
+func (c *checker) macroHome(fn *ir.Func) *ir.Package {
+	if fn.Pkg == "" || fn.Pkg == c.libPkgName {
+		return c.declPkg()
+	}
+	return c.libPkg(strings.TrimPrefix(fn.Pkg, "sngl:"))
 }

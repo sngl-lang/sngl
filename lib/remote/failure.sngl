@@ -1,0 +1,40 @@
+// How an attempt failed, and the classes every adapter can report.
+
+// Why the most recent attempt failed. `kind` is what a handler dispatches on,
+// `message` is for a human, `code` is the adapter's own.
+//
+// Deliberately not `app.error`: that one is raised and unwinds to the nearest
+// `errorBoundary`, whereas a failed fetch is a value a screen renders beside
+// the stale data it still has. A program that wants the boundary behaviour
+// raises an `app.error` from a `Failure` itself, which keeps the choice at the
+// call site instead of in the adapter.
+struct Failure {
+    kind FailureKind
+    message string
+    // The adapter's own code, verbatim: an HTTP status, a SQLSTATE, a gRPC
+    // status name, a GraphQL error code. Carried untouched because the only
+    // code that can interpret it is code that knows which adapter produced it,
+    // and folding it into `kind` would throw away exactly what that code
+    // needs.
+    code string
+}
+
+// The failure classes every adapter can produce.
+//
+// The split is by what the program should do next, because that is the only
+// question a UI asks of a failure — which is why `request` and `server` are
+// separate when both are "the peer said no": retrying a `request` fails
+// identically, retrying a `server` may work.
+//
+//   - `transport` — never reached the peer
+//   - `timeout` — reached it, no answer in time
+//   - `auth` — a credential is missing, expired or rejected
+//   - `request` — the peer rejected what was sent; retrying is pointless
+//   - `server` — the peer failed on its own side; retrying may work
+//   - `decode` — the answer arrived but did not match the declared type
+//   - `cancelled` — superseded by a newer attempt, or the owner unmounted
+//
+// `cancelled` is a failure rather than a state of its own because a screen
+// treats it as one: there is no value and no reason to wait. It is the kind
+// that should not be shown to a user.
+enum FailureKind { transport, timeout, auth, request, server, decode, cancelled }

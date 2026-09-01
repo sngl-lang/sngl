@@ -175,11 +175,11 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 // The same shape with a body is fine: the body is what gets emitted.
 func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
 	call := &ir.Call{Func: &ir.Func{
-		Name: "ok", Intrinsic: "NoBackendHasThis", IntrinsicBodyUsable: true,
+		Name: "ok", Intrinsic: "NoBackendHasThis",
 		Block: []ir.Stmt{&ir.Return{}},
 	}}
 	if got := newMinimalIRCtx().EvalExpr(call); got == "" {
-		t.Error("usable intrinsic emitted nothing")
+		t.Error("an intrinsic with a body emitted nothing")
 	}
 }
 

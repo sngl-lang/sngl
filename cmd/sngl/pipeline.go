@@ -235,13 +235,16 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		}
 		slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
 
-		if caps != (lower.Caps{}) {
-			start = time.Now()
-			if err := optimize.Optimize(tpkg, optCfg); err != nil {
-				return fmt.Errorf("%s: %w", dir, err)
-			}
-			slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
+		// Unconditional. It used to run only when the target had capabilities to lower
+		// for, on the reading that a build lowering nothing had nothing new to fold --
+		// which stopped being true when passQuery became always-on: it synthesizes a
+		// thunk after the optimizer has walked every declaration, so the calls inside
+		// one are calls nothing has looked at.
+		start = time.Now()
+		if err := optimize.Optimize(tpkg, optCfg); err != nil {
+			return fmt.Errorf("%s: %w", dir, err)
 		}
+		slog.Info("optimize2", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 		var fileAssets []codegen.FileAsset
 		for _, fa := range optCfg.FileAssets {

@@ -6,7 +6,7 @@ import ir "sngl:internal/ir"
 // The mark, not the declaration's name, is what the compiler finds a target's
 // options by, so a target may call the struct whatever it likes and a struct
 // incidentally named `Options` is not one.
-func options() ir.Macro {}
+func options() ir.Macro
 
 // Marks what a name nobody declared resolves to. `pattern` is an RE2 regular
 // expression, matched against the whole name.
@@ -29,7 +29,7 @@ func options() ir.Macro {}
 //
 // A declared name always beats a wildcard, and a name two wildcards match is
 // an error rather than whichever was written first.
-func wildcard(pattern string, into string = "") ir.Macro {}
+func wildcard(pattern string, into string = "") ir.Macro
 
 // Marks the const that carries a target's own identity: the value `PLATFORM`
 // or `LANGUAGE` is compared against to gate code on the build target.
@@ -43,4 +43,4 @@ func wildcard(pattern string, into string = "") ir.Macro {}
 // written by hand: a plugin says what it is called by registering under that
 // name, and the file the checker mounts into its package says the same thing
 // in SNGL, so nothing else has to special-case where the const came from.
-func identity() ir.Macro {}
+func identity() ir.Macro

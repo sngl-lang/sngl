@@ -710,6 +710,12 @@ func canonicalTypeName(t *ir.Type) string {
 			elem = t.Elems[0]
 		}
 		return "option_" + canonicalTypeName(elem)
+	case ir.TypeRemote:
+		var elem *ir.Type
+		if len(t.Elems) > 0 {
+			elem = t.Elems[0]
+		}
+		return "remote_" + canonicalTypeName(elem)
 	case ir.TypeFunc:
 		return "func"
 	}

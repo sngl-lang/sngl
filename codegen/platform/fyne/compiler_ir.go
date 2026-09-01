@@ -427,7 +427,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	if cfg.Main {
-		emitIRMain(&b, cfg, info)
+		emitIRMain(&b, cfg, info, ctx.Pkg)
 	}
 
 	imports := make([]string, 0, len(td.Imports)+8)
@@ -817,7 +817,7 @@ func renderIRComponentMethod(
 	return b.String(), compFields, startLabel, startContainer
 }
 
-func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
+func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package) {
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
@@ -827,6 +827,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 	// reports its default 0×0 dimensions at first paint and the user
 	// sees a blank window until they manually resize.
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
+	if pkg != nil && pkg.RemoteSettle != nil {
+		// After BuildUI, since the updaters write to widgets it creates, and
+		// through DoAndWait because a settle arrives on the fetch's goroutine
+		// and Fyne's widgets belong to the main one.
+		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
+	}
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")

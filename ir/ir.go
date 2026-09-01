@@ -116,6 +116,18 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
+	// UsesRemote says the program holds a query box. Such a box settles after
+	// the render that started it, and tells the store when it does, so an entry
+	// point that never asks shows the fetch starting and nothing after.
+	UsesRemote bool
+
+	// RemoteSettle is the handler the reactivity lowering left for a store to
+	// call, or nil where it left none -- a target with native reactivity has no
+	// updaters to re-run, and one that never fetches has nothing to re-run them
+	// for. An entry point subscribes what is here rather than looking a name up,
+	// because whether the handler exists is the lowering's answer and so is what
+	// it is called.
+	RemoteSettle *Func `json:"-"`
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
@@ -284,9 +296,22 @@ type Foreign struct {
 // HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
 // the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
-	AST            *ast.FuncDef // nil for lambdas and event handlers
-	Name           string       // empty for lambdas and event handlers
-	Receiver       string       // "int" for int.abs (empty for plain funcs)
+	AST  *ast.FuncDef // nil for lambdas and event handlers
+	Name string       // empty for lambdas and event handlers
+	// Pkg is the declaring package URI, as StructDef.Pkg is. Empty for a
+	// program's own declarations, whose names mean nothing outside a build.
+	//
+	// A macro needs it: a mark is bound to the declaration it was written from,
+	// and that binding is (package, name).
+	Pkg      string
+	Receiver string // "int" for int.abs (empty for plain funcs)
+	// RecvParam is the implicit `this` of a method on a generic built-in whose
+	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
+	// item)`. The checker binds it into the body's scope without putting it in
+	// Params, because no call site passes one: the receiver arrives as
+	// Call.Receiver. Anything substituting arguments for parameters has to bind
+	// this one too, and needs a handle on it to do so.
+	RecvParam      *Param `json:"-"`
 	TypeParams     []TypeParam
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         []*Param
@@ -306,7 +331,13 @@ type Func struct {
 	IsTest            bool
 	Reads             []*Var // vars read (directly or via called functions)
 	Writes            []*Var // vars mutated (directly or via called functions)
-	Intrinsic         string // non-empty = intrinsic ID (e.g. "string.indexOf"); a backend must implement it unless IntrinsicBodyUsable
+	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
+	// declaration carrying one and no body is a signature every backend must
+	// implement; one carrying a body asserts that the body computes the same
+	// answer, so a backend without the id may emit it instead. The body's
+	// presence is the whole of that distinction — there is no flag, because a
+	// flag beside a body is two records of one fact and they drifted.
+	Intrinsic string
 	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
 	// in the encoder and neither is written.
 	Foreign        `json:"Foreign,omitzero"`
@@ -324,12 +355,6 @@ type Func struct {
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
 	MutatesReceiver bool
-	// IntrinsicBodyUsable says this function's SNGL body computes the same
-	// result the native implementation of Intrinsic would, so a backend that
-	// does not implement the id may emit the body. Without it the declaration
-	// is a signature only: a backend that cannot emit the id must say so
-	// rather than emit a call to something that does not exist.
-	IntrinsicBodyUsable bool
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms

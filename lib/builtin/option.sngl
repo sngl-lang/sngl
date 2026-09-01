@@ -5,8 +5,18 @@ import . "sngl:internal/marks"
 #[builtin("option")]
 struct option<T> {}
 
-// Mutable reference cell: `ref<T>` is a write-through handle to a `T`.
-// Used by NoLambda lowering for mutable captures; T is the referent type.
+// Mutable reference cell: `ref<T>` is a handle to a `T` rather than a copy of
+// one, so what holds it goes on seeing what that cell becomes. T is the referent
+// type. `&x` makes one and `*r` reads through it.
+//
+// A parameter declared `ref<T>` also takes a plain `T`, and then it is the value
+// it always was — which is what lets one declaration serve a caller who wants
+// the handle and one who wants the contents, `f(&x)` against `f(x)`. Permitted
+// only where the callee does nothing with the parameter but read through it: a
+// value has no cell to write back to, or to outlive the call in.
+//
+// NoLambda's lowering uses one for a mutable capture, which is where the type
+// came from.
 #[builtin("ref")]
 struct ref<T> {}
 

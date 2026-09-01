@@ -331,6 +331,12 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
+	// A literal of a type the runtime defines is the only mention of it that
+	// need not be reached through a call to that runtime, so it is the one
+	// place the import can be missing.
+	if ir.IsRemoteHTTPResultStruct(n.Type) {
+		gc.RequireImport(remoteHTTPImportPath)
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -434,6 +440,20 @@ func (gc *GoIRContext) MutTargetField(n *ir.Select) string {
 func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	id, ok := n.Operand.(*ir.Ident)
 	if !ok || id.Name != gc.recvName() {
+		return "", false
+	}
+	// And it has to *be* the receiver. A binding that merely shares its name
+	// shadows it -- `for m = entry().typeDoc.methods` in a Model whose receiver
+	// is `m` -- and its fields are its own type's, exported like any other Go
+	// struct's, rather than the Model's unexported state.
+	switch sym := id.Sym.(type) {
+	case nil, *ir.Component:
+		// A synthesized receiver read carries no symbol.
+	case *ir.Param:
+		if !sym.Receiver && sym.Name != ir.ReceiverParam {
+			return "", false
+		}
+	default:
 		return "", false
 	}
 	return n.Field, true
@@ -584,12 +604,21 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
 	// through to the paths below.
-	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, n, gc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, n, gc.EvalExpr); ok {
 		for _, p := range imports {
 			gc.RequireImport(p)
 		}
 		return out
 	}
+	// Before either call path: a declaration that *is* a Go identifier is one
+	// wherever the call site reached it. This used to sit inside the namespace
+	// path alone, so `go.httpGet(url)` emitted http.Get and the same call
+	// reached through an inlined body emitted `httpGet` -- a name nothing
+	// declares.
+	if out, ok := gc.nativeCall(n); ok {
+		return out
+	}
+
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)
 	}
@@ -638,40 +667,55 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
+// nativeCall renders a call to a declaration that *is* a Go identifier, and
+// reports whether n was one.
+//
+// #[foreign] is excluded by Marked: that names a declaration this file also
+// emits, under that declaration's own name. An unmarked foreign path is the
+// other case -- the identifier already exists, so the call becomes a call to
+// it and the package it lives in is required here, at the call site rather
+// than at the top of whatever library package declared it.
+//
+// The name is spelled as Go spells it after the import, `http.Get`, which is
+// what the path makes available. RequireImport adds the path; nothing here
+// derives a qualifier from it, because a Go package's name is not a function
+// of its import path.
+func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
+	if n.Func == nil || n.Func.Foreign.Path == "" || n.Func.Foreign.Marked {
+		return "", false
+	}
+	args := gc.evalCallArgs(n.Args)
+	name := n.Func.Foreign.Name
+	// The renderer adds the "C." prefix to a bare C identifier; a caller that
+	// already prefixed it keeps what it wrote.
+	if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
+		name = "C." + name
+	} else if n.Func.Foreign.Path != "C" {
+		gc.RequireImport(n.Func.Foreign.Path)
+	}
+	// Context-taking native call: inject the context expression as the first
+	// argument. When the importer flagged HasContextArg, supply
+	// gc.Ctx.ContextVar (e.g. "r.Context()"), defaulting to
+	// context.Background() when unset.
+	if n.Func.HasContextArg {
+		ctxVar := ""
+		if gc.Ctx != nil {
+			ctxVar = gc.Ctx.ContextVar
+		}
+		if ctxVar == "" {
+			ctxVar = "context.Background()"
+			gc.RequireImport("context")
+		}
+		args = append([]string{ctxVar}, args...)
+	}
+	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := gc.EvalExpr(n.Receiver)
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-		// A native call emits the native name, ignoring the SNGL import alias
-		// that ended up as the receiver. #[foreign] is excluded: it names a
-		// declaration this file also emits, under that declaration's name.
-		if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
-			name := n.Func.Foreign.Name
-			// The renderer adds the "C." prefix to a bare C identifier; a
-			// caller that already prefixed it keeps what it wrote.
-			if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
-				name = "C." + name
-			} else if n.Func.Foreign.Path != "C" {
-				gc.RequireImport(n.Func.Foreign.Path)
-			}
-			// Context-taking native call: inject the context expression as the
-			// first argument. Mirrors legacy translateIRNativeCall — when the
-			// importer flagged HasContextArg, supply gc.Ctx.ContextVar (e.g.
-			// "r.Context()"), defaulting to context.Background() when unset.
-			if n.Func.HasContextArg {
-				ctxVar := ""
-				if gc.Ctx != nil {
-					ctxVar = gc.Ctx.ContextVar
-				}
-				if ctxVar == "" {
-					ctxVar = "context.Background()"
-					gc.RequireImport("context")
-				}
-				args = append([]string{ctxVar}, args...)
-			}
-			return name + "(" + strings.Join(args, ", ") + ")"
-		}
 
 		fname := n.Func.Name
 		// A package function called through its import has no receiver on the
@@ -1112,6 +1156,14 @@ func structLitTypeName(n *ir.StructLit) string {
 	if def.Name == "color" || ir.IsColorStruct(n.Type) {
 		return colorGoType
 	}
+	// Everything else about how a struct type is spelled is IRTypeToGo's --
+	// the stdlib types a backend maps onto its host language's own among them.
+	// This used to answer for itself and knew only about color, so
+	// `http.Result{…}` wrote a name the output did not declare while every
+	// other mention of that type wrote `http.Response`.
+	if n.Type != nil && n.Type.Kind == ir.TypeStruct && n.Type.Decl != nil {
+		return IRTypeToGo(n.Type)
+	}
 	if name := ExportName(def.Name); name != "" {
 		return name
 	}
@@ -1240,11 +1292,30 @@ func IRTypeToGo(t *ir.Type) string {
 			return "*" + IRTypeToGo(t.Elems[0])
 		}
 		return "*any"
+	case ir.TypeRemote:
+		// A pointer: two readers of one key hold the same box, and a settle has
+		// to be visible to both.
+		if len(t.Elems) > 0 {
+			return "*" + remoteGoType + "[" + IRTypeToGo(t.Elems[0]) + "]"
+		}
+		return "*" + remoteGoType + "[any]"
 	case ir.TypeStruct:
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
+		}
+		// The runtime defines the failure its boxes carry, so generated code
+		// spells that rather than emitting a struct of its own that no box
+		// could hold.
+		if ir.IsRemoteFailureStruct(t) {
+			return remoteFailureGo
+		}
+		// Likewise the value a request answers with: the transport returns it,
+		// so a Result declared beside it would be a second type `http.Get`
+		// could not hand back.
+		if ir.IsRemoteHTTPResultStruct(t) {
+			return remoteHTTPResultGo
 		}
 		if ir.IsColorStruct(t) {
 			return colorGoType

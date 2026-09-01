@@ -28,30 +28,30 @@ struct File {}
 // toast dismisses automatically after the platform's default
 // duration.
 #[intrinsic("Alert.toast", mutates)]
-func Alert.toast(message string, variant string) {}
+func Alert.toast(message string, variant string)
 
 // Shows an informational alert. Equivalent to `Alert.toast(message,
 // "info")` on platforms that render toasts, or a modeless info
 // dialog on desktop platforms.
 #[intrinsic("Alert.info", mutates)]
-func Alert.info(message string) {}
+func Alert.info(message string)
 
 // Shows a warning alert. The rendering elevates severity compared
 // to `Alert.info` — a colored toast or a dismissible warning
 // dialog depending on the platform.
 #[intrinsic("Alert.warn", mutates)]
-func Alert.warn(message string) {}
+func Alert.warn(message string)
 
 // Shows an error alert. Rendered with the platform's error styling
 // and typically stays visible until dismissed.
 #[intrinsic("Alert.error", mutates)]
-func Alert.error(message string) {}
+func Alert.error(message string)
 
 // Prompts the user to confirm or cancel. Blocks until a choice is
 // made and returns true on confirm, false on cancel. On platforms
 // without a native confirm dialog, falls back to a modal overlay.
 #[intrinsic("Alert.confirm", mutates)]
-func Alert.confirm(message string) bool { return false }
+func Alert.confirm(message string) bool
 
 // --- File ---
 
@@ -60,9 +60,9 @@ func Alert.confirm(message string) bool { return false }
 // platform-defined. Not all platforms expose a file system — web
 // platforms may return a synthetic handle.
 #[intrinsic("File.pick", readonly)]
-func File.pick() string { return "" }
+func File.pick() string
 
 // Opens a folder-picker dialog and returns the chosen path, or an
 // empty string if cancelled. Same platform caveats as `File.pick`.
 #[intrinsic("File.pickFolder", readonly)]
-func File.pickFolder() string { return "" }
+func File.pickFolder() string

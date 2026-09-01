@@ -28,6 +28,10 @@ const (
 // ExprCtx provides typed context for expression translation.
 // It wraps the checker's Package and is the sole translation context.
 type ExprCtx struct {
+	// Platform is the build's target platform, which intrinsic dispatch needs
+	// beside the language: a platform may implement an id its language cannot,
+	// and the 2D primitives are exactly that.
+	Platform  string
 	Pkg       *ir.Package
 	Component *ir.Component // current component (nil for top-level)
 	// Window is the window whose body is being translated, if any. A window
@@ -231,6 +235,7 @@ func (ctx *ExprCtx) RenamedName(name string) string {
 // Clone creates a copy with independent Locals and Renames maps.
 func (ctx *ExprCtx) Clone() *ExprCtx {
 	return &ExprCtx{
+		Platform:      ctx.Platform,
 		Pkg:           ctx.Pkg,
 		Component:     ctx.Component,
 		Window:        ctx.Window,

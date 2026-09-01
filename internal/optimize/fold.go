@@ -49,6 +49,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// storage may be mutated through aliases, and `&literal` is not a
 		// valid emission. Leave the operand untouched so the codegen still
 		// sees the original lvalue identifier.
+		if x.Op == ast.UnaryDeref && !isRef(x.Operand) {
+			// A plain T that stood in for a ref<T> parameter: the coercion
+			// leaves the value as it is, so what the body wrote as `*p` is now
+			// a deref of something that was never a reference. Reading it is
+			// the value itself.
+			return foldExpr(x.Operand, ctx)
+		}
 		if x.Op == ast.UnaryAddr || x.Op == ast.UnaryDeref {
 			return e
 		}
@@ -120,9 +127,20 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	case *ir.Literal, *ir.Ident:
 		// No subexpressions to fold.
-	case *ir.Lambda, *ir.Closure:
-		// Lambdas/closures are opaque to constant folding; their bodies
-		// are folded when their enclosing func is processed.
+	case *ir.Lambda:
+		// A lambda's body is statements, folded as any other block is. It used
+		// to be skipped here on the grounds that the enclosing func would fold
+		// it, which holds for a lambda the program wrote and not for one a
+		// lowering pass synthesized: passQuery builds the thunk after the
+		// optimizer has walked every declaration, so the calls inside it are
+		// calls nothing has looked at.
+		if x.Func != nil {
+			x.Func.Block = foldStmts(x.Func.Block, ctx)
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			x.Func.Block = foldStmts(x.Func.Block, ctx)
+		}
 	case *ir.ContextRead:
 		// No subexpressions.
 	default:
@@ -327,4 +345,15 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 		text = strconv.FormatInt(int64(amount), 10)
 	}
 	return &ir.Literal{Type: unit.Type, Value: text + unit.Suffix, Suffix: unit.Suffix}
+}
+
+// isRef reports whether e denotes a reference. An expression with no type is
+// not judgeable and counts as one, so an unrelated gap in type information
+// cannot make a real deref disappear.
+func isRef(e ir.Expr) bool {
+	if e == nil {
+		return true
+	}
+	t := e.ExprType()
+	return t == nil || t.Kind == ir.TypeRef
 }

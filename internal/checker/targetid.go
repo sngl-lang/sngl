@@ -40,6 +40,15 @@ func targetConstName(member string) string {
 	return "PLATFORM"
 }
 
+// targetTierMember is the identity a target of this kind carries, as it is
+// written: `html.platform`, `go.language`.
+func targetTierMember(kind ir.BuiltinKind) string {
+	if kind == ir.BuiltinLanguage {
+		return "language"
+	}
+	return "platform"
+}
+
 // resolveTargetIndex resolves the `[expr]` index on a declaration name to the
 // target it implements: the registered name, and whether the identity is a
 // platform or a language.
@@ -253,46 +262,108 @@ type pendingFuncOverride struct {
 	platform string
 	kind     ir.BuiltinKind
 	decl     *ast.FuncDef
+	// libURI is the target package the override was written in, empty for one
+	// the program wrote. It says which scope the body is checked in: a
+	// package's own source is written against its own imports, none of which
+	// the program has.
+	libURI string
 }
 
 // collectFuncOverrides merges each `func f[target] { ... }` a program declares
-// into the function it names. The body is checked against the *base*
-// declaration's signature -- an override inherits the params and the return
-// type, and declaring either is what it means to declare a different function.
+// into the function it names.
 func (c *checker) collectFuncOverrides() {
 	for _, decl := range c.userFuncOverrides {
-		plat, kind, ok := c.resolveTargetIndex(decl.Target)
-		if !ok {
-			continue
-		}
-		if len(decl.Params.Params) > 0 {
-			c.error(decl.Pos, "override %q may not declare params (inherited from the declaration it overrides)", decl.Name)
-			continue
-		}
-		if decl.ReturnType != nil {
-			c.error(decl.Pos, "override %q may not declare a return type (inherited from the declaration it overrides)", decl.Name)
-			continue
-		}
-		base := c.funcOverrideBase(decl)
-		if base == nil {
-			continue
-		}
-		overrides := &base.PlatformOverrides
-		if kind == ir.BuiltinLanguage {
-			overrides = &base.LanguageOverrides
-		}
-		if *overrides == nil {
-			*overrides = map[string]ir.Body{}
-		}
-		if _, dup := (*overrides)[plat]; dup {
-			c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
-			continue
-		}
-		// Reserve the key so a duplicate is caught even when the body check
-		// contributes nothing, as addOverrideBody does for a component.
-		(*overrides)[plat] = ir.Body{}
-		c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl})
+		c.mergeFuncOverride(decl, nil, "")
 	}
+}
+
+// mergeFuncOverride records one `func f[target] { ... }` as the body target
+// implements f with. The body is checked against the *base* declaration's
+// signature -- an override inherits the params and the return type, and
+// declaring either is what it means to declare a different function.
+//
+// base is the declaration to override when the caller resolved it already: a
+// target package's own source resolves it against its own imports, which is
+// where the name it overrides comes from. nil resolves it here, in the
+// program's scope, which is where a program's own override is written.
+//
+// libURI names the target package an override was written in, empty for a
+// program's. Two things follow from it: the override may only implement that
+// package's own target, and its body is checked in that package's scope.
+func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI string) {
+	plat, kind, ok := c.resolveTargetIndex(decl.Target)
+	if !ok {
+		return
+	}
+	if owner, tier, isTarget := targetTierName(libURI); isTarget && (kind != tier || plat != owner) {
+		// As for a component override: an override for another target would
+		// only merge when this package loads, which is when that target is not
+		// the one being built.
+		c.error(decl.Pos, "package for %q may not declare an override for %q", owner, plat)
+		return
+	}
+	if len(decl.Params.Params) > 0 {
+		c.error(decl.Pos, "override %q may not declare params (inherited from the declaration it overrides)", decl.Name)
+		return
+	}
+	if decl.ReturnType != nil {
+		c.error(decl.Pos, "override %q may not declare a return type (inherited from the declaration it overrides)", decl.Name)
+		return
+	}
+	if base == nil {
+		if base = c.funcOverrideBase(decl); base == nil {
+			return
+		}
+	}
+	overrides := &base.PlatformOverrides
+	if kind == ir.BuiltinLanguage {
+		overrides = &base.LanguageOverrides
+	}
+	if *overrides == nil {
+		*overrides = map[string]ir.Body{}
+	}
+	if _, dup := (*overrides)[plat]; dup {
+		c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
+		return
+	}
+	// Reserve the key so a duplicate is caught even when the body check
+	// contributes nothing, as addOverrideBody does for a component.
+	(*overrides)[plat] = ir.Body{}
+	c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI})
+}
+
+// libFuncOverrideBase resolves the function a target package's own override
+// names. The prefix is whatever alias that document imported the package
+// under, as a component override's is -- a target package is not registered
+// into the checker's scope, so its imports are the only thing that says what
+// `http.get` means. Anything else (an unqualified name, a method on a type)
+// falls back to the ordinary resolution, which reads the scope this merge runs
+// in and has the package's own declarations in it.
+func (c *checker) libFuncOverrideBase(decl *ast.FuncDef, aliases map[string]string) *ir.Func {
+	dot := strings.IndexByte(decl.Name, '.')
+	if dot <= 0 {
+		return c.funcOverrideBase(decl)
+	}
+	pkgName, ok := aliases[decl.Name[:dot]]
+	if !ok {
+		return c.funcOverrideBase(decl)
+	}
+	local := decl.Name[dot+1:]
+	pkg := c.libPkg(pkgName)
+	if pkg == nil || pkg.Symbols == nil {
+		return nil
+	}
+	member, found := pkg.Symbols.LookupMember(local)
+	if !found {
+		c.error(decl.Pos, "override %q references unknown function %q in sngl:%s", decl.Name, local, pkgName)
+		return nil
+	}
+	fn, isFunc := member.(*ir.Func)
+	if !isFunc {
+		c.error(decl.Pos, "%s is not a function", decl.Name)
+		return nil
+	}
+	return fn
 }
 
 // funcOverrideBase resolves the function an override names: one this program
@@ -345,7 +416,21 @@ func (c *checker) funcOverrideBase(decl *ast.FuncDef) *ir.Func {
 // params and the return type in scope are the ones the override inherits: the
 // override declares neither, and checkFuncBody reads both off the declaration.
 func (c *checker) checkPendingFuncOverrides() {
+	savedScope := c.scope
+	defer func() { c.scope = savedScope }()
 	for _, po := range c.pendingFuncOverrides {
+		// A target package's own override is compiler-internal source: it
+		// resolves in that package, chained to the library scope it is written
+		// against, and not where a program's declarations are visible. A
+		// program's own resolves where it was written.
+		c.scope = savedScope
+		if po.libURI != "" {
+			c.scope = c.stdlibPkg.Symbols.Root
+			if ps := c.targetPkgScope(po.libURI); ps != nil {
+				ps.Parent = c.scope
+				c.scope = ps
+			}
+		}
 		saved := po.fn.AST
 		savedBlock := po.fn.Block
 		if saved != nil {

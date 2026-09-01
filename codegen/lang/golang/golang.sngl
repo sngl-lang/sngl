@@ -2,6 +2,8 @@
 // that selects --lang go.
 
 import . "sngl:macro"
+import ir "sngl:internal/ir"
+import http "sngl:remote/http"
 
 #[options]
 struct Options {
@@ -14,4 +16,35 @@ struct Options {
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     goModExtra string
+}
+
+// --- sngl:remote/http ---
+
+// The Go transport. `native` rather than a `go:` import, so the request package
+// is pulled in only by a build that actually fetches: an import at the top of
+// this file is resolved by every program built for Go.
+// Names the Go package-level identifier a declaration *is*. A thin spelling of
+// #[foreign(..., native)] in the language it is about, which is where a Go path
+// and a Go identifier belong — and which a package can now use on its own
+// declarations, since a mark resolves through the scope like any other name.
+func native(path string, name string, flags list<NativeFlag> = []) ir.Macro
+
+// What a Go declaration's shape says beyond its name.
+//
+// `fails` says the function returns `(T, error)` where the SNGL declaration
+// answers T alone — the shape half of Go's standard library is written in, and
+// the one the Go importer reads off a signature it can see. A declaration named
+// here has no signature to read, so the mark is where it is said.
+//
+// It describes a call, so a struct refuses it.
+enum NativeFlag { fails }
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
+func httpGet(url string) http.Result
+
+// What sngl:remote/http declares and leaves to each target. An override rather
+// than an intrinsic: there is no string for a code generator to build here,
+// only a call to name.
+func http.get[language]() {
+    return httpGet(url)
 }

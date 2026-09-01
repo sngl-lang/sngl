@@ -163,6 +163,10 @@ func TestFormatParamAttrsMultiline(t *testing.T) {
 			},
 		},
 	}
+	// A block with a position, so this stays a test about where an attr goes: a
+	// FuncDef with no block is a signature now, and the formatter prints it
+	// without a body rather than inventing `{}`.
+	fn.Block = ast.StmtBlock{Pos: ast.Pos{Line: 1, Column: 1}}
 	doc := &ast.Document{Stmts: []ast.Stmt{fn}}
 	const want = "func f(\n    tag string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
 	if got := Format(doc); got != want {

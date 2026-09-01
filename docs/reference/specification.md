@@ -770,7 +770,7 @@ FuncTail =
 
 FuncBodyTail = 
     "=>" Expr
-    | [ Type ] StmtBlock
+    | [ Type ] [ StmtBlock ]
 
 FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
 
@@ -1515,7 +1515,7 @@ FuncTail =
 
 FuncBodyTail = 
     "=>" Expr
-    | [ Type ] StmtBlock
+    | [ Type ] [ StmtBlock ]
 
 FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
 

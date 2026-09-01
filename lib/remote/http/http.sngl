@@ -1,0 +1,45 @@
+// HTTP as a data source: a request whose answer is a `remote.Value`.
+//
+// `fetch` is keyed by its url — one box per url, started on first read, and
+// shared by every part of the program asking for the same one. Hand it `&url`
+// rather than `url` and the box follows that state instead of the string it
+// held at the time.
+//
+// The transport underneath it is `get`, which is declared here and implemented
+// per language. That is where a target says whether it can speak HTTP at all: a
+// language with no implementation and no platform supplying one fails the build
+// rather than the request. A scheme the transport does not know — `foo://` in a
+// url a program computed — is a runtime failure instead, because a url is a
+// string and no build can read it.
+
+import remote "sngl:remote"
+
+// What an HTTP request answers with.
+//
+// The response, not a parse of it: a JSON adapter is a layer on top rather than
+// something `fetch` guesses at. `body` is the payload as text, which is what a
+// caller needs to hand to whatever does know how to read it.
+struct Result {
+    status int
+    body string
+    headers map<string, string>
+}
+
+// True for a 2xx status. The other classes are failures and reach the box as
+// one, so a Result a program holds has usually already succeeded — this is for
+// the cases that ask anyway.
+func Result.ok(r Result) => r.status >= 200 && r.status < 300
+
+// Fetches url, answering the box every reader of that url shares.
+//
+// Keyed by the url alone, so two components asking for the same one make a
+// single request. Pass `&url` for a box that follows the state the url is built
+// from, or the url itself for the one it names right now — see `remote.query`.
+func fetch(url ref<string>) remote.Value<Result> {
+    return remote.query("http.fetch", [*url], func() => get(*url))
+}
+
+// Performs one request. Declared here and implemented per target — see
+// `sngl:language/go` — which is what makes "can this build speak HTTP" a
+// question the compiler answers rather than the program.
+func get(url string) Result

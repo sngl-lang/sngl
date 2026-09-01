@@ -1,0 +1,38 @@
+import . "sngl:internal/marks"
+
+// Returns the box for `id` and `key`, starting `fetch` if no attempt has been
+// made for it.
+//
+// This is what a data adapter is written in terms of. `fetch` is the work, `key`
+// is what makes two questions the same question, and `id` names the key space so
+// two adapters keying on a string never collide — spell it for the declaration
+// it lives in, `"http.fetch"`.
+//
+// One box per (id, key), so two components asking the same thing get one box and
+// one request, and a call whose key differs is a different box. The fetch starts
+// on the first read rather than at construction: a key may be a loop variable or
+// any other derived value, so there is nothing to hang a start on but the read
+// itself.
+//
+// **A ref in the key is what makes the answer follow its source.** A key holds
+// values, and a value keys one question forever — so what an adapter takes, and
+// hands to `query` dereferenced, is the cell:
+//
+//     func fetch(url ref<string>) remote.Value<Result> {
+//         return remote.query("http.fetch", [*url], func() => get(*url))
+//     }
+//
+//     var a = http.fetch(url)    // the url as it is now, asked once
+//     var b = http.fetch(&url)   // the url as it becomes, re-asked
+//
+// `&` hands over the cell rather than its contents, and the compiler reads the
+// key to learn what the answer depends on: the box is re-derived when any of
+// them is written, which looks up a different key, which starts a fetch. The
+// caller chooses, and the two spellings differ by one character.
+//
+// `readonly`, not `mutates`. It depends on host state and must never fold at
+// build time, but a second call with the same key returns the same box and
+// starts nothing — which is the only footing on which a call evaluated during
+// render is acceptable at all.
+#[intrinsic("RemoteQuery", readonly)]
+func query<T>(id string, key list<dyn>, fetch func() T) Value<T>

@@ -12,6 +12,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// The 2D primitives are translated in this package rather than through an
+// IntrinsicEmitter, which renders one expression and could not carry the
+// statements and pending style these need. Declaring the package is how that
+// implementation becomes visible to the completeness check.
+func init() { codegen.DeclarePlatformImplements("fyne", "sngl:internal/draw") }
+
 // canvasMeta aliases the shared platform-neutral canvas metadata type. The
 // collection + Go stdlib struct decls live in codegen/canvasutil (shared with
 // gtk4); the gg-specific translation stays in this package.

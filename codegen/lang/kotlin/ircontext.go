@@ -363,7 +363,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
-	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, n, kc.EvalExpr); ok {
+	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, kc.Ctx.Platform, n, kc.EvalExpr); ok {
 		for _, p := range imports {
 			kc.RequireImport(p)
 		}

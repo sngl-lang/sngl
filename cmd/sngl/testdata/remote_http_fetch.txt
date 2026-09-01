@@ -1,0 +1,72 @@
+# A query is a box the store holds, found by an id and the key it was asked
+# with, and `remote.query` is an ordinary intrinsic an adapter calls — there is
+# no query construct and no mark. So what reaches the output is whatever the
+# inliner carried to the call site, which is where the box has to be keyed.
+#
+# `&` is the caller's whole say in it. The url as a value keys one question
+# forever, so the box is bound once and stays where it was put; the url as a
+# cell is a question that follows its source, so the lookup moves to the read
+# and the ordinary dependency walk re-evaluates it.
+
+sngl generate --lang go --platform bubbletea --out snap snap.sngl
+sngl generate --lang go --platform bubbletea --out live live.sngl
+
+# Both are the same lookup, keyed by the same url, under the id the adapter
+# spelled — and inside the thunk, the transport the language implements, down
+# to the Go package that performs the request.
+grep 'remote\.Query\[http\.Response\]' snap/model.go
+grep '"http\.fetch"' snap/model.go
+grep '\[\]string\{m\.url\}' snap/model.go
+grep 'http\.Get\(m\.url\)' snap/model.go
+
+# The value: bound once, in the constructor. Changing the url after that is not
+# a new question, because the caller did not ask for one.
+grep 'm\.res = remote\.Query' snap/model.go
+
+# The cell: not stored at all. A box bound once never re-keys however often its
+# url changes, so the lookup is what every read of `res` becomes — and a
+# re-evaluated lookup with a different key starts a fetch.
+! grep 'm\.res = remote\.Query' live/model.go
+! grep 'res ' live/model.go
+grep 'remote\.Query\[http\.Response\]\(remote\.Default, "http\.fetch", \(\[\]any\)\(\[\]string\{m\.url\}\)' live/model.go
+
+# Neither carries a ref: a pointer into a model the platform copies is not
+# something a backend can be handed.
+! grep '&m\.url' live/model.go
+
+-- snap.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+import http "sngl:remote/http"
+
+component main {
+    var url = "https://example.com/"
+    var res = http.fetch(url)
+
+    window(title="fetch") {
+        text(value=res.or(blank).body)
+        button(text="go", @click { url = "https://other/" })
+    }
+}
+
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")
+-- live.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+import http "sngl:remote/http"
+
+component main {
+    var url = "https://example.com/"
+    var res = http.fetch(&url)
+
+    window(title="fetch") {
+        text(value=res.or(blank).body)
+        button(text="go", @click { url = "https://other/" })
+    }
+}
+
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")

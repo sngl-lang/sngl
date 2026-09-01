@@ -20,7 +20,7 @@ import . "sngl:internal/marks"
 //
 // A name resolves or it does not, which is the point — a misspelled tree is an
 // unresolved name at the declaration rather than a family nobody joins.
-func kind() ir.Macro {}
+func kind() ir.Macro
 
 // The tree an ordinary component belongs to: the one whose members are
 // interchangeable, where a container hosts anything. A component that names no

@@ -195,6 +195,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// which pass2 has finished resolving, and may name anything the program
 	// declares.
 	c.checkPendingFuncOverrides()
+	c.verifyRefCoercions(c.pkg)
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
@@ -234,6 +235,11 @@ type checker struct {
 	diags  []ir.Diagnostic
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
+
+	// refCoercions are the call sites that handed a plain T to a ref<T>
+	// parameter; see verifyRefCoercions for why the callee is held to its half
+	// of the bargain only once every body has been checked.
+	refCoercions []refCoercion
 
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
@@ -447,7 +453,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	c.fileTopLevel = make(map[*ast.Document]map[string]topLevelBinding, len(docs))
 	// Set before the library loads, which swap in their own: a lib load
 	// restores what it found, and what it finds must be the program's.
-	c.setMarkScope(docs)
 	// Insert stdlib scope between base and Root so user declarations shadow stdlib.
 	stdlibScope := NewScope(symtab.Root.Parent) // parent = baseScope
 	c.scope = stdlibScope
@@ -2012,15 +2017,22 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	fn := c.buildFunc(f)
 
-	// A macro declaration is not a function: it is where a `#[...]` mark's
+	// A macro declaration is not a function -- it is where a `#[...]` mark's
 	// documentation and argument list are written, and a Go handler is what
-	// runs. Binding it would put the name in scope, where a program could call
-	// it -- and a dot import of the package that dot-imports the mark's
-	// package would lift it on. It is kept on the package instead, which is
-	// where mark resolution reads it.
+	// runs -- but it is bound like one, because a mark resolves through the
+	// scope like every other name. It used to be kept off the scope and looked
+	// up in a table built by re-scanning the imports, which is why a package
+	// could not use a macro it declared: its own declarations were never in
+	// that table, though they were always in scope.
+	//
+	// The two reasons it was kept out are answered rather than avoided. A
+	// program calling one is refused where a call is checked, by its type: a
+	// macro answers ir.Macro, which nothing constructs and no value holds. And
+	// a dot import of a package that dot-imports the mark's package does not
+	// lift it on, because no package re-exports what it imported -- an importer
+	// sees the export view mergePkgInto builds of a package's own declarations.
 	if c.isMacroSig(fn.Return) {
 		c.declPkg().Macros = append(c.declPkg().Macros, fn)
-		return nil
 	}
 	c.applyMarks(f, fn)
 
@@ -2707,7 +2719,30 @@ func (c *checker) importablePackages() []string {
 }
 
 func (c *checker) lookupTarget(name string) pkgProvider {
+	if t := c.lookupTargetIn(name, ir.BuiltinPlatform); t != nil {
+		return t
+	}
+	return c.lookupTargetIn(name, ir.BuiltinLanguage)
+}
+
+// lookupTargetIn finds a registered target of one tier by name.
+//
+// The tier is not decoration. The two share a namespace -- nothing stops a
+// language and a platform from both being called `go` -- so a search that
+// falls through from one to the other answers a question nobody asked: it made
+// hasLibPkg("platform/go") true for a language, which loaded golang.sngl a
+// second time under a name it does not have and left a macro it declares
+// reporting whichever load resolved it.
+func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	if c.cfg == nil {
+		return nil
+	}
+	if kind == ir.BuiltinLanguage {
+		for _, l := range c.cfg.Languages {
+			if l.LanguageIdentifier() == name {
+				return l
+			}
+		}
 		return nil
 	}
 	for _, p := range c.cfg.Platforms {
@@ -2715,45 +2750,41 @@ func (c *checker) lookupTarget(name string) pkgProvider {
 			return p
 		}
 	}
-	for _, l := range c.cfg.Languages {
-		if l.LanguageIdentifier() == name {
-			return l
-		}
-	}
 	return nil
 }
 
-// lookupOptions returns the Options struct for a platform or lang name.
-// Returns nil if no target or no Options struct found.
-func (c *checker) lookupOptions(name string) *ir.StructDef {
+// lookupOptions returns the Options struct a target of this tier declares, or
+// nil when there is no such target or it declares none.
+//
+// The tier comes from the caller because the caller has it -- an output block
+// names a language and a platform, and which of the two `go` is is not
+// something to rediscover from the name. Guessing it is what let a language be
+// asked for its platform package.
+func (c *checker) lookupOptions(name string, kind ir.BuiltinKind) *ir.StructDef {
+	uri := targetTierMember(kind) + "/" + name
 	if c.optionsCache != nil {
-		if sd, ok := c.optionsCache[name]; ok {
+		if sd, ok := c.optionsCache[uri]; ok {
 			return sd
 		}
 	}
-	t := c.lookupTarget(name)
-	if t == nil {
+	if c.lookupTargetIn(name, kind) == nil {
 		return nil
 	}
 	if c.optionsCache == nil {
 		c.optionsCache = make(map[string]*ir.StructDef)
 	}
-	// Read the options schema off the loaded sngl:platform/<n> package
-	// rather than asking the plugin: the schema is the #[options]-marked
-	// declaration that package holds, and the mark is only on the IR.
-	uri := "platform/" + name
-	if !c.hasLibPkg(uri) {
-		uri = "language/" + name
-	}
+	// Read the options schema off the loaded package rather than asking the
+	// plugin: the schema is the #[options]-marked declaration that package
+	// holds, and the mark is only on the IR.
 	if c.hasLibPkg(uri) {
 		for _, sd := range c.libPkg(uri).Structs {
 			if sd.Options {
-				c.optionsCache[name] = sd
+				c.optionsCache[uri] = sd
 				return sd
 			}
 		}
 	}
-	c.optionsCache[name] = nil
+	c.optionsCache[uri] = nil
 	return nil
 }
 
@@ -2794,10 +2825,10 @@ func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDe
 	// If the user named a target that isn't registered, we have no schema for
 	// its options. Returning nil tells the caller to skip validation rather
 	// than reject options the platform itself would have accepted.
-	if lang != "" && c.lookupTarget(lang) == nil {
+	if lang != "" && c.lookupTargetIn(lang, ir.BuiltinLanguage) == nil {
 		return nil
 	}
-	if platform != "" && c.lookupTarget(platform) == nil {
+	if platform != "" && c.lookupTargetIn(platform, ir.BuiltinPlatform) == nil {
 		return nil
 	}
 
@@ -2828,10 +2859,10 @@ func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDe
 	}
 	add("stdlib", c.lookupStdlibOptions())
 	if lang != "" {
-		add(lang, c.lookupOptions(lang))
+		add(lang, c.lookupOptions(lang, ir.BuiltinLanguage))
 	}
 	if platform != "" {
-		add(platform, c.lookupOptions(platform))
+		add(platform, c.lookupOptions(platform, ir.BuiltinPlatform))
 	}
 
 	c.mergedOptionsCache[key] = merged
@@ -3220,82 +3251,6 @@ func (c *checker) pass2() {
 		}
 	}
 
-	c.dropPlaceholderBodies()
-}
-
-// dropPlaceholderBodies discards the body of every intrinsic that did not
-// claim it computes the right answer. The body is there to be type checked
-// like any other — the mark does not excuse a declaration from that — but a
-// backend is meant to replace it, and `return 0` compiles and runs and is
-// wrong. Dropping it after checking means nothing downstream has to remember
-// to ask: an evaluator with no body cannot answer, and codegen with no body
-// and no emitter has nothing to fall through to.
-func (c *checker) dropPlaceholderBodies() {
-	drop := func(fn *ir.Func) {
-		if fn != nil && fn.Intrinsic != "" && !fn.IntrinsicBodyUsable {
-			fn.Block = nil
-		}
-	}
-	// A method lives on the declaration it is attached to rather than in
-	// pkg.Funcs, and the methods are where most of the marks are.
-	seen := map[*ir.Package]bool{}
-	var dropPkg func(pkg *ir.Package)
-	dropPkg = func(pkg *ir.Package) {
-		if pkg == nil || seen[pkg] {
-			return
-		}
-		seen[pkg] = true
-		// A receiver that names a namespace rather than a type has no
-		// declaration to host its methods, so they live in the synthetic
-		// package the namespace points at — html.frontend and html.backend
-		// are reachable from nowhere else.
-		if pkg.Symbols != nil && pkg.Symbols.Root != nil {
-			for _, sym := range pkg.Symbols.Root.Symbols {
-				if ns, ok := sym.(*ir.Namespace); ok {
-					dropPkg(ns.Pkg)
-				}
-			}
-		}
-		for _, fn := range pkg.Funcs {
-			drop(fn)
-		}
-		for _, sd := range pkg.Structs {
-			for _, fn := range sd.Methods {
-				drop(fn)
-			}
-		}
-		for _, ed := range pkg.Enums {
-			for _, fn := range ed.Methods {
-				drop(fn)
-			}
-		}
-		for _, ud := range pkg.Units {
-			for _, fn := range ud.Methods {
-				drop(fn)
-			}
-		}
-		for _, comp := range pkg.Components {
-			for _, fn := range comp.Funcs {
-				drop(fn)
-			}
-			for _, fn := range comp.Methods {
-				drop(fn)
-			}
-		}
-	}
-	dropPkg(c.pkg)
-	for _, imp := range c.pkg.Imports {
-		if imp != nil {
-			dropPkg(imp.Pkg)
-		}
-	}
-	// sngl:builtin is ambient and appears in nobody's import list, and its
-	// methods carry the largest share of the marks.
-	for _, pkg := range c.libs.pkgs {
-		dropPkg(pkg)
-	}
-	dropPkg(c.builtinPkg)
-	dropPkg(c.stdlibPkg)
 }
 
 func (c *checker) checkFuncBody(fn *ir.Func) {
@@ -3338,7 +3293,12 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	if fn.AST != nil && fn.AST.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.declare(funcDeclPos(fn), &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+			recv := &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
+			c.declare(funcDeclPos(fn), recv)
+			// Kept on the declaration as well as in the scope: the body names
+			// it, so whoever replaces the body's parameters has to know which
+			// symbol the receiver is.
+			fn.RecvParam = recv
 		}
 	}
 
@@ -3376,7 +3336,32 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
+	} else if fn.AST != nil {
+		// No body at all: a signature. Something else has to supply the answer,
+		// and this is where that is required rather than assumed.
+		if !c.bodySuppliedElsewhere(fn) {
+			c.error(fn.AST.Pos, "%q has no body: give it one, or say where the answer comes from — #[intrinsic], #[foreign], or a per-target override",
+				fn.Name)
+		}
 	}
+}
+
+// bodySuppliedElsewhere reports whether a declaration with no written body gets
+// one from somewhere the checker can name.
+//
+// Three answers, and each is a declaration rather than a convention: an
+// #[intrinsic] id every backend must implement, a #[foreign] correspondence
+// whose body would only ever have described what it names, and a per-target
+// override carrying the body for the target a build picks.
+func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	// A macro is the fourth: the declaration is where a mark's arguments and
+	// documentation are written, and the compiler's implementation of that mark
+	// is what runs. There has never been a body worth writing.
+	return fn.Intrinsic != "" || fn.Foreign.Path != "" || c.isMacroSig(fn.Return) ||
+		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
 }
 
 // blockAlwaysReturns reports whether a statement block is guaranteed to return

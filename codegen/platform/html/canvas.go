@@ -10,8 +10,11 @@ import (
 )
 
 func init() {
+	// Keyed to the platform, not to "js". These render onto a canvas 2D
+	// context, which only an html build has — registering them per language
+	// claimed every js build can draw, which no other js platform can.
 	reg := func(id string, fn func(a []string) string) {
-		codegen.RegisterIntrinsic("js", id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		codegen.RegisterPlatformIntrinsic("html", id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 			a := make([]string, len(args))
 			for i, e := range args {
 				a[i] = tr(e)
