@@ -1055,6 +1055,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			fn, ok = c.lookupMethod("map", sel.Field)
 		}
 	}
+	// A method reached through `option<Struct>` resolves against the struct,
+	// the same way a field read through one does (see inferSelect). Asked after
+	// `option`'s own members, so a name the option itself declares still wins.
+	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
+		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
+		if fn, ok = ir.MemberOf(receiver.Elems[0].Decl, sel.Field); ok {
+			receiver = receiver.Elems[0]
+			typeName = receiver.String()
+		}
+	}
 	if ok {
 		sig := fn.FuncSig()
 		// recvParamStyle tracks whether the receiver is passed as the first
@@ -1490,6 +1500,19 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		operand = operand.Elems[0]
 	}
 
+	// A field read through `option<Struct>` resolves against the struct, which
+	// is what every backend already emits -- Go reads through the pointer an
+	// option is. Only the type it was resolved against changes; no deref node
+	// is synthesized, because there is nothing for one to lower to.
+	//
+	// Without this the whole select degraded to dyn: `contents.value().status`
+	// worked, `contents.value().nope` worked exactly as well, and both reached
+	// a backend as a field read of whatever was there.
+	if operand != nil && operand.Kind == ir.TypeOption && len(operand.Elems) == 1 &&
+		operand.Elems[0] != nil && operand.Elems[0].Kind == ir.TypeStruct {
+		operand = operand.Elems[0]
+	}
+
 	// Placed beside the ref auto-deref because it answers the same question:
 	// what value is the field actually being read off. A namespace, a type name
 	// or an enum never has a func type, so nothing below is disturbed.
@@ -1582,7 +1605,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 					}
 				}
-				c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
+				if _, isMethod := sd.Methods[x.Field]; isMethod {
+					c.error(x.Pos, "%s.%s is a method; write %s() to call it", sd.Name, x.Field, x.Field)
+				} else {
+					c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
+				}
 			}
 		}
 

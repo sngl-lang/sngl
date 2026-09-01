@@ -331,6 +331,12 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
+	// A literal of a type the runtime defines is the only mention of it that
+	// need not be reached through a call to that runtime, so it is the one
+	// place the import can be missing.
+	if ir.IsRemoteHTTPResultStruct(n.Type) {
+		gc.RequireImport(remoteHTTPImportPath)
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -1149,6 +1155,14 @@ func structLitTypeName(n *ir.StructLit) string {
 	}
 	if def.Name == "color" || ir.IsColorStruct(n.Type) {
 		return colorGoType
+	}
+	// Everything else about how a struct type is spelled is IRTypeToGo's --
+	// the stdlib types a backend maps onto its host language's own among them.
+	// This used to answer for itself and knew only about color, so
+	// `http.Result{…}` wrote a name the output did not declare while every
+	// other mention of that type wrote `http.Response`.
+	if n.Type != nil && n.Type.Kind == ir.TypeStruct && n.Type.Decl != nil {
+		return IRTypeToGo(n.Type)
 	}
 	if name := ExportName(def.Name); name != "" {
 		return name

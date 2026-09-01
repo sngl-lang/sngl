@@ -7,6 +7,10 @@
 sngl build --lang=go --platform=bubbletea --opt name=app app.sngl
 exists app
 
+# Nothing here is bubbletea's: a second platform is what says so.
+sngl build --lang=go --platform=fyne --opt name=appf app.sngl
+exists appf
+
 # The box holds what the transport answers with. The runtime defines that type,
 # the way it defines the failure its boxes carry — a Result declared beside it
 # would be a second type `http.Get` could not hand back.
@@ -24,6 +28,11 @@ grep 'v, _ := http\.Get' out/model.go
 grep 'm\.contents\.Err\(\) != nil' out/model.go
 ! grep '\bthis\.' out/model.go
 
+# A method reached through option<Struct> resolves against the struct, the way
+# a field read through one does — and every backend already emits that, reading
+# through the pointer an option is.
+grep 'Status >= 200' out/model.go
+
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:remote/http"
@@ -35,6 +44,7 @@ component main {
         text(value="Loading: {contents.inFlight()}")
         text(value=contents.or(blank).body)
         text(value="Failed: {contents.failed()}")
+        text(value="OK: {contents.value().ok()}")
     }
 }
 
