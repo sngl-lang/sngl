@@ -36,8 +36,8 @@ import (
 // "component under test" object. Tests written as `func t(t Test, c
 // Foo)` reference fields via `c.field`; html doesn't emit a Model class
 // (state lives in an IIFE-scoped object), so the current shape returns
-// the literal name and tests against fields require model-bridging work
-// in a follow-up task (Task 4).
+// the literal name and tests against fields would require model-bridging
+// work that is not done.
 func emitTestagentFiles(sink codegen.Sink, pkg *ir.Package, modelType string) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(pkg)
 	if len(testFns) == 0 {

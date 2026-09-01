@@ -1,5 +1,3 @@
-// Ordered sequences, and the iterator every collection converts to.
-
 import . "sngl:internal/marks"
 
 // Heterogeneous list. `list<T>` is the parameterized form; element type

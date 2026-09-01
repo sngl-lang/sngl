@@ -9,7 +9,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/docs/lookup"
 )
 
-func TestLookupStdlibIndex(t *testing.T) {
+// `sngl` is the library root: it lists the packages and declares nothing
+// itself. A declaration is looked up in the package that declares it.
+func TestLookupLibraryRootListsPackages(t *testing.T) {
 	res, err := lookup.Lookup("sngl")
 	if err != nil {
 		t.Fatal(err)
@@ -20,11 +22,40 @@ func TestLookupStdlibIndex(t *testing.T) {
 	if !res.Index.Library {
 		t.Error("Library should be true")
 	}
-	if res.Index.Title != "sngl" {
+	if len(res.Index.Packages) == 0 {
+		t.Fatal("the library root lists no packages")
+	}
+	for _, section := range [][]lookup.DeclSummary{
+		res.Index.Components, res.Index.Enums, res.Index.Functions,
+	} {
+		if len(section) > 0 {
+			t.Errorf("the library root declares members: %+v", section)
+		}
+	}
+	var sawUI bool
+	for _, p := range res.Index.Packages {
+		if p.Title == "sngl:ui" {
+			sawUI = true
+		}
+	}
+	if !sawUI {
+		t.Error("sngl:ui missing from the library root")
+	}
+}
+
+// A type is indexed by the package that declares it, with its methods folded
+// in. color is sngl:builtin's.
+func TestLookupPackageIndex(t *testing.T) {
+	res, err := lookup.Lookup("sngl:builtin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Kind != lookup.KindIndex {
+		t.Fatalf("kind: got %v, want KindIndex", res.Kind)
+	}
+	if res.Index.Title != "sngl:builtin" {
 		t.Errorf("Title: got %q", res.Index.Title)
 	}
-
-	// color should appear as a TypeEntry with methods folded in.
 	var color *lookup.TypeEntry
 	for i := range res.Index.Types {
 		if res.Index.Types[i].Name == "color" {
@@ -33,44 +64,20 @@ func TestLookupStdlibIndex(t *testing.T) {
 		}
 	}
 	if color == nil {
-		t.Fatal("color type missing from index")
+		t.Fatal("color type missing from sngl:builtin")
 	}
 	if len(color.Methods) < 6 {
-		t.Errorf("color: want ≥6 methods, got %d", len(color.Methods))
+		t.Errorf("color: want >=6 methods, got %d", len(color.Methods))
 	}
 	for _, m := range color.Methods {
 		if m.FullName != "color."+m.ShortName {
-			t.Errorf("method FullName mismatch: %q vs short %q", m.FullName, m.ShortName)
-		}
-	}
-
-	// Primitive receivers (int, float, string, list) should appear as synthesized TypeEntry.
-	primitives := map[string]bool{"int": false, "float": false, "string": false, "list": false}
-	for _, tp := range res.Index.Types {
-		if _, ok := primitives[tp.Name]; ok {
-			primitives[tp.Name] = true
-			if len(tp.Methods) == 0 {
-				t.Errorf("primitive %q has no methods", tp.Name)
-			}
-		}
-	}
-	for name, seen := range primitives {
-		if !seen {
-			t.Errorf("primitive %q missing from Types", name)
-		}
-	}
-
-	// Free functions bucket must stay separate — today stdlib has none, but the
-	// slice shouldn't carry receiver-dotted names.
-	for _, f := range res.Index.Functions {
-		if filepath.Base(f.Name) != f.Name {
-			t.Errorf("free function carries a dot: %q", f.Name)
+			t.Errorf("method FullName: got %q, want color.%s", m.FullName, m.ShortName)
 		}
 	}
 }
 
 func TestLookupStdlibComponent(t *testing.T) {
-	res, err := lookup.Lookup("sngl", "button")
+	res, err := lookup.Lookup("sngl:ui", "button")
 	if err != nil {
 		t.Fatal(err)
 	}

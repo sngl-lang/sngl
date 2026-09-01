@@ -1,10 +1,12 @@
-# The bare stdlib keyword is every public package merged into one listing —
-# not what a file sees, since only sngl:builtin is in scope unimported.
-# `button` comes from sngl:ui, `color` from sngl:builtin.
+# The bare scheme is the library root: the packages, each imported by its own
+# path. It declares nothing itself -- `button` is sngl:ui's, `color` is
+# sngl:builtin's -- so it lists where to look rather than what it holds.
 sngl doc sngl
 stdout '# sngl'
-stdout 'button'
-stdout 'color'
+stdout 'sngl:ui'
+stdout 'sngl:builtin'
+! stdout '\*\*button\*\*'
+! stdout '\*\*color\*\*'
 
 # Each tier is addressable on its own, and the two are disjoint.
 sngl doc sngl:ui
@@ -19,7 +21,7 @@ stdout 'color'
 ! sngl doc sngl:nope
 stderr 'unknown stdlib package "nope"'
 
-# Stdlib decl lookup.
+# A declaration asked of the root is answered by the package that declares it.
 sngl doc sngl button
 stdout '# button'
 

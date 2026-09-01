@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -47,6 +48,19 @@ func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
 		panic("codegen: duplicate intrinsic emitter " + lang + "/" + id)
 	}
 	byID[id] = e
+}
+
+// IntrinsicIDs returns the ids lang has registered an emitter for, sorted:
+// what a backend implements, which the intrinsic declarations cannot answer.
+func IntrinsicIDs(lang string) []string {
+	intrinsicMu.RLock()
+	defer intrinsicMu.RUnlock()
+	ids := make([]string, 0, len(intrinsicEmitters[lang]))
+	for id := range intrinsicEmitters[lang] {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // LookupIntrinsic returns the emitter registered for (lang, id), or nil. ID is

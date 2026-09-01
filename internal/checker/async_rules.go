@@ -29,7 +29,7 @@ import (
 //     TypeFunc carries no IsAsync/color field, so there is no way to inspect
 //     whether the declared parameter/field type expects a sync vs async func.
 //     This rule will be implementable once FuncSig gains an IsAsync flag.
-//     See spec §5 rule 3 and Task 47 (closure points-to).
+//     See spec §5 rule 3 (closure points-to).
 func (c *checker) checkAsyncRules() {
 	pkg := c.pkg
 	if pkg == nil {
@@ -81,7 +81,7 @@ func (c *checker) checkAsyncRules() {
 //
 // Only direct calls are collected (i.e., *ir.Call.Func).  Indirect calls
 // through func-typed vars are conservatively excluded (they will be addressed
-// when FuncSig gains IsAsync; see Rule 3 / Task 47).
+// when FuncSig gains IsAsync; see Rule 3).
 func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
 	out := make(map[*ir.Func]bool)
 	for _, w := range pkg.Windows {

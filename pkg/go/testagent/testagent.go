@@ -20,8 +20,8 @@ import (
 )
 
 // T is the per-test handle passed to user test functions. Its method
-// surface mirrors a subset of *testing.T's so that golang.LowerTestFunc
-// output is identical across modes.
+// surface mirrors a subset of *testing.T's so that golang.LowerTestFile
+// emits the same body in either mode.
 type T struct {
 	name    string
 	parent  *T

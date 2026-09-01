@@ -33,7 +33,7 @@ func SearchIndex() []SearchEntry {
 		out = append(out, e)
 	}
 
-	for _, pkg := range lookup.StdlibPackages() {
+	for _, pkg := range lookup.LibraryPackages() {
 		idx := lookup.PackageIndex(pkg.Path)
 		if !idx.Found {
 			continue
@@ -189,7 +189,7 @@ func SearchIndex() []SearchEntry {
 // by inspection — both build the canonical /docs/<pkg>/<kind>/<name>.html
 // (with optional /<ident2>) URL shape.
 func declHref(pkg, kind, name, ident2 string) string {
-	base := "/docs/" + pkg + "/" + kind + "/" + name
+	base := "/docs/" + strings.ReplaceAll(pkg, ":", "/") + "/" + name
 	if ident2 != "" {
 		return base + "/" + ident2 + ".html"
 	}

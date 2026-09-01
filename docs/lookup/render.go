@@ -205,7 +205,7 @@ func funcMD(f *FuncDetail) string {
 		sb.WriteString("```\n" + MarkSignature(f.Name, f.AST) + "\n```\n\n")
 	} else if f.AST != nil {
 		sb.WriteString("```\n")
-		sb.WriteString(snglSignatureWithInferred(f.Name, f.AST))
+		sb.WriteString(snglSignatureWithInferred(f.Pkg, f.Name, f.AST))
 		sb.WriteString("\n```\n\n")
 	}
 	if f.Doc != "" {
@@ -242,17 +242,17 @@ func markParams(f *ast.FuncDef) string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-// snglSignatureWithInferred renders a SNGL func signature, falling back to
-// the type-checked IR package's resolved Return type when the AST has no
-// explicit annotation (typical for `=> expr` shorthand bodies). Stdlib IR
-// funcs split a "Receiver.Name" decl into separate Receiver + Name fields,
-// so we match on the (receiver, simple-name) pair derived from `fullName`.
-func snglSignatureWithInferred(fullName string, f *ast.FuncDef) string {
+// snglSignatureWithInferred renders a SNGL func signature, falling back to the
+// loaded package's resolved Return type when the AST has no explicit
+// annotation (a `=> expr` body cannot carry one). A library IR func splits a
+// "Receiver.Name" decl into separate Receiver + Name fields, so the match is on
+// the pair derived from fullName.
+func snglSignatureWithInferred(pkgPath, fullName string, f *ast.FuncDef) string {
 	sig := snglSignature(f)
 	if f.ReturnType != nil {
 		return sig
 	}
-	pkg := checker.StdlibIRPackage()
+	pkg := checker.LibPackage(pkgPath)
 	if pkg == nil {
 		return sig
 	}

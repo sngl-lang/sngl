@@ -1,0 +1,23 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+// Every node form accepts key=, the list-diffing key: a visual node with a
+// body, a childless call, and an element ref carrying an #id.
+component keyed {
+    var items = ["a", "b"]
+
+    vbox {
+        for item = items {
+            text #row(value=item, key=item)
+            button(text=item, key=item, @click {})
+            vbox(key=item) {
+                text(value=item)
+            }
+        }
+    }
+}
+
+func testKeyedRowsRender(t Test, c keyed) {
+    t.assert(c.row[0].value == "a")
+    t.assert(c.row[1].value == "b")
+}

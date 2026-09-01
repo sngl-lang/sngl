@@ -18,14 +18,9 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
-// TestEveryIntrinsicIsDeclared pins the registry against the declarations, so
-// the two cannot drift while both exist. What the compiler knows about an
-// intrinsic is meant to be readable at the declaration; a registry entry with
-// no declaration would be knowledge with nowhere to read it, and a mark whose
-// id no registry answers to is a typo nothing else would catch.
-//
-// The id is the declaration's own SNGL name — `string.length`, not StrLength —
-// so this also pins that convention.
+// TestEveryIntrinsicIsDeclared: loading every package registers every marked
+// id. An intrinsic is registered as its declaration is, and a target's arrive
+// with its package rather than with lib/.
 //
 // A marked component is held to the opposite rule. The registry is signatures
 // every language backend must implement; a component intrinsic is a widget one
@@ -34,13 +29,8 @@ import (
 // emitting platform as a namespace, which is what keeps the two id spaces from
 // ever meeting.
 func TestEveryIntrinsicIsDeclared(t *testing.T) {
-	var registry []ir.IntrinsicDef
-	for _, defs := range [][]ir.IntrinsicDef{
-		ir.Intrinsics, ir.AlertIntrinsics, ir.FileIntrinsics,
-		ir.I18nIntrinsics, ir.CanvasIntrinsics,
-	} {
-		registry = append(registry, defs...)
-	}
+	loadEveryPackage(t)
+	registry := ir.AllIntrinsics()
 
 	marked := map[string]bool{}
 	markedComponents := map[string]bool{}
@@ -85,7 +75,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 	}
 
 	inRegistry := map[string]bool{}
-	for _, def := range registry {
+	for def := range registry {
 		inRegistry[def.Name] = true
 		if !marked[def.Name] {
 			t.Errorf("registry has %q with no declaration marked #[intrinsic(%q)]", def.Name, def.Name)
@@ -119,17 +109,39 @@ var markRE = regexp.MustCompile(`#\[intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n
 // them and nothing noticed: `sngl doc` rendered a bare name and the website
 // rendered an empty card.
 func TestExportedComponentsAreDocumented(t *testing.T) {
-	reg, _, err := checker.LoadStdlib()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(reg) == 0 {
-		t.Fatal("no components in the stdlib registry")
-	}
-	for name, schema := range reg {
-		if schema.Doc == "" {
-			t.Errorf("component %s has no doc comment", name)
+	total := 0
+	for _, pkg := range lib.PublicPackages() {
+		schema := checker.PackageSchema(pkg)
+		total += len(schema)
+		for name, s := range schema {
+			if s.Doc == "" {
+				t.Errorf("component sngl:%s.%s has no doc comment", pkg, name)
+			}
 		}
+	}
+	if total == 0 {
+		t.Fatal("no components in any library package")
+	}
+}
+
+// loadEveryPackage checks every library and target package, which is what
+// populates the intrinsic registry.
+func loadEveryPackage(t *testing.T) {
+	t.Helper()
+	for _, name := range lib.Packages() {
+		if checker.LibPackage(name) == nil {
+			t.Errorf("library package %q did not load", name)
+		}
+	}
+	for _, p := range codegen.CollectPlatforms() {
+		fsys, ok := p.(interface{ PackageFS() fs.FS })
+		if !ok || fsys.PackageFS() == nil {
+			continue
+		}
+		checker.LibPackage("platform/" + p.PlatformIdentifier())
+	}
+	for _, name := range codegen.Langs() {
+		checker.LibPackage("language/" + name)
 	}
 }
 
@@ -142,6 +154,96 @@ func targetsWithPackages() []any {
 	}
 	for _, name := range codegen.Langs() {
 		out = append(out, codegen.LookupLang(name))
+	}
+	return out
+}
+
+// A declaration marked #[intrinsic] is a signature whose result comes from the
+// target's implementation of the id, so an id nothing implements is a build
+// emitting a call to a function that does not exist.
+//
+// Three ways an id is legitimately absent from the language emitter registry,
+// each read off the declaration rather than off a list of names:
+//
+//   - `usable` says the declaration's own SNGL body computes the same answer,
+//     so a backend may emit the body instead.
+//   - sngl:internal/draw's primitives take a platform draw context, so the
+//     platform emits them through IntrinsicTranslator and no language does.
+//   - error.raise lowers to each target's abort form rather than to a call at
+//     all, which ir.IsErrorRaiseFunc is the compiler's own statement of.
+func TestEveryIntrinsicIsImplemented(t *testing.T) {
+	loadEveryPackage(t)
+	langs := codegen.Langs()
+	if len(langs) == 0 {
+		t.Fatal("no languages registered")
+	}
+	checked := 0
+	for def := range ir.AllIntrinsics() {
+		if def.Pkg == drawPkg || def.Name == errorRaiseID {
+			continue
+		}
+		fn := intrinsicDecl(def.Name)
+		if fn == nil {
+			t.Errorf("%s is registered but no declaration answers to it", def.Name)
+			continue
+		}
+		if fn.IntrinsicBodyUsable {
+			continue
+		}
+		checked++
+		implemented := false
+		for _, lang := range langs {
+			if codegen.LookupIntrinsic(lang, def.Name) != nil {
+				implemented = true
+				break
+			}
+		}
+		if !implemented {
+			t.Errorf("#[intrinsic(%q)] is implemented by no language and carries no `usable` body; "+
+				"a build reaching it emits a call to a function that does not exist", def.Name)
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no intrinsic was held to the emitter contract; the walk found nothing")
+	}
+}
+
+const (
+	drawPkg      = "sngl:internal/draw"
+	errorRaiseID = "error.raise"
+)
+
+// intrinsicDecl finds the declaration carrying an id, for the facts the
+// registry does not record.
+func intrinsicDecl(id string) *ir.Func {
+	for _, name := range append(lib.Packages(), loadedTargetPackages()...) {
+		pkg := checker.LibPackage(name)
+		if pkg == nil {
+			continue
+		}
+		for _, fn := range pkg.Funcs {
+			if fn.Intrinsic == id {
+				return fn
+			}
+		}
+		for _, sd := range pkg.Structs {
+			for _, m := range sd.Methods {
+				if m.Intrinsic == id {
+					return m
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func loadedTargetPackages() []string {
+	var out []string
+	for _, p := range codegen.CollectPlatforms() {
+		out = append(out, "platform/"+p.PlatformIdentifier())
+	}
+	for _, name := range codegen.Langs() {
+		out = append(out, "language/"+name)
 	}
 	return out
 }

@@ -14,7 +14,7 @@ import (
 // resolveTypeRequired instead.
 func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	if te == nil {
-		return TypDyn
+		return dynFallback("no type annotation to resolve")
 	}
 	switch t := te.(type) {
 	case *ast.NamedType:
@@ -100,7 +100,7 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, t *ast.NamedType) *
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	}
 	// Unknown kind would be a compiler bug (macro validates the id set).
-	return TypDyn
+	return dynFallback("builtin generic kind %v has no constructor", id)
 }
 
 // userShadowsBuiltin reports whether name resolves in scope to a user struct
@@ -208,7 +208,7 @@ func (c *checker) resolveQualifiedType(pkg, name string, args []ast.TypeExpr) *i
 	}
 	if ns.Pkg == nil {
 		// Native import — accept as dyn.
-		return TypDyn
+		return dynFallback("type %s.%s comes from a native import with no package", pkg, name)
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(ast.Pos{}, tsym) {
@@ -525,7 +525,7 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 		case expected != nil && i < len(expected.Params):
 			typ = expected.Params[i].Type
 		default:
-			typ = TypDyn
+			typ = dynFallback("lambda parameter %q has no annotation and no expected signature", p.Name)
 		}
 		var def ir.Expr
 		if p.Default != nil {

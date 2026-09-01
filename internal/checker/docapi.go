@@ -25,11 +25,6 @@ type PropSchema struct {
 	Enum []string
 }
 
-type StylePropSchema struct {
-	Type ir.Type
-	Enum []string
-}
-
 type SchemaRegistry = map[string]*ComponentSchema
 
 type PackageDocs struct {
@@ -86,45 +81,43 @@ type DeclInfo struct {
 	Decl ast.Stmt // the AST node
 }
 
+// PackageSchema is the resolved API of one library package's exported
+// components: the prop and event types a reader needs and the AST does not
+// carry. Keyed by declaration name, which is unique within a package.
+//
+// Addressed by import path because that is the unit a declaration belongs to.
+// The whole library merged into one document was the old answer, and it could
+// not represent two packages declaring one name -- `time` is a type in
+// sngl:time and a function in sngl:i18n -- nor say where anything came from.
+//
+// Empty for a package that does not load.
+func PackageSchema(pkg string) SchemaRegistry {
+	pkgSchemaMu.Lock()
+	defer pkgSchemaMu.Unlock()
+	if reg, ok := pkgSchemaCache[pkg]; ok {
+		return reg
+	}
+	reg := buildSchemaRegistry(LibPackage(pkg), PackageSource(pkg))
+	pkgSchemaCache[pkg] = reg
+	return reg
+}
+
+// PackageExamples is the `_example_`-prefixed components of one library
+// package, keyed by the declaration each documents.
+func PackageExamples(pkg string) map[string][]string {
+	out := map[string][]string{}
+	for _, doc := range PackageSource(pkg) {
+		for name, src := range PrefixedExamples(doc) {
+			out[name] = append(out[name], src)
+		}
+	}
+	return out
+}
+
 var (
-	stdlibSchemaOnce     sync.Once
-	stdlibSchemaRegistry SchemaRegistry
-	stdlibStyleProps     map[string]StylePropSchema
-	stdlibSchemaErr      error
-	stdlibIRPackage      *ir.Package
+	pkgSchemaMu    sync.Mutex
+	pkgSchemaCache = map[string]SchemaRegistry{}
 )
-
-func LoadStdlib() (SchemaRegistry, map[string]StylePropSchema, error) {
-	stdlibSchemaOnce.Do(func() {
-		docs := StdlibDocs()
-		if len(docs) == 0 {
-			stdlibSchemaErr = nil
-			stdlibSchemaRegistry = SchemaRegistry{}
-			stdlibStyleProps = map[string]StylePropSchema{}
-			return
-		}
-
-		merged := &ast.Document{}
-		for _, d := range docs {
-			merged.Stmts = append(merged.Stmts, d.Stmts...)
-		}
-
-		// lib/ checked as the document, not loaded as a package.
-		pkg, _ := Check(merged, &Config{libSource: true})
-		stdlibIRPackage = pkg
-		stdlibSchemaRegistry = buildSchemaRegistry(pkg, docs)
-		stdlibStyleProps = map[string]StylePropSchema{}
-	})
-	return stdlibSchemaRegistry, stdlibStyleProps, stdlibSchemaErr
-}
-
-// StdlibIRPackage returns the type-checked IR package for the stdlib. Useful
-// when callers need resolved types (e.g. function return types) that aren't
-// preserved in the parsed AST.
-func StdlibIRPackage() *ir.Package {
-	_, _, _ = LoadStdlib()
-	return stdlibIRPackage
-}
 
 func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 	reg := SchemaRegistry{}
@@ -173,19 +166,6 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 		reg[comp.Name] = schema
 	}
 	return reg
-}
-
-// StdlibExamples extracts example source blocks from stdlib doc comments.
-// Returns a map from component name to list of example sources.
-func StdlibExamples() (map[string][]string, error) {
-	docs := StdlibDocs()
-	result := make(map[string][]string)
-	for _, doc := range docs {
-		for name, srcs := range PrefixedExamples(doc) {
-			result[name] = append(result[name], srcs)
-		}
-	}
-	return result, nil
 }
 
 // PrefixedExamples extracts `_example_<name>` prefixed components from a

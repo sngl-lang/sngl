@@ -1,9 +1,8 @@
+import . "sngl:macro"
+
 // Top-level build-time options shared across every platform and language.
 // Any field declared here is recognized in every output() block; platforms
 // pick up the values they care about through their own Options structs.
-
-import . "sngl:macro"
-
 #[options]
 struct Options {
     // Display name for the app; used as window title and platform-native app name.

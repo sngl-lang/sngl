@@ -70,6 +70,9 @@ type DeclIndex struct {
 	PlatformTypes []DeclSummary // "Options"-style platform structs
 	Library       bool
 	Native        *ir.NativeImport // non-nil for scheme-native packages
+	// Packages is set instead of the declaration sections when the target is
+	// the library itself: `sngl` names the tree, not a package with members.
+	Packages []PackageEntry
 }
 
 // Doc is the raw comment; FirstSentence trims it for a compact blurb.
@@ -114,6 +117,9 @@ type EnumDetail struct {
 }
 
 type FuncDetail struct {
+	// Pkg is the import path's URI, for the resolved return type of a body
+	// that could not annotate one.
+	Pkg    string
 	Name   string
 	Doc    string
 	AST    *ast.FuncDef
@@ -207,6 +213,16 @@ func lookupInUncached(cwd, path string, idents []string) (Result, error) {
 	if len(idents) == 0 {
 		return Result{Kind: KindIndex, Index: buildIndex(tgt)}, nil
 	}
+	// The library root declares nothing, so a name has to be asked of the
+	// package that declares it. FindInLibrary is what turns a bare name into
+	// that package.
+	if tgt.tree {
+		origins := FindInLibrary(idents[0])
+		if len(origins) == 1 {
+			return LookupIn(cwd, origins[0].Pkg, idents...)
+		}
+		return Result{}, fmt.Errorf("%w: %q is a package of the library, not a declaration in one", ErrNotFound, idents[0])
+	}
 	if tgt.native != nil {
 		return walkNative(tgt, idents)
 	}
@@ -285,9 +301,14 @@ type target struct {
 	// sngl scheme. It affects how the title renders, nothing else: there is no
 	// "the standard library" any more, only packages under one scheme.
 	library bool
-	// allPackages is the merged view: everything a file can see without
-	// naming a package.
-	allPackages bool
+	// pkg is the import path's URI -- `ui`, `ui/draw`, `platform/html` -- which
+	// is what checker.PackageSchema is keyed by. Empty for a target that is not
+	// a loadable package (a directory, a native import), whose declarations
+	// carry no resolved schema either.
+	pkg string
+	// tree marks the library root, `sngl`, which lists its packages rather
+	// than declaring anything itself.
+	tree bool
 	// optionsDecl is the target's #[options]-marked struct, if it declares
 	// one. The mark is on the loaded IR, so it is resolved once here and the
 	// declaration is then recognised by identity.
@@ -304,15 +325,12 @@ func optionsDeclOf(uri string) *ast.StructDef {
 func resolveTarget(cwd, path string) (*target, error) {
 	scheme, uri := checker.ParseScheme(path)
 
-	// Bare `sngl` is every library package merged into one listing. The
-	// per-package paths address one of them each.
-	//
-	// sngl:internal/stdlib is deliberately not an alias for this: despite the
-	// name it is the compiler's intrinsics package, which has nothing to do
-	// with sngl:ui.
+	// Bare `sngl` is the library root: the packages under the scheme, each
+	// addressed by its own path. It used to be every one of them merged into a
+	// single listing, which could not say where a declaration came from and
+	// could not hold two packages declaring one name.
 	if path == "sngl" {
-		pd, stmts := stdlibPackageDocs(checker.Packages()...)
-		return &target{title: "sngl", pd: pd, stmts: stmts, library: true, allPackages: true}, nil
+		return &target{title: "sngl", library: true, tree: true}, nil
 	}
 
 	if scheme == "sngl" {
@@ -322,6 +340,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
 			title:       "sngl:" + uri,
+			pkg:         uri,
 			pd:          pd,
 			stmts:       stmts,
 			library:     true,
@@ -383,6 +402,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 		}
 		if docs := checker.PackageSource(uri); len(docs) > 0 {
 			t := mergeDocsTarget(path, docs)
+			t.pkg = uri
 			t.optionsDecl = optionsDeclOf(uri)
 			return t, nil
 		}
@@ -436,9 +456,15 @@ func mergeDocsTarget(title string, docs []*ast.Document) *target {
 func buildIndex(tgt *target) *DeclIndex {
 	idx := &DeclIndex{Title: tgt.title, Library: tgt.library, Native: tgt.native}
 	switch {
-	case tgt.allPackages:
-		idx.Description = "Every package of the embedded library merged into one listing (" +
-			strings.Join(libraryPaths(), ", ") + "). Only `sngl:builtin` is in scope without an import."
+	case tgt.tree:
+		idx.Description = "The packages of the embedded library, each imported by its own path. " +
+			"Only `sngl:builtin` is in scope without an import."
+		for _, p := range LibraryPackages() {
+			if p.Kind == "library" {
+				idx.Packages = append(idx.Packages, p)
+			}
+		}
+		return idx
 	case tgt.library && tgt.pd != nil && tgt.pd.Doc != "":
 		idx.Description = tgt.pd.Doc
 	case tgt.library:
@@ -654,15 +680,11 @@ func primary(tgt *target, info *checker.DeclInfo) (Result, error) {
 	switch decl := info.Decl.(type) {
 	case *ast.ComponentDecl:
 		cd := &ComponentDetail{Name: info.Name, Doc: info.Doc, AST: decl}
-		if reg, _, err := checker.LoadStdlib(); err == nil {
-			if schema, ok := reg[info.Name]; ok {
-				cd.Schema = schema
-			}
+		if schema, ok := checker.PackageSchema(tgt.pkg)[info.Name]; ok {
+			cd.Schema = schema
 		}
-		if exs, _ := checker.StdlibExamples(); exs != nil {
-			if srcs, ok := exs[info.Name]; ok {
-				cd.Examples = srcs
-			}
+		if srcs, ok := checker.PackageExamples(tgt.pkg)[info.Name]; ok {
+			cd.Examples = srcs
 		}
 		return Result{Kind: KindComponent, Component: cd}, nil
 	case *ast.StructDef:
@@ -677,7 +699,7 @@ func primary(tgt *target, info *checker.DeclInfo) (Result, error) {
 	case *ast.EnumDef:
 		return Result{Kind: KindEnum, Enum: &EnumDetail{Name: info.Name, Doc: info.Doc, AST: decl}}, nil
 	case *ast.FuncDef:
-		return Result{Kind: KindFunc, Func: &FuncDetail{Name: info.Name, Doc: info.Doc, AST: decl}}, nil
+		return Result{Kind: KindFunc, Func: &FuncDetail{Pkg: tgt.pkg, Name: info.Name, Doc: info.Doc, AST: decl}}, nil
 	case *ast.ConstDecl:
 		return Result{Kind: KindValue, Value: &ValueDetail{Name: info.Name, Doc: info.Doc, AST: decl, IsConst: true}}, nil
 	case *ast.VarDecl:
@@ -691,16 +713,14 @@ func primary(tgt *target, info *checker.DeclInfo) (Result, error) {
 func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 	switch decl := info.Decl.(type) {
 	case *ast.ComponentDecl:
-		if reg, _, err := checker.LoadStdlib(); err == nil {
-			if schema, ok := reg[info.Name]; ok {
-				if ps, ok := schema.Props[ident]; ok {
-					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Schema: &ps}}, nil
-				}
-				if payload, ok := schema.Events[ident]; ok {
-					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Event: payload}}, nil
-				}
-				return Result{}, fmt.Errorf("%w: prop %q on component %s", ErrNotFound, ident, info.Name)
+		if schema, ok := checker.PackageSchema(tgt.pkg)[info.Name]; ok {
+			if ps, ok := schema.Props[ident]; ok {
+				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Schema: &ps}}, nil
 			}
+			if payload, ok := schema.Events[ident]; ok {
+				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Event: payload}}, nil
+			}
+			return Result{}, fmt.Errorf("%w: prop %q on component %s", ErrNotFound, ident, info.Name)
 		}
 		for _, p := range decl.Props.Props {
 			switch pp := p.(type) {

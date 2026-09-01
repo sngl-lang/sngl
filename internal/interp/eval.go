@@ -226,7 +226,7 @@ func (env *Env) Snapshot() *Env {
 
 // SetContext stores a runtime override for ctx, replacing any default value.
 // If ctx is named "locale" its value is also applied to env.Locale for i18n
-// compat (until the i18n stack is fully migrated to read context in Task 29).
+// compat, until the i18n stack reads context throughout.
 func (env *Env) SetContext(ctx *ir.Context, val any) {
 	if env.ContextVals == nil {
 		env.ContextVals = make(map[*ir.Context]any)

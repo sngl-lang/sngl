@@ -131,8 +131,8 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Resolved through the packages rather than a flat merged registry, so
-		// the answer can say where the name lives and what importing it costs.
+		// Resolved through the packages, so the answer can say where the name
+		// lives and what importing it costs.
 		if origins := lookup.FindInLibrary(first); len(origins) > 0 {
 			if len(origins) > 1 {
 				return ambiguousLibraryName(first, origins)
@@ -145,7 +145,7 @@ func runDoc(cmd *cobra.Command, args []string) error {
 			return renderResult(r)
 		}
 
-		return showComponentDoc(first)
+		return fmt.Errorf("%q not found. Run 'sngl doc' for the package list, or 'sngl doc <package>' for one package's declarations", first)
 	}
 
 	return err
@@ -371,6 +371,17 @@ func renderIndexMD(idx *lookup.DeclIndex) string {
 	if idx.Description != "" {
 		sb.WriteString(idx.Description + "\n\n")
 	}
+	if len(idx.Packages) > 0 {
+		sb.WriteString("## Packages\n\n")
+		for _, p := range idx.Packages {
+			if p.Blurb != "" {
+				sb.WriteString(fmt.Sprintf("- **%s** — %s\n", p.Title, p.Blurb))
+			} else {
+				sb.WriteString(fmt.Sprintf("- **%s**\n", p.Title))
+			}
+		}
+		sb.WriteString("\n")
+	}
 	writeSummarySection(&sb, "Components", idx.Components)
 	writeTypeEntrySection(&sb, "Types", idx.Types)
 	writeSummarySection(&sb, "Enums", idx.Enums)
@@ -422,6 +433,77 @@ func writeTypeEntrySection(sb *strings.Builder, title string, items []lookup.Typ
 		}
 	}
 	sb.WriteString("\n")
+}
+
+func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", name))
+
+	// Strip the example from the doc text (it's shown separately as a snapshot)
+	doc := schema.Doc
+	if idx := strings.Index(doc, " Example:"); idx > 0 {
+		doc = strings.TrimSpace(doc[:idx])
+	}
+	if doc != "" {
+		sb.WriteString(doc)
+		sb.WriteString("\n\n")
+	}
+
+	snapshotDir := filepath.Join("lib", "snapshots")
+	if ansi, err := os.ReadFile(filepath.Join(snapshotDir, name+"_bubbletea.txt")); err == nil {
+		sb.WriteString("## Preview\n\n```\n")
+		sb.Write(ansi)
+		sb.WriteString("\n```\n\n")
+	}
+
+	if len(schema.Props) > 0 {
+		sb.WriteString("## Properties\n\n```\n")
+		type propEntry struct {
+			name string
+			ps   checker.PropSchema
+		}
+		var props []propEntry
+		for pname, ps := range schema.Props {
+			props = append(props, propEntry{name: pname, ps: ps})
+		}
+		sort.Slice(props, func(i, j int) bool {
+			return props[i].name < props[j].name
+		})
+		for _, p := range props {
+			line := fmt.Sprintf("%-16s %s", p.name, (&p.ps.Type).String())
+			if len(p.ps.Enum) > 0 {
+				line += fmt.Sprintf("  (%s)", strings.Join(p.ps.Enum, ", "))
+			}
+			sb.WriteString(line + "\n")
+			if p.ps.Doc != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", p.ps.Doc))
+			}
+		}
+		sb.WriteString("```\n\n")
+	}
+
+	if len(schema.Events) > 0 {
+		sb.WriteString("## Events\n\n```\n")
+		type eventEntry struct {
+			name    string
+			payload string
+		}
+		var events []eventEntry
+		for ename, payload := range schema.Events {
+			events = append(events, eventEntry{name: ename, payload: payload})
+		}
+		sort.Slice(events, func(i, j int) bool {
+			return events[i].name < events[j].name
+		})
+		for _, e := range events {
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", e.name, e.payload))
+		}
+		sb.WriteString("```\n\n")
+	}
+
+	sb.WriteString(fmt.Sprintf("**Children:** %s\n", docsite.ChildPolicyString(schema.Children)))
+
+	return sb.String()
 }
 
 func renderComponentMD(c *lookup.ComponentDetail) string {
@@ -771,156 +853,6 @@ func showTopic(docsDir, topic string) error {
 	}
 
 	return fmt.Errorf("not found")
-}
-
-func showComponentDoc(query string) error {
-	registry, _, err := checker.LoadStdlib()
-	if err != nil {
-		return fmt.Errorf("failed to load stdlib: %w", err)
-	}
-
-	// Support "component.prop" syntax.
-	compName := query
-	propName := ""
-	if before, after, ok := strings.Cut(query, "."); ok {
-		compName = before
-		propName = after
-	}
-
-	schema, ok := registry[compName]
-	if !ok {
-		// Try fuzzy match on component names.
-		var matches []string
-		for name := range registry {
-			if strings.Contains(strings.ToLower(name), strings.ToLower(compName)) {
-				matches = append(matches, name)
-			}
-		}
-		sort.Strings(matches)
-		if len(matches) > 0 {
-			return fmt.Errorf("component %q not found. Did you mean: %s", compName, strings.Join(matches, ", "))
-		}
-		return fmt.Errorf("%q not found. Run 'sngl doc' to see available topics and components", query)
-	}
-
-	if propName != "" {
-		return showPropDoc(compName, propName, schema)
-	}
-
-	return renderToTerminal(renderComponentDoc(compName, schema))
-}
-
-func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# %s\n\n", name))
-
-	// Strip the example from the doc text (it's shown separately as a snapshot)
-	doc := schema.Doc
-	if idx := strings.Index(doc, " Example:"); idx > 0 {
-		doc = strings.TrimSpace(doc[:idx])
-	}
-	if doc != "" {
-		sb.WriteString(doc)
-		sb.WriteString("\n\n")
-	}
-
-	snapshotDir := filepath.Join("lib", "snapshots")
-	if ansi, err := os.ReadFile(filepath.Join(snapshotDir, name+"_bubbletea.txt")); err == nil {
-		sb.WriteString("## Preview\n\n```\n")
-		sb.Write(ansi)
-		sb.WriteString("\n```\n\n")
-	}
-
-	examples, _ := checker.StdlibExamples()
-	if srcs, ok := examples[name]; ok && len(srcs) > 0 {
-		sb.WriteString("## Example\n\n```sngl\n")
-		sb.WriteString(srcs[0])
-		sb.WriteString("\n```\n\n")
-	}
-
-	if len(schema.Props) > 0 {
-		sb.WriteString("## Properties\n\n```\n")
-		type propEntry struct {
-			name string
-			ps   checker.PropSchema
-		}
-		var props []propEntry
-		for pname, ps := range schema.Props {
-			props = append(props, propEntry{name: pname, ps: ps})
-		}
-		sort.Slice(props, func(i, j int) bool {
-			return props[i].name < props[j].name
-		})
-		for _, p := range props {
-			line := fmt.Sprintf("%-16s %s", p.name, (&p.ps.Type).String())
-			if len(p.ps.Enum) > 0 {
-				line += fmt.Sprintf("  (%s)", strings.Join(p.ps.Enum, ", "))
-			}
-			sb.WriteString(line + "\n")
-			if p.ps.Doc != "" {
-				sb.WriteString(fmt.Sprintf("                 %s\n", p.ps.Doc))
-			}
-		}
-		sb.WriteString("```\n\n")
-	}
-
-	if len(schema.Events) > 0 {
-		sb.WriteString("## Events\n\n```\n")
-		type eventEntry struct {
-			name    string
-			payload string
-		}
-		var events []eventEntry
-		for ename, payload := range schema.Events {
-			events = append(events, eventEntry{name: ename, payload: payload})
-		}
-		sort.Slice(events, func(i, j int) bool {
-			return events[i].name < events[j].name
-		})
-		for _, e := range events {
-			sb.WriteString(fmt.Sprintf("%-16s %s\n", e.name, e.payload))
-		}
-		sb.WriteString("```\n\n")
-	}
-
-	sb.WriteString(fmt.Sprintf("**Children:** %s\n", docsite.ChildPolicyString(schema.Children)))
-
-	return sb.String()
-}
-
-func showPropDoc(compName, propName string, schema *checker.ComponentSchema) error {
-	ps, ok := schema.Props[propName]
-	if !ok {
-		payload, ok := schema.Events[propName]
-		if ok {
-			var sb strings.Builder
-			sb.WriteString(fmt.Sprintf("# %s.%s (event)\n\n", compName, propName))
-			sb.WriteString(fmt.Sprintf("Payload type: %s\n", payload))
-			return renderToTerminal(sb.String())
-		}
-
-		var available []string
-		for pname := range schema.Props {
-			available = append(available, pname)
-		}
-		for ename := range schema.Events {
-			available = append(available, ename)
-		}
-		sort.Strings(available)
-		return fmt.Errorf("property %q not found on %s. Available: %s", propName, compName, strings.Join(available, ", "))
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# %s.%s\n\n", compName, propName))
-	sb.WriteString(fmt.Sprintf("Type: %s\n\n", (&ps.Type).String()))
-	if len(ps.Enum) > 0 {
-		sb.WriteString(fmt.Sprintf("Values: %s\n\n", strings.Join(ps.Enum, ", ")))
-	}
-	if ps.Doc != "" {
-		sb.WriteString(ps.Doc + "\n")
-	}
-
-	return renderToTerminal(sb.String())
 }
 
 func showDirTopic(docsDir, dirPath, topic string) error {

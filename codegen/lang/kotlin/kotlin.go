@@ -3,7 +3,6 @@ package kotlin
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -97,58 +96,6 @@ var kotlinHardKeywords = map[string]bool{
 	"return": true, "super": true, "this": true, "throw": true,
 	"true": true, "try": true, "typealias": true, "typeof": true,
 	"val": true, "var": true, "when": true, "while": true,
-}
-
-func binaryOpStr(op ast.BinaryOp) string {
-	switch op {
-	case ast.BinAdd:
-		return "+"
-	case ast.BinSub:
-		return "-"
-	case ast.BinMul:
-		return "*"
-	case ast.BinDiv:
-		return "/"
-	case ast.BinMod:
-		return "%"
-	case ast.BinEq:
-		return "=="
-	case ast.BinNeq:
-		return "!="
-	case ast.BinLt:
-		return "<"
-	case ast.BinLte:
-		return "<="
-	case ast.BinGt:
-		return ">"
-	case ast.BinGte:
-		return ">="
-	case ast.BinAnd:
-		return "&&"
-	case ast.BinOr:
-		return "||"
-	default:
-		return "?"
-	}
-}
-
-func assignOpStr(op ast.AssignOp) string {
-	switch op {
-	case ast.AssignSet:
-		return "="
-	case ast.AssignAdd:
-		return "+="
-	case ast.AssignSub:
-		return "-="
-	case ast.AssignMul:
-		return "*="
-	case ast.AssignDiv:
-		return "/="
-	case ast.AssignMod:
-		return "%="
-	default:
-		return "="
-	}
 }
 
 func exportName(s string) string {

@@ -149,6 +149,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	// imports sngl:app to write a window, and sngl:time to write a timer.
 	c.libPkg(appPkg)
 	c.libPkg(timePkg)
+	c.libPkg(drawIntrinsicsPkg)
 	return builtinPkg, c.libPkg("ui")
 }
 
@@ -455,7 +456,10 @@ func targetNamespaceName(pkgName string) (string, bool) {
 
 // loadStdlibPackage, including the nested loads an import inside lib/ starts,
 // so the counter covers transitive loads too.
-func (c *checker) inLibSource() bool { return c.libDepth > 0 || c.cfg.libSource }
+// Library source is source a package load is checking. Nothing else is: the
+// one caller that used to check lib/ as its own document was LoadStdlib, whose
+// merged corpus had no package to belong to.
+func (c *checker) inLibSource() bool { return c.libDepth > 0 }
 
 func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libDepth++
@@ -634,6 +638,11 @@ const (
 	optionsPkg = appPkg
 )
 
+// drawIntrinsicsPkg declares the primitives passCanvas emits. No SNGL source
+// imports it, so loadStdlib is the only thing that loads it -- and without the
+// load, the signatures the pass reads off these declarations do not exist.
+const drawIntrinsicsPkg = "internal/draw"
+
 // irPkg is the compiler's own package, and macroTypeName the return type it
 // declares that makes a function a macro.
 const (
@@ -702,21 +711,54 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 	}
 }
 
-// applyIntrinsicMetadata copies effect metadata from the named intrinsic onto a
-// stdlib wrapper that delegates to it. The wrapper would otherwise default to
-// PurityPure (registerFunc, for library source), which is wrong for effecting intrinsics like
-// ListPush (mutates its receiver) — letting the optimizer fold or drop a real
-// mutation. Backends and reactivity read the mutation semantics back via
-// fn.Intrinsic and ir.IntrinsicByName, so no name matching is needed downstream.
-func applyIntrinsicMetadata(fn *ir.Func, id string) bool {
-	def, ok := ir.IntrinsicByName(id)
-	if !ok {
-		return false
+// publishIntrinsic records what a #[intrinsic] declaration says, for the passes
+// that need a signature with no declaration in hand (see ir.RegisterIntrinsic).
+// The purity is the mark's, already applied by markIntrinsic.
+func (c *checker) publishIntrinsic(fn *ir.Func) {
+	// Only a library package publishes, which is what lets RegisterIntrinsic
+	// panic on a duplicate rather than diagnose one. User source importing
+	// sngl:internal/marks is refused, but a refusal is a diagnostic and
+	// checking continues, so the mark still stamps -- see
+	// cmd/sngl/testdata/check_internal_import.txt, which exists because this
+	// reaching codegen used to panic.
+	if !c.inLibSource() {
+		return
 	}
-	if def.Purity != ir.PurityUnknown {
-		fn.Purity = def.Purity
+	ir.RegisterIntrinsic(ir.IntrinsicDef{
+		Name:            fn.Intrinsic,
+		Params:          fn.Params,
+		Return:          fn.Return,
+		TypeParams:      intrinsicTypeParamNames(fn),
+		Purity:          fn.Purity,
+		MutatesReceiver: fn.MutatesReceiver,
+		Pkg:             c.libPkgName,
+		DeclaredAs:      funcDeclName(fn),
+	})
+}
+
+// funcDeclName is how a declaration is spelled: `list.push` for a method,
+// `tr` for a free function.
+func funcDeclName(fn *ir.Func) string {
+	if fn.Receiver != "" {
+		return fn.Receiver + "." + fn.Name
 	}
-	return true
+	return fn.Name
+}
+
+// intrinsicTypeParamNames is the order Instantiate binds in: the receiver's
+// parameters first, then the method's own -- T then U for `list<T>.map<U>`.
+func intrinsicTypeParamNames(fn *ir.Func) []string {
+	if len(fn.RecvTypeParams) == 0 && len(fn.TypeParams) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(fn.RecvTypeParams)+len(fn.TypeParams))
+	for _, tp := range fn.RecvTypeParams {
+		names = append(names, tp.Name)
+	}
+	for _, tp := range fn.TypeParams {
+		names = append(names, tp.Name)
+	}
+	return names
 }
 
 // targetPackages is every target package this check loads. Building for a

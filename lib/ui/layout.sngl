@@ -1,6 +1,3 @@
-// Containers. These place their children; what a child looks like is
-// the child's business.
-
 import tr "sngl:tree"
 
 // Vertical box layout container. Children are stacked top to bottom and

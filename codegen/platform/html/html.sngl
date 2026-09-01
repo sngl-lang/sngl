@@ -394,9 +394,9 @@ component ui.card[platform] {
 // server call. No effect for static-site builds. Build fails if the logic cannot
 // run in the browser or depends on server-side values.
 #[intrinsic("html.frontend")]
-func frontend<T>(v T) => v
+func frontend<T>(v T) T { return v }
 
 // Force v to run server-side (back-end). A func value is generated as an HTTP
 // route; a constant expression is generated as a lazy-loaded static file.
 #[intrinsic("html.backend")]
-func backend<T>(v T) => v
+func backend<T>(v T) T { return v }

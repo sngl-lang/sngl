@@ -144,11 +144,11 @@ func mapperFor(pkgPath string) (*golang.TypeMapper, error) {
 		return r.m, r.err
 	}
 	r := mapperResult{}
-	// The importer maps time.Duration and time.Time through declarations the
-	// standard library registers when it loads. A compile loads it before any
-	// import resolves; a caller reaching the importer on its own has to say so.
-	if _, _, err := checker.LoadStdlib(); err != nil {
-		r.err = fmt.Errorf("loading the SNGL standard library: %w", err)
+	// The importer maps time.Duration and time.Time through declarations
+	// sngl:time registers when it loads. A compile loads it before any import
+	// resolves; a caller reaching the importer on its own has to say so.
+	if checker.LibPackage("time") == nil {
+		r.err = fmt.Errorf("loading sngl:time, which declares the types a Go time.Time maps to")
 	} else {
 		dir, err := os.Getwd()
 		if err != nil {

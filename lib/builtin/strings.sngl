@@ -1,5 +1,3 @@
-// Text.
-
 import . "sngl:internal/marks"
 
 // UTF-8 string. Strings are immutable; methods on the `string` receiver
@@ -51,10 +49,10 @@ func string.split(s string, sep string) list<string> { return [s] }
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.
-func string.contains(s string, sub string) => string.indexOf(s, sub) >= 0
+func string.contains(s string, sub string) bool { return string.indexOf(s, sub) >= 0 }
 
 // True if s begins with prefix. An empty prefix always matches.
-func string.startsWith(s string, prefix string) => string.substring(s, 0, string.length(prefix)) == prefix
+func string.startsWith(s string, prefix string) bool { return string.substring(s, 0, string.length(prefix)) == prefix }
 
 // True if s ends with suffix. An empty suffix always matches.
-func string.endsWith(s string, suffix string) => string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix
+func string.endsWith(s string, suffix string) bool { return string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix }

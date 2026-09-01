@@ -1,5 +1,3 @@
-// Components that show a value and do not edit it.
-
 // Displays a text string. `value` is the content; set `selectable=true`
 // to allow the platform to offer copy. Typography (size, weight, color,
 // alignment, `maxLines` truncation) is driven entirely by `style`.

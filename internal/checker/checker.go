@@ -43,10 +43,6 @@ type Config struct {
 	// callers leave it nil. A substitution replaces the package, where the
 	// source a target provides (ProvidedDocs) adds to it.
 	LibSources map[string][]*ast.Document
-	// libSource permits sngl:internal/ imports in the document itself, for
-	// the one caller that checks lib/ source as the document rather than
-	// loading it as a package. Unexported: no program is lib source.
-	libSource bool
 	// libs is the library-package cache this check shares with the nested
 	// checks its imports start. Unexported: it is the compiler's own
 	// bookkeeping, and a cache built against other platforms would hand this
@@ -1490,16 +1486,12 @@ func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
 		c.macroStruct = sd
 	}
-	// The canonical date/time/datetime types, for the foreign-type importers
-	// that synthesize one without a scope of their own.
-	switch sd.Builtin {
-	case ir.BuiltinDate:
-		ir.RegisterStringReprStructs(sd.SymType(), nil, nil)
-	case ir.BuiltinTime:
-		ir.RegisterStringReprStructs(nil, sd.SymType(), nil)
-	case ir.BuiltinDateTime:
-		ir.RegisterStringReprStructs(nil, nil, sd.SymType())
+	// The canonical datetime type, for the foreign-type importers that
+	// synthesize one without a scope of their own.
+	if sd.Builtin == ir.BuiltinDateTime {
+		ir.RegisterDateTimeStruct(sd.SymType())
 	}
+	ir.RegisterGenericBuiltin(sd)
 }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -1584,15 +1576,19 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 // declarations exist.
 func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
 		// An un-annotated const backed by a literal gets its concrete type on
 		// the shell immediately, so a later `var x = SOME_CONST` (registered
 		// before the deferred checkPendingConstInits runs) infers the const's
 		// type rather than dyn. Non-literal initializers still resolve in the
 		// deferred pass.
-		if typ.Kind == ir.TypeDyn && spec.Type == nil {
-			if lt := literalConstType(spec.Default); lt != nil {
-				typ = lt
+		var typ *ir.Type
+		switch {
+		case spec.Type != nil:
+			typ = c.resolveType(spec.Type)
+		default:
+			typ = literalConstType(spec.Default)
+			if typ == nil {
+				typ = dynDeferred("const type, resolved by checkPendingConstInits")
 			}
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
@@ -2028,32 +2024,27 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	c.applyMarks(f, fn)
 
-	// The #[intrinsic] mark names a signature every backend implements, and
-	// the effect metadata follows from the id. An id no intrinsic answers to
-	// is a typo in the mark that nothing downstream would notice: the call
-	// would simply never be recognised.
-	if fn.Intrinsic != "" {
-		if !applyIntrinsicMetadata(fn, fn.Intrinsic) {
-			c.error(f.Pos, "unknown intrinsic %q on %s", fn.Intrinsic, fn.Name)
-		}
-	}
-
 	// Library source is not body-checked, so two things it would otherwise
-	// infer are stated here instead. A signature with no return annotation is
-	// dyn rather than void -- the "=>" forms that delegate to an intrinsic
-	// rely on it, and body-level inference would conflict with the primitive
-	// and struct spellings the library uses internally. And purity, which the
-	// analysis never runs for, starts pure so the optimizer can fold
-	// int.min and its like; anything reaching outside the program has it
-	// overridden afterwards.
+	// infer are stated here. A signature with no return annotation is dyn
+	// rather than void. And purity, which the analysis never runs for, starts
+	// pure so the optimizer can fold int.min and its like; anything reaching
+	// outside the program has it overridden afterwards.
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
-			fn.Return = TypDyn
+			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
 		if fn.Purity == ir.PurityUnknown {
 			fn.Purity = ir.PurityPure
 		}
+	}
+
+	// After the block above: the return type and purity it settles are part of
+	// what gets published. A mistyped id is not an error here -- there is no
+	// list for it to be absent from -- but RequireIntrinsicFallback catches one
+	// when a backend has neither an emitter nor a `usable` body.
+	if fn.Intrinsic != "" {
+		c.publishIntrinsic(fn)
 	}
 
 	// Only free functions bind a file-scope name; a method's name lives under
@@ -2697,18 +2688,6 @@ type pkgProvider interface {
 	Description() string
 }
 
-// lookupTarget finds a registered platform or language by name.
-// targetNSPkg is the lib package a target ships, loaded like any other. It is
-// the same instance an `import "sngl:platform/x"` reaches, because libPkg
-// memoizes: a platform's declarations must be one set, whether user code
-// imported them or only named one through the ambient namespace.
-func (c *checker) targetNSPkg(uri string) *ir.Package {
-	if uri == "" || !c.hasLibPkg(uri) {
-		return nil
-	}
-	return c.libPkg(uri)
-}
-
 // importablePackages names every package this check could import: the public
 // lib/ tiers, plus the package each configured target serves for itself. A
 // target's package is not under lib/, so a list read from there alone would
@@ -2866,27 +2845,6 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// targetsPlatform reports whether a `platform <name> { ... }` block is for a
-// platform this check is building for. With no target named, every block is
-// checked: that is the platform-agnostic read the LSP and a bare check want,
-// and a block skipped there would be a block nobody ever checked.
-func (c *checker) targetsPlatform(name string) bool {
-	if len(c.targets) == 0 {
-		return true
-	}
-	named := false
-	for _, t := range c.targets {
-		if t.Platform == "" {
-			continue
-		}
-		named = true
-		if t.Platform == name {
-			return true
-		}
-	}
-	return !named
 }
 
 // buildOptionsStructLit type-checks each named arg against the merged options
@@ -3702,12 +3660,13 @@ func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
 func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		isWindow := c.isWindowNode(visualNodeTarget(n))
+		target := visualNodeTarget(n)
+		isWindow := c.isWindowNode(target)
 		if isWindow && inLoop {
 			// The loop hoists this id as a list of windows.
 			return
 		}
-		c.declareNodeID(n.ID, isWindow)
+		c.declareNodeID(n.ID, target, isWindow)
 		// Descend into the node's own children, but not into a nested
 		// window — a window has its own scope and hoists its ids itself.
 		if !isWindow {
@@ -3716,8 +3675,8 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
-		if _, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, false)
+		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
+			c.declareNodeID(id, target, false)
 		}
 	case *ast.IfStmt:
 		c.declareNodeIDsIn(&n.Body, inLoop)
@@ -3728,7 +3687,9 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 	}
 }
 
-func (c *checker) declareNodeID(id string, isWindow bool) {
+// declareNodeID binds one node id. target names the component the node
+// instantiates.
+func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	if id == "" {
 		return
 	}
@@ -3737,14 +3698,62 @@ func (c *checker) declareNodeID(id string, isWindow bool) {
 	if _, ok := c.scope.Lookup(id); ok {
 		return
 	}
+	// A component's methods are registered under the component as receiver, not
+	// in scope by bare name: inferIdent reaches them only when the scope lookup
+	// misses. So `button #bump` beside `func bump()` would shadow the method.
+	if c.currentComponent != nil {
+		if _, ok := c.lookupMethod(c.currentComponent.Name, id); ok {
+			return
+		}
+	}
 	// A window's id names the window itself, so bind the window here and let
-	// buildWindow fill it in. Any other node id names a handle to a rendered
-	// node, which has no declaration of its own.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: ir.TypDyn, IsConst: true}
+	// buildWindow fill it in.
+	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true}
 	if isWindow {
 		sym = &ir.Window{Name: id, Typ: c.windowType}
 	}
 	c.declare(ast.Pos{}, sym)
+}
+
+// nodeHandleType is what a handle to a rendered instance of target reads at --
+// the same answer inferSelect reaches through findHostComponentAST, arrived at
+// directly because the hoisting pass already has the name.
+func (c *checker) nodeHandleType(target string) *ir.Type {
+	if comp := c.componentNamed(target); comp != nil {
+		if t := comp.SymType(); t != nil {
+			return t
+		}
+	}
+	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+}
+
+// componentNamed resolves a visual node's target, bare or `pkg.Name`.
+func (c *checker) componentNamed(target string) *ir.Component {
+	if target == "" {
+		return nil
+	}
+	pkg, name, qualified := strings.Cut(target, ".")
+	if !qualified {
+		if sym, ok := c.scope.Lookup(target); ok {
+			comp, _ := sym.(*ir.Component)
+			return comp
+		}
+		return nil
+	}
+	sym, ok := c.scope.Lookup(pkg)
+	if !ok {
+		return nil
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil {
+		return nil
+	}
+	member, ok := ns.Pkg.Symbols.LookupMember(name)
+	if !ok {
+		return nil
+	}
+	comp, _ := member.(*ir.Component)
+	return comp
 }
 
 func (c *checker) hoistedWindow(id string) *ir.Window {

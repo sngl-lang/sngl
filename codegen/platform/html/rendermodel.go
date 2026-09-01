@@ -22,8 +22,9 @@ import (
 // what we need here (we must keep the binding IR intact and split the skeleton
 // at each binding point). Rather than retrofit hole-splitting into that
 // JS-entangled path, the route render model is produced by this focused IR
-// walk. Phase 3 only builds the model; the golang consumer still renders from
-// the legacy baked RenderHTML string, so the two paths coexist until Phase 4.
+// walk. The two render paths coexist by route kind: a route with server
+// actions renders from this model, one without from the baked RenderHTML
+// string.
 
 // renderBuilder accumulates a RouteRender: a list of static HTML chunks
 // interleaved with holes. cur holds the chunk under construction; pushHole

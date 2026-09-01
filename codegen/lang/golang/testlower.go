@@ -106,7 +106,7 @@ func lowerTestRawFieldWrite(s ir.Stmt, gc *GoIRContext) (string, bool) {
 	}
 	value := gc.EvalExpr(assign.Value)
 	target := fmt.Sprintf("%s.%s", id.Name, sel.Field)
-	return target + " " + assignOpStr(assign.Op) + " " + value, true
+	return target + " " + assign.Op.String() + " " + value, true
 }
 
 // lowerTestIf emits `if <cond> { <body> } [else { <else> }]` where each
@@ -313,9 +313,8 @@ const (
 )
 
 // LowerTestFile produces the entire source of a generated test file.
-// Each function in `fns` is rendered through a body lowering identical
-// to LowerTestFunc's (testagent.T mirrors *testing.T's API). The
-// wrapper differs:
+// Both modes render a body through the same lowering — testagent.T mirrors
+// *testing.T's API — so only the wrapper differs:
 //
 //   - Native: `package <pkg>` + import "testing" + funcs `func Test<X>(t *testing.T)`.
 //   - Agent:  `package <pkg>` + import "git.duckfam.us/jonathan/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.

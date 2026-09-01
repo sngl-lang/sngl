@@ -22,7 +22,7 @@ import (
 
 // LaunchTest implements codegen.TestLauncher. Dispatches on the
 // testRunner option: robolectric → JVM build + stdio JSON-RPC;
-// device → APK + adb forward + tcp JSON-RPC (Task 9).
+// device → APK + adb forward + tcp JSON-RPC.
 func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	runner := codegen.OptionString(opts, "testRunner")
 	if runner == "" {

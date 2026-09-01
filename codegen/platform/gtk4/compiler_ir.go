@@ -286,7 +286,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	hasCanvas := len(canvasByID) > 0
 
 	var widgetFields []widgetField
-	// lower.passPlatformFilter is always on, so no PlatformFilter survives here.
+	// lower.passPlatformExtensionBody is always on, so every platform override
+	// is already resolved to its body here.
 	bodyStmts := mainBodyStmts(c.ctx)
 	var topLevelRefs []string
 	var topLevelCType map[string]string
