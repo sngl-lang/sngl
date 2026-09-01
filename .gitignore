@@ -5,6 +5,8 @@ _site/
 /model.go
 /docsgen
 /sngl
+/genfynehost
+/sngl-fyne-worker
 /playground
 /todo
 /_examples/todo/todo

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/interprun"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +50,17 @@ func runRun(cmd *cobra.Command, args []string) error {
 		outDir:  tmpDir,
 		main:    true,
 		quiet:   true,
-		onTarget: func(target outputTarget, _ *ir.Package, _, outDir string) error {
+		onTarget: func(target outputTarget, pkg *ir.Package, _, outDir string) error {
+			if isInterpreted(target) {
+				dir, err := os.Getwd()
+				if err != nil {
+					return err
+				}
+				return interprun.Run(pkg, interprun.Options{
+					Dir: dir, Args: progArgs, Platform: target.Platform,
+					Headless: codegen.OptionString(target.Options, "host") == "mem",
+				})
+			}
 			plat := codegen.LookupPlatform(target.Platform)
 			runner, ok := plat.(codegen.Runner)
 			if !ok {

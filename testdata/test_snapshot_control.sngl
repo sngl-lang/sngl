@@ -1,0 +1,40 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+// A snapshot is the concrete tree for the state it was taken in: only the live
+// branch of an `if` appears, and a `for` appears once per element with no trace
+// of the loop itself.
+component board {
+    var (
+        items = ["a", "b"]
+        ready = false
+        none list<string> = []
+    )
+
+    vbox {
+        if ready {
+            text(value="ready")
+        } else {
+            text(value="waiting")
+        }
+        for it = items {
+            text(value="item {it}")
+        } else {
+            text(value="none yet")
+        }
+    }
+}
+
+func testFalseBranchAndTwoItems(t Test, c board) {
+    t.snapshot("waiting")
+}
+
+func testTrueBranch(t Test, c board) {
+    c.ready = true
+    t.snapshot("ready")
+}
+
+func testForElse(t Test, c board) {
+    c.items = c.none
+    t.snapshot("empty")
+}

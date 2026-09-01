@@ -118,6 +118,32 @@ type testingT struct {
 	// contextOverrides accumulates the overrides established by t.setContext()
 	// calls so they can be propagated to child sub-tests created by t.test().
 	contextOverrides map[*ir.Context]any
+	// clock and timers are the test's simulated time. Built on first use
+	// because a test function without a component parameter has neither.
+	// A test advances time explicitly, so the clock is virtual: t.wait()
+	// spends simulated milliseconds, not real ones.
+	clock  *interp.Virtual
+	timers *interp.Timers
+}
+
+// sched returns the test's timer schedule, building it on first use.
+//
+// The interval is evaluated once, here. A timer whose interval names a var that
+// later changes keeps the rate it was built with -- which is still strictly
+// more than the interpreter used to honour, since it ignored Interval outright.
+func (tv *testingT) sched(cv *componentValue) (*interp.Timers, error) {
+	if tv.timers != nil {
+		return tv.timers, nil
+	}
+	if tv.clock == nil {
+		tv.clock = interp.NewVirtual()
+	}
+	ts, err := interp.NewTimers(tv.clock, cv.compEnv())
+	if err != nil {
+		return nil, err
+	}
+	tv.timers = ts
+	return ts, nil
 }
 
 // componentValue is the runtime value of a test function's component

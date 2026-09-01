@@ -22,13 +22,13 @@ component main {
 }
 `)
 	for _, want := range []string{
-		"type snglTheme struct {",
-		"background: color.NRGBA{R: 44, G: 47, B: 54, A: 255}",
-		"foreground: color.NRGBA{R: 245, G: 247, B: 250, A: 255}",
-		"textSize: 22",
-		"radius: 8",
-		"bold: true",
-		"background: color.NRGBA{R: 245, G: 158, B: 11, A: 255}",
+		"fynetheme.Theme{Theme: theme.DefaultTheme()",
+		"Background: color.NRGBA{R: 44, G: 47, B: 54, A: 255}",
+		"Foreground: color.NRGBA{R: 245, G: 247, B: 250, A: 255}",
+		"TextSize: 22",
+		"Radius: 8",
+		"Bold: true",
+		"Background: color.NRGBA{R: 245, G: 158, B: 11, A: 255}",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("emitted Go missing %q\n--- generated ---\n%s", want, out)

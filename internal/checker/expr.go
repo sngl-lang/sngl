@@ -1286,6 +1286,17 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				}
 				return nil
 			}
+		case *ast.SlotNode:
+			// Both forms of `slot` carry a block written in *this* component's
+			// body -- a population's content at a call site, an insertion
+			// point's fallback at a declaration -- so an id inside either is
+			// this component's to resolve. Without this case a ref inside
+			// `slot name { ... }` was undefined, while the same ref among
+			// ordinary children resolved, because those arrive as the parent
+			// node's Block.
+			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
+				return comp
+			}
 		case *ast.IfStmt:
 			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
 				return comp
@@ -2725,6 +2736,17 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				argsComp = nil
 			}
 			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, argsComp)
+
+			// A stdlib element passes nil above so event args stay leniently
+			// typed, and nil is also what makes checkAndSplitArgs leave a
+			// positional prop unnamed -- "no component context; can't match
+			// prop names". So `text #t({}, "hi")` reached the IR with no props
+			// at all, and every reader dropped them: `c.t.value` was empty and
+			// a snapshot printed `text()`. The names are recoverable here,
+			// where the component is known, without disturbing the leniency.
+			if argsComp == nil && elemComp != nil {
+				props = namePositionalProps(elemComp, props)
+			}
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      name,
@@ -3009,6 +3031,31 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		}
 	}
 	return false
+}
+
+// namePositionalProps gives each unnamed prop the name of the declared prop it
+// binds to, matching checkAndSplitArgs's own rule: a positional argument takes
+// the next declared prop, and a named one consumes no position. A wildcard prop
+// has no position, so it is not among them.
+func namePositionalProps(comp *ir.Component, props []ir.Arg) []ir.Arg {
+	var ordered []*ir.Prop
+	for _, p := range comp.Props {
+		if p.Wildcard == "" {
+			ordered = append(ordered, p)
+		}
+	}
+	positional := 0
+	for i := range props {
+		if props[i].Name != "" {
+			continue
+		}
+		if positional >= len(ordered) {
+			break
+		}
+		props[i].Name = ordered[positional].Name
+		positional++
+	}
+	return props
 }
 
 // elementRefCallInfo recognizes CallStmts whose callee represents an element

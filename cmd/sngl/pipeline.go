@@ -27,6 +27,8 @@ type pipelineOpts struct {
 	main    bool
 	quiet   bool
 	// onTarget runs after generation, per target. Nil = generate-only.
+	// For an interpreted target it runs instead of generation, against the
+	// checked package.
 	onTarget func(target outputTarget, pkg *ir.Package, dir, outDir string) error
 }
 
@@ -197,6 +199,35 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		if lang == nil {
 			return fmt.Errorf("%s: unknown language %q (available: %v)", name, target.Lang, codegen.Langs())
 		}
+		if isInterpreted(target) {
+			// Full capabilities: every gated pass is compensation for
+			// something a backend cannot emit, and the interpreter can emit
+			// everything -- in particular Declarative, whose absence dissolves
+			// the visual tree the interpreter mounts. What still runs is the
+			// desugaring no target does without, such as turning `:value=x`
+			// into a prop and a handler. No platform, so no override is
+			// inlined: a host is asked for `text`, not `Label`.
+			icaps := lower.AllFeatures().ToLowerCaps()
+			if err := lower.Lower(tpkg, icaps, lower.Options{
+				Platform:        target.Platform,
+				ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+			}); err != nil {
+				return fmt.Errorf("%s: %w", dir, err)
+			}
+			// Nothing is lowered, optimized or generated for an interpreted
+			// target. Every lowering pass is compensation for something a
+			// backend cannot emit, and the interpreter can emit everything --
+			// and fyne's own capabilities would set Declarative=false, which
+			// dissolves the visual tree into node ops. That is exactly the tree
+			// the interpreter mounts.
+			if p.onTarget != nil {
+				if err := p.onTarget(target, tpkg, dir, p.outDir); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
 		caps := plat.Capabilities(lang).ToLowerCaps()
 		start = time.Now()
 		if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
@@ -481,4 +512,14 @@ func generateTarget(filename string, pkg *ir.Package, target outputTarget, outDi
 func quiet(cmd *cobra.Command) bool {
 	q, _ := cmd.Flags().GetBool("quiet")
 	return q
+}
+
+// isInterpreted reports whether a target runs the IR rather than being
+// translated into a language.
+//
+// `--lang none` says the program is not translated; something else runs it.
+// For html that something is the browser, and the platform genuinely generates
+// a static site. For every other platform it is the interpreter.
+func isInterpreted(t outputTarget) bool {
+	return t.Lang == "none" && t.Platform != "html"
 }

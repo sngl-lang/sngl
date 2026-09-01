@@ -9,89 +9,31 @@ import (
 
 // ResolveElementRef finds visual nodes with the given #id in the current body.
 // Returns a single element map, a list of maps (for-loops), or nil.
+//
+// It mounts a tree and reads it, rather than walking the IR itself. A fresh
+// mount per call is what preserves the old behaviour exactly -- every lookup
+// re-evaluates against current state -- and the mount becomes a retained one,
+// invalidated by a patch, when there is a session loop to own it.
 func (env *Env) ResolveElementRef(id string) (any, error) {
 	if env.BodyStmts == nil {
 		return nil, fmt.Errorf("no visual body for element ref #%s", id)
 	}
-	var matches []map[string]any
-	env.collectByStmts(env.BodyStmts, id, &matches)
-	if len(matches) == 0 {
+	v, err := Mount(env)
+	if err != nil {
+		return nil, err
+	}
+	nodes := v.Find(id)
+	if len(nodes) == 0 {
 		return nil, nil
 	}
-	if len(matches) == 1 {
-		return matches[0], nil
+	if len(nodes) == 1 {
+		return nodes[0].Map(), nil
 	}
-	out := make([]any, len(matches))
-	for i, m := range matches {
-		out[i] = m
+	out := make([]any, len(nodes))
+	for i, n := range nodes {
+		out[i] = n.Map()
 	}
 	return out, nil
-}
-
-// collectByStmts walks IR statements collecting rendered nodes with matching id.
-func (env *Env) collectByStmts(stmts []ir.Stmt, id string, out *[]map[string]any) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			env.collectNodeByID(n, id, out)
-		case *ir.CallStmt:
-			env.collectCallStmtByID(n, id, out)
-		case *ir.If:
-			cond, err := env.Eval(n.Cond)
-			b, _ := cond.(bool)
-			if err != nil || !b {
-				env.collectByStmts(n.Else, id, out)
-				continue
-			}
-			env.collectByStmts(n.Body, id, out)
-		case *ir.For:
-			iterVal, err := env.Eval(n.Iter)
-			if err != nil {
-				continue
-			}
-			list, ok := iterVal.([]any)
-			if !ok || len(list) == 0 {
-				env.collectByStmts(n.Else, id, out)
-				continue
-			}
-			for i, item := range list {
-				child := env.Snapshot()
-				child.Set(n.KeySym, item)
-				child.Set(n.ValueSym, i)
-				child.collectByStmts(n.Body, id, out)
-			}
-		case *ir.SlotInst:
-			env.collectByStmts(n.Children, id, out)
-		case *ir.ErrorBoundary:
-			env.collectByStmts(n.Children, id, out)
-		case *ir.Window:
-			env.collectByStmts(n.Body, id, out)
-		case *ir.ContextProvider:
-			env.collectByStmts(n.Children, id, out)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
-			// Imperative stmts contain no rendered nodes.
-		default:
-			panic(fmt.Sprintf("testrunner.collectByStmts: unhandled ir.Stmt %T", n))
-		}
-	}
-}
-
-func (env *Env) collectNodeByID(node *ir.NodeInst, id string, out *[]map[string]any) {
-	// User-defined component with a real body — expand inline.
-	if node.Component != nil && len(node.Component.Body) > 0 {
-		if env.RenderDepth >= maxCallDepth {
-			return
-		}
-		childEnv := env.componentEnv(node.Component, node)
-		childEnv.RenderDepth = env.RenderDepth + 1
-		childEnv.collectByStmts(childEnv.BodyStmts, id, out)
-		return
-	}
-	if node.ID == id {
-		m := env.renderNodeProps(node)
-		*out = append(*out, m)
-	}
-	env.collectByStmts(node.Children, id, out)
 }
 
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
@@ -164,32 +106,6 @@ func (env *Env) RenderCallStmtNode(cs *ir.CallStmt) map[string]any {
 		return nil
 	}
 	return env.renderCallStmtProps(cs, elemName)
-}
-
-// collectCallStmtByID handles children-less element calls (`text #id(...)`)
-// which the checker emits as CallStmt rather than NodeInst. The element name
-// and #id live on the AST back-reference.
-func (env *Env) collectCallStmtByID(cs *ir.CallStmt, id string, out *[]map[string]any) {
-	elemName, elemID := elemCallInfo(cs)
-	if elemName == "" {
-		return
-	}
-	// User-defined component — expand inline.
-	if env.Pkg != nil {
-		if comp := FindComponent(env.Pkg, elemName); comp != nil {
-			if env.RenderDepth >= maxCallDepth {
-				return
-			}
-			child := env.componentEnvFromCall(comp, cs.Call)
-			child.RenderDepth = env.RenderDepth + 1
-			child.collectByStmts(child.BodyStmts, id, out)
-			return
-		}
-	}
-	if elemID == id {
-		m := env.renderCallStmtProps(cs, elemName)
-		*out = append(*out, m)
-	}
 }
 
 // elemCallInfo extracts (name, id) from an element CallStmt's AST back-ref.

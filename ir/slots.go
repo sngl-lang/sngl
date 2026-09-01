@@ -52,21 +52,41 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 	return out
 }
 
-// body is what one insertion point renders: the content the call site supplied
-// for it, or the insertion's own block as the fallback when it supplied none.
-//
-// A scoped slot's arguments are bound here rather than at the call site,
-// because the names they bind to are the populator's and the values are the
-// insertion's -- the two only meet once the body is being spliced into place.
+// body is what one insertion point renders, cloned and bound for splicing.
 func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
-	sc := callsite.Slots[si.Name]
+	stmts, sc, _ := SlotBody(si, callsite)
 	if sc == nil {
-		// The default slot's content arrives as ordinary children rather than
-		// through the map.
-		if si.Name == DefaultSlot && len(callsite.Children) > 0 {
-			return sp.Clone(callsite.Children)
-		}
-		return sp.Clone(si.Children)
+		return sp.Clone(stmts)
 	}
-	return sp.Bind(sp.Clone(sc.Body), sc, si)
+	return sp.Bind(sp.Clone(stmts), sc, si)
+}
+
+// SlotBody reports what one insertion point renders: the content the call site
+// supplied for it, or the insertion's own block as the fallback when it
+// supplied none.
+//
+// supplied is what tells a renderer whose scope to evaluate the body in.
+// Content written at the call site reads the caller's scope; an insertion's own
+// fallback reads the component's. A splicer flattens both into one scope and so
+// does not need the distinction, but an interpreter evaluating in place does --
+// which is why the decision lives here and the two share it rather than each
+// deciding for itself. The two copies of the walk above had already drifted
+// once; this is the same hazard one level down.
+//
+// sc is non-nil only for content that arrived through the named-slot map, and
+// carries the parameter names a scoped slot binds its arguments to. A nil
+// callsite is a component instantiated with nothing supplied at all.
+func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, supplied bool) {
+	if callsite == nil {
+		return si.Children, nil, false
+	}
+	if c := callsite.Slots[si.Name]; c != nil {
+		return c.Body, c, true
+	}
+	// The default slot's content arrives as ordinary children rather than
+	// through the map.
+	if si.Name == DefaultSlot && len(callsite.Children) > 0 {
+		return callsite.Children, nil, true
+	}
+	return si.Children, nil, false
 }

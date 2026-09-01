@@ -1,0 +1,5 @@
+vbox() {
+    text(value="waiting")
+    text(value="item a")
+    text(value="item b")
+}

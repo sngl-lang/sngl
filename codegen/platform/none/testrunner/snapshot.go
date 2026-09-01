@@ -7,220 +7,80 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// renderSnapshot walks the component's visual body, evaluating reactive
-// constructs (if/for, prop bindings) against the component's CURRENT state,
-// and produces deterministic SNGL source for the resulting concrete tree.
+// renderSnapshot renders the component's current tree as deterministic SNGL
+// source: the concrete children it renders in the state it is in, one
+// statement per line, with `value="Count: {count}"` already interpolated.
 //
-// The output is a fragment: the rendered children of the component, one
-// statement per line. It reflects live state — e.g. an interpolated
-// `value="Count: {count}"` becomes `value="Count: 3"` for count == 3.
-//
-// This is a focused renderer: it covers what test fixtures exercise — native
-// elements with positional/named props and inline event handlers, text/attr
-// interpolation, reactive if/else, reactive for (expanded per the current
-// list), platform filters, slots, and nested user components (expanded
-// inline). When it meets a construct it cannot render it returns an error
-// naming the construct rather than emitting wrong output.
+// It prints a mounted interp.View. It used to walk the IR itself, re-evaluating
+// every if, for and prop -- a second walk beside the one behind element refs,
+// which the two had to keep in agreement by hand. Printing what the tree
+// already resolved is what makes them one thing, and it is why the slot content
+// this used to drop now appears.
 func renderSnapshot(cv *componentValue) (string, error) {
-	env := cv.compEnv()
-	var b strings.Builder
-	w := &snapWriter{env: env, b: &b}
-	if err := w.stmts(env, cv.body, 0); err != nil {
-		return "", err
+	view, err := interp.Mount(cv.compEnv())
+	if err != nil {
+		return "", fmt.Errorf("snapshot: %w", err)
 	}
+	var b strings.Builder
+	w := &snapWriter{b: &b}
+	w.nodes(view.Roots, 0)
 	return b.String(), nil
 }
 
 type snapWriter struct {
-	env *interp.Env
-	b   *strings.Builder
+	b *strings.Builder
 }
 
 func indent(depth int) string { return strings.Repeat("    ", depth) }
 
-// stmts emits each visual statement in stmts, evaluating against env.
-func (w *snapWriter) stmts(env *interp.Env, stmts []ir.Stmt, depth int) error {
-	for _, s := range stmts {
-		if err := w.stmt(env, s, depth); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (w *snapWriter) stmt(env *interp.Env, s ir.Stmt, depth int) error {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		return w.nodeInst(env, n, depth)
-
-	case *ir.CallStmt:
-		return w.callStmt(env, n, depth)
-
-	case *ir.If:
-		cond, err := env.Eval(n.Cond)
-		if err != nil {
-			return fmt.Errorf("snapshot: evaluating if-condition: %w", err)
-		}
-		if b, _ := cond.(bool); b {
-			return w.stmts(env, n.Body, depth)
-		}
-		return w.stmts(env, n.Else, depth)
-
-	case *ir.For:
-		return w.forStmt(env, n, depth)
-
-	case *ir.SlotInst:
-		return w.stmts(env, n.Children, depth)
-
-	case *ir.ContextProvider:
-		return w.stmts(env, n.Children, depth)
-
-	case *ir.ErrorBoundary:
-		return w.stmts(env, n.Children, depth)
-
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
-		// Imperative statements produce no rendered output.
-		return nil
-
-	default:
-		return fmt.Errorf("snapshot: cannot render statement of type %T", s)
+func (w *snapWriter) nodes(nodes []*interp.Node, depth int) {
+	for _, n := range nodes {
+		w.node(n, depth)
 	}
 }
 
-// nodeInst renders an element or user-component instantiation.
-func (w *snapWriter) nodeInst(env *interp.Env, n *ir.NodeInst, depth int) error {
-	// User-defined component: expand inline against its child env so the
-	// snapshot reflects the concrete rendered tree, not an opaque ref.
-	if n.Component != nil && isUserComponent(n.Component) {
-		childEnv := env.ComponentEnv(n.Component, n)
-		return w.stmts(childEnv, n.Component.Body, depth)
+// node prints one mounted node. A component of the program's own renders its
+// expansion and never itself -- a snapshot is the rendered tree, so `badge`
+// does not appear and the text its body renders does. A body-less one
+// (`component holder { var n = 0 }`) renders nothing at all, which falls out of
+// the same rule: its expansion is empty.
+func (w *snapWriter) node(n *interp.Node, depth int) {
+	if n.IsUserComponent() {
+		w.nodes(n.Children, depth)
+		return
 	}
-
-	props, err := w.props(env, n.Props, n.Handlers, n.ID)
-	if err != nil {
-		return err
+	open := len(n.Children) > 0
+	w.writeOpen(n.Name, propsOf(n), depth, open)
+	if !open {
+		return
 	}
-
-	hasChildren := len(n.Children) > 0
-	w.writeOpen(n.Name, props, depth, hasChildren)
-	if !hasChildren {
-		return nil
-	}
-	if err := w.stmts(env, n.Children, depth+1); err != nil {
-		return err
-	}
+	w.nodes(n.Children, depth+1)
 	fmt.Fprintf(w.b, "%s}\n", indent(depth))
-	return nil
 }
 
-// callStmt renders a children-less element call (e.g. `text(value=…)`), or
-// expands a user component invoked as a call.
-func (w *snapWriter) callStmt(env *interp.Env, n *ir.CallStmt, depth int) error {
-	name := interp.CallStmtElemName(n)
-	if name == "" {
-		// Not an element call (e.g. a bare void call); nothing to render.
-		return nil
-	}
-	if env.Pkg != nil {
-		if comp := interp.FindComponent(env.Pkg, name); comp != nil && isUserComponent(comp) {
-			childEnv := env.ComponentEnvFromCallStmt(comp, n)
-			return w.stmts(childEnv, comp.Body, depth)
-		}
-	}
-	rendered := env.RenderCallStmtNode(n)
-	if rendered == nil {
-		return nil
-	}
-	props, err := w.propsFromMap(rendered)
-	if err != nil {
-		return err
-	}
-	w.writeOpen(name, props, depth, false)
-	return nil
-}
-
-func (w *snapWriter) forStmt(env *interp.Env, n *ir.For, depth int) error {
-	iterVal, err := env.Eval(n.Iter)
-	if err != nil {
-		return fmt.Errorf("snapshot: evaluating for-iterable: %w", err)
-	}
-	list, ok := iterVal.([]any)
-	if !ok {
-		return fmt.Errorf("snapshot: for-loop over non-list value %T", iterVal)
-	}
-	if len(list) == 0 {
-		return w.stmts(env, n.Else, depth)
-	}
-	for i, item := range list {
-		child := env.Snapshot()
-		child.Set(n.KeySym, item)
-		child.Set(n.ValueSym, i)
-		if err := w.stmts(child, n.Body, depth); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// prop is a rendered name/value pair (Name == "" for positional).
+// prop is a rendered name/value pair (Name == "" for a bare marker).
 type prop struct {
 	Name  string
 	Value string // already SNGL-formatted
 }
 
-// props evaluates IR props and inline handlers into formatted SNGL pairs.
-func (w *snapWriter) props(env *interp.Env, args []ir.Arg, handlers []ir.EventHandler, id string) ([]prop, error) {
-	var out []prop
-	for _, a := range args {
-		v, err := env.Eval(a.Value)
-		if err != nil {
-			return nil, fmt.Errorf("snapshot: evaluating prop %q: %w", a.Name, err)
-		}
-		out = append(out, prop{Name: a.Name, Value: formatSNGLValue(v)})
+// propsOf renders a node's props in written order, then its handlers.
+//
+// Written order is the checker's: a positional argument is resolved to its name
+// on the way in, so `text({}, "x")` arrives as `text(style=Style{}, value="x")`
+// and there is no unnamed prop to place. A handler prints as a bare `@name`
+// marker -- a snapshot records that one is attached, never what it would do.
+func propsOf(n *interp.Node) []prop {
+	out := make([]prop, 0, len(n.PropOrder)+len(n.Handlers))
+	for _, name := range n.PropOrder {
+		out = append(out, prop{Name: name, Value: formatSNGLValue(n.Props[name])})
 	}
-	for _, h := range handlers {
-		// Handler bodies aren't part of the rendered state; emit a stable
-		// marker so the snapshot records the handler's presence without
-		// depending on lowered closure internals.
+	for _, h := range n.Handlers {
 		out = append(out, prop{Name: "", Value: "@" + h.Name})
 	}
-	_ = id
-	return out, nil
-}
-
-// propsFromMap formats the element-map produced by RenderCallStmtNode into
-// SNGL pairs, dropping interpreter bookkeeping keys.
-func (w *snapWriter) propsFromMap(m map[string]any) ([]prop, error) {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		switch {
-		case k == "_type", k == "__ownerEnv", k == "__ownerComponent":
-			continue
-		case strings.HasPrefix(k, "@"):
-			continue // handlers: appended below in declaration-stable order
-		}
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var out []prop
-	for _, k := range keys {
-		out = append(out, prop{Name: k, Value: formatSNGLValue(m[k])})
-	}
-	// Event handlers, sorted for determinism.
-	var hk []string
-	for k := range m {
-		if strings.HasPrefix(k, "@") {
-			hk = append(hk, k)
-		}
-	}
-	sort.Strings(hk)
-	for _, k := range hk {
-		out = append(out, prop{Name: "", Value: k})
-	}
-	return out, nil
+	return out
 }
 
 // writeOpen emits `name(prop=val, …)` followed by ` {` when open, else newline.
@@ -262,6 +122,17 @@ func formatSNGLValue(v any) string {
 		return strconv.FormatInt(val, 10)
 	case float64:
 		return strconv.FormatFloat(val, 'g', -1, 64)
+	case *interp.Struct:
+		// Before the fmt.Stringer case, which Struct satisfies -- reaching it
+		// quoted the whole literal, so a Style printed as `style="{}"` and the
+		// snapshot was not the SNGL it claimed to be. Field order is the
+		// checker's and already deterministic, so unlike the map case below
+		// there is nothing to sort.
+		parts := make([]string, 0, len(val.Fields))
+		for _, f := range val.Fields {
+			parts = append(parts, f.Name+" = "+formatSNGLValue(f.Value))
+		}
+		return "{" + strings.Join(parts, ", ") + "}"
 	case fmt.Stringer:
 		return strconv.Quote(val.String())
 	case []any:

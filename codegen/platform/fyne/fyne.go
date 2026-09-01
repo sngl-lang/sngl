@@ -24,7 +24,12 @@ func (g *Generator) PlatformIdentifier() string { return "fyne" }
 func (g *Generator) Description() string {
 	return "Cross-platform desktop GUI, written in Go using Fyne."
 }
-func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+
+// SupportedLangs includes "none", which does not mean "generate Go without a
+// language". It means the program is not translated at all: the interpreter
+// runs the IR and drives a worker that owns the toolkit. Generate rejects it,
+// because there is nothing to generate -- see runInterpreted in cmd/sngl.
+func (g *Generator) SupportedLangs() []string { return []string{"go", "none"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
@@ -50,6 +55,13 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 // Generate writes fyne source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
+	// "none" is not a language this platform emits in -- it says the program is
+	// not translated at all, and the interpreter runs it. There is nothing to
+	// generate, and quietly emitting Go under that flag would produce a build
+	// nobody asked for.
+	if req.Lang != nil && req.Lang.LanguageIdentifier() == "none" {
+		return fmt.Errorf("fyne: --lang none is interpreted, not generated; use `sngl run --platform fyne --lang none`")
+	}
 	// Agent-mode test build: suppress the user's main() loop and force
 	// the package name to "main" so the agent's func main() compiles
 	// alongside it. The launcher's `go build .` step expects a main

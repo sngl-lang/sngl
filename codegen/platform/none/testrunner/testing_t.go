@@ -44,8 +44,12 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 	case "tick":
 		if cv := tv.comp; cv != nil {
+			ts, err := tv.sched(cv)
+			if err != nil {
+				return nil, err
+			}
 			compEnv := cv.compEnv()
-			if err := fireTimers(tv.pkg, compEnv); err != nil {
+			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
 			cv.Env.RebindFrom(compEnv)
@@ -69,13 +73,29 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			return nil, err
 		}
 		timeoutMs := interp.ToInt(timeoutVal)
-		deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
+		// The deadline is simulated, not wall-clock: a test asking to wait
+		// 1000ms for a 10ms timer spends three ticks, not a real second.
+		if tv.clock == nil {
+			tv.clock = interp.NewVirtual()
+		}
+		deadline := tv.clock.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+
+		// A test function may take no component, in which case there is
+		// nothing to tick. The predicate still runs once: it may be closing
+		// over package state, and it ran once before this loop had a schedule.
 		cv := tv.comp
+		var ts *interp.Timers
+		if cv != nil {
+			var serr error
+			if ts, serr = tv.sched(cv); serr != nil {
+				return nil, serr
+			}
+		}
 
 		for {
 			// Predicate runs in its captured env so c reads observe in-place
-			// component-var updates from fireTimers.
+			// component-var updates from the timer handlers.
 			out, callErr := lv.Call(nil)
 			if callErr != nil {
 				return nil, callErr
@@ -83,14 +103,19 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			if b, ok := out.(bool); ok && b {
 				return nil, nil
 			}
-			if cv == nil {
+			// Nothing left to advance the clock: waiting longer cannot change
+			// the answer, and looping on an unmoving clock would never return.
+			if ts == nil {
 				return nil, nil
 			}
-			if !time.Now().Before(deadline) {
+			if _, any := ts.Next(); !any {
+				return nil, nil
+			}
+			if !tv.clock.Now().Before(deadline) {
 				return nil, nil
 			}
 			compEnv := cv.compEnv()
-			if err := fireTimers(tv.pkg, compEnv); err != nil {
+			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
 			cv.Env.RebindFrom(compEnv)
@@ -279,12 +304,6 @@ func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValu
 
 // GetField resolves c.field on a componentValue.
 func (cv *componentValue) GetField(field string) (any, error) {
-	if field == "children" {
-		if cv.children == nil {
-			cv.children = cv.walkChildren(cv.body)
-		}
-		return cv.children, nil
-	}
 	if sym := cv.fieldSym(field); sym != nil {
 		if v, ok := cv.Env.Value(sym); ok {
 			return v, nil
@@ -293,7 +312,7 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	// A user-component instance addressed by #id (`main #m()` reached as
 	// `c.m`) yields its live component wrapper, so `c.m.<member>` resolves
 	// against the child's own vars/props/methods/refs.
-	if w := cv.childComponentByID(cv.body, field); w != nil {
+	if w := cv.childComponentByID(field); w != nil {
 		return w, nil
 	}
 	// Element-ref takes precedence over a parameterless method of the same
@@ -445,91 +464,26 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 	return nil
 }
 
-// walkChildren returns the direct visual statements of the component's
-// body as a slice in source order. User-component NodeInsts become
-// *componentValue wrappers sharing the parent env's cached child envs;
-// native elements become element-map dicts.
 // childComponentByID returns the live componentValue wrapper for a user
-// component instantiated in stmts with element id == id (e.g. `main #m()`
-// reached as `c.m`), or nil. Mirrors walkChildren's wrapper construction but
-// selects a single instance by id. Descends if/platform branches; for-loops
-// are out of scope (per-iteration envs), matching walkChildren.
-func (cv *componentValue) childComponentByID(stmts []ir.Stmt, id string) *componentValue {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if n.ID == id && n.Component != nil && isUserComponent(n.Component) {
-				childEnv := cv.Env.ComponentEnv(n.Component, n)
-				return wrapChildComponent(childEnv, n.Component)
-			}
-		case *ir.CallStmt:
-			if n.Call != nil && n.Call.AST != nil && n.Call.AST.ID == id && cv.Env.Pkg != nil {
-				if name := interp.CallStmtElemName(n); name != "" {
-					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
-						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
-						return wrapChildComponent(childEnv, comp)
-					}
-				}
-			}
-		case *ir.If:
-			cond, err := cv.Env.Eval(n.Cond)
-			if err != nil {
-				continue
-			}
-			branch := n.Body
-			if b, _ := cond.(bool); !b {
-				branch = n.Else
-			}
-			if w := cv.childComponentByID(branch, id); w != nil {
-				return w
-			}
+// component instantiated in the component's body with element id == id (e.g.
+// `main #m()` reached as `c.m`), or nil.
+//
+// It reads the mounted tree rather than walking the IR. The tree keeps a
+// component instantiation as a node carrying its own scope, which is exactly
+// what a wrapper needs -- and it reaches ids the old walk could not, since that
+// one descended `if` branches only and skipped loops, slots and boundaries.
+func (cv *componentValue) childComponentByID(id string) *componentValue {
+	view, err := interp.Mount(cv.Env)
+	if err != nil {
+		return nil
+	}
+	for _, n := range view.FindAny(id) {
+		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
+			continue
 		}
+		return wrapChildComponent(n.CompEnv, n.Component)
 	}
 	return nil
-}
-
-func (cv *componentValue) walkChildren(stmts []ir.Stmt) []any {
-	var out []any
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if n.Component != nil && isUserComponent(n.Component) {
-				childEnv := cv.Env.ComponentEnv(n.Component, n)
-				wrapper := wrapChildComponent(childEnv, n.Component)
-				out = append(out, wrapper)
-			} else {
-				out = append(out, cv.Env.RenderNodeProps(n))
-			}
-		case *ir.CallStmt:
-			// User-component instantiation (`comp()`): expose as a live
-			// componentValue wrapper sharing the cached child env.
-			if n.Call != nil && cv.Env.Pkg != nil {
-				name := interp.CallStmtElemName(n)
-				if name != "" {
-					if comp := interp.FindComponent(cv.Env.Pkg, name); comp != nil && isUserComponent(comp) {
-						childEnv := cv.Env.ComponentEnvFromCallStmt(comp, n)
-						wrapper := wrapChildComponent(childEnv, comp)
-						out = append(out, wrapper)
-						continue
-					}
-				}
-			}
-			if rendered := cv.Env.RenderCallStmtNode(n); rendered != nil {
-				out = append(out, rendered)
-			}
-		case *ir.If:
-			cond, err := cv.Env.Eval(n.Cond)
-			if err != nil {
-				continue
-			}
-			if b, _ := cond.(bool); b {
-				out = append(out, cv.walkChildren(n.Body)...)
-			} else {
-				out = append(out, cv.walkChildren(n.Else)...)
-			}
-		}
-	}
-	return out
 }
 
 // stampOwner attaches __ownerComponent to element maps returned by
@@ -621,32 +575,4 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 		return nil, fmt.Errorf("cannot assign to const %q", field)
 	}
 	return sym, nil
-}
-
-// fireTimers runs each component timer's handler once, honoring the Enabled
-// expression. In IR, timers live on ir.Component (not scattered through the
-// body), so we walk pkg.Components for the active component.
-func fireTimers(pkg *ir.Package, env *interp.Env) error {
-	if env.Comp == nil {
-		return nil
-	}
-	for _, t := range env.Comp.Timers {
-		enabled := true
-		if t.Enabled != nil {
-			v, err := env.Eval(t.Enabled)
-			if err != nil {
-				return err
-			}
-			if b, ok := v.(bool); ok {
-				enabled = b
-			}
-		}
-		if !enabled || t.Handler == nil {
-			continue
-		}
-		if err := env.ExecBlock(t.Handler.Block); err != nil {
-			return err
-		}
-	}
-	return nil
 }
