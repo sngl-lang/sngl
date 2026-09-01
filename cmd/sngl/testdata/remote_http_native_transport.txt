@@ -1,0 +1,35 @@
+# sngl:remote/http declares `get` and leaves it open — what an HTTP request *is*
+# is not a question any tier below a target can answer. sngl:language/go closes
+# it with an override whose body calls a declaration marked #[go.native], and
+# the whole chain has to arrive at the Go package that performs the request.
+#
+# Every link is load-bearing and each has been broken on its own: the language
+# package not loading at all, the override merging into nothing, and the native
+# call rendering as the SNGL name because only a namespace-qualified call site
+# consulted the mark.
+
+sngl generate --lang go --platform bubbletea --out out app.sngl
+
+# The transport, spelled as Go spells it after the import.
+grep 'http\.Get\(' out/model.go
+grep 'git\.duckfam\.us/jonathan/sngl/pkg/go/remote/http' out/model.go
+
+# The name the SNGL declaration carries is not a name anything in Go declares:
+# a native declaration *is* the foreign identifier rather than corresponding to
+# one, so nothing emits it under its own name.
+! grep 'httpGet' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+import http "sngl:remote/http"
+
+component main {
+    var url = "https://example.com/"
+
+    window(title="get") {
+        text(value=http.get(url).body)
+    }
+}
+
+output(lang="go", platform="bubbletea")

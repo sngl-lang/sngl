@@ -22,14 +22,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
 	{"remote", "query"}:             markQuery,
-	// Both URIs, because a target's package is reachable under either today:
-	// optionsSchemaFor tries "platform/<name>" before "language/<name>" and
-	// hasLibPkg accepts the first for a language, so golang.sngl loads under two
-	// names and a macro it declares reports whichever it was loaded as. It is
-	// the same mark; keying it once would make it depend on which lookup ran
-	// first.
 	{"language/go", "native"}:       markGoNative,
-	{"platform/go", "native"}:       markGoNative,
 }
 
 // markGoNative implements #[go.native("path", "Name")]: the declaration *is*
@@ -67,7 +60,6 @@ func markGoNative(m *mark) error {
 	}
 	return nil
 }
-
 
 // markQuery implements #[query], which says a function's answer is fetched:
 // keyed by its arguments, cached, and rewritten by the NoAsyncReactive lowering

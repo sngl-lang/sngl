@@ -282,19 +282,18 @@ func (c *checker) providedDocs(name string) []*ast.Document {
 		return nil
 	}
 	// Both tiers: a language declares its foreign-type surface the way a
-	// platform declares its widgets, and lookupTarget already answers for
-	// either.
-	target, ok := strings.CutPrefix(name, "platform/")
+	// platform declares its widgets. Within its own tier, though -- a language
+	// asked for its platform package answers with itself, and the package then
+	// exists under a name no target has.
+	target, kind, ok := targetTierName(name)
 	if !ok {
-		if target, ok = strings.CutPrefix(name, "language/"); !ok {
-			return nil
-		}
+		return nil
 	}
 	// This config's targets and no others. A check is defined by the targets
 	// it was configured with, so a target absent from them contributes
 	// nothing here even when it is registered process-wide -- PackageSource is
 	// where the registry answers, for readers that have no config to carry.
-	return ProvidedDocs(c.lookupTarget(target))
+	return ProvidedDocs(c.lookupTargetIn(target, kind))
 }
 
 // Targets that serve a library package, keyed by its `sngl:<uri>`. A
@@ -975,7 +974,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	if !ok {
 		return
 	}
-	if p := c.lookupTarget(name); p != nil && targetUnavailable(p) != nil {
+	if p := c.lookupTargetIn(name, tier); p != nil && targetUnavailable(p) != nil {
 		// An unavailable target's overrides are written against declarations
 		// it cannot provide.
 		return

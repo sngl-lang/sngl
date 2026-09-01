@@ -590,6 +590,15 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		}
 		return out
 	}
+	// Before either call path: a declaration that *is* a Go identifier is one
+	// wherever the call site reached it. This used to sit inside the namespace
+	// path alone, so `go.httpGet(url)` emitted http.Get and the same call
+	// reached through an inlined body emitted `httpGet` -- a name nothing
+	// declares.
+	if out, ok := gc.nativeCall(n); ok {
+		return out
+	}
+
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)
 	}
@@ -638,40 +647,55 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
+// nativeCall renders a call to a declaration that *is* a Go identifier, and
+// reports whether n was one.
+//
+// #[foreign] is excluded by Marked: that names a declaration this file also
+// emits, under that declaration's own name. An unmarked foreign path is the
+// other case -- the identifier already exists, so the call becomes a call to
+// it and the package it lives in is required here, at the call site rather
+// than at the top of whatever library package declared it.
+//
+// The name is spelled as Go spells it after the import, `http.Get`, which is
+// what the path makes available. RequireImport adds the path; nothing here
+// derives a qualifier from it, because a Go package's name is not a function
+// of its import path.
+func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
+	if n.Func == nil || n.Func.Foreign.Path == "" || n.Func.Foreign.Marked {
+		return "", false
+	}
+	args := gc.evalCallArgs(n.Args)
+	name := n.Func.Foreign.Name
+	// The renderer adds the "C." prefix to a bare C identifier; a caller that
+	// already prefixed it keeps what it wrote.
+	if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
+		name = "C." + name
+	} else if n.Func.Foreign.Path != "C" {
+		gc.RequireImport(n.Func.Foreign.Path)
+	}
+	// Context-taking native call: inject the context expression as the first
+	// argument. When the importer flagged HasContextArg, supply
+	// gc.Ctx.ContextVar (e.g. "r.Context()"), defaulting to
+	// context.Background() when unset.
+	if n.Func.HasContextArg {
+		ctxVar := ""
+		if gc.Ctx != nil {
+			ctxVar = gc.Ctx.ContextVar
+		}
+		if ctxVar == "" {
+			ctxVar = "context.Background()"
+			gc.RequireImport("context")
+		}
+		args = append([]string{ctxVar}, args...)
+	}
+	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := gc.EvalExpr(n.Receiver)
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-		// A native call emits the native name, ignoring the SNGL import alias
-		// that ended up as the receiver. #[foreign] is excluded: it names a
-		// declaration this file also emits, under that declaration's name.
-		if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
-			name := n.Func.Foreign.Name
-			// The renderer adds the "C." prefix to a bare C identifier; a
-			// caller that already prefixed it keeps what it wrote.
-			if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
-				name = "C." + name
-			} else if n.Func.Foreign.Path != "C" {
-				gc.RequireImport(n.Func.Foreign.Path)
-			}
-			// Context-taking native call: inject the context expression as the
-			// first argument. Mirrors legacy translateIRNativeCall — when the
-			// importer flagged HasContextArg, supply gc.Ctx.ContextVar (e.g.
-			// "r.Context()"), defaulting to context.Background() when unset.
-			if n.Func.HasContextArg {
-				ctxVar := ""
-				if gc.Ctx != nil {
-					ctxVar = gc.Ctx.ContextVar
-				}
-				if ctxVar == "" {
-					ctxVar = "context.Background()"
-					gc.RequireImport("context")
-				}
-				args = append([]string{ctxVar}, args...)
-			}
-			return name + "(" + strings.Join(args, ", ") + ")"
-		}
 
 		fname := n.Func.Name
 		// A package function called through its import has no receiver on the

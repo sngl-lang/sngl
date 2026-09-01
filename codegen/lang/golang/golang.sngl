@@ -29,7 +29,7 @@ struct Options {
 // declarations, since a mark resolves through the scope like any other name.
 func native(path string, name string) ir.Macro
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "Get")]
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get")]
 func httpGet(url string) http.Result
 
 // What sngl:remote/http declares and leaves to each target. An override rather

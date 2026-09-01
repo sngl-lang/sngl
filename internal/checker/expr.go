@@ -2985,11 +2985,11 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 		}
 	}
 
-	name, _, ok := targetTierName(uri)
+	name, kind, ok := targetTierName(uri)
 	if !ok {
 		return nil
 	}
-	t := c.lookupTarget(name)
+	t := c.lookupTargetIn(name, kind)
 	if t == nil || targetUnavailable(t) != nil {
 		return nil
 	}

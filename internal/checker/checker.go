@@ -2734,7 +2734,30 @@ func (c *checker) importablePackages() []string {
 }
 
 func (c *checker) lookupTarget(name string) pkgProvider {
+	if t := c.lookupTargetIn(name, ir.BuiltinPlatform); t != nil {
+		return t
+	}
+	return c.lookupTargetIn(name, ir.BuiltinLanguage)
+}
+
+// lookupTargetIn finds a registered target of one tier by name.
+//
+// The tier is not decoration. The two share a namespace -- nothing stops a
+// language and a platform from both being called `go` -- so a search that
+// falls through from one to the other answers a question nobody asked: it made
+// hasLibPkg("platform/go") true for a language, which loaded golang.sngl a
+// second time under a name it does not have and left a macro it declares
+// reporting whichever load resolved it.
+func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	if c.cfg == nil {
+		return nil
+	}
+	if kind == ir.BuiltinLanguage {
+		for _, l := range c.cfg.Languages {
+			if l.LanguageIdentifier() == name {
+				return l
+			}
+		}
 		return nil
 	}
 	for _, p := range c.cfg.Platforms {
@@ -2742,45 +2765,41 @@ func (c *checker) lookupTarget(name string) pkgProvider {
 			return p
 		}
 	}
-	for _, l := range c.cfg.Languages {
-		if l.LanguageIdentifier() == name {
-			return l
-		}
-	}
 	return nil
 }
 
-// lookupOptions returns the Options struct for a platform or lang name.
-// Returns nil if no target or no Options struct found.
-func (c *checker) lookupOptions(name string) *ir.StructDef {
+// lookupOptions returns the Options struct a target of this tier declares, or
+// nil when there is no such target or it declares none.
+//
+// The tier comes from the caller because the caller has it -- an output block
+// names a language and a platform, and which of the two `go` is is not
+// something to rediscover from the name. Guessing it is what let a language be
+// asked for its platform package.
+func (c *checker) lookupOptions(name string, kind ir.BuiltinKind) *ir.StructDef {
+	uri := targetTierMember(kind) + "/" + name
 	if c.optionsCache != nil {
-		if sd, ok := c.optionsCache[name]; ok {
+		if sd, ok := c.optionsCache[uri]; ok {
 			return sd
 		}
 	}
-	t := c.lookupTarget(name)
-	if t == nil {
+	if c.lookupTargetIn(name, kind) == nil {
 		return nil
 	}
 	if c.optionsCache == nil {
 		c.optionsCache = make(map[string]*ir.StructDef)
 	}
-	// Read the options schema off the loaded sngl:platform/<n> package
-	// rather than asking the plugin: the schema is the #[options]-marked
-	// declaration that package holds, and the mark is only on the IR.
-	uri := "platform/" + name
-	if !c.hasLibPkg(uri) {
-		uri = "language/" + name
-	}
+	// Read the options schema off the loaded package rather than asking the
+	// plugin: the schema is the #[options]-marked declaration that package
+	// holds, and the mark is only on the IR.
 	if c.hasLibPkg(uri) {
 		for _, sd := range c.libPkg(uri).Structs {
 			if sd.Options {
-				c.optionsCache[name] = sd
+				c.optionsCache[uri] = sd
 				return sd
 			}
 		}
 	}
-	c.optionsCache[name] = nil
+	c.optionsCache[uri] = nil
 	return nil
 }
 
@@ -2821,10 +2840,10 @@ func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDe
 	// If the user named a target that isn't registered, we have no schema for
 	// its options. Returning nil tells the caller to skip validation rather
 	// than reject options the platform itself would have accepted.
-	if lang != "" && c.lookupTarget(lang) == nil {
+	if lang != "" && c.lookupTargetIn(lang, ir.BuiltinLanguage) == nil {
 		return nil
 	}
-	if platform != "" && c.lookupTarget(platform) == nil {
+	if platform != "" && c.lookupTargetIn(platform, ir.BuiltinPlatform) == nil {
 		return nil
 	}
 
@@ -2855,10 +2874,10 @@ func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDe
 	}
 	add("stdlib", c.lookupStdlibOptions())
 	if lang != "" {
-		add(lang, c.lookupOptions(lang))
+		add(lang, c.lookupOptions(lang, ir.BuiltinLanguage))
 	}
 	if platform != "" {
-		add(platform, c.lookupOptions(platform))
+		add(platform, c.lookupOptions(platform, ir.BuiltinPlatform))
 	}
 
 	c.mergedOptionsCache[key] = merged
