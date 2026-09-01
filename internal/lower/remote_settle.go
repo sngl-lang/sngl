@@ -55,12 +55,14 @@ func (st *reactivityState) synthesizeRemoteSettle() {
 	if len(body) == 0 {
 		return
 	}
-	st.owner.addFunc(&ir.Func{
+	fn := &ir.Func{
 		Name:   RemoteSettleFunc,
 		Return: ir.TypVoid,
 		Purity: ir.PurityMutates,
 		Block:  body,
-	})
+	}
+	st.owner.addFunc(fn)
+	st.pkg.RemoteSettle = fn
 }
 
 // sortProps orders by node then key, which is the order the build path

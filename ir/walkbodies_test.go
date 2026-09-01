@@ -100,6 +100,10 @@ var referenceSlots = map[string]bool{
 	// deliberately rather than by omission -- walking it would subject a
 	// description of the language to the passes that lower a program.
 	"Package.Macros": true,
+	// The settle handler, owned by the component or window whose props it
+	// updates and walked there. The package stores the pointer so an entry
+	// point can subscribe it without looking a name up.
+	"Package.RemoteSettle": true,
 }
 
 // bodySlots returns "Type.Field" for every field holding IR a node owns and
