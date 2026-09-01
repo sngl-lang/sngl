@@ -1,0 +1,38 @@
+# A query is a box the store holds, found by the declaration it belongs to and
+# the arguments it was asked with — so a *call* is what becomes the lookup, not
+# the declaration. sngl:remote/http's `fetch` is the case that forced it:
+# rewriting the declaration's body worked only for a query the program wrote
+# beside its own code, because nothing emits an imported package's functions.
+# The call was left standing against a name the output did not contain.
+
+sngl generate --lang go --platform bubbletea --out out app.sngl
+
+# The lookup, keyed by what this call site passed.
+grep 'remote\.Query\[Result\]' out/model.go
+grep '\[\]any\{m\.url\}' out/model.go
+grep '"fetch"' out/model.go
+
+# And inside the thunk, the transport the language implements — the query body,
+# through the override, down to the Go package that performs the request.
+grep 'http\.Get\(m\.url\)' out/model.go
+
+# Nothing calls the query by name: it has no existence as a function here.
+! grep 'm\.fetch\(' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+import http "sngl:remote/http"
+
+component main {
+    var url = "https://example.com/"
+    var res = http.fetch(url)
+
+    window(title="fetch") {
+        text(value=res.or(blank).body)
+    }
+}
+
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")

@@ -6,7 +6,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passQuery rewrites every #[query] function's body into a RemoteQuery lookup.
+// passQuery rewrites every call to a #[query] function into a RemoteQuery
+// lookup.
 //
 // Always on, unlike the settle lowering it used to live inside. That one is
 // gated on NoAsyncReactive — whether the target needs async lowered out — and a
@@ -23,36 +24,38 @@ var passQuery = pass{
 	apply:   lowerQueries,
 }
 
+// lowerQueries rewrites the call sites, not the declarations.
+//
+// A query has no existence as a function in the output: it is a box the store
+// holds, found by the declaration it belongs to and the arguments it was asked
+// with, and a call is what asks. Rewriting the body instead left the call
+// standing — which worked only because a program's own declarations are emitted
+// beside it. A query the library declares (sngl:remote/http's `fetch`) is not:
+// nothing emits an imported package's functions, so the call was to a name the
+// output did not contain.
+//
+// The arguments reach the key as the call site wrote them, which is the whole
+// point of keying per call site: two components asking `fetch(profileURL)` and
+// `fetch(feedURL)` hold different boxes, and two asking the same url hold one.
 func lowerQueries(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	for _, fn := range pkg.Funcs {
-		if !fn.Query {
-			continue
+	return ir.RewriteExprs(pkg, func(e ir.Expr) (ir.Expr, error) {
+		call, ok := e.(*ir.Call)
+		if !ok || call.Func == nil || !call.Func.Query {
+			return e, nil
 		}
-		if err := lowerQuery(fn); err != nil {
-			return err
-		}
-	}
-	for _, comp := range pkg.Components {
-		for _, fn := range comp.Funcs {
-			if !fn.Query {
-				continue
-			}
-			if err := lowerQuery(fn); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+		return lowerQueryCall(call)
+	})
 }
 
-// lowerQuery rewrites a #[query] function's body into a RemoteQuery lookup.
+// lowerQueryCall builds the RemoteQuery lookup one call to a query becomes.
 //
-// The body was the fetch; it becomes the thunk RemoteQuery calls, and the
-// function now answers whatever box the store holds for this query and these
-// arguments. Everything the first design synthesized — a state var named for the
+// The declaration's body is the fetch; it becomes the thunk RemoteQuery calls,
+// with the call's arguments substituted for the parameters, and the call now
+// answers whatever box the store holds for this query and these arguments.
+// Everything the first design synthesized — a state var named for the
 // declaration, a kicker, an AsyncKickerEntry per reactive dependency — is gone,
 // because a key that is a loop variable or any other derived value has no setter
 // for a kicker to hang on. Reading the box is what starts the fetch.
@@ -60,54 +63,92 @@ func lowerQueries(pkg *ir.Package, _ Caps, _ Options) error {
 // So there is nothing here about reactivity. A prop reading `users(page)`
 // mentions `page`, the ordinary dependency walk re-evaluates it, and the
 // re-evaluation looks up a different key.
-func lowerQuery(fn *ir.Func) error {
+func lowerQueryCall(call *ir.Call) (ir.Expr, error) {
+	fn := call.Func
 	retType := fn.Return
 	if retType == nil || retType.Kind != ir.TypeRemote {
 		// markQuery rejects this at the declaration, so reaching it means the
 		// mark and this pass disagree about what a query is.
-		return fmt.Errorf("NoAsyncReactive: %s carries #[query] but answers %s", fn.Name, retType)
+		return nil, fmt.Errorf("Query: %s carries #[query] but answers %s", fn.Name, retType)
 	}
 	if len(retType.Elems) != 1 || retType.Elems[0] == nil {
-		return fmt.Errorf("NoAsyncReactive: cannot lower %s: %s has no type argument", fn.Name, retType)
+		return nil, fmt.Errorf("Query: cannot lower %s: %s has no type argument", fn.Name, retType)
+	}
+	if len(fn.Block) == 0 {
+		return nil, fmt.Errorf("Query: cannot lower %s: a query needs a body to fetch with", fn.Name)
 	}
 	fetched := retType.Elems[0]
-	if len(fn.Block) == 0 {
-		return fmt.Errorf("NoAsyncReactive: cannot lower %s: a query needs a body to fetch with", fn.Name)
+
+	bound, key, err := queryArgs(fn, call)
+	if err != nil {
+		return nil, err
 	}
 
-	// The thunk is the body verbatim, so a query whose fetch is several
-	// statements lowers the same as a one-liner. It stays async when the body is:
-	// the fetch is what the runtime awaits, and dropping the flag would let a
-	// backend emit the call as though it had already answered.
-	thunk := &ir.Lambda{
+	// The body verbatim, so a query whose fetch is several statements lowers the
+	// same as a one-liner. Cloned through a lambda carrying the declaration's
+	// params, so the copy's own parameter references are the ones substitution
+	// rewrites and the declaration is left as it was for the next call site.
+	// It stays async when the body is: the fetch is what the runtime awaits, and
+	// dropping the flag would let a backend emit the call as though it had
+	// already answered.
+	thunk, _ := ir.CloneExpr(&ir.Lambda{
 		Type: &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: fetched}},
 		Func: &ir.Func{
 			IsAsync: fn.IsAsync || ir.BlockHasAsyncCall(fn.Block),
+			Params:  fn.Params,
 			Return:  fetched,
 			Block:   fn.Block,
 		},
-	}
+	}).(*ir.Lambda)
+	thunk.Func.Block = substituteParams(thunk.Func.Block, bound)
+	// A thunk takes nothing: what the arguments said is in its body now, and in
+	// the key beside it.
+	thunk.Func.Params = nil
 
-	// The key is the arguments, in declaration order. A component's implicit
-	// `this` is not one of them: it identifies the caller, not the question, and
-	// two components asking the same question have to find the same box.
-	args := make([]ir.Expr, 0, len(fn.Params))
-	for _, p := range fn.Params {
-		if p == nil || isComponentReceiver(p) {
+	return remoteQueryCall(fn, retType, fetched, key, thunk)
+}
+
+// queryArgs binds a call's arguments to the declaration's parameters, answering
+// the bindings the thunk substitutes and the key the box is found by.
+//
+// The key is the arguments in declaration order. A component's implicit `this`
+// is not one of them: it identifies the caller, not the question, and two
+// components asking the same question have to find the same box.
+func queryArgs(fn *ir.Func, call *ir.Call) (map[string]ir.Expr, []ir.Expr, error) {
+	bound := make(map[string]ir.Expr, len(fn.Params))
+	byName := map[string]ir.Expr{}
+	var positional []ir.Expr
+	for _, a := range call.Args {
+		if a.Name != "" {
+			byName[a.Name] = a.Value
 			continue
 		}
-		args = append(args, &ir.Ident{Name: p.Name, Sym: p, Type: p.Type})
+		positional = append(positional, a.Value)
 	}
-
-	call, err := remoteQueryCall(fn, retType, fetched, args, thunk)
-	if err != nil {
-		return err
+	var key []ir.Expr
+	next := 0
+	for _, p := range fn.Params {
+		if p == nil {
+			continue
+		}
+		var arg ir.Expr
+		switch {
+		case isComponentReceiver(p):
+			continue
+		case byName[p.Name] != nil:
+			arg = byName[p.Name]
+		case next < len(positional):
+			arg = positional[next]
+			next++
+		case p.Default != nil:
+			arg = p.Default
+		default:
+			return nil, nil, fmt.Errorf("Query: cannot lower a call to %s: no argument for %q", fn.Name, p.Name)
+		}
+		bound[p.Name] = arg
+		key = append(key, deepCloneExpr(arg))
 	}
-	fn.Block = []ir.Stmt{&ir.Return{Value: call}}
-	// The await moved into the thunk: reading a box is synchronous, which is what
-	// lets a prop expression contain one.
-	fn.IsAsync = false
-	return nil
+	return bound, key, nil
 }
 
 // isComponentReceiver reports whether p is the implicit `this` a function

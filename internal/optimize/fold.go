@@ -120,9 +120,20 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	case *ir.Literal, *ir.Ident:
 		// No subexpressions to fold.
-	case *ir.Lambda, *ir.Closure:
-		// Lambdas/closures are opaque to constant folding; their bodies
-		// are folded when their enclosing func is processed.
+	case *ir.Lambda:
+		// A lambda's body is statements, folded as any other block is. It used
+		// to be skipped here on the grounds that the enclosing func would fold
+		// it, which holds for a lambda the program wrote and not for one a
+		// lowering pass synthesized: passQuery builds the thunk after the
+		// optimizer has walked every declaration, so the calls inside it are
+		// calls nothing has looked at.
+		if x.Func != nil {
+			x.Func.Block = foldStmts(x.Func.Block, ctx)
+		}
+	case *ir.Closure:
+		if x.Func != nil {
+			x.Func.Block = foldStmts(x.Func.Block, ctx)
+		}
 	case *ir.ContextRead:
 		// No subexpressions.
 	default:

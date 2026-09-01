@@ -1,0 +1,36 @@
+# Inlining copies the argument to wherever the parameter is read, so a parameter
+# read twice evaluates its argument twice. That is the argument's problem and
+# not the function's — `double(x) => x + x` is as pure as they come, and
+# `double(bump())` counted by two.
+#
+# Purity of the *callee* was the only condition, which is the wrong side of the
+# call: it permitted this, and forbade inlining a readonly function whose
+# argument was a literal.
+
+sngl generate --lang go --platform bubbletea --out out app.sngl
+
+# The effect happens once. Either the call is kept or the argument is bound —
+# what may not happen is two bumps where the program wrote one.
+! grep 'bump\(\).*bump\(\)' out/model.go
+grep 'Double\(m\.bump\(\)\)' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+func double(x int) => x + x
+
+component main {
+    var n = 0
+
+    func bump() int {
+        n = n + 1
+        return n
+    }
+
+    window(title="once") {
+        text(value=string(double(bump())))
+    }
+}
+
+output(lang="go", platform="bubbletea")

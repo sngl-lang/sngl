@@ -4,14 +4,53 @@ import (
 	"fmt"
 	"slices"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// inlineCall attempts to replace a pure function call with its inlined body.
+// inlineCall attempts to replace a function call with its inlined body.
 // Returns nil if inlining is not applicable.
+//
+// Purity used to be the first condition. It is what licenses *folding* a call
+// -- evaluating it at build time -- and this runs inside foldExpr, so it
+// inherited folding's precondition. Inlining asks something else: replacing
+// f(a) with the body under a puts the effects exactly where the call already
+// was, in the same order, once. A readonly function is as inlinable as a pure
+// one, and an async one already was -- purity never implied synchronous, and
+// the settle lowering finds the await wherever it lands.
+//
+// What has to hold is about the arguments, and is checked below.
 func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	f := call.Func
-	if f == nil || f.Purity != ir.PurityPure {
+	if f == nil {
+		return nil
+	}
+	// A function the output contains keeps its call. Inlining is how a function
+	// the output does *not* contain gets there -- nothing emits an imported
+	// package's declarations, so a call to one is a call to a name the output
+	// lacks, and until now every library function was either pure (inlined
+	// here) or an intrinsic (emitted by the backend). sngl:remote/http's
+	// transport is neither.
+	//
+	// Applied to non-pure declarations only, because folding still wants to see
+	// through a pure wrapper wherever it was written, and because a program's
+	// own functions are what its generated code is made of: a computed reading
+	// state is readonly, and dissolving it into every prop that names it is a
+	// different program to read.
+	if f.Purity != ir.PurityPure && f.Pkg == "" {
+		return nil
+	}
+	// A foreign declaration's body describes the function rather than
+	// implementing it, so splicing it into the program says something that is
+	// not true -- `#[foreign("js:./api", "add")] func add(a, b) => 0` answers 0
+	// to nobody. `pure` is the one thing that licenses the body as the answer:
+	// it says the call may be evaluated at build time, which is only possible
+	// through the body written here.
+	//
+	// This is the whole of what purity was guarding, in the one place the guard
+	// belongs -- on a declaration that stands for something else, not on every
+	// declaration.
+	if f.Foreign.Path != "" && f.Purity != ir.PurityPure {
 		return nil
 	}
 	// A declaration marked #[intrinsic] keeps its call. The mark says a
@@ -20,6 +59,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// backend is expected to replace — would erase the thing it substitutes
 	// for. Constant arguments still fold, through the intrinsic itself.
 	if f.Intrinsic != "" {
+		return nil
+	}
+	// A query is substituted at its call site too, by passQuery, and into
+	// something its body is only half of: the body becomes the thunk, and the
+	// arguments become the key beside it. Inlining the body here would leave the
+	// fetch where the box belongs -- `res = http.Get(url)` typed as the box that
+	// no longer exists.
+	if f.Query {
 		return nil
 	}
 	if len(f.TypeParams) > 0 {
@@ -66,6 +113,21 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 			subs[p] = p.Default
 		} else {
 			return nil // missing argument
+		}
+	}
+
+	// The condition purity was standing in for, and standing in the wrong
+	// place: substitution copies the argument to wherever the parameter is
+	// read, so a parameter read twice evaluates its argument twice and one
+	// read nowhere drops it. Both are the argument's problem, not the
+	// function's -- `double(x) => x + x` is as pure as they come, and
+	// `double(bump())` counted by two.
+	for p, arg := range subs {
+		if effectFree(arg) {
+			continue
+		}
+		if paramReads(ret.Value, p) != 1 {
+			return nil
 		}
 	}
 
@@ -313,6 +375,54 @@ func containsContextRead(e ir.Expr) bool {
 
 // substituteParams walks the expression tree, replacing parameter references
 // with the corresponding argument expressions.
+// paramReads counts the references to p in e. Substitution copies the argument
+// once per reference, so this is how many times the argument would be
+// evaluated.
+func paramReads(e ir.Expr, p *ir.Param) int {
+	n := 0
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok && id.Sym == ir.Symbol(p) {
+			n++
+		}
+		return nil
+	})
+	return n
+}
+
+// effectFree reports whether e can be copied or dropped without changing what
+// the program does: every call it contains is pure, and nothing in it writes.
+//
+// Cost is not the question -- duplicating an expensive pure call is a slower
+// program, not a different one, and that was already true of every inline this
+// pass has ever done.
+func effectFree(e ir.Expr) bool {
+	free := true
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		switch n := x.(type) {
+		case *ir.Call:
+			// A call with no resolved declaration says nothing about itself.
+			if n.Func == nil || n.Func.Purity != ir.PurityPure {
+				free = false
+				return ir.SkipAll
+			}
+		case *ir.Unary:
+			// &x aliases storage and *p reads through an alias: what either
+			// answers depends on when it is evaluated.
+			if n.Op == ast.UnaryAddr || n.Op == ast.UnaryDeref {
+				free = false
+				return ir.SkipAll
+			}
+		case *ir.ContextRead:
+			// Threaded into a hidden parameter later; copying one moves it
+			// across that rewrite.
+			free = false
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return free
+}
+
 func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 	if e == nil {
 		return nil

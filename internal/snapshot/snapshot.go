@@ -146,10 +146,13 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
-		if caps != (lower.Caps{}) {
-			if err := optimize.Optimize(pkg, optCfg); err != nil {
-				return nil, fmt.Errorf("optimize2: %w", err)
-			}
+		// Unconditional. It used to run only when the target had capabilities to lower
+		// for, on the reading that a build lowering nothing had nothing new to fold --
+		// which stopped being true when passQuery became always-on: it synthesizes a
+		// thunk after the optimizer has walked every declaration, so the calls inside
+		// one are calls nothing has looked at.
+		if err := optimize.Optimize(pkg, optCfg); err != nil {
+			return nil, fmt.Errorf("optimize2: %w", err)
 		}
 		return snapshotter.Snapshot(pkg, langT, width, height)
 	}
@@ -190,10 +193,13 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
-	if caps != (lower.Caps{}) {
-		if err := optimize.Optimize(pkg, optCfg); err != nil {
-			return nil, fmt.Errorf("optimize2: %w", err)
-		}
+	// Unconditional. It used to run only when the target had capabilities to lower
+	// for, on the reading that a build lowering nothing had nothing new to fold --
+	// which stopped being true when passQuery became always-on: it synthesizes a
+	// thunk after the optimizer has walked every declaration, so the calls inside
+	// one are calls nothing has looked at.
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		return nil, fmt.Errorf("optimize2: %w", err)
 	}
 	return ts.SnapshotText(pkg, langT, width, height)
 }
