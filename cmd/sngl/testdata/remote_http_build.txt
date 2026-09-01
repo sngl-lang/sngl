@@ -33,6 +33,19 @@ grep 'm\.contents\.Err\(\) != nil' out/model.go
 # through the pointer an option is.
 grep 'Status >= 200' out/model.go
 
+# Reading the box is what starts the fetch, so the render that started it is
+# over before there is anything to show. Each platform is told in its own
+# terms: Bubble Tea re-renders after any message, so it needs waking; Fyne
+# patches widgets, so it needs the updaters run — on its own goroutine, since
+# a settle arrives on the fetch's.
+sngl generate --lang=go --platform=bubbletea --opt main=true --out=mainbt app.sngl
+grep 'remote\.Default\.OnSettle\(func\(\) \{ p\.Send\(remoteSettledMsg\{\}\) \}\)' mainbt/model.go
+grep 'case remoteSettledMsg:' mainbt/model.go
+
+sngl generate --lang=go --platform=fyne --opt main=true --out=mainfy app.sngl
+grep 'remote\.Default\.OnSettle\(func\(\) \{ fyne\.DoAndWait\(m\.__remoteSettled\) \}\)' mainfy/model.go
+grep 'func \(m \*Model\) __remoteSettled\(\)' mainfy/model.go
+
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:remote/http"

@@ -29,7 +29,23 @@ func stampUsage(pkg *ir.Package, _ Caps, _ Options) error {
 	pkg.UsesI18n = pkgUsesI18n(pkg)
 	pkg.UsesAlert = pkgUsesAlert(pkg)
 	pkg.UsesErrorHandling = pkgUsesErrorHandling(pkg)
+	pkg.UsesRemote = pkgUsesRemote(pkg)
 	return nil
+}
+
+// pkgUsesRemote matches any query lookup. A program that holds one has boxes
+// that settle after the render that started them, so its entry point has to ask
+// the store to tell it.
+func pkgUsesRemote(pkg *ir.Package) bool {
+	found := false
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
+		if c, isCall := e.(*ir.Call); isCall && c.Func != nil && c.Func.Intrinsic == remoteQueryIntrinsic {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // pkgUsesI18n matches any i18n entry-point call (ir.IsI18nCall) plus bare

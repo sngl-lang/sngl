@@ -195,6 +195,26 @@ func TestSettleNotifies(t *testing.T) {
 	}
 }
 
+// And again for each attempt after the first. A refresh button is the case
+// where nobody is watching for any other reason: the click renders `inFlight`
+// true, and without a second notification that is the last thing the screen
+// ever draws.
+func TestRefreshNotifies(t *testing.T) {
+	s := New()
+	box := settled(t, Query(s, "q", []any{1}, func() (int, error) { return 1, nil }))
+
+	var notified atomic.Int32
+	s.OnSettle(func() { notified.Add(1) })
+	box.Refresh()
+	settled(t, box)
+	for i := 0; i < 200 && notified.Load() == 0; i++ {
+		time.Sleep(time.Millisecond)
+	}
+	if notified.Load() == 0 {
+		t.Error("a refreshed fetch notified nobody; the screen would sit on `loading` forever")
+	}
+}
+
 // Keys are built by walking values, so two calls with equal arguments are one
 // key. Length prefixing is what keeps ("a","b") and ("a|b") apart.
 func TestKeyDistinguishesArgumentBoundaries(t *testing.T) {

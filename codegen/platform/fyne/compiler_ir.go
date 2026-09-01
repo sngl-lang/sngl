@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -827,6 +828,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis) {
 	// reports its default 0×0 dimensions at first paint and the user
 	// sees a blank window until they manually resize.
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
+	if info.FuncNames[lower.RemoteSettleFunc] {
+		// After BuildUI, since the updaters write to widgets it creates, and
+		// through DoAndWait because a settle arrives on the fetch's goroutine
+		// and Fyne's widgets belong to the main one.
+		b.WriteString("\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.__remoteSettled) })\n")
+	}
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StartTimers()\n")

@@ -116,6 +116,10 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
+	// UsesRemote says the program holds a query box. Such a box settles after
+	// the render that started it, and tells the store when it does, so an entry
+	// point that never asks shows the fetch starting and nothing after.
+	UsesRemote bool
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.

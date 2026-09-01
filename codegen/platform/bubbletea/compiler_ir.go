@@ -631,9 +631,20 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitIRComponentMethod(&b, cc, ctx, gc, cfg)
 	}
 
+	if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
+		b.WriteString("// remoteSettledMsg wakes the program when a fetch answers.\n")
+		b.WriteString("type remoteSettledMsg struct{}\n\n")
+	}
+
 	if cfg.Main {
 		b.WriteString("func main() {\n")
 		b.WriteString("\tp := tea.NewProgram(New())\n")
+		if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
+			// After NewProgram, since the callback holds the program. Send is
+			// safe before Run: it blocks until the program is listening.
+			b.WriteString("\tremote.Default.OnSettle(func() { p.Send(remoteSettledMsg{}) })\n")
+			gc.RequireImport("git.duckfam.us/jonathan/sngl/pkg/go/remote")
+		}
 		b.WriteString("\tif _, err := p.Run(); err != nil {\n")
 		b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"error: %v\\n\", err)\n")
 		b.WriteString("\t\tos.Exit(1)\n")
@@ -884,6 +895,13 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t\t\t\tcmds = append(cmds, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} }))\n")
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
+	}
+
+	// A settled fetch. The box already holds the answer -- what was missing is
+	// a reason to look at it again, and in Bubble Tea that is a message: every
+	// Update is followed by a View, so the case needs no body.
+	if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
+		b.WriteString("\tcase remoteSettledMsg:\n")
 	}
 
 	// WindowSizeMsg
