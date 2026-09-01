@@ -14,7 +14,7 @@ sngl generate --lang go --platform bubbletea --out live live.sngl
 # Both are the same lookup, keyed by the same url, under the id the adapter
 # spelled — and inside the thunk, the transport the language implements, down
 # to the Go package that performs the request.
-grep 'remote\.Query\[Result\]' snap/model.go
+grep 'remote\.Query\[http\.Response\]' snap/model.go
 grep '"http\.fetch"' snap/model.go
 grep '\[\]string\{m\.url\}' snap/model.go
 grep 'http\.Get\(m\.url\)' snap/model.go
@@ -28,7 +28,7 @@ grep 'm\.res = remote\.Query' snap/model.go
 # re-evaluated lookup with a different key starts a fetch.
 ! grep 'm\.res = remote\.Query' live/model.go
 ! grep 'res ' live/model.go
-grep 'remote\.Query\[Result\]\(remote\.Default, "http\.fetch", \(\[\]any\)\(\[\]string\{m\.url\}\)' live/model.go
+grep 'remote\.Query\[http\.Response\]\(remote\.Default, "http\.fetch", \(\[\]any\)\(\[\]string\{m\.url\}\)' live/model.go
 
 # Neither carries a ref: a pointer into a model the platform copies is not
 # something a backend can be handed.

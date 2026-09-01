@@ -291,8 +291,15 @@ type Func struct {
 	//
 	// A macro needs it: a mark is bound to the declaration it was written from,
 	// and that binding is (package, name).
-	Pkg            string
-	Receiver       string // "int" for int.abs (empty for plain funcs)
+	Pkg      string
+	Receiver string // "int" for int.abs (empty for plain funcs)
+	// RecvParam is the implicit `this` of a method on a generic built-in whose
+	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
+	// item)`. The checker binds it into the body's scope without putting it in
+	// Params, because no call site passes one: the receiver arrives as
+	// Call.Receiver. Anything substituting arguments for parameters has to bind
+	// this one too, and needs a handle on it to do so.
+	RecvParam      *Param `json:"-"`
 	TypeParams     []TypeParam
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
 	Params         []*Param

@@ -1297,6 +1297,12 @@ func IRTypeToGo(t *ir.Type) string {
 		if ir.IsRemoteFailureStruct(t) {
 			return remoteFailureGo
 		}
+		// Likewise the value a request answers with: the transport returns it,
+		// so a Result declared beside it would be a second type `http.Get`
+		// could not hand back.
+		if ir.IsRemoteHTTPResultStruct(t) {
+			return remoteHTTPResultGo
+		}
 		if ir.IsColorStruct(t) {
 			return colorGoType
 		}

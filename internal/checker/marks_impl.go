@@ -45,6 +45,10 @@ func markGoNative(m *mark) error {
 	if path == "" || name == "" {
 		return fmt.Errorf("#[go.native]: a package path and an identifier are both required")
 	}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
+	if err != nil {
+		return err
+	}
 	fm := ir.Foreign{Scheme: "go", Path: path, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
@@ -52,7 +56,14 @@ func markGoNative(m *mark) error {
 			return fmt.Errorf("#[go.native] on %q: %s.%s already exists, so a body here would be emitted by nobody and read by nobody", d.Name, path, name)
 		}
 		d.Foreign = fm
+		// The same fact the Go importer reads off a signature it sees. A
+		// declaration here has no signature to read, so the mark is where it
+		// is said.
+		d.HasErrorReturn = slices.Contains(flags, flagFails)
 	case *ir.StructDef:
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
 		d.Foreign = fm
 	default:
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
@@ -160,6 +171,9 @@ const (
 	flagPure  = "pure"
 	flagAsync = "async"
 )
+
+// The flag #[native] accepts after the name, declared as go.NativeFlag.
+const flagFails = "fails"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //

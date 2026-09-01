@@ -17,11 +17,15 @@ import (
 	remote "git.duckfam.us/jonathan/sngl/pkg/go/remote"
 )
 
-// Response is what one request answered with. It mirrors sngl:remote/http's
-// Result rather than being it: the SNGL declaration is the program's own type,
-// and the override converts at the boundary, field by field. That is what a
-// boundary is for, and it keeps the SNGL package free of any one language's
-// spelling.
+// Response is what one request answered with, and what sngl:remote/http's
+// Result is on this target. The transport is what returns it, so the Go backend
+// spells this type wherever a program says `Result` -- as it does for the
+// Failure its boxes carry. A Result declared beside this one would be a second
+// type Get could not hand back, and the conversion between them would be a
+// field-by-field copy no boundary needs.
+//
+// The SNGL package stays free of any one language's spelling: it declares the
+// shape, and each target says what has that shape.
 type Response struct {
 	Status  int
 	Body    string

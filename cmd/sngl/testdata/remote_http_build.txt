@@ -1,0 +1,43 @@
+# Nothing compiled a program that fetches, so the whole path was wrong in ways
+# a grep could not see: `Result` was a type the output did not contain,
+# `http.Get` answered `(Response, error)` against a one-value declaration, and
+# `contents.failed()` spliced in a `this` naming nothing. This builds.
+
+[!exec:go] skip 'go toolchain required'
+sngl build --lang=go --platform=bubbletea --opt name=app app.sngl
+exists app
+
+# The box holds what the transport answers with. The runtime defines that type,
+# the way it defines the failure its boxes carry — a Result declared beside it
+# would be a second type `http.Get` could not hand back.
+sngl generate --lang=go --platform=bubbletea --out=out app.sngl
+grep 'remote\.Query\[http\.Response\]' out/model.go
+! grep 'type Result struct' out/model.go
+
+# `(T, error)` against a declaration answering T alone: the `fails` flag on
+# #[native] is where that shape is said, since a declaration has no signature
+# for the importer to read it off.
+grep 'v, _ := http\.Get' out/model.go
+
+# A method on a generic built-in says `this` and declares no parameter for it,
+# so inlining has to bind the receiver the call site passed.
+grep 'm\.contents\.Err\(\) != nil' out/model.go
+! grep '\bthis\.' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import "sngl:remote/http"
+
+component main {
+    var contents = http.fetch("https://example.com")
+
+    vbox {
+        text(value="Loading: {contents.inFlight()}")
+        text(value=contents.or(blank).body)
+        text(value="Failed: {contents.failed()}")
+    }
+}
+
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")

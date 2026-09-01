@@ -97,10 +97,28 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	}
 
 	// Build substitution map: param → argument expression.
-	subs := make(map[*ir.Param]ir.Expr, len(f.Params))
+	subs := make(map[*ir.Param]ir.Expr, len(f.Params)+1)
+	// A method on a generic built-in says `this` in its body and declares no
+	// parameter for it. The receiver reaches the call either beside it or, once
+	// the checker has normalised `box.failed()` to `Value.failed(box)`, as the
+	// argument in front of the declared ones. Binding it is what makes such a
+	// body inlinable at all: without it `xs.contains(2)` spliced in a `this`
+	// naming nothing, and `box.failed()` did the same.
+	args := call.Args
+	if f.RecvParam != nil {
+		switch {
+		case call.Receiver != nil:
+			subs[f.RecvParam] = call.Receiver
+		case len(args) == len(f.Params)+1:
+			subs[f.RecvParam] = args[0].Value
+			args = args[1:]
+		default:
+			return nil
+		}
+	}
 	for i, p := range f.Params {
-		if i < len(call.Args) {
-			subs[p] = call.Args[i].Value
+		if i < len(args) {
+			subs[p] = args[i].Value
 		} else if p.Default != nil {
 			subs[p] = p.Default
 		} else {

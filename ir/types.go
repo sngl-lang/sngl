@@ -650,8 +650,26 @@ func IsRemoteFailureStruct(t *Type) bool {
 	return ok && sd.Name == "Failure" && sd.Pkg == remotePkg
 }
 
-// remotePkg is sngl:remote, whose Failure a backend maps to its own runtime.
-const remotePkg = "sngl:remote"
+// IsRemoteHTTPResultStruct reports whether t is sngl:remote/http's Result.
+//
+// Matched the same way and for the same reason as Failure above: the runtime
+// that performs the request is what defines the value a request answers with,
+// so generated code spells that type rather than declaring one of its own that
+// the transport could not return.
+func IsRemoteHTTPResultStruct(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Result" && sd.Pkg == remoteHTTPPkg
+}
+
+// remotePkg is sngl:remote, whose Failure a backend maps to its own runtime;
+// remoteHTTPPkg is sngl:remote/http, whose Result it maps the same way.
+const (
+	remotePkg     = "sngl:remote"
+	remoteHTTPPkg = "sngl:remote/http"
+)
 
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.

@@ -3335,7 +3335,12 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	if fn.AST != nil && fn.AST.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.Receiver, fn.RecvTypeParams)); thisType != nil {
-			c.declare(funcDeclPos(fn), &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true})
+			recv := &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
+			c.declare(funcDeclPos(fn), recv)
+			// Kept on the declaration as well as in the scope: the body names
+			// it, so whoever replaces the body's parameters has to know which
+			// symbol the receiver is.
+			fn.RecvParam = recv
 		}
 	}
 

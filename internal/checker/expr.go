@@ -1419,20 +1419,38 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	return false
 }
 
-// hasNoLegitimateFields reports whether a scalar primitive type cannot have
-// any selector fields. Used to surface "no field X on type Y" diagnostics that
-// would otherwise silently degrade to TypDyn. Kept conservative: only the
-// pure-scalar primitives (int/float/bool) qualify because every other type
-// kind in the language has at least one legitimate field-style accessor
-// (color.r, list.length, struct fields, component vars/props, enum
-// members, etc.) or carries no shape information at all (dyn, generic
-// params, anonymous structs).
+// methodNamed reports whether the type declares a method of this name, which
+// is what a field read of a type with no fields usually is: the call left off.
+func methodNamed(t *ir.Type, name string) bool {
+	if t == nil {
+		return false
+	}
+	decl, ok := t.Decl.(*ir.StructDef)
+	if !ok {
+		return false
+	}
+	_, found := decl.Methods[name]
+	return found
+}
+
+// hasNoLegitimateFields reports whether a type cannot have any selector
+// fields. Used to surface "no field X on type Y" diagnostics that would
+// otherwise silently degrade to TypDyn. Kept conservative: a type qualifies
+// only when it has no field-style accessor at all, which rules out most kinds
+// (color.r, list.length, struct fields, component vars/props, enum members)
+// and everything carrying no shape information (dyn, generic params, anonymous
+// structs).
+//
+// remote.Value is one: it declares no fields and reaches its three facts
+// through methods alone, so `box.value` is `box.value()` with the call left
+// off — which degraded to dyn, passed every prop it was handed, and reached a
+// backend as a field read of a struct that has none.
 func hasNoLegitimateFields(t *ir.Type) bool {
 	if t == nil {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeRemote:
 		return true
 	}
 	return false
@@ -1654,7 +1672,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
 		if hasNoLegitimateFields(operand) {
-			c.error(x.Pos, "no field %q on type %s", x.Field, operand)
+			if methodNamed(operand, x.Field) {
+				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
+			} else {
+				c.error(x.Pos, "no field %q on type %s", x.Field, operand)
+			}
 		}
 	}
 

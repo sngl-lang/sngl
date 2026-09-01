@@ -13,6 +13,10 @@ const (
 	remoteImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/remote"
 	remoteGoType     = "remote.Value"
 	remoteFailureGo  = "remote.Failure"
+
+	// The transport behind sngl:remote/http, and the value it answers with.
+	remoteHTTPImportPath = remoteImportPath + "/http"
+	remoteHTTPResultGo   = "http.Response"
 )
 
 // init registers the Go emitters for sngl:remote.

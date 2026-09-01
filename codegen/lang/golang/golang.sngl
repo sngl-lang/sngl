@@ -27,9 +27,19 @@ struct Options {
 // #[foreign(..., native)] in the language it is about, which is where a Go path
 // and a Go identifier belong — and which a package can now use on its own
 // declarations, since a mark resolves through the scope like any other name.
-func native(path string, name string) ir.Macro
+func native(path string, name string, flags list<NativeFlag> = []) ir.Macro
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get")]
+// What a Go declaration's shape says beyond its name.
+//
+// `fails` says the function returns `(T, error)` where the SNGL declaration
+// answers T alone — the shape half of Go's standard library is written in, and
+// the one the Go importer reads off a signature it can see. A declaration named
+// here has no signature to read, so the mark is where it is said.
+//
+// It describes a call, so a struct refuses it.
+enum NativeFlag { fails }
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result
 
 // What sngl:remote/http declares and leaves to each target. An override rather
