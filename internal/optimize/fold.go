@@ -49,6 +49,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// storage may be mutated through aliases, and `&literal` is not a
 		// valid emission. Leave the operand untouched so the codegen still
 		// sees the original lvalue identifier.
+		if x.Op == ast.UnaryDeref && !isRef(x.Operand) {
+			// A plain T that stood in for a ref<T> parameter: the coercion
+			// leaves the value as it is, so what the body wrote as `*p` is now
+			// a deref of something that was never a reference. Reading it is
+			// the value itself.
+			return foldExpr(x.Operand, ctx)
+		}
 		if x.Op == ast.UnaryAddr || x.Op == ast.UnaryDeref {
 			return e
 		}
@@ -338,4 +345,15 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 		text = strconv.FormatInt(int64(amount), 10)
 	}
 	return &ir.Literal{Type: unit.Type, Value: text + unit.Suffix, Suffix: unit.Suffix}
+}
+
+// isRef reports whether e denotes a reference. An expression with no type is
+// not judgeable and counts as one, so an unrelated gap in type information
+// cannot make a real deref disappear.
+func isRef(e ir.Expr) bool {
+	if e == nil {
+		return true
+	}
+	t := e.ExprType()
+	return t == nil || t.Kind == ir.TypeRef
 }

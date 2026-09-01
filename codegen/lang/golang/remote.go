@@ -84,7 +84,7 @@ func remoteFetchedGo(args []ir.Expr) string {
 	return IRTypeToGo(t)
 }
 
-// emitRemoteQuery renders the read-triggered lookup a #[query] body became.
+// emitRemoteQuery renders the read-triggered lookup `remote.query` is.
 //
 // The thunk the lowering built answers T, while the runtime wants (T, error):
 // a fetch that fails does so by returning a Failure, and SNGL has no second

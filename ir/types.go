@@ -612,7 +612,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	// where this differs from option<T> just above. An option is "maybe a T", so
 	// promoting one loses nothing; a Value carries fetch state that no plain
 	// value implies, and a silent promotion would invent a settled box wherever
-	// a type happened to line up. #[query] constructs a box that fetches, and
+	// a type happened to line up. remote.query constructs a box that fetches, and
 	// remote.of / failedWith / pending construct the three states directly.
 	return false
 }

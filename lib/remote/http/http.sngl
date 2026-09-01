@@ -1,8 +1,9 @@
 // HTTP as a data source: a request whose answer is a `remote.Value`.
 //
-// `fetch` is a query, so it is keyed by its url — one box per url, started on
-// first read, shared by every part of the program asking for the same one, and
-// re-fetched when the url an expression computes changes.
+// `fetch` is keyed by its url — one box per url, started on first read, and
+// shared by every part of the program asking for the same one. Hand it `&url`
+// rather than `url` and the box follows that state instead of the string it
+// held at the time.
 //
 // The transport underneath it is `get`, which is declared here and implemented
 // per language. That is where a target says whether it can speak HTTP at all: a
@@ -32,12 +33,10 @@ func Result.ok(r Result) => r.status >= 200 && r.status < 300
 // Fetches url, answering the box every reader of that url shares.
 //
 // Keyed by the url alone, so two components asking for the same one make a
-// single request. A url built from state re-fetches when that state changes,
-// with no dependency declared anywhere: the expression that builds the url is
-// what reactivity already watches.
-#[remote.query]
-func fetch(url string) remote.Value<Result> {
-    return get(url)
+// single request. Pass `&url` for a box that follows the state the url is built
+// from, or the url itself for the one it names right now — see `remote.query`.
+func fetch(url ref<string>) remote.Value<Result> {
+    return remote.query("http.fetch", [*url], func() => get(*url))
 }
 
 // Performs one request. Declared here and implemented per target — see

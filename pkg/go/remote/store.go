@@ -126,7 +126,7 @@ func asFailure(err error) *Failure {
 // key encodes a query id and its arguments into the string a box is stored
 // under. Two calls with equal arguments must produce one key, so the encoding
 // walks values rather than hashing addresses — which is also why a query's
-// arguments have to be key-encodable, enforced where #[query] is applied.
+// arguments have to be key-encodable, enforced over the key the adapter built.
 //
 // Length-prefixed rather than delimited: ("a", "b") and ("a|b") are different
 // keys, and a separator alone cannot tell them apart.
@@ -174,7 +174,7 @@ func writeKey(b *strings.Builder, v any) {
 	default:
 		// %v is enough for the scalars a key can hold, and a struct of them
 		// prints field by field. A type a key cannot hold never reaches here:
-		// #[query] rejects it at the declaration.
+		// the Query lowering rejects it where the key is built.
 		fmt.Fprintf(b, "%v", x)
 	}
 }

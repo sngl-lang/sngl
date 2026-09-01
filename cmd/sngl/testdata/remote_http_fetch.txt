@@ -1,25 +1,40 @@
-# A query is a box the store holds, found by the declaration it belongs to and
-# the arguments it was asked with — so a *call* is what becomes the lookup, not
-# the declaration. sngl:remote/http's `fetch` is the case that forced it:
-# rewriting the declaration's body worked only for a query the program wrote
-# beside its own code, because nothing emits an imported package's functions.
-# The call was left standing against a name the output did not contain.
+# A query is a box the store holds, found by an id and the key it was asked
+# with, and `remote.query` is an ordinary intrinsic an adapter calls — there is
+# no query construct and no mark. So what reaches the output is whatever the
+# inliner carried to the call site, which is where the box has to be keyed.
+#
+# `&` is the caller's whole say in it. The url as a value keys one question
+# forever, so the box is bound once and stays where it was put; the url as a
+# cell is a question that follows its source, so the lookup moves to the read
+# and the ordinary dependency walk re-evaluates it.
 
-sngl generate --lang go --platform bubbletea --out out app.sngl
+sngl generate --lang go --platform bubbletea --out snap snap.sngl
+sngl generate --lang go --platform bubbletea --out live live.sngl
 
-# The lookup, keyed by what this call site passed.
-grep 'remote\.Query\[Result\]' out/model.go
-grep '\[\]any\{m\.url\}' out/model.go
-grep '"fetch"' out/model.go
+# Both are the same lookup, keyed by the same url, under the id the adapter
+# spelled — and inside the thunk, the transport the language implements, down
+# to the Go package that performs the request.
+grep 'remote\.Query\[Result\]' snap/model.go
+grep '"http\.fetch"' snap/model.go
+grep '\[\]string\{m\.url\}' snap/model.go
+grep 'http\.Get\(m\.url\)' snap/model.go
 
-# And inside the thunk, the transport the language implements — the query body,
-# through the override, down to the Go package that performs the request.
-grep 'http\.Get\(m\.url\)' out/model.go
+# The value: bound once, in the constructor. Changing the url after that is not
+# a new question, because the caller did not ask for one.
+grep 'm\.res = remote\.Query' snap/model.go
 
-# Nothing calls the query by name: it has no existence as a function here.
-! grep 'm\.fetch\(' out/model.go
+# The cell: not stored at all. A box bound once never re-keys however often its
+# url changes, so the lookup is what every read of `res` becomes — and a
+# re-evaluated lookup with a different key starts a fetch.
+! grep 'm\.res = remote\.Query' live/model.go
+! grep 'res ' live/model.go
+grep 'remote\.Query\[Result\]\(remote\.Default, "http\.fetch", \(\[\]any\)\(\[\]string\{m\.url\}\)' live/model.go
 
--- app.sngl --
+# Neither carries a ref: a pointer into a model the platform copies is not
+# something a backend can be handed.
+! grep '&m\.url' live/model.go
+
+-- snap.sngl --
 import . "sngl:ui"
 import . "sngl:app"
 import http "sngl:remote/http"
@@ -30,6 +45,25 @@ component main {
 
     window(title="fetch") {
         text(value=res.or(blank).body)
+        button(text="go", @click { url = "https://other/" })
+    }
+}
+
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")
+-- live.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+import http "sngl:remote/http"
+
+component main {
+    var url = "https://example.com/"
+    var res = http.fetch(&url)
+
+    window(title="fetch") {
+        text(value=res.or(blank).body)
+        button(text="go", @click { url = "https://other/" })
     }
 }
 

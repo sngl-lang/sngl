@@ -61,14 +61,6 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if f.Intrinsic != "" {
 		return nil
 	}
-	// A query is substituted at its call site too, by passQuery, and into
-	// something its body is only half of: the body becomes the thunk, and the
-	// arguments become the key beside it. Inlining the body here would leave the
-	// fetch where the box belongs -- `res = http.Get(url)` typed as the box that
-	// no longer exists.
-	if f.Query {
-		return nil
-	}
 	if len(f.TypeParams) > 0 {
 		return nil // skip generic functions
 	}
@@ -406,9 +398,11 @@ func effectFree(e ir.Expr) bool {
 				return ir.SkipAll
 			}
 		case *ir.Unary:
-			// &x aliases storage and *p reads through an alias: what either
-			// answers depends on when it is evaluated.
-			if n.Op == ast.UnaryAddr || n.Op == ast.UnaryDeref {
+			// *p reads through an alias, so what it answers depends on when it
+			// is evaluated. &x does not: every evaluation names the same cell,
+			// which is the whole reason a caller writes one -- and a query key
+			// mentions its ref twice, once to key on and once to fetch with.
+			if n.Op == ast.UnaryDeref {
 				free = false
 				return ir.SkipAll
 			}
@@ -473,10 +467,31 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		}
 	case *ir.Literal, *ir.ContextRead:
 		// No parameter references.
-	case *ir.Lambda, *ir.Closure:
-		// Lambda bodies are opaque to substitution (treated as opaque
-		// by cloneExpr too); their bodies are substituted when the
-		// enclosing func is inlined.
+	case *ir.Lambda:
+		// The lambda a body hands to something else closes over the
+		// parameters of the func being inlined -- an adapter returning
+		// `remote.query(..., func() => get(*url))` is the whole shape -- so
+		// leaving the body alone leaves those references pointing at a
+		// declaration the call site is replacing. cloneExpr gives each copy its
+		// own body, which is what makes rewriting it here safe.
+		if x.Func != nil {
+			_ = ir.RewriteExprs(x.Func.Block, func(e ir.Expr) (ir.Expr, error) {
+				id, isIdent := e.(*ir.Ident)
+				if !isIdent {
+					return e, nil
+				}
+				p, isParam := id.Sym.(*ir.Param)
+				if !isParam {
+					return e, nil
+				}
+				if rep, bound := subs[p]; bound {
+					return cloneExpr(rep), nil
+				}
+				return e, nil
+			})
+		}
+	case *ir.Closure:
+		// A closure's body is reached where passLambda declared it, not here.
 	default:
 		panic(fmt.Sprintf("substituteParams: unhandled expr %T", x))
 	}

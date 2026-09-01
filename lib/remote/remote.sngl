@@ -11,10 +11,9 @@ import . "sngl:internal/marks"
 //     if users.loading() { spinner() }
 //     for u = users.or([]) { row(user = u) }
 //
-// A fetched box comes from a `#[query]` function and nothing else; the three
-// constructors below make the settled, failed and pending states directly, for
-// an adapter that already has its answer and for a test that needs to render
-// one branch. A bare `T` is not a `Value<T>` and does not become one on its
+// A fetched box comes from `query` and nothing else; the three constructors
+// below make the settled, failed and pending states directly, for an adapter
+// that already has its answer and for a test that needs to render one branch. A bare `T` is not a `Value<T>` and does not become one on its
 // own — a `Value` carries fetch state that no plain value implies.
 #[builtin("remote")]
 struct Value<T> {}

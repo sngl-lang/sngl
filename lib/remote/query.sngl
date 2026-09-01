@@ -1,30 +1,38 @@
-// The mark that says a function's answer is fetched.
+import . "sngl:internal/marks"
 
-import ir "sngl:internal/ir"
-
-// Marks a function whose answer is fetched, keyed and cached.
+// Returns the box for `id` and `key`, starting `fetch` if no attempt has been
+// made for it.
 //
-// The function returns a `Value<T>` and its body is the fetch. The compiler
-// rewrites it to a lookup: one box per argument tuple, started on first read,
-// re-fetched when an argument changes, and shared by every part of the program
-// asking the same question. So two calls with equal arguments are one box and
-// one fetch, and a call whose arguments differ is a different box.
+// This is what a data adapter is written in terms of. `fetch` is the work, `key`
+// is what makes two questions the same question, and `id` names the key space so
+// two adapters keying on a string never collide — spell it for the declaration
+// it lives in, `"http.fetch"`.
 //
-// The mark exists because the return type alone cannot say this. A `Value<T>` is
-// a value like any other and a function may hand one back without any of the
-// above — a wrapper forwarding another query's answer, or one of the three
-// constructors. Marking the function is what separates "returns a box" from
-// "is a query", and an unmarked function returning a `Value` is the former:
-// well defined, and never silently half-lowered.
+// One box per (id, key), so two components asking the same thing get one box and
+// one request, and a call whose key differs is a different box. The fetch starts
+// on the first read rather than at construction: a key may be a loop variable or
+// any other derived value, so there is nothing to hang a start on but the read
+// itself.
 //
-// A query's arguments become its key, so each must be encodable as one. That
-// rules out a function, a component and another `Value`; scalars, strings,
-// enums, units and collections of those are all fine. The rule reaches the
-// arguments and not the fetched type — what comes *back* is never part of a key.
+// **A ref in the key is what makes the answer follow its source.** A key holds
+// values, and a value keys one question forever — so what an adapter takes, and
+// hands to `query` dereferenced, is the cell:
 //
-// Reactivity needs nothing declared. A prop reading `users(page)` mentions
-// `page`, so the ordinary dependency walk re-evaluates it when `page` changes;
-// the re-evaluation looks up a different key, and a key with no fetch behind it
-// starts one. That is why a key may be a loop variable or any other derived
-// value, none of which a program could have named in advance.
-func query() ir.Macro
+//     func fetch(url ref<string>) remote.Value<Result> {
+//         return remote.query("http.fetch", [*url], func() => get(*url))
+//     }
+//
+//     var a = http.fetch(url)    // the url as it is now, asked once
+//     var b = http.fetch(&url)   // the url as it becomes, re-asked
+//
+// `&` hands over the cell rather than its contents, and the compiler reads the
+// key to learn what the answer depends on: the box is re-derived when any of
+// them is written, which looks up a different key, which starts a fetch. The
+// caller chooses, and the two spellings differ by one character.
+//
+// `readonly`, not `mutates`. It depends on host state and must never fold at
+// build time, but a second call with the same key returns the same box and
+// starts nothing — which is the only footing on which a call evaluated during
+// render is acceptable at all.
+#[intrinsic("RemoteQuery", readonly)]
+func query<T>(id string, key list<dyn>, fetch func() T) Value<T>

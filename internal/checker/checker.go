@@ -199,6 +199,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// which pass2 has finished resolving, and may name anything the program
 	// declares.
 	c.checkPendingFuncOverrides()
+	c.verifyRefCoercions(c.pkg)
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
@@ -238,6 +239,11 @@ type checker struct {
 	diags  []ir.Diagnostic
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
+
+	// refCoercions are the call sites that handed a plain T to a ref<T>
+	// parameter; see verifyRefCoercions for why the callee is held to its half
+	// of the bargain only once every body has been checked.
+	refCoercions []refCoercion
 
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
@@ -3296,21 +3302,6 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.funcDepth++
 	defer func() { c.funcDepth-- }()
 
-	// A #[query] body answers the fetched type, not the box: the box is what the
-	// runtime puts the answer in, and the lowering makes this body the thunk it
-	// calls. So the return type the body is checked against is T, while the
-	// declaration keeps answering remote.Value<T> for its callers.
-	//
-	// This is the one place a T stands where a Value<T> is written, and the mark
-	// is what licenses it. The general implicit promotion was withdrawn because
-	// it would invent a settled box wherever two types lined up; here the author
-	// has said this function fetches, which is precisely the claim that makes the
-	// body's answer the unboxed value.
-	if fn.Query && fn.Return != nil && fn.Return.Kind == ir.TypeRemote && len(fn.Return.Elems) == 1 {
-		declared := fn.Return
-		fn.Return = declared.Elems[0]
-		defer func() { fn.Return = declared }()
-	}
 
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}

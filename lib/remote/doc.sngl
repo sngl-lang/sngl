@@ -26,17 +26,21 @@
 // makes that case unexpressible, which is why there is no such enum, and why
 // `refresh()` keeps the value it has until new data replaces it.
 //
-// A box that fetches comes from a `#[query]` function and from nothing else:
+// A box that fetches comes from `query` and from nothing else:
 //
-//     #[query]
-//     func users(page int) remote.Value<list<User>> {
-//         return api.listUsers(page)
+//     func users(page ref<int>) remote.Value<list<User>> {
+//         return remote.query("users", [*page], func() => api.listUsers(*page))
 //     }
 //
-// The mark is what says this function's answer is keyed and cached — one box per
-// argument tuple, re-fetched when an argument changes, shared by every part of
-// the program asking the same question. An *unmarked* function returning a
-// `Value` is an ordinary function that happens to return one.
+// It is an ordinary call, not a construct: `query` says what makes two questions
+// the same question, and the box is one per key — shared by every part of the
+// program asking it, started on first read, re-fetched when the key changes. A
+// function that merely returns a `Value` returns one; it is `query` that makes
+// the box.
+//
+// Whether the answer follows its source is the *caller's* to say, because the
+// caller is the one who knows: `users(page)` asks about the page it named, and
+// `users(&page)` asks about whatever that page becomes. See `query`.
 //
 // A bare `T` is not a `Value<T>` and does not become one on its own. This is
 // where the type parts company with `option<T>`, which promotes in one

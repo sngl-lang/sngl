@@ -332,12 +332,6 @@ type Func struct {
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
 	Stdlib bool
-	// Query says #[query] marked this function: its answer is fetched, keyed by
-	// its arguments and cached, and the NoAsyncReactive lowering rewrites the
-	// body to a RemoteQuery lookup. The mark rather than the return type carries
-	// it, because a function may hand back a remote.Value without being a query
-	// — a wrapper, or one of the three constructors.
-	Query bool
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.

@@ -21,7 +21,6 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
-	{"remote", "query"}:             markQuery,
 	{"language/go", "native"}:       markGoNative,
 }
 
@@ -59,81 +58,6 @@ func markGoNative(m *mark) error {
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
-}
-
-// markQuery implements #[query], which says a function's answer is fetched:
-// keyed by its arguments, cached, and rewritten by the NoAsyncReactive lowering
-// into a RemoteQuery lookup.
-//
-// What it checks here is only what a declaration can be held to at registration
-// — that it is a function, that it answers a remote.Value, and that every
-// argument can be part of a key. Whether the body can actually be lowered is the
-// lowering's question, asked where the rewrite happens.
-func markQuery(m *mark) error {
-	fn, ok := m.sym.(*ir.Func)
-	if !ok {
-		return fmt.Errorf("#[query] cannot mark %s; only a function is a query", ast.DeclFormName(m.decl))
-	}
-	if fn.Return == nil || fn.Return.Kind != ir.TypeRemote {
-		// Naming the return type it does have: the usual mistake is marking the
-		// function that performs the fetch rather than the one that boxes it.
-		return fmt.Errorf("#[query] on %q: a query must answer a remote.Value<T>, not %s", fn.Name, fn.Return)
-	}
-	for _, p := range fn.Params {
-		if p == nil || keyEncodable(p.Type) {
-			continue
-		}
-		return fmt.Errorf("#[query] on %q: argument %q is a %s, which cannot be part of a key; a query is keyed by its arguments, so each has to be one a key can hold",
-			fn.Name, p.Name, p.Type)
-	}
-	// A query is not pure, and saying so here is what keeps it whole. The
-	// optimizer inlines a pure function, and a query inlined into its caller is
-	// its body — one fetch per call site, no box, no key, and nothing left for
-	// the lowering to rewrite. Readonly is also the truth: reading a box depends
-	// on host state, which is why RemoteQuery itself carries it.
-	fn.Purity = ir.PurityReadonly
-	fn.Query = true
-	return nil
-}
-
-// keyEncodable reports whether a value of t can form part of a query's key.
-//
-// A key has to be comparable for one box to be found again, and — once the html
-// route mode carries one in a URL — writable as text and readable back into the
-// declared parameter types. Both rule out the same things: a function, a
-// component, an iterator, and another Value, none of which has an identity a
-// second process could reconstruct.
-//
-// Deliberately laxer than isComparable, which map keys use: a list is not a
-// usable map key but is perfectly good in a key tuple, because the encoding
-// walks it rather than hashing an address.
-func keyEncodable(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeEnum, ir.TypeUnit, ir.TypeDyn:
-		return true
-	case ir.TypeList, ir.TypeOption:
-		return len(t.Elems) == 1 && keyEncodable(t.Elems[0])
-	case ir.TypeMap:
-		return len(t.Elems) == 2 && keyEncodable(t.Elems[0]) && keyEncodable(t.Elems[1])
-	case ir.TypeStruct:
-		// A named struct is walked field by field. An anonymous one has no
-		// declaration to walk, so it is not one a key can hold.
-		sd, ok := t.Decl.(*ir.StructDef)
-		if !ok {
-			return false
-		}
-		for _, f := range sd.Fields {
-			if !keyEncodable(f.Type) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 // markBuiltin implements #[builtin("kind")], the mark that names the IR

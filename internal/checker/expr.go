@@ -2308,6 +2308,10 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 			expr = adapted
 		} else if callExpr, _ := c.implicitCall(value, actual, p.Type); callExpr != nil {
 			expr = c.checkExpr(callExpr)
+		} else if c.coerceValueToRef(actual, p, *value.ExprPos()) {
+			// The value stands as it is, and is not wrapped in a conversion to
+			// ref<T>: see refcoerce.go for why the argument keeps its own type.
+			return expr
 		} else {
 			c.error(*value.ExprPos(), "cannot pass %s as %s", actual, p.Type)
 		}
