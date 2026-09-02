@@ -61,6 +61,16 @@ func StmtPos(s Stmt) ast.Pos {
 		if n.AST != nil {
 			return n.AST.Pos
 		}
+	case *NodeInst:
+		// The one statement whose AST field is the interface rather than a
+		// concrete node, which is why it was missing: a diagnostic about a
+		// node -- an effect in the wrong scope, a prop a backend cannot emit
+		// -- had nowhere to say where the node was written.
+		if n.AST != nil {
+			if p := n.AST.StmtPos(); p != nil {
+				return *p
+			}
+		}
 	case *If:
 		if n.AST != nil {
 			return n.AST.Pos
