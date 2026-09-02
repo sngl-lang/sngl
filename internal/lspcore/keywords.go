@@ -13,7 +13,7 @@ var keywordDocs = map[string]string{
 	"window":    "Declares a top-level window — the entry point of a UI.",
 	"if":        "Conditional statement.",
 	"else":      "Alternative branch of an if statement.",
-	"for":       "Iteration over a list, map, or iterator.",
+	"for":       "Iteration over a list, map, or iterator. `for var x = xs` declares the element; without `var` the loop binds nothing.",
 	"return":    "Returns a value from a function.",
 	"import":    "Imports a module.",
 	"slot":      "Declares or populates a named slot — a region of UI the caller supplies.",

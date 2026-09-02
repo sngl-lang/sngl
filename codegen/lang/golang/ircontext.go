@@ -388,8 +388,34 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	// A loop that declared no variable still needs a counter where Go has no
+	// discard for one: `for range xs` covers the element and map forms, but a
+	// counted loop counts, so it names a variable the condition reads -- which
+	// is also what keeps Go from calling it unused.
+	key := n.Key
+	if key == "" {
+		key = "__i"
+	}
 	switch n.IterKind {
+	case ir.IterCounted:
+		c := n.Counted
+		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
+		switch {
+		case c.Step == 1:
+			step = "++"
+		case c.Step < 0:
+			cmp, step = ">", fmt.Sprintf(" -= %d", -c.Step)
+		}
+		// The end bound is bound to a temp in the init clause: it is an
+		// arbitrary expression and the condition reads it once per iteration,
+		// where SNGL evaluates the iterable once. A nested counted loop
+		// declares its own __end in its own scope.
+		return fmt.Sprintf("for %s, __end := %s, %s; %s %s __end; %s%s {",
+			key, gc.EvalExpr(c.Start), gc.EvalExpr(c.End), key, cmp, key, step)
 	case ir.IterMapEntries:
+		if n.Key == "" {
+			return fmt.Sprintf("for range %s {", iter)
+		}
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
@@ -398,6 +424,9 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	case ir.IterIndexed:
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
+		if n.Key == "" {
+			return fmt.Sprintf("for range %s {", iter)
+		}
 		return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 	}
 }
@@ -443,7 +472,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 		return "", false
 	}
 	// And it has to *be* the receiver. A binding that merely shares its name
-	// shadows it -- `for m = entry().typeDoc.methods` in a Model whose receiver
+	// shadows it -- `for var m = entry().typeDoc.methods` in a Model whose receiver
 	// is `m` -- and its fields are its own type's, exported like any other Go
 	// struct's, rather than the Model's unexported state.
 	switch sym := id.Sym.(type) {
@@ -1373,7 +1402,16 @@ func IRTypeToGo(t *ir.Type) string {
 		// Rendered empty so a caller building `func name(params) <T>` gets
 		// `func name(params)`.
 		return ""
-	case ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
+	case ir.TypeIter:
+		// A sequence a program holds is the numbers themselves -- what
+		// sngl:seq's intrinsics materialise -- so an iter<T> is spelled as the
+		// slice a `range` over it expects. The lazy form exists only in a loop
+		// head, where ForHead emits a counting loop and no value is built.
+		if len(t.Elems) == 1 {
+			return "[]" + IRTypeToGo(t.Elems[0])
+		}
+		return "[]any"
+	case ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// These have no first-class Go representation, and fall back to `any`.
 		// Listed explicitly so the default arm catches a new TypeKind.
 		return "any"

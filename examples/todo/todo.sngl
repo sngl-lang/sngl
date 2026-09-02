@@ -33,7 +33,7 @@ component main {
             button(text="Add", @click { todos.push(Todo{text=newTodo}); newTodo = "" })
         }
         vbox(style={gap=4}) {
-            for index, item = todos {
+            for var index, item = todos {
                 checkbox(checked=item.done, label=item.text, @change { todos[index].done!! })
             }
         }

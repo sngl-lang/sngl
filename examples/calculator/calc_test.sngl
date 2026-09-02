@@ -76,7 +76,7 @@ func testBackspace(t Test) {
 
 func testEntryIsCappedAtTheDisplayWidth(t Test) {
     var s = calc.Calc{}
-    for d = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "1", "2", "3"] {
+    for var d = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "1", "2", "3"] {
         s = s.digit(d)
     }
     t.assert(s.digits() == calc.WIDTH)
@@ -166,8 +166,8 @@ func testAsciiRows(t Test) {
 
 func testKeypadCoversEveryKey(t Test) {
     var labels = ""
-    for row = keypad.rows() {
-        for k = row {
+    for var row = keypad.rows() {
+        for var k = row {
             labels = labels + k.label + " "
         }
     }

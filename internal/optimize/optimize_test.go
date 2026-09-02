@@ -339,7 +339,7 @@ func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
 component Row(entries list<string> = []) {
-	for x = entries {
+	for var x = entries {
 		text(value=x)
 	}
 }
@@ -538,7 +538,7 @@ import . "sngl:ui"
 
 const tags = ["x", "y"]
 component List() {
-	for t = tags {
+	for var t = tags {
 		text(value=t)
 	}
 }

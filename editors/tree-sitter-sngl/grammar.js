@@ -190,12 +190,18 @@ module.exports = grammar({
       optional(seq("else", $.statement_block))
     ),
 
+    // The declaration is optional: without `var` the loop binds nothing and
+    // the head is the iterable alone (`for seq.count(3) { }`).
     for_node: ($) =>
       seq(
       "for",
-      $.identifier,
-      optional(seq(",", $.identifier)),
-      "=",
+      optional(seq(
+        "var",
+        optional("&"),
+        $.identifier,
+        optional(seq(",", optional("&"), $.identifier)),
+        "="
+      )),
       $._expression,
       $.statement_block,
       optional(seq("else", $.statement_block))

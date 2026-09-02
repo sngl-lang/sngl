@@ -760,7 +760,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 				Props:     []ir.Arg{{Name: "name", Value: &ir.Literal{Type: ir.TypString, Value: "x"}}},
 			}}
 		} else {
-			// main { for name = ["x"] { text(value = purepkg.BoomWith(name)) } }
+			// main { for var name = ["x"] { text(value = purepkg.BoomWith(name)) } }
 			loop := &ir.LoopVar{Name: "name", Type: ir.TypString}
 			body = []ir.Stmt{&ir.For{
 				Key:      "name",

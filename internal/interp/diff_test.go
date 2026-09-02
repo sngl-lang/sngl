@@ -55,7 +55,7 @@ component main {
         if shown {
             text #extra(value="now here")
         }
-        for it = items {
+        for var it = items {
             text(value=it)
         }
     }
@@ -165,7 +165,7 @@ const keyedSrc = `import . "sngl:ui"
 component main {
     var items = ["a", "b", "c"]
     vbox {
-        for it = items {
+        for var it = items {
             text(value=it, key=it)
         }
     }
@@ -251,7 +251,7 @@ func TestADuplicateKeyDoesNotDropANode(t *testing.T) {
 component main {
     var items = ["a", "a", "b"]
     vbox {
-        for it = items {
+        for var it = items {
             text(value=it, key=it)
         }
     }

@@ -872,19 +872,65 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = ["a", "b", "c"]
-for item = items {
+for var item = items {
     text(value=item)
 }
-for item, idx = items {
+for var item, idx = items {
     text(value="{idx}: {item}", key=idx)
 }
 ```
 
 Use `key` for stable identity across re-renders when the list changes.
 
+`var` is what makes the head a declaration. Without it the loop binds nothing
+and what follows `for` is the iterable itself, which is the form to reach for
+when the body never names the element:
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:dialog"
+import . "sngl:test"
+import "sngl:seq"
+for seq.count(3) {
+    text(value="•")
+}
+```
+
+### Counting loops
+
+There is nothing to iterate when the numbers are the point, so `sngl:seq`
+produces them: `count(n)` runs a loop n times, `range(start, end)` counts
+between two bounds, and `step(start, end, by)` counts by something other than
+one — negative to count down. The end bound is exclusive in all three.
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:dialog"
+import . "sngl:test"
+import "sngl:seq"
+var n = 4
+for var i = seq.range(1, n) {
+    text(value="row {i}")
+}
+for var d = seq.step(10, 0, -2) {
+    text(value="{d}")
+}
+```
+
+A sequence written directly in a loop head becomes the host's own counting
+loop and allocates nothing. Assigned to a variable it is an ordinary
+`iter<int>`, and the numbers are built — so both spellings work everywhere,
+and only the first is free.
+
 ### for...else
 
-The `else` block renders when the list is empty. It works with both `for item = list` and `for item, index = list`:
+The `else` block renders when the list is empty. It works with both `for var item = list` and `for var item, index = list`:
 
 <!-- SNGL-component -->
 
@@ -894,7 +940,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items list<string> = []
-for item = items {
+for var item = items {
     text(value=item)
 } else {
     text(value="No items yet")
@@ -1232,7 +1278,7 @@ component main {
                 newTodo = ""
             })
         }
-        for idx, todo = todos {
+        for var idx, todo = todos {
             hbox(key=idx, style={gap=8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
@@ -1330,7 +1376,7 @@ component main {
     func activeCount() => active().length()
     vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")
-        for idx, todo = todos {
+        for var idx, todo = todos {
             checkbox(key=idx, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }

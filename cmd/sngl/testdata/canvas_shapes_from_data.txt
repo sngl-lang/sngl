@@ -12,7 +12,7 @@
 
 sngl generate --platform html --lang none -o out app.sngl
 
-# The backing rect, then the loop: `for c = columns()` unrolls to two cells,
+# The backing rect, then the loop: `for var c = columns()` unrolls to two cells,
 # and each expands to the three bars its body declares. The second cell's third
 # bar sits at 30 + 16, which exists only if all of that happened.
 grep 'ctx.fillRect\(0, 0, 60, 10\)' out/index.html
@@ -70,7 +70,7 @@ component Panel(lit = false) {
         } else {
             draw.canvas(width=60px, height=10px) {
                 draw.rect(x=0.0, y=0.0, w=60.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
-                for c = columns() {
+                for var c = columns() {
                     Cell(on=lit, x=c)
                 }
             }

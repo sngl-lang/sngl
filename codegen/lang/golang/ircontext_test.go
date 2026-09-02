@@ -106,7 +106,7 @@ func TestGoIRContext_RawFieldAccess_NonRawUnaffected(t *testing.T) {
 
 // A Model field read is unexported, so the emitter has to know the receiver
 // when it sees one -- and knowing it by name alone is not knowing it. A loop
-// variable may shadow it (`for m = entry().typeDoc.methods` under a receiver
+// variable may shadow it (`for var m = entry().typeDoc.methods` under a receiver
 // called `m`), and the fields it then reads belong to its own type, exported
 // like any other Go struct's.
 func TestGoIRContext_ShadowedReceiverIsNotTheModel(t *testing.T) {

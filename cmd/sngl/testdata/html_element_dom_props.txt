@@ -42,7 +42,7 @@ component main {
             html.input(readonly = locked)
         }
         html.element(tag = "my-widget", role = "main")
-        for r = rows {
+        for var r = rows {
             html.li(textContent = r, hidden = shown)
         }
     }

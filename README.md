@@ -34,7 +34,7 @@ component main {
             })
         }
         vbox(style={gap = 4}) {
-            for index, item = todos {
+            for var index, item = todos {
                 checkbox(checked=item.done, key=index, label=item.text, @change { todos[index].done!! })
             }
         }

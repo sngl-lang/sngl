@@ -7,7 +7,7 @@ component keyed {
     var items = ["a", "b"]
 
     vbox {
-        for item = items {
+        for var item = items {
             text #row(value=item, key=item)
             button(text=item, key=item, @click {})
             vbox(key=item) {

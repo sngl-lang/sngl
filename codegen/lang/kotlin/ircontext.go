@@ -268,21 +268,40 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
+	// A loop that declared no variable still binds one: Kotlin's `_` is for
+	// destructuring, and an unused loop variable is only a warning.
+	key, valueVar := n.Key, n.Value
+	if key == "" {
+		key, valueVar = "__x", "__v"
+	}
 	switch n.IterKind {
+	case ir.IterCounted:
+		// A Kotlin range evaluates its bounds once, so there is no temp to
+		// bind. `downTo end + 1` is how a descending range keeps the end
+		// bound exclusive, which is what sngl:seq documents.
+		c := n.Counted
+		start, end := kc.EvalExpr(c.Start), kc.EvalExpr(c.End)
+		switch {
+		case c.Step == 1:
+			return fmt.Sprintf("for (%s in %s until %s) {", key, start, end)
+		case c.Step > 0:
+			return fmt.Sprintf("for (%s in (%s until %s) step %d) {", key, start, end, c.Step)
+		default:
+			return fmt.Sprintf("for (%s in (%s downTo %s + 1) step %d) {", key, start, end, -c.Step)
+		}
 	case ir.IterMapEntries:
 		// Map iteration: for ((k, v) in m) { ... }
-		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		return fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iter)
+		return fmt.Sprintf("for ((%s, %s) in %s) {", key, valueVar, iter)
 	case ir.IterIndexed:
 		// Two-var list/iter: Key is the index, Value the element.
 		// withIndex() yields (index, element), matching that order.
-		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", n.Key, n.Value, iter)
+		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", key, valueVar, iter)
 	default:
 		// Single-var list / iter<T>: for (x in list) { ... }
-		return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
+		return fmt.Sprintf("for (%s in %s) {", key, iter)
 	}
 }
 func (kc *KtIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
@@ -847,7 +866,14 @@ func IRTypeToKt(t *ir.Type) string {
 		// dyn holds anything including null (recursive structs like TreeNode
 		// use `dyn = null` for absent children).
 		return "Any?"
-	case ir.TypeVoid, ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam,
+	case ir.TypeIter:
+		// As in Go: a held iter<T> is the materialised sequence, and the lazy
+		// form exists only in a loop head that ForHead turns into a range.
+		if len(t.Elems) == 1 {
+			return "List<" + IRTypeToKt(t.Elems[0]) + ">"
+		}
+		return "List<Any>"
+	case ir.TypeVoid, ir.TypeComponent, ir.TypeTypeParam,
 		ir.TypeRef, ir.TypeNative, ir.TypeInvalid:
 		// No first-class Kotlin spelling in emitted code. "Any" is what the
 		// former default arm produced for each of these, so listing them

@@ -432,7 +432,12 @@ StatementPrimary =
 
 IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 
-ForNode = kw_for [ amp ] ident [ comma [ amp ] ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
+# A loop that names its element declares a variable, and says so with the
+# keyword every other declaration uses. That is also what keeps the head
+# LL(1): after `for`, kw_var opens a declaration and anything else opens the
+# iterable, so `for seq.count(3) { }` -- a loop that binds nothing -- needs no
+# lookahead to tell from `for var i = xs { }`.
+ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | CondExpr ) StmtBlock [ kw_else StmtBlock ] .
 
 # `slot` in statement position. Bare, it is the anonymous slot's insertion point
 # — the one place the keyword means "render here". Named, it populates a slot of

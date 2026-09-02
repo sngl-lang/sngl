@@ -228,3 +228,25 @@ func asUint64(v any) (uint64, bool) {
 	}
 	return 0, false
 }
+
+// Sequence is what sngl:seq's count/range/step produce: start, start+by, …
+// stopping short of end -- below it when by is positive, above it when by is
+// negative. A by of 0 yields nothing rather than never terminating.
+//
+// The elements are `any` because that is how both callers carry a list value:
+// the interpreter builds one for an iter<int> a program holds, and the
+// constant folder unrolls a loop over one.
+func Sequence(start, end, by int) []any {
+	out := []any{}
+	switch {
+	case by > 0:
+		for i := start; i < end; i += by {
+			out = append(out, i)
+		}
+	case by < 0:
+		for i := start; i > end; i += by {
+			out = append(out, i)
+		}
+	}
+	return out
+}

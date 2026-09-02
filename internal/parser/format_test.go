@@ -175,14 +175,14 @@ func TestFormatIfElse(t *testing.T) {
 
 func TestFormatFor(t *testing.T) {
 	assertFormat(t,
-		"for item = items {\n    text(value=item)\n}",
-		"for item = items {\n    text(value=item)\n}")
+		"for var item = items {\n    text(value=item)\n}",
+		"for var item = items {\n    text(value=item)\n}")
 }
 
 func TestFormatForKeyValue(t *testing.T) {
 	assertFormat(t,
-		"for i, item = items {\n    text(value=item)\n}",
-		"for i, item = items {\n    text(value=item)\n}")
+		"for var i, item = items {\n    text(value=item)\n}",
+		"for var i, item = items {\n    text(value=item)\n}")
 }
 
 func TestFormatExpressions(t *testing.T) {

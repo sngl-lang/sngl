@@ -17,7 +17,7 @@ func test() {
     y = 42
 
     var items list<int>
-    for item = items {
+    for var item = items {
     }
 
     if true {

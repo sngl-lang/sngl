@@ -1,6 +1,8 @@
 package parser_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -257,7 +259,7 @@ func TestParseIfStmt(t *testing.T) {
 
 func TestParseForStmt(t *testing.T) {
 	doc := mustParse(t, `func f {
-		for i = items {
+		for var i = items {
 			Text(i)
 		}
 	}`)
@@ -273,7 +275,7 @@ func TestParseForStmt(t *testing.T) {
 
 func TestParseForStmtTwoVars(t *testing.T) {
 	doc := mustParse(t, `func f {
-		for k, v = map {
+		for var k, v = map {
 			Text(v)
 		}
 	}`)
@@ -947,15 +949,41 @@ func TestFormatMarkedDecl(t *testing.T) {
 	}
 }
 
+// Every fixture parses, and one carrying an ERROR(parse) directive fails the
+// way the directive says. The directive used to be a skip here and in every
+// other testdata consumer, so a fixture asserting a parse message asserted
+// nothing -- the message could change or the error move to another line and
+// no test noticed.
 func TestParseTestdata(t *testing.T) {
 	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
-			if s.ExpectsError("parse") {
-				t.Skip("has ERROR(parse) directive")
-			}
 			_, err := Parse(s.Filename, []byte(s.Source))
-			if err != nil {
-				t.Errorf("parse failed: %v", err)
+			expected := s.PhaseErrors("parse")
+			if len(expected) == 0 {
+				if err != nil {
+					t.Errorf("parse failed: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected a parse error, got none")
+			}
+			// The errors arrive joined into one message, one per line, each
+			// prefixed "file:line:col: ".
+			lines := strings.Split(err.Error(), "\n")
+			for _, exp := range expected {
+				prefix := fmt.Sprintf("%s:%d:", s.Filename, exp.Pos())
+				found := false
+				for _, got := range lines {
+					if strings.HasPrefix(got, prefix) && strings.Contains(got, exp.Substring) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("line %d: expected a parse error containing %q, got:\n%v",
+						exp.Pos(), exp.Substring, err)
+				}
 			}
 		})
 	}

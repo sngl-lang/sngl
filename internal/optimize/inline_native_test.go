@@ -85,7 +85,7 @@ func TestExpandedNativeCallReachesTheBatch(t *testing.T) {
 		t.Skip("could not find project root")
 	}
 
-	// for name = ["a", "b"] { text(value = purepkg.Greet(name)) }
+	// for var name = ["a", "b"] { text(value = purepkg.Greet(name)) }
 	loop := &ir.LoopVar{Name: "name", Type: ir.TypString}
 	fs := &ir.For{
 		Key:      "name",

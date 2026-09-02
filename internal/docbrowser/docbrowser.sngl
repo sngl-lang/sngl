@@ -26,7 +26,7 @@ component main {
         window #home(title="SNGL Docs", href="/") {
             hbox {
                 docui.Sidebar(homeHref="/") {
-                    for p = lookup.Packages() {
+                    for var p = lookup.Packages() {
                         docui.NavItem(text=p.title, href="/p/" + p.path)
                     }
                 }
@@ -41,7 +41,7 @@ component main {
         window #pkg(title="Package — SNGL Docs", href="/p/{pkg}") {
             hbox {
                 docui.Sidebar(homeHref="/") {
-                    for p = lookup.Packages() {
+                    for var p = lookup.Packages() {
                         docui.NavItem(text=p.title, href="/p/" + p.path,
                                       active=p.path == pkg)
                     }
@@ -55,7 +55,7 @@ component main {
         window #decl(title="Decl — SNGL Docs", href="/p/{pkg}/{name}") {
             hbox {
                 docui.Sidebar(homeHref="/") {
-                    for p = lookup.Packages() {
+                    for var p = lookup.Packages() {
                         docui.NavItem(text=p.title, href="/p/" + p.path,
                                       active=p.path == pkg)
                     }
@@ -95,37 +95,37 @@ component main {
                     text(value="")
 
                     text(value="COMPONENTS", style={fontWeight="bold", color="#888"})
-                    for c = entry().index.components {
+                    for var c = entry().index.components {
                         text(value="  " + c.name + " — " + c.doc)
                     }
 
                     text(value="")
                     text(value="TYPES", style={fontWeight="bold", color="#888"})
-                    for t = entry().index.types {
+                    for var t = entry().index.types {
                         text(value="  " + t.name + " — " + t.doc)
                     }
 
                     text(value="")
                     text(value="ENUMS", style={fontWeight="bold", color="#888"})
-                    for e = entry().index.enums {
+                    for var e = entry().index.enums {
                         text(value="  " + e.name + " — " + e.doc)
                     }
 
                     text(value="")
                     text(value="FUNCTIONS", style={fontWeight="bold", color="#888"})
-                    for f = entry().index.functions {
+                    for var f = entry().index.functions {
                         text(value="  " + f.name + " — " + f.doc)
                     }
 
                     text(value="")
                     text(value="CONSTANTS", style={fontWeight="bold", color="#888"})
-                    for c = entry().index.constants {
+                    for var c = entry().index.constants {
                         text(value="  " + c.name + " — " + c.doc)
                     }
 
                     text(value="")
                     text(value="DATA", style={fontWeight="bold", color="#888"})
-                    for d = entry().index.data {
+                    for var d = entry().index.data {
                         text(value="  " + d.name + " — " + d.doc)
                     }
                 }
@@ -136,11 +136,11 @@ component main {
                     text(value=entry().componentDoc.name, style={fontWeight="bold"})
                     text(value=entry().componentDoc.doc)
                     text(value="PROPS", style={fontWeight="bold", color="#888"})
-                    for p = entry().componentDoc.props {
+                    for var p = entry().componentDoc.props {
                         text(value="  " + p.name + "  " + p.type + "  " + p.doc)
                     }
                     text(value="EVENTS", style={fontWeight="bold", color="#888"})
-                    for e = entry().componentDoc.events {
+                    for var e = entry().componentDoc.events {
                         text(value="  @" + e.name + "  " + e.payload)
                     }
                 }
@@ -151,11 +151,11 @@ component main {
                     text(value=entry().typeDoc.name, style={fontWeight="bold"})
                     text(value=entry().typeDoc.doc)
                     text(value="FIELDS", style={fontWeight="bold", color="#888"})
-                    for f = entry().typeDoc.fields {
+                    for var f = entry().typeDoc.fields {
                         text(value="  " + f.name + "  " + f.type)
                     }
                     text(value="METHODS", style={fontWeight="bold", color="#888"})
-                    for m = entry().typeDoc.methods {
+                    for var m = entry().typeDoc.methods {
                         text(value="  ." + m.short + "  " + m.doc)
                     }
                 }
@@ -165,7 +165,7 @@ component main {
                 vbox {
                     text(value=entry().enumDoc.name, style={fontWeight="bold"})
                     text(value=entry().enumDoc.doc)
-                    for m = entry().enumDoc.members {
+                    for var m = entry().enumDoc.members {
                         text(value="  • " + m.name)
                     }
                 }

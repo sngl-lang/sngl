@@ -315,6 +315,15 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		args = append(args, v)
 	}
 
+	// Dispatch by intrinsic id before anything name-based: sngl:seq declares
+	// `range` as a package function, and the by-name paths below would fold a
+	// program's own function of that name too.
+	if call.Func != nil && call.Func.Intrinsic != "" {
+		if v, ok := evalIntrinsic(call.Func.Intrinsic, args); ok {
+			return v, true
+		}
+	}
+
 	// Try the generic SNGL-body interpreter for pure user/stdlib funcs. A
 	// declaration marked #[intrinsic] is skipped here and retried below: the
 	// folder has its own implementation of the id, and most of those bodies
@@ -358,6 +367,42 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
+}
+
+// evalIntrinsic folds a call by its #[intrinsic] id. An integer sequence has
+// to fold here rather than through a SNGL body, because there is no way to
+// write one: building a range needs a loop, and a loop needs a range.
+// opeval.Sequence is the same implementation the interpreter runs.
+func evalIntrinsic(id string, args []any) (any, bool) {
+	ints := func(want int) ([]int, bool) {
+		if len(args) != want {
+			return nil, false
+		}
+		out := make([]int, want)
+		for i, a := range args {
+			v, ok := toInt(a)
+			if !ok {
+				return nil, false
+			}
+			out[i] = v
+		}
+		return out, true
+	}
+	switch id {
+	case "seq.count":
+		if a, ok := ints(1); ok {
+			return opeval.Sequence(0, a[0], 1), true
+		}
+	case "seq.range":
+		if a, ok := ints(2); ok {
+			return opeval.Sequence(a[0], a[1], 1), true
+		}
+	case "seq.step":
+		if a, ok := ints(3); ok {
+			return opeval.Sequence(a[0], a[1], a[2]), true
+		}
+	}
+	return nil, false
 }
 
 // canFoldBody reports whether f has a SNGL body the folder may run.

@@ -50,7 +50,7 @@ component SegmentReadout(entry = "0") {
         style=draw.CanvasStyle{fill=BACKING},
     ) {
         draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.CanvasStyle{fill=BACKING})
-        for i, glyph = cells(entry) {
+        for var i, glyph = cells(entry) {
             Cell(glyph=glyph, x=PAD + float(i) * (CELL_W + CELL_GAP), y=PAD)
         }
     }

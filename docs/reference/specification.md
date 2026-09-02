@@ -488,7 +488,7 @@ explicitly.
 
 `ref<T>` is a mutable reference to a value of type `T`. References are not
 written directly by user programs; they arise from the address-of operator `&`
-and, most importantly, from reference loop variables (`for &x = xs`), which
+and, most importantly, from reference loop variables (`for var &x = xs`), which
 make writes to the loop variable flow back to the underlying list element. See
 [The for statement](#the-for-statement).
 
@@ -1109,7 +1109,7 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
-ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | CondExpr ) StmtBlock [ "else" StmtBlock ]
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 
@@ -1161,13 +1161,18 @@ ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "el
 
 `for` iterates over a list, an iterator, or a map:
 
-- `for x = xs` binds `x` to each element of a list or iterator;
-- `for i, x = xs` binds `i` to the index (an `int`) and `x` to the element;
-- `for k, v = m` binds `k` and `v` to each key and value of a map; map
-  iteration requires the two-variable form.
+- `for var x = xs` binds `x` to each element of a list or iterator;
+- `for var i, x = xs` binds `i` to the index (an `int`) and `x` to the element;
+- `for var k, v = m` binds `k` and `v` to each key and value of a map; map
+  iteration requires the two-variable form;
+- `for xs` binds nothing, for a loop whose body never names the element.
+
+A loop that names its element declares a variable, and `var` says so, as it
+does everywhere else a name is introduced. It is also what tells the two forms
+apart: without it, the head is the iterable alone.
 
 The loop variables are scoped to the loop body. Prefixing the element variable
-with `&` (`for &x = xs`, `for i, &x = xs`) binds it as a `ref<T>`, so that
+with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so that
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
 
@@ -1319,7 +1324,7 @@ variables.
 
 ### References in loops
 
-A reference loop variable (`for &x = xs`) makes assignments to the element — and
+A reference loop variable (`for var &x = xs`) makes assignments to the element — and
 to its fields — write back to the list by index, as described under
 [The for statement](#the-for-statement). This is the supported way to mutate a
 list's elements in place; structs are otherwise value types and copying them
@@ -1459,7 +1464,7 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
-ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | CondExpr ) StmtBlock [ "else" StmtBlock ]
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 

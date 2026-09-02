@@ -272,7 +272,7 @@ component main {
     func doubled()    => nums.map(func(x int) => x * 2)
     func total() int {
         var sum = 0
-        for x = nums {
+        for var x = nums {
             sum = sum + x
         }
         return sum
@@ -475,7 +475,7 @@ component main {
         vbox(style={gap=4}) {
             // for with index + nested if-else (loop var deps only,
             // so the inner if doesn't allocate its own reactive slot).
-            for n, idx = nums {
+            for var n, idx = nums {
                 if n % 2 == 0 {
                     text(value="{idx}: {n} (even)")
                 } else {
@@ -486,12 +486,12 @@ component main {
             }
             divider
             // simple iteration over a list of strings
-            for s = labels {
+            for var s = labels {
                 text(value="- {s}")
             }
             divider
             // map iteration yields key + value
-            for k, v = scores {
+            for var k, v = scores {
                 text(value="{k} = {v}")
             }
         }

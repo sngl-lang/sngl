@@ -189,7 +189,7 @@ For node
 
 component App {
     var items = [1, 2, 3]
-    for item = items {
+    for var item = items {
         text(value=item)
     }
 }
@@ -224,7 +224,7 @@ For node with index
 
 component App {
     var items = [1, 2, 3]
-    for item, idx = items {
+    for var item, idx = items {
         text(value=item)
     }
 }

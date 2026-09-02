@@ -48,7 +48,7 @@ output { none { html } }
 component main {
     var items list<string> = ["a", "b", "c"]
     button(text="add", @click { items = items.push("new") })
-    for item = items {
+    for var item = items {
         text(value=item)
     }
 }

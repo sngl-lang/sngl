@@ -252,7 +252,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		return fmt.Errorf("cannot index-assign to %T", obj)
 	case *ir.Unary:
 		// `*n = val` — whole-element write through an &-bound loop element
-		// (`for &n = list { n = … }`). The operand is a listRef; write back.
+		// (`for var &n = list { n = … }`). The operand is a listRef; write back.
 		if target.Op == ast.UnaryDeref {
 			obj, err := env.Eval(target.Operand)
 			if err != nil {

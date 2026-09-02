@@ -1227,7 +1227,7 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 		// correctly (e.g. -(int8 -128) is -128) and floats stay floats.
 		return opeval.Arith(ast.BinSub, 0, v, numKindOf(e.Type))
 	case ast.UnaryDeref:
-		// `*t` for an &-bound loop element (`for &t = list`). The operand is a
+		// `*t` for an &-bound loop element (`for var &t = list`). The operand is a
 		// listRef into the live list; reading derefs to the current element.
 		if ref, ok := v.(*listRef); ok {
 			return ref.get(), nil
@@ -1240,7 +1240,7 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 }
 
 // listRef is an interpreter lvalue into a list element, produced when a loop
-// binds its element variable with `&` (`for &t = list`). Dereferencing reads
+// binds its element variable with `&` (`for var &t = list`). Dereferencing reads
 // the live element; assigning through the deref writes it back by index.
 type listRef struct {
 	list []any

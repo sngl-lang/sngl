@@ -13,7 +13,7 @@ component iterLoop {
 // Sum a list via for-loop iteration.
 func testListForLoopSum(t Test, c iterLoop) {
     var total = 0
-    for x = c.nums {
+    for var x = c.nums {
         total = total + x
     }
     t.assert(total == 15)
@@ -23,7 +23,7 @@ func testListForLoopSum(t Test, c iterLoop) {
 func testMapForLoopKeysAndValues(t Test, c iterLoop) {
     var keyCount = 0
     var valueSum = 0
-    for k, v = c.scores {
+    for var k, v = c.scores {
         keyCount = keyCount + 1
         valueSum = valueSum + v
         // Witness that the key is a string by using it.
@@ -36,7 +36,7 @@ func testMapForLoopKeysAndValues(t Test, c iterLoop) {
 // A function taking iter<T> directly. Passing a list<T> implicitly converts.
 func count(xs iter<int>) int {
     var n = 0
-    for _ = xs {
+    for var _ = xs {
         n = n + 1
     }
     return n

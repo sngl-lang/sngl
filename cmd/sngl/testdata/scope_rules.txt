@@ -309,7 +309,7 @@ import . "sngl:ui"
 
 component main {
     var m map<string, string> = {}
-    for k, k = m {
+    for var k, k = m {
         text(value=k)
     }
 }

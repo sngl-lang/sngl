@@ -110,6 +110,21 @@ func init() {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
 
+	// --- seq (sngl:seq) ---
+	// Only reached where the numbers themselves are wanted: a sequence in a
+	// loop head becomes a range loop (KtIRContext.ForHead). A negative step
+	// counts down, and `downTo __b + 1` keeps the end bound exclusive as the
+	// declaration says; a `by` of 0 yields nothing rather than spinning.
+	seq := func(a, b, step string) string {
+		return "run { val __a = " + a + "; val __b = " + b + "; val __s = " + step + "; " +
+			"if (__s > 0) (__a until __b step __s).toList() " +
+			"else if (__s < 0) ((__a downTo __b + 1) step -__s).toList() " +
+			"else emptyList() }"
+	}
+	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
+	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })
+	reg("seq.step", func(a []string) string { return seq(a[0], a[1], a[2]) })
+
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
 
 	// --- i18n entry points ---

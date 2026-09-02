@@ -45,7 +45,7 @@ func findComponentPkg(root *ir.Package, comp *ir.Component) *ir.Package {
 // is not a worthwhile inlining target — caller should leave the NodeInst as
 // a regular runtime component instantiation.
 //
-// The motivating case: a `for x = entries` inside the component body, where
+// The motivating case: a `for var x = entries` inside the component body, where
 // `entries` is a Prop receiving a compile-time const at the call site. After
 // inlining, foldStmts on the cloned body unrolls the loop using the bound
 // prop value, and the call site dissolves into ordinary platform NodeInsts.
@@ -73,7 +73,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 
 	// Pre-check: only inline when binding the prop into the body would
-	// unlock further compile-time folding — either a `for x = param`
+	// unlock further compile-time folding — either a `for var x = param`
 	// unroll, or a pure native call whose argument is a param. Otherwise
 	// leave the call as-is so component sharing is preserved.
 	if !bodyHasFoldableParamUse(comp.Body, propNames) {

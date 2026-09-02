@@ -273,7 +273,7 @@ component ui.checkbox[platform] {
 component ui.radio[platform] {
     if direction == "horizontal" {
         Row(modifier={...style}) {
-            for opt = options {
+            for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
                     RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}
@@ -282,7 +282,7 @@ component ui.radio[platform] {
         }
     } else {
         Column(modifier={...style}) {
-            for opt = options {
+            for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
                     RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
                     Text(text=opt) {}

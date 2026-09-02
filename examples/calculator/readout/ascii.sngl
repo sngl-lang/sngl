@@ -36,7 +36,7 @@ func Glyph.row(gl Glyph, row int) string {
 // One row of the whole readout, across every cell.
 func rowOf(lit list<Glyph>, row int) string {
     var out = ""
-    for gl = lit {
+    for var gl = lit {
         out = out + gl.row(row)
     }
     return out

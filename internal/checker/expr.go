@@ -2855,7 +2855,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		iterExpr := c.checkExpr(x.Iter)
 		iter := exprType(iterExpr)
 		// A zero-arg computed is called where its result is what is wanted, so
-		// `for x = items` iterates what `func items() list<T>` returns. There
+		// `for var x = items` iterates what `func items() list<T>` returns. There
 		// is no single expected type to hand implicitCall here: any of the
 		// three iterable kinds will do.
 		if iter.Kind == ir.TypeFunc && iter.Sig != nil && len(iter.Sig.Params) == 0 && iter.Sig.Return != nil {
@@ -2877,13 +2877,18 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// form and Value in two-var form. `&` on the index (two-var Key) is an
 		// error. An invalid `&` is reported and downgraded to a value binding.
 		// TODO(lint): a plain (non-&) element loop var is a value copy, so
-		// writing through its fields (`for t = list { t.done!! }`) silently
+		// writing through its fields (`for var t = list { t.done!! }`) silently
 		// updates a throwaway copy. Surface that as a lint error suggesting
 		// `&t`; for now it compiles as a no-op.
 		elemRef := x.KeyRef
+		// A loop that declares nothing (`for seq.count(3) { }`) has no
+		// variable to bind, to ref-bind, or to complain about: only the
+		// iterable is checked, and each backend emits a discard for the
+		// element.
+		declares := x.Key != ""
 		if x.Value != "" {
 			if x.KeyRef {
-				c.error(x.Pos, "& cannot bind the index variable; write `for i, &%s = …`", x.Value)
+				c.error(x.Pos, "& cannot bind the index variable; write `for var i, &%s = …`", x.Value)
 			}
 			elemRef = x.ValueRef
 		}
@@ -2909,6 +2914,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// so the For statement carries what its body's Idents resolve to.
 		var keySym, valueSym *ir.LoopVar
 		declKey := func(t *ir.Type) {
+			if !declares {
+				return
+			}
 			keySym = &ir.LoopVar{Name: x.Key, Type: t}
 			c.declare(x.Pos, keySym)
 		}
@@ -2923,11 +2931,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				elemType = iter.Elems[0]
 			}
 			if x.Value != "" {
-				// for key, value = list: key is index (int), value is element.
+				// for var key, value = list: key is index (int), value is element.
 				declKey(TypInt)
 				declValue(elemDeclType(elemType))
 			} else {
-				// for item = list: item is element.
+				// for var item = list: item is element.
 				declKey(elemDeclType(elemType))
 			}
 		case ir.TypeIter:
@@ -2935,18 +2943,18 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				elemType = iter.Elems[0]
 			}
 			if x.Value != "" {
-				// for key, value = iter: key is index (int), value is element.
+				// for var key, value = iter: key is index (int), value is element.
 				declKey(TypInt)
 				declValue(elemType)
 			} else {
-				// for item = iter: item is element.
+				// for var item = iter: item is element.
 				declKey(elemType)
 			}
 		case ir.TypeMap:
-			if x.Value == "" {
-				c.error(x.Pos, "iterating over map requires two variables: for k, v = m")
+			if x.Value == "" && declares {
+				c.error(x.Pos, "iterating over map requires two variables: for var k, v = m")
 			} else if len(iter.Elems) == 2 {
-				// for k, v = map: k is key type, v is value type.
+				// for var k, v = map: k is key type, v is value type.
 				declKey(iter.Elems[0])
 				declValue(iter.Elems[1])
 				elemType = iter.Elems[1]

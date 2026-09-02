@@ -1,0 +1,53 @@
+# A sngl:seq sequence written directly in a loop head compiles to the host's
+# counting loop and builds nothing: `for var i = seq.range(1, n)` is a Go
+# three-clause for, a JS three-clause for, and a Kotlin range. Held in a
+# variable instead, the same sequence is an ordinary iter<int> and the numbers
+# are materialised -- which is what makes both spellings usable everywhere.
+
+sngl generate --platform=bubbletea --lang=go --out=go app.sngl
+exists go/model.go
+
+# The loop head counts. The end bound is bound once in the init clause,
+# because SNGL evaluates the iterable once and the condition reads it per
+# iteration.
+grep 'for i, __end := 1, ' go/model.go
+grep 'i < __end; i\+\+' go/model.go
+
+# A descending step counts down, and the end bound stays exclusive.
+grep 'for d, __end := .*; d > __end; d -= 2' go/model.go
+
+# The held sequence is the numbers themselves, and its type is the slice a
+# range over it expects.
+grep 'held := func\(__a, __b, __s int\) \[\]int' go/model.go
+grep 'for _, h := range held' go/model.go
+
+sngl generate --platform=html --lang=none --out=web app.sngl
+grep 'for \(let i = 1, __end = ' web/index.html
+grep 'for \(let d = ' web/index.html
+
+sngl generate --platform=android --lang=kotlin --out=droid app.sngl
+grep 'for \(i in 1 until ' droid/MainScreen.kt
+grep 'for \(d in \(.* downTo 0 \+ 1\) step 2\)' droid/MainScreen.kt
+
+-- app.sngl --
+import "sngl:seq"
+import . "sngl:ui"
+
+component main {
+    var n = 6
+    var total = 0
+
+    button(text="sum", @click {
+        for var i = seq.range(1, n) {
+            total = total + i
+        }
+        for var d = seq.step(n, 0, -2) {
+            total = total + d
+        }
+        var held iter<int> = seq.count(n)
+        for var h = held {
+            total = total + h
+        }
+    })
+    text(value=string(total))
+}

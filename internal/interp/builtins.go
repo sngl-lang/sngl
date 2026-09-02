@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"git.duckfam.us/jonathan/sngl/internal/opeval"
 )
 
 // runIntrinsic runs this interpreter's implementation of the intrinsic named
@@ -261,6 +263,20 @@ var intrinsics = map[string]nativeFunc{
 		result := make([]any, end-start)
 		copy(result, list[start:end])
 		return result, nil
+	},
+
+	// --- seq (sngl:seq) ---
+	// An iter<int> a program holds is the numbers themselves; the counting
+	// loop a backend emits instead is a codegen shortcut for the loop head,
+	// so both answers come from opeval.Sequence and cannot disagree.
+	"seq.count": func(args []any) (any, error) {
+		return opeval.Sequence(0, ToInt(args[0]), 1), nil
+	},
+	"seq.range": func(args []any) (any, error) {
+		return opeval.Sequence(ToInt(args[0]), ToInt(args[1]), 1), nil
+	},
+	"seq.step": func(args []any) (any, error) {
+		return opeval.Sequence(ToInt(args[0]), ToInt(args[1]), ToInt(args[2])), nil
 	},
 }
 

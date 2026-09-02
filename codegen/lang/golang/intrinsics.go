@@ -151,6 +151,21 @@ func init() {
 		return "func() " + v + " { if __v, __ok := " + a[0] + "[" + a[1] + "]; __ok { return __v }; return " + a[2] + " }()"
 	})
 
+	// --- seq (sngl:seq) ---
+	// One emission for all three: a sequence in a loop head becomes the host's
+	// counting loop (GoIRContext.ForHead), so these only run where the numbers
+	// themselves are wanted -- held in a variable, or passed on. The sign test
+	// is on the step because a `by` of 0 must yield nothing, not spin.
+	seq := func(a, b, step string) string {
+		return "func(__a, __b, __s int) []int { __out := []int{}; " +
+			"if __s > 0 { for __i := __a; __i < __b; __i += __s { __out = append(__out, __i) } } " +
+			"else if __s < 0 { for __i := __a; __i > __b; __i += __s { __out = append(__out, __i) } }; " +
+			"return __out }(" + a + ", " + b + ", " + step + ")"
+	}
+	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
+	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })
+	reg("seq.step", func(a []string) string { return seq(a[0], a[1], a[2]) })
+
 	regImp("i18n.exactly", []string{SnglI18nImportPath}, func(a []string) string {
 		return "i18n.Exactly(" + a[0] + ")"
 	})

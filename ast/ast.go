@@ -459,9 +459,9 @@ type IfStmt struct {
 type ForStmt struct {
 	Pos      Pos
 	Key      string // iterator variable
-	KeyRef   bool   // Key was &-prefixed: `for &t = ...` (ref<T> element binding)
+	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref<T> element binding)
 	Value    string // optional second variable (empty if single-var form)
-	ValueRef bool   // Value was &-prefixed: `for i, &t = ...`
+	ValueRef bool   // Value was &-prefixed: `for var i, &t = ...`
 	Iter     Expr
 	Body     StmtBlock
 	Else     StmtBlock // zero value if no else
