@@ -7,18 +7,37 @@ stages:
 # in-file rather than relying on the project's "Auto-cancel redundant
 # pipelines" toggle, so the behaviour is version controlled.
 workflow:
-  # main, and branches with an open MR. Nothing else.
+  # Every branch.
   #
-  # The gate is CI_OPEN_MERGE_REQUESTS on the branch pipeline rather than
-  # merge_request_event, because this instance never creates a merge request
-  # pipeline on its own -- not when the MR opens, not on a push to an open
-  # one. POSTing to /merge_requests/:iid/pipelines builds one that runs, so
-  # the config admits them; nothing triggers them. Admitted below anyway, for
-  # a hand-started run and for the day that changes.
+  # This instance never creates a merge request pipeline on its own -- not
+  # when the MR opens, not on a push to an open one. POSTing to
+  # /merge_requests/:iid/pipelines builds one that runs, so the config admits
+  # them; nothing triggers them. Admitted below anyway, for a hand-started run
+  # and for the day that changes.
+  #
+  # A branch pipeline is therefore the only kind that appears by itself, and
+  # gating it on CI_OPEN_MERGE_REQUESTS left the ordinary order of work with
+  # no pipeline at all: push the branch, then open the MR. The push is gated
+  # out because the MR does not exist yet, and opening the MR does not go back
+  # and build one for the head it now points at. The branch sat untested until
+  # a *second* push, or a hand-started run.
+  #
+  # So: no gate. The cost is a pipeline on a branch that never becomes an MR,
+  # against a 16-minute suite on one runner -- bounded by auto_cancel below,
+  # which keeps a series of pushes down to the last one. If that turns out to
+  # be too generous, the narrower rule is a branch-name prefix, not a return
+  # to CI_OPEN_MERGE_REQUESTS.
+  #
+  # If this instance ever does start raising merge request pipelines, every
+  # push to an MR branch will build two. The fix then is to suppress the
+  # branch pipeline for a branch with an open MR:
+  #     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+  #       when: never
+  # placed above the branch rule. Adding it *now* would restore the hole this
+  # commit closes, and widen it: a branch with an open MR would get nothing.
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_OPEN_MERGE_REQUESTS
+    - if: $CI_COMMIT_BRANCH
     - when: never
   auto_cancel:
     on_new_commit: interruptible
