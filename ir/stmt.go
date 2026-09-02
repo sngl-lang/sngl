@@ -238,8 +238,9 @@ const (
 	// IterElement is single-var iteration over a list/iter<T>: bind each
 	// element to Key.
 	IterElement IterKind = iota
-	// IterCounted is single-var iteration over an integer sequence: bind each
-	// number to Key, from the bounds in Counted. The iterable is never built.
+	// IterCounted is iteration over an integer sequence, from the bounds in
+	// Counted: the number binds to Key, or to Value with its ordinal in Key
+	// when a second variable is written. The sequence is never built.
 	IterCounted
 	// IterIndexed is two-var iteration over a list/iter<T>: bind (index,
 	// element) to (Key, Value).
@@ -292,10 +293,10 @@ type Counted struct {
 // The arguments are read positionally, which the checker has already made
 // safe -- it normalises a named-argument call into declaration order.
 //
-// Only the single-variable form counts. `for var i, x = seq.range(…)` asks
-// for an ordinal beside each number, which is what materialising gives.
+// The two-variable form counts too: the ordinal beside each number is another
+// counter, not a reason to build the numbers.
 func CountedSeq(n *For) *Counted {
-	if n == nil || n.Value != "" {
+	if n == nil {
 		return nil
 	}
 	call, ok := n.Iter.(*Call)

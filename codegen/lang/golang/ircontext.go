@@ -399,6 +399,7 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	switch n.IterKind {
 	case ir.IterCounted:
 		c := n.Counted
+		start, end := gc.EvalExpr(c.Start), gc.EvalExpr(c.End)
 		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
 		switch {
 		case c.Step == 1:
@@ -406,12 +407,25 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 		case c.Step < 0:
 			cmp, step = ">", fmt.Sprintf(" -= %d", -c.Step)
 		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number. Both are
+			// counters, so the ordinal costs an increment rather than the
+			// sequence it would otherwise be indexing into. Go has no
+			// compound assignment in a two-name post statement, so the step
+			// is spelled as the sum it is.
+			next := fmt.Sprintf("%s + %d", n.Value, c.Step)
+			if c.Step < 0 {
+				next = fmt.Sprintf("%s - %d", n.Value, -c.Step)
+			}
+			return fmt.Sprintf("for %s, %s, __end := 0, %s, %s; %s %s __end; %s, %s = %s+1, %s {",
+				n.Key, n.Value, start, end, n.Value, cmp, n.Key, n.Value, n.Key, next)
+		}
 		// The end bound is bound to a temp in the init clause: it is an
 		// arbitrary expression and the condition reads it once per iteration,
 		// where SNGL evaluates the iterable once. A nested counted loop
 		// declares its own __end in its own scope.
 		return fmt.Sprintf("for %s, __end := %s, %s; %s %s __end; %s%s {",
-			key, gc.EvalExpr(c.Start), gc.EvalExpr(c.End), key, cmp, key, step)
+			key, start, end, key, cmp, key, step)
 	case ir.IterMapEntries:
 		if n.Key == "" {
 			return fmt.Sprintf("for range %s {", iter)
@@ -424,11 +438,34 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	case ir.IterIndexed:
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
+		// An iter<T> is a func, and `range` over one yields the element
+		// alone; a slice yields (index, element). Which of the two the
+		// iterable is, is a Go representation question rather than a shape
+		// question, so IterKind does not classify it -- IRTypeToGo makes the
+		// same choice from the same type.
+		if lazyIter(n.Iter) {
+			if n.Key == "" {
+				return fmt.Sprintf("for range %s {", iter)
+			}
+			return fmt.Sprintf("for %s := range %s {", n.Key, iter)
+		}
 		if n.Key == "" {
 			return fmt.Sprintf("for range %s {", iter)
 		}
 		return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 	}
+}
+
+// lazyIter reports whether e is spelled as a pull sequence in Go -- an
+// iter<T>, which IRTypeToGo renders as func(func(T) bool). A list or map
+// reaching an iter<T> position carries an ir.Conversion, so this reads the
+// expression's own type and not the loop's element type.
+func lazyIter(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeIter
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -1108,6 +1145,17 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
+	// A list flowing into an iter<T> position becomes the pull sequence that
+	// type is, rather than being handed over as a slice: the wrapper yields
+	// each element and stops when the consumer does. It allocates a closure,
+	// not a copy of the list.
+	if n.Type != nil && n.Type.Kind == ir.TypeIter && len(n.Type.Elems) == 1 {
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeList {
+			el := IRTypeToGo(n.Type.Elems[0])
+			return "func(__yield func(" + el + ") bool) { for _, __v := range " +
+				gc.EvalExpr(n.Operand) + " { if !__yield(__v) { return } } }"
+		}
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.
@@ -1403,14 +1451,15 @@ func IRTypeToGo(t *ir.Type) string {
 		// `func name(params)`.
 		return ""
 	case ir.TypeIter:
-		// A sequence a program holds is the numbers themselves -- what
-		// sngl:seq's intrinsics materialise -- so an iter<T> is spelled as the
-		// slice a `range` over it expects. The lazy form exists only in a loop
-		// head, where ForHead emits a counting loop and no value is built.
+		// An iter<T> is a pull sequence, never a materialised one: the shape
+		// `range` accepts over a function (Go 1.23), spelled structurally so
+		// nothing has to import "iter" to name it. A list reaching an iter<T>
+		// position is wrapped by evalConversion, and the wrapper yields the
+		// elements one at a time -- so no list is ever built to be iterated.
 		if len(t.Elems) == 1 {
-			return "[]" + IRTypeToGo(t.Elems[0])
+			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
-		return "[]any"
+		return "func(func(any) bool)"
 	case ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// These have no first-class Go representation, and fall back to `any`.
 		// Listed explicitly so the default arm catches a new TypeKind.

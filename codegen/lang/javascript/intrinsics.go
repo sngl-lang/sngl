@@ -98,14 +98,17 @@ func init() {
 	})
 
 	// --- seq (sngl:seq) ---
-	// Only reached where the numbers themselves are wanted: a sequence in a
-	// loop head becomes a counting `for` (JsIRContext.ForHead). The sign test
-	// is on the step, so a `by` of 0 yields nothing rather than spinning.
+	// A sequence in a loop head becomes a counting `for` and never reaches
+	// here (JsIRContext.ForHead). Everywhere else it is a generator: an
+	// iterable `for...of` drives one value at a time, which is what an array
+	// here would have thrown away. No conversion is needed in the other
+	// direction -- a JS array is already iterable -- so a list reaching an
+	// iter<T> position passes through unwrapped.
 	seq := func(a, b, step string) string {
-		return "((__a, __b, __s) => { const __out = []; " +
-			"if (__s > 0) { for (let __i = __a; __i < __b; __i += __s) __out.push(__i); } " +
-			"else if (__s < 0) { for (let __i = __a; __i > __b; __i += __s) __out.push(__i); } " +
-			"return __out; })(" + a + ", " + b + ", " + step + ")"
+		return "(function* (__a, __b, __s) { " +
+			"if (__s > 0) { for (let __i = __a; __i < __b; __i += __s) yield __i; } " +
+			"else if (__s < 0) { for (let __i = __a; __i > __b; __i += __s) yield __i; } " +
+			"})(" + a + ", " + b + ", " + step + ")"
 	}
 	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
 	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })

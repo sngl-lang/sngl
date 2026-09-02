@@ -13,7 +13,6 @@
 //     Project: https://sngl.dev   |   Source: git.duckfam.us/jonathan/sngl
 // =====================================================================
 
-
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
@@ -33,17 +32,15 @@ output {
     kotlin { android }
 }
 
-
 // ----- 2. Constants --------------------------------------------------
 // Single const or grouped. Type optional when inferrable.
 const APP_NAME = "SNGL Tour"
 
 const (
-    MAX_ITEMS    = 100
+    MAX_ITEMS = 100
     DEFAULT_USER = "guest"
-    PI float     = 3.14159
+    PI float = 3.14159
 )
-
 
 // ----- 3. Units ------------------------------------------------------
 // User-defined dimensional types. Operations across compatible units
@@ -53,21 +50,19 @@ const (
 //     2 * 3px    == 6px
 //     1rem + 2em == 18em
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
-unit length   { px, em, rem = 16em, vw, vh, pct }
-
+unit length { px, em, rem = 16em, vw, vh, pct }
 
 // ----- 4. Structs ----------------------------------------------------
 // Named struct with defaults. Fields without defaults must be provided
 // at construction.
 struct User {
-    name  string = ""
-    age   int    = 0
-    admin bool   = false
+    name string = ""
+    age int = 0
+    admin bool = false
 }
 
 // Anonymous structs are valid in any type position
 // (param/return/var/field) — see `makeBadge` below.
-
 
 // ----- 5. Enums ------------------------------------------------------
 // Named enum, referenced as `Role.admin` or unqualified when context
@@ -76,7 +71,6 @@ enum Role { guest, member, admin }
 
 // Inline enums are valid in type position too:
 //     func ack(level enum { low, med, high }) { ... }
-
 
 // ----- 6. Free functions --------------------------------------------
 // Expression body: `func f(...) => expr`. Return type inferred.
@@ -97,7 +91,6 @@ func identity<T>(x T) => x
 // Generic with constraints come from operand: `xs.map(f)` binds T from
 // xs's element type and U from f's return type.
 
-
 // ----- 7. Function values & lambdas ---------------------------------
 // `func(int) int` is a TYPE. Lambdas use the same `func(params) => ...`
 // or `func(params) Type { ... }` syntax.
@@ -106,12 +99,13 @@ func apply(x int, f func(int) int) int {
 }
 // Usage:  apply(3, func(n int) => n + 1)  // 4
 
-
 // ----- 8. Anonymous struct in param position ------------------------
-func makeBadge(b struct { label string; count int }) string {
+func makeBadge(b struct {
+    label string
+    count int
+}) string {
     return "{b.label}: {b.count}"
 }
-
 
 // ----- 9. Child component with prop + event sink -------------------
 // Components are declared at top level. Props live in the header.
@@ -123,18 +117,17 @@ component LabeledCounter(label = "Clicks", start = 0, @changed) {
         text(value="{label}: {n}")
         button(text="+1", @click {
             n += 1
-            changed(n)        // emit upward
+            changed(n) // emit upward
         })
     }
 }
-
 
 // ----- 10. Recursive components ------------------------------------
 // Components can call themselves. Self-referencing struct fields use
 // `dyn` so the type can refer to itself.
 struct TreeNode {
     value int = 0
-    left  dyn = null
+    left dyn = null
     right dyn = null
 }
 
@@ -149,7 +142,6 @@ component TreeView(node dyn = null) {
         }
     }
 }
-
 
 // ----- 11. i18n (translatable strings) ------------------------------
 // `$"..."` marks a translatable string. ICU MessageFormat features:
@@ -166,11 +158,11 @@ component TreeView(node dyn = null) {
 // runtime picks a locale from LC_ALL / LC_MESSAGES / LANG (or the
 // platform equivalent on Android).
 component I18nDemo {
-    var who    = "World"
+    var who = "World"
     var unread = 5
-    var role   = "admin"
-    var price  = 1234
-    var party  date = date("2026-05-09")
+    var role = "admin"
+    var price = 1234
+    var party date = date("2026-05-09")
 
     vbox(style={gap=4}) {
         text(value=$"Welcome, {who}!")
@@ -188,7 +180,6 @@ component I18nDemo {
         text(value=$"Party date: {party, date, long}")
     }
 }
-
 
 // ----- 12. Reactive context ----------------------------------------
 // `context #name(default)` declares a value that flows down the tree
@@ -222,54 +213,52 @@ component ContextDemo {
     }
 }
 
-
 // ----- 13. The main component: every feature wired up --------------
 // State (`var`) is reactive: changing it re-runs computed funcs and
 // patches the visual tree. The visual block below mirrors the original
 // stdlib-component showcase; the language-feature sections cross-
 // reference the relevant earlier section.
 component main {
-
     // --- Primitive state (with explicit + inferred types) ---------
     var (
-        count           = 0
-        name            = "World"
-        ratio   float   = 0.5
-        darkMode        = false
-        showModal       = false
-        showDrawer      = false
-        selectedTab     = 0
-        selectedRadio   = "medium"
-        toggleOn        = false
-        selectedOption  = ""
-        notes           = ""
+        count = 0
+        name = "World"
+        ratio float = 0.5
+        darkMode = false
+        showModal = false
+        showDrawer = false
+        selectedTab = 0
+        selectedRadio = "medium"
+        toggleOn = false
+        selectedOption = ""
+        notes = ""
         sliderVal float = 0
-        animating       = true
-        birthday  date  = date("2000-01-01")
-        clicks          = 0
+        animating = true
+        birthday date = date("2000-01-01")
+        clicks = 0
     )
 
     // --- Option / null (§4) --------------------------------------
     // `option<T>` allows null. Compare with `== null` / `!= null`.
-    var nickname   option<string> = null
-    var pickedUser option<User>   = null
+    var nickname option<string> = null
+    var pickedUser option<User> = null
 
     // --- Constants inside a component ----------------------------
     const PAGE_TITLE = "Component Showcase"
 
     // --- Lists & list methods (§ — generic methods) --------------
-    var nums   list<int>    = [1, 2, 3, 4, 5]
+    var nums list<int> = [1, 2, 3, 4, 5]
     var labels list<string> = ["alpha", "beta", "gamma"]
 
     // --- Maps (literal disambiguated from struct by context) ----
-    var scores map<string, int> = {alice = 10, bob = 20, carol = 30}
+    var scores map<string, int> = {alice=10, bob=20, carol=30}
 
     // --- Computed funcs: zero-arg funcs are reactive properties --
     // Reference them WITHOUT parens from interpolation or events:
     // `c.greeting`, not `c.greeting()`.
-    func greeting()   => "Hello, {name}!"
-    func evens()      => nums.filter(func(x int) => x % 2 == 0)
-    func doubled()    => nums.map(func(x int) => x * 2)
+    func greeting() => "Hello, {name}!"
+    func evens() => nums.filter(func(x int) => x % 2 == 0)
+    func doubled() => nums.map(func(x int) => x * 2)
     func total() int {
         var sum = 0
         for var x = nums {
@@ -281,7 +270,10 @@ component main {
 
     // --- Mutating methods (block form) ---------------------------
     func increment() { count += 1 }
-    func reset()     { count = 0; name = "World" }
+    func reset() {
+        count = 0
+        name = "World"
+    }
 
     // --- Timer drives the animated progress bar ------------------
     timer(interval=50ms, enabled=animating, @tick {
@@ -291,21 +283,25 @@ component main {
     // --- A sample tree for the recursive component (§10) ---------
     var tree = TreeNode{
         value = 5,
-        left  = TreeNode{value=3, left=TreeNode{value=1}},
+        left = TreeNode{value=3, left=TreeNode{value=1}},
         right = TreeNode{value=8},
     }
 
     // ============================================================
     //                    VISUAL TREE BELOW
     // ============================================================
-    vbox(scroll=true, refreshing=false,
-         @refresh { Alert.toast("Refreshed!", "info") },
-         style={gap=24, maxWidth=900, padding=24}) {
-
+    vbox(
+        scroll=true,
+        refreshing=false,
+        @refresh { Alert.toast("Refreshed!", "info") },
+        style={gap=24, maxWidth=900, padding=24},
+    ) {
         // --- Heading ---------------------------------------------
         text(value=APP_NAME, style={fontSize=32, fontWeight="bold"})
-        text(value="Every stdlib component + every language feature, one file.",
-             style={color=#666666})
+        text(
+            value="Every stdlib component + every language feature, one file.",
+            style={color=#666666},
+        )
         divider
 
         // --- Text + button + computed (§ — `greeting` is computed) ---
@@ -313,7 +309,10 @@ component main {
         hbox(style={alignItems="center", gap=12}) {
             text(value=greeting, style={fontSize=18})
             button(text="Increment", @click { count += 1 })
-            button(text="Reset",     @click { count = 0; name = "World" })
+            button(text="Reset", @click {
+                count = 0
+                name = "World"
+            })
             badge(value=string(count), style={background=#2196f3, color=#ffffff})
         }
         divider
@@ -321,34 +320,54 @@ component main {
         // --- Input -----------------------------------------------
         text(value="Input", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            input(placeholder="Enter your name", value=name,
-                  @input(e) { name = e.value })
+            input(
+                placeholder="Enter your name",
+                value=name,
+                @input(e) { name = e.value },
+            )
             input(placeholder="Password", type="password")
             input(placeholder="Search...", type="search")
         }
         text(value="Textarea", style={fontSize=20, fontWeight="bold"})
-        textarea(placeholder="Write some notes...", rows=4, value=notes,
-                 @input(e) { notes = e.value })
+        textarea(
+            placeholder="Write some notes...",
+            rows=4,
+            value=notes,
+            @input(e) { notes = e.value },
+        )
         divider
 
         // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
-        text(value="Checkbox, Toggle & Radio",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="Checkbox, Toggle & Radio",
+            style={fontSize=20, fontWeight="bold"},
+        )
         hbox(style={gap=24}) {
-            checkbox(checked=darkMode, label="Dark mode",
-                     @change { darkMode!! })
+            checkbox(
+                checked=darkMode,
+                label="Dark mode",
+                @change { darkMode!! },
+            )
             toggle(checked=toggleOn, label="Notifications")
-            radio(direction="horizontal",
-                  options=["small", "medium", "large"], value=selectedRadio)
+            radio(
+                direction="horizontal",
+                options=["small", "medium", "large"],
+                value=selectedRadio,
+            )
         }
         text(value="Select", style={fontSize=20, fontWeight="bold"})
-        select(options=["Apple", "Banana", "Cherry", "Date"],
-               placeholder="Pick a fruit", value=selectedOption)
+        select(
+            options=["Apple", "Banana", "Cherry", "Date"],
+            placeholder="Pick a fruit",
+            value=selectedOption,
+        )
         divider
 
         // --- Progress / Spinner / Tabs ---------------------------
-        text(value="Progress & Spinner",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="Progress & Spinner",
+            style={fontSize=20, fontWeight="bold"},
+        )
         hbox(style={alignItems="center", gap=24}) {
             progress(max=1, value=sliderVal)
             spinner(label="Loading...")
@@ -367,7 +386,7 @@ component main {
             link(href="https://sngl.dev", text="SNGL Website")
             chip(label="Tag")
             chip(label="Removable", removable=true)
-            chip(label="Success",   variant="success")
+            chip(label="Success", variant="success")
         }
         text(value="Avatar", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=8}) {
@@ -398,10 +417,12 @@ component main {
         // --- Modal / Drawer / Toast ------------------------------
         text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
         hbox(style={gap=12}) {
-            button(text="Open Modal",  @click { showModal = true })
+            button(text="Open Modal", @click { showModal = true })
             button(text="Open Drawer", @click { showDrawer = true })
-            button(text="Show Toast",
-                   @click { Alert.toast("Action completed!", "success") })
+            button(
+                text="Show Toast",
+                @click { Alert.toast("Action completed!", "success") },
+            )
         }
         modal(closable=true, open=showModal, title="Example Modal") {
             text(value="This is modal content.")
@@ -456,26 +477,35 @@ component main {
         divider
 
         // --- Composition: child component + event sink (§9) -----
-        text(value="Composition (child component emits event upward)",
-             style={fontSize=20, fontWeight="bold"})
-        LabeledCounter(label="Clicks", start=0,
-                       @changed(n) { clicks = n })
+        text(
+            value="Composition (child component emits event upward)",
+            style={fontSize=20, fontWeight="bold"},
+        )
+        LabeledCounter(
+            label="Clicks",
+            start=0,
+            @changed(n) { clicks = n },
+        )
         text(value="Parent saw clicks = {clicks}")
         divider
 
         // --- Recursive component (§10) --------------------------
-        text(value="Recursive component (TreeView calls itself)",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="Recursive component (TreeView calls itself)",
+            style={fontSize=20, fontWeight="bold"},
+        )
         TreeView(node=tree)
         divider
 
         // --- For-loops, if, list/map iteration ------------------
-        text(value="For-loops & if",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="For-loops & if",
+            style={fontSize=20, fontWeight="bold"},
+        )
         vbox(style={gap=4}) {
             // for with index + nested if-else (loop var deps only,
             // so the inner if doesn't allocate its own reactive slot).
-            for var n, idx = nums {
+            for var idx, n = nums {
                 if n % 2 == 0 {
                     text(value="{idx}: {n} (even)")
                 } else {
@@ -498,8 +528,10 @@ component main {
         divider
 
         // --- Top-level if at component scope -------------------
-        text(value="If statement",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="If statement",
+            style={fontSize=20, fontWeight="bold"},
+        )
         if count > 0 {
             text(value="count is positive: {count}")
         } else {
@@ -508,8 +540,10 @@ component main {
         divider
 
         // --- Computed values pulling list methods (§ — generics) ---
-        text(value="Computed (filter/map/total)",
-             style={fontSize=20, fontWeight="bold"})
+        text(
+            value="Computed (filter/map/total)",
+            style={fontSize=20, fontWeight="bold"},
+        )
         text(value="nums   = {nums}")
         text(value="evens  = {evens}")
         text(value="x2     = {doubled}")
@@ -529,7 +563,6 @@ component main {
         divider(label="End of Tour")
     }
 }
-
 
 // ----- 14. Tests (kept minimal) -------------------------------------
 // Any platform that implements the TestRunner interface can execute

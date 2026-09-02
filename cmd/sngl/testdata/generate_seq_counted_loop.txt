@@ -1,8 +1,9 @@
-# A sngl:seq sequence written directly in a loop head compiles to the host's
-# counting loop and builds nothing: `for var i = seq.range(1, n)` is a Go
-# three-clause for, a JS three-clause for, and a Kotlin range. Held in a
-# variable instead, the same sequence is an ordinary iter<int> and the numbers
-# are materialised -- which is what makes both spellings usable everywhere.
+# A sngl:seq sequence compiles to a loop and never to a list. Written directly
+# in a loop head it is the host's counting loop; held in a variable or passed
+# to a function it is the pull sequence iter<int> is, which the consumer
+# drives one value at a time -- a range func in Go, a generator in JS, an
+# IntProgression in Kotlin. Nothing here builds a slice to walk it, which is
+# the whole reason the package exists.
 
 sngl generate --platform=bubbletea --lang=go --out=go app.sngl
 exists go/model.go
@@ -16,38 +17,62 @@ grep 'i < __end; i\+\+' go/model.go
 # A descending step counts down, and the end bound stays exclusive.
 grep 'for d, __end := .*; d > __end; d -= 2' go/model.go
 
-# The held sequence is the numbers themselves, and its type is the slice a
-# range over it expects.
-grep 'held := func\(__a, __b, __s int\) \[\]int' go/model.go
-grep 'for _, h := range held' go/model.go
+# The held sequence is a func the loop pulls from, and iter<int> is spelled as
+# that func -- no slice anywhere.
+grep 'held := func\(__a, __b, __s int\) func\(func\(int\) bool\)' go/model.go
+grep 'for h := range held' go/model.go
+grep 'func Total\(xs func\(func\(int\) bool\)\) int' go/model.go
+! grep 'held := \[\]int'
+
+# A list reaching an iter<int> parameter is wrapped in a yielding func rather
+# than copied into one: the wrapper walks the caller's own slice.
+grep 'Total\(func\(__yield func\(int\) bool\) \{' go/model.go
+grep 'for _, __v := range ys \{' go/model.go
 
 sngl generate --platform=html --lang=none --out=web app.sngl
 grep 'for \(let i = 1, __end = ' web/index.html
 grep 'for \(let d = ' web/index.html
+# Held: a generator, driven by for...of.
+grep 'function\* \(__a, __b, __s\)' web/index.html
+grep 'yield __i' web/index.html
+! grep '__out.push(__i)'
 
 sngl generate --platform=android --lang=kotlin --out=droid app.sngl
 grep 'for \(i in 1 until ' droid/MainScreen.kt
 grep 'for \(d in \(.* downTo 0 \+ 1\) step 2\)' droid/MainScreen.kt
+# Held: an IntProgression, and the parameter that takes one is an Iterable.
+grep 'fun total\(xs: Iterable<Int>\)' droid/MainScreen.kt
+! grep '.toList()'
 
 -- app.sngl --
 import "sngl:seq"
 import . "sngl:ui"
 
+func total(xs iter<int>) int {
+    var sum = 0
+    for var x = xs {
+        sum = sum + x
+    }
+    return sum
+}
+
 component main {
     var n = 6
-    var total = 0
+    var total2 = 0
 
     button(text="sum", @click {
         for var i = seq.range(1, n) {
-            total = total + i
+            total2 = total2 + i
         }
         for var d = seq.step(n, 0, -2) {
-            total = total + d
+            total2 = total2 + d
         }
         var held iter<int> = seq.count(n)
         for var h = held {
-            total = total + h
+            total2 = total2 + h
         }
+        var ys list<int> = [1, 2, 3]
+        total2 = total2 + total(ys)
     })
-    text(value=string(total))
+    text(value=string(total2))
 }

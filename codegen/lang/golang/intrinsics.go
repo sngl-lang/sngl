@@ -152,15 +152,18 @@ func init() {
 	})
 
 	// --- seq (sngl:seq) ---
-	// One emission for all three: a sequence in a loop head becomes the host's
-	// counting loop (GoIRContext.ForHead), so these only run where the numbers
-	// themselves are wanted -- held in a variable, or passed on. The sign test
-	// is on the step because a `by` of 0 must yield nothing, not spin.
+	// A sequence in a loop head becomes the host's counting loop and never
+	// reaches here (GoIRContext.ForHead). Everywhere else it is the pull
+	// sequence iter<int> is spelled as -- a func the consumer drives -- so
+	// holding or passing one still counts rather than building a slice. The
+	// sign test is on the step because a `by` of 0 must yield nothing, not
+	// spin.
 	seq := func(a, b, step string) string {
-		return "func(__a, __b, __s int) []int { __out := []int{}; " +
-			"if __s > 0 { for __i := __a; __i < __b; __i += __s { __out = append(__out, __i) } } " +
-			"else if __s < 0 { for __i := __a; __i > __b; __i += __s { __out = append(__out, __i) } }; " +
-			"return __out }(" + a + ", " + b + ", " + step + ")"
+		return "func(__a, __b, __s int) func(func(int) bool) { " +
+			"return func(__yield func(int) bool) { " +
+			"if __s > 0 { for __i := __a; __i < __b; __i += __s { if !__yield(__i) { return } } } " +
+			"else if __s < 0 { for __i := __a; __i > __b; __i += __s { if !__yield(__i) { return } } } " +
+			"} }(" + a + ", " + b + ", " + step + ")"
 	}
 	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
 	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })

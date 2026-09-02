@@ -7,16 +7,21 @@ component indexed {
     var empty list<string> = []
 
     vbox {
-        for var item, idx = items {
-            text #item(value="{idx}:{item}")
+        for var idx, item = items {
+            text #row(value="{idx}:{item}")
         }
     }
 }
 
+// The index comes first and the element second, which is what the checker
+// types and what every backend emits. The fixture used to name them the other
+// way round and assert "0:a" anyway -- the interpreter bound them backwards,
+// so two mistakes cancelled and the html this program generates disagreed
+// with the interpreter running it.
 func testForWithIndexVariable(t Test, c indexed) {
-    t.assert(c.item[0].value == "0:a")
-    t.assert(c.item[1].value == "1:b")
-    t.assert(c.item[2].value == "2:c")
+    t.assert(c.row[0].value == "0:a")
+    t.assert(c.row[1].value == "1:b")
+    t.assert(c.row[2].value == "2:c")
 }
 
 func testFloatComparisons(t Test, c indexed) {

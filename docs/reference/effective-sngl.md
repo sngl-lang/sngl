@@ -875,10 +875,13 @@ var items = ["a", "b", "c"]
 for var item = items {
     text(value=item)
 }
-for var item, idx = items {
+for var idx, item = items {
     text(value="{idx}: {item}", key=idx)
 }
 ```
+
+The index comes first and the element second, as the two-variable form does
+everywhere: `for var idx, item = items`.
 
 Use `key` for stable identity across re-renders when the list changes.
 
@@ -924,13 +927,13 @@ for var d = seq.step(10, 0, -2) {
 ```
 
 A sequence written directly in a loop head becomes the host's own counting
-loop and allocates nothing. Assigned to a variable it is an ordinary
-`iter<int>`, and the numbers are built — so both spellings work everywhere,
-and only the first is free.
+loop. Assigned to a variable or passed to a function it is an ordinary
+`iter<int>` — a sequence the loop pulls from, not a list of numbers — so
+neither spelling allocates one.
 
 ### for...else
 
-The `else` block renders when the list is empty. It works with both `for var item = list` and `for var item, index = list`:
+The `else` block renders when the list is empty. It works with both `for var item = list` and `for var index, item = list`:
 
 <!-- SNGL-component -->
 

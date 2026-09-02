@@ -75,6 +75,20 @@ type FileAsset struct {
 }
 
 // evalCtx carries state needed during optimization.
+// foldsUnbounded reports whether this target has to fold whatever it is
+// given, because a loop it does not unroll has nowhere to run.
+//
+// A target with a host language emits the loop itself (each language's
+// ForHead), so leaving one alone costs code size and nothing else. `--lang
+// none` is the static-artifact case: the platform writes markup, and a loop
+// still standing there renders its body once -- so a sequence it cannot
+// unroll would silently come out as a single element. Such a target unrolls
+// at any size, which is what asking a static site generator for 200000 nodes
+// means.
+func (ctx *evalCtx) foldsUnbounded() bool {
+	return ctx == nil || ctx.language == "" || ctx.language == "none"
+}
+
 type evalCtx struct {
 	platform      string
 	language      string

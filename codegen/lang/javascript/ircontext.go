@@ -237,6 +237,7 @@ func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 	switch n.IterKind {
 	case ir.IterCounted:
 		c := n.Counted
+		start, end := jc.EvalExpr(c.Start), jc.EvalExpr(c.End)
 		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
 		switch {
 		case c.Step == 1:
@@ -244,10 +245,16 @@ func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 		case c.Step < 0:
 			cmp, step = ">", fmt.Sprintf(" -= %d", -c.Step)
 		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number, and both
+			// are counters.
+			return fmt.Sprintf("for (let %s = 0, %s = %s, __end = %s; %s %s __end; %s++, %s%s) {",
+				n.Key, n.Value, start, end, n.Value, cmp, n.Key, n.Value, step)
+		}
 		// __end is bound in the init clause: the condition reads it every
 		// iteration, and SNGL evaluates the iterable once.
 		return fmt.Sprintf("for (let %s = %s, __end = %s; %s %s __end; %s%s) {",
-			key, jc.EvalExpr(c.Start), jc.EvalExpr(c.End), key, cmp, key, step)
+			key, start, end, key, cmp, key, step)
 	case ir.IterMapEntries:
 		if valueVar == "" {
 			valueVar = "_"

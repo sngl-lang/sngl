@@ -319,7 +319,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// `range` as a package function, and the by-name paths below would fold a
 	// program's own function of that name too.
 	if call.Func != nil && call.Func.Intrinsic != "" {
-		if v, ok := evalIntrinsic(call.Func.Intrinsic, args); ok {
+		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.foldsUnbounded()); ok {
 			return v, true
 		}
 	}
@@ -369,11 +369,22 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	return evalNativeCall(call, args, ctx)
 }
 
+// maxFoldedSequence bounds what a sequence may fold to. A folded sequence is
+// the numbers themselves -- a list literal in the IR, and one unrolled copy of
+// a loop body per element -- so `seq.count(200000)` in a view folded to a
+// 3.4 MB page of 200000 spans. Past this many elements the call is left
+// alone, and the target emits a counting loop for it instead.
+//
+// The bound is generous next to what a UI actually repeats: the loops that
+// want unrolling are over a handful of routes or a dozen menu items. It is
+// per loop, so nesting still multiplies.
+const maxFoldedSequence = 1024
+
 // evalIntrinsic folds a call by its #[intrinsic] id. An integer sequence has
 // to fold here rather than through a SNGL body, because there is no way to
 // write one: building a range needs a loop, and a loop needs a range.
 // opeval.Sequence is the same implementation the interpreter runs.
-func evalIntrinsic(id string, args []any) (any, bool) {
+func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 	ints := func(want int) ([]int, bool) {
 		if len(args) != want {
 			return nil, false
@@ -388,18 +399,24 @@ func evalIntrinsic(id string, args []any) (any, bool) {
 		}
 		return out, true
 	}
+	seq := func(start, end, step int) (any, bool) {
+		if !unbounded && opeval.SequenceLen(start, end, step) > maxFoldedSequence {
+			return nil, false
+		}
+		return opeval.Sequence(start, end, step), true
+	}
 	switch id {
 	case "seq.count":
 		if a, ok := ints(1); ok {
-			return opeval.Sequence(0, a[0], 1), true
+			return seq(0, a[0], 1)
 		}
 	case "seq.range":
 		if a, ok := ints(2); ok {
-			return opeval.Sequence(a[0], a[1], 1), true
+			return seq(a[0], a[1], 1)
 		}
 	case "seq.step":
 		if a, ok := ints(3); ok {
-			return opeval.Sequence(a[0], a[1], a[2]), true
+			return seq(a[0], a[1], a[2])
 		}
 	}
 	return nil, false

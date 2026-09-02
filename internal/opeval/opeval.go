@@ -236,8 +236,21 @@ func asUint64(v any) (uint64, bool) {
 // The elements are `any` because that is how both callers carry a list value:
 // the interpreter builds one for an iter<int> a program holds, and the
 // constant folder unrolls a loop over one.
+// SequenceLen is how many elements Sequence would produce, without producing
+// them. A caller that has a bound to check reads this first, so nothing is
+// built to discover that it is too big.
+func SequenceLen(start, end, by int) int {
+	switch {
+	case by > 0 && end > start:
+		return (end - start + by - 1) / by
+	case by < 0 && end < start:
+		return (start - end - by - 1) / -by
+	}
+	return 0
+}
+
 func Sequence(start, end, by int) []any {
-	out := []any{}
+	out := make([]any, 0, SequenceLen(start, end, by))
 	switch {
 	case by > 0:
 		for i := start; i < end; i += by {

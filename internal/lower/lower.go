@@ -114,6 +114,7 @@ var passes = []pass{
 	passDeclarative,
 	passNodeEscape,
 	passNoRef,
+	passIndexedIter,
 	passIterKind,
 	passStampUsage,
 }

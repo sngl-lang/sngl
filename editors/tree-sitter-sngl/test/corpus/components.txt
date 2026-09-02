@@ -252,7 +252,7 @@ For node with index
 
 component App {
     var items = [1, 2, 3]
-    for var item, idx = items {
+    for var idx, item = items {
         text(value=item)
     }
 }

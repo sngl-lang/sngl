@@ -281,14 +281,21 @@ func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 		// bound exclusive, which is what sngl:seq documents.
 		c := n.Counted
 		start, end := kc.EvalExpr(c.Start), kc.EvalExpr(c.End)
+		var progression string
 		switch {
 		case c.Step == 1:
-			return fmt.Sprintf("for (%s in %s until %s) {", key, start, end)
+			progression = fmt.Sprintf("%s until %s", start, end)
 		case c.Step > 0:
-			return fmt.Sprintf("for (%s in (%s until %s) step %d) {", key, start, end, c.Step)
+			progression = fmt.Sprintf("(%s until %s) step %d", start, end, c.Step)
 		default:
-			return fmt.Sprintf("for (%s in (%s downTo %s + 1) step %d) {", key, start, end, -c.Step)
+			progression = fmt.Sprintf("(%s downTo %s + 1) step %d", start, end, -c.Step)
 		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number. withIndex
+			// over a progression counts alongside it and builds nothing.
+			return fmt.Sprintf("for ((%s, %s) in (%s).withIndex()) {", n.Key, n.Value, progression)
+		}
+		return fmt.Sprintf("for (%s in %s) {", key, progression)
 	case ir.IterMapEntries:
 		// Map iteration: for ((k, v) in m) { ... }
 		if valueVar == "" {
@@ -867,12 +874,14 @@ func IRTypeToKt(t *ir.Type) string {
 		// use `dyn = null` for absent children).
 		return "Any?"
 	case ir.TypeIter:
-		// As in Go: a held iter<T> is the materialised sequence, and the lazy
-		// form exists only in a loop head that ForHead turns into a range.
+		// Iterable<T>, not List<T>: an iter<T> is a sequence something pulls
+		// from, and Iterable is the widest spelling of that -- a List is one,
+		// and so is the IntProgression sngl:seq produces. It is also why a
+		// list reaching an iter<T> position needs no conversion emitted.
 		if len(t.Elems) == 1 {
-			return "List<" + IRTypeToKt(t.Elems[0]) + ">"
+			return "Iterable<" + IRTypeToKt(t.Elems[0]) + ">"
 		}
-		return "List<Any>"
+		return "Iterable<Any>"
 	case ir.TypeVoid, ir.TypeComponent, ir.TypeTypeParam,
 		ir.TypeRef, ir.TypeNative, ir.TypeInvalid:
 		// No first-class Kotlin spelling in emitted code. "Any" is what the
