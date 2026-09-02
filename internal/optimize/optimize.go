@@ -75,17 +75,25 @@ type FileAsset struct {
 }
 
 // evalCtx carries state needed during optimization.
-// foldsUnbounded reports whether this target has to fold whatever it is
-// given, because a loop it does not unroll has nowhere to run.
+// unrollsLoops reports whether a loop over a constant iterable is expanded
+// into its iterations here, rather than left for the target to emit.
 //
-// A target with a host language emits the loop itself (each language's
-// ForHead), so leaving one alone costs code size and nothing else. `--lang
-// none` is the static-artifact case: the platform writes markup, and a loop
-// still standing there renders its body once -- so a sequence it cannot
-// unroll would silently come out as a single element. Such a target unrolls
-// at any size, which is what asking a static site generator for 200000 nodes
-// means.
-func (ctx *evalCtx) foldsUnbounded() bool {
+// Only for a target with no host language. `--lang none` is the static
+// artifact: the platform writes markup, a loop has nowhere to run in it, and
+// one left standing renders its body once -- so unrolling is the only way the
+// nodes exist at all, at whatever size the program asks for.
+//
+// Every language target emits the loop itself (each language's ForHead), and
+// its own compiler is in a better position to decide whether to unroll it: it
+// can see the bounds are constant, and it does not have to write the copies
+// into a source file that a person reads and a build compiles. Unrolled
+// Compose was three copies of a RadioButton where the loop is one, and the
+// same held for Go, Kotlin and the TUI.
+//
+// A window loop is not this. expandForWindows unrolls those on every target,
+// because each iteration is a separate window -- a file, a top-level surface
+// -- and not a repeated body.
+func (ctx *evalCtx) unrollsLoops() bool {
 	return ctx == nil || ctx.language == "" || ctx.language == "none"
 }
 

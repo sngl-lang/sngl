@@ -319,7 +319,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// `range` as a package function, and the by-name paths below would fold a
 	// program's own function of that name too.
 	if call.Func != nil && call.Func.Intrinsic != "" {
-		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.foldsUnbounded()); ok {
+		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unrollsLoops()); ok {
 			return v, true
 		}
 	}
@@ -369,15 +369,14 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	return evalNativeCall(call, args, ctx)
 }
 
-// maxFoldedSequence bounds what a sequence may fold to. A folded sequence is
-// the numbers themselves -- a list literal in the IR, and one unrolled copy of
-// a loop body per element -- so `seq.count(200000)` in a view folded to a
-// 3.4 MB page of 200000 spans. Past this many elements the call is left
-// alone, and the target emits a counting loop for it instead.
+// maxFoldedSequence bounds what a sequence folds to on a target that does not
+// unroll loops. A folded sequence is the numbers themselves -- a list literal
+// in the IR -- and a target that emits the loop has no use for a literal of
+// 200000 elements in a variable it is about to walk. Past this many the call
+// stands, and the sequence is computed where it is read.
 //
-// The bound is generous next to what a UI actually repeats: the loops that
-// want unrolling are over a handful of routes or a dozen menu items. It is
-// per loop, so nesting still multiplies.
+// A static target has no such choice and is not bounded here; see
+// maxStaticUnroll for what bounds it.
 const maxFoldedSequence = 1024
 
 // evalIntrinsic folds a call by its #[intrinsic] id. An integer sequence has

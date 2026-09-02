@@ -164,7 +164,9 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 				continue
 			}
 		}
-		if fs, ok := s.(*ir.For); ok {
+		// A loop is unrolled only where the target cannot emit one; see
+		// evalCtx.unrollsLoops.
+		if fs, ok := s.(*ir.For); ok && ctx.unrollsLoops() {
 			if expanded := expandForStmt(fs, ctx); expanded != nil {
 				out = append(out, expanded...)
 				continue

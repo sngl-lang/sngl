@@ -8,16 +8,20 @@
 # checked: the injection used to stop at the first match it walked into, which
 # for this override's if/else is the branch that is not taken.
 
+# The write-back is `pick = opt`: the loop variable, in the loop. It used to
+# read `pick = "a"` and `pick = "b"` because a literal `options` was unrolled
+# here; Kotlin emits the loop now, so `opt` is what the assignment names --
+# which is the thing this test is about.
 sngl generate --lang kotlin --platform android --out h horizontal.sngl
 grep 'onClick = \{' h/MainScreen.kt
-grep 'pick = "a"' h/MainScreen.kt
-grep 'pick = "b"' h/MainScreen.kt
+grep 'for \(opt in listOf\("a", "b"\)\) \{' h/MainScreen.kt
+grep 'pick = opt' h/MainScreen.kt
 ! grep 'newValue ->' h/MainScreen.kt
 ! grep 'onClick = \{\}' h/MainScreen.kt
 
 sngl generate --lang kotlin --platform android --out v vertical.sngl
-grep 'pick = "a"' v/MainScreen.kt
-grep 'pick = "b"' v/MainScreen.kt
+grep 'for \(opt in listOf\("a", "b"\)\) \{' v/MainScreen.kt
+grep 'pick = opt' v/MainScreen.kt
 ! grep 'newValue ->' v/MainScreen.kt
 ! grep 'onClick = \{\}' v/MainScreen.kt
 

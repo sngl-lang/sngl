@@ -34,6 +34,20 @@ func expandForWindows(pkg *ir.Package, ctx *evalCtx) {
 	mainComp.Body = expanded
 }
 
+// maxStaticUnroll bounds an unroll on a target that has no alternative to
+// one. A static artifact holds the iterations themselves -- a node per
+// element, written into the output -- so a loop with a large constant count
+// is a page nobody wanted: `for seq.count(200000)` produced 3.4 MB of markup
+// and 200000 spans, in a language where the same program is a `for` and a
+// kilobyte.
+//
+// It is a diagnostic rather than a silent truncation, and rather than a
+// runtime loop, because there is nowhere to run one: the author's options are
+// a smaller count or a target with a host language, and only they can pick.
+// The bound is per loop, so nested loops multiply and each is reported where
+// it stands.
+const maxStaticUnroll = 10000
+
 // expandForStmt tries to expand a for-loop over a const iterable.
 // Returns nil if the iterable can't be evaluated. A successful expansion to
 // zero items returns a non-nil empty slice — distinct from "couldn't
@@ -55,6 +69,16 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		} else {
 			return nil
 		}
+	}
+
+	if len(items) > maxStaticUnroll && ctx.err == nil {
+		pos := ""
+		if fs.AST != nil {
+			pos = fs.AST.Pos.String() + ": "
+		}
+		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and a target with no host language writes every iteration into its output (limit %d): give it a smaller count, or build for a language that can run the loop",
+			pos, len(items), maxStaticUnroll)
+		return nil
 	}
 
 	// Find the LoopVar symbols for the for statement's key and value.
