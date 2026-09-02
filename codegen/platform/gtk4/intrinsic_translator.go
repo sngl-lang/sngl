@@ -420,6 +420,41 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
+// OnComponentRoot binds a name to the widget an instance renders as. A local,
+// so a recursion frame keeps its own rather than clobbering a shared Model
+// field -- the same reason OnCreateComponent takes the local-ref path.
+func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	t.idCTypes[id] = "GtkWidget"
+	return []ir.Stmt{&ir.LocalVar{
+		Name: id,
+		Type: ir.NativePointerOf("GtkWidget"),
+		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: golang.ComponentRootField},
+	}}
+}
+
+// OnUpdateComponent patches a prop on a live instance through the setter the
+// instance carries for it.
+func (t *gtk4Translator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: golang.ComponentSetterMethod(prop)},
+		Args:     []ir.CallArg{{Value: value}},
+	}}}
+}
+
+// OnDestroyComponent ends the instance's lifetime. On a refcounted toolkit
+// this is also where the reference the record holds is dropped, which is why
+// detaching a node is not the same event: an unparented widget is routinely
+// attached again.
+func (t *gtk4Translator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: golang.ComponentDestroyMethod},
+	}}}
+}
+
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = cType
 	t.topLevel = append(t.topLevel, id)

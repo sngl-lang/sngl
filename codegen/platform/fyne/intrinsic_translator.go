@@ -245,6 +245,28 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
+// OnComponentRoot binds a name to the widget an instance renders as, so
+// AppendChild has something to attach. A local, not a Model field: an instance
+// is reached through the record that owns it, and the record is what a
+// recursion frame keeps its own copy of.
+func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.LocalVar{
+		Name: id,
+		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: golang.ComponentRootField},
+	}}
+}
+
+// OnUpdateComponent patches a prop on a live instance through the setter the
+// instance carries for it.
+func (t *fyneTranslator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(inst, golang.ComponentSetterMethod(prop), []ir.Expr{value}, ir.TypVoid)}}
+}
+
+// OnDestroyComponent ends the instance's lifetime.
+func (t *fyneTranslator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(inst, golang.ComponentDestroyMethod, nil, ir.TypVoid)}}
+}
+
 func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	// A child that's been appended to a parent is no longer a top-level
 	// candidate. Window/component emitters consult topLevel to decide

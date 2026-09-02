@@ -142,6 +142,41 @@ func ComponentRenderMethod(componentName string) string {
 	return "render" + ExportName(componentName)
 }
 
+// The shape of a component instance in emitted Go. An instance is a struct
+// pointer carrying the state a component's own `var`s need when it cannot be
+// inlined, the node it renders as, one setter per prop it can absorb, and a
+// teardown.
+//
+// Named here for the same reason ComponentRenderMethod is: every Go platform
+// emits these and the lowering dispatches to them, so a name spelled twice is
+// a name that drifts.
+
+// ComponentInstanceType is the struct a non-inlinable component's instances
+// are allocated as.
+func ComponentInstanceType(componentName string) string {
+	return ExportName(componentName) + "Instance"
+}
+
+// ComponentInstanceCtor is the function that allocates one.
+func ComponentInstanceCtor(componentName string) string {
+	return "new" + ExportName(componentName) + "Instance"
+}
+
+// ComponentRootField is the field holding the node an instance renders as.
+const ComponentRootField = "Root"
+
+// ComponentDestroyMethod ends an instance's lifetime: effect teardowns, timer
+// cancels, whatever the host has to be given back. Not detachment, which
+// RemoveChild already says and which happens far more often.
+const ComponentDestroyMethod = "Destroy"
+
+// ComponentSetterMethod is the setter an instance carries for one prop it can
+// absorb. A prop it cannot is never routed here: lowering recreates the
+// instance instead, which is what #[construct] selects.
+func ComponentSetterMethod(prop string) string {
+	return "Set" + ExportName(prop)
+}
+
 // ZeroValueGo returns the Go zero-value expression for a SNGL type hint or
 // a Go type string (func(...), []T, pkg.T, etc.).
 func ZeroValueGo(hint string) string {

@@ -53,18 +53,34 @@ func (d IntrinsicDef) Instantiate(args ...*Type) ([]*Param, *Type) {
 // them, no language registers an emitter for them, and the only consumer is
 // codegen.WalkLowered, which matches on the id and dispatches to a method of
 // IntrinsicTranslator — a platform interface.
+//
+// The four component ops are one contract, and are declared together rather
+// than as each becomes reachable: a platform living outside this repository
+// implements IntrinsicTranslator, so an op added later is a breaking change to
+// everyone who already shipped one.
+//
+// An instance is a record, not a widget. CreateComponent yields the record --
+// the state a component's own `var`s need when the instance cannot be inlined,
+// which is every instance under a dynamic `for` or in a recursive cycle --
+// and ComponentRoot is how the tree gets the node back out of it.
 const (
-	NodeOpCreateNode      = "CreateNode"
-	NodeOpCreateComponent = "CreateComponent"
-	NodeOpAppendChild     = "AppendChild"
-	NodeOpRemoveChild     = "RemoveChild"
-	NodeOpAttachHandler   = "AttachHandler"
+	NodeOpCreateNode       = "CreateNode"
+	NodeOpCreateComponent  = "CreateComponent"
+	NodeOpComponentRoot    = "ComponentRoot"
+	NodeOpUpdateComponent  = "UpdateComponent"
+	NodeOpDestroyComponent = "DestroyComponent"
+	NodeOpAppendChild      = "AppendChild"
+	NodeOpRemoveChild      = "RemoveChild"
+	NodeOpAttachHandler    = "AttachHandler"
 )
 
 // NodeOps is every node operation, for the passes that build a call per op.
 var NodeOps = []string{
 	NodeOpCreateNode,
 	NodeOpCreateComponent,
+	NodeOpComponentRoot,
+	NodeOpUpdateComponent,
+	NodeOpDestroyComponent,
 	NodeOpAppendChild,
 	NodeOpRemoveChild,
 	NodeOpAttachHandler,

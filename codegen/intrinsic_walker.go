@@ -23,7 +23,29 @@ type IntrinsicTranslator interface {
 	// — a non-inlinable (recursive) user component left in place by the
 	// lower pass. Mutation-model platforms promote id to a Model field so
 	// references to it elsewhere (qualified to m.id) resolve consistently.
+	//
+	// id names the INSTANCE, not the widget: a component that cannot be
+	// inlined still declares state, and one cell per instance is what the
+	// build-time `__instN` renaming cannot provide when the count is only
+	// known at runtime. ComponentRoot is how the tree gets a node back.
 	OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt
+	// OnComponentRoot handles `LocalVar id = lower.ComponentRoot(inst)`,
+	// binding id to the node an instance renders as, so AppendChild has
+	// something to attach. Separate from CreateComponent because an instance
+	// outlives any one attachment: it is detached and reattached as its
+	// position in the tree comes and goes.
+	OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt
+	// OnUpdateComponent handles `lower.UpdateComponent(inst, "prop", value)`
+	// — a reactive prop crossing into a live instance. The platform patches
+	// whatever inside the instance reads that prop. A prop the instance
+	// cannot absorb is not routed here: lowering destroys and recreates the
+	// instance instead, which is what the #[construct] mark selects.
+	OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt
+	// OnDestroyComponent handles `lower.DestroyComponent(inst)`: the instance
+	// is going away for good. Effect teardowns, timer cancels, and whatever
+	// the host needs to release. Distinct from RemoveChild, which only
+	// unparents a node that may well be attached again.
+	OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt
 	OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt
@@ -58,6 +80,9 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			if isLowerIntrinsic(call, "CreateComponent") {
 				return t.OnCreateComponent(ctx, n.Name, call)
 			}
+			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) == 1 {
+				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value)
+			}
 		}
 	case *ir.CallStmt:
 		if n.Call != nil {
@@ -69,6 +94,11 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)
+			case isLowerIntrinsic(n.Call, ir.NodeOpUpdateComponent) && len(n.Call.Args) == 3:
+				prop, _ := extractStringLit(n.Call.Args[1].Value)
+				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop, n.Call.Args[2].Value)
+			case isLowerIntrinsic(n.Call, ir.NodeOpDestroyComponent) && len(n.Call.Args) == 1:
+				return t.OnDestroyComponent(ctx, n.Call.Args[0].Value)
 			}
 			// A slot append. push mutates its receiver and returns nothing, so
 			// the lowering emits the call rather than an assignment to the

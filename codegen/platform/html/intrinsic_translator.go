@@ -74,6 +74,36 @@ func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNod
 
 var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
 
+// The shape of a component instance in the emitted JS. An instance is a plain
+// object: the root node it renders as, one updater per prop the instance can
+// absorb, and a teardown. Named here rather than spelled at each use so the
+// factory and the translator cannot drift -- which is how `__cf_<name>` was
+// called for years without anything defining it.
+const (
+	instanceRootField     = "__root"
+	instanceDestroyMethod = "__destroy"
+)
+
+// instanceUpdateMethod is the updater an instance carries for one prop.
+func instanceUpdateMethod(prop string) string {
+	return "__set_" + sanitizeInstanceProp(prop)
+}
+
+// sanitizeInstanceProp makes a prop name safe as a JS identifier fragment. A
+// wildcard prop's name comes from a call site and need not be one.
+func sanitizeInstanceProp(prop string) string {
+	out := make([]rune, 0, len(prop))
+	for _, r := range prop {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+			out = append(out, r)
+		default:
+			out = append(out, '_')
+		}
+	}
+	return string(out)
+}
+
 // declOf is the declaration of the element an op targets.
 func (t *htmlTranslator) declOf(node ir.Expr) *ir.Component {
 	if id, ok := node.(*ir.Ident); ok {
@@ -112,6 +142,41 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 // original `const id = ...CreateComponent(...)` binding.
 func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
 	return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: call}}
+}
+
+// OnComponentRoot binds a name to the node an instance renders as. The record
+// carries it under a fixed field, which is html's own choice of shape: nothing
+// outside this platform names it.
+func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.LocalVar{
+		Name: id,
+		Type: ir.TypDyn,
+		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: instanceRootField},
+	}}
+}
+
+// OnUpdateComponent patches a prop on a live instance by calling the updater
+// the instance carries for it. A prop with no updater is not routed here --
+// lowering recreates the instance instead -- so an unknown one is a lowering
+// bug rather than something to drop quietly.
+func (t *htmlTranslator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: instanceUpdateMethod(prop)},
+		Args:     []ir.CallArg{{Value: value}},
+	}}}
+}
+
+// OnDestroyComponent runs the instance's teardown. Detaching the node is the
+// caller's business: RemoveChild already says that, and an instance is
+// detached and reattached more often than it is destroyed.
+func (t *htmlTranslator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: instanceDestroyMethod},
+	}}}
 }
 
 func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
