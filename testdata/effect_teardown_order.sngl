@@ -1,0 +1,35 @@
+// Several lifetimes ending on one change end newest first. An effect set up
+// later may hold something an earlier one handed it, so releasing in
+// acquisition order can release a thing still in use.
+//
+// The log is what pins it. A count of unmounts reads the same either way,
+// which is how a teardown that ran forwards would have gone unnoticed.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        items list<string> = ["a", "b", "c"]
+        log list<string> = []
+    )
+
+    for it = items {
+        effect(
+            on=it,
+            @mount(v) {
+                log.push("+{v}")
+            },
+            @unmount(v) {
+                log.push("-{v}")
+            },
+        )
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testTwoEndingsRunNewestFirst(t Test, c main) {
+    c.items = ["a"]
+    t.assert(c.out.value == "+a,+b,+c,-c,-b")
+}

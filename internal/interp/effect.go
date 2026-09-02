@@ -158,6 +158,12 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 	if env == nil {
 		return fmt.Errorf("effect at %s has no scope to run in", e.Key)
 	}
+	// The scope was taken by the mount that placed this bracket, so its copy of
+	// the program's state is as old as that mount. A teardown is where that
+	// matters: an ending bracket is no longer in the tree, so no later mount
+	// refreshes it, and writing the whole scope back would put the state back
+	// with it.
+	env.refreshFrom(root)
 	var args []any
 	if len(fn.Params) > 0 {
 		args = []any{e.On}

@@ -209,6 +209,33 @@ func (env *Env) wasAssigned(sym ir.Symbol) bool {
 	return false
 }
 
+// refreshFrom brings every binding this scope and its parents hold up to the
+// value src knows, and leaves alone the ones src does not -- which is the loop
+// variable an iteration bound, and the reason the scope is worth keeping at
+// all.
+//
+// The counterpart to RebindFrom, for a scope that outlives the render that
+// built it. An effect's bracket holds the scope of the iteration that placed
+// it, and its state was copied in when that mount ran; a handler running later
+// reads what the program said then, and RebindFrom carries the whole of it
+// back. Two brackets ending in one settle is where that shows: the second
+// teardown wrote its own mount's state back over the first teardown's.
+func (env *Env) refreshFrom(src *Env) {
+	if src == nil {
+		return
+	}
+	for e := env; e != nil; e = e.parent {
+		if e == src {
+			return
+		}
+		for sym := range e.vals {
+			if v, ok := src.Value(sym); ok {
+				e.vals[sym] = v
+			}
+		}
+	}
+}
+
 // noteAssigned records that a statement wrote sym in this scope.
 func (env *Env) noteAssigned(sym ir.Symbol) {
 	if env.assigned == nil {
