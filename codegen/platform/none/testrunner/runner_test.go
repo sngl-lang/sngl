@@ -15,7 +15,11 @@ import (
 
 func TestRunFixtures(t *testing.T) {
 	for s := range testutil.CodegenSamples(t) {
-		if !strings.HasPrefix(s.Name, "test_") && !strings.HasPrefix(s.Name, "component_") {
+		// The fixture families whose assertions this harness evaluates. Named
+		// by prefix rather than by "carries a test func", because that would
+		// also pick up the deliberately-broken error_* fixtures, whose
+		// ERROR(check) directives the checker's harness is what matches.
+		if !hasRunnablePrefix(s.Name) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
@@ -176,4 +180,19 @@ func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirec
 	for _, child := range r.Children {
 		checkResult(t, child, dirs)
 	}
+}
+
+// runnablePrefixes names the fixture families whose `t.assert` bodies this
+// harness evaluates. A family left off it has its assertions read by nobody:
+// the platform harnesses only compile a fixture, and `sngl test` is a thing a
+// person runs by hand.
+var runnablePrefixes = []string{"test_", "component_", "effect_"}
+
+func hasRunnablePrefix(name string) bool {
+	for _, p := range runnablePrefixes {
+		if strings.HasPrefix(name, p) {
+			return true
+		}
+	}
+	return false
 }
