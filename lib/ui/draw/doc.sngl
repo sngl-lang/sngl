@@ -1,0 +1,5 @@
+// 2D shapes and the canvas that hosts them, and the `shape` tree they are
+// members of. A component joins it by naming that tree in its return position.
+//
+// The shapes live here rather than in `sngl:ui` because `canvas`, `rect`,
+// `line` and `path` are names an application usually wants for itself.

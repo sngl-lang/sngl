@@ -1,5 +1,3 @@
-// The three-state box a data adapter returns, and the accessors that read it.
-
 import . "sngl:internal/marks"
 
 // A value fetched from outside the program: absent until it arrives, able to

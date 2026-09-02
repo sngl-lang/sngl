@@ -1,17 +1,3 @@
-// HTTP as a data source: a request whose answer is a `remote.Value`.
-//
-// `fetch` is keyed by its url — one box per url, started on first read, and
-// shared by every part of the program asking for the same one. Hand it `&url`
-// rather than `url` and the box follows that state instead of the string it
-// held at the time.
-//
-// The transport underneath it is `get`, which is declared here and implemented
-// per language. That is where a target says whether it can speak HTTP at all: a
-// language with no implementation and no platform supplying one fails the build
-// rather than the request. A scheme the transport does not know — `foo://` in a
-// url a program computed — is a runtime failure instead, because a url is a
-// string and no build can read it.
-
 import remote "sngl:remote"
 
 // What an HTTP request answers with.

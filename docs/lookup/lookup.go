@@ -831,29 +831,69 @@ func providedPackageDocs(pkg string) []*ast.Document {
 	return nil
 }
 
+// The one file a package's prose is read from. Go's semantics — every file's
+// package comment counts, concatenated in load order — cannot say which order,
+// and the blank line that separates a package comment from a declaration
+// comment is easy to leave in by accident: three files in lib/remote opened
+// with a file header and the package read as whichever the directory listed
+// first. So a package holding a doc.sngl is documented by it alone.
+//
+// A package with no doc.sngl keeps go's semantics, which costs nothing: the
+// packages in that position are the single-file ones a target serves for
+// itself (`sngl:platform/html`, `sngl:language/go`), where there is no order
+// to leave unpinned. lib/packagedoc_test.go holds lib/ to the stricter rule.
+const packageDocFile = "doc.sngl"
+
+// documentFile is the file a parsed document came from. An *ast.Document does
+// not carry one, so it is recovered from the first statement's position —
+// parseStdlibDocs and ProvidedDocs both parse under the base name.
+func documentFile(doc *ast.Document) string {
+	if len(doc.Stmts) == 0 {
+		return ""
+	}
+	p := doc.Stmts[0].StmtPos()
+	if p == nil {
+		return ""
+	}
+	return filepath.Base(p.File)
+}
+
+// packageProse is one package's own description, read from packageDocFile
+// alone when the package has one.
+func packageProse(src []*ast.Document) string {
+	fromDoc := slices.ContainsFunc(src, func(d *ast.Document) bool { return documentFile(d) == packageDocFile })
+	var prose []string
+	for _, d := range src {
+		if fromDoc && documentFile(d) != packageDocFile {
+			continue
+		}
+		if doc := checker.PackageDoc(d); doc != "" {
+			prose = append(prose, doc)
+		}
+	}
+	return strings.Join(prose, "\n\n")
+}
+
 func stdlibPackageDocs(pkgs ...string) (*checker.PackageDocs, []ast.Stmt) {
 	merged := &checker.PackageDocs{}
 	var stmts []ast.Stmt
 	var docs []*ast.Document
+	var prose []string
 	for _, pkg := range pkgs {
 		// PackageSource, not the two halves separately: a mark is read off the
 		// loaded IR and its declaration is then found here by pointer, and two
 		// parses of one file never share one. Reading a target's provided
 		// source fresh is why the #[options] struct of every target package
 		// was classified as an ordinary user type.
-		docs = append(docs, checker.PackageSource(pkg)...)
+		src := checker.PackageSource(pkg)
+		docs = append(docs, src...)
+		if p := packageProse(src); p != "" {
+			prose = append(prose, p)
+		}
 	}
+	merged.Doc = strings.Join(prose, "\n\n")
 	for _, doc := range docs {
 		pd := checker.ExtractPackageDocs(doc)
-		if pd.Doc != "" {
-			// go doc semantics: every file's package comment counts, joined in
-			// load order. That order is not guaranteed, so a package wanting
-			// prose in a fixed sequence should keep it in one file.
-			if merged.Doc != "" {
-				merged.Doc += "\n\n"
-			}
-			merged.Doc += pd.Doc
-		}
 		merged.Components = append(merged.Components, pd.Components...)
 		merged.Structs = append(merged.Structs, pd.Structs...)
 		merged.Enums = append(merged.Enums, pd.Enums...)

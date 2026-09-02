@@ -1,16 +1,3 @@
-// Dates, clock values and the passage of time: the `date` or `time` a value
-// falls on, the `duration` between two of them, and the `timer` that fires
-// every duration.
-//
-// None of this is ambient. A program that never asks what time it is never
-// names any of it, which is why these are imported rather than in scope
-// everywhere.
-//
-// `date`, `time` and `datetime` are string-representable, as `color` is: a
-// string literal in the canonical form coerces to one, and one coerces back
-// to that form. Platform codegen maps all three to the host's native
-// date/time type (Go `time.Time`, JS/Kotlin string).
-
 import . "sngl:internal/marks"
 
 // Calendar date in canonical "YYYY-MM-DD" form.
