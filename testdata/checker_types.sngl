@@ -39,7 +39,7 @@ component main {
     func nsMethod() => int.abs(count)
 
     vbox {
-        for item, i = items {
+        for var item, i = items {
             text(value=string(item), key=string(i))
         }
         if flag {

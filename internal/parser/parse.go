@@ -94,6 +94,30 @@ func inInterpolation(filtered []Token, idx int) bool {
 	return false
 }
 
+// loopVarNeedsVar reports whether the token that failed to parse is the `=` of
+// a loop head whose variables were written without `var` -- `for x = xs`, the
+// spelling that was valid before the declaration became explicit. The generic
+// message for it names the token the grammar wanted (`{`) rather than the
+// keyword that is missing, which is no help to anyone migrating.
+func loopVarNeedsVar(filtered []Token, idx int) bool {
+	if idx < 0 || idx >= len(filtered) || filtered[idx].Type != ASSIGN {
+		return false
+	}
+	// Back over exactly what a loop head can hold left of the `=`: one or two
+	// names, each optionally &-bound.
+	for i := idx - 1; i >= 0; i-- {
+		switch filtered[i].Type {
+		case IDENT, COMMA, AMP:
+			continue
+		case KW_FOR:
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
 func remapErrors(err error, filtered []Token) error {
 	errList, ok := err.(scanner.ErrList)
 	if !ok {
@@ -116,6 +140,10 @@ func remapErrors(err error, filtered []Token) error {
 			// that this is not an expression.
 			if inInterpolation(filtered, idx) {
 				errList[i].Err = errors.New("invalid expression in interpolation")
+				continue
+			}
+			if loopVarNeedsVar(filtered, idx) {
+				errList[i].Err = errors.New("a loop variable is declared with var: write `for var x = xs`")
 				continue
 			}
 			errList[i].Err = errors.New(prettifyParseError(errList[i].Err.Error()))

@@ -28,7 +28,7 @@ component SearchBox(entries list<docs.SearchEntry> = []) {
             html.input(class="search-input", type="search", placeholder="Search docs…", autocomplete="off", spellcheck="false",
                 oninput="window.snglFilterSearch(this)")
             html.div(class="search-results", hidden=true) {
-                for entry = entries {
+                for var entry = entries {
                     html.a(href=entry.href, class="search-hit") {
                         html.div(innerText=entry.title, class="hit-title")
                         html.div(innerText=entry.crumb, class="hit-crumb")
@@ -43,7 +43,7 @@ component SearchBox(entries list<docs.SearchEntry> = []) {
             input(:value=query, placeholder="Search docs…", type="search")
             if query != "" {
                 vbox(style={gap=2}) {
-                    for entry = entries {
+                    for var entry = entries {
                         SearchHit(entry=entry, query=query)
                     }
                 }

@@ -11,7 +11,7 @@ const labels list<string> = ["one", "two", "three"]
 component focusLoop {
     vbox {
         button(text="before", focusable=true)
-        for l = labels {
+        for var l = labels {
             button(text=l, focusable=true)
         }
         button(text="after", focusable=true)

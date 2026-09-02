@@ -225,7 +225,11 @@ component main {
 
 ## Control Flow: for
 
-`for item = list { ... }` renders a block for each element of a list. The `else` clause runs when the list is empty — a tidy way to show an empty-state message.
+`for var item = list { ... }` renders a block for each element of a list. The `else` clause runs when the list is empty — a tidy way to show an empty-state message.
+
+The `var` is there because the loop declares a variable, the same way every other name is introduced. Leave it out and the loop declares nothing: `for list { ... }` still renders the block once per element, for a body that never names it.
+
+When the numbers *are* the list, `sngl:seq` produces them — `for var i = seq.count(9)` counts 0 through 8, `seq.range(1, 10)` counts between two bounds, and `seq.step(10, 0, -2)` counts down by two. A sequence in a loop head compiles to the host's own counting loop.
 
 SNGL tracks list mutations (`push`, `remove`, index assignments) and patches the DOM incrementally; you never call a `render()` function yourself.
 
@@ -244,7 +248,7 @@ component main {
                 next = ""
             })
         }
-        for item = items {
+        for var item = items {
             text(value="• {item}")
         } else {
             text(value="List is empty", style={color=#888888})
@@ -341,7 +345,7 @@ component main {
 
 Index assignment (`items[i] = value`) and the toggle operator (`items[i].done!!`) work directly on list elements.
 
-A loop element variable is a copy by default, so writing its fields doesn't touch the list. Prefix it with `&` (`for &t = items`) to bind it as a reference into the list: field and whole-element writes then update the original element in place — and reactivity fires. Below, `&t` is what lets the checkbox toggle the task and refresh the remaining count.
+A loop element variable is a copy by default, so writing its fields doesn't touch the list. Prefix it with `&` (`for var &t = items`) to bind it as a reference into the list: field and whole-element writes then update the original element in place — and reactivity fires. Below, `&t` is what lets the checkbox toggle the task and refresh the remaining count.
 
 ```sngl
 import . "sngl:ui"
@@ -358,7 +362,7 @@ component main {
     func remainingCount() => tasks.filter(func(x) => !x.done).length
     vbox(style={gap=6, padding=16}) {
         text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight="bold"})
-        for &t = tasks {
+        for var &t = tasks {
             checkbox(:checked=t.done, label=t.label)
         }
         hbox(style={gap=6}) {
@@ -498,7 +502,7 @@ component main {
                 query = ""
             }
         })
-        for r = results {
+        for var r = results {
             text(value="• {r}")
         } else {
             text(value="No results yet", style={color=#888888})

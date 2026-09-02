@@ -315,6 +315,15 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		args = append(args, v)
 	}
 
+	// Dispatch by intrinsic id before anything name-based: sngl:seq declares
+	// `range` as a package function, and the by-name paths below would fold a
+	// program's own function of that name too.
+	if call.Func != nil && call.Func.Intrinsic != "" {
+		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unrollsLoops()); ok {
+			return v, true
+		}
+	}
+
 	// Try the generic SNGL-body interpreter for pure user/stdlib funcs. A
 	// declaration marked #[intrinsic] is skipped here and retried below: the
 	// folder has its own implementation of the id, and most of those bodies
@@ -358,6 +367,58 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
+}
+
+// maxFoldedSequence bounds what a sequence folds to on a target that does not
+// unroll loops. A folded sequence is the numbers themselves -- a list literal
+// in the IR -- and a target that emits the loop has no use for a literal of
+// 200000 elements in a variable it is about to walk. Past this many the call
+// stands, and the sequence is computed where it is read.
+//
+// A static target has no such choice and is not bounded here; see
+// maxStaticUnroll for what bounds it.
+const maxFoldedSequence = 1024
+
+// evalIntrinsic folds a call by its #[intrinsic] id. An integer sequence has
+// to fold here rather than through a SNGL body, because there is no way to
+// write one: building a range needs a loop, and a loop needs a range.
+// opeval.Sequence is the same implementation the interpreter runs.
+func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
+	ints := func(want int) ([]int, bool) {
+		if len(args) != want {
+			return nil, false
+		}
+		out := make([]int, want)
+		for i, a := range args {
+			v, ok := toInt(a)
+			if !ok {
+				return nil, false
+			}
+			out[i] = v
+		}
+		return out, true
+	}
+	seq := func(start, end, step int) (any, bool) {
+		if !unbounded && opeval.SequenceLen(start, end, step) > maxFoldedSequence {
+			return nil, false
+		}
+		return opeval.Sequence(start, end, step), true
+	}
+	switch id {
+	case "seq.count":
+		if a, ok := ints(1); ok {
+			return seq(0, a[0], 1)
+		}
+	case "seq.range":
+		if a, ok := ints(2); ok {
+			return seq(a[0], a[1], 1)
+		}
+	case "seq.step":
+		if a, ok := ints(3); ok {
+			return seq(a[0], a[1], a[2])
+		}
+	}
+	return nil, false
 }
 
 // canFoldBody reports whether f has a SNGL body the folder may run.

@@ -16,7 +16,7 @@ func TestKeyOnEveryNodeForm(t *testing.T) {
 component main {
     var items list<int> = [1, 2]
     vbox() {
-        for item, i = items {
+        for var item, i = items {
             button(text="b", key=string(i), @click { })
             text #row(value="r", key=string(i))
             vbox(key=string(i)) {

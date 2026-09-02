@@ -1,4 +1,4 @@
-// &-bound loop element variables (`for &t = list`) make the element a
+// &-bound loop element variables (`for var &t = list`) make the element a
 // ref<T> into the list, so field/whole-element writes update the original
 // element by index. Reads auto-deref. Plain `for t` stays a value copy
 // (enforced for compiled targets; the headless interpreter models structs
@@ -18,11 +18,11 @@ component main {
 
     // struct-field write through a ref element
     func markAllDone() {
-        for &task = tasks { task.done = true }
+        for var &task = tasks { task.done = true }
     }
     // scalar whole-element write through a ref element
     func bumpAll() {
-        for &n = nums { n = n + 10 }
+        for var &n = nums { n = n + 10 }
     }
 
     button #mark(text="mark", @click { markAllDone() })

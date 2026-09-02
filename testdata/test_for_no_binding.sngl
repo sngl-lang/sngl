@@ -1,0 +1,27 @@
+// A loop head without `var` declares nothing: what follows `for` is the
+// iterable itself. The body renders once per element, which is all a loop
+// that never names the element needs -- and `var` is what tells the two
+// forms apart, so neither needs lookahead to parse.
+
+import "sngl:seq"
+import . "sngl:test"
+import . "sngl:ui"
+
+component tally {
+    var labels = ["a", "b", "c"]
+
+    vbox {
+        for seq.count(2) {
+            text #tick(value="tick")
+        }
+        for labels {
+            text #dash(value="-")
+        }
+    }
+}
+
+func testBindsNothingButStillRepeats(t Test, c tally) {
+    t.assert(c.tick.length() == 2)
+    t.assert(c.dash.length() == 3)
+    t.assert(c.dash[2].value == "-")
+}

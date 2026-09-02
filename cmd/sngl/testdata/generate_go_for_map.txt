@@ -15,7 +15,7 @@ component main {
     var scores map<string, int> = {alice = 10, bob = 20}
     var total = 0
     button(text="sum", @click {
-        for k, v = scores {
+        for var k, v = scores {
             total = total + v
         }
     })

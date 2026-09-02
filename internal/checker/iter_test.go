@@ -56,7 +56,7 @@ var n = count(lst)`
 func TestForLoopOnIter(t *testing.T) {
 	src := `func count(xs iter<int>) int {
     var n = 0
-    for x = xs { n = n + x }
+    for var x = xs { n = n + x }
     return n
 }`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -75,7 +75,7 @@ func TestForLoopOnMap(t *testing.T) {
 	src := `var m map<string, int> = {a = 1, b = 2}
 func test() int {
     var total = 0
-    for k, v = m {
+    for var k, v = m {
         total = total + v
     }
     return total
@@ -95,7 +95,7 @@ func test() int {
 func TestForLoopOnMapSingleVarErrors(t *testing.T) {
 	src := `var m map<string, int> = {a = 1}
 func test() {
-    for k = m {}
+    for var k = m {}
 }`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {

@@ -1206,7 +1206,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Synthesized: true,
 	}
 
-	// 1. Teardown: for __entry = __slotN { lower.RemoveChild(parent, __entry) }
+	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }
 	entryVar := "__entry"
 	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
 	teardown := &ir.For{

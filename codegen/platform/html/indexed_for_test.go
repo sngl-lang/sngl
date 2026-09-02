@@ -9,14 +9,14 @@ import (
 
 // TestIndexedForBindsIndexAndElement guards a correctness bug where the
 // optimizer's for-unrolling bound the index/element to the wrong variables for
-// the two-var form `for i, x = list`: the checker types `i` as the index (int)
+// the two-var form `for var i, x = list`: the checker types `i` as the index (int)
 // and `x` as the element, but unrolling bound `i`=element and `x`=index.
 func TestIndexedForBindsIndexAndElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
 component main {
-    for i, x = ["A", "B", "C"] {
+    for var i, x = ["A", "B", "C"] {
         text(value="i={i} x={x}")
     }
 }
@@ -31,7 +31,7 @@ component main {
 	out2 := generateMainPage(t, `
 import . "sngl:ui"
 output { none { html() } }
-component main { for x = ["P", "Q"] { text(value=x) } }
+component main { for var x = ["P", "Q"] { text(value=x) } }
 `)
 	if !strings.Contains(out2, ">P<") || !strings.Contains(out2, ">Q<") {
 		t.Errorf("single-var for regressed:\n%s", out2)
@@ -43,7 +43,7 @@ component main { for x = ["P", "Q"] { text(value=x) } }
 	out3 := generateMainPage(t, `
 import . "sngl:ui"
 output { none { html() } }
-component main { for i, x = ["A", "B"] { text(value="n" + string(i)) } }
+component main { for var i, x = ["A", "B"] { text(value="n" + string(i)) } }
 `)
 	if !strings.Contains(out3, ">n0<") || !strings.Contains(out3, ">n1<") {
 		t.Errorf("two-var with unused element var misbound the index:\n%s", out3)

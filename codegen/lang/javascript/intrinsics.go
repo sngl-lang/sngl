@@ -97,6 +97,23 @@ func init() {
 		return "Math.max(" + a[1] + ", Math.min(" + a[0] + ", " + a[2] + "))"
 	})
 
+	// --- seq (sngl:seq) ---
+	// A sequence in a loop head becomes a counting `for` and never reaches
+	// here (JsIRContext.ForHead). Everywhere else it is a generator: an
+	// iterable `for...of` drives one value at a time, which is what an array
+	// here would have thrown away. No conversion is needed in the other
+	// direction -- a JS array is already iterable -- so a list reaching an
+	// iter<T> position passes through unwrapped.
+	seq := func(a, b, step string) string {
+		return "(function* (__a, __b, __s) { " +
+			"if (__s > 0) { for (let __i = __a; __i < __b; __i += __s) yield __i; } " +
+			"else if (__s < 0) { for (let __i = __a; __i > __b; __i += __s) yield __i; } " +
+			"})(" + a + ", " + b + ", " + step + ")"
+	}
+	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
+	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })
+	reg("seq.step", func(a []string) string { return seq(a[0], a[1], a[2]) })
+
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
 
 	// --- i18n entry points ---

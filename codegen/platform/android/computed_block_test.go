@@ -31,7 +31,7 @@ func TestComputedBlockBodyEmitted(t *testing.T) {
 		},
 		{
 			name: "loop over a reactive list",
-			body: `func c() int { var s = 0; for x = xs { s = s + x } return s }`,
+			body: `func c() int { var s = 0; for var x = xs { s = s + x } return s }`,
 			want: []string{"derivedStateOf(fun(): Int {", "var s = 0", "for (x in xs)", "s = (s + x)", "return s"},
 		},
 	}

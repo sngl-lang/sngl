@@ -13,7 +13,7 @@ component main {
         {id=3, name="c"},
     ]
 
-    for i, it = items {
+    for var i, it = items {
         text(value=string(it.id) + ":" + it.name)
     }
 }

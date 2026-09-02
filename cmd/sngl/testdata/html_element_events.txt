@@ -50,7 +50,7 @@ component main {
         html.input(@input(e) { txt = e.value })
         html.button(@click { hits = hits + 1 })
         html.div(@mouseover { hits = hits + 1 })
-        for r = rows {
+        for var r = rows {
             html.li(textContent = r, @mouseover { hits = hits + 1 })
         }
     }

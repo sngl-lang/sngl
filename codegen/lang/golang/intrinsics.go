@@ -151,6 +151,20 @@ func init() {
 		return "func() " + v + " { if __v, __ok := " + a[0] + "[" + a[1] + "]; __ok { return __v }; return " + a[2] + " }()"
 	})
 
+	// --- seq (sngl:seq) ---
+	// A sequence in a loop head becomes the host's counting loop and never
+	// reaches here (GoIRContext.ForHead). Everywhere else it is the pull
+	// sequence iter<int> is spelled as, built by the snglSeq helper the
+	// package emits (HelperSet.NeedSeq) -- so holding or passing one still
+	// counts rather than building a slice, and reads as a call rather than a
+	// closure written out at each site.
+	seq := func(a, b, step string) string {
+		return "snglSeq(" + a + ", " + b + ", " + step + ")"
+	}
+	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
+	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })
+	reg("seq.step", func(a []string) string { return seq(a[0], a[1], a[2]) })
+
 	regImp("i18n.exactly", []string{SnglI18nImportPath}, func(a []string) string {
 		return "i18n.Exactly(" + a[0] + ")"
 	})

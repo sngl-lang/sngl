@@ -1607,24 +1607,32 @@ func (b *builder) buildIfNode(it nodeIter) *ast.IfStmt {
 }
 
 func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
-	// ForNode = kw_for ident [ comma ident ] assign CondExpr StmtBlock [ kw_else StmtBlock ] .
+	// ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | CondExpr ) StmtBlock [ kw_else StmtBlock ] .
+	//
+	// `var` is what distinguishes a loop that declares its element from one
+	// that declares nothing (`for seq.count(3) { }`), so its absence is the
+	// whole of the second form: the first CondExpr is the iterable.
 	pos := b.posFromToken(it.shift()) // kw_for
 	stmt := &ast.ForStmt{Pos: pos}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
-		it.skip() // & — bind the element var as ref<T>
-		stmt.KeyRef = true
-	}
-	stmt.Key = it.shift().Literal // ident
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == COMMA {
-		it.skip() // comma
+	declares := !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR
+	if declares {
+		it.skip() // kw_var
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
-			it.skip() // & on the second (element) var
-			stmt.ValueRef = true
+			it.skip() // & — bind the element var as ref<T>
+			stmt.KeyRef = true
 		}
-		stmt.Value = it.shift().Literal
-	}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
-		it.skip() // assign
+		stmt.Key = it.shift().Literal // ident
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == COMMA {
+			it.skip() // comma
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
+				it.skip() // & on the second (element) var
+				stmt.ValueRef = true
+			}
+			stmt.Value = it.shift().Literal
+		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+			it.skip() // assign
+		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
 		stmt.Iter = b.buildExpr(it.enter())

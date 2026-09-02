@@ -21,13 +21,13 @@ const items list<Item> = [
 ]
 
 component main {
-    for it = items {
+    for var it = items {
         window #page(title=it.title, href="/" + it.slug + ".html") {
             text(value=it.title)
         }
     }
     window #index(title="Index", href="/index.html") {
-        for p = page {
+        for var p = page {
             html.a(href=p.href, innerText=p.title)
         }
     }

@@ -204,7 +204,7 @@ component ui.checkbox[platform] {
 
 component ui.radio[platform] {
     html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
-        for opt = options {
+        for var opt = options {
             html.label(style={display="inline-flex", alignItems="center", gap=4}) {
                 html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
                 html.span(textContent=opt)
@@ -225,7 +225,7 @@ component ui.select[platform] {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
-        for opt = options {
+        for var opt = options {
             html.option(value=opt, selected=(opt == value), textContent=opt)
         }
     }
@@ -259,7 +259,7 @@ component ui.badge[platform] {
 component ui.tabs[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
         html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
-            for label = items {
+            for var label = items {
                 html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
             }
         }
@@ -322,15 +322,15 @@ component ui.table[platform] {
     html.table(style={width="100%", borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
-                for col = columns {
+                for var col = columns {
                     html.th(textContent=col, style={textAlign="left", padding=8, borderBottom="2px solid #ddd"})
                 }
             }
         }
         html.tbody {
-            for row = rows {
+            for var row = rows {
                 html.tr {
-                    for cell = row {
+                    for var cell = row {
                         html.td(textContent=cell, style={padding=8, borderBottom="1px solid #eee"})
                     }
                 }
@@ -341,7 +341,7 @@ component ui.table[platform] {
 
 component ui.tree[platform] {
     html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
-        for item = items {
+        for var item = items {
             html.li(textContent=item)
         }
     }

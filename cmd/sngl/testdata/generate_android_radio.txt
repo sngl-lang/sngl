@@ -5,17 +5,18 @@
 
 sngl generate --platform=android --lang=kotlin --out=out app.sngl
 
-# A literal `options` unrolls, so each option is its own pair of composables
-# and the selected test is against that option's own value.
-grep 'RadioButton\(selected = \(pick == "small"\), onClick = \{' out/MainScreen.kt
-grep 'RadioButton\(selected = \(pick == "large"\), onClick = \{' out/MainScreen.kt
-grep 'Text\(text = "small", modifier = Modifier\)' out/MainScreen.kt
+# A literal `options` stays a loop, like a runtime one: Kotlin is a language
+# target, so the loop is emitted and its own compiler decides whether to
+# unroll it. Three copies of a RadioButton is what this used to be.
+grep 'for \(opt in listOf\("small", "medium", "large"\)\) \{' out/MainScreen.kt
+grep 'RadioButton\(selected = \(pick == opt\), onClick = \{' out/MainScreen.kt
+grep 'Text\(text = opt, modifier = Modifier\)' out/MainScreen.kt
+! grep 'RadioButton\(selected = \(pick == "small"\)'
 
 # Compose passes onClick nothing, so the override names the option itself:
-# the @change handler's `e.value` is the option that was clicked, and each
-# unrolled iteration carries its own.
-grep 'chosen = "small"$' out/MainScreen.kt
-grep 'chosen = "large"$' out/MainScreen.kt
+# the @change handler's `e.value` is the option that was clicked, which is the
+# loop variable.
+grep 'chosen = ChangeEvent\(value = opt\)\.value' out/MainScreen.kt
 ! grep 'val e = SnglInputEvent' out/MainScreen.kt
 
 # direction="horizontal" is a Row; the default (vertical) is a Column. Both

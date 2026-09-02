@@ -50,7 +50,7 @@ component main {
         } else {
             html.span(innerText="unnamed")
         }
-        for row = srv.Rows(pkg) {
+        for var row = srv.Rows(pkg) {
             html.a(href="/r/" + row.name, innerText=row.name)
         }
     }

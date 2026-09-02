@@ -252,7 +252,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		return fmt.Errorf("cannot index-assign to %T", obj)
 	case *ir.Unary:
 		// `*n = val` — whole-element write through an &-bound loop element
-		// (`for &n = list { n = … }`). The operand is a listRef; write back.
+		// (`for var &n = list { n = … }`). The operand is a listRef; write back.
 		if target.Op == ast.UnaryDeref {
 			obj, err := env.Eval(target.Operand)
 			if err != nil {
@@ -340,9 +340,14 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 		}
 		env.unbindLoopVars(s)
-	case []any:
-		// iter<T> at runtime is also []any (list passed as iter has no runtime wrapper).
-		if len(v) == 0 {
+	default:
+		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
+		// of the two produced it, and neither is walked by building the other.
+		n, at, isIterable := asIterable(iter)
+		if !isIterable {
+			return fmt.Errorf("for iterator must be list or map, got %T", iter)
+		}
+		if n == 0 {
 			for _, st := range s.Else {
 				if err := env.Exec(st); err != nil {
 					return err
@@ -350,15 +355,9 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 			return nil
 		}
-		for i, item := range v {
-			if s.RefElem {
-				// &-bound element: bind a listRef so field/whole-element writes
-				// (through the checker's Unary{Deref}) update the list in place.
-				env.Set(s.KeySym, &listRef{list: v, idx: i})
-			} else {
-				env.Set(s.KeySym, item)
-			}
-			env.Set(s.ValueSym, i)
+		list, _ := iter.([]any)
+		for i := range n {
+			bindLoopElem(env, s, i, at(i), list)
 			for _, st := range s.Body {
 				if err := env.Exec(st); err != nil {
 					return err
@@ -366,10 +365,35 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 		}
 		env.unbindLoopVars(s)
-	default:
-		return fmt.Errorf("for iterator must be list or map, got %T", iter)
 	}
 	return nil
+}
+
+// bindLoopElem binds one iteration's variables: the element, and the index
+// beside it in the two-variable form.
+//
+// Which is which is the checker's answer -- Key is the index and Value the
+// element once a second variable is written (`for var i, x = xs`), and Key is
+// the element on its own. Both loop sites had it the other way round, so a
+// two-variable loop bound the element to the index name and every compiled
+// backend disagreed with the interpreter about the same program.
+//
+// list is the backing slice when the iterable is one, and nil otherwise; only
+// a list can carry a &-bound element, since only a list has an element to
+// write back to.
+func bindLoopElem(env *Env, s *ir.For, i int, item any, list []any) {
+	elemSym, idxSym := s.KeySym, s.ValueSym
+	if s.Value != "" {
+		elemSym, idxSym = s.ValueSym, s.KeySym
+	}
+	if s.RefElem && list != nil {
+		// &-bound element: bind a listRef so field/whole-element writes
+		// (through the checker's Unary{Deref}) update the list in place.
+		env.Set(elemSym, &listRef{list: list, idx: i})
+	} else {
+		env.Set(elemSym, item)
+	}
+	env.Set(idxSym, i)
 }
 
 // unbindLoopVars drops the loop's bindings once the loop is done, so a read

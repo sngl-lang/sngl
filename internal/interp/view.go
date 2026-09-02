@@ -518,18 +518,20 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	if err != nil {
 		return m.stmts(env, f.Else, path+":else")
 	}
-	list, ok := iterVal.([]any)
-	if !ok || len(list) == 0 {
+	// A list or a computed sequence; asIterable is what keeps a view loop
+	// over sngl:seq from materialising one to walk the other.
+	n, at, ok := asIterable(iterVal)
+	if !ok || n == 0 {
 		return m.stmts(env, f.Else, path+":else")
 	}
+	list, _ := iterVal.([]any)
 
 	keyExpr := loopKeyExpr(f.Body)
 	seen := map[string]int{}
 	var out []*Node
-	for i, item := range list {
+	for i := range n {
 		child := env.Snapshot()
-		child.Set(f.KeySym, item)
-		child.Set(f.ValueSym, i)
+		bindLoopElem(child, f, i, at(i), list)
 
 		id := strconv.Itoa(i)
 		if keyExpr != nil {

@@ -41,7 +41,7 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
 component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") {
     if items.length() > 0 {
         text(value=title, style={fontWeight="bold", paddingTop=8})
-        for it = items {
+        for var it = items {
             SummaryRow(name=it.name, doc=it.doc, href=hrefPrefix + it.name + ".html")
         }
     }
@@ -116,52 +116,52 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
 
         if view.components.length() > 0 {
             text(value="Components", style={fontWeight="bold", paddingTop=8})
-            for c = view.components {
+            for var c = view.components {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
         if view.types.length() > 0 {
             text(value="Types", style={fontWeight="bold", paddingTop=8})
-            for t = view.types {
+            for var t = view.types {
                 SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
-                for m = t.methods {
+                for var m = t.methods {
                     SummaryRow(name="  ." + m.short, doc=m.doc, href=hrefPrefix + t.name + "/" + m.short)
                 }
             }
         }
         if view.enums.length() > 0 {
             text(value="Enums", style={fontWeight="bold", paddingTop=8})
-            for e = view.enums {
+            for var e = view.enums {
                 SummaryRow(name=e.name, doc=e.doc, href=hrefPrefix + e.name, active=e.name == activeName)
             }
         }
         if view.constants.length() > 0 {
             text(value="Constants", style={fontWeight="bold", paddingTop=8})
-            for c = view.constants {
+            for var c = view.constants {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
         if view.data.length() > 0 {
             text(value="Data", style={fontWeight="bold", paddingTop=8})
-            for d = view.data {
+            for var d = view.data {
                 SummaryRow(name=d.name, doc=d.doc, href=hrefPrefix + d.name, active=d.name == activeName)
             }
         }
         if view.functions.length() > 0 {
             text(value="Functions", style={fontWeight="bold", paddingTop=8})
-            for f = view.functions {
+            for var f = view.functions {
                 SummaryRow(name=f.name, doc=f.doc, href=hrefPrefix + f.name, active=f.name == activeName)
             }
         }
         if view.overrides.length() > 0 {
             text(value="Platform Overrides", style={fontWeight="bold", paddingTop=8, color="#888"})
-            for o = view.overrides {
+            for var o = view.overrides {
                 SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
             }
         }
         if view.platformTypes.length() > 0 {
             text(value="Platform Types", style={fontWeight="bold", paddingTop=8, color="#888"})
-            for t = view.platformTypes {
+            for var t = view.platformTypes {
                 SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
             }
         }
@@ -181,7 +181,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
         }
         if detail.props.length() > 0 {
             text(value="Properties", style={fontWeight="bold", paddingTop=8})
-            for p = detail.props {
+            for var p = detail.props {
                 hbox(style={gap=12, padding=2}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120})
                     text(value=p.type, style={color="#58a6ff", minWidth=100})
@@ -191,7 +191,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
         }
         if detail.events.length() > 0 {
             text(value="Events", style={fontWeight="bold", paddingTop=8})
-            for e = detail.events {
+            for var e = detail.events {
                 hbox(style={gap=12, padding=2}) {
                     text(value="@" + e.name, style={fontFamily="monospace", minWidth=120})
                     text(value=e.payload, style={color="#58a6ff"})
@@ -200,7 +200,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
         }
         if detail.examples.length() > 0 {
             text(value="Example", style={fontWeight="bold", paddingTop=8})
-            for src = detail.examples {
+            for var src = detail.examples {
                 text(value=src, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
                 if PLATFORM == html.platform {
                     html.pre { html.code(class="language-sngl", innerText=src) }
@@ -224,7 +224,7 @@ component TypeView(detail lookup.TypeDetailView) {
         }
         if detail.fields.length() > 0 {
             text(value="Fields", style={fontWeight="bold", paddingTop=8})
-            for f = detail.fields {
+            for var f = detail.fields {
                 hbox(style={gap=12, padding=2}) {
                     text(value=f.name, style={fontFamily="monospace", minWidth=120})
                     text(value=f.type, style={color="#58a6ff"})
@@ -233,7 +233,7 @@ component TypeView(detail lookup.TypeDetailView) {
         }
         if detail.methods.length() > 0 {
             text(value="Methods", style={fontWeight="bold", paddingTop=8})
-            for m = detail.methods {
+            for var m = detail.methods {
                 hbox(style={gap=12, padding=2}) {
                     text(value=m.short, style={fontFamily="monospace", minWidth=120})
                     text(value=m.doc, style={color="#aaa"})
@@ -252,7 +252,7 @@ component EnumView(detail lookup.EnumDetailView) {
         }
         if detail.members.length() > 0 {
             text(value="Members", style={fontWeight="bold", paddingTop=8})
-            for m = detail.members {
+            for var m = detail.members {
                 text(value="• " + m.name, style={fontFamily="monospace"})
             }
         }
@@ -275,7 +275,7 @@ component FuncView(detail lookup.FuncDetailView) {
         }
         if detail.params.length() > 0 {
             text(value="Parameters", style={fontWeight="bold", paddingTop=8})
-            for p = detail.params {
+            for var p = detail.params {
                 hbox(style={gap=12, padding=2}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120})
                     text(value=p.type, style={color="#58a6ff"})
@@ -319,7 +319,7 @@ component PropDocView(detail lookup.PropDetailView) {
         }
         if detail.enumValues.length() > 0 {
             text(value="Values:", style={fontWeight="bold", paddingTop=8})
-            for v = detail.enumValues {
+            for var v = detail.enumValues {
                 text(value="• " + v, style={fontFamily="monospace"})
             }
         }

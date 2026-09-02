@@ -1,6 +1,10 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import (
+	"strconv"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // --- IR statement types ---
 //
@@ -202,7 +206,7 @@ type For struct {
 	// __renderSlot<N>() invocations.
 	LoweredSlotID string `json:"-"`
 	// RefElem is true when the element loop variable was &-bound
-	// (`for &t = list` / `for i, &t = list`): the element var has type
+	// (`for var &t = list` / `for var i, &t = list`): the element var has type
 	// ref<T> and writes through it must update the original list element.
 	// Set by the checker for addressable mutable list iterables. It is a
 	// transient marker: the RefLoop lowering pass consumes it — rewriting
@@ -211,6 +215,10 @@ type For struct {
 	// sees a RefElem loop. The headless interpreter (which does not lower)
 	// reads it directly to bind the element as a reference.
 	RefElem bool
+	// Counted is the arithmetic sequence this loop walks when its iterable is
+	// a sngl:seq call in a shape a host counting loop can express. Set by the
+	// passIterKind lowering pass alongside IterKind; nil for every other loop.
+	Counted *Counted `json:"-"`
 	// IterKind records how this loop iterates — element, (index, element),
 	// or (key, value) — so each language's ForHead emits a pure template
 	// instead of re-deriving the map-vs-list choice from Iter's type. Stamped
@@ -230,6 +238,10 @@ const (
 	// IterElement is single-var iteration over a list/iter<T>: bind each
 	// element to Key.
 	IterElement IterKind = iota
+	// IterCounted is iteration over an integer sequence, from the bounds in
+	// Counted: the number binds to Key, or to Value with its ordinal in Key
+	// when a second variable is written. The sequence is never built.
+	IterCounted
 	// IterIndexed is two-var iteration over a list/iter<T>: bind (index,
 	// element) to (Key, Value).
 	IterIndexed
@@ -247,6 +259,9 @@ func DeriveIterKind(n *For) IterKind {
 	if n == nil || n.Iter == nil {
 		return IterElement
 	}
+	if CountedSeq(n) != nil {
+		return IterCounted
+	}
 	if t := n.Iter.ExprType(); t != nil && t.Kind == TypeMap {
 		return IterMapEntries
 	}
@@ -254,6 +269,82 @@ func DeriveIterKind(n *For) IterKind {
 		return IterIndexed
 	}
 	return IterElement
+}
+
+// Counted is the sequence an IterCounted loop walks: bounds as expressions,
+// step as a constant. End is exclusive, in the direction Step points.
+//
+// The step is a constant because nothing else can pick the comparison: `i <
+// end` and `i > end` are different loop heads, and a step whose sign is only
+// known at run time chooses between them at run time. Such a loop keeps the
+// materialising form instead, which is correct for either sign.
+type Counted struct {
+	Start Expr
+	End   Expr
+	Step  int // never 0; negative counts down
+}
+
+// CountedSeq reports the sequence n iterates when its iterable is one of
+// sngl:seq's constructors written directly in the loop head, or nil when the
+// loop is anything else.
+//
+// Dispatch is on the #[intrinsic] id, not the function's name: `seq.range` is
+// an ordinary package function, so a program's own `range` reaches here too.
+// The arguments are read positionally, which the checker has already made
+// safe -- it normalises a named-argument call into declaration order.
+//
+// The two-variable form counts too: the ordinal beside each number is another
+// counter, not a reason to build the numbers.
+func CountedSeq(n *For) *Counted {
+	if n == nil {
+		return nil
+	}
+	call, ok := n.Iter.(*Call)
+	if !ok || call.Func == nil {
+		return nil
+	}
+	arg := func(i int) Expr {
+		if i >= len(call.Args) {
+			return nil
+		}
+		return call.Args[i].Value
+	}
+	switch call.Func.Intrinsic {
+	case "seq.count":
+		// count(n) is range(0, n): the sole argument is the end bound.
+		if n := arg(0); n != nil {
+			return &Counted{Start: &Literal{Type: TypInt, Value: "0"}, End: n, Step: 1}
+		}
+	case "seq.range":
+		if start, end := arg(0), arg(1); start != nil && end != nil {
+			return &Counted{Start: start, End: end, Step: 1}
+		}
+	case "seq.step":
+		start, end, by := arg(0), arg(1), arg(2)
+		if start == nil || end == nil {
+			return nil
+		}
+		step, ok := constInt(by)
+		if !ok || step == 0 {
+			return nil
+		}
+		return &Counted{Start: start, End: end, Step: step}
+	}
+	return nil
+}
+
+// constInt reads an integer literal's value, and reports false for anything
+// else -- including a folded constant that never became a literal.
+func constInt(e Expr) (int, bool) {
+	lit, ok := e.(*Literal)
+	if !ok || lit.Type == nil || lit.Type.Kind != TypeInt {
+		return 0, false
+	}
+	v, err := strconv.Atoi(lit.Value)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 // CanvasRedrawStmt is injected by passCanvasReactivity into handler/timer

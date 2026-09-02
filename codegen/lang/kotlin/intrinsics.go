@@ -110,6 +110,23 @@ func init() {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
 
+	// --- seq (sngl:seq) ---
+	// A sequence in a loop head becomes a range loop and never reaches here
+	// (KtIRContext.ForHead). Everywhere else it is an IntProgression, which
+	// is an Iterable that computes its elements rather than holding them --
+	// so `.toList()` would be the one allocation this package exists to
+	// avoid. A negative step counts down, and `downTo __b + 1` keeps the end
+	// bound exclusive; a `by` of 0 yields nothing rather than spinning.
+	seq := func(a, b, step string) string {
+		return "run { val __a = " + a + "; val __b = " + b + "; val __s = " + step + "; " +
+			"if (__s > 0) (__a until __b step __s) " +
+			"else if (__s < 0) ((__a downTo __b + 1) step -__s) " +
+			"else IntRange.EMPTY }"
+	}
+	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
+	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })
+	reg("seq.step", func(a []string) string { return seq(a[0], a[1], a[2]) })
+
 	reg("i18n.exactly", func(a []string) string { return `("=" + (` + a[0] + "))" })
 
 	// --- i18n entry points ---

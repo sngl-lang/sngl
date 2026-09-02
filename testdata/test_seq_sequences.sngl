@@ -1,0 +1,130 @@
+// sngl:seq's three constructors, run over the interpreter. Every bound is a
+// parameter rather than a literal, so the numbers are produced as the loop
+// runs instead of being folded into a list at build time -- the folded form
+// is what the optimizer's own fixtures cover.
+
+import "sngl:seq"
+import . "sngl:test"
+
+func counted(n int) string {
+    var out list<int> = []
+    for var i = seq.count(n) {
+        out.push(i)
+    }
+    return out.join(",")
+}
+
+func ranged(start int, end int) string {
+    var out list<int> = []
+    for var i = seq.range(start, end) {
+        out.push(i)
+    }
+    return out.join(",")
+}
+
+func stepped(start int, end int, by int) string {
+    var out list<int> = []
+    for var i = seq.step(start, end, by) {
+        out.push(i)
+    }
+    return out.join(",")
+}
+
+// A sequence in a variable is an ordinary iter<int>: the numbers exist, and
+// the loop head is no longer the seq call that produced them.
+func held(n int) int {
+    var seen iter<int> = seq.count(n)
+    var total = 0
+    for var i = seen {
+        total = total + i
+    }
+    return total
+}
+
+// A loop that binds nothing still runs once per element.
+func times(n int) int {
+    var hits = 0
+    for seq.count(n) {
+        hits = hits + 1
+    }
+    return hits
+}
+
+func testCountStartsAtZero(t Test) {
+    t.assert(counted(4) == "0,1,2,3")
+}
+
+func testCountOfNothing(t Test) {
+    t.assert(counted(0) == "")
+    t.assert(counted(-3) == "")
+}
+
+func testRangeEndIsExclusive(t Test) {
+    t.assert(ranged(1, 5) == "1,2,3,4")
+    t.assert(ranged(-2, 2) == "-2,-1,0,1")
+}
+
+func testRangeBackwardsIsEmpty(t Test) {
+    t.assert(ranged(5, 5) == "")
+    t.assert(ranged(5, 1) == "")
+}
+
+func testStepCountsUpAndDown(t Test) {
+    t.assert(stepped(0, 10, 3) == "0,3,6,9")
+    t.assert(stepped(10, 0, -2) == "10,8,6,4,2")
+}
+
+// A step of 0 stops rather than never terminating: the loop below has to end
+// for this test to report at all.
+func testStepOfZeroYieldsNothing(t Test) {
+    t.assert(stepped(0, 10, 0) == "")
+}
+
+func testHeldSequenceIterates(t Test) {
+    t.assert(held(5) == 10)
+    t.assert(held(0) == 0)
+}
+
+func testLoopWithNoBinding(t Test) {
+    t.assert(times(3) == 3)
+    t.assert(times(0) == 0)
+}
+
+// A two-variable loop over a sequence binds the ordinal first and the number
+// second, the same way it does over a list.
+func indexed(n int) string {
+    var out list<string> = []
+    for var i, v = seq.step(0, n, 5) {
+        out.push("{i}:{v}")
+    }
+    return out.join(",")
+}
+
+func testTwoVariableFormOverASequence(t Test) {
+    t.assert(indexed(12) == "0:0,1:5,2:10")
+}
+
+// An iter<int> parameter takes a sequence, a variable holding one, or a list:
+// all three are a thing the loop pulls from, and none of them is built to be
+// walked.
+func weighted(xs iter<int>) int {
+    var t = 0
+    for var i, x = xs {
+        t = t + i * x
+    }
+    return t
+}
+
+func testSequenceThroughAParameter(t Test) {
+    t.assert(weighted(seq.range(2, 5)) == 0 * 2 + 1 * 3 + 2 * 4)
+}
+
+func testHeldSequenceThroughAParameter(t Test) {
+    var held iter<int> = seq.range(2, 5)
+    t.assert(weighted(held) == 11)
+}
+
+func testListThroughAnIterParameter(t Test) {
+    var xs list<int> = [2, 3, 4]
+    t.assert(weighted(xs) == 11)
+}

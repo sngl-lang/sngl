@@ -25,7 +25,7 @@ component main {
     var items = ["a", "b"]
     var on = false
     vbox {
-        for it = items {
+        for var it = items {
             checkbox(label=it, checked=on)
         }
     }

@@ -17,7 +17,7 @@ component board {
         } else {
             text(value="waiting")
         }
-        for it = items {
+        for var it = items {
             text(value="item {it}")
         } else {
             text(value="none yet")

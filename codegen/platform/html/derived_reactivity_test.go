@@ -138,7 +138,7 @@ component main {
 // receiver, so dependent props and reactive for-slots must update. Regression
 // for the tutorial "lists" lesson ("button does nothing"): push/remove are a
 // *ir.CallStmt, which updatersFor ignored, so neither the "{tasks.length}"
-// text nor the `for t = tasks` loop refreshed when the Add button pushed.
+// text nor the `for var t = tasks` loop refreshed when the Add button pushed.
 func TestListPushSplicesUpdatersAndRefiresSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
@@ -149,7 +149,7 @@ struct Task {
 component main {
     var tasks list<Task> = [Task{label = "A"}]
     text(value="{tasks.length} tasks")
-    for t = tasks {
+    for var t = tasks {
         text(value=t.label)
     }
     button(text="Add", @click { tasks.push(Task{label = "B"}) })
