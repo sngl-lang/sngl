@@ -18,14 +18,12 @@ grep 'v__inst0' out/index.html
 grep 'v__inst1' out/index.html
 
 # The elements the page declared are the ones the handlers write to.
-grep 'var \$1 = document.getElementById' out/index.html
-grep 'var \$4 = document.getElementById' out/index.html
-grep '\$1.textContent = String\(state.v__inst0\)' out/index.html
-grep '\$4.textContent = String\(state.v__inst1\)' out/index.html
+grep '\$0.textContent = String\(state.v__inst0\)' out/index.html
+grep '\$1.textContent = String\(state.v__inst1\)' out/index.html
 
 # Neither handler reaches the other instance's element.
-! grep '\$4.textContent = String\(state.v__inst0\)' out/index.html
-! grep '\$1.textContent = String\(state.v__inst1\)' out/index.html
+! grep '\$1.textContent = String\(state.v__inst0\)' out/index.html
+! grep '\$0.textContent = String\(state.v__inst1\)' out/index.html
 
 -- app.sngl --
 import . "sngl:ui"

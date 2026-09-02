@@ -42,7 +42,86 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 		return err
 	}
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	uniqueNodeIDs(pkg)
 	return nil
+}
+
+// uniqueNodeIDs makes each id name one node again.
+//
+// An id is the program's name for a node, and splicing a body puts a copy of
+// every id in it into the caller -- so two instances of one component named one
+// node twice. The callee's state is renamed per instance for exactly this
+// reason; its ids were not, and a backend resolving the name answered for
+// whichever node it reached first: two instances of a counter shared one
+// element, and bumping either updated the same one.
+//
+// The first occurrence keeps the name. A program addresses a node by the name
+// it wrote, and with a single instance -- overwhelmingly the common case --
+// that name is unambiguous and must survive; a test naming `#inc` means the
+// `#inc` there is. With several instances the program has no way to say which
+// it meant, so the later ones are the ones that give up the name.
+//
+// Renaming here rather than while splicing, because "is this id ambiguous" is a
+// question about the finished owner and not about any one instance: the splice
+// that introduces a duplicate cannot tell it is doing so.
+func uniqueNodeIDs(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	for _, o := range ir.Owners(pkg) {
+		seen := map[string]int{}
+		eachNodeInst(o.Stmts, func(n *ir.NodeInst) {
+			if n.ID == "" {
+				return
+			}
+			k := seen[n.ID]
+			seen[n.ID] = k + 1
+			if k > 0 {
+				n.ID = n.ID + "__" + strconv.Itoa(k)
+			}
+		})
+	}
+}
+
+// eachNodeInst visits every NodeInst reachable from stmts, in source order.
+func eachNodeInst(stmts []ir.Stmt, visit func(*ir.NodeInst)) {
+	for _, s := range stmts {
+		switch x := s.(type) {
+		case *ir.NodeInst:
+			visit(x)
+			eachNodeInst(x.Children, visit)
+			for _, sc := range x.Slots {
+				if sc != nil {
+					eachNodeInst(sc.Body, visit)
+				}
+			}
+			for _, h := range x.Handlers {
+				if h.Func != nil {
+					eachNodeInst(h.Func.Block, visit)
+				}
+			}
+		case *ir.If:
+			eachNodeInst(x.Body, visit)
+			eachNodeInst(x.Else, visit)
+		case *ir.For:
+			eachNodeInst(x.Body, visit)
+			eachNodeInst(x.Else, visit)
+		case *ir.SlotInst:
+			eachNodeInst(x.Children, visit)
+		case *ir.ErrorBoundary:
+			eachNodeInst(x.Children, visit)
+			if x.Handler != nil && x.Handler.Func != nil {
+				eachNodeInst(x.Handler.Func.Block, visit)
+			}
+		case *ir.Window:
+			eachNodeInst(x.Body, visit)
+			for _, f := range x.Funcs {
+				if f != nil {
+					eachNodeInst(f.Block, visit)
+				}
+			}
+		}
+	}
 }
 
 type inlineCompState struct {
@@ -703,14 +782,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	body = substituteSlots(body, n)
 	body = substituteEvents(body, n.Handlers)
 
-	if n.ID != "" {
-		for _, s := range body {
-			if ni, ok := s.(*ir.NodeInst); ok {
-				ni.ID = n.ID
-				break
-			}
-		}
-	}
 	return body, nil
 }
 

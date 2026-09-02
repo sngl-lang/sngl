@@ -1,0 +1,39 @@
+# Two instances of one component must not name one node twice.
+#
+# Splicing a body copies every `#id` in it into the caller. The callee's state
+# is renamed per instance and its ids were not, so both counters below carried
+# `#out`, and whichever element the backend resolved first answered for both --
+# bumping either one updated the same text.
+#
+# The first occurrence keeps the name: with a single instance, which is the
+# common case, `#out` is unambiguous and a test naming it means that one. The
+# later instance is the one that gives up the name, because the program has no
+# way to say which of the two it meant.
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# No write goes to a name the page never declared: both instances' updaters
+# reach the element each was emitted as.
+! grep 'out\.textContent' out/index.html
+! grep 'out__1\.textContent' out/index.html
+
+# Two state slots, two elements, and each handler writes only its own.
+grep '\$0.textContent = String\(state.n__inst0\)' out/index.html
+grep '\$1.textContent = String\(state.n__inst1\)' out/index.html
+! grep '\$0.textContent = String\(state.n__inst1\)' out/index.html
+! grep '\$1.textContent = String\(state.n__inst0\)' out/index.html
+
+-- app.sngl --
+import . "sngl:ui"
+
+component counter {
+    var n = 0
+    button(text="+", @click { n += 1 })
+    text #out(value=string(n))
+}
+
+component main {
+    counter()
+    counter()
+}

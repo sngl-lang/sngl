@@ -768,6 +768,13 @@ func (g *htmlGen) prewalkNodes() {
 			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
+			} else if n.ID != "" {
+				// Allocated here rather than when the element is emitted:
+				// a handler is translated as its own node is reached, which
+				// may be before the node its updater writes to. The element
+				// var has to be known by then or the updater renders against
+				// the name the op used, which nothing declares.
+				g.nodeID(n)
 			}
 			// A node the lowering creates later — a `for` body's — gets its
 			// id then, so it never reaches idToNode. Every raw element of a
@@ -981,9 +988,14 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 // here under that name has to reach the element emitted under this one.
 func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	var id string
-	if n != nil && strings.HasPrefix(n.ID, "__n") {
+	switch {
+	case n != nil && strings.HasPrefix(n.ID, "__n"):
 		id = n.ID
-	} else {
+	case n != nil && n.ID != "" && g.refToVar[n.ID] != "":
+		// The prewalk already allocated for this ref so that a handler
+		// translated before the element is emitted can still resolve it.
+		id = g.refToVar[n.ID]
+	default:
 		id = g.allocID()
 	}
 	if n != nil {
