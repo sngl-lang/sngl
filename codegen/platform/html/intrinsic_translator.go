@@ -31,10 +31,35 @@ type htmlTranslator struct {
 	// elem answers for an op whose node predates no prewalk entry — see
 	// htmlGen.elemDecl.
 	elem *ir.Component
+	// refToVar maps the name a lowered node op uses for its node to the JS
+	// variable the element was actually emitted as. The two differ whenever a
+	// program wrote an `#id`: the lowering leaves that id on the node and
+	// names it in every updater it builds, while the page allocates `$N` for
+	// the element itself. Without the mapping such an updater assigns to an
+	// identifier nothing declares, and the page throws on the first
+	// interaction that fires it.
+	refToVar map[string]string
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, elem: g.elemDecl}
+	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl}
+}
+
+// nodeRef is node with an element-ref name resolved to the variable the
+// element was emitted as. Identity for a ref the page emitted under its own
+// name, which is every synthesized `__nN`.
+func (t *htmlTranslator) nodeRef(node ir.Expr) ir.Expr {
+	id, isIdent := node.(*ir.Ident)
+	if !isIdent || !id.IsElementRef || t.refToVar == nil {
+		return node
+	}
+	v, mapped := t.refToVar[id.Name]
+	if !mapped || v == id.Name {
+		return node
+	}
+	clone := *id
+	clone.Name = v
+	return &clone
 }
 
 // newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
@@ -90,6 +115,7 @@ func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call 
 }
 
 func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent, child = t.nodeRef(parent), t.nodeRef(child)
 	// Child appended somewhere → no longer top-level.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
@@ -108,6 +134,7 @@ func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent, child = t.nodeRef(parent), t.nodeRef(child)
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: parent,
@@ -121,6 +148,7 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if domEvent == "" {
 		return nil
 	}
+	node = t.nodeRef(node)
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: node,
@@ -137,15 +165,19 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// handler/timer/setter bodies arrive here with the original SNGL
 	// prop name (e.g. text.value), so consult idToNode when set to
 	// produce the correct DOM-side write.
+	// The declaration is looked up under the name the op used, and the write
+	// is emitted against the variable the element was emitted as. For a
+	// program-written `#id` those are two different strings.
 	if t.idToNode != nil {
 		if id, ok := node.(*ir.Ident); ok && id.IsElementRef {
 			if n := t.idToNode[id.Name]; n != nil {
-				if stmts, ok := domWriteForIR(n.Name, prop, node, value); ok {
+				if stmts, ok := domWriteForIR(n.Name, prop, t.nodeRef(node), value); ok {
 					return stmts
 				}
 			}
 		}
 	}
+	node = t.nodeRef(node)
 	// The prop the tag name binds to names the element; the tag already
 	// reached OnCreateNode, and there is no attribute to write it as.
 	if prop == tagProp {

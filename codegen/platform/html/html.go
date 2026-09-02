@@ -571,6 +571,12 @@ type htmlGen struct {
 	// on that node (#inc). Only ids a test could name are in it.
 	snglIDByElem map[string]string
 
+	// refToVar maps the name a lowered node op uses for its node to the JS
+	// variable the element was emitted as. They coincide for a synthesized
+	// `__nN` and differ for every `#id` a program wrote: the lowering leaves
+	// that id on the node and names it in the updaters it builds, while the
+	// element itself is emitted as `$N`. See htmlGen.nodeID.
+	refToVar map[string]string
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
@@ -648,6 +654,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		testMode:       opts.Test,
 		minify:         opts.Minify,
 		idToNode:       make(map[string]*ir.NodeInst),
+		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
@@ -966,6 +973,12 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 // nodeID returns n.ID when NoReactivity pre-assigned one, otherwise allocates
 // a fresh `$N`, recording it in g.idToNode. A nil n allocates without
 // recording, so that id falls through to the JS-default write.
+//
+// A program-written `#id` is not reused as the variable name: it would have to
+// survive JS scoping and could name a reserved word or a global the page
+// already emits. It is recorded in refToVar instead, because the lowering left
+// that id on the node and every updater it built names it -- an op arriving
+// here under that name has to reach the element emitted under this one.
 func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	var id string
 	if n != nil && strings.HasPrefix(n.ID, "__n") {
@@ -975,6 +988,13 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	}
 	if n != nil {
 		g.idToNode[id] = n
+		if n.ID != "" && n.ID != id {
+			g.refToVar[n.ID] = id
+			// Under the op's own name too: OnPropAssign recovers the
+			// declaration by the name the op used, before resolving the
+			// variable.
+			g.idToNode[n.ID] = n
+		}
 		g.noteSnglID(id, n)
 	}
 	return id

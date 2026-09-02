@@ -1,0 +1,44 @@
+# An `#id` written inside a component that inlines must reach the element the
+# page emitted. The lowering leaves that id on the node and names it in every
+# updater it builds, while html emits the element as `$N` — so without a
+# mapping the updater assigned to an identifier nothing declared, and the first
+# click threw ReferenceError instead of patching anything.
+#
+# Two instances, because the second half of the same bug is that one user id
+# names two elements: each instance's handler has to patch its own.
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+exists out/index.html
+
+# No bare `shown` survives: every write goes through an emitted element var.
+! grep 'shown\.textContent' out/index.html
+
+# The two instances hold separate state, and each patches a different element.
+grep 'v__inst0' out/index.html
+grep 'v__inst1' out/index.html
+
+# The elements the page declared are the ones the handlers write to.
+grep 'var \$1 = document.getElementById' out/index.html
+grep 'var \$4 = document.getElementById' out/index.html
+grep '\$1.textContent = String\(state.v__inst0\)' out/index.html
+grep '\$4.textContent = String\(state.v__inst1\)' out/index.html
+
+# Neither handler reaches the other instance's element.
+! grep '\$4.textContent = String\(state.v__inst0\)' out/index.html
+! grep '\$1.textContent = String\(state.v__inst1\)' out/index.html
+
+-- app.sngl --
+import . "sngl:ui"
+
+component holder(seed int) {
+    var v = seed
+    hbox {
+        text #shown(value=string(v))
+        button(text="bump", @click { v += 1 })
+    }
+}
+
+component main {
+    holder #p(seed=1)
+    holder #q(seed=2)
+}
