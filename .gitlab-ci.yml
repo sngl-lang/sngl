@@ -7,11 +7,18 @@ stages:
 # in-file rather than relying on the project's "Auto-cancel redundant
 # pipelines" toggle, so the behaviour is version controlled.
 workflow:
-  # Only main and merge requests. Without this, a push to a branch with an
-  # open MR builds twice -- once as a branch pipeline, once as an MR pipeline.
+  # main, and branches with an open MR. Nothing else.
+  #
+  # The gate is CI_OPEN_MERGE_REQUESTS on the branch pipeline rather than
+  # merge_request_event, because this instance never creates a merge request
+  # pipeline on its own -- not when the MR opens, not on a push to an open
+  # one. POSTing to /merge_requests/:iid/pipelines builds one that runs, so
+  # the config admits them; nothing triggers them. Admitted below anyway, for
+  # a hand-started run and for the day that changes.
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_OPEN_MERGE_REQUESTS
     - when: never
   auto_cancel:
     on_new_commit: interruptible
@@ -51,14 +58,6 @@ build-image:
 test:
   stage: test
   image: $IMAGE:latest
-  # Spelled out even though workflow:rules already decides this: GitLab
-  # attempts a merge request pipeline for a push only when some job names
-  # merge_request_event. A job with no rules carries an implicit
-  # only: [branches, tags], which does not count, and the MR then gets no
-  # pipeline at all.
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
     - job: build-image
       optional: true
