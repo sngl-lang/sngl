@@ -124,7 +124,11 @@ type Env struct {
 	BodyStmts   []ir.Stmt
 	depth       int
 	RenderDepth int
-	Log         []string
+	// maxIterations bounds a condition or forever loop; zero means
+	// maxLoopIterations. A test sets it to something small, since asserting
+	// the bound by reaching the real one would run ten million iterations.
+	maxIterations int
+	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.

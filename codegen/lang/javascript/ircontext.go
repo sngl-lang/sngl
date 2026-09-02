@@ -235,6 +235,12 @@ func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 		key, valueVar = "__x", "__v"
 	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// `while` rather than `for (;;)`: the two are the same loop, and this
+		// one reads as the condition loop below with the condition left out.
+		return "while (true) {"
+	case ir.IterCondition:
+		return "while (" + iter + ") {"
 	case ir.IterCounted:
 		c := n.Counted
 		start, end := jc.EvalExpr(c.Start), jc.EvalExpr(c.End)

@@ -275,6 +275,12 @@ func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 		key, valueVar = "__x", "__v"
 	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// Kotlin has no bare `for`: its `for` takes an iterable, so a loop
+		// over nothing is a `while`.
+		return "while (true) {"
+	case ir.IterCondition:
+		return "while (" + iter + ") {"
 	case ir.IterCounted:
 		// A Kotlin range evaluates its bounds once, so there is no temp to
 		// bind. `downTo end + 1` is how a descending range keeps the end

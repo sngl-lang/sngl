@@ -76,9 +76,9 @@ func Validate(pkg *Package) []error {
 			checkNoNilStmts(add, "if body", x.Body)
 			checkNoNilStmts(add, "if else", x.Else)
 		case *For:
-			if x.Iter == nil {
-				add("for statement has nil Iter")
-			}
+			// A loop with no condition legitimately carries Iter == nil:
+			// `for { }` has no head at all, which is what distinguishes it
+			// from a loop over an iterable or a condition.
 			checkNoNilStmts(add, "for body", x.Body)
 		case *NodeInst:
 			checkNoNilStmts(add, "node children", x.Children)

@@ -2082,7 +2082,9 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
 	}
 	if x.Block.IsDefined() {
+		restore := c.enterFuncBody()
 		fn.Block = c.checkBlockIR(&x.Block)
+		restore()
 	}
 	c.returnType = prevReturn
 	c.popScope()
@@ -2668,6 +2670,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		return &ir.Return{AST: x, Value: valExpr}
+	case *ast.BreakStmt:
+		c.requireLoop(x.Pos, "break")
+		return &ir.Break{AST: x}
+	case *ast.ContinueStmt:
+		c.requireLoop(x.Pos, "continue")
+		return &ir.Continue{AST: x}
 	case *ast.CallStmt:
 		// context #id(...) is only valid at file top level; reject it here.
 		if c.isContextDeclCallStmt(x) {
@@ -2852,8 +2860,18 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return &ir.If{AST: x, Cond: condExpr, Body: body, Else: elseBody}
 	case *ast.ForStmt:
+		// No head at all is the forever loop. A head is checked before it is
+		// classified, because what it *evaluates to* is what the loop does:
+		// a bool is a condition tested before each iteration, anything else
+		// is an iterable to walk.
+		if x.Iter == nil {
+			return c.checkHeadlessFor(x, nil)
+		}
 		iterExpr := c.checkExpr(x.Iter)
 		iter := exprType(iterExpr)
+		if iter.Kind == ir.TypeBool {
+			return c.checkHeadlessFor(x, iterExpr)
+		}
 		// A zero-arg computed is called where its result is what is wanted, so
 		// `for var x = items` iterates what `func items() list<T>` returns. There
 		// is no single expected type to hand implicitCall here: any of the
@@ -2975,9 +2993,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				declKey(TypDyn)
 			}
 		}
+		c.loopDepth++
 		body := c.checkBlockIR(&x.Body)
+		c.loopDepth--
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
+			// The else runs when the body never did, so it is outside the
+			// loop: a `break` written there has no loop to act on.
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
@@ -3234,9 +3256,9 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	for _, p := range params {
 		c.declare(eh.Pos, p)
 	}
-	c.funcDepth++
+	restore := c.enterFuncBody()
 	fn.Block = c.checkBlockIR(&eh.Body)
-	c.funcDepth--
+	restore()
 	c.popScope()
 	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
 }
@@ -3912,9 +3934,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			for _, p := range params {
 				c.declare(arg.Pos, p)
 			}
-			c.funcDepth++
+			restore := c.enterFuncBody()
 			fn.Block = c.checkBlockIR(&arg.Body)
-			c.funcDepth--
+			restore()
 			c.popScope()
 			handlers = append(handlers, ir.EventHandler{
 				AST:  &arg,
@@ -4290,6 +4312,61 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 	case *ast.ForStmt:
 		// Inner for-loops hoist their own ids; don't double-declare here.
 	}
+}
+
+// requireLoop reports a `break` or `continue` written where no loop encloses
+// it. What counts as enclosing is loopDepth, which resets at every imperative
+// body: the loop has to be one this statement can still be running inside.
+//
+// A view body's loop does not count either, for the reason checkHeadlessFor
+// gives: the body is a template stamped once per element, not a statement
+// stream, so there is no iteration for an escape to cut short.
+func (c *checker) requireLoop(pos ast.Pos, kw string) {
+	switch {
+	case c.funcDepth == 0:
+		c.error(pos, "`%s` cannot be written in a view body", kw)
+	case c.loopDepth == 0:
+		c.error(pos, "`%s` outside a loop", kw)
+	}
+}
+
+// checkHeadlessFor checks the two loops that walk nothing: `for cond { }`,
+// whose head is the already-checked bool cond, and `for { }`, which has no
+// head at all and is what a nil cond means.
+//
+// Both are imperative-only. A view body renders a tree, and a loop there is
+// how many copies of its body the tree holds: a list gives that a length and
+// a count gives it a number, while a condition gives it neither. Nothing a
+// mutation model could diff, and nothing a static renderer could write down --
+// so it is refused here, with a position, rather than emitted as a loop that
+// two of the platforms would render exactly once.
+func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
+	kind := "a loop over a condition"
+	if cond == nil {
+		kind = "a loop with no condition"
+	}
+	if c.funcDepth == 0 {
+		c.error(x.Pos, "%s cannot be written in a view body: a view repeats its body once per element, and there is no element here", kind)
+	}
+	// The head declares no variable, so there is nothing for `var` to bind.
+	if x.Key != "" {
+		c.error(x.Pos, "%s declares no variable: drop the `var`", kind)
+	}
+	if cond == nil && x.Else.IsDefined() {
+		// else means the body never ran, and a loop with no condition always
+		// runs its body: the block is unreachable, not empty-case handling.
+		c.error(x.Pos, "`for { } else { }` has no else case: the body always runs, so drop the else")
+	}
+	c.pushScope()
+	c.loopDepth++
+	body := c.checkBlockIR(&x.Body)
+	c.loopDepth--
+	var elseBody []ir.Stmt
+	if cond != nil && x.Else.IsDefined() {
+		elseBody = c.checkBlockIR(&x.Else)
+	}
+	c.popScope()
+	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
 }
 
 // errorNotCallable reports a call whose callee is neither a function nor a

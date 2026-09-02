@@ -372,6 +372,17 @@ type ReturnStmt struct {
 	Value Expr // nil for bare return
 }
 
+// BreakStmt and ContinueStmt are the loop escapes. Neither carries a label:
+// they act on the innermost enclosing loop, which is what the checker verifies
+// there is one of.
+type BreakStmt struct {
+	Pos Pos
+}
+
+type ContinueStmt struct {
+	Pos Pos
+}
+
 // CallStmt wraps a CallExpr used as a statement.
 type CallStmt struct {
 	Pos  Pos
@@ -455,9 +466,11 @@ func (*UnaryExpr) targetExpr()  {}
 
 // --- StmtPos implementations ---
 
-func (x *AssignStmt) StmtPos() *Pos { return &x.Pos }
-func (x *ToggleStmt) StmtPos() *Pos { return &x.Pos }
-func (x *IncDecStmt) StmtPos() *Pos { return &x.Pos }
-func (x *VarStmt) StmtPos() *Pos    { return &x.Pos }
-func (x *ReturnStmt) StmtPos() *Pos { return &x.Pos }
-func (x *CallStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *AssignStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *ToggleStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *IncDecStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *VarStmt) StmtPos() *Pos      { return &x.Pos }
+func (x *ReturnStmt) StmtPos() *Pos   { return &x.Pos }
+func (x *BreakStmt) StmtPos() *Pos    { return &x.Pos }
+func (x *ContinueStmt) StmtPos() *Pos { return &x.Pos }
+func (x *CallStmt) StmtPos() *Pos     { return &x.Pos }

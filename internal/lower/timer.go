@@ -190,7 +190,8 @@ func (st *timerState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			}
 		case *ir.Window:
 			n.Body = st.injectIntoStmts(n.Body)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf stmts — no nested blocks. gatedUpdatersFor handles
 			// Assign-driven cancellation injection.
 		default:

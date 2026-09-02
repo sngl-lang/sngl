@@ -397,6 +397,12 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 		key = "__i"
 	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// Go's own spelling for it, and the head the two kinds below are the
+		// condition-carrying form of.
+		return "for {"
+	case ir.IterCondition:
+		return "for " + iter + " {"
 	case ir.IterCounted:
 		c := n.Counted
 		start, end := gc.EvalExpr(c.Start), gc.EvalExpr(c.End)

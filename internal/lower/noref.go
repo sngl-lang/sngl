@@ -435,6 +435,8 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 	case *ir.ContextProvider:
 		n.Value = r.rewriteExpr(n.Value)
 		r.rewriteStmts(n.Children)
+	case *ir.Break, *ir.Continue:
+		// A loop escape holds no ref to rewrite.
 	default:
 		panic(fmt.Sprintf("refRewriter.rewriteStmt: unhandled %T", n))
 	}
@@ -617,6 +619,8 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		for _, t := range n.Children {
 			seedAddressedVarsInStmt(t, set)
 		}
+	case *ir.Break, *ir.Continue:
+		// A loop escape addresses nothing.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInStmt: unhandled %T", n))
 	}

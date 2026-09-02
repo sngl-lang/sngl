@@ -1,0 +1,12 @@
+// else means the body never ran, and a loop with no condition always runs its
+// body: the block is unreachable rather than an empty case.
+
+import . "sngl:ui"
+
+func f() int {
+    for { // ERROR(check) "has no else case"
+        return 1
+    } else {
+        return 2
+    }
+}

@@ -295,7 +295,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 	case *ContextProvider:
 		n.Value = w.expr(n.Value)
 		n.Children = w.stmts(n.Children)
-	case *CanvasRedrawStmt:
+	case *CanvasRedrawStmt, *Break, *Continue:
 		// No expressions to walk.
 	default:
 		panic(fmt.Sprintf("ir.Rewrite: unhandled ir.Stmt %T", n))

@@ -12,6 +12,7 @@ exists go/model.go
 
 grep '__ran0 := false' go/model.go
 grep 'if !__ran0 \{' go/model.go
+# The flag is set first in the body, so a `continue` cannot skip it.
 grep -count=1 '__ran0 = true' go/model.go
 
 # Two loops in one body get a flag each rather than sharing one.
@@ -36,6 +37,9 @@ component main {
 
     button(text="run", @click {
         for var x = xs {
+            if x == 0 {
+                continue
+            }
             total = total + x
         } else {
             note = "empty"

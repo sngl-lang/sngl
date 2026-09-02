@@ -191,3 +191,98 @@ component App {
               target: (identifier)
               operator: (assignment_operator)
               value: (integer_literal))))))))
+
+================================
+Forever loop with break and continue
+================================
+
+func spin(n int) int {
+    for {
+        if n > 3 {
+            break
+        }
+        n = n + 1
+        continue
+    }
+    return n
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      name: (identifier))
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (for_node
+        (statement_block
+          (if_node
+            (binary_expression
+              left: (identifier)
+              right: (integer_literal))
+            (statement_block
+              (break_statement)))
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (binary_expression
+              left: (identifier)
+              right: (integer_literal)))
+          (continue_statement)))
+      (return_statement
+        (identifier)))))
+
+================================
+Condition loop with else
+================================
+
+func countTo(n int) string {
+    var i = 0
+    for i < n {
+        i = i + 1
+    } else {
+        return "none"
+    }
+    return "some"
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      name: (identifier))
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)))
+      (for_node
+        (binary_expression
+          left: (identifier)
+          right: (identifier))
+        (statement_block
+          (assignment_statement
+            target: (identifier)
+            operator: (assignment_operator)
+            value: (binary_expression
+              left: (identifier)
+              right: (integer_literal))))
+        (statement_block
+          (return_statement
+            (string_literal))))
+      (return_statement
+        (string_literal)))))

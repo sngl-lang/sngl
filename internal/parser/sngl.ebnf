@@ -66,7 +66,9 @@
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
 # kw_slot       0x3E  KW_SLOT
+# kw_break      0x3F  KW_BREAK
 # kw_return     0x40  KW_RETURN
+# kw_continue   0x41  KW_CONTINUE
 # slashdash     0x46  SLASHDASH /-
 # str_start        0x49  STR_START         "text{
 # str_end          0x4A  STR_END           }text"
@@ -148,7 +150,9 @@ kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
 kw_slot      = `\x3E` .
+kw_break     = `\x3F` .
 kw_return    = `\x40` .
+kw_continue  = `\x41` .
 slashdash    = `\x46` .
 str_start    = `\x49` .
 str_end      = `\x4A` .
@@ -224,6 +228,8 @@ Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ sem
 #   kw_func       → FuncDecl  (excluded from StatementPrimary)
 #   kw_component  → ComponentDecl
 #   kw_return     → return statement
+#   kw_break      → break statement
+#   kw_continue   → continue statement
 #   kw_if         → IfNode
 #   kw_for        → ForNode
 #   everything else → VisualOrStmt (visual nodes, calls, assignments, emits)
@@ -239,6 +245,8 @@ Stmt =
     | ComponentDecl
     | SlotNode
     | kw_return [ Expr ]
+    | kw_break
+    | kw_continue
     | IfNode
     | ForNode
     | VisualOrStmt
@@ -437,7 +445,7 @@ IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 # LL(1): after `for`, kw_var opens a declaration and anything else opens the
 # iterable, so `for seq.count(3) { }` -- a loop that binds nothing -- needs no
 # lookahead to tell from `for var i = xs { }`.
-ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | CondExpr ) StmtBlock [ kw_else StmtBlock ] .
+ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | [ CondExpr ] ) StmtBlock [ kw_else StmtBlock ] .
 
 # `slot` in statement position. Bare, it is the anonymous slot's insertion point
 # — the one place the keyword means "render here". Named, it populates a slot of
@@ -485,9 +493,9 @@ PostfixExpr = PrimaryExpr { ExprPostfixOp } .
 
 # ── Condition expressions ────────────────────────────────────────────────────
 # Restricted expression chain for contexts where Expr is followed by StmtBlock
-# (if condition, for iterator). Uses StatementPrimary (no bare ident{...} struct
-# lits) and CondPostfixOp (no StructLitBody, no StmtBlock) to avoid lbrace
-# ambiguity with the following StmtBlock.
+# (if condition, for iterator). Uses CondPrimary (no bare ident{...} struct
+# lits, no leading brace literal) and CondPostfixOp (no StructLitBody, no
+# StmtBlock) to avoid lbrace ambiguity with the following StmtBlock.
 
 CondExpr        = CondOrExpr [ question Expr colon Expr ] .
 CondOrExpr      = CondAndExpr  { lor  CondAndExpr  } .
@@ -497,7 +505,31 @@ CondCmpExpr     = CondAddExpr  { CmpOp CondAddExpr  } .
 CondAddExpr     = CondMulExpr  { AddOp CondMulExpr  } .
 CondMulExpr     = CondUnaryExpr { MulOp CondUnaryExpr } .
 CondUnaryExpr   = CondPostfixExpr | bang CondUnaryExpr | minus CondUnaryExpr | amp CondUnaryExpr | star CondUnaryExpr | kw_const CondUnaryExpr .
-CondPostfixExpr = StatementPrimary { CondPostfixOp } .
+CondPostfixExpr = CondPrimary { CondPostfixOp } .
+
+# StatementPrimary minus AnonStructLit: a head expression may not *begin* with
+# a brace. Keeping it there left `lbrace` in FIRST(CondExpr), which is the
+# StmtBlock's own first token -- harmless while the expression was mandatory,
+# and a predict conflict the moment `for { }` made it optional. A leading map
+# or anonymous-struct literal in an `if`/`for` head is written parenthesized.
+CondPrimary =
+      int_lit
+    | float_lit
+    | unit_lit
+    | str_full
+    | triple_full
+    | raw_str
+    | InterpStr
+    | TripleInterp
+    | i18n_str_full
+    | i18n_triple_full
+    | I18nInterpStr
+    | I18nTriple
+    | hash
+    | lparen Expr rparen
+    | lbracket ListBody rbracket
+    | ident
+    .
 
 # Condition context: no StructLitBody (lbrace is the following StmtBlock),
 # no StmtBlock (not a statement).
