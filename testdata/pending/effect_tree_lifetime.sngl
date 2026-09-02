@@ -1,0 +1,46 @@
+// An effect takes its lifetime from the tree around it. One inside an `if`
+// lives as long as that branch does, and needs no `on` to say so: the branch
+// going away is the node leaving the tree, which is what `@unmount` means.
+//
+// This is why the bracket is a node rather than a hook on the declaration. A
+// hook belongs to the component and would have one lifetime; the node belongs
+// to the position it is written in, and the position already has one.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        shown = true
+        log list<string> = []
+    )
+
+    if shown {
+        effect(
+            @mount {
+                log = log.push("in")
+            },
+            @unmount {
+                log = log.push("out")
+            },
+        )
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testBranchEntryMounts(t Test, c main) {
+    t.assert(c.out.value == "in")
+}
+
+func testBranchLeavingUnmounts(t Test, c main) {
+    c.shown = false
+    t.assert(c.out.value == "in,out")
+}
+
+// Re-entering the branch is a new lifetime, not a resumed one.
+func testBranchReturningMountsAgain(t Test, c main) {
+    c.shown = false
+    c.shown = true
+    t.assert(c.out.value == "in,out,in")
+}

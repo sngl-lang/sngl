@@ -1,0 +1,41 @@
+import . "sngl:internal/marks"
+
+// Brackets a lifetime. `@mount` runs when the node enters the tree, `@unmount`
+// when it leaves, and the pair is what a component uses to hold something the
+// program has to give back -- a subscription, a scheduled callback, a request
+// in flight.
+//
+// Ambient for the reason `context` is: the form that brackets a lifetime has to
+// be available wherever a package declares state, and every tier above this one
+// builds its own setup and teardown out of it. The mark is what the checker
+// matches, so the name `effect` is shadowable like any other.
+//
+// It is placed, not declared: an effect is a node, so it sits where it belongs
+// in the body and takes its lifetime from the tree around it. One inside an
+// `if` lives as long as that branch does. A component places as many as it has
+// things to hold, which is why this is a node rather than a hook on the
+// declaration -- two brackets over different lifetimes cannot be one hook.
+//
+// `on` makes the bracket a keyed identity: while it holds the same value this
+// is the same effect, and a different value is a different one, so the runtime
+// ends the old lifetime and begins a new one -- `@unmount`, then `@mount`.
+// Omitted, the bracket lives as long as the node does, which is what the
+// parameter's default says: a key of a type with one value never changes.
+//
+// Each handler takes the value its own lifetime is keyed on. `@unmount` needs
+// it because by the time teardown runs `on` already holds the next value, so a
+// handler reading the cell would see what it is *not* tearing down; `@mount`
+// takes it for symmetry, since the alternative is two handlers that differ for
+// no reason a caller can see.
+//
+// **What a handler reads does not subscribe it.** A handler runs when its event
+// fires, here as everywhere else in the language, and mount is an event. An
+// effect that should run again when a value changes says so in `on`; nothing is
+// inferred from the body. That is the whole difference from a computed, which is
+// re-evaluated precisely because of what it reads.
+#[builtin("effect")]
+component effect<T = struct {}>(
+    on T,
+    @mount T,
+    @unmount T,
+) {}

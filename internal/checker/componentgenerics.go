@@ -154,6 +154,23 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type) *ir.C
 	return &out
 }
 
+// checkEffectHandlers reports an effect that brackets nothing.
+//
+// Either handler alone is a whole bracket -- a subscription with nothing to
+// give back, or a teardown for something the tree itself set up -- so the rule
+// is that at least one is written. Neither is a node that runs no code and
+// holds no state, which is a program that meant to say something else.
+func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
+	for _, a := range vn.Args.Args {
+		if h, isHandler := a.(ast.EventHandler); isHandler {
+			if h.Name == "mount" || h.Name == "unmount" {
+				return
+			}
+		}
+	}
+	c.error(vn.Pos, "effect declares neither @mount nor @unmount, so it brackets nothing")
+}
+
 // declTypeBindings is what a component's type parameters stand for where the
 // declaration itself is checked: their own defaults, and nothing else. A call
 // site knows more -- it has props to bind from -- but a declaration is checked

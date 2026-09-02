@@ -1,0 +1,39 @@
+// A component places as many effects as it has things to hold, and each keeps
+// its own lifetime. Two brackets over different `on` values cannot be one hook,
+// which is the reason this is a node.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        a = 0
+        b = 0
+        aRuns = 0
+        bRuns = 0
+        plain = 0
+    )
+
+    effect(on=a, @mount {
+        aRuns += 1
+    })
+    effect(on=b, @mount {
+        bRuns += 1
+    })
+    effect(@mount {
+        plain += 1
+    })
+
+    text #out(value="{aRuns}:{bRuns}:{plain}")
+}
+
+func testEachBracketMountsOnce(t Test, c main) {
+    t.assert(c.out.value == "1:1:1")
+}
+
+func testOneKeyChangingLeavesTheOthersAlone(t Test, c main) {
+    c.a = 1
+    t.assert(c.out.value == "2:1:1")
+    c.b = 1
+    t.assert(c.out.value == "2:2:1")
+}

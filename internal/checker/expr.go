@@ -3265,6 +3265,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		return nil
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn)
+	case ir.BuiltinEffect:
+		// Validated here and then left to the ordinary component path: an
+		// effect is resolved, checked and lowered as the declaration it is,
+		// and the kind says only that this node brackets a lifetime.
+		c.checkEffectHandlers(vn)
 	}
 	// A named slot renders as an ordinary node: the tag is the slot's name and
 	// the arguments are the values passed to it. Resolved before components so

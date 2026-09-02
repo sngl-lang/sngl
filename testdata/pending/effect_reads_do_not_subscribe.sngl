@@ -1,0 +1,38 @@
+// What `@mount` reads does not subscribe it. A handler runs when its event
+// fires — here as everywhere else in the language — and mount is an event.
+//
+// This is the whole difference between an effect and a computed. A computed is
+// re-evaluated because of what it reads; an effect runs again only when `on`
+// says it is a different effect. Inferring the dependency from the body would
+// make `@mount` the one handler in the language whose reads subscribe it.
+//
+// `seen` is the evidence: the body read `n`, so a subscription inferred from
+// the body would have re-run the handler and carried the new value across.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        n = 0
+        runs = 0
+        seen = 0
+    )
+
+    effect(@mount {
+        runs += 1
+        seen = n
+    })
+
+    button #bump(text="+", @click {
+        n += 1
+    })
+    text #out(value="{runs}:{seen}")
+}
+
+func testBodyReadsAreNotADependency(t Test, c main) {
+    t.assert(c.out.value == "1:0")
+    c.bump.click()
+    t.assert(c.n == 1)
+    t.assert(c.out.value == "1:0")
+}

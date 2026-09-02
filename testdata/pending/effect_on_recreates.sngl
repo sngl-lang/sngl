@@ -1,0 +1,51 @@
+// `on` makes the bracket a keyed identity. While it holds the same value this
+// is the same effect; a different value is a different one, so the old lifetime
+// ends and a new one begins — `@unmount` first, then `@mount`.
+//
+// The log pins the order. A pair that fired mount-then-unmount would leave the
+// program holding the thing the effect was supposed to give back, and a count
+// alone cannot tell the two orders apart.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        n = 0
+        log list<string> = []
+    )
+
+    effect(
+        on=n,
+        @mount {
+            log = log.push("mount")
+        },
+        @unmount {
+            log = log.push("unmount")
+        },
+    )
+
+    text #out(value=log.join(","))
+}
+
+func testMountsOnEntry(t Test, c main) {
+    t.assert(c.out.value == "mount")
+}
+
+func testChangedOnEndsTheOldLifetimeFirst(t Test, c main) {
+    c.n = 1
+    t.assert(c.out.value == "mount,unmount,mount")
+}
+
+// Written, but to the value it already held. The bracket asks whether this is
+// the same effect, not whether anything assigned to it.
+func testUnchangedOnDoesNothing(t Test, c main) {
+    c.n = 0
+    t.assert(c.out.value == "mount")
+}
+
+func testEveryChangeIsItsOwnLifetime(t Test, c main) {
+    c.n = 1
+    c.n = 2
+    t.assert(c.out.value == "mount,unmount,mount,unmount,mount")
+}

@@ -63,6 +63,10 @@ const (
 	BuiltinTimer         BuiltinKind = "timer"
 	BuiltinContext       BuiltinKind = "context"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
+	// Effect brackets a lifetime: @mount when the node enters the tree,
+	// @unmount when it leaves. `on` makes the bracket a keyed identity, so a
+	// changed value ends one lifetime and begins the next. See sngl:app.
+	BuiltinEffect BuiltinKind = "effect"
 
 	// Target identities. An opaque value type each of whose values is a const
 	// the compiler synthesizes into one target's package -- html.platform,
@@ -137,7 +141,7 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext:
+	case BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect:
 		return true
 	}
 	return false
@@ -162,7 +166,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeDefault,
-		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext,
+		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
