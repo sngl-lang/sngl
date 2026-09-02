@@ -1,0 +1,54 @@
+# An effect's handlers do not run inside the loop that placed the bracket.
+# passEffect lifts them to functions on the owner and calls them from the
+# settle, which reconciles the whole iteration at once -- so the loop variable
+# is out of scope by then, and a handler reading it would compile to a name
+# nothing declares.
+#
+# `on` is the way across, and the handler's parameter is how it arrives.
+# Refused up front rather than lowered, because what a user would otherwise
+# see is a Go or JS compile error about a generated identifier.
+
+! sngl generate --platform=html --lang=none --out=ht reads_loop_var.sngl
+stderr 'reads the loop variable "it"'
+stderr 'reads_loop_var.sngl:10:'
+
+# The same bracket, written the way it is meant to be, lowers on every target
+# that lowers effects for itself.
+sngl generate --platform=html --lang=none --out=ok_ht through_on.sngl
+sngl generate --platform=bubbletea --lang=go --out=ok_bt through_on.sngl
+sngl generate --platform=fyne --lang=go --out=ok_fy through_on.sngl
+
+# android maps an effect to DisposableEffect, so the pass does not run and the
+# question does not arise -- the loop variable is in scope there.
+sngl generate --platform=android --lang=kotlin --out=ok_an reads_loop_var.sngl
+
+-- reads_loop_var.sngl --
+import . "sngl:ui"
+
+component main {
+    var (
+        items list<string> = ["a", "b"]
+        log list<string> = []
+    )
+
+    for it = items {
+        effect(on=it, @mount { log.push(it) })
+    }
+
+    text(value=log.join(","))
+}
+-- through_on.sngl --
+import . "sngl:ui"
+
+component main {
+    var (
+        items list<string> = ["a", "b"]
+        log list<string> = []
+    )
+
+    for it = items {
+        effect(on=it, @mount(v) { log.push(v) })
+    }
+
+    text(value=log.join(","))
+}

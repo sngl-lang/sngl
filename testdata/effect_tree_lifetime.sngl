@@ -1,5 +1,3 @@
-// SKIP(codegen) "waiting on the effect mount/unmount lowering"
-
 // An effect takes its lifetime from the tree around it. One inside an `if`
 // lives as long as that branch does, and needs no `on` to say so: the branch
 // going away is the node leaving the tree, which is what `@unmount` means.

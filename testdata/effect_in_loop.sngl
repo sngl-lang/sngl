@@ -1,4 +1,3 @@
-// SKIP(codegen) "waiting on the effect mount/unmount lowering"
 // An effect in a loop is one bracket per element, keyed by the element. The
 // iteration is what distinguishes them: two effects written once are two
 // lifetimes, and adding or removing an element moves only its own.
