@@ -23,6 +23,59 @@ Two valid forms — no third:
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
+## Loop forms
+
+`for` has one head, and its *type* says what the loop does — the grammar does
+not distinguish the forms:
+
+- `for var x = xs` / `for var i, x = xs` / `for var k, v = m` — walk a list,
+  iterator or map. `var` is what makes the head a declaration; without it
+  (`for xs`, `for seq.count(3)`) the head is the iterable alone and the loop
+  binds nothing.
+- `for cond { }` — a condition, tested before each iteration.
+- `for { }` — no head at all; ends by `break` or `return`.
+
+`ir.For.IterKind` is that classification, stamped late by `passIterKind` from
+`ir.DeriveIterKind`; each language's `ForHead` emits a per-kind template. A
+condition or headless loop carries no iterable, so `ir.For.Iter` is the
+condition or nil.
+
+The last two are **imperative-only** — function, handler, timer — and so are
+`break` and `continue`. A view body's loop says how many copies of its body
+the rendered tree holds: a list gives that a length and a counted sequence a
+number, and a condition gives neither, so there is nothing for a mutation
+model to diff and nothing for a static renderer to write down. The checker
+refuses all four in a view body with a positioned error (`checkHeadlessFor`,
+`requireLoop`), which keeps codegen to the imperative paths that route through
+`ForHead`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+what an escape requires one of, and it resets at every imperative-body
+boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
+inside.
+
+A head expression may not begin with `{`: that brace is the body's. `CondPrimary`
+in `internal/parser/sngl.ebnf` is `StatementPrimary` minus `AnonStructLit` for
+exactly that reason — with the head optional, `lbrace` in `FIRST(CondExpr)` is
+a predict conflict against the `StmtBlock` that follows. So a map or
+anonymous-struct literal in an `if`/`for` head is written parenthesized. The
+tree-sitter grammar says the same thing by preferring the headless `for`
+alternative at a higher dynamic precedence.
+
+**`else` means the body never ran.** For an iterable that is "it was empty";
+for a condition, "it was false the first time it was asked". A `break` does
+not trigger it, since a loop cannot break out of a body that never ran, and
+`for { } else { }` is an error because the body always runs.
+
+In an imperative body `passForElse` states that as a flag: `__ranN := false`
+before the loop, set as the body's first statement, tested by an `if` after
+it. Every backend already emits those three statements, so no language grows a
+case — before the pass, `codegen/irwalk` read a loop's head and body and
+nothing else, and an imperative for-else compiled with the else silently
+dropped. View bodies keep theirs, where the platform emitters render it
+structurally. The pass walks the declared imperative roots *and every lambda
+body in the package* (`ir.Walk`), because android and fyne carry an event
+handler as a prop value rather than as an `ir.EventHandler` — a hand-written
+descent through the view finds nothing there.
+
 ## Build & Test Commands
 
 ```bash
@@ -104,7 +157,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Two run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Three run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
