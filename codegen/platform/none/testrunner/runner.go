@@ -52,10 +52,18 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 			Env:      env,
 			comp:     findComponentByName(pkg, compName),
 			compName: compName,
+			fx:       interp.NewEffects(),
 		}
 		if cVal.comp != nil {
 			cVal.body = cVal.comp.Body
 		}
+		// Mounted here rather than on the first read. A test whose opening
+		// statement is a write -- `c.running = false` before any assertion --
+		// would otherwise settle for the first time after it, and the initial
+		// lifetime would never have existed to be torn down: the write would
+		// read as the program starting in its new state instead of moving to
+		// it.
+		cVal.settle()
 		env.Set(fn.Params[1], cVal)
 	}
 
@@ -165,6 +173,36 @@ type componentValue struct {
 	// *componentValue wrappers, native entries are element-map dicts.
 	// Computed lazily on first GetField("children").
 	children []any
+
+	// settleErr holds the first effect failure, surfaced by the next read.
+	settleErr error
+
+	// fx is the running set of lifetime brackets, on the root wrapper only:
+	// the mount walk descends through components, so one set covers every
+	// effect in the tree and a child wrapper has nothing of its own to settle.
+	// Nil on a child.
+	fx *interp.Effects
+}
+
+// settle runs the effect handlers the current state calls for.
+//
+// A test harness has no event loop, so there is no moment between a handler
+// returning and the next assertion for a render to happen in -- which makes
+// "the node entered the tree" and "the tree was read" the same moment here, and
+// reading is the only one of the two this can observe. Every field read and
+// every field write goes through it, which is every way a test reaches the
+// program.
+//
+// A failure to settle is reported rather than returned: the caller is a field
+// read whose signature says nothing about effects, and a test that cannot
+// settle has already gone wrong somewhere the assertion will show.
+func (cv *componentValue) settle() {
+	if cv == nil || cv.fx == nil || cv.Env == nil {
+		return
+	}
+	if _, err := interp.Settle(cv.fx, cv.Env); err != nil {
+		cv.settleErr = err
+	}
 }
 
 // errorLine returns the 1-based source line of the failing expression. For

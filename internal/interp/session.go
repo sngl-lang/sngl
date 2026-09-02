@@ -19,6 +19,7 @@ type Session struct {
 	Timers *Timers
 
 	view *View
+	fx    *Effects
 }
 
 // NewSession checks nothing and lowers nothing: it takes a package the caller
@@ -35,11 +36,17 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	view, err := Mount(env)
+	// Settling here rather than after: a mount handler runs before anything has
+	// seen the tree, so what a host is first handed already reflects it. An
+	// effect that fetches has its request in flight before the first frame,
+	// which is the only reading of "when the node enters the tree" that does
+	// not show a frame the program never described.
+	fx := NewEffects()
+	view, err := Settle(fx, env)
 	if err != nil {
 		return nil, err
 	}
-	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view}, nil
+	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view, fx: fx}, nil
 }
 
 // View is the tree as the session currently holds it -- what a host has
@@ -72,13 +79,27 @@ func (s *Session) Attach(h Host) error {
 // operation below ends in one, and a caller that mutates state directly (a
 // REPL assigning a var) calls it itself.
 func (s *Session) Sync() ([]Patch, error) {
-	next, err := Mount(s.Env)
-	if err != nil {
-		return nil, err
+	// Diffed per round rather than once at the end: a mount handler may write
+	// state, and the patches a host has to apply are the ones between the tree
+	// it holds and each tree that followed -- collapsing them would drop the
+	// intermediate creations the later rounds' keys are relative to.
+	var patches []Patch
+	for round := 0; round < maxEffectRounds; round++ {
+		next, err := Mount(s.Env)
+		if err != nil {
+			return nil, err
+		}
+		patches = append(patches, Diff(s.view, next)...)
+		s.view = next
+		ran, err := s.fx.Reconcile(next, s.Env)
+		if err != nil {
+			return patches, err
+		}
+		if !ran {
+			return patches, nil
+		}
 	}
-	patches := Diff(s.view, next)
-	s.view = next
-	return patches, nil
+	return patches, fmt.Errorf("effects did not settle in %d rounds; an effect is rekeying itself", maxEffectRounds)
 }
 
 // Tick advances the clock to the next timer deadline and fires what is due.

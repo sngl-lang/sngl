@@ -18,6 +18,10 @@ type View struct {
 	// byID indexes by #id. A `for` renders one node per iteration, so an id
 	// inside a loop names several.
 	byID map[string][]*Node
+	// Effects are the lifetime brackets this tree holds, in mount order. Not
+	// among the nodes: an effect draws nothing, and what it wants from the
+	// tree is only the lifetime that reaching it at all confers.
+	Effects []MountedEffect
 }
 
 // Node is one retained instance in a View.
@@ -327,6 +331,10 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 // do -- so a component instantiation is never addressable by #id, even when it
 // carries one.
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
+	if e, isEffect := effectOf(inst, env, m.key(path)); isEffect {
+		m.view.Effects = append(m.view.Effects, e)
+		return nil, nil
+	}
 	if inst.Component != nil {
 		if env.RenderDepth >= maxCallDepth {
 			return nil, nil
