@@ -38,13 +38,9 @@ import (
 // not something a static renderer can write down -- the same bound passCSE
 // documents at greater length.
 //
-// A lambda body is an imperative block wherever it appears, view prop
-// included. By the time this runs, android's handler bodies are lambdas in
-// NodeInst.Props rather than NodeInst.Handlers -- its primitives declare the
-// callback as a prop, and platform-extension lowering has already moved it
-// there -- so a hand-written descent through the view finds nothing at all on
-// that target. (fyne declares a callback prop too but still carries an
-// ir.EventHandler here, which is why it was not the one that caught this.)
+// Which blocks those are is imperativeBlocks' answer, shared with passCSE --
+// including a lambda body wherever it appears, view prop included, which is
+// the only way either pass reaches a handler on android.
 var passForElse = pass{
 	name:    "ForElse",
 	enabled: func(Caps) bool { return true },
@@ -52,75 +48,15 @@ var passForElse = pass{
 }
 
 func lowerForElse(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil {
-		return nil
-	}
 	st := &forElseState{}
-	for _, f := range pkg.Funcs {
-		st.imperative(&f.Block)
-	}
-	for _, c := range pkg.Components {
-		st.owner(c.Funcs, c.Vars, c.Timers, c.Body)
-	}
-	for _, w := range pkg.Windows {
-		st.owner(w.Funcs, w.Vars, nil, w.Body)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			st.imperative(&w.ErrorHandler.Func.Block)
-		}
-	}
-	for _, t := range pkg.Timers {
-		if t.Handler != nil {
-			st.imperative(&t.Handler.Block)
-		}
-	}
-	for _, block := range lambdaBlocks(pkg) {
+	for _, block := range imperativeBlocks(pkg) {
 		st.imperative(block)
 	}
 	return nil
 }
 
-// lambdaBlocks is every lambda body in pkg, collected by the base traversal
-// rather than by a second hand-written descent -- a lambda can sit in any
-// expression, and the walk already knows where every expression is.
-//
-// Collected first and rewritten after, since the walk is read-only. The blocks
-// overlap the ones above (a lambda written inside a function body is in both),
-// which is harmless: a loop whose else has already been desugared no longer
-// has one, so the second visit does nothing.
-func lambdaBlocks(pkg *ir.Package) []*[]ir.Stmt {
-	var out []*[]ir.Stmt
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
-			out = append(out, &l.Func.Block)
-		}
-		return nil
-	})
-	return out
-}
-
 type forElseState struct {
 	counter int
-}
-
-// owner covers one component's or window's imperative blocks, and walks its
-// view body for the handlers hanging off the nodes in it and nothing else.
-func (st *forElseState) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body []ir.Stmt) {
-	for _, f := range funcs {
-		st.imperative(&f.Block)
-	}
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				st.imperative(&h.Func.Block)
-			}
-		}
-	}
-	for _, t := range timers {
-		if t.Handler != nil {
-			st.imperative(&t.Handler.Block)
-		}
-	}
-	st.handlersIn(body)
 }
 
 func (st *forElseState) handlersIn(stmts []ir.Stmt) {
