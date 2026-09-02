@@ -12,22 +12,58 @@ workflow:
 
 variables:
   IMAGE: $CI_REGISTRY_IMAGE/ci
+  # The runner reuses one build directory per project, and a fetch into it
+  # fails outright once a deleted branch leaves a ref behind:
+  #   error: some local refs could not be updated
+  # It is not the `cache:` index, so the "Clear runner caches" button does
+  # not reach it -- every branch deleted since is another chance to hit it.
+  # A clone at depth 20 is cheap next to a suite that runs for 16 minutes.
+  GIT_STRATEGY: clone
+  GIT_DEPTH: "20"
 
 default:
   # The kaniko build in particular is expensive -- it was a top memory
   # consumer during the host lockups in Aug 2026.
   interruptible: true
 
+# What the CI image is built from. Anchored because the rules below ask the
+# same question three times, against three different bases.
+.image-inputs: &image-inputs
+  - Dockerfile
+  - go.mod
+  - go.sum
+
 build-image:
   stage: dependencies
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
+  # A failed image build must not take the pipeline with it: `test` and
+  # `pages` fall back to the $IMAGE:latest already in the registry, and an
+  # `optional` need is only optional about the job *existing*.
+  allow_failure: true
   rules:
+    # An MR pipeline's `changes` is already diffed against the target branch.
+    # Must come first: CI_COMMIT_BEFORE_SHA is zeroed here too.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        paths: *image-inputs
+      when: always
+    # A ref's *first* pipeline has no previous commit to diff against, and
+    # GitLab's fallback is to report every file as changed -- which is why a
+    # docs-only MR rebuilt the image. compare_to only here: it asks whether
+    # the branch *differs* from main rather than whether this push changed
+    # anything, so as a blanket rule it would rebuild on every later push to
+    # a branch carrying a go.mod bump, over the shared :latest tag.
+    - if: $CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"
+      changes:
+        paths: *image-inputs
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+      when: always
+    # Every other pipeline, main included: the previous commit is the base,
+    # so the image is rebuilt on exactly the push that changes an input.
     - changes:
-        - Dockerfile
-        - go.mod
-        - go.sum
+        paths: *image-inputs
       when: always
     - when: never
   script:
