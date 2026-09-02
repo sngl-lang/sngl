@@ -1,0 +1,47 @@
+# A handler that reads the loop variable of the loop its node is in.
+#
+# A promoted top-level handler cannot see one -- it is written outside the
+# loop -- so the handler is attached as a closure instead, which captures it.
+# Unrolling used to hide this: a view loop over a constant list was unrolled
+# for every target and each handler got the element substituted in as a
+# literal, capturing nothing. Once a target with a host language emitted the
+# loop, the promoted handler referenced a variable that was not in scope and
+# examples/calculator stopped building on fyne.
+
+sngl generate --platform=fyne --lang=go --out=fyne app.sngl
+
+# Attached as a closure, in the loop, reading the loop's own variable.
+grep 'for _, it := range m.items \{' fyne/model.go
+grep 'OnTapped = func\(\) \{' fyne/model.go
+grep 'm.picked = it' fyne/model.go
+! grep '__n1_click_handler' fyne/model.go
+
+# The closure returns nothing, so it can be assigned to a func() field. It
+# used to be emitted as `func() any`, which Go rejected twice over.
+! grep 'func\(\) any' fyne/model.go
+
+# The closure's body goes through the platform translator like any other
+# statement block: the write to the label is fyne's own setter on the Model
+# field, not the raw IR assignment to a bare name it used to be.
+grep 'm.__n0.SetText\(m.picked\)' fyne/model.go
+! grep '\t*__n0.Text =' fyne/model.go
+
+sngl generate --platform=gtk4 --lang=go --out=gtk app.sngl
+grep 'gtk4rt.Connect\(__n1, "clicked", func\(\) \{' gtk/model.go
+grep 'm.picked = it' gtk/model.go
+! grep '_clicked_handler' gtk/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+
+component main {
+    var items list<string> = ["a", "b"]
+    var picked = ""
+
+    vbox {
+        for var it = items {
+            button(text=it, @click { picked = it })
+        }
+    }
+    text(value=picked)
+}

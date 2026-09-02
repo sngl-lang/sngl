@@ -1268,6 +1268,26 @@ func structLitTypeName(n *ir.StructLit) string {
 	return fb.String()
 }
 
+// goReturnType is the result clause of a Go signature, leading space
+// included, or "" for a function that returns nothing.
+//
+// Nothing is the answer for a nil or void return, and also for a bare TypeDyn:
+// that has no first-class Go representation, so the signature reads
+// `func foo()` rather than `func foo() any`. TypeDyn *with* a Meta hint is a
+// raw Go type ref (e.g. "fyne.CanvasObject") and must round-trip.
+func goReturnType(ret *ir.Type) string {
+	if ret == nil || ret.Kind == ir.TypeVoid {
+		return ""
+	}
+	if ret.Kind == ir.TypeDyn {
+		if meta, ok := ret.Meta.(string); ok && meta != "" {
+			return " " + meta
+		}
+		return ""
+	}
+	return " " + IRTypeToGo(ret)
+}
+
 func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "func() any { return nil }"
@@ -1280,20 +1300,21 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 		params[i] = p.Name + " " + goType
 	}
-	retType := "any"
-	if n.Func.Return != nil {
-		retType = IRTypeToGo(n.Func.Return)
-	}
+	// Same rule as a named func's signature: a lambda that returns nothing
+	// says nothing, so an event handler reads `func()` and can be assigned to
+	// a host callback field of that type. It used to read `func() any`, which
+	// Go rejected at the assignment and again for the missing return.
+	retType := goReturnType(n.Func.Return)
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := gc.EvalExpr(ret.Value)
-			return "func(" + strings.Join(params, ", ") + ") " + retType + " { return " + body + " }"
+			return "func(" + strings.Join(params, ", ") + ")" + retType + " { return " + body + " }"
 		}
 	}
 
 	var b strings.Builder
-	b.WriteString("func(" + strings.Join(params, ", ") + ") " + retType + " {\n")
+	b.WriteString("func(" + strings.Join(params, ", ") + ")" + retType + " {\n")
 	for _, stmt := range n.Func.Block {
 		for _, line := range gc.EvalStmt(stmt) {
 			b.WriteString("\t\t" + line + "\n")
@@ -1643,20 +1664,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	for i, p := range fn.Params {
 		params[i] = p.Name + " " + IRTypeToGo(p.Type)
 	}
-	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
-		// TypeDyn without a raw-type hint (Meta) has no first-class Go
-		// representation — skip emission so the signature reads "func foo()"
-		// rather than "func foo() any". TypeDyn WITH Meta is a raw Go
-		// type ref (e.g. "fyne.CanvasObject") and must round-trip.
-		if fn.Return.Kind == ir.TypeDyn {
-			if meta, ok := fn.Return.Meta.(string); ok && meta != "" {
-				retType = " " + meta
-			}
-		} else {
-			retType = " " + IRTypeToGo(fn.Return)
-		}
-	}
+	retType := goReturnType(fn.Return)
 
 	sig := "func "
 	switch {
