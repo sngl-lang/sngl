@@ -7,6 +7,12 @@ stages:
 # in-file rather than relying on the project's "Auto-cancel redundant
 # pipelines" toggle, so the behaviour is version controlled.
 workflow:
+  # Only main and merge requests. Without this, a push to a branch with an
+  # open MR builds twice -- once as a branch pipeline, once as an MR pipeline.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
   auto_cancel:
     on_new_commit: interruptible
 
