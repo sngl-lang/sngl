@@ -31,6 +31,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoImplicitRecv",
 		"Canvas",
 		"Effect",
+		"ComponentProps",
 		"NoReactivity",
 		"NoTernary",
 		"CanvasReactivity",

@@ -12,7 +12,11 @@ component main {
 -- expected.sngl --
 import . "sngl:ui"
 component Tree(name string = "leaf") {
-    text(value=name)
+    var __prop_name string = name
+    func __set_name(__v string) void {
+        __prop_name = __v
+    }
+    text(value=__prop_name)
     Tree(name="child")
 }
 component main {

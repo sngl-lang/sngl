@@ -74,6 +74,14 @@ const (
 	NodeOpAttachHandler    = "AttachHandler"
 )
 
+// ComponentSetter is the function an instance carries for one prop it can
+// absorb, and what UpdateComponent's prop name resolves to.
+//
+// Part of the op protocol rather than any one backend's naming, because the
+// lowering that synthesizes the function and the platforms that emit a call to
+// it are four places that must agree on one string.
+func ComponentSetter(prop string) string { return "__set_" + prop }
+
 // NodeOps is every node operation, for the passes that build a call per op.
 var NodeOps = []string{
 	NodeOpCreateNode,

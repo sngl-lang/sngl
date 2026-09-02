@@ -21,6 +21,12 @@ type reactiveProp struct {
 	NodeID string
 	Key    string
 	Expr   ir.Expr
+	// Instance says the node is a component instance rather than a widget, so
+	// the prop is written through the instance's setter instead of assigned to
+	// the node. Assigning it was the old behaviour and it reached nothing: on
+	// html it emitted `__n1.setAttribute("label", ...)` against a node that is
+	// not the instance, and the page did not change.
+	Instance bool
 }
 
 // reactivityState carries the analysis built up before mutation injection.
@@ -530,6 +536,12 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 }
 
 func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
+	// The same question passDeclarative asks to choose CreateComponent over
+	// CreateNode, asked here because the answer decides how the prop is
+	// written. By this pass a node still targeting a component with a body is
+	// one the inliner could not flatten -- a recursive cycle, or an
+	// instantiation under a dynamic `for`.
+	instance := n.Component != nil && hasRealComponentBody(n.Component)
 	for _, prop := range n.Props {
 		deps := st.exprDeps(prop.Value)
 		if len(deps) == 0 {
@@ -540,9 +552,10 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 		}
 		for v := range deps {
 			st.reverseDeps[v] = append(st.reverseDeps[v], reactiveProp{
-				NodeID: n.ID,
-				Key:    prop.Name,
-				Expr:   prop.Value,
+				NodeID:   n.ID,
+				Key:      prop.Name,
+				Expr:     prop.Value,
+				Instance: instance,
 			})
 		}
 	}
@@ -945,10 +958,26 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			rewrite = map[ir.Symbol]ir.Expr{}
 		}
 		value := rewriteIdentsToCaptures(p.Expr, rewrite)
+		nodeRef := func() ir.Expr {
+			return &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+		}
+		if p.Instance {
+			out = append(out, &ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: lowerNSIdent(),
+				Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+				Args: []ir.CallArg{
+					{Value: nodeRef()},
+					{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
+					{Value: value},
+				},
+			}})
+			continue
+		}
 		out = append(out, &ir.Assign{
 			Target: &ir.Select{
 				Type:    ir.TypDyn,
-				Operand: &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true},
+				Operand: nodeRef(),
 				Field:   p.Key,
 			},
 			Op:    ast.AssignSet,

@@ -109,6 +109,10 @@ var passes = []pass{
 	// Before passReactivity: a mount handler that writes state has to reach it
 	// as an ordinary assignment, or nothing patches what reads that state.
 	passEffect,
+	// Also before passReactivity, and for the same reason: a prop promoted to
+	// a var is a reactive cell, and the pass that injects updaters has to see
+	// it as one.
+	passComponentProps,
 	passReactivity,
 	passTernary,
 	passCanvasReactivity,
