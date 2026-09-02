@@ -30,6 +30,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoStructSpread",
 		"NoImplicitRecv",
 		"Canvas",
+		"Effect",
 		"NoReactivity",
 		"NoTernary",
 		"CanvasReactivity",
@@ -175,7 +176,7 @@ func TestPassNames(t *testing.T) {
 
 func TestEnabledPasses(t *testing.T) {
 	got := EnabledPasses(Caps{NoToggle: true, NoReactivity: true})
-	want := []string{"RootWindow", "HoistState", "ForeignPrimitive", "PlatformExtensionBody", "PropBindings", "RefLoop", "Query", "NoToggle", "InlinePure", "NoReactivity", "IterKind", "StampUsage"}
+	want := []string{"RootWindow", "HoistState", "ForeignPrimitive", "PlatformExtensionBody", "PropBindings", "RefLoop", "Query", "NoToggle", "InlinePure", "Effect", "NoReactivity", "IterKind", "StampUsage"}
 	if len(got) != len(want) {
 		t.Fatalf("got = %v; want %v", got, want)
 	}

@@ -106,6 +106,9 @@ var passes = []pass{
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
+	// Before passReactivity: a mount handler that writes state has to reach it
+	// as an ordinary assignment, or nothing patches what reads that state.
+	passEffect,
 	passReactivity,
 	passTernary,
 	passCanvasReactivity,

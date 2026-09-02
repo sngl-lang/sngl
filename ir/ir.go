@@ -128,6 +128,14 @@ type Package struct {
 	// because whether the handler exists is the lowering's answer and so is what
 	// it is called.
 	RemoteSettle *Func `json:"-"`
+
+	// Teardown is the handler a platform calls when the program is going away,
+	// or nil where no effect declared an @unmount. Nothing guarantees it runs
+	// -- a killed process and a closed tab both skip it -- so what belongs in
+	// it is what a healthy exit should release and never what correctness
+	// depends on. An entry point calls what is here rather than looking a name
+	// up, because whether there is anything to call is the lowering's answer.
+	Teardown *Func `json:"-"`
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
