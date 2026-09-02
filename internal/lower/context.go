@@ -1115,7 +1115,7 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 			out = append(out, n)
 
 		case *ir.Break, *ir.Continue:
-			// A loop escape no expression and no nested block to lower.
+			// A loop escape has no expression and no nested block to lower.
 		default:
 			panic(fmt.Sprintf("lowerInStmts: unhandled %T", n))
 		}

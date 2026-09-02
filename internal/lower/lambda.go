@@ -211,7 +211,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(n.Value)
 			walkStmts(n.Children)
 		case *ir.Break, *ir.Continue:
-			// A loop escape nothing to capture.
+			// A loop escape has nothing to capture.
 		default:
 			panic(fmt.Sprintf("analyzeCaptures.walkStmt: unhandled %T", n))
 		}
