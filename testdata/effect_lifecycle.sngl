@@ -1,5 +1,3 @@
-// SKIP(codegen) "waiting on the effect mount/unmount lowering"
-
 // An effect with no `on` lives as long as the node does: `@mount` runs once,
 // when the node enters the tree, and not again for anything the program does
 // afterwards.

@@ -100,6 +100,14 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// passCanvasReactivity off avoids injecting redraws that have no
 	// Compose-native target.
 	f.ReactiveCanvas = false
+	// Effects: Compose brackets a keyed lifetime itself. DisposableEffect is
+	// the same construct an `effect` declares -- a block on entering the
+	// composition, an onDispose on leaving, and a key whose change ends one
+	// lifetime and begins the next -- so the node arrives here intact rather
+	// than as the calls passEffect would build. It is also the one shape a
+	// synthesized teardown could not have: Compose owns the composition, and
+	// an Activity has no model to call a method on.
+	f.Effects = true
 	return f
 }
 

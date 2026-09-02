@@ -18,11 +18,12 @@ import (
 // assignment would be invisible and every backend would need telling that the
 // value had changed.
 //
-// Always on. An effect is not a construct a platform can consume -- no codegen
-// answers for the node -- so there is no target that wants it left standing.
+// Skipped by a platform that emits the node itself. Compose brackets a keyed
+// lifetime natively, and DisposableEffect says what an effect means more
+// directly than the calls this pass builds; Features.Effects is how it asks.
 var passEffect = pass{
 	name:    "Effect",
-	enabled: func(Caps) bool { return true },
+	enabled: func(c Caps) bool { return c.NoEffects },
 	apply:   lowerEffects,
 }
 

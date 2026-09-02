@@ -58,6 +58,12 @@ type Features struct {
 	// ReactiveCanvas requests passCanvasReactivity: injects CanvasRedrawStmt
 	// into handler/timer bodies that mutate vars read by a canvas draw func.
 	ReactiveCanvas bool
+	// Effects says the platform emits an `effect` node itself and wants it left
+	// standing. A framework whose own model already brackets a lifetime keyed
+	// on a value -- Compose's DisposableEffect is one -- expresses the
+	// construct better than the calls passEffect lowers it to, and gets the
+	// node instead: its two handlers and its key are all the declaration says.
+	Effects bool
 }
 
 // AllFeatures returns a Features with every capability enabled. Use as a
@@ -105,6 +111,7 @@ func (f Features) ToLowerCaps() Caps {
 		FocusOrder:         f.FocusOrder,
 		Canvas:             f.Canvas,
 		ReactiveCanvas:     f.ReactiveCanvas,
+		NoEffects:          !f.Effects,
 	}
 }
 
@@ -155,6 +162,10 @@ type Caps struct {
 	// a canvas draw func. Platforms translate CanvasRedrawStmt to their native
 	// "clear and redraw" operation.
 	ReactiveCanvas bool
+	// NoEffects requests passEffect: an `effect` node becomes the calls that
+	// run its bracket. False leaves the node for the platform to emit. See
+	// Features.Effects.
+	NoEffects bool
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -175,6 +186,7 @@ func (c Caps) Merge(other Caps) Caps {
 		FocusOrder:         c.FocusOrder || other.FocusOrder,
 		Canvas:             c.Canvas || other.Canvas,
 		ReactiveCanvas:     c.ReactiveCanvas || other.ReactiveCanvas,
+		NoEffects:          c.NoEffects || other.NoEffects,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
@@ -247,6 +259,9 @@ func (c Caps) String() string {
 	}
 	if c.ReactiveCanvas {
 		parts = append(parts, "ReactiveCanvas")
+	}
+	if c.NoEffects {
+		parts = append(parts, "NoEffects")
 	}
 	return strings.Join(parts, ",")
 }

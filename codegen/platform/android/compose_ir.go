@@ -112,6 +112,10 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
+	if isEffectNode(n) {
+		cc.renderEffect(n)
+		return
+	}
 	if n.CanvasDraw != nil {
 		cc.renderCanvas(n)
 		return

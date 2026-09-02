@@ -27,9 +27,12 @@ sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
 stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → Effect → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
+# android is the one target with no Effect pass: Compose brackets a keyed
+# lifetime itself, so it asks for the node (Features.Effects) rather than the
+# calls the pass would lower it to.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → Effect'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → IterKind'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl
