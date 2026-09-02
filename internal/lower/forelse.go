@@ -39,10 +39,12 @@ import (
 // documents at greater length.
 //
 // A lambda body is an imperative block wherever it appears, view prop
-// included: a platform that takes its event handlers as values rather than as
-// EventHandlers -- android and fyne, whose primitives declare a callback prop
-// -- has the handler body there by the time this runs, and a hand-written
-// descent through the view finds nothing at all.
+// included. By the time this runs, android's handler bodies are lambdas in
+// NodeInst.Props rather than NodeInst.Handlers -- its primitives declare the
+// callback as a prop, and platform-extension lowering has already moved it
+// there -- so a hand-written descent through the view finds nothing at all on
+// that target. (fyne declares a callback prop too but still carries an
+// ir.EventHandler here, which is why it was not the one that caught this.)
 var passForElse = pass{
 	name:    "ForElse",
 	enabled: func(Caps) bool { return true },
