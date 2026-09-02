@@ -36,9 +36,17 @@ import (
 // variable changes value (SNGL has no assignment expression; the target of an
 // assignment is written after its value), so the only way a hoist could move a
 // read across a write is an impure call in the same statement -- and a
-// statement holding one is left alone. Lambdas are not descended into for the
-// same reason a loop is not hoisted out of: their body runs later, or not at
-// all.
+// statement holding one is left alone.
+//
+// A call is never hoisted *out of* a lambda, for the same reason it is never
+// hoisted out of a loop: the body runs later, or not at all, so a temp bound
+// outside it is bound at a different time. A lambda's own body is a different
+// question -- it is an imperative block like any other, and one statement in
+// it making the same call twice makes it twice -- so imperativeBlocks hands
+// each over as its own block and each is rewritten in place.
+//
+// That is also the only way the pass reaches an android handler at all; see
+// imperativeBlocks for why.
 var passCSE = pass{
 	name:    "CSE",
 	enabled: func(Caps) bool { return true },
@@ -46,84 +54,15 @@ var passCSE = pass{
 }
 
 func lowerCSE(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil {
-		return nil
-	}
 	st := &cseState{}
-	for _, f := range pkg.Funcs {
-		st.imperative(&f.Block)
-	}
-	for _, c := range pkg.Components {
-		st.owner(c.Funcs, c.Vars, c.Timers, c.Body)
-	}
-	for _, w := range pkg.Windows {
-		st.owner(w.Funcs, w.Vars, nil, w.Body)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			st.imperative(&w.ErrorHandler.Func.Block)
-		}
-	}
-	for _, t := range pkg.Timers {
-		if t.Handler != nil {
-			st.imperative(&t.Handler.Block)
-		}
+	for _, block := range imperativeBlocks(pkg) {
+		st.imperative(block)
 	}
 	return nil
 }
 
 type cseState struct {
 	counter int
-}
-
-// owner covers one component's or window's imperative blocks: its own
-// functions, the handlers on its vars and timers, and the handlers hanging off
-// the nodes in its view -- the view body itself is walked for those handlers
-// and for nothing else.
-func (st *cseState) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body []ir.Stmt) {
-	for _, f := range funcs {
-		st.imperative(&f.Block)
-	}
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				st.imperative(&h.Func.Block)
-			}
-		}
-	}
-	for _, t := range timers {
-		if t.Handler != nil {
-			st.imperative(&t.Handler.Block)
-		}
-	}
-	st.handlersIn(body)
-}
-
-// handlersIn walks a view body for the handler bodies it hosts.
-func (st *cseState) handlersIn(stmts []ir.Stmt) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					st.imperative(&h.Func.Block)
-				}
-			}
-			st.handlersIn(n.Children)
-		case *ir.If:
-			st.handlersIn(n.Body)
-			st.handlersIn(n.Else)
-		case *ir.For:
-			st.handlersIn(n.Body)
-			st.handlersIn(n.Else)
-		case *ir.SlotInst:
-			st.handlersIn(n.Children)
-		case *ir.ErrorBoundary:
-			st.handlersIn(n.Children)
-		case *ir.ContextProvider:
-			st.handlersIn(n.Children)
-		case *ir.Window:
-			st.handlersIn(n.Body)
-		}
-	}
 }
 
 // imperative rewrites one block in place, recursing into the blocks it holds.

@@ -348,7 +348,8 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			walkInstances(n.Children, fn)
 		case *ir.Window:
 			walkInstances(n.Body, fn)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// Imperative stmts contain no NodeInst children.
 		case *ir.ContextProvider:
 			walkInstances(n.Children, fn)

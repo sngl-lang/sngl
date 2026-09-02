@@ -210,6 +210,8 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 		case *ir.ContextProvider:
 			walkExpr(n.Value)
 			walkStmts(n.Children)
+		case *ir.Break, *ir.Continue:
+			// A loop escape has nothing to capture.
 		case *ir.CanvasRedrawStmt:
 			// Carries a NodeInst and the draw Func, both owned elsewhere --
 			// a reference, like a Call's callee, so the body it names is not
@@ -388,6 +390,8 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 	case *ir.ContextProvider:
 		n.Value = liftLambdas(n.Value, l)
 		liftLambdasInStmts(n.Children, l)
+	case *ir.Break, *ir.Continue:
+		// A loop escape holds no lambda to lift.
 	default:
 		panic(fmt.Sprintf("liftLambdasInStmt: unhandled %T", n))
 	}
@@ -665,6 +669,8 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 	case *ir.ContextProvider:
 		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)
 		l.rewriteStmts(n.Children, captureField, captureMutable)
+	case *ir.Break, *ir.Continue:
+		// A loop escape holds no ident to rewrite.
 	default:
 		panic(fmt.Sprintf("lifter.rewriteStmt: unhandled %T", n))
 	}

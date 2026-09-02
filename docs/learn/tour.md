@@ -231,6 +231,8 @@ The `var` is there because the loop declares a variable, the same way every othe
 
 When the numbers *are* the list, `sngl:seq` produces them — `for var i = seq.count(9)` counts 0 through 8, `seq.range(1, 10)` counts between two bounds, and `seq.step(10, 0, -2)` counts down by two. A sequence in a loop head compiles to the host's own counting loop.
 
+Inside a function or a handler there is no tree to render, and two more forms are available: `for cond { ... }` runs its body while the condition holds, and `for { ... }` runs until a `break` or a `return` leaves it. `continue` skips to the next iteration. Neither form declares a variable, and neither belongs in a view body, where a loop's job is to say how many copies of its body the tree holds — a condition cannot say that.
+
 SNGL tracks list mutations (`push`, `remove`, index assignments) and patches the DOM incrementally; you never call a `render()` function yourself.
 
 ```sngl

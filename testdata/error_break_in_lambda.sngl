@@ -1,0 +1,13 @@
+// A lambda's body runs later, or not at all, and by then the loop it was
+// written inside may be over -- so the enclosing loop is not its to break.
+
+import . "sngl:ui"
+
+func f() int {
+    for {
+        var g func() = func() {
+            break // ERROR(check) "`break` outside a loop"
+        }
+        return 1
+    }
+}

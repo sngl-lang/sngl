@@ -220,7 +220,8 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Children, fn, depth)
 		case *ir.Window:
 			walkVisual(n.Body, fn, depth)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// Not a visual statement; nothing to visit.
 		default:
 			panic(fmt.Sprintf("walkVisual: unhandled stmt %T", n))

@@ -88,6 +88,8 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 		case *ir.ContextProvider:
 			n.Value = rewrite(n.Value)
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+		case *ir.Break, *ir.Continue:
+			// A loop escape holds no expression.
 		default:
 			panic(fmt.Sprintf("rewriteStmtExprs: unhandled %T", n))
 		}

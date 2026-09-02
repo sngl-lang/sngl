@@ -659,7 +659,8 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 				walk(n.Children)
 			case *ir.Window:
 				walk(n.Body)
-			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
 			case *ir.ContextProvider:
 				panic(fmt.Sprintf("gtk4.collectNodeCTypes: ContextProvider should be lowered: %#v", n))

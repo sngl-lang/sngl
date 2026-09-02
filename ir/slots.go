@@ -42,7 +42,8 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 			n.Children = sp.Substitute(n.Children, callsite)
 		case *Window:
 			n.Body = sp.Substitute(n.Body, callsite)
-		case *Assign, *LocalVar, *Return, *CallStmt, *Emit, *Toggle, *CanvasRedrawStmt:
+		case *Assign, *LocalVar, *Return, *CallStmt, *Emit, *Toggle, *CanvasRedrawStmt,
+			*Break, *Continue:
 			// Leaf stmts -- no nested SlotInsts.
 		default:
 			panic(fmt.Sprintf("SlotSplicer.Substitute: unhandled %T", n))

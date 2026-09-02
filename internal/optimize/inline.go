@@ -305,7 +305,7 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 				return true
 			}
 		}
-	case *ir.CanvasRedrawStmt:
+	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No func calls.
 	default:
 		panic(fmt.Sprintf("callsFuncStmt: unhandled stmt %T", n))
@@ -710,6 +710,12 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp.Children = cloneStmts(n.Children)
 		return &cp
 	case *ir.CanvasRedrawStmt:
+		cp := *n
+		return &cp
+	case *ir.Break:
+		cp := *n
+		return &cp
+	case *ir.Continue:
 		cp := *n
 		return &cp
 	default:

@@ -36,6 +36,7 @@ module.exports = grammar({
     [$._expression, $.visual_node, $.struct_literal],
     [$.func_name, $.type_identifier],
     [$.statement_block, $.struct_literal],
+    [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
     [$.anon_struct_field, $.spread_expression],
     [$.anon_struct_field, $._expression],
@@ -192,7 +193,23 @@ module.exports = grammar({
 
     // The declaration is optional: without `var` the loop binds nothing and
     // the head is the iterable alone (`for seq.count(3) { }`).
+    //
+    // The headless `for { }` is its own alternative, at a higher dynamic
+    // precedence: a `{` right after `for` could open the body or a brace
+    // literal that is the head, and it is always the body. The compiler's
+    // grammar says the same thing by keeping a brace literal out of a head
+    // expression -- CondPrimary in internal/parser/sngl.ebnf -- which is what
+    // makes that grammar LL(1) with the head optional.
+    //
+    // What a head that *is* there means -- an iterable to walk or a condition
+    // to test -- is a matter of its type, which no grammar decides.
     for_node: ($) =>
+      choice(
+      prec.dynamic(1, seq(
+        "for",
+        $.statement_block,
+        optional(seq("else", $.statement_block))
+      )),
       seq(
       "for",
       optional(seq(
@@ -205,6 +222,7 @@ module.exports = grammar({
       $._expression,
       $.statement_block,
       optional(seq("else", $.statement_block))
+    )
     ),
 
     assignment_operator: ($) =>
@@ -307,6 +325,8 @@ module.exports = grammar({
         $.func_declaration,
         $.component_declaration,
         $.return_statement,
+        $.break_statement,
+        $.continue_statement,
         $.if_node,
         $.for_node,
         $.assignment_statement,
@@ -317,6 +337,10 @@ module.exports = grammar({
 
     return_statement: ($) =>
       prec.right(seq("return", optional($._expression))),
+
+    break_statement: ($) => "break",
+
+    continue_statement: ($) => "continue",
 
     _visual_or_stmt: ($) =>
       choice(

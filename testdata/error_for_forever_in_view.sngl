@@ -1,0 +1,7 @@
+import . "sngl:ui"
+
+component main {
+    for { // ERROR(check) "cannot be written in a view body"
+        text(value="x")
+    }
+}

@@ -365,15 +365,20 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 		it.skip()
 		return nil
 	}
-	// kw_return [ Expr ]
+	// kw_return [ Expr ] | kw_break | kw_continue
 	tok := it.token()
-	if tok.Type == KW_RETURN {
+	switch tok.Type {
+	case KW_RETURN:
 		pos := b.posFromToken(it.shift())
 		var val ast.Expr
 		if !it.done() && it.isNonTerminal() {
 			val = b.buildExpr(it.enter())
 		}
 		return &ast.ReturnStmt{Pos: ast.Pos(pos), Value: val}
+	case KW_BREAK:
+		return &ast.BreakStmt{Pos: ast.Pos(b.posFromToken(it.shift()))}
+	case KW_CONTINUE:
+		return &ast.ContinueStmt{Pos: ast.Pos(b.posFromToken(it.shift()))}
 	}
 	it.skip()
 	return nil
@@ -1506,6 +1511,9 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 	return base, lastBlock, lastArgs, ""
 }
 
+// buildStatementPrimary builds StatementPrimary and CondPrimary alike: the
+// latter is the former minus the brace literal, so no alternative it can hold
+// is one this does not already build.
 func (b *builder) buildStatementPrimary(it nodeIter) ast.Expr {
 	// StatementPrimary has the same alternatives as PrimaryExpr minus FuncLit/StructLitBody
 	return b.buildPrimaryInner(it, false)
@@ -1607,11 +1615,13 @@ func (b *builder) buildIfNode(it nodeIter) *ast.IfStmt {
 }
 
 func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
-	// ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | CondExpr ) StmtBlock [ kw_else StmtBlock ] .
+	// ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | [ CondExpr ] ) StmtBlock [ kw_else StmtBlock ] .
 	//
 	// `var` is what distinguishes a loop that declares its element from one
 	// that declares nothing (`for seq.count(3) { }`), so its absence is the
-	// whole of the second form: the first CondExpr is the iterable.
+	// whole of the second form: the CondExpr, when there is one, is the head.
+	// Absent, Iter stays nil and the loop is `for { }` -- what the head
+	// expression *is* (iterable, condition, or nothing) is the checker's.
 	pos := b.posFromToken(it.shift()) // kw_for
 	stmt := &ast.ForStmt{Pos: pos}
 	declares := !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR
@@ -2022,7 +2032,7 @@ func (b *builder) buildUnaryExpr(it nodeIter) ast.Expr {
 
 func (b *builder) buildPostfixExpr(it nodeIter) ast.Expr {
 	// PostfixExpr = PrimaryExpr { ExprPostfixOp } .
-	// CondPostfixExpr = StatementPrimary { CondPostfixOp } .
+	// CondPostfixExpr = CondPrimary { CondPostfixOp } .
 	if it.done() {
 		return nil
 	}
@@ -2031,7 +2041,7 @@ func (b *builder) buildPostfixExpr(it nodeIter) ast.Expr {
 		switch it.symbol() {
 		case PrimaryExpr:
 			base = b.buildPrimaryExpr(it.enter())
-		case StatementPrimary:
+		case StatementPrimary, CondPrimary:
 			base = b.buildStatementPrimary(it.enter())
 		default:
 			base = b.buildAnyExpr(&it)

@@ -1,0 +1,13 @@
+// A view body repeats its body once per element. A condition says how many
+// times to repeat nothing, which neither the mutation model nor the static
+// renderer can express -- so it is refused here rather than rendered once.
+
+import . "sngl:ui"
+
+component main {
+    var n int = 0
+
+    for n < 3 { // ERROR(check) "cannot be written in a view body"
+        text(value="x")
+    }
+}

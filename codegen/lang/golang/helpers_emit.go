@@ -393,6 +393,8 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 			recordStmtHelpers(h, n.Children)
 		case *ir.CanvasRedrawStmt:
 			// No helpers needed.
+		case *ir.Break, *ir.Continue:
+			// A loop escape needs no helper.
 		default:
 			panic(fmt.Sprintf("recordStmtHelpers: unhandled ir.Stmt %T", n))
 		}
