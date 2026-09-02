@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -186,22 +187,23 @@ func exprKey(e ir.Expr) (string, bool) {
 		if x.Func == nil {
 			return "", false
 		}
-		key := "call(" + identityOf(x.Func)
+		var key strings.Builder
+		key.WriteString("call(" + identityOf(x.Func))
 		if x.Receiver != nil {
 			recv, ok := exprKey(x.Receiver)
 			if !ok {
 				return "", false
 			}
-			key += ",recv=" + recv
+			key.WriteString(",recv=" + recv)
 		}
 		for _, a := range x.Args {
 			arg, ok := exprKey(a.Value)
 			if !ok {
 				return "", false
 			}
-			key += "," + a.Name + "=" + arg
+			key.WriteString("," + a.Name + "=" + arg)
 		}
-		return key + ")", true
+		return key.String() + ")", true
 	}
 	return "", false
 }
