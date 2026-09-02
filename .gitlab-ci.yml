@@ -12,6 +12,14 @@ workflow:
 
 variables:
   IMAGE: $CI_REGISTRY_IMAGE/ci
+  # The runner reuses one build directory per project, and a fetch into it
+  # fails outright once a deleted branch leaves a ref behind:
+  #   error: some local refs could not be updated
+  # It is not the `cache:` index, so the "Clear runner caches" button does
+  # not reach it -- every branch deleted since is another chance to hit it.
+  # A clone at depth 20 is cheap next to a suite that runs for 16 minutes.
+  GIT_STRATEGY: clone
+  GIT_DEPTH: "20"
 
 default:
   # The kaniko build in particular is expensive -- it was a top memory
