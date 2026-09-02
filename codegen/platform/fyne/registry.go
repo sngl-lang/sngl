@@ -40,7 +40,16 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 }
 
 // BareStdlibComponents lists the stdlib components this platform gives no body
-// to. Only `context` should be here: it is a node kind rather than a widget.
+// to, and should be empty: a component reaching this list is a widget nothing
+// here builds.
+//
+// A built-in node kind is not one of them. `context` and `effect` are declared
+// as components because that is the form their call site takes, but a visual
+// tree dispatches them to a compiler construct rather than to a widget, so
+// there is no body for a platform to write. They are recognised by their kind
+// and not by their names, for the reason every built-in is: the name is
+// shadowable and carries no meaning, and a list of names can only fail when
+// someone edits one copy of it.
 func BareStdlibComponents(pkg *ir.Package) []string {
 	if pkg == nil || pkg.Symbols == nil {
 		return nil
@@ -48,7 +57,7 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || !c.Stdlib {
+		if !ok || !c.Stdlib || c.Builtin.IsNode() {
 			return true
 		}
 		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {
