@@ -121,6 +121,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			goType: goType,
 			init:   v.Init,
 			varRef: v,
+			// A name Go cannot export gets no accessor, because the accessor
+			// would be spelled the same as the field and not compile. That is
+			// every `__`-prefixed name, which is every name a lowering pass
+			// synthesized -- and nothing outside the program reads one, so
+			// there is no accessor to want. The `__slot<N>` case above is this
+			// rule, written before there was a second var it applied to.
+			noAccessors: golang.ExportName(v.Name) == v.Name,
 		})
 		if len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers

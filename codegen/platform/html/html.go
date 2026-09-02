@@ -1260,6 +1260,14 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 	if n == nil || n.Call == nil {
 		return nil
 	}
+	// A call to something with a body is a call, not an element. An element
+	// resolves to a declaration carrying none, so without this test a lowering
+	// that puts a call in a body -- an effect's setup does -- was rendered as
+	// markup: `<__effect0_mount></__effect0_mount>` in the page, and the call
+	// itself nowhere.
+	if fn := n.Call.Func; fn != nil && len(fn.Block) > 0 {
+		return nil
+	}
 	name := irCallName(n.Call)
 	if name == "" {
 		return nil
@@ -2185,6 +2193,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 		}
 		b.WriteString("}\n__sngl_init();\n")
+	}
+
+	// After the DOM updaters are wired, for the same reason a kicker is: a
+	// mount body writes state, and the write patches whatever reads it.
+	for _, fn := range bodyCalls(g.pkg) {
+		fmt.Fprintf(b, "%s();\n", fn)
 	}
 
 	// After the DOM updaters are wired, so a kicker body can call setters.
@@ -3427,4 +3441,39 @@ func capitalizeFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// bodyCalls names the functions a component body calls at the position they
+// were written, in order.
+//
+// html renders a body as markup, so an imperative statement in one has no
+// place there and is emitted into the startup script instead. Today these are
+// an effect's setup calls; anything else a lowering leaves in a body arrives
+// the same way.
+func bodyCalls(pkg *ir.Package) []string {
+	if pkg == nil {
+		return nil
+	}
+	var out []string
+	collect := func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			call, isCall := s.(*ir.CallStmt)
+			if !isCall || call.Call == nil || call.Call.Func == nil {
+				continue
+			}
+			fn := call.Call.Func
+			if len(fn.Block) == 0 || slotIndexFromRenderFunc(fn.Name) != "" {
+				continue
+			}
+			out = append(out, fn.Name)
+		}
+	}
+	for _, c := range pkg.Components {
+		collect(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		collect(w.Body)
+	}
+	collect(pkg.Body)
+	return out
 }
