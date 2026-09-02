@@ -7,6 +7,19 @@ stages:
 # in-file rather than relying on the project's "Auto-cancel redundant
 # pipelines" toggle, so the behaviour is version controlled.
 workflow:
+  # main, and branches with an open MR. Nothing else.
+  #
+  # The gate is CI_OPEN_MERGE_REQUESTS on the branch pipeline rather than
+  # merge_request_event, because this instance never creates a merge request
+  # pipeline on its own -- not when the MR opens, not on a push to an open
+  # one. POSTing to /merge_requests/:iid/pipelines builds one that runs, so
+  # the config admits them; nothing triggers them. Admitted below anyway, for
+  # a hand-started run and for the day that changes.
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_OPEN_MERGE_REQUESTS
+    - when: never
   auto_cancel:
     on_new_commit: interruptible
 
