@@ -35,9 +35,21 @@ import (
 // variable changes value (SNGL has no assignment expression; the target of an
 // assignment is written after its value), so the only way a hoist could move a
 // read across a write is an impure call in the same statement -- and a
-// statement holding one is left alone. Lambdas are not descended into for the
-// same reason a loop is not hoisted out of: their body runs later, or not at
-// all.
+// statement holding one is left alone.
+//
+// A call is never hoisted *out of* a lambda, for the same reason it is never
+// hoisted out of a loop: the body runs later, or not at all, so a temp bound
+// outside it is bound at a different time. A lambda's own body is a different
+// question -- it is an imperative block like any other, and one statement in
+// it making the same call twice makes it twice -- so each is rewritten in
+// place, as its own block.
+//
+// That is also the only way the pass reaches an android handler at all. Its
+// primitives declare the callback as a prop, so by the time this runs the
+// handler body is an ir.Lambda in NodeInst.Props and NodeInst.Handlers is
+// empty: walking the view for handlers found nothing, and a pure call made
+// twice in an android click handler was made twice where the same handler on
+// every other target bound a temp.
 var passCSE = pass{
 	name:    "CSE",
 	enabled: func(Caps) bool { return true },
@@ -65,6 +77,9 @@ func lowerCSE(pkg *ir.Package, _ Caps, _ Options) error {
 		if t.Handler != nil {
 			st.imperative(&t.Handler.Block)
 		}
+	}
+	for _, block := range lambdaBlocks(pkg) {
+		st.imperative(block)
 	}
 	return nil
 }
