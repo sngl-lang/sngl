@@ -1,5 +1,3 @@
-// How an attempt failed, and the classes every adapter can report.
-
 // Why the most recent attempt failed. `kind` is what a handler dispatches on,
 // `message` is for a human, `code` is the adapter's own.
 //

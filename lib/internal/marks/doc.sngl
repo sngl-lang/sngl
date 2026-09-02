@@ -1,0 +1,11 @@
+// Package marks declares the marks that say what the compiler knows about a
+// declaration: `builtin`, which names the IR construct a declaration
+// dispatches to, and `intrinsic`, which names the native implementation that
+// may replace a function's body.
+//
+// Unlike a user-facing mark such as `#[platforms.wildcard]` these annotate the library
+// source itself: the checker reads them off a declaration as it registers it.
+//
+// The path is `sngl:internal/marks` and not `.../builtin`: `sngl:builtin`
+// is the ambient package of built-in types, a different thing one letter away
+// at the import line.
