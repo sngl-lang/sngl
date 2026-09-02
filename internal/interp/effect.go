@@ -177,7 +177,7 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 // Mount. Returns the final view.
 func Settle(fx *Effects, env *Env) (*View, error) {
 	var v *View
-	for step := 0; step < maxEffectSteps; step++ {
+	for range maxEffectSteps {
 		next, err := Mount(env)
 		if err != nil {
 			return nil, err

@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"slices"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -105,10 +107,8 @@ func mentionsTypeParam(t *ir.Type) bool {
 	if t.Kind == ir.TypeTypeParam {
 		return true
 	}
-	for _, e := range t.Elems {
-		if mentionsTypeParam(e) {
-			return true
-		}
+	if slices.ContainsFunc(t.Elems, mentionsTypeParam) {
+		return true
 	}
 	if t.Kind == ir.TypeFunc && t.Sig != nil {
 		for _, p := range t.Sig.Params {

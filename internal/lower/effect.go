@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -322,8 +323,8 @@ func (st *effectState) finishTeardown() error {
 	// one handed it, so releasing in acquisition order can release a thing still
 	// in use.
 	body := make([]ir.Stmt, 0, len(st.teardown))
-	for i := len(st.teardown) - 1; i >= 0; i-- {
-		body = append(body, st.teardown[i].stmt)
+	for _, v := range slices.Backward(st.teardown) {
+		body = append(body, v.stmt)
 	}
 	fn := &ir.Func{
 		Name:   TeardownFunc,

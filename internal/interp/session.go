@@ -84,7 +84,7 @@ func (s *Session) Sync() ([]Patch, error) {
 	// it holds and each tree that followed -- collapsing them would drop the
 	// intermediate creations the later rounds' keys are relative to.
 	var patches []Patch
-	for step := 0; step < maxEffectSteps; step++ {
+	for range maxEffectSteps {
 		next, err := Mount(s.Env)
 		if err != nil {
 			return nil, err
