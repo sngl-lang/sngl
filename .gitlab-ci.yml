@@ -44,24 +44,26 @@ build-image:
   allow_failure: true
   rules:
     # An MR pipeline's `changes` is already diffed against the target branch.
+    # Must come first: CI_COMMIT_BEFORE_SHA is zeroed here too.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths: *image-inputs
       when: always
-    # On the default branch, against the previous commit -- which is the
-    # question worth asking there.
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-        paths: *image-inputs
-      when: always
-    # Any other branch pipeline: on a branch's *first* pipeline there is no
-    # previous commit to diff against, and GitLab then reports every file as
-    # changed -- which is why a docs-only MR rebuilt the image. Pinning the
-    # base to the default branch gives the same answer on every run.
-    - if: $CI_COMMIT_BRANCH
+    # A ref's *first* pipeline has no previous commit to diff against, and
+    # GitLab's fallback is to report every file as changed -- which is why a
+    # docs-only MR rebuilt the image. compare_to only here: it asks whether
+    # the branch *differs* from main rather than whether this push changed
+    # anything, so as a blanket rule it would rebuild on every later push to
+    # a branch carrying a go.mod bump, over the shared :latest tag.
+    - if: $CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"
       changes:
         paths: *image-inputs
         compare_to: refs/heads/$CI_DEFAULT_BRANCH
+      when: always
+    # Every other pipeline, main included: the previous commit is the base,
+    # so the image is rebuilt on exactly the push that changes an input.
+    - changes:
+        paths: *image-inputs
       when: always
     - when: never
   script:
