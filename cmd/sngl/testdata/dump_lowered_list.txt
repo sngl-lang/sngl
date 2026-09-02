@@ -4,11 +4,11 @@
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoTernary → FocusOrder'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoTernary → FocusOrder'
 
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → Effect → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is
@@ -17,19 +17,19 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # html+none now lower identically.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → CanvasReactivity'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoReactivity → CanvasReactivity'
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → NoReactivity → CanvasReactivity'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoReactivity → CanvasReactivity'
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → Effect → NoReactivity → NoTernary → CanvasReactivity → NoDeclarative'
 
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → Effect'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

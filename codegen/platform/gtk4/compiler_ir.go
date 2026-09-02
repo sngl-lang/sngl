@@ -401,7 +401,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped)
+		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg)
 	}
 
 	if len(c.shared.errs) > 0 {
@@ -1170,14 +1170,24 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) {
 	if wrapped {
 		emitGTK4MainWrapped(b)
 		return
 	}
+	teardown := pkg != nil && pkg.Teardown != nil
+	if teardown {
+		// The model is local to activate, and the exit this has to run at is
+		// g_application_run returning in main. A package var is the only place
+		// both can reach.
+		b.WriteString("\nvar snglModel *Model\n")
+	}
 	b.WriteString("\n//export snglActivate\n")
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")
+	if teardown {
+		b.WriteString("\tsnglModel = &m\n")
+	}
 	b.WriteString("\twin := m.BuildUI(app)\n")
 	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")
 	b.WriteString("}\n\n")
@@ -1190,6 +1200,11 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool) {
 	b.WriteString("\t\tC.CString(\"activate\"),\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
 	b.WriteString("\tstatus := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
+	if teardown {
+		b.WriteString("\tif snglModel != nil {\n")
+		fmt.Fprintf(b, "\t\tsnglModel.%s()\n", pkg.Teardown.Name)
+		b.WriteString("\t}\n")
+	}
 	b.WriteString("\tif status != 0 {\n")
 	b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"gtk: application exited with status %d\\n\", status)\n")
 	b.WriteString("\t\tos.Exit(int(status))\n")

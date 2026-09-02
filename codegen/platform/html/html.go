@@ -2209,6 +2209,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 	}
 
+	if g.pkg != nil && g.pkg.Teardown != nil {
+		// pagehide, not beforeunload or unload: it is the one the browsers
+		// still fire for a page entering the back/forward cache, and the two
+		// older events are precisely the ones that do not run on a mobile tab
+		// discard. Even so this is best effort -- a crashed tab runs nothing --
+		// which is what an effect's teardown is written knowing.
+		fmt.Fprintf(b, "\nwindow.addEventListener(\"pagehide\", %s);\n", g.pkg.Teardown.Name)
+	}
+
 	if g.preview {
 		b.WriteString("\nfunction __sngl_sync_state() { window.parent.postMessage({type: 'sngl-state', state: JSON.parse(JSON.stringify(state))}, '*'); }\n")
 		b.WriteString("__sngl_sync_state();\n")

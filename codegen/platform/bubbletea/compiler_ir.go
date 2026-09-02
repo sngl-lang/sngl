@@ -645,10 +645,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			b.WriteString("\tremote.Default.OnSettle(func() { p.Send(remoteSettledMsg{}) })\n")
 			gc.RequireImport("git.duckfam.us/jonathan/sngl/pkg/go/remote")
 		}
-		b.WriteString("\tif _, err := p.Run(); err != nil {\n")
+		teardown := ctx.Pkg != nil && ctx.Pkg.Teardown != nil
+		if teardown {
+			// The final model, not the one handed to NewProgram: bubbletea
+			// passes the model by value through every Update, so the state an
+			// effect has to release is the one Run gives back.
+			b.WriteString("\tfinal, err := p.Run()\n")
+		} else {
+			b.WriteString("\t_, err := p.Run()\n")
+		}
+		b.WriteString("\tif err != nil {\n")
 		b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"error: %v\\n\", err)\n")
 		b.WriteString("\t\tos.Exit(1)\n")
 		b.WriteString("\t}\n")
+		if teardown {
+			b.WriteString("\tif m, ok := final.(Model); ok {\n")
+			fmt.Fprintf(&b, "\t\tm.%s()\n", ctx.Pkg.Teardown.Name)
+			b.WriteString("\t}\n")
+		}
 		b.WriteString("}\n")
 	}
 

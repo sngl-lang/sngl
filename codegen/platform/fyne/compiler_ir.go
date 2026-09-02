@@ -848,6 +848,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StopTimers()\n")
 	}
+	if pkg != nil && pkg.Teardown != nil {
+		// ShowAndRun returns when the window closes, which is the one exit
+		// this can be reached from: a killed process runs nothing here, and an
+		// effect's teardown is written knowing that.
+		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
+	}
 	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
 }
