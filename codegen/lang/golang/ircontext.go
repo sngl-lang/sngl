@@ -354,52 +354,7 @@ func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConve
 func (gc *GoIRContext) Lambda(n *ir.Lambda) string         { return gc.evalLambda(n) }
 
 func (gc *GoIRContext) AssignText(n *ir.Assign, target, value string) string {
-	// A mutates-receiver intrinsic has no expression form here: Go's `append`
-	// returns a new slice, so `list.push` carries the in-place half by
-	// rendering the assignment to its own receiver. That is right where the
-	// result is discarded -- a bare `xs.push(v)` -- and invalid anywhere else,
-	// because `xs = xs = append(...)` is not Go. `xs = xs.push(v)`, which is
-	// how the method's return type invites it to be written, never compiled.
-	//
-	// So the assignment the intrinsic already made stands on its own, and the
-	// program's assignment follows it reading the receiver back. Same-target is
-	// the overwhelming case and elides to nothing; `ys = xs.push(v)` keeps both
-	// halves, mutating xs and then binding ys, which is what the declaration
-	// says happens.
-	if recv, isMutating := gc.mutatingIntrinsicReceiver(n.Value); isMutating && n.Op == ast.AssignSet {
-		if recv == target {
-			return value
-		}
-		return value + "; " + target + " " + irAssignOp(n.Op) + " " + recv
-	}
 	return target + " " + irAssignOp(n.Op) + " " + value
-}
-
-// mutatingIntrinsicReceiver renders the receiver of e when e is a call to an
-// intrinsic that writes through it, and reports whether it is one. This is the
-// first reader of ir.IntrinsicDef.MutatesReceiver: until now the fact lived
-// only in the shape of each backend's emitter, which is why it could be got
-// wrong silently.
-func (gc *GoIRContext) mutatingIntrinsicReceiver(e ir.Expr) (string, bool) {
-	call, isCall := e.(*ir.Call)
-	if !isCall || call.Func == nil || call.Func.Intrinsic == "" {
-		return "", false
-	}
-	def := ir.LookupIntrinsic(call.Func.Intrinsic)
-	if def == nil || !def.MutatesReceiver {
-		return "", false
-	}
-	// The receiver reaches an intrinsic emitter as a[0], either from
-	// Call.Receiver or -- once passNoImplicitRecv has run -- as the first
-	// explicit argument. See codegen.EmitIntrinsicCall, which decides between
-	// them the same way.
-	if call.Receiver != nil && len(call.Args) < len(def.Params) {
-		return gc.EvalExpr(call.Receiver), true
-	}
-	if len(call.Args) > 0 {
-		return gc.EvalExpr(call.Args[0].Value), true
-	}
-	return "", false
 }
 func (gc *GoIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target

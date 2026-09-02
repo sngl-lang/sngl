@@ -34,8 +34,11 @@ func testListMapDifferentType(t Test, c listMethods) {
     t.assert(labels[4] == "5")
 }
 
+// push returns nothing, so the receiver is what the assertions read -- which
+// is the thing worth asserting: the old form bound the returned list and never
+// checked that c.xs itself had changed.
 func testListPush(t Test, c listMethods) {
-    var more list<int> = c.xs.push(6)
-    t.assert(more.length() == 6)
-    t.assert(more[5] == 6)
+    c.xs.push(6)
+    t.assert(c.xs.length() == 6)
+    t.assert(c.xs[5] == 6)
 }

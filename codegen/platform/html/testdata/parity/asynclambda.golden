@@ -41,7 +41,7 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $1.addEventListener("click", function() {
-    state.xs = state.xs.push(state.xs.length + 1);
+    state.xs.push(state.xs.length + 1);
     __n0.textContent = "count: " + String(main_total(state));
     __n1.textContent = "evens: " + String(main_evens(state).length);
     __n2.textContent = "first doubled: " + String(main_doubled(state)[0]);

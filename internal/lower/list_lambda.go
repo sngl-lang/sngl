@@ -373,10 +373,11 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 		Args:   []ir.CallArg{{Value: itemIdent}},
 	}
 
-	// `__list<N>.push(<pushed>)` emitted as a CallStmt — every Go
-	// codegen lowers list.push into a self-reassigning `xs = append(xs, ...)`
-	// statement, so we let that form do the work rather than wrapping
-	// the call in an Assign (which would double-emit the `=`).
+	// `__list<N>.push(<pushed>)` as a CallStmt: push mutates its receiver and
+	// returns nothing, so the call is the whole statement. It was already
+	// built this way when push still returned a list, because every Go backend
+	// renders the intrinsic as the assignment itself and wrapping it in an
+	// Assign double-emitted the `=`.
 	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "list.push"}
 	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 

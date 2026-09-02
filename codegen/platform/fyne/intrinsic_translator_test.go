@@ -203,9 +203,8 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 	stmt := &ir.If{
 		Cond: &ir.Ident{Name: "visible"},
 		Body: []ir.Stmt{
-			&ir.Assign{
-				Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
-				Value: &ir.Call{
+			&ir.CallStmt{
+				Call: &ir.Call{
 					Receiver: &ir.Ident{Name: "stdlib"},
 					Func:     listPush,
 					Args: []ir.CallArg{
@@ -245,9 +244,10 @@ func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 	gc := stubGC()
 	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
 	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
-	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
-		Value: &ir.Call{
+	// A call, not an assignment: push mutates its receiver and returns nothing,
+	// which is the shape renderSlotBody builds.
+	stmt := &ir.CallStmt{
+		Call: &ir.Call{
 			Receiver: &ir.Ident{Name: "stdlib"},
 			Func:     listPush,
 			Args: []ir.CallArg{

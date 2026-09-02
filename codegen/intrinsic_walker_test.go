@@ -145,9 +145,10 @@ func TestWalkLowered_SlotReset(t *testing.T) {
 func TestWalkLowered_SlotAppend(t *testing.T) {
 	slotVar := &ir.Var{Name: "__slot0", Synthesized: true}
 	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
-	stmt := &ir.Assign{
-		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
-		Value: &ir.Call{
+	// A call, not an assignment to the slot: push mutates its receiver and
+	// returns nothing, which is what renderSlotBody builds.
+	stmt := &ir.CallStmt{
+		Call: &ir.Call{
 			Func: listPush,
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar}},

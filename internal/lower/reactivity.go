@@ -1276,12 +1276,16 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		Params:    pushParams,
 		Return:    pushReturn,
 	}
+	// A call, not an assignment to the slot. push mutates its receiver and
+	// returns nothing, so `__slotN = list.push(__slotN, n)` says the append
+	// twice -- and every Go backend renders the intrinsic as the assignment
+	// itself, so the wrapper emitted `x = x = append(...)`. passListLambdas
+	// has always built the bare form for exactly that reason; this one had
+	// not, and only html's OnSlotAppend hook hid it.
 	pushToSlot := func(nodeID string) ir.Stmt {
-		return &ir.Assign{
-			Target: st.slotIdent(slotID),
-			Op:     ast.AssignSet,
-			Value: &ir.Call{
-				Type: ir.ListOf(ir.TypDyn),
+		return &ir.CallStmt{
+			Call: &ir.Call{
+				Type: ir.TypVoid,
 				Func: listPushFn,
 				Args: []ir.CallArg{
 					{Value: st.slotIdent(slotID)},

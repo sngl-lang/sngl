@@ -12,19 +12,29 @@ struct list<T> {}
 #[intrinsic("list.length")]
 func list<T>.length() int
 
-// Appends item to the receiver list (`this`) and returns it. push mutates the
-// list in place — index assignment (`l[i] = x`) and the mutating methods
-// modify the list directly, and observers are notified exactly as assigning a
-// var would be. Backed by the ListPush intrinsic, which carries the
-// mutates-receiver semantics through to lowering and every backend (see
-// ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
+// Appends item to the receiver list (`this`), in place. Index assignment
+// (`l[i] = x`) and the mutating methods modify the list directly, and observers
+// are notified exactly as assigning a var would be. Backed by the ListPush
+// intrinsic, which carries the mutates-receiver semantics through to lowering
+// and every backend (see ir.Intrinsics / ir.IntrinsicDef.MutatesReceiver).
+//
+// It returns nothing, so `l.push(x)` is the only way to write it. Returning the
+// receiver made `l = l.push(x)` the obvious spelling and it means the same
+// thing twice -- the push already did it -- which is a mutation dressed as a
+// function of its argument. It also could not be honestly compiled: Go's
+// append returns a new slice rather than mutating, so the two halves had to be
+// emitted separately and no single expression said both.
 #[intrinsic("list.push", mutates, mutatesReceiver)]
-func list<T>.push(item T) list<T>
+func list<T>.push(item T)
 
 // Removes the item at index from the receiver list (`this`) in place.
 // Out-of-range indices leave the list unchanged.
+//
+// Returns nothing, for the reason `push` does not: a method that mutates its
+// receiver and also returns it invites `l = l.remove(i)`, which performs the
+// removal once and reads as though it performed it twice.
 #[intrinsic("list.remove", mutates, mutatesReceiver)]
-func list<T>.remove(index int) list<T>
+func list<T>.remove(index int)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.

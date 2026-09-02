@@ -1872,8 +1872,16 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 	case *ir.Ident:
 		if owner := env.findVarOwner(t.Sym); owner != nil {
 			owner.vals[t.Sym] = newList
+			// Noted like an assignment, because that is what it is: a mutating
+			// method writes its receiver, and RebindFrom carries back only what
+			// a scope wrote. Without this a bare `xs.push(v)` inside a loop
+			// iteration mutated that iteration's snapshot and nothing else --
+			// which the effect fixtures caught the moment they stopped spelling
+			// it `xs = xs.push(v)`, an ir.Assign that noted itself.
+			owner.noteAssigned(t.Sym)
 		} else {
 			env.Set(t.Sym, newList)
+			env.noteAssigned(t.Sym)
 		}
 	case *ir.Select:
 		obj, err := env.Eval(t.Operand)

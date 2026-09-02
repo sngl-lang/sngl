@@ -70,7 +70,7 @@ import . "sngl:ui"
 
 component main {
     var items list<string> = ["a", "b"]
-    button(text="add", @click { items = items.push("c") })
+    button(text="add", @click { items.push("c") })
     for item = items {
         text(value=item)
     }

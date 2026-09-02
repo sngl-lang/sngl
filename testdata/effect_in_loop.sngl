@@ -24,10 +24,10 @@ component main {
         effect(
             on=it,
             @mount(v) {
-                log = log.push("+{v}")
+                log.push("+{v}")
             },
             @unmount(v) {
-                log = log.push("-{v}")
+                log.push("-{v}")
             },
         )
     }

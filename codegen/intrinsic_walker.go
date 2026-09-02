@@ -70,17 +70,22 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)
 			}
+			// A slot append. push mutates its receiver and returns nothing, so
+			// the lowering emits the call rather than an assignment to the
+			// slot -- see renderSlotBody.
+			if n.Call.Func != nil && n.Call.Func.Intrinsic == "list.push" && len(n.Call.Args) == 2 {
+				if id, ok := n.Call.Args[0].Value.(*ir.Ident); ok && id.Synthesized {
+					if v := resolveSlotVar(id); v != nil {
+						return t.OnSlotAppend(ctx, v, n.Call.Args[1].Value)
+					}
+				}
+			}
 		}
 	case *ir.Assign:
 		if id, ok := n.Target.(*ir.Ident); ok && id.Synthesized {
 			if ll, ok := n.Value.(*ir.ListLit); ok && len(ll.Elems) == 0 {
 				if v := resolveSlotVar(id); v != nil {
 					return t.OnSlotReset(ctx, v)
-				}
-			}
-			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "list.push" && len(call.Args) == 2 {
-				if v := resolveSlotVar(id); v != nil {
-					return t.OnSlotAppend(ctx, v, call.Args[1].Value)
 				}
 			}
 		}

@@ -1,0 +1,30 @@
+// `push` and `remove` mutate the receiver and return nothing, so the only way
+// to write either is as a statement.
+//
+// Returning the receiver invited `l = l.push(x)`, which performs the append
+// once and reads as though it performed it twice — and the two backends had
+// quietly settled on different spellings because of it: the interpreter
+// mutated only through the assigned form, Go codegen only through the bare
+// one, and each looked correct on its own. A method that mutates and returns
+// is what made two right answers possible.
+
+import . "sngl:ui"
+
+component main {
+    var xs list<string> = ["a"]
+
+    button(text="a", @click {
+        xs = xs.push("v") // ERROR(check) "expression yields no value"
+    })
+    button(text="b", @click {
+        xs = xs.remove(0) // ERROR(check) "expression yields no value"
+    })
+
+    // The statement form is the whole API, and it mutates in place.
+    button(text="c", @click {
+        xs.push("v")
+        xs.remove(0)
+    })
+
+    text(value=string(xs.length()))
+}

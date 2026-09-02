@@ -18,10 +18,10 @@ component main {
     effect(
         on=n,
         @mount {
-            log = log.push("mount")
+            log.push("mount")
         },
         @unmount {
-            log = log.push("unmount")
+            log.push("unmount")
         },
     )
 

@@ -58,7 +58,7 @@ func TestReturnOnlyTypeParamWithNoContextIsReported(t *testing.T) {
 
 component c() {
     var xs list<int> = [1]
-    xs = xs.push(empty().length())
+    xs.push(empty().length())
 }
 `
 	// Not asserting a particular message — only that an unbindable parameter
