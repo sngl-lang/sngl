@@ -51,6 +51,14 @@ build-image:
 test:
   stage: test
   image: $IMAGE:latest
+  # Spelled out even though workflow:rules already decides this: GitLab
+  # attempts a merge request pipeline for a push only when some job names
+  # merge_request_event. A job with no rules carries an implicit
+  # only: [branches, tags], which does not count, and the MR then gets no
+  # pipeline at all.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
     - job: build-image
       optional: true
