@@ -19,7 +19,7 @@ type Session struct {
 	Timers *Timers
 
 	view *View
-	fx    *Effects
+	fx   *Effects
 }
 
 // NewSession checks nothing and lowers nothing: it takes a package the caller
@@ -84,7 +84,7 @@ func (s *Session) Sync() ([]Patch, error) {
 	// it holds and each tree that followed -- collapsing them would drop the
 	// intermediate creations the later rounds' keys are relative to.
 	var patches []Patch
-	for round := 0; round < maxEffectRounds; round++ {
+	for step := 0; step < maxEffectSteps; step++ {
 		next, err := Mount(s.Env)
 		if err != nil {
 			return nil, err
@@ -99,7 +99,7 @@ func (s *Session) Sync() ([]Patch, error) {
 			return patches, nil
 		}
 	}
-	return patches, fmt.Errorf("effects did not settle in %d rounds; an effect is rekeying itself", maxEffectRounds)
+	return patches, fmt.Errorf("effects did not settle in %d steps; an effect is rekeying itself", maxEffectSteps)
 }
 
 // Tick advances the clock to the next timer deadline and fires what is due.

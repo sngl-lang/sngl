@@ -201,6 +201,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return err
 		}
 		owner.vals[target.Sym] = nv
+		owner.noteAssigned(target.Sym)
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -284,6 +285,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 			return fmt.Errorf("cannot toggle non-bool variable %q", target.Name)
 		}
 		owner.vals[target.Sym] = !b
+		owner.noteAssigned(target.Sym)
 		return nil
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)

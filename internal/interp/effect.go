@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -32,6 +33,10 @@ type MountedEffect struct {
 	// Env is the scope the effect was written in, which is where its handlers
 	// run and whose state they mutate.
 	Env *Env
+	// seq is when this lifetime began, counted across the whole set. Teardown
+	// runs in reverse of it, and holding it on the entry means the running set
+	// needs no second list kept in step with it.
+	seq int
 }
 
 // sameLifetime reports whether b continues a's lifetime rather than beginning
@@ -54,28 +59,34 @@ func (a MountedEffect) sameLifetime(b MountedEffect) bool {
 // NOT be recomputed from scratch: the View is what the program says now, and
 // this is what has already been done about it.
 type Effects struct {
-	live  map[Key]MountedEffect
-	order []Key // mount order, so teardown can run in reverse
+	live map[Key]MountedEffect
+	next int // the seq to stamp on the next lifetime to begin
 }
 
 func NewEffects() *Effects {
 	return &Effects{live: map[Key]MountedEffect{}}
 }
 
-// maxEffectRounds bounds the settle loop. A mount handler may legitimately
-// write state that mounts another effect, so one pass is not enough; an effect
-// that rekeys itself would never settle, and a bound reports that as an error
-// instead of hanging the program.
-const maxEffectRounds = 16
+// maxEffectSteps bounds the settle loop, counting handlers run rather than
+// passes: one settle legitimately runs as many handlers as it has brackets to
+// move, and each gets a pass of its own (see Reconcile). An effect that rekeys
+// itself never settles, and the bound reports that instead of hanging.
+const maxEffectSteps = 512
 
-// Reconcile brings the running set to what v describes, and reports whether any
-// handler ran.
+// Reconcile moves the running set one step towards what v describes, running at
+// most one handler, and reports whether it ran one.
 //
-// Teardown comes first and in reverse mount order. An effect that is going away
-// holds something the program has to give back, and running the next lifetime's
-// setup before the previous one's teardown is how a program ends up holding two
-// of whatever it was: the fixture that pins this asserts the order, because a
-// count alone cannot tell the two apart.
+// One per call, because a handler's scope goes stale the moment another writes
+// state. Every scope in v was built by a single Mount, so two handlers from one
+// pass both read the state as it stood before either ran: two effects in a loop
+// each incrementing a counter both read zero and both wrote one, and the second
+// increment was simply lost. Settle re-mounts between steps, which is what makes
+// each handler read what the last one left.
+//
+// Teardown comes first, and in reverse order of when the lifetimes began. An
+// effect going away holds something the program has to give back, and setting up
+// the next lifetime before tearing down the previous is how a program ends up
+// holding two of whatever it was.
 //
 // A handler is passed the value ITS OWN lifetime is keyed on -- the ending one
 // for `@unmount`, the beginning one for `@mount`. By teardown time the cell has
@@ -97,36 +108,42 @@ func (fx *Effects) Reconcile(v *View, root *Env) (bool, error) {
 		}
 	}
 
-	ran := false
-	for i := len(fx.order) - 1; i >= 0; i-- {
-		k := fx.order[i]
-		prev, held := fx.live[k]
-		if !held {
-			continue
+	// Teardown. Dead brackets leave the running set whether or not they have a
+	// handler to run, so a bracket with only an @mount does not cost a step.
+	for _, prev := range fx.endingLifetimes(next) {
+		delete(fx.live, prev.Key)
+		if prev.Unmount != nil {
+			return true, fx.run(prev, prev.Unmount, root)
 		}
-		if cur, still := next[k]; still && prev.sameLifetime(cur) {
-			continue
-		}
-		if err := fx.run(prev, prev.Unmount, root); err != nil {
-			return ran, err
-		}
-		ran = ran || prev.Unmount != nil
-		delete(fx.live, k)
 	}
 
+	// Setup, in the order the tree wrote them.
 	for _, k := range nextOrder {
 		cur := next[k]
 		if prev, held := fx.live[k]; held && prev.sameLifetime(cur) {
 			continue
 		}
-		if err := fx.run(cur, cur.Mount, root); err != nil {
-			return ran, err
-		}
-		ran = ran || cur.Mount != nil
+		cur.seq = fx.next
+		fx.next++
 		fx.live[k] = cur
+		if cur.Mount != nil {
+			return true, fx.run(cur, cur.Mount, root)
+		}
 	}
-	fx.order = nextOrder
-	return ran, nil
+	return false, nil
+}
+
+// endingLifetimes is every running bracket v no longer describes, newest first.
+func (fx *Effects) endingLifetimes(next map[Key]MountedEffect) []MountedEffect {
+	var out []MountedEffect
+	for k, prev := range fx.live {
+		if cur, still := next[k]; still && prev.sameLifetime(cur) {
+			continue
+		}
+		out = append(out, prev)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].seq > out[j].seq })
+	return out
 }
 
 // run executes one side of a bracket, passing the lifetime's own key value.
@@ -154,12 +171,13 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 	return nil
 }
 
-// Settle reconciles until nothing more runs, re-mounting between rounds because
-// a handler that wrote state described a different tree by doing so. Returns the
-// final view.
+// Settle reconciles until nothing more runs, re-mounting before each step
+// because the previous handler's writes describe a different tree -- and,
+// crucially, because the scopes the next handler will run in are built by that
+// Mount. Returns the final view.
 func Settle(fx *Effects, env *Env) (*View, error) {
 	var v *View
-	for round := 0; round < maxEffectRounds; round++ {
+	for step := 0; step < maxEffectSteps; step++ {
 		next, err := Mount(env)
 		if err != nil {
 			return nil, err
@@ -173,7 +191,7 @@ func Settle(fx *Effects, env *Env) (*View, error) {
 			return v, nil
 		}
 	}
-	return v, fmt.Errorf("effects did not settle in %d rounds; an effect is rekeying itself", maxEffectRounds)
+	return v, fmt.Errorf("effects did not settle in %d steps; an effect is rekeying itself", maxEffectSteps)
 }
 
 // effectOf reads an effect declaration off a node instantiation, or reports
