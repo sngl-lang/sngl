@@ -121,7 +121,7 @@ func TestFixtures(t *testing.T) {
 	skipOptimize := map[string]bool{
 		"checker_mutual_recursion": true,
 	}
-	for s := range testutil.TestdataSamples(t) {
+	for s := range testutil.CodegenSamples(t) {
 		if len(s.Errors) > 0 {
 			continue
 		}

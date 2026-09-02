@@ -14,7 +14,7 @@ import (
 )
 
 func TestRunFixtures(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
+	for s := range testutil.CodegenSamples(t) {
 		if !strings.HasPrefix(s.Name, "test_") && !strings.HasPrefix(s.Name, "component_") {
 			continue
 		}

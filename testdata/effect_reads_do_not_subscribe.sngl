@@ -1,3 +1,5 @@
+// SKIP(codegen) "waiting on the effect mount/unmount lowering"
+
 // What `@mount` reads does not subscribe it. A handler runs when its event
 // fires — here as everywhere else in the language — and mount is an event.
 //
