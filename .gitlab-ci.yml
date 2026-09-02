@@ -18,16 +18,42 @@ default:
   # consumer during the host lockups in Aug 2026.
   interruptible: true
 
+# What the CI image is built from. Anchored because the rules below ask the
+# same question three times, against three different bases.
+.image-inputs: &image-inputs
+  - Dockerfile
+  - go.mod
+  - go.sum
+
 build-image:
   stage: dependencies
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
+  # A failed image build must not take the pipeline with it: `test` and
+  # `pages` fall back to the $IMAGE:latest already in the registry, and an
+  # `optional` need is only optional about the job *existing*.
+  allow_failure: true
   rules:
-    - changes:
-        - Dockerfile
-        - go.mod
-        - go.sum
+    # An MR pipeline's `changes` is already diffed against the target branch.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        paths: *image-inputs
+      when: always
+    # On the default branch, against the previous commit -- which is the
+    # question worth asking there.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        paths: *image-inputs
+      when: always
+    # Any other branch pipeline: on a branch's *first* pipeline there is no
+    # previous commit to diff against, and GitLab then reports every file as
+    # changed -- which is why a docs-only MR rebuilt the image. Pinning the
+    # base to the default branch gives the same answer on every run.
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        paths: *image-inputs
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
       when: always
     - when: never
   script:
