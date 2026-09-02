@@ -2,22 +2,28 @@ package lib_test
 
 import (
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/lib"
 )
 
-// One file per package carries the package comment. Go's semantics apply when
-// several do -- they are concatenated in load order -- and that order is the
-// directory listing, so whichever file sorted first opened the package: eight
-// files in lib/ui each began with a one-line section header, and the package
-// read as "Components that show a value and do not edit it".
+// A package's prose lives in its doc.sngl and nowhere else. Go's semantics --
+// every file's package comment counts, concatenated in load order -- cannot
+// say which order, and the blank line that makes a run of comments package
+// prose rather than a doc comment on the declaration below is easy to leave in
+// by accident: eight files in lib/ui each opened with a one-line section
+// header, and the package read as "Components that show a value and do not
+// edit it".
 //
-// A section header belongs on the declarations it heads, or in the package's
-// own doc file. Not at the top of a file above a blank line, which is the one
-// place that makes it package prose.
+// So a section header belongs on the declarations it heads, and the package's
+// own prose belongs in doc.sngl. `docs/lookup`'s stdlibPackageDocs reads it
+// from there, so a header left above a blank line in another file is now
+// silently dropped rather than silently published -- which is why this test
+// asks the question from both sides.
 func TestOnePackageCommentPerPackage(t *testing.T) {
+	const docFile = "doc.sngl"
 	checked := 0
 	for _, pkg := range lib.Packages() {
 		entries, err := lib.FS.ReadDir(pkg)
@@ -38,13 +44,14 @@ func TestOnePackageCommentPerPackage(t *testing.T) {
 			}
 		}
 		checked++
-		if len(carrying) > 1 {
-			t.Errorf("sngl:%s takes its package comment from %d files (%s); "+
-				"they concatenate in an order nothing pins, so keep it in one",
-				pkg, len(carrying), strings.Join(carrying, ", "))
+		if !slices.Contains(carrying, docFile) {
+			t.Errorf("sngl:%s has no package comment in %s; `sngl doc` renders it with none", pkg, docFile)
 		}
-		if len(carrying) == 0 {
-			t.Errorf("sngl:%s has no package comment; `sngl doc` renders it with none", pkg)
+		if stray := slices.DeleteFunc(carrying, func(n string) bool { return n == docFile }); len(stray) > 0 {
+			t.Errorf("lib/%s: %s open with a comment run above a blank line, which reads as "+
+				"package prose and is not published; put a header on the declarations it heads, "+
+				"or move it into %s",
+				pkg, strings.Join(stray, ", "), docFile)
 		}
 	}
 	if checked == 0 {

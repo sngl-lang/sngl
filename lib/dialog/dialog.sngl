@@ -1,10 +1,3 @@
-// Host-native modal surfaces: the notifications and file choosers an
-// application asks the platform for rather than draws itself.
-//
-// These are not components. A component is placed in a tree and rendered;
-// `Alert.confirm` and `File.pick` are calls that hand control to the host
-// and return what the user chose, which is why they live outside `sngl:ui`.
-
 import . "sngl:internal/marks"
 
 // Receiver type for transient user notifications. Access methods

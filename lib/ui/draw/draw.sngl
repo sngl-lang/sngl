@@ -1,9 +1,3 @@
-// 2D shapes and the canvas that hosts them, and the `shape` tree they are
-// members of. A component joins it by naming that tree in its return position.
-//
-// The shapes live here rather than in `sngl:ui` because `canvas`, `rect`,
-// `line` and `path` are names an application usually wants for itself.
-
 // std is qualified rather than dot-imported: a lib package is loaded into the
 // checker's own symbol table, so names it lifts become indistinguishable from
 // names it declares and would be re-lifted by `import . "sngl:ui/draw"`. User
