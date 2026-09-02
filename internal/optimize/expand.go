@@ -54,6 +54,18 @@ const maxStaticUnroll = 10000
 // evaluate" — so the caller can drop the for-loop instead of leaving it for
 // codegen to choke on.
 func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
+	// A loop that walks nothing has no iterable to evaluate, so there are no
+	// iterations to write out: a condition is tested at run time, and a
+	// headless loop has no head at all. Both are refused in a view body, so
+	// the target this unrolls for never sees one -- but a nil Iter reaching
+	// evalExpr would be read as an unevaluable iterable rather than as a
+	// different kind of loop.
+	if fs.Iter == nil {
+		return nil
+	}
+	if t := fs.Iter.ExprType(); t != nil && t.Kind == ir.TypeBool {
+		return nil
+	}
 	val, ok := evalExpr(fs.Iter, ctx)
 	if !ok {
 		return nil
@@ -162,7 +174,8 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 			collectWindowStructValues(n.Children, result)
 		case *ir.NodeInst:
 			collectWindowStructValues(n.Children, result)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// No nested window declarations.
 		default:
 			panic(fmt.Sprintf("collectWindowStructValues: unhandled stmt %T", n))
@@ -261,7 +274,7 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		}
 	case *ir.Toggle:
 		walkAllExprs(n.Target, visit)
-	case *ir.CanvasRedrawStmt:
+	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No expressions.
 	default:
 		panic(fmt.Sprintf("walkStmtExprs: unhandled stmt %T", n))

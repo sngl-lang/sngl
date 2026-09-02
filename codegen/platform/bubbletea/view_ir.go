@@ -255,7 +255,8 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		// before the widget consuming it (its FromTernary If assigns it). Emit
 		// so the temp is declared in the view scope.
 		vc.emitIRStmt(s)
-	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
 		// Imperative stmts have no visual rendering — skipped.
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("bubbletea: ContextProvider should be lowered before view emission: %#v", s))

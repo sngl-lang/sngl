@@ -160,6 +160,12 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 			valueStr = EvalExpr(r, n.Value)
 		}
 		return []string{r.ReturnText(n, valueStr)}
+	case *ir.Break:
+		// Spelled the same in every language a backend targets, and carrying
+		// nothing for a renderer to encode -- so there is no hook for one.
+		return []string{"break"}
+	case *ir.Continue:
+		return []string{"continue"}
 	case *ir.For:
 		return evalFor(r, n)
 	case *ir.If:
@@ -176,8 +182,16 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 	}
 }
 
+// evalFor renders a loop and its body. n.Else is not read: passForElse has
+// already rewritten an imperative for-else into a flag and a trailing `if`,
+// which is what a host loop can express.
 func evalFor(r Renderer, n *ir.For) []string {
-	iter := EvalExpr(r, n.Iter)
+	// A loop with no head has no expression to render, and asking for one
+	// would render the language's nil.
+	iter := ""
+	if n.Iter != nil {
+		iter = EvalExpr(r, n.Iter)
+	}
 	child := r.Scoped(n.Key)
 	if n.Value != "" {
 		child = child.Scoped(n.Value)

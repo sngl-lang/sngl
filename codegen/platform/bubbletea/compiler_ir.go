@@ -1170,7 +1170,8 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Window:
 			panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// Imperative stmts — no nested visual children to walk.
 		case *ir.ContextProvider:
 			panic(fmt.Sprintf("bubbletea: ContextProvider should be lowered before handler walk: %#v", n))

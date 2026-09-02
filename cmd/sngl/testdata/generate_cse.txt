@@ -26,6 +26,17 @@ sngl generate --platform=html --lang=none --out=web app.sngl
 grep 'let __cse0 = weight\(state.seed\);' web/index.html
 grep 'state.total = __cse0 \+ __cse0 \* 2;' web/index.html
 
+# android reaches the handler body by a different route: its primitives
+# declare the callback as a prop, so the body is a lambda in the node's props
+# and NodeInst.Handlers is empty. Walking the view for handlers found nothing
+# here, and this handler made the call twice while every other target bound a
+# temp.
+sngl generate --platform=android --lang=kotlin --out=droid app.sngl
+grep 'var __cse0 = weight\(seed\)' droid/MainScreen.kt
+grep 'total = \(__cse0 \+ \(__cse0 \* 2\)\)' droid/MainScreen.kt
+grep 'var __cse1 = weight\(a\)' droid/MainScreen.kt
+grep 'weight\(b\)' droid/MainScreen.kt
+
 -- app.sngl --
 import . "sngl:ui"
 

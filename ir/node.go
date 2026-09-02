@@ -36,6 +36,8 @@ func (*Toggle) irNode()           {}
 func (*Emit) irNode()             {}
 func (*LocalVar) irNode()         {}
 func (*Return) irNode()           {}
+func (*Break) irNode()            {}
+func (*Continue) irNode()         {}
 func (*If) irNode()               {}
 func (*For) irNode()              {}
 func (*ContextProvider) irNode()  {}

@@ -254,6 +254,8 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkStmts(n.Children, used, walk)
 	case *ir.CanvasRedrawStmt:
 		// Carries only NodeInst/Func pointers already tracked by other walk paths.
+	case *ir.Break, *ir.Continue:
+		// A loop escape names no declaration.
 	default:
 		panic(fmt.Sprintf("walkStmt: unhandled stmt %T", n))
 	}

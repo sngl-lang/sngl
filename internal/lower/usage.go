@@ -150,7 +150,8 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			if stmtsUseErrorHandling(x.Body) {
 				return true
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// No nested error sites.
 		default:
 			panic(fmt.Sprintf("stmtsUseErrorHandling: unhandled stmt %T", x))

@@ -220,7 +220,7 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		n.Title = substituteParams(n.Title, subs)
 		n.Favicon = substituteParams(n.Favicon, subs)
 		substituteParamsInStmts(n.Body, subs)
-	case *ir.CanvasRedrawStmt:
+	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No params to substitute.
 	default:
 		panic(fmt.Sprintf("substituteParamsInStmt: unhandled stmt %T", n))
@@ -398,7 +398,7 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 					return
 				}
 				visitExpr(n.Target)
-			case *ir.CanvasRedrawStmt:
+			case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 				// No param exprs.
 			default:
 				panic(fmt.Sprintf("bodyHasFoldableParamUse.visitStmts: unhandled stmt %T", n))

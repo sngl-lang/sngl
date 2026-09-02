@@ -1,0 +1,12 @@
+// A view body's loop is a template stamped once per element, not a statement
+// stream: there is no iteration for an escape to cut short.
+
+import . "sngl:ui"
+
+component main {
+    var xs list<int> = [1]
+
+    for var x = xs {
+        continue // ERROR(check) "cannot be written in a view body"
+    }
+}

@@ -421,6 +421,8 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 	case *ir.CanvasRedrawStmt:
 		// Carries NodeInst and Func pointers only; listed rather than
 		// defaulted so the arm below catches a genuinely new statement kind.
+	case *ir.Break, *ir.Continue:
+		// A loop escape reads nothing.
 	default:
 		// As in walkExpr: a statement not descended into hides every read
 		// inside it.

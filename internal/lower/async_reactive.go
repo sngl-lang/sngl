@@ -145,7 +145,8 @@ func hoistInStmt(h *hoister, s ir.Stmt) {
 		hoistInStmts(h, n.Children)
 	case *ir.Window:
 		hoistInStmts(h, n.Body)
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+		*ir.Break, *ir.Continue:
 		// Hoister targets only NodeInst prop expressions; non-visual stmts
 		// don't host hoistable async subtrees.
 	default:

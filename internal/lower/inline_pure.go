@@ -160,7 +160,8 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		}
 		n.Body = body
 		return []ir.Stmt{n}, nil
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+		*ir.Break, *ir.Continue:
 		// Leaf/imperative stmts — no NodeInsts to inline.
 		return []ir.Stmt{s}, nil
 	default:
@@ -360,7 +361,8 @@ func containsSelfRef(comp *ir.Component) bool {
 				if visit(n.Body) {
 					return true
 				}
-			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+				*ir.Break, *ir.Continue:
 				// Leaf stmts can't host a NodeInst self-reference.
 			default:
 				panic(fmt.Sprintf("containsSelfRef.visit: unhandled %T", n))
@@ -681,7 +683,8 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.Window:
 			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf/imperative — no nested Emit/EventRefExpr that this pass
 			// would substitute. (CallStmt with EventRefExpr handled above.)
 		case *ir.Emit:
@@ -906,6 +909,12 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		clone := *n
 		clone.Value = deepCloneExpr(n.Value)
 		clone.Children = deepCloneStmts(n.Children)
+		return &clone
+	case *ir.Break:
+		clone := *n
+		return &clone
+	case *ir.Continue:
+		clone := *n
 		return &clone
 	}
 	panic(fmt.Sprintf("deepCloneStmt: unhandled %T", s))

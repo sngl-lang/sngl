@@ -1,0 +1,113 @@
+// The two loop forms that walk nothing -- `for cond { }` and `for { }` -- and
+// the two escapes. Every bound is a parameter, so nothing here folds at build
+// time: what the interpreter runs is the loop.
+
+import . "sngl:test"
+
+func countTo(n int) int {
+    var i int = 0
+    for i < n {
+        i = i + 1
+    }
+    return i
+}
+
+// The forever loop's only way out. Without the break the statement after the
+// loop is unreachable, which is what makes this a complete function body.
+func firstMultiple(of int, atLeast int) int {
+    var i int = of
+    for {
+        if i >= atLeast {
+            break
+        }
+        i = i + of
+    }
+    return i
+}
+
+// A `continue` skips the rest of the iteration but not the loop: the counter
+// is stepped before it, so the loop still terminates.
+func sumOdd(n int) int {
+    var i int = 0
+    var total int = 0
+    for i < n {
+        i = i + 1
+        if i % 2 == 0 {
+            continue
+        }
+        total = total + i
+    }
+    return total
+}
+
+// The else case is "the body never ran", which for a condition loop means the
+// condition was false the first time it was asked.
+func describe(n int) string {
+    var seen int = 0
+    for seen < n {
+        seen = seen + 1
+    } else {
+        return "none"
+    }
+    return "saw {seen}"
+}
+
+// A break leaves the loop, so the body did run and the else does not.
+func breakSkipsElse(xs list<int>) string {
+    for var x = xs {
+        break
+    } else {
+        return "empty"
+    }
+    return "some"
+}
+
+// The escapes act on the innermost loop: the inner break ends the inner loop
+// only, and the outer one keeps counting.
+func nested(rows int, cols int) int {
+    var count int = 0
+    var r int = 0
+    for r < rows {
+        r = r + 1
+        var c int = 0
+        for {
+            if c >= cols {
+                break
+            }
+            c = c + 1
+            count = count + 1
+        }
+    }
+    return count
+}
+
+func testCondition(t Test) {
+    t.assert(countTo(4) == 4)
+    t.assert(countTo(0) == 0)
+    t.assert(countTo(-1) == 0)
+}
+
+func testForever(t Test) {
+    t.assert(firstMultiple(3, 10) == 12)
+    t.assert(firstMultiple(3, 1) == 3)
+}
+
+func testContinue(t Test) {
+    t.assert(sumOdd(6) == 1 + 3 + 5)
+    t.assert(sumOdd(0) == 0)
+}
+
+func testElseIsBodyNeverRan(t Test) {
+    t.assert(describe(0) == "none")
+    t.assert(describe(2) == "saw 2")
+}
+
+func testBreakMeansTheBodyRan(t Test) {
+    t.assert(breakSkipsElse([1]) == "some")
+    t.assert(breakSkipsElse([]) == "empty")
+}
+
+func testEscapesActOnTheInnermostLoop(t Test) {
+    t.assert(nested(3, 2) == 6)
+    t.assert(nested(0, 2) == 0)
+}

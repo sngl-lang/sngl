@@ -789,7 +789,8 @@ func (g *htmlGen) prewalkNodes() {
 			visitStmts(n.Children)
 		case *ir.ContextProvider:
 			visitStmts(n.Children)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 		default:
 			panic(fmt.Sprintf("html.collectNodeIDs: unhandled ir.Stmt %T", n))
 		}
@@ -1216,7 +1217,8 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	case *ir.ContextProvider:
 		// passNoContext eliminates these before codegen.
 		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
 	default:
 		panic(fmt.Sprintf("html.renderIRStmt: unhandled ir.Stmt %T", n))
 	}
@@ -2989,6 +2991,8 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			g.collectLoweredRefs(c)
 		}
 	case *ir.CanvasRedrawStmt:
+	case *ir.Break, *ir.Continue:
+		// A loop escape names no ref.
 	default:
 		panic(fmt.Sprintf("html.collectLoweredRefs: unhandled ir.Stmt %T", n))
 	}

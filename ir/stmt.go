@@ -160,6 +160,21 @@ type Return struct {
 
 func (*Return) stmtNode() {}
 
+// Break and Continue are the loop escapes, acting on the innermost enclosing
+// loop. There is nothing to type-check about either, so neither carries an
+// expression; the AST node is kept for the position a diagnostic needs.
+type Break struct {
+	AST *ast.BreakStmt
+}
+
+func (*Break) stmtNode() {}
+
+type Continue struct {
+	AST *ast.ContinueStmt
+}
+
+func (*Continue) stmtNode() {}
+
 // If is a type-checked if statement with IR bodies.
 type If struct {
 	AST  *ast.IfStmt
@@ -184,10 +199,13 @@ func (*If) stmtNode() {}
 
 // For is a type-checked for statement with IR bodies and resolved element type.
 type For struct {
-	AST      *ast.ForStmt
-	Key      string // iterator variable name
-	Value    string // optional second variable (empty for single-var form)
-	Iter     Expr   // resolved iterator expression
+	AST   *ast.ForStmt
+	Key   string // iterator variable name
+	Value string // optional second variable (empty for single-var form)
+	// Iter is what the loop head evaluates to: an iterable to walk, a bool to
+	// test before each iteration, or nil for `for { }`. IterKind is the
+	// classification of the three.
+	Iter     Expr
 	ElemType *Type
 	Body     []Stmt
 	Else     []Stmt
@@ -248,6 +266,12 @@ const (
 	// IterMapEntries is iteration over a map: bind (key, value) to
 	// (Key, Value); Value may be empty (caller substitutes a discard).
 	IterMapEntries
+	// IterCondition is a loop over a bool head, tested before each iteration:
+	// `for x < n { }`. It declares no variable and walks nothing.
+	IterCondition
+	// IterForever is a loop with no head at all: `for { }`. It ends by a
+	// `break` or a `return` in its body.
+	IterForever
 )
 
 // DeriveIterKind classifies n's iteration shape from its resolved Iter type
@@ -256,8 +280,16 @@ const (
 // second variable means indexed iteration, and a lone variable binds the
 // element.
 func DeriveIterKind(n *For) IterKind {
-	if n == nil || n.Iter == nil {
+	if n == nil {
 		return IterElement
+	}
+	// No head is the forever loop, and a bool head is a condition -- neither
+	// iterates anything, so neither reaches the questions below.
+	if n.Iter == nil {
+		return IterForever
+	}
+	if t := n.Iter.ExprType(); t != nil && t.Kind == TypeBool {
+		return IterCondition
 	}
 	if CountedSeq(n) != nil {
 		return IterCounted

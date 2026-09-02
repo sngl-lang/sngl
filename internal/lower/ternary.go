@@ -161,6 +161,8 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 	case *ir.ContextProvider:
 		pre, n.Value = st.transformExpr(n.Value)
 		n.Children = st.transformBlock(n.Children)
+	case *ir.Break, *ir.Continue:
+		// A loop escape holds no ternary.
 	default:
 		panic(fmt.Sprintf("ternState.transformStmt: unhandled %T", n))
 	}

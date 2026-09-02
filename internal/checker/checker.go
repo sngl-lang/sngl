@@ -297,8 +297,15 @@ type checker struct {
 	currentComponent *ir.Component
 	// funcDepth is non-zero while a function or handler body is being checked.
 	// A slot insertion renders where it is written, so one reaching a func body
-	// has nowhere to project and is reported rather than built.
+	// has nowhere to project and is reported rather than built. It is also
+	// what says a statement is *not* in a view body, which is where a loop
+	// that iterates nothing -- a condition or a forever loop -- is refused.
 	funcDepth int
+	// loopDepth is the number of `for` bodies enclosing the statement being
+	// checked, and what `break` and `continue` require one of. It resets at
+	// every imperative-body boundary (enterFuncBody): a lambda written inside
+	// a loop body cannot escape the loop it was written in.
+	loopDepth int
 
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
@@ -3253,12 +3260,28 @@ func (c *checker) pass2() {
 
 }
 
+// enterFuncBody marks the start of an imperative body -- a function, an event
+// handler, a timer or var handler -- and returns the restore.
+//
+// It is the one place loopDepth resets. A `break` inside a lambda written in a
+// loop body acts on a loop in that lambda, not on the one the lambda sits
+// inside: the lambda's body runs later, or not at all, and by then the loop it
+// was written in may be over.
+func (c *checker) enterFuncBody() func() {
+	c.funcDepth++
+	savedLoops := c.loopDepth
+	c.loopDepth = 0
+	return func() {
+		c.funcDepth--
+		c.loopDepth = savedLoops
+	}
+}
+
 func (c *checker) checkFuncBody(fn *ir.Func) {
 	defer c.fileOf(funcDeclPos(fn))()
 	c.pushScope()
 	defer c.popScope()
-	c.funcDepth++
-	defer func() { c.funcDepth-- }()
+	defer c.enterFuncBody()()
 
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}
@@ -3382,13 +3405,45 @@ func stmtAlwaysReturns(s ir.Stmt) bool {
 		// An if terminates only when it has an else and both arms terminate.
 		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
 	case *ir.For:
-		// A for terminates only when it has an else and both the body (which
-		// returns before the first iteration completes) and the else (empty
-		// case) terminate.
+		// A loop with no condition never falls out of the bottom, so the only
+		// way past it is a `break` -- and without one, the statement after it
+		// is unreachable and the function returns from inside the loop. This
+		// is what makes `for { … return … }` a complete function body, which
+		// is the whole of how such a loop ends.
+		if n.Iter == nil {
+			return !blockBreaks(n.Body)
+		}
+		// Any other for terminates only when it has an else and both the body
+		// (which returns before the first iteration completes) and the else
+		// (empty case) terminate.
 		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
 	default:
 		return false
 	}
+}
+
+// blockBreaks reports whether stmts holds a `break` that leaves the loop this
+// block is the body of.
+//
+// A nested loop's body is not searched: a break written there ends that loop.
+// Its else is, because the else runs when the inner body never did, which is
+// after the inner loop is over and still inside this one.
+func blockBreaks(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.Break:
+			return true
+		case *ir.If:
+			if blockBreaks(n.Body) || blockBreaks(n.Else) {
+				return true
+			}
+		case *ir.For:
+			if blockBreaks(n.Else) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // lastStmtMayDiverge reports whether a block's final statement has control flow
@@ -3823,6 +3878,7 @@ func (c *checker) checkTimerBody(t *ir.Timer) {
 	defer c.fileOf(t.AST.Pos)()
 	c.pushScope()
 	defer c.popScope()
+	defer c.enterFuncBody()()
 	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
 }
 
@@ -3895,7 +3951,9 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)
 			}
+			restoreBody := c.enterFuncBody()
 			h.Func.Block = c.checkBlockIR(&h.AST.Body)
+			restoreBody()
 			c.popScope()
 			restore()
 		}

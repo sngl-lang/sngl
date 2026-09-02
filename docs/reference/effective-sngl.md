@@ -931,6 +931,49 @@ loop. Assigned to a variable or passed to a function it is an ordinary
 `iter<int>` — a sequence the loop pulls from, not a list of numbers — so
 neither spelling allocates one.
 
+### Loops that walk nothing
+
+The two loops above are in a view body, where a loop says how many copies of
+its body the tree holds. In a function, a handler or a timer there is no tree,
+and two more forms are available: a condition to test before each iteration,
+and no head at all.
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+func firstMultiple(of int, atLeast int) int {
+    var i = of
+    for {
+        if i >= atLeast {
+            break
+        }
+        i = i + of
+    }
+    return i
+}
+
+func countDigits(n int) int {
+    var left = n
+    var digits = 0
+    for left > 0 {
+        left = left / 10
+        digits = digits + 1
+    }
+    return digits
+}
+text(value="{firstMultiple(3, 10)} in {countDigits(120)} digits")
+```
+
+`break` ends the innermost loop and `continue` ends the current iteration of
+it. `for { }` has no other way out, which is why the statement after it is
+unreachable and `firstMultiple` needs no trailing return inside the loop.
+
+Neither form declares a variable — there is no element to bind — and neither
+may be written in a view body, where a condition would say how many times to
+repeat nothing. Nor may `break` or `continue`: a view body's loop is a template
+stamped once per element, not a statement stream.
+
 ### for...else
 
 The `else` block renders when the list is empty. It works with both `for var item = list` and `for var index, item = list`:
@@ -949,6 +992,13 @@ for var item = items {
     text(value="No items yet")
 }
 ```
+
+Generally the `else` runs when **the body never ran**, which is what "the list
+was empty" is a case of. A condition loop reads the same way — its `else` runs
+when the condition was false the first time it was asked — and a `break` never
+triggers it, since a loop cannot break out of a body that never ran.
+`for { } else { }` is an error: the body always runs, so the block would be
+unreachable.
 
 ### Element refs
 

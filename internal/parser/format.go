@@ -318,6 +318,10 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeVarStmt(x)
 	case *ast.ReturnStmt:
 		f.writeReturnStmt(x)
+	case *ast.BreakStmt:
+		f.write("break")
+	case *ast.ContinueStmt:
+		f.write("continue")
 	case *ast.CallStmt:
 		f.writeCallStmt(x)
 	case *ast.Comment:
@@ -808,8 +812,12 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 		}
 		f.write(" = ")
 	}
-	f.writeExpr(s.Iter)
-	f.write(" ")
+	// `for { }` has no head to write, and the space already written is the
+	// one that separates the keyword from the block.
+	if s.Iter != nil {
+		f.writeExpr(s.Iter)
+		f.write(" ")
+	}
 	f.writeBlock(&s.Body)
 	if s.Else.IsDefined() {
 		f.write(" else ")
