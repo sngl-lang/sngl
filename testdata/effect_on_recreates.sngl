@@ -1,5 +1,3 @@
-// SKIP(codegen) "list.push in a component method emits invalid Go; see the push-doubling bug"
-
 // `on` makes the bracket a keyed identity. While it holds the same value this
 // is the same effect; a different value is a different one, so the old lifetime
 // ends and a new one begins — `@unmount` first, then `@mount`.

@@ -1,0 +1,42 @@
+# `list.push` mutates its receiver and returns it, and Go's append does only
+# the second — so the intrinsic carries the in-place half by rendering the
+# assignment to its own receiver. That is right where the result is discarded
+# and invalid anywhere else: `xs = xs.push(v)`, which the method's return type
+# invites, emitted `m.xs = m.xs = append(m.xs, v)` and would not compile. It
+# never has, in a handler or a component method.
+
+sngl generate --lang=go --platform=bubbletea --out=out app.sngl
+exists out/model.go
+
+# A discarded result is one assignment, as before.
+grep 'm.bare = append\(m.bare, "b"\)' out/model.go
+
+# An assignment to the receiver itself is also one: the intrinsic already made
+# it, so the program's adds nothing.
+grep 'm.same = append\(m.same, "s"\)' out/model.go
+! grep 'm.same = m.same = ' out/model.go
+
+# A different target keeps both halves: the receiver is mutated, then the
+# target binds it. Dropping either would lose what the declaration says.
+grep 'm.src = append\(m.src, "x"\)' out/model.go
+grep 'm.dst = m.src' out/model.go
+
+# Nothing anywhere emits a doubled assignment.
+! grep '= m.[a-z]* = ' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+
+component main {
+    var (
+        bare list<string> = []
+        same list<string> = []
+        src list<string> = []
+        dst list<string> = []
+    )
+
+    button(text="1", @click { bare.push("b") })
+    button(text="2", @click { same = same.push("s") })
+    button(text="3", @click { dst = src.push("x") })
+    text #out(value=string(bare.length()))
+}
