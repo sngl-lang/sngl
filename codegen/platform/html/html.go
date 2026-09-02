@@ -1413,13 +1413,24 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 
 // synthesizedFuncs returns the Synthesized funcs of the package, main
 // component and current window.
+//
+// Deduped by pointer, as pkgFuncs is and for the same reason: one func reaches
+// this from more than one list. A root window synthesized around main carries
+// main's funcs, and main is still on pkg.Components -- so a func on it would
+// otherwise be declared twice in the page.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f == nil || !f.Synthesized || seen[f] {
+			return
+		}
+		seen[f] = true
+		out = append(out, f)
+	}
 	if g.pkg != nil {
 		for _, f := range g.pkg.Funcs {
-			if f.Synthesized {
-				out = append(out, f)
-			}
+			add(f)
 		}
 		// Every component the build renders, not only the root: one that
 		// survived inlining is emitted from its own declaration, and its
@@ -1427,16 +1438,12 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		// come with it.
 		for _, comp := range g.pkg.Components {
 			for _, f := range comp.Funcs {
-				if f.Synthesized {
-					out = append(out, f)
-				}
+				add(f)
 			}
 		}
 	}
 	for _, f := range g.irWindowFuncs {
-		if f.Synthesized {
-			out = append(out, f)
-		}
+		add(f)
 	}
 	return out
 }
