@@ -1,16 +1,3 @@
-// Segmented component trees: a tree whose nodes are not interchangeable
-// widgets but members of a named family, where a container accepts only its
-// own family's members.
-//
-// A canvas and its shapes are one such tree; rich text (paragraphs, inline
-// runs) and menus (items, separators) are others. Nothing here knows what a
-// shape is — the compiler compares declarations.
-//
-// A tree is a type. A component says which one it belongs to by naming that
-// type in its return position, and a slot says which one it accepts by naming
-// it as the slot's type. How many it accepts is the wrapper: bare is any
-// number, `tree.one<T>` is exactly one, `option<T>` is none or one.
-
 import ir "sngl:internal/ir"
 import . "sngl:internal/marks"
 

@@ -1,0 +1,16 @@
+// Package ir declares the compiler's own vocabulary: the constructs a
+// declaration can name that stand for something in the compiler rather than
+// for a value in the program.
+//
+// `Macro` is the centre of it. A function whose return type is `Macro` is a
+// macro — a name that may be written as a `#[...]` mark and nowhere else. The
+// declaration is not what runs; a Go handler registered under the same package
+// and name transforms the declaration the mark annotates. It exists so that a
+// macro has somewhere to carry its doc comment and its argument list, which is
+// what `sngl doc` reads.
+//
+// The flag enums of marks declared elsewhere live here too, rather than beside
+// the mark. A mark's package is dot-imported — that is how a bare `#[builtin]`
+// resolves — and a dot import of a lib package lifts what it declares, so an
+// enum next to the mark would end up in the scope of every program that
+// imports the package that imports it. Nothing dot-imports this one.
