@@ -1,0 +1,16 @@
+// One parameter is one type across the whole call. Two props typed `T` bound
+// to different types is the error the annotation exists to report — without it
+// `T` would be `dyn` spelled at greater length, which is what a parameter that
+// is never checked amounts to.
+
+import . "sngl:ui"
+
+component pair<T>(a T, b T) {
+    text(value="pair")
+}
+
+component main {
+    pair(a=1, b=2)
+    pair(a="x", b="y")
+    pair(a=1, b="two") // ERROR(check) "cannot use string as int for prop \"b\" on component pair"
+}

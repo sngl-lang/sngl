@@ -1196,7 +1196,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
@@ -1530,7 +1530,7 @@ Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 

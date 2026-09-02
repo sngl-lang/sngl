@@ -2775,7 +2775,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if slot := findSlot(comp, ir.DefaultSlot); slot != nil {
 				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
 			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(comp, x.Call.Args))
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      compName,
@@ -2808,7 +2808,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if argsComp != nil && argsComp.Stdlib {
 				argsComp = nil
 			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, argsComp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(argsComp, x.Call.Args))
 
 			// A stdlib element passes nil above so event args stay leniently
 			// typed, and nil is also what makes checkAndSplitArgs leave a
@@ -3394,7 +3394,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 		c.checkTreeMembership(vn.Pos, children, slotTree(comp, findSlot(comp, ir.DefaultSlot)), "in "+comp.Name)
 	}
-	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
+	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, c.bindComponentTypeParams(comp, vn.Args))
 
 	emitName := name
 	if qualifiedLocal != "" {

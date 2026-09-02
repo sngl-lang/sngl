@@ -477,7 +477,12 @@ type Component struct {
 	// the component was resolved by a name it has no way to read.
 	WildcardInto string `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg          string
+	Pkg string
+	// TypeParams are the component's generic parameters, in declaration
+	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
+	// from the props supplied there, the same way a func's are bound from its
+	// arguments.
+	TypeParams   []TypeParam `json:",omitempty"`
 	Props        []*Prop
 	Events       []*EventDecl
 	Slots        []*SlotDecl `json:",omitempty"`

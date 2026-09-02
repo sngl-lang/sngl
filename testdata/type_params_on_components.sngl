@@ -1,0 +1,56 @@
+// A component takes type parameters the way a struct and a func do, and they
+// are bound the way a func's are: from what the call site supplies. There is no
+// syntax for naming a type argument at a call site, so the props written there
+// are the only statement of what the parameters are.
+//
+// Named outside the `component_*` glob on purpose: that one opts a fixture into
+// every platform's native-compilation harness, and reaching a child instance
+// through its `#id` -- which these assertions do -- is not something a compiled
+// Model supports yet. It works in the checker and the interpreter, which is what
+// this pins.
+//
+// A parameter no prop pins falls back to its default, which is how a prop can
+// be left out entirely — `bracket()` states no key and needs no type argument.
+// `sngl:app`'s `effect` defaults to `struct {}` for that reason; a user
+// component needs a type whose values it can also write, since a prop with no
+// default is required of it.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component box<T>(item T, label string) {
+    text #out(value=label)
+}
+
+// The payload of an event follows the parameter, so a handler's argument is
+// typed by the prop the caller passed.
+component job<T>(seed T, @done T) {
+    text(value="job")
+}
+
+component bracket<T = int>(on T = 0) {
+    text #b(value="bracket")
+}
+
+component main {
+    box #i(item=1, label="int")
+    box #s(item="x", label="str")
+
+    var got = 0
+    job(seed=2, @done(v) {
+        got = v
+    })
+
+    bracket #plain()
+    bracket #keyed(on=7)
+}
+
+func testOneDeclarationServesBothBindings(t Test, c main) {
+    t.assert(c.i.out.value == "int")
+    t.assert(c.s.out.value == "str")
+}
+
+func testAnUnpinnedParameterTakesItsDefault(t Test, c main) {
+    t.assert(c.plain.b.value == "bracket")
+    t.assert(c.keyed.b.value == "bracket")
+}

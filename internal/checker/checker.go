@@ -2300,11 +2300,19 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		return
 	}
 
+	// The parameters are in scope for what the declaration writes after its
+	// name: a prop's type, an event's payload, a slot's content. The scope is
+	// closed again before the component is bound and its body collected --
+	// those declare into the package, and a name declared while this scope is
+	// open would go away with it.
+	popTypeParams := pushTypeParams(c, comp.TypeParams)
+
 	irComp := &ir.Component{
-		AST:    comp,
-		Name:   comp.Name,
-		Stdlib: c.inLibSource(),
-		Pkg:    c.libPkgName,
+		AST:        comp,
+		Name:       comp.Name,
+		Stdlib:     c.inLibSource(),
+		Pkg:        c.libPkgName,
+		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
 
@@ -2350,6 +2358,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 	c.finishTreeMarks(comp, irComp, c.declPkg())
 	c.finishDefaultSlot(irComp)
+	popTypeParams()
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
@@ -3479,6 +3488,15 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
+	// The body may name the component's type parameters, and a prop default is
+	// checked against what they stand for here. A call site binds them from the
+	// props it supplies; a declaration has only the parameters' own defaults,
+	// which is what declTypeBindings collects.
+	if len(comp.TypeParams) > 0 {
+		defer pushTypeParams(c, comp.TypeParams)()
+	}
+	declBindings := declTypeBindings(comp)
+
 	// Check prop defaults first (before declaring props as params in scope) so
 	// that an unannotated prop's type can be inferred from its default and the
 	// param entry we declare below picks up the inferred type.
@@ -3488,10 +3506,17 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			if pd, ok := p.(ast.Param); ok {
 				if propIdx < len(comp.Props) && pd.Default != nil {
 					prop := comp.Props[propIdx]
-					prop.Default = c.checkExprExpecting(pd.Default, prop.Type)
+					// A default states a value of what the prop takes here,
+					// which for `on T = 0` under `<T = int>` is an int. A
+					// parameter with no default of its own leaves the prop type
+					// standing, and then the declaration says nothing the
+					// default could disagree with.
+					want := prop.Type.Substitute(declBindings)
+					prop.Default = c.checkExprExpecting(pd.Default, want)
 					initType := exprType(prop.Default)
-					if prop.Type.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(prop.Type) {
-						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, prop.Type)
+					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
+						!mentionsTypeParam(want) && !initType.IsAssignableTo(want) {
+						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, want)
 					}
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
 						prop.Type = initType

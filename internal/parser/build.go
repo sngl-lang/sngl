@@ -1066,7 +1066,7 @@ func (b *builder) buildParam(it nodeIter) ast.Param {
 // --- Components ---
 
 func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
-	// ComponentDecl = kw_component ident [ dot ident ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+	// ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
 	c.Name = it.shift().Literal // ident
@@ -1074,6 +1074,12 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
 		it.skip() // dot
 		c.Name = c.Name + "." + it.shift().Literal
+	}
+	// After the (possibly qualified) name, `lt` can only open a type parameter
+	// list -- a target index opens with `lbracket` and a prop list with
+	// `lparen` -- so the three optionals stay LL(1) in this order.
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		c.TypeParams = b.buildTypeParams(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
 		c.Target = b.buildTargetIndex(it.enter())
