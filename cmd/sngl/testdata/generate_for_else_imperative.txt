@@ -1,0 +1,50 @@
+# `for … else` in an imperative body. The else case is "the body never ran",
+# which passForElse states as a flag set by the body's first statement and
+# tested after the loop -- three statements every backend already emits, so no
+# language grows a case for the construct.
+#
+# Before that pass the generic per-language statement path read a loop's head
+# and body and nothing else, and this else block was silently dropped from the
+# generated code in all three languages while the interpreter honoured it.
+
+sngl generate --platform=bubbletea --lang=go --out=go app.sngl
+exists go/model.go
+
+grep '__ran0 := false' go/model.go
+grep 'if !__ran0 \{' go/model.go
+grep -count=1 '__ran0 = true' go/model.go
+
+# Two loops in one body get a flag each rather than sharing one.
+grep '__ran1 := false' go/model.go
+grep 'if !__ran1 \{' go/model.go
+
+sngl generate --platform=html --lang=none --out=web app.sngl
+grep 'let __ran0 = false;' web/index.html
+grep 'if \(!__ran0\) \{' web/index.html
+
+sngl generate --platform=android --lang=kotlin --out=droid app.sngl
+grep 'var __ran0 = false' droid/MainScreen.kt
+grep 'if \(!__ran0\) \{' droid/MainScreen.kt
+
+-- app.sngl --
+import . "sngl:ui"
+
+component main {
+    var xs list<int> = []
+    var note = ""
+    var total = 0
+
+    button(text="run", @click {
+        for var x = xs {
+            total = total + x
+        } else {
+            note = "empty"
+        }
+        for var y = xs {
+            total = total + y
+        } else {
+            note = "still empty"
+        }
+    })
+    text(value=note)
+}
