@@ -154,16 +154,12 @@ func init() {
 	// --- seq (sngl:seq) ---
 	// A sequence in a loop head becomes the host's counting loop and never
 	// reaches here (GoIRContext.ForHead). Everywhere else it is the pull
-	// sequence iter<int> is spelled as -- a func the consumer drives -- so
-	// holding or passing one still counts rather than building a slice. The
-	// sign test is on the step because a `by` of 0 must yield nothing, not
-	// spin.
+	// sequence iter<int> is spelled as, built by the snglSeq helper the
+	// package emits (HelperSet.NeedSeq) -- so holding or passing one still
+	// counts rather than building a slice, and reads as a call rather than a
+	// closure written out at each site.
 	seq := func(a, b, step string) string {
-		return "func(__a, __b, __s int) func(func(int) bool) { " +
-			"return func(__yield func(int) bool) { " +
-			"if __s > 0 { for __i := __a; __i < __b; __i += __s { if !__yield(__i) { return } } } " +
-			"else if __s < 0 { for __i := __a; __i > __b; __i += __s { if !__yield(__i) { return } } } " +
-			"} }(" + a + ", " + b + ", " + step + ")"
+		return "snglSeq(" + a + ", " + b + ", " + step + ")"
 	}
 	reg("seq.count", func(a []string) string { return seq("0", a[0], "1") })
 	reg("seq.range", func(a []string) string { return seq(a[0], a[1], "1") })

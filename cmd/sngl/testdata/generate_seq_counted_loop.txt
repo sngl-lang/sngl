@@ -8,26 +8,29 @@
 sngl generate --platform=bubbletea --lang=go --out=go app.sngl
 exists go/model.go
 
-# The loop head counts. The end bound is bound once in the init clause,
-# because SNGL evaluates the iterable once and the condition reads it per
-# iteration.
+# The loop head counts. A range with a start of its own binds the end bound in
+# the init clause, because SNGL evaluates the iterable once and a three-clause
+# condition reads it every iteration.
 grep 'for i, __end := 1, ' go/model.go
 grep 'i < __end; i\+\+' go/model.go
+
+# `count` is from zero by one, which is Go's own range over an int.
+grep 'for h2 := range m.n \{' go/model.go
 
 # A descending step counts down, and the end bound stays exclusive.
 grep 'for d, __end := .*; d > __end; d -= 2' go/model.go
 
-# The held sequence is a func the loop pulls from, and iter<int> is spelled as
-# that func -- no slice anywhere.
-grep 'held := func\(__a, __b, __s int\) func\(func\(int\) bool\)' go/model.go
+# The held sequence is a func the loop pulls from, built by the one helper the
+# package emits rather than a closure written out at each site.
+grep 'func snglSeq\(start, end, step int\) func\(func\(int\) bool\) \{' go/model.go
+grep 'held := snglSeq\(0, m.n, 1\)' go/model.go
 grep 'for h := range held' go/model.go
 grep 'func Total\(xs func\(func\(int\) bool\)\) int' go/model.go
 ! grep 'held := \[\]int'
 
-# A list reaching an iter<int> parameter is wrapped in a yielding func rather
-# than copied into one: the wrapper walks the caller's own slice.
-grep 'Total\(func\(__yield func\(int\) bool\) \{' go/model.go
-grep 'for _, __v := range ys \{' go/model.go
+# A list reaching an iter<int> parameter goes through slices.Values, which
+# yields the caller's own slice rather than copying it.
+grep 'Total\(slices.Values\(ys\)\)' go/model.go
 
 sngl generate --platform=html --lang=none --out=web app.sngl
 grep 'for \(let i = 1, __end = ' web/index.html
@@ -70,6 +73,9 @@ component main {
         var held iter<int> = seq.count(n)
         for var h = held {
             total2 = total2 + h
+        }
+        for var h2 = seq.count(n) {
+            total2 = total2 + h2
         }
         var ys list<int> = [1, 2, 3]
         total2 = total2 + total(ys)

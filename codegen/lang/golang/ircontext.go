@@ -400,6 +400,15 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	case ir.IterCounted:
 		c := n.Counted
 		start, end := gc.EvalExpr(c.Start), gc.EvalExpr(c.End)
+		// `seq.count(n)` -- from zero, by one -- is Go's range over an int
+		// (1.22), which counts the same way including the empty case for a
+		// bound of zero or less. No temp: range evaluates its operand once.
+		if n.Value == "" && c.Step == 1 && start == "0" {
+			if key == "__i" {
+				return fmt.Sprintf("for range %s {", end)
+			}
+			return fmt.Sprintf("for %s := range %s {", key, end)
+		}
 		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
 		switch {
 		case c.Step == 1:
@@ -1146,14 +1155,12 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		}
 	}
 	// A list flowing into an iter<T> position becomes the pull sequence that
-	// type is, rather than being handed over as a slice: the wrapper yields
-	// each element and stops when the consumer does. It allocates a closure,
-	// not a copy of the list.
+	// type is. slices.Values is that, in the standard library: it yields the
+	// slice's elements one at a time and copies nothing.
 	if n.Type != nil && n.Type.Kind == ir.TypeIter && len(n.Type.Elems) == 1 {
 		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeList {
-			el := IRTypeToGo(n.Type.Elems[0])
-			return "func(__yield func(" + el + ") bool) { for _, __v := range " +
-				gc.EvalExpr(n.Operand) + " { if !__yield(__v) { return } } }"
+			gc.RequireImport("slices")
+			return "slices.Values(" + gc.EvalExpr(n.Operand) + ")"
 		}
 	}
 	goType := IRTypeToGo(n.Type)

@@ -29,9 +29,10 @@ grep '<span>c</span>' web/index.html
 stderr 'repeats 200000 times'
 stderr 'build for a language that can run the loop'
 
-# The same program is fine on a target that can run the loop.
+# The same program is fine on a target that can run the loop -- and a count
+# from zero is Go's range over an int.
 sngl generate --lang go --platform bubbletea --out bigtui big.sngl
-grep '__i < __end' bigtui/model.go
+grep 'for range 200000 \{' bigtui/model.go
 
 -- app.sngl --
 import . "sngl:ui"

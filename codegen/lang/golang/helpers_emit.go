@@ -27,6 +27,11 @@ type HelperSet struct {
 	// which is what the interpreter and the JavaScript backend already do.
 	NeedParseInt   bool
 	NeedParseFloat bool
+	// A sngl:seq sequence that is not a loop head's own iterable: the loop
+	// head becomes a counting `for` and needs nothing, and everywhere else
+	// the sequence is the pull func iter<int> is spelled as. One helper says
+	// that in three lines rather than a closure at every call site.
+	NeedSeq bool
 }
 
 // StringToNumberHelper names the helper a conversion needs, or "" when Go's
@@ -95,7 +100,35 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 		}
 		return nil
 	})
+	h.NeedSeq = packageBuildsASequence(pkg)
 	return h
+}
+
+// packageBuildsASequence reports whether any sngl:seq call has to produce a
+// value. A call that is a counted loop's own iterable does not -- ForHead
+// emits the bounds as a counting loop and never renders the call -- so a
+// program that only writes sequences in loop heads needs no helper.
+func packageBuildsASequence(pkg *ir.Package) bool {
+	inLoopHead := map[ir.Expr]bool{}
+	ir.WalkStmts(pkg, func(s ir.Stmt) error {
+		if f, ok := s.(*ir.For); ok && ir.CountedSeq(f) != nil {
+			inLoopHead[f.Iter] = true
+		}
+		return nil
+	})
+	found := false
+	ir.WalkExprs(pkg, func(e ir.Expr) error {
+		call, ok := e.(*ir.Call)
+		if !ok || call.Func == nil || inLoopHead[e] {
+			return nil
+		}
+		switch call.Func.Intrinsic {
+		case "seq.count", "seq.range", "seq.step":
+			found = true
+		}
+		return nil
+	})
+	return found
 }
 
 // Imports returns the stdlib import paths needed by the recorded
@@ -115,6 +148,29 @@ func (h HelperSet) Imports() []string {
 // concatenated in a stable order. Empty string when h is zero-valued.
 func (h HelperSet) Emit() string {
 	var b strings.Builder
+	if h.NeedSeq {
+		// The sign test is on the step: a `by` of 0 yields nothing, which is
+		// what sngl:seq documents, rather than spinning.
+		b.WriteString(`func snglSeq(start, end, step int) func(func(int) bool) {
+	return func(yield func(int) bool) {
+		if step > 0 {
+			for i := start; i < end; i += step {
+				if !yield(i) {
+					return
+				}
+			}
+		} else if step < 0 {
+			for i := start; i > end; i += step {
+				if !yield(i) {
+					return
+				}
+			}
+		}
+	}
+}
+
+`)
+	}
 	if h.NeedParseInt {
 		b.WriteString(`func snglParseInt(s string) int {
 	n, _ := strconv.Atoi(s)
