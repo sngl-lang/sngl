@@ -50,9 +50,10 @@ const maxStaticUnroll = 10000
 
 // expandForStmt tries to expand a for-loop over a const iterable.
 // Returns nil if the iterable can't be evaluated. A successful expansion to
-// zero items returns a non-nil empty slice — distinct from "couldn't
-// evaluate" — so the caller can drop the for-loop instead of leaving it for
-// codegen to choke on.
+// zero items returns the loop's else body — which is what a loop that ran no
+// iterations leaves behind, and is empty for the loops that have no else, so
+// it is still distinct from "couldn't evaluate" and the caller still drops
+// the for-loop rather than leaving it for codegen to choke on.
 func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// A loop that walks nothing has no iterable to evaluate, so there are no
 	// iterations to write out: a condition is tested at run time, and a
@@ -100,6 +101,17 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// Collect window struct values per #id across iterations so hoisted
 	// list<Window> symbols can be bound after expansion.
 	windowsByID := map[string][]any{}
+
+	// Nothing to iterate is the else case, and unrolling is the only thing
+	// that will ever run it here: the loop is about to be replaced by its
+	// expansion, and passForElse -- which is what states the else for a
+	// target that keeps the loop -- runs after the optimizer and would find
+	// nothing left to state it about. Dropping the whole statement lost the
+	// else outright, so a const-empty loop rendered neither its body nor its
+	// empty case.
+	if len(items) == 0 {
+		return foldStmts(cloneStmts(fs.Else), ctx)
+	}
 
 	result := make([]ir.Stmt, 0, len(items))
 	for i, item := range items {
