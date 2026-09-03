@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,11 @@ import (
 )
 
 // exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
+//
+// Neither arm may become a panic. lspcore.Analyze type-checks a document that
+// failed to parse, and a partial parse really does hand the checker an
+// expression with a nil operand -- `[...]`, `[...()]`, `true ? : 2` and
+// `const(())` all reach the nil arm today.
 func exprType(e ir.Expr) *ir.Type {
 	if e == nil {
 		return dynFallback("no expression to take the type of")
@@ -152,7 +158,9 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	case *ast.EventRefExpr:
 		return c.inferEventRef(x)
 	default:
-		return &ir.Ident{Type: dynFallback("no rule for expression %T", x)}
+		// Every ast.Expr the parser builds in a value position has a rule
+		// above; a new node type without one is a compiler bug.
+		panic(fmt.Sprintf("sngl: no type rule for expression %T", x))
 	}
 }
 
@@ -191,7 +199,9 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	case ast.LiteralColor:
 		return c.lowerHexLiteral(x)
 	default:
-		typ = dynFallback("no type for literal kind %v", x.Kind)
+		// LiteralUnit is the ninth kind and never reaches here: the parser
+		// wraps it in an *ast.UnitLiteral, which inferExpr dispatches away.
+		panic(fmt.Sprintf("sngl: no type for literal kind %v", x.Kind))
 	}
 	return &ir.Literal{AST: x, Type: typ, Value: x.Raw}
 }
@@ -370,13 +380,15 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
-			typ = dynFallback("context %q is untyped", ctx.Name)
+			// registerRootContextDecl leaves Typ nil only on its three
+			// bad-default paths, each of which reported first.
+			typ = ir.TypDyn
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = dynFallback("symbol %q (%T) has no type", x.Name, sym)
+		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
 	}
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
@@ -620,7 +632,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	default:
-		typ = dynFallback("no type rule for binary operator %v", x.Op)
+		panic(fmt.Sprintf("sngl: no type rule for binary operator %v", x.Op))
 	}
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
@@ -706,7 +718,7 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			typ = operand.Elems[0]
 		}
 	default:
-		typ = dynFallback("no type rule for unary operator %v", x.Op)
+		panic(fmt.Sprintf("sngl: no type rule for unary operator %v", x.Op))
 	}
 	return &ir.Unary{AST: x, Type: typ, Op: x.Op, Operand: operandExpr}
 }
@@ -770,7 +782,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
 			// diagnostic comes from the regular path.
-			structTyp := dynFallback("cast target %q is not in scope", ident.Name)
+			structTyp := ir.TypDyn
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if t := c.symType(sym); t != nil {
 					structTyp = t
@@ -1454,7 +1466,7 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
-		return dynFallback("call has no signature to take a return type from")
+		return ir.TypDyn
 	}
 	if sig.Return == nil {
 		return TypVoid
@@ -1514,7 +1526,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							if ctx, isCtx := fsym.(*ir.Context); isCtx {
 								typ := ctx.Typ
 								if typ == nil {
-									typ = dynFallback("context %s.%s is untyped", ident.Name, x.Field)
+									typ = ir.TypDyn // already reported, as above
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
 							}
@@ -1702,7 +1714,9 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
-			return &ir.Index{AST: x, Type: dynFallback("map type %s carries %d element types, want 2", operand, len(operand.Elems)), Operand: operandExpr, Idx: indexExpr}
+			// ir.MapOf is the only constructor and substitution preserves the
+			// length, so a map type with any other arity is a compiler bug.
+			panic(fmt.Sprintf("sngl: map type %s carries %d element types, want 2", operand, len(operand.Elems)))
 		}
 		keyT, valT := operand.Elems[0], operand.Elems[1]
 		if !keyT.Equal(exprType(indexExpr)) {
@@ -4578,7 +4592,8 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *i
 		if i < len(decl.Params) {
 			typ = decl.Params[i]
 		} else {
-			typ = dynFallback("argument %d is past the %d declared parameters", i, len(decl.Params))
+			// checkSlotContent reported the arity mismatch before the loop.
+			typ = ir.TypDyn
 		}
 		p := &ir.Param{Name: id.Name, Type: typ}
 		c.declare(id.Pos, p)
