@@ -175,7 +175,7 @@ func componentDeclaresFunc(comp *ir.Component, name string) bool {
 // the same three answers the Model makes for its own state.
 func instanceVarGoType(v *ir.Var) string {
 	switch {
-	case v.Synthesized && strings.HasPrefix(v.Name, slotVarPrefix):
+	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "[]fyne.CanvasObject"
 	case v.Synthesized && v.Name == instanceRootVar:
 		return "*fyne.Container"
@@ -185,7 +185,7 @@ func instanceVarGoType(v *ir.Var) string {
 
 func instanceVarInit(v *ir.Var, igc *golang.GoIRContext) string {
 	switch {
-	case v.Synthesized && strings.HasPrefix(v.Name, slotVarPrefix):
+	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "nil"
 	case v.Synthesized && v.Name == instanceRootVar:
 		igc.RequireImport("fyne.io/fyne/v2/container")
@@ -215,14 +215,9 @@ func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) string {
 	return "container.NewVBox(" + strings.Join(parts, ", ") + ")"
 }
 
-const (
-	// slotVarPrefix names the accumulators passReactivity gives a reactive
-	// slot: what it attached last render, so it can take those back.
-	slotVarPrefix = "__slot"
-	// instanceRootVar is the container a reactive slot in a component body
-	// renders into.
-	instanceRootVar = "__root"
-)
+// instanceRootVar is the container a reactive slot in a component body renders
+// into.
+const instanceRootVar = "__root"
 
 // isInstanceComponent reports whether a component's body belongs to a record
 // rather than to the Model. What survives inlining and was met at a site the
