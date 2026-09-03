@@ -110,7 +110,15 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// else outright, so a const-empty loop rendered neither its body nor its
 	// empty case.
 	if len(items) == 0 {
-		return foldStmts(cloneStmts(fs.Else), ctx)
+		// Non-nil even when there is no else, since nil is how this function
+		// says it could not evaluate the iterable. Returning the folded else
+		// alone left an else-less empty loop looking unevaluable, so it stayed
+		// in the tree and rendered its body once with its variable bound to
+		// nothing -- an empty row per list that happened to be empty.
+		if expanded := foldStmts(cloneStmts(fs.Else), ctx); expanded != nil {
+			return expanded
+		}
+		return []ir.Stmt{}
 	}
 
 	result := make([]ir.Stmt, 0, len(items))

@@ -21,6 +21,14 @@ sngl generate --lang none --platform html -o static app.sngl
 grep '/p/alpha[^>]*>alpha</a>' static/index.html
 grep '/p/gamma[^>]*>gamma</a>' static/index.html
 
+# A constant loop that runs no iterations is dropped, whether or not it has an
+# else to run instead. An expansion of nothing reads as an empty expansion, not
+# as an iterable the optimizer could not evaluate -- which left an else-less
+# loop standing, and one empty row rendered per empty list.
+sngl generate --lang go --platform html -o empty empty.sngl
+grep 'still here' empty/server.go
+! grep 'class=[^>]*row' empty/server.go
+
 -- app.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
@@ -32,6 +40,23 @@ component main {
         html.nav {
             for var p = packages {
                 html.a(href="/p/" + p, innerText=p)
+            }
+        }
+    }
+}
+
+-- empty.sngl --
+import . "sngl:app"
+import "sngl:platform/html"
+
+const packages list<string> = []
+
+component main {
+    window #home(title="Docs", href="/") {
+        html.nav {
+            html.span(innerText="still here")
+            for var p = packages {
+                html.li(class="row", innerText=p)
             }
         }
     }
