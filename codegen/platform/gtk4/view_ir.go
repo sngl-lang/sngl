@@ -30,7 +30,7 @@ type viewContext struct {
 	// tuples for every signal connected during the walk. After emit
 	// we generate one method per tuple: `func (m *Model) <id><Event>()`
 	// that fires the GTK signal — used by the Go test runner to drive
-	// `c.<id>.@<event>()` test syntax through the real bridge.
+	// `c.<id>.<event>()` test syntax through the real bridge.
 	eventInvokers []gtkEventInvoker
 }
 

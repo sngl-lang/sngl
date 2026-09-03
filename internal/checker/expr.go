@@ -1655,7 +1655,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					return &ir.Select{AST: x, Type: funcType, Operand: operandExpr, Field: x.Field}
 				}
 				// Element-ref id declared in the component body (e.g. `c.btn`
-				// for a `c.btn.@click()` event trigger, or `c.m.it` chained):
+				// for a `c.btn.click()` event trigger, or `c.m.it` chained):
 				// its value type is the host element's component type. Resolve
 				// against the operand's already-known component type so inline
 				// chains work, not just bare-ident operands.

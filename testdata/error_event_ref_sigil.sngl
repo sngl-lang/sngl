@@ -1,0 +1,12 @@
+// The `@` sigil is declaration syntax. It marks an event where the event is
+// declared (`@bump` in the parameter list), where a handler is supplied
+// (`@click { }`) and on a `var` handler -- and nowhere else. An event is
+// referred to by its bare name, so `@bump` is not an operand: PrimaryExpr
+// carries no `at ident` alternative and the reference does not parse.
+
+import . "sngl:ui"
+
+component card(@bump) {
+    var f = @bump // ERROR(parse) "unexpected \"@\""
+    button(text="x")
+}

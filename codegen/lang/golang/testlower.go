@@ -89,7 +89,7 @@ func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 // bubbletea, pointer-receiver returns void on fyne/gtk4), so direct field
 // writes are the simplest correct lowering; tests assert on raw field state,
 // not reactively-derived view output. Event-driven reactivity is exercised
-// via the `c.<id>.@event()` form (lowerEventTrigger). Mirrors the legacy
+// via the `c.<id>.<event>()` form (lowerEventTrigger). Mirrors the legacy
 // translateIRMutation Assign special case byte-for-byte.
 func lowerTestRawFieldWrite(s ir.Stmt, gc *GoIRContext) (string, bool) {
 	assign, ok := s.(*ir.Assign)

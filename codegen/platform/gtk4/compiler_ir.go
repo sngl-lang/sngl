@@ -1159,7 +1159,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 }
 
 // emitEventInvokers emits one Model method per (#id, @event) pair. Each fires
-// the real GTK signal, so the test runner drives `c.<id>.@<event>()` through
+// the real GTK signal, so the test runner drives `c.<id>.<event>()` through
 // the trampoline and Go-callback bridge rather than re-running the handler.
 func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped bool) {
 	seen := map[string]bool{}

@@ -577,7 +577,6 @@ PrimaryExpr =
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
-    | at ident
     | ImportExpr StructLitBody
     | ident [ StructLitBody ]
     .
@@ -652,8 +651,10 @@ ArgExprCont =
       [ question Expr colon Expr ]
       .
 
-# All PrimaryExpr alternatives except 'ident' (handled separately above).
-# Includes 'at ident' so event args (@click { }) parse as NonIdentPrimary + PostfixOps.
+# All PrimaryExpr alternatives except 'ident' (handled separately above), plus
+# 'at ident' -- which PrimaryExpr does *not* have, so that a handler arg
+# (@click { }) parses as NonIdentPrimary + PostfixOps while '@name' in an
+# ordinary expression position does not parse at all.
 NonIdentPrimary =
       int_lit
     | float_lit

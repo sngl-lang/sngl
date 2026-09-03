@@ -896,7 +896,6 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | "@" IDENT
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -945,9 +944,11 @@ on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 
 Operands are literals, identifiers, parenthesized expressions, list literals,
 struct and map literals, function literals, interpolated and translatable
-strings, color and unit literals, and event names (`@name`). An element
-reference (`#id`) is not an operand; it appears only as a postfix declaration
-tag (see [Element references](#element-references-1)).
+strings, and color and unit literals. An event name is not an operand: the
+`@` sigil belongs to an event's declaration, its handler and a `var`
+handler, and an event is referred to in an expression by its bare name. An
+element reference (`#id`) is not an operand either; it appears only as a
+postfix declaration tag (see [Element references](#element-references-1)).
 
 <!-- BEGIN GENERATED: grammar-literals -->
 
@@ -1676,7 +1677,6 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | "@" IDENT
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 

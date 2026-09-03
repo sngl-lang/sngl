@@ -1664,7 +1664,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 // runEventHandler invokes an event handler function's body using the current
 // env. Args are evaluated and bound positionally to params; the caller is
 // expected to pass the event payload as a literal struct (e.g.
-// `c.entry.@input(InputEvent{value="hello"})`) so the body's `e.value`
+// `c.entry.input(InputEvent{value="hello"})`) so the body's `e.value`
 // resolves through the regular struct-field path.
 // runEventHandlerValues runs a handler against values rather than expressions,
 // which is the shape an event arrives in from a host: the widget already
@@ -1811,7 +1811,8 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 
 // methodNameFromCall recovers the method name for a Receiver-bearing call from
 // the AST back-reference (set by the checker when Func couldn't be resolved).
-// For @event access ("c.btn.@click"), the name is prefixed with "@".
+// For an element-ref event trigger (`c.btn.click()`) the name is prefixed
+// with "@", which is the interpreter's own key and not source syntax.
 func methodNameFromCall(call *ir.Call) string {
 	// Element-ref event triggers (`c.btn.click()`) are tagged by the
 	// checker; the interpreter keys handlers under "@<event>" internally.
