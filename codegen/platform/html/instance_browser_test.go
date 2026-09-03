@@ -64,12 +64,11 @@ component main { window(title="H", href="/index.html") { App() } }
 // what emitted `__n1.setAttribute("label", ...)` against a node that was not
 // the instance, and changed nothing on the page at all.
 //
-// What it does NOT yet assert is that the instance survives the update. A slot
-// re-fires for every reactive var its body reads, including one that only
-// feeds an instance's prop, so the rebuild reaches the instance before the
-// setter does and the state goes with it. Retaining the instance is keyed
-// reconciliation, which is not built; when it is, this test gains the
-// assertion that `hits` is unchanged.
+// It also asserts the instance survives it. The slot re-fires for every
+// reactive var its body reads, including one that only feeds an instance's
+// prop, so before the reconcile the rebuild reached the instance first and the
+// state went with it. The counter separates the two failures: a rebuilt
+// instance shows the new label with `hits` back at zero.
 func TestInstance_PropUpdateReachesTheLeaf(t *testing.T) {
 	src := `
 import . "sngl:ui"
@@ -98,10 +97,18 @@ component main { window(title="H", href="/index.html") { App() } }
 	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[ax:0]") {
 		t.Fatalf("initial render; got %q", got)
 	}
+	// Click the instance's own button first, so the state the rename must not
+	// disturb is distinguishable from a fresh instance's.
+	page.MustElements("button")[0].MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[ax:1]") {
+		t.Fatalf("after hit; got %q", got)
+	}
+
 	page.MustElements("button")[1].MustClick()
 	page.MustWaitStable()
-	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[ay:") {
-		t.Errorf("the prop should reach the leaf; got %q", got)
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[ay:1]") {
+		t.Errorf("the prop should reach the leaf and leave the state alone; got %q", got)
 	}
 }
 
@@ -134,5 +141,60 @@ component main { window(title="H", href="/index.html") { App() } }
 	}
 	if strings.Contains(got, "<-1") {
 		t.Errorf("recursion should stop at its own condition; got %q", got)
+	}
+}
+
+// Growing the list creates one instance and leaves the others holding what
+// they held.
+//
+// This is what the reconcile is for. The slot rebuilds its nodes wholesale --
+// right for what it draws, wrong for an instance, because a component's own
+// `var`s live there. The counters are the evidence: rebuilt instances would
+// all read zero, and a shared cell would read the same number in both.
+func TestInstance_GrowingTheListKeepsTheOthers(t *testing.T) {
+	src := `
+import . "sngl:ui"
+import . "sngl:app"
+component badge(label string) {
+    var hits = 0
+    text(value="[" + label + ":" + string(hits) + "]")
+    button(text="hit " + label, @click { hits = hits + 1 })
+}
+component App() {
+    var names list<string> = ["a", "b"]
+    for n = names {
+        badge(label=n)
+    }
+    button(text="grow", @click { names = ["a", "b", "c"] })
+}
+component main { window(title="H", href="/index.html") { App() } }
+`
+	b := startComponent(t, src)
+	defer b.Close()
+	page := b.Page()
+
+	// Give the two instances different counts, so a rebuild and a shared cell
+	// are both distinguishable from what should happen.
+	buttons := page.MustElements("button")
+	buttons[0].MustClick()
+	page.MustWaitStable()
+	page.MustElements("button")[1].MustClick()
+	page.MustWaitStable()
+	page.MustElements("button")[1].MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[a:1]") || !strings.Contains(got, "[b:2]") {
+		t.Fatalf("counts before growing; got %q", got)
+	}
+
+	// The "grow" button is last, after one per instance.
+	all := page.MustElements("button")
+	all[len(all)-1].MustClick()
+	page.MustWaitStable()
+
+	got := page.MustElement("body").MustText()
+	for _, want := range []string{"[a:1]", "[b:2]", "[c:0]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s after growing; got %q", want, got)
+		}
 	}
 }

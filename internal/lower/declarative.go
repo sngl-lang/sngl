@@ -422,13 +422,12 @@ func hasRealComponentBody(comp *ir.Component) bool {
 // NodeInst are not lowered here — by design, a component call expresses
 // itself entirely through its prop set; children are encoded as a
 // `children` prop earlier in the pipeline.
-func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+func (st *declarativeState) componentCreateCall(n *ir.NodeInst) *ir.Call {
 	compIdent := &ir.Ident{
 		Name: n.Component.Name,
 		Sym:  n.Component,
 		Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
 	}
-
 	fields := make([]ir.FieldInit, 0, len(n.Props))
 	for _, p := range n.Props {
 		if p.Name == "" {
@@ -440,20 +439,52 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 			Value:   p.Value,
 		})
 	}
-	propsLit := &ir.StructLit{
-		Type:   ir.TypDyn,
-		Fields: fields,
-	}
-
-	createCall := &ir.Call{
+	return &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics["CreateComponent"],
+		Func:     st.intrinsics[ir.NodeOpCreateComponent],
 		Args: []ir.CallArg{
 			{Value: compIdent},
-			{Value: propsLit},
+			{Value: &ir.StructLit{Type: ir.TypDyn, Fields: fields}},
 		},
 	}
+}
+
+// componentRootBinding binds the node an instance renders as, beside the
+// instance itself. Empty on a target where the two are one thing.
+func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
+	if !st.instanceRecords {
+		return nil
+	}
+	return []ir.Stmt{&ir.LocalVar{
+		Name: st.attachName(n),
+		Type: ir.TypDyn,
+		Init: &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpComponentRoot],
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+			},
+		},
+	}}
+}
+
+// appendChildStmt attaches a node, named, to a parent expression.
+func (st *declarativeState) appendChildStmt(parent ir.Expr, child string) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: lowerNSIdent(),
+		Func:     st.intrinsics[ir.NodeOpAppendChild],
+		Args: []ir.CallArg{
+			{Value: parent},
+			{Value: &ir.Ident{Name: child, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+		},
+	}}
+}
+
+func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+	createCall := st.componentCreateCall(n)
 
 	instance := &ir.LocalVar{
 		Name: id,

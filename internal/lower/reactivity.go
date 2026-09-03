@@ -42,6 +42,9 @@ type reactivityState struct {
 	intrinsics  map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
 	idCounter   int
 	slotCounter int
+	// instCounter names the state each component instantiation inside a slot
+	// keeps, so two occurrences in one package never share a list.
+	instCounter int
 	// slotDeclSt is the shared declarative state used to lower every
 	// reactive-slot body. Sharing keeps the __nN counter monotonic
 	// across slots so two slot Funcs in the same package don't
@@ -1338,7 +1341,22 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	// The append target is the slot func's `parent` param; carry its Sym so
 	// codegen resolves it as the local parameter rather than a Model field.
 	parentRef := &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}
+	// The instantiation sites met while emitting this body, in the order they
+	// were reached: each keeps a list of the instances it holds, opened before
+	// the body and closed after it.
+	var instances []*slotInstance
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
+		if declSt.instanceRecords && isInstanceNode(n) {
+			if n.ID == "" {
+				n.ID = declSt.freshID()
+			}
+			si := st.newSlotInstance()
+			instances = append(instances, si)
+			sub := st.reuseOrCreate(si, n, declSt)
+			sub = append(sub, declSt.componentRootBinding(n)...)
+			sub = append(sub, declSt.appendChildStmt(parentRef, declSt.attachName(n)))
+			return append(sub, pushToSlot(declSt.attachName(n)))
+		}
 		_, sub := lowerNodeForSlot(declSt, n, parentRef, ownerFuncs)
 		// What the slot retains is what it later removes from the parent, and
 		// RemoveChild takes a node -- so for an instance that is its root, not
@@ -1403,19 +1421,32 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		}
 		return out
 	}
+	var structure []ir.Stmt
 	if iter != nil {
-		return []ir.Stmt{&ir.For{
+		structure = []ir.Stmt{&ir.For{
 			Key:   key,
 			Value: value,
 			Iter:  iter,
 			Body:  emitStmts(origBody),
 		}}
+	} else {
+		ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
+		if len(origElse) > 0 {
+			ifStmt.Else = emitStmts(origElse)
+		}
+		structure = []ir.Stmt{ifStmt}
 	}
-	ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
-	if len(origElse) > 0 {
-		ifStmt.Else = emitStmts(origElse)
+	// Wrapped after the walk, because which instantiation sites the body holds
+	// is only known once it has been walked.
+	var out []ir.Stmt
+	for _, si := range instances {
+		out = append(out, si.open()...)
 	}
-	return []ir.Stmt{ifStmt}
+	out = append(out, structure...)
+	for _, si := range instances {
+		out = append(out, st.closeSlotInstance(si)...)
+	}
+	return out
 }
 
 // buildRenderSlotFor walks stmts to find the If/For carrying slotID, then
