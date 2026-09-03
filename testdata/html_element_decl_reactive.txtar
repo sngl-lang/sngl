@@ -1,13 +1,14 @@
 The lowered node ops carry no declaration, so html reads each element's off
 the node the op targets. Miss that and a boolean attribute regresses to
 setAttribute, which cannot express absence: setAttribute("hidden", false)
-renders hidden="false" and the element stays hidden.
+renders hidden="false" and the element stays hidden. `hidden` is bound to
+state here, so the property assignment has to appear in the handler and in
+__sngl_init both.
 
-A program naming no platform package reaches raw elements only by inlining
-the stdlib wrappers it did use, which happens after the check. The elements
-still have to render.
+The elements are named through `sngl:platform/html` directly. Reaching them by
+inlining the stdlib wrappers instead is html_element_decl_stdlib.txtar.
 
-deny out/none/html/index.html `setAttribute\("hidden"` -- TODO state the claim
+deny out/none/html/index.html `setAttribute\("hidden"` -- the boolean is written as a property, since the attribute form has no spelling for false
 
 -- reactive.sngl --
 import . "sngl:ui"

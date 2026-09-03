@@ -1,3 +1,4 @@
+
 A window's state is a top-level `var` in its body, which is where the checker
 leaves it: a component's `var` is collected into comp.Vars, a window's is
 not, and every platform reads it from the body.
@@ -8,8 +9,9 @@ program -- not touching the window, not touching the var -- was enough to
 make the window's state vanish from bubbletea, fyne and gtk4. No error, no
 diagnostic: the element bound to it simply rendered empty.
 
-Each assertion is the initializer reaching the generated model. Both files
-declare the same window; only one of them declares a context.
+This is that program: the same window as window_var_with_context_plain.txtar
+plus a context declaration and a read of it. The "alpha" initializer has to
+reach the generated model here exactly as it does there.
 -- ctx.sngl --
 import . "sngl:ui"
 import . "sngl:app"

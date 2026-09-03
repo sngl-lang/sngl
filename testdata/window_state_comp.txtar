@@ -1,21 +1,13 @@
-A `var` declared in a window body is that window's state, the way a
-component's `var` is the component's. The checker leaves it as a top-level
-LocalVar in the body and passHoistState is what makes the two the same shape;
-before that, no target implemented the shape at all.
 
-It only looked implemented on the four non-html targets, because the
-initializer still appeared in the output -- as a local of the render function,
-reset every frame, assigned from a model field nothing declared. bubbletea
-emitted Go that does not compile, android Kotlin naming an undeclared `n`,
-and html emitted no state and no binding whatsoever.
+A `var` declared in a component body is the component's state, and a `var`
+declared in a window body has to compile to the same shape -- which is what
+window_state_win.txtar asserts. This archive is the reference it is held
+against: the same program written as a component, where the shape was never
+in doubt.
 
-So every assertion below names the *qualified* read, not the initializer: a
-bare `n` is exactly what each of these looked like when it was broken. The
-same program is written twice, once as a window and once as a component, and
-each target has to produce the same shape for both.
-
-The component form is the reference: html emits the same script for both,
-differing only in the generated-from header and the title the window declares.
+html emits the same script for both, differing only in the generated-from
+header and the title the window declares. That is the whole claim, so this
+archive builds html alone.
 -- comp.sngl --
 import . "sngl:ui"
 

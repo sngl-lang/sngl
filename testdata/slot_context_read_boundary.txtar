@@ -1,23 +1,17 @@
+
 A context read written inside a slot population belongs to the caller, so the
-context lowering has to see it there. It did not: the reachability scan, the
-call-edge scan and the provider threading each walked a NodeInst's children
-and skipped its Slots, so the enclosing component was never marked as reading
-the context, no hidden parameter was threaded to it, and the *ir.ContextRead
-survived lowering to reach codegen -- where irwalk.EvalExpr has no case for
-one and every platform panicked.
+context lowering has to see it there -- the reachability scan, the call-edge
+scan and the provider threading each walked a NodeInst's children and skipped
+its Slots. The plain slot case is slot_context_read_read.txtar.
 
-Each assertion below is the context's value arriving at the slot body on one
-target. A panic is the regression this catches on all three.
+An errorBoundary's @error handler is the other body those walks stopped short
+of: ir.Rewrite skipped ErrorBoundary.Handler entirely, and
+Call.ResolvedHandler only aliases it, so nothing reached a read written there
+and the *ir.ContextRead survived lowering to reach codegen, where
+irwalk.EvalExpr has no case for one and every platform panicked.
 
-A provider wrapping the call site. The read is lexically the caller's, so it
-resolves against the provider the caller sits under and not the context's
-default -- threading that walked Children alone would put "light" here, which
-is a wrong answer rather than a crash.
-
-An errorBoundary's @error handler is the other body the walks stopped short
-of: ir.Rewrite skipped ErrorBoundary.Handler entirely, and Call.ResolvedHandler
-only aliases it, so nothing reached a read written there. fyne and gtk4 are
-absent here because they panic on an errorBoundary for an unrelated reason
+Each target below is the context's value arriving in the handler. fyne and
+gtk4 are absent because they panic on an errorBoundary for an unrelated reason
 (issue #112).
 -- boundary.sngl --
 import . "sngl:ui"

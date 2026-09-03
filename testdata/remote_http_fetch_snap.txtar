@@ -3,17 +3,17 @@ with, and `remote.query` is an ordinary intrinsic an adapter calls — there is
 no query construct and no mark. So what reaches the output is whatever the
 inliner carried to the call site, which is where the box has to be keyed.
 
-`&` is the caller's whole say in it. The url as a value keys one question
-forever, so the box is bound once and stays where it was put; the url as a
-cell is a question that follows its source, so the lookup moves to the read
-and the ordinary dependency walk re-evaluates it.
+`&` is the caller's whole say in it. Here the url is passed as a value, which
+keys one question forever: the box is bound once, in the constructor, and
+stays where it was put. Changing the url after that is not a new question,
+because the caller did not ask for one -- every later read is `m.res`, the
+same box. The cell form, `http.fetch(&url)`, is in
+remote_http_fetch_live.txtar.
 
-Both are the same lookup, keyed by the same url, under the id the adapter
-spelled — and inside the thunk, the transport the language implements, down
-to the Go package that performs the request.
+Either way it is the same lookup under the id the adapter spelled, keyed by
+the url, and inside the thunk the transport the language implements, down to
+the Go package that performs the request.
 
-The value: bound once, in the constructor. Changing the url after that is not
-a new question, because the caller did not ask for one.
 -- snap.sngl --
 import . "sngl:ui"
 import . "sngl:app"

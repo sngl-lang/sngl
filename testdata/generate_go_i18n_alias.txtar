@@ -1,19 +1,12 @@
-Go codegen for $"..." translatable strings: per-locale i18n.Translate wiring.
+The alias a program imports sngl:i18n under is not part of the entry point's
+identity: the mark on the declaration is. This one imports it as `t` and calls
+t.numberInt, and still gets the runtime import and an i18n.NumberInt call.
+Detection keyed on a receiver named "i18n" would leave this build with
+neither.
 
-i18n runtime package is imported (no alias needed; last path segment is "i18n").
+The unaliased form, and what `$"..."` itself lowers to, is in
+generate_go_i18n.txtar.
 
-Static string $"Login" compiles to i18n.Translate(locale, key, inlined, args)
-with key == inlinedTemplate and locale read from the component's hidden
-__ctx_locale Model field (NoContext lowers context reads to a Var on the
-component, initialized to i18n.DefaultLocale() in New()).
-
-Empty args map is emitted for static strings with no placeholders.
-
-Translatable string with placeholder: args map contains the placeholder binding.
-
-The alias a program imports i18n under is not part of the entry point's
-identity: the mark on the declaration is. Detection keyed on a receiver
-named "i18n" would leave this build with no runtime import and no manifest.
 -- alias.sngl --
 import . "sngl:ui"
 import t "sngl:i18n"

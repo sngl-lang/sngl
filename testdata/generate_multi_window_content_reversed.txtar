@@ -4,28 +4,22 @@ the esbuild bundle) across the whole compilation, so a page taking another
 page's cached work is exactly the failure this guards against: each page must
 carry its own text and its own updater, and none of the others'.
 
-The first window generated fills the caches the rest read.
-
-delta declares no state and no handler, so its page is the one that shows
-what a window inherited that is not its own: the analysis a window mutates
-during codegen (which helper functions its script needs, which CSS its
-components registered) is per-window, and only the package-derived half is
-shared. A leak here would give delta another window's runtime.
-
 Which window is generated first decides which one fills the caches, and must
-decide nothing else. Declaring the same three in the opposite order puts
-gamma first; every page must still carry its own content and none other's.
-(The pages are not byte-identical across the two orders: the __nN ids lower
-assigns follow source order. What must not change is whose text lands where.)
+decide nothing else. These are the same four windows as
+generate_multi_window_content_site.txtar, declared in the opposite order, so
+gamma is generated first and alpha third; every page must still carry its own
+content and none other's. (The two archives are not byte-identical: the __nN
+ids lower assigns follow source order. What must not change is whose text
+lands where.)
 
-deny out/none/html/index.html `beta body` -- TODO state the claim
-deny out/none/html/index.html `gamma body` -- TODO state the claim
-deny out/none/html/beta.html `alpha body` -- TODO state the claim
-deny out/none/html/beta.html `gamma body` -- TODO state the claim
-deny out/none/html/gamma.html `alpha body` -- TODO state the claim
-deny out/none/html/gamma.html `beta body` -- TODO state the claim
-deny out/none/html/delta.html `function String` -- TODO state the claim
-deny out/none/html/delta.html `addEventListener` -- TODO state the claim
+deny out/none/html/index.html `beta body` -- alpha's page is generated third, with beta's and gamma's work already in the caches, and still renders alpha's tree alone
+deny out/none/html/index.html `gamma body` -- gamma filled the caches this page reads, which is the leak that would show here
+deny out/none/html/beta.html `alpha body` -- alpha is generated after beta; its text cannot reach this page by any route
+deny out/none/html/beta.html `gamma body` -- gamma is generated first here, so its static text is what beta's page could wrongly inherit
+deny out/none/html/gamma.html `alpha body` -- gamma is generated first, before any other window's text exists
+deny out/none/html/gamma.html `beta body` -- likewise beta's
+deny out/none/html/delta.html `function String` -- delta interpolates nothing, so it gets none of the script helpers the other three registered
+deny out/none/html/delta.html `addEventListener` -- delta declares no handler, so any listener on this page would be another window's
 
 -- reversed.sngl --
 import . "sngl:ui"

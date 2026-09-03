@@ -4,37 +4,35 @@ the esbuild bundle) across the whole compilation, so a page taking another
 page's cached work is exactly the failure this guards against: each page must
 carry its own text and its own updater, and none of the others'.
 
-The first window generated fills the caches the rest read.
+alpha is declared first, so it is generated first and fills the caches the
+other three read.
 
-delta declares no state and no handler, so its page is the one that shows
-what a window inherited that is not its own: the analysis a window mutates
-during codegen (which helper functions its script needs, which CSS its
-components registered) is per-window, and only the package-derived half is
-shared. A leak here would give delta another window's runtime.
+delta declares no state and no handler, so its page is the one that shows what
+a window inherited that is not its own: the analysis a window mutates during
+codegen (which helper functions its script needs, which CSS its components
+registered) is per-window, and only the package-derived half is shared. A leak
+here would give delta another window's runtime.
 
-Which window is generated first decides which one fills the caches, and must
-decide nothing else. Declaring the same three in the opposite order puts
-gamma first; every page must still carry its own content and none other's.
-(The pages are not byte-identical across the two orders: the __nN ids lower
-assigns follow source order. What must not change is whose text lands where.)
+Which window is generated first must decide nothing but that. The same four
+declared in the opposite order are generate_multi_window_content_reversed.txtar.
 
-deny out/none/html/index.html `beta body` -- TODO state the claim
-deny out/none/html/index.html `beta shows` -- TODO state the claim
-deny out/none/html/index.html `gamma body` -- TODO state the claim
-deny out/none/html/index.html `gamma shows` -- TODO state the claim
-deny out/none/html/beta.html `alpha body` -- TODO state the claim
-deny out/none/html/beta.html `alpha shows` -- TODO state the claim
-deny out/none/html/beta.html `gamma body` -- TODO state the claim
-deny out/none/html/beta.html `gamma shows` -- TODO state the claim
-deny out/none/html/gamma.html `alpha body` -- TODO state the claim
-deny out/none/html/gamma.html `alpha shows` -- TODO state the claim
-deny out/none/html/gamma.html `beta body` -- TODO state the claim
-deny out/none/html/gamma.html `beta shows` -- TODO state the claim
-deny out/none/html/delta.html `alpha body` -- TODO state the claim
-deny out/none/html/delta.html `beta body` -- TODO state the claim
-deny out/none/html/delta.html `gamma body` -- TODO state the claim
-deny out/none/html/delta.html `function String` -- TODO state the claim
-deny out/none/html/delta.html `addEventListener` -- TODO state the claim
+deny out/none/html/index.html `beta body` -- alpha is generated first and fills the caches; there is nothing yet for it to take another window's static text from
+deny out/none/html/index.html `beta shows` -- nor another window's reactive text, which is the per-window half of the analysis
+deny out/none/html/index.html `gamma body` -- same for gamma's static text
+deny out/none/html/index.html `gamma shows` -- same for gamma's reactive text
+deny out/none/html/beta.html `alpha body` -- beta reads the caches alpha filled and must take none of alpha's static text out of them
+deny out/none/html/beta.html `alpha shows` -- nor alpha's updater, which is the leak a shared per-window analysis would cause
+deny out/none/html/beta.html `gamma body` -- gamma's text belongs to gamma's page
+deny out/none/html/beta.html `gamma shows` -- and gamma's updater with it
+deny out/none/html/gamma.html `alpha body` -- gamma reads caches alpha filled and takes none of alpha's static text
+deny out/none/html/gamma.html `alpha shows` -- nor alpha's updater
+deny out/none/html/gamma.html `beta body` -- beta's text belongs to beta's page
+deny out/none/html/gamma.html `beta shows` -- and beta's updater with it
+deny out/none/html/delta.html `alpha body` -- delta is generated last, after every cache is full, and still renders only its own tree
+deny out/none/html/delta.html `beta body` -- same for beta's text
+deny out/none/html/delta.html `gamma body` -- same for gamma's text
+deny out/none/html/delta.html `function String` -- delta interpolates nothing, so it gets none of the script helpers the other three registered
+deny out/none/html/delta.html `addEventListener` -- delta declares no handler, so any listener on this page would be another window's
 
 -- site.sngl --
 import . "sngl:ui"

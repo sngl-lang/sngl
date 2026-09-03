@@ -1,3 +1,4 @@
+
 A `var` declared in a window body is that window's state, the way a
 component's `var` is the component's. The checker leaves it as a top-level
 LocalVar in the body and passHoistState is what makes the two the same shape;
@@ -9,17 +10,15 @@ reset every frame, assigned from a model field nothing declared. bubbletea
 emitted Go that does not compile, android Kotlin naming an undeclared `n`,
 and html emitted no state and no binding whatsoever.
 
-So every assertion below names the *qualified* read, not the initializer: a
-bare `n` is exactly what each of these looked like when it was broken. The
-same program is written twice, once as a window and once as a component, and
-each target has to produce the same shape for both.
+So what to read in the golden is the *qualified* access -- `state.n`, `m.n`,
+the remembered `n` -- and not the initializer: an unqualified `n` is exactly
+what each of these looked like when it was broken, which is what the two
+denies say. The same program written as a component is in
+window_state_comp.txtar, and every target here has to produce the same shape
+for both.
 
-The component form is the reference: html emits the same script for both,
-differing only in the generated-from header and the title the window declares.
-
-deny out/none/html/index.html `= n \+ 1` -- TODO state the claim
-deny out/go/bubbletea/model.go `(?m)^\tn = ` -- n =
-
+deny out/none/html/index.html `= n \+ 1` -- the click handler assigns through state.n; a bare `n` is the unbound local the broken output wrote
+deny out/go/bubbletea/model.go `(?m)^\tn = ` -- the counter is a model field assigned as m.n, not a render-function local reset every frame
 -- win.sngl --
 import . "sngl:ui"
 import . "sngl:app"

@@ -1,22 +1,16 @@
+
 Who unrolls a constant loop, part two: the platform has a say as well as the
-language.
+language. html can only iterate over an expression that varies with the
+request, so a `for` over a compile-time constant is unrolled into markup
+instead -- three links in unroll_static_view.txtar.
 
-html writes its view as markup -- a file in static mode, a string in a
-handler in route mode -- and the only iteration it can emit is over an
-expression that varies with the request. A `for` over a compile-time constant
-is not one, so nothing iterates it and the loop renders its body once with
-its variable bound to nothing. `sngl doc --http` lost its whole package list
-that way under --lang go: seven links became a single empty <a>.
+Here the constant list is empty, and an expansion of nothing has to read as an
+empty expansion rather than as an iterable the optimizer could not evaluate.
+That distinction is the bug: it left an else-less loop standing, which
+rendered one empty row per empty list. The span beside it stays, so the golden
+shows the loop was dropped and not the whole nav.
 
-Static mode is the same platform answering the same way.
-
-A constant loop that runs no iterations is dropped, whether or not it has an
-else to run instead. An expansion of nothing reads as an empty expansion, not
-as an iterable the optimizer could not evaluate -- which left an else-less
-loop standing, and one empty row rendered per empty list.
-
-deny out/go/html/server.go `class=[^>]*row` -- TODO state the claim
-
+deny out/go/html/server.go `class=[^>]*row` -- the loop runs no iterations, so its body is emitted zero times, not once with an unbound variable
 -- empty.sngl --
 import . "sngl:app"
 import "sngl:platform/html"

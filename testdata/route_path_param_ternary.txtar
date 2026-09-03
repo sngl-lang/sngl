@@ -1,20 +1,17 @@
 A route's markup is built at compile time, so anything it renders has to be a
 literal or an expression over something known per request.
 
-A window's URL template declares vars -- `/p/{pkg}` puts `pkg` in scope for
-the body. Those are known per request exactly as state is, so markup over one
-renders into a hole rather than being refused.
+A ternary in markup is html's to render, not the language's. Go has no ternary
+and asks for it to be lowered into a temporary; that rewrote the expression
+into a name the render model could not resolve, and the route was refused for
+markup the JS filling the hole writes verbatim. So the route mode withholds the
+NoTernary lowering and the ternary survives to codegen.
 
-A ternary in markup is html's to render, not the language's. Go has no
-ternary and asks for it to be lowered into a temporary; that rewrote the
-expression into a name the render model could not resolve, and the route was
-refused for markup the JS filling the hole writes verbatim.
+The same source is generated twice here: under `go`, where the restriction was,
+and under `none`, the static backend that never had it. The path var this all
+sits on is in route_path_param_param.txtar, and html's other withdrawal from
+the Go lowering, list lambdas, in route_path_param_lambda.txtar.
 
-The same source under the static backend, which never had the restriction.
-
-ListLambdas is the language's other withdrawal, and html takes it back for
-the same reason: `.filter`/`.map` in markup are rendered by html, and the Go
-emitter writes an inline lambda directly where it does emit one.
 -- ternary.sngl --
 import . "sngl:app"
 import "sngl:platform/html"

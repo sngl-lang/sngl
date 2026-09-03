@@ -1,15 +1,17 @@
 A loop over a const iterable is unrolled for a target with no host language,
-and unrolling an empty one is the else case: no iteration ran.
+and unrolling an empty one is the else case: no iteration ran. This package
+loops over an empty const list, so the else body is the whole view.
 
 The expansion used to be the iterations alone, so a loop that produced none
 was replaced by nothing and the else went with it -- the one case the else
 exists for. passForElse cannot cover this: the optimizer runs first, and by
 the time the pass looks there is no loop left to state an else about.
 
-A loop that does produce iterations is unchanged, and its else does not leak
-into the output beside them.
+The other half of the pair, a loop that does produce iterations and whose else
+must not leak into the output beside them, is in
+unroll_empty_for_else_two.txtar.
 
-deny out/none/html/index.html `<span>item` -- TODO state the claim
+deny out/none/html/index.html `<span>item` -- an empty list unrolls to no iterations, so no loop body survives to be emitted
 
 -- app.sngl --
 import . "sngl:ui"

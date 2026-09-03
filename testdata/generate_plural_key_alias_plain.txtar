@@ -1,10 +1,11 @@
 A predeclared PluralKey constant is recognized by the select's type, not by
-the operand's spelling. Keying off the name "i18n" read the constant only
-when the import was unaliased; under `import t "sngl:i18n"` the JS backend
-emitted the alias as a bare identifier, `{ [t.one]: ... }`, which is a
-ReferenceError at runtime.
+the operand's spelling. This is the unaliased spelling, `i18n.one`, which
+worked even while the backend was keying off the name "i18n" -- so it is here
+to pin what the aliased form must match: the key comes out as its string
+value, `{ ["one"]: ... }`.
 
-The unaliased spelling emits the same thing.
+The aliased spelling, and the ReferenceError it used to emit, is
+generate_plural_key_alias_alias.txtar.
 -- plain.sngl --
 import . "sngl:ui"
 import "sngl:i18n"

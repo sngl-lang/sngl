@@ -1,22 +1,20 @@
-Android codegen for $"..." translatable strings: i18n Kotlin runtime wiring.
-Verifies that the android platform injects I18n.kt and I18n.init(this) when
-the source package uses i18n intrinsics.
+Android codegen for `$"..."` translatable strings. A package that uses i18n
+gets the Kotlin runtime injected: I18n.kt under the module's kotlin/ tree,
+`import us.duckfam.git.jonathan.sngl.i18n.I18n` in MainScreen.kt, and
+`I18n.init(this)` in MainActivity.onCreate.
 
-Generated module contains I18n.kt at the expected path.
+Nobody writes the locale. After NoContext, a locale read is lowered to a
+hidden state var on the component -- `var __ctx_locale by remember {
+mutableStateOf(I18n.defaultLocale()) }` -- and threaded into every per-locale
+call as its first argument.
 
-Generated module contains the main Kotlin source.
+The string here takes an argument and is recomputed in the click handler, so
+the plural template and its `mapOf("count" to count)` come out twice, once in
+the initializer and once in the assignment. The minimal case -- one
+argument-free string, no handler -- is generate_android_i18n_app_with_manifest.txtar.
 
-MainScreen.kt imports the I18n runtime.
-
-MainScreen.kt calls a per-locale I18n entry point for the translatable
-string. After NoContext, locale reads are lowered to a hidden state var
-(__ctx_locale) on the component, initialized to I18n.defaultLocale(),
-and threaded into the per-locale APIs.
-
-MainActivity.kt imports I18n and calls I18n.init(this) in onCreate.
-
-Manifest fixture: when i18n.manifest.json is present in the project root,
-it is copied to app/src/main/assets/i18n.manifest.json.
+i18n.manifest.json in the package root is copied verbatim to
+app/src/main/assets/, where the runtime loads it.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"

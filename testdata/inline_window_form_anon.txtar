@@ -4,13 +4,14 @@ declares its windows at top level has no main, so every component stayed
 un-inlined for that whole form. Platforms that rely on the pass then met IR
 they do not handle: fyne panicked in irwalk on the ir.SlotInst that survived.
 
-The root is main *or* the windows, so both forms inline. A package with
-neither is left alone: every component there is its own entry point, so
-nothing is unreachable and dropping them would empty the program.
+This is that shape: a top-level window holding a component with a slot, and no
+main anywhere. The window is the root, so `table` inlines and its slot content
+lands in the output rather than surviving as an ir.SlotInst.
 
-A slot under a top-level window — the shape that panicked.
+A package with neither a main nor a window is left alone instead, since every
+component there is its own entry point -- that form is in
+inline_window_form_lone.txtar.
 
-No main and no windows: the component is the entry point and must survive.
 -- anon.sngl --
 import . "sngl:ui"
 import . "sngl:app"

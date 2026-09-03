@@ -4,18 +4,19 @@ the binding pass has to take the value from that emit.
 
 It invented a parameter on the callback instead. Compose's onClick is
 `() -> Unit`, so the emitted Kotlin did not compile, and `opt` -- the whole
-point of the loop -- never reached the write-back. Both directions are
-checked: the injection used to stop at the first match it walked into, which
-for this override's if/else is the branch that is not taken.
+point of the loop -- never reached the write-back.
 
 The write-back is `pick = opt`: the loop variable, in the loop. It used to
 read `pick = "a"` and `pick = "b"` because a literal `options` was unrolled
-here; Kotlin emits the loop now, so `opt` is what the assignment names --
-which is the thing this test is about.
+here; Kotlin emits the loop now, so `opt` is what the assignment names.
 
-deny out/kotlin/android/MainScreen.kt `newValue ->` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `onClick = \{\}` -- TODO state the claim
+With no `direction`, the override takes its else-branch and lays the options
+out in a Column. Both branches are fixtures because the injection used to stop
+at the first match it walked into, which is the branch that is not taken; the
+horizontal one is generate_android_radio_bind_horizontal.txtar.
 
+deny out/kotlin/android/MainScreen.kt `newValue ->` -- the injected callback takes no parameter; the clicked value comes from the loop variable, and a parameter here would not compile against Compose's `() -> Unit`
+deny out/kotlin/android/MainScreen.kt `onClick = \{\}` -- no RadioButton is left with an empty callback, which is what the write-back landing in the other branch looks like
 -- vertical.sngl --
 import . "sngl:ui"
 

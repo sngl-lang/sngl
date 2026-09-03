@@ -2,44 +2,36 @@
 placed in, not the size it is shown at. `scalingMode` is what happens to the
 picture when the room it is given is not that size.
 
-Each target already had a name for all four, so none of them needed a new
-mechanism -- only a value to read. fyne has the four fill modes one for one;
-html and Compose scale the geometry, which is the whole point of scaling a
-drawing rather than a picture of one.
+This is `fit`, on the four targets that draw a canvas. Each already had a name
+for all four modes, so none of them needed a new mechanism -- only a value to
+read. `stretch` is in canvas_scaling_mode_stretch.txtar; the default, which
+scales nothing, is in canvas_scaling_mode_center.txtar, and the contrast with
+it is what shows the scaled forms are not what a canvas emitted before there
+was a choice.
 
 html scales the geometry rather than the picture: the backing store is sized
 to the box the canvas was laid out in, at device resolution, and the shapes
 are scaled on the way in. Resampling a small drawing up to a big one is what
-made a display of hard edges come out soft.
-
-The box is what the backing store follows, so a resize redraws.
-
-center is the default, and adds nothing: the canvas stays the size of its
-own drawing, redrawn at that size, which is what every canvas did before
-there was a choice.
+made a display of hard edges come out soft. The box is what the backing store
+follows, so a resize redraws.
 
 Fyne asks a Raster's generator for a picture at the pixel size it is about to
-upload, which is the one thing an Image cannot know -- so a scaled canvas is
-a Raster and the shapes are rasterised at the size they are shown.
-
-The surface outlives the drawing: Fyne calls back on every redraw, and a
-buffer allocated per call is the whole image thrown away per keypress.
-
-A minimum is a floor rather than a size: without one the box gives a canvas
-nothing to scale into, which is a readout one pixel tall.
-
-A canvas shown at its own size has nothing to scale, so it stays the cheaper
-Image it always was.
+upload, which is the one thing an Image cannot know -- so a scaled canvas is a
+Raster and the shapes are rasterised at the size they are shown. The surface
+outlives the drawing: Fyne calls back on every redraw, and a buffer allocated
+per call is the whole image thrown away per keypress. The minimum size is a
+floor rather than a size: without one the box gives a canvas nothing to scale
+into, which is a readout one pixel tall.
 
 Compose draws into the room it is laid out in, so the shapes are scaled.
 
-gtk4 is a vector context already, so it scales with a transform. The
-allocated size travels with the cairo_t: GTK hands it to the draw callback,
-and it used to be discarded.
+gtk4 is a vector context already, so it scales with a transform. The allocated
+size travels with the cairo_t: GTK hands it to the draw callback, and it used
+to be discarded.
 
-deny out/none/html/index.html `object-fit` -- Nothing left for the browser to resample.
-deny out/none/html/index.html `scalingMode=` -- And the prop is read here rather than passed through as an attribute no element has.
-deny out/go/fyne/model.go `FillMode` -- TODO state the claim
+deny out/none/html/index.html `object-fit` -- the shapes are drawn at the display size, so nothing is left for the browser to resample
+deny out/none/html/index.html `scalingMode=` -- the mode is read as a prop and handed to the draw helper, not written out as an attribute no element has
+deny out/go/fyne/model.go `FillMode` -- a Raster regenerates at the pixel size it is asked for, so the scaling is the generator's and there is no fill mode to set
 
 -- fit.sngl --
 import . "sngl:app"

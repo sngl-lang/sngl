@@ -1,11 +1,11 @@
-The lowered node ops carry no declaration, so html reads each element's off
-the node the op targets. Miss that and a boolean attribute regresses to
-setAttribute, which cannot express absence: setAttribute("hidden", false)
-renders hidden="false" and the element stays hidden.
+A program naming no platform package reaches raw elements only by inlining the
+stdlib wrappers it did use, which happens after the check. The elements still
+have to render: vbox comes out as a styled div and text as a span, with no
+element declaration named anywhere in the source.
 
-A program naming no platform package reaches raw elements only by inlining
-the stdlib wrappers it did use, which happens after the check. The elements
-still have to render.
+The other direction -- `sngl:platform/html` imported and its elements written
+by hand, with a boolean attribute bound to state -- is
+html_element_decl_reactive.txtar.
 -- stdlib.sngl --
 import . "sngl:ui"
 import . "sngl:app"

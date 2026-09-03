@@ -1,3 +1,4 @@
+
 Who unrolls a constant loop, part two: the platform has a say as well as the
 language.
 
@@ -8,15 +9,12 @@ is not one, so nothing iterates it and the loop renders its body once with
 its variable bound to nothing. `sngl doc --http` lost its whole package list
 that way under --lang go: seven links became a single empty <a>.
 
-Static mode is the same platform answering the same way.
+Both modes are built from the one source, because static mode is the same
+platform answering the same way: three links, spelled out, in the file and in
+the handler alike. A constant loop over an *empty* list is
+unroll_static_view_empty.txtar.
 
-A constant loop that runs no iterations is dropped, whether or not it has an
-else to run instead. An expansion of nothing reads as an empty expansion, not
-as an iterable the optimizer could not evaluate -- which left an else-less
-loop standing, and one empty row rendered per empty list.
-
-deny out/go/html/server.go `range` -- The iterations are the markup, so no loop is left for Go to run.
-
+deny out/go/html/server.go `range` -- the three iterations are markup in the handler's string; no loop survives for Go to run
 -- app.sngl --
 import . "sngl:app"
 import "sngl:platform/html"

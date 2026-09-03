@@ -2,45 +2,23 @@
 placed in, not the size it is shown at. `scalingMode` is what happens to the
 picture when the room it is given is not that size.
 
-Each target already had a name for all four, so none of them needed a new
-mechanism -- only a value to read. fyne has the four fill modes one for one;
-html and Compose scale the geometry, which is the whole point of scaling a
-drawing rather than a picture of one.
+This is the source that names no mode. `center` is the default and adds
+nothing: the canvas stays the size of its own drawing, redrawn at that size,
+which is what every canvas did before there was a choice. That is the point of
+the archive -- it is the baseline the scaled forms in
+canvas_scaling_mode_fit.txtar and canvas_scaling_mode_stretch.txtar are read
+against, and the denies below are the machinery those two add and this one must
+not.
 
-html scales the geometry rather than the picture: the backing store is sized
-to the box the canvas was laid out in, at device resolution, and the shapes
-are scaled on the way in. Resampling a small drawing up to a big one is what
-made a display of hard edges come out soft.
+html and gtk4 still pass the mode, as the empty string, so the choice reaches
+the same argument either way rather than through a second code path. fyne and
+Compose pick a different construct instead -- an Image and a fixed `size`
+modifier -- because for them the unscaled case is the cheaper one.
 
-The box is what the backing store follows, so a resize redraws.
-
-center is the default, and adds nothing: the canvas stays the size of its
-own drawing, redrawn at that size, which is what every canvas did before
-there was a choice.
-
-Fyne asks a Raster's generator for a picture at the pixel size it is about to
-upload, which is the one thing an Image cannot know -- so a scaled canvas is
-a Raster and the shapes are rasterised at the size they are shown.
-
-The surface outlives the drawing: Fyne calls back on every redraw, and a
-buffer allocated per call is the whole image thrown away per keypress.
-
-A minimum is a floor rather than a size: without one the box gives a canvas
-nothing to scale into, which is a readout one pixel tall.
-
-A canvas shown at its own size has nothing to scale, so it stays the cheaper
-Image it always was.
-
-Compose draws into the room it is laid out in, so the shapes are scaled.
-
-gtk4 is a vector context already, so it scales with a transform. The
-allocated size travels with the cairo_t: GTK hands it to the draw callback,
-and it used to be discarded.
-
-deny out/none/html/index.html `aspect-ratio` -- TODO state the claim
-deny out/none/html/index.html `_snglCanvasWatch\(\$0,` -- TODO state the claim
-deny out/go/fyne/model.go `canvas.NewRaster` -- TODO state the claim
-deny out/go/gtk4/model.go `gtk_widget_set_hexpand` -- TODO state the claim
+deny out/none/html/index.html `aspect-ratio` -- the element keeps the drawing's own size, so no box shape is reserved for it to scale into
+deny out/none/html/index.html `_snglCanvasWatch\(\$0,` -- an unscaled canvas is drawn once; nothing follows the layout box, so a resize has nothing to redraw
+deny out/go/fyne/model.go `canvas.NewRaster` -- with nothing to scale the canvas stays the cheaper Image, rasterised once rather than regenerated per redraw
+deny out/go/gtk4/model.go `gtk_widget_set_hexpand` -- the drawing area takes its natural size, so it does not claim the extra room a scaled canvas needs
 
 -- center.sngl --
 import . "sngl:app"
