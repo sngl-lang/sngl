@@ -64,8 +64,10 @@ stderr 'lifts "LIMIT", already lifted by dot import of'
 ! sngl check dup_const.sngl
 stderr '"K" redeclared in this file'
 
+# A component's members are one namespace, so the second var is reported where
+# the names are claimed rather than where the body's scope is built.
 ! sngl check dup_component_var.sngl
-stderr 'y is already declared in this scope'
+stderr 'var "y" on component main: name is already declared as a var'
 
 ! sngl check dup_loop_var.sngl
 stderr 'k is already declared in this scope'

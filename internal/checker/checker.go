@@ -2217,43 +2217,115 @@ func (c *checker) isLibraryNamespace(name string) bool {
 	return false
 }
 
-// claimComponentAPI holds a component's parameter list to one name per entry:
-// props, events and slots share the one list a reader has to go on.
+// claimComponentAPI holds a component's members to one name each: props,
+// events, slots, vars, methods and the element ids its body declares are one
+// namespace, because `c.<name>` and the body's own scope read from it together.
+//
+// A slot is in the namespace but is not a member: it is placed in the body
+// rather than read off the component, so nothing resolves `c.<slot>`. It still
+// claims its name, since a slot is resolved as a tag from anywhere in the body.
+//
+// An id declared inside a *descendant* component is deliberately absent. It is
+// reachable from here as list<host>, but the parent did not declare it -- were
+// it a claim, renaming a var in a child would break its parent, and a library
+// component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
-	seen := make(map[string]string, len(comp.Props)+len(comp.Events)+len(comp.Slots))
+	type claimed struct {
+		kind string
+		pos  ast.Pos
+	}
+	seen := make(map[string]claimed, len(comp.Props)+len(comp.Events)+len(comp.Slots))
 	claim := func(name, kind string, pos ast.Pos) {
 		if name == "" {
 			return
 		}
 		if prev, dup := seen[name]; dup {
-			c.error(pos, "%s %q on component %s: name is already declared as a %s", kind, name, comp.Name, prev)
+			article := "a"
+			if strings.ContainsRune("aeiou", rune(prev.kind[0])) {
+				article = "an"
+			}
+			c.error(pos, "%s %q on component %s: name is already declared as %s %s (at %s)",
+				kind, name, comp.Name, article, prev.kind, prev.pos)
 			return
 		}
-		seen[name] = kind
+		seen[name] = claimed{kind, pos}
 	}
 	for _, p := range decl.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
 			claim(pd.Name, "prop", pd.Pos)
 		case ast.EventDecl:
+			// The `@` is declaration syntax, not part of the name, so an event
+			// competes with everything else on the bare identifier.
 			claim(pd.Name, "event", pd.Pos)
 		case ast.SlotDecl:
 			claim(pd.Name, "slot", pd.Pos)
 		}
 	}
-	// A slot is resolved as a tag from anywhere in the body, so a var or func of
-	// the same name collides with it. Only that pairing is reported here: the
-	// scope machinery already answers for the rest, and with a better message.
 	for _, v := range comp.Vars {
-		if seen[v.Name] == "slot" {
-			c.error(decl.Pos, "var %q on component %s: name is already declared as a slot", v.Name, comp.Name)
+		pos := decl.Pos
+		if v.AST != nil {
+			if p := v.AST.StmtPos(); p != nil {
+				pos = *p
+			}
 		}
+		kind := "var"
+		if v.IsConst {
+			kind = "const"
+		}
+		claim(v.Name, kind, pos)
 	}
 	for _, fn := range comp.Funcs {
-		if seen[fn.Name] == "slot" {
-			c.error(decl.Pos, "func %q on component %s: name is already declared as a slot", fn.Name, comp.Name)
+		pos := decl.Pos
+		if fn.AST != nil {
+			pos = fn.AST.Pos
+		}
+		claim(fn.Name, "func", pos)
+	}
+	for _, ref := range collectElementRefIDs(decl.Body.Stmts) {
+		claim(ref.name, "element id", ref.pos)
+	}
+}
+
+type elementRef struct {
+	name string
+	pos  ast.Pos
+}
+
+// collectElementRefIDs returns every element id declared in a component body,
+// in source order. It is findHostComponentAST's walk widened from one name to
+// all of them -- ids hide inside if/for branches and inside a slot's block, and
+// the `Comp() #id` call form declares one as much as `Comp #id { }` does. It
+// does not descend into the components the body instantiates: those ids are
+// their own declarations'.
+func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
+	var out []elementRef
+	var walk func(stmts []ast.Stmt)
+	walk = func(stmts []ast.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ast.VisualNode:
+				if n.ID != "" {
+					out = append(out, elementRef{n.ID, n.Pos})
+				}
+				walk(n.Block.Stmts)
+			case *ast.CallStmt:
+				if _, id, isElem := elementRefCallInfo(n.Call); isElem && id != "" {
+					out = append(out, elementRef{id, n.Pos})
+				}
+			case *ast.SlotNode:
+				walk(n.Block.Stmts)
+			case *ast.IfStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			case *ast.ForStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			}
 		}
 	}
+	walk(stmts)
+	return out
 }
 
 // buildSlotDecl resolves one slot declaration, for either registration path.
