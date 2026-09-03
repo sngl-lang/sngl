@@ -386,7 +386,20 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	// already held costs an assignment and patches nothing.
 	reuse := []ir.Stmt{&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: held()}}
 	for _, p := range n.Props {
-		if p.Name == "" || !componentAbsorbs(n.Component, p.Name) {
+		if p.Name == "" {
+			continue
+		}
+		// A prop the instance can neither absorb nor rebuild for is one whose
+		// new value goes nowhere, which is the whole bug class this pass grew
+		// #[construct] for: the update was dropped and the user saw no error
+		// and no effect. The mark is how a declaration opts into the rebuild;
+		// anything else arriving here is a routing nothing in the compiler
+		// answers, so it is reported rather than built into a program that
+		// ignores the write.
+		if !componentAbsorbs(n.Component, p.Name) {
+			if !propIsConstruct(n.Component, p.Name) {
+				st.failf(p.NamePos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Name, n.Component.Name)
+			}
 			continue
 		}
 		reuse = append(reuse, &ir.CallStmt{Call: &ir.Call{
