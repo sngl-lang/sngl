@@ -136,7 +136,7 @@ func writeArchive(src, dst string, arc *txtar.Archive, input string, ts []target
 func parseScript(script string) (targets []target, asserts []assertion, prose string, err error) {
 	var blocks [][]string
 	var pending []string
-	for _, raw := range strings.Split(script, "\n") {
+	for raw := range strings.SplitSeq(script, "\n") {
 		line := strings.TrimRight(raw, " \t")
 		if strings.TrimSpace(line) == "" {
 			pending = nil

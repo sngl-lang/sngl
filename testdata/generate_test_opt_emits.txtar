@@ -1,8 +1,13 @@
-A target in the output block may carry options: `bubbletea(test=true)`. The
-same option spelled `--opt test=true` on the command line writes a
-`model_test.go` beside the model, lowered from the `testInitialCountIsZero`
-declaration; the golden here is the model alone, so the option is not reaching
-the platform by this route.
+A target in the output block may carry options, and `bubbletea(test=true)` is
+one: it lowers the `testInitialCountIsZero` declaration into a `model_test.go`
+beside the model, which is the second file in the golden.
+
+That spelling generated nothing until OptionField resolved a const. `true` is
+a library const rather than a literal, so `OptionBool(req.Options, "test")`
+saw a non-literal and answered false, while `--opt test=true`, which parses
+the string itself, worked throughout. The fixture passed either way with only
+the model to look at -- the missing file is exactly what a golden shows and a
+grep cannot.
 
 -- app.sngl --
 import . "sngl:ui"
@@ -126,3 +131,17 @@ func (m Model) View() tea.View {
 	v.AltScreen = true
 	return v
 }
+-- out/go/bubbletea/model_test.go --
+package ui
+
+import "testing"
+
+func TestInitialCountIsZero(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	c := __snglTestComponent
+	_ = c
+	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
+}
+
+
+func newTestComponent() Model { return New() }

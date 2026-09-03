@@ -1,6 +1,11 @@
-`maps=true` on a target compiles cleanly. No source-map sidecar is emitted
-yet -- no platform reads Request.Maps until Plan B -- but the option must not
-cause a compile error, which is what the golden being the ordinary page says.
+`maps=true` on a target is a source map, and the golden is where it lands: an
+inline `sourceMappingURL` data URI at the end of the page's script, rather
+than a sidecar file the static build has nowhere to put.
+
+The fixture was written when the option only had to not break the build --
+nothing read Request.Maps -- and it passed for a second reason once something
+did, since an option written in an output block was not reaching the platform
+at all. Both are why the golden here is the whole page.
 
 -- main.sngl --
 import . "sngl:ui"
@@ -34,5 +39,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = {};
 })();
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsic25nbC1lbnRyeS5qcyJdLAogICJzb3VyY2VzQ29udGVudCI6IFsiLy8gU3RhdGVcbmxldCBzdGF0ZSA9IHt9O1xuXG5cbiJdLAogICJtYXBwaW5ncyI6ICI7O0FBQ0EsTUFBSSxRQUFRLENBQUM7IiwKICAibmFtZXMiOiBbXQp9Cg==
 </script>
 </body></html>

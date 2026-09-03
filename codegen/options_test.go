@@ -228,3 +228,22 @@ func TestApplyOptions_NonComparisonBinaryStillErrors(t *testing.T) {
 		t.Fatalf("want an error, got %+v", c)
 	}
 }
+
+// OptionField is where the two spellings of an option value are made one, so a
+// reader of it cannot see only the CLI's. `bubbletea(test=true)` generated no
+// test file while `--opt test=true` did, because OptionBool asserted the value
+// was a literal and an option written in source is the Ident naming a const.
+func TestOptionFieldResolvesAConstValue(t *testing.T) {
+	yes := &ir.Var{
+		Name: "true", IsConst: true,
+		Init: &ir.Binary{Op: ast.BinEq,
+			Left:  &ir.Literal{Type: ir.TypInt, Value: "0"},
+			Right: &ir.Literal{Type: ir.TypInt, Value: "0"}},
+	}
+	opts := &ir.StructLit{Fields: []ir.FieldInit{
+		{Name: "test", Value: &ir.Ident{Name: "true", Sym: yes}},
+	}}
+	if !OptionBool(opts, "test") {
+		t.Error("OptionBool did not see the const value")
+	}
+}

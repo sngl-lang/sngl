@@ -57,13 +57,22 @@ func OptionsFromMap(m map[string]any) *ir.StructLit {
 // OptionField returns the value expression for the named field, or (nil, false)
 // if absent. Useful for callers that want to inspect a single option without
 // populating a Go struct.
+//
+// The value is resolved through resolveConst, because an option written in an
+// output block is whatever expression the source named -- `test=true` is an
+// Ident for a library const, not a literal -- while the same option set from
+// the CLI or by SetOptionField is a literal already. Every reader below wants
+// the value, so the two spellings are made one here rather than in each of
+// them: OptionBool was one of the readers that did not, and
+// `bubbletea(test=true)` silently generated no test file while
+// `--opt test=true` did.
 func OptionField(opts *ir.StructLit, name string) (ir.Expr, bool) {
 	if opts == nil {
 		return nil, false
 	}
 	for _, f := range opts.Fields {
 		if f.Name == name {
-			return f.Value, true
+			return resolveConst(f.Value), true
 		}
 	}
 	return nil, false
