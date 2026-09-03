@@ -1,0 +1,22 @@
+import ir "sngl:internal/ir"
+
+// Marks a component prop that is read while the instance is being built and
+// never again: a constructor argument, a value a `var` initializer copies, a
+// host property the toolkit refuses after realization.
+//
+// Such a prop has no setter, so a new value cannot be written into the live
+// instance. Without the mark it was written into a cell nobody read, and the
+// change was silently lost; with it, a render that describes a different value
+// destroys the instance and builds a fresh one from the new value -- the same
+// thing a changed `key=` does, and for the same reason: what the position
+// describes is no longer what it holds.
+//
+// The cost is the instance's own state, which is why this is opt-in per prop
+// rather than the default. A prop whose type the language compares reliably is
+// rebuilt only when the value actually differs; any other type is rebuilt
+// whenever the render runs, because "unchanged" is not a question the target
+// can be asked about it.
+//
+// Only a component prop carries it -- a `var` is written by definition, and a
+// declaration outside a component has no instance to rebuild.
+func construct() ir.Macro

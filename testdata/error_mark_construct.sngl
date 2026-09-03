@@ -1,0 +1,27 @@
+// #[construct] says a prop is read while its instance is being built and
+// never again. Only a prop carries it: a `var` is written by definition, and a
+// declaration with no instance behind it has nothing to rebuild.
+
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:macro"
+
+component seeded(
+    #[construct] start int,
+    label string,
+) {
+    var n = start
+    text(value=label + string(n))
+}
+
+component doubled(
+    #[construct]
+    #[construct] start int, // ERROR(check) "already construct-only"
+) {
+    text(value=string(start))
+}
+
+#[construct] // ERROR(check) "only a component prop"
+struct point {
+    x int
+}

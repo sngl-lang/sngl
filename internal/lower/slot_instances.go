@@ -44,19 +44,45 @@ type slotInstance struct {
 	// counts how many times each key has been claimed this render.
 	key  ir.Expr
 	seen *ir.Var
+	// ctor is the #[construct] props this site binds to something other than a
+	// literal, in declaration order. Each is a value the live instance was
+	// built from and cannot be handed a new one, so a render describing a
+	// different value rebuilds rather than patches.
+	ctor []*ctorProp
 }
+
+// ctorProp is one construct-only prop's memory at an instantiation site: what
+// the instance held at each identity was built from, so this render can ask
+// whether it still describes the same thing.
+//
+// live and next mirror the instance registry exactly -- same shape, same
+// identity, filled in step -- because the question is per instance and not per
+// site. They are nil when the prop's type has no equality the targets agree
+// on, and then there is no question to ask: the instance is rebuilt whenever
+// the render runs.
+type ctorProp struct {
+	name  string
+	value ir.Expr
+	live  *ir.Var
+	next  *ir.Var
+}
+
+// remembers reports whether this prop's value can be compared against what the
+// instance was built from.
+func (cp *ctorProp) remembers() bool { return cp != nil && cp.live != nil }
 
 // keyed reports whether identity comes from a declared key rather than the
 // position.
 func (si *slotInstance) keyed() bool { return si.key != nil }
 
-// newSlotInstance allocates the state one instantiation site needs. key is the
-// `key=` the node declared, or nil for positional identity, and comp is the
-// component being instantiated.
+// newSlotInstance allocates the state the instantiation site n needs: its
+// `key=` decides how identity is looked up, and the component it instantiates
+// decides what the registry holds.
 //
 // One site instantiates one component, so the registry is typed: a host with
 // no runtime types does not care, and Go cannot call a setter through `any`.
-func (st *reactivityState) newSlotInstance(key ir.Expr, comp *ir.Component) *slotInstance {
+func (st *reactivityState) newSlotInstance(node *ir.NodeInst) *slotInstance {
+	key, comp := node.Key, node.Component
 	n := st.instCounter
 	st.instCounter++
 	name := func(suffix string) string { return "__inst" + strconv.Itoa(n) + suffix }
@@ -78,7 +104,91 @@ func (st *reactivityState) newSlotInstance(key ir.Expr, comp *ir.Component) *slo
 		inst.seen = &ir.Var{Name: name("_seen"), Type: counts, Synthesized: true}
 	}
 	st.owner.addVar(inst.live)
+	for _, p := range constructProps(node) {
+		cp := &ctorProp{name: p.Name, value: p.Value}
+		if t := propValueType(comp, p.Name); comparableForRebuild(t) {
+			held := ir.ListOf(t)
+			if key != nil {
+				held = ir.MapOf(ir.TypString, t)
+			}
+			cp.live = &ir.Var{Name: name("_was_" + p.Name), Type: held, Init: emptyOf(held), Synthesized: true}
+			cp.next = &ir.Var{Name: name("_now_" + p.Name), Type: held, Synthesized: true}
+			st.owner.addVar(cp.live)
+		}
+		inst.ctor = append(inst.ctor, cp)
+	}
 	return inst
+}
+
+// constructProps is the #[construct]-marked props this site binds to something
+// other than a literal, in the order the node wrote them.
+//
+// A literal is left out because it cannot change: the memory and the
+// comparison would both be dead weight, and leaving them out is what keeps a
+// site that binds only constants lowering exactly as it did before the mark
+// existed.
+func constructProps(n *ir.NodeInst) []*ir.Arg {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	var out []*ir.Arg
+	for i, p := range n.Props {
+		if p.Name == "" || !propIsConstruct(n.Component, p.Name) {
+			continue
+		}
+		if _, ok := p.Value.(*ir.Literal); ok {
+			continue
+		}
+		out = append(out, &n.Props[i])
+	}
+	return out
+}
+
+// propIsConstruct reports whether comp declared prop with #[construct].
+func propIsConstruct(comp *ir.Component, prop string) bool {
+	if comp == nil {
+		return false
+	}
+	for _, p := range comp.Props {
+		if p != nil && p.Name == prop {
+			return p.Construct
+		}
+	}
+	return false
+}
+
+// propValueType is the declared type of one of comp's props.
+func propValueType(comp *ir.Component, prop string) *ir.Type {
+	if comp == nil {
+		return nil
+	}
+	for _, p := range comp.Props {
+		if p != nil && p.Name == prop {
+			return p.Type
+		}
+	}
+	return nil
+}
+
+// comparableForRebuild reports whether `==` on two values of t means the same
+// thing on every target that builds instances.
+//
+// Deliberately narrower than the checker's isComparable, which admits any
+// named struct: Go compares two structs field by field and JS compares two
+// objects by identity, so a struct-valued prop would be "changed" on every
+// render of the JS build and only on a real change of the Go one. The answer
+// has to be the same everywhere, so the types whose equality is a primitive on
+// all three languages are the whole list -- and a prop of any other type is
+// rebuilt unconditionally rather than compared wrongly.
+func comparableForRebuild(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeEnum:
+		return true
+	}
+	return false
 }
 
 // instanceTypeOf is the handle type an instantiation of comp is held as.
@@ -108,9 +218,16 @@ func (si *slotInstance) open() []ir.Stmt {
 		&ir.LocalVar{Name: si.next.Name, Type: si.next.Type, Sym: si.next, Init: emptyOf(si.next.Type)},
 	}
 	if !si.keyed() {
-		return append(out, &ir.LocalVar{Name: si.idx.Name, Type: ir.TypInt, Sym: si.idx, Init: intLiteralLit(0)})
+		out = append(out, &ir.LocalVar{Name: si.idx.Name, Type: ir.TypInt, Sym: si.idx, Init: intLiteralLit(0)})
+	} else {
+		out = append(out, &ir.LocalVar{Name: si.seen.Name, Type: si.seen.Type, Sym: si.seen, Init: emptyOf(si.seen.Type)})
 	}
-	return append(out, &ir.LocalVar{Name: si.seen.Name, Type: si.seen.Type, Sym: si.seen, Init: emptyOf(si.seen.Type)})
+	for _, cp := range si.ctor {
+		if cp.remembers() {
+			out = append(out, &ir.LocalVar{Name: cp.next.Name, Type: cp.next.Type, Sym: cp.next, Init: emptyOf(cp.next.Type)})
+		}
+	}
+	return out
 }
 
 // claimKey is the identity one iteration claims: the declared key as a string,
@@ -196,32 +313,78 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 // the one already held, or a new one.
 //
 //	var <id> <Comp> = null
-//	if list.length(<live>) > <idx> {
+//	if list.length(<live>) > <idx> && <was_p>[<idx>] == <expr> {
 //	    <id> = <live>[<idx>]
 //	    lower.UpdateComponent(<id>, "<prop>", <expr>)   // one per settable prop
 //	} else {
+//	    if list.length(<live>) > <idx> { lower.DestroyComponent(<live>[<idx>]) }
 //	    var <id>__new <Comp> = lower.CreateComponent(...)
 //	    <id> = <id>__new
 //	}
 //	list.push(<next>, <id>)
+//	list.push(<now_p>, <expr>)                          // one per #[construct] prop
 //	<idx> = <idx> + 1
 //
 // The create stays a LocalVar initialised by the call, because that is the
 // shape codegen.WalkLowered matches on: an assignment carrying the same call
-// reaches no arm and is emitted as a call to a function nothing declares.
+// reaches no arm and is emitted as a call to a function nothing declares. It
+// also stays the *only* create site, which is why a stale instance falls
+// through to the else instead of being rebuilt inside the reuse branch: two
+// CreateComponent bindings of one id would have a mutation-model platform
+// declare the same field twice.
+//
+// The condition is a length check alone until a #[construct] prop is bound to
+// something other than a literal. Then it also asks whether what the instance
+// was built from is what this render describes, and a difference takes the
+// else: an instance that cannot be handed the new value is destroyed and built
+// again. A construct prop whose type has no portable equality has no such
+// question to fail, so its site rebuilds unconditionally -- see
+// comparableForRebuild.
 func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
 	id := n.ID
 	cur := &ir.Var{Name: id, Type: si.elem, Synthesized: true}
 	curRef := func() *ir.Ident { return varRef(cur) }
 
-	reuse := []ir.Stmt{&ir.Assign{
-		Target: curRef(),
-		Op:     ast.AssignSet,
-		Value:  &ir.Index{Type: si.elem, Operand: varRef(si.live), Idx: varRef(si.idx)},
-	}}
+	out := []ir.Stmt{&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}}}
+
+	// The identity this position is looked up under, and the two questions
+	// asked of it: whether one is held, and which one. A registry entry is
+	// read the same way whichever identity it is -- so is a construct prop's
+	// memory, which is why the registries have the same shape.
+	var key *ir.Var
+	if si.keyed() {
+		k, claim := st.claimKey(si)
+		key = k
+		out = append(out, claim...)
+	}
+	has := func() ir.Expr {
+		if si.keyed() {
+			return callMapContains(varRef(si.live), varRef(key), si.elem)
+		}
+		return &ir.Binary{
+			Type:  ir.TypBool,
+			Op:    ast.BinGt,
+			Left:  callListLength(varRef(si.live)),
+			Right: varRef(si.idx),
+		}
+	}
+	held := func() ir.Expr {
+		if si.keyed() {
+			return callMapGet(varRef(si.live), varRef(key), &ir.Literal{Type: ir.TypNull}, si.elem)
+		}
+		return &ir.Index{Type: si.elem, Operand: varRef(si.live), Idx: varRef(si.idx)}
+	}
+	entry := func(reg *ir.Var) ir.Expr {
+		if si.keyed() {
+			return &ir.Index{Type: reg.Type.Elems[1], Operand: varRef(reg), Idx: varRef(key)}
+		}
+		return &ir.Index{Type: reg.Type.Elems[0], Operand: varRef(reg), Idx: varRef(si.idx)}
+	}
+
 	// Every prop the instance can absorb is pushed on reuse: the render has no
 	// way to know which of them changed, and a setter that writes the value it
 	// already held costs an assignment and patches nothing.
+	reuse := []ir.Stmt{&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: held()}}
 	for _, p := range n.Props {
 		if p.Name == "" || !componentAbsorbs(n.Component, p.Name) {
 			continue
@@ -248,54 +411,91 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		},
 		&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: varRef(fresh)},
 	}
-
-	if si.keyed() {
-		k, claim := st.claimKey(si)
-		reuse = append([]ir.Stmt{&ir.Assign{
-			Target: curRef(),
-			Op:     ast.AssignSet,
-			Value:  callMapGet(varRef(si.live), varRef(k), &ir.Literal{Type: ir.TypNull}, si.elem),
-		}}, reuse[1:]...)
-		out := append([]ir.Stmt{
-			&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
-		}, claim...)
-		return append(out,
-			&ir.If{
-				Cond: callMapContains(varRef(si.live), varRef(k), si.elem),
-				Body: reuse,
-				Else: create,
-			},
-			&ir.Assign{
-				Target: &ir.Index{Type: si.elem, Operand: varRef(si.next), Idx: varRef(k)},
-				Op:     ast.AssignSet,
-				Value:  curRef(),
-			},
-		)
+	// An instance the position still holds but can no longer describe goes
+	// away before its replacement is built. The guard is the same question the
+	// reuse branch asked first, so nothing is destroyed at a position that
+	// held nothing. close() cannot do this: it destroys what the render
+	// described past, and this position is one the render described.
+	discard := &ir.If{
+		Cond: has(),
+		Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+			Args:     []ir.CallArg{{Value: held()}},
+		}}},
 	}
 
-	return []ir.Stmt{
-		&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
-		&ir.If{
-			Cond: &ir.Binary{
-				Type:  ir.TypBool,
-				Op:    ast.BinGt,
-				Left:  callListLength(varRef(si.live)),
-				Right: varRef(si.idx),
-			},
+	if reusable, ok := si.reusable(has, entry); ok {
+		out = append(out, &ir.If{
+			Cond: reusable,
 			Body: reuse,
-			Else: create,
-		},
-		callListPush(varRef(si.next), curRef(), si.elem),
-		&ir.Assign{
-			Target: varRef(si.idx),
-			Op:     ast.AssignSet,
-			Value: &ir.Binary{
-				Type: ir.TypInt, Op: ast.BinAdd,
-				Left:  varRef(si.idx),
-				Right: intLiteralLit(1),
-			},
-		},
+			Else: append([]ir.Stmt{discard}, create...),
+		})
+	} else {
+		out = append(out, discard)
+		out = append(out, create...)
 	}
+
+	// What this render leaves for the next one: the instance at this identity,
+	// and what each construct prop built it from.
+	if si.keyed() {
+		out = append(out, &ir.Assign{
+			Target: entry(si.next),
+			Op:     ast.AssignSet,
+			Value:  curRef(),
+		})
+		for _, cp := range si.ctor {
+			if cp.remembers() {
+				out = append(out, &ir.Assign{
+					Target: entry(cp.next),
+					Op:     ast.AssignSet,
+					Value:  deepCloneExpr(cp.value),
+				})
+			}
+		}
+		return out
+	}
+	out = append(out, callListPush(varRef(si.next), curRef(), si.elem))
+	for _, cp := range si.ctor {
+		if cp.remembers() {
+			out = append(out, callListPush(varRef(cp.next), deepCloneExpr(cp.value), cp.next.Type.Elems[0]))
+		}
+	}
+	return append(out, &ir.Assign{
+		Target: varRef(si.idx),
+		Op:     ast.AssignSet,
+		Value: &ir.Binary{
+			Type: ir.TypInt, Op: ast.BinAdd,
+			Left:  varRef(si.idx),
+			Right: intLiteralLit(1),
+		},
+	})
+}
+
+// reusable is the condition under which the instance a position holds may be
+// kept: one is held, and every construct prop it was built from is what this
+// render describes. ok is false when a construct prop has no comparison to
+// make, and then no instance is reusable at all.
+func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr) (ir.Expr, bool) {
+	cond := has()
+	for _, cp := range si.ctor {
+		if !cp.remembers() {
+			return nil, false
+		}
+		cond = &ir.Binary{
+			Type: ir.TypBool,
+			Op:   ast.BinAnd,
+			Left: cond,
+			Right: &ir.Binary{
+				Type:  ir.TypBool,
+				Op:    ast.BinEq,
+				Left:  entry(cp.live),
+				Right: deepCloneExpr(cp.value),
+			},
+		}
+	}
+	return cond, true
 }
 
 // close ends the render: everything the position no longer describes is
@@ -316,7 +516,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 	loop := &ir.LoopVar{Name: si.idx.Name + "_d", Type: ir.TypInt}
 	jSym := &ir.Var{Name: si.idx.Name + "_j", Type: ir.TypInt, Synthesized: true}
 
-	return []ir.Stmt{
+	out := []ir.Stmt{
 		&ir.For{
 			Key:      loop.Name,
 			KeySym:   loop,
@@ -350,6 +550,21 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 		},
 		&ir.Assign{Target: varRef(si.live), Op: ast.AssignSet, Value: varRef(si.next)},
 	}
+	return append(out, si.retainCtor()...)
+}
+
+// retainCtor carries each construct prop's memory across the render, beside
+// the registry it mirrors. Written here rather than in reuseOrCreate so the
+// two flips are one statement apart and cannot be done for one and not the
+// other.
+func (si *slotInstance) retainCtor() []ir.Stmt {
+	var out []ir.Stmt
+	for _, cp := range si.ctor {
+		if cp.remembers() {
+			out = append(out, &ir.Assign{Target: varRef(cp.live), Op: ast.AssignSet, Value: varRef(cp.next)})
+		}
+	}
+	return out
 }
 
 // closeKeyedSlotInstance is close for a keyed registry: an identity the render
@@ -367,7 +582,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
 	k := &ir.LoopVar{Name: si.live.Name + "_k", Type: ir.TypString}
 	v := &ir.LoopVar{Name: si.live.Name + "_v", Type: si.elem}
-	return []ir.Stmt{
+	out := []ir.Stmt{
 		&ir.For{
 			Key:      k.Name,
 			KeySym:   k,
@@ -391,12 +606,18 @@ func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
 		},
 		&ir.Assign{Target: varRef(si.live), Op: ast.AssignSet, Value: varRef(si.next)},
 	}
+	return append(out, si.retainCtor()...)
 }
 
 // componentAbsorbs reports whether the component carries a setter for a prop,
 // which is passComponentProps' answer to whether the prop can be written after
 // construction. A prop with none is not routed to UpdateComponent: the call
 // would name a function the instance does not have.
+//
+// #[construct] is what puts a prop in that class deliberately -- the mark is
+// why passComponentProps gave it no setter -- and reuseOrCreate answers for it
+// by rebuilding the instance. A prop that lands here for any other reason is
+// still dropped, which is the diagnostic gap noted in the mark's own docs.
 func componentAbsorbs(comp *ir.Component, prop string) bool {
 	if comp == nil {
 		return false

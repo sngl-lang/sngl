@@ -19,6 +19,7 @@ var markImpls = map[markKey]markImpl{
 	{"tree", "kind"}:                markTreeKind,
 	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
+	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
@@ -388,6 +389,27 @@ func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
 		return
 	}
 	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+}
+
+// markConstruct implements #[macro.construct], which says a prop is read while
+// its instance is being built and never again.
+//
+// Only a prop, because the mark is about a value arriving from outside: a `var`
+// is written by definition, and a declaration with no instance behind it has
+// nothing to rebuild. What the mark then costs is decided by lowering, not
+// here -- the checker's whole job is to record that the prop was marked, since
+// a prop is a parameter and there is nothing about a parameter to validate
+// against it.
+func markConstruct(m *mark) error {
+	p, ok := m.sym.(*ir.Prop)
+	if !ok {
+		return fmt.Errorf("#[construct] cannot mark %s; only a component prop is read once while its instance is built", ast.DeclFormName(m.decl))
+	}
+	if p.Construct {
+		return fmt.Errorf("#[construct]: prop %q is already construct-only", p.Name)
+	}
+	p.Construct = true
+	return nil
 }
 
 // markIdentity implements #[identity], which names the const carrying a

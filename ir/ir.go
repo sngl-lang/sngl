@@ -559,6 +559,12 @@ type Prop struct {
 	// pattern matches it whole, and its value checked against Type. Empty for
 	// an ordinary prop, which only its own name binds.
 	Wildcard string `json:",omitempty"`
+	// Construct is the #[macro.construct] mark: the prop is read while the
+	// instance is being built and never again, so writing it afterwards would
+	// reach nothing. Lowering gives such a prop no setter and rebuilds the
+	// instance when its value changes. False for an ordinary prop, which the
+	// instance absorbs in place.
+	Construct bool `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so

@@ -59,7 +59,8 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 // list. Every other mark says something about a declaration that a parameter is
 // not, so the position is refused rather than left to the mark to notice.
 var paramMarks = map[markKey]bool{
-	{"macro", "wildcard"}: true,
+	{"macro", "wildcard"}:  true,
+	{"macro", "construct"}: true,
 }
 
 // applyParamMarks resolves and runs the marks written on a component prop.

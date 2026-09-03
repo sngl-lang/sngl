@@ -22,6 +22,10 @@ import (
 // condition inside the body gets a slot re-fire by the same route. Neither is
 // written here, and neither is a rebuild of the instance -- which would throw
 // away the subtree whose state the instance was retained to keep.
+//
+// The exception is a #[construct] prop, which is skipped: a cell nothing reads
+// after construction is what made such a prop's new value vanish silently. The
+// render rebuilds the instance for it instead (see reuseOrCreate).
 var passComponentProps = pass{
 	name:    "ComponentProps",
 	enabled: hasInstanceRuntime,
@@ -57,6 +61,13 @@ func promoteProps(c *ir.Component) {
 
 	for _, p := range c.Props {
 		if p == nil || p.Sym == nil {
+			continue
+		}
+		// A #[construct] prop is read while the instance is built and never
+		// again, so it gets neither cell nor setter: the parameter it already
+		// is says exactly that. componentAbsorbs then reports it as
+		// unwritable, and the render rebuilds the instance instead.
+		if p.Construct {
 			continue
 		}
 		v := &ir.Var{
