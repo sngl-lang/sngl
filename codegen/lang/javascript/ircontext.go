@@ -172,7 +172,35 @@ func (jc *JsIRContext) Conversion(n *ir.Conversion) string { return jc.evalConve
 func (jc *JsIRContext) Lambda(n *ir.Lambda) string         { return jc.evalLambda(n) }
 
 func (jc *JsIRContext) AssignText(n *ir.Assign, target, value string) string {
+	// A map entry is written through the Map API, not by index. JS is the one
+	// target where the two differ: Go and Kotlin both spell an entry write
+	// `m[k] = v`, and rendering that here set a *property* on the Map object
+	// while the entry -- and `.size` -- stayed exactly as they were. Reads
+	// were already right, which is what made it quiet: `m["a"] = 1` followed
+	// by `m.get("a")` returned the default.
+	if idx, ok := n.Target.(*ir.Index); ok && isMapExpr(idx.Operand) {
+		recv := irwalk.EvalMutTarget(jc, idx.Operand)
+		key := jc.EvalExpr(idx.Idx)
+		if n.Op == ast.AssignSet {
+			return recv + ".set(" + key + ", " + value + ")"
+		}
+		// A compound write reads the entry, applies the operator, and sets it
+		// back. The read needs a default, which for a map SNGL types as the
+		// value type's zero.
+		op := strings.TrimSuffix(n.Op.String(), "=")
+		cur := recv + ".get(" + key + ")"
+		return recv + ".set(" + key + ", " + cur + " " + op + " " + value + ")"
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// isMapExpr reports whether e is typed as a map.
+func isMapExpr(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeMap
 }
 func (jc *JsIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
