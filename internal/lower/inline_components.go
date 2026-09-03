@@ -516,6 +516,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		// passes (passReactivity / passDeclarative).
 		if n.Component != nil && (inReactive || st.cycles[n.Component]) {
 			st.keep[n.Component] = true
+			// The one place that knows: this instantiation is built while the
+			// program runs, so the declaration needs a runtime of its own.
+			n.Component.RuntimeInstance = true
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
 		}
 		if !st.inlinable(n.Component) {
@@ -536,7 +539,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		}
 		return spliced, true, nil
 	case *ir.If:
-		bodyReactive := inReactive || dependsOnReactiveVar(n.Cond, st.reactive)
+		bodyReactive := inReactive
 		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
 		if err != nil {
 			return nil, false, err
@@ -702,6 +705,14 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		renames[v] = clone.Name
 		symRenames[v] = clone
+		// The clone is as reactive as the original. st.reactive was computed
+		// once, before this pass created any of these, so a `for` iterating an
+		// inlined component's own state read as non-reactive -- and the
+		// instantiation inside it was inlined too, giving every element of the
+		// loop one shared cell for what the component declared per instance.
+		if st.reactive[v] {
+			st.reactive[clone] = true
+		}
 		*hoist.vars = append(*hoist.vars, clone)
 	}
 	funcStart := len(*hoist.funcs)

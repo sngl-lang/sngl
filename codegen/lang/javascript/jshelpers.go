@@ -43,10 +43,14 @@ func translateIRLiteral(n *ir.Literal) string {
 	return n.Value
 }
 
-// factoryName returns the JS factory function name for a component.
-// MUST match the convention used by HTML codegen's factory emission.
-// If you change this, also update codegen/platform/html/html.go.
-func factoryName(comp *ir.Component) string {
+// FactoryName is the JS function that allocates one instance of a component
+// the build could not inline away.
+//
+// Exported so the platform that emits the definition and the dispatch that
+// emits the call read one definition. They used to be asked to agree by hand,
+// by a comment here naming a file -- and for as long as that comment stood,
+// only the call site existed.
+func FactoryName(comp *ir.Component) string {
 	return "__cf_" + sanitizeJSIdent(comp.Name)
 }
 

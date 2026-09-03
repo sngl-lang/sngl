@@ -35,9 +35,13 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
-	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
-	idCounter    int
-	slotCounter  int
+	// caps is the target's shape, which the slot lowering needs: whether a
+	// component instance is a record decides what the slot attaches and
+	// retains.
+	caps        Caps
+	intrinsics  map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
+	idCounter   int
+	slotCounter int
 	// slotDeclSt is the shared declarative state used to lower every
 	// reactive-slot body. Sharing keeps the __nN counter monotonic
 	// across slots so two slot Funcs in the same package don't
@@ -117,12 +121,13 @@ func (st *reactivityState) freshNodeID() string {
 // lowerReactivity runs two passes over the package: first collects reverse
 // deps and assigns synthetic IDs, then walks every Stmt slice splicing
 // updater Assigns after every mutation that touches a tracked Var.
-func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerReactivity(pkg *ir.Package, caps Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &reactivityState{
 		pkg:          pkg,
+		caps:         caps,
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
@@ -1266,7 +1271,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	// every reactive slot in the package so `__nN` widget ids stay
 	// monotonic and don't collide between sibling slot Funcs.
 	if st.slotDeclSt == nil {
-		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg)
+		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg, st.caps)
 	}
 	// Seed slot's counter past any IDs reactivity has assigned so far
 	// (collectFromNode in pass-1 may have set NodeInst.IDs that the
@@ -1335,7 +1340,10 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	parentRef := &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
 		_, sub := lowerNodeForSlot(declSt, n, parentRef, ownerFuncs)
-		sub = append(sub, pushToSlot(n.ID))
+		// What the slot retains is what it later removes from the parent, and
+		// RemoveChild takes a node -- so for an instance that is its root, not
+		// the instance itself.
+		sub = append(sub, pushToSlot(declSt.attachName(n)))
 		return sub
 	}
 	// Recursively process a body: NodeInsts are realized + pushed onto the

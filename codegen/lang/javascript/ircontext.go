@@ -588,7 +588,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 			if !ok {
 				return "/* CreateComponent: arg[0].Sym not a Component */"
 			}
-			return factoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
+			return FactoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
 		}
 
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale

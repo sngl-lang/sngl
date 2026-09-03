@@ -942,7 +942,10 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		}
 	}
 	for _, c := range g.pkg.Components {
-		if c == nil {
+		// Not into a factory: a slot there renders into the instance's own
+		// root, which the lowering already named, and a page anchor would
+		// point every instance at one node.
+		if c == nil || g.isInstanceComponent(c) {
 			continue
 		}
 		visitStmts(c.Body)
@@ -1437,6 +1440,9 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		// synthesized funcs -- a canvas draw function among them -- have to
 		// come with it.
 		for _, comp := range g.pkg.Components {
+			if g.isInstanceComponent(comp) {
+				continue
+			}
 			for _, f := range comp.Funcs {
 				add(f)
 			}
@@ -2100,6 +2106,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Before the slots: a slot body is where a component instance is created,
+	// so the factory it calls has to be in scope by then.
+	g.emitComponentFactories(b)
 	g.emitSynthesizedSlots(b)
 	g.emitCanvasSetups(b)
 

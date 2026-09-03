@@ -205,7 +205,7 @@ func TestJsNamespaceCall_CreateComponent(t *testing.T) {
 		},
 	}
 	got := jc.EvalExpr(call)
-	want := factoryName(comp) + "({})"
+	want := FactoryName(comp) + "({})"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -230,7 +230,7 @@ func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
 		},
 	}
 	got := jc.EvalExpr(call)
-	want := factoryName(comp) + `({label: "Clicks"})`
+	want := FactoryName(comp) + `({label: "Clicks"})`
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

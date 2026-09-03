@@ -17,11 +17,11 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # html+none now lower identically.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoReactivity → CanvasReactivity'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoReactivity → CanvasReactivity'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → NoStructSpread → NoImplicitRecv → Canvas → Effect → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'

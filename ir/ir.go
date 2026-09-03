@@ -480,6 +480,16 @@ type Component struct {
 	// component when the pattern matches the whole name. Empty for an
 	// ordinary component, which only its own name reaches.
 	Wildcard string `json:",omitempty"`
+	// RuntimeInstance says the inliner met an instantiation of this component
+	// it could not flatten -- one inside reactive control flow, or in a
+	// recursive cycle -- so instances of it are built while the program runs.
+	//
+	// Recorded by the pass that made the decision, because nothing downstream
+	// can retell it: a component stays on Package.Components for several
+	// reasons, and "still declared" is not the same question as "instantiated
+	// at run time". Answering the first for the second gave a factory to every
+	// component the page renders as markup.
+	RuntimeInstance bool `json:",omitempty"`
 	// WildcardInto names the prop the matched name binds to, from the mark's
 	// second argument. Without it the name a wildcard matched reaches nothing:
 	// the component was resolved by a name it has no way to read.

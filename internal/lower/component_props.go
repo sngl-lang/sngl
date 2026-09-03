@@ -24,7 +24,7 @@ import (
 // away the subtree whose state the instance was retained to keep.
 var passComponentProps = pass{
 	name:    "ComponentProps",
-	enabled: func(c Caps) bool { return c.NoInlineComponents },
+	enabled: hasInstanceRuntime,
 	apply:   lowerComponentProps,
 }
 

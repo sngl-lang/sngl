@@ -118,6 +118,7 @@ var passes = []pass{
 	passCanvasReactivity,
 	passTimer,
 	passFocusOrder,
+	passInstanceBodies,
 	passDeclarative,
 	passNodeEscape,
 	passNoRef,
