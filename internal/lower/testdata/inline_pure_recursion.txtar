@@ -11,8 +11,12 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component foo {
-    foo
+component foo(__depth int = 0) {
+    if __depth >= 512 {
+        error.raise(message="foo: recursion exceeded 512 nested instances", kind="recursion")
+    } else {
+        foo(__depth=__depth + 1)
+    }
 }
 component main {
     foo

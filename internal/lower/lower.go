@@ -103,6 +103,9 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	// After the inliner, which is what leaves a recursive component standing,
+	// and before the passes that read a prop: the depth arrives as one.
+	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,

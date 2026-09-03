@@ -408,6 +408,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 		td.HasCanvas = true
 	}
+	if c.ctx != nil && c.ctx.Pkg != nil && c.ctx.Pkg.UsesErrorHandling {
+		td.LangHelpers += golang.ErrorEventDecl
+	}
 
 	tmplFiles := codegen.RenderTemplates(templateFS, "templates", td)
 	var modelBuf, callbacksBuf strings.Builder

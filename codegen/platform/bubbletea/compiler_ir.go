@@ -374,10 +374,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString(canvasStdlibDecls(info.Structs))
 	}
 
-	// The stdlib defines ErrorEvent, but codegen does not flow stdlib types
-	// into user output, so it materialises here.
 	if ctx.Pkg.UsesErrorHandling {
-		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
+		b.WriteString(golang.ErrorEventDecl)
 	}
 
 	// A top-level const gets a file-scope Go `var` so the free functions, which
