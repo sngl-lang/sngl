@@ -256,6 +256,11 @@ func generate(src map[string][]byte) (map[string][]byte, error) {
 
 	out := map[string][]byte{}
 	seen := map[string]bool{}
+	// txtar has no spelling for a file that does not end in a newline --
+	// Format appends one -- so a generated file missing it is compared, and
+	// stored, with one. Only the android i18n manifest is written that way
+	// today; without this the fixture cannot round-trip through its own
+	// golden.
 	for _, res := range results {
 		dir := goldenPrefix + res.Target.Lang + "/" + res.Target.Platform
 		if seen[dir] {
@@ -266,6 +271,9 @@ func generate(src map[string][]byte) (map[string][]byte, error) {
 			return nil, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
 		}
 		for name, data := range res.Files {
+			if len(data) > 0 && data[len(data)-1] != '\n' {
+				data = append(append([]byte{}, data...), '\n')
+			}
 			out[dir+"/"+path.Clean(name)] = data
 		}
 	}
