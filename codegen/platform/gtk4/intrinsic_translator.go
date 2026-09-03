@@ -421,6 +421,19 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
+// OnDetachHandler reports that gtk4 cannot yet take a signal back off.
+//
+// GLib can -- g_signal_handler_disconnect -- but it wants the handler id that
+// g_signal_connect returned, and OnAttachHandler does not keep one. Nothing
+// emits this op for gtk4 today, because the op only appears where a node is
+// retained across a render and gtk4 does not retain one. Reporting rather than
+// returning nothing, so the day it does the build says what is missing instead
+// of stacking a second handler on every row.
+func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, event string, _ ir.Expr) []ir.Stmt {
+	t.shared.fail(fmt.Errorf("gtk4: cannot detach the %q signal: the connect does not keep the handler id g_signal_handler_disconnect needs", event))
+	return nil
+}
+
 // OnComponentRoot binds a name to the widget an instance renders as. A local,
 // so a recursion frame keeps its own rather than clobbering a shared Model
 // field -- the same reason OnCreateComponent takes the local-ref path.

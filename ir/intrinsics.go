@@ -72,6 +72,12 @@ const (
 	NodeOpAppendChild      = "AppendChild"
 	NodeOpRemoveChild      = "RemoveChild"
 	NodeOpAttachHandler    = "AttachHandler"
+	// NodeOpDetachHandler undoes one AttachHandler. Needed the moment a node
+	// outlives the render that built it: a retained node keeps the handler it
+	// was given, and that handler closed over the iteration it was built in,
+	// so re-pointing it means taking the old one off first. Every host that
+	// can attach can detach, so this is not optional the way InsertBefore is.
+	NodeOpDetachHandler = "DetachHandler"
 	// NodeOpInsertBefore puts a child at a position rather than at the end.
 	// The one optional operation: a keyed reconciliation that inserts in the
 	// middle needs it, and a toolkit whose container only appends cannot
@@ -99,6 +105,7 @@ var NodeOps = []string{
 	NodeOpAppendChild,
 	NodeOpRemoveChild,
 	NodeOpAttachHandler,
+	NodeOpDetachHandler,
 	NodeOpInsertBefore,
 }
 

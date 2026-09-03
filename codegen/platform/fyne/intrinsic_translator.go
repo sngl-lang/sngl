@@ -369,6 +369,30 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}}
 }
 
+// OnDetachHandler clears the callback field. Fyne holds one callback per
+// event rather than a list of listeners, so detaching is assigning nothing and
+// the handler expression is not needed to identify what to remove.
+func (t *fyneTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, event string, _ ir.Expr) []ir.Stmt {
+	bareID := codegen.IdentBareName(node)
+	sp, ok := t.specs[bareID]
+	if !ok {
+		return nil
+	}
+	h, ok := sp.Handlers[event]
+	if !ok {
+		return nil
+	}
+	return []ir.Stmt{&ir.Assign{
+		Target: &ir.Select{
+			Operand: t.qualifyHandlerNode(node, bareID),
+			Field:   h.Field,
+			Type:    ir.TypDyn,
+		},
+		Op:    ast.AssignSet,
+		Value: &ir.Literal{Type: ir.TypNull},
+	}}
+}
+
 // nodeRefFor returns the reference expression for a synthesized widget id:
 // a bare local for non-escaping ids, else a Model-field selector.
 func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {

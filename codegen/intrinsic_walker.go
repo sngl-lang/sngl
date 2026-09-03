@@ -49,6 +49,11 @@ type IntrinsicTranslator interface {
 	OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt
 	OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt
+	// OnDetachHandler undoes one OnAttachHandler, given the same handler
+	// expression. A node that outlives the render that built it keeps the
+	// handler that render gave it, and that handler closed over the iteration
+	// -- so re-pointing it starts by taking the old one off.
+	OnDetachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt
 	OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt
 	OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt
 	OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt
@@ -118,6 +123,9 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt,
 					walkHandlerBody(ctx, n.Call.Args[2].Value, t))
+			case isLowerIntrinsic(n.Call, ir.NodeOpDetachHandler) && len(n.Call.Args) == 3:
+				evt, _ := extractStringLit(n.Call.Args[1].Value)
+				return t.OnDetachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)
 			case isLowerIntrinsic(n.Call, ir.NodeOpUpdateComponent) && len(n.Call.Args) == 3:
 				prop, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop, n.Call.Args[2].Value)

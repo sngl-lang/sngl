@@ -29,6 +29,10 @@ func (t *trace) OnAttachHandler(_ context.Context, n ir.Expr, e string, h ir.Exp
 	t.add("attach %s %s %s", identName(n), e, identName(h))
 	return nil
 }
+func (t *trace) OnDetachHandler(_ context.Context, n ir.Expr, e string, h ir.Expr) []ir.Stmt {
+	t.add("detach %s %s %s", identName(n), e, identName(h))
+	return nil
+}
 func (t *trace) OnPropAssign(_ context.Context, n ir.Expr, p string, v ir.Expr) []ir.Stmt {
 	t.add("prop %s %s", identName(n), p)
 	return nil
@@ -246,6 +250,7 @@ func nodeOpShapes() map[string]struct {
 		ir.NodeOpAppendChild:      {call(lower(ir.NodeOpAppendChild, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"})), "append p c"},
 		ir.NodeOpRemoveChild:      {call(lower(ir.NodeOpRemoveChild, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"})), "remove p c"},
 		ir.NodeOpAttachHandler:    {call(lower(ir.NodeOpAttachHandler, &ir.Ident{Name: "n"}, str("click"), &ir.Ident{Name: "h"})), "attach n click h"},
+		ir.NodeOpDetachHandler:    {call(lower(ir.NodeOpDetachHandler, &ir.Ident{Name: "n"}, str("click"), &ir.Ident{Name: "h"})), "detach n click h"},
 		ir.NodeOpInsertBefore:     {call(lower(ir.NodeOpInsertBefore, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"}, &ir.Ident{Name: "r"})), "insert p c before r"},
 	}
 }

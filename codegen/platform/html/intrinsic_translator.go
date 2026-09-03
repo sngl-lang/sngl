@@ -246,6 +246,26 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}}}
 }
 
+// OnDetachHandler is addEventListener's inverse, and takes the same handler
+// expression because the DOM matches listeners by reference: passing anything
+// else removes nothing, and says so in no way at all.
+func (t *htmlTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	domEvent := domEventName(t.declOf(node), event)
+	if domEvent == "" {
+		return nil
+	}
+	node = t.nodeRef(node)
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: node,
+		Func:     &ir.Func{Name: "removeEventListener"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Value: domEvent}},
+			{Value: handler},
+		},
+	}}}
+}
+
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	// SNGL component prop → DOM prop mapping. NoReactivity-lowered
 	// handler/timer/setter bodies arrive here with the original SNGL
