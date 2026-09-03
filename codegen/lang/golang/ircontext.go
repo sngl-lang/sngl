@@ -1280,18 +1280,14 @@ func structLitTypeName(n *ir.StructLit) string {
 // goReturnType is the result clause of a Go signature, leading space
 // included, or "" for a function that returns nothing.
 //
-// Nothing is the answer for a nil or void return, and also for a bare TypeDyn:
-// that has no first-class Go representation, so the signature reads
-// `func foo()` rather than `func foo() any`. TypeDyn *with* a Meta hint is a
-// raw Go type ref (e.g. "fyne.CanvasObject") and must round-trip.
+// Nothing is the answer for a nil or void return, and also for a TypeDyn: that
+// has no first-class Go representation, so the signature reads `func foo()`
+// rather than `func foo() any`.
 func goReturnType(ret *ir.Type) string {
 	if ret == nil || ret.Kind == ir.TypeVoid {
 		return ""
 	}
 	if ret.Kind == ir.TypeDyn {
-		if meta, ok := ret.Meta.(string); ok && meta != "" {
-			return " " + meta
-		}
 		return ""
 	}
 	return " " + IRTypeToGo(ret)
@@ -1463,9 +1459,6 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "any"
 	case ir.TypeDyn:
-		if meta, ok := t.Meta.(string); ok && meta != "" {
-			return meta
-		}
 		return "any"
 	case ir.TypeEnum:
 		return "string"

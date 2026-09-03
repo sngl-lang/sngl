@@ -443,7 +443,7 @@ func signatureParams(tag, on, sig string) ([]*ir.Param, error) {
 		for _, n := range f.Names {
 			out = append(out, &ir.Param{
 				Name: n.Name,
-				Type: &ir.Type{Kind: ir.TypeDyn, Meta: buf.String()},
+				Type: ir.NativeGoNamed(buf.String()),
 			})
 		}
 	}

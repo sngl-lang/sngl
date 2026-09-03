@@ -251,6 +251,14 @@ func (t *Type) String() string {
 			return "instance<" + t.Decl.SymName() + ">"
 		}
 		return "instance"
+	case TypeNative:
+		// A foreign type has no SNGL spelling, so a diagnostic names it the
+		// way the host does. Reachable since the C scheme importer started
+		// giving a void* parameter a native type rather than a dyn.
+		if ref, ok := t.Meta.(NativeTypeRef); ok && ref.Name != "" {
+			return ref.Name
+		}
+		return "native"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:

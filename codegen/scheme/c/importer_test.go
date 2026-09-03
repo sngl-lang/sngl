@@ -75,14 +75,27 @@ func TestMapCType_VoidPtr(t *testing.T) {
 				continue
 			}
 			got := mapCType(d.Type(), ast, nil)
-			// void* → TypeDyn with Meta "unsafe.Pointer"
-			if got == nil || got.Kind != ir.TypeDyn {
-				t.Errorf("void* → %v, want TypeDyn(unsafe.Pointer)", got)
+			if got == nil || got.Kind != ir.TypeNative {
+				t.Errorf("void* → %v, want TypeNative(unsafe.Pointer)", got)
 				return
 			}
-			meta, _ := got.Meta.(string)
-			if meta != "unsafe.Pointer" {
-				t.Errorf("void* Meta = %q, want %q", meta, "unsafe.Pointer")
+			ref, ok := got.Meta.(ir.NativeTypeRef)
+			if !ok {
+				t.Fatalf("void* Meta = %#v, want ir.NativeTypeRef", got.Meta)
+			}
+			if want := (ir.NativeTypeRef{Name: "unsafe.Pointer", Bare: true}); ref != want {
+				t.Errorf("void* ref = %#v, want %#v", ref, want)
+			}
+			// A native type's identity is that descriptor. While void* was a
+			// dyn carrying a name string, Equal said it was the same type as
+			// every other foreign type -- and IsAssignableTo let anything at
+			// all into the position.
+			other := ir.NativeGoNamed("fyne.CanvasObject")
+			if got.Equal(other) {
+				t.Errorf("%v.Equal(%v) = true, want false", got, other)
+			}
+			if ir.TypString.IsAssignableTo(got) {
+				t.Errorf("string is assignable to %v, want not", got)
 			}
 			return
 		}

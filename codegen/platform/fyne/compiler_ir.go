@@ -791,7 +791,7 @@ func renderIRComponentMethod(
 	if hasSlot {
 		params = append(params, &ir.Param{
 			Name: "slotContent",
-			Type: &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+			Type: ir.NativeGoNamed("fyne.CanvasObject"),
 		})
 	}
 
@@ -831,7 +831,7 @@ func renderIRComponentMethod(
 		Name:     methodName,
 		Receiver: "Model",
 		Params:   params,
-		Return:   &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+		Return:   ir.NativeGoNamed("fyne.CanvasObject"),
 		Block:    bodyStmts,
 	}
 	lines := compGC.EmitFuncDef(synthesized)

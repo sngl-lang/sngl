@@ -421,3 +421,34 @@ func TestRequireImportAs_Idempotent(t *testing.T) {
 		t.Errorf("forced alias = %q, want snglcanvas", a)
 	}
 }
+
+func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
+	// Bare: the name is already pointer-like or an interface, so no "*".
+	for _, name := range []string{"unsafe.Pointer", "fyne.CanvasObject", "gtk4rt.Handle"} {
+		if got := IRTypeToGo(ir.NativeGoNamed(name)); got != name {
+			t.Errorf("IRTypeToGo(NativeGoNamed %q) = %q; want %q", name, got, name)
+		}
+	}
+}
+
+// A concrete host type used to reach the Go printer as an ir.TypeDyn carrying
+// its name in Meta, which made every one of them Equal to every other. It is a
+// native type now, and TypeDyn renders as nothing in a result clause.
+func TestGoReturnType_NativeAndDyn(t *testing.T) {
+	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject")); got != " fyne.CanvasObject" {
+		t.Errorf("goReturnType(native) = %q; want %q", got, " fyne.CanvasObject")
+	}
+	// A dyn is a dyn whatever Meta holds: the printer must not read a type
+	// name out of it, because ir.Type.Equal answers "equal" for any two of
+	// them and the other language backends ignore Meta entirely.
+	smuggled := &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"}
+	if got := goReturnType(smuggled); got != "" {
+		t.Errorf("goReturnType(dyn+Meta) = %q; want %q", got, "")
+	}
+	if got := IRTypeToGo(smuggled); got != "any" {
+		t.Errorf("IRTypeToGo(dyn+Meta) = %q; want %q", got, "any")
+	}
+	if got := goReturnType(ir.TypDyn); got != "" {
+		t.Errorf("goReturnType(dyn) = %q; want %q", got, "")
+	}
+}
