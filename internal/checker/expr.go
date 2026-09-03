@@ -1639,11 +1639,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						params = params[1:]
 					}
 					if len(params) == 0 {
-						ret := fn.Return
-						if ret == nil {
-							ret = dynFallback("method %q has no return type", fn.Name)
-						}
-						return &ir.Select{AST: x, Type: ret, Operand: operandExpr, Field: x.Field}
+						// A void method referenced bare types void, the same as
+						// calling it -- callRetType's rule applied here too.
+						// ensureReturnType runs first so an expression body whose
+						// return is not inferred yet does not read as void.
+						c.ensureReturnType(fn)
+						return &ir.Select{AST: x, Type: callRetType(fn.FuncSig()), Operand: operandExpr, Field: x.Field}
 					}
 					funcType := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{
 						Params:     params,
@@ -3404,7 +3405,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
 				}
-				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: dynFallback("call to %q written as a visual node has no return type", fn.Name), Func: fn, Args: args}}
+				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: callRetType(fn.FuncSig()), Func: fn, Args: args}}
 			}
 		}
 	}
