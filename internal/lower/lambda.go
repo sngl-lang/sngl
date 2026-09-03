@@ -212,6 +212,10 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkStmts(n.Children)
 		case *ir.Break, *ir.Continue:
 			// A loop escape has nothing to capture.
+		case *ir.CanvasRedrawStmt:
+			// Carries a NodeInst and the draw Func, both owned elsewhere --
+			// a reference, like a Call's callee, so the body it names is not
+			// this body and what it reads is not this body's capture.
 		default:
 			panic(fmt.Sprintf("analyzeCaptures.walkStmt: unhandled %T", n))
 		}
