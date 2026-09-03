@@ -111,6 +111,10 @@ var referenceSlots = map[string]bool{
 	// reason the settle handler is: an entry point calls it without having to
 	// look a name up.
 	"Package.Teardown": true,
+	// The settle handlers, each owned by the component or window whose
+	// brackets it moves and walked there. Same reason as Teardown, at the
+	// other end of the lifetime.
+	"Package.Mounts": true,
 }
 
 // bodySlots returns "Type.Field" for every field holding IR a node owns and

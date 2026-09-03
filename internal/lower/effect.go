@@ -125,6 +125,7 @@ func (st *effectState) owner(o ir.Owner) error {
 	for _, fx := range st.effects {
 		if fx.comp == o.Comp && fx.win == o.Win {
 			body = append(body, callOf(fx.settle))
+			st.pkg.Mounts = append(st.pkg.Mounts, fx.settle)
 		}
 	}
 	switch {

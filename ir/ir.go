@@ -136,6 +136,15 @@ type Package struct {
 	// depends on. An entry point calls what is here rather than looking a name
 	// up, because whether there is anything to call is the lowering's answer.
 	Teardown *Func `json:"-"`
+
+	// Mounts are the settle handlers the effect lowering appended to the
+	// owner's body, in the order the program placed the brackets. The body
+	// statement is what most targets run; a target whose body is not
+	// executable -- a RenderModel, whose body became a pure View -- drops it,
+	// and calls these where its model is built instead. Recorded for the same
+	// reason Teardown is: whether there is anything to call, and what it is
+	// called, are the lowering's answers and not a name to look up.
+	Mounts []*Func `json:"-"`
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
